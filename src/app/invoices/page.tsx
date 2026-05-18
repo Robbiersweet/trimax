@@ -1,4 +1,4 @@
-import Navigation from "../components/Navigation";
+import AppShell from "../components/AppShell";
 const invoices = [
   {
     id: "#228",
@@ -26,9 +26,7 @@ const invoices = [
 ];
 export default function InvoicesPage() {
   return (
-    <main className="min-h-screen bg-zinc-950 text-white">
-      <div className="mx-auto max-w-6xl px-4 py-6">
-        <Navigation />
+<AppShell>
 
         <header className="mb-6 flex items-center justify-between">
           <div>
@@ -109,7 +107,7 @@ export default function InvoicesPage() {
           </div>
         </section>
 
-      </div>
-    </main>
+     
+     </AppShell>
   );
 }

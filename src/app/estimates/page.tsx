@@ -1,101 +1,87 @@
-import Navigation from "../components/Navigation";
+import Link from "next/link";
+import AppShell from "../components/AppShell";
+import Card from "../components/Card";
+import Button from "../components/Button";
+
 const estimates = [
   {
-    id: "#227",
-    client: "North Creek",
-    reference: "Fence Replacement",
+    id: "est-001",
+    displayId: "#227",
+    customer: "North Creek Apartments",
+    project: "Unit 204 Turn",
+    amount: "$2,450",
+    status: "Pending",
+  },
+  {
+    id: "est-002",
+    displayId: "#228",
+    customer: "Diana",
+    project: "Cedar Fence Replacement",
     amount: "$22,000",
     status: "Approved",
   },
-
   {
-    id: "#228",
-    client: "Holy Cross Church",
-    reference: "Coffee Bar",
-    amount: "$7,500",
-    status: "Sent",
+    id: "est-003",
+    displayId: "#229",
+    customer: "Everett Plaza",
+    project: "Exterior Touch-Up",
+    amount: "$4,800",
+    status: "Draft",
   },
 ];
+
 export default function EstimatesPage() {
   return (
-    <main className="min-h-screen bg-zinc-950 text-white">
-      <div className="mx-auto max-w-6xl px-4 py-6">
-        <Navigation />
-        <header className="mb-6 flex items-center justify-between">
+    <AppShell>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-orange-400">
+            <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
               Trimax
             </p>
-            <h1 className="mt-1 text-4xl font-bold">Estimates</h1>
+
+            <h1 className="mt-2 text-4xl font-bold">Estimates</h1>
           </div>
 
-          <button className="rounded-2xl bg-orange-500 px-5 py-3 font-semibold text-black">
-            + New Estimate
-          </button>
-        </header>
+          <Link href="/estimates/new">
+            <Button>+ New Estimate</Button>
+          </Link>
+        </div>
 
-        <section className="rounded-3xl border border-zinc-800 bg-zinc-900 p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <input
-              className="w-80 rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 outline-none"
-              placeholder="Search estimates..."
-            />
+        <div className="grid gap-4">
+          {estimates.map((estimate) => (
+            <Link key={estimate.id} href={`/estimates/${estimate.id}`}>
+              <Card className="transition hover:border-orange-500/60 hover:bg-zinc-800">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm text-orange-400">
+                      {estimate.displayId}
+                    </p>
 
-            <div className="flex gap-2">
-              <button className="rounded-xl bg-zinc-800 px-4 py-2 text-sm">All</button>
-              <button className="rounded-xl bg-zinc-800 px-4 py-2 text-sm">Draft</button>
-              <button className="rounded-xl bg-zinc-800 px-4 py-2 text-sm">Sent</button>
-              <button className="rounded-xl bg-zinc-800 px-4 py-2 text-sm">Approved</button>
-            </div>
-          </div>
+                    <h2 className="mt-1 text-2xl font-semibold">
+                      {estimate.project}
+                    </h2>
 
-          <div className="overflow-hidden rounded-2xl border border-zinc-800">
-            <table className="w-full">
-              <thead className="bg-zinc-800/50 text-left text-sm text-zinc-400">
-                <tr>
-                  <th className="px-4 py-3">Estimate #</th>
-                  <th className="px-4 py-3">Client</th>
-                  <th className="px-4 py-3">Reference</th>
-                  <th className="px-4 py-3">Amount</th>
-                  <th className="px-4 py-3">Status</th>
-                </tr>
-              </thead>
+                    <p className="mt-1 text-zinc-400">
+                      {estimate.customer}
+                    </p>
+                  </div>
 
-              <tbody>
-{estimates.map((estimate) => (
-  <tr key={estimate.id} className="border-t border-zinc-800">
-    <td className="px-4 py-4 font-medium">{estimate.id}</td>
+                  <div className="text-right">
+                    <p className="text-xl font-bold text-orange-400">
+                      {estimate.amount}
+                    </p>
 
-    <td className="px-4 py-4">
-      {estimate.client}
-    </td>
-
-    <td className="px-4 py-4">
-      {estimate.reference}
-    </td>
-
-    <td className="px-4 py-4 font-semibold">
-      {estimate.amount}
-    </td>
-
-    <td className="px-4 py-4">
-      <span
-        className={
-          estimate.status === "Approved"
-            ? "rounded-full bg-sky-500/20 px-3 py-1 text-xs text-sky-300"
-            : "rounded-full bg-orange-500/20 px-3 py-1 text-xs text-orange-300"
-        }
-      >
-        {estimate.status}
-      </span>
-    </td>
-  </tr>
-))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+                    <p className="mt-1 text-sm text-zinc-400">
+                      {estimate.status}
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            </Link>
+          ))}
+        </div>
       </div>
-    </main>
+    </AppShell>
   );
 }

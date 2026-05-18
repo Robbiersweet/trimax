@@ -1,4 +1,5 @@
 import Navigation from "./components/Navigation";
+import Link from "next/link";
 export default function Home() {
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
@@ -138,15 +139,28 @@ export default function Home() {
         </section>
 
         <nav className="sticky bottom-4 mt-6 grid grid-cols-5 items-center rounded-3xl border border-zinc-800 bg-zinc-900/95 p-3 text-center text-xs shadow-2xl backdrop-blur">
-          <button className="text-orange-400">Home</button>
-          <button className="text-zinc-400">Estimates</button>
+          <Link href="/" className="text-orange-400">
+  Home
+</Link>
 
-          <button className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-orange-500 text-3xl font-bold text-black shadow-lg">
-            +
-          </button>
+<Link href="/estimates" className="text-zinc-400">
+  Estimates
+</Link>
 
-          <button className="text-zinc-400">Invoices</button>
-          <button className="text-zinc-400">More</button>
+<Link
+  href="/new-request"
+  className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-orange-500 text-3xl font-bold text-black shadow-lg"
+>
+  +
+</Link>
+
+<Link href="/invoices" className="text-zinc-400">
+  Invoices
+</Link>
+
+<Link href="/queue" className="text-zinc-400">
+  More
+</Link>
         </nav>
       </div>
     </main>
