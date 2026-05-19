@@ -3,68 +3,99 @@ import AppShell from "../components/AppShell";
 import Card from "../components/Card";
 import Button from "../components/Button";
 import StatusBadge from "../components/StatusBadge";
-import { queueItems } from "../data/queue";
+import { getQueueItems } from "../lib/getQueueItems";
 
-export default function QueuePage() {
+export default async function QueuePage() {
+  const queueItems = await getQueueItems();
+
   return (
     <AppShell>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
-              Trimax
-            </p>
-            <h1 className="mt-2 text-4xl font-bold">Work Queue</h1>
-          </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
+            Trimax
+          </p>
 
-          <Link href="/new-request">
-            <Button>+ New Queue Item</Button>
-          </Link>
+          <h1 className="mt-3 text-5xl font-bold">
+            Work Queue
+          </h1>
         </div>
+      </div>
 
-        <div className="grid gap-4">
-          {queueItems.map((item) => (
-            <Link key={item.id} href={`/queue/${item.id}`}>
-              <Card className="transition hover:border-orange-500/60 hover:bg-zinc-800">
-                <div className="flex items-start justify-between gap-6">
+      <div className="mt-10 grid gap-6">
+        {queueItems.map((item) => (
+          <Card key={item.id}>
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <div className="flex items-center gap-3">
+                  <h2 className="text-2xl font-semibold">
+                    {item.property}
+                  </h2>
+
+                  <StatusBadge status={item.status} />
+                </div>
+
+                <p className="mt-2 text-zinc-400">
+                  Unit {item.unit}
+                </p>
+
+                <div className="mt-5 grid gap-4 text-sm text-zinc-300 md:grid-cols-2">
                   <div>
-                    <p className="text-sm text-orange-400">{item.property}</p>
+                    <p className="text-zinc-500">
+                      Paint Type
+                    </p>
 
-                    <h2 className="mt-1 text-2xl font-semibold">
-                      Unit {item.unit}
-                    </h2>
-
-                    <p className="mt-2 text-zinc-400">{item.paintType}</p>
-                    <p className="mt-1 text-zinc-500">{item.flooring}</p>
-
-                    <div className="mt-4 flex gap-2">
-                      <StatusBadge status={item.status} />
-
-                      {item.smokedIn && (
-                        <span className="rounded-full bg-red-500/20 px-3 py-1 text-sm text-red-300">
-                          Smoker Unit
-                        </span>
-                      )}
-                    </div>
+                    <p>{item.paint_type}</p>
                   </div>
 
-                  <div className="text-right text-sm">
-                    <p className="text-zinc-400">Move Out</p>
-                    <p className="font-medium text-white">{item.moveOutDate}</p>
-
-                    <p className="mt-3 text-zinc-400">Ready Date</p>
-                    <p className="font-medium text-white">{item.readyDate}</p>
-
-                    <p className="mt-3 text-zinc-400">Priority</p>
-                    <p className="font-medium text-orange-400">
-                      {item.priority}
+                  <div>
+                    <p className="text-zinc-500">
+                      Flooring
                     </p>
+
+                    <p>{item.flooring}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-zinc-500">
+                      Move Out Date
+                    </p>
+
+                    <p>{item.move_out_date}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-zinc-500">
+                      Ready Date
+                    </p>
+
+                    <p>{item.ready_date}</p>
                   </div>
                 </div>
-              </Card>
-            </Link>
-          ))}
-        </div>
+
+                <p className="mt-5 max-w-2xl text-zinc-400">
+                  {item.notes}
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <Link href={`/queue/${item.id}`}>
+                  <Button>
+                    Open Queue Item
+                  </Button>
+                </Link>
+
+                <Link
+                  href={`/estimates/new?queueId=${item.id}`}
+                >
+                  <Button variant="secondary">
+                    Create Estimate
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </Card>
+        ))}
       </div>
     </AppShell>
   );
