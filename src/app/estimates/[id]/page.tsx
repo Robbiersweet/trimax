@@ -1,42 +1,8 @@
+import Link from "next/link";
 import AppShell from "../../components/AppShell";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
-
-const estimates = [
-  {
-    id: "est-001",
-    displayId: "#227",
-    customer: "North Creek Apartments",
-    project: "Unit 204 Turn",
-    address: "204 Main St, Everett WA",
-    amount: "$2,450",
-    status: "Pending",
-    description:
-      "Full apartment turn including paint, carpet cleaning, touch-up repairs, and final cleaning.",
-  },
-  {
-    id: "est-002",
-    displayId: "#228",
-    customer: "Diana",
-    project: "Cedar Fence Replacement",
-    address: "Lake Stevens WA",
-    amount: "$22,000",
-    status: "Approved",
-    description:
-      "Remove damaged fencing and install new cedar fence with gates and post replacement.",
-  },
-  {
-    id: "est-003",
-    displayId: "#229",
-    customer: "Everett Plaza",
-    project: "Exterior Touch-Up",
-    address: "Everett WA",
-    amount: "$4,800",
-    status: "Draft",
-    description:
-      "Exterior paint touch-up and pressure washing around entry areas.",
-  },
-];
+import { estimates } from "../../data/estimates";
 
 export default async function EstimateDetailsPage({
   params,
@@ -45,7 +11,7 @@ export default async function EstimateDetailsPage({
 }) {
   const { id } = await params;
 
-  const estimate = estimates.find((e) => e.id === id);
+  const estimate = estimates.find((estimate) => estimate.id === id);
 
   if (!estimate) {
     return (
@@ -58,6 +24,13 @@ export default async function EstimateDetailsPage({
   return (
     <AppShell>
       <div className="space-y-6">
+        <Link
+          href="/estimates"
+          className="inline-flex items-center text-sm text-orange-400 hover:text-orange-300"
+        >
+          ← Back to Estimates
+        </Link>
+
         <div>
           <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
             Estimate Details
@@ -119,7 +92,7 @@ export default async function EstimateDetailsPage({
         <div className="flex gap-4">
           <Button>Edit Estimate</Button>
 
-          <Button className="bg-zinc-800 text-white hover:bg-zinc-700">
+          <Button variant="secondary">
             Convert to Invoice
           </Button>
         </div>

@@ -1,88 +1,122 @@
-type Props = {
-  params: Promise<{
-    unit: string;
-  }>;
-};
+import Link from "next/link";
+import AppShell from "../../components/AppShell";
+import Card from "../../components/Card";
+import Button from "../../components/Button";
+import StatusBadge from "../../components/StatusBadge";
+import { queueItems } from "../../data/queue";
 
-export default async function UnitPage({ params }: Props) {
+export default async function QueueDetailPage({
+  params,
+}: {
+  params: Promise<{ unit: string }>;
+}) {
   const { unit } = await params;
 
+  const item = queueItems.find((queueItem) => queueItem.id === unit);
+
+  if (!item) {
+    return (
+      <AppShell>
+        <p className="text-red-400">Queue item not found.</p>
+      </AppShell>
+    );
+  }
+
   return (
-    <main className="min-h-screen bg-zinc-950 px-6 py-10 text-white">
+    <AppShell>
+      <div className="space-y-6">
+        <Link
+          href="/queue"
+          className="inline-flex text-sm text-orange-400 hover:text-orange-300"
+        >
+          ← Back to Queue
+        </Link>
 
-      <div className="mx-auto max-w-3xl">
-
-        <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
-          Trimax Queue
-        </p>
-
-        <h1 className="mt-3 text-5xl font-bold">
-          Unit {unit.toUpperCase()}
-        </h1>
-
-        <div className="mt-8 rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
-
-          <div className="grid gap-6 md:grid-cols-2">
-
-            <div>
-              <p className="text-sm text-zinc-500">
-                Property
-              </p>
-
-              <p className="mt-2 text-xl font-semibold">
-                North Creek
-              </p>
-            </div>
-
-            <div>
-              <p className="text-sm text-zinc-500">
-                Status
-              </p>
-
-              <p className="mt-2 inline-block rounded-full bg-orange-500/20 px-3 py-1 text-sm font-medium text-orange-300">
-                Ready For Paint
-              </p>
-            </div>
-
-            <div>
-              <p className="text-sm text-zinc-500">
-                Scope
-              </p>
-
-              <p className="mt-2 text-xl font-semibold">
-                Smoker Unit
-              </p>
-            </div>
-
-            <div>
-              <p className="text-sm text-zinc-500">
-                Scheduled Date
-              </p>
-
-              <p className="mt-2 text-xl font-semibold">
-                May 20, 2026
-              </p>
-            </div>
-
-          </div>
-
-          <div className="mt-8">
-
-            <p className="text-sm text-zinc-500">
-              Notes
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
+              Trimax Queue
             </p>
 
-            <p className="mt-3 leading-7 text-zinc-300">
-              Full primer required. Heavy smoke remediation.
-              Replace damaged outlet covers and patch dining room wall.
-            </p>
-
+            <h1 className="mt-2 text-4xl font-bold">
+              Unit {item.unit}
+            </h1>
           </div>
 
+          <StatusBadge status={item.status} />
         </div>
 
-      </div>
+        {item.linkedEstimateId && (
+          <Card className="border-purple-500/40">
+            <p className="text-sm uppercase tracking-[0.25em] text-purple-300">
+              Linked Estimate
+            </p>
 
-    </main>
+            <div className="mt-3 flex items-center justify-between">
+              <p className="text-lg font-semibold">
+                {item.linkedEstimateId}
+              </p>
+
+              <Link href={`/estimates/${item.linkedEstimateId}`}>
+                <Button variant="secondary">
+                  Open Estimate
+                </Button>
+              </Link>
+            </div>
+          </Card>
+        )}
+
+        <Card>
+          <div className="grid gap-6 md:grid-cols-2">
+            <Info label="Property" value={item.property} />
+            <Info label="Priority" value={item.priority} />
+            <Info label="Paint Type" value={item.paintType} />
+            <Info label="Flooring" value={item.flooring} />
+            <Info label="Move Out Date" value={item.moveOutDate} />
+            <Info label="Ready Date" value={item.readyDate} />
+          </div>
+
+          {item.smokedIn && (
+            <div className="mt-6 inline-flex rounded-full bg-red-500/20 px-3 py-1 text-sm text-red-300">
+              Smoker Unit
+            </div>
+          )}
+
+          <div className="mt-6">
+            <p className="text-sm text-zinc-500">Notes</p>
+
+            <p className="mt-2 leading-7 text-zinc-300">
+              {item.notes}
+            </p>
+          </div>
+        </Card>
+
+        <div className="flex gap-4">
+          <Link href={`/estimates/new?queueId=${item.id}`}>
+            <Button>Create Estimate</Button>
+          </Link>
+
+          <Button variant="secondary">
+            Mark Scheduled
+          </Button>
+        </div>
+      </div>
+    </AppShell>
+  );
+}
+
+function Info({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div>
+      <p className="text-sm text-zinc-500">{label}</p>
+
+      <p className="mt-1 text-lg font-medium">{value}</p>
+    </div>
   );
 }

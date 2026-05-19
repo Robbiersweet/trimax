@@ -1,0 +1,43 @@
+import type { QueueItem } from "../types";
+
+export const queueItems: QueueItem[] = [
+  {
+    id: "queue-001",
+    customer: "North Creek Apartments",
+    property: "North Creek",
+    unit: "U6",
+    status: "Submitted",
+    moveOutDate: "2026-06-30",
+    paintScope: "Reno",
+    smokerUnit: false,
+    carpet: "Replace",
+    vinyl: "Keep",
+    notes: "Move-out scheduled. Keep existing vinyl, replace carpet.",
+  },
+  {
+    id: "queue-002",
+    customer: "North Creek Apartments",
+    property: "North Creek",
+    unit: "J8",
+    status: "Ready For Paint",
+    readyDate: "2026-05-20",
+    paintScope: "Primer",
+    smokerUnit: true,
+    carpet: "Unknown",
+    vinyl: "Unknown",
+    notes: "Smoker unit. Full primer likely required.",
+  },
+  {
+    id: "queue-003",
+    customer: "North Creek Apartments",
+    property: "North Creek",
+    unit: "K4",
+    status: "Scheduled",
+    readyDate: "2026-05-22",
+    paintScope: "Classic",
+    smokerUnit: false,
+    carpet: "Keep",
+    vinyl: "Keep",
+    notes: "Roman Column. Standard paint turn.",
+  },
+];
