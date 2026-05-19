@@ -6,6 +6,7 @@ import AppShell from "../../components/AppShell";
 import Button from "../../components/Button";
 import InputField from "../../components/InputField";
 import Card from "../../components/Card";
+import Toast from "../../components/Toast";
 import { queueItems } from "../../data/queue";
 
 export default function NewEstimatePage() {
@@ -14,37 +15,35 @@ export default function NewEstimatePage() {
 
   const queueItem = queueItems.find((item) => item.id === queueId);
 
-  const [customerName, setCustomerName] = useState(
-    queueItem?.property ?? ""
-  );
-
+  const [customerName, setCustomerName] = useState(queueItem?.property ?? "");
   const [projectAddress, setProjectAddress] = useState(
     queueItem ? `Unit ${queueItem.unit}` : ""
   );
-
   const [estimateAmount, setEstimateAmount] = useState("");
-
   const [projectTitle, setProjectTitle] = useState(
     queueItem
       ? `${queueItem.property} - Unit ${queueItem.unit} ${queueItem.paintType}`
       : ""
   );
-
   const [notes, setNotes] = useState(
     queueItem
       ? `${queueItem.notes}\n\nFlooring: ${queueItem.flooring}\nMove Out: ${queueItem.moveOutDate}\nReady Date: ${queueItem.readyDate}`
       : ""
   );
 
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+  const [toast, setToast] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
 
   const handleSave = () => {
-    setMessage("");
-    setError("");
+    setToast(null);
 
     if (!customerName || !projectTitle || !estimateAmount) {
-      setError("Please fill out customer, project title, and estimate amount.");
+      setToast({
+        type: "error",
+        message: "Please fill out customer, project title, and estimate amount.",
+      });
       return;
     }
 
@@ -57,11 +56,16 @@ export default function NewEstimatePage() {
       notes,
     });
 
-    setMessage("Estimate saved successfully.");
+    setToast({
+      type: "success",
+      message: "Estimate saved successfully.",
+    });
   };
 
   return (
     <AppShell>
+      {toast && <Toast type={toast.type} message={toast.message} />}
+
       <div className="mx-auto max-w-3xl">
         <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
           Trimax
@@ -116,9 +120,7 @@ export default function NewEstimatePage() {
             />
 
             <div>
-              <label className="mb-2 block text-sm text-zinc-400">
-                Notes
-              </label>
+              <label className="mb-2 block text-sm text-zinc-400">Notes</label>
 
               <textarea
                 value={notes}
@@ -127,18 +129,6 @@ export default function NewEstimatePage() {
                 className="min-h-40 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
               />
             </div>
-
-            {error && (
-              <p className="rounded-2xl bg-red-500/20 px-4 py-3 text-sm text-red-300">
-                {error}
-              </p>
-            )}
-
-            {message && (
-              <p className="rounded-2xl bg-green-500/20 px-4 py-3 text-sm text-green-300">
-                {message}
-              </p>
-            )}
 
             <Button onClick={handleSave}>Save Estimate</Button>
           </div>

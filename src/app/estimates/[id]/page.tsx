@@ -3,6 +3,7 @@ import AppShell from "../../components/AppShell";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import { estimates } from "../../data/estimates";
+import { invoices } from "../../data/invoices";
 
 export default async function EstimateDetailsPage({
   params,
@@ -12,6 +13,10 @@ export default async function EstimateDetailsPage({
   const { id } = await params;
 
   const estimate = estimates.find((estimate) => estimate.id === id);
+
+  const linkedInvoice = invoices.find(
+    (invoice) => invoice.linkedEstimateId === id
+  );
 
   if (!estimate) {
     return (
@@ -45,6 +50,32 @@ export default async function EstimateDetailsPage({
           </p>
         </div>
 
+        {linkedInvoice && (
+          <Card className="border-emerald-500/40">
+            <p className="text-sm uppercase tracking-[0.25em] text-emerald-300">
+              Linked Invoice
+            </p>
+
+            <div className="mt-3 flex items-center justify-between">
+              <div>
+                <p className="text-lg font-semibold">
+                  {linkedInvoice.displayId}
+                </p>
+
+                <p className="mt-1 text-sm text-zinc-400">
+                  {linkedInvoice.status}
+                </p>
+              </div>
+
+              <Link href={`/invoices/${linkedInvoice.id}`}>
+                <Button variant="secondary">
+                  Open Invoice
+                </Button>
+              </Link>
+            </div>
+          </Card>
+        )}
+
         <Card>
           <div className="grid gap-6 md:grid-cols-2">
             <div>
@@ -64,7 +95,9 @@ export default async function EstimateDetailsPage({
             </div>
 
             <div>
-              <p className="text-sm text-zinc-500">Project Address</p>
+              <p className="text-sm text-zinc-500">
+                Project Address
+              </p>
 
               <p className="mt-1 text-lg font-medium">
                 {estimate.address}
@@ -72,7 +105,9 @@ export default async function EstimateDetailsPage({
             </div>
 
             <div>
-              <p className="text-sm text-zinc-500">Estimate Amount</p>
+              <p className="text-sm text-zinc-500">
+                Estimate Amount
+              </p>
 
               <p className="mt-1 text-lg font-medium text-orange-400">
                 {estimate.amount}
@@ -82,7 +117,9 @@ export default async function EstimateDetailsPage({
         </Card>
 
         <Card>
-          <p className="text-sm text-zinc-500">Scope of Work</p>
+          <p className="text-sm text-zinc-500">
+            Scope of Work
+          </p>
 
           <p className="mt-3 leading-7 text-zinc-300">
             {estimate.description}
@@ -90,11 +127,21 @@ export default async function EstimateDetailsPage({
         </Card>
 
         <div className="flex gap-4">
-          <Button>Edit Estimate</Button>
+          {!linkedInvoice ? (
+            <Link href="/invoices">
+              <Button>Convert to Invoice</Button>
+            </Link>
+          ) : (
+            <Link href={`/invoices/${linkedInvoice.id}`}>
+              <Button>Open Invoice</Button>
+            </Link>
+          )}
 
-          <Button variant="secondary">
-            Convert to Invoice
-          </Button>
+          <Link href={`/estimates/${estimate.id}/print`}>
+            <Button variant="secondary">
+              Print Estimate
+            </Button>
+          </Link>
         </div>
       </div>
     </AppShell>
