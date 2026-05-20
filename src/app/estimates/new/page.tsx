@@ -1,7 +1,7 @@
 "use client";
 
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
 import AppShell from "../../components/AppShell";
 import Button from "../../components/Button";
 import InputField from "../../components/InputField";
@@ -9,7 +9,7 @@ import Card from "../../components/Card";
 import Toast from "../../components/Toast";
 import { queueItems } from "../../data/queue";
 
-export default function NewEstimatePage() {
+function NewEstimatePageContent() {
   const searchParams = useSearchParams();
   const queueId = searchParams.get("queueId");
 
@@ -135,5 +135,13 @@ export default function NewEstimatePage() {
         </Card>
       </div>
     </AppShell>
+  );
+}
+
+export default function NewEstimatePage() {
+  return (
+    <Suspense fallback={<div>Loading estimate form...</div>}>
+      <NewEstimatePageContent />
+    </Suspense>
   );
 }
