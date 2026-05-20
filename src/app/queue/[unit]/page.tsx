@@ -3,6 +3,7 @@ import AppShell from "../../components/AppShell";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import StatusBadge from "../../components/StatusBadge";
+import DeleteQueueItemButton from "../../components/DeleteQueueItemButton";
 import { supabase } from "../../lib/supabase";
 
 type SupabaseQueueItem = {
@@ -59,7 +60,9 @@ export default async function QueueDetailPage({
               Trimax Queue
             </p>
 
-            <h1 className="mt-2 text-4xl font-bold">Unit {item.unit}</h1>
+            <h1 className="mt-2 text-4xl font-bold">
+              Unit {item.unit}
+            </h1>
           </div>
 
           <StatusBadge status={item.status ?? "Pending Estimate"} />
@@ -72,10 +75,14 @@ export default async function QueueDetailPage({
             </p>
 
             <div className="mt-3 flex items-center justify-between">
-              <p className="text-lg font-semibold">{item.linked_estimate_id}</p>
+              <p className="text-lg font-semibold">
+                {item.linked_estimate_id}
+              </p>
 
               <Link href={`/estimates/${item.linked_estimate_id}`}>
-                <Button variant="secondary">Open Estimate</Button>
+                <Button variant="secondary">
+                  Open Estimate
+                </Button>
               </Link>
             </div>
           </Card>
@@ -100,7 +107,9 @@ export default async function QueueDetailPage({
           <div className="mt-6">
             <p className="text-sm text-zinc-500">Notes</p>
 
-            <p className="mt-2 leading-7 text-zinc-300">{item.notes}</p>
+            <p className="mt-2 leading-7 text-zinc-300">
+              {item.notes}
+            </p>
           </div>
         </Card>
 
@@ -109,17 +118,28 @@ export default async function QueueDetailPage({
             <Button>Create Estimate</Button>
           </Link>
 
-          <Button variant="secondary">Mark Scheduled</Button>
+          <Button variant="secondary">
+            Mark Scheduled
+          </Button>
+
+          <DeleteQueueItemButton queueItemId={item.id} />
         </div>
       </div>
     </AppShell>
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
+function Info({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
   return (
     <div>
       <p className="text-sm text-zinc-500">{label}</p>
+
       <p className="mt-1 text-lg font-medium">{value}</p>
     </div>
   );
