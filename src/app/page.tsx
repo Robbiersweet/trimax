@@ -5,6 +5,12 @@ import Button from "./components/Button";
 import StatusBadge from "./components/StatusBadge";
 import { supabase } from "./lib/supabase";
 
+type Business = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
 type QueueItem = {
   id: string;
   property: string | null;
@@ -29,33 +35,59 @@ type Invoice = {
   status: string | null;
 };
 
-export default async function DashboardPage() {
-  const selectedBusiness = "R&L Creations";
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ business?: string }>;
+}) {
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const requestedBusinessSlug = resolvedSearchParams.business;
 
-  const [
-    queueResponse,
-    estimateResponse,
-    invoiceResponse,
-  ] = await Promise.all([
-    supabase
-      .from("queue_items")
-      .select("*")
-      .order("created_at", { ascending: false }),
+  const { data: businessData } = await supabase
+    .from("businesses")
+    .select("*")
+    .order("name", { ascending: true });
 
-    supabase
-      .from("estimates")
-      .select("*")
-      .order("created_at", { ascending: false }),
+  const businesses = (businessData ?? []) as Business[];
 
-    supabase
-      .from("invoices")
-      .select("*")
-      .order("created_at", { ascending: false }),
-  ]);
+  const selectedBusiness =
+    businesses.find((business) => business.slug === requestedBusinessSlug) ??
+    businesses.find((business) => business.slug === "rnl-creations") ??
+    businesses[0] ??
+    null;
 
-  const queueItems = (queueResponse.data ?? []) as QueueItem[];
-  const estimates = (estimateResponse.data ?? []) as Estimate[];
-  const invoices = (invoiceResponse.data ?? []) as Invoice[];
+  const selectedBusinessSlug = selectedBusiness?.slug ?? "rnl-creations";
+
+  let queueItems: QueueItem[] = [];
+  let estimates: Estimate[] = [];
+  let invoices: Invoice[] = [];
+
+  if (selectedBusiness) {
+    const [queueResponse, estimateResponse, invoiceResponse] =
+      await Promise.all([
+        supabase
+          .from("queue_items")
+          .select("*")
+          .eq("business_id", selectedBusiness.id)
+          .order("created_at", { ascending: false }),
+
+        supabase
+          .from("estimates")
+          .select("*")
+          .eq("business_id", selectedBusiness.id)
+          .order("created_at", { ascending: false }),
+
+        supabase
+          .from("invoices")
+          .select("*")
+          .eq("business_id", selectedBusiness.id)
+          .order("created_at", { ascending: false }),
+      ]);
+
+    queueItems = (queueResponse.data ?? []) as QueueItem[];
+    estimates = (estimateResponse.data ?? []) as Estimate[];
+    invoices = (invoiceResponse.data ?? []) as Invoice[];
+  }
 
   const activeQueueItems = queueItems.filter(
     (item) => item.status !== "Scheduled"
@@ -65,9 +97,7 @@ export default async function DashboardPage() {
     (estimate) => estimate.status !== "Approved"
   );
 
-  const openInvoices = invoices.filter(
-    (invoice) => invoice.status !== "Paid"
-  );
+  const openInvoices = invoices.filter((invoice) => invoice.status !== "Paid");
 
   const outstandingRevenueTotal = openInvoices.reduce((total, invoice) => {
     const numericAmount = Number(
@@ -77,14 +107,11 @@ export default async function DashboardPage() {
     return total + numericAmount;
   }, 0);
 
-  const outstandingRevenue = outstandingRevenueTotal.toLocaleString(
-    "en-US",
-    {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 0,
-    }
-  );
+  const outstandingRevenue = outstandingRevenueTotal.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+  });
 
   const ytdRevenue = invoices
     .filter((invoice) => invoice.status === "Paid")
@@ -105,37 +132,37 @@ export default async function DashboardPage() {
     {
       title: "New Queue Item",
       subtitle: "Add apartment turn or work request",
-      href: "/new-request",
+      href: `/new-request?business=${selectedBusinessSlug}`,
       icon: "➕",
     },
     {
       title: "New Estimate",
       subtitle: "Create a customer estimate",
-      href: "/estimates/new",
+      href: `/estimates/new?business=${selectedBusinessSlug}`,
       icon: "🧾",
     },
     {
       title: "New Invoice",
       subtitle: "Create invoice or deposit request",
-      href: "/invoices",
+      href: `/invoices/new?business=${selectedBusinessSlug}`,
       icon: "📄",
     },
     {
       title: "Record Payment",
       subtitle: "Apply payment to invoice",
-      href: "/invoices",
+      href: `/invoices?business=${selectedBusinessSlug}`,
       icon: "💵",
     },
     {
       title: "Review Queue",
       subtitle: "Check upcoming units",
-      href: "/queue",
+      href: `/queue?business=${selectedBusinessSlug}`,
       icon: "🏠",
     },
     {
       title: "Print Documents",
       subtitle: "Estimates and invoices",
-      href: "/estimates",
+      href: `/estimates?business=${selectedBusinessSlug}`,
       icon: "🖨️",
     },
   ];
@@ -149,19 +176,31 @@ export default async function DashboardPage() {
               Trimax
             </p>
 
-            <h1 className="mt-2 text-4xl font-bold">
-              Dashboard
-            </h1>
+            <h1 className="mt-2 text-4xl font-bold">Dashboard</h1>
 
             <p className="mt-2 text-zinc-400">
-              Operations overview for {selectedBusiness}.
+              Operations overview for {selectedBusiness?.name ?? "your business"}.
             </p>
           </div>
 
-          <div className="flex gap-3">
-            <button className="rounded-2xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm font-semibold text-white">
-              {selectedBusiness} ▾
-            </button>
+          <div className="flex flex-wrap gap-3">
+            {businesses.map((business) => {
+              const isSelected = business.id === selectedBusiness?.id;
+
+              return (
+                <Link
+                  key={business.id}
+                  href={`/?business=${business.slug}`}
+                  className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
+                    isSelected
+                      ? "border-orange-500 bg-orange-500/10 text-orange-300"
+                      : "border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-orange-500/60"
+                  }`}
+                >
+                  {business.name}
+                </Link>
+              );
+            })}
 
             <button className="rounded-2xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm font-semibold text-zinc-300">
               Robbie ▾
@@ -187,23 +226,13 @@ export default async function DashboardPage() {
 
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
-                <p className="text-zinc-400">
-                  Open Invoices
-                </p>
-
-                <p className="mt-1 text-2xl font-bold">
-                  {openInvoices.length}
-                </p>
+                <p className="text-zinc-400">Open Invoices</p>
+                <p className="mt-1 text-2xl font-bold">{openInvoices.length}</p>
               </div>
 
               <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
-                <p className="text-zinc-400">
-                  YTD Revenue
-                </p>
-
-                <p className="mt-1 text-2xl font-bold">
-                  {ytdRevenue}
-                </p>
+                <p className="text-zinc-400">YTD Revenue</p>
+                <p className="mt-1 text-2xl font-bold">{ytdRevenue}</p>
               </div>
             </div>
           </div>
@@ -211,16 +240,11 @@ export default async function DashboardPage() {
 
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
-            <p className="text-sm text-zinc-400">
-              Active Queue
-            </p>
-
-            <p className="mt-2 text-4xl font-bold">
-              {activeQueueItems.length}
-            </p>
+            <p className="text-sm text-zinc-400">Active Queue</p>
+            <p className="mt-2 text-4xl font-bold">{activeQueueItems.length}</p>
 
             <Link
-              href="/queue"
+              href={`/queue?business=${selectedBusinessSlug}`}
               className="mt-4 inline-block text-sm text-orange-400"
             >
               View queue →
@@ -228,16 +252,11 @@ export default async function DashboardPage() {
           </Card>
 
           <Card>
-            <p className="text-sm text-zinc-400">
-              Pending Estimates
-            </p>
-
-            <p className="mt-2 text-4xl font-bold">
-              {pendingEstimates.length}
-            </p>
+            <p className="text-sm text-zinc-400">Pending Estimates</p>
+            <p className="mt-2 text-4xl font-bold">{pendingEstimates.length}</p>
 
             <Link
-              href="/estimates"
+              href={`/estimates?business=${selectedBusinessSlug}`}
               className="mt-4 inline-block text-sm text-orange-400"
             >
               View estimates →
@@ -245,16 +264,11 @@ export default async function DashboardPage() {
           </Card>
 
           <Card>
-            <p className="text-sm text-zinc-400">
-              Open Invoices
-            </p>
-
-            <p className="mt-2 text-4xl font-bold">
-              {openInvoices.length}
-            </p>
+            <p className="text-sm text-zinc-400">Open Invoices</p>
+            <p className="mt-2 text-4xl font-bold">{openInvoices.length}</p>
 
             <Link
-              href="/invoices"
+              href={`/invoices?business=${selectedBusinessSlug}`}
               className="mt-4 inline-block text-sm text-orange-400"
             >
               View invoices →
@@ -279,10 +293,8 @@ export default async function DashboardPage() {
               </p>
             </div>
 
-            <Link href="/queue">
-              <Button>
-                Review Queue
-              </Button>
+            <Link href={`/queue?business=${selectedBusinessSlug}`}>
+              <Button>Review Queue</Button>
             </Link>
           </div>
         </Card>
@@ -293,9 +305,7 @@ export default async function DashboardPage() {
               Action Center
             </p>
 
-            <h2 className="mt-2 text-2xl font-bold">
-              Quick Actions
-            </h2>
+            <h2 className="mt-2 text-2xl font-bold">Quick Actions</h2>
           </div>
 
           <div className="grid gap-3 md:grid-cols-3">
@@ -305,17 +315,9 @@ export default async function DashboardPage() {
                 href={action.href}
                 className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 transition hover:border-orange-500/60 hover:bg-zinc-800"
               >
-                <p className="text-3xl">
-                  {action.icon}
-                </p>
-
-                <p className="mt-3 font-semibold">
-                  {action.title}
-                </p>
-
-                <p className="mt-1 text-sm text-zinc-400">
-                  {action.subtitle}
-                </p>
+                <p className="text-3xl">{action.icon}</p>
+                <p className="mt-3 font-semibold">{action.title}</p>
+                <p className="mt-1 text-sm text-zinc-400">{action.subtitle}</p>
               </Link>
             ))}
           </div>
@@ -323,9 +325,7 @@ export default async function DashboardPage() {
 
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
-            <h2 className="text-2xl font-bold">
-              Recent Queue Items
-            </h2>
+            <h2 className="text-2xl font-bold">Recent Queue Items</h2>
 
             <div className="mt-4 space-y-3">
               {queueItems.slice(0, 3).map((item) => (
@@ -345,19 +345,21 @@ export default async function DashboardPage() {
                       </p>
                     </div>
 
-                    <StatusBadge
-                      status={item.status || "Pending"}
-                    />
+                    <StatusBadge status={item.status || "Pending"} />
                   </div>
                 </Link>
               ))}
+
+              {queueItems.length === 0 && (
+                <p className="text-sm text-zinc-400">
+                  No queue items for this business yet.
+                </p>
+              )}
             </div>
           </Card>
 
           <Card>
-            <h2 className="text-2xl font-bold">
-              Recent Invoices
-            </h2>
+            <h2 className="text-2xl font-bold">Recent Invoices</h2>
 
             <div className="mt-4 space-y-3">
               {invoices.slice(0, 3).map((invoice) => (
@@ -389,6 +391,12 @@ export default async function DashboardPage() {
                   </div>
                 </Link>
               ))}
+
+              {invoices.length === 0 && (
+                <p className="text-sm text-zinc-400">
+                  No invoices for this business yet.
+                </p>
+              )}
             </div>
           </Card>
         </div>

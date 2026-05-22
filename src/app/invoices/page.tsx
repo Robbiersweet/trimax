@@ -5,6 +5,12 @@ import Button from "../components/Button";
 import StatusBadge from "../components/StatusBadge";
 import { supabase } from "../lib/supabase";
 
+type Business = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
 type Invoice = {
   id: string;
   display_id: string | null;
@@ -15,17 +21,37 @@ type Invoice = {
   due_date: string | null;
 };
 
-export default async function InvoicesPage() {
-  const { data, error } = await supabase
-    .from("invoices")
+export default async function InvoicesPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ business?: string }>;
+}) {
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const businessSlug = resolvedSearchParams.business ?? "rnl-creations";
+
+  const { data: businessData } = await supabase
+    .from("businesses")
     .select("*")
-    .order("created_at", { ascending: false });
+    .eq("slug", businessSlug)
+    .single();
 
-  if (error) {
-    console.error(error);
+  const selectedBusiness = businessData as Business | null;
+
+  let invoices: Invoice[] = [];
+
+  if (selectedBusiness?.id) {
+    const { data, error } = await supabase
+      .from("invoices")
+      .select("*")
+      .eq("business_id", selectedBusiness.id)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+    }
+
+    invoices = (data ?? []) as Invoice[];
   }
-
-  const invoices = (data ?? []) as Invoice[];
 
   return (
     <AppShell>
@@ -36,31 +62,28 @@ export default async function InvoicesPage() {
               Trimax
             </p>
 
-            <h1 className="mt-2 text-4xl font-bold">
-              Invoices
-            </h1>
+            <h1 className="mt-2 text-4xl font-bold">Invoices</h1>
+
+            <p className="mt-2 text-zinc-400">
+              Showing invoices for {selectedBusiness?.name ?? "selected business"}.
+            </p>
           </div>
 
-          <Link href="/invoices/new">
-            <Button>
-              + New Invoice
-            </Button>
+          <Link href={`/invoices/new?business=${businessSlug}`}>
+            <Button>+ New Invoice</Button>
           </Link>
         </div>
 
         {invoices.length === 0 ? (
           <Card>
             <p className="text-zinc-400">
-              No invoices created yet.
+              No invoices for this business yet.
             </p>
           </Card>
         ) : (
           <div className="grid gap-4">
             {invoices.map((invoice) => (
-              <Link
-                key={invoice.id}
-                href={`/invoices/${invoice.id}`}
-              >
+              <Link key={invoice.id} href={`/invoices/${invoice.id}`}>
                 <Card className="transition hover:border-orange-500/60 hover:bg-zinc-800">
                   <div className="flex items-start justify-between">
                     <div>
@@ -83,9 +106,7 @@ export default async function InvoicesPage() {
                       </p>
 
                       <div className="mt-2">
-                        <StatusBadge
-                          status={invoice.status || "Draft"}
-                        />
+                        <StatusBadge status={invoice.status || "Draft"} />
                       </div>
 
                       <p className="mt-2 text-sm text-zinc-400">

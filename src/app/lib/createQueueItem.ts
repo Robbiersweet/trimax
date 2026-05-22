@@ -8,11 +8,10 @@ type CreateQueueItemInput = {
   moveOutDate: string;
   readyDate: string;
   notes: string;
+  businessId: string;
 };
 
-export async function createQueueItem(
-  input: CreateQueueItemInput
-) {
+export async function createQueueItem(input: CreateQueueItemInput) {
   const id = crypto.randomUUID();
 
   const { data, error } = await supabase
@@ -20,6 +19,7 @@ export async function createQueueItem(
     .insert([
       {
         id,
+        business_id: input.businessId,
         property: input.property,
         unit: input.unit,
         paint_type: input.paintType,
@@ -34,11 +34,7 @@ export async function createQueueItem(
     .single();
 
   if (error) {
-    console.error(
-      "Create queue item error:",
-      error
-    );
-
+    console.error("Create queue item error:", error);
     throw error;
   }
 

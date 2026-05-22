@@ -1,16 +1,28 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import AppShell from "../components/AppShell";
 import Card from "../components/Card";
 import Button from "../components/Button";
 import InputField from "../components/InputField";
 import Toast from "../components/Toast";
 import { createQueueItem } from "../lib/createQueueItem";
+import { supabase } from "../lib/supabase";
 
-export default function NewRequestPage() {
+type Business = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+function NewRequestPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const businessSlug = searchParams.get("business") ?? "rnl-creations";
+
+  const [business, setBusiness] = useState<Business | null>(null);
 
   const [property, setProperty] = useState("");
   const [unit, setUnit] = useState("");
@@ -27,14 +39,49 @@ export default function NewRequestPage() {
     message: string;
   } | null>(null);
 
+  useEffect(() => {
+    async function loadBusiness() {
+      const { data, error } = await supabase
+        .from("businesses")
+        .select("*")
+        .eq("slug", businessSlug)
+        .single();
+
+      if (error || !data) {
+        console.error(error);
+
+        setToast({
+          type: "error",
+          message: "Unable to load selected business.",
+        });
+
+        return;
+      }
+
+      setBusiness(data as Business);
+    }
+
+    loadBusiness();
+  }, [businessSlug]);
+
   async function handleSubmit() {
     setToast(null);
+
+    if (!business) {
+      setToast({
+        type: "error",
+        message: "Business is still loading. Please try again.",
+      });
+
+      return;
+    }
 
     if (!property || !unit || !paintType || !flooring) {
       setToast({
         type: "error",
         message: "Please fill out property, unit, paint type, and flooring.",
       });
+
       return;
     }
 
@@ -49,6 +96,7 @@ export default function NewRequestPage() {
         moveOutDate,
         readyDate,
         notes,
+        businessId: business.id,
       });
 
       setToast({
@@ -56,7 +104,7 @@ export default function NewRequestPage() {
         message: "Queue item created successfully.",
       });
 
-      router.push("/queue");
+      router.push(`/queue?business=${business.slug}`);
       router.refresh();
     } catch {
       setToast({
@@ -82,6 +130,16 @@ export default function NewRequestPage() {
         <p className="mt-3 text-zinc-400">
           Add a new apartment turn, work request, or queue item.
         </p>
+
+        {business && (
+          <Card className="mt-6 border-orange-500/40">
+            <p className="text-sm uppercase tracking-[0.25em] text-orange-400">
+              Selected Business
+            </p>
+
+            <p className="mt-2 text-lg font-semibold">{business.name}</p>
+          </Card>
+        )}
 
         <Card className="mt-8">
           <div className="grid gap-5">
@@ -145,5 +203,13 @@ export default function NewRequestPage() {
         </Card>
       </div>
     </AppShell>
+  );
+}
+
+export default function NewRequestPage() {
+  return (
+    <Suspense fallback={<div>Loading request form...</div>}>
+      <NewRequestPageContent />
+    </Suspense>
   );
 }

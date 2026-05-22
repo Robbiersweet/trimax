@@ -6,6 +6,7 @@ import { supabase } from "../lib/supabase";
 
 type ConvertEstimateToInvoiceButtonProps = {
   estimateId: string;
+  businessId: string;
   customerName: string;
   projectTitle: string;
   invoiceAmount: string;
@@ -14,6 +15,7 @@ type ConvertEstimateToInvoiceButtonProps = {
 
 export default function ConvertEstimateToInvoiceButton({
   estimateId,
+  businessId,
   customerName,
   projectTitle,
   invoiceAmount,
@@ -27,11 +29,13 @@ export default function ConvertEstimateToInvoiceButton({
       .select("*", { count: "exact", head: true });
 
     const nextInvoiceNumber = (count ?? 0) + 1;
+
     const displayId = `INV-${String(nextInvoiceNumber).padStart(4, "0")}`;
 
     const { data, error } = await supabase
       .from("invoices")
       .insert({
+        business_id: businessId,
         estimate_id: estimateId,
         display_id: displayId,
         customer_name: customerName,
@@ -45,12 +49,18 @@ export default function ConvertEstimateToInvoiceButton({
 
     if (error || !data) {
       console.error(error);
+
       alert("Unable to convert estimate to invoice.");
+
       return;
     }
 
     router.push(`/invoices/${data.id}`);
   }
 
-  return <Button onClick={handleConvert}>Convert to Invoice</Button>;
+  return (
+    <Button onClick={handleConvert}>
+      Convert to Invoice
+    </Button>
+  );
 }

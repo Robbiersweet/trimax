@@ -9,11 +9,21 @@ import Card from "../../components/Card";
 import Toast from "../../components/Toast";
 import { supabase } from "../../lib/supabase";
 
+type Business = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
 function NewEstimatePageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
   const queueId = searchParams.get("queueId");
+  const businessSlug =
+    searchParams.get("business") ?? "rnl-creations";
+
+  const [business, setBusiness] = useState<Business | null>(null);
 
   const [customerName, setCustomerName] = useState("");
   const [projectAddress, setProjectAddress] = useState("");
@@ -27,6 +37,31 @@ function NewEstimatePageContent() {
     type: "success" | "error";
     message: string;
   } | null>(null);
+
+  useEffect(() => {
+    async function loadBusiness() {
+      const { data, error } = await supabase
+        .from("businesses")
+        .select("*")
+        .eq("slug", businessSlug)
+        .single();
+
+      if (error || !data) {
+        console.error(error);
+
+        setToast({
+          type: "error",
+          message: "Unable to load selected business.",
+        });
+
+        return;
+      }
+
+      setBusiness(data as Business);
+    }
+
+    loadBusiness();
+  }, [businessSlug]);
 
   useEffect(() => {
     async function loadQueueItem() {
@@ -93,6 +128,15 @@ function NewEstimatePageContent() {
   async function handleSave() {
     setToast(null);
 
+    if (!business) {
+      setToast({
+        type: "error",
+        message: "Business is still loading.",
+      });
+
+      return;
+    }
+
     if (!customerName || !projectTitle || !estimateAmount) {
       setToast({
         type: "error",
@@ -114,6 +158,7 @@ function NewEstimatePageContent() {
     const { data, error } = await supabase
       .from("estimates")
       .insert({
+        business_id: business.id,
         display_id: displayId,
         queue_item_id: queueId,
         customer_name: customerName,
@@ -164,6 +209,18 @@ function NewEstimatePageContent() {
         </p>
 
         <h1 className="mt-3 text-5xl font-bold">New Estimate</h1>
+
+        {business && (
+          <Card className="mt-6 border-orange-500/40">
+            <p className="text-sm uppercase tracking-[0.25em] text-orange-400">
+              Selected Business
+            </p>
+
+            <p className="mt-2 text-lg font-semibold">
+              {business.name}
+            </p>
+          </Card>
+        )}
 
         {sourceQueueSummary && (
           <Card className="mt-6 border-orange-500/40">

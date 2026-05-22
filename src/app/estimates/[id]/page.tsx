@@ -7,6 +7,7 @@ import { supabase } from "../../lib/supabase";
 
 type SupabaseEstimate = {
   id: string;
+  business_id: string | null;
   display_id: string | null;
   queue_item_id: string | null;
   customer_name: string | null;
@@ -15,6 +16,12 @@ type SupabaseEstimate = {
   estimate_amount: string | null;
   notes: string | null;
   status: string | null;
+};
+
+type Business = {
+  id: string;
+  name: string;
+  slug: string;
 };
 
 type LinkedInvoice = {
@@ -46,6 +53,22 @@ export default async function EstimateDetailsPage({
 
   const estimate = data as SupabaseEstimate;
 
+  let businessSlug = "rnl-creations";
+
+  if (estimate.business_id) {
+    const { data: businessData } = await supabase
+      .from("businesses")
+      .select("id, name, slug")
+      .eq("id", estimate.business_id)
+      .single();
+
+    const business = businessData as Business | null;
+
+    if (business?.slug) {
+      businessSlug = business.slug;
+    }
+  }
+
   const { data: invoiceData } = await supabase
     .from("invoices")
     .select("id, display_id, status")
@@ -57,7 +80,10 @@ export default async function EstimateDetailsPage({
   return (
     <AppShell>
       <div className="space-y-6">
-        <Link href="/estimates" className="text-sm text-orange-400">
+        <Link
+          href={`/estimates?business=${businessSlug}`}
+          className="text-sm text-orange-400"
+        >
           ← Back to Estimates
         </Link>
 
@@ -92,7 +118,7 @@ export default async function EstimateDetailsPage({
                 </p>
               </div>
 
-              <Link href={`/invoices/${linkedInvoice.id}`}>
+              <Link href={`/invoices/${linkedInvoice.id}?business=${businessSlug}`}>
                 <Button variant="secondary">Open Invoice</Button>
               </Link>
             </div>
@@ -118,7 +144,7 @@ export default async function EstimateDetailsPage({
 
         <div className="flex flex-wrap gap-4">
           {estimate.queue_item_id && (
-            <Link href={`/queue/${estimate.queue_item_id}`}>
+            <Link href={`/queue/${estimate.queue_item_id}?business=${businessSlug}`}>
               <Button variant="secondary">Open Queue Item</Button>
             </Link>
           )}
@@ -128,12 +154,13 @@ export default async function EstimateDetailsPage({
           </Link>
 
           {linkedInvoice ? (
-            <Link href={`/invoices/${linkedInvoice.id}`}>
+            <Link href={`/invoices/${linkedInvoice.id}?business=${businessSlug}`}>
               <Button>Open Invoice</Button>
             </Link>
           ) : (
             <ConvertEstimateToInvoiceButton
               estimateId={estimate.id}
+              businessId={estimate.business_id ?? ""}
               customerName={estimate.customer_name ?? ""}
               projectTitle={estimate.project_title ?? ""}
               invoiceAmount={estimate.estimate_amount ?? ""}

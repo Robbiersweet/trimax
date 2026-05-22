@@ -9,6 +9,7 @@ import { supabase } from "../../lib/supabase";
 
 type Invoice = {
   id: string;
+  business_id: string | null;
   estimate_id: string | null;
   customer_name: string | null;
   project_title: string | null;
@@ -17,6 +18,12 @@ type Invoice = {
   display_id: string | null;
   due_date: string | null;
   notes: string | null;
+};
+
+type Business = {
+  id: string;
+  name: string;
+  slug: string;
 };
 
 type LinkedEstimate = {
@@ -49,6 +56,22 @@ export default async function InvoiceDetailsPage({
   const invoice = data as Invoice;
   const invoiceStatus = invoice.status || "Draft";
 
+  let businessSlug = "rnl-creations";
+
+  if (invoice.business_id) {
+    const { data: businessData } = await supabase
+      .from("businesses")
+      .select("id, name, slug")
+      .eq("id", invoice.business_id)
+      .single();
+
+    const business = businessData as Business | null;
+
+    if (business?.slug) {
+      businessSlug = business.slug;
+    }
+  }
+
   let linkedEstimate: LinkedEstimate | null = null;
 
   if (invoice.estimate_id) {
@@ -65,7 +88,7 @@ export default async function InvoiceDetailsPage({
     <AppShell>
       <div className="space-y-6">
         <Link
-          href="/invoices"
+          href={`/invoices?business=${businessSlug}`}
           className="inline-flex text-sm text-orange-400 hover:text-orange-300"
         >
           ← Back to Invoices

@@ -9,6 +9,7 @@ import { supabase } from "../../lib/supabase";
 
 type SupabaseQueueItem = {
   id: string;
+  business_id: string | null;
   property: string | null;
   unit: string | null;
   status: string | null;
@@ -20,6 +21,12 @@ type SupabaseQueueItem = {
   smoked_in: boolean | null;
   notes: string | null;
   linked_estimate_id: string | null;
+};
+
+type Business = {
+  id: string;
+  name: string;
+  slug: string;
 };
 
 type LinkedEstimate = {
@@ -52,6 +59,22 @@ export default async function QueueDetailPage({
 
   const item = data as SupabaseQueueItem;
 
+  let businessSlug = "rnl-creations";
+
+  if (item.business_id) {
+    const { data: businessData } = await supabase
+      .from("businesses")
+      .select("id, name, slug")
+      .eq("id", item.business_id)
+      .single();
+
+    const business = businessData as Business | null;
+
+    if (business?.slug) {
+      businessSlug = business.slug;
+    }
+  }
+
   let linkedEstimate: LinkedEstimate | null = null;
 
   if (item.linked_estimate_id) {
@@ -68,7 +91,7 @@ export default async function QueueDetailPage({
     <AppShell>
       <div className="space-y-6">
         <Link
-          href="/queue"
+          href={`/queue?business=${businessSlug}`}
           className="inline-flex text-sm text-orange-400 hover:text-orange-300"
         >
           ← Back to Queue
@@ -136,12 +159,14 @@ export default async function QueueDetailPage({
 
         <div className="flex flex-wrap gap-4">
           {!linkedEstimate && (
-            <Link href={`/estimates/new?queueId=${item.id}`}>
+            <Link
+              href={`/estimates/new?queueId=${item.id}&business=${businessSlug}`}
+            >
               <Button>Create Estimate</Button>
             </Link>
           )}
 
-          <Link href={`/queue/${item.id}/edit`}>
+          <Link href={`/queue/${item.id}/edit?business=${businessSlug}`}>
             <Button variant="secondary">Edit Queue Item</Button>
           </Link>
 
