@@ -3,7 +3,27 @@ import AppShell from "../../components/AppShell";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import StatusBadge from "../../components/StatusBadge";
-import { invoices } from "../../data/invoices";
+import DeleteInvoiceButton from "../../components/DeleteInvoiceButton";
+import UpdateInvoiceStatusButton from "../../components/UpdateInvoiceStatusButton";
+import { supabase } from "../../lib/supabase";
+
+type Invoice = {
+  id: string;
+  estimate_id: string | null;
+  customer_name: string | null;
+  project_title: string | null;
+  invoice_amount: string | null;
+  status: string | null;
+  display_id: string | null;
+  due_date: string | null;
+  notes: string | null;
+};
+
+type LinkedEstimate = {
+  id: string;
+  display_id: string | null;
+  project_title: string | null;
+};
 
 export default async function InvoiceDetailsPage({
   params,
@@ -11,14 +31,34 @@ export default async function InvoiceDetailsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const invoice = invoices.find((invoice) => invoice.id === id);
 
-  if (!invoice) {
+  const { data, error } = await supabase
+    .from("invoices")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error || !data) {
     return (
       <AppShell>
         <p className="text-red-400">Invoice not found.</p>
       </AppShell>
     );
+  }
+
+  const invoice = data as Invoice;
+  const invoiceStatus = invoice.status || "Draft";
+
+  let linkedEstimate: LinkedEstimate | null = null;
+
+  if (invoice.estimate_id) {
+    const { data: estimateData } = await supabase
+      .from("estimates")
+      .select("id, display_id, project_title")
+      .eq("id", invoice.estimate_id)
+      .single();
+
+    linkedEstimate = estimateData as LinkedEstimate | null;
   }
 
   return (
@@ -36,25 +76,37 @@ export default async function InvoiceDetailsPage({
             <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
               Invoice Details
             </p>
-            <h1 className="mt-2 text-4xl font-bold">{invoice.project}</h1>
-            <p className="mt-2 text-zinc-400">{invoice.displayId}</p>
+
+            <h1 className="mt-2 text-4xl font-bold">
+              {invoice.project_title || "Untitled Invoice"}
+            </h1>
+
+            <p className="mt-2 text-zinc-400">
+              {invoice.display_id || "Invoice"}
+            </p>
           </div>
 
-          <StatusBadge status={invoice.status} />
+          <StatusBadge status={invoiceStatus} />
         </div>
 
-        {invoice.linkedEstimateId && (
+        {linkedEstimate && (
           <Card className="border-purple-500/40">
             <p className="text-sm uppercase tracking-[0.25em] text-purple-300">
               Linked Estimate
             </p>
 
-            <div className="mt-3 flex items-center justify-between">
-              <p className="text-lg font-semibold">
-                {invoice.linkedEstimateId}
-              </p>
+            <div className="mt-3 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-lg font-semibold">
+                  {linkedEstimate.display_id ?? "Estimate"}
+                </p>
 
-              <Link href={`/estimates/${invoice.linkedEstimateId}`}>
+                <p className="mt-1 text-sm text-zinc-400">
+                  {linkedEstimate.project_title ?? "No project title"}
+                </p>
+              </div>
+
+              <Link href={`/estimates/${linkedEstimate.id}`}>
                 <Button variant="secondary">Open Estimate</Button>
               </Link>
             </div>
@@ -63,23 +115,43 @@ export default async function InvoiceDetailsPage({
 
         <Card>
           <div className="grid gap-6 md:grid-cols-2">
-            <Info label="Customer" value={invoice.customer} />
-            <Info label="Amount" value={invoice.amount} />
-            <Info label="Due Date" value={invoice.dueDate} />
-            <Info label="Invoice Number" value={invoice.displayId} />
+            <Info label="Customer" value={invoice.customer_name} />
+            <Info label="Amount" value={invoice.invoice_amount} />
+            <Info label="Due Date" value={invoice.due_date} />
+            <Info label="Invoice Number" value={invoice.display_id} />
           </div>
 
           <div className="mt-6">
             <p className="text-sm text-zinc-500">Description</p>
+
             <p className="mt-2 leading-7 text-zinc-300">
-              {invoice.description}
+              {invoice.notes || "No description added."}
             </p>
           </div>
         </Card>
 
-        <div className="flex gap-4">
-          <Button>Apply Payment</Button>
-          <Button variant="secondary">Send Reminder</Button>
+        <div className="flex flex-wrap gap-4">
+          {invoiceStatus === "Draft" && (
+            <UpdateInvoiceStatusButton
+              invoiceId={invoice.id}
+              newStatus="Sent"
+              label="Mark Sent"
+            />
+          )}
+
+          {invoiceStatus === "Sent" && (
+            <UpdateInvoiceStatusButton
+              invoiceId={invoice.id}
+              newStatus="Paid"
+              label="Mark Paid"
+            />
+          )}
+
+          {invoiceStatus !== "Paid" && (
+            <Button variant="secondary">Send Reminder</Button>
+          )}
+
+          <DeleteInvoiceButton invoiceId={invoice.id} />
         </div>
       </div>
     </AppShell>
@@ -91,12 +163,12 @@ function Info({
   value,
 }: {
   label: string;
-  value: string;
+  value: string | null;
 }) {
   return (
     <div>
       <p className="text-sm text-zinc-500">{label}</p>
-      <p className="mt-1 text-lg font-medium">{value}</p>
+      <p className="mt-1 text-lg font-medium">{value || "—"}</p>
     </div>
   );
 }

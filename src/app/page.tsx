@@ -3,26 +3,88 @@ import AppShell from "./components/AppShell";
 import Card from "./components/Card";
 import Button from "./components/Button";
 import StatusBadge from "./components/StatusBadge";
-import { queueItems } from "./data/queue";
-import { estimates } from "./data/estimates";
-import { invoices } from "./data/invoices";
+import { supabase } from "./lib/supabase";
 
-export default function DashboardPage() {
+type QueueItem = {
+  id: string;
+  property: string | null;
+  unit: string | null;
+  paint_type: string | null;
+  flooring: string | null;
+  status: string | null;
+};
+
+type Estimate = {
+  id: string;
+  project_title: string | null;
+  customer_name: string | null;
+  status: string | null;
+};
+
+type Invoice = {
+  id: string;
+  project_title: string | null;
+  customer_name: string | null;
+  invoice_amount: string | null;
+  status: string | null;
+};
+
+export default async function DashboardPage() {
   const selectedBusiness = "R&L Creations";
 
+  const [
+    queueResponse,
+    estimateResponse,
+    invoiceResponse,
+  ] = await Promise.all([
+    supabase
+      .from("queue_items")
+      .select("*")
+      .order("created_at", { ascending: false }),
+
+    supabase
+      .from("estimates")
+      .select("*")
+      .order("created_at", { ascending: false }),
+
+    supabase
+      .from("invoices")
+      .select("*")
+      .order("created_at", { ascending: false }),
+  ]);
+
+  const queueItems = (queueResponse.data ?? []) as QueueItem[];
+  const estimates = (estimateResponse.data ?? []) as Estimate[];
+  const invoices = (invoiceResponse.data ?? []) as Invoice[];
+
   const activeQueueItems = queueItems.filter(
-    (item) => item.status !== "Archived" && item.status !== "Invoiced"
+    (item) => item.status !== "Scheduled"
   );
 
   const pendingEstimates = estimates.filter(
     (estimate) => estimate.status !== "Approved"
   );
 
-  const openInvoices = invoices.filter((invoice) => invoice.status !== "Paid");
+  const openInvoices = invoices.filter(
+    (invoice) => invoice.status !== "Paid"
+  );
 
-  const outstandingRevenue = "$13,450";
-  const monthRevenue = "$7,850";
-  const yearRevenue = "$39.5k";
+  const outstandingRevenueTotal = openInvoices.reduce((total, invoice) => {
+    const numericAmount = Number(
+      invoice.invoice_amount?.replace(/[^0-9.-]+/g, "") || 0
+    );
+
+    return total + numericAmount;
+  }, 0);
+
+  const outstandingRevenue = outstandingRevenueTotal.toLocaleString(
+    "en-US",
+    {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 0,
+    }
+  );
 
   const quickActions = [
     {
@@ -72,7 +134,9 @@ export default function DashboardPage() {
               Trimax
             </p>
 
-            <h1 className="mt-2 text-4xl font-bold">Dashboard</h1>
+            <h1 className="mt-2 text-4xl font-bold">
+              Dashboard
+            </h1>
 
             <p className="mt-2 text-zinc-400">
               Operations overview for {selectedBusiness}.
@@ -108,13 +172,23 @@ export default function DashboardPage() {
 
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
-                <p className="text-zinc-400">This Month</p>
-                <p className="mt-1 text-2xl font-bold">{monthRevenue}</p>
+                <p className="text-zinc-400">
+                  Open Invoices
+                </p>
+
+                <p className="mt-1 text-2xl font-bold">
+                  {openInvoices.length}
+                </p>
               </div>
 
               <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
-                <p className="text-zinc-400">Year to Date</p>
-                <p className="mt-1 text-2xl font-bold">{yearRevenue}</p>
+                <p className="text-zinc-400">
+                  Estimates
+                </p>
+
+                <p className="mt-1 text-2xl font-bold">
+                  {estimates.length}
+                </p>
               </div>
             </div>
           </div>
@@ -122,8 +196,13 @@ export default function DashboardPage() {
 
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
-            <p className="text-sm text-zinc-400">Active Queue</p>
-            <p className="mt-2 text-4xl font-bold">{activeQueueItems.length}</p>
+            <p className="text-sm text-zinc-400">
+              Active Queue
+            </p>
+
+            <p className="mt-2 text-4xl font-bold">
+              {activeQueueItems.length}
+            </p>
 
             <Link
               href="/queue"
@@ -134,8 +213,13 @@ export default function DashboardPage() {
           </Card>
 
           <Card>
-            <p className="text-sm text-zinc-400">Pending Estimates</p>
-            <p className="mt-2 text-4xl font-bold">{pendingEstimates.length}</p>
+            <p className="text-sm text-zinc-400">
+              Pending Estimates
+            </p>
+
+            <p className="mt-2 text-4xl font-bold">
+              {pendingEstimates.length}
+            </p>
 
             <Link
               href="/estimates"
@@ -146,8 +230,13 @@ export default function DashboardPage() {
           </Card>
 
           <Card>
-            <p className="text-sm text-zinc-400">Open Invoices</p>
-            <p className="mt-2 text-4xl font-bold">{openInvoices.length}</p>
+            <p className="text-sm text-zinc-400">
+              Open Invoices
+            </p>
+
+            <p className="mt-2 text-4xl font-bold">
+              {openInvoices.length}
+            </p>
 
             <Link
               href="/invoices"
@@ -176,7 +265,9 @@ export default function DashboardPage() {
             </div>
 
             <Link href="/queue">
-              <Button>Review Queue</Button>
+              <Button>
+                Review Queue
+              </Button>
             </Link>
           </div>
         </Card>
@@ -187,7 +278,9 @@ export default function DashboardPage() {
               Action Center
             </p>
 
-            <h2 className="mt-2 text-2xl font-bold">Quick Actions</h2>
+            <h2 className="mt-2 text-2xl font-bold">
+              Quick Actions
+            </h2>
           </div>
 
           <div className="grid gap-3 md:grid-cols-3">
@@ -197,9 +290,17 @@ export default function DashboardPage() {
                 href={action.href}
                 className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 transition hover:border-orange-500/60 hover:bg-zinc-800"
               >
-                <p className="text-3xl">{action.icon}</p>
-                <p className="mt-3 font-semibold">{action.title}</p>
-                <p className="mt-1 text-sm text-zinc-400">{action.subtitle}</p>
+                <p className="text-3xl">
+                  {action.icon}
+                </p>
+
+                <p className="mt-3 font-semibold">
+                  {action.title}
+                </p>
+
+                <p className="mt-1 text-sm text-zinc-400">
+                  {action.subtitle}
+                </p>
               </Link>
             ))}
           </div>
@@ -207,7 +308,9 @@ export default function DashboardPage() {
 
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
-            <h2 className="text-2xl font-bold">Recent Queue Items</h2>
+            <h2 className="text-2xl font-bold">
+              Recent Queue Items
+            </h2>
 
             <div className="mt-4 space-y-3">
               {queueItems.slice(0, 3).map((item) => (
@@ -223,11 +326,13 @@ export default function DashboardPage() {
                       </p>
 
                       <p className="mt-1 text-sm text-zinc-400">
-                        {item.paintType} • {item.flooring}
+                        {item.paint_type} • {item.flooring}
                       </p>
                     </div>
 
-                    <StatusBadge status={item.status} />
+                    <StatusBadge
+                      status={item.status || "Pending"}
+                    />
                   </div>
                 </Link>
               ))}
@@ -235,7 +340,9 @@ export default function DashboardPage() {
           </Card>
 
           <Card>
-            <h2 className="text-2xl font-bold">Recent Invoices</h2>
+            <h2 className="text-2xl font-bold">
+              Recent Invoices
+            </h2>
 
             <div className="mt-4 space-y-3">
               {invoices.slice(0, 3).map((invoice) => (
@@ -246,20 +353,22 @@ export default function DashboardPage() {
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-semibold">{invoice.project}</p>
+                      <p className="font-semibold">
+                        {invoice.project_title || "Untitled Invoice"}
+                      </p>
 
                       <p className="mt-1 text-sm text-zinc-400">
-                        {invoice.customer}
+                        {invoice.customer_name || "Unknown Customer"}
                       </p>
                     </div>
 
                     <div className="text-right">
                       <p className="font-bold text-orange-400">
-                        {invoice.amount}
+                        {invoice.invoice_amount || "$0"}
                       </p>
 
                       <p className="text-sm text-zinc-400">
-                        {invoice.status}
+                        {invoice.status || "Draft"}
                       </p>
                     </div>
                   </div>

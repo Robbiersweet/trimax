@@ -4,6 +4,7 @@ import Card from "../../components/Card";
 import Button from "../../components/Button";
 import StatusBadge from "../../components/StatusBadge";
 import DeleteQueueItemButton from "../../components/DeleteQueueItemButton";
+import MarkScheduledButton from "../../components/MarkScheduledButton";
 import { supabase } from "../../lib/supabase";
 
 type SupabaseQueueItem = {
@@ -19,6 +20,13 @@ type SupabaseQueueItem = {
   smoked_in: boolean | null;
   notes: string | null;
   linked_estimate_id: string | null;
+};
+
+type LinkedEstimate = {
+  id: string;
+  display_id: string | null;
+  project_title: string | null;
+  status: string | null;
 };
 
 export default async function QueueDetailPage({
@@ -44,6 +52,18 @@ export default async function QueueDetailPage({
 
   const item = data as SupabaseQueueItem;
 
+  let linkedEstimate: LinkedEstimate | null = null;
+
+  if (item.linked_estimate_id) {
+    const { data: estimateData } = await supabase
+      .from("estimates")
+      .select("id, display_id, project_title, status")
+      .eq("id", item.linked_estimate_id)
+      .single();
+
+    linkedEstimate = estimateData as LinkedEstimate | null;
+  }
+
   return (
     <AppShell>
       <div className="space-y-6">
@@ -60,29 +80,31 @@ export default async function QueueDetailPage({
               Trimax Queue
             </p>
 
-            <h1 className="mt-2 text-4xl font-bold">
-              Unit {item.unit}
-            </h1>
+            <h1 className="mt-2 text-4xl font-bold">Unit {item.unit}</h1>
           </div>
 
           <StatusBadge status={item.status ?? "Pending Estimate"} />
         </div>
 
-        {item.linked_estimate_id && (
+        {linkedEstimate && (
           <Card className="border-purple-500/40">
             <p className="text-sm uppercase tracking-[0.25em] text-purple-300">
               Linked Estimate
             </p>
 
-            <div className="mt-3 flex items-center justify-between">
-              <p className="text-lg font-semibold">
-                {item.linked_estimate_id}
-              </p>
+            <div className="mt-3 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-lg font-semibold">
+                  {linkedEstimate.display_id ?? "Estimate"}
+                </p>
 
-              <Link href={`/estimates/${item.linked_estimate_id}`}>
-                <Button variant="secondary">
-                  Open Estimate
-                </Button>
+                <p className="mt-1 text-sm text-zinc-400">
+                  {linkedEstimate.project_title ?? "No project title"}
+                </p>
+              </div>
+
+              <Link href={`/estimates/${linkedEstimate.id}`}>
+                <Button variant="secondary">Open Estimate</Button>
               </Link>
             </div>
           </Card>
@@ -106,21 +128,24 @@ export default async function QueueDetailPage({
 
           <div className="mt-6">
             <p className="text-sm text-zinc-500">Notes</p>
-
             <p className="mt-2 leading-7 text-zinc-300">
-              {item.notes}
+              {item.notes || "No notes added."}
             </p>
           </div>
         </Card>
 
-        <div className="flex gap-4">
-          <Link href={`/estimates/new?queueId=${item.id}`}>
-            <Button>Create Estimate</Button>
+        <div className="flex flex-wrap gap-4">
+          {!linkedEstimate && (
+            <Link href={`/estimates/new?queueId=${item.id}`}>
+              <Button>Create Estimate</Button>
+            </Link>
+          )}
+
+          <Link href={`/queue/${item.id}/edit`}>
+            <Button variant="secondary">Edit Queue Item</Button>
           </Link>
 
-          <Button variant="secondary">
-            Mark Scheduled
-          </Button>
+          <MarkScheduledButton queueItemId={item.id} />
 
           <DeleteQueueItemButton queueItemId={item.id} />
         </div>
@@ -129,18 +154,11 @@ export default async function QueueDetailPage({
   );
 }
 
-function Info({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function Info({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <p className="text-sm text-zinc-500">{label}</p>
-
-      <p className="mt-1 text-lg font-medium">{value}</p>
+      <p className="mt-1 text-lg font-medium">{value || "—"}</p>
     </div>
   );
 }

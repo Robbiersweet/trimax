@@ -2,8 +2,26 @@ import Link from "next/link";
 import AppShell from "../../components/AppShell";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
-import { estimates } from "../../data/estimates";
-import { invoices } from "../../data/invoices";
+import ConvertEstimateToInvoiceButton from "../../components/ConvertEstimateToInvoiceButton";
+import { supabase } from "../../lib/supabase";
+
+type SupabaseEstimate = {
+  id: string;
+  display_id: string | null;
+  queue_item_id: string | null;
+  customer_name: string | null;
+  project_title: string | null;
+  project_address: string | null;
+  estimate_amount: string | null;
+  notes: string | null;
+  status: string | null;
+};
+
+type LinkedInvoice = {
+  id: string;
+  display_id: string | null;
+  status: string | null;
+};
 
 export default async function EstimateDetailsPage({
   params,
@@ -12,13 +30,13 @@ export default async function EstimateDetailsPage({
 }) {
   const { id } = await params;
 
-  const estimate = estimates.find((estimate) => estimate.id === id);
+  const { data, error } = await supabase
+    .from("estimates")
+    .select("*")
+    .eq("id", id)
+    .single();
 
-  const linkedInvoice = invoices.find(
-    (invoice) => invoice.linkedEstimateId === id
-  );
-
-  if (!estimate) {
+  if (error || !data) {
     return (
       <AppShell>
         <p className="text-red-400">Estimate not found.</p>
@@ -26,13 +44,20 @@ export default async function EstimateDetailsPage({
     );
   }
 
+  const estimate = data as SupabaseEstimate;
+
+  const { data: invoiceData } = await supabase
+    .from("invoices")
+    .select("id, display_id, status")
+    .eq("estimate_id", estimate.id)
+    .maybeSingle();
+
+  const linkedInvoice = invoiceData as LinkedInvoice | null;
+
   return (
     <AppShell>
       <div className="space-y-6">
-        <Link
-          href="/estimates"
-          className="inline-flex items-center text-sm text-orange-400 hover:text-orange-300"
-        >
+        <Link href="/estimates" className="text-sm text-orange-400">
           ← Back to Estimates
         </Link>
 
@@ -42,35 +67,33 @@ export default async function EstimateDetailsPage({
           </p>
 
           <h1 className="mt-2 text-4xl font-bold">
-            {estimate.project}
+            {estimate.project_title || "Untitled Estimate"}
           </h1>
 
           <p className="mt-2 text-zinc-400">
-            {estimate.displayId}
+            {estimate.display_id ?? "Estimate"}
           </p>
         </div>
 
         {linkedInvoice && (
-          <Card className="border-emerald-500/40">
-            <p className="text-sm uppercase tracking-[0.25em] text-emerald-300">
+          <Card className="border-purple-500/40">
+            <p className="text-sm uppercase tracking-[0.25em] text-purple-300">
               Linked Invoice
             </p>
 
-            <div className="mt-3 flex items-center justify-between">
+            <div className="mt-3 flex items-center justify-between gap-4">
               <div>
                 <p className="text-lg font-semibold">
-                  {linkedInvoice.displayId}
+                  {linkedInvoice.display_id ?? "Invoice"}
                 </p>
 
                 <p className="mt-1 text-sm text-zinc-400">
-                  {linkedInvoice.status}
+                  {linkedInvoice.status ?? "Draft"}
                 </p>
               </div>
 
               <Link href={`/invoices/${linkedInvoice.id}`}>
-                <Button variant="secondary">
-                  Open Invoice
-                </Button>
+                <Button variant="secondary">Open Invoice</Button>
               </Link>
             </div>
           </Card>
@@ -78,72 +101,56 @@ export default async function EstimateDetailsPage({
 
         <Card>
           <div className="grid gap-6 md:grid-cols-2">
-            <div>
-              <p className="text-sm text-zinc-500">Customer</p>
-
-              <p className="mt-1 text-lg font-medium">
-                {estimate.customer}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-sm text-zinc-500">Status</p>
-
-              <p className="mt-1 text-lg font-medium">
-                {estimate.status}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-sm text-zinc-500">
-                Project Address
-              </p>
-
-              <p className="mt-1 text-lg font-medium">
-                {estimate.address}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-sm text-zinc-500">
-                Estimate Amount
-              </p>
-
-              <p className="mt-1 text-lg font-medium text-orange-400">
-                {estimate.amount}
-              </p>
-            </div>
+            <Info label="Customer" value={estimate.customer_name ?? ""} />
+            <Info label="Status" value={estimate.status ?? "Draft"} />
+            <Info label="Project Address" value={estimate.project_address ?? ""} />
+            <Info label="Estimate Amount" value={estimate.estimate_amount ?? ""} />
           </div>
         </Card>
 
         <Card>
-          <p className="text-sm text-zinc-500">
-            Scope of Work
-          </p>
+          <p className="text-sm text-zinc-500">Scope of Work</p>
 
           <p className="mt-3 leading-7 text-zinc-300">
-            {estimate.description}
+            {estimate.notes || "No scope of work added."}
           </p>
         </Card>
 
-        <div className="flex gap-4">
-          {!linkedInvoice ? (
-            <Link href="/invoices">
-              <Button>Convert to Invoice</Button>
-            </Link>
-          ) : (
-            <Link href={`/invoices/${linkedInvoice.id}`}>
-              <Button>Open Invoice</Button>
+        <div className="flex flex-wrap gap-4">
+          {estimate.queue_item_id && (
+            <Link href={`/queue/${estimate.queue_item_id}`}>
+              <Button variant="secondary">Open Queue Item</Button>
             </Link>
           )}
 
           <Link href={`/estimates/${estimate.id}/print`}>
-            <Button variant="secondary">
-              Print Estimate
-            </Button>
+            <Button variant="secondary">Print Estimate</Button>
           </Link>
+
+          {linkedInvoice ? (
+            <Link href={`/invoices/${linkedInvoice.id}`}>
+              <Button>Open Invoice</Button>
+            </Link>
+          ) : (
+            <ConvertEstimateToInvoiceButton
+              estimateId={estimate.id}
+              customerName={estimate.customer_name ?? ""}
+              projectTitle={estimate.project_title ?? ""}
+              invoiceAmount={estimate.estimate_amount ?? ""}
+              notes={estimate.notes ?? ""}
+            />
+          )}
         </div>
       </div>
     </AppShell>
+  );
+}
+
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-sm text-zinc-500">{label}</p>
+      <p className="mt-1 text-lg font-medium">{value || "—"}</p>
+    </div>
   );
 }

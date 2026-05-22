@@ -1,66 +1,158 @@
 "use client";
 
-import { Suspense, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import AppShell from "../../components/AppShell";
 import Button from "../../components/Button";
 import InputField from "../../components/InputField";
 import Card from "../../components/Card";
 import Toast from "../../components/Toast";
-import { queueItems } from "../../data/queue";
+import { supabase } from "../../lib/supabase";
 
 function NewEstimatePageContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+
   const queueId = searchParams.get("queueId");
 
-  const queueItem = queueItems.find((item) => item.id === queueId);
-
-  const [customerName, setCustomerName] = useState(queueItem?.property ?? "");
-  const [projectAddress, setProjectAddress] = useState(
-    queueItem ? `Unit ${queueItem.unit}` : ""
-  );
+  const [customerName, setCustomerName] = useState("");
+  const [projectAddress, setProjectAddress] = useState("");
   const [estimateAmount, setEstimateAmount] = useState("");
-  const [projectTitle, setProjectTitle] = useState(
-    queueItem
-      ? `${queueItem.property} - Unit ${queueItem.unit} ${queueItem.paintType}`
-      : ""
-  );
-  const [notes, setNotes] = useState(
-    queueItem
-      ? `${queueItem.notes}\n\nFlooring: ${queueItem.flooring}\nMove Out: ${queueItem.moveOutDate}\nReady Date: ${queueItem.readyDate}`
-      : ""
-  );
+  const [projectTitle, setProjectTitle] = useState("");
+  const [notes, setNotes] = useState("");
+
+  const [sourceQueueSummary, setSourceQueueSummary] = useState("");
 
   const [toast, setToast] = useState<{
     type: "success" | "error";
     message: string;
   } | null>(null);
 
-  const handleSave = () => {
+  useEffect(() => {
+    async function loadQueueItem() {
+      if (!queueId) {
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("queue_items")
+        .select("*")
+        .eq("id", queueId)
+        .single();
+
+      if (error || !data) {
+        console.error(error);
+
+        setToast({
+          type: "error",
+          message: "Unable to load queue item details.",
+        });
+
+        return;
+      }
+
+      const property = data.property ?? "";
+      const unit = data.unit ?? "";
+      const paintType = data.paint_type ?? "";
+      const flooring = data.flooring ?? "";
+      const moveOutDate = data.move_out_date ?? "";
+      const readyDate = data.ready_date ?? "";
+      const queueNotes = data.notes ?? "";
+
+      setCustomerName(property);
+
+      setProjectAddress(unit ? `Unit ${unit}` : "");
+
+      setProjectTitle(
+        [property, unit ? `Unit ${unit}` : "", paintType]
+          .filter(Boolean)
+          .join(" - ")
+      );
+
+      setNotes(
+        [
+          queueNotes,
+          flooring ? `Flooring: ${flooring}` : "",
+          moveOutDate ? `Move Out: ${moveOutDate}` : "",
+          readyDate ? `Ready Date: ${readyDate}` : "",
+        ]
+          .filter(Boolean)
+          .join("\n")
+      );
+
+      setSourceQueueSummary(
+        [property, unit ? `Unit ${unit}` : ""]
+          .filter(Boolean)
+          .join(" — ")
+      );
+    }
+
+    loadQueueItem();
+  }, [queueId]);
+
+  async function handleSave() {
     setToast(null);
 
     if (!customerName || !projectTitle || !estimateAmount) {
       setToast({
         type: "error",
-        message: "Please fill out customer, project title, and estimate amount.",
+        message:
+          "Please fill out customer, project title, and estimate amount.",
       });
+
       return;
     }
 
-    console.log({
-      sourceQueueId: queueId,
-      customerName,
-      projectTitle,
-      projectAddress,
-      estimateAmount,
-      notes,
-    });
+    const { count } = await supabase
+      .from("estimates")
+      .select("*", { count: "exact", head: true });
+
+    const nextEstimateNumber = (count ?? 0) + 1;
+
+    const displayId = `EST-${String(nextEstimateNumber).padStart(4, "0")}`;
+
+    const { data, error } = await supabase
+      .from("estimates")
+      .insert({
+        display_id: displayId,
+        queue_item_id: queueId,
+        customer_name: customerName,
+        project_title: projectTitle,
+        project_address: projectAddress,
+        estimate_amount: estimateAmount,
+        notes,
+      })
+      .select()
+      .single();
+
+    if (error || !data) {
+      console.error(error);
+
+      setToast({
+        type: "error",
+        message: "Failed to save estimate.",
+      });
+
+      return;
+    }
+
+    if (queueId) {
+      await supabase
+        .from("queue_items")
+        .update({
+          linked_estimate_id: data.id,
+          status: "Estimate Created",
+        })
+        .eq("id", queueId);
+    }
 
     setToast({
       type: "success",
-      message: "Estimate saved successfully.",
+      message: "Estimate created successfully.",
     });
-  };
+
+    router.push(`/estimates/${data.id}`);
+  }
 
   return (
     <AppShell>
@@ -73,18 +165,14 @@ function NewEstimatePageContent() {
 
         <h1 className="mt-3 text-5xl font-bold">New Estimate</h1>
 
-        {queueItem && (
+        {sourceQueueSummary && (
           <Card className="mt-6 border-orange-500/40">
             <p className="text-sm uppercase tracking-[0.25em] text-orange-400">
               Created from Queue
             </p>
 
             <p className="mt-2 text-lg font-semibold">
-              {queueItem.property} — Unit {queueItem.unit}
-            </p>
-
-            <p className="mt-1 text-zinc-400">
-              {queueItem.paintType} • {queueItem.flooring}
+              {sourceQueueSummary}
             </p>
           </Card>
         )}
@@ -120,7 +208,9 @@ function NewEstimatePageContent() {
             />
 
             <div>
-              <label className="mb-2 block text-sm text-zinc-400">Notes</label>
+              <label className="mb-2 block text-sm text-zinc-400">
+                Notes
+              </label>
 
               <textarea
                 value={notes}
@@ -130,7 +220,9 @@ function NewEstimatePageContent() {
               />
             </div>
 
-            <Button onClick={handleSave}>Save Estimate</Button>
+            <Button onClick={handleSave}>
+              Save Estimate
+            </Button>
           </div>
         </Card>
       </div>
