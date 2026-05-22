@@ -86,6 +86,21 @@ export default async function DashboardPage() {
     }
   );
 
+  const ytdRevenue = invoices
+    .filter((invoice) => invoice.status === "Paid")
+    .reduce((total, invoice) => {
+      const amount = Number(
+        invoice.invoice_amount?.replace(/[^0-9.-]+/g, "") || 0
+      );
+
+      return total + amount;
+    }, 0)
+    .toLocaleString("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 0,
+    });
+
   const quickActions = [
     {
       title: "New Queue Item",
@@ -183,11 +198,11 @@ export default async function DashboardPage() {
 
               <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
                 <p className="text-zinc-400">
-                  Estimates
+                  YTD Revenue
                 </p>
 
                 <p className="mt-1 text-2xl font-bold">
-                  {estimates.length}
+                  {ytdRevenue}
                 </p>
               </div>
             </div>
