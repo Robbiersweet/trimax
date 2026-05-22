@@ -1,78 +1,121 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useState } from "react";
+import AppShell from "../components/AppShell";
+import Card from "../components/Card";
+import Button from "../components/Button";
+import InputField from "../components/InputField";
+import Toast from "../components/Toast";
+import { supabase } from "../lib/supabase";
 
 export default function LoginPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+
+  const [toast, setToast] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  async function handleLogin() {
+    setToast(null);
+    setLoading(true);
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error || !data.session) {
+      setLoading(false);
+
+      setToast({
+        type: "error",
+        message: error?.message ?? "Login failed.",
+      });
+
+      return;
+    }
+
+    await supabase.auth.getSession();
+
+    setTimeout(() => {
+      window.location.replace("/?business=rnl-creations");
+    }, 300);
+  }
+
+  async function handleSignup() {
+    setToast(null);
+    setLoading(true);
+
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    setLoading(false);
+
+    if (error) {
+      setToast({
+        type: "error",
+        message: error.message,
+      });
+
+      return;
+    }
+
+    setToast({
+      type: "success",
+      message: "Account created. Check your email.",
+    });
+  }
+
   return (
-    <main className="flex min-h-screen items-center justify-center bg-zinc-950 px-4 text-white">
+    <AppShell>
+      {toast && <Toast type={toast.type} message={toast.message} />}
 
-      <div className="w-full max-w-md rounded-3xl border border-zinc-800 bg-zinc-900 p-8 shadow-2xl">
+      <div className="mx-auto max-w-md">
+        <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
+          Trimax
+        </p>
 
-        <div className="mb-8 text-center">
+        <h1 className="mt-3 text-5xl font-bold">Login</h1>
 
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-orange-500 text-2xl font-bold text-black">
-            T
-          </div>
+        <p className="mt-3 text-zinc-400">
+          Sign in to Trimax Operations Platform.
+        </p>
 
-          <h1 className="mt-5 text-4xl font-bold">
-            Welcome Back
-          </h1>
-
-          <p className="mt-2 text-zinc-400">
-            Sign in to Trimax
-          </p>
-
-        </div>
-
-        <form
-  className="space-y-5"
-  onSubmit={(e) => {
-    e.preventDefault();
-    router.push("/");
-  }}
->
-
-          <div>
-            <label className="mb-2 block text-sm text-zinc-400">
-              Email
-            </label>
-
-            <input
-              type="email"
+        <Card className="mt-8">
+          <div className="grid gap-5">
+            <InputField
+              label="Email"
               placeholder="you@example.com"
-              className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 outline-none transition focus:border-orange-500"
+              value={email}
+              onChange={setEmail}
             />
-          </div>
 
-          <div>
-            <label className="mb-2 block text-sm text-zinc-400">
-              Password
-            </label>
-
-            <input
+            <InputField
               type="password"
-              placeholder="••••••••"
-              className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 outline-none transition focus:border-orange-500"
+              label="Password"
+              placeholder="Enter password"
+              value={password}
+              onChange={setPassword}
             />
+
+            <div className="flex gap-3">
+              <Button onClick={handleLogin}>
+                {loading ? "Logging in..." : "Login"}
+              </Button>
+
+              <Button variant="secondary" onClick={handleSignup}>
+                Create Account
+              </Button>
+            </div>
           </div>
-
-          <button
-            type="submit"
-            className="w-full rounded-2xl bg-orange-500 py-3 text-lg font-bold text-black transition hover:opacity-90"
-          >
-            Sign In
-          </button>
-
-        </form>
-
-        <div className="mt-6 text-center text-sm text-zinc-500">
-          Trimax Operations Platform
-        </div>
-
+        </Card>
       </div>
-
-    </main>
+    </AppShell>
   );
 }

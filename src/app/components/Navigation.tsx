@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import UserMenu from "./UserMenu";
 
 export default function Navigation() {
   const searchParams = useSearchParams();
@@ -30,7 +31,7 @@ export default function Navigation() {
         </div>
       </Link>
 
-      <div className="flex gap-6 text-sm font-medium text-zinc-300">
+      <div className="flex items-center gap-6 text-sm font-medium text-zinc-300">
         <Link
           href={`/?business=${business}`}
           className="hover:text-orange-400"
@@ -58,6 +59,8 @@ export default function Navigation() {
         >
           Invoices
         </Link>
+
+        <UserMenu />
       </div>
     </nav>
   );
