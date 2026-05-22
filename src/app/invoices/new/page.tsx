@@ -15,18 +15,45 @@ type Business = {
   slug: string;
 };
 
+type Client = {
+  id: string;
+  name: string;
+  contact_name: string | null;
+  email: string | null;
+  phone: string | null;
+  billing_address: string | null;
+};
+
 function NewInvoicePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const businessSlug = searchParams.get("business") ?? "rnl-creations";
+  const businessSlug =
+    searchParams.get("business") ??
+    "rnl-creations";
 
-  const [business, setBusiness] = useState<Business | null>(null);
+  const [business, setBusiness] =
+    useState<Business | null>(null);
 
-  const [customerName, setCustomerName] = useState("");
-  const [projectTitle, setProjectTitle] = useState("");
-  const [invoiceAmount, setInvoiceAmount] = useState("");
-  const [dueDate, setDueDate] = useState("");
+  const [clients, setClients] = useState<
+    Client[]
+  >([]);
+
+  const [selectedClientId, setSelectedClientId] =
+    useState("");
+
+  const [customerName, setCustomerName] =
+    useState("");
+
+  const [projectTitle, setProjectTitle] =
+    useState("");
+
+  const [invoiceAmount, setInvoiceAmount] =
+    useState("");
+
+  const [dueDate, setDueDate] =
+    useState("");
+
   const [notes, setNotes] = useState("");
 
   const [toast, setToast] = useState<{
@@ -47,17 +74,53 @@ function NewInvoicePageContent() {
 
         setToast({
           type: "error",
-          message: "Unable to load selected business.",
+          message:
+            "Unable to load selected business.",
         });
 
         return;
       }
 
-      setBusiness(data as Business);
+      const businessData = data as Business;
+
+      setBusiness(businessData);
+
+      const { data: clientData } =
+        await supabase
+          .from("clients")
+          .select("*")
+          .eq("business_id", businessData.id)
+          .order("name", {
+            ascending: true,
+          });
+
+      setClients((clientData ?? []) as Client[]);
     }
 
     loadBusiness();
   }, [businessSlug]);
+
+  function handleClientChange(
+    clientId: string
+  ) {
+    setSelectedClientId(clientId);
+
+    const client = clients.find(
+      (c) => c.id === clientId
+    );
+
+    if (!client) {
+      return;
+    }
+
+    setCustomerName(client.name);
+
+    if (client.billing_address) {
+      setNotes(
+        `Billing Address:\n${client.billing_address}`
+      );
+    }
+  }
 
   async function handleSave() {
     setToast(null);
@@ -65,16 +128,22 @@ function NewInvoicePageContent() {
     if (!business) {
       setToast({
         type: "error",
-        message: "Business is still loading.",
+        message:
+          "Business is still loading.",
       });
 
       return;
     }
 
-    if (!customerName || !projectTitle || !invoiceAmount) {
+    if (
+      !customerName ||
+      !projectTitle ||
+      !invoiceAmount
+    ) {
       setToast({
         type: "error",
-        message: "Please fill out customer, project title, and invoice amount.",
+        message:
+          "Please fill out customer, project title, and invoice amount.",
       });
 
       return;
@@ -82,15 +151,64 @@ function NewInvoicePageContent() {
 
     const { count } = await supabase
       .from("invoices")
-      .select("*", { count: "exact", head: true });
+      .select("*", {
+        count: "exact",
+        head: true,
+      });
 
-    const nextInvoiceNumber = (count ?? 0) + 1;
-    const displayId = `INV-${String(nextInvoiceNumber).padStart(4, "0")}`;
+    const nextInvoiceNumber =
+      (count ?? 0) + 1;
+
+    const displayId = `INV-${String(
+      nextInvoiceNumber
+    ).padStart(4, "0")}`;
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    let finalClientId =
+      selectedClientId || null;
+
+    if (!selectedClientId) {
+      const {
+        data: newClient,
+        error: clientError,
+      } = await supabase
+        .from("clients")
+        .insert({
+          business_id: business.id,
+          created_by_user_id:
+            user?.id ?? null,
+
+          name: customerName,
+        })
+        .select()
+        .single();
+
+      if (clientError || !newClient) {
+        console.error(clientError);
+
+        setToast({
+          type: "error",
+          message:
+            "Unable to create client record.",
+        });
+
+        return;
+      }
+
+      finalClientId = newClient.id;
+    }
 
     const { data, error } = await supabase
       .from("invoices")
       .insert({
         business_id: business.id,
+        client_id: finalClientId,
+        created_by_user_id:
+          user?.id ?? null,
+
         display_id: displayId,
         customer_name: customerName,
         project_title: projectTitle,
@@ -107,7 +225,8 @@ function NewInvoicePageContent() {
 
       setToast({
         type: "error",
-        message: "Failed to save invoice.",
+        message:
+          "Failed to save invoice.",
       });
 
       return;
@@ -115,22 +234,32 @@ function NewInvoicePageContent() {
 
     setToast({
       type: "success",
-      message: "Invoice created successfully.",
+      message:
+        "Invoice created successfully.",
     });
 
-    router.push(`/invoices/${data.id}?business=${business.slug}`);
+    router.push(
+      `/invoices/${data.id}?business=${business.slug}`
+    );
   }
 
   return (
     <AppShell>
-      {toast && <Toast type={toast.type} message={toast.message} />}
+      {toast && (
+        <Toast
+          type={toast.type}
+          message={toast.message}
+        />
+      )}
 
       <div className="mx-auto max-w-3xl">
         <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
           Trimax
         </p>
 
-        <h1 className="mt-3 text-5xl font-bold">New Invoice</h1>
+        <h1 className="mt-3 text-5xl font-bold">
+          New Invoice
+        </h1>
 
         {business && (
           <Card className="mt-6 border-orange-500/40">
@@ -138,12 +267,43 @@ function NewInvoicePageContent() {
               Selected Business
             </p>
 
-            <p className="mt-2 text-lg font-semibold">{business.name}</p>
+            <p className="mt-2 text-lg font-semibold">
+              {business.name}
+            </p>
           </Card>
         )}
 
         <Card className="mt-8">
           <div className="grid gap-5">
+            <div>
+              <label className="mb-2 block text-sm text-zinc-400">
+                Select Existing Client
+              </label>
+
+              <select
+                value={selectedClientId}
+                onChange={(event) =>
+                  handleClientChange(
+                    event.target.value
+                  )
+                }
+                className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+              >
+                <option value="">
+                  -- Select Client --
+                </option>
+
+                {clients.map((client) => (
+                  <option
+                    key={client.id}
+                    value={client.id}
+                  >
+                    {client.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <InputField
               label="Customer Name"
               placeholder="Enter customer name"
@@ -167,23 +327,29 @@ function NewInvoicePageContent() {
 
             <InputField
               label="Due Date"
-              placeholder="Example: Net 30 or Due Upon Receipt"
+              placeholder="Example: Net 30"
               value={dueDate}
               onChange={setDueDate}
             />
 
             <div>
-              <label className="mb-2 block text-sm text-zinc-400">Notes</label>
+              <label className="mb-2 block text-sm text-zinc-400">
+                Notes
+              </label>
 
               <textarea
                 value={notes}
-                onChange={(event) => setNotes(event.target.value)}
+                onChange={(event) =>
+                  setNotes(event.target.value)
+                }
                 placeholder="Invoice notes..."
                 className="min-h-40 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
               />
             </div>
 
-            <Button onClick={handleSave}>Save Invoice</Button>
+            <Button onClick={handleSave}>
+              Create Invoice
+            </Button>
           </div>
         </Card>
       </div>
@@ -193,7 +359,7 @@ function NewInvoicePageContent() {
 
 export default function NewInvoicePage() {
   return (
-    <Suspense fallback={<div>Loading invoice form...</div>}>
+    <Suspense>
       <NewInvoicePageContent />
     </Suspense>
   );

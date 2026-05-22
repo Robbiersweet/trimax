@@ -8,7 +8,8 @@ export default function Navigation() {
   const searchParams = useSearchParams();
 
   const business =
-    searchParams.get("business") ?? "rnl-creations";
+    searchParams.get("business") ??
+    "rnl-creations";
 
   return (
     <nav className="mb-8 flex items-center justify-between rounded-3xl border border-zinc-800 bg-zinc-900/80 px-5 py-4">
@@ -58,6 +59,13 @@ export default function Navigation() {
           className="hover:text-orange-400"
         >
           Invoices
+        </Link>
+
+        <Link
+          href={`/clients?business=${business}`}
+          className="hover:text-orange-400"
+        >
+          Clients
         </Link>
 
         <UserMenu />
