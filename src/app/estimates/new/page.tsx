@@ -15,23 +15,46 @@ type Business = {
   slug: string;
 };
 
+type Client = {
+  id: string;
+  name: string;
+  contact_name: string | null;
+  email: string | null;
+  phone: string | null;
+  billing_address: string | null;
+};
+
 function NewEstimatePageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
   const queueId = searchParams.get("queueId");
+
   const businessSlug =
-    searchParams.get("business") ?? "rnl-creations";
+    searchParams.get("business") ??
+    "rnl-creations";
 
-  const [business, setBusiness] = useState<Business | null>(null);
+  const [business, setBusiness] =
+    useState<Business | null>(null);
 
-  const [customerName, setCustomerName] = useState("");
-  const [projectAddress, setProjectAddress] = useState("");
-  const [estimateAmount, setEstimateAmount] = useState("");
-  const [projectTitle, setProjectTitle] = useState("");
+  const [clients, setClients] = useState<Client[]>([]);
+
+  const [selectedClientId, setSelectedClientId] =
+    useState("");
+
+  const [customerName, setCustomerName] =
+    useState("");
+
+  const [projectAddress, setProjectAddress] =
+    useState("");
+
+  const [estimateAmount, setEstimateAmount] =
+    useState("");
+
+  const [projectTitle, setProjectTitle] =
+    useState("");
+
   const [notes, setNotes] = useState("");
-
-  const [sourceQueueSummary, setSourceQueueSummary] = useState("");
 
   const [toast, setToast] = useState<{
     type: "success" | "error";
@@ -51,93 +74,58 @@ function NewEstimatePageContent() {
 
         setToast({
           type: "error",
-          message: "Unable to load selected business.",
+          message:
+            "Unable to load selected business.",
         });
 
         return;
       }
 
-      setBusiness(data as Business);
+      const businessData = data as Business;
+
+      setBusiness(businessData);
+
+      const { data: clientData } =
+        await supabase
+          .from("clients")
+          .select("*")
+          .eq("business_id", businessData.id)
+          .order("name", {
+            ascending: true,
+          });
+
+      setClients((clientData ?? []) as Client[]);
     }
 
     loadBusiness();
   }, [businessSlug]);
 
-  useEffect(() => {
-    async function loadQueueItem() {
-      if (!queueId) {
-        return;
-      }
+  function handleClientChange(clientId: string) {
+    setSelectedClientId(clientId);
 
-      const { data, error } = await supabase
-        .from("queue_items")
-        .select("*")
-        .eq("id", queueId)
-        .single();
+    const client = clients.find(
+      (c) => c.id === clientId
+    );
 
-      if (error || !data) {
-        console.error(error);
-
-        setToast({
-          type: "error",
-          message: "Unable to load queue item details.",
-        });
-
-        return;
-      }
-
-      const property = data.property ?? "";
-      const unit = data.unit ?? "";
-      const paintType = data.paint_type ?? "";
-      const flooring = data.flooring ?? "";
-      const moveOutDate = data.move_out_date ?? "";
-      const readyDate = data.ready_date ?? "";
-      const queueNotes = data.notes ?? "";
-
-      setCustomerName(property);
-
-      setProjectAddress(unit ? `Unit ${unit}` : "");
-
-      setProjectTitle(
-        [property, unit ? `Unit ${unit}` : "", paintType]
-          .filter(Boolean)
-          .join(" - ")
-      );
-
-      setNotes(
-        [
-          queueNotes,
-          flooring ? `Flooring: ${flooring}` : "",
-          moveOutDate ? `Move Out: ${moveOutDate}` : "",
-          readyDate ? `Ready Date: ${readyDate}` : "",
-        ]
-          .filter(Boolean)
-          .join("\n")
-      );
-
-      setSourceQueueSummary(
-        [property, unit ? `Unit ${unit}` : ""]
-          .filter(Boolean)
-          .join(" — ")
-      );
-    }
-
-    loadQueueItem();
-  }, [queueId]);
-
-  async function handleSave() {
-    setToast(null);
-
-    if (!business) {
-      setToast({
-        type: "error",
-        message: "Business is still loading.",
-      });
-
+    if (!client) {
       return;
     }
 
-    if (!customerName || !projectTitle || !estimateAmount) {
+    setCustomerName(client.name);
+
+    if (client.billing_address) {
+      setProjectAddress(client.billing_address);
+    }
+  }
+
+  async function handleCreateEstimate() {
+    setToast(null);
+
+    if (
+      !customerName ||
+      !estimateAmount ||
+      !projectTitle
+    ) {
       setToast({
         type: "error",
         message:
@@ -147,18 +135,76 @@ function NewEstimatePageContent() {
       return;
     }
 
+    if (!business) {
+      setToast({
+        type: "error",
+        message:
+          "Business is still loading.",
+      });
+
+      return;
+    }
+
     const { count } = await supabase
       .from("estimates")
-      .select("*", { count: "exact", head: true });
+      .select("*", {
+        count: "exact",
+        head: true,
+      });
 
-    const nextEstimateNumber = (count ?? 0) + 1;
+    const nextEstimateNumber =
+      (count ?? 0) + 1;
 
-    const displayId = `EST-${String(nextEstimateNumber).padStart(4, "0")}`;
+    const displayId = `EST-${String(
+      nextEstimateNumber
+    ).padStart(4, "0")}`;
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    let finalClientId =
+      selectedClientId || null;
+
+    if (!selectedClientId) {
+      const {
+        data: newClient,
+        error: clientError,
+      } = await supabase
+        .from("clients")
+        .insert({
+          business_id: business.id,
+          created_by_user_id:
+            user?.id ?? null,
+
+          name: customerName,
+        })
+        .select()
+        .single();
+
+      if (clientError || !newClient) {
+        console.error(clientError);
+
+        setToast({
+          type: "error",
+          message:
+            "Unable to create client record.",
+        });
+
+        return;
+      }
+
+      finalClientId = newClient.id;
+    }
 
     const { data, error } = await supabase
       .from("estimates")
       .insert({
         business_id: business.id,
+        client_id: finalClientId,
+        created_by_user_id:
+          user?.id ?? null,
+
         display_id: displayId,
         queue_item_id: queueId,
         customer_name: customerName,
@@ -166,6 +212,7 @@ function NewEstimatePageContent() {
         project_address: projectAddress,
         estimate_amount: estimateAmount,
         notes,
+        status: "Draft",
       })
       .select()
       .single();
@@ -175,40 +222,41 @@ function NewEstimatePageContent() {
 
       setToast({
         type: "error",
-        message: "Failed to save estimate.",
+        message:
+          "Failed to create estimate.",
       });
 
       return;
     }
 
-    if (queueId) {
-      await supabase
-        .from("queue_items")
-        .update({
-          linked_estimate_id: data.id,
-          status: "Estimate Created",
-        })
-        .eq("id", queueId);
-    }
-
     setToast({
       type: "success",
-      message: "Estimate created successfully.",
+      message:
+        "Estimate created successfully.",
     });
 
-    router.push(`/estimates/${data.id}`);
+    router.push(
+      `/estimates/${data.id}?business=${business.slug}`
+    );
   }
 
   return (
     <AppShell>
-      {toast && <Toast type={toast.type} message={toast.message} />}
+      {toast && (
+        <Toast
+          type={toast.type}
+          message={toast.message}
+        />
+      )}
 
       <div className="mx-auto max-w-3xl">
         <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
           Trimax
         </p>
 
-        <h1 className="mt-3 text-5xl font-bold">New Estimate</h1>
+        <h1 className="mt-3 text-5xl font-bold">
+          New Estimate
+        </h1>
 
         {business && (
           <Card className="mt-6 border-orange-500/40">
@@ -222,20 +270,37 @@ function NewEstimatePageContent() {
           </Card>
         )}
 
-        {sourceQueueSummary && (
-          <Card className="mt-6 border-orange-500/40">
-            <p className="text-sm uppercase tracking-[0.25em] text-orange-400">
-              Created from Queue
-            </p>
-
-            <p className="mt-2 text-lg font-semibold">
-              {sourceQueueSummary}
-            </p>
-          </Card>
-        )}
-
         <Card className="mt-8">
           <div className="grid gap-5">
+            <div>
+              <label className="mb-2 block text-sm text-zinc-400">
+                Select Existing Client
+              </label>
+
+              <select
+                value={selectedClientId}
+                onChange={(event) =>
+                  handleClientChange(
+                    event.target.value
+                  )
+                }
+                className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+              >
+                <option value="">
+                  -- Select Client --
+                </option>
+
+                {clients.map((client) => (
+                  <option
+                    key={client.id}
+                    value={client.id}
+                  >
+                    {client.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <InputField
               label="Customer Name"
               placeholder="Enter customer name"
@@ -244,15 +309,8 @@ function NewEstimatePageContent() {
             />
 
             <InputField
-              label="Project Title"
-              placeholder="Example: North Creek Unit U6 Reno Paint"
-              value={projectTitle}
-              onChange={setProjectTitle}
-            />
-
-            <InputField
               label="Project Address / Unit"
-              placeholder="Enter address or unit"
+              placeholder="123 Main St, Unit 204"
               value={projectAddress}
               onChange={setProjectAddress}
             />
@@ -264,21 +322,30 @@ function NewEstimatePageContent() {
               onChange={setEstimateAmount}
             />
 
+            <InputField
+              label="Project Title"
+              placeholder="Kitchen Remodel"
+              value={projectTitle}
+              onChange={setProjectTitle}
+            />
+
             <div>
               <label className="mb-2 block text-sm text-zinc-400">
-                Notes
+                Scope of Work
               </label>
 
               <textarea
                 value={notes}
-                onChange={(event) => setNotes(event.target.value)}
-                placeholder="Estimate notes..."
+                onChange={(event) =>
+                  setNotes(event.target.value)
+                }
+                placeholder="Describe the project scope..."
                 className="min-h-40 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
               />
             </div>
 
-            <Button onClick={handleSave}>
-              Save Estimate
+            <Button onClick={handleCreateEstimate}>
+              Create Estimate
             </Button>
           </div>
         </Card>
@@ -289,7 +356,7 @@ function NewEstimatePageContent() {
 
 export default function NewEstimatePage() {
   return (
-    <Suspense fallback={<div>Loading estimate form...</div>}>
+    <Suspense>
       <NewEstimatePageContent />
     </Suspense>
   );

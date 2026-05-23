@@ -18,16 +18,15 @@ type SupabaseEstimate = {
   status: string | null;
 };
 
-type Business = {
-  id: string;
-  name: string;
-  slug: string;
-};
-
 type LinkedInvoice = {
   id: string;
   display_id: string | null;
   status: string | null;
+};
+
+type Business = {
+  id: string;
+  slug: string;
 };
 
 export default async function EstimateDetailsPage({
@@ -46,7 +45,9 @@ export default async function EstimateDetailsPage({
   if (error || !data) {
     return (
       <AppShell>
-        <p className="text-red-400">Estimate not found.</p>
+        <p className="text-red-400">
+          Estimate not found.
+        </p>
       </AppShell>
     );
   }
@@ -56,13 +57,15 @@ export default async function EstimateDetailsPage({
   let businessSlug = "rnl-creations";
 
   if (estimate.business_id) {
-    const { data: businessData } = await supabase
-      .from("businesses")
-      .select("id, name, slug")
-      .eq("id", estimate.business_id)
-      .single();
+    const { data: businessData } =
+      await supabase
+        .from("businesses")
+        .select("id, slug")
+        .eq("id", estimate.business_id)
+        .single();
 
-    const business = businessData as Business | null;
+    const business =
+      businessData as Business | null;
 
     if (business?.slug) {
       businessSlug = business.slug;
@@ -75,7 +78,8 @@ export default async function EstimateDetailsPage({
     .eq("estimate_id", estimate.id)
     .maybeSingle();
 
-  const linkedInvoice = invoiceData as LinkedInvoice | null;
+  const linkedInvoice =
+    invoiceData as LinkedInvoice | null;
 
   return (
     <AppShell>
@@ -93,11 +97,13 @@ export default async function EstimateDetailsPage({
           </p>
 
           <h1 className="mt-2 text-4xl font-bold">
-            {estimate.project_title || "Untitled Estimate"}
+            {estimate.project_title ||
+              "Untitled Estimate"}
           </h1>
 
           <p className="mt-2 text-zinc-400">
-            {estimate.display_id ?? "Estimate"}
+            {estimate.display_id ??
+              "Estimate"}
           </p>
         </div>
 
@@ -110,16 +116,22 @@ export default async function EstimateDetailsPage({
             <div className="mt-3 flex items-center justify-between gap-4">
               <div>
                 <p className="text-lg font-semibold">
-                  {linkedInvoice.display_id ?? "Invoice"}
+                  {linkedInvoice.display_id ??
+                    "Invoice"}
                 </p>
 
                 <p className="mt-1 text-sm text-zinc-400">
-                  {linkedInvoice.status ?? "Draft"}
+                  {linkedInvoice.status ??
+                    "Draft"}
                 </p>
               </div>
 
-              <Link href={`/invoices/${linkedInvoice.id}?business=${businessSlug}`}>
-                <Button variant="secondary">Open Invoice</Button>
+              <Link
+                href={`/invoices/${linkedInvoice.id}`}
+              >
+                <Button variant="secondary">
+                  Open Invoice
+                </Button>
               </Link>
             </div>
           </Card>
@@ -127,43 +139,101 @@ export default async function EstimateDetailsPage({
 
         <Card>
           <div className="grid gap-6 md:grid-cols-2">
-            <Info label="Customer" value={estimate.customer_name ?? ""} />
-            <Info label="Status" value={estimate.status ?? "Draft"} />
-            <Info label="Project Address" value={estimate.project_address ?? ""} />
-            <Info label="Estimate Amount" value={estimate.estimate_amount ?? ""} />
+            <Info
+              label="Customer"
+              value={
+                estimate.customer_name ?? ""
+              }
+            />
+
+            <Info
+              label="Status"
+              value={
+                estimate.status ?? "Draft"
+              }
+            />
+
+            <Info
+              label="Project Address"
+              value={
+                estimate.project_address ??
+                ""
+              }
+            />
+
+            <Info
+              label="Estimate Amount"
+              value={
+                estimate.estimate_amount ??
+                ""
+              }
+            />
           </div>
         </Card>
 
         <Card>
-          <p className="text-sm text-zinc-500">Scope of Work</p>
+          <p className="text-sm text-zinc-500">
+            Scope of Work
+          </p>
 
           <p className="mt-3 leading-7 text-zinc-300">
-            {estimate.notes || "No scope of work added."}
+            {estimate.notes ||
+              "No scope of work added."}
           </p>
         </Card>
 
         <div className="flex flex-wrap gap-4">
           {estimate.queue_item_id && (
-            <Link href={`/queue/${estimate.queue_item_id}?business=${businessSlug}`}>
-              <Button variant="secondary">Open Queue Item</Button>
+            <Link
+              href={`/queue/${estimate.queue_item_id}`}
+            >
+              <Button variant="secondary">
+                Open Queue Item
+              </Button>
             </Link>
           )}
 
-          <Link href={`/estimates/${estimate.id}/print`}>
-            <Button variant="secondary">Print Estimate</Button>
+          <Link
+            href={`/estimates/${estimate.id}/print`}
+          >
+            <Button variant="secondary">
+              Print Estimate
+            </Button>
           </Link>
 
+          {!linkedInvoice && (
+            <Link
+              href={`/estimates/${estimate.id}/edit`}
+            >
+              <Button variant="secondary">
+                Edit Estimate
+              </Button>
+            </Link>
+          )}
+
           {linkedInvoice ? (
-            <Link href={`/invoices/${linkedInvoice.id}?business=${businessSlug}`}>
-              <Button>Open Invoice</Button>
+            <Link
+              href={`/invoices/${linkedInvoice.id}`}
+            >
+              <Button>
+                Open Invoice
+              </Button>
             </Link>
           ) : (
             <ConvertEstimateToInvoiceButton
               estimateId={estimate.id}
-              businessId={estimate.business_id ?? ""}
-              customerName={estimate.customer_name ?? ""}
-              projectTitle={estimate.project_title ?? ""}
-              invoiceAmount={estimate.estimate_amount ?? ""}
+              businessId={
+                estimate.business_id ?? ""
+              }
+              customerName={
+                estimate.customer_name ?? ""
+              }
+              projectTitle={
+                estimate.project_title ?? ""
+              }
+              invoiceAmount={
+                estimate.estimate_amount ?? ""
+              }
               notes={estimate.notes ?? ""}
             />
           )}
@@ -173,11 +243,22 @@ export default async function EstimateDetailsPage({
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
+function Info({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
   return (
     <div>
-      <p className="text-sm text-zinc-500">{label}</p>
-      <p className="mt-1 text-lg font-medium">{value || "—"}</p>
+      <p className="text-sm text-zinc-500">
+        {label}
+      </p>
+
+      <p className="mt-1 text-lg font-medium">
+        {value || "—"}
+      </p>
     </div>
   );
 }
