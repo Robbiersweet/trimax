@@ -20,6 +20,15 @@ type Invoice = {
   notes: string | null;
 };
 
+type InvoiceLineItem = {
+  id: string;
+  description: string | null;
+  quantity: number | string | null;
+  unit_price: number | string | null;
+  line_total: number | string | null;
+  sort_order: number | null;
+};
+
 type LinkedEstimate = {
   id: string;
   display_id: string | null;
@@ -30,6 +39,14 @@ type Business = {
   id: string;
   slug: string;
 };
+
+function formatCurrency(amount: number) {
+  return `$${amount.toFixed(2)}`;
+}
+
+function toNumber(value: number | string | null) {
+  return Number(value) || 0;
+}
 
 export default async function InvoiceDetailsPage({
   params,
@@ -55,9 +72,7 @@ export default async function InvoiceDetailsPage({
   }
 
   const invoice = data as Invoice;
-
-  const invoiceStatus =
-    invoice.status || "Draft";
+  const invoiceStatus = invoice.status || "Draft";
 
   let businessSlug = "rnl-creations";
 
@@ -76,6 +91,28 @@ export default async function InvoiceDetailsPage({
       businessSlug = business.slug;
     }
   }
+
+  const { data: lineItemData } = await supabase
+    .from("invoice_line_items")
+    .select("*")
+    .eq("invoice_id", invoice.id)
+    .order("sort_order", {
+      ascending: true,
+    });
+
+  const lineItems =
+    (lineItemData ?? []) as InvoiceLineItem[];
+
+  const lineItemTotal = lineItems.reduce(
+    (total, item) =>
+      total + toNumber(item.line_total),
+    0
+  );
+
+  const displayTotal =
+    lineItems.length > 0
+      ? formatCurrency(lineItemTotal)
+      : invoice.invoice_amount;
 
   let linkedEstimate: LinkedEstimate | null =
     null;
@@ -146,7 +183,7 @@ export default async function InvoiceDetailsPage({
               </div>
 
               <Link
-                href={`/estimates/${linkedEstimate.id}`}
+                href={`/estimates/${linkedEstimate.id}?business=${businessSlug}`}
               >
                 <Button variant="secondary">
                   Open Estimate
@@ -165,7 +202,7 @@ export default async function InvoiceDetailsPage({
 
             <Info
               label="Amount"
-              value={invoice.invoice_amount}
+              value={displayTotal}
             />
 
             <Info
@@ -178,17 +215,71 @@ export default async function InvoiceDetailsPage({
               value={invoice.display_id}
             />
           </div>
+        </Card>
 
-          <div className="mt-6">
-            <p className="text-sm text-zinc-500">
-              Description
-            </p>
+        <Card>
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="text-xl font-semibold">
+              Line Items
+            </h2>
 
-            <p className="mt-2 leading-7 text-zinc-300">
-              {invoice.notes ||
-                "No description added."}
+            <p className="text-2xl font-bold text-orange-400">
+              {displayTotal || "$0.00"}
             </p>
           </div>
+
+          {lineItems.length === 0 ? (
+            <p className="mt-4 text-zinc-400">
+              No line items added.
+            </p>
+          ) : (
+            <div className="mt-5 overflow-hidden rounded-2xl border border-zinc-800">
+              <div className="grid grid-cols-[1fr_90px_120px_120px] gap-4 border-b border-zinc-800 bg-zinc-950 px-4 py-3 text-sm font-semibold text-zinc-400">
+                <span>Description</span>
+                <span className="text-right">Qty</span>
+                <span className="text-right">Unit</span>
+                <span className="text-right">Total</span>
+              </div>
+
+              {lineItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="grid grid-cols-[1fr_90px_120px_120px] gap-4 border-b border-zinc-800 px-4 py-4 last:border-b-0"
+                >
+                  <span>
+                    {item.description || "Line item"}
+                  </span>
+
+                  <span className="text-right text-zinc-300">
+                    {toNumber(item.quantity)}
+                  </span>
+
+                  <span className="text-right text-zinc-300">
+                    {formatCurrency(
+                      toNumber(item.unit_price)
+                    )}
+                  </span>
+
+                  <span className="text-right font-semibold text-orange-400">
+                    {formatCurrency(
+                      toNumber(item.line_total)
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+
+        <Card>
+          <p className="text-sm text-zinc-500">
+            Notes
+          </p>
+
+          <p className="mt-2 leading-7 text-zinc-300">
+            {invoice.notes ||
+              "No notes added."}
+          </p>
         </Card>
 
         <div className="flex flex-wrap gap-4">
@@ -215,7 +306,15 @@ export default async function InvoiceDetailsPage({
           )}
 
           <Link
-            href={`/invoices/${invoice.id}/edit`}
+            href={`/invoices/${invoice.id}/print?business=${businessSlug}`}
+          >
+            <Button variant="secondary">
+              Print Invoice
+            </Button>
+          </Link>
+
+          <Link
+            href={`/invoices/${invoice.id}/edit?business=${businessSlug}`}
           >
             <Button variant="secondary">
               Edit Invoice

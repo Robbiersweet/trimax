@@ -12,6 +12,7 @@ import { supabase } from "../../../lib/supabase";
 type Estimate = {
   id: string;
   business_id: string | null;
+  client_id: string | null;
   customer_name: string | null;
   project_title: string | null;
   project_address: string | null;
@@ -24,18 +25,37 @@ type Business = {
   slug: string;
 };
 
+type Client = {
+  id: string;
+  name: string;
+  contact_name: string | null;
+  email: string | null;
+  phone: string | null;
+  billing_address: string | null;
+};
+
 export default function EditEstimatePage() {
   const params = useParams();
   const router = useRouter();
 
   const estimateId = params.id as string;
 
-  const [businessSlug, setBusinessSlug] = useState("rnl-creations");
+  const [businessId, setBusinessId] = useState("");
+  const [businessSlug, setBusinessSlug] =
+    useState("rnl-creations");
 
-  const [customerName, setCustomerName] = useState("");
-  const [projectTitle, setProjectTitle] = useState("");
-  const [projectAddress, setProjectAddress] = useState("");
-  const [estimateAmount, setEstimateAmount] = useState("");
+  const [clients, setClients] = useState<Client[]>([]);
+  const [selectedClientId, setSelectedClientId] =
+    useState("");
+
+  const [customerName, setCustomerName] =
+    useState("");
+  const [projectTitle, setProjectTitle] =
+    useState("");
+  const [projectAddress, setProjectAddress] =
+    useState("");
+  const [estimateAmount, setEstimateAmount] =
+    useState("");
   const [notes, setNotes] = useState("");
 
   const [loading, setLoading] = useState(true);
@@ -54,7 +74,8 @@ export default function EditEstimatePage() {
         .eq("id", estimateId)
         .limit(1);
 
-      const estimate = data?.[0] as Estimate | undefined;
+      const estimate =
+        data?.[0] as Estimate | undefined;
 
       if (error || !estimate) {
         console.error(error);
@@ -68,14 +89,17 @@ export default function EditEstimatePage() {
         return;
       }
 
-      const { data: invoiceData } = await supabase
-        .from("invoices")
-        .select("id")
-        .eq("estimate_id", estimateId)
-        .limit(1);
+      const { data: invoiceData } =
+        await supabase
+          .from("invoices")
+          .select("id")
+          .eq("estimate_id", estimateId)
+          .limit(1);
 
       if (invoiceData && invoiceData.length > 0) {
-        router.push(`/estimates/${estimateId}`);
+        router.push(
+          `/estimates/${estimateId}?business=${businessSlug}`
+        );
         return;
       }
 
@@ -84,60 +108,141 @@ export default function EditEstimatePage() {
       setProjectAddress(estimate.project_address ?? "");
       setEstimateAmount(estimate.estimate_amount ?? "");
       setNotes(estimate.notes ?? "");
+      setSelectedClientId(estimate.client_id ?? "");
 
       if (estimate.business_id) {
-        const { data: businessRows } = await supabase
-          .from("businesses")
-          .select("id, slug")
-          .eq("id", estimate.business_id)
-          .limit(1);
+        setBusinessId(estimate.business_id);
 
-        const business = businessRows?.[0] as Business | undefined;
+        const { data: businessRows } =
+          await supabase
+            .from("businesses")
+            .select("id, slug")
+            .eq("id", estimate.business_id)
+            .limit(1);
+
+        const business =
+          businessRows?.[0] as Business | undefined;
 
         if (business?.slug) {
           setBusinessSlug(business.slug);
         }
+
+        const { data: clientRows } =
+          await supabase
+            .from("clients")
+            .select("*")
+            .eq("business_id", estimate.business_id)
+            .order("name", {
+              ascending: true,
+            });
+
+        setClients((clientRows ?? []) as Client[]);
       }
 
       setLoading(false);
     }
 
     loadEstimate();
-  }, [estimateId, router]);
+  }, [estimateId, router, businessSlug]);
+
+  function handleClientChange(clientId: string) {
+    setSelectedClientId(clientId);
+
+    const client = clients.find(
+      (clientItem) => clientItem.id === clientId
+    );
+
+    if (!client) {
+      return;
+    }
+
+    setCustomerName(client.name);
+
+    if (client.billing_address) {
+      setProjectAddress(client.billing_address);
+    }
+  }
 
   async function handleSave() {
     setToast(null);
     setSaving(true);
 
-    if (!customerName || !projectTitle || !estimateAmount) {
+    if (
+      !customerName ||
+      !projectTitle ||
+      !estimateAmount
+    ) {
       setToast({
         type: "error",
-        message: "Customer, project title, and amount are required.",
+        message:
+          "Customer, project title, and amount are required.",
       });
 
       setSaving(false);
       return;
     }
 
-    const { data: invoiceData } = await supabase
-      .from("invoices")
-      .select("id")
-      .eq("estimate_id", estimateId)
-      .limit(1);
+    const { data: invoiceData } =
+      await supabase
+        .from("invoices")
+        .select("id")
+        .eq("estimate_id", estimateId)
+        .limit(1);
 
     if (invoiceData && invoiceData.length > 0) {
       setToast({
         type: "error",
-        message: "This estimate has already been converted to an invoice.",
+        message:
+          "This estimate has already been converted to an invoice.",
       });
 
       setSaving(false);
       return;
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    let finalClientId = selectedClientId || null;
+
+    if (!selectedClientId && businessId) {
+      const {
+        data: newClient,
+        error: clientError,
+      } = await supabase
+        .from("clients")
+        .insert({
+          business_id: businessId,
+          created_by_user_id:
+            user?.id ?? null,
+
+          name: customerName,
+          billing_address: projectAddress,
+        })
+        .select()
+        .single();
+
+      if (clientError || !newClient) {
+        console.error(clientError);
+
+        setToast({
+          type: "error",
+          message:
+            "Unable to create client record.",
+        });
+
+        setSaving(false);
+        return;
+      }
+
+      finalClientId = newClient.id;
     }
 
     const { error } = await supabase
       .from("estimates")
       .update({
+        client_id: finalClientId,
         customer_name: customerName,
         project_title: projectTitle,
         project_address: projectAddress,
@@ -159,30 +264,70 @@ export default function EditEstimatePage() {
       return;
     }
 
-    router.push(`/estimates/${estimateId}?business=${businessSlug}`);
+    router.push(
+      `/estimates/${estimateId}?business=${businessSlug}`
+    );
   }
 
   if (loading) {
     return (
       <AppShell>
-        <p className="text-zinc-400">Loading estimate...</p>
+        <p className="text-zinc-400">
+          Loading estimate...
+        </p>
       </AppShell>
     );
   }
 
   return (
     <AppShell>
-      {toast && <Toast type={toast.type} message={toast.message} />}
+      {toast && (
+        <Toast
+          type={toast.type}
+          message={toast.message}
+        />
+      )}
 
       <div className="mx-auto max-w-3xl">
         <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
           Estimate Details
         </p>
 
-        <h1 className="mt-3 text-5xl font-bold">Edit Estimate</h1>
+        <h1 className="mt-3 text-5xl font-bold">
+          Edit Estimate
+        </h1>
 
         <Card className="mt-8">
           <div className="grid gap-5">
+            <div>
+              <label className="mb-2 block text-sm text-zinc-400">
+                Select Existing Client
+              </label>
+
+              <select
+                value={selectedClientId}
+                onChange={(event) =>
+                  handleClientChange(
+                    event.target.value
+                  )
+                }
+                className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+              >
+                <option value="">
+                  -- Create / use typed customer --
+                </option>
+
+                {clients.map((client) => (
+                  <option
+                    key={client.id}
+                    value={client.id}
+                  >
+                    {client.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <InputField
               label="Customer Name"
               value={customerName}
@@ -208,11 +353,15 @@ export default function EditEstimatePage() {
             />
 
             <div>
-              <label className="mb-2 block text-sm text-zinc-400">Notes</label>
+              <label className="mb-2 block text-sm text-zinc-400">
+                Scope of Work
+              </label>
 
               <textarea
                 value={notes}
-                onChange={(event) => setNotes(event.target.value)}
+                onChange={(event) =>
+                  setNotes(event.target.value)
+                }
                 className="min-h-40 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
               />
             </div>
@@ -225,7 +374,9 @@ export default function EditEstimatePage() {
               <Button
                 variant="secondary"
                 onClick={() =>
-                  router.push(`/estimates/${estimateId}?business=${businessSlug}`)
+                  router.push(
+                    `/estimates/${estimateId}?business=${businessSlug}`
+                  )
                 }
               >
                 Cancel

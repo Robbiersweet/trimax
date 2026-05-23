@@ -31,8 +31,7 @@ function NewEstimatePageContent() {
   const queueId = searchParams.get("queueId");
 
   const businessSlug =
-    searchParams.get("business") ??
-    "rnl-creations";
+    searchParams.get("business") ?? "rnl-creations";
 
   const [business, setBusiness] =
     useState<Business | null>(null);
@@ -74,8 +73,7 @@ function NewEstimatePageContent() {
 
         setToast({
           type: "error",
-          message:
-            "Unable to load selected business.",
+          message: "Unable to load selected business.",
         });
 
         return;
@@ -138,8 +136,7 @@ function NewEstimatePageContent() {
     if (!business) {
       setToast({
         type: "error",
-        message:
-          "Business is still loading.",
+        message: "Business is still loading.",
       });
 
       return;
@@ -178,6 +175,7 @@ function NewEstimatePageContent() {
             user?.id ?? null,
 
           name: customerName,
+          billing_address: projectAddress,
         })
         .select()
         .single();
@@ -187,8 +185,7 @@ function NewEstimatePageContent() {
 
         setToast({
           type: "error",
-          message:
-            "Unable to create client record.",
+          message: "Unable to create client record.",
         });
 
         return;
@@ -222,8 +219,7 @@ function NewEstimatePageContent() {
 
       setToast({
         type: "error",
-        message:
-          "Failed to create estimate.",
+        message: "Failed to create estimate.",
       });
 
       return;
@@ -231,8 +227,7 @@ function NewEstimatePageContent() {
 
     setToast({
       type: "success",
-      message:
-        "Estimate created successfully.",
+      message: "Estimate created successfully.",
     });
 
     router.push(
