@@ -138,6 +138,37 @@ function queueHref(
   return `/queue?${params.toString()}`;
 }
 
+function viewCopy(view: string) {
+  if (view === "ready-soon") {
+    return {
+      title: "Ready Soon",
+      detail:
+        "Unscheduled units with ready dates in the next 7 days.",
+    };
+  }
+
+  if (view === "needs-estimate") {
+    return {
+      title: "Needs Estimate",
+      detail:
+        "Queue items without linked estimates that still need review.",
+    };
+  }
+
+  if (view === "remediation") {
+    return {
+      title: "Remediation",
+      detail:
+        "Items flagged for smoker/remediation work or smoke notes.",
+    };
+  }
+
+  return {
+    title: "All Work",
+    detail: "All queue items matching the current search and status filters.",
+  };
+}
+
 export default async function QueuePage({
   searchParams,
 }: {
@@ -156,6 +187,7 @@ export default async function QueuePage({
   const viewFilter =
     resolvedSearchParams.view?.trim().toLowerCase() ?? "all";
   const businessQuery = `?business=${businessSlug}`;
+  const activeView = viewCopy(viewFilter);
 
   const { data: businessData, error: businessError } = await supabase
     .from("businesses")
@@ -385,6 +417,25 @@ export default async function QueuePage({
             </Link>
           ))}
         </div>
+
+        <Card className="border-orange-500/30 bg-orange-500/5 p-5">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
+                Current Queue View
+              </p>
+              <h2 className="mt-2 text-2xl font-bold">
+                {activeView.title}
+              </h2>
+              <p className="mt-2 text-zinc-400">{activeView.detail}</p>
+            </div>
+
+            <p className="text-sm text-zinc-400">
+              Showing {filteredQueueItems.length} of {queueItems.length}{" "}
+              queue items.
+            </p>
+          </div>
+        </Card>
 
         <div className="grid gap-6">
           {queueItems.length === 0 ? (
