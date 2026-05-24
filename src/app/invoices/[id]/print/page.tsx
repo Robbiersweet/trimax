@@ -17,6 +17,10 @@ type Invoice = {
   tax_label: string | null;
   tax_rate: number | string | null;
   amount_paid: number | string | null;
+  service_address: string | null;
+  split_parent_invoice_id: string | null;
+  split_sequence: number | null;
+  split_count: number | null;
   terms: string | null;
   notes: string | null;
 };
@@ -54,7 +58,28 @@ function parseCurrency(value: string | null) {
 }
 
 function formatCurrency(amount: number) {
-  return `$${amount.toFixed(2)}`;
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(amount);
+}
+
+function formatDate(value: string | null) {
+  if (!value) {
+    return "-";
+  }
+
+  const date = new Date(`${value}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "2-digit",
+    day: "2-digit",
+    year: "numeric",
+  }).format(date);
 }
 
 export default async function InvoicePrintPage({
@@ -133,7 +158,7 @@ export default async function InvoicePrintPage({
   const taxAmount = subtotal * (taxRate / 100);
   const total = subtotal + taxAmount;
   const amountPaid = toNumber(invoice.amount_paid);
-  const amountDue = total - amountPaid;
+  const amountDue = Math.max(total - amountPaid, 0);
 
   const companyName =
     business?.name || "R&L Creations";
@@ -143,6 +168,19 @@ export default async function InvoicePrintPage({
 
   const billedToAddress =
     client?.billing_address || "";
+
+  const serviceAddress =
+    invoice.service_address || "";
+
+  const documentTitle =
+    invoice.project_title || invoice.customer_name || "Invoice";
+
+  const splitLabel =
+    invoice.split_parent_invoice_id &&
+    invoice.split_sequence &&
+    invoice.split_count
+      ? `Split ${invoice.split_sequence} of ${invoice.split_count}`
+      : "";
 
   return (
     <main className="min-h-screen bg-white px-8 py-10 text-black print:p-0">
@@ -173,6 +211,34 @@ export default async function InvoicePrintPage({
           </div>
         </section>
 
+        <section className="mt-14 border-y border-gray-200 py-8">
+          <div className="grid gap-8 md:grid-cols-[1.4fr_1fr]">
+            <div>
+              <p className="text-sm uppercase tracking-[0.25em] text-[#d9aa2f]">
+                Invoice
+              </p>
+
+              <h1 className="mt-3 text-4xl font-semibold leading-tight">
+                {documentTitle}
+              </h1>
+
+              {splitLabel ? (
+                <p className="mt-2 text-lg text-gray-600">
+                  {splitLabel}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="text-right">
+              <PrintLabel>Amount Due (USD)</PrintLabel>
+
+              <p className="mt-2 text-5xl font-light tracking-wide">
+                {formatCurrency(amountDue)}
+              </p>
+            </div>
+          </div>
+        </section>
+
         <section className="mt-16 grid grid-cols-[1.5fr_1fr_1fr_1.4fr] gap-10">
           <div>
             <PrintLabel>Billed To</PrintLabel>
@@ -186,20 +252,30 @@ export default async function InvoicePrintPage({
                 {billedToAddress}
               </p>
             )}
+
+            {serviceAddress ? (
+              <div className="mt-8">
+                <PrintLabel>Service Address</PrintLabel>
+
+                <p className="mt-2 whitespace-pre-line text-lg leading-7">
+                  {serviceAddress}
+                </p>
+              </div>
+            ) : null}
           </div>
 
           <div>
             <PrintLabel>Date of Issue</PrintLabel>
 
             <p className="mt-2 text-lg">
-              {invoice.issue_date || "-"}
+              {formatDate(invoice.issue_date)}
             </p>
 
             <div className="mt-8">
               <PrintLabel>Due Date</PrintLabel>
 
               <p className="mt-2 text-lg">
-                {invoice.due_date || "-"}
+                {formatDate(invoice.due_date)}
               </p>
             </div>
           </div>
@@ -220,13 +296,7 @@ export default async function InvoicePrintPage({
             </div>
           </div>
 
-          <div className="text-right">
-            <PrintLabel>Amount Due (USD)</PrintLabel>
-
-            <p className="mt-2 text-5xl font-light tracking-wide">
-              {formatCurrency(amountDue)}
-            </p>
-          </div>
+          <div />
         </section>
 
         <section className="mt-16">
@@ -286,23 +356,23 @@ export default async function InvoicePrintPage({
           <div className="ml-auto mt-10 w-full max-w-lg">
             <PrintSummaryRow
               label="Subtotal"
-              value={subtotal.toFixed(2)}
+              value={formatCurrency(subtotal)}
             />
 
             <PrintSummaryRow
               label={`${invoice.tax_label || "Tax"} (${taxRate}%)`}
-              value={taxAmount.toFixed(2)}
+              value={formatCurrency(taxAmount)}
             />
 
             <div className="mt-4 border-t border-gray-300 pt-4">
               <PrintSummaryRow
                 label="Total"
-                value={total.toFixed(2)}
+                value={formatCurrency(total)}
               />
 
               <PrintSummaryRow
                 label="Amount Paid"
-                value={amountPaid.toFixed(2)}
+                value={formatCurrency(amountPaid)}
               />
             </div>
 
