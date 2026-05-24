@@ -63,10 +63,18 @@ function formatDate(value: string | null) {
 export default async function InvoicesPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ business?: string }>;
+  searchParams?: Promise<{
+    business?: string;
+    view?: string;
+  }>;
 }) {
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const businessSlug = resolvedSearchParams.business ?? "rnl-creations";
+  const view =
+    resolvedSearchParams.view === "originals" ||
+    resolvedSearchParams.view === "splits"
+      ? resolvedSearchParams.view
+      : "all";
   const businessQuery = `?business=${businessSlug}`;
 
   const { data: businessData, error: businessError } = await supabase
@@ -119,15 +127,27 @@ export default async function InvoicesPage({
       );
     });
 
-    invoicesWithSplitInfo = invoices.map((invoice) => ({
-      ...invoice,
-      split_children_count:
-        splitChildrenByParentId.get(invoice.id) ?? 0,
-      split_parent_display_id: invoice.split_parent_invoice_id
-        ? invoiceById.get(invoice.split_parent_invoice_id)
-            ?.display_id ?? null
-        : null,
-    }));
+    invoicesWithSplitInfo = invoices
+      .map((invoice) => ({
+        ...invoice,
+        split_children_count:
+          splitChildrenByParentId.get(invoice.id) ?? 0,
+        split_parent_display_id: invoice.split_parent_invoice_id
+          ? invoiceById.get(invoice.split_parent_invoice_id)
+              ?.display_id ?? null
+          : null,
+      }))
+      .filter((invoice) => {
+        if (view === "originals") {
+          return !invoice.split_parent_invoice_id;
+        }
+
+        if (view === "splits") {
+          return Boolean(invoice.split_parent_invoice_id);
+        }
+
+        return true;
+      });
   }
 
   return (
@@ -152,9 +172,46 @@ export default async function InvoicesPage({
           </Link>
         </div>
 
+        <div className="flex flex-wrap gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-2">
+          <Link
+            href={`/invoices${businessQuery}`}
+            className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+              view === "all"
+                ? "bg-orange-500 text-black"
+                : "text-zinc-300 hover:bg-zinc-800 hover:text-white"
+            }`}
+          >
+            All
+          </Link>
+
+          <Link
+            href={`/invoices${businessQuery}&view=originals`}
+            className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+              view === "originals"
+                ? "bg-orange-500 text-black"
+                : "text-zinc-300 hover:bg-zinc-800 hover:text-white"
+            }`}
+          >
+            Originals
+          </Link>
+
+          <Link
+            href={`/invoices${businessQuery}&view=splits`}
+            className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+              view === "splits"
+                ? "bg-orange-500 text-black"
+                : "text-zinc-300 hover:bg-zinc-800 hover:text-white"
+            }`}
+          >
+            Split Invoices
+          </Link>
+        </div>
+
         {invoicesWithSplitInfo.length === 0 ? (
           <Card>
-            <p className="text-zinc-400">No invoices for this business yet.</p>
+            <p className="text-zinc-400">
+              No invoices found for this view.
+            </p>
           </Card>
         ) : (
           <div className="grid gap-4">
