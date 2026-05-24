@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import PrintToolbar from "../../../components/PrintToolbar";
 import { supabase } from "../../../lib/supabase";
 
@@ -166,17 +167,14 @@ export default async function EstimatePrintPage({
       <div className="mx-auto max-w-5xl bg-white print:max-w-none print:px-6 print:py-4">
         <section className="grid grid-cols-2 gap-8">
           <div>
-            <div className="flex h-32 w-32 items-center justify-center bg-black text-center text-white print:h-28 print:w-28">
-              <div>
-                <p className="text-3xl font-black print:text-2xl">
-                  R&L
-                </p>
-
-                <p className="mt-1 text-xs font-semibold uppercase tracking-[0.2em]">
-                  Creations
-                </p>
-              </div>
-            </div>
+            <Image
+              src="/Brand/rnl-multi-colors.png"
+              alt="R&L Creations"
+              width={128}
+              height={128}
+              className="h-32 w-32 object-contain print:h-28 print:w-28"
+              priority
+            />
           </div>
 
           <div className="text-right text-base leading-6">
