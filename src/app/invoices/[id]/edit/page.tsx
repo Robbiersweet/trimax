@@ -383,6 +383,8 @@ export default function EditInvoicePage() {
       getTaxSuggestionForAddress(address);
 
     if (!suggestion) {
+      setTaxLabel("");
+      setTaxRate("");
       return;
     }
 

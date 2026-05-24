@@ -424,6 +424,8 @@ export default function EditEstimatePage() {
       getTaxSuggestionForAddress(address);
 
     if (!suggestion) {
+      setTaxLabel("");
+      setTaxRate("");
       return;
     }
 

@@ -257,6 +257,8 @@ function NewInvoicePageContent() {
       getTaxSuggestionForAddress(address);
 
     if (!suggestion) {
+      setTaxLabel("");
+      setTaxRate("");
       return;
     }
 
@@ -277,6 +279,11 @@ function NewInvoicePageContent() {
     );
 
     if (!client) {
+      setCustomerName("");
+      setServiceAddress("");
+      setTaxLabel("");
+      setTaxRate("");
+      setTaxManuallyChanged(false);
       return;
     }
 
@@ -286,6 +293,35 @@ function NewInvoicePageContent() {
       setServiceAddress(client.billing_address);
       applyTaxSuggestion(client.billing_address);
     }
+  }
+
+  function resetForm() {
+    setSelectedClientId("");
+    setCustomerName("");
+    setProjectTitle("");
+    setServiceAddress("");
+    setIssueDate("");
+    setDueDate("");
+    setReference("");
+    setTaxLabel("");
+    setTaxRate("");
+    setTaxManuallyChanged(false);
+    setAmountPaid("0");
+    setSplitWarningEnabled(false);
+    setSplitTargetAmount("");
+    setSplitWarningManuallyChanged(false);
+    setTerms(
+      "Payment due upon invoice. Thank you for your business."
+    );
+    setNotes("");
+    setLineItems([
+      {
+        serviceItemId: "",
+        description: "",
+        quantity: "1",
+        unitPrice: "",
+      },
+    ]);
   }
 
   function updateLineItem(
@@ -881,9 +917,29 @@ function NewInvoicePageContent() {
               />
             </div>
 
-            <Button onClick={handleSave}>
-              Create Invoice
-            </Button>
+            <div className="flex flex-wrap gap-4">
+              <Button onClick={handleSave}>
+                Create Invoice
+              </Button>
+
+              <Button
+                variant="secondary"
+                onClick={resetForm}
+              >
+                Start Over
+              </Button>
+
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  router.push(
+                    `/invoices?business=${businessSlug}`
+                  )
+                }
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
         </Card>
       </div>

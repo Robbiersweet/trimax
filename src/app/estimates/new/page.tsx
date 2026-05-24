@@ -255,6 +255,8 @@ function NewEstimatePageContent() {
       getTaxSuggestionForAddress(address);
 
     if (!suggestion) {
+      setTaxLabel("");
+      setTaxRate("");
       return;
     }
 
@@ -275,6 +277,11 @@ function NewEstimatePageContent() {
     );
 
     if (!client) {
+      setCustomerName("");
+      setServiceAddress("");
+      setTaxLabel("");
+      setTaxRate("");
+      setTaxManuallyChanged(false);
       return;
     }
 
@@ -284,6 +291,32 @@ function NewEstimatePageContent() {
       setServiceAddress(client.billing_address);
       applyTaxSuggestion(client.billing_address);
     }
+  }
+
+  function resetForm() {
+    setSelectedClientId("");
+    setCustomerName("");
+    setProjectTitle("");
+    setServiceAddress("");
+    setReference("");
+    setTaxLabel("");
+    setTaxRate("");
+    setTaxManuallyChanged(false);
+    setSplitWarningEnabled(false);
+    setSplitTargetAmount("");
+    setSplitWarningManuallyChanged(false);
+    setTerms(
+      "This estimate is provided for review and approval. Final pricing may vary if scope, materials, or site conditions change."
+    );
+    setNotes("");
+    setLineItems([
+      {
+        serviceItemId: "",
+        description: "",
+        quantity: "1",
+        unitPrice: "",
+      },
+    ]);
   }
 
   function updateLineItem(
@@ -875,9 +908,29 @@ function NewEstimatePageContent() {
               />
             </div>
 
-            <Button onClick={handleCreateEstimate}>
-              Create Estimate
-            </Button>
+            <div className="flex flex-wrap gap-4">
+              <Button onClick={handleCreateEstimate}>
+                Create Estimate
+              </Button>
+
+              <Button
+                variant="secondary"
+                onClick={resetForm}
+              >
+                Start Over
+              </Button>
+
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  router.push(
+                    `/estimates?business=${businessSlug}`
+                  )
+                }
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
         </Card>
       </div>
