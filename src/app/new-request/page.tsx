@@ -30,6 +30,8 @@ function NewRequestPageContent() {
   const [flooring, setFlooring] = useState("");
   const [moveOutDate, setMoveOutDate] = useState("");
   const [readyDate, setReadyDate] = useState("");
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [completedDate, setCompletedDate] = useState("");
   const [notes, setNotes] = useState("");
 
   const [isSaving, setIsSaving] = useState(false);
@@ -95,6 +97,8 @@ function NewRequestPageContent() {
         flooring,
         moveOutDate,
         readyDate,
+        scheduledDate,
+        completedDate,
         notes,
         businessId: business.id,
       });
@@ -184,6 +188,22 @@ function NewRequestPageContent() {
               value={readyDate}
               onChange={setReadyDate}
             />
+
+            <div className="grid gap-5 md:grid-cols-2">
+              <InputField
+                label="Scheduled Date"
+                placeholder="Optional"
+                value={scheduledDate}
+                onChange={setScheduledDate}
+              />
+
+              <InputField
+                label="Completed Date"
+                placeholder="Optional"
+                value={completedDate}
+                onChange={setCompletedDate}
+              />
+            </div>
 
             <div>
               <label className="mb-2 block text-sm text-zinc-400">Notes</label>

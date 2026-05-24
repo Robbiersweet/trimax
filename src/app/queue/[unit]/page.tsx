@@ -18,6 +18,8 @@ type SupabaseQueueItem = {
   flooring: string | null;
   move_out_date: string | null;
   ready_date: string | null;
+  scheduled_date: string | null;
+  completed_date: string | null;
   smoked_in: boolean | null;
   notes: string | null;
   linked_estimate_id: string | null;
@@ -143,6 +145,8 @@ export default async function QueueDetailPage({
             <Info label="Flooring" value={item.flooring ?? ""} />
             <Info label="Move Out Date" value={item.move_out_date ?? ""} />
             <Info label="Ready Date" value={item.ready_date ?? ""} />
+            <Info label="Scheduled Date" value={item.scheduled_date ?? ""} />
+            <Info label="Completed Date" value={item.completed_date ?? ""} />
           </div>
 
           {item.smoked_in && (

@@ -7,6 +7,8 @@ type CreateQueueItemInput = {
   flooring: string;
   moveOutDate: string;
   readyDate: string;
+  scheduledDate: string;
+  completedDate: string;
   notes: string;
   businessId: string;
 };
@@ -26,6 +28,8 @@ export async function createQueueItem(input: CreateQueueItemInput) {
         flooring: input.flooring,
         move_out_date: input.moveOutDate,
         ready_date: input.readyDate,
+        scheduled_date: input.scheduledDate || null,
+        completed_date: input.completedDate || null,
         status: "Pending Estimate",
         notes: input.notes,
       },

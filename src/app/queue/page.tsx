@@ -20,6 +20,8 @@ type QueueItemWithEstimate = {
   flooring: string | null;
   move_out_date: string | null;
   ready_date: string | null;
+  scheduled_date: string | null;
+  completed_date: string | null;
   notes: string | null;
   linked_estimate_id: string | null;
 };
@@ -150,6 +152,8 @@ export default async function QueuePage({
       item.flooring,
       item.move_out_date,
       item.ready_date,
+      item.scheduled_date,
+      item.completed_date,
       item.notes,
     ]
       .join(" ")
@@ -291,6 +295,14 @@ export default async function QueuePage({
                           value={item.move_out_date}
                         />
                         <Info label="Ready Date" value={item.ready_date} />
+                        <Info
+                          label="Scheduled Date"
+                          value={item.scheduled_date}
+                        />
+                        <Info
+                          label="Completed Date"
+                          value={item.completed_date}
+                        />
                       </div>
 
                       <p className="mt-5 max-w-2xl text-zinc-400">

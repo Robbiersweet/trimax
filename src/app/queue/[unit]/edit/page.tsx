@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import {
+  useParams,
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
 import Link from "next/link";
 import AppShell from "../../../components/AppShell";
 import Card from "../../../components/Card";
@@ -13,7 +17,10 @@ import { supabase } from "../../../lib/supabase";
 export default function EditQueueItemPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queueItemId = params.unit as string;
+  const businessSlug =
+    searchParams.get("business") ?? "rnl-creations";
 
   const [property, setProperty] = useState("");
   const [unit, setUnit] = useState("");
@@ -23,6 +30,10 @@ export default function EditQueueItemPage() {
   const [flooring, setFlooring] = useState("");
   const [moveOutDate, setMoveOutDate] = useState("");
   const [readyDate, setReadyDate] = useState("");
+  const [scheduledDate, setScheduledDate] =
+    useState("");
+  const [completedDate, setCompletedDate] =
+    useState("");
   const [notes, setNotes] = useState("");
 
   const [toast, setToast] = useState<{
@@ -54,6 +65,8 @@ export default function EditQueueItemPage() {
       setFlooring(data.flooring ?? "");
       setMoveOutDate(data.move_out_date ?? "");
       setReadyDate(data.ready_date ?? "");
+      setScheduledDate(data.scheduled_date ?? "");
+      setCompletedDate(data.completed_date ?? "");
       setNotes(data.notes ?? "");
     }
 
@@ -72,8 +85,10 @@ export default function EditQueueItemPage() {
         priority,
         paint_type: paintType,
         flooring,
-        move_out_date: moveOutDate,
-        ready_date: readyDate,
+        move_out_date: moveOutDate || null,
+        ready_date: readyDate || null,
+        scheduled_date: scheduledDate || null,
+        completed_date: completedDate || null,
         notes,
       })
       .eq("id", queueItemId);
@@ -92,20 +107,27 @@ export default function EditQueueItemPage() {
       message: "Queue item updated successfully.",
     });
 
-    router.push(`/queue/${queueItemId}`);
+    router.push(
+      `/queue/${queueItemId}?business=${businessSlug}`
+    );
     router.refresh();
   };
 
   return (
     <AppShell>
-      {toast && <Toast type={toast.type} message={toast.message} />}
+      {toast && (
+        <Toast
+          type={toast.type}
+          message={toast.message}
+        />
+      )}
 
       <div className="mx-auto max-w-3xl space-y-6">
         <Link
-          href={`/queue/${queueItemId}`}
+          href={`/queue/${queueItemId}?business=${businessSlug}`}
           className="inline-flex text-sm text-orange-400 hover:text-orange-300"
         >
-          ← Back to Queue Item
+          Back to Queue Item
         </Link>
 
         <div>
@@ -113,7 +135,9 @@ export default function EditQueueItemPage() {
             Trimax Queue
           </p>
 
-          <h1 className="mt-2 text-4xl font-bold">Edit Queue Item</h1>
+          <h1 className="mt-2 text-4xl font-bold">
+            Edit Queue Item
+          </h1>
         </div>
 
         <Card>
@@ -154,29 +178,51 @@ export default function EditQueueItemPage() {
               onChange={setFlooring}
             />
 
-            <InputField
-              label="Move Out Date"
-              value={moveOutDate}
-              onChange={setMoveOutDate}
-            />
+            <div className="grid gap-5 md:grid-cols-2">
+              <InputField
+                label="Move Out Date"
+                value={moveOutDate}
+                onChange={setMoveOutDate}
+              />
 
-            <InputField
-              label="Ready Date"
-              value={readyDate}
-              onChange={setReadyDate}
-            />
+              <InputField
+                label="Ready Date"
+                value={readyDate}
+                onChange={setReadyDate}
+              />
+            </div>
+
+            <div className="grid gap-5 md:grid-cols-2">
+              <InputField
+                label="Scheduled Date"
+                value={scheduledDate}
+                onChange={setScheduledDate}
+              />
+
+              <InputField
+                label="Completed Date"
+                value={completedDate}
+                onChange={setCompletedDate}
+              />
+            </div>
 
             <div>
-              <label className="mb-2 block text-sm text-zinc-400">Notes</label>
+              <label className="mb-2 block text-sm text-zinc-400">
+                Notes
+              </label>
 
               <textarea
                 value={notes}
-                onChange={(event) => setNotes(event.target.value)}
+                onChange={(event) =>
+                  setNotes(event.target.value)
+                }
                 className="min-h-40 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
               />
             </div>
 
-            <Button onClick={handleSave}>Save Changes</Button>
+            <Button onClick={handleSave}>
+              Save Changes
+            </Button>
           </div>
         </Card>
       </div>
