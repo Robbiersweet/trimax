@@ -16,12 +16,14 @@ type QueueItemWithEstimate = {
   property: string | null;
   unit: string | null;
   status: string | null;
+  priority: string | null;
   paint_type: string | null;
   flooring: string | null;
   move_out_date: string | null;
   ready_date: string | null;
   scheduled_date: string | null;
   completed_date: string | null;
+  smoked_in: boolean | null;
   notes: string | null;
   linked_estimate_id: string | null;
 };
@@ -148,6 +150,7 @@ export default async function QueuePage({
       item.property,
       item.unit,
       item.status,
+      item.priority,
       item.paint_type,
       item.flooring,
       item.move_out_date,
@@ -281,27 +284,49 @@ export default async function QueuePage({
                         <StatusBadge
                           status={item.status ?? "Pending Estimate"}
                         />
+
+                        {item.priority ? (
+                          <span className="rounded-full bg-zinc-950 px-3 py-1 text-sm font-semibold text-zinc-300">
+                            {item.priority} Priority
+                          </span>
+                        ) : null}
+
+                        {item.smoked_in ? (
+                          <span className="rounded-full bg-red-500/20 px-3 py-1 text-sm font-semibold text-red-300">
+                            Remediation
+                          </span>
+                        ) : null}
                       </div>
 
                       <p className="mt-2 text-zinc-400">
                         Unit {item.unit || "-"}
                       </p>
 
+                      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                        <LifecyclePill
+                          label="Move Out"
+                          value={item.move_out_date}
+                        />
+                        <LifecyclePill
+                          label="Ready"
+                          value={item.ready_date}
+                        />
+                        <LifecyclePill
+                          label="Scheduled"
+                          value={item.scheduled_date}
+                        />
+                      </div>
+
                       <div className="mt-5 grid gap-4 text-sm text-zinc-300 md:grid-cols-2">
                         <Info label="Paint Type" value={item.paint_type} />
                         <Info label="Flooring" value={item.flooring} />
                         <Info
-                          label="Move Out Date"
-                          value={item.move_out_date}
-                        />
-                        <Info label="Ready Date" value={item.ready_date} />
-                        <Info
-                          label="Scheduled Date"
-                          value={item.scheduled_date}
-                        />
-                        <Info
                           label="Completed Date"
                           value={item.completed_date}
+                        />
+                        <Info
+                          label="Linked Estimate"
+                          value={linkedEstimate?.display_id ?? null}
                         />
                       </div>
 
@@ -358,6 +383,31 @@ function Info({
     <div>
       <p className="text-zinc-500">{label}</p>
       <p>{value || "-"}</p>
+    </div>
+  );
+}
+
+function LifecyclePill({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | null;
+}) {
+  return (
+    <div
+      className={`rounded-2xl border px-4 py-3 ${
+        value
+          ? "border-orange-500/30 bg-orange-500/10"
+          : "border-zinc-800 bg-zinc-950"
+      }`}
+    >
+      <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+        {label}
+      </p>
+      <p className="mt-1 font-semibold text-zinc-100">
+        {value || "-"}
+      </p>
     </div>
   );
 }
