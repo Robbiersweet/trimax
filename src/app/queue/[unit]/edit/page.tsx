@@ -14,6 +14,35 @@ import InputField from "../../../components/InputField";
 import Toast from "../../../components/Toast";
 import { supabase } from "../../../lib/supabase";
 
+const statusOptions = [
+  "Pending Estimate",
+  "Estimate Created",
+  "Scheduled",
+  "Completed",
+  "Invoiced",
+  "Paid",
+  "On Hold",
+];
+
+const priorityOptions = ["Low", "Normal", "High", "Urgent"];
+
+const paintTypeOptions = [
+  "Classic",
+  "Touch-Up",
+  "Full Repaint",
+  "Primer + Paint",
+  "Reno Paint",
+];
+
+const flooringOptions = [
+  "Keep",
+  "Carpet",
+  "Vinyl",
+  "LVP",
+  "Replace Carpet",
+  "Replace Vinyl",
+];
+
 export default function EditQueueItemPage() {
   const params = useParams();
   const router = useRouter();
@@ -28,6 +57,7 @@ export default function EditQueueItemPage() {
   const [priority, setPriority] = useState("");
   const [paintType, setPaintType] = useState("");
   const [flooring, setFlooring] = useState("");
+  const [smokedIn, setSmokedIn] = useState(false);
   const [moveOutDate, setMoveOutDate] = useState("");
   const [readyDate, setReadyDate] = useState("");
   const [scheduledDate, setScheduledDate] =
@@ -63,6 +93,7 @@ export default function EditQueueItemPage() {
       setPriority(data.priority ?? "");
       setPaintType(data.paint_type ?? "");
       setFlooring(data.flooring ?? "");
+      setSmokedIn(Boolean(data.smoked_in));
       setMoveOutDate(data.move_out_date ?? "");
       setReadyDate(data.ready_date ?? "");
       setScheduledDate(data.scheduled_date ?? "");
@@ -85,6 +116,7 @@ export default function EditQueueItemPage() {
         priority,
         paint_type: paintType,
         flooring,
+        smoked_in: smokedIn,
         move_out_date: moveOutDate || null,
         ready_date: readyDate || null,
         scheduled_date: scheduledDate || null,
@@ -154,29 +186,53 @@ export default function EditQueueItemPage() {
               onChange={setUnit}
             />
 
-            <InputField
-              label="Status"
-              value={status}
-              onChange={setStatus}
-            />
+            <div className="grid gap-5 md:grid-cols-2">
+              <InputField
+                label="Status"
+                value={status}
+                onChange={setStatus}
+                list="edit-status-options"
+              />
 
-            <InputField
-              label="Priority"
-              value={priority}
-              onChange={setPriority}
-            />
+              <InputField
+                label="Priority"
+                value={priority}
+                onChange={setPriority}
+                list="edit-priority-options"
+              />
+            </div>
 
             <InputField
               label="Paint Type"
               value={paintType}
               onChange={setPaintType}
+              list="edit-paint-type-options"
             />
 
             <InputField
               label="Flooring"
               value={flooring}
               onChange={setFlooring}
+              list="edit-flooring-options"
             />
+
+            <label className="flex items-center gap-4 rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3">
+              <input
+                type="checkbox"
+                checked={smokedIn}
+                onChange={(event) => setSmokedIn(event.target.checked)}
+                className="h-5 w-5 accent-orange-500"
+              />
+
+              <span>
+                <span className="block font-semibold">
+                  Smoker / remediation unit
+                </span>
+                <span className="text-sm text-zinc-400">
+                  Include this queue item in remediation reporting.
+                </span>
+              </span>
+            </label>
 
             <div className="grid gap-5 md:grid-cols-2">
               <InputField
@@ -223,6 +279,30 @@ export default function EditQueueItemPage() {
             <Button onClick={handleSave}>
               Save Changes
             </Button>
+
+            <datalist id="edit-paint-type-options">
+              {paintTypeOptions.map((option) => (
+                <option key={option} value={option} />
+              ))}
+            </datalist>
+
+            <datalist id="edit-flooring-options">
+              {flooringOptions.map((option) => (
+                <option key={option} value={option} />
+              ))}
+            </datalist>
+
+            <datalist id="edit-status-options">
+              {statusOptions.map((option) => (
+                <option key={option} value={option} />
+              ))}
+            </datalist>
+
+            <datalist id="edit-priority-options">
+              {priorityOptions.map((option) => (
+                <option key={option} value={option} />
+              ))}
+            </datalist>
           </div>
         </Card>
       </div>

@@ -8,6 +8,7 @@ type InputFieldProps = {
   value: string;
   onChange: (value: string) => void;
   type?: string;
+  list?: string;
 };
 
 export default function InputField({
@@ -16,6 +17,7 @@ export default function InputField({
   value,
   onChange,
   type = "text",
+  list,
 }: InputFieldProps) {
   const [showPassword, setShowPassword] =
     useState(false);
@@ -36,6 +38,7 @@ export default function InputField({
       <div className="relative">
         <input
           type={inputType}
+          list={list}
           value={value}
           onChange={(event) =>
             onChange(event.target.value)

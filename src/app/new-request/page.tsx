@@ -16,6 +16,29 @@ type Business = {
   slug: string;
 };
 
+const propertyOptions = [
+  "North Creek",
+  "Evergreen Apartments",
+  "Global S",
+];
+
+const paintTypeOptions = [
+  "Classic",
+  "Touch-Up",
+  "Full Repaint",
+  "Primer + Paint",
+  "Reno Paint",
+];
+
+const flooringOptions = [
+  "Keep",
+  "Carpet",
+  "Vinyl",
+  "LVP",
+  "Replace Carpet",
+  "Replace Vinyl",
+];
+
 function NewRequestPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -28,6 +51,8 @@ function NewRequestPageContent() {
   const [unit, setUnit] = useState("");
   const [paintType, setPaintType] = useState("");
   const [flooring, setFlooring] = useState("");
+  const [priority, setPriority] = useState("Normal");
+  const [smokedIn, setSmokedIn] = useState(false);
   const [moveOutDate, setMoveOutDate] = useState("");
   const [readyDate, setReadyDate] = useState("");
   const [scheduledDate, setScheduledDate] = useState("");
@@ -95,6 +120,8 @@ function NewRequestPageContent() {
         unit,
         paintType,
         flooring,
+        priority,
+        smokedIn,
         moveOutDate,
         readyDate,
         scheduledDate,
@@ -152,6 +179,7 @@ function NewRequestPageContent() {
               placeholder="Example: North Creek Apartments"
               value={property}
               onChange={setProperty}
+              list="property-options"
             />
 
             <InputField
@@ -166,6 +194,7 @@ function NewRequestPageContent() {
               placeholder="Example: Reno Paint, Classic Paint, Primer + Paint"
               value={paintType}
               onChange={setPaintType}
+              list="paint-type-options"
             />
 
             <InputField
@@ -173,7 +202,45 @@ function NewRequestPageContent() {
               placeholder="Example: Keep vinyl / Replace carpet"
               value={flooring}
               onChange={setFlooring}
+              list="flooring-options"
             />
+
+            <div className="grid gap-5 md:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-sm text-zinc-400">
+                  Priority
+                </label>
+
+                <select
+                  value={priority}
+                  onChange={(event) => setPriority(event.target.value)}
+                  className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+                >
+                  <option>Low</option>
+                  <option>Normal</option>
+                  <option>High</option>
+                  <option>Urgent</option>
+                </select>
+              </div>
+
+              <label className="flex items-center gap-4 rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={smokedIn}
+                  onChange={(event) => setSmokedIn(event.target.checked)}
+                  className="h-5 w-5 accent-orange-500"
+                />
+
+                <span>
+                  <span className="block font-semibold">
+                    Smoker / remediation unit
+                  </span>
+                  <span className="text-sm text-zinc-400">
+                    Include this in remediation reporting.
+                  </span>
+                </span>
+              </label>
+            </div>
 
             <InputField
               label="Move Out Date"
@@ -219,6 +286,24 @@ function NewRequestPageContent() {
             <Button onClick={handleSubmit}>
               {isSaving ? "Saving..." : "Create Queue Item"}
             </Button>
+
+            <datalist id="property-options">
+              {propertyOptions.map((option) => (
+                <option key={option} value={option} />
+              ))}
+            </datalist>
+
+            <datalist id="paint-type-options">
+              {paintTypeOptions.map((option) => (
+                <option key={option} value={option} />
+              ))}
+            </datalist>
+
+            <datalist id="flooring-options">
+              {flooringOptions.map((option) => (
+                <option key={option} value={option} />
+              ))}
+            </datalist>
           </div>
         </Card>
       </div>

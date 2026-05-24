@@ -5,6 +5,8 @@ type CreateQueueItemInput = {
   unit: string;
   paintType: string;
   flooring: string;
+  priority: string;
+  smokedIn: boolean;
   moveOutDate: string;
   readyDate: string;
   scheduledDate: string;
@@ -26,6 +28,8 @@ export async function createQueueItem(input: CreateQueueItemInput) {
         unit: input.unit,
         paint_type: input.paintType,
         flooring: input.flooring,
+        priority: input.priority,
+        smoked_in: input.smokedIn,
         move_out_date: input.moveOutDate,
         ready_date: input.readyDate,
         scheduled_date: input.scheduledDate || null,
