@@ -35,12 +35,16 @@ const paintTypeOptions = [
 ];
 
 const flooringOptions = [
-  "Keep",
-  "Carpet",
-  "Vinyl",
-  "LVP",
+  "Keep Carpet & Keep Vinyl",
+  "Keep Vinyl & Replace Carpet",
+  "Keep Carpet & Replace Vinyl",
+  "Replace Carpet & Replace Vinyl",
+  "Keep Existing Flooring",
   "Replace Carpet",
   "Replace Vinyl",
+  "LVP",
+  "Carpet",
+  "Vinyl",
 ];
 
 export default function EditQueueItemPage() {
@@ -239,12 +243,14 @@ export default function EditQueueItemPage() {
                 label="Move Out Date"
                 value={moveOutDate}
                 onChange={setMoveOutDate}
+                type="date"
               />
 
               <InputField
                 label="Ready Date"
                 value={readyDate}
                 onChange={setReadyDate}
+                type="date"
               />
             </div>
 
@@ -253,12 +259,14 @@ export default function EditQueueItemPage() {
                 label="Scheduled Date"
                 value={scheduledDate}
                 onChange={setScheduledDate}
+                type="date"
               />
 
               <InputField
                 label="Completed Date"
                 value={completedDate}
                 onChange={setCompletedDate}
+                type="date"
               />
             </div>
 

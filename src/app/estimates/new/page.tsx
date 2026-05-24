@@ -1,6 +1,12 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AppShell from "../../components/AppShell";
 import Button from "../../components/Button";
@@ -45,6 +51,19 @@ type LineItem = {
   unitPrice: string;
 };
 
+type QueueItem = {
+  id: string;
+  business_id: string | null;
+  property: string | null;
+  unit: string | null;
+  paint_type: string | null;
+  flooring: string | null;
+  move_out_date: string | null;
+  ready_date: string | null;
+  notes: string | null;
+  smoked_in: boolean | null;
+};
+
 function formatCurrency(amount: number) {
   return `$${amount.toFixed(2)}`;
 }
@@ -87,6 +106,8 @@ function NewEstimatePageContent() {
   const [clients, setClients] = useState<Client[]>([]);
   const [serviceItems, setServiceItems] =
     useState<ServiceItem[]>([]);
+  const [queueItem, setQueueItem] =
+    useState<QueueItem | null>(null);
 
   const [selectedClientId, setSelectedClientId] =
     useState("");
@@ -170,6 +191,27 @@ function NewEstimatePageContent() {
     message: string;
   } | null>(null);
 
+  const applyTaxSuggestion = useCallback(
+    (address: string) => {
+      if (taxManuallyChanged) {
+        return;
+      }
+
+      const suggestion =
+        getTaxSuggestionForAddress(address);
+
+      if (!suggestion) {
+        setTaxLabel("");
+        setTaxRate("");
+        return;
+      }
+
+      setTaxLabel(suggestion.label);
+      setTaxRate(suggestion.rate);
+    },
+    [taxManuallyChanged]
+  );
+
   useEffect(() => {
     async function loadBusiness() {
       const { data, error } = await supabase
@@ -225,23 +267,83 @@ function NewEstimatePageContent() {
     loadBusiness();
   }, [businessSlug]);
 
-  function applyTaxSuggestion(address: string) {
-    if (taxManuallyChanged) {
-      return;
+  useEffect(() => {
+    async function loadQueueItem() {
+      if (!queueId || !business) {
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("queue_items")
+        .select("*")
+        .eq("id", queueId)
+        .eq("business_id", business.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (error || !data) {
+        console.error(error);
+
+        setToast({
+          type: "error",
+          message:
+            "Unable to load queue item details for this estimate.",
+        });
+
+        return;
+      }
+
+      const loadedQueueItem = data as QueueItem;
+      const unitLabel = loadedQueueItem.unit
+        ? `Unit ${loadedQueueItem.unit}`
+        : "Apartment Turn";
+      const titleParts = [
+        loadedQueueItem.property,
+        unitLabel,
+      ].filter(Boolean);
+      const descriptionParts = [
+        unitLabel,
+        loadedQueueItem.paint_type,
+        loadedQueueItem.flooring,
+      ].filter(Boolean);
+
+      setQueueItem(loadedQueueItem);
+      setCustomerName(loadedQueueItem.property ?? "");
+      setProjectTitle(titleParts.join(" - "));
+      setReference(loadedQueueItem.unit ?? "");
+      setNotes(loadedQueueItem.notes ?? "");
+      setLineItems([
+        {
+          serviceItemId: "",
+          description: descriptionParts.join(" - "),
+          quantity: "1",
+          unitPrice: "",
+        },
+      ]);
+
+      const matchingClient = clients.find(
+        (client) =>
+          client.name.trim().toLowerCase() ===
+          (loadedQueueItem.property ?? "").trim().toLowerCase()
+      );
+
+      if (matchingClient) {
+        setSelectedClientId(matchingClient.id);
+
+        const clientServiceAddress =
+          matchingClient.service_address ||
+          matchingClient.billing_address ||
+          "";
+
+        if (clientServiceAddress) {
+          setServiceAddress(clientServiceAddress);
+          applyTaxSuggestion(clientServiceAddress);
+        }
+      }
     }
 
-    const suggestion =
-      getTaxSuggestionForAddress(address);
-
-    if (!suggestion) {
-      setTaxLabel("");
-      setTaxRate("");
-      return;
-    }
-
-    setTaxLabel(suggestion.label);
-    setTaxRate(suggestion.rate);
-  }
+    loadQueueItem();
+  }, [applyTaxSuggestion, business, clients, queueId]);
 
   function handleServiceAddressChange(address: string) {
     setServiceAddress(address);
@@ -533,6 +635,21 @@ function NewEstimatePageContent() {
       return;
     }
 
+    if (queueId) {
+      const { error: queueUpdateError } = await supabase
+        .from("queue_items")
+        .update({
+          linked_estimate_id: data.id,
+          status: "Estimate Created",
+        })
+        .eq("id", queueId)
+        .eq("business_id", business.id);
+
+      if (queueUpdateError) {
+        console.error(queueUpdateError);
+      }
+    }
+
     await logActivity({
       businessId: business.id,
       action: "estimate.created",
@@ -583,6 +700,24 @@ function NewEstimatePageContent() {
             </p>
           </Card>
         )}
+
+        {queueItem ? (
+          <Card className="mt-6 border-purple-500/40 bg-purple-500/10">
+            <p className="text-sm uppercase tracking-[0.25em] text-purple-300">
+              Queue Item Loaded
+            </p>
+
+            <p className="mt-2 text-lg font-semibold text-purple-100">
+              {queueItem.property} - Unit {queueItem.unit}
+            </p>
+
+            <p className="mt-2 text-sm leading-6 text-purple-100/80">
+              Trimax copied the property, unit, paint type, flooring, reference,
+              and notes into this estimate. Add pricing and adjust any details
+              before saving.
+            </p>
+          </Card>
+        ) : null}
 
         <Card className="mt-8">
           <div className="grid gap-5">

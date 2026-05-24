@@ -16,6 +16,10 @@ type CreateQueueItemInput = {
   businessId: string;
 };
 
+function normalizeDate(value: string) {
+  return value.trim() || null;
+}
+
 export async function createQueueItem(input: CreateQueueItemInput) {
   const id = crypto.randomUUID();
 
@@ -31,10 +35,10 @@ export async function createQueueItem(input: CreateQueueItemInput) {
         flooring: input.flooring,
         priority: input.priority,
         smoked_in: input.smokedIn,
-        move_out_date: input.moveOutDate,
-        ready_date: input.readyDate,
-        scheduled_date: input.scheduledDate || null,
-        completed_date: input.completedDate || null,
+        move_out_date: normalizeDate(input.moveOutDate),
+        ready_date: normalizeDate(input.readyDate),
+        scheduled_date: normalizeDate(input.scheduledDate),
+        completed_date: normalizeDate(input.completedDate),
         status: "Pending Estimate",
         notes: input.notes,
       },

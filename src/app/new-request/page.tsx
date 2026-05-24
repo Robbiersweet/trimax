@@ -31,12 +31,16 @@ const paintTypeOptions = [
 ];
 
 const flooringOptions = [
-  "Keep",
-  "Carpet",
-  "Vinyl",
-  "LVP",
+  "Keep Carpet & Keep Vinyl",
+  "Keep Vinyl & Replace Carpet",
+  "Keep Carpet & Replace Vinyl",
+  "Replace Carpet & Replace Vinyl",
+  "Keep Existing Flooring",
   "Replace Carpet",
   "Replace Vinyl",
+  "LVP",
+  "Carpet",
+  "Vinyl",
 ];
 
 function NewRequestPageContent() {
@@ -137,10 +141,15 @@ function NewRequestPageContent() {
 
       router.push(`/queue?business=${business.slug}`);
       router.refresh();
-    } catch {
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Something went wrong while saving the queue item.";
+
       setToast({
         type: "error",
-        message: "Something went wrong while saving the queue item.",
+        message,
       });
     } finally {
       setIsSaving(false);
@@ -199,7 +208,7 @@ function NewRequestPageContent() {
 
             <InputField
               label="Flooring"
-              placeholder="Example: Keep vinyl / Replace carpet"
+              placeholder="Example: Keep Vinyl & Replace Carpet"
               value={flooring}
               onChange={setFlooring}
               list="flooring-options"
@@ -247,6 +256,7 @@ function NewRequestPageContent() {
               placeholder="Example: 2026-06-30"
               value={moveOutDate}
               onChange={setMoveOutDate}
+              type="date"
             />
 
             <InputField
@@ -254,6 +264,7 @@ function NewRequestPageContent() {
               placeholder="Example: 2026-07-03"
               value={readyDate}
               onChange={setReadyDate}
+              type="date"
             />
 
             <div className="grid gap-5 md:grid-cols-2">
@@ -262,6 +273,7 @@ function NewRequestPageContent() {
                 placeholder="Optional"
                 value={scheduledDate}
                 onChange={setScheduledDate}
+                type="date"
               />
 
               <InputField
@@ -269,6 +281,7 @@ function NewRequestPageContent() {
                 placeholder="Optional"
                 value={completedDate}
                 onChange={setCompletedDate}
+                type="date"
               />
             </div>
 
