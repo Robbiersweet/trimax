@@ -68,6 +68,13 @@ export default function Navigation() {
           Clients
         </Link>
 
+        <Link
+          href={`/services?business=${business}`}
+          className="hover:text-orange-400"
+        >
+          Services
+        </Link>
+
         <UserMenu />
       </div>
     </nav>

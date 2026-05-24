@@ -24,7 +24,17 @@ type Client = {
   billing_address: string | null;
 };
 
+type ServiceItem = {
+  id: string;
+  name: string;
+  description: string | null;
+  default_quantity: number | string | null;
+  default_unit_price: number | string | null;
+  category: string | null;
+};
+
 type LineItem = {
+  serviceItemId: string;
   description: string;
   quantity: string;
   unitPrice: string;
@@ -51,6 +61,8 @@ function NewInvoicePageContent() {
   const [business, setBusiness] =
     useState<Business | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
+  const [serviceItems, setServiceItems] =
+    useState<ServiceItem[]>([]);
   const [selectedClientId, setSelectedClientId] =
     useState("");
 
@@ -58,24 +70,41 @@ function NewInvoicePageContent() {
     useState("");
   const [projectTitle, setProjectTitle] =
     useState("");
+  const [issueDate, setIssueDate] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [reference, setReference] = useState("");
+  const [taxLabel, setTaxLabel] = useState("Tax");
+  const [taxRate, setTaxRate] = useState("0");
+  const [amountPaid, setAmountPaid] = useState("0");
+  const [terms, setTerms] = useState(
+    "Payment due upon invoice. Thank you for your business."
+  );
   const [notes, setNotes] = useState("");
 
   const [lineItems, setLineItems] =
     useState<LineItem[]>([
       {
+        serviceItemId: "",
         description: "",
         quantity: "1",
         unitPrice: "",
       },
     ]);
 
-  const invoiceTotal = useMemo(() => {
+  const subtotal = useMemo(() => {
     return lineItems.reduce(
       (total, item) => total + getLineTotal(item),
       0
     );
   }, [lineItems]);
+
+  const taxAmount = useMemo(() => {
+    return subtotal * ((Number(taxRate) || 0) / 100);
+  }, [subtotal, taxRate]);
+
+  const invoiceTotal = subtotal + taxAmount;
+  const amountDue =
+    invoiceTotal - (Number(amountPaid) || 0);
 
   const [toast, setToast] = useState<{
     type: "success" | "error";
@@ -115,6 +144,23 @@ function NewInvoicePageContent() {
           });
 
       setClients((clientData ?? []) as Client[]);
+
+      const { data: serviceData } =
+        await supabase
+          .from("service_items")
+          .select("*")
+          .eq("business_id", businessData.id)
+          .eq("is_active", true)
+          .order("category", {
+            ascending: true,
+          })
+          .order("name", {
+            ascending: true,
+          });
+
+      setServiceItems(
+        (serviceData ?? []) as ServiceItem[]
+      );
     }
 
     loadBusiness();
@@ -132,10 +178,6 @@ function NewInvoicePageContent() {
     }
 
     setCustomerName(client.name);
-
-    if (client.billing_address) {
-      setNotes(`Billing Address:\n${client.billing_address}`);
-    }
   }
 
   function updateLineItem(
@@ -155,10 +197,49 @@ function NewInvoicePageContent() {
     );
   }
 
+  function handleServiceChange(
+    index: number,
+    serviceItemId: string
+  ) {
+    const selectedService = serviceItems.find(
+      (serviceItem) => serviceItem.id === serviceItemId
+    );
+
+    if (!selectedService) {
+      updateLineItem(index, "serviceItemId", "");
+      return;
+    }
+
+    setLineItems((currentItems) =>
+      currentItems.map((item, itemIndex) =>
+        itemIndex === index
+          ? {
+              ...item,
+              serviceItemId,
+              description:
+                selectedService.description ||
+                selectedService.name,
+              quantity: String(
+                Number(
+                  selectedService.default_quantity
+                ) || 1
+              ),
+              unitPrice: String(
+                Number(
+                  selectedService.default_unit_price
+                ) || 0
+              ),
+            }
+          : item
+      )
+    );
+  }
+
   function addLineItem() {
     setLineItems((currentItems) => [
       ...currentItems,
       {
+        serviceItemId: "",
         description: "",
         quantity: "1",
         unitPrice: "",
@@ -189,10 +270,16 @@ function NewInvoicePageContent() {
     }
 
     const validLineItems = lineItems.filter(
-      (item) => item.description.trim() && getLineTotal(item) > 0
+      (item) =>
+        item.description.trim() &&
+        getLineTotal(item) > 0
     );
 
-    if (!customerName || !projectTitle || validLineItems.length === 0) {
+    if (
+      !customerName ||
+      !projectTitle ||
+      validLineItems.length === 0
+    ) {
       setToast({
         type: "error",
         message:
@@ -256,7 +343,13 @@ function NewInvoicePageContent() {
         customer_name: customerName,
         project_title: projectTitle,
         invoice_amount: formatCurrency(invoiceTotal),
+        issue_date: issueDate,
         due_date: dueDate,
+        reference,
+        tax_label: taxLabel || "Tax",
+        tax_rate: Number(taxRate) || 0,
+        amount_paid: Number(amountPaid) || 0,
+        terms,
         notes,
         status: "Draft",
       })
@@ -372,12 +465,51 @@ function NewInvoicePageContent() {
               onChange={setProjectTitle}
             />
 
+            <div className="grid gap-5 md:grid-cols-2">
+              <InputField
+                label="Issue Date"
+                placeholder="Example: 05/23/2026"
+                value={issueDate}
+                onChange={setIssueDate}
+              />
+
+              <InputField
+                label="Due Date"
+                placeholder="Example: 06/22/2026"
+                value={dueDate}
+                onChange={setDueDate}
+              />
+            </div>
+
             <InputField
-              label="Due Date"
-              placeholder="Example: Net 30"
-              value={dueDate}
-              onChange={setDueDate}
+              label="Reference"
+              placeholder="Example: Unit 204, PO #123, X4"
+              value={reference}
+              onChange={setReference}
             />
+
+            <div className="grid gap-5 md:grid-cols-3">
+              <InputField
+                label="Tax Label"
+                placeholder="Example: Snohomish"
+                value={taxLabel}
+                onChange={setTaxLabel}
+              />
+
+              <InputField
+                label="Tax Rate (%)"
+                type="number"
+                value={taxRate}
+                onChange={setTaxRate}
+              />
+
+              <InputField
+                label="Amount Paid"
+                type="number"
+                value={amountPaid}
+                onChange={setAmountPaid}
+              />
+            </div>
 
             <div className="rounded-2xl border border-zinc-800 bg-zinc-950/40 p-4">
               <div className="flex items-center justify-between gap-4">
@@ -394,61 +526,131 @@ function NewInvoicePageContent() {
                 {lineItems.map((item, index) => (
                   <div
                     key={index}
-                    className="grid gap-3 rounded-2xl border border-zinc-800 bg-zinc-950 p-4 md:grid-cols-[1fr_120px_140px_120px_auto]"
+                    className="grid gap-3 rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
                   >
-                    <InputField
-                      label="Description"
-                      placeholder="Labor, materials, paint..."
-                      value={item.description}
-                      onChange={(value) =>
-                        updateLineItem(index, "description", value)
-                      }
-                    />
-
-                    <InputField
-                      label="Qty"
-                      type="number"
-                      value={item.quantity}
-                      onChange={(value) =>
-                        updateLineItem(index, "quantity", value)
-                      }
-                    />
-
-                    <InputField
-                      label="Unit Price"
-                      type="number"
-                      value={item.unitPrice}
-                      onChange={(value) =>
-                        updateLineItem(index, "unitPrice", value)
-                      }
-                    />
-
                     <div>
-                      <p className="mb-2 text-sm text-zinc-400">
-                        Total
-                      </p>
+                      <label className="mb-2 block text-sm text-zinc-400">
+                        Saved Service
+                      </label>
 
-                      <p className="rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 font-semibold text-orange-400">
-                        {formatCurrency(getLineTotal(item))}
-                      </p>
+                      <select
+                        value={item.serviceItemId}
+                        onChange={(event) =>
+                          handleServiceChange(
+                            index,
+                            event.target.value
+                          )
+                        }
+                        className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+                      >
+                        <option value="">
+                          -- Custom Line Item --
+                        </option>
+
+                        {serviceItems.map((serviceItem) => (
+                          <option
+                            key={serviceItem.id}
+                            value={serviceItem.id}
+                          >
+                            {serviceItem.category
+                              ? `${serviceItem.category} - ${serviceItem.name}`
+                              : serviceItem.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
-                    <div className="flex items-end">
-                      <Button
-                        variant="secondary"
-                        onClick={() => removeLineItem(index)}
-                      >
-                        Remove
-                      </Button>
+                    <div className="grid gap-3 md:grid-cols-[1fr_120px_140px_120px_auto]">
+                      <InputField
+                        label="Description"
+                        placeholder="Labor, materials, paint..."
+                        value={item.description}
+                        onChange={(value) =>
+                          updateLineItem(
+                            index,
+                            "description",
+                            value
+                          )
+                        }
+                      />
+
+                      <InputField
+                        label="Qty"
+                        type="number"
+                        value={item.quantity}
+                        onChange={(value) =>
+                          updateLineItem(
+                            index,
+                            "quantity",
+                            value
+                          )
+                        }
+                      />
+
+                      <InputField
+                        label="Unit Price"
+                        type="number"
+                        value={item.unitPrice}
+                        onChange={(value) =>
+                          updateLineItem(
+                            index,
+                            "unitPrice",
+                            value
+                          )
+                        }
+                      />
+
+                      <div>
+                        <p className="mb-2 text-sm text-zinc-400">
+                          Total
+                        </p>
+
+                        <p className="rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 font-semibold text-orange-400">
+                          {formatCurrency(getLineTotal(item))}
+                        </p>
+                      </div>
+
+                      <div className="flex items-end">
+                        <Button
+                          variant="secondary"
+                          onClick={() => removeLineItem(index)}
+                        >
+                          Remove
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="mt-4 flex justify-end">
-                <p className="text-2xl font-bold text-orange-400">
-                  Total: {formatCurrency(invoiceTotal)}
-                </p>
+              <div className="ml-auto mt-6 grid max-w-sm gap-3 text-sm">
+                <SummaryRow
+                  label="Subtotal"
+                  value={formatCurrency(subtotal)}
+                />
+
+                <SummaryRow
+                  label={`${taxLabel || "Tax"} (${Number(taxRate) || 0}%)`}
+                  value={formatCurrency(taxAmount)}
+                />
+
+                <SummaryRow
+                  label="Total"
+                  value={formatCurrency(invoiceTotal)}
+                />
+
+                <SummaryRow
+                  label="Amount Paid"
+                  value={formatCurrency(Number(amountPaid) || 0)}
+                />
+
+                <div className="border-t border-zinc-700 pt-3">
+                  <SummaryRow
+                    label="Amount Due"
+                    value={formatCurrency(amountDue)}
+                    strong
+                  />
+                </div>
               </div>
             </div>
 
@@ -460,8 +662,21 @@ function NewInvoicePageContent() {
               <textarea
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
-                placeholder="Invoice notes..."
-                className="min-h-40 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+                placeholder="Internal notes..."
+                className="min-h-32 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm text-zinc-400">
+                Terms
+              </label>
+
+              <textarea
+                value={terms}
+                onChange={(event) => setTerms(event.target.value)}
+                placeholder="Payment terms..."
+                className="min-h-32 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
               />
             </div>
 
@@ -472,6 +687,32 @@ function NewInvoicePageContent() {
         </Card>
       </div>
     </AppShell>
+  );
+}
+
+function SummaryRow({
+  label,
+  value,
+  strong = false,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+}) {
+  return (
+    <div
+      className={`flex items-center justify-between gap-4 ${
+        strong ? "text-lg font-bold text-orange-400" : ""
+      }`}
+    >
+      <span className="text-zinc-400">
+        {label}
+      </span>
+
+      <span className="font-semibold">
+        {value}
+      </span>
+    </div>
   );
 }
 

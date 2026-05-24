@@ -16,7 +16,13 @@ type Invoice = {
   invoice_amount: string | null;
   status: string | null;
   display_id: string | null;
+  issue_date: string | null;
   due_date: string | null;
+  reference: string | null;
+  tax_label: string | null;
+  tax_rate: number | string | null;
+  amount_paid: number | string | null;
+  terms: string | null;
   notes: string | null;
 };
 
@@ -103,16 +109,30 @@ export default async function InvoiceDetailsPage({
   const lineItems =
     (lineItemData ?? []) as InvoiceLineItem[];
 
-  const lineItemTotal = lineItems.reduce(
+  const subtotal = lineItems.reduce(
     (total, item) =>
       total + toNumber(item.line_total),
     0
   );
 
-  const displayTotal =
-    lineItems.length > 0
-      ? formatCurrency(lineItemTotal)
-      : invoice.invoice_amount;
+  const fallbackSubtotal =
+    subtotal > 0
+      ? subtotal
+      : toNumber(
+          invoice.invoice_amount?.replace(
+            /[^0-9.]/g,
+            ""
+          ) ?? null
+        );
+
+  const taxRate = toNumber(invoice.tax_rate);
+  const taxAmount =
+    fallbackSubtotal * (taxRate / 100);
+  const invoiceTotal =
+    fallbackSubtotal + taxAmount;
+  const amountPaid = toNumber(invoice.amount_paid);
+  const amountDue =
+    invoiceTotal - amountPaid;
 
   let linkedEstimate: LinkedEstimate | null =
     null;
@@ -138,7 +158,7 @@ export default async function InvoiceDetailsPage({
           href={`/invoices?business=${businessSlug}`}
           className="inline-flex text-sm text-orange-400 hover:text-orange-300"
         >
-          ← Back to Invoices
+          Back to Invoices
         </Link>
 
         <div className="flex items-start justify-between">
@@ -201,8 +221,13 @@ export default async function InvoiceDetailsPage({
             />
 
             <Info
-              label="Amount"
-              value={displayTotal}
+              label="Amount Due"
+              value={formatCurrency(amountDue)}
+            />
+
+            <Info
+              label="Issue Date"
+              value={invoice.issue_date}
             />
 
             <Info
@@ -214,6 +239,11 @@ export default async function InvoiceDetailsPage({
               label="Invoice Number"
               value={invoice.display_id}
             />
+
+            <Info
+              label="Reference"
+              value={invoice.reference}
+            />
           </div>
         </Card>
 
@@ -224,7 +254,7 @@ export default async function InvoiceDetailsPage({
             </h2>
 
             <p className="text-2xl font-bold text-orange-400">
-              {displayTotal || "$0.00"}
+              {formatCurrency(amountDue)}
             </p>
           </div>
 
@@ -269,6 +299,36 @@ export default async function InvoiceDetailsPage({
               ))}
             </div>
           )}
+
+          <div className="ml-auto mt-6 grid max-w-sm gap-3 text-sm">
+            <SummaryRow
+              label="Subtotal"
+              value={formatCurrency(fallbackSubtotal)}
+            />
+
+            <SummaryRow
+              label={`${invoice.tax_label || "Tax"} (${taxRate}%)`}
+              value={formatCurrency(taxAmount)}
+            />
+
+            <SummaryRow
+              label="Total"
+              value={formatCurrency(invoiceTotal)}
+            />
+
+            <SummaryRow
+              label="Amount Paid"
+              value={formatCurrency(amountPaid)}
+            />
+
+            <div className="border-t border-zinc-700 pt-3">
+              <SummaryRow
+                label="Amount Due"
+                value={formatCurrency(amountDue)}
+                strong
+              />
+            </div>
+          </div>
         </Card>
 
         <Card>
@@ -279,6 +339,17 @@ export default async function InvoiceDetailsPage({
           <p className="mt-2 leading-7 text-zinc-300">
             {invoice.notes ||
               "No notes added."}
+          </p>
+        </Card>
+
+        <Card>
+          <p className="text-sm text-zinc-500">
+            Terms
+          </p>
+
+          <p className="mt-2 leading-7 text-zinc-300">
+            {invoice.terms ||
+              "No terms added."}
           </p>
         </Card>
 
@@ -344,8 +415,34 @@ function Info({
       </p>
 
       <p className="mt-1 text-lg font-medium">
-        {value || "—"}
+        {value || "-"}
       </p>
+    </div>
+  );
+}
+
+function SummaryRow({
+  label,
+  value,
+  strong = false,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+}) {
+  return (
+    <div
+      className={`flex items-center justify-between gap-4 ${
+        strong ? "text-lg font-bold text-orange-400" : ""
+      }`}
+    >
+      <span className="text-zinc-400">
+        {label}
+      </span>
+
+      <span className="font-semibold">
+        {value}
+      </span>
     </div>
   );
 }
