@@ -75,6 +75,13 @@ export default function Navigation() {
           Services
         </Link>
 
+        <Link
+          href={`/settings?business=${business}`}
+          className="hover:text-orange-400"
+        >
+          Settings
+        </Link>
+
         <UserMenu />
       </div>
     </nav>
