@@ -416,12 +416,12 @@ export default async function ReportsPage({
           </Link>
         </div>
 
-        <Card>
-          <div className="grid gap-4 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
+        <Card className="p-5">
+          <div className="grid gap-5 xl:grid-cols-[1fr_auto_auto] xl:items-end">
             <div>
               <p className="text-sm text-zinc-400">Property</p>
 
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-2 flex max-h-28 flex-wrap gap-2 overflow-auto pr-1">
                 <Link
                   href={reportsHref(businessSlug, {
                     property: "all",
@@ -458,7 +458,7 @@ export default async function ReportsPage({
             <div>
               <p className="text-sm text-zinc-400">Date Range</p>
 
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-2 grid grid-cols-3 gap-2">
                 {(["week", "month", "all"] as ReportRange[]).map(
                   (rangeOption) => (
                     <Link
@@ -467,7 +467,7 @@ export default async function ReportsPage({
                         property: propertyFilter,
                         range: rangeOption,
                       })}
-                      className={`rounded-full px-4 py-2 text-sm font-semibold capitalize transition ${
+                      className={`rounded-full px-4 py-2 text-center text-sm font-semibold capitalize transition ${
                         range === rangeOption
                           ? "bg-orange-500 text-black"
                           : "bg-zinc-950 text-zinc-300 hover:bg-zinc-800"
@@ -480,7 +480,7 @@ export default async function ReportsPage({
               </div>
             </div>
 
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3">
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 xl:min-w-72">
               <p className="text-sm text-zinc-400">Current View</p>
               <p className="mt-1 font-semibold">
                 {propertyLabel} / {rangeLabel}
@@ -489,7 +489,7 @@ export default async function ReportsPage({
           </div>
         </Card>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <MetricCard
             label="Units Submitted"
             value={filteredQueueItems.length}
@@ -500,7 +500,7 @@ export default async function ReportsPage({
           <MetricCard label="Completed" value={completedItems.length} />
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard
             label="Ready Soon, Not Scheduled"
             value={approachingReadyUnscheduled.length}
@@ -636,9 +636,9 @@ function MetricCard({
   value: string | number;
 }) {
   return (
-    <Card>
+    <Card className="min-h-32 p-5">
       <p className="text-sm text-zinc-400">{label}</p>
-      <p className="mt-2 text-4xl font-bold">{value}</p>
+      <p className="mt-3 text-4xl font-bold leading-none">{value}</p>
     </Card>
   );
 }
