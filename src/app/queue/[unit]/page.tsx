@@ -94,7 +94,7 @@ export default async function QueueDetailPage({
           href={`/queue?business=${businessSlug}`}
           className="inline-flex text-sm text-orange-400 hover:text-orange-300"
         >
-          ← Back to Queue
+          Back to Queue
         </Link>
 
         <div className="flex items-start justify-between">
@@ -126,7 +126,9 @@ export default async function QueueDetailPage({
                 </p>
               </div>
 
-              <Link href={`/estimates/${linkedEstimate.id}`}>
+              <Link
+                href={`/estimates/${linkedEstimate.id}?business=${businessSlug}`}
+              >
                 <Button variant="secondary">Open Estimate</Button>
               </Link>
             </div>
@@ -183,7 +185,7 @@ function Info({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <p className="text-sm text-zinc-500">{label}</p>
-      <p className="mt-1 text-lg font-medium">{value || "—"}</p>
+      <p className="mt-1 text-lg font-medium">{value || "-"}</p>
     </div>
   );
 }
