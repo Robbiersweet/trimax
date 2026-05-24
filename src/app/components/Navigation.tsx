@@ -55,6 +55,11 @@ export default function Navigation() {
       active: pathname.startsWith("/services"),
     },
     {
+      label: "Reports",
+      href: `/reports?business=${business}`,
+      active: pathname.startsWith("/reports"),
+    },
+    {
       label: "Settings",
       href: `/settings?business=${business}`,
       active: pathname.startsWith("/settings"),
