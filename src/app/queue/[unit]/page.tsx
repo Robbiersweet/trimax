@@ -39,6 +39,95 @@ type LinkedEstimate = {
   status: string | null;
 };
 
+function dateValue(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date;
+}
+
+function daysBetween(startValue: string | null, endValue: string | null) {
+  const start = dateValue(startValue);
+  const end = dateValue(endValue);
+
+  if (!start || !end) {
+    return null;
+  }
+
+  return Math.max(
+    Math.round((end.getTime() - start.getTime()) / 86400000),
+    0
+  );
+}
+
+function readyStatus(item: SupabaseQueueItem) {
+  const readyDate = dateValue(item.ready_date);
+  const isScheduled = Boolean(item.scheduled_date);
+  const isCompleted = Boolean(item.completed_date);
+
+  if (isCompleted) {
+    return {
+      tone: "green",
+      label: "Completed",
+      detail: "This unit has a completed date recorded.",
+    };
+  }
+
+  if (!readyDate) {
+    return {
+      tone: "zinc",
+      label: "Ready date not set",
+      detail: "Add a ready date to make this useful in reports.",
+    };
+  }
+
+  if (isScheduled) {
+    return {
+      tone: "orange",
+      label: "Scheduled",
+      detail: "This unit has a scheduled date recorded.",
+    };
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const daysUntilReady = Math.round(
+    (readyDate.getTime() - today.getTime()) / 86400000
+  );
+
+  if (daysUntilReady < 0) {
+    return {
+      tone: "red",
+      label: "Past ready date",
+      detail: "Ready date has passed and this unit is not scheduled.",
+    };
+  }
+
+  if (daysUntilReady <= 7) {
+    return {
+      tone: "yellow",
+      label: "Ready soon",
+      detail: `${daysUntilReady} day${
+        daysUntilReady === 1 ? "" : "s"
+      } until ready date, not scheduled yet.`,
+    };
+  }
+
+  return {
+    tone: "zinc",
+    label: "Upcoming",
+    detail: `${daysUntilReady} days until ready date.`,
+  };
+}
+
 export default async function QueueDetailPage({
   params,
 }: {
@@ -90,6 +179,12 @@ export default async function QueueDetailPage({
     linkedEstimate = estimateData as LinkedEstimate | null;
   }
 
+  const readiness = readyStatus(item);
+  const turnaroundDays = daysBetween(
+    item.move_out_date,
+    item.completed_date
+  );
+
   return (
     <AppShell>
       <div className="space-y-6">
@@ -110,6 +205,39 @@ export default async function QueueDetailPage({
           </div>
 
           <StatusBadge status={item.status ?? "Pending Estimate"} />
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <AttentionCard
+            tone={readiness.tone}
+            label="Readiness"
+            value={readiness.label}
+            detail={readiness.detail}
+          />
+
+          <AttentionCard
+            tone={turnaroundDays === null ? "zinc" : "green"}
+            label="Turnaround"
+            value={
+              turnaroundDays === null
+                ? "-"
+                : `${turnaroundDays} day${
+                    turnaroundDays === 1 ? "" : "s"
+                  }`
+            }
+            detail="Move out to completed date."
+          />
+
+          <AttentionCard
+            tone={item.smoked_in ? "red" : "zinc"}
+            label="Remediation"
+            value={item.smoked_in ? "Yes" : "No"}
+            detail={
+              item.smoked_in
+                ? "This is counted in smoker/remediation reporting."
+                : "No remediation flag is set."
+            }
+          />
         </div>
 
         {linkedEstimate && (
@@ -203,6 +331,34 @@ export default async function QueueDetailPage({
         </div>
       </div>
     </AppShell>
+  );
+}
+
+function AttentionCard({
+  tone,
+  label,
+  value,
+  detail,
+}: {
+  tone: string;
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  const toneClasses: Record<string, string> = {
+    green: "border-green-500/40 bg-green-500/10",
+    orange: "border-orange-500/40 bg-orange-500/10",
+    red: "border-red-500/40 bg-red-500/10",
+    yellow: "border-yellow-500/40 bg-yellow-500/10",
+    zinc: "border-zinc-800 bg-zinc-900",
+  };
+
+  return (
+    <Card className={toneClasses[tone] ?? toneClasses.zinc}>
+      <p className="text-sm text-zinc-400">{label}</p>
+      <p className="mt-2 text-2xl font-bold">{value}</p>
+      <p className="mt-2 text-sm text-zinc-300">{detail}</p>
+    </Card>
   );
 }
 
