@@ -395,10 +395,10 @@ export default async function DashboardPage({
             </p>
 
             <Link
-              href={`/reports?business=${selectedBusinessSlug}&range=week`}
+              href={`/queue?business=${selectedBusinessSlug}&view=ready-soon`}
               className="mt-4 inline-block text-sm text-orange-400"
             >
-              Review readiness report
+              Open ready soon queue
             </Link>
           </Card>
 
@@ -421,10 +421,10 @@ export default async function DashboardPage({
             </p>
 
             <Link
-              href={`/queue?business=${selectedBusinessSlug}&q=smok`}
+              href={`/queue?business=${selectedBusinessSlug}&view=remediation`}
               className="mt-4 inline-block text-sm text-orange-400"
             >
-              Search remediation queue
+              Open remediation queue
             </Link>
           </Card>
         </div>

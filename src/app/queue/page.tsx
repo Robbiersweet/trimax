@@ -44,11 +44,57 @@ function statusLabel(value: string) {
     .join(" ");
 }
 
+function dateValue(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date;
+}
+
+function isReadySoonUnscheduled(item: QueueItemWithEstimate) {
+  const readyDate = dateValue(item.ready_date);
+
+  if (!readyDate) {
+    return false;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const sevenDaysFromNow = new Date(today);
+  sevenDaysFromNow.setDate(today.getDate() + 7);
+
+  const status = normalizeStatus(item.status);
+
+  return (
+    readyDate >= today &&
+    readyDate <= sevenDaysFromNow &&
+    !item.scheduled_date &&
+    status !== "scheduled" &&
+    status !== "completed"
+  );
+}
+
+function isRemediationItem(item: QueueItemWithEstimate) {
+  return (
+    Boolean(item.smoked_in) ||
+    (item.notes || "").toLowerCase().includes("smok")
+  );
+}
+
 function queueHref(
   businessSlug: string,
   options?: {
     q?: string;
     status?: string;
+    view?: string;
   }
 ) {
   const params = new URLSearchParams({
@@ -63,6 +109,10 @@ function queueHref(
     params.set("status", options.status);
   }
 
+  if (options?.view && options.view !== "all") {
+    params.set("view", options.view);
+  }
+
   return `/queue?${params.toString()}`;
 }
 
@@ -73,6 +123,7 @@ export default async function QueuePage({
     business?: string;
     q?: string;
     status?: string;
+    view?: string;
   }>;
 }) {
   const resolvedSearchParams = searchParams ? await searchParams : {};
@@ -80,6 +131,8 @@ export default async function QueuePage({
   const searchTerm = resolvedSearchParams.q?.trim() ?? "";
   const statusFilter =
     resolvedSearchParams.status?.trim().toLowerCase() ?? "all";
+  const viewFilter =
+    resolvedSearchParams.view?.trim().toLowerCase() ?? "all";
   const businessQuery = `?business=${businessSlug}`;
 
   const { data: businessData, error: businessError } = await supabase
@@ -142,6 +195,14 @@ export default async function QueuePage({
       return false;
     }
 
+    if (viewFilter === "ready-soon" && !isReadySoonUnscheduled(item)) {
+      return false;
+    }
+
+    if (viewFilter === "remediation" && !isRemediationItem(item)) {
+      return false;
+    }
+
     if (!searchTerm) {
       return true;
     }
@@ -174,6 +235,21 @@ export default async function QueuePage({
       label: statusLabel(status),
       value: status,
     })),
+  ];
+
+  const specialViewLinks = [
+    {
+      label: "All Work",
+      value: "all",
+    },
+    {
+      label: "Ready Soon",
+      value: "ready-soon",
+    },
+    {
+      label: "Remediation",
+      value: "remediation",
+    },
   ];
 
   return (
@@ -209,6 +285,10 @@ export default async function QueuePage({
               <input type="hidden" name="status" value={statusFilter} />
             ) : null}
 
+            {viewFilter !== "all" ? (
+              <input type="hidden" name="view" value={viewFilter} />
+            ) : null}
+
             <div>
               <label className="mb-2 block text-sm text-zinc-400">
                 Search Queue
@@ -225,7 +305,9 @@ export default async function QueuePage({
             <div className="flex items-end gap-3">
               <Button>Search</Button>
 
-              {(searchTerm || statusFilter !== "all") && (
+              {(searchTerm ||
+                statusFilter !== "all" ||
+                viewFilter !== "all") && (
                 <Link href={`/queue${businessQuery}`}>
                   <Button variant="secondary">Clear</Button>
                 </Link>
@@ -235,12 +317,33 @@ export default async function QueuePage({
         </Card>
 
         <div className="flex flex-wrap gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-2">
+          {specialViewLinks.map((filter) => (
+            <Link
+              key={filter.value}
+              href={queueHref(businessSlug, {
+                q: searchTerm,
+                status: statusFilter,
+                view: filter.value,
+              })}
+              className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                viewFilter === filter.value
+                  ? "bg-orange-500 text-black"
+                  : "text-zinc-300 hover:bg-zinc-800 hover:text-white"
+              }`}
+            >
+              {filter.label}
+            </Link>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-2">
           {statusLinks.map((filter) => (
             <Link
               key={filter.value}
               href={queueHref(businessSlug, {
                 q: searchTerm,
                 status: filter.value,
+                view: viewFilter,
               })}
               className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
                 statusFilter === filter.value
