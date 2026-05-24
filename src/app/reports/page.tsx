@@ -43,7 +43,7 @@ type Invoice = {
   created_at: string | null;
 };
 
-type ReportRange = "week" | "month" | "all";
+type ReportRange = "week" | "month" | "all" | "custom";
 
 function parseMoney(value: string | number | null) {
   if (typeof value === "number") {
@@ -115,12 +115,37 @@ function rangeStart(range: ReportRange) {
   return null;
 }
 
-function isInRange(value: string | null, range: ReportRange) {
+function isInRange(
+  value: string | null,
+  range: ReportRange,
+  customStart: string,
+  customEnd: string
+) {
   if (range === "all") {
     return true;
   }
 
   const date = dateValue(value);
+
+  if (range === "custom") {
+    const start = dateValue(customStart);
+    const end = dateValue(customEnd);
+
+    if (!date) {
+      return false;
+    }
+
+    if (start && date < start) {
+      return false;
+    }
+
+    if (end && date > end) {
+      return false;
+    }
+
+    return Boolean(start || end);
+  }
+
   const start = rangeStart(range);
 
   if (!date || !start) {
@@ -173,6 +198,8 @@ function reportsHref(
   options: {
     property?: string;
     range?: ReportRange;
+    from?: string;
+    to?: string;
   }
 ) {
   const params = new URLSearchParams({
@@ -180,6 +207,16 @@ function reportsHref(
     property: options.property ?? "all",
     range: options.range ?? "month",
   });
+
+  if (options.range === "custom") {
+    if (options.from) {
+      params.set("from", options.from);
+    }
+
+    if (options.to) {
+      params.set("to", options.to);
+    }
+  }
 
   return `/reports?${params.toString()}`;
 }
@@ -191,6 +228,8 @@ export default async function ReportsPage({
     business?: string;
     property?: string;
     range?: ReportRange;
+    from?: string;
+    to?: string;
   }>;
 }) {
   const resolvedSearchParams = searchParams ? await searchParams : {};
@@ -199,9 +238,12 @@ export default async function ReportsPage({
     resolvedSearchParams.property?.trim().toLowerCase() ?? "all";
   const range =
     resolvedSearchParams.range === "week" ||
-    resolvedSearchParams.range === "all"
+    resolvedSearchParams.range === "all" ||
+    resolvedSearchParams.range === "custom"
       ? resolvedSearchParams.range
       : "month";
+  const customStartDate = resolvedSearchParams.from ?? "";
+  const customEndDate = resolvedSearchParams.to ?? "";
 
   const { data: businessData, error: businessError } = await supabase
     .from("businesses")
@@ -270,11 +312,31 @@ export default async function ReportsPage({
   const filteredQueueItems = queueItems.filter(
     (item) =>
       includesProperty(item, propertyFilter) &&
-      (isInRange(item.created_at, range) ||
-        isInRange(item.move_out_date, range) ||
-        isInRange(item.ready_date, range) ||
-        isInRange(item.scheduled_date, range) ||
-        isInRange(item.completed_date, range))
+      (isInRange(item.created_at, range, customStartDate, customEndDate) ||
+        isInRange(
+          item.move_out_date,
+          range,
+          customStartDate,
+          customEndDate
+        ) ||
+        isInRange(
+          item.ready_date,
+          range,
+          customStartDate,
+          customEndDate
+        ) ||
+        isInRange(
+          item.scheduled_date,
+          range,
+          customStartDate,
+          customEndDate
+        ) ||
+        isInRange(
+          item.completed_date,
+          range,
+          customStartDate,
+          customEndDate
+        ))
   );
 
   const activeQueueItems = filteredQueueItems.filter(
@@ -359,14 +421,16 @@ export default async function ReportsPage({
       ? "Last 7 Days"
       : range === "month"
         ? "This Month"
-        : "All Time";
+        : range === "custom"
+          ? `${customStartDate || "..."} to ${customEndDate || "..."}`
+          : "All Time";
 
   const filteredEstimates = estimates.filter((estimate) =>
-    isInRange(estimate.created_at, range)
+    isInRange(estimate.created_at, range, customStartDate, customEndDate)
   );
 
   const filteredInvoices = invoices.filter((invoice) =>
-    isInRange(invoice.created_at, range)
+    isInRange(invoice.created_at, range, customStartDate, customEndDate)
   );
 
   const estimatedRevenue = filteredEstimates.reduce(
@@ -426,6 +490,8 @@ export default async function ReportsPage({
                   href={reportsHref(businessSlug, {
                     property: "all",
                     range,
+                    from: customStartDate,
+                    to: customEndDate,
                   })}
                   className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
                     propertyFilter === "all"
@@ -442,6 +508,8 @@ export default async function ReportsPage({
                     href={reportsHref(businessSlug, {
                       property: property.toLowerCase(),
                       range,
+                      from: customStartDate,
+                      to: customEndDate,
                     })}
                     className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
                       propertyFilter === property.toLowerCase()
@@ -487,6 +555,43 @@ export default async function ReportsPage({
               </p>
             </div>
           </div>
+
+          <form
+            action="/reports"
+            className="mt-5 grid gap-3 border-t border-zinc-800 pt-5 sm:grid-cols-[1fr_1fr_auto]"
+          >
+            <input type="hidden" name="business" value={businessSlug} />
+            <input type="hidden" name="property" value={propertyFilter} />
+            <input type="hidden" name="range" value="custom" />
+
+            <div>
+              <label className="mb-2 block text-sm text-zinc-400">
+                From
+              </label>
+              <input
+                type="date"
+                name="from"
+                defaultValue={customStartDate}
+                className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm text-zinc-400">
+                To
+              </label>
+              <input
+                type="date"
+                name="to"
+                defaultValue={customEndDate}
+                className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+              />
+            </div>
+
+            <div className="flex items-end">
+              <Button>Apply Dates</Button>
+            </div>
+          </form>
         </Card>
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
