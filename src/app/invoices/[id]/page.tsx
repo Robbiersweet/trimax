@@ -28,6 +28,8 @@ type Invoice = {
   tax_label: string | null;
   tax_rate: number | string | null;
   amount_paid: number | string | null;
+  split_warning_enabled: boolean | null;
+  split_target_amount: number | string | null;
   terms: string | null;
   notes: string | null;
   service_address: string | null;
@@ -77,6 +79,19 @@ function formatDate(value: string | null) {
     day: "2-digit",
     year: "2-digit",
   }).format(date);
+}
+
+function getSplitPreview(totalAmount: number, targetAmount: number) {
+  if (totalAmount <= targetAmount || targetAmount <= 0) {
+    return null;
+  }
+
+  const invoiceCount = Math.ceil(totalAmount / targetAmount);
+
+  return {
+    invoiceCount,
+    averageAmount: totalAmount / invoiceCount,
+  };
 }
 
 function Info({
@@ -265,9 +280,16 @@ export default async function InvoiceDetailPage({
   const amountPaid = numberValue(invoice.amount_paid);
   const amountDue = Math.max(invoiceTotal - amountPaid, 0);
 
-  const splitWarningAmount = numberValue(business.split_warning_amount);
+  const splitWarningAmount =
+    numberValue(invoice.split_target_amount) ||
+    numberValue(business.split_warning_amount);
   const showSplitWarning =
-    splitWarningAmount > 0 && amountDue > splitWarningAmount;
+    Boolean(invoice.split_warning_enabled) &&
+    splitWarningAmount > 0 &&
+    amountDue > splitWarningAmount;
+  const splitPreview = invoice.split_warning_enabled
+    ? getSplitPreview(amountDue, splitWarningAmount)
+    : null;
 
   return (
     <AppShell>
@@ -313,6 +335,22 @@ export default async function InvoiceDetailPage({
             </Card>
           ) : null}
 
+          {splitPreview ? (
+            <Card className="border-orange-500/50 bg-orange-500/10">
+              <p className="text-sm font-semibold uppercase tracking-[0.35em] text-orange-300">
+                Split Preview
+              </p>
+              <p className="mt-3 text-lg font-bold text-orange-100">
+                This would become {splitPreview.invoiceCount} invoices at about{" "}
+                {money(splitPreview.averageAmount)} each.
+              </p>
+              <p className="mt-3 text-sm leading-6 text-orange-100/80">
+                This is only a preview. Trimax is not creating split invoices
+                yet.
+              </p>
+            </Card>
+          ) : null}
+
           {linkedEstimate ? (
             <Card>
               <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
@@ -339,6 +377,14 @@ export default async function InvoiceDetailPage({
             <div className="grid gap-8 md:grid-cols-2">
               <Info label="Customer" value={invoice.customer_name} />
               <Info label="Amount Due" value={money(amountDue)} strong />
+              <Info
+                label="Split Target"
+                value={
+                  invoice.split_warning_enabled && splitWarningAmount > 0
+                    ? money(splitWarningAmount)
+                    : "-"
+                }
+              />
               <Info label="Issue Date" value={formatDate(invoice.issue_date)} />
               <Info label="Due Date" value={formatDate(invoice.due_date)} />
               <Info

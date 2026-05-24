@@ -21,6 +21,8 @@ type Invoice = {
   tax_label: string | null;
   tax_rate: number | string | null;
   amount_paid: number | string | null;
+  split_warning_enabled: boolean | null;
+  split_target_amount: number | string | null;
   terms: string | null;
   notes: string | null;
 };
@@ -28,6 +30,7 @@ type Invoice = {
 type Business = {
   id: string;
   slug: string;
+  split_warning_amount: number | string | null;
 };
 
 type ServiceItem = {
@@ -87,6 +90,47 @@ function toLineItem(item: SavedLineItem): LineItem {
   };
 }
 
+function looksLikeSplitWarningJob(
+  customerName: string,
+  projectTitle: string,
+  lineItems: LineItem[]
+) {
+  const normalizedCustomerName = customerName
+    .toLowerCase()
+    .replace(/\s+/g, "");
+  const workText = [
+    projectTitle,
+    ...lineItems.map((item) => item.description),
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  const isNorthCreek =
+    normalizedCustomerName.includes("northcreek");
+  const mentionsPaint =
+    workText.includes("paint") || workText.includes("repaint");
+  const mentionsUnitWork =
+    workText.includes("classic") ||
+    workText.includes("unit") ||
+    workText.includes("turn") ||
+    workText.includes("apartment");
+
+  return isNorthCreek && mentionsPaint && mentionsUnitWork;
+}
+
+function getSplitPreview(totalAmount: number, targetAmount: number) {
+  if (totalAmount <= targetAmount || targetAmount <= 0) {
+    return null;
+  }
+
+  const invoiceCount = Math.ceil(totalAmount / targetAmount);
+
+  return {
+    invoiceCount,
+    averageAmount: totalAmount / invoiceCount,
+  };
+}
+
 export default function EditInvoicePage() {
   const params = useParams();
   const router = useRouter();
@@ -109,6 +153,16 @@ export default function EditInvoicePage() {
   const [taxLabel, setTaxLabel] = useState("Tax");
   const [taxRate, setTaxRate] = useState("0");
   const [amountPaid, setAmountPaid] = useState("0");
+  const [splitWarningEnabled, setSplitWarningEnabled] =
+    useState(false);
+  const [splitTargetAmount, setSplitTargetAmount] =
+    useState("");
+  const [savedSplitWarningEnabled, setSavedSplitWarningEnabled] =
+    useState(false);
+  const [
+    splitWarningManuallyChanged,
+    setSplitWarningManuallyChanged,
+  ] = useState(false);
   const [terms, setTerms] = useState(
     "Payment due upon invoice. Thank you for your business."
   );
@@ -138,6 +192,28 @@ export default function EditInvoicePage() {
   const invoiceTotal = subtotal + taxAmount;
   const amountDue =
     invoiceTotal - (Number(amountPaid) || 0);
+  const [splitWarningAmount, setSplitWarningAmount] =
+    useState(0);
+  const effectiveSplitTargetAmount =
+    toNumber(splitTargetAmount) || splitWarningAmount;
+  const shouldAutoEnableSplitWarning = useMemo(() => {
+    return looksLikeSplitWarningJob(
+      customerName,
+      projectTitle,
+      lineItems
+    );
+  }, [customerName, projectTitle, lineItems]);
+  const effectiveSplitWarningEnabled =
+    splitWarningManuallyChanged
+      ? splitWarningEnabled
+      : savedSplitWarningEnabled || shouldAutoEnableSplitWarning;
+  const showSplitWarning =
+    effectiveSplitWarningEnabled &&
+    effectiveSplitTargetAmount > 0 &&
+    amountDue > effectiveSplitTargetAmount;
+  const splitPreview = effectiveSplitWarningEnabled
+    ? getSplitPreview(amountDue, effectiveSplitTargetAmount)
+    : null;
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -177,6 +253,17 @@ export default function EditInvoicePage() {
       setTaxLabel(invoice.tax_label ?? "Tax");
       setTaxRate(String(toNumber(invoice.tax_rate)));
       setAmountPaid(String(toNumber(invoice.amount_paid)));
+      setSplitWarningEnabled(
+        Boolean(invoice.split_warning_enabled)
+      );
+      setSplitTargetAmount(
+        invoice.split_target_amount
+          ? String(toNumber(invoice.split_target_amount))
+          : ""
+      );
+      setSavedSplitWarningEnabled(
+        Boolean(invoice.split_warning_enabled)
+      );
       setTerms(
         invoice.terms ??
           "Payment due upon invoice. Thank you for your business."
@@ -189,7 +276,7 @@ export default function EditInvoicePage() {
         const { data: businessData } =
           await supabase
             .from("businesses")
-            .select("id, slug")
+            .select("id, slug, split_warning_amount")
             .eq("id", invoice.business_id)
             .single();
 
@@ -199,6 +286,10 @@ export default function EditInvoicePage() {
         if (business?.slug) {
           setBusinessSlug(business.slug);
         }
+
+        setSplitWarningAmount(
+          toNumber(business?.split_warning_amount ?? null)
+        );
 
         const { data: serviceData } =
           await supabase
@@ -366,6 +457,12 @@ export default function EditInvoicePage() {
         tax_label: taxLabel || "Tax",
         tax_rate: Number(taxRate) || 0,
         amount_paid: Number(amountPaid) || 0,
+        split_warning_enabled: effectiveSplitWarningEnabled,
+        split_target_amount:
+          effectiveSplitWarningEnabled &&
+          effectiveSplitTargetAmount > 0
+            ? effectiveSplitTargetAmount
+            : null,
         terms,
         notes,
       })
@@ -524,6 +621,41 @@ export default function EditInvoicePage() {
               />
             </div>
 
+            <label className="flex items-start gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/50 p-4">
+              <input
+                type="checkbox"
+                checked={effectiveSplitWarningEnabled}
+                onChange={(event) => {
+                  setSplitWarningManuallyChanged(true);
+                  setSplitWarningEnabled(event.target.checked);
+                }}
+                className="mt-1 h-5 w-5 accent-orange-500"
+              />
+
+              <span>
+                <span className="block font-semibold text-white">
+                  Use split warning for this job
+                </span>
+
+                <span className="mt-1 block text-sm leading-6 text-zinc-400">
+                  Turn this on for apartment unit work that should stay below
+                  the approved invoice amount.
+                </span>
+              </span>
+            </label>
+
+            <InputField
+              label="Split Target Amount"
+              type="number"
+              placeholder={
+                splitWarningAmount > 0
+                  ? `Default: ${formatCurrency(splitWarningAmount)}`
+                  : "Example: 1300"
+              }
+              value={splitTargetAmount}
+              onChange={setSplitTargetAmount}
+            />
+
             <div className="rounded-2xl border border-zinc-800 bg-zinc-950/40 p-4">
               <div className="flex items-center justify-between gap-4">
                 <h2 className="text-lg font-semibold">
@@ -672,6 +804,42 @@ export default function EditInvoicePage() {
                   />
                 </div>
               </div>
+
+              {showSplitWarning && (
+                <div className="mt-6 rounded-2xl border border-yellow-500/60 bg-yellow-500/10 p-4">
+                  <p className="text-sm uppercase tracking-[0.25em] text-yellow-300">
+                    Split Warning
+                  </p>
+
+                  <p className="mt-2 text-lg font-semibold text-yellow-100">
+                    This invoice amount due is over{" "}
+                    {formatCurrency(effectiveSplitTargetAmount)}.
+                  </p>
+
+                  <p className="mt-2 text-sm leading-6 text-yellow-100/80">
+                    Consider splitting this apartment work into smaller invoices
+                    before sending.
+                  </p>
+                </div>
+              )}
+
+              {splitPreview && (
+                <div className="mt-4 rounded-2xl border border-orange-500/50 bg-orange-500/10 p-4">
+                  <p className="text-sm uppercase tracking-[0.25em] text-orange-300">
+                    Split Preview
+                  </p>
+
+                  <p className="mt-2 text-lg font-semibold text-orange-100">
+                    This would become {splitPreview.invoiceCount} invoices at
+                    about {formatCurrency(splitPreview.averageAmount)} each.
+                  </p>
+
+                  <p className="mt-2 text-sm leading-6 text-orange-100/80">
+                    This is only a preview. Trimax is not creating split
+                    invoices yet.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div>

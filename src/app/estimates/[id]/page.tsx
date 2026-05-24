@@ -19,6 +19,8 @@ type SupabaseEstimate = {
   estimate_amount: string | null;
   tax_label: string | null;
   tax_rate: number | string | null;
+  split_warning_enabled: boolean | null;
+  split_target_amount: number | string | null;
   terms: string | null;
   notes: string | null;
   status: string | null;
@@ -55,6 +57,19 @@ function parseCurrency(value: string | null) {
 
 function formatCurrency(amount: number) {
   return `$${amount.toFixed(2)}`;
+}
+
+function getSplitPreview(totalAmount: number, targetAmount: number) {
+  if (totalAmount <= targetAmount || targetAmount <= 0) {
+    return null;
+  }
+
+  const invoiceCount = Math.ceil(totalAmount / targetAmount);
+
+  return {
+    invoiceCount,
+    averageAmount: totalAmount / invoiceCount,
+  };
 }
 
 export default async function EstimateDetailsPage({
@@ -128,9 +143,16 @@ export default async function EstimateDetailsPage({
   const taxAmount = subtotal * (taxRate / 100);
   const estimateTotal = subtotal + taxAmount;
 
+  const effectiveSplitTargetAmount =
+    toNumber(estimate.split_target_amount) ||
+    splitWarningAmount;
   const isOverSplitWarning =
-    splitWarningAmount > 0 &&
-    estimateTotal > splitWarningAmount;
+    Boolean(estimate.split_warning_enabled) &&
+    effectiveSplitTargetAmount > 0 &&
+    estimateTotal > effectiveSplitTargetAmount;
+  const splitPreview = estimate.split_warning_enabled
+    ? getSplitPreview(estimateTotal, effectiveSplitTargetAmount)
+    : null;
 
   const { data: invoiceData } = await supabase
     .from("invoices")
@@ -171,11 +193,28 @@ export default async function EstimateDetailsPage({
             </p>
 
             <p className="mt-2 text-lg font-semibold text-yellow-100">
-              This estimate total is over {formatCurrency(splitWarningAmount)}.
+              This estimate total is over {formatCurrency(effectiveSplitTargetAmount)}.
             </p>
 
             <p className="mt-2 text-sm leading-6 text-yellow-100/80">
               Consider splitting this apartment work into smaller invoices or estimates before sending.
+            </p>
+          </Card>
+        )}
+
+        {splitPreview && (
+          <Card className="border-orange-500/50 bg-orange-500/10">
+            <p className="text-sm uppercase tracking-[0.25em] text-orange-300">
+              Split Preview
+            </p>
+
+            <p className="mt-2 text-lg font-semibold text-orange-100">
+              This would become {splitPreview.invoiceCount} invoices at about{" "}
+              {formatCurrency(splitPreview.averageAmount)} each.
+            </p>
+
+            <p className="mt-2 text-sm leading-6 text-orange-100/80">
+              This is only a preview. Trimax is not creating split invoices yet.
             </p>
           </Card>
         )}
@@ -237,6 +276,15 @@ export default async function EstimateDetailsPage({
             <Info
               label="Estimate Total"
               value={formatCurrency(estimateTotal)}
+            />
+
+            <Info
+              label="Split Target"
+              value={
+                estimate.split_warning_enabled && effectiveSplitTargetAmount > 0
+                  ? formatCurrency(effectiveSplitTargetAmount)
+                  : "-"
+              }
             />
           </div>
         </Card>

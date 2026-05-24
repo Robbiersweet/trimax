@@ -27,6 +27,8 @@ type Estimate = {
   estimate_amount: string | null;
   tax_label: string | null;
   tax_rate: number | string | null;
+  split_warning_enabled: boolean | null;
+  split_target_amount: number | string | null;
   terms: string | null;
   notes: string | null;
 };
@@ -182,6 +184,10 @@ export default function ConvertEstimateToInvoiceButton({
         tax_label: estimate.tax_label ?? "Tax",
         tax_rate: taxRate,
         amount_paid: 0,
+        split_warning_enabled:
+          Boolean(estimate.split_warning_enabled),
+        split_target_amount:
+          estimate.split_target_amount ?? null,
         terms:
           estimate.terms ??
           "Payment due upon invoice. Thank you for your business.",
