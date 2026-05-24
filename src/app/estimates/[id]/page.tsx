@@ -150,9 +150,9 @@ export default async function EstimateDetailsPage({
   const isOverSplitWarning =
     Boolean(estimate.split_warning_enabled) &&
     effectiveSplitTargetAmount > 0 &&
-    estimateTotal > effectiveSplitTargetAmount;
+    subtotal > effectiveSplitTargetAmount;
   const splitPreview = estimate.split_warning_enabled
-    ? getSplitPreview(estimateTotal, effectiveSplitTargetAmount)
+    ? getSplitPreview(subtotal, effectiveSplitTargetAmount)
     : null;
 
   const { data: invoiceData } = await supabase
@@ -194,7 +194,7 @@ export default async function EstimateDetailsPage({
             </p>
 
             <p className="mt-2 text-lg font-semibold text-yellow-100">
-              This estimate total is over {formatCurrency(effectiveSplitTargetAmount)}.
+              This estimate subtotal is over {formatCurrency(effectiveSplitTargetAmount)}.
             </p>
 
             <p className="mt-2 text-sm leading-6 text-yellow-100/80">
@@ -205,8 +205,10 @@ export default async function EstimateDetailsPage({
 
         {splitPreview && (
           <SplitInvoicePlanner
-            totalAmount={estimateTotal}
+            subtotalAmount={subtotal}
             targetAmount={effectiveSplitTargetAmount}
+            taxLabel={estimate.tax_label || "Tax"}
+            taxRate={taxRate}
           />
         )}
 

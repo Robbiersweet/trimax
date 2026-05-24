@@ -178,9 +178,9 @@ function NewInvoicePageContent() {
   const showSplitWarning =
     effectiveSplitWarningEnabled &&
     effectiveSplitTargetAmount > 0 &&
-    amountDue > effectiveSplitTargetAmount;
+    subtotal > effectiveSplitTargetAmount;
   const splitPreview = effectiveSplitWarningEnabled
-    ? getSplitPreview(amountDue, effectiveSplitTargetAmount)
+    ? getSplitPreview(subtotal, effectiveSplitTargetAmount)
     : null;
 
   const [toast, setToast] = useState<{
@@ -778,7 +778,7 @@ function NewInvoicePageContent() {
                   </p>
 
                   <p className="mt-2 text-lg font-semibold text-yellow-100">
-                    This invoice amount due is over{" "}
+                    This invoice subtotal is over{" "}
                     {formatCurrency(effectiveSplitTargetAmount)}.
                   </p>
 
@@ -796,8 +796,9 @@ function NewInvoicePageContent() {
                   </p>
 
                   <p className="mt-2 text-lg font-semibold text-orange-100">
-                    This would become {splitPreview.invoiceCount} invoices at
-                    about {formatCurrency(splitPreview.averageAmount)} each.
+                    This would become {splitPreview.invoiceCount} invoices with
+                    about {formatCurrency(splitPreview.averageAmount)} in
+                    pre-tax work each.
                   </p>
 
                   <p className="mt-2 text-sm leading-6 text-orange-100/80">

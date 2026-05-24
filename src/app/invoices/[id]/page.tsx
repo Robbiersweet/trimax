@@ -82,16 +82,16 @@ function formatDate(value: string | null) {
   }).format(date);
 }
 
-function getSplitPreview(totalAmount: number, targetAmount: number) {
-  if (totalAmount <= targetAmount || targetAmount <= 0) {
+function getSplitPreview(subtotalAmount: number, targetAmount: number) {
+  if (subtotalAmount <= targetAmount || targetAmount <= 0) {
     return null;
   }
 
-  const invoiceCount = Math.ceil(totalAmount / targetAmount);
+  const invoiceCount = Math.ceil(subtotalAmount / targetAmount);
 
   return {
     invoiceCount,
-    averageAmount: totalAmount / invoiceCount,
+    averageAmount: subtotalAmount / invoiceCount,
   };
 }
 
@@ -287,9 +287,9 @@ export default async function InvoiceDetailPage({
   const showSplitWarning =
     Boolean(invoice.split_warning_enabled) &&
     splitWarningAmount > 0 &&
-    amountDue > splitWarningAmount;
+    subtotal > splitWarningAmount;
   const splitPreview = invoice.split_warning_enabled
-    ? getSplitPreview(amountDue, splitWarningAmount)
+    ? getSplitPreview(subtotal, splitWarningAmount)
     : null;
 
   return (
@@ -327,7 +327,7 @@ export default async function InvoiceDetailPage({
                 Split Warning
               </p>
               <p className="mt-3 text-lg font-bold text-yellow-100">
-                This invoice amount due is over {money(splitWarningAmount)}.
+                This invoice subtotal is over {money(splitWarningAmount)}.
               </p>
               <p className="mt-3 text-sm leading-6 text-yellow-100/80">
                 Consider splitting this apartment work into smaller invoices
@@ -338,8 +338,25 @@ export default async function InvoiceDetailPage({
 
           {splitPreview ? (
             <SplitInvoicePlanner
-              totalAmount={amountDue}
+              subtotalAmount={subtotal}
               targetAmount={splitWarningAmount}
+              taxLabel={invoice.tax_label || "Tax"}
+              taxRate={taxRate}
+              sourceInvoice={{
+                id: invoice.id,
+                businessId: invoice.business_id,
+                businessSlug,
+                clientId: invoice.client_id,
+                customerName: invoice.customer_name,
+                projectTitle:
+                  invoice.project_title || invoice.customer_name || "Invoice",
+                issueDate: invoice.issue_date,
+                dueDate: invoice.due_date,
+                reference: invoice.reference,
+                serviceAddress: invoice.service_address,
+                terms: invoice.terms,
+                notes: invoice.notes,
+              }}
             />
           ) : null}
 

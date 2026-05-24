@@ -178,9 +178,9 @@ function NewEstimatePageContent() {
   const showSplitWarning =
     effectiveSplitWarningEnabled &&
     effectiveSplitTargetAmount > 0 &&
-    estimateTotal > effectiveSplitTargetAmount;
+    subtotal > effectiveSplitTargetAmount;
   const splitPreview = effectiveSplitWarningEnabled
-    ? getSplitPreview(estimateTotal, effectiveSplitTargetAmount)
+    ? getSplitPreview(subtotal, effectiveSplitTargetAmount)
     : null;
 
   const [toast, setToast] = useState<{
@@ -782,7 +782,7 @@ function NewEstimatePageContent() {
                   </p>
 
                   <p className="mt-2 text-lg font-semibold text-yellow-100">
-                    This estimate total is over{" "}
+                    This estimate subtotal is over{" "}
                     {formatCurrency(effectiveSplitTargetAmount)}.
                   </p>
 
@@ -800,8 +800,9 @@ function NewEstimatePageContent() {
                   </p>
 
                   <p className="mt-2 text-lg font-semibold text-orange-100">
-                    This would become {splitPreview.invoiceCount} invoices at
-                    about {formatCurrency(splitPreview.averageAmount)} each.
+                    This would become {splitPreview.invoiceCount} invoices with
+                    about {formatCurrency(splitPreview.averageAmount)} in
+                    pre-tax work each.
                   </p>
 
                   <p className="mt-2 text-sm leading-6 text-orange-100/80">
