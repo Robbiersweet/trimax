@@ -501,8 +501,9 @@ export default async function ReportsPage({
             </h1>
 
             <p className="mt-3 max-w-3xl text-zinc-400">
-              A first reporting view for retained queue history,
-              readiness, scheduling, completion, and job mix.
+              A first reporting view for retained unit-turn queue history,
+              readiness, scheduling, completion, and job mix. Regular
+              estimates and invoices can still bypass the queue.
             </p>
           </div>
 
@@ -645,7 +646,7 @@ export default async function ReportsPage({
             })}
           />
           <MetricCard
-            label="Pending Review"
+            label="Queue Pending Review"
             value={pendingReview.length}
             href={queueHref(businessSlug, {
               q: queuePropertySearch,

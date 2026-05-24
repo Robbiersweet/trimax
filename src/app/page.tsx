@@ -261,7 +261,7 @@ export default async function DashboardPage({
   const quickActions = [
     {
       title: "New Queue Item",
-      subtitle: "Add apartment turn or work request",
+      subtitle: "Add apartment turn or property request",
       href: `/new-request?business=${selectedBusinessSlug}`,
       label: "Queue",
     },
@@ -464,7 +464,7 @@ export default async function DashboardPage({
 
           <Card>
             <p className="text-sm text-zinc-400">
-              Needs Estimate
+              Queue Needs Estimate
             </p>
 
             <p className="mt-2 text-4xl font-bold">
@@ -475,7 +475,7 @@ export default async function DashboardPage({
               href={`/queue?business=${selectedBusinessSlug}&view=needs-estimate`}
               className="mt-4 inline-block text-sm text-orange-400"
             >
-              View queue needs
+              View queue items
             </Link>
           </Card>
 
@@ -542,7 +542,7 @@ export default async function DashboardPage({
             </p>
 
             <p className="mt-4 text-sm text-zinc-400">
-              Total retained queue records for this
+              Retained apartment turn and property queue records for this
               business.
             </p>
 
@@ -595,13 +595,13 @@ export default async function DashboardPage({
               </p>
 
               <h2 className="mt-2 text-2xl font-bold">
-                Review apartment queue items
+                Review apartment/unit queue items
               </h2>
 
               <p className="mt-2 text-zinc-400">
-                New turns, smoker units, flooring notes,
-                and paint scopes should be reviewed before
-                scheduling.
+                Queue is for unit turns and property-manager intake. Normal
+                estimates and invoices can still start directly from their own
+                pages.
               </p>
             </div>
 

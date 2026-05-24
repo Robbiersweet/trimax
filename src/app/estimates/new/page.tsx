@@ -8,6 +8,7 @@ import InputField from "../../components/InputField";
 import Card from "../../components/Card";
 import Toast from "../../components/Toast";
 import { supabase } from "../../lib/supabase";
+import { looksLikeApartmentUnitPaintJob } from "../../utils/jobWorkflow";
 import { getTaxSuggestionForAddress } from "../../utils/tax";
 
 type Business = {
@@ -56,34 +57,6 @@ function getLineTotal(item: LineItem) {
 
 function toNumber(value: number | string | null | undefined) {
   return Number(value) || 0;
-}
-
-function looksLikeSplitWarningJob(
-  customerName: string,
-  projectTitle: string,
-  lineItems: LineItem[]
-) {
-  const normalizedCustomerName = customerName
-    .toLowerCase()
-    .replace(/\s+/g, "");
-  const workText = [
-    projectTitle,
-    ...lineItems.map((item) => item.description),
-  ]
-    .join(" ")
-    .toLowerCase();
-
-  const isNorthCreek =
-    normalizedCustomerName.includes("northcreek");
-  const mentionsPaint =
-    workText.includes("paint") || workText.includes("repaint");
-  const mentionsUnitWork =
-    workText.includes("classic") ||
-    workText.includes("unit") ||
-    workText.includes("turn") ||
-    workText.includes("apartment");
-
-  return isNorthCreek && mentionsPaint && mentionsUnitWork;
 }
 
 function getSplitPreview(totalAmount: number, targetAmount: number) {
@@ -169,7 +142,7 @@ function NewEstimatePageContent() {
   const effectiveSplitTargetAmount =
     toNumber(splitTargetAmount) || splitWarningAmount;
   const shouldAutoEnableSplitWarning = useMemo(() => {
-    return looksLikeSplitWarningJob(
+    return looksLikeApartmentUnitPaintJob(
       customerName,
       projectTitle,
       lineItems
@@ -683,6 +656,15 @@ function NewEstimatePageContent() {
               </p>
             ) : null}
 
+            {shouldAutoEnableSplitWarning &&
+            !splitWarningManuallyChanged ? (
+              <p className="rounded-2xl border border-purple-500/30 bg-purple-500/10 px-4 py-3 text-sm leading-6 text-purple-100/80">
+                Apartment unit paint billing detected. Split warning is on for
+                this job only. Fence, tree, remodel, and other general project
+                estimates stay normal unless you turn this on yourself.
+              </p>
+            ) : null}
+
             <label className="flex items-start gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/50 p-4">
               <input
                 type="checkbox"
@@ -696,12 +678,13 @@ function NewEstimatePageContent() {
 
               <span>
                 <span className="block font-semibold text-white">
-                  Use split warning for this job
+                  Use apartment split warning for this job
                 </span>
 
                 <span className="mt-1 block text-sm leading-6 text-zinc-400">
-                  Turn this on for apartment unit work that should stay below
-                  the approved invoice amount.
+                  Turn this on only for unit paint work that should stay below
+                  the approved invoice amount. Leave it off for normal jobs,
+                  including North Creek fences, trees, repairs, or remodels.
                 </span>
               </span>
             </label>
