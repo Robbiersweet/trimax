@@ -8,6 +8,7 @@ import InputField from "../../components/InputField";
 import Card from "../../components/Card";
 import Toast from "../../components/Toast";
 import { supabase } from "../../lib/supabase";
+import { getTaxSuggestionForAddress } from "../../utils/tax";
 
 type Business = {
   id: string;
@@ -122,8 +123,10 @@ function NewEstimatePageContent() {
   const [serviceAddress, setServiceAddress] =
     useState("");
   const [reference, setReference] = useState("");
-  const [taxLabel, setTaxLabel] = useState("Tax");
-  const [taxRate, setTaxRate] = useState("0");
+  const [taxLabel, setTaxLabel] = useState("");
+  const [taxRate, setTaxRate] = useState("");
+  const [taxManuallyChanged, setTaxManuallyChanged] =
+    useState(false);
   const [splitWarningEnabled, setSplitWarningEnabled] =
     useState(false);
   const [splitTargetAmount, setSplitTargetAmount] =
@@ -243,6 +246,27 @@ function NewEstimatePageContent() {
     loadBusiness();
   }, [businessSlug]);
 
+  function applyTaxSuggestion(address: string) {
+    if (taxManuallyChanged) {
+      return;
+    }
+
+    const suggestion =
+      getTaxSuggestionForAddress(address);
+
+    if (!suggestion) {
+      return;
+    }
+
+    setTaxLabel(suggestion.label);
+    setTaxRate(suggestion.rate);
+  }
+
+  function handleServiceAddressChange(address: string) {
+    setServiceAddress(address);
+    applyTaxSuggestion(address);
+  }
+
   function handleClientChange(clientId: string) {
     setSelectedClientId(clientId);
 
@@ -258,6 +282,7 @@ function NewEstimatePageContent() {
 
     if (client.billing_address) {
       setServiceAddress(client.billing_address);
+      applyTaxSuggestion(client.billing_address);
     }
   }
 
@@ -438,7 +463,7 @@ function NewEstimatePageContent() {
         reference,
         estimate_amount:
           formatCurrency(estimateTotal),
-        tax_label: taxLabel || "Tax",
+        tax_label: taxLabel.trim() || null,
         tax_rate: Number(taxRate) || 0,
         split_warning_enabled: effectiveSplitWarningEnabled,
         split_target_amount:
@@ -575,7 +600,7 @@ function NewEstimatePageContent() {
               label="Service Address"
               placeholder="Job location"
               value={serviceAddress}
-              onChange={setServiceAddress}
+              onChange={handleServiceAddressChange}
             />
 
             <InputField
@@ -588,16 +613,23 @@ function NewEstimatePageContent() {
             <div className="grid gap-5 md:grid-cols-2">
               <InputField
                 label="Tax Label"
-                placeholder="Example: Snohomish"
+                placeholder="Snohomish"
                 value={taxLabel}
-                onChange={setTaxLabel}
+                onChange={(value) => {
+                  setTaxManuallyChanged(true);
+                  setTaxLabel(value);
+                }}
               />
 
               <InputField
                 label="Tax Rate (%)"
                 type="number"
+                placeholder="9.9"
                 value={taxRate}
-                onChange={setTaxRate}
+                onChange={(value) => {
+                  setTaxManuallyChanged(true);
+                  setTaxRate(value);
+                }}
               />
             </div>
 

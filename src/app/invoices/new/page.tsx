@@ -8,6 +8,7 @@ import InputField from "../../components/InputField";
 import Card from "../../components/Card";
 import Toast from "../../components/Toast";
 import { supabase } from "../../lib/supabase";
+import { getTaxSuggestionForAddress } from "../../utils/tax";
 
 type Business = {
   id: string;
@@ -116,11 +117,15 @@ function NewInvoicePageContent() {
     useState("");
   const [projectTitle, setProjectTitle] =
     useState("");
+  const [serviceAddress, setServiceAddress] =
+    useState("");
   const [issueDate, setIssueDate] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [reference, setReference] = useState("");
-  const [taxLabel, setTaxLabel] = useState("Tax");
-  const [taxRate, setTaxRate] = useState("0");
+  const [taxLabel, setTaxLabel] = useState("");
+  const [taxRate, setTaxRate] = useState("");
+  const [taxManuallyChanged, setTaxManuallyChanged] =
+    useState(false);
   const [amountPaid, setAmountPaid] = useState("0");
   const [splitWarningEnabled, setSplitWarningEnabled] =
     useState(false);
@@ -243,6 +248,27 @@ function NewInvoicePageContent() {
     loadBusiness();
   }, [businessSlug]);
 
+  function applyTaxSuggestion(address: string) {
+    if (taxManuallyChanged) {
+      return;
+    }
+
+    const suggestion =
+      getTaxSuggestionForAddress(address);
+
+    if (!suggestion) {
+      return;
+    }
+
+    setTaxLabel(suggestion.label);
+    setTaxRate(suggestion.rate);
+  }
+
+  function handleServiceAddressChange(address: string) {
+    setServiceAddress(address);
+    applyTaxSuggestion(address);
+  }
+
   function handleClientChange(clientId: string) {
     setSelectedClientId(clientId);
 
@@ -255,6 +281,11 @@ function NewInvoicePageContent() {
     }
 
     setCustomerName(client.name);
+
+    if (client.billing_address) {
+      setServiceAddress(client.billing_address);
+      applyTaxSuggestion(client.billing_address);
+    }
   }
 
   function updateLineItem(
@@ -419,11 +450,12 @@ function NewInvoicePageContent() {
         display_id: displayId,
         customer_name: customerName,
         project_title: projectTitle,
+        service_address: serviceAddress,
         invoice_amount: formatCurrency(invoiceTotal),
         issue_date: issueDate,
         due_date: dueDate,
         reference,
-        tax_label: taxLabel || "Tax",
+        tax_label: taxLabel.trim() || null,
         tax_rate: Number(taxRate) || 0,
         amount_paid: Number(amountPaid) || 0,
         split_warning_enabled: effectiveSplitWarningEnabled,
@@ -571,19 +603,33 @@ function NewInvoicePageContent() {
               onChange={setReference}
             />
 
+            <InputField
+              label="Service Address"
+              placeholder="Job location"
+              value={serviceAddress}
+              onChange={handleServiceAddressChange}
+            />
+
             <div className="grid gap-5 md:grid-cols-3">
               <InputField
                 label="Tax Label"
-                placeholder="Example: Snohomish"
+                placeholder="Snohomish"
                 value={taxLabel}
-                onChange={setTaxLabel}
+                onChange={(value) => {
+                  setTaxManuallyChanged(true);
+                  setTaxLabel(value);
+                }}
               />
 
               <InputField
                 label="Tax Rate (%)"
                 type="number"
+                placeholder="9.9"
                 value={taxRate}
-                onChange={setTaxRate}
+                onChange={(value) => {
+                  setTaxManuallyChanged(true);
+                  setTaxRate(value);
+                }}
               />
 
               <InputField

@@ -8,6 +8,7 @@ import Button from "../../../components/Button";
 import InputField from "../../../components/InputField";
 import Toast from "../../../components/Toast";
 import { supabase } from "../../../lib/supabase";
+import { getTaxSuggestionForAddress } from "../../../utils/tax";
 
 type Invoice = {
   id: string;
@@ -18,6 +19,7 @@ type Invoice = {
   issue_date: string | null;
   due_date: string | null;
   reference: string | null;
+  service_address: string | null;
   tax_label: string | null;
   tax_rate: number | string | null;
   amount_paid: number | string | null;
@@ -150,8 +152,12 @@ export default function EditInvoicePage() {
   const [issueDate, setIssueDate] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [reference, setReference] = useState("");
-  const [taxLabel, setTaxLabel] = useState("Tax");
-  const [taxRate, setTaxRate] = useState("0");
+  const [serviceAddress, setServiceAddress] =
+    useState("");
+  const [taxLabel, setTaxLabel] = useState("");
+  const [taxRate, setTaxRate] = useState("");
+  const [taxManuallyChanged, setTaxManuallyChanged] =
+    useState(false);
   const [amountPaid, setAmountPaid] = useState("0");
   const [splitWarningEnabled, setSplitWarningEnabled] =
     useState(false);
@@ -250,8 +256,33 @@ export default function EditInvoicePage() {
       setIssueDate(invoice.issue_date ?? "");
       setDueDate(invoice.due_date ?? "");
       setReference(invoice.reference ?? "");
-      setTaxLabel(invoice.tax_label ?? "Tax");
-      setTaxRate(String(toNumber(invoice.tax_rate)));
+      setServiceAddress(invoice.service_address ?? "");
+      setTaxLabel(
+        invoice.tax_label && invoice.tax_label !== "Tax"
+          ? invoice.tax_label
+          : ""
+      );
+      setTaxRate(
+        toNumber(invoice.tax_rate) > 0
+          ? String(toNumber(invoice.tax_rate))
+          : ""
+      );
+      const hasSavedTax =
+        Boolean(invoice.tax_label && invoice.tax_label !== "Tax") ||
+        toNumber(invoice.tax_rate) > 0;
+
+      setTaxManuallyChanged(hasSavedTax);
+
+      if (!hasSavedTax && invoice.service_address) {
+        const suggestion = getTaxSuggestionForAddress(
+          invoice.service_address
+        );
+
+        if (suggestion) {
+          setTaxLabel(suggestion.label);
+          setTaxRate(suggestion.rate);
+        }
+      }
       setAmountPaid(String(toNumber(invoice.amount_paid)));
       setSplitWarningEnabled(
         Boolean(invoice.split_warning_enabled)
@@ -342,6 +373,27 @@ export default function EditInvoicePage() {
 
     loadInvoice();
   }, [invoiceId]);
+
+  function applyTaxSuggestion(address: string) {
+    if (taxManuallyChanged) {
+      return;
+    }
+
+    const suggestion =
+      getTaxSuggestionForAddress(address);
+
+    if (!suggestion) {
+      return;
+    }
+
+    setTaxLabel(suggestion.label);
+    setTaxRate(suggestion.rate);
+  }
+
+  function handleServiceAddressChange(address: string) {
+    setServiceAddress(address);
+    applyTaxSuggestion(address);
+  }
 
   function updateLineItem(
     index: number,
@@ -454,7 +506,8 @@ export default function EditInvoicePage() {
         issue_date: issueDate,
         due_date: dueDate,
         reference,
-        tax_label: taxLabel || "Tax",
+        service_address: serviceAddress,
+        tax_label: taxLabel.trim() || null,
         tax_rate: Number(taxRate) || 0,
         amount_paid: Number(amountPaid) || 0,
         split_warning_enabled: effectiveSplitWarningEnabled,
@@ -598,19 +651,33 @@ export default function EditInvoicePage() {
               onChange={setReference}
             />
 
+            <InputField
+              label="Service Address"
+              placeholder="Job location"
+              value={serviceAddress}
+              onChange={handleServiceAddressChange}
+            />
+
             <div className="grid gap-5 md:grid-cols-3">
               <InputField
                 label="Tax Label"
-                placeholder="Example: Snohomish"
+                placeholder="Snohomish"
                 value={taxLabel}
-                onChange={setTaxLabel}
+                onChange={(value) => {
+                  setTaxManuallyChanged(true);
+                  setTaxLabel(value);
+                }}
               />
 
               <InputField
                 label="Tax Rate (%)"
                 type="number"
+                placeholder="9.9"
                 value={taxRate}
-                onChange={setTaxRate}
+                onChange={(value) => {
+                  setTaxManuallyChanged(true);
+                  setTaxRate(value);
+                }}
               />
 
               <InputField

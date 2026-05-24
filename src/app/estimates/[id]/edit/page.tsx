@@ -8,6 +8,7 @@ import Button from "../../../components/Button";
 import InputField from "../../../components/InputField";
 import Toast from "../../../components/Toast";
 import { supabase } from "../../../lib/supabase";
+import { getTaxSuggestionForAddress } from "../../../utils/tax";
 
 type Estimate = {
   id: string;
@@ -164,8 +165,10 @@ export default function EditEstimatePage() {
   const [serviceAddress, setServiceAddress] =
     useState("");
   const [reference, setReference] = useState("");
-  const [taxLabel, setTaxLabel] = useState("Tax");
-  const [taxRate, setTaxRate] = useState("0");
+  const [taxLabel, setTaxLabel] = useState("");
+  const [taxRate, setTaxRate] = useState("");
+  const [taxManuallyChanged, setTaxManuallyChanged] =
+    useState(false);
   const [splitWarningEnabled, setSplitWarningEnabled] =
     useState(false);
   const [splitTargetAmount, setSplitTargetAmount] =
@@ -279,8 +282,37 @@ export default function EditEstimatePage() {
           ""
       );
       setReference(estimate.reference ?? "");
-      setTaxLabel(estimate.tax_label ?? "Tax");
-      setTaxRate(String(toNumber(estimate.tax_rate)));
+      setTaxLabel(
+        estimate.tax_label && estimate.tax_label !== "Tax"
+          ? estimate.tax_label
+          : ""
+      );
+      setTaxRate(
+        toNumber(estimate.tax_rate) > 0
+          ? String(toNumber(estimate.tax_rate))
+          : ""
+      );
+      const hasSavedTax =
+        Boolean(estimate.tax_label && estimate.tax_label !== "Tax") ||
+        toNumber(estimate.tax_rate) > 0;
+
+      setTaxManuallyChanged(hasSavedTax);
+
+      const savedServiceAddress =
+        estimate.service_address ??
+        estimate.project_address ??
+        "";
+
+      if (!hasSavedTax && savedServiceAddress) {
+        const suggestion = getTaxSuggestionForAddress(
+          savedServiceAddress
+        );
+
+        if (suggestion) {
+          setTaxLabel(suggestion.label);
+          setTaxRate(suggestion.rate);
+        }
+      }
       setSplitWarningEnabled(
         Boolean(estimate.split_warning_enabled)
       );
@@ -382,6 +414,27 @@ export default function EditEstimatePage() {
 
     loadEstimate();
   }, [estimateId, router, businessSlug]);
+
+  function applyTaxSuggestion(address: string) {
+    if (taxManuallyChanged) {
+      return;
+    }
+
+    const suggestion =
+      getTaxSuggestionForAddress(address);
+
+    if (!suggestion) {
+      return;
+    }
+
+    setTaxLabel(suggestion.label);
+    setTaxRate(suggestion.rate);
+  }
+
+  function handleServiceAddressChange(address: string) {
+    setServiceAddress(address);
+    applyTaxSuggestion(address);
+  }
 
   function handleClientChange(clientId: string) {
     setSelectedClientId(clientId);
@@ -570,7 +623,7 @@ export default function EditEstimatePage() {
         reference,
         estimate_amount:
           formatCurrency(estimateTotal),
-        tax_label: taxLabel || "Tax",
+        tax_label: taxLabel.trim() || null,
         tax_rate: Number(taxRate) || 0,
         split_warning_enabled: effectiveSplitWarningEnabled,
         split_target_amount:
@@ -722,7 +775,7 @@ export default function EditEstimatePage() {
             <InputField
               label="Service Address"
               value={serviceAddress}
-              onChange={setServiceAddress}
+              onChange={handleServiceAddressChange}
             />
 
             <InputField
@@ -735,16 +788,23 @@ export default function EditEstimatePage() {
             <div className="grid gap-5 md:grid-cols-2">
               <InputField
                 label="Tax Label"
-                placeholder="Example: Snohomish"
+                placeholder="Snohomish"
                 value={taxLabel}
-                onChange={setTaxLabel}
+                onChange={(value) => {
+                  setTaxManuallyChanged(true);
+                  setTaxLabel(value);
+                }}
               />
 
               <InputField
                 label="Tax Rate (%)"
                 type="number"
+                placeholder="9.9"
                 value={taxRate}
-                onChange={setTaxRate}
+                onChange={(value) => {
+                  setTaxManuallyChanged(true);
+                  setTaxRate(value);
+                }}
               />
             </div>
 
