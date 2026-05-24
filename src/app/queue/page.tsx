@@ -89,6 +89,19 @@ function isRemediationItem(item: QueueItemWithEstimate) {
   );
 }
 
+function daysUntil(value: string | null) {
+  const date = dateValue(value);
+
+  if (!date) {
+    return null;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return Math.round((date.getTime() - today.getTime()) / 86400000);
+}
+
 function queueHref(
   businessSlug: string,
   options?: {
@@ -374,6 +387,9 @@ export default async function QueuePage({
               const linkedEstimate = item.linked_estimate_id
                 ? estimateById.get(item.linked_estimate_id)
                 : null;
+              const readySoon = isReadySoonUnscheduled(item);
+              const remediation = isRemediationItem(item);
+              const readyDays = daysUntil(item.ready_date);
 
               return (
                 <Card key={item.id}>
@@ -399,6 +415,18 @@ export default async function QueuePage({
                             Remediation
                           </span>
                         ) : null}
+
+                        {!item.smoked_in && remediation ? (
+                          <span className="rounded-full bg-red-500/20 px-3 py-1 text-sm font-semibold text-red-300">
+                            Smoke Note
+                          </span>
+                        ) : null}
+
+                        {readySoon ? (
+                          <span className="rounded-full bg-yellow-500/20 px-3 py-1 text-sm font-semibold text-yellow-200">
+                            Ready Soon
+                          </span>
+                        ) : null}
                       </div>
 
                       <p className="mt-2 text-zinc-400">
@@ -413,6 +441,14 @@ export default async function QueuePage({
                         <LifecyclePill
                           label="Ready"
                           value={item.ready_date}
+                          detail={
+                            readySoon && readyDays !== null
+                              ? `${readyDays} day${
+                                  readyDays === 1 ? "" : "s"
+                                } out`
+                              : undefined
+                          }
+                          alert={readySoon}
                         />
                         <LifecyclePill
                           label="Scheduled"
@@ -493,14 +529,20 @@ function Info({
 function LifecyclePill({
   label,
   value,
+  detail,
+  alert = false,
 }: {
   label: string;
   value: string | null;
+  detail?: string;
+  alert?: boolean;
 }) {
   return (
     <div
       className={`rounded-2xl border px-4 py-3 ${
-        value
+        alert
+          ? "border-yellow-500/40 bg-yellow-500/10"
+          : value
           ? "border-orange-500/30 bg-orange-500/10"
           : "border-zinc-800 bg-zinc-950"
       }`}
@@ -511,6 +553,11 @@ function LifecyclePill({
       <p className="mt-1 font-semibold text-zinc-100">
         {value || "-"}
       </p>
+      {detail ? (
+        <p className="mt-1 text-xs font-semibold text-yellow-200">
+          {detail}
+        </p>
+      ) : null}
     </div>
   );
 }
