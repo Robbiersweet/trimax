@@ -89,6 +89,15 @@ function isRemediationItem(item: QueueItemWithEstimate) {
   );
 }
 
+function needsEstimate(item: QueueItemWithEstimate) {
+  const status = normalizeStatus(item.status);
+
+  return (
+    !item.linked_estimate_id &&
+    !["completed", "invoiced", "paid"].includes(status)
+  );
+}
+
 function daysUntil(value: string | null) {
   const date = dateValue(value);
 
@@ -216,6 +225,10 @@ export default async function QueuePage({
       return false;
     }
 
+    if (viewFilter === "needs-estimate" && !needsEstimate(item)) {
+      return false;
+    }
+
     if (!searchTerm) {
       return true;
     }
@@ -258,6 +271,10 @@ export default async function QueuePage({
     {
       label: "Ready Soon",
       value: "ready-soon",
+    },
+    {
+      label: "Needs Estimate",
+      value: "needs-estimate",
     },
     {
       label: "Remediation",
@@ -389,6 +406,7 @@ export default async function QueuePage({
                 : null;
               const readySoon = isReadySoonUnscheduled(item);
               const remediation = isRemediationItem(item);
+              const estimateNeeded = needsEstimate(item);
               const readyDays = daysUntil(item.ready_date);
 
               return (
@@ -425,6 +443,12 @@ export default async function QueuePage({
                         {readySoon ? (
                           <span className="rounded-full bg-yellow-500/20 px-3 py-1 text-sm font-semibold text-yellow-200">
                             Ready Soon
+                          </span>
+                        ) : null}
+
+                        {estimateNeeded ? (
+                          <span className="rounded-full bg-purple-500/20 px-3 py-1 text-sm font-semibold text-purple-200">
+                            Needs Estimate
                           </span>
                         ) : null}
                       </div>

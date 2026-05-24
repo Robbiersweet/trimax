@@ -457,10 +457,10 @@ export default async function DashboardPage({
             </p>
 
             <Link
-              href={`/estimates?business=${selectedBusinessSlug}`}
+              href={`/queue?business=${selectedBusinessSlug}&view=needs-estimate`}
               className="mt-4 inline-block text-sm text-orange-400"
             >
-              View estimates
+              View queue needs
             </Link>
           </Card>
 
