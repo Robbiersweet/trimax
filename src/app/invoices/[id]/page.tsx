@@ -435,12 +435,21 @@ export default async function InvoiceDetailPage({
 
                   <p className="mt-3 text-lg font-bold text-green-100">
                     {invoice.split_parent_invoice_id
-                      ? `This is split ${
+                      ? `Split ${
                           invoice.split_sequence ?? "-"
-                        } of ${invoice.split_count ?? "-"}`
+                        } of ${invoice.split_count ?? "-"} from ${
+                          splitParentInvoice?.display_id ||
+                          "the original invoice"
+                        }`
                       : `This invoice has ${splitRelatedInvoices.length} split invoice${
                           splitRelatedInvoices.length === 1 ? "" : "s"
                         }.`}
+                  </p>
+
+                  <p className="mt-2 text-sm leading-6 text-green-100/70">
+                    {invoice.split_parent_invoice_id
+                      ? "This invoice is one part of a larger invoice split."
+                      : "These invoices were created from this original invoice."}
                   </p>
                 </div>
 
