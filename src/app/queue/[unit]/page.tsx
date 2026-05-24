@@ -4,6 +4,7 @@ import Card from "../../components/Card";
 import Button from "../../components/Button";
 import StatusBadge from "../../components/StatusBadge";
 import DeleteQueueItemButton from "../../components/DeleteQueueItemButton";
+import MarkCompletedButton from "../../components/MarkCompletedButton";
 import MarkScheduledButton from "../../components/MarkScheduledButton";
 import { supabase } from "../../lib/supabase";
 
@@ -138,6 +139,24 @@ export default async function QueueDetailPage({
         )}
 
         <Card>
+          <div className="mb-6 grid gap-4 md:grid-cols-3">
+            <LifecycleStep
+              label="Move Out"
+              value={item.move_out_date}
+              active={Boolean(item.move_out_date)}
+            />
+            <LifecycleStep
+              label="Scheduled"
+              value={item.scheduled_date}
+              active={Boolean(item.scheduled_date)}
+            />
+            <LifecycleStep
+              label="Completed"
+              value={item.completed_date}
+              active={Boolean(item.completed_date)}
+            />
+          </div>
+
           <div className="grid gap-6 md:grid-cols-2">
             <Info label="Property" value={item.property ?? ""} />
             <Info label="Priority" value={item.priority ?? ""} />
@@ -178,6 +197,8 @@ export default async function QueueDetailPage({
 
           <MarkScheduledButton queueItemId={item.id} />
 
+          <MarkCompletedButton queueItemId={item.id} />
+
           <DeleteQueueItemButton queueItemId={item.id} />
         </div>
       </div>
@@ -190,6 +211,29 @@ function Info({ label, value }: { label: string; value: string }) {
     <div>
       <p className="text-sm text-zinc-500">{label}</p>
       <p className="mt-1 text-lg font-medium">{value || "-"}</p>
+    </div>
+  );
+}
+
+function LifecycleStep({
+  label,
+  value,
+  active,
+}: {
+  label: string;
+  value: string | null;
+  active: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-2xl border px-4 py-3 ${
+        active
+          ? "border-orange-500/40 bg-orange-500/10"
+          : "border-zinc-800 bg-zinc-950"
+      }`}
+    >
+      <p className="text-sm text-zinc-400">{label}</p>
+      <p className="mt-1 font-semibold">{value || "-"}</p>
     </div>
   );
 }
