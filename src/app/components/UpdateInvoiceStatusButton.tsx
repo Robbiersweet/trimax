@@ -3,17 +3,22 @@
 import { useRouter } from "next/navigation";
 import Button from "./Button";
 import { supabase } from "../lib/supabase";
+import { logActivity } from "../lib/activityLog";
 
 type UpdateInvoiceStatusButtonProps = {
   invoiceId: string;
   newStatus: string;
   label: string;
+  businessId?: string | null;
+  invoiceLabel?: string | null;
 };
 
 export default function UpdateInvoiceStatusButton({
   invoiceId,
   newStatus,
   label,
+  businessId,
+  invoiceLabel,
 }: UpdateInvoiceStatusButtonProps) {
   const router = useRouter();
 
@@ -30,6 +35,17 @@ export default function UpdateInvoiceStatusButton({
       alert("Unable to update invoice status.");
       return;
     }
+
+    await logActivity({
+      businessId,
+      action: "invoice.status_updated",
+      entityType: "invoice",
+      entityId: invoiceId,
+      entityLabel: invoiceLabel,
+      details: {
+        status: newStatus,
+      },
+    });
 
     router.refresh();
   }

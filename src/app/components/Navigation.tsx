@@ -60,6 +60,11 @@ export default function Navigation() {
       active: pathname.startsWith("/reports"),
     },
     {
+      label: "Activity",
+      href: `/activity?business=${business}`,
+      active: pathname.startsWith("/activity"),
+    },
+    {
       label: "Settings",
       href: `/settings?business=${business}`,
       active: pathname.startsWith("/settings"),

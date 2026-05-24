@@ -323,9 +323,21 @@ export default async function QueueDetailPage({
             <Button variant="secondary">Edit Queue Item</Button>
           </Link>
 
-          <MarkScheduledButton queueItemId={item.id} />
+          <MarkScheduledButton
+            queueItemId={item.id}
+            businessId={item.business_id}
+            label={`${item.property || "Property"} - Unit ${
+              item.unit || "-"
+            }`}
+          />
 
-          <MarkCompletedButton queueItemId={item.id} />
+          <MarkCompletedButton
+            queueItemId={item.id}
+            businessId={item.business_id}
+            label={`${item.property || "Property"} - Unit ${
+              item.unit || "-"
+            }`}
+          />
 
           <DeleteQueueItemButton queueItemId={item.id} />
         </div>

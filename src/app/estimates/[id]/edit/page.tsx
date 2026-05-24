@@ -7,6 +7,7 @@ import Card from "../../../components/Card";
 import Button from "../../../components/Button";
 import InputField from "../../../components/InputField";
 import Toast from "../../../components/Toast";
+import { logActivity } from "../../../lib/activityLog";
 import { supabase } from "../../../lib/supabase";
 import { looksLikeApartmentUnitPaintJob } from "../../../utils/jobWorkflow";
 import { getTaxSuggestionForAddress } from "../../../utils/tax";
@@ -681,6 +682,21 @@ export default function EditEstimatePage() {
 
       return;
     }
+
+    await logActivity({
+      businessId: businessId || null,
+      action: "estimate.updated",
+      entityType: "estimate",
+      entityId: estimateId,
+      entityLabel: projectTitle || customerName,
+      details: {
+        customerName,
+        projectTitle,
+        amount: formatCurrency(estimateTotal),
+        lineItemCount: validLineItems.length,
+        splitWarningEnabled: effectiveSplitWarningEnabled,
+      },
+    });
 
     router.push(
       `/estimates/${estimateId}?business=${businessSlug}`

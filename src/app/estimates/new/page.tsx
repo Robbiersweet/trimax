@@ -7,6 +7,7 @@ import Button from "../../components/Button";
 import InputField from "../../components/InputField";
 import Card from "../../components/Card";
 import Toast from "../../components/Toast";
+import { logActivity } from "../../lib/activityLog";
 import { supabase } from "../../lib/supabase";
 import { looksLikeApartmentUnitPaintJob } from "../../utils/jobWorkflow";
 import { getTaxSuggestionForAddress } from "../../utils/tax";
@@ -531,6 +532,22 @@ function NewEstimatePageContent() {
 
       return;
     }
+
+    await logActivity({
+      businessId: business.id,
+      action: "estimate.created",
+      entityType: "estimate",
+      entityId: data.id,
+      entityLabel: displayId,
+      details: {
+        customerName,
+        projectTitle,
+        amount: formatCurrency(estimateTotal),
+        lineItemCount: validLineItems.length,
+        queueItemId: queueId,
+        splitWarningEnabled: effectiveSplitWarningEnabled,
+      },
+    });
 
     router.push(
       `/estimates/${data.id}?business=${business.slug}`

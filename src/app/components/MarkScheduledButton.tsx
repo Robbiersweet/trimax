@@ -2,14 +2,19 @@
 
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
+import { logActivity } from "../lib/activityLog";
 import Button from "./Button";
 
 type MarkScheduledButtonProps = {
   queueItemId: string;
+  businessId?: string | null;
+  label?: string | null;
 };
 
 export default function MarkScheduledButton({
   queueItemId,
+  businessId,
+  label,
 }: MarkScheduledButtonProps) {
   const router = useRouter();
 
@@ -31,6 +36,17 @@ export default function MarkScheduledButton({
 
       return;
     }
+
+    await logActivity({
+      businessId,
+      action: "queue_item.scheduled",
+      entityType: "queue_item",
+      entityId: queueItemId,
+      entityLabel: label,
+      details: {
+        scheduledDate: today,
+      },
+    });
 
     router.refresh();
   };

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import Button from "./Button";
+import { logActivity } from "../lib/activityLog";
 import { supabase } from "../lib/supabase";
 
 type ConvertEstimateToInvoiceButtonProps = {
@@ -253,6 +254,19 @@ export default function ConvertEstimateToInvoiceButton({
 
       return;
     }
+
+    await logActivity({
+      businessId: estimate.business_id ?? businessId,
+      action: "estimate.converted_to_invoice",
+      entityType: "estimate",
+      entityId: estimateId,
+      entityLabel: estimate.project_title ?? projectTitle,
+      details: {
+        invoiceId: data.id,
+        invoiceDisplayId: displayId,
+        amount: formatCurrency(invoiceTotal),
+      },
+    });
 
     router.push(
       `/invoices/${data.id}?business=${businessSlug}`

@@ -647,6 +647,12 @@ export default async function InvoiceDetailPage({
                 invoiceId={invoice.id}
                 newStatus="sent"
                 label="Mark Sent"
+                businessId={invoice.business_id}
+                invoiceLabel={
+                  invoice.display_id ||
+                  invoice.project_title ||
+                  invoice.customer_name
+                }
               />
             ) : null}
 
@@ -655,6 +661,12 @@ export default async function InvoiceDetailPage({
                 invoiceId={invoice.id}
                 newStatus="paid"
                 label="Mark Paid"
+                businessId={invoice.business_id}
+                invoiceLabel={
+                  invoice.display_id ||
+                  invoice.project_title ||
+                  invoice.customer_name
+                }
               />
             ) : null}
 

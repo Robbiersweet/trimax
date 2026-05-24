@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { logActivity } from "./activityLog";
 
 type CreateQueueItemInput = {
   property: string;
@@ -45,6 +46,23 @@ export async function createQueueItem(input: CreateQueueItemInput) {
     console.error("Create queue item error:", error);
     throw error;
   }
+
+  await logActivity({
+    businessId: input.businessId,
+    action: "queue_item.created",
+    entityType: "queue_item",
+    entityId: data.id,
+    entityLabel: `${input.property || "Property"} - Unit ${
+      input.unit || "-"
+    }`,
+    details: {
+      property: input.property,
+      unit: input.unit,
+      paintType: input.paintType,
+      flooring: input.flooring,
+      readyDate: input.readyDate,
+    },
+  });
 
   return data;
 }

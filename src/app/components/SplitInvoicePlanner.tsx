@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Button from "./Button";
 import Card from "./Card";
+import { logActivity } from "../lib/activityLog";
 import { supabase } from "../lib/supabase";
 
 type SplitInvoicePlannerProps = {
@@ -202,6 +203,25 @@ export default function SplitInvoicePlanner({
         displayId: invoice.display_id || "Invoice",
       }))
     );
+
+    await logActivity({
+      businessId: sourceInvoice.businessId,
+      action: "invoice.split_created",
+      entityType: "invoice",
+      entityId: sourceInvoice.id,
+      entityLabel:
+        sourceInvoice.displayId || sourceInvoice.projectTitle || "Invoice",
+      details: {
+        splitCount: insertedInvoices.length,
+        targetAmount: formatCurrency(targetAmount),
+        subtotalAmount: formatCurrency(subtotalAmount),
+        createdInvoiceIds: insertedInvoices.map((invoice) => invoice.id),
+        createdInvoiceDisplayIds: insertedInvoices.map(
+          (invoice) => invoice.display_id
+        ),
+      },
+    });
+
     setCreating(false);
   }
 

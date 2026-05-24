@@ -7,6 +7,7 @@ import Button from "../../components/Button";
 import InputField from "../../components/InputField";
 import Card from "../../components/Card";
 import Toast from "../../components/Toast";
+import { logActivity } from "../../lib/activityLog";
 import { supabase } from "../../lib/supabase";
 import { looksLikeApartmentUnitPaintJob } from "../../utils/jobWorkflow";
 import { getTaxSuggestionForAddress } from "../../utils/tax";
@@ -526,6 +527,21 @@ function NewInvoicePageContent() {
 
       return;
     }
+
+    await logActivity({
+      businessId: business.id,
+      action: "invoice.created",
+      entityType: "invoice",
+      entityId: data.id,
+      entityLabel: displayId,
+      details: {
+        customerName,
+        projectTitle,
+        amount: formatCurrency(invoiceTotal),
+        lineItemCount: validLineItems.length,
+        splitWarningEnabled: effectiveSplitWarningEnabled,
+      },
+    });
 
     router.push(
       `/invoices/${data.id}?business=${business.slug}`
