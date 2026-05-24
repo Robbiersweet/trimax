@@ -390,6 +390,10 @@ export default async function DashboardPage({
               Units are within 7 days of ready date and not scheduled.
             </p>
 
+            <p className="mt-2 text-sm text-zinc-400">
+              Start here when coordinating turns with property managers.
+            </p>
+
             <Link
               href={`/reports?business=${selectedBusinessSlug}&range=week`}
               className="mt-4 inline-block text-sm text-orange-400"
@@ -409,6 +413,11 @@ export default async function DashboardPage({
 
             <p className="mt-2 text-zinc-300">
               Queue items flagged for smoker or remediation attention.
+            </p>
+
+            <p className="mt-2 text-sm text-zinc-400">
+              Useful for spotting extra labor, odor treatment, and schedule
+              risk.
             </p>
 
             <Link
