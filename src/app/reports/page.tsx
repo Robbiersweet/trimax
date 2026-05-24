@@ -221,6 +221,33 @@ function reportsHref(
   return `/reports?${params.toString()}`;
 }
 
+function queueHref(
+  businessSlug: string,
+  options?: {
+    q?: string;
+    status?: string;
+    view?: string;
+  }
+) {
+  const params = new URLSearchParams({
+    business: businessSlug,
+  });
+
+  if (options?.q) {
+    params.set("q", options.q);
+  }
+
+  if (options?.status) {
+    params.set("status", options.status);
+  }
+
+  if (options?.view) {
+    params.set("view", options.view);
+  }
+
+  return `/queue?${params.toString()}`;
+}
+
 export default async function ReportsPage({
   searchParams,
 }: {
@@ -415,6 +442,10 @@ export default async function ReportsPage({
       : properties.find(
           (property) => property.toLowerCase() === propertyFilter
         ) ?? "Selected Property";
+  const queuePropertySearch =
+    propertyFilter === "all" ? undefined : propertyLabel;
+  const flooringQueueSearch =
+    propertyFilter === "all" ? "floor" : `${propertyLabel} floor`;
 
   const rangeLabel =
     range === "week"
@@ -475,7 +506,11 @@ export default async function ReportsPage({
             </p>
           </div>
 
-          <Link href={`/queue?business=${businessSlug}`}>
+          <Link
+            href={queueHref(businessSlug, {
+              q: queuePropertySearch,
+            })}
+          >
             <Button variant="secondary">Open Queue</Button>
           </Link>
         </div>
@@ -598,17 +633,51 @@ export default async function ReportsPage({
           <MetricCard
             label="Units Submitted"
             value={filteredQueueItems.length}
+            href={queueHref(businessSlug, {
+              q: queuePropertySearch,
+            })}
           />
-          <MetricCard label="Active Units" value={activeQueueItems.length} />
-          <MetricCard label="Pending Review" value={pendingReview.length} />
-          <MetricCard label="Scheduled" value={scheduledItems.length} />
-          <MetricCard label="Completed" value={completedItems.length} />
+          <MetricCard
+            label="Active Units"
+            value={activeQueueItems.length}
+            href={queueHref(businessSlug, {
+              q: queuePropertySearch,
+            })}
+          />
+          <MetricCard
+            label="Pending Review"
+            value={pendingReview.length}
+            href={queueHref(businessSlug, {
+              q: queuePropertySearch,
+              view: "needs-estimate",
+            })}
+          />
+          <MetricCard
+            label="Scheduled"
+            value={scheduledItems.length}
+            href={queueHref(businessSlug, {
+              q: queuePropertySearch,
+              status: "scheduled",
+            })}
+          />
+          <MetricCard
+            label="Completed"
+            value={completedItems.length}
+            href={queueHref(businessSlug, {
+              q: queuePropertySearch,
+              status: "completed",
+            })}
+          />
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard
             label="Ready Soon, Not Scheduled"
             value={approachingReadyUnscheduled.length}
+            href={queueHref(businessSlug, {
+              q: queuePropertySearch,
+              view: "ready-soon",
+            })}
           />
           <MetricCard
             label="Avg Turnaround"
@@ -616,8 +685,21 @@ export default async function ReportsPage({
               averageTurnaround === null ? "-" : `${averageTurnaround} days`
             }
           />
-          <MetricCard label="Smoker / Remediation" value={smokerUnits.length} />
-          <MetricCard label="Flooring Work" value={flooringUnits.length} />
+          <MetricCard
+            label="Smoker / Remediation"
+            value={smokerUnits.length}
+            href={queueHref(businessSlug, {
+              q: queuePropertySearch,
+              view: "remediation",
+            })}
+          />
+          <MetricCard
+            label="Flooring Work"
+            value={flooringUnits.length}
+            href={queueHref(businessSlug, {
+              q: flooringQueueSearch,
+            })}
+          />
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
@@ -736,15 +818,35 @@ export default async function ReportsPage({
 function MetricCard({
   label,
   value,
+  href,
 }: {
   label: string;
   value: string | number;
+  href?: string;
 }) {
-  return (
+  const content = (
     <Card className="min-h-32 p-5">
       <p className="text-sm text-zinc-400">{label}</p>
       <p className="mt-3 text-4xl font-bold leading-none">{value}</p>
+      {href ? (
+        <p className="mt-4 text-sm font-semibold text-orange-400">
+          Open queue view
+        </p>
+      ) : null}
     </Card>
+  );
+
+  if (!href) {
+    return content;
+  }
+
+  return (
+    <Link
+      href={href}
+      className="block transition hover:-translate-y-0.5 hover:opacity-95"
+    >
+      {content}
+    </Link>
   );
 }
 
