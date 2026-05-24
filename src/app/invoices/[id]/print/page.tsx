@@ -1,4 +1,5 @@
 import Link from "next/link";
+import PrintToolbar from "../../../components/PrintToolbar";
 import { supabase } from "../../../lib/supabase";
 
 type Invoice = {
@@ -184,6 +185,11 @@ export default async function InvoicePrintPage({
 
   return (
     <main className="min-h-screen bg-white px-8 py-8 text-black print:p-0">
+      <PrintToolbar
+        backHref={`/invoices/${invoice.id}?business=${businessSlug}`}
+        backLabel="Back to Invoice"
+      />
+
       <div className="mx-auto max-w-5xl bg-white print:max-w-none print:px-6 print:py-4">
         <section className="grid grid-cols-2 gap-8">
           <div>
