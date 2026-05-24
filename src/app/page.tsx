@@ -18,12 +18,15 @@ type QueueItem = {
   paint_type: string | null;
   flooring: string | null;
   status: string | null;
+  scheduled_date: string | null;
+  completed_date: string | null;
 };
 
 type Estimate = {
   id: string;
   project_title: string | null;
   customer_name: string | null;
+  estimate_amount: string | null;
   status: string | null;
 };
 
@@ -46,6 +49,24 @@ function formatMoney(value: number) {
     currency: "USD",
     minimumFractionDigits: 0,
   });
+}
+
+function isDateInCurrentMonth(value: string | null) {
+  if (!value) {
+    return false;
+  }
+
+  const date = new Date(`${value}T00:00:00`);
+  const now = new Date();
+
+  if (Number.isNaN(date.getTime())) {
+    return false;
+  }
+
+  return (
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth()
+  );
 }
 
 export default async function DashboardPage({
@@ -122,6 +143,19 @@ export default async function DashboardPage({
     (item) => item.status !== "Scheduled"
   );
 
+  const scheduledQueueItems = queueItems.filter(
+    (item) =>
+      item.status === "Scheduled" ||
+      Boolean(item.scheduled_date)
+  );
+
+  const completedThisMonth = queueItems.filter(
+    (item) =>
+      isDateInCurrentMonth(item.completed_date) ||
+      (item.status === "Completed" &&
+        isDateInCurrentMonth(item.scheduled_date))
+  );
+
   const pendingEstimates = estimates.filter(
     (estimate) => estimate.status !== "Approved"
   );
@@ -139,6 +173,22 @@ export default async function DashboardPage({
 
   const outstandingRevenue = formatMoney(
     outstandingRevenueTotal
+  );
+
+  const estimatedRevenue = formatMoney(
+    estimates.reduce(
+      (total, estimate) =>
+        total + parseMoney(estimate.estimate_amount),
+      0
+    )
+  );
+
+  const invoicedRevenue = formatMoney(
+    invoices.reduce(
+      (total, invoice) =>
+        total + parseMoney(invoice.invoice_amount),
+      0
+    )
   );
 
   const ytdRevenue = formatMoney(
@@ -328,6 +378,89 @@ export default async function DashboardPage({
             >
               View invoices
             </Link>
+          </Card>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+            <p className="text-sm text-zinc-400">
+              Scheduled Jobs
+            </p>
+
+            <p className="mt-2 text-4xl font-bold">
+              {scheduledQueueItems.length}
+            </p>
+
+            <Link
+              href={`/queue?business=${selectedBusinessSlug}&status=scheduled`}
+              className="mt-4 inline-block text-sm text-orange-400"
+            >
+              View scheduled
+            </Link>
+          </Card>
+
+          <Card>
+            <p className="text-sm text-zinc-400">
+              Completed This Month
+            </p>
+
+            <p className="mt-2 text-4xl font-bold">
+              {completedThisMonth.length}
+            </p>
+
+            <Link
+              href={`/queue?business=${selectedBusinessSlug}&status=completed`}
+              className="mt-4 inline-block text-sm text-orange-400"
+            >
+              View completed
+            </Link>
+          </Card>
+
+          <Card>
+            <p className="text-sm text-zinc-400">
+              Reporting Memory
+            </p>
+
+            <p className="mt-2 text-4xl font-bold">
+              {queueItems.length}
+            </p>
+
+            <p className="mt-4 text-sm text-zinc-400">
+              Total retained queue records for this
+              business.
+            </p>
+          </Card>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card>
+            <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
+              Estimated Revenue
+            </p>
+
+            <p className="mt-3 text-4xl font-black">
+              {estimatedRevenue}
+            </p>
+
+            <p className="mt-3 text-zinc-400">
+              Total estimate value currently stored for{" "}
+              {selectedBusiness?.name ?? "this business"}.
+            </p>
+          </Card>
+
+          <Card>
+            <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
+              Invoiced Revenue
+            </p>
+
+            <p className="mt-3 text-4xl font-black">
+              {invoicedRevenue}
+            </p>
+
+            <p className="mt-3 text-zinc-400">
+              Total invoice value currently stored for{" "}
+              {selectedBusiness?.name ?? "this business"}.
+            </p>
           </Card>
         </div>
 
