@@ -233,6 +233,12 @@ export default async function DashboardPage({
       label: "Review",
     },
     {
+      title: "Property Reports",
+      subtitle: "Review unit history and readiness",
+      href: `/reports?business=${selectedBusinessSlug}`,
+      label: "Reports",
+    },
+    {
       title: "Print Documents",
       subtitle: "Estimates and invoices",
       href: `/estimates?business=${selectedBusinessSlug}`,
@@ -429,6 +435,13 @@ export default async function DashboardPage({
               Total retained queue records for this
               business.
             </p>
+
+            <Link
+              href={`/reports?business=${selectedBusinessSlug}`}
+              className="mt-4 inline-block text-sm text-orange-400"
+            >
+              Open reports
+            </Link>
           </Card>
         </div>
 
