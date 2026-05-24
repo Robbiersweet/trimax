@@ -156,24 +156,24 @@ export default async function EstimatePrintPage({
     "Estimate";
 
   return (
-    <main className="min-h-screen bg-white px-8 py-10 text-black print:p-0">
-      <div className="mx-auto max-w-5xl bg-white print:max-w-none">
+    <main className="min-h-screen bg-white px-8 py-8 text-black print:p-0">
+      <div className="mx-auto max-w-5xl bg-white print:max-w-none print:px-6 print:py-4">
         <section className="grid grid-cols-2 gap-8">
           <div>
-            <div className="flex h-40 w-40 items-center justify-center bg-black text-center text-white">
+            <div className="flex h-32 w-32 items-center justify-center bg-black text-center text-white print:h-28 print:w-28">
               <div>
-                <p className="text-3xl font-black">
+                <p className="text-3xl font-black print:text-2xl">
                   R&L
                 </p>
 
-                <p className="mt-1 text-sm font-semibold uppercase tracking-[0.2em]">
+                <p className="mt-1 text-xs font-semibold uppercase tracking-[0.2em]">
                   Creations
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="text-right text-lg leading-7">
+          <div className="text-right text-base leading-6">
             <p className="font-semibold">
               {companyName}
             </p>
@@ -184,14 +184,14 @@ export default async function EstimatePrintPage({
           </div>
         </section>
 
-        <section className="mt-14 border-y border-gray-200 py-8">
+        <section className="mt-10 border-y border-gray-200 py-6 print:mt-8 print:py-5">
           <div className="grid gap-8 md:grid-cols-[1.4fr_1fr]">
             <div>
               <p className="text-sm uppercase tracking-[0.25em] text-[#d9aa2f]">
                 Estimate
               </p>
 
-              <h1 className="mt-3 text-4xl font-semibold leading-tight">
+              <h1 className="mt-3 text-4xl font-semibold leading-tight print:text-3xl">
                 {documentTitle}
               </h1>
 
@@ -203,32 +203,32 @@ export default async function EstimatePrintPage({
             <div className="text-right">
               <PrintLabel>Estimate Total (USD)</PrintLabel>
 
-              <p className="mt-2 text-5xl font-light tracking-wide">
+              <p className="mt-2 text-5xl font-light tracking-wide print:text-4xl">
                 {formatCurrency(total)}
               </p>
             </div>
           </div>
         </section>
 
-        <section className="mt-16 grid grid-cols-[1.5fr_1fr_1fr_1.4fr] gap-10">
+        <section className="mt-10 grid grid-cols-[1.5fr_1fr_1fr_1.4fr] gap-8 print:mt-8">
           <div>
             <PrintLabel>Prepared For</PrintLabel>
 
-            <p className="mt-2 text-lg leading-7">
+            <p className="mt-2 text-base leading-6">
               {billedToName}
             </p>
 
             {billedToAddress ? (
-              <p className="whitespace-pre-line text-lg leading-7">
+              <p className="whitespace-pre-line text-base leading-6">
                 {billedToAddress}
               </p>
             ) : null}
 
             {serviceAddress ? (
-              <div className="mt-8">
+              <div className="mt-5">
                 <PrintLabel>Service Address</PrintLabel>
 
-                <p className="mt-2 whitespace-pre-line text-lg leading-7">
+                <p className="mt-2 whitespace-pre-line text-base leading-6">
                   {serviceAddress}
                 </p>
               </div>
@@ -238,7 +238,7 @@ export default async function EstimatePrintPage({
           <div>
             <PrintLabel>Status</PrintLabel>
 
-            <p className="mt-2 text-lg">
+            <p className="mt-2 text-base">
               {estimate.status || "Draft"}
             </p>
           </div>
@@ -246,14 +246,14 @@ export default async function EstimatePrintPage({
           <div>
             <PrintLabel>Estimate Number</PrintLabel>
 
-            <p className="mt-2 text-lg">
+            <p className="mt-2 text-base">
               {estimate.display_id || "Estimate"}
             </p>
 
-            <div className="mt-8">
+            <div className="mt-5">
               <PrintLabel>Reference</PrintLabel>
 
-              <p className="mt-2 whitespace-pre-line text-lg leading-7">
+              <p className="mt-2 whitespace-pre-line text-base leading-6">
                 {estimate.reference || "-"}
               </p>
             </div>
@@ -262,8 +262,8 @@ export default async function EstimatePrintPage({
           <div />
         </section>
 
-        <section className="mt-16">
-          <div className="border-t-4 border-[#e8bd3f] pt-5">
+        <section className="mt-10 print:mt-8">
+          <div className="border-t-4 border-[#e8bd3f] pt-4">
             <div className="grid grid-cols-[1fr_160px_90px_150px] gap-6 text-[#d9aa2f]">
               <p>Description</p>
               <p className="text-right">Rate</p>
@@ -272,7 +272,7 @@ export default async function EstimatePrintPage({
             </div>
           </div>
 
-          <div className="mt-6 border-b border-gray-300 pb-6">
+          <div className="mt-5 border-b border-gray-300 pb-5">
             {lineItems.length === 0 ? (
               <div className="grid grid-cols-[1fr_160px_90px_150px] gap-6">
                 <p>{documentTitle}</p>
@@ -316,7 +316,7 @@ export default async function EstimatePrintPage({
             )}
           </div>
 
-          <div className="ml-auto mt-10 w-full max-w-lg">
+          <div className="ml-auto mt-8 w-full max-w-md">
             <PrintSummaryRow
               label="Subtotal"
               value={formatCurrency(subtotal)}
@@ -342,19 +342,19 @@ export default async function EstimatePrintPage({
         </section>
 
         {estimate.notes ? (
-          <section className="mt-20">
+          <section className="mt-12 print:mt-10">
             <PrintLabel>Scope of Work</PrintLabel>
 
-            <p className="mt-3 max-w-4xl whitespace-pre-line text-lg leading-7">
+            <p className="mt-3 max-w-4xl whitespace-pre-line text-base leading-6">
               {estimate.notes}
             </p>
           </section>
         ) : null}
 
-        <section className="mt-10">
+        <section className="mt-8">
           <PrintLabel>Terms</PrintLabel>
 
-          <p className="mt-3 max-w-4xl text-lg leading-7">
+          <p className="mt-3 max-w-4xl text-base leading-6">
             {estimate.terms ||
               "This estimate is provided for review and approval. Final pricing may vary if scope, materials, or site conditions change."}
           </p>
