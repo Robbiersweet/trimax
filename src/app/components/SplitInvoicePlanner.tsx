@@ -12,6 +12,7 @@ type SplitInvoicePlannerProps = {
   taxRate?: number;
   sourceInvoice?: {
     id: string;
+    displayId: string | null;
     businessId: string;
     businessSlug: string;
     clientId: string | null;
@@ -135,10 +136,15 @@ export default function SplitInvoicePlanner({
         amount_paid: 0,
         split_warning_enabled: false,
         split_target_amount: null,
+        split_parent_invoice_id: sourceInvoice.id,
+        split_sequence: index + 1,
+        split_count: splitAmounts.length,
         terms: sourceInvoice.terms,
         notes: [
           sourceInvoice.notes,
-          `Created from ${sourceInvoice.projectTitle} (${sourceInvoice.id}) as ${splitLabel}.`,
+          `Created from ${
+            sourceInvoice.displayId || sourceInvoice.projectTitle
+          } as ${splitLabel}.`,
         ]
           .filter(Boolean)
           .join("\n\n"),

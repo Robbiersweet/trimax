@@ -31,6 +31,9 @@ type Invoice = {
   amount_paid: number | string | null;
   split_warning_enabled: boolean | null;
   split_target_amount: number | string | null;
+  split_parent_invoice_id: string | null;
+  split_sequence: number | null;
+  split_count: number | null;
   terms: string | null;
   notes: string | null;
   service_address: string | null;
@@ -49,6 +52,15 @@ type LinkedEstimate = {
   id: string;
   display_id: string | null;
   project_title: string | null;
+};
+
+type SplitRelatedInvoice = {
+  id: string;
+  display_id: string | null;
+  project_title: string | null;
+  status: string | null;
+  split_sequence: number | null;
+  split_count: number | null;
 };
 
 type Business = {
@@ -246,6 +258,8 @@ export default async function InvoiceDetailPage({
   }
 
   let linkedEstimate: LinkedEstimate | null = null;
+  let splitParentInvoice: SplitRelatedInvoice | null = null;
+  let splitRelatedInvoices: SplitRelatedInvoice[] = [];
 
   if (invoice.estimate_id) {
     const { data, error } = await supabase
@@ -260,6 +274,56 @@ export default async function InvoiceDetailPage({
     }
 
     linkedEstimate = data ?? null;
+  }
+
+  if (invoice.split_parent_invoice_id) {
+    const { data: parentData, error: parentError } = await supabase
+      .from("invoices")
+      .select(
+        "id, display_id, project_title, status, split_sequence, split_count"
+      )
+      .eq("id", invoice.split_parent_invoice_id)
+      .eq("business_id", business.id)
+      .limit(1)
+      .maybeSingle<SplitRelatedInvoice>();
+
+    if (parentError) {
+      console.error("Split parent lookup failed:", parentError);
+    }
+
+    splitParentInvoice = parentData ?? null;
+
+    const { data: siblingData, error: siblingError } = await supabase
+      .from("invoices")
+      .select(
+        "id, display_id, project_title, status, split_sequence, split_count"
+      )
+      .eq("split_parent_invoice_id", invoice.split_parent_invoice_id)
+      .eq("business_id", business.id)
+      .order("split_sequence", { ascending: true })
+      .returns<SplitRelatedInvoice[]>();
+
+    if (siblingError) {
+      console.error("Split sibling lookup failed:", siblingError);
+    }
+
+    splitRelatedInvoices = siblingData ?? [];
+  } else {
+    const { data: childData, error: childError } = await supabase
+      .from("invoices")
+      .select(
+        "id, display_id, project_title, status, split_sequence, split_count"
+      )
+      .eq("split_parent_invoice_id", invoice.id)
+      .eq("business_id", business.id)
+      .order("split_sequence", { ascending: true })
+      .returns<SplitRelatedInvoice[]>();
+
+    if (childError) {
+      console.error("Split child lookup failed:", childError);
+    }
+
+    splitRelatedInvoices = childData ?? [];
   }
 
   const items = lineItems ?? [];
@@ -344,6 +408,7 @@ export default async function InvoiceDetailPage({
               taxRate={taxRate}
               sourceInvoice={{
                 id: invoice.id,
+                displayId: invoice.display_id,
                 businessId: invoice.business_id,
                 businessSlug,
                 clientId: invoice.client_id,
@@ -358,6 +423,94 @@ export default async function InvoiceDetailPage({
                 notes: invoice.notes,
               }}
             />
+          ) : null}
+
+          {splitParentInvoice || splitRelatedInvoices.length > 0 ? (
+            <Card className="border-green-500/40 bg-green-500/10">
+              <div className="flex flex-col gap-6">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.35em] text-green-300">
+                    Split Invoice Group
+                  </p>
+
+                  <p className="mt-3 text-lg font-bold text-green-100">
+                    {invoice.split_parent_invoice_id
+                      ? `This is split ${
+                          invoice.split_sequence ?? "-"
+                        } of ${invoice.split_count ?? "-"}`
+                      : `This invoice has ${splitRelatedInvoices.length} split invoice${
+                          splitRelatedInvoices.length === 1 ? "" : "s"
+                        }.`}
+                  </p>
+                </div>
+
+                {splitParentInvoice ? (
+                  <div className="rounded-2xl border border-green-500/30 bg-black/20 p-4">
+                    <p className="text-sm text-green-100/70">
+                      Original Invoice
+                    </p>
+
+                    <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="font-semibold text-white">
+                          {splitParentInvoice.display_id || "Invoice"}
+                        </p>
+
+                        <p className="mt-1 text-sm text-green-100/70">
+                          {splitParentInvoice.project_title ||
+                            "Untitled invoice"}
+                        </p>
+                      </div>
+
+                      <Link
+                        href={`/invoices/${splitParentInvoice.id}${businessQuery}`}
+                      >
+                        <Button variant="secondary">Open Original</Button>
+                      </Link>
+                    </div>
+                  </div>
+                ) : null}
+
+                {splitRelatedInvoices.length > 0 ? (
+                  <div className="overflow-hidden rounded-2xl border border-green-500/30">
+                    <div className="grid grid-cols-[1fr_120px_150px] gap-4 bg-black/30 px-5 py-3 text-sm font-bold text-green-100/80">
+                      <span>Related Invoice</span>
+                      <span>Status</span>
+                      <span className="text-right">Action</span>
+                    </div>
+
+                    {splitRelatedInvoices.map((relatedInvoice) => (
+                      <div
+                        key={relatedInvoice.id}
+                        className="grid grid-cols-[1fr_120px_150px] gap-4 border-t border-green-500/20 px-5 py-4 text-green-50"
+                      >
+                        <div>
+                          <p className="font-semibold">
+                            {relatedInvoice.display_id || "Invoice"}
+                          </p>
+
+                          <p className="mt-1 text-sm text-green-100/70">
+                            {relatedInvoice.project_title ||
+                              "Untitled invoice"}
+                          </p>
+                        </div>
+
+                        <span className="text-sm text-green-100/80">
+                          {relatedInvoice.status || "Draft"}
+                        </span>
+
+                        <Link
+                          href={`/invoices/${relatedInvoice.id}${businessQuery}`}
+                          className="text-right text-sm font-semibold text-orange-300 hover:text-orange-200"
+                        >
+                          Open
+                        </Link>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </Card>
           ) : null}
 
           {linkedEstimate ? (
