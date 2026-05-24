@@ -24,6 +24,8 @@ export default function NewClientPage() {
   const [phone, setPhone] = useState("");
   const [billingAddress, setBillingAddress] =
     useState("");
+  const [serviceAddress, setServiceAddress] =
+    useState("");
   const [notes, setNotes] = useState("");
 
   const [loading, setLoading] =
@@ -83,6 +85,8 @@ export default function NewClientPage() {
         email,
         phone,
         billing_address: billingAddress,
+        service_address:
+          serviceAddress || billingAddress,
         notes,
       })
       .select()
@@ -166,6 +170,13 @@ export default function NewClientPage() {
               onChange={setBillingAddress}
             />
 
+            <InputField
+              label="Default Service Address"
+              placeholder="Leave blank to use billing address"
+              value={serviceAddress}
+              onChange={setServiceAddress}
+            />
+
             <div>
               <label className="mb-2 block text-sm text-zinc-400">
                 Notes
@@ -181,11 +192,24 @@ export default function NewClientPage() {
               />
             </div>
 
-            <Button onClick={handleSave}>
-              {loading
-                ? "Saving..."
-                : "Create Client"}
-            </Button>
+            <div className="flex flex-wrap gap-4">
+              <Button onClick={handleSave}>
+                {loading
+                  ? "Saving..."
+                  : "Create Client"}
+              </Button>
+
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  router.push(
+                    `/clients?business=${businessSlug}`
+                  )
+                }
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
         </Card>
       </div>

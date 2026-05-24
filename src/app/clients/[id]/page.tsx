@@ -12,6 +12,7 @@ type Client = {
   email: string | null;
   phone: string | null;
   billing_address: string | null;
+  service_address: string | null;
   notes: string | null;
 };
 
@@ -122,6 +123,14 @@ export default async function ClientDetailsPage({
             <Info
               label="Billing Address"
               value={client.billing_address}
+            />
+
+            <Info
+              label="Default Service Address"
+              value={
+                client.service_address ||
+                client.billing_address
+              }
             />
           </div>
 

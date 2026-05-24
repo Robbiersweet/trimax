@@ -41,6 +41,7 @@ type Client = {
   email: string | null;
   phone: string | null;
   billing_address: string | null;
+  service_address: string | null;
 };
 
 type ServiceItem = {
@@ -455,8 +456,14 @@ export default function EditEstimatePage() {
 
     setCustomerName(client.name);
 
-    if (client.billing_address) {
-      setServiceAddress(client.billing_address);
+    const clientServiceAddress =
+      client.service_address ||
+      client.billing_address ||
+      "";
+
+    if (clientServiceAddress) {
+      setServiceAddress(clientServiceAddress);
+      applyTaxSuggestion(clientServiceAddress);
     }
   }
 

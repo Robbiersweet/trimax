@@ -17,6 +17,7 @@ type Client = {
   email: string | null;
   phone: string | null;
   billing_address: string | null;
+  service_address: string | null;
   notes: string | null;
 };
 
@@ -40,6 +41,8 @@ export default function EditClientPage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [billingAddress, setBillingAddress] =
+    useState("");
+  const [serviceAddress, setServiceAddress] =
     useState("");
   const [notes, setNotes] = useState("");
 
@@ -78,6 +81,7 @@ export default function EditClientPage() {
       setEmail(client.email ?? "");
       setPhone(client.phone ?? "");
       setBillingAddress(client.billing_address ?? "");
+      setServiceAddress(client.service_address ?? "");
       setNotes(client.notes ?? "");
 
       if (client.business_id) {
@@ -123,6 +127,8 @@ export default function EditClientPage() {
         email,
         phone,
         billing_address: billingAddress,
+        service_address:
+          serviceAddress || billingAddress,
         notes,
       })
       .eq("id", clientId);
@@ -208,6 +214,13 @@ export default function EditClientPage() {
               placeholder="123 Main St..."
               value={billingAddress}
               onChange={setBillingAddress}
+            />
+
+            <InputField
+              label="Default Service Address"
+              placeholder="Leave blank to use billing address"
+              value={serviceAddress}
+              onChange={setServiceAddress}
             />
 
             <div>

@@ -16,6 +16,8 @@ type Client = {
   contact_name: string | null;
   email: string | null;
   phone: string | null;
+  billing_address: string | null;
+  service_address: string | null;
 };
 
 export default async function ClientsPage({
@@ -95,7 +97,7 @@ export default async function ClientsPage({
             {clients.map((client) => (
               <Link
                 key={client.id}
-                href={`/clients/${client.id}`}
+                href={`/clients/${client.id}?business=${businessSlug}`}
               >
                 <Card className="transition hover:border-orange-500/60 hover:bg-zinc-800">
                   <div className="flex items-start justify-between">
@@ -107,6 +109,12 @@ export default async function ClientsPage({
                       <p className="mt-2 text-zinc-400">
                         {client.contact_name ||
                           "No contact"}
+                      </p>
+
+                      <p className="mt-2 max-w-xl text-sm text-zinc-500">
+                        {client.service_address ||
+                          client.billing_address ||
+                          "No address"}
                       </p>
                     </div>
 
