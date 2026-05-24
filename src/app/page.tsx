@@ -29,64 +29,93 @@ type Estimate = {
 
 type Invoice = {
   id: string;
+  display_id: string | null;
   project_title: string | null;
   customer_name: string | null;
   invoice_amount: string | null;
   status: string | null;
 };
 
+function parseMoney(value: string | null) {
+  return Number(value?.replace(/[^0-9.-]+/g, "") || 0);
+}
+
+function formatMoney(value: number) {
+  return value.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+  });
+}
+
 export default async function DashboardPage({
   searchParams,
 }: {
   searchParams?: Promise<{ business?: string }>;
 }) {
-  const resolvedSearchParams = searchParams ? await searchParams : {};
-  const requestedBusinessSlug = resolvedSearchParams.business;
+  const resolvedSearchParams = searchParams
+    ? await searchParams
+    : {};
+  const requestedBusinessSlug =
+    resolvedSearchParams.business;
 
   const { data: businessData } = await supabase
     .from("businesses")
     .select("*")
     .order("name", { ascending: true });
 
-  const businesses = (businessData ?? []) as Business[];
+  const businesses =
+    (businessData ?? []) as Business[];
 
   const selectedBusiness =
-    businesses.find((business) => business.slug === requestedBusinessSlug) ??
-    businesses.find((business) => business.slug === "rnl-creations") ??
+    businesses.find(
+      (business) =>
+        business.slug === requestedBusinessSlug
+    ) ??
+    businesses.find(
+      (business) => business.slug === "rnl-creations"
+    ) ??
     businesses[0] ??
     null;
 
-  const selectedBusinessSlug = selectedBusiness?.slug ?? "rnl-creations";
+  const selectedBusinessSlug =
+    selectedBusiness?.slug ?? "rnl-creations";
 
   let queueItems: QueueItem[] = [];
   let estimates: Estimate[] = [];
   let invoices: Invoice[] = [];
 
   if (selectedBusiness) {
-    const [queueResponse, estimateResponse, invoiceResponse] =
-      await Promise.all([
-        supabase
-          .from("queue_items")
-          .select("*")
-          .eq("business_id", selectedBusiness.id)
-          .order("created_at", { ascending: false }),
+    const [
+      queueResponse,
+      estimateResponse,
+      invoiceResponse,
+    ] = await Promise.all([
+      supabase
+        .from("queue_items")
+        .select("*")
+        .eq("business_id", selectedBusiness.id)
+        .order("created_at", { ascending: false }),
 
-        supabase
-          .from("estimates")
-          .select("*")
-          .eq("business_id", selectedBusiness.id)
-          .order("created_at", { ascending: false }),
+      supabase
+        .from("estimates")
+        .select("*")
+        .eq("business_id", selectedBusiness.id)
+        .order("created_at", { ascending: false }),
 
-        supabase
-          .from("invoices")
-          .select("*")
-          .eq("business_id", selectedBusiness.id)
-          .order("created_at", { ascending: false }),
-      ]);
+      supabase
+        .from("invoices")
+        .select("*")
+        .eq("business_id", selectedBusiness.id)
+        .order("created_at", { ascending: false }),
+    ]);
 
-    queueItems = (queueResponse.data ?? []) as QueueItem[];
-    estimates = (estimateResponse.data ?? []) as Estimate[];
-    invoices = (invoiceResponse.data ?? []) as Invoice[];
+    queueItems =
+      (queueResponse.data ?? []) as QueueItem[];
+    estimates =
+      (estimateResponse.data ?? []) as Estimate[];
+    invoices =
+      (invoiceResponse.data ?? []) as Invoice[];
   }
 
   const activeQueueItems = queueItems.filter(
@@ -97,73 +126,67 @@ export default async function DashboardPage({
     (estimate) => estimate.status !== "Approved"
   );
 
-  const openInvoices = invoices.filter((invoice) => invoice.status !== "Paid");
+  const openInvoices = invoices.filter(
+    (invoice) => invoice.status !== "Paid"
+  );
 
-  const outstandingRevenueTotal = openInvoices.reduce((total, invoice) => {
-    const numericAmount = Number(
-      invoice.invoice_amount?.replace(/[^0-9.-]+/g, "") || 0
+  const outstandingRevenueTotal =
+    openInvoices.reduce(
+      (total, invoice) =>
+        total + parseMoney(invoice.invoice_amount),
+      0
     );
 
-    return total + numericAmount;
-  }, 0);
+  const outstandingRevenue = formatMoney(
+    outstandingRevenueTotal
+  );
 
-  const outstandingRevenue = outstandingRevenueTotal.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-  });
-
-  const ytdRevenue = invoices
-    .filter((invoice) => invoice.status === "Paid")
-    .reduce((total, invoice) => {
-      const amount = Number(
-        invoice.invoice_amount?.replace(/[^0-9.-]+/g, "") || 0
-      );
-
-      return total + amount;
-    }, 0)
-    .toLocaleString("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 0,
-    });
+  const ytdRevenue = formatMoney(
+    invoices
+      .filter((invoice) => invoice.status === "Paid")
+      .reduce(
+        (total, invoice) =>
+          total + parseMoney(invoice.invoice_amount),
+        0
+      )
+  );
 
   const quickActions = [
     {
       title: "New Queue Item",
       subtitle: "Add apartment turn or work request",
       href: `/new-request?business=${selectedBusinessSlug}`,
-      icon: "➕",
+      label: "Queue",
     },
     {
       title: "New Estimate",
       subtitle: "Create a customer estimate",
       href: `/estimates/new?business=${selectedBusinessSlug}`,
-      icon: "🧾",
+      label: "Estimate",
     },
     {
       title: "New Invoice",
       subtitle: "Create invoice or deposit request",
       href: `/invoices/new?business=${selectedBusinessSlug}`,
-      icon: "📄",
+      label: "Invoice",
     },
     {
       title: "Record Payment",
       subtitle: "Apply payment to invoice",
-      href: `/invoices?business=${selectedBusinessSlug}`,
-      icon: "💵",
+      href: `/invoices?business=${selectedBusinessSlug}&status=sent`,
+      label: "Payment",
     },
     {
       title: "Review Queue",
       subtitle: "Check upcoming units",
       href: `/queue?business=${selectedBusinessSlug}`,
-      icon: "🏠",
+      label: "Review",
     },
     {
       title: "Print Documents",
       subtitle: "Estimates and invoices",
       href: `/estimates?business=${selectedBusinessSlug}`,
-      icon: "🖨️",
+      label: "Print",
     },
   ];
 
@@ -176,16 +199,22 @@ export default async function DashboardPage({
               Trimax
             </p>
 
-            <h1 className="mt-2 text-4xl font-bold">Dashboard</h1>
+            <h1 className="mt-2 text-4xl font-bold">
+              Dashboard
+            </h1>
 
             <p className="mt-2 text-zinc-400">
-              Operations overview for {selectedBusiness?.name ?? "your business"}.
+              Operations overview for{" "}
+              {selectedBusiness?.name ??
+                "your business"}
+              .
             </p>
           </div>
 
           <div className="flex flex-wrap gap-3">
             {businesses.map((business) => {
-              const isSelected = business.id === selectedBusiness?.id;
+              const isSelected =
+                business.id === selectedBusiness?.id;
 
               return (
                 <Link
@@ -202,9 +231,9 @@ export default async function DashboardPage({
               );
             })}
 
-            <button className="rounded-2xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm font-semibold text-zinc-300">
-              Robbie ▾
-            </button>
+            <div className="rounded-2xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm font-semibold text-zinc-300">
+              Robbie
+            </div>
           </div>
         </div>
 
@@ -220,19 +249,30 @@ export default async function DashboardPage({
               </h2>
 
               <p className="mt-3 text-zinc-400">
-                Open invoices, deposits requested, and unpaid balances.
+                Open invoices, deposits requested, and
+                unpaid balances.
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
-                <p className="text-zinc-400">Open Invoices</p>
-                <p className="mt-1 text-2xl font-bold">{openInvoices.length}</p>
+                <p className="text-zinc-400">
+                  Open Invoices
+                </p>
+
+                <p className="mt-1 text-2xl font-bold">
+                  {openInvoices.length}
+                </p>
               </div>
 
               <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
-                <p className="text-zinc-400">YTD Revenue</p>
-                <p className="mt-1 text-2xl font-bold">{ytdRevenue}</p>
+                <p className="text-zinc-400">
+                  YTD Revenue
+                </p>
+
+                <p className="mt-1 text-2xl font-bold">
+                  {ytdRevenue}
+                </p>
               </div>
             </div>
           </div>
@@ -240,38 +280,53 @@ export default async function DashboardPage({
 
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
-            <p className="text-sm text-zinc-400">Active Queue</p>
-            <p className="mt-2 text-4xl font-bold">{activeQueueItems.length}</p>
+            <p className="text-sm text-zinc-400">
+              Active Queue
+            </p>
+
+            <p className="mt-2 text-4xl font-bold">
+              {activeQueueItems.length}
+            </p>
 
             <Link
               href={`/queue?business=${selectedBusinessSlug}`}
               className="mt-4 inline-block text-sm text-orange-400"
             >
-              View queue →
+              View queue
             </Link>
           </Card>
 
           <Card>
-            <p className="text-sm text-zinc-400">Pending Estimates</p>
-            <p className="mt-2 text-4xl font-bold">{pendingEstimates.length}</p>
+            <p className="text-sm text-zinc-400">
+              Pending Estimates
+            </p>
+
+            <p className="mt-2 text-4xl font-bold">
+              {pendingEstimates.length}
+            </p>
 
             <Link
               href={`/estimates?business=${selectedBusinessSlug}`}
               className="mt-4 inline-block text-sm text-orange-400"
             >
-              View estimates →
+              View estimates
             </Link>
           </Card>
 
           <Card>
-            <p className="text-sm text-zinc-400">Open Invoices</p>
-            <p className="mt-2 text-4xl font-bold">{openInvoices.length}</p>
+            <p className="text-sm text-zinc-400">
+              Open Invoices
+            </p>
+
+            <p className="mt-2 text-4xl font-bold">
+              {openInvoices.length}
+            </p>
 
             <Link
               href={`/invoices?business=${selectedBusinessSlug}`}
               className="mt-4 inline-block text-sm text-orange-400"
             >
-              View invoices →
+              View invoices
             </Link>
           </Card>
         </div>
@@ -288,12 +343,15 @@ export default async function DashboardPage({
               </h2>
 
               <p className="mt-2 text-zinc-400">
-                New turns, smoker units, flooring notes, and paint scopes should
-                be reviewed before scheduling.
+                New turns, smoker units, flooring notes,
+                and paint scopes should be reviewed before
+                scheduling.
               </p>
             </div>
 
-            <Link href={`/queue?business=${selectedBusinessSlug}`}>
+            <Link
+              href={`/queue?business=${selectedBusinessSlug}`}
+            >
               <Button>Review Queue</Button>
             </Link>
           </div>
@@ -305,7 +363,9 @@ export default async function DashboardPage({
               Action Center
             </p>
 
-            <h2 className="mt-2 text-2xl font-bold">Quick Actions</h2>
+            <h2 className="mt-2 text-2xl font-bold">
+              Quick Actions
+            </h2>
           </div>
 
           <div className="grid gap-3 md:grid-cols-3">
@@ -315,9 +375,17 @@ export default async function DashboardPage({
                 href={action.href}
                 className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 transition hover:border-orange-500/60 hover:bg-zinc-800"
               >
-                <p className="text-3xl">{action.icon}</p>
-                <p className="mt-3 font-semibold">{action.title}</p>
-                <p className="mt-1 text-sm text-zinc-400">{action.subtitle}</p>
+                <p className="inline-flex rounded-full border border-orange-500/40 bg-orange-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-orange-300">
+                  {action.label}
+                </p>
+
+                <p className="mt-3 font-semibold">
+                  {action.title}
+                </p>
+
+                <p className="mt-1 text-sm text-zinc-400">
+                  {action.subtitle}
+                </p>
               </Link>
             ))}
           </div>
@@ -325,27 +393,33 @@ export default async function DashboardPage({
 
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
-            <h2 className="text-2xl font-bold">Recent Queue Items</h2>
+            <h2 className="text-2xl font-bold">
+              Recent Queue Items
+            </h2>
 
             <div className="mt-4 space-y-3">
               {queueItems.slice(0, 3).map((item) => (
                 <Link
                   key={item.id}
-                  href={`/queue/${item.id}`}
+                  href={`/queue/${item.id}?business=${selectedBusinessSlug}`}
                   className="block rounded-2xl border border-zinc-800 bg-zinc-950 p-4 hover:border-orange-500/60"
                 >
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <p className="font-semibold">
-                        {item.property} — Unit {item.unit}
+                        {item.property || "Property"} - Unit{" "}
+                        {item.unit || "-"}
                       </p>
 
                       <p className="mt-1 text-sm text-zinc-400">
-                        {item.paint_type} • {item.flooring}
+                        {item.paint_type || "Paint TBD"} /{" "}
+                        {item.flooring || "Flooring TBD"}
                       </p>
                     </div>
 
-                    <StatusBadge status={item.status || "Pending"} />
+                    <StatusBadge
+                      status={item.status || "Pending"}
+                    />
                   </div>
                 </Link>
               ))}
@@ -359,23 +433,31 @@ export default async function DashboardPage({
           </Card>
 
           <Card>
-            <h2 className="text-2xl font-bold">Recent Invoices</h2>
+            <h2 className="text-2xl font-bold">
+              Recent Invoices
+            </h2>
 
             <div className="mt-4 space-y-3">
               {invoices.slice(0, 3).map((invoice) => (
                 <Link
                   key={invoice.id}
-                  href={`/invoices/${invoice.id}`}
+                  href={`/invoices/${invoice.id}?business=${selectedBusinessSlug}`}
                   className="block rounded-2xl border border-zinc-800 bg-zinc-950 p-4 hover:border-orange-500/60"
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-4">
                     <div>
+                      <p className="text-sm text-orange-400">
+                        {invoice.display_id ?? "Invoice"}
+                      </p>
+
                       <p className="font-semibold">
-                        {invoice.project_title || "Untitled Invoice"}
+                        {invoice.project_title ||
+                          "Untitled Invoice"}
                       </p>
 
                       <p className="mt-1 text-sm text-zinc-400">
-                        {invoice.customer_name || "Unknown Customer"}
+                        {invoice.customer_name ||
+                          "Unknown Customer"}
                       </p>
                     </div>
 
