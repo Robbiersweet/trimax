@@ -18,8 +18,11 @@ type QueueItem = {
   paint_type: string | null;
   flooring: string | null;
   status: string | null;
+  ready_date: string | null;
   scheduled_date: string | null;
   completed_date: string | null;
+  smoked_in: boolean | null;
+  notes: string | null;
 };
 
 type Estimate = {
@@ -67,6 +70,20 @@ function isDateInCurrentMonth(value: string | null) {
     date.getFullYear() === now.getFullYear() &&
     date.getMonth() === now.getMonth()
   );
+}
+
+function dateValue(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date;
 }
 
 export default async function DashboardPage({
@@ -154,6 +171,31 @@ export default async function DashboardPage({
       isDateInCurrentMonth(item.completed_date) ||
       (item.status === "Completed" &&
         isDateInCurrentMonth(item.scheduled_date))
+  );
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const sevenDaysFromNow = new Date(today);
+  sevenDaysFromNow.setDate(today.getDate() + 7);
+
+  const readySoonUnscheduled = queueItems.filter((item) => {
+    const readyDate = dateValue(item.ready_date);
+
+    return (
+      Boolean(readyDate) &&
+      readyDate! >= today &&
+      readyDate! <= sevenDaysFromNow &&
+      !item.scheduled_date &&
+      item.status !== "Scheduled" &&
+      item.status !== "Completed"
+    );
+  });
+
+  const remediationQueueItems = queueItems.filter(
+    (item) =>
+      item.smoked_in ||
+      (item.notes || "").toLowerCase().includes("smok")
   );
 
   const pendingEstimates = estimates.filter(
@@ -333,6 +375,50 @@ export default async function DashboardPage({
             </div>
           </div>
         </Card>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card className="border-yellow-500/30 bg-yellow-500/5">
+            <p className="text-sm uppercase tracking-[0.3em] text-yellow-300">
+              Scheduling Attention
+            </p>
+
+            <p className="mt-3 text-4xl font-bold">
+              {readySoonUnscheduled.length}
+            </p>
+
+            <p className="mt-2 text-zinc-300">
+              Units are within 7 days of ready date and not scheduled.
+            </p>
+
+            <Link
+              href={`/reports?business=${selectedBusinessSlug}&range=week`}
+              className="mt-4 inline-block text-sm text-orange-400"
+            >
+              Review readiness report
+            </Link>
+          </Card>
+
+          <Card className="border-red-500/30 bg-red-500/5">
+            <p className="text-sm uppercase tracking-[0.3em] text-red-300">
+              Remediation Watch
+            </p>
+
+            <p className="mt-3 text-4xl font-bold">
+              {remediationQueueItems.length}
+            </p>
+
+            <p className="mt-2 text-zinc-300">
+              Queue items flagged for smoker or remediation attention.
+            </p>
+
+            <Link
+              href={`/queue?business=${selectedBusinessSlug}&q=smok`}
+              className="mt-4 inline-block text-sm text-orange-400"
+            >
+              Search remediation queue
+            </Link>
+          </Card>
+        </div>
 
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
