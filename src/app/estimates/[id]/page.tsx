@@ -3,6 +3,7 @@ import AppShell from "../../components/AppShell";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import ConvertEstimateToInvoiceButton from "../../components/ConvertEstimateToInvoiceButton";
+import SplitInvoicePlanner from "../../components/SplitInvoicePlanner";
 import { supabase } from "../../lib/supabase";
 
 type SupabaseEstimate = {
@@ -203,20 +204,10 @@ export default async function EstimateDetailsPage({
         )}
 
         {splitPreview && (
-          <Card className="border-orange-500/50 bg-orange-500/10">
-            <p className="text-sm uppercase tracking-[0.25em] text-orange-300">
-              Split Preview
-            </p>
-
-            <p className="mt-2 text-lg font-semibold text-orange-100">
-              This would become {splitPreview.invoiceCount} invoices at about{" "}
-              {formatCurrency(splitPreview.averageAmount)} each.
-            </p>
-
-            <p className="mt-2 text-sm leading-6 text-orange-100/80">
-              This is only a preview. Trimax is not creating split invoices yet.
-            </p>
-          </Card>
+          <SplitInvoicePlanner
+            totalAmount={estimateTotal}
+            targetAmount={effectiveSplitTargetAmount}
+          />
         )}
 
         {linkedInvoice && (
