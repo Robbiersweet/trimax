@@ -241,6 +241,19 @@ export default async function QueuePage({
     new Set(queueItems.map((item) => normalizeStatus(item.status)))
   ).sort((first, second) => first.localeCompare(second));
 
+  const statusCounts = queueItems.reduce(
+    (counts, item) => {
+      const status = normalizeStatus(item.status);
+      counts.set(status, (counts.get(status) ?? 0) + 1);
+      return counts;
+    },
+    new Map<string, number>()
+  );
+
+  const readySoonCount = queueItems.filter(isReadySoonUnscheduled).length;
+  const remediationCount = queueItems.filter(isRemediationItem).length;
+  const needsEstimateCount = queueItems.filter(needsEstimate).length;
+
   const filteredQueueItems = queueItems.filter((item) => {
     if (
       statusFilter !== "all" &&
@@ -288,10 +301,12 @@ export default async function QueuePage({
     {
       label: "All",
       value: "all",
+      count: queueItems.length,
     },
     ...statuses.map((status) => ({
       label: statusLabel(status),
       value: status,
+      count: statusCounts.get(status) ?? 0,
     })),
   ];
 
@@ -299,18 +314,22 @@ export default async function QueuePage({
     {
       label: "All Work",
       value: "all",
+      count: queueItems.length,
     },
     {
       label: "Ready Soon",
       value: "ready-soon",
+      count: readySoonCount,
     },
     {
       label: "Needs Estimate",
       value: "needs-estimate",
+      count: needsEstimateCount,
     },
     {
       label: "Remediation",
       value: "remediation",
+      count: remediationCount,
     },
   ];
 
@@ -393,7 +412,16 @@ export default async function QueuePage({
                   : "text-zinc-300 hover:bg-zinc-800 hover:text-white"
               }`}
             >
-              {filter.label}
+              <span>{filter.label}</span>
+              <span
+                className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
+                  viewFilter === filter.value
+                    ? "bg-black/15 text-black"
+                    : "bg-zinc-950 text-zinc-400"
+                }`}
+              >
+                {filter.count}
+              </span>
             </Link>
           ))}
         </div>
@@ -413,7 +441,16 @@ export default async function QueuePage({
                   : "text-zinc-300 hover:bg-zinc-800 hover:text-white"
               }`}
             >
-              {filter.label}
+              <span>{filter.label}</span>
+              <span
+                className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
+                  statusFilter === filter.value
+                    ? "bg-black/15 text-black"
+                    : "bg-zinc-950 text-zinc-400"
+                }`}
+              >
+                {filter.count}
+              </span>
             </Link>
           ))}
         </div>

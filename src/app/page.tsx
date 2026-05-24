@@ -23,6 +23,7 @@ type QueueItem = {
   completed_date: string | null;
   smoked_in: boolean | null;
   notes: string | null;
+  linked_estimate_id: string | null;
 };
 
 type Estimate = {
@@ -84,6 +85,14 @@ function dateValue(value: string | null) {
   }
 
   return date;
+}
+
+function normalizeStatus(value: string | null) {
+  return (value || "Pending Estimate").trim().toLowerCase();
+}
+
+function isClosedQueueStatus(value: string | null) {
+  return ["completed", "invoiced", "paid"].includes(normalizeStatus(value));
 }
 
 export default async function DashboardPage({
@@ -157,7 +166,9 @@ export default async function DashboardPage({
   }
 
   const activeQueueItems = queueItems.filter(
-    (item) => item.status !== "Scheduled"
+    (item) =>
+      normalizeStatus(item.status) !== "scheduled" &&
+      !isClosedQueueStatus(item.status)
   );
 
   const scheduledQueueItems = queueItems.filter(
@@ -181,14 +192,15 @@ export default async function DashboardPage({
 
   const readySoonUnscheduled = queueItems.filter((item) => {
     const readyDate = dateValue(item.ready_date);
+    const status = normalizeStatus(item.status);
 
     return (
       Boolean(readyDate) &&
       readyDate! >= today &&
       readyDate! <= sevenDaysFromNow &&
       !item.scheduled_date &&
-      item.status !== "Scheduled" &&
-      item.status !== "Completed"
+      status !== "scheduled" &&
+      status !== "completed"
     );
   });
 
@@ -198,8 +210,10 @@ export default async function DashboardPage({
       (item.notes || "").toLowerCase().includes("smok")
   );
 
-  const pendingEstimates = estimates.filter(
-    (estimate) => estimate.status !== "Approved"
+  const queueItemsNeedingEstimate = queueItems.filter(
+    (item) =>
+      !item.linked_estimate_id &&
+      !isClosedQueueStatus(item.status)
   );
 
   const openInvoices = invoices.filter(
@@ -449,11 +463,11 @@ export default async function DashboardPage({
 
           <Card>
             <p className="text-sm text-zinc-400">
-              Pending Estimates
+              Needs Estimate
             </p>
 
             <p className="mt-2 text-4xl font-bold">
-              {pendingEstimates.length}
+              {queueItemsNeedingEstimate.length}
             </p>
 
             <Link
