@@ -1,6 +1,11 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import {
+  Suspense,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useSearchParams } from "next/navigation";
 import AppShell from "../components/AppShell";
 import Card from "../components/Card";
@@ -25,6 +30,8 @@ type ServiceItem = {
   category: string | null;
   is_active: boolean | null;
 };
+
+type StatusFilter = "active" | "all" | "inactive";
 
 function formatCurrency(value: number | string | null) {
   return `$${(Number(value) || 0).toFixed(2)}`;
@@ -55,6 +62,12 @@ function ServicesPageContent() {
   const [defaultUnitPrice, setDefaultUnitPrice] =
     useState("");
   const [category, setCategory] = useState("");
+  const [searchTerm, setSearchTerm] =
+    useState("");
+  const [categoryFilter, setCategoryFilter] =
+    useState("all");
+  const [statusFilter, setStatusFilter] =
+    useState<StatusFilter>("active");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -67,6 +80,9 @@ function ServicesPageContent() {
   useEffect(() => {
     async function loadData() {
       setLoading(true);
+      setBusiness(null);
+      setServices([]);
+      resetForm();
 
       const { data: businessData, error } =
         await supabase
@@ -118,6 +134,82 @@ function ServicesPageContent() {
     loadData();
   }, [businessSlug]);
 
+  const categories = useMemo(() => {
+    const uniqueCategories = new Set<string>();
+
+    services.forEach((service) => {
+      const serviceCategory =
+        service.category?.trim();
+
+      if (serviceCategory) {
+        uniqueCategories.add(serviceCategory);
+      }
+    });
+
+    return Array.from(uniqueCategories).sort(
+      (first, second) =>
+        first.localeCompare(second)
+    );
+  }, [services]);
+
+  const filteredServices = useMemo(() => {
+    const normalizedSearch =
+      searchTerm.trim().toLowerCase();
+
+    return services.filter((service) => {
+      const isActive = Boolean(service.is_active);
+
+      if (
+        statusFilter === "active" &&
+        !isActive
+      ) {
+        return false;
+      }
+
+      if (
+        statusFilter === "inactive" &&
+        isActive
+      ) {
+        return false;
+      }
+
+      if (
+        categoryFilter !== "all" &&
+        (service.category || "") !== categoryFilter
+      ) {
+        return false;
+      }
+
+      if (!normalizedSearch) {
+        return true;
+      }
+
+      const searchableText = [
+        service.name,
+        service.description,
+        service.category,
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return searchableText.includes(
+        normalizedSearch
+      );
+    });
+  }, [
+    categoryFilter,
+    searchTerm,
+    services,
+    statusFilter,
+  ]);
+
+  const activeCount = services.filter(
+    (service) => service.is_active
+  ).length;
+
+  const inactiveCount =
+    services.length - activeCount;
+
   async function reloadServices() {
     if (!business) {
       return;
@@ -164,6 +256,33 @@ function ServicesPageContent() {
       )
     );
     setCategory(service.category ?? "");
+  }
+
+  function duplicateService(service: ServiceItem) {
+    setEditingServiceId("");
+    setName(`${service.name} Copy`);
+    setDescription(service.description ?? "");
+    setDefaultQuantity(
+      String(
+        Number(service.default_quantity) || 1
+      )
+    );
+    setDefaultUnitPrice(
+      String(
+        Number(service.default_unit_price) || 0
+      )
+    );
+    setCategory(service.category ?? "");
+    setToast({
+      type: "success",
+      message:
+        "Service copied into the form. Rename it, then save.",
+    });
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
   }
 
   async function handleSave() {
@@ -378,6 +497,89 @@ function ServicesPageContent() {
           </div>
         </Card>
 
+        <Card>
+          <div className="grid gap-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-semibold">
+                  Service Library
+                </h2>
+
+                <p className="mt-2 text-sm text-zinc-400">
+                  {activeCount} active,{" "}
+                  {inactiveCount} inactive,{" "}
+                  {services.length} total.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    "active",
+                    "all",
+                    "inactive",
+                  ] as StatusFilter[]
+                ).map((status) => (
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() =>
+                      setStatusFilter(status)
+                    }
+                    className={`rounded-full px-4 py-2 text-sm font-semibold capitalize transition ${
+                      statusFilter === status
+                        ? "bg-orange-500 text-black"
+                        : "bg-zinc-800 text-zinc-300 hover:text-orange-400"
+                    }`}
+                  >
+                    {status}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-[1fr_260px]">
+              <InputField
+                label="Search Services"
+                placeholder="Search name, description, or category"
+                value={searchTerm}
+                onChange={setSearchTerm}
+              />
+
+              <div>
+                <label className="mb-2 block text-sm text-zinc-400">
+                  Category
+                </label>
+
+                <select
+                  value={categoryFilter}
+                  onChange={(event) =>
+                    setCategoryFilter(
+                      event.target.value
+                    )
+                  }
+                  className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+                >
+                  <option value="all">
+                    All Categories
+                  </option>
+
+                  {categories.map(
+                    (serviceCategory) => (
+                      <option
+                        key={serviceCategory}
+                        value={serviceCategory}
+                      >
+                        {serviceCategory}
+                      </option>
+                    )
+                  )}
+                </select>
+              </div>
+            </div>
+          </div>
+        </Card>
+
         {loading ? (
           <Card>
             <p className="text-zinc-400">
@@ -390,9 +592,15 @@ function ServicesPageContent() {
               No services yet.
             </p>
           </Card>
+        ) : filteredServices.length === 0 ? (
+          <Card>
+            <p className="text-zinc-400">
+              No services match those filters.
+            </p>
+          </Card>
         ) : (
           <div className="grid gap-4">
-            {services.map((service) => (
+            {filteredServices.map((service) => (
               <Card
                 key={service.id}
                 className={
@@ -437,6 +645,15 @@ function ServicesPageContent() {
                       }
                     >
                       Edit
+                    </Button>
+
+                    <Button
+                      variant="secondary"
+                      onClick={() =>
+                        duplicateService(service)
+                      }
+                    >
+                      Duplicate
                     </Button>
 
                     <Button
