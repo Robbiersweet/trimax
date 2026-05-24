@@ -187,6 +187,10 @@ function NewInvoicePageContent() {
   const splitPreview = effectiveSplitWarningEnabled
     ? getSplitPreview(subtotal, effectiveSplitTargetAmount)
     : null;
+  const taxSuggestion =
+    getTaxSuggestionForAddress(serviceAddress);
+  const showTaxSuggestionNote =
+    Boolean(taxSuggestion) && !taxManuallyChanged;
 
   const [toast, setToast] = useState<{
     type: "success" | "error";
@@ -675,6 +679,13 @@ function NewInvoicePageContent() {
                 onChange={setAmountPaid}
               />
             </div>
+
+            {showTaxSuggestionNote ? (
+              <p className="rounded-2xl border border-orange-500/30 bg-orange-500/10 px-4 py-3 text-sm leading-6 text-orange-100/80">
+                Tax suggestion applied from service address. You can override
+                the tax label or rate.
+              </p>
+            ) : null}
 
             <label className="flex items-start gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/50 p-4">
               <input
