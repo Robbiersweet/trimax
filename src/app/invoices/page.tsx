@@ -16,10 +16,41 @@ type Invoice = {
   display_id: string | null;
   customer_name: string | null;
   project_title: string | null;
-  invoice_amount: string | null;
+  invoice_amount: string | number | null;
   status: string | null;
   due_date: string | null;
 };
+
+function formatMoney(value: string | number | null) {
+  const parsed = Number(value ?? 0);
+
+  if (!Number.isFinite(parsed)) {
+    return "$0.00";
+  }
+
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(parsed);
+}
+
+function formatDate(value: string | null) {
+  if (!value) {
+    return "No Due Date";
+  }
+
+  const date = new Date(`${value}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "2-digit",
+    day: "2-digit",
+    year: "2-digit",
+  }).format(date);
+}
 
 export default async function InvoicesPage({
   searchParams,
@@ -28,12 +59,18 @@ export default async function InvoicesPage({
 }) {
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const businessSlug = resolvedSearchParams.business ?? "rnl-creations";
+  const businessQuery = `?business=${businessSlug}`;
 
-  const { data: businessData } = await supabase
+  const { data: businessData, error: businessError } = await supabase
     .from("businesses")
-    .select("*")
+    .select("id, name, slug")
     .eq("slug", businessSlug)
-    .single();
+    .limit(1)
+    .maybeSingle();
+
+  if (businessError) {
+    console.error(businessError);
+  }
 
   const selectedBusiness = businessData as Business | null;
 
@@ -42,7 +79,9 @@ export default async function InvoicesPage({
   if (selectedBusiness?.id) {
     const { data, error } = await supabase
       .from("invoices")
-      .select("*")
+      .select(
+        "id, display_id, customer_name, project_title, invoice_amount, status, due_date"
+      )
       .eq("business_id", selectedBusiness.id)
       .order("created_at", { ascending: false });
 
@@ -56,7 +95,7 @@ export default async function InvoicesPage({
   return (
     <AppShell>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
               Trimax
@@ -65,27 +104,29 @@ export default async function InvoicesPage({
             <h1 className="mt-2 text-4xl font-bold">Invoices</h1>
 
             <p className="mt-2 text-zinc-400">
-              Showing invoices for {selectedBusiness?.name ?? "selected business"}.
+              Showing invoices for{" "}
+              {selectedBusiness?.name ?? "selected business"}.
             </p>
           </div>
 
-          <Link href={`/invoices/new?business=${businessSlug}`}>
+          <Link href={`/invoices/new${businessQuery}`}>
             <Button>+ New Invoice</Button>
           </Link>
         </div>
 
         {invoices.length === 0 ? (
           <Card>
-            <p className="text-zinc-400">
-              No invoices for this business yet.
-            </p>
+            <p className="text-zinc-400">No invoices for this business yet.</p>
           </Card>
         ) : (
           <div className="grid gap-4">
             {invoices.map((invoice) => (
-              <Link key={invoice.id} href={`/invoices/${invoice.id}`}>
+              <Link
+                key={invoice.id}
+                href={`/invoices/${invoice.id}${businessQuery}`}
+              >
                 <Card className="transition hover:border-orange-500/60 hover:bg-zinc-800">
-                  <div className="flex items-start justify-between">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <p className="text-sm text-orange-400">
                         {invoice.display_id ?? "Invoice"}
@@ -100,9 +141,9 @@ export default async function InvoicesPage({
                       </p>
                     </div>
 
-                    <div className="text-right">
+                    <div className="sm:text-right">
                       <p className="text-xl font-bold text-orange-400">
-                        {invoice.invoice_amount || "$0"}
+                        {formatMoney(invoice.invoice_amount)}
                       </p>
 
                       <div className="mt-2">
@@ -110,7 +151,7 @@ export default async function InvoicesPage({
                       </div>
 
                       <p className="mt-2 text-sm text-zinc-400">
-                        {invoice.due_date || "No Due Date"}
+                        {formatDate(invoice.due_date)}
                       </p>
                     </div>
                   </div>

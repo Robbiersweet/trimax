@@ -42,6 +42,7 @@ type LinkedInvoice = {
 type Business = {
   id: string;
   slug: string;
+  split_warning_amount: number | string | null;
 };
 
 function toNumber(value: number | string | null) {
@@ -82,11 +83,12 @@ export default async function EstimateDetailsPage({
   const estimate = data as SupabaseEstimate;
 
   let businessSlug = "rnl-creations";
+  let splitWarningAmount = 0;
 
   if (estimate.business_id) {
     const { data: businessData } = await supabase
       .from("businesses")
-      .select("id, slug")
+      .select("id, slug, split_warning_amount")
       .eq("id", estimate.business_id)
       .single();
 
@@ -95,6 +97,9 @@ export default async function EstimateDetailsPage({
     if (business?.slug) {
       businessSlug = business.slug;
     }
+
+    splitWarningAmount =
+      toNumber(business?.split_warning_amount ?? null);
   }
 
   const { data: lineItemData } = await supabase
@@ -122,6 +127,10 @@ export default async function EstimateDetailsPage({
   const taxRate = toNumber(estimate.tax_rate);
   const taxAmount = subtotal * (taxRate / 100);
   const estimateTotal = subtotal + taxAmount;
+
+  const isOverSplitWarning =
+    splitWarningAmount > 0 &&
+    estimateTotal > splitWarningAmount;
 
   const { data: invoiceData } = await supabase
     .from("invoices")
@@ -154,6 +163,22 @@ export default async function EstimateDetailsPage({
             {estimate.display_id ?? "Estimate"}
           </p>
         </div>
+
+        {isOverSplitWarning && (
+          <Card className="border-yellow-500/60 bg-yellow-500/10">
+            <p className="text-sm uppercase tracking-[0.25em] text-yellow-300">
+              Split Warning
+            </p>
+
+            <p className="mt-2 text-lg font-semibold text-yellow-100">
+              This estimate total is over {formatCurrency(splitWarningAmount)}.
+            </p>
+
+            <p className="mt-2 text-sm leading-6 text-yellow-100/80">
+              Consider splitting this apartment work into smaller invoices or estimates before sending.
+            </p>
+          </Card>
+        )}
 
         {linkedInvoice && (
           <Card className="border-purple-500/40">

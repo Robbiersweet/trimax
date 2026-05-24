@@ -15,8 +15,37 @@ type ConvertEstimateToInvoiceButtonProps = {
   notes: string;
 };
 
-function parseCurrency(value: string) {
-  return Number(value.replace(/[^0-9.]/g, "")) || 0;
+type Estimate = {
+  id: string;
+  business_id: string | null;
+  client_id: string | null;
+  customer_name: string | null;
+  project_title: string | null;
+  project_address: string | null;
+  service_address: string | null;
+  reference: string | null;
+  estimate_amount: string | null;
+  tax_label: string | null;
+  tax_rate: number | string | null;
+  terms: string | null;
+  notes: string | null;
+};
+
+type EstimateLineItem = {
+  id: string;
+  description: string | null;
+  quantity: number | string | null;
+  unit_price: number | string | null;
+  line_total: number | string | null;
+  sort_order: number | null;
+};
+
+function parseCurrency(value: string | null) {
+  return Number(value?.replace(/[^0-9.]/g, "") ?? 0) || 0;
+}
+
+function toNumber(value: number | string | null) {
+  return Number(value) || 0;
 }
 
 function formatCurrency(amount: number) {
@@ -36,11 +65,79 @@ export default function ConvertEstimateToInvoiceButton({
   const router = useRouter();
 
   async function handleConvert() {
-    const numericAmount = parseCurrency(invoiceAmount);
-
-    if (!businessId || !customerName || !projectTitle || numericAmount <= 0) {
+    if (!businessId || !customerName || !projectTitle) {
       alert(
-        "This estimate needs a customer, project title, business, and amount before it can be converted."
+        "This estimate needs a customer, project title, and business before it can be converted."
+      );
+
+      return;
+    }
+
+    const { data: existingInvoice } = await supabase
+      .from("invoices")
+      .select("id")
+      .eq("estimate_id", estimateId)
+      .maybeSingle();
+
+    if (existingInvoice?.id) {
+      router.push(
+        `/invoices/${existingInvoice.id}?business=${businessSlug}`
+      );
+
+      return;
+    }
+
+    const { data: estimateData, error: estimateError } =
+      await supabase
+        .from("estimates")
+        .select("*")
+        .eq("id", estimateId)
+        .single();
+
+    if (estimateError || !estimateData) {
+      console.error(estimateError);
+
+      alert("Unable to load estimate before conversion.");
+
+      return;
+    }
+
+    const estimate = estimateData as Estimate;
+
+    const { data: estimateLineItemData } =
+      await supabase
+        .from("estimate_line_items")
+        .select("*")
+        .eq("estimate_id", estimateId)
+        .order("sort_order", {
+          ascending: true,
+        });
+
+    const estimateLineItems =
+      (estimateLineItemData ?? []) as EstimateLineItem[];
+
+    const subtotal = estimateLineItems.reduce(
+      (total, item) =>
+        total + toNumber(item.line_total),
+      0
+    );
+
+    const fallbackSubtotal =
+      subtotal > 0
+        ? subtotal
+        : parseCurrency(
+            estimate.estimate_amount ?? invoiceAmount
+          );
+
+    const taxRate = toNumber(estimate.tax_rate);
+    const taxAmount =
+      fallbackSubtotal * (taxRate / 100);
+    const invoiceTotal =
+      fallbackSubtotal + taxAmount;
+
+    if (invoiceTotal <= 0) {
+      alert(
+        "This estimate needs at least one priced line item before it can be converted."
       );
 
       return;
@@ -48,10 +145,15 @@ export default function ConvertEstimateToInvoiceButton({
 
     const { count } = await supabase
       .from("invoices")
-      .select("*", { count: "exact", head: true });
+      .select("*", {
+        count: "exact",
+        head: true,
+      });
 
     const nextInvoiceNumber = (count ?? 0) + 1;
-    const displayId = `INV-${String(nextInvoiceNumber).padStart(4, "0")}`;
+    const displayId = `INV-${String(
+      nextInvoiceNumber
+    ).padStart(4, "0")}`;
 
     const {
       data: { user },
@@ -60,15 +162,30 @@ export default function ConvertEstimateToInvoiceButton({
     const { data, error } = await supabase
       .from("invoices")
       .insert({
-        business_id: businessId,
+        business_id:
+          estimate.business_id ?? businessId,
         estimate_id: estimateId,
-        client_id: clientId,
+        client_id: estimate.client_id ?? clientId,
         created_by_user_id: user?.id ?? null,
         display_id: displayId,
-        customer_name: customerName,
-        project_title: projectTitle,
-        invoice_amount: formatCurrency(numericAmount),
-        notes,
+        customer_name:
+          estimate.customer_name ?? customerName,
+        project_title:
+          estimate.project_title ?? projectTitle,
+        service_address:
+          estimate.service_address ??
+          estimate.project_address ??
+          "",
+        reference: estimate.reference ?? "",
+        invoice_amount:
+          formatCurrency(invoiceTotal),
+        tax_label: estimate.tax_label ?? "Tax",
+        tax_rate: taxRate,
+        amount_paid: 0,
+        terms:
+          estimate.terms ??
+          "Payment due upon invoice. Thank you for your business.",
+        notes: estimate.notes ?? notes,
         status: "Draft",
       })
       .select()
@@ -82,31 +199,58 @@ export default function ConvertEstimateToInvoiceButton({
       return;
     }
 
+    const invoiceLineItems =
+      estimateLineItems.length > 0
+        ? estimateLineItems.map((item, index) => ({
+            invoice_id: data.id,
+            business_id:
+              estimate.business_id ?? businessId,
+            description:
+              item.description ||
+              estimate.project_title ||
+              "Line item",
+            quantity: toNumber(item.quantity) || 1,
+            unit_price: toNumber(item.unit_price),
+            line_total: toNumber(item.line_total),
+            sort_order:
+              item.sort_order ?? index,
+          }))
+        : [
+            {
+              invoice_id: data.id,
+              business_id:
+                estimate.business_id ?? businessId,
+              description:
+                estimate.project_title ??
+                projectTitle,
+              quantity: 1,
+              unit_price: fallbackSubtotal,
+              line_total: fallbackSubtotal,
+              sort_order: 0,
+            },
+          ];
+
     const { error: lineItemError } = await supabase
       .from("invoice_line_items")
-      .insert({
-        invoice_id: data.id,
-        business_id: businessId,
-        description: projectTitle,
-        quantity: 1,
-        unit_price: numericAmount,
-        line_total: numericAmount,
-        sort_order: 0,
-      });
+      .insert(invoiceLineItems);
 
     if (lineItemError) {
       console.error(lineItemError);
 
       alert(
-        "Invoice was created, but its starter line item could not be saved."
+        "Invoice was created, but its line items could not be saved."
       );
 
-      router.push(`/invoices/${data.id}?business=${businessSlug}`);
+      router.push(
+        `/invoices/${data.id}?business=${businessSlug}`
+      );
 
       return;
     }
 
-    router.push(`/invoices/${data.id}?business=${businessSlug}`);
+    router.push(
+      `/invoices/${data.id}?business=${businessSlug}`
+    );
   }
 
   return (

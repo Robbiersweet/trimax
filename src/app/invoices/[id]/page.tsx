@@ -7,14 +7,20 @@ import DeleteInvoiceButton from "../../components/DeleteInvoiceButton";
 import UpdateInvoiceStatusButton from "../../components/UpdateInvoiceStatusButton";
 import { supabase } from "../../lib/supabase";
 
+type PageProps = {
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ business?: string }>;
+};
+
 type Invoice = {
   id: string;
   estimate_id: string | null;
-  business_id: string | null;
-  customer_name: string | null;
-  project_title: string | null;
-  invoice_amount: string | null;
-  status: string | null;
+  business_id: string;
+  client_id: string | null;
+  customer_name: string;
+  project_title: string;
+  invoice_amount: number | string | null;
+  status: string;
   display_id: string | null;
   issue_date: string | null;
   due_date: string | null;
@@ -24,11 +30,12 @@ type Invoice = {
   amount_paid: number | string | null;
   terms: string | null;
   notes: string | null;
+  service_address: string | null;
 };
 
 type InvoiceLineItem = {
   id: string;
-  description: string | null;
+  description: string;
   quantity: number | string | null;
   unit_price: number | string | null;
   line_total: number | string | null;
@@ -44,377 +51,51 @@ type LinkedEstimate = {
 type Business = {
   id: string;
   slug: string;
+  split_warning_amount: number | string | null;
 };
 
-function formatCurrency(amount: number) {
-  return `$${amount.toFixed(2)}`;
+function money(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(value);
 }
 
-function toNumber(value: number | string | null) {
-  return Number(value) || 0;
+function numberValue(value: number | string | null | undefined) {
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
-export default async function InvoiceDetailsPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
+function formatDate(value: string | null) {
+  if (!value) return "-";
 
-  const { data, error } = await supabase
-    .from("invoices")
-    .select("*")
-    .eq("id", id)
-    .single();
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
 
-  if (error || !data) {
-    return (
-      <AppShell>
-        <p className="text-red-400">
-          Invoice not found.
-        </p>
-      </AppShell>
-    );
-  }
-
-  const invoice = data as Invoice;
-  const invoiceStatus = invoice.status || "Draft";
-
-  let businessSlug = "rnl-creations";
-
-  if (invoice.business_id) {
-    const { data: businessData } =
-      await supabase
-        .from("businesses")
-        .select("id, slug")
-        .eq("id", invoice.business_id)
-        .single();
-
-    const business =
-      businessData as Business | null;
-
-    if (business?.slug) {
-      businessSlug = business.slug;
-    }
-  }
-
-  const { data: lineItemData } = await supabase
-    .from("invoice_line_items")
-    .select("*")
-    .eq("invoice_id", invoice.id)
-    .order("sort_order", {
-      ascending: true,
-    });
-
-  const lineItems =
-    (lineItemData ?? []) as InvoiceLineItem[];
-
-  const subtotal = lineItems.reduce(
-    (total, item) =>
-      total + toNumber(item.line_total),
-    0
-  );
-
-  const fallbackSubtotal =
-    subtotal > 0
-      ? subtotal
-      : toNumber(
-          invoice.invoice_amount?.replace(
-            /[^0-9.]/g,
-            ""
-          ) ?? null
-        );
-
-  const taxRate = toNumber(invoice.tax_rate);
-  const taxAmount =
-    fallbackSubtotal * (taxRate / 100);
-  const invoiceTotal =
-    fallbackSubtotal + taxAmount;
-  const amountPaid = toNumber(invoice.amount_paid);
-  const amountDue =
-    invoiceTotal - amountPaid;
-
-  let linkedEstimate: LinkedEstimate | null =
-    null;
-
-  if (invoice.estimate_id) {
-    const { data: estimateData } =
-      await supabase
-        .from("estimates")
-        .select(
-          "id, display_id, project_title"
-        )
-        .eq("id", invoice.estimate_id)
-        .single();
-
-    linkedEstimate =
-      estimateData as LinkedEstimate | null;
-  }
-
-  return (
-    <AppShell>
-      <div className="space-y-6">
-        <Link
-          href={`/invoices?business=${businessSlug}`}
-          className="inline-flex text-sm text-orange-400 hover:text-orange-300"
-        >
-          Back to Invoices
-        </Link>
-
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
-              Invoice Details
-            </p>
-
-            <h1 className="mt-2 text-4xl font-bold">
-              {invoice.project_title ||
-                "Untitled Invoice"}
-            </h1>
-
-            <p className="mt-2 text-zinc-400">
-              {invoice.display_id ||
-                "Invoice"}
-            </p>
-          </div>
-
-          <StatusBadge
-            status={invoiceStatus}
-          />
-        </div>
-
-        {linkedEstimate && (
-          <Card className="border-purple-500/40">
-            <p className="text-sm uppercase tracking-[0.25em] text-purple-300">
-              Linked Estimate
-            </p>
-
-            <div className="mt-3 flex items-center justify-between gap-4">
-              <div>
-                <p className="text-lg font-semibold">
-                  {linkedEstimate.display_id ??
-                    "Estimate"}
-                </p>
-
-                <p className="mt-1 text-sm text-zinc-400">
-                  {linkedEstimate.project_title ??
-                    "No project title"}
-                </p>
-              </div>
-
-              <Link
-                href={`/estimates/${linkedEstimate.id}?business=${businessSlug}`}
-              >
-                <Button variant="secondary">
-                  Open Estimate
-                </Button>
-              </Link>
-            </div>
-          </Card>
-        )}
-
-        <Card>
-          <div className="grid gap-6 md:grid-cols-2">
-            <Info
-              label="Customer"
-              value={invoice.customer_name}
-            />
-
-            <Info
-              label="Amount Due"
-              value={formatCurrency(amountDue)}
-            />
-
-            <Info
-              label="Issue Date"
-              value={invoice.issue_date}
-            />
-
-            <Info
-              label="Due Date"
-              value={invoice.due_date}
-            />
-
-            <Info
-              label="Invoice Number"
-              value={invoice.display_id}
-            />
-
-            <Info
-              label="Reference"
-              value={invoice.reference}
-            />
-          </div>
-        </Card>
-
-        <Card>
-          <div className="flex items-center justify-between gap-4">
-            <h2 className="text-xl font-semibold">
-              Line Items
-            </h2>
-
-            <p className="text-2xl font-bold text-orange-400">
-              {formatCurrency(amountDue)}
-            </p>
-          </div>
-
-          {lineItems.length === 0 ? (
-            <p className="mt-4 text-zinc-400">
-              No line items added.
-            </p>
-          ) : (
-            <div className="mt-5 overflow-hidden rounded-2xl border border-zinc-800">
-              <div className="grid grid-cols-[1fr_90px_120px_120px] gap-4 border-b border-zinc-800 bg-zinc-950 px-4 py-3 text-sm font-semibold text-zinc-400">
-                <span>Description</span>
-                <span className="text-right">Qty</span>
-                <span className="text-right">Unit</span>
-                <span className="text-right">Total</span>
-              </div>
-
-              {lineItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="grid grid-cols-[1fr_90px_120px_120px] gap-4 border-b border-zinc-800 px-4 py-4 last:border-b-0"
-                >
-                  <span>
-                    {item.description || "Line item"}
-                  </span>
-
-                  <span className="text-right text-zinc-300">
-                    {toNumber(item.quantity)}
-                  </span>
-
-                  <span className="text-right text-zinc-300">
-                    {formatCurrency(
-                      toNumber(item.unit_price)
-                    )}
-                  </span>
-
-                  <span className="text-right font-semibold text-orange-400">
-                    {formatCurrency(
-                      toNumber(item.line_total)
-                    )}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="ml-auto mt-6 grid max-w-sm gap-3 text-sm">
-            <SummaryRow
-              label="Subtotal"
-              value={formatCurrency(fallbackSubtotal)}
-            />
-
-            <SummaryRow
-              label={`${invoice.tax_label || "Tax"} (${taxRate}%)`}
-              value={formatCurrency(taxAmount)}
-            />
-
-            <SummaryRow
-              label="Total"
-              value={formatCurrency(invoiceTotal)}
-            />
-
-            <SummaryRow
-              label="Amount Paid"
-              value={formatCurrency(amountPaid)}
-            />
-
-            <div className="border-t border-zinc-700 pt-3">
-              <SummaryRow
-                label="Amount Due"
-                value={formatCurrency(amountDue)}
-                strong
-              />
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <p className="text-sm text-zinc-500">
-            Notes
-          </p>
-
-          <p className="mt-2 leading-7 text-zinc-300">
-            {invoice.notes ||
-              "No notes added."}
-          </p>
-        </Card>
-
-        <Card>
-          <p className="text-sm text-zinc-500">
-            Terms
-          </p>
-
-          <p className="mt-2 leading-7 text-zinc-300">
-            {invoice.terms ||
-              "No terms added."}
-          </p>
-        </Card>
-
-        <div className="flex flex-wrap gap-4">
-          {invoiceStatus === "Draft" && (
-            <UpdateInvoiceStatusButton
-              invoiceId={invoice.id}
-              newStatus="Sent"
-              label="Mark Sent"
-            />
-          )}
-
-          {invoiceStatus === "Sent" && (
-            <UpdateInvoiceStatusButton
-              invoiceId={invoice.id}
-              newStatus="Paid"
-              label="Mark Paid"
-            />
-          )}
-
-          {invoiceStatus !== "Paid" && (
-            <Button variant="secondary">
-              Send Reminder
-            </Button>
-          )}
-
-          <Link
-            href={`/invoices/${invoice.id}/print?business=${businessSlug}`}
-          >
-            <Button variant="secondary">
-              Print Invoice
-            </Button>
-          </Link>
-
-          <Link
-            href={`/invoices/${invoice.id}/edit?business=${businessSlug}`}
-          >
-            <Button variant="secondary">
-              Edit Invoice
-            </Button>
-          </Link>
-
-          <DeleteInvoiceButton
-            invoiceId={invoice.id}
-          />
-        </div>
-      </div>
-    </AppShell>
-  );
+  return new Intl.DateTimeFormat("en-US", {
+    month: "2-digit",
+    day: "2-digit",
+    year: "2-digit",
+  }).format(date);
 }
 
 function Info({
   label,
   value,
+  strong = false,
 }: {
   label: string;
-  value: string | null;
+  value: string;
+  strong?: boolean;
 }) {
   return (
     <div>
-      <p className="text-sm text-zinc-500">
-        {label}
-      </p>
-
-      <p className="mt-1 text-lg font-medium">
+      <p className="text-sm text-zinc-400">{label}</p>
+      <p
+        className={`mt-2 ${
+          strong ? "text-lg font-bold text-orange-400" : "text-lg text-white"
+        }`}
+      >
         {value || "-"}
       </p>
     </div>
@@ -436,13 +117,344 @@ function SummaryRow({
         strong ? "text-lg font-bold text-orange-400" : ""
       }`}
     >
-      <span className="text-zinc-400">
-        {label}
-      </span>
-
-      <span className="font-semibold">
-        {value}
-      </span>
+      <span className="text-zinc-400">{label}</span>
+      <span className="font-semibold text-white">{value}</span>
     </div>
+  );
+}
+
+function ProblemCard({
+  title,
+  message,
+  businessQuery,
+}: {
+  title: string;
+  message: string;
+  businessQuery: string;
+}) {
+  return (
+    <AppShell>
+      <main className="mx-auto w-full max-w-4xl px-6 py-10">
+        <Link
+          href={`/invoices${businessQuery}`}
+          className="text-sm font-semibold text-orange-400 hover:text-orange-300"
+        >
+          Back to Invoices
+        </Link>
+
+        <Card className="mt-6">
+          <p className="text-sm font-semibold uppercase tracking-[0.35em] text-orange-400">
+            Invoice Details
+          </p>
+          <h1 className="mt-3 text-3xl font-black text-white">{title}</h1>
+          <p className="mt-3 leading-7 text-zinc-400">{message}</p>
+        </Card>
+      </main>
+    </AppShell>
+  );
+}
+
+export default async function InvoiceDetailPage({
+  params,
+  searchParams,
+}: PageProps) {
+  const { id } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const businessSlug = resolvedSearchParams.business ?? "rnl-creations";
+  const businessQuery = `?business=${businessSlug}`;
+
+  const { data: business, error: businessError } = await supabase
+    .from("businesses")
+    .select("id, slug, split_warning_amount")
+    .eq("slug", businessSlug)
+    .limit(1)
+    .maybeSingle<Business>();
+
+  if (businessError) {
+    console.error("Business lookup failed:", businessError);
+  }
+
+  if (!business) {
+    return (
+      <ProblemCard
+        title="Business Not Found"
+        message={`Trimax could not find a business for "${businessSlug}".`}
+        businessQuery={businessQuery}
+      />
+    );
+  }
+
+  const { data: invoiceData, error: invoiceError } = await supabase
+    .from("invoices")
+    .select("*")
+    .eq("id", id)
+    .limit(1)
+    .maybeSingle();
+
+  if (invoiceError) {
+    console.error("Invoice lookup failed:", invoiceError);
+  }
+
+  const invoice = invoiceData as Invoice | null;
+
+  if (!invoice) {
+    return (
+      <ProblemCard
+        title="Invoice Not Found"
+        message="Trimax could not find this invoice record. It may have been deleted, or the link may be old."
+        businessQuery={businessQuery}
+      />
+    );
+  }
+
+  if (String(invoice.business_id) !== String(business.id)) {
+    return (
+      <ProblemCard
+        title="Wrong Business Context"
+        message="This invoice exists, but it does not belong to the selected business. Go back to invoices and choose the correct business."
+        businessQuery={businessQuery}
+      />
+    );
+  }
+
+  const { data: lineItems, error: lineItemsError } = await supabase
+    .from("invoice_line_items")
+    .select("id, description, quantity, unit_price, line_total, sort_order")
+    .eq("invoice_id", invoice.id)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true })
+    .returns<InvoiceLineItem[]>();
+
+  if (lineItemsError) {
+    console.error("Invoice line items lookup failed:", lineItemsError);
+  }
+
+  let linkedEstimate: LinkedEstimate | null = null;
+
+  if (invoice.estimate_id) {
+    const { data, error } = await supabase
+      .from("estimates")
+      .select("id, display_id, project_title")
+      .eq("id", invoice.estimate_id)
+      .limit(1)
+      .maybeSingle<LinkedEstimate>();
+
+    if (error) {
+      console.error("Linked estimate lookup failed:", error);
+    }
+
+    linkedEstimate = data ?? null;
+  }
+
+  const items = lineItems ?? [];
+
+  const subtotalFromLines = items.reduce((sum, item) => {
+    const quantity = numberValue(item.quantity);
+    const unitPrice = numberValue(item.unit_price);
+    const savedLineTotal = numberValue(item.line_total);
+    const calculatedLineTotal = quantity * unitPrice;
+
+    return sum + (savedLineTotal || calculatedLineTotal);
+  }, 0);
+
+  const fallbackSubtotal = numberValue(invoice.invoice_amount);
+  const subtotal = items.length > 0 ? subtotalFromLines : fallbackSubtotal;
+  const taxRate = numberValue(invoice.tax_rate);
+  const taxAmount = subtotal * (taxRate / 100);
+  const invoiceTotal = subtotal + taxAmount;
+  const amountPaid = numberValue(invoice.amount_paid);
+  const amountDue = Math.max(invoiceTotal - amountPaid, 0);
+
+  const splitWarningAmount = numberValue(business.split_warning_amount);
+  const showSplitWarning =
+    splitWarningAmount > 0 && amountDue > splitWarningAmount;
+
+  return (
+    <AppShell>
+      <main className="mx-auto w-full max-w-6xl px-6 py-10">
+        <div className="mb-10">
+          <Link
+            href={`/invoices${businessQuery}`}
+            className="text-sm font-semibold text-orange-400 hover:text-orange-300"
+          >
+            Back to Invoices
+          </Link>
+
+          <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.35em] text-orange-400">
+                Invoice Details
+              </p>
+              <h1 className="mt-3 text-4xl font-black text-white">
+                {invoice.project_title || invoice.customer_name}
+              </h1>
+              <p className="mt-3 text-lg text-zinc-400">
+                {invoice.display_id || "Invoice"}
+              </p>
+            </div>
+
+            <StatusBadge status={invoice.status} />
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          {showSplitWarning ? (
+            <Card className="border-yellow-500/60 bg-yellow-500/10">
+              <p className="text-sm font-semibold uppercase tracking-[0.35em] text-yellow-300">
+                Split Warning
+              </p>
+              <p className="mt-3 text-lg font-bold text-yellow-100">
+                This invoice amount due is over {money(splitWarningAmount)}.
+              </p>
+              <p className="mt-3 text-sm leading-6 text-yellow-100/80">
+                Consider splitting this apartment work into smaller invoices
+                before sending.
+              </p>
+            </Card>
+          ) : null}
+
+          {linkedEstimate ? (
+            <Card>
+              <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.35em] text-purple-300">
+                    Linked Estimate
+                  </p>
+                  <p className="mt-4 text-lg font-bold text-white">
+                    {linkedEstimate.display_id || "Estimate"}
+                  </p>
+                  <p className="mt-2 text-zinc-400">
+                    {linkedEstimate.project_title || "Untitled estimate"}
+                  </p>
+                </div>
+
+                <Link href={`/estimates/${linkedEstimate.id}${businessQuery}`}>
+                  <Button variant="secondary">Open Estimate</Button>
+                </Link>
+              </div>
+            </Card>
+          ) : null}
+
+          <Card>
+            <div className="grid gap-8 md:grid-cols-2">
+              <Info label="Customer" value={invoice.customer_name} />
+              <Info label="Amount Due" value={money(amountDue)} strong />
+              <Info label="Issue Date" value={formatDate(invoice.issue_date)} />
+              <Info label="Due Date" value={formatDate(invoice.due_date)} />
+              <Info
+                label="Invoice Number"
+                value={invoice.display_id || "Invoice"}
+              />
+              <Info label="Reference" value={invoice.reference || "-"} />
+              <Info
+                label="Service Address"
+                value={invoice.service_address || "-"}
+              />
+            </div>
+          </Card>
+
+          <Card>
+            <div className="mb-6 flex items-center justify-between gap-4">
+              <h2 className="text-2xl font-bold text-white">Line Items</h2>
+              <p className="text-2xl font-black text-orange-400">
+                {money(amountDue)}
+              </p>
+            </div>
+
+            {items.length > 0 ? (
+              <div className="overflow-hidden rounded-2xl border border-zinc-800">
+                <div className="grid grid-cols-[1fr_90px_130px_130px] gap-4 bg-black/50 px-5 py-4 text-sm font-bold text-zinc-400">
+                  <div>Description</div>
+                  <div className="text-right">Qty</div>
+                  <div className="text-right">Unit</div>
+                  <div className="text-right">Total</div>
+                </div>
+
+                {items.map((item) => {
+                  const quantity = numberValue(item.quantity);
+                  const unitPrice = numberValue(item.unit_price);
+                  const savedLineTotal = numberValue(item.line_total);
+                  const lineTotal = savedLineTotal || quantity * unitPrice;
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="grid grid-cols-[1fr_90px_130px_130px] gap-4 border-t border-zinc-800 px-5 py-4 text-white"
+                    >
+                      <div>{item.description}</div>
+                      <div className="text-right">{quantity}</div>
+                      <div className="text-right">{money(unitPrice)}</div>
+                      <div className="text-right font-bold text-orange-400">
+                        {money(lineTotal)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-zinc-400">No line items added.</p>
+            )}
+
+            <div className="ml-auto mt-8 max-w-sm space-y-4">
+              <SummaryRow label="Subtotal" value={money(subtotal)} />
+              <SummaryRow
+                label={`${invoice.tax_label || "Tax"} (${taxRate}%)`}
+                value={money(taxAmount)}
+              />
+              <SummaryRow label="Total" value={money(invoiceTotal)} />
+              <SummaryRow label="Amount Paid" value={money(amountPaid)} />
+
+              <div className="border-t border-zinc-700 pt-4">
+                <SummaryRow
+                  label="Amount Due"
+                  value={money(amountDue)}
+                  strong
+                />
+              </div>
+            </div>
+          </Card>
+
+          <Card>
+            <Info label="Notes" value={invoice.notes || "No notes added."} />
+          </Card>
+
+          {invoice.terms ? (
+            <Card>
+              <Info label="Terms" value={invoice.terms} />
+            </Card>
+          ) : null}
+
+          <div className="flex flex-wrap gap-4">
+            {invoice.status === "draft" ? (
+              <UpdateInvoiceStatusButton
+                invoiceId={invoice.id}
+                newStatus="sent"
+                label="Mark Sent"
+              />
+            ) : null}
+
+            {invoice.status !== "paid" ? (
+              <UpdateInvoiceStatusButton
+                invoiceId={invoice.id}
+                newStatus="paid"
+                label="Mark Paid"
+              />
+            ) : null}
+
+            <Button variant="secondary">Send Reminder</Button>
+
+            <Link href={`/invoices/${invoice.id}/print${businessQuery}`}>
+              <Button variant="secondary">Print Invoice</Button>
+            </Link>
+
+            <Link href={`/invoices/${invoice.id}/edit${businessQuery}`}>
+              <Button variant="secondary">Edit Invoice</Button>
+            </Link>
+
+            <DeleteInvoiceButton invoiceId={invoice.id} />
+          </div>
+        </div>
+      </main>
+    </AppShell>
   );
 }
