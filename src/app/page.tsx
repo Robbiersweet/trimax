@@ -851,14 +851,14 @@ export default async function DashboardPage({
             </Card>
           }
         >
-          <Card className="border-orange-500/30 bg-gradient-to-br from-zinc-900 to-zinc-950">
+          <Card className="dark-surface border-orange-500/30 bg-gradient-to-br from-zinc-900 to-zinc-950">
             <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
               <div>
                 <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
                   Outstanding Revenue
                 </p>
 
-                <h2 className="mt-3 text-5xl font-black tracking-tight">
+                <h2 className="mt-3 text-5xl font-black tracking-tight text-white">
                   {outstandingRevenue}
                 </h2>
 
@@ -993,14 +993,14 @@ export default async function DashboardPage({
           ]}
         >
           <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-            <Card className="border-orange-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-orange-950/20">
+            <Card className="dark-surface border-orange-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-orange-950/20">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
                     Money Flow
                   </p>
 
-                  <h2 className="mt-2 text-2xl font-bold">
+                  <h2 className="mt-2 text-2xl font-bold text-white">
                     Revenue snapshot
                   </h2>
                 </div>
@@ -1041,12 +1041,12 @@ export default async function DashboardPage({
               </div>
             </Card>
 
-            <Card className="border-sky-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-sky-950/20">
+            <Card className="dark-surface border-sky-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-sky-950/20">
               <p className="text-sm uppercase tracking-[0.3em] text-sky-300">
                 Queue Flow
               </p>
 
-              <h2 className="mt-2 text-2xl font-bold">
+              <h2 className="mt-2 text-2xl font-bold text-white">
                 Turnover pipeline
               </h2>
 
@@ -1096,7 +1096,7 @@ export default async function DashboardPage({
           ]}
         >
           <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-            <Card className="border-emerald-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-emerald-950/20">
+            <Card className="dark-surface border-emerald-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-emerald-950/20">
               <p className="text-sm uppercase tracking-[0.3em] text-emerald-300">
                 Collection Health
               </p>
@@ -1161,7 +1161,7 @@ export default async function DashboardPage({
               </div>
             </Card>
 
-            <Card className="border-violet-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-violet-950/20">
+            <Card className="dark-surface border-violet-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-violet-950/20">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <p className="text-sm uppercase tracking-[0.3em] text-violet-300">

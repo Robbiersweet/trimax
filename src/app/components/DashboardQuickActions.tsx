@@ -233,7 +233,7 @@ export default function DashboardQuickActions({
             key={action.key}
             href={action.href}
             className={[
-              "group relative overflow-hidden rounded-2xl border p-4 transition",
+              "dark-surface group relative overflow-hidden rounded-2xl border p-4 transition",
               "bg-zinc-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
               tone.border,
               tone.background,
