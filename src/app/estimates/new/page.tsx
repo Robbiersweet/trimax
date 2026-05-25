@@ -79,6 +79,14 @@ function toNumber(value: number | string | null | undefined) {
   return Number(value) || 0;
 }
 
+function isUuid(value: string | null) {
+  return Boolean(
+    value?.match(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    )
+  );
+}
+
 function getSplitPreview(totalAmount: number, targetAmount: number) {
   if (totalAmount <= targetAmount || targetAmount <= 0) {
     return null;
@@ -273,6 +281,16 @@ function NewEstimatePageContent() {
         return;
       }
 
+      if (!isUuid(queueId)) {
+        setToast({
+          type: "error",
+          message:
+            "This estimate link points to an old sample queue item. Open a real queue item from the Queue page and create the estimate from there.",
+        });
+
+        return;
+      }
+
       const { data, error } = await supabase
         .from("queue_items")
         .select("*")
@@ -281,13 +299,23 @@ function NewEstimatePageContent() {
         .limit(1)
         .maybeSingle();
 
-      if (error || !data) {
+      if (error) {
         console.error(error);
 
         setToast({
           type: "error",
           message:
             "Unable to load queue item details for this estimate.",
+        });
+
+        return;
+      }
+
+      if (!data) {
+        setToast({
+          type: "error",
+          message:
+            "That queue item was not found. Open the queue item again and create the estimate from there.",
         });
 
         return;
