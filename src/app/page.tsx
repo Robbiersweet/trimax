@@ -106,30 +106,52 @@ function VisualMoneyBar({
   max: number;
   tone: "orange" | "amber" | "rose" | "emerald";
 }) {
-  const colorClass =
-    tone === "rose"
-      ? "bg-pink-400"
-      : tone === "emerald"
-        ? "bg-emerald-400"
-        : tone === "amber"
-          ? "bg-yellow-400"
-          : "bg-orange-500";
+  const toneStyles = {
+    orange: {
+      bar: "from-orange-500 to-amber-300",
+      dot: "bg-orange-400",
+      panel: "border-orange-500/20 bg-orange-500/5",
+      text: "text-orange-100",
+    },
+    amber: {
+      bar: "from-amber-400 to-yellow-200",
+      dot: "bg-amber-300",
+      panel: "border-amber-500/20 bg-amber-500/5",
+      text: "text-amber-100",
+    },
+    rose: {
+      bar: "from-rose-400 to-pink-300",
+      dot: "bg-rose-300",
+      panel: "border-rose-500/20 bg-rose-500/5",
+      text: "text-rose-100",
+    },
+    emerald: {
+      bar: "from-emerald-400 to-teal-300",
+      dot: "bg-emerald-300",
+      panel: "border-emerald-500/20 bg-emerald-500/5",
+      text: "text-emerald-100",
+    },
+  }[tone];
   const width = Math.max((value / max) * 100, value > 0 ? 8 : 0);
 
   return (
-    <div>
-      <div className="mb-2 flex items-center justify-between gap-4">
-        <p className="text-sm font-semibold text-zinc-300">
-          {label}
-        </p>
-        <p className="text-sm font-bold text-white">
+    <div className={`rounded-2xl border p-4 ${toneStyles.panel}`}>
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className={`h-3 w-3 rounded-full ${toneStyles.dot}`} />
+          <p className="truncate text-sm font-semibold text-zinc-200">
+            {label}
+          </p>
+        </div>
+
+        <p className={`shrink-0 text-sm font-black ${toneStyles.text}`}>
           {formatMoney(value)}
         </p>
       </div>
 
-      <div className="h-3 overflow-hidden rounded-full bg-zinc-950 ring-1 ring-zinc-800">
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/50 ring-1 ring-zinc-800">
         <div
-          className={`h-full rounded-full ${colorClass}`}
+          className={`h-full rounded-full bg-gradient-to-r ${toneStyles.bar}`}
           style={{ width: `${width}%` }}
         />
       </div>
@@ -534,26 +556,70 @@ export default async function DashboardPage({
       value: queueItemsNeedingEstimate.length,
       detail: "Needs estimate",
       href: `/queue?business=${selectedBusinessSlug}&view=needs-estimate`,
+      tone: "purple",
     },
     {
       label: "Schedule",
       value: readySoonUnscheduled.length,
       detail: "Ready soon",
       href: `/queue?business=${selectedBusinessSlug}&view=ready-soon`,
+      tone: "amber",
     },
     {
       label: "Work",
       value: scheduledQueueItems.length,
       detail: "Scheduled",
       href: `/queue?business=${selectedBusinessSlug}&status=scheduled`,
+      tone: "sky",
     },
     {
       label: "Done",
       value: completedThisMonth.length,
       detail: "This month",
       href: `/queue?business=${selectedBusinessSlug}&status=completed`,
+      tone: "emerald",
     },
   ];
+
+  const queueFlowStyles: Record<
+    string,
+    {
+      accent: string;
+      card: string;
+      count: string;
+      label: string;
+      step: string;
+    }
+  > = {
+    amber: {
+      accent: "bg-amber-400",
+      card: "border-amber-500/20 bg-amber-500/5 hover:border-amber-300/50",
+      count: "text-amber-100",
+      label: "text-amber-200/80",
+      step: "border-amber-400/20 bg-amber-400/10 text-amber-100",
+    },
+    emerald: {
+      accent: "bg-emerald-400",
+      card: "border-emerald-500/20 bg-emerald-500/5 hover:border-emerald-300/50",
+      count: "text-emerald-100",
+      label: "text-emerald-200/80",
+      step: "border-emerald-400/20 bg-emerald-400/10 text-emerald-100",
+    },
+    purple: {
+      accent: "bg-purple-400",
+      card: "border-purple-500/20 bg-purple-500/5 hover:border-purple-300/50",
+      count: "text-purple-100",
+      label: "text-purple-200/80",
+      step: "border-purple-400/20 bg-purple-400/10 text-purple-100",
+    },
+    sky: {
+      accent: "bg-sky-400",
+      card: "border-sky-500/20 bg-sky-500/5 hover:border-sky-300/50",
+      count: "text-sky-100",
+      label: "text-sky-200/80",
+      step: "border-sky-400/20 bg-sky-400/10 text-sky-100",
+    },
+  };
 
   const mostOverdueInvoices = openInvoicesWithAmounts
     .filter((invoice) => (invoice.daysLate ?? -1) >= 0)
@@ -820,7 +886,7 @@ export default async function DashboardPage({
           ]}
         >
           <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-            <Card>
+            <Card className="border-orange-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-orange-950/20">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
@@ -840,7 +906,7 @@ export default async function DashboardPage({
                 </Link>
               </div>
 
-              <div className="mt-6 space-y-4">
+              <div className="mt-6 grid gap-3">
                 <VisualMoneyBar
                   label="Estimated"
                   value={estimatedRevenueTotal}
@@ -868,8 +934,8 @@ export default async function DashboardPage({
               </div>
             </Card>
 
-            <Card>
-              <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
+            <Card className="border-sky-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-sky-950/20">
+              <p className="text-sm uppercase tracking-[0.3em] text-sky-300">
                 Queue Flow
               </p>
 
@@ -878,25 +944,37 @@ export default async function DashboardPage({
               </h2>
 
               <div className="mt-6 grid grid-cols-2 gap-3">
-                {queueFlow.map((step) => (
-                  <Link
-                    key={step.label}
-                    href={step.href}
-                    className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 transition hover:border-orange-500/60 hover:bg-zinc-900"
-                  >
-                    <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
-                      {step.label}
-                    </p>
+                {queueFlow.map((step, index) => {
+                  const style = queueFlowStyles[step.tone];
 
-                    <p className="mt-2 text-3xl font-black">
-                      {step.value}
-                    </p>
+                  return (
+                    <Link
+                      key={step.label}
+                      href={step.href}
+                      className={`relative overflow-hidden rounded-2xl border p-4 transition hover:-translate-y-0.5 ${style.card}`}
+                    >
+                      <span className={`absolute inset-x-0 top-0 h-1 ${style.accent}`} />
 
-                    <p className="mt-1 text-sm text-zinc-400">
-                      {step.detail}
-                    </p>
-                  </Link>
-                ))}
+                      <div className="flex items-start justify-between gap-3">
+                        <p className={`text-xs uppercase tracking-[0.2em] ${style.label}`}>
+                          {step.label}
+                        </p>
+
+                        <span className={`rounded-full border px-2 py-0.5 text-[0.65rem] font-black ${style.step}`}>
+                          {index + 1}
+                        </span>
+                      </div>
+
+                      <p className={`mt-3 text-3xl font-black ${style.count}`}>
+                        {step.value}
+                      </p>
+
+                      <p className="mt-1 text-sm text-zinc-400">
+                        {step.detail}
+                      </p>
+                    </Link>
+                  );
+                })}
               </div>
             </Card>
           </div>
