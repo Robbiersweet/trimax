@@ -853,20 +853,22 @@ export default async function InvoicesPage({
               const daysLate = invoiceDaysPastDue(invoice.due_date);
               const isPastDue = amountDue > 0 && (daysLate ?? -1) >= 0;
 
+              const paymentParams = new URLSearchParams({
+                business: businessSlug,
+                customer: invoice.customer_name ?? "",
+              });
+
               return (
-                <Link
+                <Card
                   key={invoice.id}
-                  href={`/invoices/${invoice.id}${businessQuery}`}
+                  className={`transition hover:border-orange-500/60 hover:bg-zinc-800 ${
+                    isSplitInvoice
+                      ? "border-green-500/30 bg-green-500/5"
+                      : hasSplitChildren
+                        ? "border-orange-500/30 bg-orange-500/5"
+                        : ""
+                  }`}
                 >
-                  <Card
-                    className={`transition hover:border-orange-500/60 hover:bg-zinc-800 ${
-                      isSplitInvoice
-                        ? "border-green-500/30 bg-green-500/5"
-                        : hasSplitChildren
-                          ? "border-orange-500/30 bg-orange-500/5"
-                          : ""
-                    }`}
-                  >
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                       <div>
                         <div className="flex flex-wrap items-center gap-3">
@@ -932,8 +934,32 @@ export default async function InvoicesPage({
                         ) : null}
                       </div>
                     </div>
-                  </Card>
-                </Link>
+
+                    <div className="mt-5 flex flex-wrap gap-3 border-t border-zinc-800 pt-4">
+                      <Link
+                        href={`/invoices/${invoice.id}${businessQuery}`}
+                        className="rounded-full bg-orange-500 px-4 py-2 text-sm font-black text-black transition hover:bg-orange-400"
+                      >
+                        Open
+                      </Link>
+
+                      <Link
+                        href={`/invoices/${invoice.id}/print${businessQuery}`}
+                        className="rounded-full border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-200 transition hover:border-orange-400 hover:text-orange-300"
+                      >
+                        Print
+                      </Link>
+
+                      {amountDue > 0 ? (
+                        <Link
+                          href={`/payments?${paymentParams.toString()}`}
+                          className="rounded-full border border-green-500/40 bg-green-500/10 px-4 py-2 text-sm font-semibold text-green-200 transition hover:border-green-300 hover:bg-green-500/20"
+                        >
+                          Record Payment
+                        </Link>
+                      ) : null}
+                    </div>
+                </Card>
               );
             })}
           </div>
