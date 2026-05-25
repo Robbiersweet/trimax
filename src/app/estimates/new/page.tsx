@@ -79,6 +79,96 @@ function toNumber(value: number | string | null | undefined) {
   return Number(value) || 0;
 }
 
+function normalizeMatchText(value: string | null | undefined) {
+  return (value || "")
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/\b(apartments|apartment|apts|apt|property|properties)\b/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function findMatchingClient(
+  clients: Client[],
+  propertyName: string | null
+) {
+  const normalizedProperty = normalizeMatchText(propertyName);
+
+  if (!normalizedProperty) {
+    return null;
+  }
+
+  return (
+    clients.find(
+      (client) => normalizeMatchText(client.name) === normalizedProperty
+    ) ??
+    clients.find((client) => {
+      const normalizedClient = normalizeMatchText(client.name);
+
+      return (
+        normalizedClient.includes(normalizedProperty) ||
+        normalizedProperty.includes(normalizedClient)
+      );
+    }) ??
+    null
+  );
+}
+
+function findMatchingService(
+  serviceItems: ServiceItem[],
+  queueItem: QueueItem
+) {
+  const searchText = normalizeMatchText(
+    [
+      queueItem.paint_type,
+      queueItem.flooring,
+      queueItem.notes,
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
+
+  if (!searchText) {
+    return null;
+  }
+
+  return (
+    serviceItems.find((serviceItem) => {
+      const serviceText = normalizeMatchText(
+        [
+          serviceItem.category,
+          serviceItem.name,
+          serviceItem.description,
+        ]
+          .filter(Boolean)
+          .join(" ")
+      );
+
+      return (
+        serviceText.includes(searchText) ||
+        searchText.includes(serviceText)
+      );
+    }) ??
+    serviceItems.find((serviceItem) => {
+      const serviceText = normalizeMatchText(
+        [
+          serviceItem.category,
+          serviceItem.name,
+          serviceItem.description,
+        ]
+          .filter(Boolean)
+          .join(" ")
+      );
+
+      return (
+        Boolean(queueItem.paint_type) &&
+        serviceText.includes(normalizeMatchText(queueItem.paint_type))
+      );
+    }) ??
+    null
+  );
+}
+
 function isUuid(value: string | null) {
   return Boolean(
     value?.match(
@@ -334,30 +424,43 @@ function NewEstimatePageContent() {
         loadedQueueItem.paint_type,
         loadedQueueItem.flooring,
       ].filter(Boolean);
+      const matchingClient = findMatchingClient(
+        clients,
+        loadedQueueItem.property
+      );
+      const matchingService = findMatchingService(
+        serviceItems,
+        loadedQueueItem
+      );
+      const lineDescription =
+        matchingService?.description ||
+        matchingService?.name ||
+        descriptionParts.join(" - ");
 
       setQueueItem(loadedQueueItem);
-      setCustomerName(loadedQueueItem.property ?? "");
+      setSelectedClientId(matchingClient?.id ?? "");
+      setCustomerName(
+        matchingClient?.name ?? loadedQueueItem.property ?? ""
+      );
       setProjectTitle(titleParts.join(" - "));
       setReference(loadedQueueItem.unit ?? "");
       setNotes(loadedQueueItem.notes ?? "");
       setLineItems([
         {
-          serviceItemId: "",
-          description: descriptionParts.join(" - "),
-          quantity: "1",
-          unitPrice: "",
+          serviceItemId: matchingService?.id ?? "",
+          description: lineDescription,
+          quantity: String(
+            Number(matchingService?.default_quantity) || 1
+          ),
+          unitPrice:
+            matchingService?.default_unit_price === null ||
+            matchingService?.default_unit_price === undefined
+              ? ""
+              : String(Number(matchingService.default_unit_price) || 0),
         },
       ]);
 
-      const matchingClient = clients.find(
-        (client) =>
-          client.name.trim().toLowerCase() ===
-          (loadedQueueItem.property ?? "").trim().toLowerCase()
-      );
-
       if (matchingClient) {
-        setSelectedClientId(matchingClient.id);
-
         const clientServiceAddress =
           matchingClient.service_address ||
           matchingClient.billing_address ||
@@ -371,7 +474,7 @@ function NewEstimatePageContent() {
     }
 
     loadQueueItem();
-  }, [applyTaxSuggestion, business, clients, queueId]);
+  }, [applyTaxSuggestion, business, clients, queueId, serviceItems]);
 
   function handleServiceAddressChange(address: string) {
     setServiceAddress(address);
@@ -741,8 +844,9 @@ function NewEstimatePageContent() {
 
             <p className="mt-2 text-sm leading-6 text-purple-100/80">
               Trimax copied the property, unit, paint type, flooring, reference,
-              and notes into this estimate. Add pricing and adjust any details
-              before saving.
+              notes, matching client address, tax suggestion, and saved service
+              when available. Review pricing and adjust any details before
+              saving.
             </p>
           </Card>
         ) : null}
