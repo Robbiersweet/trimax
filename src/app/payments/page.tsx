@@ -94,6 +94,24 @@ function activityAmount(log: ActivityLog) {
     : 0;
 }
 
+function invoiceCountLabel(count: number) {
+  return `${count} invoice${count === 1 ? "" : "s"}`;
+}
+
+function getOldestDueDate(invoices: Array<{ due_date: string | null }>) {
+  return invoices.reduce<string | null>((oldestDue, invoice) => {
+    if (!invoice.due_date) {
+      return oldestDue;
+    }
+
+    if (!oldestDue) {
+      return invoice.due_date;
+    }
+
+    return invoice.due_date < oldestDue ? invoice.due_date : oldestDue;
+  }, null);
+}
+
 export default async function PaymentsPage({
   searchParams,
 }: {
@@ -246,7 +264,7 @@ export default async function PaymentsPage({
     ...agingBuckets.map((bucket) => bucket.amount),
     1
   );
-  const batchOpportunities = Array.from(
+  const customerPaymentGroups = Array.from(
     payableInvoices.reduce(
       (
         groups,
@@ -284,9 +302,8 @@ export default async function PaymentsPage({
       >()
     ).values()
   )
-    .filter((group) => group.count > 1)
     .sort((first, second) => second.total - first.total)
-    .slice(0, 4);
+    .slice(0, 8);
   const paymentPriority = [...payableInvoices]
     .sort((first, second) => {
       const firstLate = first.daysLate ?? -999;
@@ -299,6 +316,39 @@ export default async function PaymentsPage({
       return second.amountDue - first.amountDue;
     })
     .slice(0, 6);
+  const focusedCustomerInvoices = focusedCustomer
+    ? payableInvoices.filter(
+        (invoice) =>
+          (invoice.customer_name ?? "Unknown Customer").toLowerCase() ===
+          focusedCustomer.toLowerCase()
+      )
+    : [];
+  const selectedBatchInvoices = initialInvoiceIds.length
+    ? payableInvoices.filter((invoice) => initialInvoiceIds.includes(invoice.id))
+    : [];
+  const paymentRunInvoices =
+    selectedBatchInvoices.length > 0
+      ? selectedBatchInvoices
+      : focusedCustomerInvoices.length > 0
+        ? focusedCustomerInvoices
+        : payableInvoices;
+  const paymentRunBalance = paymentRunInvoices.reduce(
+    (total, invoice) => total + invoice.amountDue,
+    0
+  );
+  const paymentRunOldestDue = getOldestDueDate(paymentRunInvoices);
+  const paymentRunLabel =
+    selectedBatchInvoices.length > 0
+      ? "Selected invoice batch"
+      : focusedCustomer
+        ? focusedCustomer
+        : "All open invoices";
+  const paymentRunDescription =
+    selectedBatchInvoices.length > 0
+      ? "Trimax is focused on the invoices selected from the invoice list."
+      : focusedCustomer
+        ? "Trimax is focused on this customer so one check can be applied cleanly."
+        : "Trimax is showing every unpaid invoice for this workspace.";
 
   return (
     <AppShell>
@@ -385,6 +435,66 @@ export default async function PaymentsPage({
               list. Review the check amount, date, and reference, then apply
               the payment when everything matches.
             </p>
+          </Card>
+        ) : null}
+
+        {payableInvoices.length > 0 ? (
+          <Card className="border-green-400/30 bg-gradient-to-br from-green-500/15 via-zinc-950 to-orange-500/10">
+            <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
+              <div>
+                <p className="text-sm uppercase tracking-[0.3em] text-green-200">
+                  Check Day Control
+                </p>
+
+                <h2 className="mt-3 text-3xl font-black">
+                  {paymentRunLabel}
+                </h2>
+
+                <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-300">
+                  {paymentRunDescription} Review the total, compare it to the
+                  check, then use the batch payment tool below.
+                </p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                <div className="rounded-2xl border border-green-400/20 bg-black/30 p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">
+                    Balance
+                  </p>
+                  <p className="mt-2 text-2xl font-black text-green-200">
+                    {formatMoney(paymentRunBalance)}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-orange-400/20 bg-black/30 p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">
+                    Invoices
+                  </p>
+                  <p className="mt-2 text-2xl font-black">
+                    {invoiceCountLabel(paymentRunInvoices.length)}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-pink-400/20 bg-black/30 p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">
+                    Oldest Due
+                  </p>
+                  <p className="mt-2 text-2xl font-black">
+                    {formatDate(paymentRunOldestDue)}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-3">
+              <a href="#batch-payment-tool">
+                <Button>Open Batch Tool</Button>
+              </a>
+
+              <Link href={`/invoices${businessQuery}&view=aging`}>
+                <Button variant="secondary">Review Aging</Button>
+              </Link>
+            </div>
           </Card>
         ) : null}
 
@@ -487,21 +597,23 @@ export default async function PaymentsPage({
           </Card>
         ) : null}
 
-        <BatchInvoicePayments
-          businessId={business?.id}
-          initialCustomer={focusedCustomer}
-          initialInvoiceIds={initialInvoiceIds}
-          invoices={invoices.map((invoice) => ({
-            id: invoice.id,
-            displayId: invoice.display_id ?? "Invoice",
-            customerName: invoice.customer_name ?? "Unknown Customer",
-            projectTitle: invoice.project_title ?? "Untitled Invoice",
-            invoiceAmount: parseMoney(invoice.invoice_amount),
-            amountPaid: parseMoney(invoice.amount_paid),
-            status: invoice.status ?? "Draft",
-            dueDate: invoice.due_date,
-          }))}
-        />
+        <div id="batch-payment-tool" className="scroll-mt-6">
+          <BatchInvoicePayments
+            businessId={business?.id}
+            initialCustomer={focusedCustomer}
+            initialInvoiceIds={initialInvoiceIds}
+            invoices={invoices.map((invoice) => ({
+              id: invoice.id,
+              displayId: invoice.display_id ?? "Invoice",
+              customerName: invoice.customer_name ?? "Unknown Customer",
+              projectTitle: invoice.project_title ?? "Untitled Invoice",
+              invoiceAmount: parseMoney(invoice.invoice_amount),
+              amountPaid: parseMoney(invoice.amount_paid),
+              status: invoice.status ?? "Draft",
+              dueDate: invoice.due_date,
+            }))}
+          />
+        </div>
 
         {paymentPriority.length > 0 ? (
           <Card>
@@ -580,19 +692,20 @@ export default async function PaymentsPage({
           </Card>
         ) : null}
 
-        {batchOpportunities.length > 0 ? (
+        {customerPaymentGroups.length > 0 ? (
           <Card>
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <p className="text-sm uppercase tracking-[0.3em] text-green-300">
-                  Batch Opportunities
+                  Customer Payment Queue
                 </p>
                 <h2 className="mt-2 text-2xl font-bold">
-                  Customers with multiple open invoices
+                  Start with the customer on the check
                 </h2>
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
-                  These are the best places to start when one check pays several
-                  invoices at once.
+                  This groups unpaid invoices by customer. Multi-invoice
+                  customers are the best batch-payment candidates, but single
+                  invoice payments stay visible too.
                 </p>
               </div>
 
@@ -602,17 +715,20 @@ export default async function PaymentsPage({
             </div>
 
             <div className="mt-5 grid gap-3 md:grid-cols-2">
-              {batchOpportunities.map((group) => {
+              {customerPaymentGroups.map((group) => {
                 const customerPaymentParams = new URLSearchParams({
                   business: businessSlug,
                   customer: group.customerName,
                 });
+                const customerInvoiceParams = new URLSearchParams({
+                  business: businessSlug,
+                  q: group.customerName,
+                });
 
                 return (
-                  <Link
+                  <div
                     key={group.customerName}
-                    href={`/payments?${customerPaymentParams.toString()}`}
-                    className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 transition hover:border-green-400/70 hover:bg-green-500/10"
+                    className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div>
@@ -620,7 +736,7 @@ export default async function PaymentsPage({
                           {group.customerName}
                         </p>
                         <p className="mt-1 text-sm text-zinc-500">
-                          {group.count} open invoices
+                          {invoiceCountLabel(group.count)} open
                         </p>
                       </div>
 
@@ -635,10 +751,20 @@ export default async function PaymentsPage({
                       </p>
 
                       <span className="rounded-full bg-green-500/15 px-3 py-1 text-xs font-bold text-green-200">
-                        Open Batch
+                        {group.count > 1 ? "Batch candidate" : "Single invoice"}
                       </span>
                     </div>
-                  </Link>
+
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      <Link href={`/payments?${customerPaymentParams.toString()}`}>
+                        <Button>Record Payment</Button>
+                      </Link>
+
+                      <Link href={`/invoices?${customerInvoiceParams.toString()}`}>
+                        <Button variant="secondary">View Invoices</Button>
+                      </Link>
+                    </div>
+                  </div>
                 );
               })}
             </div>
