@@ -277,6 +277,18 @@ export default async function PaymentsPage({
     .filter((group) => group.count > 1)
     .sort((first, second) => second.total - first.total)
     .slice(0, 4);
+  const paymentPriority = [...payableInvoices]
+    .sort((first, second) => {
+      const firstLate = first.daysLate ?? -999;
+      const secondLate = second.daysLate ?? -999;
+
+      if (firstLate !== secondLate) {
+        return secondLate - firstLate;
+      }
+
+      return second.amountDue - first.amountDue;
+    })
+    .slice(0, 6);
 
   return (
     <AppShell>
@@ -462,6 +474,83 @@ export default async function PaymentsPage({
           }))}
         />
 
+        {paymentPriority.length > 0 ? (
+          <Card>
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
+                  Payment Priority
+                </p>
+                <h2 className="mt-2 text-2xl font-bold">
+                  Open invoices to watch first
+                </h2>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+                  Trimax sorts this list by oldest unpaid due date first, then
+                  by largest unpaid balance.
+                </p>
+              </div>
+
+              <Link href={`/invoices${businessQuery}&view=aging`}>
+                <Button variant="secondary">Open Aging View</Button>
+              </Link>
+            </div>
+
+            <div className="mt-5 overflow-hidden rounded-2xl border border-zinc-800">
+              {paymentPriority.map((invoice) => {
+                const daysLate = invoice.daysLate ?? null;
+                const isLate = daysLate !== null && daysLate >= 0;
+
+                return (
+                  <Link
+                    key={invoice.id}
+                    href={`/invoices/${invoice.id}${businessQuery}`}
+                    className="grid gap-3 border-b border-zinc-800 bg-zinc-950 p-4 transition last:border-b-0 hover:bg-orange-500/10 md:grid-cols-[1fr_auto_auto]"
+                  >
+                    <div>
+                      <p className="font-semibold text-white">
+                        {invoice.display_id ?? "Invoice"}
+                      </p>
+                      <p className="mt-1 text-sm text-zinc-400">
+                        {invoice.customer_name ?? "Unknown Customer"}
+                      </p>
+                      <p className="mt-1 text-sm text-zinc-500">
+                        {invoice.project_title ?? "Untitled Invoice"}
+                      </p>
+                    </div>
+
+                    <div className="md:text-right">
+                      <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+                        Due
+                      </p>
+                      <p className="mt-1 font-semibold">
+                        {formatDate(invoice.due_date)}
+                      </p>
+                      <p
+                        className={`mt-1 text-sm ${
+                          isLate ? "text-pink-200" : "text-zinc-500"
+                        }`}
+                      >
+                        {isLate
+                          ? `${daysLate} day${daysLate === 1 ? "" : "s"} late`
+                          : "Not past due"}
+                      </p>
+                    </div>
+
+                    <div className="md:text-right">
+                      <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+                        Balance
+                      </p>
+                      <p className="mt-1 text-xl font-black text-orange-300">
+                        {formatMoney(invoice.amountDue)}
+                      </p>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </Card>
+        ) : null}
+
         {batchOpportunities.length > 0 ? (
           <Card>
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -484,31 +573,45 @@ export default async function PaymentsPage({
             </div>
 
             <div className="mt-5 grid gap-3 md:grid-cols-2">
-              {batchOpportunities.map((group) => (
-                <div
-                  key={group.customerName}
-                  className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-semibold text-white">
-                        {group.customerName}
-                      </p>
-                      <p className="mt-1 text-sm text-zinc-500">
-                        {group.count} open invoices
+              {batchOpportunities.map((group) => {
+                const customerPaymentParams = new URLSearchParams({
+                  business: businessSlug,
+                  customer: group.customerName,
+                });
+
+                return (
+                  <Link
+                    key={group.customerName}
+                    href={`/payments?${customerPaymentParams.toString()}`}
+                    className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 transition hover:border-green-400/70 hover:bg-green-500/10"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="font-semibold text-white">
+                          {group.customerName}
+                        </p>
+                        <p className="mt-1 text-sm text-zinc-500">
+                          {group.count} open invoices
+                        </p>
+                      </div>
+
+                      <p className="text-lg font-black text-green-300">
+                        {formatMoney(group.total)}
                       </p>
                     </div>
 
-                    <p className="text-lg font-black text-green-300">
-                      {formatMoney(group.total)}
-                    </p>
-                  </div>
+                    <div className="mt-4 flex items-center justify-between gap-3 border-t border-zinc-800 pt-3">
+                      <p className="text-sm text-zinc-400">
+                        Oldest due date: {formatDate(group.oldestDue)}
+                      </p>
 
-                  <p className="mt-3 text-sm text-zinc-400">
-                    Oldest due date: {formatDate(group.oldestDue)}
-                  </p>
-                </div>
-              ))}
+                      <span className="rounded-full bg-green-500/15 px-3 py-1 text-xs font-bold text-green-200">
+                        Open Batch
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           </Card>
         ) : null}
