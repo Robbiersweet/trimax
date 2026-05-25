@@ -33,6 +33,10 @@ function formatMoney(value: string | number | null) {
   }).format(parsed);
 }
 
+function getStatusKey(status: string | null) {
+  return (status || "Draft").toLowerCase();
+}
+
 export default async function EstimatesPage({
   searchParams,
 }: {
@@ -225,12 +229,15 @@ export default async function EstimatesPage({
           </Card>
         ) : (
           <div className="grid gap-4">
-            {filteredEstimates.map((estimate) => (
-              <Link
-                key={estimate.id}
-                href={`/estimates/${estimate.id}${businessQuery}`}
-              >
-                <Card className="transition hover:border-orange-500/60 hover:bg-zinc-800">
+            {filteredEstimates.map((estimate) => {
+              const statusKey = getStatusKey(estimate.status);
+              const isConverted = statusKey === "converted";
+
+              return (
+                <Card
+                  key={estimate.id}
+                  className="transition hover:border-orange-500/60 hover:bg-zinc-800"
+                >
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <p className="text-sm text-orange-400">
@@ -258,9 +265,38 @@ export default async function EstimatesPage({
                       </div>
                     </div>
                   </div>
+
+                  <div className="mt-5 flex flex-wrap gap-3 border-t border-zinc-800 pt-4">
+                    <Link
+                      href={`/estimates/${estimate.id}${businessQuery}`}
+                      className="rounded-xl bg-orange-500 px-4 py-2 text-sm font-bold text-black transition hover:bg-orange-400"
+                    >
+                      Open
+                    </Link>
+
+                    <Link
+                      href={`/estimates/${estimate.id}/print${businessQuery}`}
+                      className="rounded-xl bg-zinc-800 px-4 py-2 text-sm font-bold text-white transition hover:bg-zinc-700"
+                    >
+                      Print
+                    </Link>
+
+                    {isConverted ? (
+                      <span className="rounded-xl border border-zinc-700 px-4 py-2 text-sm font-bold text-zinc-500">
+                        Converted
+                      </span>
+                    ) : (
+                      <Link
+                        href={`/estimates/${estimate.id}/edit${businessQuery}`}
+                        className="rounded-xl bg-zinc-800 px-4 py-2 text-sm font-bold text-white transition hover:bg-zinc-700"
+                      >
+                        Edit
+                      </Link>
+                    )}
+                  </div>
                 </Card>
-              </Link>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
