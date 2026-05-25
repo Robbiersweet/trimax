@@ -285,6 +285,29 @@ export default async function QueueDetailPage({
             />
           </div>
 
+          <div className="mb-6 rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4">
+            <p className="text-sm uppercase tracking-[0.25em] text-orange-300">
+              Schedule Work
+            </p>
+
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-orange-100/80">
+              Pick the date you plan to perform the work, then click Schedule.
+              The submitted date is saved automatically when the queue item is
+              created.
+            </p>
+
+            <div className="mt-4">
+              <MarkScheduledButton
+                queueItemId={item.id}
+                businessId={item.business_id}
+                initialScheduledDate={item.scheduled_date}
+                label={`${item.property || "Property"} - Unit ${
+                  item.unit || "-"
+                }`}
+              />
+            </div>
+          </div>
+
           <div className="grid gap-6 md:grid-cols-2">
             <Info label="Property" value={item.property ?? ""} />
             <Info label="Priority" value={item.priority ?? ""} />
@@ -322,15 +345,6 @@ export default async function QueueDetailPage({
           <Link href={`/queue/${item.id}/edit?business=${businessSlug}`}>
             <Button variant="secondary">Edit Queue Item</Button>
           </Link>
-
-          <MarkScheduledButton
-            queueItemId={item.id}
-            businessId={item.business_id}
-            initialScheduledDate={item.scheduled_date}
-            label={`${item.property || "Property"} - Unit ${
-              item.unit || "-"
-            }`}
-          />
 
           <MarkCompletedButton
             queueItemId={item.id}

@@ -59,8 +59,6 @@ function NewRequestPageContent() {
   const [smokedIn, setSmokedIn] = useState(false);
   const [moveOutDate, setMoveOutDate] = useState("");
   const [readyDate, setReadyDate] = useState("");
-  const [scheduledDate, setScheduledDate] = useState("");
-  const [completedDate, setCompletedDate] = useState("");
   const [notes, setNotes] = useState("");
 
   const [isSaving, setIsSaving] = useState(false);
@@ -128,8 +126,8 @@ function NewRequestPageContent() {
         smokedIn,
         moveOutDate,
         readyDate,
-        scheduledDate,
-        completedDate,
+        scheduledDate: "",
+        completedDate: "",
         notes,
         businessId: business.id,
       });
@@ -267,23 +265,16 @@ function NewRequestPageContent() {
               type="date"
             />
 
-            <div className="grid gap-5 md:grid-cols-2">
-              <InputField
-                label="Work Scheduled Date"
-                placeholder="Optional"
-                value={scheduledDate}
-                onChange={setScheduledDate}
-                type="date"
-                helperText="Optional. Use this only when the work is already on the calendar."
-              />
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 px-4 py-3">
+              <p className="font-semibold text-white">
+                Scheduling happens after submission
+              </p>
 
-              <InputField
-                label="Completed Date"
-                placeholder="Optional"
-                value={completedDate}
-                onChange={setCompletedDate}
-                type="date"
-              />
+              <p className="mt-1 text-sm leading-6 text-zinc-400">
+                Trimax saves the submitted date automatically. After reviewing
+                the request, open the queue item, choose the work date, and
+                click Schedule.
+              </p>
             </div>
 
             <div>
