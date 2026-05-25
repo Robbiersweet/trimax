@@ -89,6 +89,28 @@ function invoiceDaysPastDue(value: string | null) {
   );
 }
 
+function matchesStatusFilter({
+  statusFilter,
+  invoiceStatus,
+  amountDue,
+  daysLate,
+}: {
+  statusFilter: string;
+  invoiceStatus: string | null;
+  amountDue: number;
+  daysLate: number | null;
+}) {
+  if (statusFilter === "all") {
+    return true;
+  }
+
+  if (statusFilter === "overdue") {
+    return amountDue > 0 && (daysLate ?? -1) >= 0;
+  }
+
+  return (invoiceStatus || "Draft").toLowerCase() === statusFilter;
+}
+
 export default async function InvoicesPage({
   searchParams,
 }: {
@@ -233,16 +255,22 @@ export default async function InvoicesPage({
         return (
           amountDue > 0 &&
           (daysLate ?? -1) >= 0 &&
-          (statusFilter === "all" ||
-            (invoice.status || "Draft").toLowerCase() ===
-              statusFilter)
+          matchesStatusFilter({
+            statusFilter,
+            invoiceStatus: invoice.status,
+            amountDue,
+            daysLate,
+          })
         );
       }
 
       if (
-        statusFilter !== "all" &&
-        (invoice.status || "Draft").toLowerCase() !==
-          statusFilter
+        !matchesStatusFilter({
+          statusFilter,
+          invoiceStatus: invoice.status,
+          amountDue,
+          daysLate,
+        })
       ) {
         return false;
       }
