@@ -158,6 +158,11 @@ function detailChips(log: ActivityLog): DetailChip[] {
     return [
       { label: "Payment Date", value: formatDate(details.paymentDate) },
       { label: "Type", value: formatDetailValue(details.paymentType) },
+      {
+        label: "Reference",
+        value: formatDetailValue(details.paymentReference),
+      },
+      { label: "Check Amount", value: formatMoney(details.checkAmount) },
       { label: "Applied", value: formatMoney(details.amountApplied) },
       {
         label: "Batch Count",
