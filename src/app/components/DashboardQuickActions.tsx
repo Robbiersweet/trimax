@@ -18,6 +18,7 @@ type QuickAction = {
   subtitle: string;
   href: string;
   label: string;
+  glyph: string;
   tone: "queue" | "estimate" | "invoice" | "payment" | "review" | "reports" | "print";
 };
 
@@ -28,6 +29,7 @@ const actionTones: Record<
     background: string;
     rail: string;
     pill: string;
+    glyph: string;
     hover: string;
   }
 > = {
@@ -36,6 +38,7 @@ const actionTones: Record<
     background: "bg-orange-500/10",
     rail: "bg-orange-500",
     pill: "border-orange-500/40 bg-orange-500/15 text-orange-200",
+    glyph: "border-orange-400/35 bg-orange-500/15 text-orange-100",
     hover: "hover:border-orange-400/70 hover:bg-orange-500/15",
   },
   estimate: {
@@ -43,6 +46,7 @@ const actionTones: Record<
     background: "bg-violet-500/10",
     rail: "bg-violet-500",
     pill: "border-violet-500/40 bg-violet-500/15 text-violet-200",
+    glyph: "border-violet-400/35 bg-violet-500/15 text-violet-100",
     hover: "hover:border-violet-400/70 hover:bg-violet-500/15",
   },
   invoice: {
@@ -50,6 +54,7 @@ const actionTones: Record<
     background: "bg-emerald-500/10",
     rail: "bg-emerald-500",
     pill: "border-emerald-500/40 bg-emerald-500/15 text-emerald-200",
+    glyph: "border-emerald-400/35 bg-emerald-500/15 text-emerald-100",
     hover: "hover:border-emerald-400/70 hover:bg-emerald-500/15",
   },
   payment: {
@@ -57,6 +62,7 @@ const actionTones: Record<
     background: "bg-sky-500/10",
     rail: "bg-sky-500",
     pill: "border-sky-500/40 bg-sky-500/15 text-sky-200",
+    glyph: "border-sky-400/35 bg-sky-500/15 text-sky-100",
     hover: "hover:border-sky-400/70 hover:bg-sky-500/15",
   },
   review: {
@@ -64,6 +70,7 @@ const actionTones: Record<
     background: "bg-amber-400/10",
     rail: "bg-amber-400",
     pill: "border-amber-400/40 bg-amber-400/15 text-amber-100",
+    glyph: "border-amber-300/35 bg-amber-400/15 text-amber-100",
     hover: "hover:border-amber-300/70 hover:bg-amber-400/15",
   },
   reports: {
@@ -71,6 +78,7 @@ const actionTones: Record<
     background: "bg-fuchsia-500/10",
     rail: "bg-fuchsia-500",
     pill: "border-fuchsia-500/40 bg-fuchsia-500/15 text-fuchsia-200",
+    glyph: "border-fuchsia-400/35 bg-fuchsia-500/15 text-fuchsia-100",
     hover: "hover:border-fuchsia-400/70 hover:bg-fuchsia-500/15",
   },
   print: {
@@ -78,6 +86,7 @@ const actionTones: Record<
     background: "bg-cyan-500/10",
     rail: "bg-cyan-500",
     pill: "border-cyan-500/40 bg-cyan-500/15 text-cyan-200",
+    glyph: "border-cyan-400/35 bg-cyan-500/15 text-cyan-100",
     hover: "hover:border-cyan-400/70 hover:bg-cyan-500/15",
   },
 };
@@ -123,6 +132,7 @@ export default function DashboardQuickActions({
           "Add apartment turn or property request",
         href: `/new-request?business=${businessSlug}`,
         label: "Queue",
+        glyph: "Q",
         tone: "queue",
       },
       {
@@ -131,6 +141,7 @@ export default function DashboardQuickActions({
         subtitle: "Create a customer estimate",
         href: `/estimates/new?business=${businessSlug}`,
         label: "Estimate",
+        glyph: "E",
         tone: "estimate",
       },
       {
@@ -139,6 +150,7 @@ export default function DashboardQuickActions({
         subtitle: "Create invoice or deposit request",
         href: `/invoices/new?business=${businessSlug}`,
         label: "Invoice",
+        glyph: "I",
         tone: "invoice",
       },
       {
@@ -147,6 +159,7 @@ export default function DashboardQuickActions({
         subtitle: "Apply one check to many invoices",
         href: `/payments?business=${businessSlug}`,
         label: "Payment",
+        glyph: "$",
         tone: "payment",
       },
       {
@@ -155,6 +168,7 @@ export default function DashboardQuickActions({
         subtitle: "Check upcoming units",
         href: `/queue?business=${businessSlug}`,
         label: "Review",
+        glyph: "R",
         tone: "review",
       },
       {
@@ -163,6 +177,7 @@ export default function DashboardQuickActions({
         subtitle: "Review unit history and readiness",
         href: `/reports?business=${businessSlug}`,
         label: "Reports",
+        glyph: "%",
         tone: "reports",
       },
       {
@@ -171,6 +186,7 @@ export default function DashboardQuickActions({
         subtitle: "Estimates and invoices",
         href: `/estimates?business=${businessSlug}`,
         label: "Print",
+        glyph: "P",
         tone: "print",
       },
     ],
@@ -217,22 +233,43 @@ export default function DashboardQuickActions({
             />
 
             <div className="pl-2">
-              <p
-                className={[
-                  "inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em]",
-                  tone.pill,
-                ].join(" ")}
-              >
-                {action.label}
-              </p>
+              <div className="flex items-start justify-between gap-3">
+                <p
+                  className={[
+                    "inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em]",
+                    tone.pill,
+                  ].join(" ")}
+                >
+                  {action.label}
+                </p>
+
+                <span
+                  aria-hidden="true"
+                  className={[
+                    "grid h-9 w-9 shrink-0 place-items-center rounded-xl border text-sm font-black shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition group-hover:scale-105",
+                    tone.glyph,
+                  ].join(" ")}
+                >
+                  {action.glyph}
+                </span>
+              </div>
 
               <p className="mt-3 font-semibold text-white">
                 {action.title}
               </p>
 
-              <p className="mt-1 text-sm text-zinc-400">
-                {action.subtitle}
-              </p>
+              <div className="mt-1 flex items-end justify-between gap-3">
+                <p className="text-sm text-zinc-400">
+                  {action.subtitle}
+                </p>
+
+                <span
+                  aria-hidden="true"
+                  className="text-lg font-semibold text-zinc-600 transition group-hover:translate-x-0.5 group-hover:text-white"
+                >
+                  &gt;
+                </span>
+              </div>
             </div>
           </Link>
         );
