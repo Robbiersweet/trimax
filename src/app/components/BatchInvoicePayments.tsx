@@ -289,11 +289,11 @@ export default function BatchInvoicePayments({
       setCheckAmount("");
       setInternalNote("");
       router.refresh();
-    } catch (error) {
-      console.error("Batch payment error:", error);
+    } catch {
       setToast({
         type: "error",
-        message: "Unable to apply the batch payment.",
+        message:
+          "Unable to apply the batch payment. Refresh, sign in again if needed, then try once more.",
       });
     } finally {
       setIsSaving(false);

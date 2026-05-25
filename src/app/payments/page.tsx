@@ -108,14 +108,15 @@ export default async function PaymentsPage({
     .limit(1)
     .maybeSingle();
 
-  if (businessError) {
-    console.error(businessError);
-  }
-
   const business = businessData as Business | null;
 
   let invoices: Invoice[] = [];
   let paymentLogs: ActivityLog[] = [];
+  const loadIssues: string[] = [];
+
+  if (businessError) {
+    loadIssues.push("Trimax could not load the selected business.");
+  }
 
   if (business?.id) {
     const { data: invoiceData, error: invoiceError } = await supabase
@@ -127,7 +128,9 @@ export default async function PaymentsPage({
       .order("created_at", { ascending: false });
 
     if (invoiceError) {
-      console.error(invoiceError);
+      loadIssues.push(
+        "Invoices could not be loaded yet. This is usually a Supabase permission or stale login session issue."
+      );
     }
 
     invoices = (invoiceData ?? []) as Invoice[];
@@ -141,7 +144,9 @@ export default async function PaymentsPage({
       .limit(8);
 
     if (activityError) {
-      console.error(activityError);
+      loadIssues.push(
+        "Recent payment activity could not be loaded yet."
+      );
     }
 
     paymentLogs = (activityData ?? []) as ActivityLog[];
@@ -180,6 +185,47 @@ export default async function PaymentsPage({
     (total, log) => total + activityAmount(log),
     0
   );
+  const batchOpportunities = Array.from(
+    payableInvoices.reduce(
+      (
+        groups,
+        invoice
+      ): Map<
+        string,
+        { customerName: string; count: number; total: number; oldestDue: string | null }
+      > => {
+        const customerName = invoice.customer_name ?? "Unknown Customer";
+        const current = groups.get(customerName) ?? {
+          customerName,
+          count: 0,
+          total: 0,
+          oldestDue: null,
+        };
+        const oldestDue =
+          current.oldestDue && invoice.due_date
+            ? current.oldestDue < invoice.due_date
+              ? current.oldestDue
+              : invoice.due_date
+            : current.oldestDue ?? invoice.due_date;
+
+        groups.set(customerName, {
+          customerName,
+          count: current.count + 1,
+          total: current.total + invoice.amountDue,
+          oldestDue,
+        });
+
+        return groups;
+      },
+      new Map<
+        string,
+        { customerName: string; count: number; total: number; oldestDue: string | null }
+      >()
+    ).values()
+  )
+    .filter((group) => group.count > 1)
+    .sort((first, second) => second.total - first.total)
+    .slice(0, 4);
 
   return (
     <AppShell>
@@ -208,6 +254,30 @@ export default async function PaymentsPage({
             </Link>
           </div>
         </div>
+
+        {loadIssues.length > 0 ? (
+          <Card className="border-yellow-500/30 bg-yellow-500/10">
+            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-yellow-200">
+              Payment Data Notice
+            </p>
+
+            <h2 className="mt-2 text-2xl font-bold">
+              Payments page is open, but some data needs attention
+            </h2>
+
+            <div className="mt-4 space-y-2 text-sm leading-6 text-yellow-50/90">
+              {loadIssues.map((issue) => (
+                <p key={issue}>{issue}</p>
+              ))}
+            </div>
+
+            <p className="mt-4 text-sm leading-6 text-zinc-300">
+              If you are on the login page, sign in again first. If you are
+              already signed in and this stays here, the next step is tightening
+              the Supabase policy for invoices and activity logs.
+            </p>
+          </Card>
+        ) : null}
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Card className="border-green-500/20 bg-green-500/5">
@@ -259,6 +329,57 @@ export default async function PaymentsPage({
             dueDate: invoice.due_date,
           }))}
         />
+
+        {batchOpportunities.length > 0 ? (
+          <Card>
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.3em] text-green-300">
+                  Batch Opportunities
+                </p>
+                <h2 className="mt-2 text-2xl font-bold">
+                  Customers with multiple open invoices
+                </h2>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+                  These are the best places to start when one check pays several
+                  invoices at once.
+                </p>
+              </div>
+
+              <Link href={`/invoices${businessQuery}`}>
+                <Button variant="secondary">Review All Invoices</Button>
+              </Link>
+            </div>
+
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              {batchOpportunities.map((group) => (
+                <div
+                  key={group.customerName}
+                  className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-semibold text-white">
+                        {group.customerName}
+                      </p>
+                      <p className="mt-1 text-sm text-zinc-500">
+                        {group.count} open invoices
+                      </p>
+                    </div>
+
+                    <p className="text-lg font-black text-green-300">
+                      {formatMoney(group.total)}
+                    </p>
+                  </div>
+
+                  <p className="mt-3 text-sm text-zinc-400">
+                    Oldest due date: {formatDate(group.oldestDue)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </Card>
+        ) : null}
 
         {payableInvoices.length === 0 ? (
           <Card>
