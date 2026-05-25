@@ -1218,7 +1218,7 @@ export default async function DashboardPage({
               "admin",
               "accountant",
             ]}
-        >
+          >
             <Card>
               <div className="flex items-center justify-between gap-4">
                 <div>
@@ -1266,11 +1266,15 @@ export default async function DashboardPage({
                       daysLate !== null &&
                       daysLate > 0;
 
+                    const paymentParams = new URLSearchParams({
+                      business: selectedBusinessSlug,
+                      customer: invoice.customer_name ?? "",
+                    });
+
                     return (
-                      <Link
+                      <div
                         key={invoice.id}
-                        href={`/invoices/${invoice.id}?business=${selectedBusinessSlug}`}
-                        className="block rounded-2xl border border-zinc-800 bg-zinc-950 p-4 transition hover:border-orange-500/60 hover:bg-zinc-900"
+                        className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
                       >
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                           <div>
@@ -1315,7 +1319,32 @@ export default async function DashboardPage({
                             </p>
                           </div>
                         </div>
-                      </Link>
+
+                        <div className="mt-4 flex flex-wrap gap-3 border-t border-zinc-800 pt-4">
+                          <Link
+                            href={`/invoices/${invoice.id}?business=${selectedBusinessSlug}`}
+                            className="rounded-full bg-orange-500 px-4 py-2 text-sm font-black text-black transition hover:bg-orange-400"
+                          >
+                            Open
+                          </Link>
+
+                          <Link
+                            href={`/invoices/${invoice.id}/print?business=${selectedBusinessSlug}`}
+                            className="rounded-full border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-200 transition hover:border-orange-400 hover:text-orange-300"
+                          >
+                            Print
+                          </Link>
+
+                          {amountDue > 0 ? (
+                            <Link
+                              href={`/payments?${paymentParams.toString()}`}
+                              className="rounded-full border border-green-500/40 bg-green-500/10 px-4 py-2 text-sm font-semibold text-green-200 transition hover:border-green-300 hover:bg-green-500/20"
+                            >
+                              Record Payment
+                            </Link>
+                          ) : null}
+                        </div>
+                      </div>
                     );
                   })}
 
