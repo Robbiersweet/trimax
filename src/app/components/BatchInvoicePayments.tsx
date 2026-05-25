@@ -40,6 +40,12 @@ function formatMoney(value: number) {
   }).format(value);
 }
 
+function parseMoney(value: string) {
+  const parsed = Number(value.replace(/[^0-9.-]/g, ""));
+
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 function formatDate(value?: string | null) {
   if (!value) {
     return "No due date";
@@ -94,6 +100,8 @@ export default function BatchInvoicePayments({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [paymentDate, setPaymentDate] = useState(todayInputValue());
   const [paymentType, setPaymentType] = useState("Check");
+  const [paymentReference, setPaymentReference] = useState("");
+  const [checkAmount, setCheckAmount] = useState("");
   const [internalNote, setInternalNote] = useState("");
   const [customerFilter, setCustomerFilter] = useState("all");
   const [isSaving, setIsSaving] = useState(false);
@@ -170,6 +178,16 @@ export default function BatchInvoicePayments({
     0
   );
 
+  const enteredCheckAmount = checkAmount.trim()
+    ? parseMoney(checkAmount)
+    : null;
+  const checkDifference =
+    enteredCheckAmount === null
+      ? 0
+      : Number((enteredCheckAmount - selectedTotal).toFixed(2));
+  const checkAmountMatches =
+    enteredCheckAmount === null || Math.abs(checkDifference) < 0.01;
+
   const allVisibleSelected =
     visibleInvoices.length > 0 &&
     visibleInvoices.every((invoice) => selectedIds.includes(invoice.id));
@@ -215,6 +233,15 @@ export default function BatchInvoicePayments({
       return;
     }
 
+    if (!checkAmountMatches) {
+      setToast({
+        type: "error",
+        message:
+          "The check amount does not match the selected invoices yet.",
+      });
+      return;
+    }
+
     setIsSaving(true);
     setToast(null);
 
@@ -242,7 +269,9 @@ export default function BatchInvoicePayments({
           details: {
             paymentDate,
             paymentType,
+            paymentReference,
             internalNote,
+            checkAmount: enteredCheckAmount,
             amountApplied: invoice.amountDue,
             batchInvoiceCount: selectedInvoices.length,
           },
@@ -256,6 +285,8 @@ export default function BatchInvoicePayments({
         } paid.`,
       });
       setSelectedIds([]);
+      setPaymentReference("");
+      setCheckAmount("");
       setInternalNote("");
       router.refresh();
     } catch (error) {
@@ -355,7 +386,7 @@ export default function BatchInvoicePayments({
       ) : null}
 
       <div className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4">
-        <div className="grid gap-4 md:grid-cols-[160px_180px_1fr_auto]">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[150px_150px_170px_1fr_auto]">
           <div>
             <label className="mb-2 block text-sm text-zinc-400">
               Payment Date
@@ -387,12 +418,39 @@ export default function BatchInvoicePayments({
 
           <div>
             <label className="mb-2 block text-sm text-zinc-400">
+              Check Amount
+            </label>
+            <input
+              inputMode="decimal"
+              value={checkAmount}
+              onChange={(event) => setCheckAmount(event.target.value)}
+              placeholder={formatMoney(selectedTotal)}
+              className="w-full rounded-2xl border border-zinc-700 bg-black px-4 py-3 text-white outline-none transition focus:border-orange-500"
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm text-zinc-400">
+              Reference / Check #
+            </label>
+            <input
+              value={paymentReference}
+              onChange={(event) =>
+                setPaymentReference(event.target.value)
+              }
+              placeholder="Example: Check #1042"
+              className="w-full rounded-2xl border border-zinc-700 bg-black px-4 py-3 text-white outline-none transition focus:border-orange-500"
+            />
+          </div>
+
+          <div className="md:col-span-2 xl:col-span-1">
+            <label className="mb-2 block text-sm text-zinc-400">
               Internal Note
             </label>
             <input
               value={internalNote}
               onChange={(event) => setInternalNote(event.target.value)}
-              placeholder="Example: Check #1042 from North Creek"
+              placeholder="Example: North Creek May unit batch"
               className="w-full rounded-2xl border border-zinc-700 bg-black px-4 py-3 text-white outline-none transition focus:border-orange-500"
             />
           </div>
@@ -401,13 +459,44 @@ export default function BatchInvoicePayments({
             <button
               type="button"
               onClick={applyBatchPayment}
-              disabled={isSaving || selectedInvoices.length === 0}
+              disabled={
+                isSaving ||
+                selectedInvoices.length === 0 ||
+                !checkAmountMatches
+              }
               className="w-full rounded-2xl bg-green-500 px-5 py-3 font-semibold text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
             >
               {isSaving ? "Applying..." : "Mark Selected Paid"}
             </button>
           </div>
         </div>
+
+        {selectedInvoices.length > 0 ? (
+          <div
+            className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${
+              checkAmountMatches
+                ? "border-green-500/30 bg-green-500/10 text-green-100"
+                : "border-yellow-500/40 bg-yellow-500/10 text-yellow-100"
+            }`}
+          >
+            {enteredCheckAmount === null ? (
+              <span>
+                Selected invoices total {formatMoney(selectedTotal)}. Enter
+                the check amount if you want Trimax to verify the batch
+                before marking it paid.
+              </span>
+            ) : checkAmountMatches ? (
+              <span>
+                Check amount matches the selected invoice total.
+              </span>
+            ) : (
+              <span>
+                Check amount is off by {formatMoney(checkDifference)}.
+                Adjust the selection or check amount before applying.
+              </span>
+            )}
+          </div>
+        ) : null}
       </div>
 
       <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
