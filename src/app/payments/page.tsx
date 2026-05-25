@@ -185,6 +185,56 @@ export default async function PaymentsPage({
     (total, log) => total + activityAmount(log),
     0
   );
+  const agingBuckets = [
+    {
+      label: "0-30 Days",
+      min: 0,
+      max: 30,
+      tone: "bg-yellow-400",
+    },
+    {
+      label: "31-60 Days",
+      min: 31,
+      max: 60,
+      tone: "bg-orange-400",
+    },
+    {
+      label: "61-90 Days",
+      min: 61,
+      max: 90,
+      tone: "bg-pink-400",
+    },
+    {
+      label: "91+ Days",
+      min: 91,
+      max: Infinity,
+      tone: "bg-red-400",
+    },
+  ].map((bucket) => {
+    const bucketInvoices = payableInvoices.filter((invoice) => {
+      if (invoice.daysLate === null || invoice.daysLate < 0) {
+        return false;
+      }
+
+      return (
+        invoice.daysLate >= bucket.min &&
+        invoice.daysLate <= bucket.max
+      );
+    });
+
+    return {
+      ...bucket,
+      count: bucketInvoices.length,
+      amount: bucketInvoices.reduce(
+        (total, invoice) => total + invoice.amountDue,
+        0
+      ),
+    };
+  });
+  const agingVisualMax = Math.max(
+    ...agingBuckets.map((bucket) => bucket.amount),
+    1
+  );
   const batchOpportunities = Array.from(
     payableInvoices.reduce(
       (
@@ -315,6 +365,68 @@ export default async function PaymentsPage({
             </p>
           </Card>
         </div>
+
+        {payableInvoices.length > 0 ? (
+          <Card className="border-pink-500/20 bg-pink-500/5">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.3em] text-pink-300">
+                  Aging Snapshot
+                </p>
+                <h2 className="mt-2 text-2xl font-bold">
+                  Open balances by age
+                </h2>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+                  A quick check-day view of unpaid invoices that are at or past
+                  their due date.
+                </p>
+              </div>
+
+              <Link href={`/invoices${businessQuery}&view=aging`}>
+                <Button variant="secondary">Open Aging View</Button>
+              </Link>
+            </div>
+
+            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              {agingBuckets.map((bucket) => (
+                <div
+                  key={bucket.label}
+                  className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-sm text-zinc-400">
+                        {bucket.label}
+                      </p>
+                      <p className="mt-2 text-2xl font-black text-white">
+                        {formatMoney(bucket.amount)}
+                      </p>
+                    </div>
+
+                    <span className="rounded-full bg-pink-500/15 px-3 py-1 text-xs font-bold text-pink-100">
+                      {bucket.count}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 h-2 overflow-hidden rounded-full bg-zinc-800">
+                    <div
+                      className={`h-full rounded-full ${bucket.tone}`}
+                      style={{
+                        width:
+                          bucket.amount > 0
+                            ? `${Math.max(
+                                6,
+                                (bucket.amount / agingVisualMax) * 100
+                              )}%`
+                            : "0%",
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        ) : null}
 
         <BatchInvoicePayments
           businessId={business?.id}
