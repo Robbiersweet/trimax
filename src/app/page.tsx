@@ -49,6 +49,17 @@ type Invoice = {
   created_at: string | null;
 };
 
+type ActivityLog = {
+  id: string;
+  actor_email: string | null;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  entity_label: string | null;
+  details: Record<string, unknown> | null;
+  created_at: string | null;
+};
+
 function parseMoney(value: string | number | null) {
   if (typeof value === "number") {
     return Number.isFinite(value) ? value : 0;
@@ -172,6 +183,103 @@ function normalizeStatus(value: string | null) {
   return (value || "Pending Estimate").trim().toLowerCase();
 }
 
+function activityLabel(action: string) {
+  const labels: Record<string, string> = {
+    "queue_item.created": "Queue Created",
+    "queue_item.scheduled": "Work Scheduled",
+    "queue_item.completed": "Work Completed",
+    "estimate.created": "Estimate Created",
+    "estimate.updated": "Estimate Updated",
+    "estimate.converted_to_invoice": "Estimate Converted",
+    "invoice.created": "Invoice Created",
+    "invoice.updated": "Invoice Updated",
+    "invoice.status_updated": "Invoice Updated",
+    "invoice.batch_payment_applied": "Payment Applied",
+    "invoice.split_created": "Split Invoices Created",
+  };
+
+  return labels[action] ?? action;
+}
+
+function activityTone(action: string) {
+  if (action.includes("payment")) {
+    return "border-green-500/35 bg-green-500/10 text-green-200";
+  }
+
+  if (action.includes("split")) {
+    return "border-orange-500/35 bg-orange-500/10 text-orange-200";
+  }
+
+  if (action.startsWith("queue_item")) {
+    return "border-sky-500/35 bg-sky-500/10 text-sky-200";
+  }
+
+  if (action.startsWith("estimate")) {
+    return "border-purple-500/35 bg-purple-500/10 text-purple-200";
+  }
+
+  if (action.startsWith("invoice")) {
+    return "border-amber-500/35 bg-amber-500/10 text-amber-200";
+  }
+
+  return "border-zinc-700 bg-zinc-950 text-zinc-300";
+}
+
+function activityHref(log: ActivityLog, businessSlug: string) {
+  if (!log.entity_id) {
+    return `/activity?business=${businessSlug}`;
+  }
+
+  if (log.entity_type === "queue_item") {
+    return `/queue/${log.entity_id}?business=${businessSlug}`;
+  }
+
+  if (log.entity_type === "estimate") {
+    return `/estimates/${log.entity_id}?business=${businessSlug}`;
+  }
+
+  if (log.entity_type === "invoice") {
+    return `/invoices/${log.entity_id}?business=${businessSlug}`;
+  }
+
+  return `/activity?business=${businessSlug}`;
+}
+
+function relativeTime(value: string | null) {
+  if (!value) {
+    return "Recently";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Recently";
+  }
+
+  const differenceMinutes = Math.max(
+    0,
+    Math.floor((Date.now() - date.getTime()) / 60_000)
+  );
+
+  if (differenceMinutes < 1) {
+    return "Just now";
+  }
+
+  if (differenceMinutes < 60) {
+    return `${differenceMinutes} min ago`;
+  }
+
+  const differenceHours = Math.floor(differenceMinutes / 60);
+
+  if (differenceHours < 24) {
+    return `${differenceHours} hr ago`;
+  }
+
+  const differenceDays = Math.floor(differenceHours / 24);
+
+  return `${differenceDays} day${differenceDays === 1 ? "" : "s"} ago`;
+}
+
 function isClosedQueueStatus(value: string | null) {
   return ["completed", "invoiced", "paid"].includes(normalizeStatus(value));
 }
@@ -212,12 +320,14 @@ export default async function DashboardPage({
   let queueItems: QueueItem[] = [];
   let estimates: Estimate[] = [];
   let invoices: Invoice[] = [];
+  let activityLogs: ActivityLog[] = [];
 
   if (selectedBusiness) {
     const [
       queueResponse,
       estimateResponse,
       invoiceResponse,
+      activityResponse,
     ] = await Promise.all([
       supabase
         .from("queue_items")
@@ -236,6 +346,15 @@ export default async function DashboardPage({
         .select("*")
         .eq("business_id", selectedBusiness.id)
         .order("created_at", { ascending: false }),
+
+      supabase
+        .from("activity_logs")
+        .select(
+          "id, actor_email, action, entity_type, entity_id, entity_label, details, created_at"
+        )
+        .eq("business_id", selectedBusiness.id)
+        .order("created_at", { ascending: false })
+        .limit(5),
     ]);
 
     queueItems =
@@ -244,6 +363,8 @@ export default async function DashboardPage({
       (estimateResponse.data ?? []) as Estimate[];
     invoices =
       (invoiceResponse.data ?? []) as Invoice[];
+    activityLogs =
+      (activityResponse.data ?? []) as ActivityLog[];
   }
 
   const activeQueueItems = queueItems.filter(
@@ -1137,6 +1258,60 @@ export default async function DashboardPage({
           <DashboardQuickActions
             businessSlug={selectedBusinessSlug}
           />
+        </Card>
+
+        <Card>
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
+                Recently Updated
+              </p>
+
+              <h2 className="mt-2 text-2xl font-bold">
+                Latest activity
+              </h2>
+
+              <p className="mt-2 max-w-3xl text-zinc-400">
+                A quick trail of the newest queue, estimate, invoice, payment,
+                and split actions in this workspace.
+              </p>
+            </div>
+
+            <Link href={`/activity?business=${selectedBusinessSlug}`}>
+              <Button variant="secondary">Open Activity Log</Button>
+            </Link>
+          </div>
+
+          <div className="mt-5 grid gap-3 lg:grid-cols-5">
+            {activityLogs.map((log) => (
+              <Link
+                key={log.id}
+                href={activityHref(log, selectedBusinessSlug)}
+                className={`rounded-2xl border p-4 transition hover:-translate-y-0.5 ${activityTone(log.action)}`}
+              >
+                <p className="text-xs font-black uppercase tracking-[0.2em]">
+                  {activityLabel(log.action)}
+                </p>
+
+                <p className="mt-3 line-clamp-2 min-h-12 text-sm font-semibold text-white">
+                  {log.entity_label ?? "Workspace activity"}
+                </p>
+
+                <div className="mt-4 flex items-center justify-between gap-3 text-xs text-zinc-400">
+                  <span>{relativeTime(log.created_at)}</span>
+                  <span className="truncate">
+                    {log.actor_email ?? "Trimax"}
+                  </span>
+                </div>
+              </Link>
+            ))}
+
+            {activityLogs.length === 0 ? (
+              <p className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-sm text-zinc-400 lg:col-span-5">
+                No activity has been logged for this workspace yet.
+              </p>
+            ) : null}
+          </div>
         </Card>
 
         <div className="grid gap-4 md:grid-cols-2">
