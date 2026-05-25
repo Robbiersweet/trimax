@@ -2,6 +2,7 @@ import Link from "next/link";
 import AppShell from "../components/AppShell";
 import Button from "../components/Button";
 import Card from "../components/Card";
+import RoleVisible from "../components/RoleVisible";
 import StatusBadge from "../components/StatusBadge";
 import { supabase } from "../lib/supabase";
 
@@ -703,35 +704,57 @@ export default async function ReportsPage({
           />
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <Card>
-            <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
-              Estimated Revenue
-            </p>
+        <RoleVisible
+          businessSlug={businessSlug}
+          allow={["owner", "admin", "accountant"]}
+          fallback={
+            <Card className="border-purple-500/30 bg-purple-500/5">
+              <p className="text-sm uppercase tracking-[0.3em] text-purple-300">
+                Property Report View
+              </p>
 
-            <p className="mt-3 text-4xl font-black">
-              {formatMoney(estimatedRevenue)}
-            </p>
+              <h2 className="mt-3 text-2xl font-bold">
+                Financial totals are kept internal
+              </h2>
 
-            <p className="mt-3 text-sm text-zinc-400">
-              Based on estimates created in the selected date range.
-            </p>
-          </Card>
+              <p className="mt-3 max-w-3xl text-zinc-300">
+                This view shows unit history, readiness, scheduling, job
+                mix, and completion information without exposing company
+                revenue or invoice totals.
+              </p>
+            </Card>
+          }
+        >
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
+                Estimated Revenue
+              </p>
 
-          <Card>
-            <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
-              Invoiced Revenue
-            </p>
+              <p className="mt-3 text-4xl font-black">
+                {formatMoney(estimatedRevenue)}
+              </p>
 
-            <p className="mt-3 text-4xl font-black">
-              {formatMoney(invoicedRevenue)}
-            </p>
+              <p className="mt-3 text-sm text-zinc-400">
+                Based on estimates created in the selected date range.
+              </p>
+            </Card>
 
-            <p className="mt-3 text-sm text-zinc-400">
-              Based on invoices created in the selected date range.
-            </p>
-          </Card>
-        </div>
+            <Card>
+              <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
+                Invoiced Revenue
+              </p>
+
+              <p className="mt-3 text-4xl font-black">
+                {formatMoney(invoicedRevenue)}
+              </p>
+
+              <p className="mt-3 text-sm text-zinc-400">
+                Based on invoices created in the selected date range.
+              </p>
+            </Card>
+          </div>
+        </RoleVisible>
 
         <div className="grid gap-4 lg:grid-cols-3">
           <BreakdownCard title="Status Breakdown" items={statusBreakdown} />
@@ -805,10 +828,9 @@ export default async function ReportsPage({
           </h2>
 
           <p className="mt-3 max-w-3xl text-zinc-300">
-            This page is internal for now. Later, the same reporting
-            foundation can power a limited property manager view that
-            shows only her property queue, readiness dates, status
-            updates, and property-level reports.
+            This reporting foundation now supports a limited property
+            manager view: queue history, readiness dates, status updates,
+            and property-level reports without company financial totals.
           </p>
         </Card>
       </div>
