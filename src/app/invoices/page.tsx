@@ -512,6 +512,7 @@ export default async function InvoicesPage({
             invoiceAmount: parseMoney(invoice.invoice_amount),
             amountPaid: parseMoney(invoice.amount_paid),
             status: invoice.status ?? "Draft",
+            dueDate: invoice.due_date,
           }))}
         />
 
