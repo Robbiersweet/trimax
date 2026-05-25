@@ -155,6 +155,19 @@ function daysPastDue(value: string | null) {
   return Math.floor(difference / 86_400_000);
 }
 
+function formatShortDate(value: string | null) {
+  const date = dateValue(value);
+
+  if (!date) {
+    return "-";
+  }
+
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
 function normalizeStatus(value: string | null) {
   return (value || "Pending Estimate").trim().toLowerCase();
 }
@@ -985,18 +998,33 @@ export default async function DashboardPage({
 
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
-            <h2 className="text-2xl font-bold">
-              Recent Queue Items
-            </h2>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
+                  Queue Pulse
+                </p>
+
+                <h2 className="mt-2 text-2xl font-bold">
+                  Recent Queue Items
+                </h2>
+              </div>
+
+              <Link
+                href={`/queue?business=${selectedBusinessSlug}`}
+                className="text-sm font-semibold text-orange-400"
+              >
+                View all
+              </Link>
+            </div>
 
             <div className="mt-4 space-y-3">
               {queueItems.slice(0, 3).map((item) => (
                 <Link
                   key={item.id}
                   href={`/queue/${item.id}?business=${selectedBusinessSlug}`}
-                  className="block rounded-2xl border border-zinc-800 bg-zinc-950 p-4 hover:border-orange-500/60"
+                  className="block rounded-2xl border border-zinc-800 bg-zinc-950 p-4 transition hover:border-orange-500/60 hover:bg-zinc-900"
                 >
-                  <div className="flex items-center justify-between gap-4">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <p className="font-semibold">
                         {item.property || "Property"} - Unit{" "}
@@ -1007,6 +1035,22 @@ export default async function DashboardPage({
                         {item.paint_type || "Paint TBD"} /{" "}
                         {item.flooring || "Flooring TBD"}
                       </p>
+
+                      <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                        <span className="rounded-full border border-zinc-800 bg-zinc-900 px-3 py-1 text-zinc-300">
+                          Ready {formatShortDate(item.ready_date)}
+                        </span>
+
+                        <span className="rounded-full border border-zinc-800 bg-zinc-900 px-3 py-1 text-zinc-300">
+                          Scheduled {formatShortDate(item.scheduled_date)}
+                        </span>
+
+                        {item.smoked_in ? (
+                          <span className="rounded-full border border-red-500/35 bg-red-500/10 px-3 py-1 text-red-200">
+                            Remediation
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
 
                     <StatusBadge
@@ -1031,11 +1075,26 @@ export default async function DashboardPage({
               "admin",
               "accountant",
             ]}
-          >
+        >
             <Card>
-              <h2 className="text-2xl font-bold">
-                Recent Invoices
-              </h2>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
+                    Invoice Pulse
+                  </p>
+
+                  <h2 className="mt-2 text-2xl font-bold">
+                    Recent Invoices
+                  </h2>
+                </div>
+
+                <Link
+                  href={`/invoices?business=${selectedBusinessSlug}`}
+                  className="text-sm font-semibold text-orange-400"
+                >
+                  View all
+                </Link>
+              </div>
 
               <div className="mt-4 space-y-3">
                 {invoices
@@ -1058,19 +1117,35 @@ export default async function DashboardPage({
                     const invoiceTotal = parseMoney(invoice.invoice_amount);
                     const amountPaid = parseMoney(invoice.amount_paid);
                     const amountDue = Math.max(invoiceTotal - amountPaid, 0);
+                    const daysLate = daysPastDue(invoice.due_date);
+                    const isLate =
+                      amountDue > 0 &&
+                      daysLate !== null &&
+                      daysLate > 0;
 
                     return (
                       <Link
                         key={invoice.id}
                         href={`/invoices/${invoice.id}?business=${selectedBusinessSlug}`}
-                        className="block rounded-2xl border border-zinc-800 bg-zinc-950 p-4 hover:border-orange-500/60"
+                        className="block rounded-2xl border border-zinc-800 bg-zinc-950 p-4 transition hover:border-orange-500/60 hover:bg-zinc-900"
                       >
-                        <div className="flex items-center justify-between gap-4">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                           <div>
-                            <p className="text-sm text-orange-400">
-                              {invoice.display_id ??
-                                "Invoice"}
-                            </p>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-sm font-semibold text-orange-400">
+                                {invoice.display_id ??
+                                  "Invoice"}
+                              </p>
+
+                              <StatusBadge status={invoice.status || "Draft"} />
+
+                              {isLate ? (
+                                <span className="rounded-full border border-pink-500/35 bg-pink-500/10 px-3 py-1 text-xs font-semibold text-pink-200">
+                                  {daysLate} day
+                                  {daysLate === 1 ? "" : "s"} late
+                                </span>
+                              ) : null}
+                            </div>
 
                             <p className="font-semibold">
                               {invoice.project_title ||
@@ -1090,6 +1165,10 @@ export default async function DashboardPage({
 
                             <p className="text-sm text-zinc-400">
                               Amount Due
+                            </p>
+
+                            <p className="mt-2 text-xs text-zinc-500">
+                              Due {formatShortDate(invoice.due_date)}
                             </p>
                           </div>
                         </div>
