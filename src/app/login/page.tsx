@@ -7,6 +7,10 @@ import Button from "../components/Button";
 import InputField from "../components/InputField";
 import Toast from "../components/Toast";
 import { supabase } from "../lib/supabase";
+import {
+  loadWorkspaceAccess,
+  preferredWorkspaceSlug,
+} from "../lib/workspaceAccess";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -23,10 +27,11 @@ export default function LoginPage() {
     setToast(null);
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { data, error } =
+      await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
     if (error || !data.session) {
       setLoading(false);
@@ -39,52 +44,35 @@ export default function LoginPage() {
       return;
     }
 
-    await supabase.auth.getSession();
+    const access = await loadWorkspaceAccess();
+    const businessSlug = preferredWorkspaceSlug(access);
 
-    setTimeout(() => {
-      window.location.replace("/?business=rnl-creations");
-    }, 300);
-  }
-
-  async function handleSignup() {
-    setToast(null);
-    setLoading(true);
-
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-
-    setLoading(false);
-
-    if (error) {
-      setToast({
-        type: "error",
-        message: error.message,
-      });
-
-      return;
-    }
-
-    setToast({
-      type: "success",
-      message: "Account created. Check your email.",
-    });
+    window.location.replace(
+      `/?business=${businessSlug}`
+    );
   }
 
   return (
     <AppShell>
-      {toast && <Toast type={toast.type} message={toast.message} />}
+      {toast && (
+        <Toast
+          type={toast.type}
+          message={toast.message}
+        />
+      )}
 
       <div className="mx-auto max-w-md">
         <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
           Trimax
         </p>
 
-        <h1 className="mt-3 text-5xl font-bold">Login</h1>
+        <h1 className="mt-3 text-5xl font-bold">
+          Login
+        </h1>
 
         <p className="mt-3 text-zinc-400">
-          Sign in to Trimax Operations Platform.
+          Sign in to your Trimax workspace.
+          Access is by invitation only.
         </p>
 
         <Card className="mt-8">
@@ -104,14 +92,16 @@ export default function LoginPage() {
               onChange={setPassword}
             />
 
-            <div className="flex gap-3">
-              <Button onClick={handleLogin}>
-                {loading ? "Logging in..." : "Login"}
-              </Button>
+            <Button onClick={handleLogin}>
+              {loading
+                ? "Opening workspace..."
+                : "Login"}
+            </Button>
 
-              <Button variant="secondary" onClick={handleSignup}>
-                Create Account
-              </Button>
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-sm text-zinc-400">
+              New users need an invitation from
+              Trimax before they can access a
+              workspace.
             </div>
           </div>
         </Card>

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import AuthGuard from "./components/AuthGuard";
 import "./globals.css";
@@ -16,7 +17,17 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <AuthGuard>{children}</AuthGuard>
+        <Suspense
+          fallback={
+            <main className="flex min-h-screen items-center justify-center bg-zinc-950 text-white">
+              <p className="text-zinc-400">
+                Opening workspace...
+              </p>
+            </main>
+          }
+        >
+          <AuthGuard>{children}</AuthGuard>
+        </Suspense>
       </body>
     </html>
   );
