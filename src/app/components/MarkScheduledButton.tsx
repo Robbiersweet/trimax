@@ -11,6 +11,7 @@ type MarkScheduledButtonProps = {
   businessId?: string | null;
   label?: string | null;
   initialScheduledDate?: string | null;
+  readyDate?: string | null;
 };
 
 export default function MarkScheduledButton({
@@ -18,12 +19,37 @@ export default function MarkScheduledButton({
   businessId,
   label,
   initialScheduledDate,
+  readyDate,
 }: MarkScheduledButtonProps) {
   const router = useRouter();
   const [scheduledDate, setScheduledDate] = useState(
     initialScheduledDate || ""
   );
   const [isSaving, setIsSaving] = useState(false);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const tomorrowDate = new Date();
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+  const tomorrow = tomorrowDate.toISOString().slice(0, 10);
+
+  const quickDates = [
+    {
+      label: "Today",
+      value: today,
+    },
+    {
+      label: "Tomorrow",
+      value: tomorrow,
+    },
+    ...(readyDate
+      ? [
+          {
+            label: "Ready Date",
+            value: readyDate,
+          },
+        ]
+      : []),
+  ];
 
   const handleMarkScheduled = async () => {
     if (!scheduledDate) {
@@ -66,30 +92,49 @@ export default function MarkScheduledButton({
   };
 
   return (
-    <div className="flex flex-col gap-2 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3 sm:flex-row sm:items-end">
-      <div>
-        <label className="mb-2 block text-xs uppercase tracking-[0.2em] text-zinc-500">
-          Work Date
-        </label>
+    <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3">
+      <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+        <div>
+          <label className="mb-2 block text-xs uppercase tracking-[0.2em] text-zinc-500">
+            Work Date
+          </label>
 
-        <input
-          type="date"
-          value={scheduledDate}
-          onChange={(event) => setScheduledDate(event.target.value)}
-          className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500 sm:w-44"
-        />
+          <input
+            type="date"
+            value={scheduledDate}
+            onChange={(event) => setScheduledDate(event.target.value)}
+            className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+          />
+        </div>
+
+        <Button
+          onClick={handleMarkScheduled}
+          variant="secondary"
+        >
+          {isSaving
+            ? "Scheduling..."
+            : initialScheduledDate
+              ? "Update Schedule"
+              : "Schedule"}
+        </Button>
       </div>
 
-      <Button
-        onClick={handleMarkScheduled}
-        variant="secondary"
-      >
-        {isSaving
-          ? "Scheduling..."
-          : initialScheduledDate
-            ? "Update Schedule"
-            : "Schedule"}
-      </Button>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {quickDates.map((quickDate) => (
+          <button
+            key={`${quickDate.label}-${quickDate.value}`}
+            type="button"
+            onClick={() => setScheduledDate(quickDate.value)}
+            className={`rounded-full border px-3 py-2 text-sm font-semibold transition ${
+              scheduledDate === quickDate.value
+                ? "border-orange-500 bg-orange-500 text-black"
+                : "border-zinc-800 bg-zinc-950 text-zinc-300 hover:border-orange-500/70"
+            }`}
+          >
+            {quickDate.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

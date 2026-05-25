@@ -301,6 +301,7 @@ export default async function QueueDetailPage({
                 queueItemId={item.id}
                 businessId={item.business_id}
                 initialScheduledDate={item.scheduled_date}
+                readyDate={item.ready_date}
                 label={`${item.property || "Property"} - Unit ${
                   item.unit || "-"
                 }`}
