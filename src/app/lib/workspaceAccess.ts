@@ -45,6 +45,8 @@ export async function loadWorkspaceAccess() {
     return [];
   }
 
+  const userEmail = user.email?.toLowerCase();
+
   const { data, error } = await supabase
     .from("business_users")
     .select(
@@ -58,7 +60,11 @@ export async function loadWorkspaceAccess() {
         )
       `
     )
-    .eq("user_id", user.id)
+    .or(
+      userEmail
+        ? `user_id.eq.${user.id},email.ilike.${userEmail}`
+        : `user_id.eq.${user.id}`
+    )
     .order("created_at", { ascending: true });
 
   if (error) {
