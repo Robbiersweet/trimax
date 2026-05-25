@@ -144,3 +144,54 @@ export function canUseDashboardAction(
   ].actions.includes(key);
 }
 
+export function navPermissionForPath(
+  pathname: string
+): NavPermissionKey {
+  if (pathname.startsWith("/queue")) {
+    return "queue";
+  }
+
+  if (pathname.startsWith("/new-request")) {
+    return "queue";
+  }
+
+  if (pathname.startsWith("/estimates")) {
+    return "estimates";
+  }
+
+  if (pathname.startsWith("/invoices")) {
+    return "invoices";
+  }
+
+  if (pathname.startsWith("/clients")) {
+    return "clients";
+  }
+
+  if (pathname.startsWith("/services")) {
+    return "services";
+  }
+
+  if (pathname.startsWith("/reports")) {
+    return "reports";
+  }
+
+  if (pathname.startsWith("/activity")) {
+    return "activity";
+  }
+
+  if (pathname.startsWith("/settings")) {
+    return "settings";
+  }
+
+  return "dashboard";
+}
+
+export function canAccessPath(
+  role: string | null | undefined,
+  pathname: string
+) {
+  return canAccessNavItem(
+    role,
+    navPermissionForPath(pathname)
+  );
+}

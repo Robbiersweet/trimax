@@ -7,6 +7,7 @@ import {
   useSearchParams,
 } from "next/navigation";
 import { supabase } from "../lib/supabase";
+import { canAccessPath } from "../lib/rolePermissions";
 import {
   canAccessWorkspace,
   loadWorkspaceAccess,
@@ -87,6 +88,23 @@ export default function AuthGuard({
             pathname,
             defaultBusinessSlug
           )
+        );
+        return;
+      }
+
+      const currentWorkspace = access.find(
+        (workspace) =>
+          workspace.businessSlug === selectedBusiness
+      );
+      const currentRole =
+        currentWorkspace?.role ?? "owner";
+
+      if (
+        access.length > 0 &&
+        !canAccessPath(currentRole, pathname)
+      ) {
+        router.replace(
+          `/?business=${selectedBusiness}`
         );
         return;
       }
