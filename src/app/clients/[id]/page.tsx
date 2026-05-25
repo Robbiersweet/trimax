@@ -18,62 +18,80 @@ type Client = {
 
 type Business = {
   id: string;
+  name: string;
   slug: string;
 };
 
 export default async function ClientDetailsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ business?: string }>;
 }) {
   const { id } = await params;
+  const resolvedSearchParams = searchParams
+    ? await searchParams
+    : {};
+  const businessSlug =
+    resolvedSearchParams.business ?? "rnl-creations";
+  const businessQuery = `?business=${businessSlug}`;
+
+  const { data: businessData } = await supabase
+    .from("businesses")
+    .select("id, name, slug")
+    .eq("slug", businessSlug)
+    .limit(1)
+    .maybeSingle();
+
+  const selectedBusiness =
+    businessData as Business | null;
+
+  if (!selectedBusiness) {
+    return (
+      <AppShell>
+        <Card>
+          <p className="text-red-400">
+            Selected business was not found.
+          </p>
+        </Card>
+      </AppShell>
+    );
+  }
 
   const { data, error } = await supabase
     .from("clients")
     .select("*")
     .eq("id", id)
-    .single();
+    .eq("business_id", selectedBusiness.id)
+    .limit(1)
+    .maybeSingle();
 
   if (error || !data) {
     return (
       <AppShell>
-        <p className="text-red-400">
-          Client not found.
-        </p>
+        <Card>
+          <p className="text-red-400">
+            Client not found for {selectedBusiness.name}.
+          </p>
+        </Card>
       </AppShell>
     );
   }
 
   const client = data as Client;
 
-  let businessSlug = "rnl-creations";
-
-  if (client.business_id) {
-    const { data: businessData } = await supabase
-      .from("businesses")
-      .select("id, slug")
-      .eq("id", client.business_id)
-      .single();
-
-    const business =
-      businessData as Business | null;
-
-    if (business?.slug) {
-      businessSlug = business.slug;
-    }
-  }
-
   return (
     <AppShell>
       <div className="space-y-6">
         <Link
-          href={`/clients?business=${businessSlug}`}
+          href={`/clients${businessQuery}`}
           className="inline-flex text-sm text-orange-400 hover:text-orange-300"
         >
-          ← Back to Clients
+          &lt; Back to Clients
         </Link>
 
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
               Client Details
@@ -82,11 +100,15 @@ export default async function ClientDetailsPage({
             <h1 className="mt-2 text-4xl font-bold">
               {client.name}
             </h1>
+
+            <p className="mt-2 text-zinc-400">
+              {selectedBusiness.name}
+            </p>
           </div>
 
-          <div className="flex gap-4">
+          <div className="flex flex-wrap gap-3">
             <Link
-              href={`/clients/${client.id}/edit?business=${businessSlug}`}
+              href={`/clients/${client.id}/edit${businessQuery}`}
             >
               <Button variant="secondary">
                 Edit Client
@@ -94,7 +116,15 @@ export default async function ClientDetailsPage({
             </Link>
 
             <Link
-              href={`/invoices/new?business=${businessSlug}`}
+              href={`/estimates/new${businessQuery}&clientId=${client.id}`}
+            >
+              <Button variant="secondary">
+                Create Estimate
+              </Button>
+            </Link>
+
+            <Link
+              href={`/invoices/new${businessQuery}&clientId=${client.id}`}
             >
               <Button>
                 Create Invoice
@@ -110,15 +140,9 @@ export default async function ClientDetailsPage({
               value={client.contact_name}
             />
 
-            <Info
-              label="Email"
-              value={client.email}
-            />
+            <Info label="Email" value={client.email} />
 
-            <Info
-              label="Phone"
-              value={client.phone}
-            />
+            <Info label="Phone" value={client.phone} />
 
             <Info
               label="Billing Address"
@@ -140,8 +164,7 @@ export default async function ClientDetailsPage({
             </p>
 
             <p className="mt-2 leading-7 text-zinc-300">
-              {client.notes ||
-                "No notes added."}
+              {client.notes || "No notes added."}
             </p>
           </div>
         </Card>
@@ -164,7 +187,7 @@ function Info({
       </p>
 
       <p className="mt-1 text-lg font-medium">
-        {value || "—"}
+        {value || "-"}
       </p>
     </div>
   );

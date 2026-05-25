@@ -1,6 +1,12 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AppShell from "../../components/AppShell";
 import Button from "../../components/Button";
@@ -111,6 +117,7 @@ function NewInvoicePageContent() {
 
   const businessSlug =
     searchParams.get("business") ?? "rnl-creations";
+  const clientIdFromUrl = searchParams.get("clientId");
 
   const [business, setBusiness] =
     useState<Business | null>(null);
@@ -214,6 +221,27 @@ function NewInvoicePageContent() {
     message: string;
   } | null>(null);
 
+  const applyTaxSuggestion = useCallback(
+    (address: string) => {
+      if (taxManuallyChanged) {
+        return;
+      }
+
+      const suggestion =
+        getTaxSuggestionForAddress(address);
+
+      if (!suggestion) {
+        setTaxLabel("");
+        setTaxRate("");
+        return;
+      }
+
+      setTaxLabel(suggestion.label);
+      setTaxRate(suggestion.rate);
+    },
+    [taxManuallyChanged]
+  );
+
   useEffect(() => {
     async function loadBusiness() {
       const { data, error } = await supabase
@@ -246,7 +274,30 @@ function NewInvoicePageContent() {
             ascending: true,
           });
 
-      setClients((clientData ?? []) as Client[]);
+      const loadedClients = (clientData ?? []) as Client[];
+
+      setClients(loadedClients);
+
+      if (clientIdFromUrl) {
+        const clientFromUrl = loadedClients.find(
+          (client) => client.id === clientIdFromUrl
+        );
+
+        if (clientFromUrl) {
+          const clientServiceAddress =
+            clientFromUrl.service_address ||
+            clientFromUrl.billing_address ||
+            "";
+
+          setSelectedClientId(clientFromUrl.id);
+          setCustomerName(clientFromUrl.name);
+          setServiceAddress(clientServiceAddress);
+
+          if (clientServiceAddress) {
+            applyTaxSuggestion(clientServiceAddress);
+          }
+        }
+      }
 
       const { data: serviceData } =
         await supabase
@@ -267,25 +318,7 @@ function NewInvoicePageContent() {
     }
 
     loadBusiness();
-  }, [businessSlug]);
-
-  function applyTaxSuggestion(address: string) {
-    if (taxManuallyChanged) {
-      return;
-    }
-
-    const suggestion =
-      getTaxSuggestionForAddress(address);
-
-    if (!suggestion) {
-      setTaxLabel("");
-      setTaxRate("");
-      return;
-    }
-
-    setTaxLabel(suggestion.label);
-    setTaxRate(suggestion.rate);
-  }
+  }, [applyTaxSuggestion, businessSlug, clientIdFromUrl]);
 
   function handleServiceAddressChange(address: string) {
     setServiceAddress(address);

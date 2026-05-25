@@ -23,7 +23,10 @@ type Client = {
 export default async function ClientsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ business?: string }>;
+  searchParams?: Promise<{
+    business?: string;
+    q?: string;
+  }>;
 }) {
   const resolvedSearchParams = searchParams
     ? await searchParams
@@ -32,6 +35,9 @@ export default async function ClientsPage({
   const businessSlug =
     resolvedSearchParams.business ??
     "rnl-creations";
+  const searchTerm =
+    resolvedSearchParams.q?.trim() ?? "";
+  const businessQuery = `?business=${businessSlug}`;
 
   const { data: businessData } = await supabase
     .from("businesses")
@@ -56,10 +62,29 @@ export default async function ClientsPage({
     clients = (data ?? []) as Client[];
   }
 
+  const filteredClients = clients.filter((client) => {
+    if (!searchTerm) {
+      return true;
+    }
+
+    const searchableText = [
+      client.name,
+      client.contact_name,
+      client.email,
+      client.phone,
+      client.billing_address,
+      client.service_address,
+    ]
+      .join(" ")
+      .toLowerCase();
+
+    return searchableText.includes(searchTerm.toLowerCase());
+  });
+
   return (
     <AppShell>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
               Trimax
@@ -78,7 +103,7 @@ export default async function ClientsPage({
           </div>
 
           <Link
-            href={`/clients/new?business=${businessSlug}`}
+            href={`/clients/new${businessQuery}`}
           >
             <Button>
               + New Client
@@ -86,21 +111,64 @@ export default async function ClientsPage({
           </Link>
         </div>
 
+        <Card>
+          <form
+            action="/clients"
+            className="grid gap-4 md:grid-cols-[1fr_auto]"
+          >
+            <input
+              type="hidden"
+              name="business"
+              value={businessSlug}
+            />
+
+            <div>
+              <label className="mb-2 block text-sm text-zinc-400">
+                Search Clients
+              </label>
+
+              <input
+                name="q"
+                defaultValue={searchTerm}
+                placeholder="Search name, contact, email, phone, or address"
+                className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+              />
+            </div>
+
+            <div className="flex items-end gap-3">
+              <Button>Search</Button>
+
+              {searchTerm ? (
+                <Link href={`/clients${businessQuery}`}>
+                  <Button variant="secondary">
+                    Clear
+                  </Button>
+                </Link>
+              ) : null}
+            </div>
+          </form>
+        </Card>
+
         {clients.length === 0 ? (
           <Card>
             <p className="text-zinc-400">
               No clients yet.
             </p>
           </Card>
+        ) : filteredClients.length === 0 ? (
+          <Card>
+            <p className="text-zinc-400">
+              No clients match that search.
+            </p>
+          </Card>
         ) : (
           <div className="grid gap-4">
-            {clients.map((client) => (
-              <Link
+            {filteredClients.map((client) => (
+              <Card
                 key={client.id}
-                href={`/clients/${client.id}?business=${businessSlug}`}
+                className="transition hover:border-orange-500/60 hover:bg-zinc-800"
               >
-                <Card className="transition hover:border-orange-500/60 hover:bg-zinc-800">
-                  <div className="flex items-start justify-between">
+                  <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                       <h2 className="text-2xl font-semibold">
                         {client.name}
@@ -130,8 +198,37 @@ export default async function ClientsPage({
                       </p>
                     </div>
                   </div>
-                </Card>
-              </Link>
+
+                  <div className="mt-5 flex flex-wrap gap-3 border-t border-zinc-800 pt-4">
+                    <Link
+                      href={`/clients/${client.id}${businessQuery}`}
+                      className="rounded-xl bg-orange-500 px-4 py-2 text-sm font-bold text-black transition hover:bg-orange-400"
+                    >
+                      Open
+                    </Link>
+
+                    <Link
+                      href={`/clients/${client.id}/edit${businessQuery}`}
+                      className="rounded-xl bg-zinc-800 px-4 py-2 text-sm font-bold text-white transition hover:bg-zinc-700"
+                    >
+                      Edit
+                    </Link>
+
+                    <Link
+                      href={`/estimates/new${businessQuery}&clientId=${client.id}`}
+                      className="rounded-xl bg-zinc-800 px-4 py-2 text-sm font-bold text-white transition hover:bg-zinc-700"
+                    >
+                      New Estimate
+                    </Link>
+
+                    <Link
+                      href={`/invoices/new${businessQuery}&clientId=${client.id}`}
+                      className="rounded-xl bg-zinc-800 px-4 py-2 text-sm font-bold text-white transition hover:bg-zinc-700"
+                    >
+                      New Invoice
+                    </Link>
+                  </div>
+              </Card>
             ))}
           </div>
         )}

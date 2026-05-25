@@ -232,6 +232,7 @@ function NewEstimatePageContent() {
 
   const businessSlug =
     searchParams.get("business") ?? "rnl-creations";
+  const clientIdFromUrl = searchParams.get("clientId");
 
   const [business, setBusiness] =
     useState<Business | null>(null);
@@ -376,7 +377,30 @@ function NewEstimatePageContent() {
             ascending: true,
           });
 
-      setClients((clientData ?? []) as Client[]);
+      const loadedClients = (clientData ?? []) as Client[];
+
+      setClients(loadedClients);
+
+      if (clientIdFromUrl && !queueId) {
+        const clientFromUrl = loadedClients.find(
+          (client) => client.id === clientIdFromUrl
+        );
+
+        if (clientFromUrl) {
+          const clientServiceAddress =
+            clientFromUrl.service_address ||
+            clientFromUrl.billing_address ||
+            "";
+
+          setSelectedClientId(clientFromUrl.id);
+          setCustomerName(clientFromUrl.name);
+          setServiceAddress(clientServiceAddress);
+
+          if (clientServiceAddress) {
+            applyTaxSuggestion(clientServiceAddress);
+          }
+        }
+      }
 
       const { data: serviceData } =
         await supabase
@@ -397,7 +421,7 @@ function NewEstimatePageContent() {
     }
 
     loadBusiness();
-  }, [businessSlug]);
+  }, [applyTaxSuggestion, businessSlug, clientIdFromUrl, queueId]);
 
   useEffect(() => {
     async function loadQueueItem() {
