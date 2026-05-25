@@ -20,6 +20,41 @@ type Client = {
   service_address: string | null;
 };
 
+type Invoice = {
+  client_id: string | null;
+  invoice_amount: string | number | null;
+  amount_paid: string | number | null;
+  status: string | null;
+};
+
+type Estimate = {
+  client_id: string | null;
+  status: string | null;
+};
+
+type ClientSummary = {
+  openBalance: number;
+  openInvoices: number;
+  activeEstimates: number;
+};
+
+function parseMoney(value: string | number | null) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  const parsed = Number(String(value ?? "0").replace(/[^0-9.-]/g, ""));
+
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatMoney(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(value);
+}
+
 export default async function ClientsPage({
   searchParams,
 }: {
@@ -49,18 +84,80 @@ export default async function ClientsPage({
     businessData as Business | null;
 
   let clients: Client[] = [];
+  let invoices: Invoice[] = [];
+  let estimates: Estimate[] = [];
 
   if (selectedBusiness?.id) {
-    const { data } = await supabase
-      .from("clients")
-      .select("*")
-      .eq("business_id", selectedBusiness.id)
-      .order("created_at", {
-        ascending: false,
-      });
+    const [clientResponse, invoiceResponse, estimateResponse] =
+      await Promise.all([
+        supabase
+          .from("clients")
+          .select("*")
+          .eq("business_id", selectedBusiness.id)
+          .order("created_at", {
+            ascending: false,
+          }),
+        supabase
+          .from("invoices")
+          .select("client_id, invoice_amount, amount_paid, status")
+          .eq("business_id", selectedBusiness.id),
+        supabase
+          .from("estimates")
+          .select("client_id, status")
+          .eq("business_id", selectedBusiness.id),
+      ]);
 
-    clients = (data ?? []) as Client[];
+    clients = (clientResponse.data ?? []) as Client[];
+    invoices = (invoiceResponse.data ?? []) as Invoice[];
+    estimates = (estimateResponse.data ?? []) as Estimate[];
   }
+
+  const clientSummaries = clients.reduce<Record<string, ClientSummary>>(
+    (summaries, client) => {
+      summaries[client.id] = {
+        openBalance: 0,
+        openInvoices: 0,
+        activeEstimates: 0,
+      };
+
+      return summaries;
+    },
+    {}
+  );
+
+  invoices.forEach((invoice) => {
+    if (!invoice.client_id || !clientSummaries[invoice.client_id]) {
+      return;
+    }
+
+    const status = (invoice.status || "Draft").toLowerCase();
+
+    if (status === "paid") {
+      return;
+    }
+
+    const amountDue = Math.max(
+      parseMoney(invoice.invoice_amount) - parseMoney(invoice.amount_paid),
+      0
+    );
+
+    clientSummaries[invoice.client_id].openInvoices += 1;
+    clientSummaries[invoice.client_id].openBalance += amountDue;
+  });
+
+  estimates.forEach((estimate) => {
+    if (!estimate.client_id || !clientSummaries[estimate.client_id]) {
+      return;
+    }
+
+    const status = (estimate.status || "Draft").toLowerCase();
+
+    if (status === "converted" || status === "declined") {
+      return;
+    }
+
+    clientSummaries[estimate.client_id].activeEstimates += 1;
+  });
 
   const filteredClients = clients.filter((client) => {
     if (!searchTerm) {
@@ -199,6 +296,44 @@ export default async function ClientsPage({
                     </div>
                   </div>
 
+                  <div className="mt-5 grid gap-3 border-t border-zinc-800 pt-4 sm:grid-cols-3">
+                    <SummaryPill
+                      label="Open Balance"
+                      value={formatMoney(
+                        clientSummaries[client.id]?.openBalance ?? 0
+                      )}
+                      tone={
+                        (clientSummaries[client.id]?.openBalance ?? 0) > 0
+                          ? "orange"
+                          : "zinc"
+                      }
+                    />
+
+                    <SummaryPill
+                      label="Open Invoices"
+                      value={String(
+                        clientSummaries[client.id]?.openInvoices ?? 0
+                      )}
+                      tone={
+                        (clientSummaries[client.id]?.openInvoices ?? 0) > 0
+                          ? "blue"
+                          : "zinc"
+                      }
+                    />
+
+                    <SummaryPill
+                      label="Active Estimates"
+                      value={String(
+                        clientSummaries[client.id]?.activeEstimates ?? 0
+                      )}
+                      tone={
+                        (clientSummaries[client.id]?.activeEstimates ?? 0) > 0
+                          ? "emerald"
+                          : "zinc"
+                      }
+                    />
+                  </div>
+
                   <div className="mt-5 flex flex-wrap gap-3 border-t border-zinc-800 pt-4">
                     <Link
                       href={`/clients/${client.id}${businessQuery}`}
@@ -234,5 +369,34 @@ export default async function ClientsPage({
         )}
       </div>
     </AppShell>
+  );
+}
+
+function SummaryPill({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: "orange" | "blue" | "emerald" | "zinc";
+}) {
+  const toneClasses = {
+    orange: "border-orange-500/30 bg-orange-500/10 text-orange-200",
+    blue: "border-blue-500/30 bg-blue-500/10 text-blue-200",
+    emerald: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
+    zinc: "border-zinc-800 bg-zinc-950 text-zinc-300",
+  };
+
+  return (
+    <div className={`rounded-2xl border p-3 ${toneClasses[tone]}`}>
+      <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+        {label}
+      </p>
+
+      <p className="mt-2 text-lg font-black">
+        {value}
+      </p>
+    </div>
   );
 }
