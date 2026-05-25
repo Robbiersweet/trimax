@@ -41,11 +41,19 @@ type Invoice = {
   display_id: string | null;
   project_title: string | null;
   customer_name: string | null;
-  invoice_amount: string | null;
+  invoice_amount: string | number | null;
+  amount_paid: string | number | null;
   status: string | null;
+  due_date: string | null;
+  updated_at: string | null;
+  created_at: string | null;
 };
 
-function parseMoney(value: string | null) {
+function parseMoney(value: string | number | null) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0;
+  }
+
   return Number(value?.replace(/[^0-9.-]+/g, "") || 0);
 }
 
@@ -88,6 +96,21 @@ function dateValue(value: string | null) {
   }
 
   return date;
+}
+
+function daysPastDue(value: string | null) {
+  const dueDate = dateValue(value);
+
+  if (!dueDate) {
+    return null;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const difference = today.getTime() - dueDate.getTime();
+
+  return Math.floor(difference / 86_400_000);
 }
 
 function normalizeStatus(value: string | null) {
@@ -223,10 +246,26 @@ export default async function DashboardPage({
     (invoice) => invoice.status !== "Paid"
   );
 
+  const openInvoicesWithAmounts = openInvoices
+    .map((invoice) => {
+      const invoiceTotal = parseMoney(invoice.invoice_amount);
+      const amountPaid =
+        typeof invoice.amount_paid === "number"
+          ? invoice.amount_paid
+          : parseMoney(String(invoice.amount_paid ?? "0"));
+
+      return {
+        ...invoice,
+        amountDue: Math.max(invoiceTotal - amountPaid, 0),
+        daysLate: daysPastDue(invoice.due_date),
+      };
+    })
+    .filter((invoice) => invoice.amountDue > 0);
+
   const outstandingRevenueTotal =
-    openInvoices.reduce(
+    openInvoicesWithAmounts.reduce(
       (total, invoice) =>
-        total + parseMoney(invoice.invoice_amount),
+        total + invoice.amountDue,
       0
     );
 
@@ -259,6 +298,56 @@ export default async function DashboardPage({
         0
       )
   );
+
+  const agingBuckets = [
+    {
+      label: "0-30 Days",
+      min: 0,
+      max: 30,
+    },
+    {
+      label: "31-60 Days",
+      min: 31,
+      max: 60,
+    },
+    {
+      label: "61-90 Days",
+      min: 61,
+      max: 90,
+    },
+    {
+      label: "91+ Days",
+      min: 91,
+      max: Infinity,
+    },
+  ].map((bucket) => {
+    const bucketInvoices = openInvoicesWithAmounts.filter((invoice) => {
+      if (invoice.daysLate === null || invoice.daysLate < 0) {
+        return false;
+      }
+
+      return (
+        invoice.daysLate >= bucket.min &&
+        invoice.daysLate <= bucket.max
+      );
+    });
+
+    return {
+      ...bucket,
+      count: bucketInvoices.length,
+      amount: bucketInvoices.reduce(
+        (total, invoice) => total + invoice.amountDue,
+        0
+      ),
+    };
+  });
+
+  const mostOverdueInvoices = openInvoicesWithAmounts
+    .filter((invoice) => (invoice.daysLate ?? -1) >= 0)
+    .sort((first, second) => {
+      return (second.daysLate ?? 0) - (first.daysLate ?? 0);
+    })
+    .slice(0, 5);
 
   return (
     <AppShell>
@@ -348,7 +437,7 @@ export default async function DashboardPage({
                   </p>
 
                   <p className="mt-1 text-2xl font-bold">
-                    {openInvoices.length}
+                    {openInvoicesWithAmounts.length}
                   </p>
                 </div>
 
@@ -363,6 +452,92 @@ export default async function DashboardPage({
                 </div>
               </div>
             </div>
+          </Card>
+        </RoleVisible>
+
+        <RoleVisible
+          businessSlug={selectedBusinessSlug}
+          allow={[
+            "owner",
+            "admin",
+            "accountant",
+          ]}
+        >
+          <Card className="border-pink-500/20 bg-pink-500/5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.3em] text-pink-300">
+                  Accounts Aging
+                </p>
+
+                <h2 className="mt-2 text-2xl font-bold">
+                  Unpaid invoice age
+                </h2>
+
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
+                  A quick FreshBooks-style view of what is still unpaid and how
+                  long it has been past due.
+                </p>
+              </div>
+
+              <Link href={`/invoices?business=${selectedBusinessSlug}&view=aging`}>
+                <Button variant="secondary">Open Aging View</Button>
+              </Link>
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {agingBuckets.map((bucket) => (
+                <div
+                  key={bucket.label}
+                  className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
+                >
+                  <p className="text-sm text-zinc-400">{bucket.label}</p>
+
+                  <p className="mt-2 text-2xl font-black">
+                    {formatMoney(bucket.amount)}
+                  </p>
+
+                  <p className="mt-1 text-sm text-zinc-500">
+                    {bucket.count} invoice{bucket.count === 1 ? "" : "s"}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {mostOverdueInvoices.length > 0 ? (
+              <div className="mt-5 overflow-hidden rounded-2xl border border-zinc-800">
+                {mostOverdueInvoices.map((invoice) => (
+                  <Link
+                    key={invoice.id}
+                    href={`/invoices/${invoice.id}?business=${selectedBusinessSlug}`}
+                    className="grid gap-2 border-b border-zinc-800 bg-zinc-950 px-4 py-3 last:border-b-0 hover:bg-zinc-900 md:grid-cols-[1fr_auto_auto]"
+                  >
+                    <span>
+                      <span className="block font-semibold">
+                        {invoice.display_id ?? "Invoice"} -{" "}
+                        {invoice.customer_name ?? "Unknown Customer"}
+                      </span>
+                      <span className="text-sm text-zinc-400">
+                        {invoice.project_title ?? "Untitled Invoice"}
+                      </span>
+                    </span>
+
+                    <span className="font-bold text-pink-200">
+                      {invoice.daysLate} day
+                      {invoice.daysLate === 1 ? "" : "s"} late
+                    </span>
+
+                    <span className="font-bold text-orange-300">
+                      {formatMoney(invoice.amountDue)}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-5 rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-sm text-zinc-400">
+                No past-due invoices found.
+              </p>
+            )}
           </Card>
         </RoleVisible>
 
@@ -468,7 +643,7 @@ export default async function DashboardPage({
               </p>
 
               <p className="mt-2 text-4xl font-bold">
-                {openInvoices.length}
+                {openInvoicesWithAmounts.length}
               </p>
 
               <Link
@@ -682,44 +857,63 @@ export default async function DashboardPage({
 
               <div className="mt-4 space-y-3">
                 {invoices
+                  .sort((first, second) => {
+                    const firstDate = new Date(
+                      first.updated_at ??
+                        first.created_at ??
+                        "1970-01-01"
+                    ).getTime();
+                    const secondDate = new Date(
+                      second.updated_at ??
+                        second.created_at ??
+                        "1970-01-01"
+                    ).getTime();
+
+                    return secondDate - firstDate;
+                  })
                   .slice(0, 3)
-                  .map((invoice) => (
-                    <Link
-                      key={invoice.id}
-                      href={`/invoices/${invoice.id}?business=${selectedBusinessSlug}`}
-                      className="block rounded-2xl border border-zinc-800 bg-zinc-950 p-4 hover:border-orange-500/60"
-                    >
-                      <div className="flex items-center justify-between gap-4">
-                        <div>
-                          <p className="text-sm text-orange-400">
-                            {invoice.display_id ??
-                              "Invoice"}
-                          </p>
+                  .map((invoice) => {
+                    const invoiceTotal = parseMoney(invoice.invoice_amount);
+                    const amountPaid = parseMoney(invoice.amount_paid);
+                    const amountDue = Math.max(invoiceTotal - amountPaid, 0);
 
-                          <p className="font-semibold">
-                            {invoice.project_title ||
-                              "Untitled Invoice"}
-                          </p>
+                    return (
+                      <Link
+                        key={invoice.id}
+                        href={`/invoices/${invoice.id}?business=${selectedBusinessSlug}`}
+                        className="block rounded-2xl border border-zinc-800 bg-zinc-950 p-4 hover:border-orange-500/60"
+                      >
+                        <div className="flex items-center justify-between gap-4">
+                          <div>
+                            <p className="text-sm text-orange-400">
+                              {invoice.display_id ??
+                                "Invoice"}
+                            </p>
 
-                          <p className="mt-1 text-sm text-zinc-400">
-                            {invoice.customer_name ||
-                              "Unknown Customer"}
-                          </p>
+                            <p className="font-semibold">
+                              {invoice.project_title ||
+                                "Untitled Invoice"}
+                            </p>
+
+                            <p className="mt-1 text-sm text-zinc-400">
+                              {invoice.customer_name ||
+                                "Unknown Customer"}
+                            </p>
+                          </div>
+
+                          <div className="text-right">
+                            <p className="font-bold text-orange-400">
+                              {formatMoney(amountDue)}
+                            </p>
+
+                            <p className="text-sm text-zinc-400">
+                              Amount Due
+                            </p>
+                          </div>
                         </div>
-
-                        <div className="text-right">
-                          <p className="font-bold text-orange-400">
-                            {invoice.invoice_amount ||
-                              "$0"}
-                          </p>
-
-                          <p className="text-sm text-zinc-400">
-                            {invoice.status || "Draft"}
-                          </p>
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
+                      </Link>
+                    );
+                  })}
 
                 {invoices.length === 0 && (
                   <p className="text-sm text-zinc-400">

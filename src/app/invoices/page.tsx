@@ -21,6 +21,8 @@ type Invoice = {
   amount_paid: string | number | null;
   status: string | null;
   due_date: string | null;
+  updated_at: string | null;
+  created_at: string | null;
   split_parent_invoice_id: string | null;
   split_sequence: number | null;
   split_count: number | null;
@@ -68,6 +70,25 @@ function formatDate(value: string | null) {
   }).format(date);
 }
 
+function invoiceDaysPastDue(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const dueDate = new Date(`${value}T00:00:00`);
+
+  if (Number.isNaN(dueDate.getTime())) {
+    return null;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return Math.floor(
+    (today.getTime() - dueDate.getTime()) / 86_400_000
+  );
+}
+
 export default async function InvoicesPage({
   searchParams,
 }: {
@@ -90,7 +111,8 @@ export default async function InvoicesPage({
       : "all";
   const view =
     resolvedSearchParams.view === "originals" ||
-    resolvedSearchParams.view === "splits"
+    resolvedSearchParams.view === "splits" ||
+    resolvedSearchParams.view === "aging"
       ? resolvedSearchParams.view
       : "all";
   const businessQuery = `?business=${businessSlug}`;
@@ -115,7 +137,7 @@ export default async function InvoicesPage({
     const { data, error } = await supabase
       .from("invoices")
       .select(
-        "id, display_id, customer_name, project_title, invoice_amount, amount_paid, status, due_date, split_parent_invoice_id, split_sequence, split_count"
+        "id, display_id, customer_name, project_title, invoice_amount, amount_paid, status, due_date, updated_at, created_at, split_parent_invoice_id, split_sequence, split_count"
       )
       .eq("business_id", selectedBusiness.id)
       .order("created_at", { ascending: false });
@@ -186,18 +208,10 @@ export default async function InvoicesPage({
 
   const filteredInvoices = invoicesWithSplitInfo.filter(
     (invoice) => {
-      if (
-        statusFilter !== "all" &&
-        (invoice.status || "Draft").toLowerCase() !==
-          statusFilter
-      ) {
-        return false;
-      }
-
-      if (!searchTerm) {
-        return true;
-      }
-
+      const invoiceTotal = parseMoney(invoice.invoice_amount);
+      const amountPaid = parseMoney(invoice.amount_paid);
+      const amountDue = Math.max(invoiceTotal - amountPaid, 0);
+      const daysLate = invoiceDaysPastDue(invoice.due_date);
       const searchableText = [
         invoice.display_id,
         invoice.project_title,
@@ -208,11 +222,107 @@ export default async function InvoicesPage({
         .join(" ")
         .toLowerCase();
 
-      return searchableText.includes(
-        searchTerm.toLowerCase()
-      );
+      if (
+        searchTerm &&
+        !searchableText.includes(searchTerm.toLowerCase())
+      ) {
+        return false;
+      }
+
+      if (view === "aging") {
+        return (
+          amountDue > 0 &&
+          (daysLate ?? -1) >= 0 &&
+          (statusFilter === "all" ||
+            (invoice.status || "Draft").toLowerCase() ===
+              statusFilter)
+        );
+      }
+
+      if (
+        statusFilter !== "all" &&
+        (invoice.status || "Draft").toLowerCase() !==
+          statusFilter
+      ) {
+        return false;
+      }
+
+      return true;
     }
   );
+
+  const openInvoicesWithAmounts = invoicesWithSplitInfo
+    .map((invoice) => {
+      const invoiceTotal = parseMoney(invoice.invoice_amount);
+      const amountPaid = parseMoney(invoice.amount_paid);
+
+      return {
+        ...invoice,
+        amountDue: Math.max(invoiceTotal - amountPaid, 0),
+        daysLate: invoiceDaysPastDue(invoice.due_date),
+      };
+    })
+    .filter(
+      (invoice) =>
+        invoice.amountDue > 0 &&
+        (invoice.status || "Draft").toLowerCase() !== "paid"
+    );
+
+  const agingBuckets = [
+    {
+      label: "0-30 Days",
+      min: 0,
+      max: 30,
+    },
+    {
+      label: "31-60 Days",
+      min: 31,
+      max: 60,
+    },
+    {
+      label: "61-90 Days",
+      min: 61,
+      max: 90,
+    },
+    {
+      label: "91+ Days",
+      min: 91,
+      max: Infinity,
+    },
+  ].map((bucket) => {
+    const bucketInvoices = openInvoicesWithAmounts.filter((invoice) => {
+      if (invoice.daysLate === null || invoice.daysLate < 0) {
+        return false;
+      }
+
+      return (
+        invoice.daysLate >= bucket.min &&
+        invoice.daysLate <= bucket.max
+      );
+    });
+
+    return {
+      ...bucket,
+      count: bucketInvoices.length,
+      amount: bucketInvoices.reduce(
+        (total, invoice) => total + invoice.amountDue,
+        0
+      ),
+    };
+  });
+
+  const recentlyUpdatedInvoices = [...invoicesWithSplitInfo]
+    .sort((first, second) => {
+      const firstTime = new Date(
+        first.updated_at ?? first.created_at ?? "1970-01-01"
+      ).getTime();
+      const secondTime = new Date(
+        second.updated_at ?? second.created_at ?? "1970-01-01"
+      ).getTime();
+
+      return secondTime - firstTime;
+    })
+    .slice(0, 5);
 
   const viewLinks = [
     {
@@ -226,6 +336,10 @@ export default async function InvoicesPage({
     {
       label: "Split Invoices",
       value: "splits",
+    },
+    {
+      label: "Aging",
+      value: "aging",
     },
   ].map((filter) => {
     const params = new URLSearchParams(activeParams);
@@ -401,6 +515,96 @@ export default async function InvoicesPage({
           }))}
         />
 
+        <Card className="border-pink-500/20 bg-pink-500/5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-sm uppercase tracking-[0.3em] text-pink-300">
+                Accounts Aging
+              </p>
+
+              <h2 className="mt-2 text-2xl font-bold">
+                Past-due invoice buckets
+              </h2>
+
+              <p className="mt-2 text-sm text-zinc-400">
+                See unpaid invoices by age, then use batch payments when one
+                check covers several units.
+              </p>
+            </div>
+
+            <Link href={`/invoices?business=${businessSlug}&view=aging`}>
+              <Button variant="secondary">Open Aging View</Button>
+            </Link>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {agingBuckets.map((bucket) => (
+              <div
+                key={bucket.label}
+                className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
+              >
+                <p className="text-sm text-zinc-400">{bucket.label}</p>
+
+                <p className="mt-2 text-2xl font-black">
+                  {formatMoney(bucket.amount)}
+                </p>
+
+                <p className="mt-1 text-sm text-zinc-500">
+                  {bucket.count} invoice{bucket.count === 1 ? "" : "s"}
+                </p>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {recentlyUpdatedInvoices.length > 0 ? (
+          <Card>
+            <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
+              Recently Updated
+            </p>
+
+            <h2 className="mt-2 text-2xl font-bold">
+              Latest invoice activity
+            </h2>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-5">
+              {recentlyUpdatedInvoices.map((invoice) => {
+                const invoiceTotal = parseMoney(invoice.invoice_amount);
+                const amountPaid = parseMoney(invoice.amount_paid);
+                const amountDue = Math.max(invoiceTotal - amountPaid, 0);
+
+                return (
+                  <Link
+                    key={invoice.id}
+                    href={`/invoices/${invoice.id}${businessQuery}`}
+                    className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 transition hover:border-orange-500/60 hover:bg-zinc-900"
+                  >
+                    <p className="text-sm text-orange-300">
+                      {invoice.display_id ?? "Invoice"}
+                    </p>
+
+                    <p className="mt-2 line-clamp-2 font-semibold">
+                      {invoice.customer_name ?? "Unknown Customer"}
+                    </p>
+
+                    <p className="mt-3 border-t border-zinc-800 pt-3 text-xs uppercase tracking-[0.2em] text-zinc-500">
+                      Amount Due
+                    </p>
+
+                    <p className="mt-1 font-bold">
+                      {formatMoney(amountDue)}
+                    </p>
+
+                    <p className="mt-2 text-sm text-zinc-400">
+                      {invoice.status ?? "Draft"}
+                    </p>
+                  </Link>
+                );
+              })}
+            </div>
+          </Card>
+        ) : null}
+
         {invoicesWithSplitInfo.length === 0 ? (
           <Card>
             <p className="text-zinc-400">
@@ -421,6 +625,11 @@ export default async function InvoicesPage({
               );
               const hasSplitChildren =
                 invoice.split_children_count > 0;
+              const invoiceTotal = parseMoney(invoice.invoice_amount);
+              const amountPaid = parseMoney(invoice.amount_paid);
+              const amountDue = Math.max(invoiceTotal - amountPaid, 0);
+              const daysLate = invoiceDaysPastDue(invoice.due_date);
+              const isPastDue = amountDue > 0 && (daysLate ?? -1) >= 0;
 
               return (
                 <Link
@@ -479,7 +688,11 @@ export default async function InvoicesPage({
 
                       <div className="sm:text-right">
                         <p className="text-xl font-bold text-orange-400">
-                          {formatMoney(invoice.invoice_amount)}
+                          {formatMoney(amountDue)}
+                        </p>
+
+                        <p className="mt-1 text-xs uppercase tracking-[0.2em] text-zinc-500">
+                          Amount Due
                         </p>
 
                         <div className="mt-2">
@@ -489,6 +702,12 @@ export default async function InvoicesPage({
                         <p className="mt-2 text-sm text-zinc-400">
                           {formatDate(invoice.due_date)}
                         </p>
+
+                        {isPastDue ? (
+                          <p className="mt-2 text-sm font-semibold text-pink-200">
+                            {daysLate} day{daysLate === 1 ? "" : "s"} past due
+                          </p>
+                        ) : null}
                       </div>
                     </div>
                   </Card>
