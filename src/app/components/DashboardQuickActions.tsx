@@ -79,8 +79,8 @@ export default function DashboardQuickActions({
       {
         key: "record_payment",
         title: "Record Payment",
-        subtitle: "Apply payment to invoice",
-        href: `/invoices?business=${businessSlug}&status=sent`,
+        subtitle: "Apply one check to many invoices",
+        href: `/payments?business=${businessSlug}`,
         label: "Payment",
       },
       {
@@ -147,4 +147,3 @@ export default function DashboardQuickActions({
     </div>
   );
 }
-

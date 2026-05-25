@@ -89,6 +89,12 @@ export default function Navigation() {
       active: pathname.startsWith("/invoices"),
     },
     {
+      key: "payments",
+      label: "Payments",
+      href: `/payments?business=${business}`,
+      active: pathname.startsWith("/payments"),
+    },
+    {
       key: "clients",
       label: "Clients",
       href: `/clients?business=${business}`,

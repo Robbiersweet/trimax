@@ -12,6 +12,7 @@ export type NavPermissionKey =
   | "queue"
   | "estimates"
   | "invoices"
+  | "payments"
   | "clients"
   | "services"
   | "reports"
@@ -40,6 +41,7 @@ const rolePermissions: Record<
       "queue",
       "estimates",
       "invoices",
+      "payments",
       "clients",
       "services",
       "reports",
@@ -62,6 +64,7 @@ const rolePermissions: Record<
       "queue",
       "estimates",
       "invoices",
+      "payments",
       "clients",
       "services",
       "reports",
@@ -83,6 +86,7 @@ const rolePermissions: Record<
       "dashboard",
       "estimates",
       "invoices",
+      "payments",
       "clients",
       "reports",
       "activity",
@@ -161,6 +165,10 @@ export function navPermissionForPath(
 
   if (pathname.startsWith("/invoices")) {
     return "invoices";
+  }
+
+  if (pathname.startsWith("/payments")) {
+    return "payments";
   }
 
   if (pathname.startsWith("/clients")) {
