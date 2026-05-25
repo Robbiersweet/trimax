@@ -10,8 +10,11 @@ export type WorkspaceAccess = {
 };
 
 type BusinessUserRow = {
+  id: string;
   role: string | null;
   business_id: string | null;
+  user_id: string | null;
+  email: string | null;
   businesses:
     | {
         id: string;
@@ -51,8 +54,11 @@ export async function loadWorkspaceAccess() {
     .from("business_users")
     .select(
       `
+        id,
         role,
         business_id,
+        user_id,
+        email,
         businesses (
           id,
           name,
@@ -76,7 +82,28 @@ export async function loadWorkspaceAccess() {
     return [];
   }
 
-  return ((data ?? []) as BusinessUserRow[])
+  const rows = (data ?? []) as BusinessUserRow[];
+  const pendingRows = rows.filter(
+    (row) =>
+      !row.user_id &&
+      row.email?.toLowerCase() === userEmail
+  );
+
+  if (pendingRows.length > 0) {
+    await Promise.all(
+      pendingRows.map((row) =>
+        supabase
+          .from("business_users")
+          .update({
+            user_id: user.id,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", row.id)
+      )
+    );
+  }
+
+  return rows
     .map((row) => {
       const business = normalizeBusiness(row);
 
