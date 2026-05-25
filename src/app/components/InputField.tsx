@@ -9,6 +9,7 @@ type InputFieldProps = {
   onChange: (value: string) => void;
   type?: string;
   list?: string;
+  helperText?: string;
 };
 
 export default function InputField({
@@ -18,6 +19,7 @@ export default function InputField({
   onChange,
   type = "text",
   list,
+  helperText,
 }: InputFieldProps) {
   const [showPassword, setShowPassword] =
     useState(false);
@@ -59,6 +61,12 @@ export default function InputField({
           </button>
         )}
       </div>
+
+      {helperText ? (
+        <p className="mt-2 text-xs leading-5 text-zinc-500">
+          {helperText}
+        </p>
+      ) : null}
     </div>
   );
 }

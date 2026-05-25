@@ -269,11 +269,12 @@ function NewRequestPageContent() {
 
             <div className="grid gap-5 md:grid-cols-2">
               <InputField
-                label="Scheduled Date"
+                label="Work Scheduled Date"
                 placeholder="Optional"
                 value={scheduledDate}
                 onChange={setScheduledDate}
                 type="date"
+                helperText="Optional. Use this only when the work is already on the calendar."
               />
 
               <InputField

@@ -169,6 +169,40 @@ function findMatchingService(
   );
 }
 
+function findPrimerService(serviceItems: ServiceItem[]) {
+  return (
+    serviceItems.find((serviceItem) => {
+      const serviceText = normalizeMatchText(
+        [
+          serviceItem.category,
+          serviceItem.name,
+          serviceItem.description,
+        ]
+          .filter(Boolean)
+          .join(" ")
+      );
+
+      return (
+        serviceText.includes("full primer") ||
+        serviceText.includes("primer")
+      );
+    }) ?? null
+  );
+}
+
+function serviceToLineItem(serviceItem: ServiceItem): LineItem {
+  return {
+    serviceItemId: serviceItem.id,
+    description: serviceItem.description || serviceItem.name,
+    quantity: String(Number(serviceItem.default_quantity) || 1),
+    unitPrice:
+      serviceItem.default_unit_price === null ||
+      serviceItem.default_unit_price === undefined
+        ? ""
+        : String(Number(serviceItem.default_unit_price) || 0),
+  };
+}
+
 function isUuid(value: string | null) {
   return Boolean(
     value?.match(
@@ -432,10 +466,41 @@ function NewEstimatePageContent() {
         serviceItems,
         loadedQueueItem
       );
+      const primerService = loadedQueueItem.smoked_in
+        ? findPrimerService(serviceItems)
+        : null;
       const lineDescription =
         matchingService?.description ||
         matchingService?.name ||
         descriptionParts.join(" - ");
+      const startingLineItems: LineItem[] = [
+        matchingService
+          ? serviceToLineItem(matchingService)
+          : {
+              serviceItemId: "",
+              description: lineDescription,
+              quantity: "1",
+              unitPrice: "",
+            },
+      ];
+
+      if (
+        loadedQueueItem.smoked_in &&
+        !startingLineItems.some((item) =>
+          normalizeMatchText(item.description).includes("primer")
+        )
+      ) {
+        startingLineItems.push(
+          primerService
+            ? serviceToLineItem(primerService)
+            : {
+                serviceItemId: "",
+                description: "Full Primer",
+                quantity: "1",
+                unitPrice: "",
+              }
+        );
+      }
 
       setQueueItem(loadedQueueItem);
       setSelectedClientId(matchingClient?.id ?? "");
@@ -445,20 +510,7 @@ function NewEstimatePageContent() {
       setProjectTitle(titleParts.join(" - "));
       setReference(loadedQueueItem.unit ?? "");
       setNotes(loadedQueueItem.notes ?? "");
-      setLineItems([
-        {
-          serviceItemId: matchingService?.id ?? "",
-          description: lineDescription,
-          quantity: String(
-            Number(matchingService?.default_quantity) || 1
-          ),
-          unitPrice:
-            matchingService?.default_unit_price === null ||
-            matchingService?.default_unit_price === undefined
-              ? ""
-              : String(Number(matchingService.default_unit_price) || 0),
-        },
-      ]);
+      setLineItems(startingLineItems);
 
       if (matchingClient) {
         const clientServiceAddress =
@@ -845,7 +897,8 @@ function NewEstimatePageContent() {
             <p className="mt-2 text-sm leading-6 text-purple-100/80">
               Trimax copied the property, unit, paint type, flooring, reference,
               notes, matching client address, tax suggestion, and saved service
-              when available. Review pricing and adjust any details before
+              when available. Smoker/remediation units also add Full Primer
+              automatically. Review pricing and adjust any details before
               saving.
             </p>
           </Card>
