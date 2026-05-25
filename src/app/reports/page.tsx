@@ -880,6 +880,11 @@ function BreakdownCard({
   title: string;
   items: { label: string; count: number }[];
 }) {
+  const maxCount = Math.max(
+    ...items.map((item) => item.count),
+    1
+  );
+
   return (
     <Card>
       <h2 className="text-xl font-bold">{title}</h2>
@@ -891,10 +896,24 @@ function BreakdownCard({
           items.slice(0, 6).map((item) => (
             <div
               key={item.label}
-              className="flex items-center justify-between gap-4 rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3"
+              className="rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3"
             >
-              <p className="text-sm text-zinc-300">{item.label}</p>
-              <p className="font-bold text-orange-400">{item.count}</p>
+              <div className="flex items-center justify-between gap-4">
+                <p className="text-sm text-zinc-300">{item.label}</p>
+                <p className="font-bold text-orange-400">{item.count}</p>
+              </div>
+
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-zinc-900">
+                <div
+                  className="h-full rounded-full bg-orange-500"
+                  style={{
+                    width: `${Math.max(
+                      (item.count / maxCount) * 100,
+                      item.count > 0 ? 10 : 0
+                    )}%`,
+                  }}
+                />
+              </div>
             </div>
           ))
         )}
