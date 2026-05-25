@@ -168,6 +168,32 @@ export default function BatchInvoicePayments({
     0
   );
 
+  const selectedCustomerGroups = new Map<
+    string,
+    { customerName: string; count: number; total: number }
+  >();
+
+  selectedInvoices.forEach((invoice) => {
+    const customerName = invoice.customerName || "Unknown Customer";
+    const current = selectedCustomerGroups.get(customerName) ?? {
+      customerName,
+      count: 0,
+      total: 0,
+    };
+
+    selectedCustomerGroups.set(customerName, {
+      customerName,
+      count: current.count + 1,
+      total: current.total + invoice.amountDue,
+    });
+  });
+
+  const selectedCustomerBreakdown = Array.from(
+    selectedCustomerGroups.values()
+  ).sort((first, second) =>
+    first.customerName.localeCompare(second.customerName)
+  );
+
   const visibleTotal = visibleInvoices.reduce(
     (total, invoice) => total + invoice.amountDue,
     0
@@ -192,6 +218,11 @@ export default function BatchInvoicePayments({
     visibleInvoices.length > 0 &&
     visibleInvoices.every((invoice) => selectedIds.includes(invoice.id));
 
+  const paymentReadyGroups = [...customerGroups]
+    .filter((group) => group.count > 1)
+    .sort((first, second) => second.total - first.total)
+    .slice(0, 4);
+
   function toggleInvoice(invoiceId: string) {
     setSelectedIds((current) =>
       current.includes(invoiceId)
@@ -212,8 +243,29 @@ export default function BatchInvoicePayments({
     });
   }
 
+  function selectCustomerGroup(customerName: string) {
+    const customerInvoiceIds = payableInvoices
+      .filter((invoice) => invoice.customerName === customerName)
+      .map((invoice) => invoice.id);
+
+    setCustomerFilter(customerName);
+    setSelectedIds(customerInvoiceIds);
+    setCheckAmount(
+      formatMoney(
+        payableInvoices
+          .filter((invoice) => invoice.customerName === customerName)
+          .reduce((total, invoice) => total + invoice.amountDue, 0)
+      )
+    );
+  }
+
+  function fillSelectedTotal() {
+    setCheckAmount(formatMoney(selectedTotal));
+  }
+
   function clearSelection() {
     setSelectedIds([]);
+    setCheckAmount("");
   }
 
   async function applyBatchPayment() {
@@ -348,6 +400,56 @@ export default function BatchInvoicePayments({
         </div>
       </div>
 
+      {paymentReadyGroups.length > 0 ? (
+        <div className="mt-6">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-green-300">
+                Payment Ready
+              </p>
+              <p className="mt-1 text-sm text-zinc-400">
+                Customers with several open invoices are good batch payment
+                candidates.
+              </p>
+            </div>
+
+            <p className="text-sm text-zinc-500">
+              Pick one to load its invoices.
+            </p>
+          </div>
+
+          <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {paymentReadyGroups.map((group) => (
+              <button
+                key={group.customerName}
+                type="button"
+                onClick={() => selectCustomerGroup(group.customerName)}
+                className="rounded-2xl border border-green-500/20 bg-zinc-950 p-4 text-left transition hover:border-green-400/70 hover:bg-green-500/10"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-white">
+                      {group.customerName}
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-500">
+                      {group.count} open invoices
+                    </p>
+                  </div>
+
+                  <span className="rounded-full bg-green-500/15 px-3 py-1 text-xs font-bold text-green-200">
+                    Load
+                  </span>
+                </div>
+
+                <p className="mt-4 text-2xl font-black text-green-300">
+                  {formatMoney(group.total)}
+                </p>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       {customerGroups.length > 1 ? (
         <div className="mt-6">
           <p className="mb-2 text-sm text-zinc-400">
@@ -417,9 +519,21 @@ export default function BatchInvoicePayments({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm text-zinc-400">
-              Check Amount
-            </label>
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <label className="block text-sm text-zinc-400">
+                Check Amount
+              </label>
+
+              {selectedInvoices.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={fillSelectedTotal}
+                  className="text-xs font-semibold text-green-300 transition hover:text-green-100"
+                >
+                  Use selected total
+                </button>
+              ) : null}
+            </div>
             <input
               inputMode="decimal"
               value={checkAmount}
@@ -495,6 +609,35 @@ export default function BatchInvoicePayments({
                 Adjust the selection or check amount before applying.
               </span>
             )}
+          </div>
+        ) : null}
+
+        {selectedCustomerBreakdown.length > 0 ? (
+          <div className="mt-4 rounded-2xl border border-zinc-800 bg-black/40 p-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm font-semibold text-white">
+                Selected payment batch
+              </p>
+              <p className="text-sm font-bold text-green-300">
+                {formatMoney(selectedTotal)}
+              </p>
+            </div>
+
+            <div className="mt-3 grid gap-2 md:grid-cols-2">
+              {selectedCustomerBreakdown.map((group) => (
+                <div
+                  key={group.customerName}
+                  className="flex items-center justify-between gap-3 rounded-xl bg-zinc-950 px-3 py-2 text-sm"
+                >
+                  <span className="text-zinc-300">
+                    {group.customerName} ({group.count})
+                  </span>
+                  <span className="font-semibold text-white">
+                    {formatMoney(group.total)}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         ) : null}
       </div>
