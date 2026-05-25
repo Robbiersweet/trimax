@@ -25,6 +25,14 @@ function withBusinessParam(
   return `${pathname}?business=${businessSlug}`;
 }
 
+function isPublicAuthPath(pathname: string) {
+  return (
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/forgot-password") ||
+    pathname.startsWith("/reset-password")
+  );
+}
+
 export default function AuthGuard({
   children,
 }: AuthGuardProps) {
@@ -42,13 +50,14 @@ export default function AuthGuard({
 
       const isLoginPage =
         pathname.startsWith("/login");
+      const isPublicPage = isPublicAuthPath(pathname);
 
-      if (!session && !isLoginPage) {
+      if (!session && !isPublicPage) {
         router.push("/login");
         return;
       }
 
-      if (!session && isLoginPage) {
+      if (!session && isPublicPage) {
         setLoading(false);
         return;
       }
@@ -61,6 +70,24 @@ export default function AuthGuard({
         router.push(
           `/?business=${defaultBusinessSlug}`
         );
+        return;
+      }
+
+      if (
+        session &&
+        pathname.startsWith("/forgot-password")
+      ) {
+        router.push(
+          `/?business=${defaultBusinessSlug}`
+        );
+        return;
+      }
+
+      if (
+        session &&
+        pathname.startsWith("/reset-password")
+      ) {
+        setLoading(false);
         return;
       }
 

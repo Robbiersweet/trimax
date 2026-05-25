@@ -12,13 +12,15 @@ export default function AppShell({
 }: AppShellProps) {
   const pathname = usePathname();
 
-  const isLoginPage =
-    pathname.startsWith("/login");
+  const isAuthPage =
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/forgot-password") ||
+    pathname.startsWith("/reset-password");
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
       <div className="mx-auto max-w-6xl px-4 py-5">
-        {!isLoginPage && <Navigation />}
+        {!isAuthPage && <Navigation />}
 
         {children}
       </div>

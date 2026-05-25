@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import AppShell from "../components/AppShell";
 import Card from "../components/Card";
@@ -91,6 +92,15 @@ export default function LoginPage() {
               value={password}
               onChange={setPassword}
             />
+
+            <div className="-mt-2 flex justify-end">
+              <Link
+                href="/forgot-password"
+                className="text-sm font-semibold text-orange-400 transition hover:text-orange-300"
+              >
+                Forgot password?
+              </Link>
+            </div>
 
             <Button onClick={handleLogin}>
               {loading
