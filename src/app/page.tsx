@@ -440,6 +440,58 @@ export default async function DashboardPage({
       return (second.daysLate ?? 0) - (first.daysLate ?? 0);
     })
     .slice(0, 5);
+  const customerBalances = Array.from(
+    openInvoicesWithAmounts
+      .reduce(
+        (
+          groups,
+          invoice
+        ): Map<
+          string,
+          {
+            customerName: string;
+            count: number;
+            total: number;
+            oldestDue: string | null;
+          }
+        > => {
+          const customerName = invoice.customer_name ?? "Unknown Customer";
+          const current = groups.get(customerName) ?? {
+            customerName,
+            count: 0,
+            total: 0,
+            oldestDue: null,
+          };
+          const oldestDue =
+            current.oldestDue && invoice.due_date
+              ? current.oldestDue < invoice.due_date
+                ? current.oldestDue
+                : invoice.due_date
+              : current.oldestDue ?? invoice.due_date;
+
+          groups.set(customerName, {
+            customerName,
+            count: current.count + 1,
+            total: current.total + invoice.amountDue,
+            oldestDue,
+          });
+
+          return groups;
+        },
+        new Map<
+          string,
+          {
+            customerName: string;
+            count: number;
+            total: number;
+            oldestDue: string | null;
+          }
+        >()
+      )
+      .values()
+  )
+    .sort((first, second) => second.total - first.total)
+    .slice(0, 3);
 
   return (
     <AppShell>
@@ -545,6 +597,97 @@ export default async function DashboardPage({
               </div>
             </div>
           </Card>
+        </RoleVisible>
+
+        <RoleVisible
+          businessSlug={selectedBusinessSlug}
+          allow={[
+            "owner",
+            "admin",
+            "accountant",
+          ]}
+        >
+          {customerBalances.length > 0 ? (
+            <Card className="border-green-500/20 bg-green-500/5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <p className="text-sm uppercase tracking-[0.3em] text-green-300">
+                    Collection Targets
+                  </p>
+
+                  <h2 className="mt-2 text-2xl font-bold">
+                    Customers with unpaid balances
+                  </h2>
+
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+                    Start here when one check may cover several invoices. Each
+                    customer opens the Payments workspace with matching invoices
+                    preselected when possible.
+                  </p>
+                </div>
+
+                <Link href={`/payments?business=${selectedBusinessSlug}`}>
+                  <Button variant="secondary">Open Payments</Button>
+                </Link>
+              </div>
+
+              <div className="mt-5 grid gap-3 lg:grid-cols-3">
+                {customerBalances.map((customer) => {
+                  const paymentParams = new URLSearchParams({
+                    business: selectedBusinessSlug,
+                    customer: customer.customerName,
+                  });
+                  const invoiceParams = new URLSearchParams({
+                    business: selectedBusinessSlug,
+                    q: customer.customerName,
+                  });
+
+                  return (
+                    <div
+                      key={customer.customerName}
+                      className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="font-semibold text-white">
+                            {customer.customerName}
+                          </p>
+                          <p className="mt-1 text-sm text-zinc-500">
+                            {customer.count} open invoice
+                            {customer.count === 1 ? "" : "s"}
+                          </p>
+                        </div>
+
+                        <p className="text-xl font-black text-green-300">
+                          {formatMoney(customer.total)}
+                        </p>
+                      </div>
+
+                      <p className="mt-3 text-sm text-zinc-400">
+                        Oldest due date: {formatShortDate(customer.oldestDue)}
+                      </p>
+
+                      <div className="mt-4 flex flex-wrap gap-3">
+                        <Link
+                          href={`/payments?${paymentParams.toString()}`}
+                          className="rounded-full bg-green-400 px-4 py-2 text-sm font-black text-black transition hover:bg-green-300"
+                        >
+                          Record Payment
+                        </Link>
+
+                        <Link
+                          href={`/invoices?${invoiceParams.toString()}`}
+                          className="rounded-full border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-200 transition hover:border-orange-400 hover:text-orange-300"
+                        >
+                          View Invoices
+                        </Link>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          ) : null}
         </RoleVisible>
 
         <RoleVisible
