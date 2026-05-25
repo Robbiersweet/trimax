@@ -324,29 +324,14 @@ export default async function DashboardPage({
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            {businesses.map((business) => {
-              const isSelected =
-                business.id === selectedBusiness?.id;
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm">
+            <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+              Workspace
+            </p>
 
-              return (
-                <Link
-                  key={business.id}
-                  href={`/?business=${business.slug}`}
-                  className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
-                    isSelected
-                      ? "border-orange-500 bg-orange-500/10 text-orange-300"
-                      : "border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-orange-500/60"
-                  }`}
-                >
-                  {business.name}
-                </Link>
-              );
-            })}
-
-            <div className="rounded-2xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm font-semibold text-zinc-300">
-              Robbie
-            </div>
+            <p className="mt-1 font-semibold text-orange-300">
+              {selectedBusiness?.name ?? "Trimax"}
+            </p>
           </div>
         </div>
 
