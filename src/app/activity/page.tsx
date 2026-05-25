@@ -26,6 +26,23 @@ type DetailChip = {
   value: string;
 };
 
+type ActivityTypeFilter =
+  | "all"
+  | "queue"
+  | "estimate"
+  | "invoice"
+  | "payment"
+  | "split";
+
+const activityFilters: Array<{ label: string; value: ActivityTypeFilter }> = [
+  { label: "All", value: "all" },
+  { label: "Queue", value: "queue" },
+  { label: "Estimates", value: "estimate" },
+  { label: "Invoices", value: "invoice" },
+  { label: "Payments", value: "payment" },
+  { label: "Splits", value: "split" },
+];
+
 function formatDateTime(value: string | null) {
   if (!value) {
     return "-";
@@ -246,14 +263,86 @@ function entityHref(log: ActivityLog, businessSlug: string) {
   return null;
 }
 
+function normalizeActivityFilter(value: string | undefined): ActivityTypeFilter {
+  if (
+    value === "queue" ||
+    value === "estimate" ||
+    value === "invoice" ||
+    value === "payment" ||
+    value === "split"
+  ) {
+    return value;
+  }
+
+  return "all";
+}
+
+function activityMatchesType(log: ActivityLog, filter: ActivityTypeFilter) {
+  if (filter === "all") {
+    return true;
+  }
+
+  if (filter === "payment") {
+    return log.action.includes("payment");
+  }
+
+  if (filter === "split") {
+    return log.action.includes("split");
+  }
+
+  if (filter === "queue") {
+    return log.action.startsWith("queue_item") || log.entity_type === "queue_item";
+  }
+
+  return log.action.startsWith(filter) || log.entity_type === filter;
+}
+
+function searchableActivityText(log: ActivityLog) {
+  return [
+    actionLabel(log.action),
+    log.action,
+    log.entity_type,
+    log.entity_label,
+    log.actor_email,
+    JSON.stringify(log.details ?? {}),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+function activityFilterHref({
+  businessSlug,
+  filter,
+  searchTerm,
+}: {
+  businessSlug: string;
+  filter: ActivityTypeFilter;
+  searchTerm: string;
+}) {
+  const params = new URLSearchParams({ business: businessSlug });
+
+  if (filter !== "all") {
+    params.set("type", filter);
+  }
+
+  if (searchTerm.length > 0) {
+    params.set("q", searchTerm);
+  }
+
+  return `/activity?${params.toString()}`;
+}
+
 export default async function ActivityPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ business?: string }>;
+  searchParams?: Promise<{ business?: string; q?: string; type?: string }>;
 }) {
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const businessSlug =
     resolvedSearchParams.business ?? "rnl-creations";
+  const searchTerm = (resolvedSearchParams.q ?? "").trim();
+  const typeFilter = normalizeActivityFilter(resolvedSearchParams.type);
 
   const { data: businessData } = await supabase
     .from("businesses")
@@ -283,6 +372,18 @@ export default async function ActivityPage({
     }
   }
 
+  const filteredLogs = logs.filter((log) => {
+    if (!activityMatchesType(log, typeFilter)) {
+      return false;
+    }
+
+    if (searchTerm.length === 0) {
+      return true;
+    }
+
+    return searchableActivityText(log).includes(searchTerm.toLowerCase());
+  });
+
   return (
     <AppShell>
       <div className="space-y-6">
@@ -298,6 +399,80 @@ export default async function ActivityPage({
             and split-invoice actions for {business?.name ?? "this business"}.
           </p>
         </div>
+
+        <Card>
+          <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
+            <form action="/activity" className="grid gap-3 md:grid-cols-[1fr_auto]">
+              <input type="hidden" name="business" value={businessSlug} />
+              {typeFilter !== "all" ? (
+                <input type="hidden" name="type" value={typeFilter} />
+              ) : null}
+
+              <label className="block">
+                <span className="mb-2 block text-sm text-zinc-400">
+                  Search activity
+                </span>
+                <input
+                  name="q"
+                  defaultValue={searchTerm}
+                  placeholder="Search invoice number, client, check #, user, notes..."
+                  className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none focus:border-orange-500"
+                />
+              </label>
+
+              <button
+                type="submit"
+                className="rounded-2xl bg-orange-500 px-6 py-3 font-bold text-black hover:bg-orange-400 md:self-end"
+              >
+                Search
+              </button>
+            </form>
+
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-400">
+              Showing{" "}
+              <span className="font-bold text-white">{filteredLogs.length}</span>{" "}
+              of <span className="font-bold text-white">{logs.length}</span>{" "}
+              records
+            </div>
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            {activityFilters.map((filter) => {
+              const active = filter.value === typeFilter;
+
+              return (
+                <Link
+                  key={filter.value}
+                  href={activityFilterHref({
+                    businessSlug,
+                    filter: filter.value,
+                    searchTerm,
+                  })}
+                  className={`rounded-full px-4 py-2 text-sm font-bold ${
+                    active
+                      ? "bg-orange-500 text-black"
+                      : "bg-zinc-950 text-zinc-200 hover:bg-zinc-800"
+                  }`}
+                >
+                  {filter.label}
+                </Link>
+              );
+            })}
+
+            {searchTerm.length > 0 ? (
+              <Link
+                href={activityFilterHref({
+                  businessSlug,
+                  filter: typeFilter,
+                  searchTerm: "",
+                })}
+                className="rounded-full border border-zinc-700 px-4 py-2 text-sm font-bold text-zinc-300 hover:border-orange-500 hover:text-orange-300"
+              >
+                Clear search
+              </Link>
+            ) : null}
+          </div>
+        </Card>
 
         {setupNeeded ? (
           <Card className="border-yellow-500/40 bg-yellow-500/10">
@@ -316,9 +491,17 @@ export default async function ActivityPage({
               No activity has been recorded for this business yet.
             </p>
           </Card>
+        ) : filteredLogs.length === 0 ? (
+          <Card>
+            <p className="font-semibold text-white">No matching activity found.</p>
+
+            <p className="mt-2 text-sm leading-6 text-zinc-400">
+              Try a different search term or switch back to All.
+            </p>
+          </Card>
         ) : (
           <div className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900">
-            {logs.map((log) => {
+            {filteredLogs.map((log) => {
               const href = entityHref(log, businessSlug);
               const chips = detailChips(log);
 
