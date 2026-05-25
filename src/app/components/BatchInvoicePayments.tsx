@@ -293,6 +293,56 @@ export default function BatchInvoicePayments({
     });
   }
 
+  function selectInvoicesAndAmount(
+    invoiceList: PayableInvoice[],
+    note: string
+  ) {
+    const invoiceIds = invoiceList.map((invoice) => invoice.id);
+    const invoiceTotal = invoiceList.reduce(
+      (total, invoice) => total + invoice.amountDue,
+      0
+    );
+
+    setSelectedIds(invoiceIds);
+    setCheckAmount(invoiceIds.length > 0 ? formatMoney(invoiceTotal) : "");
+    setInternalNote(invoiceIds.length > 0 ? note : "");
+  }
+
+  function selectVisibleInvoices() {
+    selectInvoicesAndAmount(
+      visibleInvoices,
+      customerFilter === "all"
+        ? "Visible invoice batch payment"
+        : `${customerFilter} batch payment`
+    );
+  }
+
+  function selectOverdueInvoices() {
+    const overdueInvoices = payableInvoices.filter(
+      (invoice) => (invoice.daysLate ?? -1) >= 0
+    );
+
+    setCustomerFilter("all");
+    selectInvoicesAndAmount(overdueInvoices, "Overdue invoice batch payment");
+  }
+
+  function selectOldestInvoices() {
+    const oldestInvoices = [...payableInvoices]
+      .sort((first, second) => {
+        const firstDate = first.dueDate ?? "9999-12-31";
+        const secondDate = second.dueDate ?? "9999-12-31";
+
+        return firstDate.localeCompare(secondDate);
+      })
+      .slice(0, 10);
+
+    setCustomerFilter("all");
+    selectInvoicesAndAmount(
+      oldestInvoices,
+      "Oldest open invoice batch payment"
+    );
+  }
+
   function selectCustomerGroup(customerName: string) {
     const customerInvoiceIds = payableInvoices
       .filter((invoice) => invoice.customerName === customerName)
@@ -711,6 +761,33 @@ export default function BatchInvoicePayments({
         </p>
 
         <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={selectVisibleInvoices}
+            disabled={visibleInvoices.length === 0}
+            className="rounded-full border border-green-500/40 bg-green-500/10 px-4 py-2 text-sm font-semibold text-green-200 transition hover:border-green-300 hover:bg-green-500/20 disabled:cursor-not-allowed disabled:border-zinc-800 disabled:bg-zinc-900 disabled:text-zinc-500"
+          >
+            Select Visible + Total
+          </button>
+
+          <button
+            type="button"
+            onClick={selectOverdueInvoices}
+            disabled={!payableInvoices.some((invoice) => (invoice.daysLate ?? -1) >= 0)}
+            className="rounded-full border border-pink-500/40 bg-pink-500/10 px-4 py-2 text-sm font-semibold text-pink-200 transition hover:border-pink-300 hover:bg-pink-500/20 disabled:cursor-not-allowed disabled:border-zinc-800 disabled:bg-zinc-900 disabled:text-zinc-500"
+          >
+            Select Overdue
+          </button>
+
+          <button
+            type="button"
+            onClick={selectOldestInvoices}
+            disabled={payableInvoices.length === 0}
+            className="rounded-full border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-200 transition hover:border-orange-400 hover:text-orange-200 disabled:cursor-not-allowed disabled:border-zinc-800 disabled:text-zinc-500"
+          >
+            Select Oldest 10
+          </button>
+
           <button
             type="button"
             onClick={toggleAllVisible}
