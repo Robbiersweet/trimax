@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0a0a0a;
+  --foreground: #ededed;
 }
 
 @theme inline {
@@ -12,17 +12,78 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html.theme-light {
+  color-scheme: light;
+  --background: #f5f7fb;
+  --foreground: #111827;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+html.theme-light .bg-zinc-950,
+html.theme-light .bg-zinc-950\/60,
+html.theme-light .bg-zinc-950\/70,
+html.theme-light .bg-black,
+html.theme-light .bg-black\/30,
+html.theme-light .bg-black\/40 {
+  background-color: #ffffff !important;
+}
+
+html.theme-light .bg-zinc-900,
+html.theme-light .bg-zinc-900\/80 {
+  background-color: #f8fafc !important;
+}
+
+html.theme-light .bg-zinc-800 {
+  background-color: #e9eef6 !important;
+}
+
+html.theme-light .text-white,
+html.theme-light .text-zinc-50,
+html.theme-light .text-zinc-100,
+html.theme-light .text-zinc-200 {
+  color: #111827 !important;
+}
+
+html.theme-light .text-zinc-300,
+html.theme-light .text-zinc-400 {
+  color: #475569 !important;
+}
+
+html.theme-light .text-zinc-500,
+html.theme-light .text-zinc-600 {
+  color: #64748b !important;
+}
+
+html.theme-light .border-zinc-800,
+html.theme-light .border-zinc-700 {
+  border-color: #d7dde8 !important;
+}
+
+html.theme-light .shadow-lg,
+html.theme-light .shadow-2xl {
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.theme-light input,
+html.theme-light textarea,
+html.theme-light select {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+}
+
+html.theme-light input::placeholder,
+html.theme-light textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+html.theme-light .hover\:bg-zinc-800:hover,
+html.theme-light .hover\:bg-zinc-900:hover {
+  background-color: #e9eef6 !important;
 }
 
 input[type="number"] {

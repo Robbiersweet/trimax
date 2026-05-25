@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { supabase } from "../lib/supabase";
 import { loadWorkspaceAccess } from "../lib/workspaceAccess";
 import LogoutButton from "./LogoutButton";
+import ThemeToggle from "./ThemeToggle";
 
 type UserData = {
   email: string;
@@ -62,6 +63,8 @@ export default function UserMenu() {
 
   return (
     <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+      <ThemeToggle />
+
       <div className="min-w-0 rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-2">
         <p className="text-xs text-zinc-500">
           Logged In
