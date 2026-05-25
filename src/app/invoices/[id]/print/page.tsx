@@ -203,6 +203,7 @@ export default async function InvoicePrintPage({
         businessSlug={businessSlug}
         backHref={`/invoices/${invoice.id}?business=${businessSlug}`}
         standardTemplateHref={standardTemplateHref}
+        excelHref={`/invoices/${invoice.id}/exports/5stars-boa?business=${businessSlug}`}
       />
     );
   }
@@ -524,12 +525,14 @@ function FiveStarsBoaPrintPage({
   businessSlug,
   backHref,
   standardTemplateHref,
+  excelHref,
 }: {
   invoice: Invoice;
   lineItems: InvoiceLineItem[];
   businessSlug: string;
   backHref: string;
   standardTemplateHref: string;
+  excelHref: string;
 }) {
   const servicePeriod =
     getServicePeriod(invoice.issue_date);
@@ -551,6 +554,8 @@ function FiveStarsBoaPrintPage({
         backLabel="Back to Invoice"
         alternateHref={standardTemplateHref}
         alternateLabel="Use Standard Format"
+        downloadHref={excelHref}
+        downloadLabel="Download Excel"
       />
 
       <div className="mx-auto w-[760px] bg-white print:mx-0 print:w-[7.4in] print:p-0">

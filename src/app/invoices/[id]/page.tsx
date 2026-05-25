@@ -713,6 +713,16 @@ export default async function InvoiceDetailPage({
               </Link>
             ) : null}
 
+            {showFiveStarsBoaPrintButton ? (
+              <a
+                href={`/invoices/${invoice.id}/exports/5stars-boa${businessQuery}`}
+              >
+                <Button variant="secondary">
+                  Download 5Stars Excel
+                </Button>
+              </a>
+            ) : null}
+
             <Link href={`/invoices/${invoice.id}/print${businessQuery}`}>
               <Button variant="secondary">Print Invoice</Button>
             </Link>

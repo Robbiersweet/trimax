@@ -7,6 +7,8 @@ type PrintToolbarProps = {
   backLabel: string;
   alternateHref?: string;
   alternateLabel?: string;
+  downloadHref?: string;
+  downloadLabel?: string;
 };
 
 export default function PrintToolbar({
@@ -14,6 +16,8 @@ export default function PrintToolbar({
   backLabel,
   alternateHref,
   alternateLabel,
+  downloadHref,
+  downloadLabel,
 }: PrintToolbarProps) {
   return (
     <div className="sticky top-0 z-10 border-b border-zinc-200 bg-white/95 px-6 py-4 text-black shadow-sm print:hidden">
@@ -33,6 +37,15 @@ export default function PrintToolbar({
             >
               {alternateLabel}
             </Link>
+          ) : null}
+
+          {downloadHref && downloadLabel ? (
+            <a
+              href={downloadHref}
+              className="rounded-xl border border-emerald-600 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
+            >
+              {downloadLabel}
+            </a>
           ) : null}
 
           <button
