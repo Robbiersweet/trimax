@@ -64,18 +64,59 @@ html.theme-light .border-zinc-700 {
   border-color: #d7dde8 !important;
 }
 
+html.theme-light .dark-surface {
+  background-color: #09090b !important;
+  color: #f8fafc !important;
+}
+
+html.theme-light .dark-surface.bg-zinc-950,
+html.theme-light .dark-surface.bg-zinc-950\/60,
+html.theme-light .dark-surface.bg-zinc-950\/70,
+html.theme-light .dark-surface.bg-black,
+html.theme-light .dark-surface.bg-black\/30,
+html.theme-light .dark-surface.bg-black\/40 {
+  background-color: #09090b !important;
+}
+
+html.theme-light .dark-surface.bg-zinc-900,
+html.theme-light .dark-surface.bg-zinc-900\/80 {
+  background-color: #18181b !important;
+}
+
+html.theme-light .dark-surface.text-white,
+html.theme-light .dark-surface.text-zinc-50,
+html.theme-light .dark-surface.text-zinc-100,
+html.theme-light .dark-surface.text-zinc-200 {
+  color: #f8fafc !important;
+}
+
+html.theme-light .dark-surface.text-zinc-300,
+html.theme-light .dark-surface.text-zinc-400 {
+  color: #cbd5e1 !important;
+}
+
+html.theme-light .dark-surface.text-zinc-500,
+html.theme-light .dark-surface.text-zinc-600 {
+  color: #94a3b8 !important;
+}
+
+html.theme-light .dark-surface.border-zinc-800,
+html.theme-light .dark-surface.border-zinc-700 {
+  border-color: rgba(255, 255, 255, 0.14) !important;
+}
+
 html.theme-light .dark-surface .bg-zinc-950,
 html.theme-light .dark-surface .bg-zinc-950\/60,
 html.theme-light .dark-surface .bg-zinc-950\/70,
 html.theme-light .dark-surface .bg-black,
 html.theme-light .dark-surface .bg-black\/30,
 html.theme-light .dark-surface .bg-black\/40 {
-  background-color: rgba(3, 7, 18, 0.72) !important;
+  background-color: rgba(3, 7, 18, 0.88) !important;
 }
 
 html.theme-light .dark-surface .bg-zinc-900,
 html.theme-light .dark-surface .bg-zinc-900\/80 {
-  background-color: rgba(24, 24, 27, 0.82) !important;
+  background-color: rgba(24, 24, 27, 0.92) !important;
 }
 
 html.theme-light .dark-surface .text-white,

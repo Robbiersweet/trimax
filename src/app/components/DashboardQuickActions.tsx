@@ -241,6 +241,11 @@ export default function DashboardQuickActions({
             ].join(" ")}
           >
             <span
+              aria-hidden="true"
+              className="absolute inset-0 bg-[radial-gradient(circle_at_15%_0%,rgba(255,255,255,0.12),transparent_32%),linear-gradient(135deg,rgba(0,0,0,0.05),rgba(0,0,0,0.42)_72%)] opacity-95"
+            />
+
+            <span
               className={[
                 "absolute inset-y-0 left-0 w-1 opacity-80 transition group-hover:opacity-100",
                 tone.rail,
@@ -255,7 +260,7 @@ export default function DashboardQuickActions({
               ].join(" ")}
             />
 
-            <div className="pl-2">
+            <div className="relative z-10 pl-2">
               <div className="flex items-start justify-between gap-3">
                 <p
                   className={[
@@ -277,18 +282,18 @@ export default function DashboardQuickActions({
                 </span>
               </div>
 
-              <p className="mt-3 font-semibold text-white">
+              <p className="mt-3 font-semibold text-zinc-50">
                 {action.title}
               </p>
 
               <div className="mt-1 flex items-end justify-between gap-3">
-                <p className="text-sm text-zinc-400">
+                <p className="text-sm text-zinc-300">
                   {action.subtitle}
                 </p>
 
                 <span
                   aria-hidden="true"
-                  className="text-lg font-semibold text-zinc-600 transition group-hover:translate-x-0.5 group-hover:text-white"
+                  className="text-lg font-semibold text-zinc-300 transition group-hover:translate-x-0.5 group-hover:text-white"
                 >
                   &gt;
                 </span>
