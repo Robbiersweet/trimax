@@ -1,8 +1,8 @@
 import Link from "next/link";
 import AppShell from "../components/AppShell";
-import BatchInvoicePayments from "../components/BatchInvoicePayments";
 import Card from "../components/Card";
 import Button from "../components/Button";
+import InvoiceBulkPaymentActions from "../components/InvoiceBulkPaymentActions";
 import StatusBadge from "../components/StatusBadge";
 import { supabase } from "../lib/supabase";
 
@@ -672,8 +672,8 @@ export default async function InvoicesPage({
           ))}
         </div>
 
-        <BatchInvoicePayments
-          businessId={selectedBusiness?.id}
+        <InvoiceBulkPaymentActions
+          businessSlug={businessSlug}
           invoices={invoicesWithSplitInfo.map((invoice) => ({
             id: invoice.id,
             displayId: invoice.display_id ?? "Invoice",

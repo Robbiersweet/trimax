@@ -16,6 +16,21 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                var theme = window.localStorage.getItem("trimax-theme");
+                if (theme === "light") {
+                  document.documentElement.dataset.theme = "light";
+                  document.documentElement.classList.add("theme-light");
+                }
+              } catch (_) {}
+            `,
+          }}
+        />
+      </head>
       <body>
         <Suspense
           fallback={

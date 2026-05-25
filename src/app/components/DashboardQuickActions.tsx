@@ -27,6 +27,7 @@ const actionTones: Record<
   {
     border: string;
     background: string;
+    topGlow: string;
     rail: string;
     pill: string;
     glyph: string;
@@ -35,7 +36,9 @@ const actionTones: Record<
 > = {
   queue: {
     border: "border-orange-500/35",
-    background: "bg-orange-500/10",
+    background:
+      "bg-[linear-gradient(135deg,rgba(249,115,22,0.18),rgba(9,9,11,0.92)_58%)]",
+    topGlow: "bg-orange-400/20",
     rail: "bg-orange-500",
     pill: "border-orange-500/40 bg-orange-500/15 text-orange-200",
     glyph: "border-orange-400/35 bg-orange-500/15 text-orange-100",
@@ -43,7 +46,9 @@ const actionTones: Record<
   },
   estimate: {
     border: "border-violet-500/35",
-    background: "bg-violet-500/10",
+    background:
+      "bg-[linear-gradient(135deg,rgba(139,92,246,0.18),rgba(9,9,11,0.92)_58%)]",
+    topGlow: "bg-violet-400/20",
     rail: "bg-violet-500",
     pill: "border-violet-500/40 bg-violet-500/15 text-violet-200",
     glyph: "border-violet-400/35 bg-violet-500/15 text-violet-100",
@@ -51,7 +56,9 @@ const actionTones: Record<
   },
   invoice: {
     border: "border-emerald-500/35",
-    background: "bg-emerald-500/10",
+    background:
+      "bg-[linear-gradient(135deg,rgba(16,185,129,0.18),rgba(9,9,11,0.92)_58%)]",
+    topGlow: "bg-emerald-400/20",
     rail: "bg-emerald-500",
     pill: "border-emerald-500/40 bg-emerald-500/15 text-emerald-200",
     glyph: "border-emerald-400/35 bg-emerald-500/15 text-emerald-100",
@@ -59,7 +66,9 @@ const actionTones: Record<
   },
   payment: {
     border: "border-sky-500/35",
-    background: "bg-sky-500/10",
+    background:
+      "bg-[linear-gradient(135deg,rgba(14,165,233,0.18),rgba(9,9,11,0.92)_58%)]",
+    topGlow: "bg-sky-400/20",
     rail: "bg-sky-500",
     pill: "border-sky-500/40 bg-sky-500/15 text-sky-200",
     glyph: "border-sky-400/35 bg-sky-500/15 text-sky-100",
@@ -67,7 +76,9 @@ const actionTones: Record<
   },
   review: {
     border: "border-amber-400/35",
-    background: "bg-amber-400/10",
+    background:
+      "bg-[linear-gradient(135deg,rgba(251,191,36,0.18),rgba(9,9,11,0.92)_58%)]",
+    topGlow: "bg-amber-300/20",
     rail: "bg-amber-400",
     pill: "border-amber-400/40 bg-amber-400/15 text-amber-100",
     glyph: "border-amber-300/35 bg-amber-400/15 text-amber-100",
@@ -75,7 +86,9 @@ const actionTones: Record<
   },
   reports: {
     border: "border-fuchsia-500/35",
-    background: "bg-fuchsia-500/10",
+    background:
+      "bg-[linear-gradient(135deg,rgba(217,70,239,0.18),rgba(9,9,11,0.92)_58%)]",
+    topGlow: "bg-fuchsia-400/20",
     rail: "bg-fuchsia-500",
     pill: "border-fuchsia-500/40 bg-fuchsia-500/15 text-fuchsia-200",
     glyph: "border-fuchsia-400/35 bg-fuchsia-500/15 text-fuchsia-100",
@@ -83,7 +96,9 @@ const actionTones: Record<
   },
   print: {
     border: "border-cyan-500/35",
-    background: "bg-cyan-500/10",
+    background:
+      "bg-[linear-gradient(135deg,rgba(6,182,212,0.18),rgba(9,9,11,0.92)_58%)]",
+    topGlow: "bg-cyan-400/20",
     rail: "bg-cyan-500",
     pill: "border-cyan-500/40 bg-cyan-500/15 text-cyan-200",
     glyph: "border-cyan-400/35 bg-cyan-500/15 text-cyan-100",
@@ -229,6 +244,14 @@ export default function DashboardQuickActions({
               className={[
                 "absolute inset-y-0 left-0 w-1 opacity-80 transition group-hover:opacity-100",
                 tone.rail,
+              ].join(" ")}
+            />
+
+            <span
+              aria-hidden="true"
+              className={[
+                "absolute inset-x-0 top-0 h-px opacity-90",
+                tone.topGlow,
               ].join(" ")}
             />
 
