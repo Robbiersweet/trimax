@@ -84,6 +84,48 @@ function isDateInCurrentMonth(value: string | null) {
   );
 }
 
+function VisualMoneyBar({
+  label,
+  value,
+  max,
+  tone,
+}: {
+  label: string;
+  value: number;
+  max: number;
+  tone: "orange" | "amber" | "rose" | "emerald";
+}) {
+  const colorClass =
+    tone === "rose"
+      ? "bg-pink-400"
+      : tone === "emerald"
+        ? "bg-emerald-400"
+        : tone === "amber"
+          ? "bg-yellow-400"
+          : "bg-orange-500";
+  const width = Math.max((value / max) * 100, value > 0 ? 8 : 0);
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between gap-4">
+        <p className="text-sm font-semibold text-zinc-300">
+          {label}
+        </p>
+        <p className="text-sm font-bold text-white">
+          {formatMoney(value)}
+        </p>
+      </div>
+
+      <div className="h-3 overflow-hidden rounded-full bg-zinc-950 ring-1 ring-zinc-800">
+        <div
+          className={`h-full rounded-full ${colorClass}`}
+          style={{ width: `${width}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 function dateValue(value: string | null) {
   if (!value) {
     return null;
@@ -269,34 +311,39 @@ export default async function DashboardPage({
       0
     );
 
-  const outstandingRevenue = formatMoney(
-    outstandingRevenueTotal
+  const estimatedRevenueTotal = estimates.reduce(
+    (total, estimate) =>
+      total + parseMoney(estimate.estimate_amount),
+    0
   );
 
-  const estimatedRevenue = formatMoney(
-    estimates.reduce(
-      (total, estimate) =>
-        total + parseMoney(estimate.estimate_amount),
-      0
-    )
+  const invoicedRevenueTotal = invoices.reduce(
+    (total, invoice) =>
+      total + parseMoney(invoice.invoice_amount),
+    0
   );
 
-  const invoicedRevenue = formatMoney(
-    invoices.reduce(
+  const ytdRevenueTotal = invoices
+    .filter((invoice) => invoice.status === "Paid")
+    .reduce(
       (total, invoice) =>
         total + parseMoney(invoice.invoice_amount),
       0
-    )
-  );
+    );
 
-  const ytdRevenue = formatMoney(
-    invoices
-      .filter((invoice) => invoice.status === "Paid")
-      .reduce(
-        (total, invoice) =>
-          total + parseMoney(invoice.invoice_amount),
-        0
-      )
+  const outstandingRevenue = formatMoney(
+    outstandingRevenueTotal
+  );
+  const estimatedRevenue = formatMoney(estimatedRevenueTotal);
+  const invoicedRevenue = formatMoney(invoicedRevenueTotal);
+  const ytdRevenue = formatMoney(ytdRevenueTotal);
+
+  const revenueVisualMax = Math.max(
+    outstandingRevenueTotal,
+    estimatedRevenueTotal,
+    invoicedRevenueTotal,
+    ytdRevenueTotal,
+    1
   );
 
   const agingBuckets = [
@@ -341,6 +388,38 @@ export default async function DashboardPage({
       ),
     };
   });
+
+  const agingVisualMax = Math.max(
+    ...agingBuckets.map((bucket) => bucket.amount),
+    1
+  );
+
+  const queueFlow = [
+    {
+      label: "Review",
+      value: queueItemsNeedingEstimate.length,
+      detail: "Needs estimate",
+      href: `/queue?business=${selectedBusinessSlug}&view=needs-estimate`,
+    },
+    {
+      label: "Schedule",
+      value: readySoonUnscheduled.length,
+      detail: "Ready soon",
+      href: `/queue?business=${selectedBusinessSlug}&view=ready-soon`,
+    },
+    {
+      label: "Work",
+      value: scheduledQueueItems.length,
+      detail: "Scheduled",
+      href: `/queue?business=${selectedBusinessSlug}&status=scheduled`,
+    },
+    {
+      label: "Done",
+      value: completedThisMonth.length,
+      detail: "This month",
+      href: `/queue?business=${selectedBusinessSlug}&status=completed`,
+    },
+  ];
 
   const mostOverdueInvoices = openInvoicesWithAmounts
     .filter((invoice) => (invoice.daysLate ?? -1) >= 0)
@@ -463,6 +542,97 @@ export default async function DashboardPage({
             "accountant",
           ]}
         >
+          <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+            <Card>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
+                    Money Flow
+                  </p>
+
+                  <h2 className="mt-2 text-2xl font-bold">
+                    Revenue snapshot
+                  </h2>
+                </div>
+
+                <Link
+                  href={`/reports?business=${selectedBusinessSlug}`}
+                  className="text-sm font-semibold text-orange-400"
+                >
+                  Open reports
+                </Link>
+              </div>
+
+              <div className="mt-6 space-y-4">
+                <VisualMoneyBar
+                  label="Estimated"
+                  value={estimatedRevenueTotal}
+                  max={revenueVisualMax}
+                  tone="orange"
+                />
+                <VisualMoneyBar
+                  label="Invoiced"
+                  value={invoicedRevenueTotal}
+                  max={revenueVisualMax}
+                  tone="amber"
+                />
+                <VisualMoneyBar
+                  label="Outstanding"
+                  value={outstandingRevenueTotal}
+                  max={revenueVisualMax}
+                  tone="rose"
+                />
+                <VisualMoneyBar
+                  label="Paid YTD"
+                  value={ytdRevenueTotal}
+                  max={revenueVisualMax}
+                  tone="emerald"
+                />
+              </div>
+            </Card>
+
+            <Card>
+              <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
+                Queue Flow
+              </p>
+
+              <h2 className="mt-2 text-2xl font-bold">
+                Turnover pipeline
+              </h2>
+
+              <div className="mt-6 grid grid-cols-2 gap-3">
+                {queueFlow.map((step) => (
+                  <Link
+                    key={step.label}
+                    href={step.href}
+                    className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 transition hover:border-orange-500/60 hover:bg-zinc-900"
+                  >
+                    <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+                      {step.label}
+                    </p>
+
+                    <p className="mt-2 text-3xl font-black">
+                      {step.value}
+                    </p>
+
+                    <p className="mt-1 text-sm text-zinc-400">
+                      {step.detail}
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            </Card>
+          </div>
+        </RoleVisible>
+
+        <RoleVisible
+          businessSlug={selectedBusinessSlug}
+          allow={[
+            "owner",
+            "admin",
+            "accountant",
+          ]}
+        >
           <Card className="border-pink-500/20 bg-pink-500/5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
@@ -500,6 +670,18 @@ export default async function DashboardPage({
                   <p className="mt-1 text-sm text-zinc-500">
                     {bucket.count} invoice{bucket.count === 1 ? "" : "s"}
                   </p>
+
+                  <div className="mt-4 h-2 overflow-hidden rounded-full bg-zinc-900">
+                    <div
+                      className="h-full rounded-full bg-pink-400"
+                      style={{
+                        width: `${Math.max(
+                          (bucket.amount / agingVisualMax) * 100,
+                          bucket.amount > 0 ? 8 : 0
+                        )}%`,
+                      }}
+                    />
+                  </div>
                 </div>
               ))}
             </div>
