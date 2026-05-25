@@ -3,6 +3,7 @@ import AppShell from "./components/AppShell";
 import Card from "./components/Card";
 import Button from "./components/Button";
 import StatusBadge from "./components/StatusBadge";
+import DashboardQuickActions from "./components/DashboardQuickActions";
 import { supabase } from "./lib/supabase";
 
 type Business = {
@@ -257,51 +258,6 @@ export default async function DashboardPage({
         0
       )
   );
-
-  const quickActions = [
-    {
-      title: "New Queue Item",
-      subtitle: "Add apartment turn or property request",
-      href: `/new-request?business=${selectedBusinessSlug}`,
-      label: "Queue",
-    },
-    {
-      title: "New Estimate",
-      subtitle: "Create a customer estimate",
-      href: `/estimates/new?business=${selectedBusinessSlug}`,
-      label: "Estimate",
-    },
-    {
-      title: "New Invoice",
-      subtitle: "Create invoice or deposit request",
-      href: `/invoices/new?business=${selectedBusinessSlug}`,
-      label: "Invoice",
-    },
-    {
-      title: "Record Payment",
-      subtitle: "Apply payment to invoice",
-      href: `/invoices?business=${selectedBusinessSlug}&status=sent`,
-      label: "Payment",
-    },
-    {
-      title: "Review Queue",
-      subtitle: "Check upcoming units",
-      href: `/queue?business=${selectedBusinessSlug}`,
-      label: "Review",
-    },
-    {
-      title: "Property Reports",
-      subtitle: "Review unit history and readiness",
-      href: `/reports?business=${selectedBusinessSlug}`,
-      label: "Reports",
-    },
-    {
-      title: "Print Documents",
-      subtitle: "Estimates and invoices",
-      href: `/estimates?business=${selectedBusinessSlug}`,
-      label: "Print",
-    },
-  ];
 
   return (
     <AppShell>
@@ -609,27 +565,9 @@ export default async function DashboardPage({
             </h2>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-3">
-            {quickActions.map((action) => (
-              <Link
-                key={action.title}
-                href={action.href}
-                className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 transition hover:border-orange-500/60 hover:bg-zinc-800"
-              >
-                <p className="inline-flex rounded-full border border-orange-500/40 bg-orange-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-orange-300">
-                  {action.label}
-                </p>
-
-                <p className="mt-3 font-semibold">
-                  {action.title}
-                </p>
-
-                <p className="mt-1 text-sm text-zinc-400">
-                  {action.subtitle}
-                </p>
-              </Link>
-            ))}
-          </div>
+          <DashboardQuickActions
+            businessSlug={selectedBusinessSlug}
+          />
         </Card>
 
         <div className="grid gap-4 md:grid-cols-2">

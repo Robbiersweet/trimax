@@ -2,15 +2,25 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
   usePathname,
   useSearchParams,
 } from "next/navigation";
+import {
+  NavPermissionKey,
+  canAccessNavItem,
+} from "../lib/rolePermissions";
+import { loadWorkspaceAccess } from "../lib/workspaceAccess";
 import UserMenu from "./UserMenu";
 
 export default function Navigation() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [role, setRole] =
+    useState<string | null>(null);
+  const [isLoadingRole, setIsLoadingRole] =
+    useState(true);
 
   const business =
     searchParams.get("business") ??
@@ -23,53 +33,98 @@ export default function Navigation() {
     ? "R&L Creations"
     : "JUST KLEEN";
 
-  const navLinks = [
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadRole() {
+      const access = await loadWorkspaceAccess();
+      const currentWorkspace = access.find(
+        (workspace) =>
+          workspace.businessSlug === business
+      );
+
+      if (!isMounted) {
+        return;
+      }
+
+      setRole(currentWorkspace?.role ?? "owner");
+      setIsLoadingRole(false);
+    }
+
+    loadRole();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [business]);
+
+  const navLinks: {
+    key: NavPermissionKey;
+    label: string;
+    href: string;
+    active: boolean;
+  }[] = [
     {
+      key: "dashboard",
       label: "Dashboard",
       href: `/?business=${business}`,
       active: pathname === "/",
     },
     {
+      key: "queue",
       label: "Queue",
       href: `/queue?business=${business}`,
       active: pathname.startsWith("/queue"),
     },
     {
+      key: "estimates",
       label: "Estimates",
       href: `/estimates?business=${business}`,
       active: pathname.startsWith("/estimates"),
     },
     {
+      key: "invoices",
       label: "Invoices",
       href: `/invoices?business=${business}`,
       active: pathname.startsWith("/invoices"),
     },
     {
+      key: "clients",
       label: "Clients",
       href: `/clients?business=${business}`,
       active: pathname.startsWith("/clients"),
     },
     {
+      key: "services",
       label: "Services",
       href: `/services?business=${business}`,
       active: pathname.startsWith("/services"),
     },
     {
+      key: "reports",
       label: "Reports",
       href: `/reports?business=${business}`,
       active: pathname.startsWith("/reports"),
     },
     {
+      key: "activity",
       label: "Activity",
       href: `/activity?business=${business}`,
       active: pathname.startsWith("/activity"),
     },
     {
+      key: "settings",
       label: "Settings",
       href: `/settings?business=${business}`,
       active: pathname.startsWith("/settings"),
     },
   ];
+
+  const visibleNavLinks = navLinks.filter(
+    (link) =>
+      isLoadingRole ||
+      canAccessNavItem(role, link.key)
+  );
 
   return (
     <nav className="mb-8 rounded-3xl border border-zinc-800 bg-zinc-900/80 px-4 py-4 sm:px-5">
@@ -108,7 +163,7 @@ export default function Navigation() {
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-2 text-sm font-medium text-zinc-300 sm:grid-cols-4 xl:flex xl:flex-wrap xl:items-center xl:justify-center">
-        {navLinks.map((link) => (
+        {visibleNavLinks.map((link) => (
           <Link
             key={link.href}
             href={link.href}
