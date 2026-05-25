@@ -95,11 +95,12 @@ function activityAmount(log: ActivityLog) {
 export default async function PaymentsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ business?: string }>;
+  searchParams?: Promise<{ business?: string; customer?: string }>;
 }) {
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const businessSlug = resolvedSearchParams.business ?? "rnl-creations";
   const businessQuery = `?business=${businessSlug}`;
+  const focusedCustomer = resolvedSearchParams.customer?.trim() ?? "";
 
   const { data: businessData, error: businessError } = await supabase
     .from("businesses")
@@ -329,6 +330,24 @@ export default async function PaymentsPage({
           </Card>
         ) : null}
 
+        {focusedCustomer ? (
+          <Card className="border-green-500/30 bg-green-500/10">
+            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-green-200">
+              Customer Payment Focus
+            </p>
+
+            <h2 className="mt-2 text-2xl font-bold">
+              Ready to record payment for {focusedCustomer}
+            </h2>
+
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
+              Trimax will preselect matching open invoices below when possible.
+              Review the invoice list, enter the check details, then mark the
+              selected invoices paid together.
+            </p>
+          </Card>
+        ) : null}
+
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Card className="border-green-500/20 bg-green-500/5">
             <p className="text-sm text-zinc-400">Open Balance</p>
@@ -430,6 +449,7 @@ export default async function PaymentsPage({
 
         <BatchInvoicePayments
           businessId={business?.id}
+          initialCustomer={focusedCustomer}
           invoices={invoices.map((invoice) => ({
             id: invoice.id,
             displayId: invoice.display_id ?? "Invoice",

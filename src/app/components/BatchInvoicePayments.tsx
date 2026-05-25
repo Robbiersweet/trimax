@@ -21,6 +21,7 @@ type BatchInvoice = {
 type BatchInvoicePaymentsProps = {
   invoices: BatchInvoice[];
   businessId?: string | null;
+  initialCustomer?: string | null;
 };
 
 type PayableInvoice = BatchInvoice & {
@@ -92,18 +93,65 @@ function todayInputValue() {
   return `${year}-${month}-${day}`;
 }
 
+function initialCustomerFocus(
+  invoices: BatchInvoice[],
+  customerName?: string | null
+) {
+  const focusedCustomer = customerName?.trim();
+
+  if (!focusedCustomer) {
+    return null;
+  }
+
+  const matchingInvoices = invoices
+    .map((invoice) => ({
+      ...invoice,
+      amountDue: Math.max(invoice.invoiceAmount - invoice.amountPaid, 0),
+    }))
+    .filter(
+      (invoice) =>
+        invoice.customerName.toLowerCase() ===
+          focusedCustomer.toLowerCase() &&
+        invoice.status.toLowerCase() !== "paid" &&
+        invoice.amountDue > 0
+    );
+
+  if (matchingInvoices.length === 0) {
+    return null;
+  }
+
+  return {
+    customerName: matchingInvoices[0].customerName,
+    invoiceIds: matchingInvoices.map((invoice) => invoice.id),
+    total: matchingInvoices.reduce(
+      (total, invoice) => total + invoice.amountDue,
+      0
+    ),
+  };
+}
+
 export default function BatchInvoicePayments({
   invoices,
   businessId,
+  initialCustomer,
 }: BatchInvoicePaymentsProps) {
   const router = useRouter();
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const startingFocus = initialCustomerFocus(invoices, initialCustomer);
+  const [selectedIds, setSelectedIds] = useState<string[]>(
+    startingFocus?.invoiceIds ?? []
+  );
   const [paymentDate, setPaymentDate] = useState(todayInputValue());
   const [paymentType, setPaymentType] = useState("Check");
   const [paymentReference, setPaymentReference] = useState("");
-  const [checkAmount, setCheckAmount] = useState("");
-  const [internalNote, setInternalNote] = useState("");
-  const [customerFilter, setCustomerFilter] = useState("all");
+  const [checkAmount, setCheckAmount] = useState(
+    startingFocus ? formatMoney(startingFocus.total) : ""
+  );
+  const [internalNote, setInternalNote] = useState(
+    startingFocus ? `${startingFocus.customerName} batch payment` : ""
+  );
+  const [customerFilter, setCustomerFilter] = useState(
+    startingFocus?.customerName ?? "all"
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [toast, setToast] = useState<ToastState>(null);
 
@@ -222,6 +270,8 @@ export default function BatchInvoicePayments({
     .filter((group) => group.count > 1)
     .sort((first, second) => second.total - first.total)
     .slice(0, 4);
+
+  const focusedCustomer = initialCustomer?.trim() ?? "";
 
   function toggleInvoice(invoiceId: string) {
     setSelectedIds((current) =>
@@ -447,6 +497,14 @@ export default function BatchInvoicePayments({
               </button>
             ))}
           </div>
+        </div>
+      ) : null}
+
+      {focusedCustomer ? (
+        <div className="mt-6 rounded-2xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm leading-6 text-green-50">
+          Payment workspace opened for{" "}
+          <span className="font-semibold">{focusedCustomer}</span>. Trimax
+          selected matching open invoices when it found them.
         </div>
       ) : null}
 
