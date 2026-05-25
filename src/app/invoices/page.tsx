@@ -49,6 +49,8 @@ function formatMoney(value: string | number | null) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(parsed);
 }
 
@@ -509,6 +511,78 @@ export default async function InvoicesPage({
             <Button>+ New Invoice</Button>
           </Link>
         </div>
+
+        <Card className="border-blue-500/20 bg-blue-500/5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-sm uppercase tracking-[0.3em] text-blue-300">
+                Invoice Snapshot
+              </p>
+
+              <h2 className="mt-2 text-2xl font-bold">
+                Money waiting to be collected
+              </h2>
+
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+                A quick FreshBooks-style view of open balances, past-due work,
+                drafts, and invoices ready for batch payment.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <Link href={`/payments${businessQuery}`}>
+                <Button>Record Batch Payment</Button>
+              </Link>
+
+              <Link href={`/invoices${businessQuery}&view=aging`}>
+                <Button variant="secondary">Aging View</Button>
+              </Link>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
+              <p className="text-sm text-zinc-400">Total Outstanding</p>
+              <p className="mt-2 text-3xl font-black text-white">
+                {formatMoney(openBalanceTotal)}
+              </p>
+              <p className="mt-1 text-sm text-zinc-500">
+                {openInvoicesWithAmounts.length} open invoice
+                {openInvoicesWithAmounts.length === 1 ? "" : "s"}.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-pink-500/30 bg-pink-500/10 p-4">
+              <p className="text-sm text-pink-100/80">Past Due</p>
+              <p className="mt-2 text-3xl font-black text-pink-100">
+                {formatMoney(overdueBalanceTotal)}
+              </p>
+              <p className="mt-1 text-sm text-pink-100/60">
+                Invoices at or past due date.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+              <p className="text-sm text-amber-100/80">Draft Balance</p>
+              <p className="mt-2 text-3xl font-black text-amber-100">
+                {formatMoney(draftBalanceTotal)}
+              </p>
+              <p className="mt-1 text-sm text-amber-100/60">
+                Work not sent yet.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-green-500/30 bg-green-500/10 p-4">
+              <p className="text-sm text-green-100/80">Batch Payment Cue</p>
+              <p className="mt-2 text-3xl font-black text-green-100">
+                {customerBalanceRows.filter((customer) => customer.invoiceCount > 1).length}
+              </p>
+              <p className="mt-1 text-sm text-green-100/60">
+                Customers with multiple open invoices.
+              </p>
+            </div>
+          </div>
+        </Card>
 
         <Card>
           <form
