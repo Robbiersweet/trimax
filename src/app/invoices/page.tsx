@@ -365,6 +365,48 @@ export default async function InvoicesPage({
     1
   );
 
+  const customerBalanceRows = Array.from(
+    openInvoicesWithAmounts.reduce(
+      (customers, invoice) => {
+        const customerName =
+          invoice.customer_name?.trim() || "Unknown Customer";
+        const existing = customers.get(customerName) ?? {
+          customerName,
+          invoiceCount: 0,
+          amountDue: 0,
+          oldestDaysLate: null as number | null,
+        };
+
+        existing.invoiceCount += 1;
+        existing.amountDue += invoice.amountDue;
+
+        if (
+          invoice.daysLate !== null &&
+          invoice.daysLate >= 0 &&
+          (existing.oldestDaysLate === null ||
+            invoice.daysLate > existing.oldestDaysLate)
+        ) {
+          existing.oldestDaysLate = invoice.daysLate;
+        }
+
+        customers.set(customerName, existing);
+
+        return customers;
+      },
+      new Map<
+        string,
+        {
+          customerName: string;
+          invoiceCount: number;
+          amountDue: number;
+          oldestDaysLate: number | null;
+        }
+      >()
+    ).values()
+  )
+    .sort((first, second) => second.amountDue - first.amountDue)
+    .slice(0, 6);
+
   const recentlyUpdatedInvoices = [...invoicesWithSplitInfo]
     .sort((first, second) => {
       const firstTime = new Date(
@@ -646,6 +688,77 @@ export default async function InvoicesPage({
             ))}
           </div>
         </Card>
+
+        {customerBalanceRows.length > 0 ? (
+          <Card>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
+                  Customer Balances
+                </p>
+
+                <h2 className="mt-2 text-2xl font-bold">
+                  Open invoices by customer
+                </h2>
+
+                <p className="mt-2 text-sm leading-6 text-zinc-400">
+                  Useful when one check pays several units or recurring jobs.
+                </p>
+              </div>
+
+              <Link href={`/invoices?business=${businessSlug}&view=aging`}>
+                <Button variant="secondary">Review Aging</Button>
+              </Link>
+            </div>
+
+            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {customerBalanceRows.map((customer) => {
+                const customerParams = new URLSearchParams({
+                  business: businessSlug,
+                  q: customer.customerName,
+                });
+
+                return (
+                  <Link
+                    key={customer.customerName}
+                    href={`/invoices?${customerParams.toString()}`}
+                    className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 transition hover:border-orange-500/60 hover:bg-zinc-900"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="font-bold text-white">
+                          {customer.customerName}
+                        </p>
+
+                        <p className="mt-1 text-sm text-zinc-400">
+                          {customer.invoiceCount} open invoice
+                          {customer.invoiceCount === 1 ? "" : "s"}
+                        </p>
+                      </div>
+
+                      <p className="text-lg font-black text-orange-300">
+                        {formatMoney(customer.amountDue)}
+                      </p>
+                    </div>
+
+                    <div className="mt-4 border-t border-zinc-800 pt-3 text-sm">
+                      {customer.oldestDaysLate !== null ? (
+                        <span className="font-semibold text-pink-200">
+                          Oldest is {customer.oldestDaysLate} day
+                          {customer.oldestDaysLate === 1 ? "" : "s"} late
+                        </span>
+                      ) : (
+                        <span className="text-zinc-400">
+                          No past-due invoices
+                        </span>
+                      )}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </Card>
+        ) : null}
 
         {recentlyUpdatedInvoices.length > 0 ? (
           <Card>
