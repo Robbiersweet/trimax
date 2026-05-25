@@ -311,6 +311,32 @@ export default async function InvoicesPage({
     };
   });
 
+  const openBalanceTotal = openInvoicesWithAmounts.reduce(
+    (total, invoice) => total + invoice.amountDue,
+    0
+  );
+  const overdueBalanceTotal = openInvoicesWithAmounts
+    .filter((invoice) => (invoice.daysLate ?? -1) >= 0)
+    .reduce((total, invoice) => total + invoice.amountDue, 0);
+  const draftBalanceTotal = invoicesWithSplitInfo
+    .filter(
+      (invoice) => (invoice.status || "Draft").toLowerCase() === "draft"
+    )
+    .reduce(
+      (total, invoice) =>
+        total +
+        Math.max(
+          parseMoney(invoice.invoice_amount) -
+            parseMoney(invoice.amount_paid),
+          0
+        ),
+      0
+    );
+  const agingVisualMax = Math.max(
+    ...agingBuckets.map((bucket) => bucket.amount),
+    1
+  );
+
   const recentlyUpdatedInvoices = [...invoicesWithSplitInfo]
     .sort((first, second) => {
       const firstTime = new Date(
@@ -538,6 +564,29 @@ export default async function InvoicesPage({
             </Link>
           </div>
 
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
+              <p className="text-sm text-zinc-400">Total Outstanding</p>
+              <p className="mt-2 text-3xl font-black text-white">
+                {formatMoney(openBalanceTotal)}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-pink-500/30 bg-pink-500/10 p-4">
+              <p className="text-sm text-pink-100/80">Past Due</p>
+              <p className="mt-2 text-3xl font-black text-pink-100">
+                {formatMoney(overdueBalanceTotal)}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+              <p className="text-sm text-amber-100/80">Still In Draft</p>
+              <p className="mt-2 text-3xl font-black text-amber-100">
+                {formatMoney(draftBalanceTotal)}
+              </p>
+            </div>
+          </div>
+
           <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {agingBuckets.map((bucket) => (
               <div
@@ -549,6 +598,18 @@ export default async function InvoicesPage({
                 <p className="mt-2 text-2xl font-black">
                   {formatMoney(bucket.amount)}
                 </p>
+
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-zinc-800">
+                  <div
+                    className="h-full rounded-full bg-pink-400"
+                    style={{
+                      width: `${Math.max(
+                        4,
+                        (bucket.amount / agingVisualMax) * 100
+                      )}%`,
+                    }}
+                  />
+                </div>
 
                 <p className="mt-1 text-sm text-zinc-500">
                   {bucket.count} invoice{bucket.count === 1 ? "" : "s"}
