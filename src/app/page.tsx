@@ -135,11 +135,11 @@ function VisualMoneyBar({
   const width = Math.max((value / max) * 100, value > 0 ? 8 : 0);
 
   return (
-    <div className={`rounded-2xl border p-4 ${toneStyles.panel}`}>
+    <div className={`dashboard-feature-card dark-surface rounded-2xl border p-4 ${toneStyles.panel}`}>
       <div className="flex items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
           <span className={`h-3 w-3 rounded-full ${toneStyles.dot}`} />
-          <p className="truncate text-sm font-semibold text-zinc-200">
+          <p className="truncate text-sm font-semibold text-slate-100">
             {label}
           </p>
         </div>
@@ -149,7 +149,7 @@ function VisualMoneyBar({
         </p>
       </div>
 
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/50 ring-1 ring-zinc-800">
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/55 ring-1 ring-white/10">
         <div
           className={`h-full rounded-full bg-gradient-to-r ${toneStyles.bar}`}
           style={{ width: `${width}%` }}
@@ -175,7 +175,7 @@ function ClientRevenueRow({
   const width = Math.max((amount / max) * 100, amount > 0 ? 8 : 0);
 
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
+    <div className="dashboard-feature-card dark-surface rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-3">
@@ -184,11 +184,11 @@ function ClientRevenueRow({
             </span>
 
             <div className="min-w-0">
-              <p className="truncate font-semibold text-white">
+              <p className="truncate font-semibold text-slate-50">
                 {name}
               </p>
 
-              <p className="mt-1 text-sm text-zinc-500">
+              <p className="mt-1 text-sm text-slate-400">
                 {invoiceCount} invoice
                 {invoiceCount === 1 ? "" : "s"}
               </p>
@@ -201,7 +201,7 @@ function ClientRevenueRow({
         </p>
       </div>
 
-      <div className="mt-4 h-2 overflow-hidden rounded-full bg-black/50 ring-1 ring-zinc-800">
+      <div className="mt-4 h-2 overflow-hidden rounded-full bg-black/55 ring-1 ring-white/10">
         <div
           className="h-full rounded-full bg-gradient-to-r from-orange-500 via-amber-300 to-emerald-300"
           style={{ width: `${width}%` }}

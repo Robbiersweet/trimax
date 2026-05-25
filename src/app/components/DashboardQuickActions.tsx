@@ -233,7 +233,7 @@ export default function DashboardQuickActions({
             key={action.key}
             href={action.href}
             className={[
-              "dark-surface group relative overflow-hidden rounded-2xl border p-4 transition",
+              "dashboard-feature-card dark-surface group relative overflow-hidden rounded-2xl border p-4 transition",
               "bg-zinc-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
               tone.border,
               tone.background,
@@ -282,18 +282,18 @@ export default function DashboardQuickActions({
                 </span>
               </div>
 
-              <p className="mt-3 font-semibold text-zinc-50">
+              <p className="mt-3 font-semibold text-slate-50">
                 {action.title}
               </p>
 
               <div className="mt-1 flex items-end justify-between gap-3">
-                <p className="text-sm text-zinc-300">
+                <p className="text-sm text-slate-300">
                   {action.subtitle}
                 </p>
 
                 <span
                   aria-hidden="true"
-                  className="text-lg font-semibold text-zinc-300 transition group-hover:translate-x-0.5 group-hover:text-white"
+                  className="text-lg font-semibold text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-slate-50"
                 >
                   &gt;
                 </span>
