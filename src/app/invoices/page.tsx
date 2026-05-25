@@ -1,5 +1,6 @@
 import Link from "next/link";
 import AppShell from "../components/AppShell";
+import BatchInvoicePayments from "../components/BatchInvoicePayments";
 import Card from "../components/Card";
 import Button from "../components/Button";
 import StatusBadge from "../components/StatusBadge";
@@ -17,6 +18,7 @@ type Invoice = {
   customer_name: string | null;
   project_title: string | null;
   invoice_amount: string | number | null;
+  amount_paid: string | number | null;
   status: string | null;
   due_date: string | null;
   split_parent_invoice_id: string | null;
@@ -29,12 +31,18 @@ type InvoiceWithSplitInfo = Invoice & {
   split_parent_display_id: string | null;
 };
 
-function formatMoney(value: string | number | null) {
-  const parsed = Number(value ?? 0);
-
-  if (!Number.isFinite(parsed)) {
-    return "$0.00";
+function parseMoney(value: string | number | null) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0;
   }
+
+  const parsed = Number(String(value ?? "0").replace(/[^0-9.-]/g, ""));
+
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatMoney(value: string | number | null) {
+  const parsed = parseMoney(value);
 
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -107,7 +115,7 @@ export default async function InvoicesPage({
     const { data, error } = await supabase
       .from("invoices")
       .select(
-        "id, display_id, customer_name, project_title, invoice_amount, status, due_date, split_parent_invoice_id, split_sequence, split_count"
+        "id, display_id, customer_name, project_title, invoice_amount, amount_paid, status, due_date, split_parent_invoice_id, split_sequence, split_count"
       )
       .eq("business_id", selectedBusiness.id)
       .order("created_at", { ascending: false });
@@ -379,6 +387,19 @@ export default async function InvoicesPage({
             </Link>
           ))}
         </div>
+
+        <BatchInvoicePayments
+          businessId={selectedBusiness?.id}
+          invoices={invoicesWithSplitInfo.map((invoice) => ({
+            id: invoice.id,
+            displayId: invoice.display_id ?? "Invoice",
+            customerName: invoice.customer_name ?? "Unknown Customer",
+            projectTitle: invoice.project_title ?? "Untitled Invoice",
+            invoiceAmount: parseMoney(invoice.invoice_amount),
+            amountPaid: parseMoney(invoice.amount_paid),
+            status: invoice.status ?? "Draft",
+          }))}
+        />
 
         {invoicesWithSplitInfo.length === 0 ? (
           <Card>
