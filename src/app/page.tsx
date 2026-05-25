@@ -159,6 +159,58 @@ function VisualMoneyBar({
   );
 }
 
+function ClientRevenueRow({
+  name,
+  amount,
+  invoiceCount,
+  max,
+  rank,
+}: {
+  name: string;
+  amount: number;
+  invoiceCount: number;
+  max: number;
+  rank: number;
+}) {
+  const width = Math.max((amount / max) * 100, amount > 0 ? 8 : 0);
+
+  return (
+    <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-3">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-orange-500/30 bg-orange-500/10 text-xs font-black text-orange-200">
+              {rank}
+            </span>
+
+            <div className="min-w-0">
+              <p className="truncate font-semibold text-white">
+                {name}
+              </p>
+
+              <p className="mt-1 text-sm text-zinc-500">
+                {invoiceCount} invoice
+                {invoiceCount === 1 ? "" : "s"}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <p className="shrink-0 text-lg font-black text-orange-300">
+          {formatMoney(amount)}
+        </p>
+      </div>
+
+      <div className="mt-4 h-2 overflow-hidden rounded-full bg-black/50 ring-1 ring-zinc-800">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-orange-500 via-amber-300 to-emerald-300"
+          style={{ width: `${width}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 function dateValue(value: string | null) {
   if (!value) {
     return null;
@@ -680,6 +732,61 @@ export default async function DashboardPage({
     .sort((first, second) => second.total - first.total)
     .slice(0, 3);
 
+  const clientRevenueMix = Array.from(
+    invoices
+      .reduce(
+        (
+          groups,
+          invoice
+        ): Map<
+          string,
+          {
+            customerName: string;
+            invoiceCount: number;
+            total: number;
+          }
+        > => {
+          const customerName = invoice.customer_name ?? "Unknown Customer";
+          const current = groups.get(customerName) ?? {
+            customerName,
+            invoiceCount: 0,
+            total: 0,
+          };
+
+          groups.set(customerName, {
+            customerName,
+            invoiceCount: current.invoiceCount + 1,
+            total: current.total + parseMoney(invoice.invoice_amount),
+          });
+
+          return groups;
+        },
+        new Map<
+          string,
+          {
+            customerName: string;
+            invoiceCount: number;
+            total: number;
+          }
+        >()
+      )
+      .values()
+  )
+    .sort((first, second) => second.total - first.total)
+    .slice(0, 4);
+  const clientRevenueMax = Math.max(
+    ...clientRevenueMix.map((client) => client.total),
+    1
+  );
+  const collectionRate =
+    invoicedRevenueTotal > 0
+      ? Math.round((ytdRevenueTotal / invoicedRevenueTotal) * 100)
+      : 0;
+  const outstandingRate =
+    invoicedRevenueTotal > 0
+      ? Math.round((outstandingRevenueTotal / invoicedRevenueTotal) * 100)
+      : 0;
+
   return (
     <AppShell>
       <div className="space-y-6">
@@ -975,6 +1082,122 @@ export default async function DashboardPage({
                     </Link>
                   );
                 })}
+              </div>
+            </Card>
+          </div>
+        </RoleVisible>
+
+        <RoleVisible
+          businessSlug={selectedBusinessSlug}
+          allow={[
+            "owner",
+            "admin",
+            "accountant",
+          ]}
+        >
+          <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+            <Card className="border-emerald-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-emerald-950/20">
+              <p className="text-sm uppercase tracking-[0.3em] text-emerald-300">
+                Collection Health
+              </p>
+
+              <h2 className="mt-2 text-2xl font-bold">
+                Cash position
+              </h2>
+
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+                  <p className="text-sm text-emerald-100/80">
+                    Collected
+                  </p>
+
+                  <p className="mt-2 text-3xl font-black text-emerald-100">
+                    {collectionRate}%
+                  </p>
+
+                  <p className="mt-1 text-sm text-zinc-400">
+                    Paid against total invoice value.
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4">
+                  <p className="text-sm text-rose-100/80">
+                    Still Open
+                  </p>
+
+                  <p className="mt-2 text-3xl font-black text-rose-100">
+                    {outstandingRate}%
+                  </p>
+
+                  <p className="mt-1 text-sm text-zinc-400">
+                    Open unpaid invoice balance.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-5 rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <p className="font-semibold text-white">
+                    Next collection move
+                  </p>
+
+                  <span className="rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-orange-200">
+                    FreshBooks style
+                  </span>
+                </div>
+
+                <p className="mt-2 text-sm leading-6 text-zinc-400">
+                  Use Payments when one check covers several invoices. It keeps
+                  the batch workflow together and updates invoice balances in
+                  one place.
+                </p>
+
+                <Link
+                  href={`/payments?business=${selectedBusinessSlug}`}
+                  className="mt-4 inline-block rounded-full bg-emerald-400 px-4 py-2 text-sm font-black text-black transition hover:bg-emerald-300"
+                >
+                  Open Payments
+                </Link>
+              </div>
+            </Card>
+
+            <Card className="border-violet-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-violet-950/20">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-sm uppercase tracking-[0.3em] text-violet-300">
+                    Revenue By Client
+                  </p>
+
+                  <h2 className="mt-2 text-2xl font-bold">
+                    Top invoice sources
+                  </h2>
+                </div>
+
+                <Link
+                  href={`/invoices?business=${selectedBusinessSlug}`}
+                  className="text-sm font-semibold text-orange-400"
+                >
+                  View invoices
+                </Link>
+              </div>
+
+              <div className="mt-5 grid gap-3">
+                {clientRevenueMix.map((client, index) => (
+                  <ClientRevenueRow
+                    key={client.customerName}
+                    name={client.customerName}
+                    amount={client.total}
+                    invoiceCount={client.invoiceCount}
+                    max={clientRevenueMax}
+                    rank={index + 1}
+                  />
+                ))}
+
+                {clientRevenueMix.length === 0 ? (
+                  <p className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-sm text-zinc-400">
+                    No invoice revenue has been recorded for this workspace yet.
+                  </p>
+                ) : null}
               </div>
             </Card>
           </div>
