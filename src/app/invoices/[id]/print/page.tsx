@@ -89,7 +89,7 @@ export default async function InvoicePrintPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ business?: string }>;
+  searchParams?: Promise<{ business?: string; template?: string }>;
 }) {
   const { id } = await params;
   const resolvedSearchParams = searchParams
@@ -97,6 +97,8 @@ export default async function InvoicePrintPage({
     : {};
   const businessSlug =
     resolvedSearchParams.business ?? "rnl-creations";
+  const requestedTemplate =
+    resolvedSearchParams.template ?? "";
 
   const { data, error } = await supabase
     .from("invoices")
@@ -184,11 +186,42 @@ export default async function InvoicePrintPage({
       ? `Split ${invoice.split_sequence} of ${invoice.split_count}`
       : "";
 
+  const specialTemplateHref = `/invoices/${invoice.id}/print?business=${businessSlug}&template=5stars-boa`;
+  const standardTemplateHref = `/invoices/${invoice.id}/print?business=${businessSlug}&template=standard`;
+  const shouldOfferFiveStarsTemplate =
+    business?.slug === "just-kleen" &&
+    looksLikeFiveStarsBoaInvoice(invoice, client, lineItems);
+  const shouldUseFiveStarsTemplate =
+    requestedTemplate === "5stars-boa" ||
+    (requestedTemplate !== "standard" && shouldOfferFiveStarsTemplate);
+
+  if (shouldUseFiveStarsTemplate) {
+    return (
+      <FiveStarsBoaPrintPage
+        invoice={invoice}
+        lineItems={lineItems}
+        businessSlug={businessSlug}
+        backHref={`/invoices/${invoice.id}?business=${businessSlug}`}
+        standardTemplateHref={standardTemplateHref}
+      />
+    );
+  }
+
   return (
     <main className="min-h-screen bg-white px-8 py-8 text-black print:p-0">
       <PrintToolbar
         backHref={`/invoices/${invoice.id}?business=${businessSlug}`}
         backLabel="Back to Invoice"
+        alternateHref={
+          shouldOfferFiveStarsTemplate
+            ? specialTemplateHref
+            : undefined
+        }
+        alternateLabel={
+          shouldOfferFiveStarsTemplate
+            ? "Use 5Stars BOA Format"
+            : undefined
+        }
       />
 
       <div className="mx-auto max-w-5xl bg-white print:max-w-none print:px-6 print:py-4">
@@ -452,4 +485,411 @@ function PrintSummaryRow({
       <p>{value}</p>
     </div>
   );
+}
+
+function looksLikeFiveStarsBoaInvoice(
+  invoice: Invoice,
+  client: Client | null,
+  lineItems: InvoiceLineItem[]
+) {
+  const combinedText = [
+    invoice.customer_name,
+    invoice.project_title,
+    invoice.reference,
+    invoice.service_address,
+    invoice.notes,
+    client?.name,
+    client?.billing_address,
+    ...lineItems.map((item) => item.description),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  const hasFiveStars =
+    combinedText.includes("5stars") ||
+    combinedText.includes("5 stars") ||
+    combinedText.includes("5star") ||
+    combinedText.includes("5 star");
+  const hasBankOfAmerica =
+    combinedText.includes("bank of america") ||
+    combinedText.includes("boa");
+
+  return hasFiveStars || hasBankOfAmerica;
+}
+
+function FiveStarsBoaPrintPage({
+  invoice,
+  lineItems,
+  businessSlug,
+  backHref,
+  standardTemplateHref,
+}: {
+  invoice: Invoice;
+  lineItems: InvoiceLineItem[];
+  businessSlug: string;
+  backHref: string;
+  standardTemplateHref: string;
+}) {
+  const servicePeriod =
+    getServicePeriod(invoice.issue_date);
+  const rows = buildFiveStarsRows(
+    invoice,
+    lineItems,
+    servicePeriod
+  );
+  const total = rows.reduce(
+    (sum, row) => sum + row.amountThisMonth,
+    0
+  );
+  const blankRowCount = Math.max(10, 16 - rows.length);
+
+  return (
+    <main className="min-h-screen bg-white px-4 py-6 text-black print:p-0">
+      <PrintToolbar
+        backHref={backHref}
+        backLabel="Back to Invoice"
+        alternateHref={standardTemplateHref}
+        alternateLabel="Use Standard Format"
+      />
+
+      <div className="mx-auto w-[760px] bg-white print:mx-0 print:w-[7.4in] print:p-0">
+        <div className="mb-3 rounded border border-purple-300 bg-purple-50 px-3 py-2 text-xs text-purple-950 print:hidden">
+          This is the special Just Kleen / 5Stars Bank of America invoice
+          format. Other invoices can still use the standard print format.
+        </div>
+
+        <div className="grid grid-cols-[1fr_210px] border border-black text-[11px] leading-tight">
+          <div className="border-r border-black">
+            <div className="grid grid-cols-[1fr_90px] border-b border-black bg-purple-300">
+              <div className="px-2 py-1 text-2xl font-black uppercase">
+                Invoice
+              </div>
+              <div className="border-l border-black px-2 py-2 text-center text-xs font-black italic">
+                INVOICE #
+              </div>
+            </div>
+
+            <div className="grid grid-cols-[230px_1fr] border-b border-black">
+              <div className="border-r border-black px-2 py-1 text-center">
+                -
+              </div>
+              <div className="px-2 py-1 text-center">
+                -
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div className="border-b border-black bg-purple-300 px-2 py-2 text-center text-sm font-black">
+              {invoice.display_id || "INVOICE"}
+            </div>
+
+            <div className="border-b border-black px-2 py-1 text-center">
+              -
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-5 grid grid-cols-[1fr_215px] gap-2 text-[10px] leading-tight">
+          <div className="border border-black">
+            <div className="border-b border-black bg-indigo-900 px-1 py-1 text-xs font-bold uppercase text-white">
+              Bill From:
+            </div>
+
+            <InfoTableRow label="Company Name:" value="JUST KLEEN" />
+            <InfoTableRow label="Contact Name:" value="LYUBOV SWEET" />
+            <InfoTableRow
+              label="Address:"
+              value="1011 90TH ST SW UNIT B"
+            />
+            <InfoTableRow
+              label="City/State/Zip:"
+              value="EVERETT WA 98204"
+            />
+          </div>
+
+          <div className="border border-black">
+            <div className="border-b border-black bg-yellow-400 px-1 py-1 text-xs font-bold uppercase">
+              Bill To:
+            </div>
+
+            <div className="bg-yellow-300 px-2 py-1 text-center font-black">
+              5STARS, INC.
+            </div>
+            <div className="border-t border-black bg-yellow-300 px-2 py-1 text-center font-black">
+              P.O BOX 2574
+            </div>
+            <div className="border-t border-black bg-yellow-300 px-2 py-1 text-center font-black">
+              REDMOND, WA 98073
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-5 grid grid-cols-[220px_1fr] border border-black text-[11px]">
+          <div className="border-r border-black px-2 py-1 text-right font-black italic">
+            DATE:
+          </div>
+          <div className="px-2 py-1 text-right">
+            {formatDate(invoice.issue_date)}
+          </div>
+        </div>
+
+        <table className="mt-4 w-full border-collapse text-[11px] leading-tight">
+          <thead>
+            <tr className="bg-cyan-100">
+              <FiveStarsHeader>Account Name</FiveStarsHeader>
+              <FiveStarsHeader>Service Date From</FiveStarsHeader>
+              <FiveStarsHeader>Service Date To</FiveStarsHeader>
+              <FiveStarsHeader>Monthly Billing</FiveStarsHeader>
+              <FiveStarsHeader>Amount This Month</FiveStarsHeader>
+              <FiveStarsHeader>Scheduled Services</FiveStarsHeader>
+            </tr>
+          </thead>
+
+          <tbody>
+            {rows.map((row, index) => (
+              <tr key={`${row.accountName}-${index}`}>
+                <FiveStarsCell>{row.accountName}</FiveStarsCell>
+                <FiveStarsCell align="right">
+                  {row.serviceDateFrom}
+                </FiveStarsCell>
+                <FiveStarsCell align="right">
+                  {row.serviceDateTo}
+                </FiveStarsCell>
+                <FiveStarsCell align="right">
+                  {formatPlainMoney(row.monthlyBilling)}
+                </FiveStarsCell>
+                <FiveStarsCell align="right">
+                  {formatPlainMoney(row.amountThisMonth)}
+                </FiveStarsCell>
+                <FiveStarsCell align="center">
+                  {row.scheduledServices}
+                </FiveStarsCell>
+              </tr>
+            ))}
+
+            {Array.from({ length: blankRowCount }).map((_, index) => (
+              <tr key={`blank-${index}`}>
+                <FiveStarsCell>&nbsp;</FiveStarsCell>
+                <FiveStarsCell>&nbsp;</FiveStarsCell>
+                <FiveStarsCell>&nbsp;</FiveStarsCell>
+                <FiveStarsCell>&nbsp;</FiveStarsCell>
+                <FiveStarsCell>&nbsp;</FiveStarsCell>
+                <FiveStarsCell>&nbsp;</FiveStarsCell>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <div className="grid grid-cols-[1fr_185px_110px_220px] border-x border-b border-black text-[11px] font-black">
+          <div className="border-r border-black px-2 py-1 text-right">
+            TOTAL
+          </div>
+          <div className="border-r border-black px-2 py-1 text-right">
+            {formatPlainMoney(total)}
+          </div>
+          <div className="border-r border-black px-2 py-1 text-right italic">
+            NOTES:
+          </div>
+          <div className="px-2 py-1">&nbsp;</div>
+        </div>
+
+        <div className="grid grid-cols-[220px_190px_1fr] border-x border-b border-black text-[11px]">
+          <div className="border-r border-black px-2 py-2 text-right font-black">
+            SIGNATURE:
+          </div>
+          <div className="border-r border-black px-2 py-2">
+            SL
+          </div>
+          <div className="px-2 py-2">
+            {invoice.notes || ""}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-[320px_1fr] border-x border-b border-black text-[11px]">
+          <div className="border-r border-black px-2 py-2 text-center font-black">
+            THANK YOU FOR YOUR BUSINESS
+          </div>
+          <div className="px-2 py-2">&nbsp;</div>
+        </div>
+
+        <div className="mt-10 print:hidden">
+          <Link
+            href={`/invoices/${invoice.id}?business=${businessSlug}`}
+            className="text-orange-600 underline"
+          >
+            Back to Invoice
+          </Link>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function InfoTableRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="grid grid-cols-[160px_1fr] border-b border-black last:border-b-0">
+      <div className="border-r border-black px-1 py-1 font-black italic">
+        {label}
+      </div>
+      <div className="px-1 py-1">{value}</div>
+    </div>
+  );
+}
+
+function FiveStarsHeader({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <th className="border border-black px-2 py-2 text-center text-[10px] font-black uppercase">
+      {children}
+    </th>
+  );
+}
+
+function FiveStarsCell({
+  children,
+  align = "left",
+}: {
+  children: React.ReactNode;
+  align?: "left" | "right" | "center";
+}) {
+  const alignClass =
+    align === "right"
+      ? "text-right"
+      : align === "center"
+        ? "text-center"
+        : "text-left";
+
+  return (
+    <td
+      className={`h-8 border border-black px-2 py-1 align-middle ${alignClass}`}
+    >
+      {children}
+    </td>
+  );
+}
+
+type FiveStarsRow = {
+  accountName: string;
+  serviceDateFrom: string;
+  serviceDateTo: string;
+  monthlyBilling: number;
+  amountThisMonth: number;
+  scheduledServices: string;
+};
+
+function buildFiveStarsRows(
+  invoice: Invoice,
+  lineItems: InvoiceLineItem[],
+  servicePeriod: {
+    from: string;
+    to: string;
+  }
+): FiveStarsRow[] {
+  const sourceRows =
+    lineItems.length > 0
+      ? lineItems
+      : [
+          {
+            id: invoice.id,
+            description:
+              invoice.project_title ||
+              invoice.customer_name ||
+              "BOA Cleaning",
+            quantity: 1,
+            unit_price: parseCurrency(invoice.invoice_amount),
+            line_total: parseCurrency(invoice.invoice_amount),
+            sort_order: 0,
+          },
+        ];
+
+  return sourceRows.map((item) => {
+    const description =
+      item.description ||
+      invoice.project_title ||
+      "BOA Cleaning";
+    const amount =
+      toNumber(item.line_total) ||
+      toNumber(item.quantity) * toNumber(item.unit_price) ||
+      toNumber(item.unit_price);
+
+    return {
+      accountName: cleanFiveStarsAccountName(description),
+      serviceDateFrom: servicePeriod.from,
+      serviceDateTo: servicePeriod.to,
+      monthlyBilling: amount,
+      amountThisMonth: amount,
+      scheduledServices: inferScheduledServices(description),
+    };
+  });
+}
+
+function cleanFiveStarsAccountName(description: string) {
+  return description
+    .replace(/\s*[-|]\s*(\d+\/w|[0-9]\s*(x|times)?\s*(per\s*)?week).*$/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function inferScheduledServices(description: string) {
+  const text = description.toLowerCase();
+  const explicitMatch = text.match(/([1-7])\s*\/\s*w/);
+
+  if (explicitMatch?.[1]) {
+    return `${explicitMatch[1]}/W`;
+  }
+
+  const perWeekMatch = text.match(/([1-7])\s*(x|times)?\s*(per\s*)?week/);
+
+  if (perWeekMatch?.[1]) {
+    return `${perWeekMatch[1]}/W`;
+  }
+
+  return "";
+}
+
+function getServicePeriod(issueDate: string | null) {
+  const fallbackDate = new Date();
+  const date = issueDate
+    ? new Date(`${issueDate}T00:00:00`)
+    : fallbackDate;
+  const safeDate = Number.isNaN(date.getTime()) ? fallbackDate : date;
+  const firstDay = new Date(
+    safeDate.getFullYear(),
+    safeDate.getMonth(),
+    1
+  );
+  const lastDay = new Date(
+    safeDate.getFullYear(),
+    safeDate.getMonth() + 1,
+    0
+  );
+
+  return {
+    from: formatShortDate(firstDay),
+    to: formatShortDate(lastDay),
+  };
+}
+
+function formatShortDate(date: Date) {
+  return `${date.getMonth() + 1}/${date.getDate()}/${String(
+    date.getFullYear()
+  ).slice(-2)}`;
+}
+
+function formatPlainMoney(amount: number) {
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(amount);
 }

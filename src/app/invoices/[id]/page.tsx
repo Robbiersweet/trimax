@@ -107,6 +107,34 @@ function getSplitPreview(subtotalAmount: number, targetAmount: number) {
   };
 }
 
+function looksLikeFiveStarsBoaInvoice(
+  invoice: Invoice,
+  lineItems: InvoiceLineItem[]
+) {
+  const combinedText = [
+    invoice.customer_name,
+    invoice.project_title,
+    invoice.reference,
+    invoice.service_address,
+    invoice.notes,
+    ...lineItems.map((item) => item.description),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  const hasFiveStars =
+    combinedText.includes("5stars") ||
+    combinedText.includes("5 stars") ||
+    combinedText.includes("5star") ||
+    combinedText.includes("5 star");
+  const hasBankOfAmerica =
+    combinedText.includes("bank of america") ||
+    combinedText.includes("boa");
+
+  return hasFiveStars || hasBankOfAmerica;
+}
+
 function Info({
   label,
   value,
@@ -344,6 +372,9 @@ export default async function InvoiceDetailPage({
   const invoiceTotal = subtotal + taxAmount;
   const amountPaid = numberValue(invoice.amount_paid);
   const amountDue = Math.max(invoiceTotal - amountPaid, 0);
+  const showFiveStarsBoaPrintButton =
+    business.slug === "just-kleen" &&
+    looksLikeFiveStarsBoaInvoice(invoice, items);
 
   const splitWarningAmount =
     numberValue(invoice.split_target_amount) ||
@@ -671,6 +702,16 @@ export default async function InvoiceDetailPage({
             ) : null}
 
             <Button variant="secondary">Send Reminder</Button>
+
+            {showFiveStarsBoaPrintButton ? (
+              <Link
+                href={`/invoices/${invoice.id}/print${businessQuery}&template=5stars-boa`}
+              >
+                <Button variant="secondary">
+                  Print 5Stars BOA Format
+                </Button>
+              </Link>
+            ) : null}
 
             <Link href={`/invoices/${invoice.id}/print${businessQuery}`}>
               <Button variant="secondary">Print Invoice</Button>
