@@ -3,7 +3,9 @@ import AppShell from "../../components/AppShell";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import ConvertEstimateToInvoiceButton from "../../components/ConvertEstimateToInvoiceButton";
+import OutlookDraftPrepCard from "../../components/OutlookDraftPrepCard";
 import SplitInvoicePlanner from "../../components/SplitInvoicePlanner";
+import { buildOutlookDraftPreview } from "../../lib/outlookDrafts";
 import { supabase } from "../../lib/supabase";
 
 type SupabaseEstimate = {
@@ -154,6 +156,16 @@ export default async function EstimateDetailsPage({
   const splitPreview = estimate.split_warning_enabled
     ? getSplitPreview(subtotal, effectiveSplitTargetAmount)
     : null;
+  const outlookDraftPreview = buildOutlookDraftPreview("estimate", {
+    businessSlug,
+    customerName: estimate.customer_name,
+    documentNumber: estimate.display_id,
+    projectTitle: estimate.project_title,
+    amountDue: formatCurrency(estimateTotal),
+    serviceAddress:
+      estimate.service_address || estimate.project_address,
+    reference: estimate.reference,
+  });
 
   const { data: invoiceData } = await supabase
     .from("invoices")
@@ -239,6 +251,13 @@ export default async function EstimateDetailsPage({
             </div>
           </Card>
         )}
+
+        <OutlookDraftPrepCard
+          documentLabel="Estimate"
+          preview={outlookDraftPreview}
+          printHref={`/estimates/${estimate.id}/print?business=${businessSlug}`}
+          settingsHref={`/settings?business=${businessSlug}`}
+        />
 
         <Card>
           <div className="grid gap-6 md:grid-cols-2">

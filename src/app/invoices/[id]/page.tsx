@@ -4,8 +4,10 @@ import Card from "../../components/Card";
 import Button from "../../components/Button";
 import StatusBadge from "../../components/StatusBadge";
 import DeleteInvoiceButton from "../../components/DeleteInvoiceButton";
+import OutlookDraftPrepCard from "../../components/OutlookDraftPrepCard";
 import SplitInvoicePlanner from "../../components/SplitInvoicePlanner";
 import UpdateInvoiceStatusButton from "../../components/UpdateInvoiceStatusButton";
+import { buildOutlookDraftPreview } from "../../lib/outlookDrafts";
 import { supabase } from "../../lib/supabase";
 
 type PageProps = {
@@ -375,6 +377,16 @@ export default async function InvoiceDetailPage({
   const showFiveStarsBoaPrintButton =
     business.slug === "just-kleen" &&
     looksLikeFiveStarsBoaInvoice(invoice, items);
+  const outlookDraftPreview = buildOutlookDraftPreview("invoice", {
+    businessSlug,
+    customerName: invoice.customer_name,
+    documentNumber: invoice.display_id,
+    projectTitle: invoice.project_title,
+    amountDue: money(amountDue),
+    dueDate: invoice.due_date ? formatDate(invoice.due_date) : null,
+    serviceAddress: invoice.service_address,
+    reference: invoice.reference,
+  });
 
   const splitWarningAmount =
     numberValue(invoice.split_target_amount) ||
@@ -574,6 +586,13 @@ export default async function InvoiceDetailPage({
               </div>
             </Card>
           ) : null}
+
+          <OutlookDraftPrepCard
+            documentLabel="Invoice"
+            preview={outlookDraftPreview}
+            printHref={`/invoices/${invoice.id}/print${businessQuery}`}
+            settingsHref={`/settings${businessQuery}`}
+          />
 
           <Card>
             <div className="grid gap-8 md:grid-cols-2">
