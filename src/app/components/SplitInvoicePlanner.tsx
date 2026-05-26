@@ -61,6 +61,10 @@ export default function SplitInvoicePlanner({
   const [createdInvoices, setCreatedInvoices] = useState<
     { id: string; displayId: string }[]
   >([]);
+  const [message, setMessage] = useState<{
+    type: "error" | "notice";
+    text: string;
+  } | null>(null);
 
   const splitAmounts = useMemo(
     () => splitIntoEvenAmounts(subtotalAmount, targetAmount),
@@ -79,6 +83,8 @@ export default function SplitInvoicePlanner({
   }
 
   async function handleCreateSplitInvoices() {
+    setMessage(null);
+
     if (!sourceInvoice || createdInvoices.length > 0) {
       return;
     }
@@ -102,7 +108,10 @@ export default function SplitInvoicePlanner({
 
     if (countError) {
       console.error(countError);
-      alert("Unable to prepare invoice numbers.");
+      setMessage({
+        type: "error",
+        text: "Unable to prepare invoice numbers. Refresh the page, then try again.",
+      });
       setCreating(false);
       return;
     }
@@ -161,7 +170,10 @@ export default function SplitInvoicePlanner({
 
     if (invoiceError || !insertedInvoices) {
       console.error(invoiceError);
-      alert("Unable to create split invoices.");
+      setMessage({
+        type: "error",
+        text: "Unable to create split invoices. Refresh the page, then try again.",
+      });
       setCreating(false);
       return;
     }
@@ -190,9 +202,10 @@ export default function SplitInvoicePlanner({
 
     if (lineItemError) {
       console.error(lineItemError);
-      alert(
-        "Split invoices were created, but their line items could not be saved."
-      );
+      setMessage({
+        type: "notice",
+        text: "Split invoices were created, but their line items need attention. Open the new invoices and review them before sending.",
+      });
       setCreating(false);
       return;
     }
@@ -321,6 +334,7 @@ export default function SplitInvoicePlanner({
             {sourceInvoice ? (
               <Button
                 onClick={handleCreateSplitInvoices}
+                disabled={creating || createdInvoices.length > 0}
                 className={
                   createdInvoices.length > 0
                     ? "pointer-events-none bg-zinc-700 text-zinc-400"
@@ -343,6 +357,18 @@ export default function SplitInvoicePlanner({
               </button>
             )}
           </div>
+
+          {message ? (
+            <div
+              className={`rounded-2xl border p-4 text-sm font-semibold leading-6 ${
+                message.type === "error"
+                  ? "border-red-400/40 bg-red-500/10 text-red-900 dark:text-red-100"
+                  : "border-amber-400/40 bg-amber-500/10 text-amber-950 dark:text-amber-100"
+              }`}
+            >
+              {message.text}
+            </div>
+          ) : null}
 
           {createdInvoices.length > 0 ? (
             <div className="rounded-2xl border border-green-500/40 bg-green-500/10 p-4">

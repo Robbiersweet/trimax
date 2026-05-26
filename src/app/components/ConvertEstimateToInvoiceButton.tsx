@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Button from "./Button";
 import { logActivity } from "../lib/activityLog";
@@ -66,15 +67,25 @@ export default function ConvertEstimateToInvoiceButton({
   notes,
 }: ConvertEstimateToInvoiceButtonProps) {
   const router = useRouter();
+  const [isConverting, setIsConverting] = useState(false);
+  const [message, setMessage] = useState<{
+    type: "error" | "notice";
+    text: string;
+  } | null>(null);
 
   async function handleConvert() {
+    setMessage(null);
+
     if (!businessId || !customerName || !projectTitle) {
-      alert(
-        "This estimate needs a customer, project title, and business before it can be converted."
-      );
+      setMessage({
+        type: "error",
+        text: "This estimate needs a customer, project title, and workspace before it can be converted.",
+      });
 
       return;
     }
+
+    setIsConverting(true);
 
     const { data: existingInvoice } = await supabase
       .from("invoices")
@@ -83,6 +94,11 @@ export default function ConvertEstimateToInvoiceButton({
       .maybeSingle();
 
     if (existingInvoice?.id) {
+      setMessage({
+        type: "notice",
+        text: "This estimate already has an invoice. Opening it now.",
+      });
+
       router.push(
         `/invoices/${existingInvoice.id}?business=${businessSlug}`
       );
@@ -100,7 +116,11 @@ export default function ConvertEstimateToInvoiceButton({
     if (estimateError || !estimateData) {
       console.error(estimateError);
 
-      alert("Unable to load estimate before conversion.");
+      setMessage({
+        type: "error",
+        text: "Unable to load this estimate before conversion. Refresh the page, then try again.",
+      });
+      setIsConverting(false);
 
       return;
     }
@@ -139,9 +159,11 @@ export default function ConvertEstimateToInvoiceButton({
       fallbackSubtotal + taxAmount;
 
     if (invoiceTotal <= 0) {
-      alert(
-        "This estimate needs at least one priced line item before it can be converted."
-      );
+      setMessage({
+        type: "error",
+        text: "This estimate needs at least one priced line item before it can be converted.",
+      });
+      setIsConverting(false);
 
       return;
     }
@@ -201,7 +223,11 @@ export default function ConvertEstimateToInvoiceButton({
     if (error || !data) {
       console.error(error);
 
-      alert("Unable to convert estimate to invoice.");
+      setMessage({
+        type: "error",
+        text: "Unable to convert this estimate to an invoice. Refresh the page, then try again.",
+      });
+      setIsConverting(false);
 
       return;
     }
@@ -244,13 +270,16 @@ export default function ConvertEstimateToInvoiceButton({
     if (lineItemError) {
       console.error(lineItemError);
 
-      alert(
-        "Invoice was created, but its line items could not be saved."
-      );
+      setMessage({
+        type: "notice",
+        text: "The invoice was created, but its line items need attention. Opening the invoice now.",
+      });
 
-      router.push(
-        `/invoices/${data.id}?business=${businessSlug}`
-      );
+      window.setTimeout(() => {
+        router.push(
+          `/invoices/${data.id}?business=${businessSlug}`
+        );
+      }, 900);
 
       return;
     }
@@ -274,8 +303,25 @@ export default function ConvertEstimateToInvoiceButton({
   }
 
   return (
-    <Button onClick={handleConvert}>
-      Convert to Invoice
-    </Button>
+    <div className="grid gap-2">
+      <Button
+        onClick={handleConvert}
+        disabled={isConverting}
+      >
+        {isConverting ? "Converting..." : "Convert to Invoice"}
+      </Button>
+
+      {message ? (
+        <p
+          className={`text-sm font-semibold ${
+            message.type === "error"
+              ? "text-red-700 dark:text-red-300"
+              : "text-orange-700 dark:text-orange-300"
+          }`}
+        >
+          {message.text}
+        </p>
+      ) : null}
+    </div>
   );
 }
