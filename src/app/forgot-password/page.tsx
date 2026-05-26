@@ -91,7 +91,7 @@ function ForgotPasswordPageContent() {
 
             <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-sm leading-6 text-zinc-400">
               For security, Trimax only sends reset links to invited users with
-              an existing Supabase account.
+              an active sign-in account.
             </div>
 
             <Link

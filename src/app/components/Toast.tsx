@@ -6,9 +6,9 @@ type ToastProps = {
 export default function Toast({ type, message }: ToastProps) {
   const styles = {
     success:
-      "border-emerald-400/45 bg-emerald-950 text-emerald-50 shadow-emerald-950/30",
+      "app-toast-success border-emerald-400/45 bg-emerald-950 text-emerald-50 shadow-emerald-950/30",
     error:
-      "border-red-400/45 bg-red-950 text-red-50 shadow-red-950/30",
+      "app-toast-error border-red-400/45 bg-red-950 text-red-50 shadow-red-950/30",
   };
 
   return (

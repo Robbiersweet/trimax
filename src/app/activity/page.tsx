@@ -479,14 +479,15 @@ export default async function ActivityPage({
         </Card>
 
         {setupNeeded ? (
-          <Card className="border-amber-500/40 bg-amber-500/10">
+          <Card className="app-notice-card border-amber-500/40 bg-amber-500/10">
             <p className="font-semibold text-amber-200">
-              Activity logging table is not set up yet.
+              Activity tracking setup needs one more step.
             </p>
 
             <p className="mt-2 text-sm leading-6 text-amber-100/90">
-              Run the activity_logs SQL in Supabase, then this page will start
-              showing future actions.
+              Once the activity setup is finished, this page will start
+              showing future queue, estimate, invoice, payment, and split
+              actions.
             </p>
           </Card>
         ) : logs.length === 0 ? (
@@ -496,9 +497,8 @@ export default async function ActivityPage({
             </p>
 
             <p className="mt-2 text-sm leading-6 text-zinc-400">
-              If you have already created queue items, estimates, invoices, or
-              payments, run the activity_logs SQL in Supabase so Trimax can
-              save future activity entries.
+              New queue, estimate, invoice, payment, and split actions will
+              appear here after activity tracking is fully connected.
             </p>
           </Card>
         ) : filteredLogs.length === 0 ? (
