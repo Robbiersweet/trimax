@@ -1,36 +1,86 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Trimax Operations Platform
 
-## Getting Started
+Trimax is a Next.js operations platform for R&L Creations, Just Kleen, and future workspace-based service businesses.
 
-First, run the development server:
+It currently supports:
+
+- Supabase Auth login
+- Multi-business workspaces with `business_users`
+- R&L Creations apartment turn queue workflow
+- Just Kleen workspace support
+- Clients, services, estimates, invoices, payments, reports, and activity logs
+- Split invoice workflow for apartment paint work
+- Print-ready estimate and invoice pages
+- 5 Star / Bank of America style invoice export for Just Kleen
+- Early Outlook draft workflow foundation
+
+## Local Development
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Create `.env.local` from `.env.example`, then add the Supabase values.
+
+Run the app:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```text
+http://localhost:3000/?business=rnl-creations
+http://localhost:3000/?business=just-kleen
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Required Environment Variables
 
-## Learn More
+```text
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+```
 
-To learn more about Next.js, take a look at the following resources:
+Future Outlook integration will also need Microsoft/Azure values. Keep those server-only in Vercel, not exposed with `NEXT_PUBLIC_`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Pre-Deployment Checks
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Run these before pushing to GitHub or deploying to Vercel:
 
-## Deploy on Vercel
+```bash
+npm run lint
+npm run build
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Both should pass before deployment.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Supabase SQL
+
+Database setup scripts live in:
+
+```text
+supabase/sql
+```
+
+Run them from the Supabase SQL editor when a feature needs new tables or policies. Development RLS is intentionally friendly right now; production RLS tightening is still a required deployment-hardening task.
+
+## Current Deployment Notes
+
+- Keep `?business=rnl-creations` and `?business=just-kleen` routing intact.
+- Keep all data queries scoped by `business_id`.
+- Do not remove queue bypass behavior for normal estimates/invoices.
+- Do not expose company financials to future property-manager portal users.
+- Outlook draft creation should create drafts for review first, not auto-send.
+
+## Vercel
+
+Deploy from GitHub to Vercel after:
+
+1. Supabase SQL is current.
+2. Supabase Auth users/workspace memberships are current.
+3. Vercel environment variables are set.
+4. `npm run lint` passes.
+5. `npm run build` passes.
