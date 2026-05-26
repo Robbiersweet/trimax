@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 import { logActivity } from "../lib/activityLog";
@@ -17,8 +18,13 @@ export default function MarkCompletedButton({
   label,
 }: MarkCompletedButtonProps) {
   const router = useRouter();
+  const [isSaving, setIsSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleMarkCompleted = async () => {
+    setErrorMessage("");
+    setIsSaving(true);
+
     const today = new Date().toISOString().slice(0, 10);
 
     const { error } = await supabase
@@ -32,7 +38,10 @@ export default function MarkCompletedButton({
     if (error) {
       console.error(error);
 
-      alert("Unable to mark queue item as completed.");
+      setErrorMessage(
+        "Unable to mark this queue item completed. Refresh the page, then try again."
+      );
+      setIsSaving(false);
 
       return;
     }
@@ -48,12 +57,24 @@ export default function MarkCompletedButton({
       },
     });
 
+    setIsSaving(false);
     router.refresh();
   };
 
   return (
-    <Button onClick={handleMarkCompleted}>
-      Mark Completed
-    </Button>
+    <div className="grid gap-2">
+      <Button
+        onClick={handleMarkCompleted}
+        disabled={isSaving}
+      >
+        {isSaving ? "Saving..." : "Mark Completed"}
+      </Button>
+
+      {errorMessage ? (
+        <p className="text-sm font-semibold text-red-300">
+          {errorMessage}
+        </p>
+      ) : null}
+    </div>
   );
 }

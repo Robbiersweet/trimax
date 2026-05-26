@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 import Button from "./Button";
@@ -14,8 +15,12 @@ export default function DeleteQueueItemButton({
   returnHref,
 }: DeleteQueueItemButtonProps) {
   const router = useRouter();
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleDelete = async () => {
+    setErrorMessage("");
+
     const confirmed = window.confirm(
       "Are you sure you want to delete this queue item?"
     );
@@ -24,14 +29,19 @@ export default function DeleteQueueItemButton({
       return;
     }
 
+    setIsDeleting(true);
+
     const { error } = await supabase
       .from("queue_items")
       .delete()
       .eq("id", queueItemId);
 
     if (error) {
-      alert("Unable to delete queue item.");
       console.error(error);
+      setErrorMessage(
+        "Unable to delete this queue item. Refresh the page, then try again."
+      );
+      setIsDeleting(false);
       return;
     }
 
@@ -40,8 +50,20 @@ export default function DeleteQueueItemButton({
   };
 
   return (
-    <Button onClick={handleDelete} variant="secondary">
-      Delete Queue Item
-    </Button>
+    <div className="grid gap-2">
+      <Button
+        onClick={handleDelete}
+        variant="secondary"
+        disabled={isDeleting}
+      >
+        {isDeleting ? "Deleting..." : "Delete Queue Item"}
+      </Button>
+
+      {errorMessage ? (
+        <p className="text-sm font-semibold text-red-300">
+          {errorMessage}
+        </p>
+      ) : null}
+    </div>
   );
 }

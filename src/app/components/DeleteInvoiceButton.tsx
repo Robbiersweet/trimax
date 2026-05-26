@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Button from "./Button";
 import { supabase } from "../lib/supabase";
@@ -14,8 +15,12 @@ export default function DeleteInvoiceButton({
   returnHref,
 }: DeleteInvoiceButtonProps) {
   const router = useRouter();
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   async function handleDelete() {
+    setErrorMessage("");
+
     const confirmed = window.confirm(
       "Are you sure you want to delete this invoice?"
     );
@@ -24,6 +29,8 @@ export default function DeleteInvoiceButton({
       return;
     }
 
+    setIsDeleting(true);
+
     const { error } = await supabase
       .from("invoices")
       .delete()
@@ -31,7 +38,10 @@ export default function DeleteInvoiceButton({
 
     if (error) {
       console.error(error);
-      alert("Unable to delete invoice.");
+      setErrorMessage(
+        "Unable to delete this invoice. Refresh the page, then try again."
+      );
+      setIsDeleting(false);
       return;
     }
 
@@ -40,8 +50,20 @@ export default function DeleteInvoiceButton({
   }
 
   return (
-    <Button onClick={handleDelete} variant="secondary">
-      Delete Invoice
-    </Button>
+    <div className="grid gap-2">
+      <Button
+        onClick={handleDelete}
+        variant="secondary"
+        disabled={isDeleting}
+      >
+        {isDeleting ? "Deleting..." : "Delete Invoice"}
+      </Button>
+
+      {errorMessage ? (
+        <p className="text-sm font-semibold text-red-300">
+          {errorMessage}
+        </p>
+      ) : null}
+    </div>
   );
 }

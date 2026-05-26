@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Button from "./Button";
 import { supabase } from "../lib/supabase";
@@ -21,8 +22,13 @@ export default function UpdateInvoiceStatusButton({
   invoiceLabel,
 }: UpdateInvoiceStatusButtonProps) {
   const router = useRouter();
+  const [isSaving, setIsSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   async function handleUpdateStatus() {
+    setErrorMessage("");
+    setIsSaving(true);
+
     const { error } = await supabase
       .from("invoices")
       .update({
@@ -32,7 +38,10 @@ export default function UpdateInvoiceStatusButton({
 
     if (error) {
       console.error(error);
-      alert("Unable to update invoice status.");
+      setErrorMessage(
+        "Unable to update this invoice status. Refresh the page, then try again."
+      );
+      setIsSaving(false);
       return;
     }
 
@@ -47,8 +56,24 @@ export default function UpdateInvoiceStatusButton({
       },
     });
 
+    setIsSaving(false);
     router.refresh();
   }
 
-  return <Button onClick={handleUpdateStatus}>{label}</Button>;
+  return (
+    <div className="grid gap-2">
+      <Button
+        onClick={handleUpdateStatus}
+        disabled={isSaving}
+      >
+        {isSaving ? "Saving..." : label}
+      </Button>
+
+      {errorMessage ? (
+        <p className="text-sm font-semibold text-red-300">
+          {errorMessage}
+        </p>
+      ) : null}
+    </div>
+  );
 }

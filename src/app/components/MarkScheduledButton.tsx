@@ -26,6 +26,7 @@ export default function MarkScheduledButton({
     initialScheduledDate || ""
   );
   const [isSaving, setIsSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const today = new Date().toISOString().slice(0, 10);
   const tomorrowDate = new Date();
@@ -52,8 +53,12 @@ export default function MarkScheduledButton({
   ];
 
   const handleMarkScheduled = async () => {
+    setErrorMessage("");
+
     if (!scheduledDate) {
-      alert("Please choose the work scheduled date first.");
+      setErrorMessage(
+        "Choose the work date first, then click Schedule."
+      );
       return;
     }
 
@@ -70,7 +75,9 @@ export default function MarkScheduledButton({
     if (error) {
       console.error(error);
 
-      alert("Unable to mark queue item as scheduled.");
+      setErrorMessage(
+        "Unable to save this scheduled date. Refresh the page, then try again."
+      );
       setIsSaving(false);
 
       return;
@@ -110,6 +117,7 @@ export default function MarkScheduledButton({
         <Button
           onClick={handleMarkScheduled}
           variant="secondary"
+          disabled={isSaving}
         >
           {isSaving
             ? "Scheduling..."
@@ -135,6 +143,12 @@ export default function MarkScheduledButton({
           </button>
         ))}
       </div>
+
+      {errorMessage ? (
+        <p className="mt-3 text-sm font-semibold text-red-300">
+          {errorMessage}
+        </p>
+      ) : null}
     </div>
   );
 }
