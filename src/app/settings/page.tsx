@@ -130,6 +130,8 @@ function BusinessSettingsPageContent() {
     useState<BusinessUser[]>([]);
   const [propertyUsers, setPropertyUsers] =
     useState<PropertyUser[]>([]);
+  const [propertyAccessReady, setPropertyAccessReady] =
+    useState(true);
   const [currentEmail, setCurrentEmail] =
     useState<string | null>(null);
   const [currentRole, setCurrentRole] =
@@ -175,6 +177,7 @@ function BusinessSettingsPageContent() {
   async function loadSettings() {
     setLoading(true);
     setToast(null);
+    setPropertyAccessReady(true);
 
     const {
       data: { user },
@@ -263,8 +266,10 @@ function BusinessSettingsPageContent() {
         "Property team table is not ready yet.",
         propertyUsersError
       );
+      setPropertyAccessReady(false);
       setPropertyUsers([]);
     } else {
+      setPropertyAccessReady(true);
       setPropertyUsers(
         (propertyRows ?? []) as PropertyUser[]
       );
@@ -414,7 +419,7 @@ function BusinessSettingsPageContent() {
     setToast({
       type: "success",
       message:
-        "Workspace invite saved. Create the Supabase Auth user with the same email when you are ready.",
+        "Workspace invite saved. When you are ready, create or invite that same email in Authentication so they can sign in.",
     });
   }
 
@@ -422,6 +427,15 @@ function BusinessSettingsPageContent() {
     setToast(null);
 
     if (!business || !canManageUsers) {
+      return;
+    }
+
+    if (!propertyAccessReady) {
+      setToast({
+        type: "error",
+        message:
+          "Property portal setup is not ready yet. Complete the setup SQL before adding property staff.",
+      });
       return;
     }
 
@@ -489,7 +503,7 @@ function BusinessSettingsPageContent() {
       setToast({
         type: "error",
         message:
-          "Unable to save this property team member. Make sure the property-users SQL has been run.",
+          "Unable to save this property team member. The property portal setup may still need to be completed.",
       });
       return;
     }
@@ -936,8 +950,8 @@ function BusinessSettingsPageContent() {
                       <p className="mt-2 text-sm text-zinc-400">
                         Add the email and role first.
                         Then create or invite that same
-                        email in Supabase Authentication.
-                        When they log in, Trimax will
+                        email in Authentication.
+                        When they sign in, Trimax will
                         place them in this workspace.
                       </p>
                     </div>
@@ -1007,7 +1021,19 @@ function BusinessSettingsPageContent() {
                     </p>
                   </div>
 
-                  {propertyUsers.length === 0 ? (
+                  {!propertyAccessReady ? (
+                    <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm leading-6 text-amber-950 dark:text-amber-100">
+                      <p className="font-semibold">
+                        Property portal setup needed
+                      </p>
+
+                      <p className="mt-2">
+                        Property team access is not available yet.
+                        Complete the property portal setup before
+                        adding property staff.
+                      </p>
+                    </div>
+                  ) : propertyUsers.length === 0 ? (
                     <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-sm text-zinc-400">
                       No property team access has been added yet.
                     </div>
@@ -1200,7 +1226,9 @@ function BusinessSettingsPageContent() {
 
                       <Button
                         onClick={handleAddPropertyUser}
-                        disabled={savingPropertyInvite}
+                        disabled={
+                          savingPropertyInvite || !propertyAccessReady
+                        }
                       >
                         {savingPropertyInvite
                           ? "Saving..."
