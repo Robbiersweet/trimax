@@ -40,6 +40,7 @@ Use this order for current SQL:
 2026-05-25-allow-pending-business-invites.sql
 2026-05-26-property-users.sql
 2026-05-26-activity-logs.sql
+2026-05-26-invoice-updated-at.sql
 2026-05-26-outlook-draft-workflow.sql
 ```
 

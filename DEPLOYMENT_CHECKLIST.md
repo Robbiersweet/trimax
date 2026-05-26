@@ -16,6 +16,7 @@ This runs lint and the production build.
 - Confirm `business_users` has the correct business memberships.
 - Confirm `business_id` exists and is populated on business-owned records.
 - Run needed SQL from `supabase/sql` in order.
+- Confirm `property_users`, `activity_logs`, and invoice `updated_at` setup scripts have run successfully.
 - Keep development RLS only while testing with trusted users.
 - Tighten production RLS before selling Trimax as SaaS.
 
@@ -81,4 +82,4 @@ For Just Kleen:
 - Encrypt Outlook tokens before enabling live Microsoft draft creation.
 - Add production logging/monitoring.
 - Decide on attachment/photo storage rules.
-- Add stronger property-manager portal boundaries for Diana, Alana, Allen, and similar users.
+- Add stronger property-manager portal boundaries for property managers, assistant managers, maintenance managers, and similar users.

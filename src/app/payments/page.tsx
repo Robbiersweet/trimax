@@ -24,6 +24,8 @@ type Invoice = {
   created_at: string | null;
 };
 
+type InvoiceWithoutUpdatedAt = Omit<Invoice, "updated_at">;
+
 type ActivityLog = {
   id: string;
   actor_email: string | null;
@@ -157,12 +159,30 @@ export default async function PaymentsPage({
       .order("created_at", { ascending: false });
 
     if (invoiceError) {
-      loadIssues.push(
-        "Invoices could not be loaded yet. This is usually a Supabase permission or stale login session issue."
-      );
-    }
+      const { data: fallbackInvoiceData, error: fallbackInvoiceError } =
+        await supabase
+          .from("invoices")
+          .select(
+            "id, display_id, customer_name, project_title, invoice_amount, amount_paid, status, due_date, created_at"
+          )
+          .eq("business_id", business.id)
+          .order("created_at", { ascending: false });
 
-    invoices = (invoiceData ?? []) as Invoice[];
+      if (fallbackInvoiceError) {
+        loadIssues.push(
+          "Invoices could not be loaded yet. This is usually a Supabase permission or stale login session issue."
+        );
+      } else {
+        invoices = ((fallbackInvoiceData ?? []) as InvoiceWithoutUpdatedAt[]).map(
+          (invoice) => ({
+            ...invoice,
+            updated_at: null,
+          })
+        );
+      }
+    } else {
+      invoices = (invoiceData ?? []) as Invoice[];
+    }
 
     const { data: activityData, error: activityError } = await supabase
       .from("activity_logs")

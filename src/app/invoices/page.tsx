@@ -30,7 +30,10 @@ type Invoice = {
 
 type BaseInvoice = Omit<
   Invoice,
-  "split_parent_invoice_id" | "split_sequence" | "split_count"
+  | "updated_at"
+  | "split_parent_invoice_id"
+  | "split_sequence"
+  | "split_count"
 >;
 
 type InvoiceWithSplitInfo = Invoice & {
@@ -182,7 +185,7 @@ export default async function InvoicesPage({
       const { data: fallbackData, error: fallbackError } = await supabase
         .from("invoices")
         .select(
-          "id, display_id, customer_name, project_title, invoice_amount, amount_paid, status, due_date, updated_at, created_at"
+          "id, display_id, customer_name, project_title, invoice_amount, amount_paid, status, due_date, created_at"
         )
         .eq("business_id", selectedBusiness.id)
         .order("created_at", { ascending: false });
@@ -197,6 +200,7 @@ export default async function InvoicesPage({
         invoices = ((fallbackData ?? []) as BaseInvoice[]).map(
           (invoice) => ({
             ...invoice,
+            updated_at: null,
             split_parent_invoice_id: null,
             split_sequence: null,
             split_count: null,
