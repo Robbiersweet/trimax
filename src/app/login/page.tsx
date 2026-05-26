@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import AppShell from "../components/AppShell";
 import Card from "../components/Card";
 import Button from "../components/Button";
@@ -13,7 +14,10 @@ import {
   preferredWorkspaceSlug,
 } from "../lib/workspaceAccess";
 
-export default function LoginPage() {
+function LoginPageContent() {
+  const searchParams = useSearchParams();
+  const businessSlug =
+    searchParams.get("business") ?? "rnl-creations";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -95,7 +99,7 @@ export default function LoginPage() {
 
             <div className="-mt-2 flex justify-end">
               <Link
-                href="/forgot-password"
+                href={`/forgot-password?business=${businessSlug}`}
                 className="text-sm font-semibold text-orange-400 transition hover:text-orange-300"
               >
                 Forgot password?
@@ -117,5 +121,13 @@ export default function LoginPage() {
         </Card>
       </div>
     </AppShell>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginPageContent />
+    </Suspense>
   );
 }

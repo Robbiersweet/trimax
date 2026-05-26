@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import AppShell from "../components/AppShell";
 import Button from "../components/Button";
 import Card from "../components/Card";
@@ -9,7 +10,10 @@ import InputField from "../components/InputField";
 import Toast from "../components/Toast";
 import { supabase } from "../lib/supabase";
 
-export default function ForgotPasswordPage() {
+function ForgotPasswordPageContent() {
+  const searchParams = useSearchParams();
+  const businessSlug =
+    searchParams.get("business") ?? "rnl-creations";
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{
@@ -30,7 +34,7 @@ export default function ForgotPasswordPage() {
 
     setLoading(true);
 
-    const redirectTo = `${window.location.origin}/reset-password`;
+    const redirectTo = `${window.location.origin}/reset-password?business=${businessSlug}`;
     const { error } = await supabase.auth.resetPasswordForEmail(
       email.trim(),
       { redirectTo }
@@ -91,7 +95,7 @@ export default function ForgotPasswordPage() {
             </div>
 
             <Link
-              href="/login"
+              href={`/login?business=${businessSlug}`}
               className="text-sm font-semibold text-orange-400 transition hover:text-orange-300"
             >
               Back to login
@@ -100,5 +104,13 @@ export default function ForgotPasswordPage() {
         </Card>
       </div>
     </AppShell>
+  );
+}
+
+export default function ForgotPasswordPage() {
+  return (
+    <Suspense>
+      <ForgotPasswordPageContent />
+    </Suspense>
   );
 }

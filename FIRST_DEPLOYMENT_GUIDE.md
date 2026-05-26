@@ -31,6 +31,20 @@ In Supabase:
 3. Run any missing SQL from `supabase/sql`.
 4. Confirm Authentication has users for Robbie and Lyubov.
 5. Confirm `business_users` gives Robbie R&L access and Lyubov Just Kleen access.
+6. In Authentication -> URL Configuration, add your final Vercel URL to allowed redirect URLs.
+
+The reset-password redirect must be allowed too. After Vercel gives you the production URL, add both of these:
+
+```text
+https://your-vercel-domain.vercel.app
+https://your-vercel-domain.vercel.app/reset-password
+```
+
+Keep the local reset URL while testing on your computer:
+
+```text
+http://localhost:3000/reset-password
+```
 
 Use this order for current SQL:
 

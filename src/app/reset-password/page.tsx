@@ -12,6 +12,8 @@ import { supabase } from "../lib/supabase";
 
 function ResetPasswordPageContent() {
   const searchParams = useSearchParams();
+  const businessSlug =
+    searchParams.get("business") ?? "rnl-creations";
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -142,7 +144,7 @@ function ResetPasswordPageContent() {
             )}
 
             <Link
-              href="/login"
+              href={`/login?business=${businessSlug}`}
               className="text-sm font-semibold text-orange-400 transition hover:text-orange-300"
             >
               Back to login

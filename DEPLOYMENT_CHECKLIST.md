@@ -13,6 +13,7 @@ This runs lint and the production build.
 ## Supabase
 
 - Confirm Supabase Auth works for Robbie and Lyubov.
+- Confirm Supabase Authentication URL Configuration includes the live Vercel URL and `/reset-password` redirect URL.
 - Confirm `business_users` has the correct business memberships.
 - Confirm `business_id` exists and is populated on business-owned records.
 - Run needed SQL from `supabase/sql` in order.
