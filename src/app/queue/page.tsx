@@ -37,6 +37,15 @@ function normalizeStatus(value: string | null) {
   return (value || "Pending Estimate").trim().toLowerCase();
 }
 
+function propertyKey(value: string | null | undefined) {
+  return (value || "")
+    .trim()
+    .toLowerCase()
+    .replaceAll("&", "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 function statusLabel(value: string) {
   return value
     .split(" ")
@@ -114,6 +123,7 @@ function daysUntil(value: string | null) {
 function queueHref(
   businessSlug: string,
   options?: {
+    property?: string;
     q?: string;
     status?: string;
     view?: string;
@@ -122,6 +132,10 @@ function queueHref(
   const params = new URLSearchParams({
     business: businessSlug,
   });
+
+  if (options?.property && options.property !== "all") {
+    params.set("property", options.property);
+  }
 
   if (options?.q) {
     params.set("q", options.q);
@@ -174,6 +188,7 @@ export default async function QueuePage({
 }: {
   searchParams?: Promise<{
     business?: string;
+    property?: string;
     q?: string;
     status?: string;
     view?: string;
@@ -181,12 +196,17 @@ export default async function QueuePage({
 }) {
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const businessSlug = resolvedSearchParams.business ?? "rnl-creations";
+  const propertyFilter =
+    resolvedSearchParams.property?.trim().toLowerCase() ?? "all";
   const searchTerm = resolvedSearchParams.q?.trim() ?? "";
   const statusFilter =
     resolvedSearchParams.status?.trim().toLowerCase() ?? "all";
   const viewFilter =
     resolvedSearchParams.view?.trim().toLowerCase() ?? "all";
-  const businessQuery = `?business=${businessSlug}`;
+  const businessQuery =
+    propertyFilter === "all"
+      ? `?business=${businessSlug}`
+      : `?business=${businessSlug}&property=${propertyFilter}`;
   const activeView = viewCopy(viewFilter);
 
   const { data: businessData, error: businessError } = await supabase
@@ -237,11 +257,27 @@ export default async function QueuePage({
     linkedEstimates.map((estimate) => [estimate.id, estimate])
   );
 
+  const propertyScopedQueueItems = queueItems.filter((item) => {
+    if (propertyFilter === "all") {
+      return true;
+    }
+
+    return propertyKey(item.property) === propertyFilter;
+  });
+  const activePropertyLabel =
+    propertyFilter === "all"
+      ? "all properties"
+      : propertyScopedQueueItems[0]?.property ?? "selected property";
+
   const statuses = Array.from(
-    new Set(queueItems.map((item) => normalizeStatus(item.status)))
+    new Set(
+      propertyScopedQueueItems.map((item) =>
+        normalizeStatus(item.status)
+      )
+    )
   ).sort((first, second) => first.localeCompare(second));
 
-  const statusCounts = queueItems.reduce(
+  const statusCounts = propertyScopedQueueItems.reduce(
     (counts, item) => {
       const status = normalizeStatus(item.status);
       counts.set(status, (counts.get(status) ?? 0) + 1);
@@ -250,11 +286,16 @@ export default async function QueuePage({
     new Map<string, number>()
   );
 
-  const readySoonCount = queueItems.filter(isReadySoonUnscheduled).length;
-  const remediationCount = queueItems.filter(isRemediationItem).length;
-  const needsEstimateCount = queueItems.filter(needsEstimate).length;
+  const readySoonCount = propertyScopedQueueItems.filter(
+    isReadySoonUnscheduled
+  ).length;
+  const remediationCount = propertyScopedQueueItems.filter(
+    isRemediationItem
+  ).length;
+  const needsEstimateCount =
+    propertyScopedQueueItems.filter(needsEstimate).length;
 
-  const filteredQueueItems = queueItems.filter((item) => {
+  const filteredQueueItems = propertyScopedQueueItems.filter((item) => {
     if (
       statusFilter !== "all" &&
       normalizeStatus(item.status) !== statusFilter
@@ -301,7 +342,7 @@ export default async function QueuePage({
     {
       label: "All",
       value: "all",
-      count: queueItems.length,
+      count: propertyScopedQueueItems.length,
     },
     ...statuses.map((status) => ({
       label: statusLabel(status),
@@ -314,7 +355,7 @@ export default async function QueuePage({
     {
       label: "All Work",
       value: "all",
-      count: queueItems.length,
+      count: propertyScopedQueueItems.length,
     },
     {
       label: "Ready Soon",
@@ -346,7 +387,10 @@ export default async function QueuePage({
 
             <p className="mt-3 text-zinc-400">
               Showing queue items for{" "}
-              {selectedBusiness?.name ?? "selected business"}.
+              {selectedBusiness?.name ?? "selected business"}
+              {propertyFilter === "all"
+                ? "."
+                : ` / ${activePropertyLabel}.`}
             </p>
           </div>
 
@@ -361,6 +405,13 @@ export default async function QueuePage({
             className="grid gap-4 md:grid-cols-[1fr_auto]"
           >
             <input type="hidden" name="business" value={businessSlug} />
+            {propertyFilter !== "all" ? (
+              <input
+                type="hidden"
+                name="property"
+                value={propertyFilter}
+              />
+            ) : null}
 
             {statusFilter !== "all" ? (
               <input type="hidden" name="status" value={statusFilter} />
@@ -403,6 +454,7 @@ export default async function QueuePage({
               key={filter.value}
               href={queueHref(businessSlug, {
                 q: searchTerm,
+                property: propertyFilter,
                 status: statusFilter,
                 view: filter.value,
               })}
@@ -432,6 +484,7 @@ export default async function QueuePage({
               key={filter.value}
               href={queueHref(businessSlug, {
                 q: searchTerm,
+                property: propertyFilter,
                 status: filter.value,
                 view: viewFilter,
               })}
@@ -468,17 +521,18 @@ export default async function QueuePage({
             </div>
 
             <p className="text-sm text-zinc-400">
-              Showing {filteredQueueItems.length} of {queueItems.length}{" "}
+              Showing {filteredQueueItems.length} of{" "}
+              {propertyScopedQueueItems.length}{" "}
               queue items.
             </p>
           </div>
         </Card>
 
         <div className="grid gap-6">
-          {queueItems.length === 0 ? (
+          {propertyScopedQueueItems.length === 0 ? (
             <Card>
               <p className="text-zinc-400">
-                No queue items for this business yet.
+                No queue items for this property yet.
               </p>
             </Card>
           ) : filteredQueueItems.length === 0 ? (

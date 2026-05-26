@@ -17,7 +17,7 @@ type Business = {
 };
 
 const propertyOptions = [
-  "North Creek",
+  "North Creek Apartments",
   "Evergreen Apartments",
   "Global S",
 ];
@@ -43,16 +43,46 @@ const flooringOptions = [
   "Vinyl",
 ];
 
+function propertyKey(value: string) {
+  return value
+    .toLowerCase()
+    .replaceAll("&", "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function propertyFromParam(value: string | null) {
+  if (!value) {
+    return "";
+  }
+
+  return (
+    propertyOptions.find(
+      (option) => propertyKey(option) === value
+    ) ?? ""
+  );
+}
+
+function unitListFromText(value: string) {
+  return value
+    .split(/[\n,]+/g)
+    .map((unit) => unit.trim())
+    .filter(Boolean);
+}
+
 function NewRequestPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const businessSlug = searchParams.get("business") ?? "rnl-creations";
+  const propertyParam = searchParams.get("property");
 
   const [business, setBusiness] = useState<Business | null>(null);
 
-  const [property, setProperty] = useState("");
-  const [unit, setUnit] = useState("");
+  const [property, setProperty] = useState(
+    propertyFromParam(propertyParam)
+  );
+  const [unitsText, setUnitsText] = useState("");
   const [paintType, setPaintType] = useState("");
   const [flooring, setFlooring] = useState("");
   const [priority, setPriority] = useState("Normal");
@@ -105,10 +135,12 @@ function NewRequestPageContent() {
       return;
     }
 
-    if (!property || !unit || !paintType || !flooring) {
+    const units = unitListFromText(unitsText);
+
+    if (!property || units.length === 0 || !paintType || !flooring) {
       setToast({
         type: "error",
-        message: "Please fill out property, unit, paint type, and flooring.",
+        message: "Please fill out property, at least one unit, paint type, and flooring.",
       });
 
       return;
@@ -117,27 +149,42 @@ function NewRequestPageContent() {
     try {
       setIsSaving(true);
 
-      await createQueueItem({
-        property,
-        unit,
-        paintType,
-        flooring,
-        priority,
-        smokedIn,
-        moveOutDate,
-        readyDate,
-        scheduledDate: "",
-        completedDate: "",
-        notes,
-        businessId: business.id,
-      });
+      await Promise.all(
+        units.map((unit) =>
+          createQueueItem({
+            property,
+            unit,
+            paintType,
+            flooring,
+            priority,
+            smokedIn,
+            moveOutDate,
+            readyDate,
+            scheduledDate: "",
+            completedDate: "",
+            notes,
+            businessId: business.id,
+          })
+        )
+      );
 
       setToast({
         type: "success",
-        message: "Queue item created successfully.",
+        message:
+          units.length === 1
+            ? "Queue item created successfully."
+            : `${units.length} queue items created successfully.`,
       });
 
-      router.push(`/queue?business=${business.slug}`);
+      const queueParams = new URLSearchParams({
+        business: business.slug,
+      });
+
+      if (propertyParam) {
+        queueParams.set("property", propertyParam);
+      }
+
+      router.push(`/queue?${queueParams.toString()}`);
       router.refresh();
     } catch (error) {
       const message =
@@ -190,11 +237,23 @@ function NewRequestPageContent() {
             />
 
             <InputField
-              label="Unit"
-              placeholder="Example: U6"
-              value={unit}
-              onChange={setUnit}
+              label="Units"
+              placeholder="Example: B12, B210, C04 or one unit per line"
+              value={unitsText}
+              onChange={setUnitsText}
             />
+
+            <div className="rounded-2xl border border-blue-500/30 bg-blue-500/10 px-4 py-3">
+              <p className="font-semibold text-blue-100">
+                Add one unit or several at once
+              </p>
+
+              <p className="mt-1 text-sm leading-6 text-blue-100/75">
+                Separate units with commas or new lines. Trimax will create one
+                queue item per unit while copying the same dates, paint,
+                flooring, priority, and notes.
+              </p>
+            </div>
 
             <InputField
               label="Paint Type"
@@ -288,8 +347,8 @@ function NewRequestPageContent() {
               />
             </div>
 
-            <Button onClick={handleSubmit}>
-              {isSaving ? "Saving..." : "Create Queue Item"}
+            <Button onClick={handleSubmit} disabled={isSaving}>
+              {isSaving ? "Saving..." : "Create Queue Item(s)"}
             </Button>
 
             <datalist id="property-options">

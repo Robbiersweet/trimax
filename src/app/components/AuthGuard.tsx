@@ -9,6 +9,11 @@ import {
 import { supabase } from "../lib/supabase";
 import { canAccessPath } from "../lib/rolePermissions";
 import {
+  allowedPropertiesForBusiness,
+  canAccessProperty,
+  loadPropertyAccess,
+} from "../lib/propertyAccess";
+import {
   canAccessWorkspace,
   loadWorkspaceAccess,
   preferredWorkspaceSlug,
@@ -23,6 +28,20 @@ function withBusinessParam(
   businessSlug: string
 ) {
   return `${pathname}?business=${businessSlug}`;
+}
+
+function withSearchParam(
+  pathname: string,
+  searchParams: URLSearchParams,
+  key: string,
+  value: string
+) {
+  const nextParams = new URLSearchParams(
+    searchParams.toString()
+  );
+  nextParams.set(key, value);
+
+  return `${pathname}?${nextParams.toString()}`;
 }
 
 function isPublicAuthPath(pathname: string) {
@@ -134,6 +153,42 @@ export default function AuthGuard({
           `/?business=${selectedBusiness}`
         );
         return;
+      }
+
+      if (
+        currentRole === "property_manager" &&
+        (pathname.startsWith("/queue") ||
+          pathname.startsWith("/reports") ||
+          pathname.startsWith("/new-request"))
+      ) {
+        const propertyAccess =
+          await loadPropertyAccess();
+        const allowedProperties =
+          allowedPropertiesForBusiness(
+            propertyAccess,
+            selectedBusiness
+          );
+        const requestedProperty =
+          searchParams.get("property");
+
+        if (
+          allowedProperties.length > 0 &&
+          !canAccessProperty(
+            propertyAccess,
+            selectedBusiness,
+            requestedProperty
+          )
+        ) {
+          router.replace(
+            withSearchParam(
+              pathname,
+              searchParams,
+              "property",
+              allowedProperties[0].propertyKey
+            )
+          );
+          return;
+        }
       }
 
       setLoading(false);

@@ -85,6 +85,15 @@ function normalizeStatus(value: string | null) {
   return (value || "Pending Estimate").trim();
 }
 
+function propertyKey(value: string | null | undefined) {
+  return (value || "")
+    .trim()
+    .toLowerCase()
+    .replaceAll("&", "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 function dateValue(value: string | null) {
   if (!value) {
     return null;
@@ -175,7 +184,7 @@ function includesProperty(item: QueueItem, propertyFilter: string) {
     return true;
   }
 
-  return (item.property || "").toLowerCase() === propertyFilter;
+  return propertyKey(item.property) === propertyFilter;
 }
 
 function countBy<T>(
@@ -329,6 +338,10 @@ export default async function ReportsPage({
     invoices = (invoiceResponse.data ?? []) as Invoice[];
   }
 
+  queueItems = queueItems.filter((item) =>
+    includesProperty(item, propertyFilter)
+  );
+
   const properties = Array.from(
     new Set(
       queueItems
@@ -441,7 +454,7 @@ export default async function ReportsPage({
     propertyFilter === "all"
       ? "All Properties"
       : properties.find(
-          (property) => property.toLowerCase() === propertyFilter
+          (property) => propertyKey(property) === propertyFilter
         ) ?? "Selected Property";
   const queuePropertySearch =
     propertyFilter === "all" ? undefined : propertyLabel;
@@ -543,7 +556,7 @@ export default async function ReportsPage({
                   <Link
                     key={property}
                     href={reportsHref(businessSlug, {
-                      property: property.toLowerCase(),
+                      property: propertyKey(property),
                       range,
                       from: customStartDate,
                       to: customEndDate,
