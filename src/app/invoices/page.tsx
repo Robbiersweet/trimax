@@ -954,14 +954,32 @@ export default async function InvoicesPage({
 
         {invoicesWithSplitInfo.length === 0 ? (
           <Card>
-            <p className="text-zinc-400">
-              No invoices found for this view.
-            </p>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-semibold text-white">
+                  No invoices are showing in this view.
+                </p>
+
+                <p className="mt-2 text-sm leading-6 text-zinc-400">
+                  Create a new invoice directly, or convert an approved
+                  estimate when you want the estimate details to carry forward.
+                </p>
+              </div>
+
+              <Link href={`/invoices/new${businessQuery}`}>
+                <Button>New Invoice</Button>
+              </Link>
+            </div>
           </Card>
         ) : filteredInvoices.length === 0 ? (
           <Card>
-            <p className="text-zinc-400">
+            <p className="font-semibold text-white">
               No invoices match those filters.
+            </p>
+
+            <p className="mt-2 text-sm leading-6 text-zinc-400">
+              Clear the search or switch back to All and All Statuses to see
+              every invoice in this workspace.
             </p>
           </Card>
         ) : (

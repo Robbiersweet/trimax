@@ -401,14 +401,32 @@ export default async function ClientsPage({
 
         {clients.length === 0 ? (
           <Card>
-            <p className="text-zinc-400">
-              No clients yet.
-            </p>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-semibold text-white">
+                  No clients have been added yet.
+                </p>
+
+                <p className="mt-2 text-sm leading-6 text-zinc-400">
+                  Add a client once, then reuse that customer on estimates,
+                  invoices, payments, and reports for this workspace.
+                </p>
+              </div>
+
+              <Link href={`/clients/new${businessQuery}`}>
+                <Button>New Client</Button>
+              </Link>
+            </div>
           </Card>
         ) : filteredClients.length === 0 ? (
           <Card>
-            <p className="text-zinc-400">
+            <p className="font-semibold text-white">
               No clients match that search.
+            </p>
+
+            <p className="mt-2 text-sm leading-6 text-zinc-400">
+              Try a shorter search, or clear the search to return to the full
+              client list.
             </p>
           </Card>
         ) : (

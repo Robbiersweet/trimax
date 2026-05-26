@@ -239,14 +239,32 @@ export default async function EstimatesPage({
 
         {estimates.length === 0 ? (
           <Card>
-            <p className="text-zinc-400">
-              No estimates for this business yet.
-            </p>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-semibold text-white">
+                  No estimates have been created yet.
+                </p>
+
+                <p className="mt-2 text-sm leading-6 text-zinc-400">
+                  Start an estimate from here, or create one from a queue item
+                  when apartment turn details should carry forward.
+                </p>
+              </div>
+
+              <Link href={`/estimates/new${businessQuery}`}>
+                <Button>New Estimate</Button>
+              </Link>
+            </div>
           </Card>
         ) : filteredEstimates.length === 0 ? (
           <Card>
-            <p className="text-zinc-400">
+            <p className="font-semibold text-white">
               No estimates match those filters.
+            </p>
+
+            <p className="mt-2 text-sm leading-6 text-zinc-400">
+              Clear the search or switch back to All to see every estimate in
+              this workspace.
             </p>
           </Card>
         ) : (
