@@ -177,6 +177,30 @@ export default async function ClientsPage({
 
     return searchableText.includes(searchTerm.toLowerCase());
   });
+  const totalOpenBalance = clients.reduce(
+    (total, client) =>
+      total + (clientSummaries[client.id]?.openBalance ?? 0),
+    0
+  );
+  const clientsWithOpenBalances = clients.filter(
+    (client) => (clientSummaries[client.id]?.openBalance ?? 0) > 0
+  ).length;
+  const activeEstimateTotal = clients.reduce(
+    (total, client) =>
+      total + (clientSummaries[client.id]?.activeEstimates ?? 0),
+    0
+  );
+  const recentlyActiveClients = [...clients]
+    .sort((first, second) => {
+      const firstSummary = clientSummaries[first.id];
+      const secondSummary = clientSummaries[second.id];
+
+      return (
+        (secondSummary?.openBalance ?? 0) -
+        (firstSummary?.openBalance ?? 0)
+      );
+    })
+    .slice(0, 3);
 
   return (
     <AppShell>
@@ -207,6 +231,135 @@ export default async function ClientsPage({
             </Button>
           </Link>
         </div>
+
+        <Card className="border-blue-500/20 bg-blue-500/5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-sm uppercase tracking-[0.3em] text-blue-300">
+                Client Snapshot
+              </p>
+
+              <h2 className="mt-2 text-2xl font-bold">
+                Client info at your fingertips
+              </h2>
+
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+                A FreshBooks-inspired overview, tuned for Trimax: see who has
+                open balances, who has active estimates, and which clients are
+                ready for the next operations step.
+              </p>
+            </div>
+
+            <Link href={`/clients/new${businessQuery}`}>
+              <Button>New Client</Button>
+            </Link>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
+              <p className="text-sm text-zinc-400">
+                Total Outstanding
+              </p>
+
+              <p className="mt-2 text-3xl font-black text-white">
+                {formatMoney(totalOpenBalance)}
+              </p>
+
+              <p className="mt-1 text-sm text-zinc-500">
+                Across open client invoices.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4">
+              <p className="text-sm text-orange-100/80">
+                Clients With Balances
+              </p>
+
+              <p className="mt-2 text-3xl font-black text-orange-100">
+                {clientsWithOpenBalances}
+              </p>
+
+              <p className="mt-1 text-sm text-orange-100/60">
+                Good targets for payment follow-up.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+              <p className="text-sm text-emerald-100/80">
+                Active Estimates
+              </p>
+
+              <p className="mt-2 text-3xl font-black text-emerald-100">
+                {activeEstimateTotal}
+              </p>
+
+              <p className="mt-1 text-sm text-emerald-100/60">
+                Work still in proposal stage.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="text-xl font-bold">
+                Recently active
+              </h2>
+
+              <p className="text-sm text-zinc-400">
+                {clients.length} total client{clients.length === 1 ? "" : "s"}
+              </p>
+            </div>
+
+            <div className="mt-3 grid gap-3 md:grid-cols-4">
+              <Link
+                href={`/clients/new${businessQuery}`}
+                className="flex min-h-36 flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-700 bg-zinc-950/60 p-4 text-center transition hover:border-orange-400 hover:text-orange-300"
+              >
+                <span className="text-3xl font-light text-orange-400">
+                  +
+                </span>
+
+                <span className="mt-2 font-bold">
+                  New Client
+                </span>
+              </Link>
+
+              {recentlyActiveClients.map((client) => (
+                <Link
+                  key={client.id}
+                  href={`/clients/${client.id}${businessQuery}`}
+                  className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 transition hover:border-orange-500/60 hover:bg-zinc-900"
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-purple-400/40 bg-purple-500/10 text-sm font-black text-purple-200">
+                      {client.name.slice(0, 2).toUpperCase()}
+                    </span>
+
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-white">
+                        {client.name}
+                      </p>
+
+                      <p className="mt-1 truncate text-sm text-zinc-400">
+                        {client.contact_name || "No contact"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="mt-4 text-sm text-zinc-400">
+                    Open balance
+                  </p>
+
+                  <p className="mt-1 text-lg font-black text-orange-300">
+                    {formatMoney(
+                      clientSummaries[client.id]?.openBalance ?? 0
+                    )}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </Card>
 
         <Card>
           <form
@@ -260,6 +413,23 @@ export default async function ClientsPage({
           </Card>
         ) : (
           <div className="grid gap-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
+                  All Clients
+                </p>
+
+                <h2 className="mt-2 text-2xl font-bold">
+                  Client list
+                </h2>
+              </div>
+
+              <p className="text-sm text-zinc-400">
+                Showing {filteredClients.length} of {clients.length} client
+                {clients.length === 1 ? "" : "s"}.
+              </p>
+            </div>
+
             {filteredClients.map((client) => (
               <Card
                 key={client.id}
