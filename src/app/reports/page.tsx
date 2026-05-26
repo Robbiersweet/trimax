@@ -24,6 +24,9 @@ type QueueItem = {
   scheduled_date: string | null;
   completed_date: string | null;
   smoked_in: boolean | null;
+  prior_renovation: boolean | null;
+  prior_renovation_details: string | null;
+  renovation_needed: boolean | null;
   notes: string | null;
   created_at: string | null;
 };
@@ -472,6 +475,12 @@ export default async function ReportsPage({
       flooring.includes("floor")
     );
   });
+  const renovationNeededUnits = filteredQueueItems.filter(
+    (item) => item.renovation_needed
+  );
+  const priorRenovationUnits = filteredQueueItems.filter(
+    (item) => item.prior_renovation || item.prior_renovation_details
+  );
 
   const propertyLabel =
     propertyFilter === "all"
@@ -521,6 +530,10 @@ export default async function ReportsPage({
   const flooringBreakdown = countBy(
     filteredQueueItems,
     (item) => item.flooring
+  );
+  const renovationBreakdown = countBy(
+    priorRenovationUnits,
+    (item) => item.prior_renovation_details || "Prior Renovation"
   );
   const unitHistory = filteredQueueItems.slice(0, 12);
 
@@ -720,7 +733,7 @@ export default async function ReportsPage({
           />
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
           <MetricCard
             label="Ready Soon, Not Scheduled"
             value={approachingReadyUnscheduled.length}
@@ -748,6 +761,20 @@ export default async function ReportsPage({
             value={flooringUnits.length}
             href={queueHref(businessSlug, {
               q: flooringQueueSearch,
+            })}
+          />
+          <MetricCard
+            label="Renovation Needed"
+            value={renovationNeededUnits.length}
+            href={queueHref(businessSlug, {
+              q: "renovation needed",
+            })}
+          />
+          <MetricCard
+            label="Prior Renovation"
+            value={priorRenovationUnits.length}
+            href={queueHref(businessSlug, {
+              q: "prior renovation",
             })}
           />
         </div>
@@ -810,6 +837,52 @@ export default async function ReportsPage({
           <BreakdownCard title="Flooring Type" items={flooringBreakdown} />
         </div>
 
+        <div className="grid gap-4 lg:grid-cols-2">
+          <BreakdownCard
+            title="Prior Renovation History"
+            items={renovationBreakdown}
+          />
+
+          <Card className="border-orange-500/20 bg-gradient-to-br from-orange-500/5 via-zinc-950 to-emerald-500/5">
+            <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
+              Renovation Watch
+            </p>
+
+            <h2 className="mt-3 text-2xl font-bold">
+              Units that may need renovation
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-zinc-400">
+              Units marked during queue intake appear here so they can be
+              reviewed before estimate creation.
+            </p>
+
+            <div className="mt-4 space-y-3">
+              {renovationNeededUnits.slice(0, 5).map((item) => (
+                <Link
+                  key={item.id}
+                  href={`/queue/${item.id}?business=${businessSlug}`}
+                  className="block rounded-2xl border border-orange-500/20 bg-black/20 px-4 py-3 transition hover:border-orange-500/40"
+                >
+                  <p className="font-semibold">
+                    {item.property || "Property"} - Unit {item.unit || "-"}
+                  </p>
+                  <p className="mt-1 text-sm text-zinc-400">
+                    {item.prior_renovation_details ||
+                      "No prior renovation detail saved."}
+                  </p>
+                </Link>
+              ))}
+
+              {renovationNeededUnits.length === 0 ? (
+                <p className="rounded-2xl border border-zinc-800 bg-black/20 p-4 text-sm text-zinc-400">
+                  No matching units are marked as needing renovation.
+                </p>
+              ) : null}
+            </div>
+          </Card>
+        </div>
+
         <Card>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -865,6 +938,16 @@ export default async function ReportsPage({
                       Paint: {item.paint_type || "-"} / Flooring:{" "}
                       {item.flooring || "-"}
                     </p>
+                    {item.renovation_needed ||
+                    item.prior_renovation_details ? (
+                      <p className="mt-2 text-sm text-emerald-300">
+                        Renovation:{" "}
+                        {item.renovation_needed ? "Needed" : "Prior"}
+                        {item.prior_renovation_details
+                          ? ` / ${item.prior_renovation_details}`
+                          : ""}
+                      </p>
+                    ) : null}
                   </div>
 
                   <div className="grid gap-2 text-sm text-zinc-300 sm:grid-cols-3 md:text-right">

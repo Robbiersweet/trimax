@@ -63,6 +63,9 @@ type QueueItem = {
   ready_date: string | null;
   notes: string | null;
   smoked_in: boolean | null;
+  prior_renovation: boolean | null;
+  prior_renovation_details: string | null;
+  renovation_needed: boolean | null;
 };
 
 function formatCurrency(amount: number) {
@@ -189,6 +192,65 @@ function findPrimerService(serviceItems: ServiceItem[]) {
       );
     }) ?? null
   );
+}
+
+function findRenovationService(serviceItems: ServiceItem[]) {
+  return (
+    serviceItems.find((serviceItem) => {
+      const serviceText = normalizeMatchText(
+        [
+          serviceItem.category,
+          serviceItem.name,
+          serviceItem.description,
+        ]
+          .filter(Boolean)
+          .join(" ")
+      );
+
+      return (
+        serviceText.includes("renovation and cabinet paint") ||
+        serviceText.includes("renovation cabinet paint") ||
+        (serviceText.includes("renovation") &&
+          serviceText.includes("cabinet"))
+      );
+    }) ?? null
+  );
+}
+
+async function ensureRenovationService(
+  businessId: string,
+  serviceItems: ServiceItem[]
+) {
+  const existingService = findRenovationService(serviceItems);
+
+  if (existingService) {
+    return existingService;
+  }
+
+  const { data, error } = await supabase
+    .from("service_items")
+    .insert({
+      business_id: businessId,
+      name: "Renovation and Cabinet Paint",
+      description: "Renovation and Cabinet Paint",
+      default_quantity: 1,
+      default_unit_price: 0,
+      category: "Renovation",
+      is_active: true,
+    })
+    .select(
+      "id, name, description, default_quantity, default_unit_price, category"
+    )
+    .single();
+
+  if (error || !data) {
+    if (error) {
+      console.warn("Renovation service could not be created:", error.message);
+    }
+    return null;
+  }
+
+  return data as ServiceItem;
 }
 
 function serviceToLineItem(serviceItem: ServiceItem): LineItem {
@@ -494,6 +556,17 @@ function NewEstimatePageContent() {
       const primerService = loadedQueueItem.smoked_in
         ? findPrimerService(serviceItems)
         : null;
+      const renovationService = loadedQueueItem.renovation_needed
+        ? await ensureRenovationService(business.id, serviceItems)
+        : null;
+      if (
+        renovationService &&
+        !serviceItems.some(
+          (serviceItem) => serviceItem.id === renovationService.id
+        )
+      ) {
+        setServiceItems((currentItems) => [...currentItems, renovationService]);
+      }
       const lineDescription =
         matchingService?.description ||
         matchingService?.name ||
@@ -521,6 +594,29 @@ function NewEstimatePageContent() {
             : {
                 serviceItemId: "",
                 description: "Full Primer",
+                quantity: "1",
+                unitPrice: "",
+              }
+        );
+      }
+
+      if (
+        loadedQueueItem.renovation_needed &&
+        !startingLineItems.some((item) => {
+          const description = normalizeMatchText(item.description);
+
+          return (
+            description.includes("renovation") &&
+            description.includes("cabinet")
+          );
+        })
+      ) {
+        startingLineItems.push(
+          renovationService
+            ? serviceToLineItem(renovationService)
+            : {
+                serviceItemId: "",
+                description: "Renovation and Cabinet Paint",
                 quantity: "1",
                 unitPrice: "",
               }
@@ -928,7 +1024,8 @@ function NewEstimatePageContent() {
               Trimax copied the property, unit, paint type, flooring, reference,
               notes, matching client address, tax suggestion, and saved service
               when available. Smoker/remediation units also add Full Primer
-              automatically. Review pricing and adjust any details before
+              automatically. Units marked for renovation also add Renovation
+              and Cabinet Paint for pricing review. Adjust any details before
               saving.
             </p>
           </Card>

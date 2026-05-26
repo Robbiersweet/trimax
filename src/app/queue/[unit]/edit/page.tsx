@@ -62,6 +62,10 @@ export default function EditQueueItemPage() {
   const [paintType, setPaintType] = useState("");
   const [flooring, setFlooring] = useState("");
   const [smokedIn, setSmokedIn] = useState(false);
+  const [priorRenovation, setPriorRenovation] = useState(false);
+  const [priorRenovationDetails, setPriorRenovationDetails] =
+    useState("");
+  const [renovationNeeded, setRenovationNeeded] = useState(false);
   const [moveOutDate, setMoveOutDate] = useState("");
   const [readyDate, setReadyDate] = useState("");
   const [scheduledDate, setScheduledDate] =
@@ -98,6 +102,9 @@ export default function EditQueueItemPage() {
       setPaintType(data.paint_type ?? "");
       setFlooring(data.flooring ?? "");
       setSmokedIn(Boolean(data.smoked_in));
+      setPriorRenovation(Boolean(data.prior_renovation));
+      setPriorRenovationDetails(data.prior_renovation_details ?? "");
+      setRenovationNeeded(Boolean(data.renovation_needed));
       setMoveOutDate(data.move_out_date ?? "");
       setReadyDate(data.ready_date ?? "");
       setScheduledDate(data.scheduled_date ?? "");
@@ -121,6 +128,10 @@ export default function EditQueueItemPage() {
         paint_type: paintType,
         flooring,
         smoked_in: smokedIn,
+        prior_renovation: priorRenovation,
+        prior_renovation_details:
+          priorRenovationDetails.trim() || null,
+        renovation_needed: renovationNeeded,
         move_out_date: moveOutDate || null,
         ready_date: readyDate || null,
         scheduled_date: scheduledDate || null,
@@ -219,6 +230,69 @@ export default function EditQueueItemPage() {
               onChange={setFlooring}
               list="edit-flooring-options"
             />
+
+            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+              <p className="text-sm uppercase tracking-[0.25em] text-emerald-300">
+                Renovation History
+              </p>
+
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <label className="flex items-start gap-3 rounded-2xl border border-zinc-700 bg-zinc-950/70 p-4">
+                  <input
+                    type="checkbox"
+                    checked={priorRenovation}
+                    onChange={(event) => {
+                      setPriorRenovation(event.target.checked);
+
+                      if (!event.target.checked) {
+                        setPriorRenovationDetails("");
+                      }
+                    }}
+                    className="mt-1 h-5 w-5 accent-orange-500"
+                  />
+
+                  <span>
+                    <span className="block font-semibold text-zinc-100">
+                      Prior renovation
+                    </span>
+                    <span className="mt-1 block text-sm leading-6 text-zinc-400">
+                      Keep the past renovation style tied to this unit.
+                    </span>
+                  </span>
+                </label>
+
+                <label className="flex items-start gap-3 rounded-2xl border border-zinc-700 bg-zinc-950/70 p-4">
+                  <input
+                    type="checkbox"
+                    checked={renovationNeeded}
+                    onChange={(event) =>
+                      setRenovationNeeded(event.target.checked)
+                    }
+                    className="mt-1 h-5 w-5 accent-orange-500"
+                  />
+
+                  <span>
+                    <span className="block font-semibold text-zinc-100">
+                      Renovation needed
+                    </span>
+                    <span className="mt-1 block text-sm leading-6 text-zinc-400">
+                      Queue-to-estimate can add renovation work.
+                    </span>
+                  </span>
+                </label>
+              </div>
+
+              {priorRenovation ? (
+                <div className="mt-4">
+                  <InputField
+                    label="Prior Renovation Details"
+                    placeholder="Example: Previous Priderock Reno"
+                    value={priorRenovationDetails}
+                    onChange={setPriorRenovationDetails}
+                  />
+                </div>
+              ) : null}
+            </div>
 
             <label className="flex items-center gap-4 rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3">
               <input

@@ -26,6 +26,9 @@ type SupabaseQueueItem = {
   scheduled_date: string | null;
   completed_date: string | null;
   smoked_in: boolean | null;
+  prior_renovation: boolean | null;
+  prior_renovation_details: string | null;
+  renovation_needed: boolean | null;
   notes: string | null;
   linked_estimate_id: string | null;
 };
@@ -200,6 +203,10 @@ export default async function QueueDetailPage({
       item.flooring ? `Flooring: ${item.flooring}` : null,
       item.priority ? `Priority: ${item.priority}` : null,
       item.ready_date ? `Ready date: ${item.ready_date}` : null,
+      item.prior_renovation_details
+        ? `Prior renovation: ${item.prior_renovation_details}`
+        : null,
+      item.renovation_needed ? "Renovation needed: Yes" : null,
       item.notes ? `Notes: ${item.notes}` : null,
     ]
       .filter(Boolean)
@@ -257,6 +264,19 @@ export default async function QueueDetailPage({
               item.smoked_in
                 ? "This is counted in smoker/remediation reporting."
                 : "No remediation flag is set."
+            }
+          />
+
+          <AttentionCard
+            tone={item.renovation_needed ? "orange" : "zinc"}
+            label="Renovation"
+            value={item.renovation_needed ? "Needed" : "Not Flagged"}
+            detail={
+              item.renovation_needed
+                ? "Estimate creation will include renovation and cabinet paint."
+                : item.prior_renovation || item.prior_renovation_details
+                  ? "Prior renovation history is saved for this unit."
+                  : "No renovation flag is set."
             }
           />
         </div>
@@ -335,6 +355,22 @@ export default async function QueueDetailPage({
             <Info label="Priority" value={item.priority ?? ""} />
             <Info label="Paint Type" value={item.paint_type ?? ""} />
             <Info label="Flooring" value={item.flooring ?? ""} />
+            <Info
+              label="Prior Renovation"
+              value={
+                item.prior_renovation || item.prior_renovation_details
+                  ? "Yes"
+                  : "No"
+              }
+            />
+            <Info
+              label="Prior Renovation Details"
+              value={item.prior_renovation_details ?? ""}
+            />
+            <Info
+              label="Renovation Needed"
+              value={item.renovation_needed ? "Yes" : "No"}
+            />
             <Info label="Move Out Date" value={item.move_out_date ?? ""} />
             <Info label="Ready Date" value={item.ready_date ?? ""} />
             <Info label="Scheduled Date" value={item.scheduled_date ?? ""} />

@@ -9,6 +9,9 @@ export type QueueItem = {
   readyDate: string;
   flooring: string;
   smokedIn: boolean;
+  priorRenovation?: boolean;
+  priorRenovationDetails?: string;
+  renovationNeeded?: boolean;
   priority: string;
   notes: string;
 };

@@ -16,6 +16,12 @@ type Business = {
   slug: string;
 };
 
+type RenovationMemory = {
+  prior_renovation: boolean | null;
+  prior_renovation_details: string | null;
+  renovation_needed: boolean | null;
+};
+
 const rnlPropertyOptions = [
   "North Creek Apartments",
   "Evergreen Apartments",
@@ -143,6 +149,12 @@ function NewRequestPageContent() {
   const [flooring, setFlooring] = useState("");
   const [priority, setPriority] = useState("Normal");
   const [smokedIn, setSmokedIn] = useState(false);
+  const [priorRenovation, setPriorRenovation] = useState(false);
+  const [priorRenovationDetails, setPriorRenovationDetails] =
+    useState("");
+  const [renovationNeeded, setRenovationNeeded] = useState(false);
+  const [renovationMemoryMessage, setRenovationMemoryMessage] =
+    useState("");
   const [moveOutDate, setMoveOutDate] = useState("");
   const [readyDate, setReadyDate] = useState("");
   const [notes, setNotes] = useState("");
@@ -178,6 +190,56 @@ function NewRequestPageContent() {
 
     loadBusiness();
   }, [businessSlug]);
+
+  useEffect(() => {
+    async function loadRenovationMemory() {
+      if (!business || isJustKleen || !property.trim()) {
+        setRenovationMemoryMessage("");
+        return;
+      }
+
+      const units = unitListFromText(unitsText);
+
+      if (units.length !== 1) {
+        setRenovationMemoryMessage("");
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("queue_items")
+        .select(
+          "prior_renovation, prior_renovation_details, renovation_needed"
+        )
+        .eq("business_id", business.id)
+        .eq("property", property)
+        .eq("unit", units[0])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error || !data) {
+        if (error) {
+          console.warn("Renovation memory lookup failed:", error.message);
+        }
+        setRenovationMemoryMessage("");
+        return;
+      }
+
+      const memory = data as RenovationMemory;
+      const hasPriorRenovation =
+        Boolean(memory.prior_renovation) ||
+        Boolean(memory.prior_renovation_details);
+
+      setPriorRenovation(hasPriorRenovation);
+      setPriorRenovationDetails(memory.prior_renovation_details ?? "");
+      setRenovationNeeded(Boolean(memory.renovation_needed));
+      setRenovationMemoryMessage(
+        "Loaded previous renovation notes for this unit."
+      );
+    }
+
+    loadRenovationMemory();
+  }, [business, isJustKleen, property, unitsText]);
 
   async function handleSubmit() {
     setToast(null);
@@ -216,6 +278,9 @@ function NewRequestPageContent() {
             flooring,
             priority,
             smokedIn,
+            priorRenovation,
+            priorRenovationDetails,
+            renovationNeeded,
             moveOutDate,
             readyDate,
             scheduledDate: "",
@@ -354,6 +419,89 @@ function NewRequestPageContent() {
               onChange={setFlooring}
               list="flooring-options"
             />
+
+            {!isJustKleen ? (
+              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                <p className="text-sm uppercase tracking-[0.25em] text-emerald-300">
+                  Renovation History
+                </p>
+
+                <h2 className="mt-2 text-xl font-bold text-zinc-100">
+                  Prior renovation
+                </h2>
+
+                <p className="mt-2 text-sm leading-6 text-zinc-300">
+                  Track whether this unit was renovated before and by which
+                  prior property management style. When one unit is entered,
+                  Trimax will reuse the latest saved details for that same
+                  property and unit.
+                </p>
+
+                {renovationMemoryMessage ? (
+                  <p className="mt-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/15 px-4 py-3 text-sm font-semibold text-emerald-100">
+                    {renovationMemoryMessage}
+                  </p>
+                ) : null}
+
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <label className="flex items-start gap-3 rounded-2xl border border-zinc-700 bg-zinc-950/70 p-4">
+                    <input
+                      type="checkbox"
+                      checked={priorRenovation}
+                      onChange={(event) => {
+                        setPriorRenovation(event.target.checked);
+
+                        if (!event.target.checked) {
+                          setPriorRenovationDetails("");
+                        }
+                      }}
+                      className="mt-1 h-5 w-5 accent-orange-500"
+                    />
+
+                    <span>
+                      <span className="block font-semibold text-zinc-100">
+                        This unit had a prior renovation
+                      </span>
+                      <span className="mt-1 block text-sm leading-6 text-zinc-400">
+                        Example: Previous Priderock Reno.
+                      </span>
+                    </span>
+                  </label>
+
+                  <label className="flex items-start gap-3 rounded-2xl border border-zinc-700 bg-zinc-950/70 p-4">
+                    <input
+                      type="checkbox"
+                      checked={renovationNeeded}
+                      onChange={(event) =>
+                        setRenovationNeeded(event.target.checked)
+                      }
+                      className="mt-1 h-5 w-5 accent-orange-500"
+                    />
+
+                    <span>
+                      <span className="block font-semibold text-zinc-100">
+                        This unit may need renovation
+                      </span>
+                      <span className="mt-1 block text-sm leading-6 text-zinc-400">
+                        Adds a renovation and cabinet paint line when creating
+                        the estimate.
+                      </span>
+                    </span>
+                  </label>
+                </div>
+
+                {priorRenovation ? (
+                  <div className="mt-4">
+                    <InputField
+                      label="Prior Renovation Details"
+                      placeholder="Example: Previous Priderock Reno"
+                      value={priorRenovationDetails}
+                      onChange={setPriorRenovationDetails}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
 
             <div className="grid gap-5 md:grid-cols-2">
               <div>

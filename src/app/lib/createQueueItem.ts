@@ -8,6 +8,9 @@ type CreateQueueItemInput = {
   flooring: string;
   priority: string;
   smokedIn: boolean;
+  priorRenovation: boolean;
+  priorRenovationDetails: string;
+  renovationNeeded: boolean;
   moveOutDate: string;
   readyDate: string;
   scheduledDate: string;
@@ -35,6 +38,10 @@ export async function createQueueItem(input: CreateQueueItemInput) {
         flooring: input.flooring,
         priority: input.priority,
         smoked_in: input.smokedIn,
+        prior_renovation: input.priorRenovation,
+        prior_renovation_details:
+          input.priorRenovationDetails.trim() || null,
+        renovation_needed: input.renovationNeeded,
         move_out_date: normalizeDate(input.moveOutDate),
         ready_date: normalizeDate(input.readyDate),
         scheduled_date: normalizeDate(input.scheduledDate),
@@ -64,6 +71,9 @@ export async function createQueueItem(input: CreateQueueItemInput) {
       unit: input.unit,
       paintType: input.paintType,
       flooring: input.flooring,
+      priorRenovation: input.priorRenovation,
+      priorRenovationDetails: input.priorRenovationDetails,
+      renovationNeeded: input.renovationNeeded,
       readyDate: input.readyDate,
     },
   });

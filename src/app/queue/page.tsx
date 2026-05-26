@@ -24,6 +24,9 @@ type QueueItemWithEstimate = {
   scheduled_date: string | null;
   completed_date: string | null;
   smoked_in: boolean | null;
+  prior_renovation: boolean | null;
+  prior_renovation_details: string | null;
+  renovation_needed: boolean | null;
   notes: string | null;
   linked_estimate_id: string | null;
 };
@@ -336,6 +339,9 @@ export default async function QueuePage({
       item.ready_date,
       item.scheduled_date,
       item.completed_date,
+      item.prior_renovation_details,
+      item.renovation_needed ? "renovation needed" : "",
+      item.prior_renovation ? "prior renovation" : "",
       item.notes,
     ]
       .join(" ")
@@ -642,6 +648,19 @@ export default async function QueuePage({
                             Needs Estimate
                           </span>
                         ) : null}
+
+                        {item.renovation_needed ? (
+                          <span className="rounded-full bg-orange-500/20 px-3 py-1 text-sm font-semibold text-orange-200">
+                            Renovation Needed
+                          </span>
+                        ) : null}
+
+                        {item.prior_renovation ||
+                        item.prior_renovation_details ? (
+                          <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-sm font-semibold text-emerald-200">
+                            Prior Renovation
+                          </span>
+                        ) : null}
                       </div>
 
                       <p className="mt-2 text-zinc-400">
@@ -674,6 +693,18 @@ export default async function QueuePage({
                       <div className="mt-5 grid gap-4 text-sm text-zinc-300 md:grid-cols-2">
                         <Info label="Paint Type" value={item.paint_type} />
                         <Info label="Flooring" value={item.flooring} />
+                        <Info
+                          label="Renovation"
+                          value={
+                            item.renovation_needed
+                              ? "Needed"
+                              : item.prior_renovation_details
+                                ? item.prior_renovation_details
+                                : item.prior_renovation
+                                  ? "Prior renovation"
+                                  : null
+                          }
+                        />
                         <Info
                           label="Completed Date"
                           value={item.completed_date}
