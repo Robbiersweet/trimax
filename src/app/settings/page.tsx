@@ -12,6 +12,7 @@ import {
   WorkspaceRole,
   normalizeWorkspaceRole,
 } from "../lib/rolePermissions";
+import { propertyKey } from "../lib/propertyAccess";
 import { loadWorkspaceAccess } from "../lib/workspaceAccess";
 
 type Business = {
@@ -27,6 +28,20 @@ type BusinessUser = {
   user_id: string | null;
   email: string;
   role: string;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+type PropertyUser = {
+  id: string;
+  business_id: string;
+  user_id: string | null;
+  email: string;
+  property_name: string;
+  role: string;
+  can_create_queue_items: boolean;
+  can_update_queue_items: boolean;
+  can_view_reports: boolean;
   created_at: string | null;
   updated_at: string | null;
 };
@@ -113,6 +128,8 @@ function BusinessSettingsPageContent() {
     useState<Business | null>(null);
   const [businessUsers, setBusinessUsers] =
     useState<BusinessUser[]>([]);
+  const [propertyUsers, setPropertyUsers] =
+    useState<PropertyUser[]>([]);
   const [currentEmail, setCurrentEmail] =
     useState<string | null>(null);
   const [currentRole, setCurrentRole] =
@@ -123,11 +140,27 @@ function BusinessSettingsPageContent() {
     useState("");
   const [inviteRole, setInviteRole] =
     useState<WorkspaceRole>("member");
+  const [propertyInviteEmail, setPropertyInviteEmail] =
+    useState("");
+  const [propertyInviteName, setPropertyInviteName] =
+    useState("North Creek Apartments");
+  const [propertyInviteRole, setPropertyInviteRole] =
+    useState("property_manager");
+  const [propertyCanCreate, setPropertyCanCreate] =
+    useState(true);
+  const [propertyCanUpdate, setPropertyCanUpdate] =
+    useState(true);
+  const [propertyCanReports, setPropertyCanReports] =
+    useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingInvite, setSavingInvite] =
     useState(false);
+  const [savingPropertyInvite, setSavingPropertyInvite] =
+    useState(false);
   const [updatingUserId, setUpdatingUserId] =
+    useState<string | null>(null);
+  const [updatingPropertyUserId, setUpdatingPropertyUserId] =
     useState<string | null>(null);
 
   const [toast, setToast] = useState<{
@@ -212,6 +245,28 @@ function BusinessSettingsPageContent() {
     } else {
       setBusinessUsers(
         (userRows ?? []) as BusinessUser[]
+      );
+    }
+
+    const {
+      data: propertyRows,
+      error: propertyUsersError,
+    } = await supabase
+      .from("property_users")
+      .select("*")
+      .eq("business_id", selectedBusiness.id)
+      .order("property_name", { ascending: true })
+      .order("created_at", { ascending: true });
+
+    if (propertyUsersError) {
+      console.warn(
+        "Property team table is not ready yet.",
+        propertyUsersError
+      );
+      setPropertyUsers([]);
+    } else {
+      setPropertyUsers(
+        (propertyRows ?? []) as PropertyUser[]
       );
     }
 
@@ -360,6 +415,132 @@ function BusinessSettingsPageContent() {
       type: "success",
       message:
         "Workspace invite saved. Create the Supabase Auth user with the same email when you are ready.",
+    });
+  }
+
+  async function handleAddPropertyUser() {
+    setToast(null);
+
+    if (!business || !canManageUsers) {
+      return;
+    }
+
+    const email = propertyInviteEmail.trim().toLowerCase();
+    const propertyName = propertyInviteName.trim();
+
+    if (!email || !email.includes("@")) {
+      setToast({
+        type: "error",
+        message:
+          "Enter the email address for this property team member.",
+      });
+      return;
+    }
+
+    if (!propertyName) {
+      setToast({
+        type: "error",
+        message: "Enter the property name for this portal access.",
+      });
+      return;
+    }
+
+    setSavingPropertyInvite(true);
+
+    const { error: workspaceError } = await supabase
+      .from("business_users")
+      .upsert(
+        {
+          business_id: business.id,
+          user_id: null,
+          email,
+          role: "property_manager",
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: "business_id,email",
+        }
+      );
+
+    const { error: propertyError } = await supabase
+      .from("property_users")
+      .upsert(
+        {
+          business_id: business.id,
+          user_id: null,
+          email,
+          property_name: propertyName,
+          role: propertyInviteRole,
+          can_create_queue_items: propertyCanCreate,
+          can_update_queue_items: propertyCanUpdate,
+          can_view_reports: propertyCanReports,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: "business_id,email,property_name",
+        }
+      );
+
+    setSavingPropertyInvite(false);
+
+    if (workspaceError || propertyError) {
+      console.error(workspaceError ?? propertyError);
+
+      setToast({
+        type: "error",
+        message:
+          "Unable to save this property team member. Make sure the property-users SQL has been run.",
+      });
+      return;
+    }
+
+    setPropertyInviteEmail("");
+    setPropertyInviteRole("property_manager");
+    setPropertyCanCreate(true);
+    setPropertyCanUpdate(true);
+    setPropertyCanReports(true);
+
+    await loadSettings();
+
+    setToast({
+      type: "success",
+      message:
+        "Property portal access saved. This user is limited to the selected property tools.",
+    });
+  }
+
+  async function handleRemovePropertyUser(
+    userRow: PropertyUser
+  ) {
+    if (!canManageUsers) {
+      return;
+    }
+
+    setToast(null);
+    setUpdatingPropertyUserId(userRow.id);
+
+    const { error } = await supabase
+      .from("property_users")
+      .delete()
+      .eq("id", userRow.id);
+
+    setUpdatingPropertyUserId(null);
+
+    if (error) {
+      console.error(error);
+      setToast({
+        type: "error",
+        message:
+          "Unable to remove this property team member.",
+      });
+      return;
+    }
+
+    await loadSettings();
+
+    setToast({
+      type: "success",
+      message: "Property portal access removed.",
     });
   }
 
@@ -736,6 +917,226 @@ function BusinessSettingsPageContent() {
                     </div>
                   </div>
                 ) : null}
+
+                <div className="grid gap-4 rounded-2xl border border-blue-500/30 bg-blue-500/5 p-5">
+                  <div>
+                    <p className="text-sm uppercase tracking-[0.3em] text-blue-300">
+                      Property Portal Access
+                    </p>
+
+                    <h3 className="mt-2 text-xl font-semibold">
+                      Property team members
+                    </h3>
+
+                    <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+                      Use this for Diana, Alana, Allen, or future property staff.
+                      Trimax will keep them in queue and reports for their
+                      property instead of opening the full business workspace.
+                    </p>
+                  </div>
+
+                  {propertyUsers.length === 0 ? (
+                    <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-sm text-zinc-400">
+                      No property team access has been added yet.
+                    </div>
+                  ) : (
+                    <div className="overflow-hidden rounded-2xl border border-zinc-800">
+                      <div className="hidden grid-cols-[1.2fr_1fr_1fr_auto] gap-4 border-b border-zinc-800 bg-zinc-950 px-4 py-3 text-sm font-semibold text-zinc-400 md:grid">
+                        <span>Email</span>
+                        <span>Property</span>
+                        <span>Access</span>
+                        <span className="text-right">Actions</span>
+                      </div>
+
+                      <div className="divide-y divide-zinc-800">
+                        {propertyUsers.map((userRow) => (
+                          <div
+                            key={userRow.id}
+                            className="grid gap-4 px-4 py-4 md:grid-cols-[1.2fr_1fr_1fr_auto] md:items-center"
+                          >
+                            <div>
+                              <p className="break-all font-semibold text-white">
+                                {userRow.email}
+                              </p>
+
+                              <p className="mt-1 text-sm text-zinc-500">
+                                {userRow.role.replaceAll("_", " ")}
+                              </p>
+                            </div>
+
+                            <div>
+                              <p className="font-semibold">
+                                {userRow.property_name}
+                              </p>
+
+                              <p className="mt-1 text-xs text-zinc-500">
+                                {propertyKey(userRow.property_name)}
+                              </p>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 text-xs">
+                              {userRow.can_create_queue_items ? (
+                                <span className="rounded-full bg-green-500/10 px-3 py-1 text-green-300">
+                                  Add queue
+                                </span>
+                              ) : null}
+
+                              {userRow.can_update_queue_items ? (
+                                <span className="rounded-full bg-orange-500/10 px-3 py-1 text-orange-300">
+                                  Update queue
+                                </span>
+                              ) : null}
+
+                              {userRow.can_view_reports ? (
+                                <span className="rounded-full bg-blue-500/10 px-3 py-1 text-blue-300">
+                                  Reports
+                                </span>
+                              ) : null}
+                            </div>
+
+                            <div className="flex justify-start md:justify-end">
+                              {canManageUsers ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleRemovePropertyUser(userRow)
+                                  }
+                                  disabled={
+                                    updatingPropertyUserId === userRow.id
+                                  }
+                                  className="rounded-2xl bg-zinc-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40"
+                                >
+                                  Remove
+                                </button>
+                              ) : (
+                                <span className="text-sm text-zinc-500">
+                                  View only
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {canManageUsers ? (
+                    <div className="grid gap-4 rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
+                      <h3 className="text-lg font-semibold">
+                        Add Property Team Member
+                      </h3>
+
+                      <div className="grid gap-4 lg:grid-cols-[1fr_1fr_220px] lg:items-end">
+                        <InputField
+                          label="Email"
+                          type="email"
+                          placeholder="diana@example.com"
+                          value={propertyInviteEmail}
+                          onChange={setPropertyInviteEmail}
+                        />
+
+                        <InputField
+                          label="Property"
+                          placeholder="North Creek Apartments"
+                          value={propertyInviteName}
+                          onChange={setPropertyInviteName}
+                        />
+
+                        <div>
+                          <label className="mb-2 block text-sm text-zinc-400">
+                            Portal Role
+                          </label>
+
+                          <select
+                            value={propertyInviteRole}
+                            onChange={(event) =>
+                              setPropertyInviteRole(event.target.value)
+                            }
+                            className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+                          >
+                            <option value="property_manager">
+                              Property Manager
+                            </option>
+                            <option value="assistant_manager">
+                              Assistant Manager
+                            </option>
+                            <option value="maintenance_manager">
+                              Maintenance Manager
+                            </option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 md:grid-cols-3">
+                        <label className="flex items-start gap-3 rounded-2xl border border-zinc-800 bg-black/20 p-4">
+                          <input
+                            type="checkbox"
+                            checked={propertyCanCreate}
+                            onChange={(event) =>
+                              setPropertyCanCreate(event.target.checked)
+                            }
+                            className="mt-1 h-4 w-4 accent-orange-500"
+                          />
+                          <span>
+                            <span className="block font-semibold">
+                              Add queue items
+                            </span>
+                            <span className="text-sm text-zinc-400">
+                              Let them submit units.
+                            </span>
+                          </span>
+                        </label>
+
+                        <label className="flex items-start gap-3 rounded-2xl border border-zinc-800 bg-black/20 p-4">
+                          <input
+                            type="checkbox"
+                            checked={propertyCanUpdate}
+                            onChange={(event) =>
+                              setPropertyCanUpdate(event.target.checked)
+                            }
+                            className="mt-1 h-4 w-4 accent-orange-500"
+                          />
+                          <span>
+                            <span className="block font-semibold">
+                              Update queue
+                            </span>
+                            <span className="text-sm text-zinc-400">
+                              Let them help maintain status info.
+                            </span>
+                          </span>
+                        </label>
+
+                        <label className="flex items-start gap-3 rounded-2xl border border-zinc-800 bg-black/20 p-4">
+                          <input
+                            type="checkbox"
+                            checked={propertyCanReports}
+                            onChange={(event) =>
+                              setPropertyCanReports(event.target.checked)
+                            }
+                            className="mt-1 h-4 w-4 accent-orange-500"
+                          />
+                          <span>
+                            <span className="block font-semibold">
+                              View reports
+                            </span>
+                            <span className="text-sm text-zinc-400">
+                              Show property-level reports only.
+                            </span>
+                          </span>
+                        </label>
+                      </div>
+
+                      <Button
+                        onClick={handleAddPropertyUser}
+                        disabled={savingPropertyInvite}
+                      >
+                        {savingPropertyInvite
+                          ? "Saving..."
+                          : "Add Property Access"}
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
 
                 <div className="grid gap-3 md:grid-cols-2">
                   {roleOptions.map((role) => (
