@@ -311,41 +311,32 @@ html.theme-light .dashboard-feature-card .border-zinc-700 {
 }
 
 html.theme-light .dashboard-action-card {
-  background:
-    radial-gradient(circle at 12% 0%, rgba(249, 115, 22, 0.18), transparent 28%),
-    linear-gradient(135deg, #ffffff 0%, #f8fafc 52%, #eef6ff 100%) !important;
-  color: #111827 !important;
+  background-color: #0b1220 !important;
+  color: #f8fafc !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 18px 42px rgba(15, 23, 42, 0.08) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 18px 45px rgba(15, 23, 42, 0.16) !important;
 }
 
 html.theme-light .dashboard-action-overlay {
   background:
-    radial-gradient(circle at 18% 0%, rgba(255, 255, 255, 0.72), transparent 34%),
-    radial-gradient(circle at 88% 100%, rgba(59, 130, 246, 0.1), transparent 28%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(15, 23, 42, 0.06) 80%) !important;
-  opacity: 1 !important;
+    radial-gradient(circle at 15% 0%, rgba(255, 255, 255, 0.16), transparent 32%),
+    radial-gradient(circle at 85% 100%, rgba(255, 255, 255, 0.08), transparent 24%),
+    linear-gradient(135deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.74) 72%) !important;
+  opacity: 0.95 !important;
 }
 
 html.theme-light .dashboard-action-card .dashboard-action-title {
-  color: #111827 !important;
+  color: #f8fafc !important;
 }
 
 html.theme-light .dashboard-action-card .dashboard-action-subtitle,
 html.theme-light .dashboard-action-card .dashboard-action-arrow {
-  color: #475569 !important;
-}
-
-html.theme-light .dashboard-action-card .dashboard-action-pill,
-html.theme-light .dashboard-action-card .dashboard-action-glyph {
-  background-color: rgba(255, 255, 255, 0.68) !important;
-  color: #334155 !important;
-  border-color: rgba(148, 163, 184, 0.42) !important;
+  color: rgba(255, 255, 255, 0.76) !important;
 }
 
 html.theme-light .dashboard-action-card:hover .dashboard-action-arrow {
-  color: #ea580c !important;
+  color: #ffffff !important;
 }
 
 html.theme-light .outlook-setup-panel {
