@@ -487,8 +487,14 @@ export default async function ActivityPage({
           </Card>
         ) : logs.length === 0 ? (
           <Card>
-            <p className="text-zinc-400">
+            <p className="font-semibold text-white">
               No activity has been recorded for this business yet.
+            </p>
+
+            <p className="mt-2 text-sm leading-6 text-zinc-400">
+              If you have already created queue items, estimates, invoices, or
+              payments, run the activity_logs SQL in Supabase so Trimax can
+              save future activity entries.
             </p>
           </Card>
         ) : filteredLogs.length === 0 ? (
