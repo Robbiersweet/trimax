@@ -1096,7 +1096,7 @@ export default async function InvoicesPage({
                       {amountDue > 0 ? (
                         <Link
                           href={`/payments?${paymentParams.toString()}`}
-                          className="rounded-full border border-green-500/40 bg-green-500/10 px-4 py-2 text-sm font-semibold text-green-200 transition hover:border-green-300 hover:bg-green-500/20"
+                          className="payment-action-button rounded-full border px-4 py-2 text-sm font-semibold transition"
                         >
                           Record Payment
                         </Link>

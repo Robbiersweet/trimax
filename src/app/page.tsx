@@ -1869,7 +1869,7 @@ export default async function DashboardPage({
                           {amountDue > 0 ? (
                             <Link
                               href={`/payments?${paymentParams.toString()}`}
-                              className="dashboard-payment-action rounded-full border border-green-500/40 bg-green-500/10 px-4 py-2 text-sm font-semibold text-green-200 transition hover:border-green-300 hover:bg-green-500/20"
+                              className="payment-action-button dashboard-payment-action rounded-full border px-4 py-2 text-sm font-semibold transition"
                             >
                               Record Payment
                             </Link>
