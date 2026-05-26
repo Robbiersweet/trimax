@@ -473,8 +473,35 @@ function NewRequestPageContent() {
 
 export default function NewRequestPage() {
   return (
-    <Suspense fallback={<div>Loading request form...</div>}>
+    <Suspense fallback={<NewRequestLoading />}>
       <NewRequestPageContent />
     </Suspense>
+  );
+}
+
+function NewRequestLoading() {
+  return (
+    <AppShell>
+      <div className="space-y-6">
+        <div>
+          <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
+            Trimax
+          </p>
+          <h1 className="mt-3 text-5xl font-bold">New Work Request</h1>
+          <p className="mt-3 text-zinc-400">
+            Preparing the intake form for this workspace.
+          </p>
+        </div>
+
+        <Card className="border-orange-500/20 bg-gradient-to-br from-orange-500/10 via-zinc-900 to-sky-500/10">
+          <div className="h-3 w-40 rounded-full bg-orange-500/40" />
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
+            <div className="h-24 rounded-2xl bg-zinc-950/70" />
+            <div className="h-24 rounded-2xl bg-zinc-950/70" />
+            <div className="h-24 rounded-2xl bg-zinc-950/70" />
+          </div>
+        </Card>
+      </div>
+    </AppShell>
   );
 }

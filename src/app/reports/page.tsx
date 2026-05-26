@@ -829,9 +829,21 @@ export default async function ReportsPage({
 
           <div className="mt-5 overflow-hidden rounded-2xl border border-zinc-800">
             {unitHistory.length === 0 ? (
-              <p className="p-5 text-zinc-400">
-                No queue records match this report view yet.
-              </p>
+              <div className="p-5">
+                <p className="font-semibold">
+                  No property records match this report view yet.
+                </p>
+                <p className="mt-2 text-sm leading-6 text-zinc-400">
+                  Try a wider date range, switch the property filter, or open
+                  the queue to add the next unit turn.
+                </p>
+                <Link
+                  href={`/queue?business=${businessSlug}`}
+                  className="mt-4 inline-flex rounded-full bg-orange-500 px-4 py-2 text-sm font-bold text-black transition hover:bg-orange-400"
+                >
+                  Open Queue
+                </Link>
+              </div>
             ) : (
               unitHistory.map((item) => (
                 <Link
@@ -958,7 +970,12 @@ function BreakdownCard({
 
       <div className="mt-4 space-y-3">
         {items.length === 0 ? (
-          <p className="text-sm text-zinc-400">No data yet.</p>
+          <div className="rounded-2xl border border-orange-500/20 bg-black/20 p-4">
+            <p className="text-sm font-semibold">Waiting for report data.</p>
+            <p className="mt-2 text-sm leading-6 text-zinc-400">
+              Matching queue records will fill this section automatically.
+            </p>
+          </div>
         ) : (
           items.slice(0, 6).map((item) => (
             <div

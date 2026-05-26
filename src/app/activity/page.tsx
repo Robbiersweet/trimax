@@ -493,13 +493,28 @@ export default async function ActivityPage({
         ) : logs.length === 0 ? (
           <Card>
             <p className="font-semibold text-white">
-              No activity has been recorded for this business yet.
+              No activity has been recorded for this workspace yet.
             </p>
 
             <p className="mt-2 text-sm leading-6 text-zinc-400">
               New queue, estimate, invoice, payment, and split actions will
               appear here after activity tracking is fully connected.
             </p>
+
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Link
+                href={`/queue?business=${businessSlug}`}
+                className="rounded-full bg-orange-500 px-4 py-2 text-sm font-bold text-black transition hover:bg-orange-400"
+              >
+                Open Queue
+              </Link>
+              <Link
+                href={`/invoices?business=${businessSlug}`}
+                className="rounded-full border border-zinc-700 px-4 py-2 text-sm font-bold text-zinc-200 transition hover:border-orange-400 hover:text-orange-300"
+              >
+                Open Invoices
+              </Link>
+            </div>
           </Card>
         ) : filteredLogs.length === 0 ? (
           <Card>
@@ -508,6 +523,17 @@ export default async function ActivityPage({
             <p className="mt-2 text-sm leading-6 text-zinc-400">
               Try a different search term or switch back to All.
             </p>
+
+            <Link
+              href={activityFilterHref({
+                businessSlug,
+                filter: "all",
+                searchTerm: "",
+              })}
+              className="mt-5 inline-flex rounded-full bg-orange-500 px-4 py-2 text-sm font-bold text-black transition hover:bg-orange-400"
+            >
+              Show All Activity
+            </Link>
           </Card>
         ) : (
           <div className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900">

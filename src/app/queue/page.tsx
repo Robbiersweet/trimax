@@ -548,16 +548,47 @@ export default async function QueuePage({
 
         <div className="grid gap-6">
           {propertyScopedQueueItems.length === 0 ? (
-            <Card>
-              <p className="text-zinc-400">
-                No queue items for this property yet.
-              </p>
+            <Card className="border-orange-500/20 bg-gradient-to-br from-orange-500/10 via-zinc-900 to-sky-500/10">
+              <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
+                    Ready For Intake
+                  </p>
+                  <h2 className="mt-2 text-2xl font-bold">
+                    Start this property queue
+                  </h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-300">
+                    Add the first unit when a property manager sends a turn,
+                    repair request, or scheduling note. Trimax will keep the
+                    work tied to this workspace and property.
+                  </p>
+                </div>
+
+                <Link href={`/new-request${businessQuery}`}>
+                  <Button>+ New Queue Item</Button>
+                </Link>
+              </div>
             </Card>
           ) : filteredQueueItems.length === 0 ? (
-            <Card>
-              <p className="text-zinc-400">
-                No queue items match those filters.
-              </p>
+            <Card className="border-sky-500/20 bg-gradient-to-br from-sky-500/10 via-zinc-900 to-orange-500/5">
+              <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-sm uppercase tracking-[0.3em] text-sky-300">
+                    Nothing In This View
+                  </p>
+                  <h2 className="mt-2 text-2xl font-bold">
+                    No queue items match these filters
+                  </h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-300">
+                    Try clearing the search or switching back to All Work to
+                    see the full property queue.
+                  </p>
+                </div>
+
+                <Link href={`/queue${businessQuery}`}>
+                  <Button variant="secondary">Clear Filters</Button>
+                </Link>
+              </div>
             </Card>
           ) : (
             filteredQueueItems.map((item) => {

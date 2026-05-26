@@ -846,9 +846,16 @@ export default async function PaymentsPage({
             </div>
 
             {paymentLogs.length === 0 ? (
-              <p className="mt-5 text-sm leading-6 text-zinc-400">
-                No batch payments have been logged yet.
-              </p>
+              <div className="mt-5 rounded-2xl border border-green-500/20 bg-green-500/10 p-4">
+                <p className="font-semibold text-green-200">
+                  Batch payment history will appear here.
+                </p>
+                <p className="mt-2 text-sm leading-6 text-zinc-300">
+                  After you apply one check across multiple invoices, Trimax
+                  will record the payment reference, customer, amount, and time
+                  here for quick review.
+                </p>
+              </div>
             ) : (
               <div className="mt-5 space-y-3">
                 {paymentLogs.map((log) => (
