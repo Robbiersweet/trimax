@@ -4,6 +4,10 @@ Run these scripts in the Supabase SQL editor when the app needs the matching dat
 
 The current scripts are development-friendly. Before a public SaaS launch, tighten RLS so users can only read/write rows for workspaces and properties they are allowed to access.
 
+Supabase may warn that a setup query includes destructive operations. For these Trimax scripts, that warning is expected when a script recreates policies or triggers with `drop policy if exists` or `drop trigger if exists`. Those statements replace database rules; they do not delete business records.
+
+Do not run SQL that includes `drop table`, `delete from`, or `truncate` unless you are intentionally removing data.
+
 ## Recommended Order
 
 1. `2026-05-24-business-users.sql`

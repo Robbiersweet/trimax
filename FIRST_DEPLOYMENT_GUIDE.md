@@ -60,6 +60,32 @@ Use this order for current SQL:
 
 If a script has already been run successfully, do not worry. Most current scripts are written to be safe to re-run, but ask Codex before re-running anything that looks destructive.
 
+Supabase may show a warning that says the query includes destructive operations. That can be normal for Trimax setup scripts because several scripts use `drop policy if exists` or `drop trigger if exists` before recreating the latest version. These do not delete your invoices, clients, queue items, or business data.
+
+Safe warning examples:
+
+```text
+drop policy if exists
+drop trigger if exists
+create policy
+create trigger
+add column if not exists
+```
+
+Stop and ask before running SQL that contains:
+
+```text
+drop table
+delete from
+truncate
+```
+
+After a successful setup script, Supabase usually says:
+
+```text
+Success. No rows returned
+```
+
 ## Step 3: Push To GitHub
 
 In VS Code Source Control or Terminal:
