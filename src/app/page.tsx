@@ -108,52 +108,107 @@ function VisualMoneyBar({
 }) {
   const toneStyles = {
     orange: {
-      bar: "from-orange-500 to-amber-300",
       dot: "bg-orange-400",
       panel: "border-orange-500/20 bg-orange-500/5",
       text: "text-orange-100",
+      ring: "#fb923c",
+      ringSoft: "rgba(251, 146, 60, 0.14)",
+      glow: "shadow-orange-500/20",
+      pulse: "from-orange-400 to-amber-200",
     },
     amber: {
-      bar: "from-amber-400 to-yellow-200",
       dot: "bg-amber-300",
       panel: "border-amber-500/20 bg-amber-500/5",
       text: "text-amber-100",
+      ring: "#fde047",
+      ringSoft: "rgba(253, 224, 71, 0.14)",
+      glow: "shadow-amber-500/20",
+      pulse: "from-amber-300 to-yellow-100",
     },
     rose: {
-      bar: "from-rose-400 to-pink-300",
       dot: "bg-rose-300",
       panel: "border-rose-500/20 bg-rose-500/5",
       text: "text-rose-100",
+      ring: "#f9a8d4",
+      ringSoft: "rgba(249, 168, 212, 0.14)",
+      glow: "shadow-rose-500/20",
+      pulse: "from-rose-300 to-pink-200",
     },
     emerald: {
-      bar: "from-emerald-400 to-teal-300",
       dot: "bg-emerald-300",
       panel: "border-emerald-500/20 bg-emerald-500/5",
       text: "text-emerald-100",
+      ring: "#6ee7b7",
+      ringSoft: "rgba(110, 231, 183, 0.14)",
+      glow: "shadow-emerald-500/20",
+      pulse: "from-emerald-300 to-teal-200",
     },
   }[tone];
-  const width = Math.max((value / max) * 100, value > 0 ? 8 : 0);
+  const percent = Math.min(
+    Math.max((value / Math.max(max, 1)) * 100, 0),
+    100
+  );
+  const displayPercent = Math.round(percent);
+  const activePulseCount = Math.max(
+    value > 0 ? 1 : 0,
+    Math.ceil(percent / 20)
+  );
 
   return (
-    <div className={`dashboard-feature-card dark-surface rounded-2xl border p-4 ${toneStyles.panel}`}>
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className={`h-3 w-3 rounded-full ${toneStyles.dot}`} />
-          <p className="truncate text-sm font-semibold text-slate-100">
-            {label}
-          </p>
+    <div
+      className={`dashboard-feature-card dark-surface relative overflow-hidden rounded-2xl border p-4 ${toneStyles.panel}`}
+    >
+      <span
+        aria-hidden="true"
+        className={`absolute -right-10 -top-10 h-28 w-28 rounded-full bg-gradient-to-br ${toneStyles.pulse} opacity-10 blur-2xl`}
+      />
+
+      <div className="relative flex items-center gap-4">
+        <div
+          className={`grid h-20 w-20 shrink-0 place-items-center rounded-full shadow-2xl ${toneStyles.glow}`}
+          style={{
+            background: `conic-gradient(${toneStyles.ring} ${percent}%, rgba(255,255,255,0.1) ${percent}% 100%)`,
+          }}
+        >
+          <div className="grid h-[4.4rem] w-[4.4rem] place-items-center rounded-full bg-zinc-950 text-center ring-1 ring-white/10">
+            <span className={`text-lg font-black ${toneStyles.text}`}>
+              {displayPercent}%
+            </span>
+          </div>
         </div>
 
-        <p className={`shrink-0 text-sm font-black ${toneStyles.text}`}>
-          {formatMoney(value)}
-        </p>
-      </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className={`h-3 w-3 rounded-full ${toneStyles.dot}`} />
+            <p className="truncate text-sm font-semibold text-slate-100">
+              {label}
+            </p>
+          </div>
 
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/55 ring-1 ring-white/10">
-        <div
-          className={`h-full rounded-full bg-gradient-to-r ${toneStyles.bar}`}
-          style={{ width: `${width}%` }}
-        />
+          <p className={`mt-2 text-xl font-black ${toneStyles.text}`}>
+            {formatMoney(value)}
+          </p>
+
+          <div className="mt-3 grid grid-cols-5 gap-1.5">
+            {[0, 1, 2, 3, 4].map((pulseIndex) => (
+              <span
+                key={pulseIndex}
+                aria-hidden="true"
+                className={`h-2 rounded-full ${
+                  pulseIndex < activePulseCount
+                    ? `bg-gradient-to-r ${toneStyles.pulse}`
+                    : "bg-white/10"
+                }`}
+                style={{
+                  boxShadow:
+                    pulseIndex < activePulseCount
+                      ? `0 0 16px ${toneStyles.ringSoft}`
+                      : undefined,
+                }}
+              />
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
