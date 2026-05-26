@@ -28,6 +28,11 @@ type Invoice = {
   split_count: number | null;
 };
 
+type BaseInvoice = Omit<
+  Invoice,
+  "split_parent_invoice_id" | "split_sequence" | "split_count"
+>;
+
 type InvoiceWithSplitInfo = Invoice & {
   split_children_count: number;
   split_parent_display_id: string | null;
@@ -148,14 +153,19 @@ export default async function InvoicesPage({
     .limit(1)
     .maybeSingle();
 
+  const businessLoadMessage = businessError
+    ? "Workspace details could not be loaded from Supabase."
+    : null;
+
   if (businessError) {
-    console.error(businessError);
+    console.warn("Workspace lookup failed:", businessError.message);
   }
 
   const selectedBusiness = businessData as Business | null;
 
   let invoices: Invoice[] = [];
   let invoicesWithSplitInfo: InvoiceWithSplitInfo[] = [];
+  let invoiceLoadMessage: string | null = businessLoadMessage;
 
   if (selectedBusiness?.id) {
     const { data, error } = await supabase
@@ -167,10 +177,35 @@ export default async function InvoicesPage({
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error(error);
-    }
+      console.warn("Invoice load with split metadata failed:", error.message);
 
-    invoices = (data ?? []) as Invoice[];
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from("invoices")
+        .select(
+          "id, display_id, customer_name, project_title, invoice_amount, amount_paid, status, due_date, updated_at, created_at"
+        )
+        .eq("business_id", selectedBusiness.id)
+        .order("created_at", { ascending: false });
+
+      if (fallbackError) {
+        console.warn("Invoice load failed:", fallbackError.message);
+        invoiceLoadMessage =
+          "Invoices could not be loaded from Supabase. Please check the invoices table setup and policies.";
+      } else {
+        invoiceLoadMessage =
+          "Invoices are shown without split-invoice grouping because the optional split metadata is not available yet.";
+        invoices = ((fallbackData ?? []) as BaseInvoice[]).map(
+          (invoice) => ({
+            ...invoice,
+            split_parent_invoice_id: null,
+            split_sequence: null,
+            split_count: null,
+          })
+        );
+      }
+    } else {
+      invoices = (data ?? []) as Invoice[];
+    }
 
     const invoiceById = new Map(
       invoices.map((invoice) => [invoice.id, invoice])
@@ -511,6 +546,18 @@ export default async function InvoicesPage({
             <Button>+ New Invoice</Button>
           </Link>
         </div>
+
+        {invoiceLoadMessage ? (
+          <Card className="border-amber-500/30 bg-amber-500/10">
+            <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">
+              Invoice notice
+            </p>
+
+            <p className="mt-2 text-sm leading-6 text-amber-950 dark:text-amber-100/80">
+              {invoiceLoadMessage}
+            </p>
+          </Card>
+        ) : null}
 
         <Card className="border-blue-500/20 bg-blue-500/5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
