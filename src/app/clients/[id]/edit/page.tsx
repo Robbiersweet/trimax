@@ -190,7 +190,7 @@ export default function EditClientPage() {
 
             <InputField
               label="Contact Name"
-              placeholder="Example: Diana Botero"
+              placeholder="Example: Property Manager"
               value={contactName}
               onChange={setContactName}
             />

@@ -134,6 +134,16 @@ export default function Navigation() {
       canAccessNavItem(role, link.key)
   );
   const activeLink = visibleNavLinks.find((link) => link.active);
+  const settingsSubLinks = [
+    {
+      label: "Outlook Integration",
+      href: `/settings?business=${business}#outlook-integration`,
+    },
+    {
+      label: "User Role Integration",
+      href: `/settings?business=${business}#user-role-integration`,
+    },
+  ];
 
   return (
     <nav className="mb-8 rounded-3xl border border-zinc-800 bg-zinc-900/80 px-4 py-4 shadow-lg sm:px-5 lg:sticky lg:top-5 lg:mb-0 lg:flex lg:h-[calc(100vh-2.5rem)] lg:w-72 lg:shrink-0 lg:flex-col lg:overflow-hidden lg:px-4 lg:py-5">
@@ -204,18 +214,42 @@ export default function Navigation() {
         }`}
       >
         {visibleNavLinks.map((link) => (
-          <Link
-            key={link.href}
-            href={link.href}
-            onClick={() => setIsMobileMenuOpen(false)}
-            className={`rounded-2xl px-3 py-2 text-center transition lg:text-left ${
-              link.active
-                ? "bg-orange-500 text-black shadow-lg shadow-orange-950/20"
-                : "hover:bg-zinc-800 hover:text-orange-400"
-            }`}
-          >
-            {link.label}
-          </Link>
+          <div key={link.href} className="grid gap-2">
+            <Link
+              href={link.href}
+              onClick={() => setIsMobileMenuOpen(false)}
+              className={`flex items-center justify-center rounded-2xl px-3 py-2 text-center transition lg:justify-between lg:text-left ${
+                link.active
+                  ? "bg-orange-500 text-black shadow-lg shadow-orange-950/20"
+                  : "hover:bg-zinc-800 hover:text-orange-400"
+              }`}
+            >
+              <span>{link.label}</span>
+              {link.key === "settings" ? (
+                <span
+                  aria-hidden="true"
+                  className="hidden text-sm lg:inline"
+                >
+                  {link.active ? "v" : ">"}
+                </span>
+              ) : null}
+            </Link>
+
+            {link.key === "settings" && link.active ? (
+              <div className="grid gap-1 pl-3 lg:pl-4">
+                {settingsSubLinks.map((subLink) => (
+                  <Link
+                    key={subLink.href}
+                    href={subLink.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="rounded-xl px-3 py-2 text-left text-xs font-semibold text-zinc-400 transition hover:bg-zinc-800 hover:text-orange-400"
+                  >
+                    {subLink.label}
+                  </Link>
+                ))}
+              </div>
+            ) : null}
+          </div>
         ))}
       </div>
 

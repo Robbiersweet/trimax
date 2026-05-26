@@ -240,8 +240,8 @@ export default function DashboardQuickActions({
             key={action.key}
             href={action.href}
             className={[
-              "dashboard-feature-card dark-surface group relative overflow-hidden rounded-2xl border p-4 transition",
-              "bg-zinc-950 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
+              "dashboard-feature-card dashboard-action-card dark-surface group relative min-h-40 overflow-hidden rounded-2xl border p-4 transition",
+              "bg-zinc-950 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:-translate-y-0.5 hover:shadow-2xl",
               tone.border,
               tone.background,
               tone.hover,
@@ -249,7 +249,7 @@ export default function DashboardQuickActions({
           >
             <span
               aria-hidden="true"
-              className="absolute inset-0 bg-[radial-gradient(circle_at_15%_0%,rgba(255,255,255,0.14),transparent_32%),linear-gradient(135deg,rgba(0,0,0,0.08),rgba(0,0,0,0.74)_72%)] opacity-95"
+              className="absolute inset-0 bg-[radial-gradient(circle_at_15%_0%,rgba(255,255,255,0.18),transparent_32%),radial-gradient(circle_at_85%_100%,rgba(255,255,255,0.08),transparent_24%),linear-gradient(135deg,rgba(0,0,0,0.08),rgba(0,0,0,0.74)_72%)] opacity-95"
             />
 
             <span
@@ -289,18 +289,18 @@ export default function DashboardQuickActions({
                 </span>
               </div>
 
-              <p className="mt-3 font-semibold text-white drop-shadow-sm">
+              <p className="dashboard-action-title mt-4 text-lg font-semibold text-white drop-shadow-sm">
                 {action.title}
               </p>
 
               <div className="mt-1 flex items-end justify-between gap-3">
-                <p className="text-sm text-white/75">
+                <p className="dashboard-action-subtitle text-sm leading-6 text-white/75">
                   {action.subtitle}
                 </p>
 
                 <span
                   aria-hidden="true"
-                  className="text-lg font-semibold text-white/75 transition group-hover:translate-x-0.5 group-hover:text-white"
+                  className="dashboard-action-arrow text-lg font-semibold text-white/75 transition group-hover:translate-x-0.5 group-hover:text-white"
                 >
                   &gt;
                 </span>

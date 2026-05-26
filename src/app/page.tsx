@@ -1142,7 +1142,7 @@ export default async function DashboardPage({
                   </p>
 
                   <span className="rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-orange-200">
-                    FreshBooks style
+                    Batch-ready workflow
                   </span>
                 </div>
 
@@ -1223,7 +1223,7 @@ export default async function DashboardPage({
                 </h2>
 
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
-                  A quick FreshBooks-style view of what is still unpaid and how
+                  A quick Trimax view of what is still unpaid and how
                   long it has been past due.
                 </p>
               </div>

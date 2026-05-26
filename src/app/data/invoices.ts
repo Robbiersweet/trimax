@@ -4,7 +4,7 @@ export const invoices: Invoice[] = [
   {
     id: "inv-001",
     displayId: "#301",
-    customer: "Diana",
+    customer: "North Creek Manager",
     project: "Cedar Fence Replacement",
     amount: "$11,000",
     status: "Deposit Requested",

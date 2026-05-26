@@ -164,7 +164,7 @@ export default async function EstimatesPage({
         </div>
 
         {estimateLoadMessage ? (
-          <Card className="border-amber-500/40 bg-amber-500/10">
+          <Card className="app-notice-card border-amber-500/40 bg-amber-500/10">
             <p className="text-sm font-semibold text-amber-200">
               Estimate notice
             </p>

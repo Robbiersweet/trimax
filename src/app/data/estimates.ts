@@ -15,7 +15,7 @@ export const estimates: Estimate[] = [
   {
     id: "est-002",
     displayId: "#228",
-    customer: "Diana",
+    customer: "North Creek Manager",
     project: "Cedar Fence Replacement",
     address: "Lake Stevens WA",
     amount: "$22,000",

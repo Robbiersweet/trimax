@@ -548,7 +548,7 @@ export default async function ReportsPage({
         </div>
 
         {reportLoadMessages.length > 0 ? (
-          <Card className="border-amber-500/40 bg-amber-500/10">
+          <Card className="app-notice-card border-amber-500/40 bg-amber-500/10">
             <p className="text-sm font-semibold text-amber-200">
               Report notice
             </p>
@@ -860,20 +860,39 @@ export default async function ReportsPage({
           </div>
         </Card>
 
-        <Card className="border-purple-500/30 bg-purple-500/5">
-          <p className="text-sm uppercase tracking-[0.3em] text-purple-300">
-            Future Property Portal
-          </p>
+        <Card className="border-purple-500/30 bg-gradient-to-br from-purple-500/10 via-sky-500/5 to-emerald-500/10">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-sm uppercase tracking-[0.3em] text-purple-300">
+                Future Property Portal
+              </p>
 
-          <h2 className="mt-3 text-2xl font-bold">
-            Built toward Diana&apos;s dashboard
-          </h2>
+              <h2 className="mt-3 text-2xl font-bold">
+                Built toward property manager dashboards
+              </h2>
 
-          <p className="mt-3 max-w-3xl text-zinc-300">
-            This reporting foundation now supports a limited property
-            manager view: queue history, readiness dates, status updates,
-            and property-level reports without company financial totals.
-          </p>
+              <p className="mt-3 max-w-3xl text-zinc-300">
+                This reporting foundation now supports limited property
+                manager views: queue history, readiness dates, status updates,
+                and property-level reports without company financial totals.
+              </p>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[34rem]">
+              {[
+                "Scoped queue intake",
+                "Readiness and scheduling",
+                "Property-only reporting",
+              ].map((label) => (
+                <div
+                  key={label}
+                  className="rounded-2xl border border-white/10 bg-zinc-950/70 p-4 text-sm font-semibold text-zinc-100"
+                >
+                  {label}
+                </div>
+              ))}
+            </div>
+          </div>
         </Card>
       </div>
     </AppShell>
@@ -928,7 +947,7 @@ function BreakdownCard({
   );
 
   return (
-    <Card>
+    <Card className="report-breakdown-card border-orange-500/20 bg-gradient-to-br from-orange-500/5 via-zinc-950 to-sky-500/5">
       <h2 className="text-xl font-bold">{title}</h2>
 
       <div className="mt-4 space-y-3">
@@ -938,7 +957,7 @@ function BreakdownCard({
           items.slice(0, 6).map((item) => (
             <div
               key={item.label}
-              className="rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3"
+              className="rounded-2xl border border-orange-500/20 bg-black/25 px-4 py-3"
             >
               <div className="flex items-center justify-between gap-4">
                 <p className="text-sm text-zinc-300">{item.label}</p>

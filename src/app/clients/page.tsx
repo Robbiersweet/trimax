@@ -244,7 +244,7 @@ export default async function ClientsPage({
               </h2>
 
               <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
-                A FreshBooks-inspired overview, tuned for Trimax: see who has
+                A Trimax overview: see who has
                 open balances, who has active estimates, and which clients are
                 ready for the next operations step.
               </p>

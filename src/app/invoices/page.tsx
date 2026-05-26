@@ -548,7 +548,7 @@ export default async function InvoicesPage({
         </div>
 
         {invoiceLoadMessage ? (
-          <Card className="border-amber-500/40 bg-amber-500/10">
+          <Card className="app-notice-card border-amber-500/40 bg-amber-500/10">
             <p className="text-sm font-semibold text-amber-200">
               Invoice notice
             </p>
@@ -571,7 +571,7 @@ export default async function InvoicesPage({
               </h2>
 
               <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
-                A quick FreshBooks-style view of open balances, past-due work,
+                A quick Trimax view of open balances, past-due work,
                 drafts, and invoices ready for batch payment.
               </p>
             </div>

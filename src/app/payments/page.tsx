@@ -379,7 +379,7 @@ export default async function PaymentsPage({
         </div>
 
         {loadIssues.length > 0 ? (
-          <Card className="border-amber-500/40 bg-amber-500/10">
+          <Card className="app-notice-card border-amber-500/40 bg-amber-500/10">
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-amber-200">
               Payment Data Notice
             </p>

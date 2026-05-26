@@ -715,7 +715,10 @@ function BusinessSettingsPageContent() {
               </div>
             </Card>
 
-            <Card className="border-sky-500/30 bg-sky-500/10">
+            <Card
+              id="outlook-integration"
+              className="outlook-setup-panel scroll-mt-6 border-sky-500/30 bg-sky-500/10"
+            >
               <div className="grid gap-5">
                 <div>
                   <p className="text-sm uppercase tracking-[0.3em] text-sky-200">
@@ -734,7 +737,7 @@ function BusinessSettingsPageContent() {
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-3">
-                  <div className="rounded-2xl border border-sky-500/20 bg-black/25 p-4">
+                  <div className="outlook-step-card rounded-2xl border border-sky-500/20 bg-sky-950/50 p-4">
                     <p className="text-sm font-semibold text-sky-100">
                       1. Connect Microsoft
                     </p>
@@ -744,7 +747,7 @@ function BusinessSettingsPageContent() {
                     </p>
                   </div>
 
-                  <div className="rounded-2xl border border-sky-500/20 bg-black/25 p-4">
+                  <div className="outlook-step-card rounded-2xl border border-sky-500/20 bg-sky-950/50 p-4">
                     <p className="text-sm font-semibold text-sky-100">
                       2. Save Templates
                     </p>
@@ -754,7 +757,7 @@ function BusinessSettingsPageContent() {
                     </p>
                   </div>
 
-                  <div className="rounded-2xl border border-sky-500/20 bg-black/25 p-4">
+                  <div className="outlook-step-card rounded-2xl border border-sky-500/20 bg-sky-950/50 p-4">
                     <p className="text-sm font-semibold text-sky-100">
                       3. Create Drafts
                     </p>
@@ -983,7 +986,10 @@ function BusinessSettingsPageContent() {
                   </div>
                 ) : null}
 
-                <div className="grid gap-4 rounded-2xl border border-blue-500/30 bg-blue-500/5 p-5">
+                <div
+                  id="user-role-integration"
+                  className="grid scroll-mt-6 gap-4 rounded-2xl border border-blue-500/30 bg-blue-500/5 p-5"
+                >
                   <div>
                     <p className="text-sm uppercase tracking-[0.3em] text-blue-300">
                       Property Portal Access
@@ -994,9 +1000,10 @@ function BusinessSettingsPageContent() {
                     </h3>
 
                     <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
-                      Use this for Diana, Alana, Allen, or future property staff.
-                      Trimax will keep them in queue and reports for their
-                      property instead of opening the full business workspace.
+                      Use this for property managers, assistant managers,
+                      maintenance managers, or future property staff. Trimax
+                      will keep them in queue and reports for their property
+                      instead of opening the full business workspace.
                     </p>
                   </div>
 
@@ -1095,7 +1102,7 @@ function BusinessSettingsPageContent() {
                         <InputField
                           label="Email"
                           type="email"
-                          placeholder="diana@example.com"
+                          placeholder="manager@example.com"
                           value={propertyInviteEmail}
                           onChange={setPropertyInviteEmail}
                         />
