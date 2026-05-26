@@ -479,12 +479,12 @@ export default async function ActivityPage({
         </Card>
 
         {setupNeeded ? (
-          <Card className="border-yellow-500/40 bg-yellow-500/10">
-            <p className="font-semibold text-yellow-100">
+          <Card className="border-amber-500/40 bg-amber-500/10">
+            <p className="font-semibold text-amber-200">
               Activity logging table is not set up yet.
             </p>
 
-            <p className="mt-2 text-sm leading-6 text-yellow-100/80">
+            <p className="mt-2 text-sm leading-6 text-amber-100/90">
               Run the activity_logs SQL in Supabase, then this page will start
               showing future actions.
             </p>

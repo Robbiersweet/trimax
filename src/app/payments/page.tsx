@@ -379,8 +379,8 @@ export default async function PaymentsPage({
         </div>
 
         {loadIssues.length > 0 ? (
-          <Card className="border-yellow-500/30 bg-yellow-500/10">
-            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-yellow-200">
+          <Card className="border-amber-500/40 bg-amber-500/10">
+            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-amber-200">
               Payment Data Notice
             </p>
 
@@ -388,13 +388,13 @@ export default async function PaymentsPage({
               Payments page is open, but some data needs attention
             </h2>
 
-            <div className="mt-4 space-y-2 text-sm leading-6 text-yellow-50/90">
+            <div className="mt-4 space-y-2 text-sm leading-6 text-amber-100/90">
               {loadIssues.map((issue) => (
                 <p key={issue}>{issue}</p>
               ))}
             </div>
 
-            <p className="mt-4 text-sm leading-6 text-zinc-300">
+            <p className="mt-4 text-sm leading-6 text-amber-100/90">
               If you are on the login page, sign in again first. If you are
               already signed in and this stays here, the next step is tightening
               the Supabase policy for invoices and activity logs.

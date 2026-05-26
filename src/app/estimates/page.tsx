@@ -164,12 +164,12 @@ export default async function EstimatesPage({
         </div>
 
         {estimateLoadMessage ? (
-          <Card className="border-amber-500/30 bg-amber-500/10">
-            <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">
+          <Card className="border-amber-500/40 bg-amber-500/10">
+            <p className="text-sm font-semibold text-amber-200">
               Estimate notice
             </p>
 
-            <p className="mt-2 text-sm leading-6 text-amber-950 dark:text-amber-100/80">
+            <p className="mt-2 text-sm leading-6 text-amber-100/90">
               {estimateLoadMessage}
             </p>
           </Card>
