@@ -78,14 +78,30 @@ npm install
 
 ## Step 5: Add Vercel Environment Variables
 
-In Vercel Project Settings, add:
+In Supabase:
+
+1. Open the Trimax project.
+2. Go to Project Settings.
+3. Open API.
+4. Copy the Project URL.
+5. Copy the anon public key.
+
+In Vercel:
+
+1. Open the Trimax project.
+2. Go to Settings.
+3. Open Environment Variables.
+4. Add these two values for Production, Preview, and Development:
 
 ```text
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
 ```
 
-Copy these from Supabase Project Settings.
+Use the Supabase Project URL for `NEXT_PUBLIC_SUPABASE_URL`.
+Use the Supabase anon public key for `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+
+If either value is missing, Trimax will now show a clear setup error instead of failing silently.
 
 Future Outlook draft integration will also use:
 

@@ -29,6 +29,10 @@ NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
 ```
 
+Copy `NEXT_PUBLIC_SUPABASE_URL` from Supabase Project Settings -> API -> Project URL.
+Copy `NEXT_PUBLIC_SUPABASE_ANON_KEY` from Supabase Project Settings -> API -> anon public key.
+Add both in Vercel for Production, Preview, and Development.
+
 Future Outlook draft integration:
 
 ```text
