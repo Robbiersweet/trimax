@@ -199,7 +199,7 @@ export default async function EstimatesPage({
           </form>
         </Card>
 
-        <div className="workspace-filter-bar flex flex-wrap gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-2">
+        <div className="workspace-filter-bar flex flex-wrap gap-3 rounded-2xl border border-zinc-800 p-2">
           {filterLinks.map((filter) => (
             <Link
               key={filter.value}

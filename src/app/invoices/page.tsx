@@ -640,7 +640,7 @@ export default async function InvoicesPage({
           </form>
         </Card>
 
-        <div className="workspace-filter-bar flex flex-wrap gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-2">
+        <div className="workspace-filter-bar flex flex-wrap gap-3 rounded-2xl border border-zinc-800 p-2">
           {viewLinks.map((filter) => (
             <Link
               key={filter.value}
@@ -656,7 +656,7 @@ export default async function InvoicesPage({
           ))}
         </div>
 
-        <div className="workspace-filter-bar flex flex-wrap gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-2">
+        <div className="workspace-filter-bar flex flex-wrap gap-3 rounded-2xl border border-zinc-800 p-2">
           {statusLinks.map((filter) => (
             <Link
               key={filter.value}

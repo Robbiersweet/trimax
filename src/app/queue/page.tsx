@@ -448,7 +448,7 @@ export default async function QueuePage({
           </form>
         </Card>
 
-        <div className="queue-filter-bar flex flex-wrap gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-2">
+        <div className="queue-filter-bar flex flex-wrap gap-3 rounded-2xl border border-zinc-800 p-2">
           {specialViewLinks.map((filter) => (
             <Link
               key={filter.value}
@@ -478,7 +478,7 @@ export default async function QueuePage({
           ))}
         </div>
 
-        <div className="queue-filter-bar flex flex-wrap gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-2">
+        <div className="queue-filter-bar flex flex-wrap gap-3 rounded-2xl border border-zinc-800 p-2">
           {statusLinks.map((filter) => (
             <Link
               key={filter.value}

@@ -272,6 +272,11 @@ html.theme-light .dashboard-payment-action:hover {
   color: #14532d !important;
 }
 
+.queue-filter-bar,
+.workspace-filter-bar {
+  background-color: rgba(24, 24, 27, 0.7);
+}
+
 html.theme-light .queue-filter-bar,
 html.theme-light .workspace-filter-bar {
   background-color: #f8fafc !important;
