@@ -1022,7 +1022,7 @@ function BusinessSettingsPageContent() {
                   </div>
 
                   {!propertyAccessReady ? (
-                    <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm leading-6 text-amber-950 dark:text-amber-100">
+                    <div className="app-notice-card rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm leading-6 text-amber-950">
                       <p className="font-semibold">
                         Property portal setup needed
                       </p>

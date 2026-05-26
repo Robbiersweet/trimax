@@ -313,10 +313,10 @@ export default function ConvertEstimateToInvoiceButton({
 
       {message ? (
         <p
-          className={`text-sm font-semibold ${
+          className={`app-feedback-message ${
             message.type === "error"
-              ? "text-red-700 dark:text-red-300"
-              : "text-orange-700 dark:text-orange-300"
+              ? "app-feedback-message-error"
+              : "app-feedback-message-notice"
           }`}
         >
           {message.text}

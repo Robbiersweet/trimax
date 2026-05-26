@@ -411,7 +411,8 @@ html.theme-light .report-breakdown-card .bg-black\/25 {
 
 .app-notice-card .text-amber-100,
 .app-notice-card .text-amber-100\/90,
-.app-notice-card .text-amber-200 {
+.app-notice-card .text-amber-200,
+.app-notice-card .text-amber-950 {
   color: #fffbeb !important;
 }
 
@@ -424,8 +425,42 @@ html.theme-light .app-notice-card {
 
 html.theme-light .app-notice-card .text-amber-100,
 html.theme-light .app-notice-card .text-amber-100\/90,
-html.theme-light .app-notice-card .text-amber-200 {
+html.theme-light .app-notice-card .text-amber-200,
+html.theme-light .app-notice-card .text-amber-950 {
   color: #7c2d12 !important;
+}
+
+.app-feedback-message {
+  border-radius: 1rem;
+  border-width: 1px;
+  padding: 1rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.5rem;
+}
+
+.app-feedback-message-notice {
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(251, 191, 36, 0.42);
+  color: #fffbeb;
+}
+
+.app-feedback-message-error {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(248, 113, 113, 0.42);
+  color: #fef2f2;
+}
+
+html.theme-light .app-feedback-message-notice {
+  background: #fff7ed;
+  border-color: rgba(245, 158, 11, 0.34);
+  color: #7c2d12;
+}
+
+html.theme-light .app-feedback-message-error {
+  background: #fef2f2;
+  border-color: rgba(220, 38, 38, 0.32);
+  color: #7f1d1d;
 }
 
 html.theme-light .app-toast {

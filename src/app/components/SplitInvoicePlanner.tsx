@@ -365,10 +365,10 @@ export default function SplitInvoicePlanner({
 
           {message ? (
             <div
-              className={`rounded-2xl border p-4 text-sm font-semibold leading-6 ${
+              className={`app-feedback-message ${
                 message.type === "error"
-                  ? "border-red-400/40 bg-red-500/10 text-red-900 dark:text-red-100"
-                  : "border-amber-400/40 bg-amber-500/10 text-amber-950 dark:text-amber-100"
+                  ? "app-feedback-message-error"
+                  : "app-feedback-message-notice"
               }`}
             >
               {message.text}
