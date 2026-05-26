@@ -397,7 +397,7 @@ export default async function QueuePage({
           </form>
         </Card>
 
-        <div className="flex flex-wrap gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-2">
+        <div className="queue-filter-bar flex flex-wrap gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-2">
           {specialViewLinks.map((filter) => (
             <Link
               key={filter.value}
@@ -409,7 +409,7 @@ export default async function QueuePage({
               className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
                 viewFilter === filter.value
                   ? "bg-orange-500 text-black"
-                  : "text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                  : "queue-filter-link-inactive text-zinc-300 hover:bg-zinc-800 hover:text-white"
               }`}
             >
               <span>{filter.label}</span>
@@ -417,7 +417,7 @@ export default async function QueuePage({
                 className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
                   viewFilter === filter.value
                     ? "bg-black/15 text-black"
-                    : "bg-zinc-950 text-zinc-400"
+                    : "queue-filter-count-inactive bg-zinc-950 text-zinc-400"
                 }`}
               >
                 {filter.count}
@@ -426,7 +426,7 @@ export default async function QueuePage({
           ))}
         </div>
 
-        <div className="flex flex-wrap gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-2">
+        <div className="queue-filter-bar flex flex-wrap gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-2">
           {statusLinks.map((filter) => (
             <Link
               key={filter.value}
@@ -438,7 +438,7 @@ export default async function QueuePage({
               className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
                 statusFilter === filter.value
                   ? "bg-orange-500 text-black"
-                  : "text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                  : "queue-filter-link-inactive text-zinc-300 hover:bg-zinc-800 hover:text-white"
               }`}
             >
               <span>{filter.label}</span>
@@ -446,7 +446,7 @@ export default async function QueuePage({
                 className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
                   statusFilter === filter.value
                     ? "bg-black/15 text-black"
-                    : "bg-zinc-950 text-zinc-400"
+                    : "queue-filter-count-inactive bg-zinc-950 text-zinc-400"
                 }`}
               >
                 {filter.count}
@@ -511,31 +511,31 @@ export default async function QueuePage({
                         />
 
                         {item.priority ? (
-                          <span className="rounded-full bg-zinc-950 px-3 py-1 text-sm font-semibold text-zinc-300">
+                          <span className="queue-priority-pill rounded-full bg-zinc-950 px-3 py-1 text-sm font-semibold text-zinc-300">
                             {item.priority} Priority
                           </span>
                         ) : null}
 
                         {item.smoked_in ? (
-                          <span className="rounded-full bg-red-500/20 px-3 py-1 text-sm font-semibold text-red-300">
+                          <span className="queue-remediation-pill rounded-full bg-red-500/20 px-3 py-1 text-sm font-semibold text-red-300">
                             Remediation
                           </span>
                         ) : null}
 
                         {!item.smoked_in && remediation ? (
-                          <span className="rounded-full bg-red-500/20 px-3 py-1 text-sm font-semibold text-red-300">
+                          <span className="queue-remediation-pill rounded-full bg-red-500/20 px-3 py-1 text-sm font-semibold text-red-300">
                             Smoke Note
                           </span>
                         ) : null}
 
                         {readySoon ? (
-                          <span className="rounded-full bg-yellow-500/20 px-3 py-1 text-sm font-semibold text-yellow-200">
+                          <span className="queue-ready-soon-pill rounded-full bg-yellow-500/20 px-3 py-1 text-sm font-semibold text-yellow-200">
                             Ready Soon
                           </span>
                         ) : null}
 
                         {estimateNeeded ? (
-                          <span className="rounded-full bg-purple-500/20 px-3 py-1 text-sm font-semibold text-purple-200">
+                          <span className="queue-estimate-needed-pill rounded-full bg-purple-500/20 px-3 py-1 text-sm font-semibold text-purple-200">
                             Needs Estimate
                           </span>
                         ) : null}

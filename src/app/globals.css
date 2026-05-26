@@ -260,6 +260,50 @@ html.theme-light .dashboard-payment-action:hover {
   color: #14532d !important;
 }
 
+html.theme-light .queue-filter-bar {
+  background-color: #f8fafc !important;
+  border-color: #d7dde8 !important;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+}
+
+html.theme-light .queue-filter-link-inactive {
+  color: #475569 !important;
+}
+
+html.theme-light .queue-filter-link-inactive:hover {
+  background-color: #e9eef6 !important;
+  color: #111827 !important;
+}
+
+html.theme-light .queue-filter-count-inactive {
+  background-color: #e2e8f0 !important;
+  color: #334155 !important;
+}
+
+html.theme-light .queue-priority-pill {
+  background-color: #ffffff !important;
+  border: 1px solid #d7dde8 !important;
+  color: #334155 !important;
+}
+
+html.theme-light .queue-remediation-pill {
+  background-color: #fee2e2 !important;
+  border: 1px solid #fca5a5 !important;
+  color: #991b1b !important;
+}
+
+html.theme-light .queue-ready-soon-pill {
+  background-color: #fef3c7 !important;
+  border: 1px solid #f59e0b !important;
+  color: #92400e !important;
+}
+
+html.theme-light .queue-estimate-needed-pill {
+  background-color: #ede9fe !important;
+  border: 1px solid #a78bfa !important;
+  color: #5b21b6 !important;
+}
+
 html.theme-light .shadow-lg,
 html.theme-light .shadow-2xl {
   box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08) !important;
