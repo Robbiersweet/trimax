@@ -199,7 +199,7 @@ export default async function EstimatesPage({
           </form>
         </Card>
 
-        <div className="flex flex-wrap gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-2">
+        <div className="workspace-filter-bar flex flex-wrap gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-2">
           {filterLinks.map((filter) => (
             <Link
               key={filter.value}
@@ -207,7 +207,7 @@ export default async function EstimatesPage({
               className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
                 statusFilter === filter.value
                   ? "bg-orange-500 text-black"
-                  : "text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                  : "workspace-filter-link-inactive text-zinc-300 hover:bg-zinc-800 hover:text-white"
               }`}
             >
               {filter.label}

@@ -272,17 +272,20 @@ html.theme-light .dashboard-payment-action:hover {
   color: #14532d !important;
 }
 
-html.theme-light .queue-filter-bar {
+html.theme-light .queue-filter-bar,
+html.theme-light .workspace-filter-bar {
   background-color: #f8fafc !important;
   border-color: #d7dde8 !important;
   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
 }
 
-html.theme-light .queue-filter-link-inactive {
+html.theme-light .queue-filter-link-inactive,
+html.theme-light .workspace-filter-link-inactive {
   color: #475569 !important;
 }
 
-html.theme-light .queue-filter-link-inactive:hover {
+html.theme-light .queue-filter-link-inactive:hover,
+html.theme-light .workspace-filter-link-inactive:hover {
   background-color: #e9eef6 !important;
   color: #111827 !important;
 }
