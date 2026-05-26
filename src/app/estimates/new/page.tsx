@@ -66,6 +66,7 @@ type QueueItem = {
   prior_renovation: boolean | null;
   prior_renovation_details: string | null;
   renovation_needed: boolean | null;
+  renovation_needed_details: string | null;
 };
 
 function formatCurrency(amount: number) {
@@ -611,12 +612,20 @@ function NewEstimatePageContent() {
           );
         })
       ) {
+        const renovationDescription =
+          loadedQueueItem.renovation_needed_details?.trim()
+            ? `Renovation and Cabinet Paint - ${loadedQueueItem.renovation_needed_details.trim()}`
+            : "Renovation and Cabinet Paint";
+
         startingLineItems.push(
           renovationService
-            ? serviceToLineItem(renovationService)
+            ? {
+                ...serviceToLineItem(renovationService),
+                description: renovationDescription,
+              }
             : {
                 serviceItemId: "",
-                description: "Renovation and Cabinet Paint",
+                description: renovationDescription,
                 quantity: "1",
                 unitPrice: "",
               }

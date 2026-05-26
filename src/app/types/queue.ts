@@ -12,6 +12,7 @@ export type QueueItem = {
   priorRenovation?: boolean;
   priorRenovationDetails?: string;
   renovationNeeded?: boolean;
+  renovationNeededDetails?: string;
   priority: string;
   notes: string;
 };

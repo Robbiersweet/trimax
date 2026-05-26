@@ -27,6 +27,7 @@ type QueueItemWithEstimate = {
   prior_renovation: boolean | null;
   prior_renovation_details: string | null;
   renovation_needed: boolean | null;
+  renovation_needed_details: string | null;
   notes: string | null;
   linked_estimate_id: string | null;
 };
@@ -340,6 +341,7 @@ export default async function QueuePage({
       item.scheduled_date,
       item.completed_date,
       item.prior_renovation_details,
+      item.renovation_needed_details,
       item.renovation_needed ? "renovation needed" : "",
       item.prior_renovation ? "prior renovation" : "",
       item.notes,
@@ -697,7 +699,8 @@ export default async function QueuePage({
                           label="Renovation"
                           value={
                             item.renovation_needed
-                              ? "Needed"
+                              ? item.renovation_needed_details ||
+                                "Needed"
                               : item.prior_renovation_details
                                 ? item.prior_renovation_details
                                 : item.prior_renovation

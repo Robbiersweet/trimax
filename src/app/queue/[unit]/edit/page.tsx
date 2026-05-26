@@ -66,6 +66,8 @@ export default function EditQueueItemPage() {
   const [priorRenovationDetails, setPriorRenovationDetails] =
     useState("");
   const [renovationNeeded, setRenovationNeeded] = useState(false);
+  const [renovationNeededDetails, setRenovationNeededDetails] =
+    useState("");
   const [moveOutDate, setMoveOutDate] = useState("");
   const [readyDate, setReadyDate] = useState("");
   const [scheduledDate, setScheduledDate] =
@@ -105,6 +107,7 @@ export default function EditQueueItemPage() {
       setPriorRenovation(Boolean(data.prior_renovation));
       setPriorRenovationDetails(data.prior_renovation_details ?? "");
       setRenovationNeeded(Boolean(data.renovation_needed));
+      setRenovationNeededDetails(data.renovation_needed_details ?? "");
       setMoveOutDate(data.move_out_date ?? "");
       setReadyDate(data.ready_date ?? "");
       setScheduledDate(data.scheduled_date ?? "");
@@ -132,6 +135,8 @@ export default function EditQueueItemPage() {
         prior_renovation_details:
           priorRenovationDetails.trim() || null,
         renovation_needed: renovationNeeded,
+        renovation_needed_details:
+          renovationNeededDetails.trim() || null,
         move_out_date: moveOutDate || null,
         ready_date: readyDate || null,
         scheduled_date: scheduledDate || null,
@@ -265,9 +270,13 @@ export default function EditQueueItemPage() {
                   <input
                     type="checkbox"
                     checked={renovationNeeded}
-                    onChange={(event) =>
-                      setRenovationNeeded(event.target.checked)
-                    }
+                    onChange={(event) => {
+                      setRenovationNeeded(event.target.checked);
+
+                      if (!event.target.checked) {
+                        setRenovationNeededDetails("");
+                      }
+                    }}
                     className="mt-1 h-5 w-5 accent-orange-500"
                   />
 
@@ -289,6 +298,17 @@ export default function EditQueueItemPage() {
                     placeholder="Example: Previous Priderock Reno"
                     value={priorRenovationDetails}
                     onChange={setPriorRenovationDetails}
+                  />
+                </div>
+              ) : null}
+
+              {renovationNeeded ? (
+                <div className="mt-4">
+                  <InputField
+                    label="Renovation Needed Details"
+                    placeholder="Example: Cabinet paint, countertop repair, bath vanity refresh"
+                    value={renovationNeededDetails}
+                    onChange={setRenovationNeededDetails}
                   />
                 </div>
               ) : null}

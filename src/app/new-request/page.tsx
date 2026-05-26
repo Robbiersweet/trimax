@@ -20,6 +20,7 @@ type RenovationMemory = {
   prior_renovation: boolean | null;
   prior_renovation_details: string | null;
   renovation_needed: boolean | null;
+  renovation_needed_details: string | null;
 };
 
 const rnlPropertyOptions = [
@@ -153,6 +154,8 @@ function NewRequestPageContent() {
   const [priorRenovationDetails, setPriorRenovationDetails] =
     useState("");
   const [renovationNeeded, setRenovationNeeded] = useState(false);
+  const [renovationNeededDetails, setRenovationNeededDetails] =
+    useState("");
   const [renovationMemoryMessage, setRenovationMemoryMessage] =
     useState("");
   const [moveOutDate, setMoveOutDate] = useState("");
@@ -208,7 +211,7 @@ function NewRequestPageContent() {
       const { data, error } = await supabase
         .from("queue_items")
         .select(
-          "prior_renovation, prior_renovation_details, renovation_needed"
+          "prior_renovation, prior_renovation_details, renovation_needed, renovation_needed_details"
         )
         .eq("business_id", business.id)
         .eq("property", property)
@@ -233,6 +236,7 @@ function NewRequestPageContent() {
       setPriorRenovation(hasPriorRenovation);
       setPriorRenovationDetails(memory.prior_renovation_details ?? "");
       setRenovationNeeded(Boolean(memory.renovation_needed));
+      setRenovationNeededDetails(memory.renovation_needed_details ?? "");
       setRenovationMemoryMessage(
         "Loaded previous renovation notes for this unit."
       );
@@ -281,6 +285,7 @@ function NewRequestPageContent() {
             priorRenovation,
             priorRenovationDetails,
             renovationNeeded,
+            renovationNeededDetails,
             moveOutDate,
             readyDate,
             scheduledDate: "",
@@ -472,9 +477,13 @@ function NewRequestPageContent() {
                     <input
                       type="checkbox"
                       checked={renovationNeeded}
-                      onChange={(event) =>
-                        setRenovationNeeded(event.target.checked)
-                      }
+                      onChange={(event) => {
+                        setRenovationNeeded(event.target.checked);
+
+                        if (!event.target.checked) {
+                          setRenovationNeededDetails("");
+                        }
+                      }}
                       className="mt-1 h-5 w-5 accent-orange-500"
                     />
 
@@ -497,6 +506,18 @@ function NewRequestPageContent() {
                       placeholder="Example: Previous Priderock Reno"
                       value={priorRenovationDetails}
                       onChange={setPriorRenovationDetails}
+                    />
+                  </div>
+                ) : null}
+
+                {renovationNeeded ? (
+                  <div className="mt-4">
+                    <InputField
+                      label="Renovation Needed Details"
+                      placeholder="Example: Cabinet paint, countertop repair, bath vanity refresh"
+                      value={renovationNeededDetails}
+                      onChange={setRenovationNeededDetails}
+                      helperText="This will travel with the queue item and show up when you create the estimate."
                     />
                   </div>
                 ) : null}

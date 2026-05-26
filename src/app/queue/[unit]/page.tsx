@@ -29,6 +29,7 @@ type SupabaseQueueItem = {
   prior_renovation: boolean | null;
   prior_renovation_details: string | null;
   renovation_needed: boolean | null;
+  renovation_needed_details: string | null;
   notes: string | null;
   linked_estimate_id: string | null;
 };
@@ -207,6 +208,9 @@ export default async function QueueDetailPage({
         ? `Prior renovation: ${item.prior_renovation_details}`
         : null,
       item.renovation_needed ? "Renovation needed: Yes" : null,
+      item.renovation_needed_details
+        ? `Renovation scope: ${item.renovation_needed_details}`
+        : null,
       item.notes ? `Notes: ${item.notes}` : null,
     ]
       .filter(Boolean)
@@ -273,7 +277,8 @@ export default async function QueueDetailPage({
             value={item.renovation_needed ? "Needed" : "Not Flagged"}
             detail={
               item.renovation_needed
-                ? "Estimate creation will include renovation and cabinet paint."
+                ? item.renovation_needed_details ||
+                  "Estimate creation will include renovation and cabinet paint."
                 : item.prior_renovation || item.prior_renovation_details
                   ? "Prior renovation history is saved for this unit."
                   : "No renovation flag is set."
@@ -370,6 +375,10 @@ export default async function QueueDetailPage({
             <Info
               label="Renovation Needed"
               value={item.renovation_needed ? "Yes" : "No"}
+            />
+            <Info
+              label="Renovation Needed Details"
+              value={item.renovation_needed_details ?? ""}
             />
             <Info label="Move Out Date" value={item.move_out_date ?? ""} />
             <Info label="Ready Date" value={item.ready_date ?? ""} />

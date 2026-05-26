@@ -27,6 +27,7 @@ type QueueItem = {
   prior_renovation: boolean | null;
   prior_renovation_details: string | null;
   renovation_needed: boolean | null;
+  renovation_needed_details: string | null;
   notes: string | null;
   created_at: string | null;
 };
@@ -869,7 +870,8 @@ export default async function ReportsPage({
                   </p>
                   <p className="mt-1 text-sm text-zinc-400">
                     {item.prior_renovation_details ||
-                      "No prior renovation detail saved."}
+                      item.renovation_needed_details ||
+                      "No renovation detail saved."}
                   </p>
                 </Link>
               ))}
@@ -939,12 +941,15 @@ export default async function ReportsPage({
                       {item.flooring || "-"}
                     </p>
                     {item.renovation_needed ||
+                    item.renovation_needed_details ||
                     item.prior_renovation_details ? (
                       <p className="mt-2 text-sm text-emerald-300">
                         Renovation:{" "}
                         {item.renovation_needed ? "Needed" : "Prior"}
-                        {item.prior_renovation_details
-                          ? ` / ${item.prior_renovation_details}`
+                        {item.renovation_needed_details
+                          ? ` / ${item.renovation_needed_details}`
+                          : item.prior_renovation_details
+                            ? ` / ${item.prior_renovation_details}`
                           : ""}
                       </p>
                     ) : null}

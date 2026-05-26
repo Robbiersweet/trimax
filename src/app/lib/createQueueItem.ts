@@ -11,6 +11,7 @@ type CreateQueueItemInput = {
   priorRenovation: boolean;
   priorRenovationDetails: string;
   renovationNeeded: boolean;
+  renovationNeededDetails: string;
   moveOutDate: string;
   readyDate: string;
   scheduledDate: string;
@@ -42,6 +43,8 @@ export async function createQueueItem(input: CreateQueueItemInput) {
         prior_renovation_details:
           input.priorRenovationDetails.trim() || null,
         renovation_needed: input.renovationNeeded,
+        renovation_needed_details:
+          input.renovationNeededDetails.trim() || null,
         move_out_date: normalizeDate(input.moveOutDate),
         ready_date: normalizeDate(input.readyDate),
         scheduled_date: normalizeDate(input.scheduledDate),
@@ -74,6 +77,7 @@ export async function createQueueItem(input: CreateQueueItemInput) {
       priorRenovation: input.priorRenovation,
       priorRenovationDetails: input.priorRenovationDetails,
       renovationNeeded: input.renovationNeeded,
+      renovationNeededDetails: input.renovationNeededDetails,
       readyDate: input.readyDate,
     },
   });
