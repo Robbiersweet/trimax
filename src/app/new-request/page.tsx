@@ -16,13 +16,21 @@ type Business = {
   slug: string;
 };
 
-const propertyOptions = [
+const rnlPropertyOptions = [
   "North Creek Apartments",
   "Evergreen Apartments",
   "Global S",
 ];
 
-const paintTypeOptions = [
+const justKleenClientOptions = [
+  "5 Star 5",
+  "Bank of America",
+  "Hope Church",
+  "Holy Cross Church",
+  "Inventive Construction",
+];
+
+const rnlPaintTypeOptions = [
   "Classic",
   "Touch-Up",
   "Full Repaint",
@@ -30,7 +38,16 @@ const paintTypeOptions = [
   "Reno Paint",
 ];
 
-const flooringOptions = [
+const justKleenServiceOptions = [
+  "Recurring Cleaning",
+  "Deep Cleaning",
+  "Move-Out Cleaning",
+  "Post-Construction Cleaning",
+  "Bank Cleaning",
+  "Church Cleaning",
+];
+
+const rnlFlooringOptions = [
   "Keep Carpet & Keep Vinyl",
   "Keep Vinyl & Replace Carpet",
   "Keep Carpet & Replace Vinyl",
@@ -43,6 +60,26 @@ const flooringOptions = [
   "Vinyl",
 ];
 
+const justKleenScopeOptions = [
+  "Full Facility",
+  "Office Cleaning",
+  "Common Areas",
+  "Restrooms",
+  "Floors",
+  "Windows",
+  "Touch Points",
+];
+
+function optionsForBusiness(
+  businessSlug: string,
+  rnlOptions: string[],
+  justKleenOptions: string[]
+) {
+  return businessSlug === "just-kleen"
+    ? justKleenOptions
+    : rnlOptions;
+}
+
 function propertyKey(value: string) {
   return value
     .toLowerCase()
@@ -51,13 +88,16 @@ function propertyKey(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-function propertyFromParam(value: string | null) {
+function propertyFromParam(
+  value: string | null,
+  options: string[]
+) {
   if (!value) {
     return "";
   }
 
   return (
-    propertyOptions.find(
+    options.find(
       (option) => propertyKey(option) === value
     ) ?? ""
   );
@@ -76,11 +116,27 @@ function NewRequestPageContent() {
 
   const businessSlug = searchParams.get("business") ?? "rnl-creations";
   const propertyParam = searchParams.get("property");
+  const isJustKleen = businessSlug === "just-kleen";
+  const propertyOptions = optionsForBusiness(
+    businessSlug,
+    rnlPropertyOptions,
+    justKleenClientOptions
+  );
+  const paintTypeOptions = optionsForBusiness(
+    businessSlug,
+    rnlPaintTypeOptions,
+    justKleenServiceOptions
+  );
+  const flooringOptions = optionsForBusiness(
+    businessSlug,
+    rnlFlooringOptions,
+    justKleenScopeOptions
+  );
 
   const [business, setBusiness] = useState<Business | null>(null);
 
   const [property, setProperty] = useState(
-    propertyFromParam(propertyParam)
+    propertyFromParam(propertyParam, propertyOptions)
   );
   const [unitsText, setUnitsText] = useState("");
   const [paintType, setPaintType] = useState("");
@@ -140,7 +196,9 @@ function NewRequestPageContent() {
     if (!property || units.length === 0 || !paintType || !flooring) {
       setToast({
         type: "error",
-        message: "Please fill out property, at least one unit, paint type, and flooring.",
+        message: isJustKleen
+          ? "Please fill out client, at least one job/location, service type, and scope."
+          : "Please fill out property, at least one unit, paint type, and flooring.",
       });
 
       return;
@@ -172,8 +230,12 @@ function NewRequestPageContent() {
         type: "success",
         message:
           units.length === 1
-            ? "Queue item created successfully."
-            : `${units.length} queue items created successfully.`,
+            ? isJustKleen
+              ? "Work request created successfully."
+              : "Queue item created successfully."
+            : isJustKleen
+              ? `${units.length} work requests created successfully.`
+              : `${units.length} queue items created successfully.`,
       });
 
       const queueParams = new URLSearchParams({
@@ -210,10 +272,14 @@ function NewRequestPageContent() {
           Trimax
         </p>
 
-        <h1 className="mt-3 text-5xl font-bold">New Queue Request</h1>
+        <h1 className="mt-3 text-5xl font-bold">
+          {isJustKleen ? "New Work Request" : "New Queue Request"}
+        </h1>
 
         <p className="mt-3 text-zinc-400">
-          Add a new apartment turn, work request, or queue item.
+          {isJustKleen
+            ? "Add a cleaning job, customer request, or follow-up item."
+            : "Add a new apartment turn, work request, or queue item."}
         </p>
 
         {business && (
@@ -229,43 +295,61 @@ function NewRequestPageContent() {
         <Card className="mt-8">
           <div className="grid gap-5">
             <InputField
-              label="Property"
-              placeholder="Example: North Creek Apartments"
+              label={isJustKleen ? "Client / Site" : "Property"}
+              placeholder={
+                isJustKleen
+                  ? "Example: 5 Star 5"
+                  : "Example: North Creek Apartments"
+              }
               value={property}
               onChange={setProperty}
               list="property-options"
             />
 
             <InputField
-              label="Units"
-              placeholder="Example: B12, B210, C04 or one unit per line"
+              label={isJustKleen ? "Jobs / Locations" : "Units"}
+              placeholder={
+                isJustKleen
+                  ? "Example: Main office, Lobby, Suite 200 or one job per line"
+                  : "Example: B12, B210, C04 or one unit per line"
+              }
               value={unitsText}
               onChange={setUnitsText}
             />
 
             <div className="rounded-2xl border border-blue-500/30 bg-blue-500/10 px-4 py-3">
               <p className="font-semibold text-blue-100">
-                Add one unit or several at once
+                {isJustKleen
+                  ? "Add one job or several at once"
+                  : "Add one unit or several at once"}
               </p>
 
               <p className="mt-1 text-sm leading-6 text-blue-100/75">
-                Separate units with commas or new lines. Trimax will create one
-                queue item per unit while copying the same dates, paint,
-                flooring, priority, and notes.
+                {isJustKleen
+                  ? "Separate jobs or locations with commas or new lines. Trimax will create one work request per item while copying the same dates, service details, priority, and notes."
+                  : "Separate units with commas or new lines. Trimax will create one queue item per unit while copying the same dates, paint, flooring, priority, and notes."}
               </p>
             </div>
 
             <InputField
-              label="Paint Type"
-              placeholder="Example: Reno Paint, Classic Paint, Primer + Paint"
+              label={isJustKleen ? "Service Type" : "Paint Type"}
+              placeholder={
+                isJustKleen
+                  ? "Example: Deep Cleaning, Bank Cleaning, Recurring Cleaning"
+                  : "Example: Reno Paint, Classic Paint, Primer + Paint"
+              }
               value={paintType}
               onChange={setPaintType}
               list="paint-type-options"
             />
 
             <InputField
-              label="Flooring"
-              placeholder="Example: Keep Vinyl & Replace Carpet"
+              label={isJustKleen ? "Scope / Area" : "Flooring"}
+              placeholder={
+                isJustKleen
+                  ? "Example: Full Facility, Restrooms, Floors"
+                  : "Example: Keep Vinyl & Replace Carpet"
+              }
               value={flooring}
               onChange={setFlooring}
               list="flooring-options"
@@ -299,10 +383,14 @@ function NewRequestPageContent() {
 
                 <span>
                   <span className="block font-semibold">
-                    Smoker / remediation unit
+                    {isJustKleen
+                      ? "Special attention needed"
+                      : "Smoker / remediation unit"}
                   </span>
                   <span className="text-sm text-zinc-400">
-                    Include this in remediation reporting.
+                    {isJustKleen
+                      ? "Flag extra notes, rework, or follow-up risk."
+                      : "Include this in remediation reporting."}
                   </span>
                 </span>
               </label>
@@ -330,9 +418,9 @@ function NewRequestPageContent() {
               </p>
 
               <p className="mt-1 text-sm leading-6 text-zinc-400">
-                Trimax saves the submitted date automatically. After reviewing
-                the request, open the queue item, choose the work date, and
-                click Schedule.
+                {isJustKleen
+                  ? "Trimax saves the request automatically. After reviewing it, open the item, choose the work date, and click Schedule."
+                  : "Trimax saves the submitted date automatically. After reviewing the request, open the queue item, choose the work date, and click Schedule."}
               </p>
             </div>
 
@@ -342,13 +430,21 @@ function NewRequestPageContent() {
               <textarea
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
-                placeholder="Add notes about smoke, flooring, damages, timing, or access..."
+                placeholder={
+                  isJustKleen
+                    ? "Add notes about access, supplies, timing, special cleaning details, or customer requests..."
+                    : "Add notes about smoke, flooring, damages, timing, or access..."
+                }
                 className="min-h-40 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
               />
             </div>
 
             <Button onClick={handleSubmit} disabled={isSaving}>
-              {isSaving ? "Saving..." : "Create Queue Item(s)"}
+              {isSaving
+                ? "Saving..."
+                : isJustKleen
+                  ? "Create Work Request(s)"
+                  : "Create Queue Item(s)"}
             </Button>
 
             <datalist id="property-options">
