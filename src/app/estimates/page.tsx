@@ -65,7 +65,7 @@ export default async function EstimatesPage({
     .maybeSingle();
 
   let estimateLoadMessage = businessError
-    ? "Workspace details could not be loaded from Supabase."
+    ? "Workspace details could not be loaded. Try signing in again, then reopen this workspace."
     : null;
 
   if (businessError) {
@@ -88,7 +88,7 @@ export default async function EstimatesPage({
     if (error) {
       console.warn("Estimates could not be loaded:", error.message);
       estimateLoadMessage =
-        "Estimates could not be loaded from Supabase. Please check the estimates table setup and policies.";
+        "Estimates could not be loaded. Try signing in again; if this stays here, the estimate access settings need attention.";
     }
 
     estimates = (data ?? []) as Estimate[];

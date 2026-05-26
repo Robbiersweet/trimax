@@ -157,7 +157,7 @@ export default async function InvoicesPage({
     .maybeSingle();
 
   const businessLoadMessage = businessError
-    ? "Workspace details could not be loaded from Supabase."
+    ? "Workspace details could not be loaded. Try signing in again, then reopen this workspace."
     : null;
 
   if (businessError) {
@@ -193,10 +193,10 @@ export default async function InvoicesPage({
       if (fallbackError) {
         console.warn("Invoice load failed:", fallbackError.message);
         invoiceLoadMessage =
-          "Invoices could not be loaded from Supabase. Please check the invoices table setup and policies.";
+          "Invoices could not be loaded. Try signing in again; if this stays here, the invoice access settings need attention.";
       } else {
         invoiceLoadMessage =
-          "Invoices are shown without split-invoice grouping because the optional split metadata is not available yet.";
+          "Invoices are shown without split-invoice grouping because split details are not available yet.";
         invoices = ((fallbackData ?? []) as BaseInvoice[]).map(
           (invoice) => ({
             ...invoice,

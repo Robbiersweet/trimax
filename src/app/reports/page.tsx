@@ -294,7 +294,7 @@ export default async function ReportsPage({
   if (businessError) {
     console.warn("Reports workspace lookup failed:", businessError.message);
     reportLoadMessages.push(
-      "Workspace details could not be loaded from Supabase."
+      "Workspace details could not be loaded. Try signing in again, then reopen this workspace."
     );
   }
 
@@ -331,7 +331,9 @@ export default async function ReportsPage({
         "Report queue data could not be loaded:",
         queueResponse.error.message
       );
-      reportLoadMessages.push("Queue report data could not be loaded.");
+      reportLoadMessages.push(
+        "Queue report data could not be loaded yet."
+      );
     }
 
     if (estimateResponse.error) {
@@ -339,7 +341,9 @@ export default async function ReportsPage({
         "Report estimate data could not be loaded:",
         estimateResponse.error.message
       );
-      reportLoadMessages.push("Estimate report data could not be loaded.");
+      reportLoadMessages.push(
+        "Estimate report data could not be loaded yet."
+      );
     }
 
     if (invoiceResponse.error) {
@@ -347,7 +351,9 @@ export default async function ReportsPage({
         "Report invoice data could not be loaded:",
         invoiceResponse.error.message
       );
-      reportLoadMessages.push("Invoice report data could not be loaded.");
+      reportLoadMessages.push(
+        "Invoice report data could not be loaded yet."
+      );
     }
 
     queueItems = (queueResponse.data ?? []) as QueueItem[];

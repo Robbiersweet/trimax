@@ -170,7 +170,7 @@ export default async function PaymentsPage({
 
       if (fallbackInvoiceError) {
         loadIssues.push(
-          "Invoices could not be loaded yet. This is usually a Supabase permission or stale login session issue."
+          "Invoices could not be loaded yet. Try signing in again; if this stays here, invoice access settings need attention."
         );
       } else {
         invoices = ((fallbackInvoiceData ?? []) as InvoiceWithoutUpdatedAt[]).map(
@@ -194,7 +194,7 @@ export default async function PaymentsPage({
 
     if (activityError) {
       loadIssues.push(
-        "Recent payment activity could not be loaded yet."
+        "Recent payment activity could not be loaded yet. Payments can still be reviewed once activity access is ready."
       );
     }
 

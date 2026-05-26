@@ -217,7 +217,7 @@ export default async function QueuePage({
     .maybeSingle();
 
   let queueLoadMessage = businessError
-    ? "Workspace details could not be loaded from Supabase."
+    ? "Workspace details could not be loaded. Try signing in again, then reopen this workspace."
     : null;
 
   if (businessError) {
@@ -238,7 +238,7 @@ export default async function QueuePage({
     if (error) {
       console.warn("Queue items could not be loaded:", error.message);
       queueLoadMessage =
-        "Queue items could not be loaded from Supabase. Please check the queue table setup and policies.";
+        "Queue items could not be loaded. Try signing in again; if this stays here, the queue access settings need attention.";
     }
 
     queueItems = (data ?? []) as QueueItemWithEstimate[];
