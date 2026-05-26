@@ -230,7 +230,7 @@ export default async function InvoicePrintPage({
           <div>
             <Image
               src="/Brand/rnl-multi-colors.png"
-              alt="R&L Creations"
+              alt={companyName}
               width={128}
               height={128}
               className="h-32 w-32 object-contain print:h-28 print:w-28"

@@ -138,15 +138,18 @@ export default function DashboardQuickActions({
     };
   }, [businessSlug]);
 
+  const isJustKleen = businessSlug === "just-kleen";
+
   const quickActions = useMemo<QuickAction[]>(
     () => [
       {
         key: "new_queue",
-        title: "New Queue Item",
-        subtitle:
-          "Add apartment turn or property request",
+        title: isJustKleen ? "New Work Request" : "New Queue Item",
+        subtitle: isJustKleen
+          ? "Add cleaning job or customer request"
+          : "Add apartment turn or property request",
         href: `/new-request?business=${businessSlug}`,
-        label: "Queue",
+        label: isJustKleen ? "Work" : "Queue",
         glyph: "Q",
         tone: "queue",
       },
@@ -179,8 +182,10 @@ export default function DashboardQuickActions({
       },
       {
         key: "review_queue",
-        title: "Review Queue",
-        subtitle: "Check upcoming units",
+        title: isJustKleen ? "Review Work" : "Review Queue",
+        subtitle: isJustKleen
+          ? "Check upcoming cleaning requests"
+          : "Check upcoming units",
         href: `/queue?business=${businessSlug}`,
         label: "Review",
         glyph: "R",
@@ -188,8 +193,10 @@ export default function DashboardQuickActions({
       },
       {
         key: "reports",
-        title: "Property Reports",
-        subtitle: "Review unit history and readiness",
+        title: isJustKleen ? "Business Reports" : "Property Reports",
+        subtitle: isJustKleen
+          ? "Review client activity and revenue"
+          : "Review unit history and readiness",
         href: `/reports?business=${businessSlug}`,
         label: "Reports",
         glyph: "%",
@@ -205,7 +212,7 @@ export default function DashboardQuickActions({
         tone: "print",
       },
     ],
-    [businessSlug]
+    [businessSlug, isJustKleen]
   );
 
   const visibleActions = quickActions.filter(

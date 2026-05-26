@@ -145,7 +145,7 @@ export default function Navigation() {
           {isRnl ? (
             <Image
               src="/Brand/rnl-multi-colors.png"
-              alt="R&L Creations"
+              alt={businessName}
               width={48}
               height={48}
               className="h-12 w-12 rounded-full object-cover lg:h-14 lg:w-14"
