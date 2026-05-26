@@ -79,6 +79,12 @@ export default function Navigation() {
       active: pathname.startsWith("/queue"),
     },
     {
+      key: "schedule",
+      label: "Schedule",
+      href: `/schedule?business=${business}`,
+      active: pathname.startsWith("/schedule"),
+    },
+    {
       key: "estimates",
       label: "Estimates",
       href: `/estimates?business=${business}`,

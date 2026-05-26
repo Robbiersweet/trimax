@@ -6,6 +6,10 @@ import StatusBadge from "../../components/StatusBadge";
 import DeleteQueueItemButton from "../../components/DeleteQueueItemButton";
 import MarkCompletedButton from "../../components/MarkCompletedButton";
 import MarkScheduledButton from "../../components/MarkScheduledButton";
+import {
+  calendarDataUri,
+  calendarFileName,
+} from "../../lib/calendar";
 import { supabase } from "../../lib/supabase";
 
 type SupabaseQueueItem = {
@@ -184,6 +188,23 @@ export default async function QueueDetailPage({
     item.move_out_date,
     item.completed_date
   );
+  const calendarTitle = `${item.property || "Property"}${
+    item.unit ? ` - Unit ${item.unit}` : ""
+  }`;
+  const calendarHref = calendarDataUri({
+    title: `Trimax: ${calendarTitle}`,
+    date: item.scheduled_date,
+    location: item.property,
+    description: [
+      item.paint_type ? `Paint: ${item.paint_type}` : null,
+      item.flooring ? `Flooring: ${item.flooring}` : null,
+      item.priority ? `Priority: ${item.priority}` : null,
+      item.ready_date ? `Ready date: ${item.ready_date}` : null,
+      item.notes ? `Notes: ${item.notes}` : null,
+    ]
+      .filter(Boolean)
+      .join("\n"),
+  });
 
   return (
     <AppShell>
@@ -346,6 +367,16 @@ export default async function QueueDetailPage({
           <Link href={`/queue/${item.id}/edit?business=${businessSlug}`}>
             <Button variant="secondary">Edit Queue Item</Button>
           </Link>
+
+          {calendarHref ? (
+            <a
+              href={calendarHref}
+              download={calendarFileName(calendarTitle, item.scheduled_date)}
+              className="inline-flex items-center justify-center rounded-2xl bg-green-400 px-5 py-3 text-center font-semibold text-black transition hover:opacity-90"
+            >
+              Add To Calendar
+            </a>
+          ) : null}
 
           <MarkCompletedButton
             queueItemId={item.id}
