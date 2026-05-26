@@ -13,10 +13,7 @@ export async function getQueueItems(businessId?: string) {
   const { data, error } = await query;
 
   if (error) {
-    console.log("Supabase error message:", error.message);
-    console.log("Supabase error details:", error.details);
-    console.log("Supabase error hint:", error.hint);
-    console.log("Supabase error code:", error.code);
+    console.warn("Queue items could not be loaded:", error.message);
 
     return [];
   }

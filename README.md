@@ -77,6 +77,8 @@ Run them from the Supabase SQL editor when a feature needs new tables or policie
 
 ## Vercel
 
+For the beginner-friendly walkthrough, use `FIRST_DEPLOYMENT_GUIDE.md`.
+
 Deploy from GitHub to Vercel after:
 
 1. Supabase SQL is current.
