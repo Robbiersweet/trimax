@@ -61,6 +61,7 @@ export default function SplitInvoicePlanner({
   const [createdInvoices, setCreatedInvoices] = useState<
     { id: string; displayId: string }[]
   >([]);
+  const [isConfirmingCreate, setIsConfirmingCreate] = useState(false);
   const [message, setMessage] = useState<{
     type: "error" | "notice";
     text: string;
@@ -89,11 +90,12 @@ export default function SplitInvoicePlanner({
       return;
     }
 
-    const confirmed = window.confirm(
-      `Create ${splitAmounts.length} split invoices from this invoice?`
-    );
-
-    if (!confirmed) {
+    if (!isConfirmingCreate) {
+      setIsConfirmingCreate(true);
+      setMessage({
+        type: "notice",
+        text: `Review the split plan, then click create again to make ${splitAmounts.length} draft split invoices.`,
+      });
       return;
     }
 
@@ -216,6 +218,7 @@ export default function SplitInvoicePlanner({
         displayId: invoice.display_id || "Invoice",
       }))
     );
+    setIsConfirmingCreate(false);
 
     await logActivity({
       businessId: sourceInvoice.businessId,
@@ -345,7 +348,9 @@ export default function SplitInvoicePlanner({
                   ? "Split Invoices Created"
                   : creating
                     ? "Creating..."
-                    : "Confirm and Create"}
+                    : isConfirmingCreate
+                      ? "Yes, Create Split Invoices"
+                      : "Review and Create"}
               </Button>
             ) : (
               <button
