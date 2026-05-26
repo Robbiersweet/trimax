@@ -64,8 +64,12 @@ export default async function EstimatesPage({
     .limit(1)
     .maybeSingle();
 
+  let estimateLoadMessage = businessError
+    ? "Workspace details could not be loaded from Supabase."
+    : null;
+
   if (businessError) {
-    console.error(businessError);
+    console.warn("Estimates workspace lookup failed:", businessError.message);
   }
 
   const selectedBusiness = businessData as Business | null;
@@ -73,13 +77,19 @@ export default async function EstimatesPage({
   let estimates: Estimate[] = [];
 
   if (selectedBusiness?.id) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("estimates")
       .select(
         "id, display_id, customer_name, project_title, estimate_amount, status"
       )
       .eq("business_id", selectedBusiness.id)
       .order("created_at", { ascending: false });
+
+    if (error) {
+      console.warn("Estimates could not be loaded:", error.message);
+      estimateLoadMessage =
+        "Estimates could not be loaded from Supabase. Please check the estimates table setup and policies.";
+    }
 
     estimates = (data ?? []) as Estimate[];
   }
@@ -152,6 +162,18 @@ export default async function EstimatesPage({
             <Button>+ New Estimate</Button>
           </Link>
         </div>
+
+        {estimateLoadMessage ? (
+          <Card className="border-amber-500/30 bg-amber-500/10">
+            <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">
+              Estimate notice
+            </p>
+
+            <p className="mt-2 text-sm leading-6 text-amber-950 dark:text-amber-100/80">
+              {estimateLoadMessage}
+            </p>
+          </Card>
+        ) : null}
 
         <Card>
           <form

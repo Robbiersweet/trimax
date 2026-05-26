@@ -216,8 +216,12 @@ export default async function QueuePage({
     .limit(1)
     .maybeSingle();
 
+  let queueLoadMessage = businessError
+    ? "Workspace details could not be loaded from Supabase."
+    : null;
+
   if (businessError) {
-    console.error(businessError);
+    console.warn("Queue workspace lookup failed:", businessError.message);
   }
 
   const selectedBusiness = businessData as Business | null;
@@ -232,7 +236,9 @@ export default async function QueuePage({
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error(error);
+      console.warn("Queue items could not be loaded:", error.message);
+      queueLoadMessage =
+        "Queue items could not be loaded from Supabase. Please check the queue table setup and policies.";
     }
 
     queueItems = (data ?? []) as QueueItemWithEstimate[];
@@ -398,6 +404,18 @@ export default async function QueuePage({
             <Button>+ New Queue Item</Button>
           </Link>
         </div>
+
+        {queueLoadMessage ? (
+          <Card className="border-amber-500/30 bg-amber-500/10">
+            <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">
+              Queue notice
+            </p>
+
+            <p className="mt-2 text-sm leading-6 text-amber-950 dark:text-amber-100/80">
+              {queueLoadMessage}
+            </p>
+          </Card>
+        ) : null}
 
         <Card>
           <form

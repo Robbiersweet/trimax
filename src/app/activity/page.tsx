@@ -344,17 +344,21 @@ export default async function ActivityPage({
   const searchTerm = (resolvedSearchParams.q ?? "").trim();
   const typeFilter = normalizeActivityFilter(resolvedSearchParams.type);
 
-  const { data: businessData } = await supabase
+  const { data: businessData, error: businessError } = await supabase
     .from("businesses")
     .select("id, name, slug")
     .eq("slug", businessSlug)
     .limit(1)
     .maybeSingle();
 
+  if (businessError) {
+    console.warn("Activity workspace lookup failed:", businessError.message);
+  }
+
   const business = businessData as Business | null;
 
   let logs: ActivityLog[] = [];
-  let setupNeeded = false;
+  let setupNeeded = Boolean(businessError);
 
   if (business?.id) {
     const { data, error } = await supabase
@@ -365,7 +369,7 @@ export default async function ActivityPage({
       .limit(100);
 
     if (error) {
-      console.error(error);
+      console.warn("Activity logs could not be loaded:", error.message);
       setupNeeded = true;
     } else {
       logs = (data ?? []) as ActivityLog[];

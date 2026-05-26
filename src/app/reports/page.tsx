@@ -289,8 +289,13 @@ export default async function ReportsPage({
     .limit(1)
     .maybeSingle();
 
+  const reportLoadMessages: string[] = [];
+
   if (businessError) {
-    console.error(businessError);
+    console.warn("Reports workspace lookup failed:", businessError.message);
+    reportLoadMessages.push(
+      "Workspace details could not be loaded from Supabase."
+    );
   }
 
   const selectedBusiness = businessData as Business | null;
@@ -322,15 +327,27 @@ export default async function ReportsPage({
       ]);
 
     if (queueResponse.error) {
-      console.error(queueResponse.error);
+      console.warn(
+        "Report queue data could not be loaded:",
+        queueResponse.error.message
+      );
+      reportLoadMessages.push("Queue report data could not be loaded.");
     }
 
     if (estimateResponse.error) {
-      console.error(estimateResponse.error);
+      console.warn(
+        "Report estimate data could not be loaded:",
+        estimateResponse.error.message
+      );
+      reportLoadMessages.push("Estimate report data could not be loaded.");
     }
 
     if (invoiceResponse.error) {
-      console.error(invoiceResponse.error);
+      console.warn(
+        "Report invoice data could not be loaded:",
+        invoiceResponse.error.message
+      );
+      reportLoadMessages.push("Invoice report data could not be loaded.");
     }
 
     queueItems = (queueResponse.data ?? []) as QueueItem[];
@@ -529,6 +546,18 @@ export default async function ReportsPage({
             <Button variant="secondary">Open Queue</Button>
           </Link>
         </div>
+
+        {reportLoadMessages.length > 0 ? (
+          <Card className="border-amber-500/30 bg-amber-500/10">
+            <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">
+              Report notice
+            </p>
+
+            <p className="mt-2 text-sm leading-6 text-amber-950 dark:text-amber-100/80">
+              {reportLoadMessages.join(" ")}
+            </p>
+          </Card>
+        ) : null}
 
         <Card className="p-5">
           <div className="grid gap-5 xl:grid-cols-[1fr_auto_auto] xl:items-end">
