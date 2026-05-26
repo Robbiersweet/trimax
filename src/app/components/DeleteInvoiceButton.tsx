@@ -6,10 +6,12 @@ import { supabase } from "../lib/supabase";
 
 type DeleteInvoiceButtonProps = {
   invoiceId: string;
+  returnHref: string;
 };
 
 export default function DeleteInvoiceButton({
   invoiceId,
+  returnHref,
 }: DeleteInvoiceButtonProps) {
   const router = useRouter();
 
@@ -33,7 +35,7 @@ export default function DeleteInvoiceButton({
       return;
     }
 
-    router.push("/invoices");
+    router.push(returnHref);
     router.refresh();
   }
 

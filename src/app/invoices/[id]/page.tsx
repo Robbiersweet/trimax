@@ -731,7 +731,10 @@ export default async function InvoiceDetailPage({
               <Button variant="secondary">Edit Invoice</Button>
             </Link>
 
-            <DeleteInvoiceButton invoiceId={invoice.id} />
+            <DeleteInvoiceButton
+              invoiceId={invoice.id}
+              returnHref={`/invoices${businessQuery}`}
+            />
           </div>
         </div>
       </main>

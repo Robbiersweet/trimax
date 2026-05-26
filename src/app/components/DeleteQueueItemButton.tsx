@@ -6,10 +6,12 @@ import Button from "./Button";
 
 type DeleteQueueItemButtonProps = {
   queueItemId: string;
+  returnHref: string;
 };
 
 export default function DeleteQueueItemButton({
   queueItemId,
+  returnHref,
 }: DeleteQueueItemButtonProps) {
   const router = useRouter();
 
@@ -33,7 +35,7 @@ export default function DeleteQueueItemButton({
       return;
     }
 
-    router.push("/queue");
+    router.push(returnHref);
     router.refresh();
   };
 

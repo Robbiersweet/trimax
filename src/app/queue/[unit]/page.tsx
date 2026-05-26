@@ -355,7 +355,10 @@ export default async function QueueDetailPage({
             }`}
           />
 
-          <DeleteQueueItemButton queueItemId={item.id} />
+          <DeleteQueueItemButton
+            queueItemId={item.id}
+            returnHref={`/queue?business=${businessSlug}`}
+          />
         </div>
       </div>
     </AppShell>
