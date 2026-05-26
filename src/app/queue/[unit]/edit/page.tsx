@@ -282,10 +282,10 @@ export default function EditQueueItemPage() {
 
                   <span>
                     <span className="block font-semibold text-zinc-100">
-                      Renovation needed
+                      Current renovation
                     </span>
                     <span className="mt-1 block text-sm leading-6 text-zinc-400">
-                      Queue-to-estimate can add renovation work.
+                      Queue-to-estimate can add this renovation work.
                     </span>
                   </span>
                 </label>
@@ -305,8 +305,8 @@ export default function EditQueueItemPage() {
               {renovationNeeded ? (
                 <div className="mt-4">
                   <InputField
-                    label="Renovation Needed Details"
-                    placeholder="Example: Cabinet paint, countertop repair, bath vanity refresh"
+                    label="Current Renovation Style / Scope"
+                    placeholder="Example: PrideRock Reno, Cabinet paint, bath vanity refresh"
                     value={renovationNeededDetails}
                     onChange={setRenovationNeededDetails}
                   />

@@ -850,12 +850,13 @@ export default async function ReportsPage({
             </p>
 
             <h2 className="mt-3 text-2xl font-bold">
-              Units that may need renovation
+              Units with current renovation work
             </h2>
 
             <p className="mt-2 text-sm leading-6 text-zinc-400">
               Units marked during queue intake appear here so they can be
-              reviewed before estimate creation.
+              reviewed before estimate creation and remembered as future unit
+              history.
             </p>
 
             <div className="mt-4 space-y-3">

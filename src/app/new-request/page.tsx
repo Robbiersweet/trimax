@@ -117,6 +117,18 @@ function unitListFromText(value: string) {
     .filter(Boolean);
 }
 
+function previousRenovationLabel(value: string | null | undefined) {
+  const detail = (value || "").trim();
+
+  if (!detail) {
+    return "";
+  }
+
+  return detail.toLowerCase().startsWith("previous ")
+    ? detail
+    : `Previous ${detail}`;
+}
+
 function NewRequestPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -229,16 +241,23 @@ function NewRequestPageContent() {
       }
 
       const memory = data as RenovationMemory;
+      const currentRenovationBecomesHistory =
+        Boolean(memory.renovation_needed) &&
+        Boolean(memory.renovation_needed_details);
       const hasPriorRenovation =
         Boolean(memory.prior_renovation) ||
-        Boolean(memory.prior_renovation_details);
+        Boolean(memory.prior_renovation_details) ||
+        currentRenovationBecomesHistory;
 
       setPriorRenovation(hasPriorRenovation);
-      setPriorRenovationDetails(memory.prior_renovation_details ?? "");
-      setRenovationNeeded(Boolean(memory.renovation_needed));
-      setRenovationNeededDetails(memory.renovation_needed_details ?? "");
+      setPriorRenovationDetails(
+        memory.prior_renovation_details ||
+          previousRenovationLabel(memory.renovation_needed_details)
+      );
+      setRenovationNeeded(false);
+      setRenovationNeededDetails("");
       setRenovationMemoryMessage(
-        "Loaded previous renovation notes for this unit."
+        "Loaded renovation history for this unit."
       );
     }
 
@@ -489,11 +508,11 @@ function NewRequestPageContent() {
 
                     <span>
                       <span className="block font-semibold text-zinc-100">
-                        This unit may need renovation
+                        This queue item is for a renovation
                       </span>
                       <span className="mt-1 block text-sm leading-6 text-zinc-400">
-                        Adds a renovation and cabinet paint line when creating
-                        the estimate.
+                        Use this when the current turn should become the new
+                        renovation history for the unit.
                       </span>
                     </span>
                   </label>
@@ -513,11 +532,11 @@ function NewRequestPageContent() {
                 {renovationNeeded ? (
                   <div className="mt-4">
                     <InputField
-                      label="Renovation Needed Details"
-                      placeholder="Example: Cabinet paint, countertop repair, bath vanity refresh"
+                      label="Current Renovation Style / Scope"
+                      placeholder="Example: PrideRock Reno, Cabinet paint, bath vanity refresh"
                       value={renovationNeededDetails}
                       onChange={setRenovationNeededDetails}
-                      helperText="This will travel with the queue item and show up when you create the estimate."
+                      helperText="Example: PrideRock Reno. Next time this unit is entered, Trimax can remember it as Previous PrideRock Reno."
                     />
                   </div>
                 ) : null}

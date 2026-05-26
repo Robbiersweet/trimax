@@ -209,7 +209,7 @@ export default async function QueueDetailPage({
         : null,
       item.renovation_needed ? "Renovation needed: Yes" : null,
       item.renovation_needed_details
-        ? `Renovation scope: ${item.renovation_needed_details}`
+        ? `Current renovation: ${item.renovation_needed_details}`
         : null,
       item.notes ? `Notes: ${item.notes}` : null,
     ]
@@ -377,7 +377,7 @@ export default async function QueueDetailPage({
               value={item.renovation_needed ? "Yes" : "No"}
             />
             <Info
-              label="Renovation Needed Details"
+              label="Current Renovation Style / Scope"
               value={item.renovation_needed_details ?? ""}
             />
             <Info label="Move Out Date" value={item.move_out_date ?? ""} />
