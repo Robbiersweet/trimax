@@ -7,6 +7,7 @@ import Card from "../../../components/Card";
 import Button from "../../../components/Button";
 import InputField from "../../../components/InputField";
 import Toast from "../../../components/Toast";
+import { captureServicesFromLineItems } from "../../../lib/captureServicesFromLineItems";
 import { logActivity } from "../../../lib/activityLog";
 import { supabase } from "../../../lib/supabase";
 import { looksLikeApartmentUnitPaintJob } from "../../../utils/jobWorkflow";
@@ -682,6 +683,11 @@ export default function EditEstimatePage() {
 
       return;
     }
+
+    await captureServicesFromLineItems({
+      businessId,
+      lineItems: validLineItems,
+    });
 
     await logActivity({
       businessId: businessId || null,

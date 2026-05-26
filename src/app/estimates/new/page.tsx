@@ -13,6 +13,7 @@ import Button from "../../components/Button";
 import InputField from "../../components/InputField";
 import Card from "../../components/Card";
 import Toast from "../../components/Toast";
+import { captureServicesFromLineItems } from "../../lib/captureServicesFromLineItems";
 import { logActivity } from "../../lib/activityLog";
 import { supabase } from "../../lib/supabase";
 import { looksLikeApartmentUnitPaintJob } from "../../utils/jobWorkflow";
@@ -841,6 +842,11 @@ function NewEstimatePageContent() {
 
       return;
     }
+
+    await captureServicesFromLineItems({
+      businessId: business.id,
+      lineItems: validLineItems,
+    });
 
     if (queueId) {
       const { error: queueUpdateError } = await supabase
