@@ -234,7 +234,7 @@ export default function DashboardQuickActions({
             href={action.href}
             className={[
               "dashboard-feature-card dark-surface group relative overflow-hidden rounded-2xl border p-4 transition",
-              "bg-zinc-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
+              "bg-zinc-950 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
               tone.border,
               tone.background,
               tone.hover,
@@ -242,7 +242,7 @@ export default function DashboardQuickActions({
           >
             <span
               aria-hidden="true"
-              className="absolute inset-0 bg-[radial-gradient(circle_at_15%_0%,rgba(255,255,255,0.12),transparent_32%),linear-gradient(135deg,rgba(0,0,0,0.05),rgba(0,0,0,0.42)_72%)] opacity-95"
+              className="absolute inset-0 bg-[radial-gradient(circle_at_15%_0%,rgba(255,255,255,0.14),transparent_32%),linear-gradient(135deg,rgba(0,0,0,0.08),rgba(0,0,0,0.74)_72%)] opacity-95"
             />
 
             <span
@@ -282,18 +282,18 @@ export default function DashboardQuickActions({
                 </span>
               </div>
 
-              <p className="mt-3 font-semibold text-slate-50">
+              <p className="mt-3 font-semibold text-white drop-shadow-sm">
                 {action.title}
               </p>
 
               <div className="mt-1 flex items-end justify-between gap-3">
-                <p className="text-sm text-slate-300">
+                <p className="text-sm text-white/75">
                   {action.subtitle}
                 </p>
 
                 <span
                   aria-hidden="true"
-                  className="text-lg font-semibold text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-slate-50"
+                  className="text-lg font-semibold text-white/75 transition group-hover:translate-x-0.5 group-hover:text-white"
                 >
                   &gt;
                 </span>

@@ -65,8 +65,11 @@ html.theme-light .border-zinc-700 {
 }
 
 html.theme-light .dark-surface {
-  background-color: #09090b !important;
+  background-color: #0b1220 !important;
   color: #f8fafc !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 18px 45px rgba(15, 23, 42, 0.14) !important;
 }
 
 html.theme-light .dark-surface.bg-zinc-950,
@@ -75,29 +78,36 @@ html.theme-light .dark-surface.bg-zinc-950\/70,
 html.theme-light .dark-surface.bg-black,
 html.theme-light .dark-surface.bg-black\/30,
 html.theme-light .dark-surface.bg-black\/40 {
-  background-color: #09090b !important;
+  background-color: #0b1220 !important;
 }
 
 html.theme-light .dark-surface.bg-zinc-900,
 html.theme-light .dark-surface.bg-zinc-900\/80 {
-  background-color: #18181b !important;
+  background-color: #111827 !important;
 }
 
 html.theme-light .dark-surface.text-white,
 html.theme-light .dark-surface.text-zinc-50,
 html.theme-light .dark-surface.text-zinc-100,
-html.theme-light .dark-surface.text-zinc-200 {
+html.theme-light .dark-surface.text-zinc-200,
+html.theme-light .dark-surface.text-slate-50,
+html.theme-light .dark-surface.text-slate-100,
+html.theme-light .dark-surface.text-slate-200 {
   color: #f8fafc !important;
 }
 
 html.theme-light .dark-surface.text-zinc-300,
-html.theme-light .dark-surface.text-zinc-400 {
-  color: #cbd5e1 !important;
+html.theme-light .dark-surface.text-zinc-400,
+html.theme-light .dark-surface.text-slate-300,
+html.theme-light .dark-surface.text-slate-400 {
+  color: #dbeafe !important;
 }
 
 html.theme-light .dark-surface.text-zinc-500,
-html.theme-light .dark-surface.text-zinc-600 {
-  color: #94a3b8 !important;
+html.theme-light .dark-surface.text-zinc-600,
+html.theme-light .dark-surface.text-slate-500,
+html.theme-light .dark-surface.text-slate-600 {
+  color: #cbd5e1 !important;
 }
 
 html.theme-light .dark-surface.border-zinc-800,
@@ -122,18 +132,25 @@ html.theme-light .dark-surface .bg-zinc-900\/80 {
 html.theme-light .dark-surface .text-white,
 html.theme-light .dark-surface .text-zinc-50,
 html.theme-light .dark-surface .text-zinc-100,
-html.theme-light .dark-surface .text-zinc-200 {
+html.theme-light .dark-surface .text-zinc-200,
+html.theme-light .dark-surface .text-slate-50,
+html.theme-light .dark-surface .text-slate-100,
+html.theme-light .dark-surface .text-slate-200 {
   color: #f8fafc !important;
 }
 
 html.theme-light .dark-surface .text-zinc-300,
-html.theme-light .dark-surface .text-zinc-400 {
-  color: #cbd5e1 !important;
+html.theme-light .dark-surface .text-zinc-400,
+html.theme-light .dark-surface .text-slate-300,
+html.theme-light .dark-surface .text-slate-400 {
+  color: #dbeafe !important;
 }
 
 html.theme-light .dark-surface .text-zinc-500,
-html.theme-light .dark-surface .text-zinc-600 {
-  color: #94a3b8 !important;
+html.theme-light .dark-surface .text-zinc-600,
+html.theme-light .dark-surface .text-slate-500,
+html.theme-light .dark-surface .text-slate-600 {
+  color: #cbd5e1 !important;
 }
 
 html.theme-light .dark-surface .border-zinc-800,
