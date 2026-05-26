@@ -133,11 +133,11 @@ export default function Navigation() {
   );
 
   return (
-    <nav className="mb-8 rounded-3xl border border-zinc-800 bg-zinc-900/80 px-4 py-4 sm:px-5">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <nav className="mb-8 rounded-3xl border border-zinc-800 bg-zinc-900/80 px-4 py-4 shadow-lg sm:px-5 lg:sticky lg:top-5 lg:mb-0 lg:flex lg:h-[calc(100vh-2.5rem)] lg:w-72 lg:shrink-0 lg:flex-col lg:overflow-hidden lg:px-4 lg:py-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between lg:flex-col lg:items-stretch lg:justify-start">
         <Link
           href={`/?business=${business}`}
-          className="flex min-w-0 items-center gap-3"
+          className="flex min-w-0 items-center gap-3 lg:flex-col lg:items-start"
         >
           {isRnl ? (
             <Image
@@ -145,11 +145,11 @@ export default function Navigation() {
               alt="R&L Creations"
               width={48}
               height={48}
-              className="h-12 w-12 rounded-full object-cover"
+              className="h-12 w-12 rounded-full object-cover lg:h-14 lg:w-14"
               priority
             />
           ) : (
-            <div className="flex h-12 w-12 items-center justify-center rounded-full border border-cyan-400/60 bg-cyan-400/10 text-sm font-black text-cyan-200">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full border border-cyan-400/60 bg-cyan-400/10 text-sm font-black text-cyan-200 lg:h-14 lg:w-14">
               JK
             </div>
           )}
@@ -165,23 +165,29 @@ export default function Navigation() {
           </div>
         </Link>
 
-        <UserMenu />
+        <div className="lg:hidden">
+          <UserMenu variant="top" />
+        </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-2 text-sm font-medium text-zinc-300 sm:grid-cols-4 xl:flex xl:flex-wrap xl:items-center xl:justify-center">
+      <div className="mt-4 grid grid-cols-2 gap-2 text-sm font-medium text-zinc-300 sm:grid-cols-4 lg:flex lg:flex-1 lg:flex-col lg:overflow-y-auto lg:pt-3">
         {visibleNavLinks.map((link) => (
           <Link
             key={link.href}
             href={link.href}
-            className={`rounded-full px-3 py-2 text-center transition ${
+            className={`rounded-2xl px-3 py-2 text-center transition lg:text-left ${
               link.active
-                ? "bg-orange-500 text-black"
+                ? "bg-orange-500 text-black shadow-lg shadow-orange-950/20"
                 : "hover:bg-zinc-800 hover:text-orange-400"
             }`}
           >
             {link.label}
           </Link>
         ))}
+      </div>
+
+      <div className="mt-5 hidden border-t border-zinc-800 pt-4 lg:block">
+        <UserMenu variant="sidebar" />
       </div>
     </nav>
   );

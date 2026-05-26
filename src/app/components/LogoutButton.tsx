@@ -4,7 +4,13 @@ import { useRouter } from "next/navigation";
 import Button from "./Button";
 import { supabase } from "../lib/supabase";
 
-export default function LogoutButton() {
+type LogoutButtonProps = {
+  className?: string;
+};
+
+export default function LogoutButton({
+  className = "",
+}: LogoutButtonProps) {
   const router = useRouter();
 
   async function handleLogout() {
@@ -15,7 +21,11 @@ export default function LogoutButton() {
   }
 
   return (
-    <Button variant="secondary" onClick={handleLogout}>
+    <Button
+      variant="secondary"
+      onClick={handleLogout}
+      className={className}
+    >
       Logout
     </Button>
   );

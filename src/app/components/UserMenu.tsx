@@ -12,6 +12,10 @@ type UserData = {
   role: string | null;
 };
 
+type UserMenuProps = {
+  variant?: "top" | "sidebar";
+};
+
 function formatRole(value: string | null) {
   if (!value) {
     return "Workspace User";
@@ -27,7 +31,9 @@ function formatRole(value: string | null) {
     .join(" ");
 }
 
-export default function UserMenu() {
+export default function UserMenu({
+  variant = "top",
+}: UserMenuProps) {
   const searchParams = useSearchParams();
   const businessSlug =
     searchParams.get("business") ??
@@ -61,9 +67,19 @@ export default function UserMenu() {
     loadUser();
   }, [businessSlug]);
 
+  const isSidebar = variant === "sidebar";
+
   return (
-    <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-      <ThemeToggle />
+    <div
+      className={
+        isSidebar
+          ? "flex min-w-0 flex-col gap-3"
+          : "flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:gap-4"
+      }
+    >
+      <ThemeToggle
+        className={isSidebar ? "w-full justify-center" : ""}
+      />
 
       <div className="min-w-0 rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-2">
         <p className="text-xs text-zinc-500">
@@ -79,7 +95,9 @@ export default function UserMenu() {
         </p>
       </div>
 
-      <LogoutButton />
+      <LogoutButton
+        className={isSidebar ? "w-full" : ""}
+      />
     </div>
   );
 }
