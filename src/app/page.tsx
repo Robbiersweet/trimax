@@ -1665,7 +1665,7 @@ export default async function DashboardPage({
                         </span>
 
                         {item.smoked_in ? (
-                          <span className="rounded-full border border-red-500/35 bg-red-500/10 px-3 py-1 text-red-200">
+                          <span className="dashboard-remediation-pill rounded-full border border-red-500/35 bg-red-500/10 px-3 py-1 font-semibold text-red-200">
                             Remediation
                           </span>
                         ) : null}
@@ -1814,7 +1814,7 @@ export default async function DashboardPage({
                           {amountDue > 0 ? (
                             <Link
                               href={`/payments?${paymentParams.toString()}`}
-                              className="rounded-full border border-green-500/40 bg-green-500/10 px-4 py-2 text-sm font-semibold text-green-200 transition hover:border-green-300 hover:bg-green-500/20"
+                              className="dashboard-payment-action rounded-full border border-green-500/40 bg-green-500/10 px-4 py-2 text-sm font-semibold text-green-200 transition hover:border-green-300 hover:bg-green-500/20"
                             >
                               Record Payment
                             </Link>
