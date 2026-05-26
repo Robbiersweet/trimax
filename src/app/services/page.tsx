@@ -152,6 +152,18 @@ function ServicesPageContent() {
     );
   }, [services]);
 
+  const categorySummaries = useMemo(
+    () =>
+      categories.map((serviceCategory) => ({
+        name: serviceCategory,
+        count: services.filter(
+          (service) =>
+            service.category === serviceCategory
+        ).length,
+      })),
+    [categories, services]
+  );
+
   const filteredServices = useMemo(() => {
     const normalizedSearch =
       searchTerm.trim().toLowerCase();
@@ -635,6 +647,49 @@ function ServicesPageContent() {
                 </select>
               </div>
             </div>
+
+            {categorySummaries.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCategoryFilter("all")
+                  }
+                  className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                    categoryFilter === "all"
+                      ? "border-orange-500 bg-orange-500 text-black"
+                      : "border-zinc-700 bg-zinc-950 text-zinc-300 hover:border-orange-400 hover:text-orange-300"
+                  }`}
+                >
+                  All categories
+                </button>
+
+                {categorySummaries.map(
+                  (serviceCategory) => (
+                    <button
+                      key={serviceCategory.name}
+                      type="button"
+                      onClick={() =>
+                        setCategoryFilter(
+                          serviceCategory.name
+                        )
+                      }
+                      className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                        categoryFilter ===
+                        serviceCategory.name
+                          ? "border-orange-500 bg-orange-500 text-black"
+                          : "border-zinc-700 bg-zinc-950 text-zinc-300 hover:border-orange-400 hover:text-orange-300"
+                      }`}
+                    >
+                      {serviceCategory.name}{" "}
+                      <span className="text-xs opacity-75">
+                        {serviceCategory.count}
+                      </span>
+                    </button>
+                  )
+                )}
+              </div>
+            )}
           </div>
         </Card>
 
