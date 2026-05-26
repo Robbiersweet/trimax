@@ -284,6 +284,15 @@ function ServicesPageContent() {
     setCategory("");
   }
 
+  function scrollToServiceForm() {
+    window.setTimeout(() => {
+      document.getElementById("service-form")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 0);
+  }
+
   function startEdit(service: ServiceItem) {
     setEditingServiceId(service.id);
     setName(service.name ?? "");
@@ -299,6 +308,11 @@ function ServicesPageContent() {
       )
     );
     setCategory(service.category ?? "");
+    setToast({
+      type: "success",
+      message: `Editing ${service.name}. Make changes in the form, then save.`,
+    });
+    scrollToServiceForm();
   }
 
   function duplicateService(service: ServiceItem) {
@@ -322,10 +336,7 @@ function ServicesPageContent() {
         "Service copied into the form. Rename it, then save.",
     });
 
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
+    scrollToServiceForm();
   }
 
   async function handleSave() {
@@ -474,7 +485,7 @@ function ServicesPageContent() {
           </p>
         </div>
 
-        <Card>
+        <Card id="service-form">
           <div className="grid gap-5">
             <div className="flex items-center justify-between gap-4">
               <h2 className="text-xl font-semibold">
@@ -492,6 +503,19 @@ function ServicesPageContent() {
                 </Button>
               )}
             </div>
+
+            {editingServiceId && (
+              <div className="rounded-2xl border border-orange-500/30 bg-orange-500/10 px-4 py-3">
+                <p className="text-sm font-semibold text-orange-300">
+                  Editing {name || "selected service"}
+                </p>
+
+                <p className="mt-1 text-sm text-zinc-300">
+                  Update the fields below, then click Save Service. Cancel
+                  Edit leaves the existing service unchanged.
+                </p>
+              </div>
+            )}
 
             <InputField
               label="Service Name"
@@ -543,8 +567,8 @@ function ServicesPageContent() {
           </div>
         </Card>
 
-        <Card className="border-emerald-500/25 bg-emerald-500/10">
-          <p className="text-sm uppercase tracking-[0.25em] text-emerald-800 dark:text-emerald-200">
+        <Card className="border-emerald-500/30 bg-emerald-500/10">
+          <p className="text-sm uppercase tracking-[0.25em] text-emerald-300">
             Smart Service Capture
           </p>
 
@@ -552,7 +576,7 @@ function ServicesPageContent() {
             Typed line items can become reusable services
           </h2>
 
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-emerald-950 dark:text-emerald-50/90">
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
             When a new service is typed on an estimate or invoice, Trimax can
             capture it here for this workspace. That keeps R&L apartment work
             and Just Kleen cleaning work organized without making you enter
