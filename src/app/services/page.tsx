@@ -109,7 +109,10 @@ function ServicesPageContent() {
 
       setBusiness(selectedBusiness);
 
-      const { data: serviceData } =
+      const {
+        data: serviceData,
+        error: serviceError,
+      } =
         await supabase
           .from("service_items")
           .select("*")
@@ -123,6 +126,16 @@ function ServicesPageContent() {
           .order("name", {
             ascending: true,
           });
+
+      if (serviceError) {
+        console.error(serviceError);
+
+        setToast({
+          type: "error",
+          message:
+            "Unable to load saved services. You can still try again after refreshing the page.",
+        });
+      }
 
       setServices(
         (serviceData ?? []) as ServiceItem[]
@@ -234,7 +247,7 @@ function ServicesPageContent() {
       return;
     }
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("service_items")
       .select("*")
       .eq("business_id", business.id)
@@ -247,6 +260,17 @@ function ServicesPageContent() {
       .order("name", {
         ascending: true,
       });
+
+    if (error) {
+      console.error(error);
+
+      setToast({
+        type: "error",
+        message:
+          "Unable to refresh services right now.",
+      });
+      return;
+    }
 
     setServices((data ?? []) as ServiceItem[]);
   }
@@ -506,7 +530,10 @@ function ServicesPageContent() {
               />
             </div>
 
-            <Button onClick={handleSave}>
+            <Button
+              onClick={handleSave}
+              disabled={saving}
+            >
               {saving
                 ? "Saving..."
                 : editingServiceId
@@ -514,6 +541,23 @@ function ServicesPageContent() {
                   : "Create Service"}
             </Button>
           </div>
+        </Card>
+
+        <Card className="border-emerald-500/25 bg-emerald-500/10">
+          <p className="text-sm uppercase tracking-[0.25em] text-emerald-800 dark:text-emerald-200">
+            Smart Service Capture
+          </p>
+
+          <h2 className="mt-2 text-2xl font-bold">
+            Typed line items can become reusable services
+          </h2>
+
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-emerald-950 dark:text-emerald-50/90">
+            When a new service is typed on an estimate or invoice, Trimax can
+            capture it here for this workspace. That keeps R&L apartment work
+            and Just Kleen cleaning work organized without making you enter
+            the same service twice.
+          </p>
         </Card>
 
         <div className="grid gap-4 md:grid-cols-3">
@@ -701,8 +745,14 @@ function ServicesPageContent() {
           </Card>
         ) : services.length === 0 ? (
           <Card>
-            <p className="text-zinc-400">
-              No services yet.
+            <p className="font-semibold text-white">
+              No saved services yet.
+            </p>
+
+            <p className="mt-2 text-sm leading-6 text-zinc-400">
+              Add common services above, or create an estimate or invoice and
+              type a new line item. Trimax can save that service for this
+              workspace after the document is saved.
             </p>
           </Card>
         ) : filteredServices.length === 0 ? (

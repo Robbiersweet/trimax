@@ -405,7 +405,7 @@ function BusinessSettingsPageContent() {
       setToast({
         type: "error",
         message:
-          "Unable to save this invite. If this mentions user_id, run the pending-invite SQL first.",
+          "Unable to save this invite. The workspace invite setup may still need to be completed.",
       });
 
       return;
@@ -434,7 +434,7 @@ function BusinessSettingsPageContent() {
       setToast({
         type: "error",
         message:
-          "Property portal setup is not ready yet. Complete the setup SQL before adding property staff.",
+          "Property portal setup is not ready yet. Complete the portal setup before adding property staff.",
       });
       return;
     }
