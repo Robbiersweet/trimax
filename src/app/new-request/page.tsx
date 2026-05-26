@@ -461,6 +461,19 @@ function NewRequestPageContent() {
                   property and unit.
                 </p>
 
+                <div className="mt-4 rounded-2xl border border-zinc-700 bg-zinc-950/70 p-4 text-sm leading-6 text-zinc-300">
+                  <p className="font-semibold text-zinc-100">
+                    How to use this
+                  </p>
+                  <p className="mt-1">
+                    Use <strong>Prior renovation</strong> for history already
+                    known, like Previous Avenue5 Reno. Use{" "}
+                    <strong>This queue item is for a renovation</strong> when
+                    the current job should become the new history, like
+                    PrideRock Reno.
+                  </p>
+                </div>
+
                 {renovationMemoryMessage ? (
                   <p className="mt-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/15 px-4 py-3 text-sm font-semibold text-emerald-100">
                     {renovationMemoryMessage}
@@ -487,7 +500,7 @@ function NewRequestPageContent() {
                         This unit had a prior renovation
                       </span>
                       <span className="mt-1 block text-sm leading-6 text-zinc-400">
-                        Example: Previous Priderock Reno.
+                        Example: Previous PrideRock Reno.
                       </span>
                     </span>
                   </label>
@@ -522,7 +535,7 @@ function NewRequestPageContent() {
                   <div className="mt-4">
                     <InputField
                       label="Prior Renovation Details"
-                      placeholder="Example: Previous Priderock Reno"
+                      placeholder="Example: Previous PrideRock Reno"
                       value={priorRenovationDetails}
                       onChange={setPriorRenovationDetails}
                     />

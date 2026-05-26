@@ -653,7 +653,7 @@ export default async function QueuePage({
 
                         {item.renovation_needed ? (
                           <span className="rounded-full bg-orange-500/20 px-3 py-1 text-sm font-semibold text-orange-200">
-                            Renovation Needed
+                            Current Renovation
                           </span>
                         ) : null}
 

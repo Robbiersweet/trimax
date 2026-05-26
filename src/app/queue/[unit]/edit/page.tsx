@@ -241,6 +241,12 @@ export default function EditQueueItemPage() {
                 Renovation History
               </p>
 
+              <p className="mt-2 text-sm leading-6 text-zinc-300">
+                Prior renovation is the unit history already known. Current
+                renovation is the work happening now, and it can become the
+                remembered history for the next queue entry.
+              </p>
+
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <label className="flex items-start gap-3 rounded-2xl border border-zinc-700 bg-zinc-950/70 p-4">
                   <input
@@ -295,7 +301,7 @@ export default function EditQueueItemPage() {
                 <div className="mt-4">
                   <InputField
                     label="Prior Renovation Details"
-                    placeholder="Example: Previous Priderock Reno"
+                    placeholder="Example: Previous PrideRock Reno"
                     value={priorRenovationDetails}
                     onChange={setPriorRenovationDetails}
                   />

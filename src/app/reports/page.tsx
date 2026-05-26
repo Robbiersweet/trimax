@@ -765,7 +765,7 @@ export default async function ReportsPage({
             })}
           />
           <MetricCard
-            label="Renovation Needed"
+            label="Current Renovations"
             value={renovationNeededUnits.length}
             href={queueHref(businessSlug, {
               q: "renovation needed",
@@ -879,7 +879,7 @@ export default async function ReportsPage({
 
               {renovationNeededUnits.length === 0 ? (
                 <p className="rounded-2xl border border-zinc-800 bg-black/20 p-4 text-sm text-zinc-400">
-                  No matching units are marked as needing renovation.
+                  No matching units are marked with current renovation work.
                 </p>
               ) : null}
             </div>
