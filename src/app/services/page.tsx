@@ -207,6 +207,13 @@ function ServicesPageContent() {
     (service) => service.is_active
   ).length;
 
+  const autoCapturedCount = services.filter(
+    (service) =>
+      service.category === "Auto Captured"
+  ).length;
+
+  const categoryCount = categories.length;
+
   const inactiveCount =
     services.length - activeCount;
 
@@ -496,6 +503,57 @@ function ServicesPageContent() {
             </Button>
           </div>
         </Card>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+            <p className="text-sm uppercase tracking-[0.25em] text-orange-400">
+              Active Services
+            </p>
+
+            <p className="mt-3 text-4xl font-black">
+              {activeCount}
+            </p>
+
+            <p className="mt-2 text-sm text-zinc-400">
+              Ready for estimates and invoices.
+            </p>
+          </Card>
+
+          <Card>
+            <p className="text-sm uppercase tracking-[0.25em] text-blue-300">
+              Auto Captured
+            </p>
+
+            <p className="mt-3 text-4xl font-black">
+              {autoCapturedCount}
+            </p>
+
+            <button
+              type="button"
+              onClick={() => {
+                setCategoryFilter("Auto Captured");
+                setStatusFilter("all");
+              }}
+              className="mt-3 text-sm font-semibold text-orange-400 transition hover:text-orange-300"
+            >
+              Review captured services
+            </button>
+          </Card>
+
+          <Card>
+            <p className="text-sm uppercase tracking-[0.25em] text-green-300">
+              Categories
+            </p>
+
+            <p className="mt-3 text-4xl font-black">
+              {categoryCount}
+            </p>
+
+            <p className="mt-2 text-sm text-zinc-400">
+              Grouped service types.
+            </p>
+          </Card>
+        </div>
 
         <Card>
           <div className="grid gap-5">
