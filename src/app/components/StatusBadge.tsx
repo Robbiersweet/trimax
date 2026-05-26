@@ -14,6 +14,14 @@ export default function StatusBadge({ status }: StatusBadgeProps) {
       className: "bg-yellow-500/20 text-yellow-300",
       tone: "needs-review",
     },
+    "Pending Estimate": {
+      className: "bg-amber-500/20 text-amber-300",
+      tone: "pending-estimate",
+    },
+    Draft: {
+      className: "bg-sky-500/20 text-sky-300",
+      tone: "draft",
+    },
     "Estimate Created": {
       className: "bg-purple-500/20 text-purple-300",
       tone: "estimate-created",

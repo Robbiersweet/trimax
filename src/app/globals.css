@@ -266,6 +266,37 @@ html.theme-light .dark-surface .border-zinc-700 {
   border-color: rgba(255, 255, 255, 0.12) !important;
 }
 
+html.theme-light .dark-surface .bg-zinc-800,
+html.theme-light .dark-surface .bg-zinc-800\/60,
+html.theme-light .dark-surface .bg-zinc-800\/70 {
+  background-color: #1f2937 !important;
+}
+
+html.theme-light .dark-surface .status-badge {
+  background-color: rgba(15, 23, 42, 0.92) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  color: #f8fafc !important;
+}
+
+html.theme-light .dark-surface .status-badge-pending-estimate,
+html.theme-light .dark-surface .status-badge-draft,
+html.theme-light .dark-surface .status-badge-default,
+html.theme-light .dark-surface .status-badge-completed,
+html.theme-light .dark-surface .status-badge-archived {
+  color: #e0f2fe !important;
+}
+
+html.theme-light .dark-surface .status-badge-scheduled {
+  color: #bae6fd !important;
+}
+
+html.theme-light .dark-surface .status-badge-on-hold,
+html.theme-light .dark-surface .dashboard-remediation-pill {
+  background-color: rgba(127, 29, 29, 0.38) !important;
+  border-color: rgba(252, 165, 165, 0.42) !important;
+  color: #fecaca !important;
+}
+
 html.theme-light .dashboard-feature-card {
   color: #f8fafc !important;
 }
@@ -405,10 +436,17 @@ html.theme-light .status-badge-invoiced {
   color: #166534 !important;
 }
 
-html.theme-light .status-badge-scheduled {
+html.theme-light .status-badge-scheduled,
+html.theme-light .status-badge-draft {
   background-color: #dbeafe !important;
   border-color: #7dd3fc !important;
   color: #075985 !important;
+}
+
+html.theme-light .status-badge-pending-estimate {
+  background-color: #fef3c7 !important;
+  border-color: #fbbf24 !important;
+  color: #92400e !important;
 }
 
 html.theme-light .status-badge-in-progress {

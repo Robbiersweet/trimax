@@ -1266,7 +1266,7 @@ export default async function DashboardPage({
             "accountant",
           ]}
         >
-          <Card className="dark-surface border-pink-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-pink-950/20">
+          <Card className="border-pink-500/20 bg-pink-500/5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <p className="text-sm uppercase tracking-[0.3em] text-pink-300">
@@ -1357,7 +1357,7 @@ export default async function DashboardPage({
         </RoleVisible>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <Card className="dark-surface border-yellow-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-yellow-950/20">
+          <Card className="border-yellow-500/30 bg-yellow-500/5">
             <p className="text-sm uppercase tracking-[0.3em] text-yellow-300">
               Scheduling Attention
             </p>
@@ -1382,7 +1382,7 @@ export default async function DashboardPage({
             </Link>
           </Card>
 
-          <Card className="dark-surface border-red-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-red-950/20">
+          <Card className="border-red-500/30 bg-red-500/5">
             <p className="text-sm uppercase tracking-[0.3em] text-red-300">
               Remediation Watch
             </p>
@@ -1410,7 +1410,7 @@ export default async function DashboardPage({
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
-          <Card className="dark-surface border-sky-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-sky-950/20">
+          <Card>
             <p className="text-sm text-zinc-400">
               Active Queue
             </p>
@@ -1427,7 +1427,7 @@ export default async function DashboardPage({
             </Link>
           </Card>
 
-          <Card className="dark-surface border-violet-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-violet-950/20">
+          <Card>
             <p className="text-sm text-zinc-400">
               Queue Needs Estimate
             </p>
@@ -1452,7 +1452,7 @@ export default async function DashboardPage({
               "accountant",
             ]}
           >
-            <Card className="dark-surface border-orange-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-orange-950/20">
+            <Card>
               <p className="text-sm text-zinc-400">
                 Open Invoices
               </p>
@@ -1472,7 +1472,7 @@ export default async function DashboardPage({
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
-          <Card className="dark-surface border-sky-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-sky-950/20">
+          <Card>
             <p className="text-sm text-zinc-400">
               Scheduled Jobs
             </p>
@@ -1489,7 +1489,7 @@ export default async function DashboardPage({
             </Link>
           </Card>
 
-          <Card className="dark-surface border-emerald-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-emerald-950/20">
+          <Card>
             <p className="text-sm text-zinc-400">
               Completed This Month
             </p>
@@ -1506,7 +1506,7 @@ export default async function DashboardPage({
             </Link>
           </Card>
 
-          <Card className="dark-surface border-violet-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-violet-950/20">
+          <Card>
             <p className="text-sm text-zinc-400">
               Reporting Memory
             </p>
@@ -1538,7 +1538,7 @@ export default async function DashboardPage({
           ]}
         >
           <div className="grid gap-4 md:grid-cols-2">
-            <Card className="dark-surface border-orange-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-orange-950/20">
+            <Card>
               <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
                 Estimated Revenue
               </p>
@@ -1555,7 +1555,7 @@ export default async function DashboardPage({
               </p>
             </Card>
 
-            <Card className="dark-surface border-amber-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-amber-950/20">
+            <Card>
               <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
                 Invoiced Revenue
               </p>
@@ -1574,7 +1574,7 @@ export default async function DashboardPage({
           </div>
         </RoleVisible>
 
-        <Card className="dark-surface border-orange-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-orange-950/20">
+        <Card>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
@@ -1600,7 +1600,7 @@ export default async function DashboardPage({
           </div>
         </Card>
 
-        <Card className="dark-surface border-orange-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-slate-950">
+        <Card>
           <div className="mb-4">
             <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
               Action Center
@@ -1616,7 +1616,7 @@ export default async function DashboardPage({
           />
         </Card>
 
-        <Card className="dark-surface border-orange-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-orange-950/20">
+        <Card>
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
@@ -1671,7 +1671,7 @@ export default async function DashboardPage({
         </Card>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <Card className="dark-surface border-sky-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-sky-950/20">
+          <Card>
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
@@ -1750,7 +1750,7 @@ export default async function DashboardPage({
               "accountant",
             ]}
           >
-            <Card className="dark-surface border-orange-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-orange-950/20">
+            <Card>
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
