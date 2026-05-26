@@ -249,7 +249,7 @@ export default function DashboardQuickActions({
           >
             <span
               aria-hidden="true"
-              className="absolute inset-0 bg-[radial-gradient(circle_at_15%_0%,rgba(255,255,255,0.18),transparent_32%),radial-gradient(circle_at_85%_100%,rgba(255,255,255,0.08),transparent_24%),linear-gradient(135deg,rgba(0,0,0,0.08),rgba(0,0,0,0.74)_72%)] opacity-95"
+              className="dashboard-action-overlay absolute inset-0 bg-[radial-gradient(circle_at_15%_0%,rgba(255,255,255,0.18),transparent_32%),radial-gradient(circle_at_85%_100%,rgba(255,255,255,0.08),transparent_24%),linear-gradient(135deg,rgba(0,0,0,0.08),rgba(0,0,0,0.74)_72%)] opacity-95"
             />
 
             <span
@@ -271,7 +271,7 @@ export default function DashboardQuickActions({
               <div className="flex items-start justify-between gap-3">
                 <p
                   className={[
-                    "inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em]",
+                    "dashboard-action-pill inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em]",
                     tone.pill,
                   ].join(" ")}
                 >
@@ -281,7 +281,7 @@ export default function DashboardQuickActions({
                 <span
                   aria-hidden="true"
                   className={[
-                    "grid h-9 w-9 shrink-0 place-items-center rounded-xl border text-sm font-black shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition group-hover:scale-105",
+                    "dashboard-action-glyph grid h-9 w-9 shrink-0 place-items-center rounded-xl border text-sm font-black shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition group-hover:scale-105",
                     tone.glyph,
                   ].join(" ")}
                 >

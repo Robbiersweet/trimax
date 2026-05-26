@@ -320,6 +320,14 @@ html.theme-light .dashboard-action-card {
     0 18px 42px rgba(15, 23, 42, 0.08) !important;
 }
 
+html.theme-light .dashboard-action-overlay {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(255, 255, 255, 0.72), transparent 34%),
+    radial-gradient(circle at 88% 100%, rgba(59, 130, 246, 0.1), transparent 28%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(15, 23, 42, 0.06) 80%) !important;
+  opacity: 1 !important;
+}
+
 html.theme-light .dashboard-action-card .dashboard-action-title {
   color: #111827 !important;
 }
@@ -327,6 +335,13 @@ html.theme-light .dashboard-action-card .dashboard-action-title {
 html.theme-light .dashboard-action-card .dashboard-action-subtitle,
 html.theme-light .dashboard-action-card .dashboard-action-arrow {
   color: #475569 !important;
+}
+
+html.theme-light .dashboard-action-card .dashboard-action-pill,
+html.theme-light .dashboard-action-card .dashboard-action-glyph {
+  background-color: rgba(255, 255, 255, 0.68) !important;
+  color: #334155 !important;
+  border-color: rgba(148, 163, 184, 0.42) !important;
 }
 
 html.theme-light .dashboard-action-card:hover .dashboard-action-arrow {
