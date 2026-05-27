@@ -676,7 +676,7 @@ export default async function InvoicesPage({
             </div>
 
             <div className="flex items-end gap-3">
-              <Button>Search</Button>
+              <Button type="submit">Search</Button>
 
               {(searchTerm ||
                 statusFilter !== "all" ||

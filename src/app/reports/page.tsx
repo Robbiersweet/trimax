@@ -688,7 +688,7 @@ export default async function ReportsPage({
             </div>
 
             <div className="flex items-end">
-              <Button>Apply Dates</Button>
+              <Button type="submit">Apply Dates</Button>
             </div>
           </form>
         </Card>
