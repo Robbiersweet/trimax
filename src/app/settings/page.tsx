@@ -797,6 +797,76 @@ function BusinessSettingsPageContent() {
               </div>
             </Card>
 
+            <Card
+              id="phone-app-notifications"
+              className="scroll-mt-6 border-green-500/30 bg-green-500/5"
+            >
+              <div className="grid gap-5">
+                <div>
+                  <p className="text-sm uppercase tracking-[0.3em] text-green-300">
+                    Phone App
+                  </p>
+
+                  <h2 className="mt-2 text-2xl font-semibold">
+                    Install Trimax and prepare notifications
+                  </h2>
+
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+                    Trimax is now prepared to install from the live website like
+                    a phone app. After deployment, open Trimax on your phone and
+                    add it to the Home Screen. Push notifications are the next
+                    layer and will be enabled after the live HTTPS site is
+                    running.
+                  </p>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="rounded-2xl border border-green-500/20 bg-zinc-950 p-4">
+                    <p className="text-sm font-semibold text-green-200">
+                      1. Deploy Trimax
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-zinc-400">
+                      Vercel gives Trimax the secure live website address that
+                      phones require for app install and notifications.
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-sky-500/20 bg-zinc-950 p-4">
+                    <p className="text-sm font-semibold text-sky-200">
+                      2. Add To Home Screen
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-zinc-400">
+                      On iPhone, open the live site in Safari, tap Share, then
+                      choose Add to Home Screen. Android can install from
+                      Chrome.
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-orange-500/20 bg-zinc-950 p-4">
+                    <p className="text-sm font-semibold text-orange-200">
+                      3. Enable Alerts Soon
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-zinc-400">
+                      Next we will add the notification permission button and
+                      Supabase storage so queue items can alert the right people.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
+                  <p className="text-sm font-semibold text-white">
+                    Current Status
+                  </p>
+
+                  <p className="mt-2 text-sm leading-6 text-zinc-400">
+                    Install support is ready. Push notifications are not active
+                    yet, so nobody will receive phone alerts until the
+                    notification subscription and sending pieces are added.
+                  </p>
+                </div>
+              </div>
+            </Card>
+
             <Card>
               <div className="grid gap-6">
                 <div>

@@ -142,6 +142,11 @@ export default function Navigation() {
   const activeLink = visibleNavLinks.find((link) => link.active);
   const settingsSubLinks = [
     {
+      label: "Phone App + Alerts",
+      description: "Install setup",
+      href: `/settings?business=${business}#phone-app-notifications`,
+    },
+    {
       label: "Outlook Integration",
       description: "Email drafts",
       href: `/settings?business=${business}#outlook-integration`,

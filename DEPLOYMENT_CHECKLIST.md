@@ -67,6 +67,8 @@ For R&L:
 - Create or open an invoice.
 - Print invoice page.
 - Confirm Activity shows new actions.
+- Open Settings -> Phone App + Alerts and confirm the install/notification status card is visible.
+- On a phone, open the live Vercel URL and confirm it can be added to the Home Screen.
 
 For Just Kleen:
 
