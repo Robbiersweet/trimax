@@ -17,6 +17,7 @@ Do not run SQL that includes `drop table`, `delete from`, or `truncate` unless y
 5. `2026-05-26-activity-logs.sql`
 6. `2026-05-26-invoice-updated-at.sql`
 7. `2026-05-26-outlook-draft-workflow.sql`
+8. `2026-05-26-queue-renovation-fields.sql`
 
 ## Workspace Access
 
@@ -37,6 +38,10 @@ Run `2026-05-26-property-users.sql` before inviting property managers, assistant
 ## Activity Logs
 
 Run `2026-05-26-activity-logs.sql` before relying on the Activity page. Activity logging starts prospectively; old actions are not backfilled.
+
+## Queue Renovation Fields
+
+Run `2026-05-26-queue-renovation-fields.sql` before using prior renovation memory or current renovation notes on queue items. This keeps apartment history available for estimates and property-level reports.
 
 ## Invoice Updated Dates
 
