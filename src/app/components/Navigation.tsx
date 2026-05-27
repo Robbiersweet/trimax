@@ -143,10 +143,12 @@ export default function Navigation() {
   const settingsSubLinks = [
     {
       label: "Outlook Integration",
+      description: "Email drafts",
       href: `/settings?business=${business}#outlook-integration`,
     },
     {
       label: "User Role Integration",
+      description: "Portal access",
       href: `/settings?business=${business}#user-role-integration`,
     },
   ];
@@ -234,23 +236,37 @@ export default function Navigation() {
               {link.key === "settings" ? (
                 <span
                   aria-hidden="true"
-                  className="hidden text-sm lg:inline"
+                  className={`hidden rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.14em] lg:inline ${
+                    link.active
+                      ? "bg-black/10 text-black"
+                      : "bg-zinc-800 text-zinc-400"
+                  }`}
                 >
-                  {link.active ? "v" : ">"}
+                  Setup
                 </span>
               ) : null}
             </Link>
 
             {link.key === "settings" && link.active ? (
-              <div className="grid gap-1 pl-3 lg:pl-4">
+              <div className="grid gap-2 rounded-2xl border border-zinc-800 bg-zinc-950 p-2 lg:ml-2">
+                <p className="px-3 pt-1 text-[11px] font-bold uppercase tracking-[0.2em] text-zinc-500">
+                  Workspace setup
+                </p>
+
                 {settingsSubLinks.map((subLink) => (
                   <Link
                     key={subLink.href}
                     href={subLink.href}
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="rounded-xl px-3 py-2 text-left text-xs font-semibold text-zinc-400 transition hover:bg-zinc-800 hover:text-orange-400"
+                    className="rounded-xl px-3 py-2 text-left transition hover:bg-zinc-800"
                   >
-                    {subLink.label}
+                    <span className="block text-xs font-bold text-zinc-200">
+                      {subLink.label}
+                    </span>
+
+                    <span className="mt-0.5 block text-[11px] font-semibold text-zinc-500">
+                      {subLink.description}
+                    </span>
                   </Link>
                 ))}
               </div>
