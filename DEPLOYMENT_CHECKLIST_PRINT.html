@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Trimax First Deployment Checklist</title>
+    <style>
+      :root {
+        color: #111827;
+        background: #f8fafc;
+        font-family:
+          Arial,
+          Helvetica,
+          sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: #f8fafc;
+        color: #111827;
+        font-size: 14px;
+        line-height: 1.45;
+      }
+
+      main {
+        max-width: 920px;
+        margin: 0 auto;
+        padding: 32px 24px 48px;
+      }
+
+      header {
+        border-bottom: 3px solid #f97316;
+        margin-bottom: 24px;
+        padding-bottom: 18px;
+      }
+
+      .eyebrow {
+        color: #f97316;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.28em;
+        margin: 0 0 8px;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        font-size: 34px;
+        line-height: 1.1;
+        margin: 0;
+      }
+
+      .subtitle {
+        color: #475569;
+        font-size: 15px;
+        margin: 10px 0 0;
+        max-width: 760px;
+      }
+
+      .meta {
+        display: grid;
+        gap: 8px;
+        grid-template-columns: repeat(3, 1fr);
+        margin: 20px 0 0;
+      }
+
+      .meta div,
+      section {
+        background: #ffffff;
+        border: 1px solid #dbe3ef;
+        border-radius: 14px;
+      }
+
+      .meta div {
+        padding: 10px 12px;
+      }
+
+      .label {
+        color: #64748b;
+        display: block;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .value {
+        display: block;
+        font-size: 14px;
+        font-weight: 800;
+        margin-top: 3px;
+      }
+
+      section {
+        break-inside: avoid;
+        margin: 16px 0;
+        padding: 18px;
+      }
+
+      h2 {
+        font-size: 20px;
+        margin: 0 0 10px;
+      }
+
+      h3 {
+        color: #334155;
+        font-size: 15px;
+        margin: 16px 0 8px;
+      }
+
+      ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      li {
+        align-items: flex-start;
+        display: flex;
+        gap: 10px;
+        margin: 8px 0;
+      }
+
+      .box {
+        border: 2px solid #64748b;
+        border-radius: 3px;
+        flex: 0 0 auto;
+        height: 15px;
+        margin-top: 2px;
+        width: 15px;
+      }
+
+      code,
+      .code {
+        background: #f1f5f9;
+        border: 1px solid #dbe3ef;
+        border-radius: 8px;
+        color: #0f172a;
+        font-family:
+          Consolas,
+          "Courier New",
+          monospace;
+        font-size: 12px;
+        padding: 2px 6px;
+      }
+
+      .code-block {
+        background: #0f172a;
+        border-radius: 12px;
+        color: #f8fafc;
+        font-family:
+          Consolas,
+          "Courier New",
+          monospace;
+        font-size: 12px;
+        line-height: 1.5;
+        margin: 10px 0;
+        padding: 12px 14px;
+        white-space: pre-wrap;
+      }
+
+      .note {
+        background: #fff7ed;
+        border: 1px solid #fed7aa;
+        border-radius: 12px;
+        color: #9a3412;
+        margin-top: 12px;
+        padding: 12px;
+      }
+
+      .warning {
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        color: #991b1b;
+      }
+
+      .two-col {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .signature {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: 1fr 1fr;
+        margin-top: 18px;
+      }
+
+      .line {
+        border-bottom: 1px solid #94a3b8;
+        height: 34px;
+      }
+
+      @media print {
+        body {
+          background: #ffffff;
+          color: #000000;
+          font-size: 12px;
+        }
+
+        main {
+          max-width: none;
+          padding: 0;
+        }
+
+        header {
+          margin-bottom: 14px;
+        }
+
+        section {
+          border-color: #cbd5e1;
+          margin: 10px 0;
+          padding: 14px;
+        }
+
+        .meta div,
+        section {
+          box-shadow: none;
+        }
+
+        .no-print {
+          display: none;
+        }
+      }
+
+      @page {
+        margin: 0.55in;
+        size: letter;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">Trimax</p>
+        <h1>First Deployment Checklist</h1>
+        <p class="subtitle">
+          Use this sheet when moving Trimax from the local computer to GitHub,
+          Vercel, and Supabase for the first live deployment.
+        </p>
+        <div class="meta">
+          <div>
+            <span class="label">Workspace</span>
+            <span class="value">R&amp;L Creations + Just Kleen</span>
+          </div>
+          <div>
+            <span class="label">Date</span>
+            <span class="value">May 27, 2026</span>
+          </div>
+          <div>
+            <span class="label">Goal</span>
+            <span class="value">Launch-ready Vercel site</span>
+          </div>
+        </div>
+      </header>
+
+      <section>
+        <h2>1. Local Computer Check</h2>
+        <ul>
+          <li><span class="box"></span><span>Open VS Code in <code>C:\Users\robbi\trimax</code>.</span></li>
+          <li><span class="box"></span><span>Run the app check in the VS Code terminal:</span></li>
+        </ul>
+        <div class="code-block">npm run check</div>
+        <ul>
+          <li><span class="box"></span><span>Confirm lint passes.</span></li>
+          <li><span class="box"></span><span>Confirm the production build passes.</span></li>
+          <li><span class="box"></span><span>Confirm there are no unfinished files in Git before pushing.</span></li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>2. Supabase Database Check</h2>
+        <ul>
+          <li><span class="box"></span><span>Confirm Supabase Auth works for Robbie and Lyubov.</span></li>
+          <li><span class="box"></span><span>Confirm <code>business_users</code> gives Robbie access to R&amp;L Creations.</span></li>
+          <li><span class="box"></span><span>Confirm <code>business_users</code> gives Lyubov access to Just Kleen.</span></li>
+          <li><span class="box"></span><span>Confirm <code>business_id</code> is populated on business-owned records.</span></li>
+          <li><span class="box"></span><span>Confirm <code>property_users</code> setup is ready for property portal users.</span></li>
+          <li><span class="box"></span><span>Confirm <code>activity_logs</code> setup is ready.</span></li>
+          <li><span class="box"></span><span>Confirm invoice <code>updated_at</code> setup has run.</span></li>
+          <li><span class="box"></span><span>Confirm queue renovation fields have run.</span></li>
+        </ul>
+        <div class="note">
+          Supabase may warn that some setup scripts include destructive
+          operations. For the current Trimax setup scripts, this is usually
+          because policies or triggers are being recreated. It should not delete
+          invoices, clients, queue items, or business data.
+        </div>
+      </section>
+
+      <section>
+        <h2>3. GitHub Push</h2>
+        <ul>
+          <li><span class="box"></span><span>Confirm the latest code is committed.</span></li>
+          <li><span class="box"></span><span>Push the latest <code>main</code> branch to GitHub.</span></li>
+          <li><span class="box"></span><span>Confirm GitHub shows the newest commit.</span></li>
+        </ul>
+        <div class="code-block">git status
+git push origin main</div>
+      </section>
+
+      <section>
+        <h2>4. Create Vercel Project</h2>
+        <ul>
+          <li><span class="box"></span><span>Open Vercel.</span></li>
+          <li><span class="box"></span><span>Choose New Project.</span></li>
+          <li><span class="box"></span><span>Import the Trimax GitHub repository.</span></li>
+          <li><span class="box"></span><span>Keep framework as Next.js.</span></li>
+          <li><span class="box"></span><span>Add the required environment variables.</span></li>
+        </ul>
+        <div class="code-block">NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY</div>
+        <ul>
+          <li><span class="box"></span><span>Deploy the project.</span></li>
+          <li><span class="box"></span><span>Copy the live Vercel URL.</span></li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>5. Supabase Auth URL Settings</h2>
+        <ul>
+          <li><span class="box"></span><span>Open Supabase Authentication URL Configuration.</span></li>
+          <li><span class="box"></span><span>Add the live Vercel URL as the Site URL.</span></li>
+          <li><span class="box"></span><span>Add allowed redirect URLs for login and reset password.</span></li>
+        </ul>
+        <div class="code-block">https://YOUR-VERCEL-SITE.vercel.app
+https://YOUR-VERCEL-SITE.vercel.app/reset-password</div>
+      </section>
+
+      <section>
+        <h2>6. R&amp;L Creations Smoke Test</h2>
+        <ul>
+          <li><span class="box"></span><span>Open <code>/?business=rnl-creations</code>.</span></li>
+          <li><span class="box"></span><span>Login as Robbie.</span></li>
+          <li><span class="box"></span><span>Open Dashboard, Queue, Schedule, Estimates, Invoices, Payments, Reports, Activity, Settings.</span></li>
+          <li><span class="box"></span><span>Create a test queue item.</span></li>
+          <li><span class="box"></span><span>Confirm renovation fields save correctly if used.</span></li>
+          <li><span class="box"></span><span>Schedule a queue item.</span></li>
+          <li><span class="box"></span><span>Confirm Add To Calendar downloads an <code>.ics</code> file.</span></li>
+          <li><span class="box"></span><span>Create or open an estimate.</span></li>
+          <li><span class="box"></span><span>Create or open an invoice.</span></li>
+          <li><span class="box"></span><span>Confirm new invoice numbers start at or above <code>INV-0500</code>.</span></li>
+          <li><span class="box"></span><span>Confirm new estimate numbers start at or above <code>EST-0500</code>.</span></li>
+          <li><span class="box"></span><span>Print an invoice page.</span></li>
+          <li><span class="box"></span><span>Confirm Activity shows important actions.</span></li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>7. Just Kleen Smoke Test</h2>
+        <ul>
+          <li><span class="box"></span><span>Open <code>/?business=just-kleen</code>.</span></li>
+          <li><span class="box"></span><span>Login as Lyubov.</span></li>
+          <li><span class="box"></span><span>Open Dashboard, Clients, Services, Estimates, Invoices, Settings.</span></li>
+          <li><span class="box"></span><span>Create or open a test invoice.</span></li>
+          <li><span class="box"></span><span>Confirm Just Kleen wording is correct.</span></li>
+          <li><span class="box"></span><span>Confirm the special 5 Star / BOA print/export workflow still appears when appropriate.</span></li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>8. Phone App Check</h2>
+        <ul>
+          <li><span class="box"></span><span>Open Settings, then Phone App + Alerts.</span></li>
+          <li><span class="box"></span><span>On iPhone, open the live Vercel site in Safari.</span></li>
+          <li><span class="box"></span><span>Tap Share.</span></li>
+          <li><span class="box"></span><span>Choose Add to Home Screen.</span></li>
+          <li><span class="box"></span><span>Open Trimax from the new Home Screen icon.</span></li>
+        </ul>
+        <div class="note">
+          Push notifications are not active yet. The app install foundation is
+          ready; notification signup and sending will be added after deployment.
+        </div>
+      </section>
+
+      <section>
+        <h2>9. Do Not Break During Launch</h2>
+        <div class="two-col">
+          <ul>
+            <li><span class="box"></span><span>Preserve <code>?business=rnl-creations</code>.</span></li>
+            <li><span class="box"></span><span>Preserve <code>?business=just-kleen</code>.</span></li>
+            <li><span class="box"></span><span>Preserve business-specific filtering.</span></li>
+            <li><span class="box"></span><span>Preserve queue bypass for normal estimates/invoices.</span></li>
+          </ul>
+          <ul>
+            <li><span class="box"></span><span>Preserve apartment split invoice workflow.</span></li>
+            <li><span class="box"></span><span>Preserve Just Kleen special invoice workflow.</span></li>
+            <li><span class="box"></span><span>Preserve printable invoice and estimate pages.</span></li>
+            <li><span class="box"></span><span>Preserve property portal access boundaries.</span></li>
+          </ul>
+        </div>
+      </section>
+
+      <section>
+        <h2>10. After Launch</h2>
+        <ul>
+          <li><span class="box"></span><span>Add real push notifications for property queue submissions.</span></li>
+          <li><span class="box"></span><span>Improve phone calendar integration.</span></li>
+          <li><span class="box"></span><span>Finish Microsoft Outlook draft integration.</span></li>
+          <li><span class="box"></span><span>Tighten production RLS before selling Trimax as SaaS.</span></li>
+          <li><span class="box"></span><span>Add photo attachments and stronger property manager portal controls.</span></li>
+        </ul>
+        <div class="note warning">
+          Development-friendly RLS is acceptable while testing with trusted
+          users, but production RLS must be tightened before Trimax is offered
+          as a paid SaaS product.
+        </div>
+      </section>
+
+      <section>
+        <h2>Launch Sign-Off</h2>
+        <div class="signature">
+          <div>
+            <span class="label">Checked By</span>
+            <div class="line"></div>
+          </div>
+          <div>
+            <span class="label">Date</span>
+            <div class="line"></div>
+          </div>
+        </div>
+      </section>
+
+      <p class="no-print subtitle">
+        Print tip: open this file in a browser, then press Ctrl+P. Use portrait
+        layout and default margins.
+      </p>
+    </main>
+  </body>
+</html>
