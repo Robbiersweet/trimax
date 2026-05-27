@@ -18,6 +18,7 @@ This runs lint and the production build.
 - Confirm `business_id` exists and is populated on business-owned records.
 - Run needed SQL from `supabase/sql` in order.
 - Confirm `property_users`, `activity_logs`, and invoice `updated_at` setup scripts have run successfully.
+- Confirm `2026-05-26-queue-renovation-fields.sql` has run successfully so queue renovation memory works.
 - Keep development RLS only while testing with trusted users.
 - Tighten production RLS before selling Trimax as SaaS.
 
@@ -60,6 +61,8 @@ For R&L:
 - Login as Robbie.
 - Open Dashboard, Queue, Estimates, Invoices, Payments, Reports, Activity, Settings.
 - Create a test queue item.
+- Confirm prior renovation and current renovation details save correctly when used.
+- Schedule a queue item and confirm Add To Calendar downloads an `.ics` file.
 - Convert queue item to estimate if needed.
 - Create or open an invoice.
 - Print invoice page.

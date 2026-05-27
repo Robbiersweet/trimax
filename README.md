@@ -51,11 +51,10 @@ Future Outlook integration will also need Microsoft/Azure values. Keep those ser
 Run these before pushing to GitHub or deploying to Vercel:
 
 ```bash
-npm run lint
-npm run build
+npm run check
 ```
 
-Both should pass before deployment.
+This runs lint and the production build. Both should pass before deployment.
 
 ## Supabase SQL
 
@@ -74,6 +73,7 @@ Run them from the Supabase SQL editor when a feature needs new tables or policie
 - Do not remove queue bypass behavior for normal estimates/invoices.
 - Do not expose company financials to future property-manager portal users.
 - Outlook draft creation should create drafts for review first, not auto-send.
+- Calendar buttons download `.ics` files for Outlook, Apple Calendar, Google Calendar, and phone calendars.
 
 ## Vercel
 
@@ -84,5 +84,4 @@ Deploy from GitHub to Vercel after:
 1. Supabase SQL is current.
 2. Supabase Auth users/workspace memberships are current.
 3. Vercel environment variables are set.
-4. `npm run lint` passes.
-5. `npm run build` passes.
+4. `npm run check` passes.

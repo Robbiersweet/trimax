@@ -56,6 +56,7 @@ Use this order for current SQL:
 2026-05-26-activity-logs.sql
 2026-05-26-invoice-updated-at.sql
 2026-05-26-outlook-draft-workflow.sql
+2026-05-26-queue-renovation-fields.sql
 ```
 
 If a script has already been run successfully, do not worry. Most current scripts are written to be safe to re-run, but ask Codex before re-running anything that looks destructive.
@@ -177,10 +178,12 @@ For R&L:
 1. Login as Robbie.
 2. Open Dashboard.
 3. Open Queue.
-4. Open Estimates.
-5. Open Invoices.
-6. Open Reports.
-7. Open Settings.
+4. Create a queue item with renovation history or renovation needed filled in.
+5. Open Schedule and test Add To Calendar on a scheduled job.
+6. Open Estimates.
+7. Open Invoices.
+8. Open Reports.
+9. Open Settings.
 
 For Just Kleen:
 
