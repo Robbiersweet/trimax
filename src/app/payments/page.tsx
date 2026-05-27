@@ -459,10 +459,10 @@ export default async function PaymentsPage({
         ) : null}
 
         {payableInvoices.length > 0 ? (
-          <Card className="border-green-400/30 bg-gradient-to-br from-green-500/15 via-zinc-950 to-orange-500/10">
+          <Card className="payment-hero-card dark-surface border-green-400/30 bg-gradient-to-br from-green-500/15 via-zinc-950 to-orange-500/10">
             <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
               <div>
-                <p className="text-sm uppercase tracking-[0.3em] text-green-200">
+                <p className="payment-hero-label text-sm uppercase tracking-[0.3em] text-green-200">
                   Check Day Control
                 </p>
 
@@ -470,14 +470,14 @@ export default async function PaymentsPage({
                   {paymentRunLabel}
                 </h2>
 
-                <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-300">
+                <p className="payment-hero-copy mt-3 max-w-3xl text-sm leading-6 text-zinc-300">
                   {paymentRunDescription} Review the total, compare it to the
                   check, then use the batch payment tool below.
                 </p>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-                <div className="rounded-2xl border border-green-400/20 bg-black/30 p-4">
+                <div className="payment-hero-stat rounded-2xl border border-green-400/20 bg-black/30 p-4">
                   <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">
                     Balance
                   </p>
@@ -486,7 +486,7 @@ export default async function PaymentsPage({
                   </p>
                 </div>
 
-                <div className="rounded-2xl border border-orange-400/20 bg-black/30 p-4">
+                <div className="payment-hero-stat rounded-2xl border border-orange-400/20 bg-black/30 p-4">
                   <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">
                     Invoices
                   </p>
@@ -495,7 +495,7 @@ export default async function PaymentsPage({
                   </p>
                 </div>
 
-                <div className="rounded-2xl border border-pink-400/20 bg-black/30 p-4">
+                <div className="payment-hero-stat rounded-2xl border border-pink-400/20 bg-black/30 p-4">
                   <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">
                     Oldest Due
                   </p>
