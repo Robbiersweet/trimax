@@ -417,6 +417,7 @@ export default async function QueueDetailPage({
             <a
               href={calendarHref}
               download={calendarFileName(calendarTitle, item.scheduled_date)}
+              title="Download an .ics calendar file for Outlook, Apple Calendar, Google Calendar, or your phone."
               className="inline-flex items-center justify-center rounded-2xl bg-green-400 px-5 py-3 text-center font-semibold text-black transition hover:opacity-90"
             >
               Add To Calendar

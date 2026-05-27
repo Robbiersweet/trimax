@@ -789,7 +789,7 @@ function BusinessSettingsPageContent() {
 
                   <p className="mt-2 text-sm leading-6 text-zinc-400">
                     Not connected yet. The database setup is ready to store
-                    workspace templates and future Outlook connection records.
+                    workspace templates and Outlook connection records.
                     The actual Microsoft sign-in button will be enabled after
                     the Azure app registration values are added to Vercel.
                   </p>
@@ -1015,7 +1015,7 @@ function BusinessSettingsPageContent() {
 
                     <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
                       Use this for property managers, assistant managers,
-                      maintenance managers, or future property staff. Trimax
+                      maintenance managers, or other property staff. Trimax
                       will keep them in queue and reports for their property
                       instead of opening the full business workspace.
                     </p>

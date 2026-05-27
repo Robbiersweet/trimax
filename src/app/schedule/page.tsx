@@ -284,6 +284,12 @@ export default async function SchedulePage({
                 but still need a scheduled date. Calendar buttons create a
                 phone-friendly event file for the selected job.
               </p>
+
+              <p className="mt-3 max-w-3xl rounded-2xl border border-sky-400/25 bg-sky-400/10 px-4 py-3 text-sm leading-6 text-zinc-300">
+                Tip: Add To Calendar downloads an .ics file. Open that file to
+                add the job to Outlook, Apple Calendar, Google Calendar, or
+                your phone calendar.
+              </p>
             </div>
 
             <div className="rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-300">
@@ -409,6 +415,7 @@ export default async function SchedulePage({
                         <a
                           href={calendarHref}
                           download={calendarFileName(title, eventDate)}
+                          title="Download an .ics calendar file for Outlook, Apple Calendar, Google Calendar, or your phone."
                           className="inline-flex items-center justify-center rounded-2xl bg-green-400 px-5 py-3 text-center font-semibold text-black transition hover:opacity-90"
                         >
                           Add To Calendar

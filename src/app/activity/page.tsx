@@ -486,7 +486,7 @@ export default async function ActivityPage({
 
             <p className="mt-2 text-sm leading-6 text-amber-100/90">
               Once the activity setup is finished, this page will start
-              showing future queue, estimate, invoice, payment, and split
+              showing new queue, estimate, invoice, payment, and split
               actions.
             </p>
           </Card>
