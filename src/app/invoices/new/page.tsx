@@ -14,6 +14,7 @@ import InputField from "../../components/InputField";
 import Card from "../../components/Card";
 import Toast from "../../components/Toast";
 import { captureServicesFromLineItems } from "../../lib/captureServicesFromLineItems";
+import { getNextDocumentDisplayId } from "../../lib/documentNumbers";
 import { logActivity } from "../../lib/activityLog";
 import { supabase } from "../../lib/supabase";
 import { looksLikeApartmentUnitPaintJob } from "../../utils/jobWorkflow";
@@ -493,15 +494,25 @@ function NewInvoicePageContent() {
       return;
     }
 
-    const { count } = await supabase
-      .from("invoices")
-      .select("*", {
-        count: "exact",
-        head: true,
+    let displayId = "";
+
+    try {
+      displayId = await getNextDocumentDisplayId({
+        table: "invoices",
+        prefix: "INV",
+        businessId: business.id,
+      });
+    } catch (error) {
+      console.error(error);
+
+      setToast({
+        type: "error",
+        message:
+          "Unable to reserve the next invoice number. Refresh the page, then try again.",
       });
 
-    const nextInvoiceNumber = (count ?? 0) + 1;
-    const displayId = `INV-${String(nextInvoiceNumber).padStart(4, "0")}`;
+      return;
+    }
 
     const {
       data: { user },

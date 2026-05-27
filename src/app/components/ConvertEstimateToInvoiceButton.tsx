@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Button from "./Button";
+import { getNextDocumentDisplayId } from "../lib/documentNumbers";
 import { logActivity } from "../lib/activityLog";
 import { supabase } from "../lib/supabase";
 
@@ -168,17 +169,27 @@ export default function ConvertEstimateToInvoiceButton({
       return;
     }
 
-    const { count } = await supabase
-      .from("invoices")
-      .select("*", {
-        count: "exact",
-        head: true,
-      });
+    const targetBusinessId =
+      estimate.business_id ?? businessId;
+    let displayId = "";
 
-    const nextInvoiceNumber = (count ?? 0) + 1;
-    const displayId = `INV-${String(
-      nextInvoiceNumber
-    ).padStart(4, "0")}`;
+    try {
+      displayId = await getNextDocumentDisplayId({
+        table: "invoices",
+        prefix: "INV",
+        businessId: targetBusinessId,
+      });
+    } catch (error) {
+      console.error(error);
+
+      setMessage({
+        type: "error",
+        text: "Unable to reserve the next invoice number. Refresh the page, then try again.",
+      });
+      setIsConverting(false);
+
+      return;
+    }
 
     const {
       data: { user },
@@ -187,8 +198,7 @@ export default function ConvertEstimateToInvoiceButton({
     const { data, error } = await supabase
       .from("invoices")
       .insert({
-        business_id:
-          estimate.business_id ?? businessId,
+        business_id: targetBusinessId,
         estimate_id: estimateId,
         client_id: estimate.client_id ?? clientId,
         created_by_user_id: user?.id ?? null,
