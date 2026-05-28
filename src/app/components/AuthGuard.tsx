@@ -52,6 +52,25 @@ function isPublicAuthPath(pathname: string) {
   );
 }
 
+function hasInviteMarker(searchParams: URLSearchParams) {
+  if (
+    searchParams.get("type") === "invite" ||
+    searchParams.has("code") ||
+    searchParams.has("token_hash")
+  ) {
+    return true;
+  }
+
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return (
+    window.location.hash.includes("type=invite") ||
+    window.location.hash.includes("access_token=")
+  );
+}
+
 export default function AuthGuard({
   children,
 }: AuthGuardProps) {
@@ -84,6 +103,41 @@ export default function AuthGuard({
       const access = await loadWorkspaceAccess();
       const defaultBusinessSlug =
         preferredWorkspaceSlug(access);
+      const selectedBusiness =
+        searchParams.get("business");
+      const inviteBusinessSlug =
+        selectedBusiness ?? defaultBusinessSlug;
+      const inviteLinkOpened =
+        hasInviteMarker(searchParams);
+
+      if (
+        inviteLinkOpened &&
+        !pathname.startsWith("/reset-password")
+      ) {
+        const nextParams = new URLSearchParams({
+          business: inviteBusinessSlug,
+        });
+        const code = searchParams.get("code");
+        const tokenHash = searchParams.get("token_hash");
+        const type = searchParams.get("type");
+
+        if (code) {
+          nextParams.set("code", code);
+        }
+
+        if (tokenHash) {
+          nextParams.set("token_hash", tokenHash);
+        }
+
+        if (type) {
+          nextParams.set("type", type);
+        }
+
+        router.replace(
+          `/reset-password?${nextParams.toString()}`
+        );
+        return;
+      }
 
       if (session && isLoginPage) {
         router.push(
@@ -109,9 +163,6 @@ export default function AuthGuard({
         setLoading(false);
         return;
       }
-
-      const selectedBusiness =
-        searchParams.get("business");
 
       if (!selectedBusiness) {
         router.replace(

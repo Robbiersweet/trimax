@@ -26,8 +26,25 @@ function ResetPasswordPageContent() {
   useEffect(() => {
     async function prepareResetSession() {
       const code = searchParams.get("code");
+      const tokenHash = searchParams.get("token_hash");
+      const type = searchParams.get("type");
 
       if (!code) {
+        if (tokenHash && type === "invite") {
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: "invite",
+          });
+
+          if (error) {
+            setToast({
+              type: "error",
+              message:
+                "This invite link could not be opened. Please ask for a fresh invitation.",
+            });
+          }
+        }
+
         setReady(true);
         return;
       }
