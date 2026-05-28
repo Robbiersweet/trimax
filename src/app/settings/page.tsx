@@ -290,6 +290,18 @@ function BusinessSettingsPageContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [businessSlug]);
 
+  useEffect(() => {
+    if (loading || window.location.hash !== "#outlook-integration") {
+      return;
+    }
+
+    window.setTimeout(() => {
+      document
+        .getElementById("outlook-integration")
+        ?.scrollIntoView({ block: "start" });
+    }, 50);
+  }, [loading]);
+
   async function handleSave() {
     setToast(null);
 
