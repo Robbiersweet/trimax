@@ -281,10 +281,10 @@ styles.add(
         name="Kicker",
         parent=styles["Normal"],
         fontName="Helvetica-Bold",
-        fontSize=8,
-        leading=10,
+        fontSize=9,
+        leading=12,
         textColor=colors.HexColor("#f97316"),
-        spaceAfter=5,
+        spaceAfter=7,
         uppercase=True,
     )
 )
@@ -293,20 +293,20 @@ styles.add(
         name="TitleLarge",
         parent=styles["Normal"],
         fontName="Helvetica-Bold",
-        fontSize=28,
-        leading=31,
+        fontSize=30,
+        leading=34,
         textColor=colors.HexColor("#0f172a"),
-        spaceAfter=5,
+        spaceAfter=7,
     )
 )
 styles.add(
     ParagraphStyle(
         name="Subtitle",
         parent=styles["Normal"],
-        fontSize=10.5,
-        leading=15,
+        fontSize=12,
+        leading=17,
         textColor=colors.HexColor("#475569"),
-        spaceAfter=14,
+        spaceAfter=16,
     )
 )
 styles.add(
@@ -314,30 +314,30 @@ styles.add(
         name="SectionHeading",
         parent=styles["Heading2"],
         fontName="Helvetica-Bold",
-        fontSize=13,
-        leading=16,
+        fontSize=15,
+        leading=18,
         textColor=colors.HexColor("#0f172a"),
         spaceBefore=4,
-        spaceAfter=7,
+        spaceAfter=9,
     )
 )
 styles.add(
     ParagraphStyle(
         name="BodyTrimax",
         parent=styles["BodyText"],
-        fontSize=9.6,
-        leading=14,
+        fontSize=11,
+        leading=16,
         textColor=colors.HexColor("#334155"),
-        spaceAfter=5,
+        spaceAfter=7,
     )
 )
 styles.add(
     ParagraphStyle(
         name="HeroText",
         parent=styles["BodyText"],
-        fontSize=10,
-        leading=14,
-        textColor=colors.white,
+        fontSize=11.5,
+        leading=16,
+        textColor=colors.HexColor("#17324d"),
     )
 )
 styles.add(
@@ -365,18 +365,18 @@ def numbered(items):
     return story
 
 
-def card(title, children, border_color):
+def card(title, children, border_color, width):
     data = [[Paragraph(title, styles["SectionHeading"])], children]
-    table = Table(data, colWidths=[3.45 * inch])
+    table = Table(data, colWidths=[width])
     table.setStyle(
         TableStyle(
             [
                 ("BACKGROUND", (0, 0), (-1, -1), colors.white),
                 ("BOX", (0, 0), (-1, -1), 0.75, colors.HexColor("#d9e2ef")),
-                ("LEFTPADDING", (0, 0), (-1, -1), 12),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 12),
-                ("TOPPADDING", (0, 0), (-1, -1), 10),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+                ("LEFTPADDING", (0, 0), (-1, -1), 16),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 16),
+                ("TOPPADDING", (0, 0), (-1, -1), 13),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 13),
                 ("LINEBEFORE", (0, 0), (0, -1), 4, border_color),
             ]
         )
@@ -387,15 +387,15 @@ def card(title, children, border_color):
 def add_header_footer(canvas, doc, guide):
     canvas.saveState()
     canvas.setFillColor(colors.HexColor("#64748b"))
-    canvas.setFont("Helvetica", 7.5)
+    canvas.setFont("Helvetica", 8)
     canvas.drawString(
         doc.leftMargin,
-        0.33 * inch,
+        0.48 * inch,
         f"Trimax Operations Platform - {guide['role']} Guide - Generated {TODAY}",
     )
     canvas.drawRightString(
         letter[0] - doc.rightMargin,
-        0.33 * inch,
+        0.48 * inch,
         f"Page {doc.page}",
     )
     canvas.restoreState()
@@ -406,17 +406,17 @@ def build_guide(guide):
     doc = BaseDocTemplate(
         str(pdf_path),
         pagesize=letter,
-        leftMargin=0.58 * inch,
-        rightMargin=0.58 * inch,
-        topMargin=0.55 * inch,
-        bottomMargin=0.55 * inch,
+        leftMargin=0.82 * inch,
+        rightMargin=0.82 * inch,
+        topMargin=0.78 * inch,
+        bottomMargin=0.82 * inch,
         title=f"Trimax {guide['role']} Guide",
     )
     frame = Frame(
         doc.leftMargin,
-        doc.bottomMargin + 0.12 * inch,
+        doc.bottomMargin + 0.18 * inch,
         doc.width,
-        doc.height - 0.12 * inch,
+        doc.height - 0.18 * inch,
         id="main",
     )
     doc.addPageTemplates(
@@ -449,35 +449,30 @@ def build_guide(guide):
     hero.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#111827")),
-                ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#111827")),
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#eef6ff")),
+                ("BOX", (0, 0), (-1, -1), 0.75, colors.HexColor("#bfdbfe")),
                 ("LINEBEFORE", (0, 0), (0, -1), 6, guide["color"]),
-                ("LEFTPADDING", (0, 0), (-1, -1), 16),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 16),
-                ("TOPPADDING", (0, 0), (-1, -1), 14),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 14),
+                ("LEFTPADDING", (0, 0), (-1, -1), 18),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 18),
+                ("TOPPADDING", (0, 0), (-1, -1), 16),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 16),
             ]
         )
     )
-    story.extend([hero, Spacer(1, 0.16 * inch)])
+    story.extend([hero, Spacer(1, 0.18 * inch)])
 
-    access_card = card("What This Role Can Access", bullets(guide["access"]), guide["color"])
-    rules_card = card("Important Guardrails", bullets(guide["rules"]), guide["color"])
-    grid = Table([[access_card, rules_card]], colWidths=[3.58 * inch, 3.58 * inch])
-    grid.setStyle(
-        TableStyle(
-            [
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-            ]
-        )
+    story.extend(
+        [
+            card("What This Role Can Access", bullets(guide["access"]), guide["color"], doc.width),
+            Spacer(1, 0.12 * inch),
+            card("Important Guardrails", bullets(guide["rules"]), guide["color"], doc.width),
+            Spacer(1, 0.12 * inch),
+        ]
     )
-    story.extend([grid, Spacer(1, 0.12 * inch)])
 
     for title, items in guide["workflows"]:
-        story.append(card(title, numbered(items), guide["color"]))
-        story.append(Spacer(1, 0.1 * inch))
+        story.append(card(title, numbered(items), guide["color"], doc.width))
+        story.append(Spacer(1, 0.12 * inch))
 
     reminder = Table(
         [
