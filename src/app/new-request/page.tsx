@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AppShell from "../components/AppShell";
@@ -151,6 +152,15 @@ function NewRequestPageContent() {
     rnlFlooringOptions,
     justKleenScopeOptions
   );
+  const cancelParams = new URLSearchParams({
+    business: businessSlug,
+  });
+
+  if (propertyParam) {
+    cancelParams.set("property", propertyParam);
+  }
+
+  const cancelHref = `/queue?${cancelParams.toString()}`;
 
   const [business, setBusiness] = useState<Business | null>(null);
 
@@ -357,6 +367,13 @@ function NewRequestPageContent() {
       {toast && <Toast type={toast.type} message={toast.message} />}
 
       <div className="mx-auto max-w-3xl">
+        <Link
+          href={cancelHref}
+          className="inline-flex items-center rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-2 text-sm font-semibold text-zinc-300 transition hover:border-orange-400 hover:text-orange-300"
+        >
+          Back to Queue
+        </Link>
+
         <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
           Trimax
         </p>
@@ -640,13 +657,22 @@ function NewRequestPageContent() {
               />
             </div>
 
-            <Button onClick={handleSubmit} disabled={isSaving}>
-              {isSaving
-                ? "Saving..."
-                : isJustKleen
-                  ? "Create Work Request(s)"
-                  : "Create Queue Item(s)"}
-            </Button>
+            <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
+              <Button onClick={handleSubmit} disabled={isSaving}>
+                {isSaving
+                  ? "Saving..."
+                  : isJustKleen
+                    ? "Create Work Request(s)"
+                    : "Create Queue Item(s)"}
+              </Button>
+
+              <Link
+                href={cancelHref}
+                className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-zinc-700 bg-zinc-900 px-6 py-3 text-center font-semibold text-zinc-100 transition hover:border-orange-400 hover:text-orange-300"
+              >
+                Cancel and return
+              </Link>
+            </div>
 
             <datalist id="property-options">
               {propertyOptions.map((option) => (
