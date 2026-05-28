@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import AppShell from "../components/AppShell";
 import Card from "../components/Card";
 import { supabase } from "../lib/supabase";
@@ -333,50 +337,84 @@ function activityFilterHref({
   return `/activity?${params.toString()}`;
 }
 
-export default async function ActivityPage({
-  searchParams,
-}: {
-  searchParams?: Promise<{ business?: string; q?: string; type?: string }>;
-}) {
-  const resolvedSearchParams = searchParams ? await searchParams : {};
-  const businessSlug =
-    resolvedSearchParams.business ?? "rnl-creations";
-  const searchTerm = (resolvedSearchParams.q ?? "").trim();
-  const typeFilter = normalizeActivityFilter(resolvedSearchParams.type);
+function ActivityPageContent() {
+  const searchParams = useSearchParams();
+  const businessSlug = searchParams.get("business") ?? "rnl-creations";
+  const searchTerm = (searchParams.get("q") ?? "").trim();
+  const typeFilter = normalizeActivityFilter(
+    searchParams.get("type") ?? undefined
+  );
+  const [business, setBusiness] = useState<Business | null>(null);
+  const [logs, setLogs] = useState<ActivityLog[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [setupNeeded, setSetupNeeded] = useState(false);
 
-  const { data: businessData, error: businessError } = await supabase
-    .from("businesses")
-    .select("id, name, slug")
-    .eq("slug", businessSlug)
-    .limit(1)
-    .maybeSingle();
+  useEffect(() => {
+    let active = true;
 
-  if (businessError) {
-    console.warn("Activity workspace lookup failed:", businessError.message);
-  }
+    async function loadActivity() {
+      setLoading(true);
+      setSetupNeeded(false);
 
-  const business = businessData as Business | null;
+      const { data: businessData, error: businessError } = await supabase
+        .from("businesses")
+        .select("id, name, slug")
+        .eq("slug", businessSlug)
+        .limit(1)
+        .maybeSingle();
 
-  let logs: ActivityLog[] = [];
-  let setupNeeded = Boolean(businessError);
+      if (!active) {
+        return;
+      }
 
-  if (business?.id) {
-    const { data, error } = await supabase
-      .from("activity_logs")
-      .select("*")
-      .eq("business_id", business.id)
-      .order("created_at", { ascending: false })
-      .limit(100);
+      if (businessError) {
+        console.warn("Activity workspace lookup failed:", businessError.message);
+        setBusiness(null);
+        setLogs([]);
+        setSetupNeeded(true);
+        setLoading(false);
+        return;
+      }
 
-    if (error) {
-      console.warn("Activity logs could not be loaded:", error.message);
-      setupNeeded = true;
-    } else {
-      logs = (data ?? []) as ActivityLog[];
+      const selectedBusiness = businessData as Business | null;
+      setBusiness(selectedBusiness);
+
+      if (!selectedBusiness?.id) {
+        setLogs([]);
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("activity_logs")
+        .select("*")
+        .eq("business_id", selectedBusiness.id)
+        .order("created_at", { ascending: false })
+        .limit(100);
+
+      if (!active) {
+        return;
+      }
+
+      if (error) {
+        console.warn("Activity logs could not be loaded:", error.message);
+        setLogs([]);
+        setSetupNeeded(true);
+      } else {
+        setLogs((data ?? []) as ActivityLog[]);
+      }
+
+      setLoading(false);
     }
-  }
 
-  const filteredLogs = logs.filter((log) => {
+    loadActivity();
+
+    return () => {
+      active = false;
+    };
+  }, [businessSlug]);
+
+  const filteredLogs = useMemo(() => logs.filter((log) => {
     if (!activityMatchesType(log, typeFilter)) {
       return false;
     }
@@ -386,7 +424,7 @@ export default async function ActivityPage({
     }
 
     return searchableActivityText(log).includes(searchTerm.toLowerCase());
-  });
+  }), [logs, searchTerm, typeFilter]);
 
   return (
     <AppShell>
@@ -478,7 +516,15 @@ export default async function ActivityPage({
           </div>
         </Card>
 
-        {setupNeeded ? (
+        {loading ? (
+          <Card>
+            <p className="font-semibold text-white">Loading activity...</p>
+
+            <p className="mt-2 text-sm leading-6 text-zinc-400">
+              Checking the latest history for this workspace.
+            </p>
+          </Card>
+        ) : setupNeeded ? (
           <Card className="app-notice-card border-amber-500/40 bg-amber-500/10">
             <p className="font-semibold text-amber-200">
               Activity tracking setup needs one more step.
@@ -603,5 +649,21 @@ export default async function ActivityPage({
         )}
       </div>
     </AppShell>
+  );
+}
+
+export default function ActivityPage() {
+  return (
+    <Suspense
+      fallback={
+        <AppShell>
+          <Card>
+            <p className="text-zinc-400">Loading activity...</p>
+          </Card>
+        </AppShell>
+      }
+    >
+      <ActivityPageContent />
+    </Suspense>
   );
 }

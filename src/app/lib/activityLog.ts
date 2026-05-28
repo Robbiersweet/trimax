@@ -9,6 +9,16 @@ type ActivityLogInput = {
   details?: Record<string, unknown>;
 };
 
+function cleanDetails(details: Record<string, unknown> | undefined) {
+  if (!details) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(details).filter((entry) => entry[1] !== undefined)
+  );
+}
+
 export async function logActivity(input: ActivityLogInput) {
   try {
     const {
@@ -23,7 +33,7 @@ export async function logActivity(input: ActivityLogInput) {
       entity_type: input.entityType,
       entity_id: input.entityId ?? null,
       entity_label: input.entityLabel ?? null,
-      details: input.details ?? {},
+      details: cleanDetails(input.details),
     });
 
     if (error) {

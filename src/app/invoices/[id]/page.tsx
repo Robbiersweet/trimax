@@ -591,7 +591,9 @@ export default async function InvoiceDetailPage({
             documentLabel="Invoice"
             preview={outlookDraftPreview}
             printHref={`/invoices/${invoice.id}/print${businessQuery}`}
-            settingsHref={`/settings${businessQuery}`}
+            settingsHref={`/settings${businessQuery}&returnTo=${encodeURIComponent(
+              `/invoices/${invoice.id}${businessQuery}`
+            )}#outlook-integration`}
           />
 
           <Card>

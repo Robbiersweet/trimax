@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import AppShell from "../components/AppShell";
@@ -123,6 +124,12 @@ function BusinessSettingsPageContent() {
   const businessSlug =
     searchParams.get("business") ??
     "rnl-creations";
+  const returnToParam = searchParams.get("returnTo");
+  const returnTo =
+    returnToParam?.startsWith("/") &&
+    !returnToParam.startsWith("//")
+      ? returnToParam
+      : null;
 
   const [business, setBusiness] =
     useState<Business | null>(null);
@@ -657,6 +664,15 @@ function BusinessSettingsPageContent() {
 
       <div className="space-y-6">
         <div>
+          {returnTo ? (
+            <Link
+              href={returnTo}
+              className="mb-4 inline-flex rounded-full border border-zinc-700 px-4 py-2 text-sm font-bold text-zinc-200 transition hover:border-orange-400 hover:text-orange-300"
+            >
+              Back to document
+            </Link>
+          ) : null}
+
           <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
             Trimax
           </p>
