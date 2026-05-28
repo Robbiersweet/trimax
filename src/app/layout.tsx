@@ -44,7 +44,7 @@ export default function RootLayout({
             __html: `
               try {
                 var theme = window.localStorage.getItem("trimax-theme");
-                if (theme === "light") {
+                if (theme !== "dark") {
                   document.documentElement.dataset.theme = "light";
                   document.documentElement.classList.add("theme-light");
                 }
@@ -57,8 +57,8 @@ export default function RootLayout({
         <PwaRegistration />
         <Suspense
           fallback={
-            <main className="flex min-h-screen items-center justify-center bg-zinc-950 text-white">
-              <p className="text-zinc-400">
+            <main className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-950">
+              <p className="text-slate-600">
                 Opening workspace...
               </p>
             </main>

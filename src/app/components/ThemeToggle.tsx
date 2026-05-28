@@ -23,12 +23,12 @@ export default function ThemeToggle({
 }: ThemeToggleProps) {
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window === "undefined") {
-      return "dark";
+      return "light";
     }
 
-    return window.localStorage.getItem(STORAGE_KEY) === "light"
-      ? "light"
-      : "dark";
+    return window.localStorage.getItem(STORAGE_KEY) === "dark"
+      ? "dark"
+      : "light";
   });
 
   useEffect(() => {
