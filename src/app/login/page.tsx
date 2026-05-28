@@ -50,10 +50,13 @@ function LoginPageContent() {
     }
 
     const access = await loadWorkspaceAccess();
-    const businessSlug = preferredWorkspaceSlug(access);
+    const nextBusinessSlug = preferredWorkspaceSlug(
+      access,
+      businessSlug
+    );
 
     window.location.replace(
-      `/?business=${businessSlug}`
+      `/?business=${nextBusinessSlug}`
     );
   }
 

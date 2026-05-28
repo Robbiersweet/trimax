@@ -125,8 +125,23 @@ export async function loadWorkspaceAccess() {
 }
 
 export function preferredWorkspaceSlug(
-  access: WorkspaceAccess[]
+  access: WorkspaceAccess[],
+  requestedBusinessSlug?: string | null
 ) {
+  if (
+    requestedBusinessSlug &&
+    access.some(
+      (workspace) =>
+        workspace.businessSlug === requestedBusinessSlug
+    )
+  ) {
+    return requestedBusinessSlug;
+  }
+
+  if (access.length === 1) {
+    return access[0].businessSlug;
+  }
+
   return (
     access.find(
       (workspace) =>
