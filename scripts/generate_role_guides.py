@@ -366,7 +366,7 @@ def numbered(items):
 
 
 def card(title, children, border_color, width):
-    data = [[Paragraph(title, styles["SectionHeading"])], children]
+    data = [[Paragraph(title, styles["SectionHeading"])], [children]]
     table = Table(data, colWidths=[width])
     table.setStyle(
         TableStyle(
