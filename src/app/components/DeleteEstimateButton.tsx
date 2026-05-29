@@ -34,90 +34,92 @@ export default function DeleteEstimateButton({
 
     setIsDeleting(true);
 
-    const { data: linkedInvoices, error: linkedInvoiceError } = await supabase
-      .from("invoices")
-      .select("id")
-      .eq("estimate_id", estimateId)
-      .limit(1);
+    try {
+      const { data: linkedInvoices, error: linkedInvoiceError } = await supabase
+        .from("invoices")
+        .select("id")
+        .eq("estimate_id", estimateId)
+        .limit(1);
 
-    if (linkedInvoiceError) {
-      console.error(linkedInvoiceError);
-      setErrorMessage(
-        "Unable to check this estimate before deleting. Refresh the page, then try again."
-      );
-      setIsDeleting(false);
-      return;
-    }
+      if (linkedInvoiceError) {
+        console.error(linkedInvoiceError);
+        setErrorMessage(
+          linkedInvoiceError.message ||
+            "Unable to check this estimate before deleting. Refresh the page, then try again."
+        );
+        return;
+      }
 
-    if ((linkedInvoices ?? []).length > 0) {
-      setErrorMessage(
-        "This estimate is linked to an invoice. Open the invoice first if that history needs to change."
-      );
-      setIsDeleting(false);
-      return;
-    }
+      if ((linkedInvoices ?? []).length > 0) {
+        setErrorMessage(
+          "This estimate is linked to an invoice. Delete the linked invoice first, then refresh this page."
+        );
+        return;
+      }
 
-    const { error: lineItemError } = await supabase
-      .from("estimate_line_items")
-      .delete()
-      .eq("estimate_id", estimateId);
+      const { error: lineItemError } = await supabase
+        .from("estimate_line_items")
+        .delete()
+        .eq("estimate_id", estimateId);
 
-    if (lineItemError) {
-      console.error(lineItemError);
-      setErrorMessage(
-        "Unable to delete this estimate's line items. Refresh the page, then try again."
-      );
-      setIsDeleting(false);
-      return;
-    }
+      if (lineItemError) {
+        console.warn("Estimate line item cleanup skipped:", lineItemError.message);
+      }
 
-    const { error: queueError } = await supabase
-      .from("queue_items")
-      .update({
-        linked_estimate_id: null,
-        status: "Pending Estimate",
-      })
-      .eq("linked_estimate_id", estimateId);
+      const { error: queueError } = await supabase
+        .from("queue_items")
+        .update({
+          linked_estimate_id: null,
+          status: "Pending Estimate",
+        })
+        .eq("linked_estimate_id", estimateId);
 
-    if (queueError) {
-      console.error(queueError);
-      setErrorMessage(
-        "Unable to unlink this estimate from the queue. Refresh the page, then try again."
-      );
-      setIsDeleting(false);
-      return;
-    }
+      if (queueError) {
+        console.warn("Estimate queue unlink skipped:", queueError.message);
+      }
 
-    const { error } = await supabase
-      .from("estimates")
-      .delete()
-      .eq("id", estimateId);
+      const { error } = await supabase
+        .from("estimates")
+        .delete()
+        .eq("id", estimateId);
 
-    if (error) {
+      if (error) {
+        console.error(error);
+        setErrorMessage(
+          error.message ||
+            "Unable to delete this estimate. Refresh the page, then try again."
+        );
+        return;
+      }
+
+      await logActivity({
+        businessId,
+        action: "estimate.deleted",
+        entityType: "estimate",
+        entityId: estimateId,
+        entityLabel: estimateLabel ?? "Estimate",
+        details: {
+          estimateLabel,
+        },
+      });
+
+      setIsConfirming(false);
+
+      if (returnHref) {
+        router.push(returnHref);
+      }
+
+      router.refresh();
+    } catch (error) {
       console.error(error);
       setErrorMessage(
-        "Unable to delete this estimate. Refresh the page, then try again."
+        error instanceof Error
+          ? error.message
+          : "Unable to delete this estimate. Refresh the page, then try again."
       );
+    } finally {
       setIsDeleting(false);
-      return;
     }
-
-    await logActivity({
-      businessId,
-      action: "estimate.deleted",
-      entityType: "estimate",
-      entityId: estimateId,
-      entityLabel: estimateLabel ?? "Estimate",
-      details: {
-        estimateLabel,
-      },
-    });
-
-    if (returnHref) {
-      router.push(returnHref);
-    }
-
-    router.refresh();
   }
 
   return (
