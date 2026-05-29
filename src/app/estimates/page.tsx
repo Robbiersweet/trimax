@@ -2,6 +2,7 @@ import Link from "next/link";
 import AppShell from "../components/AppShell";
 import Card from "../components/Card";
 import Button from "../components/Button";
+import DeleteEstimateButton from "../components/DeleteEstimateButton";
 import StatusBadge from "../components/StatusBadge";
 import { supabase } from "../lib/supabase";
 
@@ -13,11 +14,13 @@ type Business = {
 
 type Estimate = {
   id: string;
+  business_id: string | null;
   display_id: string | null;
   customer_name: string | null;
   project_title: string | null;
   estimate_amount: string | number | null;
   status: string | null;
+  hasLinkedInvoice?: boolean;
 };
 
 function formatMoney(value: string | number | null) {
@@ -80,7 +83,7 @@ export default async function EstimatesPage({
     const { data, error } = await supabase
       .from("estimates")
       .select(
-        "id, display_id, customer_name, project_title, estimate_amount, status"
+        "id, business_id, display_id, customer_name, project_title, estimate_amount, status"
       )
       .eq("business_id", selectedBusiness.id)
       .order("created_at", { ascending: false });
@@ -92,6 +95,31 @@ export default async function EstimatesPage({
     }
 
     estimates = (data ?? []) as Estimate[];
+
+    const estimateIds = estimates.map((estimate) => estimate.id);
+
+    if (estimateIds.length > 0) {
+      const { data: invoiceData, error: invoiceError } = await supabase
+        .from("invoices")
+        .select("estimate_id")
+        .eq("business_id", selectedBusiness.id)
+        .in("estimate_id", estimateIds);
+
+      if (invoiceError) {
+        console.warn("Linked invoices could not be loaded:", invoiceError.message);
+      } else {
+        const linkedEstimateIds = new Set(
+          (invoiceData ?? [])
+            .map((invoice) => invoice.estimate_id)
+            .filter(Boolean)
+        );
+
+        estimates = estimates.map((estimate) => ({
+          ...estimate,
+          hasLinkedInvoice: linkedEstimateIds.has(estimate.id),
+        }));
+      }
+    }
   }
 
   const filteredEstimates = estimates.filter((estimate) => {
@@ -271,7 +299,13 @@ export default async function EstimatesPage({
           <div className="grid gap-4">
             {filteredEstimates.map((estimate) => {
               const statusKey = getStatusKey(estimate.status);
-              const isConverted = statusKey === "converted";
+              const isConverted =
+                statusKey === "converted" || Boolean(estimate.hasLinkedInvoice);
+              const estimateLabel =
+                estimate.display_id ||
+                estimate.project_title ||
+                estimate.customer_name ||
+                "Estimate";
 
               return (
                 <Card
@@ -332,6 +366,18 @@ export default async function EstimatesPage({
                       >
                         Edit
                       </Link>
+                    )}
+
+                    {isConverted ? (
+                      <span className="rounded-xl border border-zinc-700 px-4 py-2 text-sm font-bold text-zinc-500">
+                        Linked to invoice
+                      </span>
+                    ) : (
+                      <DeleteEstimateButton
+                        estimateId={estimate.id}
+                        businessId={estimate.business_id}
+                        estimateLabel={estimateLabel}
+                      />
                     )}
                   </div>
                 </Card>

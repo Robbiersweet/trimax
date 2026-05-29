@@ -3,6 +3,7 @@ import AppShell from "../../components/AppShell";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import ConvertEstimateToInvoiceButton from "../../components/ConvertEstimateToInvoiceButton";
+import DeleteEstimateButton from "../../components/DeleteEstimateButton";
 import OutlookDraftPrepCard from "../../components/OutlookDraftPrepCard";
 import SplitInvoicePlanner from "../../components/SplitInvoicePlanner";
 import { buildOutlookDraftPreview } from "../../lib/outlookDrafts";
@@ -445,6 +446,24 @@ export default async function EstimateDetailsPage({
               invoiceAmount={formatCurrency(estimateTotal)}
               notes={estimate.notes ?? ""}
             />
+          )}
+
+          {!linkedInvoice ? (
+            <DeleteEstimateButton
+              estimateId={estimate.id}
+              businessId={estimate.business_id}
+              estimateLabel={
+                estimate.display_id ||
+                estimate.project_title ||
+                estimate.customer_name ||
+                "Estimate"
+              }
+              returnHref={`/estimates?business=${businessSlug}`}
+            />
+          ) : (
+            <span className="rounded-2xl border border-zinc-700 px-5 py-3 text-sm font-bold text-zinc-500">
+              Delete disabled while linked to invoice
+            </span>
           )}
         </div>
       </div>

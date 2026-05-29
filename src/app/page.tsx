@@ -320,6 +320,7 @@ function activityLabel(action: string) {
     "estimate.created": "Estimate Created",
     "estimate.updated": "Estimate Updated",
     "estimate.converted_to_invoice": "Estimate Converted",
+    "estimate.deleted": "Estimate Deleted",
     "invoice.created": "Invoice Created",
     "invoice.updated": "Invoice Updated",
     "invoice.status_updated": "Invoice Updated",
