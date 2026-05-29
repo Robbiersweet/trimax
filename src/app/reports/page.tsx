@@ -2,6 +2,7 @@ import Link from "next/link";
 import AppShell from "../components/AppShell";
 import Button from "../components/Button";
 import Card from "../components/Card";
+import DateInputField from "../components/DateInputField";
 import RoleVisible from "../components/RoleVisible";
 import StatusBadge from "../components/StatusBadge";
 import { supabase } from "../lib/supabase";
@@ -663,29 +664,17 @@ export default async function ReportsPage({
             <input type="hidden" name="property" value={propertyFilter} />
             <input type="hidden" name="range" value="custom" />
 
-            <div>
-              <label className="mb-2 block text-sm text-zinc-400">
-                From
-              </label>
-              <input
-                type="date"
-                name="from"
-                defaultValue={customStartDate}
-                className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
-              />
-            </div>
+            <DateInputField
+              label="From"
+              name="from"
+              defaultValue={customStartDate}
+            />
 
-            <div>
-              <label className="mb-2 block text-sm text-zinc-400">
-                To
-              </label>
-              <input
-                type="date"
-                name="to"
-                defaultValue={customEndDate}
-                className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
-              />
-            </div>
+            <DateInputField
+              label="To"
+              name="to"
+              defaultValue={customEndDate}
+            />
 
             <div className="flex items-end">
               <Button type="submit">Apply Dates</Button>

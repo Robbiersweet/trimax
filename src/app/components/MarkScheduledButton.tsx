@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 import { logActivity } from "../lib/activityLog";
 import Button from "./Button";
+import DateInputField from "./DateInputField";
 
 type MarkScheduledButtonProps = {
   queueItemId: string;
@@ -101,18 +102,12 @@ export default function MarkScheduledButton({
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3">
       <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-        <div>
-          <label className="mb-2 block text-xs uppercase tracking-[0.2em] text-zinc-500">
-            Work Date
-          </label>
-
-          <input
-            type="date"
-            value={scheduledDate}
-            onChange={(event) => setScheduledDate(event.target.value)}
-            className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
-          />
-        </div>
+        <DateInputField
+          label="Work Date"
+          value={scheduledDate}
+          onChange={setScheduledDate}
+          labelClassName="mb-2 block text-xs uppercase tracking-[0.2em] text-zinc-500"
+        />
 
         <Button
           onClick={handleMarkScheduled}

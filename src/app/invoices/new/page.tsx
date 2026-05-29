@@ -710,16 +710,16 @@ function NewInvoicePageContent() {
             <div className="grid gap-5 md:grid-cols-2">
               <InputField
                 label="Issue Date"
-                placeholder="Example: 05/23/2026"
                 value={issueDate}
                 onChange={setIssueDate}
+                type="date"
               />
 
               <InputField
                 label="Due Date"
-                placeholder="Example: 06/22/2026"
                 value={dueDate}
                 onChange={setDueDate}
+                type="date"
               />
             </div>
 

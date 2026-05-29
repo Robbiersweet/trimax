@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import DateInputField from "./DateInputField";
 
 type InputFieldProps = {
   label: string;
@@ -23,6 +24,17 @@ export default function InputField({
 }: InputFieldProps) {
   const [showPassword, setShowPassword] =
     useState(false);
+
+  if (type === "date") {
+    return (
+      <DateInputField
+        label={label}
+        value={value}
+        onChange={onChange}
+        helperText={helperText}
+      />
+    );
+  }
 
   const isPasswordField = type === "password";
 

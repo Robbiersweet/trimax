@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Card from "./Card";
+import DateInputField from "./DateInputField";
 import Toast from "./Toast";
 import { supabase } from "../lib/supabase";
 import { logActivity } from "../lib/activityLog";
@@ -663,17 +664,12 @@ export default function BatchInvoicePayments({
 
       <div className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[150px_150px_170px_1fr_auto]">
-          <div>
-            <label className="mb-2 block text-sm text-zinc-400">
-              Payment Date
-            </label>
-            <input
-              type="date"
-              value={paymentDate}
-              onChange={(event) => setPaymentDate(event.target.value)}
-              className="w-full rounded-2xl border border-zinc-700 bg-black px-4 py-3 text-white outline-none transition focus:border-orange-500"
-            />
-          </div>
+          <DateInputField
+            label="Payment Date"
+            value={paymentDate}
+            onChange={setPaymentDate}
+            inputClassName="w-full rounded-2xl border border-zinc-700 bg-black px-4 py-3 pr-28 text-white outline-none transition focus:border-orange-500"
+          />
 
           <div>
             <label className="mb-2 block text-sm text-zinc-400">
