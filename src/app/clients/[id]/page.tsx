@@ -2,6 +2,7 @@ import Link from "next/link";
 import AppShell from "../../components/AppShell";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
+import DeleteClientButton from "../../components/DeleteClientButton";
 import StatusBadge from "../../components/StatusBadge";
 import { supabase } from "../../lib/supabase";
 
@@ -229,6 +230,14 @@ export default async function ClientDetailsPage({
                 Create Invoice
               </Button>
             </Link>
+
+            <DeleteClientButton
+              clientId={client.id}
+              clientName={client.name}
+              linkedEstimateCount={estimates.length}
+              linkedInvoiceCount={invoices.length}
+              returnHref={`/clients${businessQuery}`}
+            />
           </div>
         </div>
 

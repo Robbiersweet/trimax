@@ -2,6 +2,7 @@ import Link from "next/link";
 import AppShell from "../components/AppShell";
 import Card from "../components/Card";
 import Button from "../components/Button";
+import DeleteClientButton from "../components/DeleteClientButton";
 import { supabase } from "../lib/supabase";
 
 type Business = {
@@ -36,6 +37,8 @@ type ClientSummary = {
   openBalance: number;
   openInvoices: number;
   activeEstimates: number;
+  linkedEstimates: number;
+  linkedInvoices: number;
 };
 
 function parseMoney(value: string | number | null) {
@@ -118,6 +121,8 @@ export default async function ClientsPage({
         openBalance: 0,
         openInvoices: 0,
         activeEstimates: 0,
+        linkedEstimates: 0,
+        linkedInvoices: 0,
       };
 
       return summaries;
@@ -131,6 +136,8 @@ export default async function ClientsPage({
     }
 
     const status = (invoice.status || "Draft").toLowerCase();
+
+    clientSummaries[invoice.client_id].linkedInvoices += 1;
 
     if (status === "paid") {
       return;
@@ -151,6 +158,8 @@ export default async function ClientsPage({
     }
 
     const status = (estimate.status || "Draft").toLowerCase();
+
+    clientSummaries[estimate.client_id].linkedEstimates += 1;
 
     if (status === "converted" || status === "declined") {
       return;
@@ -550,6 +559,17 @@ export default async function ClientsPage({
                     >
                       New Invoice
                     </Link>
+
+                    <DeleteClientButton
+                      clientId={client.id}
+                      clientName={client.name}
+                      linkedEstimateCount={
+                        clientSummaries[client.id]?.linkedEstimates ?? 0
+                      }
+                      linkedInvoiceCount={
+                        clientSummaries[client.id]?.linkedInvoices ?? 0
+                      }
+                    />
                   </div>
               </Card>
             ))}
