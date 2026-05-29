@@ -78,16 +78,24 @@ export default function DeleteEstimateButton({
         console.warn("Estimate queue unlink skipped:", queueError.message);
       }
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("estimates")
         .delete()
-        .eq("id", estimateId);
+        .eq("id", estimateId)
+        .select("id");
 
       if (error) {
         console.error(error);
         setErrorMessage(
           error.message ||
             "Unable to delete this estimate. Refresh the page, then try again."
+        );
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        setErrorMessage(
+          "Supabase did not delete this estimate. Estimate delete access likely needs to be enabled in Supabase."
         );
         return;
       }
