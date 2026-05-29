@@ -599,6 +599,45 @@ html.theme-light .payment-hero-card .payment-hero-stat {
   border-color: rgba(255, 255, 255, 0.18) !important;
 }
 
+.schedule-hero-card {
+  color: #f8fafc;
+}
+
+html.theme-light .schedule-hero-card {
+  background:
+    linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.9) 48%, rgba(2, 6, 23, 0.96)) !important;
+  color: #f8fafc !important;
+  border-color: rgba(14, 165, 233, 0.35) !important;
+}
+
+html.theme-light .schedule-hero-card .text-white,
+html.theme-light .schedule-hero-card .text-zinc-50,
+html.theme-light .schedule-hero-card .text-zinc-100,
+html.theme-light .schedule-hero-card .text-zinc-200 {
+  color: #f8fafc !important;
+}
+
+html.theme-light .schedule-hero-card .text-zinc-300,
+html.theme-light .schedule-hero-card .text-zinc-400 {
+  color: #dbeafe !important;
+}
+
+html.theme-light .schedule-hero-card .text-sky-300 {
+  color: #7dd3fc !important;
+}
+
+html.theme-light .schedule-hero-tip {
+  background-color: rgba(14, 165, 233, 0.12) !important;
+  border-color: rgba(125, 211, 252, 0.35) !important;
+  color: #e0f2fe !important;
+}
+
+html.theme-light .schedule-hero-count {
+  background-color: #ffffff !important;
+  border-color: rgba(226, 232, 240, 0.9) !important;
+  color: #0f172a !important;
+}
+
 .queue-filter-bar,
 .workspace-filter-bar {
   background-color: rgba(24, 24, 27, 0.7);

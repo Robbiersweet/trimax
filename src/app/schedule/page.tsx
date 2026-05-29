@@ -270,7 +270,7 @@ export default async function SchedulePage({
           </Card>
         ) : null}
 
-        <Card className="border-sky-500/20 bg-gradient-to-br from-sky-500/10 via-zinc-900 to-orange-500/5">
+        <Card className="schedule-hero-card border-sky-500/20 bg-gradient-to-br from-sky-500/10 via-zinc-900 to-orange-500/5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.3em] text-sky-300">
@@ -285,14 +285,14 @@ export default async function SchedulePage({
                 phone-friendly event file for the selected job.
               </p>
 
-              <p className="mt-3 max-w-3xl rounded-2xl border border-sky-400/25 bg-sky-400/10 px-4 py-3 text-sm leading-6 text-zinc-300">
+              <p className="schedule-hero-tip mt-3 max-w-3xl rounded-2xl border border-sky-400/25 bg-sky-400/10 px-4 py-3 text-sm leading-6 text-zinc-300">
                 Tip: Add To Calendar downloads an .ics file. Open that file to
                 add the job to Outlook, Apple Calendar, Google Calendar, or
                 your phone calendar.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-300">
+            <div className="schedule-hero-count rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-300">
               {scheduledItems.length} open scheduled jobs
             </div>
           </div>
