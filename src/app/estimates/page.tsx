@@ -299,8 +299,8 @@ export default async function EstimatesPage({
           <div className="grid gap-4">
             {filteredEstimates.map((estimate) => {
               const statusKey = getStatusKey(estimate.status);
-              const isConverted =
-                statusKey === "converted" || Boolean(estimate.hasLinkedInvoice);
+              const isConverted = statusKey === "converted";
+              const isLinkedToInvoice = Boolean(estimate.hasLinkedInvoice);
               const estimateLabel =
                 estimate.display_id ||
                 estimate.project_title ||
@@ -368,7 +368,7 @@ export default async function EstimatesPage({
                       </Link>
                     )}
 
-                    {isConverted ? (
+                    {isLinkedToInvoice ? (
                       <span className="rounded-xl border border-zinc-700 px-4 py-2 text-sm font-bold text-zinc-500">
                         Linked to invoice
                       </span>
