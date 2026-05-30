@@ -604,11 +604,59 @@ html.theme-light .payment-hero-card {
     radial-gradient(circle at 12% 8%, rgba(187, 247, 208, 0.2), transparent 34%),
     linear-gradient(135deg, #0f1f19 0%, #0b1220 56%, #2f231f 100%) !important;
   border-color: rgba(34, 197, 94, 0.28) !important;
+  color: #f8fafc !important;
 }
 
 html.theme-light .payment-hero-card .payment-hero-stat {
-  background-color: rgba(255, 255, 255, 0.08) !important;
+  background-color: rgba(15, 23, 42, 0.72) !important;
   border-color: rgba(255, 255, 255, 0.18) !important;
+  color: #f8fafc !important;
+}
+
+html.theme-light .payment-hero-card h2,
+html.theme-light .payment-hero-card .text-white,
+html.theme-light .payment-hero-card .text-zinc-50,
+html.theme-light .payment-hero-card .text-zinc-100,
+html.theme-light .payment-hero-card .text-zinc-200 {
+  color: #f8fafc !important;
+}
+
+html.theme-light .payment-hero-card .payment-hero-copy,
+html.theme-light .payment-hero-card .text-zinc-300,
+html.theme-light .payment-hero-card .text-zinc-400,
+html.theme-light .payment-hero-card .text-zinc-500 {
+  color: #dbeafe !important;
+}
+
+html.theme-light .payment-hero-card .payment-hero-label,
+html.theme-light .payment-hero-card .text-green-100,
+html.theme-light .payment-hero-card .text-green-100\/80,
+html.theme-light .payment-hero-card .text-green-200,
+html.theme-light .payment-hero-card .text-green-300 {
+  color: #bbf7d0 !important;
+}
+
+html.theme-light .payment-hero-card .text-pink-100,
+html.theme-light .payment-hero-card .text-pink-200 {
+  color: #fecdd3 !important;
+}
+
+html.theme-light .payment-hero-card .border-zinc-700,
+html.theme-light .payment-hero-card .border-zinc-800 {
+  border-color: rgba(255, 255, 255, 0.18) !important;
+}
+
+html.theme-light .payment-hero-card .bg-zinc-900,
+html.theme-light .payment-hero-card .bg-zinc-900\/80,
+html.theme-light .payment-hero-card .bg-black,
+html.theme-light .payment-hero-card .bg-black\/40,
+html.theme-light .payment-hero-card .bg-black\/50 {
+  background-color: rgba(2, 6, 23, 0.72) !important;
+}
+
+html.theme-light .payment-hero-card button:disabled {
+  color: #94a3b8 !important;
+  border-color: rgba(148, 163, 184, 0.42) !important;
 }
 
 .schedule-hero-card {
