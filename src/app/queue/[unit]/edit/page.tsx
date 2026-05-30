@@ -347,11 +347,11 @@ export default function EditQueueItemPage() {
               />
 
               <InputField
-                label="Date R&L Can Start"
+                label="Paint Due Date"
                 value={readyDate}
                 onChange={setReadyDate}
                 type="date"
-                helperText="Use the first date R&L can begin work, not the property's final ready date."
+                helperText="Use the date the property wants painting finished by so urgent units can be prioritized."
               />
             </div>
 

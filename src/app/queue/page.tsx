@@ -161,7 +161,7 @@ function viewCopy(view: string) {
     return {
       title: "R&L Start Soon",
       detail:
-        "Unscheduled units where R&L can start in the next 7 days.",
+        "Unscheduled units with a paint due date in the next 7 days.",
     };
   }
 
@@ -372,7 +372,7 @@ export default async function QueuePage({
       count: propertyScopedQueueItems.length,
     },
     {
-      label: "Ready Soon",
+      label: "Due Soon",
       value: "ready-soon",
       count: readySoonCount,
     },
@@ -641,7 +641,7 @@ export default async function QueuePage({
 
                         {readySoon ? (
                           <span className="queue-ready-soon-pill rounded-full bg-yellow-500/20 px-3 py-1 text-sm font-semibold text-yellow-200">
-                            Ready Soon
+                            Due Soon
                           </span>
                         ) : null}
 
@@ -675,7 +675,7 @@ export default async function QueuePage({
                           value={item.move_out_date}
                         />
                         <LifecyclePill
-                          label="R&L Can Start"
+                          label="Paint Due"
                           value={item.ready_date}
                           detail={
                             readySoon && readyDays !== null

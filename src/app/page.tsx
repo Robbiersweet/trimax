@@ -1368,7 +1368,7 @@ export default async function DashboardPage({
             </p>
 
             <p className="mt-2 text-zinc-300">
-              Units are within 7 days of the date R&L can start and are not scheduled.
+              Units are within 7 days of the requested paint finish date and are not scheduled.
             </p>
 
             <p className="mt-2 text-sm text-zinc-400">
@@ -1379,7 +1379,7 @@ export default async function DashboardPage({
               href={`/queue?business=${selectedBusinessSlug}&view=ready-soon`}
               className="mt-4 inline-block text-sm text-orange-400"
             >
-              Open R&L start soon queue
+              Open due soon queue
             </Link>
           </Card>
 
@@ -1713,7 +1713,7 @@ export default async function DashboardPage({
 
                       <div className="mt-3 flex flex-wrap gap-2 text-xs">
                         <span className="rounded-full border border-zinc-800 bg-zinc-900 px-3 py-1 text-zinc-300">
-                          Ready {formatShortDate(item.ready_date)}
+                          Paint due {formatShortDate(item.ready_date)}
                         </span>
 
                         <span className="rounded-full border border-zinc-800 bg-zinc-900 px-3 py-1 text-zinc-300">

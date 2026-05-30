@@ -34,7 +34,7 @@ export function buildEstimateFromQueueItem(queueId: string) {
 
 Flooring: ${queueItem.flooring}
 Move Out: ${queueItem.moveOutDate}
-Ready Date: ${queueItem.readyDate}
+Paint Due Date: ${queueItem.readyDate}
 Smoker Unit: ${queueItem.smokedIn ? "Yes" : "No"}`,
   };
 }

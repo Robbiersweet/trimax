@@ -46,7 +46,7 @@ export default function MarkScheduledButton({
     ...(readyDate
       ? [
           {
-            label: "Date R&L Can Start",
+            label: "Paint Due Date",
             value: readyDate,
           },
         ]

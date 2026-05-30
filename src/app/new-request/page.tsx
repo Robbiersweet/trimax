@@ -623,12 +623,12 @@ function NewRequestPageContent() {
             />
 
             <InputField
-              label="Date R&L Can Start"
+              label="Paint Due Date"
               placeholder="Example: 2026-07-03"
               value={readyDate}
               onChange={setReadyDate}
               type="date"
-              helperText="Use the first date R&L can begin work, not the property's final ready date."
+              helperText="Use the date the property wants painting finished by so urgent units can be prioritized."
             />
 
             <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 px-4 py-3">

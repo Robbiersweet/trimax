@@ -91,8 +91,8 @@ function readyStatus(item: SupabaseQueueItem) {
   if (!readyDate) {
     return {
       tone: "zinc",
-      label: "Start date not set",
-      detail: "Add the first date R&L can begin work to make this useful in reports.",
+      label: "Paint due date not set",
+      detail: "Add the date the property wants painting finished by to make prioritizing easier.",
     };
   }
 
@@ -114,25 +114,25 @@ function readyStatus(item: SupabaseQueueItem) {
   if (daysUntilReady < 0) {
     return {
       tone: "red",
-      label: "Past start date",
-      detail: "The date R&L can start has passed and this unit is not scheduled.",
+      label: "Past paint due date",
+      detail: "The requested paint finish date has passed and this unit is not scheduled.",
     };
   }
 
   if (daysUntilReady <= 7) {
     return {
       tone: "yellow",
-      label: "Start soon",
+      label: "Due soon",
       detail: `${daysUntilReady} day${
         daysUntilReady === 1 ? "" : "s"
-      } until R&L can start, not scheduled yet.`,
+      } until the requested paint finish date, not scheduled yet.`,
     };
   }
 
   return {
     tone: "zinc",
     label: "Upcoming",
-    detail: `${daysUntilReady} days until R&L can start.`,
+    detail: `${daysUntilReady} days until the requested paint finish date.`,
   };
 }
 
@@ -203,7 +203,7 @@ export default async function QueueDetailPage({
       item.paint_type ? `Paint: ${item.paint_type}` : null,
       item.flooring ? `Flooring: ${item.flooring}` : null,
       item.priority ? `Priority: ${item.priority}` : null,
-      item.ready_date ? `Date R&L can start: ${item.ready_date}` : null,
+      item.ready_date ? `Paint due date: ${item.ready_date}` : null,
       item.prior_renovation_details
         ? `Prior renovation: ${item.prior_renovation_details}`
         : null,
@@ -381,7 +381,7 @@ export default async function QueueDetailPage({
               value={item.renovation_needed_details ?? ""}
             />
             <Info label="Move Out Date" value={item.move_out_date ?? ""} />
-            <Info label="Date R&L Can Start" value={item.ready_date ?? ""} />
+            <Info label="Paint Due Date" value={item.ready_date ?? ""} />
             <Info label="Scheduled Date" value={item.scheduled_date ?? ""} />
             <Info label="Completed Date" value={item.completed_date ?? ""} />
           </div>

@@ -725,7 +725,7 @@ export default async function ReportsPage({
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
           <MetricCard
-            label="Ready Soon, Not Scheduled"
+            label="Due Soon, Not Scheduled"
             value={approachingReadyUnscheduled.length}
             href={queueHref(businessSlug, {
               q: queuePropertySearch,
@@ -947,7 +947,7 @@ export default async function ReportsPage({
 
                   <div className="grid gap-2 text-sm text-zinc-300 sm:grid-cols-3 md:text-right">
                     <MiniDate label="Move Out" value={item.move_out_date} />
-                    <MiniDate label="Ready" value={item.ready_date} />
+                    <MiniDate label="Paint Due" value={item.ready_date} />
                     <MiniDate label="Done" value={item.completed_date} />
                   </div>
                 </Link>
