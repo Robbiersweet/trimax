@@ -546,9 +546,15 @@ export default async function InvoicesPage({
             </p>
           </div>
 
-          <Link href={`/invoices/new${businessQuery}`}>
-            <Button>+ New Invoice</Button>
-          </Link>
+          <div className="flex flex-wrap gap-3">
+            <Link href={`/recurring-invoices${businessQuery}`}>
+              <Button variant="secondary">Recurring Drafts</Button>
+            </Link>
+
+            <Link href={`/invoices/new${businessQuery}`}>
+              <Button>+ New Invoice</Button>
+            </Link>
+          </div>
         </div>
 
         {invoiceLoadMessage ? (
