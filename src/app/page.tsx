@@ -1368,7 +1368,7 @@ export default async function DashboardPage({
             </p>
 
             <p className="mt-2 text-zinc-300">
-              Units are within 7 days of ready date and not scheduled.
+              Units are within 7 days of the date R&L can start and are not scheduled.
             </p>
 
             <p className="mt-2 text-sm text-zinc-400">
@@ -1379,7 +1379,7 @@ export default async function DashboardPage({
               href={`/queue?business=${selectedBusinessSlug}&view=ready-soon`}
               className="mt-4 inline-block text-sm text-orange-400"
             >
-              Open ready soon queue
+              Open R&L start soon queue
             </Link>
           </Card>
 

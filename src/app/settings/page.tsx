@@ -7,6 +7,7 @@ import AppShell from "../components/AppShell";
 import Button from "../components/Button";
 import Card from "../components/Card";
 import InputField from "../components/InputField";
+import PushNotificationSetup from "../components/PushNotificationSetup";
 import Toast from "../components/Toast";
 import { supabase } from "../lib/supabase";
 import {
@@ -887,11 +888,16 @@ function BusinessSettingsPageContent() {
                   </p>
 
                   <p className="mt-2 text-sm leading-6 text-zinc-400">
-                    Install support is ready. Push notifications are not active
-                    yet, so nobody will receive phone alerts until the
-                    notification subscription and sending pieces are added.
+                    Install support is ready. You can now enable this device
+                    for push notifications after the VAPID public key is added
+                    to Vercel. Server-side sending is the next step.
                   </p>
                 </div>
+
+                <PushNotificationSetup
+                  businessId={business?.id}
+                  businessSlug={businessSlug}
+                />
               </div>
             </Card>
 

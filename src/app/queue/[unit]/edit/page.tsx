@@ -347,10 +347,11 @@ export default function EditQueueItemPage() {
               />
 
               <InputField
-                label="Ready Date"
+                label="Date R&L Can Start"
                 value={readyDate}
                 onChange={setReadyDate}
                 type="date"
+                helperText="Use the first date R&L can begin work, not the property's final ready date."
               />
             </div>
 

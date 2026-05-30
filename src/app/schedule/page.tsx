@@ -88,7 +88,7 @@ function jobDescription(item: QueueScheduleItem) {
     item.paint_type ? `Paint: ${item.paint_type}` : null,
     item.flooring ? `Flooring: ${item.flooring}` : null,
     item.priority ? `Priority: ${item.priority}` : null,
-    item.ready_date ? `Ready date: ${item.ready_date}` : null,
+    item.ready_date ? `Date R&L can start: ${item.ready_date}` : null,
     item.notes ? `Notes: ${item.notes}` : null,
   ].filter(Boolean);
 
@@ -431,7 +431,7 @@ export default async function SchedulePage({
                       tone={item.scheduled_date ? "green" : "zinc"}
                     />
                     <ScheduleFact
-                      label="Ready"
+                      label="R&L Can Start"
                       value={formatDate(item.ready_date)}
                       tone="orange"
                     />

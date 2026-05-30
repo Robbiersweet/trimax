@@ -159,9 +159,9 @@ function queueHref(
 function viewCopy(view: string) {
   if (view === "ready-soon") {
     return {
-      title: "Ready Soon",
+      title: "R&L Start Soon",
       detail:
-        "Unscheduled units with ready dates in the next 7 days.",
+        "Unscheduled units where R&L can start in the next 7 days.",
     };
   }
 
@@ -675,7 +675,7 @@ export default async function QueuePage({
                           value={item.move_out_date}
                         />
                         <LifecyclePill
-                          label="Ready"
+                          label="R&L Can Start"
                           value={item.ready_date}
                           detail={
                             readySoon && readyDays !== null

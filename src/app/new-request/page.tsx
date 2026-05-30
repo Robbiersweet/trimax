@@ -623,11 +623,12 @@ function NewRequestPageContent() {
             />
 
             <InputField
-              label="Ready Date"
+              label="Date R&L Can Start"
               placeholder="Example: 2026-07-03"
               value={readyDate}
               onChange={setReadyDate}
               type="date"
+              helperText="Use the first date R&L can begin work, not the property's final ready date."
             />
 
             <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 px-4 py-3">

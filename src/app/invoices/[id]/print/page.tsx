@@ -225,20 +225,20 @@ export default async function InvoicePrintPage({
         }
       />
 
-      <div className="mx-auto max-w-5xl bg-white print:max-w-none print:px-6 print:py-4">
-        <section className="grid grid-cols-2 gap-8">
+      <div className="standard-invoice-print mx-auto max-w-5xl bg-white print:max-w-none print:px-4 print:py-3">
+        <section className="grid grid-cols-2 gap-8 print:gap-4">
           <div>
             <Image
               src="/Brand/rnl-multi-colors.png"
               alt={companyName}
               width={128}
               height={128}
-              className="h-32 w-32 object-contain print:h-28 print:w-28"
+              className="h-32 w-32 object-contain print:h-20 print:w-20"
               priority
             />
           </div>
 
-          <div className="text-right text-base leading-6">
+          <div className="text-right text-base leading-6 print:text-sm print:leading-5">
             <p className="font-semibold">
               {companyName}
             </p>
@@ -249,19 +249,19 @@ export default async function InvoicePrintPage({
           </div>
         </section>
 
-        <section className="mt-10 border-y border-gray-200 py-6 print:mt-8 print:py-5">
+        <section className="mt-10 border-y border-gray-200 py-6 print:mt-4 print:py-3">
           <div className="grid gap-8 md:grid-cols-[1.4fr_1fr]">
             <div>
               <p className="text-sm uppercase tracking-[0.25em] text-[#d9aa2f]">
                 Invoice
               </p>
 
-              <h1 className="mt-3 text-4xl font-semibold leading-tight print:text-3xl">
+              <h1 className="mt-3 text-4xl font-semibold leading-tight print:mt-1 print:text-2xl">
                 {documentTitle}
               </h1>
 
               {splitLabel ? (
-                <p className="mt-2 text-lg text-gray-600">
+                <p className="mt-2 text-lg text-gray-600 print:mt-1 print:text-sm">
                   {splitLabel}
                 </p>
               ) : null}
@@ -270,32 +270,32 @@ export default async function InvoicePrintPage({
             <div className="text-right">
               <PrintLabel>Amount Due (USD)</PrintLabel>
 
-              <p className="mt-2 text-5xl font-light tracking-wide print:text-4xl">
+              <p className="mt-2 text-5xl font-light tracking-wide print:mt-1 print:text-3xl">
                 {formatCurrency(amountDue)}
               </p>
             </div>
           </div>
         </section>
 
-        <section className="mt-10 grid grid-cols-[1.5fr_1fr_1fr_1.4fr] gap-8 print:mt-8">
+        <section className="mt-10 grid grid-cols-[1.5fr_1fr_1fr_1.4fr] gap-8 print:mt-4 print:gap-4">
           <div>
             <PrintLabel>Billed To</PrintLabel>
 
-            <p className="mt-2 text-base leading-6">
+            <p className="mt-2 text-base leading-6 print:mt-1 print:text-sm print:leading-5">
               {billedToName}
             </p>
 
             {billedToAddress && (
-              <p className="whitespace-pre-line text-base leading-6">
+              <p className="whitespace-pre-line text-base leading-6 print:text-sm print:leading-5">
                 {billedToAddress}
               </p>
             )}
 
             {serviceAddress ? (
-              <div className="mt-5">
+              <div className="mt-5 print:mt-2">
                 <PrintLabel>Service Address</PrintLabel>
 
-                <p className="mt-2 whitespace-pre-line text-base leading-6">
+                <p className="mt-2 whitespace-pre-line text-base leading-6 print:mt-1 print:text-sm print:leading-5">
                   {serviceAddress}
                 </p>
               </div>
@@ -305,14 +305,14 @@ export default async function InvoicePrintPage({
           <div>
             <PrintLabel>Date of Issue</PrintLabel>
 
-            <p className="mt-2 text-base">
+            <p className="mt-2 text-base print:mt-1 print:text-sm">
               {formatDate(invoice.issue_date)}
             </p>
 
-            <div className="mt-5">
+            <div className="mt-5 print:mt-2">
               <PrintLabel>Due Date</PrintLabel>
 
-              <p className="mt-2 text-base">
+              <p className="mt-2 text-base print:mt-1 print:text-sm">
                 {formatDate(invoice.due_date)}
               </p>
             </div>
@@ -321,14 +321,14 @@ export default async function InvoicePrintPage({
           <div>
             <PrintLabel>Invoice Number</PrintLabel>
 
-            <p className="mt-2 text-base">
+            <p className="mt-2 text-base print:mt-1 print:text-sm">
               {invoice.display_id || "Invoice"}
             </p>
 
-            <div className="mt-5">
+            <div className="mt-5 print:mt-2">
               <PrintLabel>Reference</PrintLabel>
 
-              <p className="mt-2 whitespace-pre-line text-base leading-6">
+              <p className="mt-2 whitespace-pre-line text-base leading-6 print:mt-1 print:text-sm print:leading-5">
                 {invoice.reference || "-"}
               </p>
             </div>
@@ -337,9 +337,9 @@ export default async function InvoicePrintPage({
           <div />
         </section>
 
-        <section className="mt-10 print:mt-8">
+        <section className="mt-10 print:mt-4">
           <div className="border-t-4 border-[#e8bd3f] pt-4">
-            <div className="grid grid-cols-[1fr_160px_90px_150px] gap-6 text-[#d9aa2f]">
+            <div className="grid grid-cols-[1fr_160px_90px_150px] gap-6 text-[#d9aa2f] print:grid-cols-[1fr_115px_55px_115px] print:gap-3 print:text-sm">
               <p>Description</p>
               <p className="text-right">Rate</p>
               <p className="text-right">Qty</p>
@@ -347,9 +347,9 @@ export default async function InvoicePrintPage({
             </div>
           </div>
 
-          <div className="mt-5 border-b border-gray-300 pb-5">
+          <div className="mt-5 border-b border-gray-300 pb-5 print:mt-3 print:pb-3 print:text-sm">
             {lineItems.length === 0 ? (
-              <div className="grid grid-cols-[1fr_160px_90px_150px] gap-6">
+              <div className="grid grid-cols-[1fr_160px_90px_150px] gap-6 print:grid-cols-[1fr_115px_55px_115px] print:gap-3">
                 <p>{invoice.project_title || "Service"}</p>
                 <p className="text-right">
                   {formatCurrency(subtotal)}
@@ -360,13 +360,13 @@ export default async function InvoicePrintPage({
                 </p>
               </div>
             ) : (
-              <div className="grid gap-5">
+              <div className="grid gap-5 print:gap-2">
                 {lineItems.map((item) => (
                   <div
                     key={item.id}
-                    className="grid grid-cols-[1fr_160px_90px_150px] gap-6"
+                    className="grid grid-cols-[1fr_160px_90px_150px] gap-6 print:grid-cols-[1fr_115px_55px_115px] print:gap-3"
                   >
-                    <p className="whitespace-pre-line leading-7">
+                    <p className="whitespace-pre-line leading-7 print:leading-5">
                       {item.description || "Line item"}
                     </p>
 
@@ -391,7 +391,7 @@ export default async function InvoicePrintPage({
             )}
           </div>
 
-          <div className="ml-auto mt-8 w-full max-w-md">
+          <div className="ml-auto mt-8 w-full max-w-md print:mt-3 print:max-w-sm">
             <PrintSummaryRow
               label="Subtotal"
               value={formatCurrency(subtotal)}
@@ -402,7 +402,7 @@ export default async function InvoicePrintPage({
               value={formatCurrency(taxAmount)}
             />
 
-            <div className="mt-4 border-t border-gray-300 pt-4">
+            <div className="mt-4 border-t border-gray-300 pt-4 print:mt-2 print:pt-2">
               <PrintSummaryRow
                 label="Total"
                 value={formatCurrency(total)}
@@ -414,13 +414,13 @@ export default async function InvoicePrintPage({
               />
             </div>
 
-            <div className="mt-3 border-t-4 border-double border-gray-300 pt-5">
+            <div className="mt-3 border-t-4 border-double border-gray-300 pt-5 print:mt-2 print:pt-2">
               <div className="flex items-center justify-between gap-6">
-                <p className="text-xl text-[#d9aa2f]">
+                <p className="text-xl text-[#d9aa2f] print:text-base">
                   Amount Due (USD)
                 </p>
 
-                <p className="text-xl font-semibold">
+                <p className="text-xl font-semibold print:text-base">
                   {formatCurrency(amountDue)}
                 </p>
               </div>
@@ -428,20 +428,20 @@ export default async function InvoicePrintPage({
           </div>
         </section>
 
-        <section className="mt-12 print:mt-10">
+        <section className="mt-12 print:mt-4">
           <PrintLabel>Terms</PrintLabel>
 
-          <p className="mt-3 max-w-4xl text-base leading-6">
+          <p className="mt-3 max-w-4xl text-base leading-6 print:mt-1 print:text-sm print:leading-5">
             {invoice.terms ||
               "Payment due upon invoice. Thank you for your business."}
           </p>
         </section>
 
         {invoice.notes && (
-          <section className="mt-8">
+          <section className="mt-8 print:mt-3">
             <PrintLabel>Notes</PrintLabel>
 
-            <p className="mt-3 max-w-4xl whitespace-pre-line text-base leading-6">
+            <p className="mt-3 max-w-4xl whitespace-pre-line text-base leading-6 print:mt-1 print:text-sm print:leading-5">
               {invoice.notes}
             </p>
           </section>
@@ -466,7 +466,7 @@ function PrintLabel({
   children: React.ReactNode;
 }) {
   return (
-    <p className="text-lg text-[#d9aa2f]">
+    <p className="text-lg text-[#d9aa2f] print:text-sm">
       {children}
     </p>
   );
@@ -480,7 +480,7 @@ function PrintSummaryRow({
   value: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-6 py-1 text-lg">
+    <div className="flex items-center justify-between gap-6 py-1 text-lg print:gap-4 print:py-0.5 print:text-sm">
       <p>{label}</p>
 
       <p>{value}</p>
