@@ -153,10 +153,10 @@ export default function InvoiceBulkPaymentActions({
   }
 
   return (
-    <section className="rounded-[2rem] border border-green-500/25 bg-gradient-to-br from-green-500/10 via-zinc-900 to-zinc-950 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.25)] sm:p-6">
+    <section className="payment-hero-card rounded-[2rem] border border-green-500/25 bg-gradient-to-br from-green-500/10 via-zinc-900 to-zinc-950 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.25)] sm:p-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.35em] text-green-300">
+          <p className="payment-hero-label text-sm font-semibold uppercase tracking-[0.35em] text-green-300">
             Batch Payment Prep
           </p>
 
@@ -164,28 +164,28 @@ export default function InvoiceBulkPaymentActions({
             Select invoices paid by one check
           </h2>
 
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
+          <p className="payment-hero-copy mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
             Pick the invoices first, then Trimax opens the payment workspace
             with that exact batch ready to review.
           </p>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[520px]">
-          <div className="rounded-2xl border border-zinc-800 bg-black/50 px-4 py-3">
+          <div className="payment-hero-stat rounded-2xl border border-zinc-800 bg-black/50 px-4 py-3">
             <p className="text-sm text-zinc-400">Open Invoices</p>
             <p className="mt-1 text-2xl font-black text-white">
               {payableInvoices.length}
             </p>
           </div>
 
-          <div className="rounded-2xl border border-green-500/30 bg-green-500/10 px-4 py-3">
+          <div className="payment-hero-stat rounded-2xl border border-green-500/30 bg-green-500/10 px-4 py-3">
             <p className="text-sm text-green-100/80">Selected</p>
             <p className="mt-1 text-2xl font-black text-green-100">
               {selectedInvoices.length}
             </p>
           </div>
 
-          <div className="rounded-2xl border border-green-500/30 bg-green-500/10 px-4 py-3">
+          <div className="payment-hero-stat rounded-2xl border border-green-500/30 bg-green-500/10 px-4 py-3">
             <p className="text-sm text-green-100/80">Selected Total</p>
             <p className="mt-1 text-2xl font-black text-green-100">
               {formatMoney(selectedTotal)}
