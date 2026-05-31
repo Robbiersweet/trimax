@@ -20,10 +20,10 @@ type Invoice = {
   estimate_id: string | null;
   business_id: string;
   client_id: string | null;
-  customer_name: string;
-  project_title: string;
+  customer_name: string | null;
+  project_title: string | null;
   invoice_amount: number | string | null;
-  status: string;
+  status: string | null;
   display_id: string | null;
   issue_date: string | null;
   due_date: string | null;
@@ -72,21 +72,30 @@ type Business = {
 };
 
 function money(value: number) {
+  const safeValue = Number.isFinite(value) ? value : 0;
+
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-  }).format(value);
+  }).format(safeValue);
 }
 
 function numberValue(value: number | string | null | undefined) {
-  const parsed = Number(value ?? 0);
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  const parsed = Number(String(value ?? 0).replace(/[^0-9.-]/g, ""));
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function formatDate(value: string | null) {
   if (!value) return "-";
 
-  const date = new Date(`${value}T00:00:00`);
+  const normalizedValue = String(value).trim();
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(normalizedValue)
+    ? new Date(`${normalizedValue}T00:00:00`)
+    : new Date(normalizedValue);
   if (Number.isNaN(date.getTime())) return value;
 
   return new Intl.DateTimeFormat("en-US", {
@@ -374,14 +383,18 @@ export default async function InvoiceDetailPage({
   const invoiceTotal = subtotal + taxAmount;
   const amountPaid = numberValue(invoice.amount_paid);
   const amountDue = Math.max(invoiceTotal - amountPaid, 0);
+  const customerName = invoice.customer_name || "Customer";
+  const projectTitle = invoice.project_title || customerName || "Invoice";
+  const status = invoice.status || "Draft";
+  const normalizedStatus = status.toLowerCase();
   const showFiveStarsBoaPrintButton =
     business.slug === "just-kleen" &&
     looksLikeFiveStarsBoaInvoice(invoice, items);
   const outlookDraftPreview = buildOutlookDraftPreview("invoice", {
     businessSlug,
-    customerName: invoice.customer_name,
+    customerName,
     documentNumber: invoice.display_id,
-    projectTitle: invoice.project_title,
+    projectTitle,
     amountDue: money(amountDue),
     dueDate: invoice.due_date ? formatDate(invoice.due_date) : null,
     serviceAddress: invoice.service_address,
@@ -416,14 +429,14 @@ export default async function InvoiceDetailPage({
                 Invoice Details
               </p>
               <h1 className="mt-3 text-4xl font-black text-white">
-                {invoice.project_title || invoice.customer_name}
+                {projectTitle}
               </h1>
               <p className="mt-3 text-lg text-zinc-400">
                 {invoice.display_id || "Invoice"}
               </p>
             </div>
 
-            <StatusBadge status={invoice.status} />
+            <StatusBadge status={status} />
           </div>
         </div>
 
@@ -455,9 +468,8 @@ export default async function InvoiceDetailPage({
                 businessId: invoice.business_id,
                 businessSlug,
                 clientId: invoice.client_id,
-                customerName: invoice.customer_name,
-                projectTitle:
-                  invoice.project_title || invoice.customer_name || "Invoice",
+                customerName,
+                projectTitle,
                 issueDate: invoice.issue_date,
                 dueDate: invoice.due_date,
                 reference: invoice.reference,
@@ -595,7 +607,7 @@ export default async function InvoiceDetailPage({
 
           <Card>
             <div className="grid gap-8 md:grid-cols-2">
-              <Info label="Customer" value={invoice.customer_name} />
+              <Info label="Customer" value={customerName} />
               <Info label="Amount Due" value={money(amountDue)} strong />
               <Info
                 label="Split Target"
@@ -691,7 +703,7 @@ export default async function InvoiceDetailPage({
           ) : null}
 
           <div className="flex flex-wrap gap-4">
-            {invoice.status === "draft" ? (
+            {normalizedStatus === "draft" ? (
               <UpdateInvoiceStatusButton
                 invoiceId={invoice.id}
                 newStatus="sent"
@@ -699,13 +711,12 @@ export default async function InvoiceDetailPage({
                 businessId={invoice.business_id}
                 invoiceLabel={
                   invoice.display_id ||
-                  invoice.project_title ||
-                  invoice.customer_name
+                  projectTitle
                 }
               />
             ) : null}
 
-            {invoice.status !== "paid" ? (
+            {normalizedStatus !== "paid" ? (
               <UpdateInvoiceStatusButton
                 invoiceId={invoice.id}
                 newStatus="paid"
@@ -713,8 +724,7 @@ export default async function InvoiceDetailPage({
                 businessId={invoice.business_id}
                 invoiceLabel={
                   invoice.display_id ||
-                  invoice.project_title ||
-                  invoice.customer_name
+                  projectTitle
                 }
               />
             ) : null}
