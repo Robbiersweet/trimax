@@ -147,8 +147,8 @@ export default function Navigation() {
       href: `/settings?business=${business}#phone-app-notifications`,
     },
     {
-      label: "Outlook Integration",
-      description: "Email drafts",
+      label: "Email Prep",
+      description: "Manual sending",
       href: `/settings?business=${business}#outlook-integration`,
     },
     {

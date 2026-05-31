@@ -12,7 +12,7 @@ type Estimate = {
   project_address: string | null;
   service_address: string | null;
   reference: string | null;
-  estimate_amount: string | null;
+  estimate_amount: number | string | null;
   status: string | null;
   display_id: string | null;
   tax_label: string | null;
@@ -45,19 +45,30 @@ type Client = {
   billing_address: string | null;
 };
 
-function toNumber(value: number | string | null) {
-  return Number(value) || 0;
+function toNumber(value: number | string | null | undefined) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  if (!value) {
+    return 0;
+  }
+
+  const parsed = Number(String(value).replace(/[^0-9.-]/g, ""));
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function parseCurrency(value: string | null) {
-  return Number(value?.replace(/[^0-9.]/g, "") ?? 0) || 0;
+function parseCurrency(value: number | string | null | undefined) {
+  return toNumber(value);
 }
 
 function formatCurrency(amount: number) {
+  const safeAmount = Number.isFinite(amount) ? amount : 0;
+
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-  }).format(amount);
+  }).format(safeAmount);
 }
 
 export default async function EstimatePrintPage({

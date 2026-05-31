@@ -20,7 +20,7 @@ type SupabaseEstimate = {
   project_address: string | null;
   service_address: string | null;
   reference: string | null;
-  estimate_amount: string | null;
+  estimate_amount: number | string | null;
   tax_label: string | null;
   tax_rate: number | string | null;
   split_warning_enabled: boolean | null;
@@ -52,15 +52,25 @@ type Business = {
 };
 
 function toNumber(value: number | string | null) {
-  return Number(value) || 0;
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  if (!value) {
+    return 0;
+  }
+
+  const parsed = Number(String(value).replace(/[^0-9.-]/g, ""));
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function parseCurrency(value: string | null) {
-  return Number(value?.replace(/[^0-9.]/g, "") ?? 0) || 0;
+function parseCurrency(value: number | string | null) {
+  return toNumber(value);
 }
 
 function formatCurrency(amount: number) {
-  return `$${amount.toFixed(2)}`;
+  const safeAmount = Number.isFinite(amount) ? amount : 0;
+  return `$${safeAmount.toFixed(2)}`;
 }
 
 function getSplitPreview(totalAmount: number, targetAmount: number) {
@@ -172,9 +182,9 @@ export default async function EstimateDetailsPage({
     .from("invoices")
     .select("id, display_id, status")
     .eq("estimate_id", estimate.id)
-    .maybeSingle();
+    .limit(1);
 
-  const linkedInvoice = invoiceData as LinkedInvoice | null;
+  const linkedInvoice = ((invoiceData ?? []) as LinkedInvoice[])[0] ?? null;
 
   return (
     <AppShell>
