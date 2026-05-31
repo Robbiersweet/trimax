@@ -10,6 +10,7 @@ type InputFieldProps = {
   onChange: (value: string) => void;
   type?: string;
   list?: string;
+  options?: string[];
   helperText?: string;
 };
 
@@ -20,9 +21,14 @@ export default function InputField({
   onChange,
   type = "text",
   list,
+  options = [],
   helperText,
 }: InputFieldProps) {
   const [showPassword, setShowPassword] =
+    useState(false);
+  const [isOptionsOpen, setIsOptionsOpen] =
+    useState(false);
+  const [shouldFilterOptions, setShouldFilterOptions] =
     useState(false);
 
   if (type === "date") {
@@ -42,6 +48,14 @@ export default function InputField({
     isPasswordField && showPassword
       ? "text"
       : type;
+  const normalizedValue = value.trim().toLowerCase();
+  const hasCustomOptions = options.length > 0;
+  const visibleOptions =
+    hasCustomOptions && shouldFilterOptions && normalizedValue
+      ? options.filter((option) =>
+          option.toLowerCase().includes(normalizedValue)
+        )
+      : options;
 
   return (
     <div>
@@ -52,11 +66,24 @@ export default function InputField({
       <div className="relative">
         <input
           type={inputType}
-          list={list}
+          list={hasCustomOptions ? undefined : list}
           value={value}
-          onChange={(event) =>
-            onChange(event.target.value)
-          }
+          onFocus={() => {
+            setShouldFilterOptions(false);
+            setIsOptionsOpen(hasCustomOptions);
+          }}
+          onClick={() => {
+            setShouldFilterOptions(false);
+            setIsOptionsOpen(hasCustomOptions);
+          }}
+          onBlur={() => {
+            window.setTimeout(() => setIsOptionsOpen(false), 120);
+          }}
+          onChange={(event) => {
+            setShouldFilterOptions(true);
+            setIsOptionsOpen(hasCustomOptions);
+            onChange(event.target.value);
+          }}
           placeholder={placeholder}
           className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 pr-16 text-white outline-none transition focus:border-orange-500"
         />
@@ -72,6 +99,32 @@ export default function InputField({
             {showPassword ? "Hide" : "Show"}
           </button>
         )}
+
+        {hasCustomOptions && isOptionsOpen ? (
+          <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-30 overflow-hidden rounded-2xl border border-zinc-700 bg-zinc-950 shadow-2xl">
+            {visibleOptions.length > 0 ? (
+              visibleOptions.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => {
+                    onChange(option);
+                    setShouldFilterOptions(false);
+                    setIsOptionsOpen(false);
+                  }}
+                  className="block w-full px-4 py-3 text-left text-sm font-semibold text-white transition hover:bg-zinc-800"
+                >
+                  {option}
+                </button>
+              ))
+            ) : (
+              <p className="px-4 py-3 text-sm text-zinc-400">
+                No matching options.
+              </p>
+            )}
+          </div>
+        ) : null}
       </div>
 
       {helperText ? (

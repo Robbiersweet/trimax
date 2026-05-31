@@ -26,6 +26,20 @@ const statusOptions = [
 
 const priorityOptions = ["Low", "Normal", "High", "Urgent"];
 
+const rnlPropertyOptions = [
+  "North Creek Apartments",
+  "Evergreen Apartments",
+  "Global S",
+];
+
+const justKleenClientOptions = [
+  "5 Star 5",
+  "Bank of America",
+  "Hope Church",
+  "Holy Cross Church",
+  "Inventive Construction",
+];
+
 const paintTypeOptions = [
   "Classic",
   "Touch-Up",
@@ -54,6 +68,10 @@ export default function EditQueueItemPage() {
   const queueItemId = params.unit as string;
   const businessSlug =
     searchParams.get("business") ?? "rnl-creations";
+  const propertyOptions =
+    businessSlug === "just-kleen"
+      ? justKleenClientOptions
+      : rnlPropertyOptions;
 
   const [property, setProperty] = useState("");
   const [unit, setUnit] = useState("");
@@ -198,6 +216,7 @@ export default function EditQueueItemPage() {
               label="Property"
               value={property}
               onChange={setProperty}
+              options={propertyOptions}
             />
 
             <InputField
@@ -211,14 +230,14 @@ export default function EditQueueItemPage() {
                 label="Status"
                 value={status}
                 onChange={setStatus}
-                list="edit-status-options"
+                options={statusOptions}
               />
 
               <InputField
                 label="Priority"
                 value={priority}
                 onChange={setPriority}
-                list="edit-priority-options"
+                options={priorityOptions}
               />
             </div>
 
@@ -226,14 +245,14 @@ export default function EditQueueItemPage() {
               label="Paint Type"
               value={paintType}
               onChange={setPaintType}
-              list="edit-paint-type-options"
+              options={paintTypeOptions}
             />
 
             <InputField
               label="Flooring"
               value={flooring}
               onChange={setFlooring}
-              list="edit-flooring-options"
+              options={flooringOptions}
             />
 
             <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
@@ -390,29 +409,6 @@ export default function EditQueueItemPage() {
               Save Changes
             </Button>
 
-            <datalist id="edit-paint-type-options">
-              {paintTypeOptions.map((option) => (
-                <option key={option} value={option} />
-              ))}
-            </datalist>
-
-            <datalist id="edit-flooring-options">
-              {flooringOptions.map((option) => (
-                <option key={option} value={option} />
-              ))}
-            </datalist>
-
-            <datalist id="edit-status-options">
-              {statusOptions.map((option) => (
-                <option key={option} value={option} />
-              ))}
-            </datalist>
-
-            <datalist id="edit-priority-options">
-              {priorityOptions.map((option) => (
-                <option key={option} value={option} />
-              ))}
-            </datalist>
           </div>
         </Card>
       </div>

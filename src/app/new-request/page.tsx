@@ -434,7 +434,7 @@ function NewRequestPageContent() {
               }
               value={property}
               onChange={setProperty}
-              list="property-options"
+              options={propertyOptions}
             />
 
             <InputField
@@ -471,7 +471,7 @@ function NewRequestPageContent() {
               }
               value={paintType}
               onChange={setPaintType}
-              list="paint-type-options"
+              options={paintTypeOptions}
             />
 
             <InputField
@@ -483,7 +483,7 @@ function NewRequestPageContent() {
               }
               value={flooring}
               onChange={setFlooring}
-              list="flooring-options"
+              options={flooringOptions}
             />
 
             {!isJustKleen ? (
@@ -700,23 +700,6 @@ function NewRequestPageContent() {
               </Link>
             </div>
 
-            <datalist id="property-options">
-              {propertyOptions.map((option) => (
-                <option key={option} value={option} />
-              ))}
-            </datalist>
-
-            <datalist id="paint-type-options">
-              {paintTypeOptions.map((option) => (
-                <option key={option} value={option} />
-              ))}
-            </datalist>
-
-            <datalist id="flooring-options">
-              {flooringOptions.map((option) => (
-                <option key={option} value={option} />
-              ))}
-            </datalist>
           </div>
         </Card>
       </div>
