@@ -325,6 +325,7 @@ function activityLabel(action: string) {
     "invoice.updated": "Invoice Updated",
     "invoice.status_updated": "Invoice Updated",
     "invoice.batch_payment_applied": "Payment Applied",
+    "invoice.recurring_draft_created": "Recurring Draft Created",
     "invoice.split_created": "Split Invoices Created",
   };
 

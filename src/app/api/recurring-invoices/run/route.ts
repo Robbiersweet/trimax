@@ -271,12 +271,17 @@ async function createInvoiceFromTemplate(
 export async function GET(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
 
-  if (cronSecret) {
-    const authorization = request.headers.get("authorization");
+  if (!cronSecret) {
+    return NextResponse.json(
+      { error: "Recurring invoice cron is missing CRON_SECRET." },
+      { status: 500 }
+    );
+  }
 
-    if (authorization !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const authorization = request.headers.get("authorization");
+
+  if (authorization !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const supabase = getAdminClient();

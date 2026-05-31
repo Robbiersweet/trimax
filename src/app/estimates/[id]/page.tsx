@@ -257,9 +257,6 @@ export default async function EstimateDetailsPage({
           documentLabel="Estimate"
           preview={outlookDraftPreview}
           printHref={`/estimates/${estimate.id}/print?business=${businessSlug}`}
-          settingsHref={`/settings?business=${businessSlug}&returnTo=${encodeURIComponent(
-            `/estimates/${estimate.id}?business=${businessSlug}`
-          )}#outlook-integration`}
         />
 
         <Card>

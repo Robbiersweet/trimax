@@ -12,6 +12,7 @@ type GenericTable = {
 type Database = {
   public: {
     Tables: {
+      business_users: GenericTable;
       push_subscriptions: GenericTable;
     };
     Views: Record<string, never>;
@@ -36,6 +37,10 @@ type QueueCreatedPayload = {
   property?: string;
   units?: string[];
   priority?: string;
+};
+
+type BusinessUserRow = {
+  id: string;
 };
 
 function getAdminClient() {
@@ -138,6 +143,27 @@ export async function POST(request: Request) {
       { error: "Missing business for push notification." },
       { status: 400 }
     );
+  }
+
+  const userEmail = userData.user.email?.toLowerCase() ?? "";
+  const { data: membershipData, error: membershipError } = await supabase
+    .from("business_users")
+    .select("id")
+    .eq("business_id", businessId)
+    .or(`user_id.eq.${userData.user.id},email.ilike.${userEmail}`)
+    .limit(1);
+
+  if (membershipError) {
+    return NextResponse.json(
+      { error: "Workspace membership could not be verified." },
+      { status: 500 }
+    );
+  }
+
+  const memberships = (membershipData ?? []) as BusinessUserRow[];
+
+  if (memberships.length === 0) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const { data, error } = await supabase

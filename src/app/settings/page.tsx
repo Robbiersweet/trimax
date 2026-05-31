@@ -765,62 +765,62 @@ function BusinessSettingsPageContent() {
               <div className="grid gap-5">
                 <div>
                   <p className="text-sm uppercase tracking-[0.3em] text-sky-200">
-                    Outlook Drafts
+                    Manual Email Prep
                   </p>
 
                   <h2 className="mt-2 text-2xl font-semibold">
-                    Microsoft Outlook Integration
+                    Customer Email Workflow
                   </h2>
 
                   <p className="mt-2 max-w-3xl text-sm leading-6 text-sky-100/90">
-                    Trimax will create review-ready Outlook drafts with the PDF
-                    attached, using this workspace&apos;s invoice and estimate
-                    message templates. You still review and send from Outlook.
+                    Trimax prepares customer-ready subjects, messages, PDFs,
+                    and exports. You still review and send from Outlook with
+                    your normal signature and logo.
                   </p>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-3">
                   <div className="outlook-step-card rounded-2xl border border-sky-500/20 bg-sky-950/50 p-4">
                     <p className="text-sm font-semibold text-sky-100">
-                      1. Connect Microsoft
+                      1. Create Document
                     </p>
                     <p className="mt-2 text-sm leading-6 text-sky-100/75">
-                      Add the Microsoft app ID, secret, and redirect URL in
-                      Vercel once the Azure app is registered.
+                      Create the estimate or invoice in Trimax, including the
+                      normal PDF or special BOA / 5 Star 5 format.
                     </p>
                   </div>
 
                   <div className="outlook-step-card rounded-2xl border border-sky-500/20 bg-sky-950/50 p-4">
                     <p className="text-sm font-semibold text-sky-100">
-                      2. Save Templates
+                      2. Copy Message
                     </p>
                     <p className="mt-2 text-sm leading-6 text-sky-100/75">
-                      Keep separate templates for R&L invoices, R&L estimates,
-                      Just Kleen invoices, and follow-up messages.
+                      Use the subject and message on the document page so the
+                      customer email stays consistent.
                     </p>
                   </div>
 
                   <div className="outlook-step-card rounded-2xl border border-sky-500/20 bg-sky-950/50 p-4">
                     <p className="text-sm font-semibold text-sky-100">
-                      3. Create Drafts
+                      3. Send From Outlook
                     </p>
                     <p className="mt-2 text-sm leading-6 text-sky-100/75">
-                      Invoice and estimate pages now show the exact draft
-                      preview that will be handed to Outlook.
+                      Attach the PDF or export and send manually from Outlook
+                      with your usual signature.
                     </p>
                   </div>
                 </div>
 
                 <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
                   <p className="text-sm font-semibold text-white">
-                    Connection Status
+                    Current Approach
                   </p>
 
                   <p className="mt-2 text-sm leading-6 text-zinc-400">
-                    Not connected yet. The database setup is ready to store
-                    workspace templates and Outlook connection records.
-                    The actual Microsoft sign-in button will be enabled after
-                    the Azure app registration values are added to Vercel.
+                    Manual sending is active. This avoids Microsoft/Azure setup
+                    and keeps the customer-facing email in your normal Outlook
+                    account. A direct email provider or Outlook integration can
+                    still be added later if the convenience becomes worth it.
                   </p>
                 </div>
               </div>

@@ -21,6 +21,7 @@ type Invoice = {
   amount_paid: string | number | null;
   status: string | null;
   due_date: string | null;
+  notes: string | null;
   updated_at: string | null;
   created_at: string | null;
   split_parent_invoice_id: string | null;
@@ -174,7 +175,7 @@ export default async function InvoicesPage({
     const { data, error } = await supabase
       .from("invoices")
       .select(
-        "id, display_id, customer_name, project_title, invoice_amount, amount_paid, status, due_date, updated_at, created_at, split_parent_invoice_id, split_sequence, split_count"
+        "id, display_id, customer_name, project_title, invoice_amount, amount_paid, status, due_date, notes, updated_at, created_at, split_parent_invoice_id, split_sequence, split_count"
       )
       .eq("business_id", selectedBusiness.id)
       .order("created_at", { ascending: false });
@@ -185,7 +186,7 @@ export default async function InvoicesPage({
       const { data: fallbackData, error: fallbackError } = await supabase
         .from("invoices")
         .select(
-          "id, display_id, customer_name, project_title, invoice_amount, amount_paid, status, due_date, created_at"
+          "id, display_id, customer_name, project_title, invoice_amount, amount_paid, status, due_date, notes, created_at"
         )
         .eq("business_id", selectedBusiness.id)
         .order("created_at", { ascending: false });
@@ -460,6 +461,15 @@ export default async function InvoicesPage({
       return secondTime - firstTime;
     })
     .slice(0, 5);
+  const draftsToSend = invoicesWithSplitInfo
+    .filter(
+      (invoice) =>
+        (invoice.status || "Draft").toLowerCase() === "draft" &&
+        (invoice.notes || "")
+          .toLowerCase()
+          .includes("recurring draft prepared by trimax")
+    )
+    .slice(0, 6);
 
   const viewLinks = [
     {
@@ -742,6 +752,60 @@ export default async function InvoicesPage({
             dueDate: invoice.due_date,
           }))}
         />
+
+        {draftsToSend.length > 0 ? (
+          <Card className="border-green-500/30 bg-green-500/10">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.3em] text-green-300">
+                  Drafts To Send
+                </p>
+
+                <h2 className="mt-2 text-2xl font-bold">
+                  Review recurring invoice drafts
+                </h2>
+
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+                  These drafts look like recurring work. Review the PDF or BOA
+                  export, then send manually from Outlook.
+                </p>
+              </div>
+
+              <Link href={`/recurring-invoices${businessQuery}`}>
+                <Button variant="secondary">Manage Recurring Drafts</Button>
+              </Link>
+            </div>
+
+            <div className="mt-5 grid gap-3 md:grid-cols-3">
+              {draftsToSend.map((invoice) => (
+                <Link
+                  key={invoice.id}
+                  href={`/invoices/${invoice.id}${businessQuery}`}
+                  className="rounded-2xl border border-green-500/20 bg-zinc-950 p-4 transition hover:border-green-400/70 hover:bg-zinc-900"
+                >
+                  <p className="text-sm font-semibold text-green-200">
+                    {invoice.display_id ?? "Invoice"}
+                  </p>
+                  <p className="mt-2 font-bold">
+                    {invoice.customer_name ?? "Unknown Customer"}
+                  </p>
+                  <p className="mt-1 text-sm text-zinc-400">
+                    {invoice.project_title ?? "Untitled Invoice"}
+                  </p>
+                  <p className="mt-3 text-sm font-semibold text-white">
+                    {formatMoney(
+                      Math.max(
+                        parseMoney(invoice.invoice_amount) -
+                          parseMoney(invoice.amount_paid),
+                        0
+                      )
+                    )}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </Card>
+        ) : null}
 
         <Card className="border-pink-500/20 bg-pink-500/5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
