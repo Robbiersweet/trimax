@@ -302,7 +302,7 @@ function NewRequestPageContent() {
     try {
       setIsSaving(true);
 
-      await Promise.all(
+      const createdItems = await Promise.all(
         units.map((unit) =>
           createQueueItem({
             property,
@@ -324,6 +324,31 @@ function NewRequestPageContent() {
           })
         )
       );
+
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (session?.access_token) {
+          await fetch("/api/push/queue-created", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              businessId: business.id,
+              businessSlug: business.slug,
+              property,
+              units: createdItems.map((item) => item.unit ?? "").filter(Boolean),
+              priority,
+            }),
+          });
+        }
+      } catch (notificationError) {
+        console.warn("Queue push notification skipped:", notificationError);
+      }
 
       setToast({
         type: "success",
