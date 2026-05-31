@@ -46,6 +46,8 @@ type RecurringTemplate = {
   frequency: "monthly";
   day_of_month: number;
   due_days: number;
+  next_run_date: string | null;
+  auto_create_drafts: boolean;
   tax_label: string | null;
   tax_rate: number | string | null;
   terms: string | null;
@@ -56,6 +58,8 @@ type RecurringTemplate = {
   is_active: boolean;
   last_generated_invoice_id: string | null;
   last_generated_at: string | null;
+  last_generated_for_date: string | null;
+  last_error: string | null;
 };
 
 type ToastState = {
@@ -104,6 +108,19 @@ function addDays(date: Date, days: number) {
 
 function toDateInputValue(date: Date) {
   return date.toISOString().slice(0, 10);
+}
+
+function addMonthsToDateInput(value: string | null) {
+  const sourceDate = value ? new Date(`${value}T00:00:00`) : new Date();
+
+  if (Number.isNaN(sourceDate.getTime())) {
+    return toDateInputValue(new Date());
+  }
+
+  const nextDate = new Date(sourceDate);
+  nextDate.setMonth(nextDate.getMonth() + 1);
+
+  return toDateInputValue(nextDate);
 }
 
 function lineTotal(item: RecurringLineItem) {
@@ -173,6 +190,7 @@ function RecurringInvoicesPageContent() {
   const [deliveryFormat, setDeliveryFormat] = useState<"standard" | "5stars_boa">(
     "standard"
   );
+  const [nextRunDate, setNextRunDate] = useState(toDateInputValue(new Date()));
   const [dayOfMonth, setDayOfMonth] = useState("1");
   const [dueDays, setDueDays] = useState("30");
   const [taxLabel, setTaxLabel] = useState("");
@@ -322,6 +340,8 @@ function RecurringInvoicesPageContent() {
         reference: reference.trim() || null,
         delivery_format: deliveryFormat,
         frequency: "monthly",
+        next_run_date: nextRunDate || toDateInputValue(new Date()),
+        auto_create_drafts: true,
         day_of_month: Math.min(Math.max(Number(dayOfMonth) || 1, 1), 28),
         due_days: Math.min(Math.max(Number(dueDays) || 0, 0), 120),
         tax_label: taxLabel.trim() || null,
@@ -363,6 +383,7 @@ function RecurringInvoicesPageContent() {
     setServiceAddress("");
     setReference("");
     setDeliveryFormat("standard");
+    setNextRunDate(toDateInputValue(new Date()));
     setDayOfMonth("1");
     setDueDays("30");
     setTaxLabel("");
@@ -402,8 +423,11 @@ function RecurringInvoicesPageContent() {
         prefix: "INV",
         businessId: business.id,
       });
-      const issueDate = new Date();
+      const issueDate = template.next_run_date
+        ? new Date(`${template.next_run_date}T00:00:00`)
+        : new Date();
       const dueDate = addDays(issueDate, Number(template.due_days) || 0);
+      const nextRunDate = addMonthsToDateInput(template.next_run_date);
       const subtotal = templateLineItems.reduce(
         (total, item) => total + lineTotal(item),
         0
@@ -495,6 +519,9 @@ function RecurringInvoicesPageContent() {
         .update({
           last_generated_invoice_id: invoice.id,
           last_generated_at: new Date().toISOString(),
+          last_generated_for_date: toDateInputValue(issueDate),
+          next_run_date: nextRunDate,
+          last_error: null,
           updated_at: new Date().toISOString(),
         })
         .eq("id", template.id)
@@ -527,6 +554,9 @@ function RecurringInvoicesPageContent() {
                 ...item,
                 last_generated_invoice_id: invoice.id,
                 last_generated_at: new Date().toISOString(),
+                last_generated_for_date: toDateInputValue(issueDate),
+                next_run_date: nextRunDate,
+                last_error: null,
               }
             : item
         )
@@ -810,13 +840,21 @@ function RecurringInvoicesPageContent() {
               </select>
             </div>
 
-            <InputField
-              label="Day of Month"
-              type="number"
-              value={dayOfMonth}
-              onChange={setDayOfMonth}
-              helperText="For your reminder only in this first version. Use 1 through 28."
-            />
+              <InputField
+                label="Next Draft Date"
+                type="date"
+                value={nextRunDate}
+                onChange={setNextRunDate}
+                helperText="Trimax will create the draft on this date, then move the template ahead one month."
+              />
+
+              <InputField
+                label="Day of Month"
+                type="number"
+                value={dayOfMonth}
+                onChange={setDayOfMonth}
+                helperText="Use the same day as the next draft date. This keeps the schedule clear."
+              />
 
             <InputField
               label="Due Days After Invoice Date"
@@ -984,6 +1022,9 @@ function RecurringInvoicesPageContent() {
                           <span className="rounded-full border border-zinc-700 px-3 py-1 text-zinc-300">
                             Monthly on day {template.day_of_month}
                           </span>
+                          <span className="rounded-full border border-orange-500/40 px-3 py-1 text-orange-200">
+                            Next draft: {formatDate(template.next_run_date)}
+                          </span>
                           <span className="rounded-full border border-zinc-700 px-3 py-1 text-zinc-300">
                             Due in {template.due_days} days
                           </span>
@@ -1003,6 +1044,11 @@ function RecurringInvoicesPageContent() {
                         <p className="mt-2 text-xs text-zinc-500">
                           Last created: {formatDate(template.last_generated_at)}
                         </p>
+                        {template.last_error ? (
+                          <p className="mt-2 max-w-md text-xs text-red-200">
+                            Last error: {template.last_error}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
 
@@ -1013,7 +1059,7 @@ function RecurringInvoicesPageContent() {
                       >
                         {generatingId === template.id
                           ? "Creating..."
-                          : "Create Draft Invoice"}
+                          : "Create Next Draft Now"}
                       </Button>
                       {template.last_generated_invoice_id ? (
                         <Link
