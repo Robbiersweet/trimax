@@ -843,9 +843,8 @@ function BusinessSettingsPageContent() {
                   <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
                     Trimax is now prepared to install from the live website like
                     a phone app. After deployment, open Trimax on your phone and
-                    add it to the Home Screen. Push notifications are the next
-                    layer and will be enabled after the live HTTPS site is
-                    running.
+                    add it to the Home Screen. Push notifications can now be
+                    enabled per device for new queue request alerts.
                   </p>
                 </div>
 
@@ -873,11 +872,11 @@ function BusinessSettingsPageContent() {
 
                   <div className="rounded-2xl border border-orange-500/20 bg-zinc-950 p-4">
                     <p className="text-sm font-semibold text-orange-200">
-                      3. Enable Alerts Soon
+                      3. Enable Alerts
                     </p>
                     <p className="mt-2 text-sm leading-6 text-zinc-400">
-                      Next we will add the notification permission button and
-                      Supabase storage so queue items can alert the right people.
+                      Use the button below on each phone or browser that should
+                      receive queue request alerts.
                     </p>
                   </div>
                 </div>
@@ -888,9 +887,9 @@ function BusinessSettingsPageContent() {
                   </p>
 
                   <p className="mt-2 text-sm leading-6 text-zinc-400">
-                    Install support is ready. You can now enable this device
-                    for push notifications after the VAPID public key is added
-                    to Vercel. Server-side sending is the next step.
+                    Install support, notification storage, and server-side
+                    sending are connected. Enable each device once, then test by
+                    creating a queue request.
                   </p>
                 </div>
 

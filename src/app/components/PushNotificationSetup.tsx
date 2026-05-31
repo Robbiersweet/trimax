@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Button from "./Button";
 import { supabase } from "../lib/supabase";
 
@@ -28,6 +28,49 @@ export default function PushNotificationSetup({
 }: PushNotificationSetupProps) {
   const [message, setMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isEnabled, setIsEnabled] = useState(false);
+  const [supportMessage, setSupportMessage] = useState("");
+
+  useEffect(() => {
+    async function checkCurrentStatus() {
+      if (typeof window === "undefined") {
+        return;
+      }
+
+      if (!("Notification" in window)) {
+        setSupportMessage("This browser does not support push notifications.");
+        return;
+      }
+
+      if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+        setSupportMessage(
+          "Open Trimax from a browser or installed app that supports web push."
+        );
+        return;
+      }
+
+      if (Notification.permission === "denied") {
+        setSupportMessage(
+          "Notifications are blocked for this browser. Change the browser site permission to enable them."
+        );
+        return;
+      }
+
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+
+        if (Notification.permission === "granted" && subscription) {
+          setIsEnabled(true);
+          setMessage("Notifications are enabled on this device.");
+        }
+      } catch {
+        setSupportMessage("Notification status could not be checked yet.");
+      }
+    }
+
+    checkCurrentStatus();
+  }, []);
 
   async function enableNotifications() {
     setMessage("");
@@ -38,12 +81,12 @@ export default function PushNotificationSetup({
     }
 
     if (!("Notification" in window)) {
-      setMessage("This browser does not support push notifications.");
+      setSupportMessage("This browser does not support push notifications.");
       return;
     }
 
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-      setMessage("Install/open Trimax from a browser that supports web push.");
+      setSupportMessage("Install/open Trimax from a browser that supports web push.");
       return;
     }
 
@@ -98,6 +141,7 @@ export default function PushNotificationSetup({
       }
 
       setMessage("Notifications are enabled on this device.");
+      setIsEnabled(true);
     } catch (error) {
       setMessage(
         error instanceof Error
@@ -110,26 +154,53 @@ export default function PushNotificationSetup({
   }
 
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
+    <div
+      className={`rounded-2xl border p-5 ${
+        isEnabled
+          ? "border-green-500/30 bg-green-500/10"
+          : "border-zinc-800 bg-zinc-950"
+      }`}
+    >
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-sm font-semibold text-white">
-            Device Notifications
+          <p
+            className={`text-sm font-semibold ${
+              isEnabled ? "text-green-200" : "text-white"
+            }`}
+          >
+            {isEnabled ? "Device Notifications Enabled" : "Device Notifications"}
           </p>
 
           <p className="mt-2 text-sm leading-6 text-zinc-400">
-            Enable this device so Trimax can send alerts after the server-side
-            sender is connected.
+            {isEnabled
+              ? "This browser is ready to receive Trimax alerts for this workspace."
+              : "Enable this device so Trimax can alert you when new queue requests are created."}
           </p>
         </div>
 
-        <Button onClick={enableNotifications} disabled={isSaving}>
-          {isSaving ? "Enabling..." : "Enable Notifications"}
+        <Button onClick={enableNotifications} disabled={isSaving || isEnabled}>
+          {isSaving
+            ? "Enabling..."
+            : isEnabled
+              ? "Notifications Enabled"
+              : "Enable Notifications"}
         </Button>
       </div>
 
       {message ? (
-        <p className="mt-3 text-sm font-semibold text-zinc-300">{message}</p>
+        <p
+          className={`mt-3 text-sm font-semibold ${
+            isEnabled ? "text-green-200" : "text-zinc-300"
+          }`}
+        >
+          {message}
+        </p>
+      ) : null}
+
+      {supportMessage ? (
+        <p className="mt-3 text-sm font-semibold text-amber-200">
+          {supportMessage}
+        </p>
       ) : null}
     </div>
   );
