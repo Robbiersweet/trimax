@@ -327,6 +327,7 @@ function activityLabel(action: string) {
     "invoice.batch_payment_applied": "Payment Applied",
     "invoice.recurring_draft_created": "Recurring Draft Created",
     "invoice.split_created": "Split Invoices Created",
+    "access_request.created": "Access Request Created",
   };
 
   return labels[action] ?? action;
@@ -353,6 +354,10 @@ function activityTone(action: string) {
     return "border-amber-500/35 bg-amber-500/10 text-amber-200";
   }
 
+  if (action.startsWith("access_request")) {
+    return "border-orange-500/35 bg-orange-500/10 text-orange-200";
+  }
+
   return "border-zinc-700 bg-zinc-950 text-zinc-300";
 }
 
@@ -371,6 +376,10 @@ function activityHref(log: ActivityLog, businessSlug: string) {
 
   if (log.entity_type === "invoice") {
     return `/invoices/${log.entity_id}?business=${businessSlug}`;
+  }
+
+  if (log.entity_type === "access_request") {
+    return `/settings?business=${businessSlug}`;
   }
 
   return `/activity?business=${businessSlug}`;

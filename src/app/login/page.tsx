@@ -116,9 +116,17 @@ function LoginPageContent() {
             </Button>
 
             <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-sm text-zinc-400">
-              New users need an invitation from
-              Trimax before they can access a
-              workspace.
+              <p>
+                New users need approval before they
+                can access a Trimax workspace.
+              </p>
+
+              <Link
+                href={`/request-access?business=${businessSlug}`}
+                className="mt-3 inline-flex font-semibold text-orange-400 transition hover:text-orange-300"
+              >
+                Request access
+              </Link>
             </div>
           </div>
         </Card>

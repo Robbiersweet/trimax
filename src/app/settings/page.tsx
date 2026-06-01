@@ -48,6 +48,22 @@ type PropertyUser = {
   updated_at: string | null;
 };
 
+type AccessRequest = {
+  id: string;
+  business_id: string | null;
+  business_slug: string;
+  business_name: string | null;
+  requester_name: string;
+  requester_email: string;
+  company_or_property: string | null;
+  message: string | null;
+  status: "new" | "reviewed" | "approved" | "declined";
+  reviewed_at: string | null;
+  reviewed_by_email: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
 const roleOptions: {
   value: WorkspaceRole;
   label: string;
@@ -136,6 +152,8 @@ function BusinessSettingsPageContent() {
     useState<Business | null>(null);
   const [businessUsers, setBusinessUsers] =
     useState<BusinessUser[]>([]);
+  const [accessRequests, setAccessRequests] =
+    useState<AccessRequest[]>([]);
   const [propertyUsers, setPropertyUsers] =
     useState<PropertyUser[]>([]);
   const [propertyAccessReady, setPropertyAccessReady] =
@@ -169,6 +187,8 @@ function BusinessSettingsPageContent() {
   const [savingPropertyInvite, setSavingPropertyInvite] =
     useState(false);
   const [updatingUserId, setUpdatingUserId] =
+    useState<string | null>(null);
+  const [updatingAccessRequestId, setUpdatingAccessRequestId] =
     useState<string | null>(null);
   const [updatingPropertyUserId, setUpdatingPropertyUserId] =
     useState<string | null>(null);
@@ -256,6 +276,27 @@ function BusinessSettingsPageContent() {
     } else {
       setBusinessUsers(
         (userRows ?? []) as BusinessUser[]
+      );
+    }
+
+    const {
+      data: requestRows,
+      error: requestRowsError,
+    } = await supabase
+      .from("access_requests")
+      .select("*")
+      .eq("business_id", selectedBusiness.id)
+      .order("created_at", { ascending: false });
+
+    if (requestRowsError) {
+      console.warn(
+        "Access request table is not ready yet.",
+        requestRowsError
+      );
+      setAccessRequests([]);
+    } else {
+      setAccessRequests(
+        (requestRows ?? []) as AccessRequest[]
       );
     }
 
@@ -440,6 +481,77 @@ function BusinessSettingsPageContent() {
       type: "success",
       message:
         "Workspace invite saved. When you are ready, create or invite that same email in Authentication so they can sign in.",
+    });
+  }
+
+  async function handleAccessRequestStatus(
+    request: AccessRequest,
+    nextStatus: AccessRequest["status"]
+  ) {
+    if (!canManageUsers) {
+      return;
+    }
+
+    setToast(null);
+    setUpdatingAccessRequestId(request.id);
+
+    const { error } = await supabase
+      .from("access_requests")
+      .update({
+        status: nextStatus,
+        reviewed_at: new Date().toISOString(),
+        reviewed_by_email: currentEmail,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", request.id);
+
+    setUpdatingAccessRequestId(null);
+
+    if (error) {
+      console.error(error);
+      setToast({
+        type: "error",
+        message:
+          "Unable to update this access request.",
+      });
+      return;
+    }
+
+    await loadSettings();
+
+    setToast({
+      type: "success",
+      message: "Access request updated.",
+    });
+  }
+
+  async function handlePrepareInviteFromRequest(
+    request: AccessRequest
+  ) {
+    if (!canManageUsers) {
+      return;
+    }
+
+    setInviteEmail(request.requester_email);
+    setInviteRole("member");
+
+    if (request.status === "new") {
+      await handleAccessRequestStatus(
+        request,
+        "reviewed"
+      );
+    }
+
+    window.setTimeout(() => {
+      document
+        .getElementById("add-workspace-user")
+        ?.scrollIntoView({ block: "start" });
+    }, 50);
+
+    setToast({
+      type: "success",
+      message:
+        "Email copied into Add Workspace User. Choose the role, then click Add User.",
     });
   }
 
@@ -919,6 +1031,135 @@ function BusinessSettingsPageContent() {
                   </p>
                 </div>
 
+                <div className="grid gap-4 rounded-2xl border border-orange-500/30 bg-orange-500/5 p-5">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                    <div>
+                      <h3 className="text-xl font-semibold">
+                        Access Requests
+                      </h3>
+
+                      <p className="mt-2 text-sm leading-6 text-zinc-400">
+                        Requests come from the public
+                        login page. Review them here,
+                        then manually add the person only
+                        if they should receive workspace
+                        access.
+                      </p>
+                    </div>
+
+                    <Link
+                      href={`/request-access?business=${businessSlug}`}
+                      className="inline-flex rounded-2xl bg-zinc-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-zinc-700"
+                    >
+                      Open Request Form
+                    </Link>
+                  </div>
+
+                  {accessRequests.length === 0 ? (
+                    <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-sm text-zinc-400">
+                      No access requests are waiting for
+                      this workspace.
+                    </div>
+                  ) : (
+                    <div className="grid gap-3">
+                      {accessRequests.map((request) => {
+                        const isUpdating =
+                          updatingAccessRequestId ===
+                          request.id;
+
+                        return (
+                          <div
+                            key={request.id}
+                            className="grid gap-4 rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
+                          >
+                            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                              <div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="text-lg font-semibold text-white">
+                                    {request.requester_name}
+                                  </p>
+
+                                  <span className="rounded-full bg-zinc-800 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-zinc-300">
+                                    {request.status}
+                                  </span>
+                                </div>
+
+                                <p className="mt-1 break-all text-sm text-zinc-300">
+                                  {request.requester_email}
+                                </p>
+
+                                <p className="mt-1 text-sm text-zinc-500">
+                                  Requested{" "}
+                                  {formatDate(
+                                    request.created_at
+                                  )}
+                                </p>
+                              </div>
+
+                              {canManageUsers ? (
+                                <div className="flex flex-wrap gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handlePrepareInviteFromRequest(
+                                        request
+                                      )
+                                    }
+                                    disabled={isUpdating}
+                                    className="rounded-2xl bg-orange-500 px-4 py-2 text-sm font-semibold text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                                  >
+                                    Prepare Invite
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleAccessRequestStatus(
+                                        request,
+                                        "reviewed"
+                                      )
+                                    }
+                                    disabled={isUpdating}
+                                    className="rounded-2xl bg-zinc-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                  >
+                                    Mark Reviewed
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleAccessRequestStatus(
+                                        request,
+                                        "declined"
+                                      )
+                                    }
+                                    disabled={isUpdating}
+                                    className="rounded-2xl bg-zinc-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                  >
+                                    Decline
+                                  </button>
+                                </div>
+                              ) : null}
+                            </div>
+
+                            {request.company_or_property ? (
+                              <p className="rounded-2xl border border-zinc-800 bg-black/20 p-3 text-sm text-zinc-300">
+                                {request.company_or_property}
+                              </p>
+                            ) : null}
+
+                            {request.message ? (
+                              <p className="rounded-2xl border border-zinc-800 bg-black/20 p-3 text-sm leading-6 text-zinc-300">
+                                {request.message}
+                              </p>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
                 {businessUsers.length === 0 ? (
                   <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-sm text-zinc-400">
                     No workspace users are listed yet.
@@ -1044,7 +1285,10 @@ function BusinessSettingsPageContent() {
                 )}
 
                 {canManageUsers ? (
-                  <div className="grid gap-4 rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
+                  <div
+                    id="add-workspace-user"
+                    className="grid scroll-mt-6 gap-4 rounded-2xl border border-zinc-800 bg-zinc-950 p-5"
+                  >
                     <div>
                       <h3 className="text-xl font-semibold">
                         Add Workspace User

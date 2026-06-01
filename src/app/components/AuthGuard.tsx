@@ -47,6 +47,7 @@ function withSearchParam(
 function isPublicAuthPath(pathname: string) {
   return (
     pathname.startsWith("/login") ||
+    pathname.startsWith("/request-access") ||
     pathname.startsWith("/forgot-password") ||
     pathname.startsWith("/reset-password")
   );
@@ -139,7 +140,11 @@ export default function AuthGuard({
         return;
       }
 
-      if (session && isLoginPage) {
+      if (
+        session &&
+        (isLoginPage ||
+          pathname.startsWith("/request-access"))
+      ) {
         router.push(
           `/?business=${defaultBusinessSlug}`
         );

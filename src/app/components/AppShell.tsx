@@ -14,6 +14,7 @@ export default function AppShell({
 
   const isAuthPage =
     pathname.startsWith("/login") ||
+    pathname.startsWith("/request-access") ||
     pathname.startsWith("/forgot-password") ||
     pathname.startsWith("/reset-password");
 
