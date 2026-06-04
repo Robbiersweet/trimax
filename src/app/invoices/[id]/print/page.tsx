@@ -192,6 +192,15 @@ export default async function InvoicePrintPage({
 
   const documentTitle =
     invoice.project_title || invoice.customer_name || "Invoice";
+  const projectTitle = invoice.project_title?.trim() ?? "";
+  const firstLineDescription =
+    lineItems[0]?.description || "";
+  const shouldShowProjectTitle =
+    Boolean(projectTitle) &&
+    projectTitle !== invoice.display_id &&
+    projectTitle !== invoice.customer_name &&
+    projectTitle.toLowerCase() !==
+      firstLineDescription.trim().toLowerCase();
 
   const splitLabel =
     invoice.split_parent_invoice_id &&
@@ -263,19 +272,19 @@ export default async function InvoicePrintPage({
           </div>
         </section>
 
-        <section className="mt-10 border-y border-gray-200 py-6 print:mt-4 print:py-3">
+        <section className="mt-6 border-y border-gray-200 py-4 print:mt-2 print:py-2">
           <div className="grid gap-8 md:grid-cols-[1.4fr_1fr]">
             <div>
-              <p className="text-sm uppercase tracking-[0.25em] text-[#d9aa2f]">
+              <p className="text-sm uppercase tracking-[0.25em] text-[#d9aa2f] print:text-[10px]">
                 Invoice
               </p>
 
-              <h1 className="mt-3 text-4xl font-semibold leading-tight print:mt-1 print:text-2xl">
-                {documentTitle}
+              <h1 className="mt-2 text-2xl font-semibold leading-tight print:mt-0.5 print:text-lg">
+                {invoice.display_id || "Invoice"}
               </h1>
 
               {splitLabel ? (
-                <p className="mt-2 text-lg text-gray-600 print:mt-1 print:text-sm">
+                <p className="mt-1 text-sm text-gray-600 print:text-xs">
                   {splitLabel}
                 </p>
               ) : null}
@@ -284,14 +293,14 @@ export default async function InvoicePrintPage({
             <div className="text-right">
               <PrintLabel>Amount Due (USD)</PrintLabel>
 
-              <p className="mt-2 text-5xl font-light tracking-wide print:mt-1 print:text-3xl">
+              <p className="mt-2 text-4xl font-light tracking-wide print:mt-1 print:text-2xl">
                 {formatCurrency(amountDue)}
               </p>
             </div>
           </div>
         </section>
 
-        <section className="mt-10 grid grid-cols-[1.5fr_1fr_1fr_1.4fr] gap-8 print:mt-4 print:gap-4">
+        <section className="mt-7 grid grid-cols-[1.5fr_1fr_1fr_1.25fr] gap-7 print:mt-3 print:gap-4">
           <div>
             <PrintLabel>Billed To</PrintLabel>
 
@@ -348,62 +357,59 @@ export default async function InvoicePrintPage({
             </div>
           </div>
 
-          <div />
+          <div>
+            {shouldShowProjectTitle ? (
+              <>
+                <PrintLabel>Project</PrintLabel>
+
+                <p className="mt-2 whitespace-pre-line text-base leading-6 print:mt-1 print:text-sm print:leading-5">
+                  {documentTitle}
+                </p>
+              </>
+            ) : null}
+          </div>
         </section>
 
-        <section className="mt-10 print:mt-4">
-          <div className="border-t-4 border-[#e8bd3f] pt-4">
-            <div className="grid grid-cols-[1fr_160px_90px_150px] gap-6 text-[#d9aa2f] print:grid-cols-[1fr_115px_55px_115px] print:gap-3 print:text-sm">
-              <p>Description</p>
-              <p className="text-right">Rate</p>
-              <p className="text-right">Qty</p>
-              <p className="text-right">Line Total</p>
-            </div>
-          </div>
+        <section className="print-break-auto mt-7 print:mt-3">
+          <table className="standard-print-table w-full border-collapse text-base print:text-[9.5pt]">
+            <thead>
+              <tr className="border-t-4 border-[#e8bd3f] text-[#d9aa2f]">
+                <th className="py-3 pr-4 text-left font-normal print:py-1.5">
+                  Description
+                </th>
+                <th className="w-32 px-3 py-3 text-right font-normal print:w-24 print:py-1.5">
+                  Rate
+                </th>
+                <th className="w-20 px-3 py-3 text-right font-normal print:w-14 print:py-1.5">
+                  Qty
+                </th>
+                <th className="w-36 py-3 pl-3 text-right font-normal print:w-28 print:py-1.5">
+                  Line Total
+                </th>
+              </tr>
+            </thead>
 
-          <div className="mt-5 border-b border-gray-300 pb-5 print:mt-3 print:pb-3 print:text-sm">
-            {lineItems.length === 0 ? (
-              <div className="grid grid-cols-[1fr_160px_90px_150px] gap-6 print:grid-cols-[1fr_115px_55px_115px] print:gap-3">
-                <p>{invoice.project_title || "Service"}</p>
-                <p className="text-right">
-                  {formatCurrency(subtotal)}
-                </p>
-                <p className="text-right">1</p>
-                <p className="text-right">
-                  {formatCurrency(subtotal)}
-                </p>
-              </div>
-            ) : (
-              <div className="grid gap-5 print:gap-2">
-                {lineItems.map((item) => (
-                  <div
+            <tbody>
+              {lineItems.length === 0 ? (
+                <PrintLineItemRow
+                  description={invoice.project_title || "Service"}
+                  rate={formatCurrency(subtotal)}
+                  quantity="1"
+                  total={formatCurrency(subtotal)}
+                />
+              ) : (
+                lineItems.map((item) => (
+                  <PrintLineItemRow
                     key={item.id}
-                    className="grid grid-cols-[1fr_160px_90px_150px] gap-6 print:grid-cols-[1fr_115px_55px_115px] print:gap-3"
-                  >
-                    <p className="whitespace-pre-line leading-7 print:leading-5">
-                      {item.description || "Line item"}
-                    </p>
-
-                    <p className="text-right">
-                      {formatCurrency(
-                        toNumber(item.unit_price)
-                      )}
-                    </p>
-
-                    <p className="text-right">
-                      {toNumber(item.quantity)}
-                    </p>
-
-                    <p className="text-right">
-                      {formatCurrency(
-                        toNumber(item.line_total)
-                      )}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+                    description={item.description || "Line item"}
+                    rate={formatCurrency(toNumber(item.unit_price))}
+                    quantity={String(toNumber(item.quantity))}
+                    total={formatCurrency(toNumber(item.line_total))}
+                  />
+                ))
+              )}
+            </tbody>
+          </table>
 
           <div className="ml-auto mt-8 w-full max-w-md print:mt-3 print:max-w-sm">
             <PrintSummaryRow
@@ -442,7 +448,7 @@ export default async function InvoicePrintPage({
           </div>
         </section>
 
-        <section className="mt-12 print:mt-4">
+        <section className="mt-8 print:mt-3">
           <PrintLabel>Terms</PrintLabel>
 
           <p className="mt-3 max-w-4xl text-base leading-6 print:mt-1 print:text-sm print:leading-5">
@@ -452,7 +458,7 @@ export default async function InvoicePrintPage({
         </section>
 
         {invoice.notes && (
-          <section className="mt-8 print:mt-3">
+          <section className="mt-5 print:mt-2">
             <PrintLabel>Notes</PrintLabel>
 
             <p className="mt-3 max-w-4xl whitespace-pre-line text-base leading-6 print:mt-1 print:text-sm print:leading-5">
@@ -499,6 +505,35 @@ function PrintSummaryRow({
 
       <p>{value}</p>
     </div>
+  );
+}
+
+function PrintLineItemRow({
+  description,
+  rate,
+  quantity,
+  total,
+}: {
+  description: string;
+  rate: string;
+  quantity: string;
+  total: string;
+}) {
+  return (
+    <tr className="border-b border-gray-200 align-top">
+      <td className="whitespace-pre-line py-2.5 pr-4 leading-6 print:py-1.5 print:leading-4">
+        {description}
+      </td>
+      <td className="px-3 py-2.5 text-right print:py-1.5">
+        {rate}
+      </td>
+      <td className="px-3 py-2.5 text-right print:py-1.5">
+        {quantity}
+      </td>
+      <td className="py-2.5 pl-3 text-right print:py-1.5">
+        {total}
+      </td>
+    </tr>
   );
 }
 

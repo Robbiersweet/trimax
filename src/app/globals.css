@@ -31,8 +31,40 @@ body {
   }
 
   .standard-invoice-print {
-    font-size: 10.5pt;
-    line-height: 1.25;
+    font-size: 9.5pt;
+    line-height: 1.18;
+  }
+
+  .standard-invoice-print section,
+  .standard-invoice-print .print-keep-together {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .standard-invoice-print .print-break-auto {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  .standard-print-table {
+    page-break-inside: auto;
+  }
+
+  .standard-print-table thead {
+    display: table-header-group;
+  }
+
+  .standard-print-table tfoot {
+    display: table-footer-group;
+  }
+
+  .standard-print-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .standard-print-table tbody tr:first-child td {
+    padding-top: 0.08in;
   }
 }
 
