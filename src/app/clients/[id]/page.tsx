@@ -3,6 +3,7 @@ import AppShell from "../../components/AppShell";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import DeleteClientButton from "../../components/DeleteClientButton";
+import InternalNotes from "../../components/InternalNotes";
 import StatusBadge from "../../components/StatusBadge";
 import { supabase } from "../../lib/supabase";
 
@@ -276,6 +277,13 @@ export default async function ClientDetailsPage({
             </p>
           </div>
         </Card>
+
+        <InternalNotes
+          businessId={selectedBusiness.id}
+          entityType="client"
+          entityId={client.id}
+          title="Client Conversation"
+        />
 
         <div className="grid gap-4 md:grid-cols-3">
           <Card className="border-orange-500/30 bg-orange-500/10">

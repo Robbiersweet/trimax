@@ -146,6 +146,8 @@ function actionLabel(action: string) {
     "invoice.recurring_draft_created": "Recurring Draft Created",
     "invoice.split_created": "Split Invoices Created",
     "access_request.created": "Access Request Created",
+    "import.clients_csv_completed": "Client CSV Import",
+    "import.invoices_csv_completed": "Invoice CSV Import",
   };
 
   return labels[action] ?? action;
@@ -174,6 +176,10 @@ function actionTone(action: string) {
 
   if (action.startsWith("access_request")) {
     return "text-orange-300 border-orange-500/30 bg-orange-500/10";
+  }
+
+  if (action.startsWith("import")) {
+    return "text-green-300 border-green-500/30 bg-green-500/10";
   }
 
   return "text-zinc-300 border-zinc-700 bg-zinc-950";

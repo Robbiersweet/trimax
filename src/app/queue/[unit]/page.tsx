@@ -4,6 +4,7 @@ import Card from "../../components/Card";
 import Button from "../../components/Button";
 import StatusBadge from "../../components/StatusBadge";
 import DeleteQueueItemButton from "../../components/DeleteQueueItemButton";
+import InternalNotes from "../../components/InternalNotes";
 import MarkCompletedButton from "../../components/MarkCompletedButton";
 import MarkScheduledButton from "../../components/MarkScheduledButton";
 import {
@@ -414,6 +415,13 @@ export default async function QueueDetailPage({
             </p>
           </div>
         </Card>
+
+        <InternalNotes
+          businessId={item.business_id}
+          entityType="queue_item"
+          entityId={item.id}
+          title="Queue Item Conversation"
+        />
 
         <div className="flex flex-wrap gap-4">
           {!linkedEstimate && (

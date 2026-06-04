@@ -109,6 +109,12 @@ export default function Navigation() {
       active: pathname.startsWith("/clients"),
     },
     {
+      key: "imports",
+      label: "Imports",
+      href: `/imports?business=${business}`,
+      active: pathname.startsWith("/imports"),
+    },
+    {
       key: "services",
       label: "Services",
       href: `/services?business=${business}`,

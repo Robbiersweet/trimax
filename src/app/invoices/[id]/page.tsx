@@ -3,6 +3,7 @@ import AppShell from "../../components/AppShell";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import StatusBadge from "../../components/StatusBadge";
+import InternalNotes from "../../components/InternalNotes";
 import DeleteInvoiceButton from "../../components/DeleteInvoiceButton";
 import OutlookDraftPrepCard from "../../components/OutlookDraftPrepCard";
 import SplitInvoicePlanner from "../../components/SplitInvoicePlanner";
@@ -695,6 +696,13 @@ export default async function InvoiceDetailPage({
           <Card>
             <Info label="Notes" value={invoice.notes || "No notes added."} />
           </Card>
+
+          <InternalNotes
+            businessId={business.id}
+            entityType="invoice"
+            entityId={invoice.id}
+            title="Invoice Conversation"
+          />
 
           {invoice.terms ? (
             <Card>
