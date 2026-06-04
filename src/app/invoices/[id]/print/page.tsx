@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import PrintToolbar from "../../../components/PrintToolbar";
 import { supabase } from "../../../lib/supabase";
+import { formatTaxSummaryLabel } from "../../../utils/tax";
 
 type Invoice = {
   id: string;
@@ -18,6 +19,7 @@ type Invoice = {
   reference: string | null;
   tax_label: string | null;
   tax_rate: number | string | null;
+  tax_number: string | null;
   amount_paid: number | string | null;
   service_address: string | null;
   split_parent_invoice_id: string | null;
@@ -418,7 +420,11 @@ export default async function InvoicePrintPage({
             />
 
             <PrintSummaryRow
-              label={`${invoice.tax_label || "Tax"} (${taxRate}%)`}
+              label={formatTaxSummaryLabel({
+                label: invoice.tax_label,
+                rate: taxRate,
+                taxNumber: invoice.tax_number,
+              })}
               value={formatCurrency(taxAmount)}
             />
 

@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import PrintToolbar from "../../../components/PrintToolbar";
 import { supabase } from "../../../lib/supabase";
+import { formatTaxSummaryLabel } from "../../../utils/tax";
 
 type Estimate = {
   id: string;
@@ -17,6 +18,7 @@ type Estimate = {
   display_id: string | null;
   tax_label: string | null;
   tax_rate: number | string | null;
+  tax_number: string | null;
   terms: string | null;
   notes: string | null;
 };
@@ -338,7 +340,11 @@ export default async function EstimatePrintPage({
             />
 
             <PrintSummaryRow
-              label={`${estimate.tax_label || "Tax"} (${taxRate}%)`}
+              label={formatTaxSummaryLabel({
+                label: estimate.tax_label,
+                rate: taxRate,
+                taxNumber: estimate.tax_number,
+              })}
               value={formatCurrency(taxAmount)}
             />
 

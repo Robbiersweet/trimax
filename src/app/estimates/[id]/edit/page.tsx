@@ -11,7 +11,10 @@ import { captureServicesFromLineItems } from "../../../lib/captureServicesFromLi
 import { logActivity } from "../../../lib/activityLog";
 import { supabase } from "../../../lib/supabase";
 import { looksLikeApartmentUnitPaintJob } from "../../../utils/jobWorkflow";
-import { getTaxSuggestionForAddress } from "../../../utils/tax";
+import {
+  formatTaxSummaryLabel,
+  getTaxSuggestionForAddress,
+} from "../../../utils/tax";
 
 type Estimate = {
   id: string;
@@ -25,6 +28,7 @@ type Estimate = {
   estimate_amount: string | null;
   tax_label: string | null;
   tax_rate: number | string | null;
+  tax_number: string | null;
   split_warning_enabled: boolean | null;
   split_target_amount: number | string | null;
   terms: string | null;
@@ -143,6 +147,7 @@ export default function EditEstimatePage() {
   const [reference, setReference] = useState("");
   const [taxLabel, setTaxLabel] = useState("");
   const [taxRate, setTaxRate] = useState("");
+  const [taxNumber, setTaxNumber] = useState("");
   const [taxManuallyChanged, setTaxManuallyChanged] =
     useState(false);
   const [splitWarningEnabled, setSplitWarningEnabled] =
@@ -272,6 +277,7 @@ export default function EditEstimatePage() {
           ? String(toNumber(estimate.tax_rate))
           : ""
       );
+      setTaxNumber(estimate.tax_number ?? "");
       const hasSavedTax =
         Boolean(estimate.tax_label && estimate.tax_label !== "Tax") ||
         toNumber(estimate.tax_rate) > 0;
@@ -613,6 +619,7 @@ export default function EditEstimatePage() {
           formatCurrency(estimateTotal),
         tax_label: taxLabel.trim() || null,
         tax_rate: Number(taxRate) || 0,
+        tax_number: taxNumber.trim() || null,
         split_warning_enabled: effectiveSplitWarningEnabled,
         split_target_amount:
           effectiveSplitWarningEnabled &&
@@ -793,7 +800,7 @@ export default function EditEstimatePage() {
               onChange={setReference}
             />
 
-            <div className="grid gap-5 md:grid-cols-2">
+            <div className="grid gap-5 md:grid-cols-3">
               <InputField
                 label="Tax Label"
                 placeholder="Snohomish"
@@ -813,6 +820,13 @@ export default function EditEstimatePage() {
                   setTaxManuallyChanged(true);
                   setTaxRate(value);
                 }}
+              />
+
+              <InputField
+                label="Tax Number"
+                placeholder="Optional"
+                value={taxNumber}
+                onChange={setTaxNumber}
               />
             </div>
 
@@ -995,7 +1009,11 @@ export default function EditEstimatePage() {
                 />
 
                 <SummaryRow
-                  label={`${taxLabel || "Tax"} (${Number(taxRate) || 0}%)`}
+                  label={formatTaxSummaryLabel({
+                    label: taxLabel,
+                    rate: taxRate,
+                    taxNumber,
+                  })}
                   value={formatCurrency(taxAmount)}
                 />
 

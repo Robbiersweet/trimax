@@ -10,6 +10,7 @@ import SplitInvoicePlanner from "../../components/SplitInvoicePlanner";
 import UpdateInvoiceStatusButton from "../../components/UpdateInvoiceStatusButton";
 import { buildOutlookDraftPreview } from "../../lib/outlookDrafts";
 import { supabase } from "../../lib/supabase";
+import { formatTaxSummaryLabel } from "../../utils/tax";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -31,6 +32,7 @@ type Invoice = {
   reference: string | null;
   tax_label: string | null;
   tax_rate: number | string | null;
+  tax_number: string | null;
   amount_paid: number | string | null;
   split_warning_enabled: boolean | null;
   split_target_amount: number | string | null;
@@ -463,6 +465,7 @@ export default async function InvoiceDetailPage({
               targetAmount={splitWarningAmount}
               taxLabel={invoice.tax_label || "Tax"}
               taxRate={taxRate}
+              taxNumber={invoice.tax_number}
               sourceInvoice={{
                 id: invoice.id,
                 displayId: invoice.display_id,
@@ -677,7 +680,11 @@ export default async function InvoiceDetailPage({
             <div className="ml-auto mt-8 max-w-sm space-y-4">
               <SummaryRow label="Subtotal" value={money(subtotal)} />
               <SummaryRow
-                label={`${invoice.tax_label || "Tax"} (${taxRate}%)`}
+                label={formatTaxSummaryLabel({
+                  label: invoice.tax_label,
+                  rate: taxRate,
+                  taxNumber: invoice.tax_number,
+                })}
                 value={money(taxAmount)}
               />
               <SummaryRow label="Total" value={money(invoiceTotal)} />

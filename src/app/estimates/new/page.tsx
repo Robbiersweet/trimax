@@ -18,7 +18,10 @@ import { getNextDocumentDisplayId } from "../../lib/documentNumbers";
 import { logActivity } from "../../lib/activityLog";
 import { supabase } from "../../lib/supabase";
 import { looksLikeApartmentUnitPaintJob } from "../../utils/jobWorkflow";
-import { getTaxSuggestionForAddress } from "../../utils/tax";
+import {
+  formatTaxSummaryLabel,
+  getTaxSuggestionForAddress,
+} from "../../utils/tax";
 
 type Business = {
   id: string;
@@ -321,6 +324,7 @@ function NewEstimatePageContent() {
   const [reference, setReference] = useState("");
   const [taxLabel, setTaxLabel] = useState("");
   const [taxRate, setTaxRate] = useState("");
+  const [taxNumber, setTaxNumber] = useState("");
   const [taxManuallyChanged, setTaxManuallyChanged] =
     useState(false);
   const [splitWarningEnabled, setSplitWarningEnabled] =
@@ -716,6 +720,7 @@ function NewEstimatePageContent() {
     setReference("");
     setTaxLabel("");
     setTaxRate("");
+    setTaxNumber("");
     setTaxManuallyChanged(false);
     setSplitWarningEnabled(false);
     setSplitTargetAmount("");
@@ -919,6 +924,7 @@ function NewEstimatePageContent() {
           formatCurrency(estimateTotal),
         tax_label: taxLabel.trim() || null,
         tax_rate: Number(taxRate) || 0,
+        tax_number: taxNumber.trim() || null,
         split_warning_enabled: effectiveSplitWarningEnabled,
         split_target_amount:
           effectiveSplitWarningEnabled &&
@@ -1121,7 +1127,7 @@ function NewEstimatePageContent() {
               onChange={setReference}
             />
 
-            <div className="grid gap-5 md:grid-cols-2">
+            <div className="grid gap-5 md:grid-cols-3">
               <InputField
                 label="Tax Label"
                 placeholder="Snohomish"
@@ -1141,6 +1147,13 @@ function NewEstimatePageContent() {
                   setTaxManuallyChanged(true);
                   setTaxRate(value);
                 }}
+              />
+
+              <InputField
+                label="Tax Number"
+                placeholder="Optional"
+                value={taxNumber}
+                onChange={setTaxNumber}
               />
             </div>
 
@@ -1322,7 +1335,11 @@ function NewEstimatePageContent() {
                 />
 
                 <SummaryRow
-                  label={`${taxLabel || "Tax"} (${Number(taxRate) || 0}%)`}
+                  label={formatTaxSummaryLabel({
+                    label: taxLabel,
+                    rate: taxRate,
+                    taxNumber,
+                  })}
                   value={formatCurrency(taxAmount)}
                 />
 

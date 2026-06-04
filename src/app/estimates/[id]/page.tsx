@@ -8,6 +8,7 @@ import OutlookDraftPrepCard from "../../components/OutlookDraftPrepCard";
 import SplitInvoicePlanner from "../../components/SplitInvoicePlanner";
 import { buildOutlookDraftPreview } from "../../lib/outlookDrafts";
 import { supabase } from "../../lib/supabase";
+import { formatTaxSummaryLabel } from "../../utils/tax";
 
 type SupabaseEstimate = {
   id: string;
@@ -23,6 +24,7 @@ type SupabaseEstimate = {
   estimate_amount: number | string | null;
   tax_label: string | null;
   tax_rate: number | string | null;
+  tax_number: string | null;
   split_warning_enabled: boolean | null;
   split_target_amount: number | string | null;
   terms: string | null;
@@ -232,6 +234,7 @@ export default async function EstimateDetailsPage({
             targetAmount={effectiveSplitTargetAmount}
             taxLabel={estimate.tax_label || "Tax"}
             taxRate={taxRate}
+            taxNumber={estimate.tax_number}
           />
         )}
 
@@ -371,7 +374,11 @@ export default async function EstimateDetailsPage({
             />
 
             <SummaryRow
-              label={`${estimate.tax_label || "Tax"} (${taxRate}%)`}
+              label={formatTaxSummaryLabel({
+                label: estimate.tax_label,
+                rate: taxRate,
+                taxNumber: estimate.tax_number,
+              })}
               value={formatCurrency(taxAmount)}
             />
 

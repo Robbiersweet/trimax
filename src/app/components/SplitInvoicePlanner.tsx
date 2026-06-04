@@ -11,6 +11,7 @@ type SplitInvoicePlannerProps = {
   targetAmount: number;
   taxLabel?: string;
   taxRate?: number;
+  taxNumber?: string | null;
   sourceInvoice?: {
     id: string;
     displayId: string | null;
@@ -54,6 +55,7 @@ export default function SplitInvoicePlanner({
   targetAmount,
   taxLabel = "Tax",
   taxRate = 0,
+  taxNumber = null,
   sourceInvoice,
 }: SplitInvoicePlannerProps) {
   const [showPlan, setShowPlan] = useState(false);
@@ -145,6 +147,7 @@ export default function SplitInvoicePlanner({
         due_date: sourceInvoice.dueDate,
         tax_label: taxLabel || "Tax",
         tax_rate: Number(taxRate) || 0,
+        tax_number: taxNumber?.trim() || null,
         amount_paid: 0,
         split_warning_enabled: false,
         split_target_amount: null,

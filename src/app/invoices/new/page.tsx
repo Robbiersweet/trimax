@@ -18,7 +18,10 @@ import { getNextDocumentDisplayId } from "../../lib/documentNumbers";
 import { logActivity } from "../../lib/activityLog";
 import { supabase } from "../../lib/supabase";
 import { looksLikeApartmentUnitPaintJob } from "../../utils/jobWorkflow";
-import { getTaxSuggestionForAddress } from "../../utils/tax";
+import {
+  formatTaxSummaryLabel,
+  getTaxSuggestionForAddress,
+} from "../../utils/tax";
 
 type Business = {
   id: string;
@@ -140,6 +143,7 @@ function NewInvoicePageContent() {
   const [reference, setReference] = useState("");
   const [taxLabel, setTaxLabel] = useState("");
   const [taxRate, setTaxRate] = useState("");
+  const [taxNumber, setTaxNumber] = useState("");
   const [taxManuallyChanged, setTaxManuallyChanged] =
     useState(false);
   const [amountPaid, setAmountPaid] = useState("0");
@@ -366,6 +370,7 @@ function NewInvoicePageContent() {
     setReference("");
     setTaxLabel("");
     setTaxRate("");
+    setTaxNumber("");
     setTaxManuallyChanged(false);
     setAmountPaid("0");
     setSplitWarningEnabled(false);
@@ -564,6 +569,7 @@ function NewInvoicePageContent() {
         reference,
         tax_label: taxLabel.trim() || null,
         tax_rate: Number(taxRate) || 0,
+        tax_number: taxNumber.trim() || null,
         amount_paid: Number(amountPaid) || 0,
         split_warning_enabled: effectiveSplitWarningEnabled,
         split_target_amount:
@@ -737,7 +743,7 @@ function NewInvoicePageContent() {
               onChange={handleServiceAddressChange}
             />
 
-            <div className="grid gap-5 md:grid-cols-3">
+            <div className="grid gap-5 md:grid-cols-4">
               <InputField
                 label="Tax Label"
                 placeholder="Snohomish"
@@ -757,6 +763,13 @@ function NewInvoicePageContent() {
                   setTaxManuallyChanged(true);
                   setTaxRate(value);
                 }}
+              />
+
+              <InputField
+                label="Tax Number"
+                placeholder="Optional"
+                value={taxNumber}
+                onChange={setTaxNumber}
               />
 
               <InputField
@@ -947,7 +960,11 @@ function NewInvoicePageContent() {
                 />
 
                 <SummaryRow
-                  label={`${taxLabel || "Tax"} (${Number(taxRate) || 0}%)`}
+                  label={formatTaxSummaryLabel({
+                    label: taxLabel,
+                    rate: taxRate,
+                    taxNumber,
+                  })}
                   value={formatCurrency(taxAmount)}
                 />
 

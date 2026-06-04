@@ -215,3 +215,21 @@ export function getTaxSuggestionForAddress(
       }
     : null;
 }
+
+export function formatTaxSummaryLabel({
+  label,
+  rate,
+  taxNumber,
+}: {
+  label: string | null | undefined;
+  rate: number | string | null | undefined;
+  taxNumber?: string | null;
+}) {
+  const taxRate = Number(rate) || 0;
+  const baseLabel = `${label || "Tax"} (${taxRate}%)`;
+  const trimmedTaxNumber = taxNumber?.trim();
+
+  return trimmedTaxNumber
+    ? `${baseLabel} | Tax #${trimmedTaxNumber}`
+    : baseLabel;
+}
