@@ -25,6 +25,19 @@ function normalizeDate(value: string) {
   return value.trim() || null;
 }
 
+function isMissingPrimerColumnError(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const message =
+    "message" in error && typeof error.message === "string"
+      ? error.message
+      : "";
+
+  return message.includes("primer_requested");
+}
+
 export async function createQueueItem(input: CreateQueueItemInput) {
   const id = crypto.randomUUID();
 
@@ -52,11 +65,27 @@ export async function createQueueItem(input: CreateQueueItemInput) {
     notes: input.notes,
   };
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("queue_items")
     .insert([queueItemInsert])
     .select()
     .single();
+
+  if (error && isMissingPrimerColumnError(error)) {
+    const legacyQueueItemInsert: Record<string, unknown> = {
+      ...queueItemInsert,
+    };
+    delete legacyQueueItemInsert.primer_requested;
+
+    const retry = await supabase
+      .from("queue_items")
+      .insert([legacyQueueItemInsert])
+      .select()
+      .single();
+
+    data = retry.data;
+    error = retry.error;
+  }
 
   if (error) {
     console.error("Create queue item error:", error);

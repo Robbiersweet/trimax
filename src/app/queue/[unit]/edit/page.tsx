@@ -143,30 +143,46 @@ export default function EditQueueItemPage() {
   const handleSave = async () => {
     setToast(null);
 
-    const { error } = await supabase
+    const updatePayload = {
+      property,
+      unit,
+      status,
+      priority,
+      paint_type: paintType,
+      flooring,
+      smoked_in: smokedIn,
+      primer_requested: smokedIn && primerRequested,
+      prior_renovation: priorRenovation,
+      prior_renovation_details:
+        priorRenovationDetails.trim() || null,
+      renovation_needed: renovationNeeded,
+      renovation_needed_details:
+        renovationNeededDetails.trim() || null,
+      move_out_date: moveOutDate || null,
+      ready_date: readyDate || null,
+      scheduled_date: scheduledDate || null,
+      completed_date: completedDate || null,
+      notes,
+    };
+
+    let { error } = await supabase
       .from("queue_items")
-      .update({
-        property,
-        unit,
-        status,
-        priority,
-        paint_type: paintType,
-        flooring,
-        smoked_in: smokedIn,
-        primer_requested: smokedIn && primerRequested,
-        prior_renovation: priorRenovation,
-        prior_renovation_details:
-          priorRenovationDetails.trim() || null,
-        renovation_needed: renovationNeeded,
-        renovation_needed_details:
-          renovationNeededDetails.trim() || null,
-        move_out_date: moveOutDate || null,
-        ready_date: readyDate || null,
-        scheduled_date: scheduledDate || null,
-        completed_date: completedDate || null,
-        notes,
-      })
+      .update(updatePayload)
       .eq("id", queueItemId);
+
+    if (error?.message?.includes("primer_requested")) {
+      const legacyUpdatePayload: Record<string, unknown> = {
+        ...updatePayload,
+      };
+      delete legacyUpdatePayload.primer_requested;
+
+      const retry = await supabase
+        .from("queue_items")
+        .update(legacyUpdatePayload)
+        .eq("id", queueItemId);
+
+      error = retry.error;
+    }
 
     if (error) {
       console.error(error);
