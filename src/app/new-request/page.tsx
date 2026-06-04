@@ -24,6 +24,11 @@ type RenovationMemory = {
   renovation_needed_details: string | null;
 };
 
+type PaintMemory = {
+  completed_date: string | null;
+  paint_type: string | null;
+};
+
 const rnlPropertyOptions = [
   "North Creek Apartments",
   "Evergreen Apartments",
@@ -130,6 +135,47 @@ function previousRenovationLabel(value: string | null | undefined) {
     : `Previous ${detail}`;
 }
 
+function formatLastPaintedMessage(memory: PaintMemory) {
+  if (!memory.completed_date) {
+    return "";
+  }
+
+  const completedDate = new Date(
+    `${memory.completed_date.slice(0, 10)}T00:00:00`
+  );
+
+  if (Number.isNaN(completedDate.getTime())) {
+    return "";
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const daysAgo = Math.max(
+    Math.round((today.getTime() - completedDate.getTime()) / 86400000),
+    0
+  );
+  const monthsAgo = Math.floor(daysAgo / 30);
+  const yearsAgo = Math.floor(daysAgo / 365);
+  const relative =
+    yearsAgo >= 1
+      ? `${yearsAgo} year${yearsAgo === 1 ? "" : "s"} ago`
+      : monthsAgo >= 1
+        ? `${monthsAgo} month${monthsAgo === 1 ? "" : "s"} ago`
+        : daysAgo === 0
+          ? "today"
+          : `${daysAgo} day${daysAgo === 1 ? "" : "s"} ago`;
+  const formattedDate = completedDate.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  return `Last painted ${formattedDate} (${relative})${
+    memory.paint_type ? ` with ${memory.paint_type}` : ""
+  }.`;
+}
+
 function NewRequestPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -172,6 +218,7 @@ function NewRequestPageContent() {
   const [flooring, setFlooring] = useState("");
   const [priority, setPriority] = useState("Normal");
   const [smokedIn, setSmokedIn] = useState(false);
+  const [primerRequested, setPrimerRequested] = useState(true);
   const [priorRenovation, setPriorRenovation] = useState(false);
   const [priorRenovationDetails, setPriorRenovationDetails] =
     useState("");
@@ -179,6 +226,8 @@ function NewRequestPageContent() {
   const [renovationNeededDetails, setRenovationNeededDetails] =
     useState("");
   const [renovationMemoryMessage, setRenovationMemoryMessage] =
+    useState("");
+  const [paintMemoryMessage, setPaintMemoryMessage] =
     useState("");
   const [moveOutDate, setMoveOutDate] = useState("");
   const [readyDate, setReadyDate] = useState("");
@@ -220,6 +269,7 @@ function NewRequestPageContent() {
     async function loadRenovationMemory() {
       if (!business || isJustKleen || !property.trim()) {
         setRenovationMemoryMessage("");
+        setPaintMemoryMessage("");
         return;
       }
 
@@ -227,6 +277,7 @@ function NewRequestPageContent() {
 
       if (units.length !== 1) {
         setRenovationMemoryMessage("");
+        setPaintMemoryMessage("");
         return;
       }
 
@@ -247,27 +298,49 @@ function NewRequestPageContent() {
           console.warn("Renovation memory lookup failed:", error.message);
         }
         setRenovationMemoryMessage("");
+      } else {
+        const memory = data as RenovationMemory;
+        const currentRenovationBecomesHistory =
+          Boolean(memory.renovation_needed) &&
+          Boolean(memory.renovation_needed_details);
+        const hasPriorRenovation =
+          Boolean(memory.prior_renovation) ||
+          Boolean(memory.prior_renovation_details) ||
+          currentRenovationBecomesHistory;
+
+        setPriorRenovation(hasPriorRenovation);
+        setPriorRenovationDetails(
+          memory.prior_renovation_details ||
+            previousRenovationLabel(memory.renovation_needed_details)
+        );
+        setRenovationNeeded(false);
+        setRenovationNeededDetails("");
+        setRenovationMemoryMessage(
+          "Loaded renovation history for this unit."
+        );
+      }
+
+      const { data: paintData, error: paintError } = await supabase
+        .from("queue_items")
+        .select("completed_date, paint_type")
+        .eq("business_id", business.id)
+        .eq("property", property)
+        .eq("unit", units[0])
+        .not("completed_date", "is", null)
+        .order("completed_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (paintError || !paintData) {
+        if (paintError) {
+          console.warn("Paint memory lookup failed:", paintError.message);
+        }
+        setPaintMemoryMessage("");
         return;
       }
 
-      const memory = data as RenovationMemory;
-      const currentRenovationBecomesHistory =
-        Boolean(memory.renovation_needed) &&
-        Boolean(memory.renovation_needed_details);
-      const hasPriorRenovation =
-        Boolean(memory.prior_renovation) ||
-        Boolean(memory.prior_renovation_details) ||
-        currentRenovationBecomesHistory;
-
-      setPriorRenovation(hasPriorRenovation);
-      setPriorRenovationDetails(
-        memory.prior_renovation_details ||
-          previousRenovationLabel(memory.renovation_needed_details)
-      );
-      setRenovationNeeded(false);
-      setRenovationNeededDetails("");
-      setRenovationMemoryMessage(
-        "Loaded renovation history for this unit."
+      setPaintMemoryMessage(
+        formatLastPaintedMessage(paintData as PaintMemory)
       );
     }
 
@@ -311,6 +384,7 @@ function NewRequestPageContent() {
             flooring,
             priority,
             smokedIn,
+            primerRequested: smokedIn && primerRequested,
             priorRenovation,
             priorRenovationDetails,
             renovationNeeded,
@@ -447,6 +521,14 @@ function NewRequestPageContent() {
               value={unitsText}
               onChange={setUnitsText}
             />
+
+            {paintMemoryMessage ? (
+              <div className="rounded-2xl border border-orange-500/30 bg-orange-500/10 px-4 py-3">
+                <p className="text-sm font-semibold text-orange-100">
+                  {paintMemoryMessage}
+                </p>
+              </div>
+            ) : null}
 
             <div className="rounded-2xl border border-blue-500/30 bg-blue-500/10 px-4 py-3">
               <p className="font-semibold text-blue-100">
@@ -620,7 +702,10 @@ function NewRequestPageContent() {
                 <input
                   type="checkbox"
                   checked={smokedIn}
-                  onChange={(event) => setSmokedIn(event.target.checked)}
+                  onChange={(event) => {
+                    setSmokedIn(event.target.checked);
+                    setPrimerRequested(event.target.checked);
+                  }}
                   className="h-5 w-5 accent-orange-500"
                 />
 
@@ -638,6 +723,29 @@ function NewRequestPageContent() {
                 </span>
               </label>
             </div>
+
+            {!isJustKleen && smokedIn ? (
+              <label className="flex items-center gap-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={primerRequested}
+                  onChange={(event) =>
+                    setPrimerRequested(event.target.checked)
+                  }
+                  className="h-5 w-5 accent-orange-500"
+                />
+
+                <span>
+                  <span className="block font-semibold text-amber-100">
+                    Add full primer to estimate
+                  </span>
+                  <span className="text-sm text-amber-100/75">
+                    Turn this off when the property wants the smoke noted for
+                    reporting but does not want the whole unit primed.
+                  </span>
+                </span>
+              </label>
+            ) : null}
 
             <InputField
               label="Move Out Date"

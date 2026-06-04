@@ -26,6 +26,7 @@ type SupabaseQueueItem = {
   scheduled_date: string | null;
   completed_date: string | null;
   smoked_in: boolean | null;
+  primer_requested: boolean | null;
   prior_renovation: boolean | null;
   prior_renovation_details: string | null;
   renovation_needed: boolean | null;
@@ -266,7 +267,9 @@ export default async function QueueDetailPage({
             value={item.smoked_in ? "Yes" : "No"}
             detail={
               item.smoked_in
-                ? "This is counted in smoker/remediation reporting."
+                ? item.primer_requested === false
+                  ? "Smoke is tracked, but full primer is not requested for estimate creation."
+                  : "This is counted in smoker/remediation reporting and can add primer to estimates."
                 : "No remediation flag is set."
             }
           />
@@ -384,11 +387,23 @@ export default async function QueueDetailPage({
             <Info label="Paint Due Date" value={item.ready_date ?? ""} />
             <Info label="Scheduled Date" value={item.scheduled_date ?? ""} />
             <Info label="Completed Date" value={item.completed_date ?? ""} />
+            <Info
+              label="Full Primer Requested"
+              value={
+                item.smoked_in
+                  ? item.primer_requested === false
+                    ? "No"
+                    : "Yes"
+                  : "No"
+              }
+            />
           </div>
 
           {item.smoked_in && (
             <div className="mt-6 inline-flex rounded-full bg-red-500/20 px-3 py-1 text-sm text-red-300">
-              Smoker Unit
+              {item.primer_requested === false
+                ? "Smoker Unit / No Full Primer"
+                : "Smoker Unit / Full Primer"}
             </div>
           )}
 

@@ -80,6 +80,7 @@ export default function EditQueueItemPage() {
   const [paintType, setPaintType] = useState("");
   const [flooring, setFlooring] = useState("");
   const [smokedIn, setSmokedIn] = useState(false);
+  const [primerRequested, setPrimerRequested] = useState(true);
   const [priorRenovation, setPriorRenovation] = useState(false);
   const [priorRenovationDetails, setPriorRenovationDetails] =
     useState("");
@@ -122,6 +123,9 @@ export default function EditQueueItemPage() {
       setPaintType(data.paint_type ?? "");
       setFlooring(data.flooring ?? "");
       setSmokedIn(Boolean(data.smoked_in));
+      setPrimerRequested(
+        data.primer_requested === false ? false : true
+      );
       setPriorRenovation(Boolean(data.prior_renovation));
       setPriorRenovationDetails(data.prior_renovation_details ?? "");
       setRenovationNeeded(Boolean(data.renovation_needed));
@@ -149,6 +153,7 @@ export default function EditQueueItemPage() {
         paint_type: paintType,
         flooring,
         smoked_in: smokedIn,
+        primer_requested: smokedIn && primerRequested,
         prior_renovation: priorRenovation,
         prior_renovation_details:
           priorRenovationDetails.trim() || null,
@@ -343,7 +348,10 @@ export default function EditQueueItemPage() {
               <input
                 type="checkbox"
                 checked={smokedIn}
-                onChange={(event) => setSmokedIn(event.target.checked)}
+                onChange={(event) => {
+                  setSmokedIn(event.target.checked);
+                  setPrimerRequested(event.target.checked);
+                }}
                 className="h-5 w-5 accent-orange-500"
               />
 
@@ -356,6 +364,29 @@ export default function EditQueueItemPage() {
                 </span>
               </span>
             </label>
+
+            {smokedIn ? (
+              <label className="flex items-center gap-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={primerRequested}
+                  onChange={(event) =>
+                    setPrimerRequested(event.target.checked)
+                  }
+                  className="h-5 w-5 accent-orange-500"
+                />
+
+                <span>
+                  <span className="block font-semibold text-amber-100">
+                    Add full primer to estimate
+                  </span>
+                  <span className="text-sm text-amber-100/75">
+                    Turn this off when smoke should be tracked but full primer
+                    should not be added automatically.
+                  </span>
+                </span>
+              </label>
+            ) : null}
 
             <div className="grid gap-5 md:grid-cols-2">
               <InputField

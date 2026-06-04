@@ -64,6 +64,7 @@ type QueueItem = {
   ready_date: string | null;
   notes: string | null;
   smoked_in: boolean | null;
+  primer_requested: boolean | null;
   prior_renovation: boolean | null;
   prior_renovation_details: string | null;
   renovation_needed: boolean | null;
@@ -555,7 +556,10 @@ function NewEstimatePageContent() {
         serviceItems,
         loadedQueueItem
       );
-      const primerService = loadedQueueItem.smoked_in
+      const shouldAddPrimer =
+        Boolean(loadedQueueItem.smoked_in) &&
+        loadedQueueItem.primer_requested !== false;
+      const primerService = shouldAddPrimer
         ? findPrimerService(serviceItems)
         : null;
       const renovationService = loadedQueueItem.renovation_needed
@@ -585,7 +589,7 @@ function NewEstimatePageContent() {
       ];
 
       if (
-        loadedQueueItem.smoked_in &&
+        shouldAddPrimer &&
         !startingLineItems.some((item) =>
           normalizeMatchText(item.description).includes("primer")
         )
@@ -1039,10 +1043,10 @@ function NewEstimatePageContent() {
             <p className="mt-2 text-sm leading-6 text-purple-100/80">
               Trimax copied the property, unit, paint type, flooring, reference,
               notes, matching client address, tax suggestion, and saved service
-              when available. Smoker/remediation units also add Full Primer
-              automatically. Units marked for renovation also add Renovation
-              and Cabinet Paint for pricing review. Adjust any details before
-              saving.
+              when available. Smoker/remediation units add Full Primer only
+              when that option was requested on the queue item. Units marked
+              for renovation also add Renovation and Cabinet Paint for pricing
+              review. Adjust any details before saving.
             </p>
           </Card>
         ) : null}

@@ -8,6 +8,7 @@ type CreateQueueItemInput = {
   flooring: string;
   priority: string;
   smokedIn: boolean;
+  primerRequested: boolean;
   priorRenovation: boolean;
   priorRenovationDetails: string;
   renovationNeeded: boolean;
@@ -27,32 +28,33 @@ function normalizeDate(value: string) {
 export async function createQueueItem(input: CreateQueueItemInput) {
   const id = crypto.randomUUID();
 
+  const queueItemInsert = {
+    id,
+    business_id: input.businessId,
+    property: input.property,
+    unit: input.unit,
+    paint_type: input.paintType,
+    flooring: input.flooring,
+    priority: input.priority,
+    smoked_in: input.smokedIn,
+    primer_requested: input.primerRequested,
+    prior_renovation: input.priorRenovation,
+    prior_renovation_details:
+      input.priorRenovationDetails.trim() || null,
+    renovation_needed: input.renovationNeeded,
+    renovation_needed_details:
+      input.renovationNeededDetails.trim() || null,
+    move_out_date: normalizeDate(input.moveOutDate),
+    ready_date: normalizeDate(input.readyDate),
+    scheduled_date: normalizeDate(input.scheduledDate),
+    completed_date: normalizeDate(input.completedDate),
+    status: "Pending Estimate",
+    notes: input.notes,
+  };
+
   const { data, error } = await supabase
     .from("queue_items")
-    .insert([
-      {
-        id,
-        business_id: input.businessId,
-        property: input.property,
-        unit: input.unit,
-        paint_type: input.paintType,
-        flooring: input.flooring,
-        priority: input.priority,
-        smoked_in: input.smokedIn,
-        prior_renovation: input.priorRenovation,
-        prior_renovation_details:
-          input.priorRenovationDetails.trim() || null,
-        renovation_needed: input.renovationNeeded,
-        renovation_needed_details:
-          input.renovationNeededDetails.trim() || null,
-        move_out_date: normalizeDate(input.moveOutDate),
-        ready_date: normalizeDate(input.readyDate),
-        scheduled_date: normalizeDate(input.scheduledDate),
-        completed_date: normalizeDate(input.completedDate),
-        status: "Pending Estimate",
-        notes: input.notes,
-      },
-    ])
+    .insert([queueItemInsert])
     .select()
     .single();
 
@@ -74,6 +76,8 @@ export async function createQueueItem(input: CreateQueueItemInput) {
       unit: input.unit,
       paintType: input.paintType,
       flooring: input.flooring,
+      smokedIn: input.smokedIn,
+      primerRequested: input.primerRequested,
       priorRenovation: input.priorRenovation,
       priorRenovationDetails: input.priorRenovationDetails,
       renovationNeeded: input.renovationNeeded,
