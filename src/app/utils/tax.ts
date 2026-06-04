@@ -3,6 +3,8 @@ export type TaxSuggestion = {
   rate: string;
 };
 
+export type TaxMode = "taxable" | "no_tax" | "tax_exempt";
+
 type TaxArea = TaxSuggestion & {
   cities: string[];
   zipCodes: string[];
@@ -220,11 +222,21 @@ export function formatTaxSummaryLabel({
   label,
   rate,
   taxNumber,
+  taxMode = "taxable",
 }: {
   label: string | null | undefined;
   rate: number | string | null | undefined;
   taxNumber?: string | null;
+  taxMode?: TaxMode | string | null;
 }) {
+  if (taxMode === "no_tax") {
+    return "No tax";
+  }
+
+  if (taxMode === "tax_exempt") {
+    return "Tax exempt";
+  }
+
   const taxRate = Number(rate) || 0;
   const baseLabel = `${label || "Tax"} (${taxRate}%)`;
   const trimmedTaxNumber = taxNumber?.trim();
@@ -232,4 +244,16 @@ export function formatTaxSummaryLabel({
   return trimmedTaxNumber
     ? `${baseLabel} | Tax #${trimmedTaxNumber}`
     : baseLabel;
+}
+
+export function getEffectiveTaxRate({
+  taxMode,
+  taxRate,
+}: {
+  taxMode?: TaxMode | string | null;
+  taxRate: number | string | null | undefined;
+}) {
+  return taxMode === "no_tax" || taxMode === "tax_exempt"
+    ? 0
+    : Number(taxRate) || 0;
 }

@@ -2,7 +2,10 @@ import Link from "next/link";
 import Image from "next/image";
 import PrintToolbar from "../../../components/PrintToolbar";
 import { supabase } from "../../../lib/supabase";
-import { formatTaxSummaryLabel } from "../../../utils/tax";
+import {
+  formatTaxSummaryLabel,
+  getEffectiveTaxRate,
+} from "../../../utils/tax";
 
 type Invoice = {
   id: string;
@@ -17,6 +20,7 @@ type Invoice = {
   issue_date: string | null;
   due_date: string | null;
   reference: string | null;
+  tax_mode: string | null;
   tax_label: string | null;
   tax_rate: number | string | null;
   tax_number: string | null;
@@ -174,7 +178,10 @@ export default async function InvoicePrintPage({
       ? subtotalFromLineItems
       : parseCurrency(invoice.invoice_amount);
 
-  const taxRate = toNumber(invoice.tax_rate);
+  const taxRate = getEffectiveTaxRate({
+    taxMode: invoice.tax_mode,
+    taxRate: invoice.tax_rate,
+  });
   const taxAmount = subtotal * (taxRate / 100);
   const total = subtotal + taxAmount;
   const amountPaid = toNumber(invoice.amount_paid);
@@ -424,6 +431,7 @@ export default async function InvoicePrintPage({
                 label: invoice.tax_label,
                 rate: taxRate,
                 taxNumber: invoice.tax_number,
+                taxMode: invoice.tax_mode,
               })}
               value={formatCurrency(taxAmount)}
             />

@@ -6,6 +6,7 @@ import Button from "./Button";
 import { getNextDocumentDisplayId } from "../lib/documentNumbers";
 import { logActivity } from "../lib/activityLog";
 import { supabase } from "../lib/supabase";
+import { getEffectiveTaxRate } from "../utils/tax";
 
 type ConvertEstimateToInvoiceButtonProps = {
   estimateId: string;
@@ -28,6 +29,7 @@ type Estimate = {
   service_address: string | null;
   reference: string | null;
   estimate_amount: string | null;
+  tax_mode: string | null;
   tax_label: string | null;
   tax_rate: number | string | null;
   tax_number: string | null;
@@ -154,7 +156,10 @@ export default function ConvertEstimateToInvoiceButton({
             estimate.estimate_amount ?? invoiceAmount
           );
 
-    const taxRate = toNumber(estimate.tax_rate);
+    const taxRate = getEffectiveTaxRate({
+      taxMode: estimate.tax_mode,
+      taxRate: estimate.tax_rate,
+    });
     const taxAmount =
       fallbackSubtotal * (taxRate / 100);
     const invoiceTotal =
@@ -215,9 +220,13 @@ export default function ConvertEstimateToInvoiceButton({
         reference: estimate.reference ?? "",
         invoice_amount:
           formatCurrency(invoiceTotal),
+        tax_mode: estimate.tax_mode || "taxable",
         tax_label: estimate.tax_label ?? "Tax",
         tax_rate: taxRate,
-        tax_number: estimate.tax_number ?? null,
+        tax_number:
+          estimate.tax_mode === "taxable"
+            ? estimate.tax_number ?? null
+            : null,
         amount_paid: 0,
         split_warning_enabled:
           Boolean(estimate.split_warning_enabled),

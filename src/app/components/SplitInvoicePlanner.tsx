@@ -5,12 +5,14 @@ import Button from "./Button";
 import Card from "./Card";
 import { logActivity } from "../lib/activityLog";
 import { supabase } from "../lib/supabase";
+import { getEffectiveTaxRate } from "../utils/tax";
 
 type SplitInvoicePlannerProps = {
   subtotalAmount: number;
   targetAmount: number;
   taxLabel?: string;
   taxRate?: number;
+  taxMode?: string | null;
   taxNumber?: string | null;
   sourceInvoice?: {
     id: string;
@@ -55,6 +57,7 @@ export default function SplitInvoicePlanner({
   targetAmount,
   taxLabel = "Tax",
   taxRate = 0,
+  taxMode = "taxable",
   taxNumber = null,
   sourceInvoice,
 }: SplitInvoicePlannerProps) {
@@ -77,8 +80,11 @@ export default function SplitInvoicePlanner({
     (total, amount) => total + amount,
     0
   );
-  const plannedTaxTotal =
-    plannedTotal * ((Number(taxRate) || 0) / 100);
+  const effectiveTaxRate = getEffectiveTaxRate({
+    taxMode,
+    taxRate,
+  });
+  const plannedTaxTotal = plannedTotal * (effectiveTaxRate / 100);
   const plannedGrandTotal = plannedTotal + plannedTaxTotal;
 
   if (splitAmounts.length === 0) {
@@ -128,7 +134,7 @@ export default function SplitInvoicePlanner({
       const displayId = `INV-${String(
         (count ?? 0) + index + 1
       ).padStart(4, "0")}`;
-      const taxAmount = amount * ((Number(taxRate) || 0) / 100);
+      const taxAmount = amount * (effectiveTaxRate / 100);
       const invoiceTotal = amount + taxAmount;
       const splitLabel = `Split ${index + 1} of ${splitAmounts.length}`;
 
@@ -145,9 +151,11 @@ export default function SplitInvoicePlanner({
         invoice_amount: formatCurrency(invoiceTotal),
         issue_date: sourceInvoice.issueDate,
         due_date: sourceInvoice.dueDate,
+        tax_mode: taxMode || "taxable",
         tax_label: taxLabel || "Tax",
-        tax_rate: Number(taxRate) || 0,
-        tax_number: taxNumber?.trim() || null,
+        tax_rate: effectiveTaxRate,
+        tax_number:
+          taxMode === "taxable" ? taxNumber?.trim() || null : null,
         amount_paid: 0,
         split_warning_enabled: false,
         split_target_amount: null,
@@ -316,7 +324,11 @@ export default function SplitInvoicePlanner({
 
             <div className="grid grid-cols-[1fr_150px] gap-4 border-t border-orange-400/20 bg-black/20 px-5 py-4 text-orange-50">
               <span>
-                Planned {taxLabel || "Tax"} ({Number(taxRate) || 0}%)
+                Planned {taxMode === "tax_exempt"
+                  ? "Tax exempt"
+                  : taxMode === "no_tax"
+                    ? "No tax"
+                    : `${taxLabel || "Tax"} (${effectiveTaxRate}%)`}
               </span>
               <span className="text-right font-bold">
                 {formatCurrency(plannedTaxTotal)}

@@ -2,7 +2,10 @@ import Link from "next/link";
 import Image from "next/image";
 import PrintToolbar from "../../../components/PrintToolbar";
 import { supabase } from "../../../lib/supabase";
-import { formatTaxSummaryLabel } from "../../../utils/tax";
+import {
+  formatTaxSummaryLabel,
+  getEffectiveTaxRate,
+} from "../../../utils/tax";
 
 type Estimate = {
   id: string;
@@ -16,6 +19,7 @@ type Estimate = {
   estimate_amount: number | string | null;
   status: string | null;
   display_id: string | null;
+  tax_mode: string | null;
   tax_label: string | null;
   tax_rate: number | string | null;
   tax_number: string | null;
@@ -147,7 +151,10 @@ export default async function EstimatePrintPage({
       ? subtotalFromLineItems
       : parseCurrency(estimate.estimate_amount);
 
-  const taxRate = toNumber(estimate.tax_rate);
+  const taxRate = getEffectiveTaxRate({
+    taxMode: estimate.tax_mode,
+    taxRate: estimate.tax_rate,
+  });
   const taxAmount = subtotal * (taxRate / 100);
   const total = subtotal + taxAmount;
 
@@ -344,6 +351,7 @@ export default async function EstimatePrintPage({
                 label: estimate.tax_label,
                 rate: taxRate,
                 taxNumber: estimate.tax_number,
+                taxMode: estimate.tax_mode,
               })}
               value={formatCurrency(taxAmount)}
             />

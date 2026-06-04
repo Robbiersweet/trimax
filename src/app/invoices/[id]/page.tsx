@@ -10,7 +10,10 @@ import SplitInvoicePlanner from "../../components/SplitInvoicePlanner";
 import UpdateInvoiceStatusButton from "../../components/UpdateInvoiceStatusButton";
 import { buildOutlookDraftPreview } from "../../lib/outlookDrafts";
 import { supabase } from "../../lib/supabase";
-import { formatTaxSummaryLabel } from "../../utils/tax";
+import {
+  formatTaxSummaryLabel,
+  getEffectiveTaxRate,
+} from "../../utils/tax";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -30,6 +33,7 @@ type Invoice = {
   issue_date: string | null;
   due_date: string | null;
   reference: string | null;
+  tax_mode: string | null;
   tax_label: string | null;
   tax_rate: number | string | null;
   tax_number: string | null;
@@ -381,7 +385,10 @@ export default async function InvoiceDetailPage({
 
   const fallbackSubtotal = numberValue(invoice.invoice_amount);
   const subtotal = items.length > 0 ? subtotalFromLines : fallbackSubtotal;
-  const taxRate = numberValue(invoice.tax_rate);
+  const taxRate = getEffectiveTaxRate({
+    taxMode: invoice.tax_mode,
+    taxRate: invoice.tax_rate,
+  });
   const taxAmount = subtotal * (taxRate / 100);
   const invoiceTotal = subtotal + taxAmount;
   const amountPaid = numberValue(invoice.amount_paid);
@@ -465,6 +472,7 @@ export default async function InvoiceDetailPage({
               targetAmount={splitWarningAmount}
               taxLabel={invoice.tax_label || "Tax"}
               taxRate={taxRate}
+              taxMode={invoice.tax_mode}
               taxNumber={invoice.tax_number}
               sourceInvoice={{
                 id: invoice.id,
@@ -684,6 +692,7 @@ export default async function InvoiceDetailPage({
                   label: invoice.tax_label,
                   rate: taxRate,
                   taxNumber: invoice.tax_number,
+                  taxMode: invoice.tax_mode,
                 })}
                 value={money(taxAmount)}
               />

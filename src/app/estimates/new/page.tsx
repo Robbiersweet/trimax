@@ -11,6 +11,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import AppShell from "../../components/AppShell";
 import Button from "../../components/Button";
 import InputField from "../../components/InputField";
+import TaxModeSelect from "../../components/TaxModeSelect";
 import Card from "../../components/Card";
 import Toast from "../../components/Toast";
 import { captureServicesFromLineItems } from "../../lib/captureServicesFromLineItems";
@@ -20,7 +21,9 @@ import { supabase } from "../../lib/supabase";
 import { looksLikeApartmentUnitPaintJob } from "../../utils/jobWorkflow";
 import {
   formatTaxSummaryLabel,
+  getEffectiveTaxRate,
   getTaxSuggestionForAddress,
+  type TaxMode,
 } from "../../utils/tax";
 
 type Business = {
@@ -322,6 +325,7 @@ function NewEstimatePageContent() {
   const [serviceAddress, setServiceAddress] =
     useState("");
   const [reference, setReference] = useState("");
+  const [taxMode, setTaxMode] = useState<TaxMode>("taxable");
   const [taxLabel, setTaxLabel] = useState("");
   const [taxRate, setTaxRate] = useState("");
   const [taxNumber, setTaxNumber] = useState("");
@@ -358,8 +362,13 @@ function NewEstimatePageContent() {
   }, [lineItems]);
 
   const taxAmount = useMemo(() => {
-    return subtotal * ((Number(taxRate) || 0) / 100);
-  }, [subtotal, taxRate]);
+    const effectiveTaxRate = getEffectiveTaxRate({
+      taxMode,
+      taxRate,
+    });
+
+    return subtotal * (effectiveTaxRate / 100);
+  }, [subtotal, taxMode, taxRate]);
 
   const estimateTotal = subtotal + taxAmount;
   const splitWarningAmount = toNumber(
@@ -718,6 +727,7 @@ function NewEstimatePageContent() {
     setProjectTitle("");
     setServiceAddress("");
     setReference("");
+    setTaxMode("taxable");
     setTaxLabel("");
     setTaxRate("");
     setTaxNumber("");
@@ -922,9 +932,11 @@ function NewEstimatePageContent() {
         reference,
         estimate_amount:
           formatCurrency(estimateTotal),
+        tax_mode: taxMode,
         tax_label: taxLabel.trim() || null,
-        tax_rate: Number(taxRate) || 0,
-        tax_number: taxNumber.trim() || null,
+        tax_rate: getEffectiveTaxRate({ taxMode, taxRate }),
+        tax_number:
+          taxMode === "taxable" ? taxNumber.trim() || null : null,
         split_warning_enabled: effectiveSplitWarningEnabled,
         split_target_amount:
           effectiveSplitWarningEnabled &&
@@ -1128,6 +1140,8 @@ function NewEstimatePageContent() {
             />
 
             <div className="grid gap-5 md:grid-cols-3">
+              <TaxModeSelect value={taxMode} onChange={setTaxMode} />
+
               <InputField
                 label="Tax Label"
                 placeholder="Snohomish"
@@ -1156,6 +1170,20 @@ function NewEstimatePageContent() {
                 onChange={setTaxNumber}
               />
             </div>
+
+            {taxMode === "no_tax" ? (
+              <p className="rounded-2xl border border-zinc-700 bg-zinc-950/50 px-4 py-3 text-sm leading-6 text-zinc-400">
+                No tax selected. Trimax will calculate this estimate with a
+                $0.00 tax line.
+              </p>
+            ) : null}
+
+            {taxMode === "tax_exempt" ? (
+              <p className="rounded-2xl border border-zinc-700 bg-zinc-950/50 px-4 py-3 text-sm leading-6 text-zinc-400">
+                Tax exempt selected. Trimax will show Tax exempt with a $0.00
+                tax line.
+              </p>
+            ) : null}
 
             {showTaxSuggestionNote ? (
               <p className="rounded-2xl border border-orange-500/30 bg-orange-500/10 px-4 py-3 text-sm leading-6 text-orange-100/80">
@@ -1339,6 +1367,7 @@ function NewEstimatePageContent() {
                     label: taxLabel,
                     rate: taxRate,
                     taxNumber,
+                    taxMode,
                   })}
                   value={formatCurrency(taxAmount)}
                 />

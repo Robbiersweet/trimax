@@ -6,6 +6,7 @@ import AppShell from "../../../components/AppShell";
 import Card from "../../../components/Card";
 import Button from "../../../components/Button";
 import InputField from "../../../components/InputField";
+import TaxModeSelect from "../../../components/TaxModeSelect";
 import Toast from "../../../components/Toast";
 import { captureServicesFromLineItems } from "../../../lib/captureServicesFromLineItems";
 import { logActivity } from "../../../lib/activityLog";
@@ -13,7 +14,9 @@ import { supabase } from "../../../lib/supabase";
 import { looksLikeApartmentUnitPaintJob } from "../../../utils/jobWorkflow";
 import {
   formatTaxSummaryLabel,
+  getEffectiveTaxRate,
   getTaxSuggestionForAddress,
+  type TaxMode,
 } from "../../../utils/tax";
 
 type Estimate = {
@@ -26,6 +29,7 @@ type Estimate = {
   service_address: string | null;
   reference: string | null;
   estimate_amount: string | null;
+  tax_mode: TaxMode | string | null;
   tax_label: string | null;
   tax_rate: number | string | null;
   tax_number: string | null;
@@ -145,6 +149,7 @@ export default function EditEstimatePage() {
   const [serviceAddress, setServiceAddress] =
     useState("");
   const [reference, setReference] = useState("");
+  const [taxMode, setTaxMode] = useState<TaxMode>("taxable");
   const [taxLabel, setTaxLabel] = useState("");
   const [taxRate, setTaxRate] = useState("");
   const [taxNumber, setTaxNumber] = useState("");
@@ -183,8 +188,13 @@ export default function EditEstimatePage() {
   }, [lineItems]);
 
   const taxAmount = useMemo(() => {
-    return subtotal * ((Number(taxRate) || 0) / 100);
-  }, [subtotal, taxRate]);
+    const effectiveTaxRate = getEffectiveTaxRate({
+      taxMode,
+      taxRate,
+    });
+
+    return subtotal * (effectiveTaxRate / 100);
+  }, [subtotal, taxMode, taxRate]);
 
   const estimateTotal = subtotal + taxAmount;
   const [splitWarningAmount, setSplitWarningAmount] =
@@ -267,6 +277,12 @@ export default function EditEstimatePage() {
           ""
       );
       setReference(estimate.reference ?? "");
+      setTaxMode(
+        estimate.tax_mode === "no_tax" ||
+          estimate.tax_mode === "tax_exempt"
+          ? estimate.tax_mode
+          : "taxable"
+      );
       setTaxLabel(
         estimate.tax_label && estimate.tax_label !== "Tax"
           ? estimate.tax_label
@@ -617,9 +633,11 @@ export default function EditEstimatePage() {
         reference,
         estimate_amount:
           formatCurrency(estimateTotal),
+        tax_mode: taxMode,
         tax_label: taxLabel.trim() || null,
-        tax_rate: Number(taxRate) || 0,
-        tax_number: taxNumber.trim() || null,
+        tax_rate: getEffectiveTaxRate({ taxMode, taxRate }),
+        tax_number:
+          taxMode === "taxable" ? taxNumber.trim() || null : null,
         split_warning_enabled: effectiveSplitWarningEnabled,
         split_target_amount:
           effectiveSplitWarningEnabled &&
@@ -801,6 +819,8 @@ export default function EditEstimatePage() {
             />
 
             <div className="grid gap-5 md:grid-cols-3">
+              <TaxModeSelect value={taxMode} onChange={setTaxMode} />
+
               <InputField
                 label="Tax Label"
                 placeholder="Snohomish"
@@ -829,6 +849,20 @@ export default function EditEstimatePage() {
                 onChange={setTaxNumber}
               />
             </div>
+
+            {taxMode === "no_tax" ? (
+              <p className="rounded-2xl border border-zinc-700 bg-zinc-950/50 px-4 py-3 text-sm leading-6 text-zinc-400">
+                No tax selected. Trimax will calculate this estimate with a
+                $0.00 tax line.
+              </p>
+            ) : null}
+
+            {taxMode === "tax_exempt" ? (
+              <p className="rounded-2xl border border-zinc-700 bg-zinc-950/50 px-4 py-3 text-sm leading-6 text-zinc-400">
+                Tax exempt selected. Trimax will show Tax exempt with a $0.00
+                tax line.
+              </p>
+            ) : null}
 
             {showTaxSuggestionNote ? (
               <p className="rounded-2xl border border-orange-500/30 bg-orange-500/10 px-4 py-3 text-sm leading-6 text-orange-100/80">
@@ -1013,6 +1047,7 @@ export default function EditEstimatePage() {
                     label: taxLabel,
                     rate: taxRate,
                     taxNumber,
+                    taxMode,
                   })}
                   value={formatCurrency(taxAmount)}
                 />
