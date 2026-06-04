@@ -51,6 +51,12 @@ const rnlPaintTypeOptions = [
   "Reno Paint",
 ];
 
+const rnlWallPaintColorOptions = [
+  "Sherwin-Williams Roman Column (SW 7562)",
+  "Sherwin-Williams Nebulous White (SW 7063)",
+  "Confirm with manager",
+];
+
 const justKleenServiceOptions = [
   "Recurring Cleaning",
   "Deep Cleaning",
@@ -215,6 +221,7 @@ function NewRequestPageContent() {
   );
   const [unitsText, setUnitsText] = useState("");
   const [paintType, setPaintType] = useState("");
+  const [wallPaintColor, setWallPaintColor] = useState("");
   const [flooring, setFlooring] = useState("");
   const [priority, setPriority] = useState("Normal");
   const [smokedIn, setSmokedIn] = useState(false);
@@ -381,6 +388,7 @@ function NewRequestPageContent() {
             property,
             unit,
             paintType,
+            wallPaintColor: isJustKleen ? "" : wallPaintColor,
             flooring,
             priority,
             smokedIn,
@@ -555,6 +563,17 @@ function NewRequestPageContent() {
               onChange={setPaintType}
               options={paintTypeOptions}
             />
+
+            {!isJustKleen ? (
+              <InputField
+                label="Wall Paint Color"
+                placeholder="Example: Sherwin-Williams Roman Column (SW 7562)"
+                value={wallPaintColor}
+                onChange={setWallPaintColor}
+                options={rnlWallPaintColorOptions}
+                helperText="Use this for North Creek's current color transition so the requested wall color is clear before pricing or scheduling."
+              />
+            ) : null}
 
             <InputField
               label={isJustKleen ? "Scope / Area" : "Flooring"}

@@ -59,6 +59,7 @@ type QueueItem = {
   property: string | null;
   unit: string | null;
   paint_type: string | null;
+  wall_paint_color: string | null;
   flooring: string | null;
   move_out_date: string | null;
   ready_date: string | null;
@@ -546,6 +547,7 @@ function NewEstimatePageContent() {
       const descriptionParts = [
         unitLabel,
         loadedQueueItem.paint_type,
+        loadedQueueItem.wall_paint_color,
         loadedQueueItem.flooring,
       ].filter(Boolean);
       const matchingClient = findMatchingClient(
@@ -644,7 +646,16 @@ function NewEstimatePageContent() {
       );
       setProjectTitle(titleParts.join(" - "));
       setReference(loadedQueueItem.unit ?? "");
-      setNotes(loadedQueueItem.notes ?? "");
+      setNotes(
+        [
+          loadedQueueItem.wall_paint_color
+            ? `Wall paint color: ${loadedQueueItem.wall_paint_color}`
+            : null,
+          loadedQueueItem.notes,
+        ]
+          .filter(Boolean)
+          .join("\n")
+      );
       setLineItems(startingLineItems);
 
       if (matchingClient) {

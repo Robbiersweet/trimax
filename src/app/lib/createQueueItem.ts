@@ -5,6 +5,7 @@ type CreateQueueItemInput = {
   property: string;
   unit: string;
   paintType: string;
+  wallPaintColor: string;
   flooring: string;
   priority: string;
   smokedIn: boolean;
@@ -25,7 +26,7 @@ function normalizeDate(value: string) {
   return value.trim() || null;
 }
 
-function isMissingPrimerColumnError(error: unknown) {
+function isMissingQueueColumnError(error: unknown) {
   if (!error || typeof error !== "object") {
     return false;
   }
@@ -35,7 +36,10 @@ function isMissingPrimerColumnError(error: unknown) {
       ? error.message
       : "";
 
-  return message.includes("primer_requested");
+  return (
+    message.includes("primer_requested") ||
+    message.includes("wall_paint_color")
+  );
 }
 
 export async function createQueueItem(input: CreateQueueItemInput) {
@@ -47,6 +51,7 @@ export async function createQueueItem(input: CreateQueueItemInput) {
     property: input.property,
     unit: input.unit,
     paint_type: input.paintType,
+    wall_paint_color: input.wallPaintColor.trim() || null,
     flooring: input.flooring,
     priority: input.priority,
     smoked_in: input.smokedIn,
@@ -71,11 +76,12 @@ export async function createQueueItem(input: CreateQueueItemInput) {
     .select()
     .single();
 
-  if (error && isMissingPrimerColumnError(error)) {
+  if (error && isMissingQueueColumnError(error)) {
     const legacyQueueItemInsert: Record<string, unknown> = {
       ...queueItemInsert,
     };
     delete legacyQueueItemInsert.primer_requested;
+    delete legacyQueueItemInsert.wall_paint_color;
 
     const retry = await supabase
       .from("queue_items")
@@ -104,6 +110,7 @@ export async function createQueueItem(input: CreateQueueItemInput) {
       property: input.property,
       unit: input.unit,
       paintType: input.paintType,
+      wallPaintColor: input.wallPaintColor,
       flooring: input.flooring,
       smokedIn: input.smokedIn,
       primerRequested: input.primerRequested,

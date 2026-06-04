@@ -48,6 +48,12 @@ const paintTypeOptions = [
   "Reno Paint",
 ];
 
+const wallPaintColorOptions = [
+  "Sherwin-Williams Roman Column (SW 7562)",
+  "Sherwin-Williams Nebulous White (SW 7063)",
+  "Confirm with manager",
+];
+
 const flooringOptions = [
   "Keep Carpet & Keep Vinyl",
   "Keep Vinyl & Replace Carpet",
@@ -78,6 +84,7 @@ export default function EditQueueItemPage() {
   const [status, setStatus] = useState("");
   const [priority, setPriority] = useState("");
   const [paintType, setPaintType] = useState("");
+  const [wallPaintColor, setWallPaintColor] = useState("");
   const [flooring, setFlooring] = useState("");
   const [smokedIn, setSmokedIn] = useState(false);
   const [primerRequested, setPrimerRequested] = useState(true);
@@ -121,6 +128,7 @@ export default function EditQueueItemPage() {
       setStatus(data.status ?? "");
       setPriority(data.priority ?? "");
       setPaintType(data.paint_type ?? "");
+      setWallPaintColor(data.wall_paint_color ?? "");
       setFlooring(data.flooring ?? "");
       setSmokedIn(Boolean(data.smoked_in));
       setPrimerRequested(
@@ -149,6 +157,7 @@ export default function EditQueueItemPage() {
       status,
       priority,
       paint_type: paintType,
+      wall_paint_color: wallPaintColor.trim() || null,
       flooring,
       smoked_in: smokedIn,
       primer_requested: smokedIn && primerRequested,
@@ -170,11 +179,15 @@ export default function EditQueueItemPage() {
       .update(updatePayload)
       .eq("id", queueItemId);
 
-    if (error?.message?.includes("primer_requested")) {
+    if (
+      error?.message?.includes("primer_requested") ||
+      error?.message?.includes("wall_paint_color")
+    ) {
       const legacyUpdatePayload: Record<string, unknown> = {
         ...updatePayload,
       };
       delete legacyUpdatePayload.primer_requested;
+      delete legacyUpdatePayload.wall_paint_color;
 
       const retry = await supabase
         .from("queue_items")
@@ -267,6 +280,14 @@ export default function EditQueueItemPage() {
               value={paintType}
               onChange={setPaintType}
               options={paintTypeOptions}
+            />
+
+            <InputField
+              label="Wall Paint Color"
+              value={wallPaintColor}
+              onChange={setWallPaintColor}
+              options={wallPaintColorOptions}
+              helperText="Use this for North Creek's current color transition."
             />
 
             <InputField

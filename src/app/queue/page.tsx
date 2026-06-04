@@ -18,6 +18,7 @@ type QueueItemWithEstimate = {
   status: string | null;
   priority: string | null;
   paint_type: string | null;
+  wall_paint_color: string | null;
   flooring: string | null;
   move_out_date: string | null;
   ready_date: string | null;
@@ -335,6 +336,7 @@ export default async function QueuePage({
       item.status,
       item.priority,
       item.paint_type,
+      item.wall_paint_color,
       item.flooring,
       item.move_out_date,
       item.ready_date,
@@ -455,7 +457,7 @@ export default async function QueuePage({
               <input
                 name="q"
                 defaultValue={searchTerm}
-                placeholder="Search property, unit, paint, flooring, date, or notes"
+                placeholder="Search property, unit, paint color, flooring, date, or notes"
                 className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
               />
             </div>
@@ -694,6 +696,10 @@ export default async function QueuePage({
 
                       <div className="mt-5 grid gap-4 text-sm text-zinc-300 md:grid-cols-2">
                         <Info label="Paint Type" value={item.paint_type} />
+                        <Info
+                          label="Wall Color"
+                          value={item.wall_paint_color}
+                        />
                         <Info label="Flooring" value={item.flooring} />
                         <Info
                           label="Renovation"
