@@ -416,8 +416,8 @@ export default async function PaymentsPage({
 
             <p className="mt-4 text-sm leading-6 text-amber-100/90">
               If you are on the login page, sign in again first. If you are
-              already signed in and this stays here, the next step is tightening
-              the invoice and activity access settings.
+              already signed in and this stays here, the invoice or activity
+              access rules may need review.
             </p>
           </Card>
         ) : null}

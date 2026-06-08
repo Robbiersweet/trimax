@@ -350,13 +350,34 @@ export async function GET(
 ) {
   const { id } = await params;
   const url = new URL(request.url);
-  const businessSlug = url.searchParams.get("business") || "";
+  const businessSlug =
+    url.searchParams.get("business") || "rnl-creations";
+
+  const { data: businessData } = await supabase
+    .from("businesses")
+    .select("id, slug")
+    .eq("slug", businessSlug)
+    .limit(1)
+    .maybeSingle();
+
+  const business = businessData as Business | null;
+
+  if (!business || business.slug !== "just-kleen") {
+    return new Response(
+      "This export is only available in the Just Kleen workspace.",
+      {
+        status: 404,
+      }
+    );
+  }
 
   const { data: invoiceData, error } = await supabase
     .from("invoices")
     .select("*")
     .eq("id", id)
-    .single();
+    .eq("business_id", business.id)
+    .limit(1)
+    .maybeSingle();
 
   if (error || !invoiceData) {
     return new Response("Invoice not found.", {
@@ -366,31 +387,19 @@ export async function GET(
 
   const invoice = invoiceData as Invoice;
 
-  const { data: businessData } = invoice.business_id
-    ? await supabase
-        .from("businesses")
-        .select("id, slug")
-        .eq("id", invoice.business_id)
-        .single()
-    : { data: null };
-
-  const business = businessData as Business | null;
-
   const { data: lineItemData } = await supabase
     .from("invoice_line_items")
     .select("*")
     .eq("invoice_id", invoice.id)
+    .eq("business_id", business.id)
     .order("sort_order", {
       ascending: true,
     });
 
   const lineItems =
     (lineItemData ?? []) as InvoiceLineItem[];
-  const isJustKleen =
-    business?.slug === "just-kleen" ||
-    businessSlug === "just-kleen";
 
-  if (!isJustKleen || !looksLikeFiveStarsBoaInvoice(invoice, lineItems)) {
+  if (!looksLikeFiveStarsBoaInvoice(invoice, lineItems)) {
     return new Response("This export is only available for Just Kleen 5Stars BOA invoices.", {
       status: 404,
     });
