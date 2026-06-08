@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import type { Metadata } from "next";
 import PrintToolbar from "../../../components/PrintToolbar";
 import { supabase } from "../../../lib/supabase";
 import {
@@ -58,6 +59,24 @@ type Client = {
   phone: string | null;
   billing_address: string | null;
 };
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const { data } = await supabase
+    .from("invoices")
+    .select("display_id")
+    .eq("id", id)
+    .maybeSingle();
+  const displayId = data?.display_id || "Invoice";
+
+  return {
+    title: displayId,
+  };
+}
 
 function toNumber(value: number | string | null | undefined) {
   if (typeof value === "number") {
@@ -137,6 +156,7 @@ export default async function InvoicePrintPage({
   }
 
   const invoice = data as Invoice;
+  const suggestedFileName = invoice.display_id || "Invoice";
 
   const { data: businessData } = invoice.business_id
     ? await supabase
@@ -253,6 +273,7 @@ export default async function InvoicePrintPage({
         invoice={invoice}
         lineItems={lineItems}
         issueDate={printIssueDate}
+        suggestedFileName={suggestedFileName}
         businessSlug={businessSlug}
         backHref={`/invoices/${invoice.id}?business=${businessSlug}`}
         standardTemplateHref={standardTemplateHref}
@@ -276,6 +297,7 @@ export default async function InvoicePrintPage({
             ? "Use 5Stars BOA Format"
             : undefined
         }
+        suggestedFileName={suggestedFileName}
       />
 
       <div className="standard-invoice-print mx-auto max-w-5xl bg-white print:max-w-none print:px-4 print:py-3">
@@ -607,6 +629,7 @@ function FiveStarsBoaPrintPage({
   invoice,
   lineItems,
   issueDate,
+  suggestedFileName,
   businessSlug,
   backHref,
   standardTemplateHref,
@@ -615,6 +638,7 @@ function FiveStarsBoaPrintPage({
   invoice: Invoice;
   lineItems: InvoiceLineItem[];
   issueDate: string | null;
+  suggestedFileName: string;
   businessSlug: string;
   backHref: string;
   standardTemplateHref: string;
@@ -642,6 +666,7 @@ function FiveStarsBoaPrintPage({
         alternateLabel="Use Standard Format"
         downloadHref={excelHref}
         downloadLabel="Download Excel"
+        suggestedFileName={suggestedFileName}
       />
 
       <div className="mx-auto w-[760px] bg-white print:mx-0 print:w-[7.4in] print:p-0">

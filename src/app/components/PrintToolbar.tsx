@@ -9,6 +9,7 @@ type PrintToolbarProps = {
   alternateLabel?: string;
   downloadHref?: string;
   downloadLabel?: string;
+  suggestedFileName?: string;
 };
 
 export default function PrintToolbar({
@@ -18,7 +19,16 @@ export default function PrintToolbar({
   alternateLabel,
   downloadHref,
   downloadLabel,
+  suggestedFileName,
 }: PrintToolbarProps) {
+  function handlePrint() {
+    if (suggestedFileName) {
+      document.title = suggestedFileName;
+    }
+
+    window.print();
+  }
+
   return (
     <div className="sticky top-0 z-10 border-b border-zinc-200 bg-white/95 px-6 py-4 text-black shadow-sm print:hidden">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3">
@@ -50,7 +60,7 @@ export default function PrintToolbar({
 
           <button
             type="button"
-            onClick={() => window.print()}
+            onClick={handlePrint}
             className="rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold text-black hover:bg-orange-400"
           >
             Print / Save PDF
