@@ -24,8 +24,8 @@ export default function InvoiceErrorPage({
         </h1>
         <p className="mt-3 leading-7 text-red-50/80">
           Trimax hit a page error while opening this invoice. Try reloading it
-          once. If it still fails, go back to invoices and open another record
-          while I inspect the broken invoice data.
+          once. If it still fails, go back to invoices and try opening another
+          record. The invoice list should still be available.
         </p>
 
         <div className="mt-6 flex flex-wrap gap-3">

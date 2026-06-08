@@ -141,42 +141,62 @@ function readyStatus(item: SupabaseQueueItem) {
 
 export default async function QueueDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ unit: string }>;
+  searchParams?: Promise<{ business?: string }>;
 }) {
   const { unit } = await params;
+  const resolvedSearchParams = searchParams
+    ? await searchParams
+    : {};
+  const requestedBusinessSlug =
+    resolvedSearchParams.business ?? "rnl-creations";
+
+  const { data: selectedBusinessData } = await supabase
+    .from("businesses")
+    .select("id, name, slug")
+    .eq("slug", requestedBusinessSlug)
+    .limit(1)
+    .maybeSingle();
+
+  const selectedBusiness =
+    selectedBusinessData as Business | null;
+
+  if (!selectedBusiness) {
+    return (
+      <AppShell>
+        <Card>
+          <p className="text-red-400">
+            Selected business was not found.
+          </p>
+        </Card>
+      </AppShell>
+    );
+  }
 
   const { data, error } = await supabase
     .from("queue_items")
     .select("*")
     .eq("id", unit)
-    .single();
+    .eq("business_id", selectedBusiness.id)
+    .limit(1)
+    .maybeSingle();
 
   if (error || !data) {
     return (
       <AppShell>
-        <p className="text-red-400">Queue item not found.</p>
+        <Card>
+          <p className="text-red-400">
+            Queue item not found for this workspace.
+          </p>
+        </Card>
       </AppShell>
     );
   }
 
   const item = data as SupabaseQueueItem;
-
-  let businessSlug = "rnl-creations";
-
-  if (item.business_id) {
-    const { data: businessData } = await supabase
-      .from("businesses")
-      .select("id, name, slug")
-      .eq("id", item.business_id)
-      .single();
-
-    const business = businessData as Business | null;
-
-    if (business?.slug) {
-      businessSlug = business.slug;
-    }
-  }
+  const businessSlug = selectedBusiness.slug;
 
   let linkedEstimate: LinkedEstimate | null = null;
 
@@ -185,7 +205,9 @@ export default async function QueueDetailPage({
       .from("estimates")
       .select("id, display_id, project_title, status")
       .eq("id", item.linked_estimate_id)
-      .single();
+      .eq("business_id", selectedBusiness.id)
+      .limit(1)
+      .maybeSingle();
 
     linkedEstimate = estimateData as LinkedEstimate | null;
   }

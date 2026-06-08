@@ -141,11 +141,30 @@ export default async function InvoicePrintPage({
   const requestedTemplate =
     resolvedSearchParams.template ?? "";
 
+  const { data: selectedBusinessData } = await supabase
+    .from("businesses")
+    .select("id, name, slug")
+    .eq("slug", businessSlug)
+    .limit(1)
+    .maybeSingle();
+
+  const business = selectedBusinessData as Business | null;
+
+  if (!business) {
+    return (
+      <main className="min-h-screen bg-white p-10 text-black">
+        <p>Selected business was not found.</p>
+      </main>
+    );
+  }
+
   const { data, error } = await supabase
     .from("invoices")
     .select("*")
     .eq("id", id)
-    .single();
+    .eq("business_id", business.id)
+    .limit(1)
+    .maybeSingle();
 
   if (error || !data) {
     return (
@@ -158,21 +177,12 @@ export default async function InvoicePrintPage({
   const invoice = data as Invoice;
   const suggestedFileName = invoice.display_id || "Invoice";
 
-  const { data: businessData } = invoice.business_id
-    ? await supabase
-        .from("businesses")
-        .select("id, name, slug")
-        .eq("id", invoice.business_id)
-        .single()
-    : { data: null };
-
-  const business = businessData as Business | null;
-
   const { data: clientData } = invoice.client_id
     ? await supabase
         .from("clients")
         .select("*")
         .eq("id", invoice.client_id)
+        .eq("business_id", business.id)
         .single()
     : { data: null };
 

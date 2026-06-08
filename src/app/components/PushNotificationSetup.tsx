@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Button from "./Button";
 import { supabase } from "../lib/supabase";
 
@@ -30,6 +30,38 @@ export default function PushNotificationSetup({
   const [isSaving, setIsSaving] = useState(false);
   const [isEnabled, setIsEnabled] = useState(false);
   const [supportMessage, setSupportMessage] = useState("");
+
+  const saveSubscription = useCallback(
+    async (subscription: PushSubscription) => {
+      if (!businessId) {
+        return "Workspace is still loading. Try again in a moment.";
+      }
+
+      const subscriptionJson = subscription.toJSON();
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      const { error } = await supabase.from("push_subscriptions").upsert(
+        {
+          business_id: businessId,
+          user_id: user?.id ?? null,
+          user_email: user?.email ?? null,
+          business_slug: businessSlug,
+          endpoint: subscription.endpoint,
+          p256dh: subscriptionJson.keys?.p256dh ?? "",
+          auth: subscriptionJson.keys?.auth ?? "",
+          user_agent: navigator.userAgent,
+          status: "active",
+        },
+        { onConflict: "endpoint" }
+      );
+
+      return error?.message ?? "";
+    },
+    [businessId, businessSlug]
+  );
 
   useEffect(() => {
     async function checkCurrentStatus() {
@@ -61,8 +93,14 @@ export default function PushNotificationSetup({
         const subscription = await registration.pushManager.getSubscription();
 
         if (Notification.permission === "granted" && subscription) {
+          const saveError = await saveSubscription(subscription);
+
           setIsEnabled(true);
-          setMessage("Notifications are enabled on this device.");
+          setMessage(
+            saveError
+              ? `Notifications are allowed, but Trimax could not refresh this device record yet: ${saveError}`
+              : "Notifications are enabled on this device."
+          );
         }
       } catch {
         setSupportMessage("Notification status could not be checked yet.");
@@ -70,7 +108,7 @@ export default function PushNotificationSetup({
     }
 
     checkCurrentStatus();
-  }, []);
+  }, [saveSubscription]);
 
   async function enableNotifications() {
     setMessage("");
@@ -114,29 +152,10 @@ export default function PushNotificationSetup({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(publicKey),
       });
-      const subscriptionJson = subscription.toJSON();
+      const saveError = await saveSubscription(subscription);
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      const { error } = await supabase.from("push_subscriptions").upsert(
-        {
-          business_id: businessId,
-          user_id: user?.id ?? null,
-          user_email: user?.email ?? null,
-          business_slug: businessSlug,
-          endpoint: subscription.endpoint,
-          p256dh: subscriptionJson.keys?.p256dh ?? "",
-          auth: subscriptionJson.keys?.auth ?? "",
-          user_agent: navigator.userAgent,
-          status: "active",
-        },
-        { onConflict: "endpoint" }
-      );
-
-      if (error) {
-        setMessage(error.message);
+      if (saveError) {
+        setMessage(saveError);
         return;
       }
 

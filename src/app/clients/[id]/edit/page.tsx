@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import {
+  useParams,
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
 import AppShell from "../../../components/AppShell";
 import Card from "../../../components/Card";
 import Button from "../../../components/Button";
@@ -29,11 +33,13 @@ type Business = {
 export default function EditClientPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const clientId = params.id as string;
 
   const [businessSlug, setBusinessSlug] =
-    useState("rnl-creations");
+    useState(searchParams.get("business") ?? "rnl-creations");
+  const [businessId, setBusinessId] = useState("");
 
   const [name, setName] = useState("");
   const [contactName, setContactName] =
@@ -56,18 +62,45 @@ export default function EditClientPage() {
 
   useEffect(() => {
     async function loadClient() {
+      const requestedBusinessSlug =
+        searchParams.get("business") ?? "rnl-creations";
+
+      const { data: businessData, error: businessError } = await supabase
+        .from("businesses")
+        .select("id, slug")
+        .eq("slug", requestedBusinessSlug)
+        .limit(1)
+        .maybeSingle();
+
+      const business =
+        businessData as Business | null;
+
+      if (businessError || !business) {
+        setToast({
+          type: "error",
+          message: "Selected business was not found.",
+        });
+        setLoading(false);
+        return;
+      }
+
+      setBusinessId(business.id);
+      setBusinessSlug(business.slug);
+
       const { data, error } = await supabase
         .from("clients")
         .select("*")
         .eq("id", clientId)
-        .single();
+        .eq("business_id", business.id)
+        .limit(1)
+        .maybeSingle();
 
       if (error || !data) {
         console.error(error);
 
         setToast({
           type: "error",
-          message: "Unable to load client.",
+          message: "Unable to load client for this workspace.",
         });
 
         setLoading(false);
@@ -84,26 +117,11 @@ export default function EditClientPage() {
       setServiceAddress(client.service_address ?? "");
       setNotes(client.notes ?? "");
 
-      if (client.business_id) {
-        const { data: businessData } = await supabase
-          .from("businesses")
-          .select("id, slug")
-          .eq("id", client.business_id)
-          .single();
-
-        const business =
-          businessData as Business | null;
-
-        if (business?.slug) {
-          setBusinessSlug(business.slug);
-        }
-      }
-
       setLoading(false);
     }
 
     loadClient();
-  }, [clientId]);
+  }, [clientId, searchParams]);
 
   async function handleSave() {
     setToast(null);
@@ -113,6 +131,16 @@ export default function EditClientPage() {
       setToast({
         type: "error",
         message: "Client name is required.",
+      });
+
+      setSaving(false);
+      return;
+    }
+
+    if (!businessId) {
+      setToast({
+        type: "error",
+        message: "Workspace is still loading. Try again in a moment.",
       });
 
       setSaving(false);
@@ -131,7 +159,8 @@ export default function EditClientPage() {
           serviceAddress || billingAddress,
         notes,
       })
-      .eq("id", clientId);
+      .eq("id", clientId)
+      .eq("business_id", businessId);
 
     setSaving(false);
 

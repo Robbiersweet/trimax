@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import {
+  useParams,
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
 import AppShell from "../../../components/AppShell";
 import Card from "../../../components/Card";
 import Button from "../../../components/Button";
@@ -116,12 +120,15 @@ function toLineItem(item: SavedLineItem): LineItem {
 export default function EditEstimatePage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const estimateId = params.id as string;
+  const requestedBusinessSlug =
+    searchParams.get("business") ?? "rnl-creations";
 
   const [businessId, setBusinessId] = useState("");
   const [businessSlug, setBusinessSlug] =
-    useState("rnl-creations");
+    useState(requestedBusinessSlug);
 
   const [clients, setClients] = useState<Client[]>([]);
   const [serviceItems, setServiceItems] =
@@ -230,10 +237,38 @@ export default function EditEstimatePage() {
 
   useEffect(() => {
     async function loadEstimate() {
+      const { data: selectedBusinessData, error: selectedBusinessError } =
+        await supabase
+          .from("businesses")
+          .select("id, slug, split_warning_amount")
+          .eq("slug", requestedBusinessSlug)
+          .limit(1)
+          .maybeSingle();
+
+      const selectedBusiness =
+        selectedBusinessData as Business | null;
+
+      if (selectedBusinessError || !selectedBusiness) {
+        setToast({
+          type: "error",
+          message: "Selected business was not found.",
+        });
+
+        setLoading(false);
+        return;
+      }
+
+      setBusinessId(selectedBusiness.id);
+      setBusinessSlug(selectedBusiness.slug);
+      setSplitWarningAmount(
+        toNumber(selectedBusiness.split_warning_amount ?? null)
+      );
+
       const { data, error } = await supabase
         .from("estimates")
         .select("*")
         .eq("id", estimateId)
+        .eq("business_id", selectedBusiness.id)
         .limit(1);
 
       const estimate =
@@ -244,7 +279,7 @@ export default function EditEstimatePage() {
 
         setToast({
           type: "error",
-          message: "Unable to load estimate.",
+          message: "Unable to load estimate for this workspace.",
         });
 
         setLoading(false);
@@ -256,11 +291,12 @@ export default function EditEstimatePage() {
           .from("invoices")
           .select("id")
           .eq("estimate_id", estimateId)
+          .eq("business_id", selectedBusiness.id)
           .limit(1);
 
       if (invoiceData && invoiceData.length > 0) {
         router.push(
-          `/estimates/${estimateId}?business=${businessSlug}`
+          `/estimates/${estimateId}?business=${selectedBusiness.slug}`
         );
         return;
       }
@@ -329,55 +365,33 @@ export default function EditEstimatePage() {
       setNotes(estimate.notes ?? "");
       setSelectedClientId(estimate.client_id ?? "");
 
-      if (estimate.business_id) {
-        setBusinessId(estimate.business_id);
+      const { data: clientRows } =
+        await supabase
+          .from("clients")
+          .select("*")
+          .eq("business_id", selectedBusiness.id)
+          .order("name", {
+            ascending: true,
+          });
 
-        const { data: businessRows } =
-          await supabase
-            .from("businesses")
-            .select("id, slug, split_warning_amount")
-            .eq("id", estimate.business_id)
-            .limit(1);
+      setClients((clientRows ?? []) as Client[]);
 
-        const business =
-          businessRows?.[0] as Business | undefined;
+      const { data: serviceData } =
+        await supabase
+          .from("service_items")
+          .select("*")
+          .eq("business_id", selectedBusiness.id)
+          .eq("is_active", true)
+          .order("category", {
+            ascending: true,
+          })
+          .order("name", {
+            ascending: true,
+          });
 
-        if (business?.slug) {
-          setBusinessSlug(business.slug);
-        }
-
-        setSplitWarningAmount(
-          toNumber(business?.split_warning_amount ?? null)
-        );
-
-        const { data: clientRows } =
-          await supabase
-            .from("clients")
-            .select("*")
-            .eq("business_id", estimate.business_id)
-            .order("name", {
-              ascending: true,
-            });
-
-        setClients((clientRows ?? []) as Client[]);
-
-        const { data: serviceData } =
-          await supabase
-            .from("service_items")
-            .select("*")
-            .eq("business_id", estimate.business_id)
-            .eq("is_active", true)
-            .order("category", {
-              ascending: true,
-            })
-            .order("name", {
-              ascending: true,
-            });
-
-        setServiceItems(
-          (serviceData ?? []) as ServiceItem[]
-        );
-      }
+      setServiceItems(
+        (serviceData ?? []) as ServiceItem[]
+      );
 
       const { data: lineItemData } =
         await supabase
@@ -411,7 +425,7 @@ export default function EditEstimatePage() {
     }
 
     loadEstimate();
-  }, [estimateId, router, businessSlug]);
+  }, [estimateId, router, requestedBusinessSlug]);
 
   function applyTaxSuggestion(address: string) {
     if (taxManuallyChanged) {
@@ -562,11 +576,22 @@ export default function EditEstimatePage() {
       return;
     }
 
+    if (!businessId) {
+      setToast({
+        type: "error",
+        message: "Workspace is still loading. Try again in a moment.",
+      });
+
+      setSaving(false);
+      return;
+    }
+
     const { data: invoiceData } =
       await supabase
         .from("invoices")
         .select("id")
         .eq("estimate_id", estimateId)
+        .eq("business_id", businessId)
         .limit(1);
 
     if (invoiceData && invoiceData.length > 0) {
@@ -586,7 +611,7 @@ export default function EditEstimatePage() {
 
     let finalClientId = selectedClientId || null;
 
-    if (!selectedClientId && businessId) {
+    if (!selectedClientId) {
       const {
         data: newClient,
         error: clientError,
@@ -643,7 +668,8 @@ export default function EditEstimatePage() {
         terms,
         notes,
       })
-      .eq("id", estimateId);
+      .eq("id", estimateId)
+      .eq("business_id", businessId);
 
     if (error) {
       console.error(error);
@@ -661,7 +687,8 @@ export default function EditEstimatePage() {
       await supabase
         .from("estimate_line_items")
         .delete()
-        .eq("estimate_id", estimateId);
+        .eq("estimate_id", estimateId)
+        .eq("business_id", businessId);
 
     if (deleteError) {
       console.error(deleteError);
@@ -682,7 +709,7 @@ export default function EditEstimatePage() {
         .insert(
           validLineItems.map((item, index) => ({
             estimate_id: estimateId,
-            business_id: businessId || null,
+            business_id: businessId,
             description: item.description.trim(),
             quantity: Number(item.quantity) || 0,
             unit_price: Number(item.unitPrice) || 0,

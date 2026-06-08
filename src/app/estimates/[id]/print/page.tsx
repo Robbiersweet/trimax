@@ -91,11 +91,30 @@ export default async function EstimatePrintPage({
   const requestedBusinessSlug =
     resolvedSearchParams.business ?? "rnl-creations";
 
+  const { data: selectedBusinessData } = await supabase
+    .from("businesses")
+    .select("id, name, slug")
+    .eq("slug", requestedBusinessSlug)
+    .limit(1)
+    .maybeSingle();
+
+  const business = selectedBusinessData as Business | null;
+
+  if (!business) {
+    return (
+      <main className="min-h-screen bg-white p-10 text-black">
+        <p>Selected business was not found.</p>
+      </main>
+    );
+  }
+
   const { data, error } = await supabase
     .from("estimates")
     .select("*")
     .eq("id", id)
-    .single();
+    .eq("business_id", business.id)
+    .limit(1)
+    .maybeSingle();
 
   if (error || !data) {
     return (
@@ -106,16 +125,6 @@ export default async function EstimatePrintPage({
   }
 
   const estimate = data as Estimate;
-
-  const { data: businessData } = estimate.business_id
-    ? await supabase
-        .from("businesses")
-        .select("id, name, slug")
-        .eq("id", estimate.business_id)
-        .single()
-    : { data: null };
-
-  const business = businessData as Business | null;
   const businessSlug =
     business?.slug || requestedBusinessSlug;
 
@@ -124,6 +133,7 @@ export default async function EstimatePrintPage({
         .from("clients")
         .select("*")
         .eq("id", estimate.client_id)
+        .eq("business_id", business.id)
         .single()
     : { data: null };
 

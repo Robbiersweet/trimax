@@ -79,6 +79,7 @@ export default function EditQueueItemPage() {
       ? justKleenClientOptions
       : rnlPropertyOptions;
 
+  const [businessId, setBusinessId] = useState("");
   const [property, setProperty] = useState("");
   const [unit, setUnit] = useState("");
   const [status, setStatus] = useState("");
@@ -109,16 +110,35 @@ export default function EditQueueItemPage() {
 
   useEffect(() => {
     async function loadQueueItem() {
+      const { data: businessData, error: businessError } = await supabase
+        .from("businesses")
+        .select("id")
+        .eq("slug", businessSlug)
+        .limit(1)
+        .maybeSingle();
+
+      if (businessError || !businessData) {
+        setToast({
+          type: "error",
+          message: "Selected business was not found.",
+        });
+        return;
+      }
+
+      setBusinessId(businessData.id);
+
       const { data, error } = await supabase
         .from("queue_items")
         .select("*")
         .eq("id", queueItemId)
-        .single();
+        .eq("business_id", businessData.id)
+        .limit(1)
+        .maybeSingle();
 
       if (error || !data) {
         setToast({
           type: "error",
-          message: "Unable to load queue item.",
+          message: "Unable to load queue item for this workspace.",
         });
         return;
       }
@@ -146,10 +166,18 @@ export default function EditQueueItemPage() {
     }
 
     loadQueueItem();
-  }, [queueItemId]);
+  }, [businessSlug, queueItemId]);
 
   const handleSave = async () => {
     setToast(null);
+
+    if (!businessId) {
+      setToast({
+        type: "error",
+        message: "Workspace is still loading. Try again in a moment.",
+      });
+      return;
+    }
 
     const updatePayload = {
       property,
@@ -177,7 +205,8 @@ export default function EditQueueItemPage() {
     let { error } = await supabase
       .from("queue_items")
       .update(updatePayload)
-      .eq("id", queueItemId);
+      .eq("id", queueItemId)
+      .eq("business_id", businessId);
 
     if (
       error?.message?.includes("primer_requested") ||
@@ -192,7 +221,8 @@ export default function EditQueueItemPage() {
       const retry = await supabase
         .from("queue_items")
         .update(legacyUpdatePayload)
-        .eq("id", queueItemId);
+        .eq("id", queueItemId)
+        .eq("business_id", businessId);
 
       error = retry.error;
     }

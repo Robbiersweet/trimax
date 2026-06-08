@@ -82,48 +82,65 @@ function formatCurrency(amount: number) {
 
 export default async function EstimateDetailsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ business?: string }>;
 }) {
   const { id } = await params;
+  const resolvedSearchParams = searchParams
+    ? await searchParams
+    : {};
+  const requestedBusinessSlug =
+    resolvedSearchParams.business ?? "rnl-creations";
+
+  const { data: selectedBusinessData } = await supabase
+    .from("businesses")
+    .select("id, slug, split_warning_amount")
+    .eq("slug", requestedBusinessSlug)
+    .limit(1)
+    .maybeSingle();
+
+  const selectedBusiness =
+    selectedBusinessData as Business | null;
+
+  if (!selectedBusiness) {
+    return (
+      <AppShell>
+        <Card>
+          <p className="text-red-400">
+            Selected business was not found.
+          </p>
+        </Card>
+      </AppShell>
+    );
+  }
 
   const { data, error } = await supabase
     .from("estimates")
     .select("*")
     .eq("id", id)
-    .single();
+    .eq("business_id", selectedBusiness.id)
+    .limit(1)
+    .maybeSingle();
 
   if (error || !data) {
     return (
       <AppShell>
-        <p className="text-red-400">
-          Estimate not found.
-        </p>
+        <Card>
+          <p className="text-red-400">
+            Estimate not found for this workspace.
+          </p>
+        </Card>
       </AppShell>
     );
   }
 
   const estimate = data as SupabaseEstimate;
-
-  let businessSlug = "rnl-creations";
-  let splitWarningAmount = 0;
-
-  if (estimate.business_id) {
-    const { data: businessData } = await supabase
-      .from("businesses")
-      .select("id, slug, split_warning_amount")
-      .eq("id", estimate.business_id)
-      .single();
-
-    const business = businessData as Business | null;
-
-    if (business?.slug) {
-      businessSlug = business.slug;
-    }
-
-    splitWarningAmount =
-      toNumber(business?.split_warning_amount ?? null);
-  }
+  const businessSlug = selectedBusiness.slug;
+  const splitWarningAmount = toNumber(
+    selectedBusiness.split_warning_amount ?? null
+  );
 
   const { data: lineItemData } = await supabase
     .from("estimate_line_items")
@@ -180,6 +197,7 @@ export default async function EstimateDetailsPage({
     .from("invoices")
     .select("id, display_id, status")
     .eq("estimate_id", estimate.id)
+    .eq("business_id", selectedBusiness.id)
     .limit(1);
 
   const linkedInvoice = ((invoiceData ?? []) as LinkedInvoice[])[0] ?? null;

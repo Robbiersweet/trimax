@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import {
+  useParams,
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
 import AppShell from "../../../components/AppShell";
 import Card from "../../../components/Card";
 import Button from "../../../components/Button";
@@ -108,12 +112,15 @@ function toLineItem(item: SavedLineItem): LineItem {
 export default function EditInvoicePage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const invoiceId = params.id as string;
+  const requestedBusinessSlug =
+    searchParams.get("business") ?? "rnl-creations";
 
   const [businessId, setBusinessId] = useState("");
   const [businessSlug, setBusinessSlug] =
-    useState("rnl-creations");
+    useState(requestedBusinessSlug);
   const [serviceItems, setServiceItems] =
     useState<ServiceItem[]>([]);
 
@@ -224,18 +231,47 @@ export default function EditInvoicePage() {
 
   useEffect(() => {
     async function loadInvoice() {
+      const { data: selectedBusinessData, error: selectedBusinessError } =
+        await supabase
+          .from("businesses")
+          .select("id, slug, split_warning_amount")
+          .eq("slug", requestedBusinessSlug)
+          .limit(1)
+          .maybeSingle();
+
+      const selectedBusiness =
+        selectedBusinessData as Business | null;
+
+      if (selectedBusinessError || !selectedBusiness) {
+        setToast({
+          type: "error",
+          message: "Selected business was not found.",
+        });
+
+        setLoading(false);
+        return;
+      }
+
+      setBusinessId(selectedBusiness.id);
+      setBusinessSlug(selectedBusiness.slug);
+      setSplitWarningAmount(
+        toNumber(selectedBusiness.split_warning_amount ?? null)
+      );
+
       const { data, error } = await supabase
         .from("invoices")
         .select("*")
         .eq("id", invoiceId)
-        .single();
+        .eq("business_id", selectedBusiness.id)
+        .limit(1)
+        .maybeSingle();
 
       if (error || !data) {
         console.error(error);
 
         setToast({
           type: "error",
-          message: "Unable to load invoice.",
+          message: "Unable to load invoice for this workspace.",
         });
 
         setLoading(false);
@@ -301,44 +337,22 @@ export default function EditInvoicePage() {
       );
       setNotes(invoice.notes ?? "");
 
-      if (invoice.business_id) {
-        setBusinessId(invoice.business_id);
+      const { data: serviceData } =
+        await supabase
+          .from("service_items")
+          .select("*")
+          .eq("business_id", selectedBusiness.id)
+          .eq("is_active", true)
+          .order("category", {
+            ascending: true,
+          })
+          .order("name", {
+            ascending: true,
+          });
 
-        const { data: businessData } =
-          await supabase
-            .from("businesses")
-            .select("id, slug, split_warning_amount")
-            .eq("id", invoice.business_id)
-            .single();
-
-        const business =
-          businessData as Business | null;
-
-        if (business?.slug) {
-          setBusinessSlug(business.slug);
-        }
-
-        setSplitWarningAmount(
-          toNumber(business?.split_warning_amount ?? null)
-        );
-
-        const { data: serviceData } =
-          await supabase
-            .from("service_items")
-            .select("*")
-            .eq("business_id", invoice.business_id)
-            .eq("is_active", true)
-            .order("category", {
-              ascending: true,
-            })
-            .order("name", {
-              ascending: true,
-            });
-
-        setServiceItems(
-          (serviceData ?? []) as ServiceItem[]
-        );
-      }
+      setServiceItems(
+        (serviceData ?? []) as ServiceItem[]
+      );
 
       const { data: lineItemData } =
         await supabase
@@ -421,7 +435,7 @@ export default function EditInvoicePage() {
     }
 
     loadInvoice();
-  }, [invoiceId]);
+  }, [invoiceId, requestedBusinessSlug]);
 
   function applyTaxSuggestion(address: string) {
     if (taxManuallyChanged) {
@@ -567,6 +581,16 @@ export default function EditInvoicePage() {
       return;
     }
 
+    if (!businessId) {
+      setToast({
+        type: "error",
+        message: "Workspace is still loading. Try again in a moment.",
+      });
+
+      setSaving(false);
+      return;
+    }
+
     const { error } = await supabase
       .from("invoices")
       .update({
@@ -592,7 +616,8 @@ export default function EditInvoicePage() {
         terms,
         notes,
       })
-      .eq("id", invoiceId);
+      .eq("id", invoiceId)
+      .eq("business_id", businessId);
 
     if (error) {
       console.error(error);
@@ -610,7 +635,8 @@ export default function EditInvoicePage() {
       await supabase
         .from("invoice_line_items")
         .delete()
-        .eq("invoice_id", invoiceId);
+        .eq("invoice_id", invoiceId)
+        .eq("business_id", businessId);
 
     if (deleteError) {
       console.error(deleteError);
@@ -631,7 +657,7 @@ export default function EditInvoicePage() {
         .insert(
           validLineItems.map((item, index) => ({
             invoice_id: invoiceId,
-            business_id: businessId || null,
+            business_id: businessId,
             description: item.description.trim(),
             quantity: Number(item.quantity) || 0,
             unit_price: Number(item.unitPrice) || 0,
