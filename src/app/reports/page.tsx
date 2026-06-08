@@ -47,6 +47,7 @@ type Invoice = {
   invoice_amount: string | number | null;
   status: string | null;
   created_at: string | null;
+  split_parent_invoice_id: string | null;
 };
 
 type ReportRange = "week" | "month" | "all" | "custom";
@@ -326,7 +327,9 @@ export default async function ReportsPage({
 
         supabase
           .from("invoices")
-          .select("id, customer_name, invoice_amount, status, created_at")
+          .select(
+            "id, customer_name, invoice_amount, status, created_at, split_parent_invoice_id"
+          )
           .eq("business_id", selectedBusiness.id)
           .order("created_at", { ascending: false }),
       ]);
@@ -365,10 +368,6 @@ export default async function ReportsPage({
     estimates = (estimateResponse.data ?? []) as Estimate[];
     invoices = (invoiceResponse.data ?? []) as Invoice[];
   }
-
-  queueItems = queueItems.filter((item) =>
-    includesProperty(item, propertyFilter)
-  );
 
   const properties = Array.from(
     new Set(
@@ -508,7 +507,16 @@ export default async function ReportsPage({
     isInRange(estimate.created_at, range, customStartDate, customEndDate)
   );
 
-  const filteredInvoices = invoices.filter((invoice) =>
+  const splitParentInvoiceIds = new Set(
+    invoices
+      .map((invoice) => invoice.split_parent_invoice_id)
+      .filter((id): id is string => Boolean(id))
+  );
+  const billableInvoices = invoices.filter(
+    (invoice) => !splitParentInvoiceIds.has(invoice.id)
+  );
+
+  const filteredInvoices = billableInvoices.filter((invoice) =>
     isInRange(invoice.created_at, range, customStartDate, customEndDate)
   );
 
@@ -612,7 +620,7 @@ export default async function ReportsPage({
                       to: customEndDate,
                     })}
                     className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                      propertyFilter === property.toLowerCase()
+                      propertyFilter === propertyKey(property)
                         ? "bg-orange-500 text-black"
                         : "bg-zinc-950 text-zinc-300 hover:bg-zinc-800"
                     }`}

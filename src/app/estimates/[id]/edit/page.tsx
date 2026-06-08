@@ -10,6 +10,7 @@ import TaxModeSelect from "../../../components/TaxModeSelect";
 import Toast from "../../../components/Toast";
 import { captureServicesFromLineItems } from "../../../lib/captureServicesFromLineItems";
 import { logActivity } from "../../../lib/activityLog";
+import { buildSplitInvoicePlan } from "../../../lib/splitInvoices";
 import { supabase } from "../../../lib/supabase";
 import { looksLikeApartmentUnitPaintJob } from "../../../utils/jobWorkflow";
 import {
@@ -112,19 +113,6 @@ function toLineItem(item: SavedLineItem): LineItem {
   };
 }
 
-function getSplitPreview(totalAmount: number, targetAmount: number) {
-  if (totalAmount <= targetAmount || targetAmount <= 0) {
-    return null;
-  }
-
-  const invoiceCount = Math.ceil(totalAmount / targetAmount);
-
-  return {
-    invoiceCount,
-    averageAmount: totalAmount / invoiceCount,
-  };
-}
-
 export default function EditEstimatePage() {
   const params = useParams();
   const router = useRouter();
@@ -215,9 +203,17 @@ export default function EditEstimatePage() {
   const showSplitWarning =
     effectiveSplitWarningEnabled &&
     effectiveSplitTargetAmount > 0 &&
-    subtotal > effectiveSplitTargetAmount;
-  const splitPreview = effectiveSplitWarningEnabled
-    ? getSplitPreview(subtotal, effectiveSplitTargetAmount)
+    buildSplitInvoicePlan({
+      subtotalAmount: subtotal,
+      targetAmount: effectiveSplitTargetAmount,
+      taxRate: getEffectiveTaxRate({ taxMode, taxRate }),
+    }).length > 0;
+  const splitPreview = showSplitWarning
+    ? buildSplitInvoicePlan({
+        subtotalAmount: subtotal,
+        targetAmount: effectiveSplitTargetAmount,
+        taxRate: getEffectiveTaxRate({ taxMode, taxRate }),
+      })
     : null;
   const taxSuggestion =
     getTaxSuggestionForAddress(serviceAddress);
@@ -1068,8 +1064,8 @@ export default function EditEstimatePage() {
                   </p>
 
                   <p className="mt-2 text-lg font-semibold text-yellow-100">
-                    This estimate subtotal is over{" "}
-                    {formatCurrency(effectiveSplitTargetAmount)}.
+                    This estimate would be over{" "}
+                    {formatCurrency(effectiveSplitTargetAmount)} after tax.
                   </p>
 
                   <p className="mt-2 text-sm leading-6 text-yellow-100/80">
@@ -1086,14 +1082,14 @@ export default function EditEstimatePage() {
                   </p>
 
                   <p className="mt-2 text-lg font-semibold text-orange-100">
-                    This would become {splitPreview.invoiceCount} invoices with
-                    about {formatCurrency(splitPreview.averageAmount)} in
-                    pre-tax work each.
+                    This would become {splitPreview.length} invoices after
+                    conversion. No split invoice would exceed{" "}
+                    {formatCurrency(effectiveSplitTargetAmount)} including tax.
                   </p>
 
                   <p className="mt-2 text-sm leading-6 text-orange-100/80">
-                    This is only a preview. Trimax is not creating split
-                    invoices yet.
+                    Save the estimate first. When it is converted, Trimax will
+                    create the split invoice drafts automatically.
                   </p>
                 </div>
               )}

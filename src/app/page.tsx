@@ -47,6 +47,7 @@ type Invoice = {
   due_date: string | null;
   updated_at: string | null;
   created_at: string | null;
+  split_parent_invoice_id: string | null;
 };
 
 type ActivityLog = {
@@ -568,7 +569,16 @@ export default async function DashboardPage({
       !isClosedQueueStatus(item.status)
   );
 
-  const openInvoices = invoices.filter(
+  const splitParentInvoiceIds = new Set(
+    invoices
+      .map((invoice) => invoice.split_parent_invoice_id)
+      .filter((id): id is string => Boolean(id))
+  );
+  const billableInvoices = invoices.filter(
+    (invoice) => !splitParentInvoiceIds.has(invoice.id)
+  );
+
+  const openInvoices = billableInvoices.filter(
     (invoice) => invoice.status !== "Paid"
   );
 
@@ -601,13 +611,13 @@ export default async function DashboardPage({
     0
   );
 
-  const invoicedRevenueTotal = invoices.reduce(
+  const invoicedRevenueTotal = billableInvoices.reduce(
     (total, invoice) =>
       total + parseMoney(invoice.invoice_amount),
     0
   );
 
-  const ytdRevenueTotal = invoices
+  const ytdRevenueTotal = billableInvoices
     .filter((invoice) => invoice.status === "Paid")
     .reduce(
       (total, invoice) =>
@@ -1792,7 +1802,7 @@ export default async function DashboardPage({
               </div>
 
               <div className="mt-4 space-y-3">
-                {invoices
+                {billableInvoices
                   .sort((first, second) => {
                     const firstDate = new Date(
                       first.updated_at ??
@@ -1900,7 +1910,7 @@ export default async function DashboardPage({
                     );
                   })}
 
-                {invoices.length === 0 && (
+                {billableInvoices.length === 0 && (
                   <p className="text-sm text-zinc-400">
                     No invoices for this business yet.
                   </p>

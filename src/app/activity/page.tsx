@@ -557,7 +557,7 @@ function ActivityPageContent() {
 
             <p className="mt-2 text-sm leading-6 text-zinc-400">
               New queue, estimate, invoice, payment, and split actions will
-              appear here after activity tracking is fully connected.
+              appear here as they are created in this workspace.
             </p>
 
             <div className="mt-5 flex flex-wrap gap-3">

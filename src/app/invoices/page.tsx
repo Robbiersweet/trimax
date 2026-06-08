@@ -321,7 +321,11 @@ export default async function InvoicesPage({
     }
   );
 
-  const openInvoicesWithAmounts = invoicesWithSplitInfo
+  const billableInvoicesWithSplitInfo = invoicesWithSplitInfo.filter(
+    (invoice) => invoice.split_children_count === 0
+  );
+
+  const openInvoicesWithAmounts = billableInvoicesWithSplitInfo
     .map((invoice) => {
       const invoiceTotal = parseMoney(invoice.invoice_amount);
       const amountPaid = parseMoney(invoice.amount_paid);
@@ -388,7 +392,7 @@ export default async function InvoicesPage({
   const overdueBalanceTotal = openInvoicesWithAmounts
     .filter((invoice) => (invoice.daysLate ?? -1) >= 0)
     .reduce((total, invoice) => total + invoice.amountDue, 0);
-  const draftBalanceTotal = invoicesWithSplitInfo
+  const draftBalanceTotal = billableInvoicesWithSplitInfo
     .filter(
       (invoice) => (invoice.status || "Draft").toLowerCase() === "draft"
     )
@@ -449,7 +453,7 @@ export default async function InvoicesPage({
     .sort((first, second) => second.amountDue - first.amountDue)
     .slice(0, 6);
 
-  const recentlyUpdatedInvoices = [...invoicesWithSplitInfo]
+  const recentlyUpdatedInvoices = [...billableInvoicesWithSplitInfo]
     .sort((first, second) => {
       const firstTime = new Date(
         first.updated_at ?? first.created_at ?? "1970-01-01"
@@ -461,7 +465,7 @@ export default async function InvoicesPage({
       return secondTime - firstTime;
     })
     .slice(0, 5);
-  const draftsToSend = invoicesWithSplitInfo
+  const draftsToSend = billableInvoicesWithSplitInfo
     .filter(
       (invoice) =>
         (invoice.status || "Draft").toLowerCase() === "draft" &&
@@ -741,7 +745,7 @@ export default async function InvoicesPage({
 
         <InvoiceBulkPaymentActions
           businessSlug={businessSlug}
-          invoices={invoicesWithSplitInfo.map((invoice) => ({
+          invoices={billableInvoicesWithSplitInfo.map((invoice) => ({
             id: invoice.id,
             displayId: invoice.display_id ?? "Invoice",
             customerName: invoice.customer_name ?? "Unknown Customer",
@@ -1060,11 +1064,16 @@ export default async function InvoicesPage({
               );
               const hasSplitChildren =
                 invoice.split_children_count > 0;
+              const isBillableInvoice = !hasSplitChildren;
               const invoiceTotal = parseMoney(invoice.invoice_amount);
               const amountPaid = parseMoney(invoice.amount_paid);
               const amountDue = Math.max(invoiceTotal - amountPaid, 0);
-              const daysLate = invoiceDaysPastDue(invoice.due_date);
-              const isPastDue = amountDue > 0 && (daysLate ?? -1) >= 0;
+              const displayAmountDue = isBillableInvoice ? amountDue : 0;
+              const daysLate = isBillableInvoice
+                ? invoiceDaysPastDue(invoice.due_date)
+                : null;
+              const isPastDue =
+                displayAmountDue > 0 && (daysLate ?? -1) >= 0;
 
               const paymentParams = new URLSearchParams({
                 business: businessSlug,
@@ -1125,11 +1134,15 @@ export default async function InvoicesPage({
 
                       <div className="sm:text-right">
                         <p className="text-xl font-bold text-orange-400">
-                          {formatMoney(amountDue)}
+                          {isBillableInvoice
+                            ? formatMoney(displayAmountDue)
+                            : "Split Source"}
                         </p>
 
                         <p className="mt-1 text-xs uppercase tracking-[0.2em] text-zinc-500">
-                          Amount Due
+                          {isBillableInvoice
+                            ? "Amount Due"
+                            : "Use split invoices"}
                         </p>
 
                         <div className="mt-2">
@@ -1163,7 +1176,7 @@ export default async function InvoicesPage({
                         Print
                       </Link>
 
-                      {amountDue > 0 ? (
+                      {displayAmountDue > 0 ? (
                         <Link
                           href={`/payments?${paymentParams.toString()}`}
                           className="payment-action-button rounded-full border px-4 py-2 text-sm font-semibold transition"
