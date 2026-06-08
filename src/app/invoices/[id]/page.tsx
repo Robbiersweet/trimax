@@ -9,6 +9,7 @@ import OutlookDraftPrepCard from "../../components/OutlookDraftPrepCard";
 import SplitInvoicePlanner from "../../components/SplitInvoicePlanner";
 import UpdateInvoiceStatusButton from "../../components/UpdateInvoiceStatusButton";
 import { buildOutlookDraftPreview } from "../../lib/outlookDrafts";
+import { buildSplitInvoicePlan } from "../../lib/splitInvoices";
 import { supabase } from "../../lib/supabase";
 import {
   formatTaxSummaryLabel,
@@ -110,19 +111,6 @@ function formatDate(value: string | null) {
     day: "2-digit",
     year: "2-digit",
   }).format(date);
-}
-
-function getSplitPreview(subtotalAmount: number, targetAmount: number) {
-  if (subtotalAmount <= targetAmount || targetAmount <= 0) {
-    return null;
-  }
-
-  const invoiceCount = Math.ceil(subtotalAmount / targetAmount);
-
-  return {
-    invoiceCount,
-    averageAmount: subtotalAmount / invoiceCount,
-  };
 }
 
 function looksLikeFiveStarsBoaInvoice(
@@ -414,13 +402,16 @@ export default async function InvoiceDetailPage({
   const splitWarningAmount =
     numberValue(invoice.split_target_amount) ||
     numberValue(business.split_warning_amount);
+  const splitPlan = buildSplitInvoicePlan({
+    subtotalAmount: subtotal,
+    targetAmount: splitWarningAmount,
+    taxRate,
+  });
   const showSplitWarning =
     Boolean(invoice.split_warning_enabled) &&
-    splitWarningAmount > 0 &&
-    subtotal > splitWarningAmount;
-  const splitPreview = invoice.split_warning_enabled
-    ? getSplitPreview(subtotal, splitWarningAmount)
-    : null;
+    splitPlan.length > 0;
+  const canCreateSplitInvoices =
+    showSplitWarning && splitRelatedInvoices.length === 0;
 
   return (
     <AppShell>
@@ -457,16 +448,17 @@ export default async function InvoiceDetailPage({
                 Split Warning
               </p>
               <p className="mt-3 text-lg font-bold text-yellow-100">
-                This invoice subtotal is over {money(splitWarningAmount)}.
+                This invoice would be over {money(splitWarningAmount)} after
+                tax.
               </p>
               <p className="mt-3 text-sm leading-6 text-yellow-100/80">
-                Consider splitting this apartment work into smaller invoices
-                before sending.
+                Trimax can split this apartment work into draft invoices that
+                stay under the target including tax.
               </p>
             </Card>
           ) : null}
 
-          {splitPreview ? (
+          {canCreateSplitInvoices ? (
             <SplitInvoicePlanner
               subtotalAmount={subtotal}
               targetAmount={splitWarningAmount}

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Button from "./Button";
 import { getNextDocumentDisplayId } from "../lib/documentNumbers";
 import { logActivity } from "../lib/activityLog";
+import { createSplitInvoices } from "../lib/splitInvoices";
 import { supabase } from "../lib/supabase";
 import { getSmartInvoiceDates } from "../utils/invoiceDates";
 import { getEffectiveTaxRate } from "../utils/tax";
@@ -18,6 +19,7 @@ type ConvertEstimateToInvoiceButtonProps = {
   projectTitle: string;
   invoiceAmount: string;
   notes: string;
+  splitTargetAmount?: number;
 };
 
 type Estimate = {
@@ -70,6 +72,7 @@ export default function ConvertEstimateToInvoiceButton({
   projectTitle,
   invoiceAmount,
   notes,
+  splitTargetAmount = 0,
 }: ConvertEstimateToInvoiceButtonProps) {
   const router = useRouter();
   const [isConverting, setIsConverting] = useState(false);
@@ -320,6 +323,58 @@ export default function ConvertEstimateToInvoiceButton({
       }, 900);
 
       return;
+    }
+
+    const effectiveSplitTargetAmount =
+      toNumber(estimate.split_target_amount) || splitTargetAmount;
+
+    if (
+      estimate.split_warning_enabled &&
+      effectiveSplitTargetAmount > 0
+    ) {
+      try {
+        await createSplitInvoices({
+          sourceInvoice: {
+            id: data.id,
+            displayId,
+            businessId: targetBusinessId,
+            businessSlug,
+            clientId: estimate.client_id ?? clientId,
+            customerName:
+              estimate.customer_name ?? customerName,
+            projectTitle:
+              estimate.project_title ?? projectTitle,
+            issueDate: smartInvoiceDates.issueDate,
+            dueDate: smartInvoiceDates.dueDate,
+            reference: estimate.reference ?? "",
+            serviceAddress:
+              estimate.service_address ??
+              estimate.project_address ??
+              "",
+            terms:
+              estimate.terms ??
+              "Payment due upon invoice. Thank you for your business.",
+            notes: estimate.notes ?? notes,
+          },
+          subtotalAmount: fallbackSubtotal,
+          targetAmount: effectiveSplitTargetAmount,
+          taxLabel: estimate.tax_label ?? "Tax",
+          taxRate,
+          taxMode: estimate.tax_mode,
+          taxNumber: estimate.tax_number,
+          createdByUserId: user?.id ?? null,
+        });
+      } catch (splitError) {
+        console.error(splitError);
+
+        setMessage({
+          type: "error",
+          text: "The invoice was created, but the split drafts failed. Open the invoice and use the split workflow.",
+        });
+
+        setIsConverting(false);
+        return;
+      }
     }
 
     await logActivity({

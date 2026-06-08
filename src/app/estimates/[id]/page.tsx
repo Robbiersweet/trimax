@@ -7,6 +7,7 @@ import DeleteEstimateButton from "../../components/DeleteEstimateButton";
 import OutlookDraftPrepCard from "../../components/OutlookDraftPrepCard";
 import SplitInvoicePlanner from "../../components/SplitInvoicePlanner";
 import { buildOutlookDraftPreview } from "../../lib/outlookDrafts";
+import { buildSplitInvoicePlan } from "../../lib/splitInvoices";
 import { supabase } from "../../lib/supabase";
 import {
   formatTaxSummaryLabel,
@@ -77,19 +78,6 @@ function parseCurrency(value: number | string | null) {
 function formatCurrency(amount: number) {
   const safeAmount = Number.isFinite(amount) ? amount : 0;
   return `$${safeAmount.toFixed(2)}`;
-}
-
-function getSplitPreview(totalAmount: number, targetAmount: number) {
-  if (totalAmount <= targetAmount || targetAmount <= 0) {
-    return null;
-  }
-
-  const invoiceCount = Math.ceil(totalAmount / targetAmount);
-
-  return {
-    invoiceCount,
-    averageAmount: totalAmount / invoiceCount,
-  };
 }
 
 export default async function EstimateDetailsPage({
@@ -169,13 +157,14 @@ export default async function EstimateDetailsPage({
   const effectiveSplitTargetAmount =
     toNumber(estimate.split_target_amount) ||
     splitWarningAmount;
+  const splitPlan = buildSplitInvoicePlan({
+    subtotalAmount: subtotal,
+    targetAmount: effectiveSplitTargetAmount,
+    taxRate,
+  });
   const isOverSplitWarning =
     Boolean(estimate.split_warning_enabled) &&
-    effectiveSplitTargetAmount > 0 &&
-    subtotal > effectiveSplitTargetAmount;
-  const splitPreview = estimate.split_warning_enabled
-    ? getSplitPreview(subtotal, effectiveSplitTargetAmount)
-    : null;
+    splitPlan.length > 0;
   const outlookDraftPreview = buildOutlookDraftPreview("estimate", {
     businessSlug,
     customerName: estimate.customer_name,
@@ -226,16 +215,18 @@ export default async function EstimateDetailsPage({
             </p>
 
             <p className="mt-2 text-lg font-semibold text-yellow-100">
-              This estimate subtotal is over {formatCurrency(effectiveSplitTargetAmount)}.
+              This estimate would be over{" "}
+              {formatCurrency(effectiveSplitTargetAmount)} after tax.
             </p>
 
             <p className="mt-2 text-sm leading-6 text-yellow-100/80">
-              Consider splitting this apartment work into smaller invoices or estimates before sending.
+              Converting this estimate will create split invoice drafts that
+              stay under the target including tax.
             </p>
           </Card>
         )}
 
-        {splitPreview && (
+        {isOverSplitWarning && !linkedInvoice && (
           <SplitInvoicePlanner
             subtotalAmount={subtotal}
             targetAmount={effectiveSplitTargetAmount}
@@ -468,6 +459,7 @@ export default async function EstimateDetailsPage({
               projectTitle={estimate.project_title ?? ""}
               invoiceAmount={formatCurrency(estimateTotal)}
               notes={estimate.notes ?? ""}
+              splitTargetAmount={effectiveSplitTargetAmount}
             />
           )}
 

@@ -3,7 +3,11 @@
 import { useMemo, useState } from "react";
 import Button from "./Button";
 import Card from "./Card";
-import { logActivity } from "../lib/activityLog";
+import {
+  buildSplitInvoicePlan,
+  createSplitInvoices,
+  type SplitInvoiceSource,
+} from "../lib/splitInvoices";
 import { supabase } from "../lib/supabase";
 import { getEffectiveTaxRate } from "../utils/tax";
 
@@ -14,42 +18,11 @@ type SplitInvoicePlannerProps = {
   taxRate?: number;
   taxMode?: string | null;
   taxNumber?: string | null;
-  sourceInvoice?: {
-    id: string;
-    displayId: string | null;
-    businessId: string;
-    businessSlug: string;
-    clientId: string | null;
-    customerName: string;
-    projectTitle: string;
-    issueDate: string | null;
-    dueDate: string | null;
-    reference: string | null;
-    serviceAddress: string | null;
-    terms: string | null;
-    notes: string | null;
-  };
+  sourceInvoice?: SplitInvoiceSource;
 };
 
 function formatCurrency(amount: number) {
   return `$${amount.toFixed(2)}`;
-}
-
-function splitIntoEvenAmounts(totalAmount: number, targetAmount: number) {
-  if (totalAmount <= targetAmount || targetAmount <= 0) {
-    return [];
-  }
-
-  const invoiceCount = Math.ceil(totalAmount / targetAmount);
-  const totalCents = Math.round(totalAmount * 100);
-  const baseCents = Math.floor(totalCents / invoiceCount);
-  const extraCents = totalCents % invoiceCount;
-
-  return Array.from({ length: invoiceCount }, (_item, index) => {
-    const cents = baseCents + (index < extraCents ? 1 : 0);
-
-    return cents / 100;
-  });
 }
 
 export default function SplitInvoicePlanner({
@@ -72,22 +45,33 @@ export default function SplitInvoicePlanner({
     text: string;
   } | null>(null);
 
-  const splitAmounts = useMemo(
-    () => splitIntoEvenAmounts(subtotalAmount, targetAmount),
-    [targetAmount, subtotalAmount]
-  );
-  const plannedTotal = splitAmounts.reduce(
-    (total, amount) => total + amount,
-    0
-  );
   const effectiveTaxRate = getEffectiveTaxRate({
     taxMode,
     taxRate,
   });
-  const plannedTaxTotal = plannedTotal * (effectiveTaxRate / 100);
-  const plannedGrandTotal = plannedTotal + plannedTaxTotal;
+  const splitPlan = useMemo(
+    () =>
+      buildSplitInvoicePlan({
+        subtotalAmount,
+        targetAmount,
+        taxRate: effectiveTaxRate,
+      }),
+    [effectiveTaxRate, subtotalAmount, targetAmount]
+  );
+  const plannedTotal = splitPlan.reduce(
+    (total, item) => total + item.subtotalAmount,
+    0
+  );
+  const plannedTaxTotal = splitPlan.reduce(
+    (total, item) => total + item.taxAmount,
+    0
+  );
+  const plannedGrandTotal = splitPlan.reduce(
+    (total, item) => total + item.totalAmount,
+    0
+  );
 
-  if (splitAmounts.length === 0) {
+  if (splitPlan.length === 0) {
     return null;
   }
 
@@ -102,87 +86,33 @@ export default function SplitInvoicePlanner({
       setIsConfirmingCreate(true);
       setMessage({
         type: "notice",
-        text: `Review the split plan, then click create again to make ${splitAmounts.length} draft split invoices.`,
+        text: `Review the split plan, then click create again to make ${splitPlan.length} draft split invoices.`,
       });
       return;
     }
 
     setCreating(true);
 
-    const { count, error: countError } = await supabase
-      .from("invoices")
-      .select("*", {
-        count: "exact",
-        head: true,
-      });
-
-    if (countError) {
-      console.error(countError);
-      setMessage({
-        type: "error",
-        text: "Unable to prepare invoice numbers. Refresh the page, then try again.",
-      });
-      setCreating(false);
-      return;
-    }
-
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
-    const invoiceRows = splitAmounts.map((amount, index) => {
-      const displayId = `INV-${String(
-        (count ?? 0) + index + 1
-      ).padStart(4, "0")}`;
-      const taxAmount = amount * (effectiveTaxRate / 100);
-      const invoiceTotal = amount + taxAmount;
-      const splitLabel = `Split ${index + 1} of ${splitAmounts.length}`;
+    try {
+      const insertedInvoices = await createSplitInvoices({
+        sourceInvoice,
+        subtotalAmount,
+        targetAmount,
+        taxLabel,
+        taxRate: effectiveTaxRate,
+        taxMode,
+        taxNumber,
+        createdByUserId: user?.id ?? null,
+      });
 
-      return {
-        business_id: sourceInvoice.businessId,
-        estimate_id: null,
-        client_id: sourceInvoice.clientId,
-        created_by_user_id: user?.id ?? null,
-        display_id: displayId,
-        customer_name: sourceInvoice.customerName,
-        project_title: `${sourceInvoice.projectTitle} - ${splitLabel}`,
-        service_address: sourceInvoice.serviceAddress ?? "",
-        reference: sourceInvoice.reference ?? "",
-        invoice_amount: formatCurrency(invoiceTotal),
-        issue_date: sourceInvoice.issueDate,
-        due_date: sourceInvoice.dueDate,
-        tax_mode: taxMode || "taxable",
-        tax_label: taxLabel || "Tax",
-        tax_rate: effectiveTaxRate,
-        tax_number:
-          taxMode === "taxable" ? taxNumber?.trim() || null : null,
-        amount_paid: 0,
-        split_warning_enabled: false,
-        split_target_amount: null,
-        split_parent_invoice_id: sourceInvoice.id,
-        split_sequence: index + 1,
-        split_count: splitAmounts.length,
-        terms: sourceInvoice.terms,
-        notes: [
-          sourceInvoice.notes,
-          `Created from ${
-            sourceInvoice.displayId || sourceInvoice.projectTitle
-          } as ${splitLabel}.`,
-        ]
-          .filter(Boolean)
-          .join("\n\n"),
-        status: "Draft",
-      };
-    });
-
-    const { data: insertedInvoices, error: invoiceError } =
-      await supabase
-        .from("invoices")
-        .insert(invoiceRows)
-        .select("id, display_id");
-
-    if (invoiceError || !insertedInvoices) {
-      console.error(invoiceError);
+      setCreatedInvoices(insertedInvoices);
+      setIsConfirmingCreate(false);
+    } catch (error) {
+      console.error(error);
       setMessage({
         type: "error",
         text: "Unable to create split invoices. Refresh the page, then try again.",
@@ -190,64 +120,6 @@ export default function SplitInvoicePlanner({
       setCreating(false);
       return;
     }
-
-    const lineRows = insertedInvoices.flatMap((invoice, index) => {
-      const amount = splitAmounts[index] ?? 0;
-
-      return [
-        {
-          invoice_id: invoice.id,
-          business_id: sourceInvoice.businessId,
-          description: `${sourceInvoice.projectTitle} - Split ${index + 1} of ${
-            splitAmounts.length
-          }`,
-          quantity: 1,
-          unit_price: amount,
-          line_total: amount,
-          sort_order: 0,
-        },
-      ];
-    });
-
-    const { error: lineItemError } = await supabase
-      .from("invoice_line_items")
-      .insert(lineRows);
-
-    if (lineItemError) {
-      console.error(lineItemError);
-      setMessage({
-        type: "notice",
-        text: "Split invoices were created, but their line items need attention. Open the new invoices and review them before sending.",
-      });
-      setCreating(false);
-      return;
-    }
-
-    setCreatedInvoices(
-      insertedInvoices.map((invoice) => ({
-        id: invoice.id,
-        displayId: invoice.display_id || "Invoice",
-      }))
-    );
-    setIsConfirmingCreate(false);
-
-    await logActivity({
-      businessId: sourceInvoice.businessId,
-      action: "invoice.split_created",
-      entityType: "invoice",
-      entityId: sourceInvoice.id,
-      entityLabel:
-        sourceInvoice.displayId || sourceInvoice.projectTitle || "Invoice",
-      details: {
-        splitCount: insertedInvoices.length,
-        targetAmount: formatCurrency(targetAmount),
-        subtotalAmount: formatCurrency(subtotalAmount),
-        createdInvoiceIds: insertedInvoices.map((invoice) => invoice.id),
-        createdInvoiceDisplayIds: insertedInvoices.map(
-          (invoice) => invoice.display_id
-        ),
-      },
-    });
 
     setCreating(false);
   }
@@ -261,11 +133,12 @@ export default function SplitInvoicePlanner({
           </p>
 
           <p className="mt-3 text-lg font-bold text-orange-100">
-            Trimax can split this into {splitAmounts.length} invoices.
+            Trimax can split this into {splitPlan.length} invoices.
           </p>
 
           <p className="mt-3 text-sm leading-6 text-orange-100/80">
-            This step only previews the plan. No invoices are created yet.
+            The first split is filled to the threshold when possible. No split
+            invoice will exceed the target after tax.
           </p>
 
           <div className="mt-4 grid gap-3 text-sm text-orange-100/80 sm:grid-cols-2">
@@ -298,19 +171,27 @@ export default function SplitInvoicePlanner({
       {showPlan ? (
         <div className="mt-6 space-y-5">
           <div className="overflow-hidden rounded-2xl border border-orange-400/30">
-            <div className="grid grid-cols-[1fr_150px] gap-4 bg-black/30 px-5 py-3 text-sm font-bold text-orange-100/80">
+            <div className="grid grid-cols-[1fr_120px_120px_130px] gap-4 bg-black/30 px-5 py-3 text-sm font-bold text-orange-100/80">
               <span>Planned Invoice</span>
               <span className="text-right">Subtotal</span>
+              <span className="text-right">Tax</span>
+              <span className="text-right">Total</span>
             </div>
 
-            {splitAmounts.map((amount, index) => (
+            {splitPlan.map((item) => (
               <div
-                key={index}
-                className="grid grid-cols-[1fr_150px] gap-4 border-t border-orange-400/20 px-5 py-4 text-orange-50"
+                key={item.sequence}
+                className="grid grid-cols-[1fr_120px_120px_130px] gap-4 border-t border-orange-400/20 px-5 py-4 text-orange-50"
               >
-                <span>Split Invoice {index + 1}</span>
+                <span>Split Invoice {item.sequence}</span>
                 <span className="text-right font-bold">
-                  {formatCurrency(amount)}
+                  {formatCurrency(item.subtotalAmount)}
+                </span>
+                <span className="text-right font-bold">
+                  {formatCurrency(item.taxAmount)}
+                </span>
+                <span className="text-right font-bold">
+                  {formatCurrency(item.totalAmount)}
                 </span>
               </div>
             ))}

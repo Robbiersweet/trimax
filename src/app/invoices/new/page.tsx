@@ -17,6 +17,10 @@ import Toast from "../../components/Toast";
 import { captureServicesFromLineItems } from "../../lib/captureServicesFromLineItems";
 import { getNextDocumentDisplayId } from "../../lib/documentNumbers";
 import { logActivity } from "../../lib/activityLog";
+import {
+  buildSplitInvoicePlan,
+  createSplitInvoices,
+} from "../../lib/splitInvoices";
 import { supabase } from "../../lib/supabase";
 import { looksLikeApartmentUnitPaintJob } from "../../utils/jobWorkflow";
 import { getSmartInvoiceDates } from "../../utils/invoiceDates";
@@ -73,19 +77,6 @@ function getLineTotal(item: LineItem) {
 
 function toNumber(value: number | string | null | undefined) {
   return Number(value) || 0;
-}
-
-function getSplitPreview(totalAmount: number, targetAmount: number) {
-  if (totalAmount <= targetAmount || targetAmount <= 0) {
-    return null;
-  }
-
-  const invoiceCount = Math.ceil(totalAmount / targetAmount);
-
-  return {
-    invoiceCount,
-    averageAmount: totalAmount / invoiceCount,
-  };
 }
 
 function looksLikeFiveStarsBoaInvoiceDraft(
@@ -239,9 +230,17 @@ function NewInvoicePageContent() {
   const showSplitWarning =
     effectiveSplitWarningEnabled &&
     effectiveSplitTargetAmount > 0 &&
-    subtotal > effectiveSplitTargetAmount;
-  const splitPreview = effectiveSplitWarningEnabled
-    ? getSplitPreview(subtotal, effectiveSplitTargetAmount)
+    buildSplitInvoicePlan({
+      subtotalAmount: subtotal,
+      targetAmount: effectiveSplitTargetAmount,
+      taxRate: getEffectiveTaxRate({ taxMode, taxRate }),
+    }).length > 0;
+  const splitPreview = showSplitWarning
+    ? buildSplitInvoicePlan({
+        subtotalAmount: subtotal,
+        targetAmount: effectiveSplitTargetAmount,
+        taxRate: getEffectiveTaxRate({ taxMode, taxRate }),
+      })
     : null;
   const taxSuggestion =
     getTaxSuggestionForAddress(serviceAddress);
@@ -732,6 +731,48 @@ function NewInvoicePageContent() {
       lineItems: validLineItems,
     });
 
+    if (
+      effectiveSplitWarningEnabled &&
+      effectiveSplitTargetAmount > 0
+    ) {
+      try {
+        await createSplitInvoices({
+          sourceInvoice: {
+            id: data.id,
+            displayId,
+            businessId: business.id,
+            businessSlug: business.slug,
+            clientId: finalClientId,
+            customerName,
+            projectTitle,
+            issueDate,
+            dueDate,
+            reference,
+            serviceAddress,
+            terms,
+            notes,
+          },
+          subtotalAmount: subtotal,
+          targetAmount: effectiveSplitTargetAmount,
+          taxLabel: taxLabel.trim() || "Tax",
+          taxRate: getEffectiveTaxRate({ taxMode, taxRate }),
+          taxMode,
+          taxNumber,
+          createdByUserId: user?.id ?? null,
+        });
+      } catch (splitError) {
+        console.error(splitError);
+
+        setToast({
+          type: "error",
+          message:
+            "Invoice was created, but the split drafts failed. Open the invoice and use the split workflow.",
+        });
+
+        return;
+      }
+    }
+
     await logActivity({
       businessId: business.id,
       action: "invoice.created",
@@ -1138,8 +1179,8 @@ function NewInvoicePageContent() {
                   </p>
 
                   <p className="mt-2 text-lg font-semibold text-yellow-100">
-                    This invoice subtotal is over{" "}
-                    {formatCurrency(effectiveSplitTargetAmount)}.
+                    This invoice would be over{" "}
+                    {formatCurrency(effectiveSplitTargetAmount)} after tax.
                   </p>
 
                   <p className="mt-2 text-sm leading-6 text-yellow-100/80">
@@ -1156,14 +1197,15 @@ function NewInvoicePageContent() {
                   </p>
 
                   <p className="mt-2 text-lg font-semibold text-orange-100">
-                    This would become {splitPreview.invoiceCount} invoices with
-                    about {formatCurrency(splitPreview.averageAmount)} in
-                    pre-tax work each.
+                    This will create {splitPreview.length} split invoices when
+                    you save. No split invoice will exceed{" "}
+                    {formatCurrency(effectiveSplitTargetAmount)} including tax.
                   </p>
 
                   <p className="mt-2 text-sm leading-6 text-orange-100/80">
-                    This is only a preview. Trimax is not creating split
-                    invoices yet.
+                    The first split is filled as close to the target as tax
+                    allows, then the remaining amount continues into the next
+                    draft invoice.
                   </p>
                 </div>
               )}
