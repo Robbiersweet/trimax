@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AppShell from "../components/AppShell";
 import Card from "../components/Card";
@@ -28,6 +28,27 @@ type PaintMemory = {
   completed_date: string | null;
   paint_type: string | null;
 };
+
+type QueueRequestDraft = {
+  property: string;
+  unitsText: string;
+  paintType: string;
+  wallPaintColor: string;
+  flooring: string;
+  priority: string;
+  smokedIn: boolean;
+  primerRequested: boolean;
+  priorRenovation: boolean;
+  priorRenovationDetails: string;
+  renovationNeeded: boolean;
+  renovationNeededDetails: string;
+  moveOutDate: string;
+  readyDate: string;
+  notes: string;
+  savedAt: string;
+};
+
+const QUEUE_DRAFT_VERSION = "v1";
 
 const rnlPropertyOptions = [
   "North Creek Apartments",
@@ -182,6 +203,50 @@ function formatLastPaintedMessage(memory: PaintMemory) {
   }.`;
 }
 
+function queueDraftKey(businessSlug: string, propertyParam: string | null) {
+  return [
+    "trimax",
+    QUEUE_DRAFT_VERSION,
+    "new-queue-request",
+    businessSlug,
+    propertyParam || "all-properties",
+  ].join(":");
+}
+
+function hasDraftContent(draft: QueueRequestDraft) {
+  return Boolean(
+    draft.unitsText ||
+      draft.paintType ||
+      draft.wallPaintColor ||
+      draft.flooring ||
+      draft.smokedIn ||
+      draft.priorRenovation ||
+      draft.priorRenovationDetails ||
+      draft.renovationNeeded ||
+      draft.renovationNeededDetails ||
+      draft.moveOutDate ||
+      draft.readyDate ||
+      draft.notes
+  );
+}
+
+function formatDraftSavedAt(value: string) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 function NewRequestPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -241,11 +306,59 @@ function NewRequestPageContent() {
   const [notes, setNotes] = useState("");
 
   const [isSaving, setIsSaving] = useState(false);
+  const [draftLoaded, setDraftLoaded] = useState(false);
+  const [draftReady, setDraftReady] = useState(false);
+  const [draftSavedAt, setDraftSavedAt] = useState("");
 
   const [toast, setToast] = useState<{
     type: "success" | "error";
     message: string;
   } | null>(null);
+
+  const draftKey = queueDraftKey(businessSlug, propertyParam);
+  const currentDraft = useMemo<QueueRequestDraft>(
+    () => ({
+      property,
+      unitsText,
+      paintType,
+      wallPaintColor,
+      flooring,
+      priority,
+      smokedIn,
+      primerRequested,
+      priorRenovation,
+      priorRenovationDetails,
+      renovationNeeded,
+      renovationNeededDetails,
+      moveOutDate,
+      readyDate,
+      notes,
+      savedAt: new Date().toISOString(),
+    }),
+    [
+      property,
+      unitsText,
+      paintType,
+      wallPaintColor,
+      flooring,
+      priority,
+      smokedIn,
+      primerRequested,
+      priorRenovation,
+      priorRenovationDetails,
+      renovationNeeded,
+      renovationNeededDetails,
+      moveOutDate,
+      readyDate,
+      notes,
+    ]
+  );
+
+  function clearSavedDraft() {
+    window.localStorage.removeItem(draftKey);
+    setDraftLoaded(false);
+    setDraftSavedAt("");
+  }
 
   useEffect(() => {
     async function loadBusiness() {
@@ -271,6 +384,104 @@ function NewRequestPageContent() {
 
     loadBusiness();
   }, [businessSlug]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    try {
+      const rawDraft = window.localStorage.getItem(draftKey);
+
+      if (!rawDraft) {
+        window.setTimeout(() => {
+          if (isActive) {
+            setDraftReady(true);
+          }
+        }, 0);
+        return () => {
+          isActive = false;
+        };
+      }
+
+      const draft = JSON.parse(rawDraft) as Partial<QueueRequestDraft>;
+
+      window.setTimeout(() => {
+        if (!isActive) {
+          return;
+        }
+
+        setProperty(draft.property ?? "");
+        setUnitsText(draft.unitsText ?? "");
+        setPaintType(draft.paintType ?? "");
+        setWallPaintColor(draft.wallPaintColor ?? "");
+        setFlooring(draft.flooring ?? "");
+        setPriority(draft.priority ?? "Normal");
+        setSmokedIn(Boolean(draft.smokedIn));
+        setPrimerRequested(draft.primerRequested === false ? false : true);
+        setPriorRenovation(Boolean(draft.priorRenovation));
+        setPriorRenovationDetails(draft.priorRenovationDetails ?? "");
+        setRenovationNeeded(Boolean(draft.renovationNeeded));
+        setRenovationNeededDetails(draft.renovationNeededDetails ?? "");
+        setMoveOutDate(draft.moveOutDate ?? "");
+        setReadyDate(draft.readyDate ?? "");
+        setNotes(draft.notes ?? "");
+        setDraftLoaded(true);
+        setDraftSavedAt(draft.savedAt ?? "");
+        setDraftReady(true);
+      }, 0);
+    } catch {
+      window.localStorage.removeItem(draftKey);
+      window.setTimeout(() => {
+        if (isActive) {
+          setDraftReady(true);
+        }
+      }, 0);
+    }
+
+    return () => {
+      isActive = false;
+    };
+  }, [draftKey]);
+
+  useEffect(() => {
+    if (!draftReady || isSaving) {
+      return;
+    }
+
+    if (!hasDraftContent(currentDraft)) {
+      window.localStorage.removeItem(draftKey);
+      window.setTimeout(() => setDraftSavedAt(""), 0);
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      const draft = {
+        ...currentDraft,
+        savedAt: new Date().toISOString(),
+      };
+
+      window.localStorage.setItem(draftKey, JSON.stringify(draft));
+      setDraftSavedAt(draft.savedAt);
+    }, 350);
+
+    return () => window.clearTimeout(timeout);
+  }, [currentDraft, draftKey, draftReady, isSaving]);
+
+  useEffect(() => {
+    function warnBeforeLeaving(event: BeforeUnloadEvent) {
+      if (!draftReady || isSaving || !hasDraftContent(currentDraft)) {
+        return;
+      }
+
+      event.preventDefault();
+      event.returnValue = "";
+    }
+
+    window.addEventListener("beforeunload", warnBeforeLeaving);
+
+    return () => {
+      window.removeEventListener("beforeunload", warnBeforeLeaving);
+    };
+  }, [currentDraft, draftReady, isSaving]);
 
   useEffect(() => {
     async function loadRenovationMemory() {
@@ -452,6 +663,7 @@ function NewRequestPageContent() {
         queueParams.set("property", propertyParam);
       }
 
+      clearSavedDraft();
       router.push(`/queue?${queueParams.toString()}`);
       router.refresh();
     } catch (error) {
@@ -505,8 +717,42 @@ function NewRequestPageContent() {
           </Card>
         )}
 
+        {draftLoaded ? (
+          <Card className="mt-6 border-green-500/30 bg-green-500/10">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-green-200">
+                  Draft restored
+                </p>
+
+                <p className="mt-1 text-sm leading-6 text-zinc-300">
+                  Trimax restored the queue request you were working on
+                  {formatDraftSavedAt(draftSavedAt)
+                    ? ` at ${formatDraftSavedAt(draftSavedAt)}`
+                    : ""}
+                  .
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={clearSavedDraft}
+                className="rounded-2xl border border-green-500/40 px-4 py-2 text-sm font-semibold text-green-100 transition hover:bg-green-500/10"
+              >
+                Dismiss Notice
+              </button>
+            </div>
+          </Card>
+        ) : null}
+
         <Card className="mt-8">
           <div className="grid gap-5">
+            {draftSavedAt && !draftLoaded ? (
+              <p className="rounded-2xl border border-zinc-800 bg-zinc-950/60 px-4 py-3 text-sm text-zinc-400">
+                Draft autosaved at {formatDraftSavedAt(draftSavedAt)}.
+              </p>
+            ) : null}
+
             <InputField
               label={isJustKleen ? "Client / Site" : "Property"}
               placeholder={
