@@ -6,6 +6,7 @@ import {
   formatTaxSummaryLabel,
   getEffectiveTaxRate,
 } from "../../../utils/tax";
+import { getSmartInvoiceDates } from "../../../utils/invoiceDates";
 
 type Invoice = {
   id: string;
@@ -17,6 +18,7 @@ type Invoice = {
   invoice_amount: number | string | null;
   status: string | null;
   display_id: string | null;
+  created_at: string | null;
   issue_date: string | null;
   due_date: string | null;
   reference: string | null;
@@ -186,6 +188,24 @@ export default async function InvoicePrintPage({
   const total = subtotal + taxAmount;
   const amountPaid = toNumber(invoice.amount_paid);
   const amountDue = Math.max(total - amountPaid, 0);
+  const smartInvoiceDates = getSmartInvoiceDates({
+    customerName: invoice.customer_name ?? client?.name ?? "",
+    projectTitle: invoice.project_title ?? "",
+    serviceAddress: invoice.service_address ?? "",
+    reference: invoice.reference ?? "",
+    notes: invoice.notes ?? "",
+    terms:
+      invoice.terms ??
+      "Payment due upon invoice. Thank you for your business.",
+    lineItems: lineItems.map((item) => ({
+      description: item.description ?? "",
+    })),
+    issueDate: invoice.issue_date ?? invoice.created_at,
+  });
+  const printIssueDate =
+    invoice.issue_date ?? smartInvoiceDates.issueDate;
+  const printDueDate =
+    invoice.due_date ?? smartInvoiceDates.dueDate;
 
   const companyName =
     business?.name || "R&L Creations";
@@ -232,6 +252,7 @@ export default async function InvoicePrintPage({
       <FiveStarsBoaPrintPage
         invoice={invoice}
         lineItems={lineItems}
+        issueDate={printIssueDate}
         businessSlug={businessSlug}
         backHref={`/invoices/${invoice.id}?business=${businessSlug}`}
         standardTemplateHref={standardTemplateHref}
@@ -338,14 +359,14 @@ export default async function InvoicePrintPage({
             <PrintLabel>Date of Issue</PrintLabel>
 
             <p className="mt-2 text-base print:mt-1 print:text-sm">
-              {formatDate(invoice.issue_date)}
+              {formatDate(printIssueDate)}
             </p>
 
             <div className="mt-5 print:mt-2">
               <PrintLabel>Due Date</PrintLabel>
 
               <p className="mt-2 text-base print:mt-1 print:text-sm">
-                {formatDate(invoice.due_date)}
+                {formatDate(printDueDate)}
               </p>
             </div>
           </div>
@@ -585,6 +606,7 @@ function looksLikeFiveStarsBoaInvoice(
 function FiveStarsBoaPrintPage({
   invoice,
   lineItems,
+  issueDate,
   businessSlug,
   backHref,
   standardTemplateHref,
@@ -592,13 +614,14 @@ function FiveStarsBoaPrintPage({
 }: {
   invoice: Invoice;
   lineItems: InvoiceLineItem[];
+  issueDate: string | null;
   businessSlug: string;
   backHref: string;
   standardTemplateHref: string;
   excelHref: string;
 }) {
   const servicePeriod =
-    getServicePeriod(invoice.issue_date);
+    getServicePeriod(issueDate);
   const rows = buildFiveStarsRows(
     invoice,
     lineItems,
@@ -699,7 +722,7 @@ function FiveStarsBoaPrintPage({
             DATE:
           </div>
           <div className="px-2 py-1 text-right">
-            {formatDate(invoice.issue_date)}
+            {formatDate(issueDate)}
           </div>
         </div>
 

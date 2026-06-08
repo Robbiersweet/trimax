@@ -11,6 +11,7 @@ import UpdateInvoiceStatusButton from "../../components/UpdateInvoiceStatusButto
 import { buildOutlookDraftPreview } from "../../lib/outlookDrafts";
 import { buildSplitInvoicePlan } from "../../lib/splitInvoices";
 import { supabase } from "../../lib/supabase";
+import { getSmartInvoiceDates } from "../../utils/invoiceDates";
 import {
   formatTaxSummaryLabel,
   getEffectiveTaxRate,
@@ -31,6 +32,7 @@ type Invoice = {
   invoice_amount: number | string | null;
   status: string | null;
   display_id: string | null;
+  created_at: string | null;
   issue_date: string | null;
   due_date: string | null;
   reference: string | null;
@@ -383,6 +385,24 @@ export default async function InvoiceDetailPage({
   const amountDue = Math.max(invoiceTotal - amountPaid, 0);
   const customerName = invoice.customer_name || "Customer";
   const projectTitle = invoice.project_title || customerName || "Invoice";
+  const smartInvoiceDates = getSmartInvoiceDates({
+    customerName,
+    projectTitle,
+    serviceAddress: invoice.service_address ?? "",
+    reference: invoice.reference ?? "",
+    notes: invoice.notes ?? "",
+    terms:
+      invoice.terms ??
+      "Payment due upon invoice. Thank you for your business.",
+    lineItems: items.map((item) => ({
+      description: item.description ?? "",
+    })),
+    issueDate: invoice.issue_date ?? invoice.created_at,
+  });
+  const displayIssueDate =
+    invoice.issue_date ?? smartInvoiceDates.issueDate;
+  const displayDueDate =
+    invoice.due_date ?? smartInvoiceDates.dueDate;
   const status = invoice.status || "Draft";
   const normalizedStatus = status.toLowerCase();
   const showFiveStarsBoaPrintButton =
@@ -394,7 +414,7 @@ export default async function InvoiceDetailPage({
     documentNumber: invoice.display_id,
     projectTitle,
     amountDue: money(amountDue),
-    dueDate: invoice.due_date ? formatDate(invoice.due_date) : null,
+    dueDate: displayDueDate ? formatDate(displayDueDate) : null,
     serviceAddress: invoice.service_address,
     reference: invoice.reference,
   });
@@ -474,8 +494,8 @@ export default async function InvoiceDetailPage({
                 clientId: invoice.client_id,
                 customerName,
                 projectTitle,
-                issueDate: invoice.issue_date,
-                dueDate: invoice.due_date,
+                issueDate: displayIssueDate,
+                dueDate: displayDueDate,
                 reference: invoice.reference,
                 serviceAddress: invoice.service_address,
                 terms: invoice.terms,
@@ -621,8 +641,8 @@ export default async function InvoiceDetailPage({
                     : "-"
                 }
               />
-              <Info label="Issue Date" value={formatDate(invoice.issue_date)} />
-              <Info label="Due Date" value={formatDate(invoice.due_date)} />
+              <Info label="Issue Date" value={formatDate(displayIssueDate)} />
+              <Info label="Due Date" value={formatDate(displayDueDate)} />
               <Info
                 label="Invoice Number"
                 value={invoice.display_id || "Invoice"}
