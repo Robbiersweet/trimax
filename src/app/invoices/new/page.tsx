@@ -19,6 +19,7 @@ import { getNextDocumentDisplayId } from "../../lib/documentNumbers";
 import { logActivity } from "../../lib/activityLog";
 import { supabase } from "../../lib/supabase";
 import { looksLikeApartmentUnitPaintJob } from "../../utils/jobWorkflow";
+import { getSmartInvoiceDates } from "../../utils/invoiceDates";
 import {
   formatTaxSummaryLabel,
   getEffectiveTaxRate,
@@ -141,8 +142,34 @@ function NewInvoicePageContent() {
     useState("");
   const [serviceAddress, setServiceAddress] =
     useState("");
-  const [issueDate, setIssueDate] = useState("");
-  const [dueDate, setDueDate] = useState("");
+  const [issueDate, setIssueDate] = useState(
+    () =>
+      getSmartInvoiceDates({
+        customerName: "",
+        projectTitle: "",
+        serviceAddress: "",
+        reference: "",
+        notes: "",
+        terms:
+          "Payment due upon invoice. Thank you for your business.",
+        lineItems: [],
+      }).issueDate
+  );
+  const [dueDate, setDueDate] = useState(
+    () =>
+      getSmartInvoiceDates({
+        customerName: "",
+        projectTitle: "",
+        serviceAddress: "",
+        reference: "",
+        notes: "",
+        terms:
+          "Payment due upon invoice. Thank you for your business.",
+        lineItems: [],
+      }).dueDate
+  );
+  const [dueDateManuallyChanged, setDueDateManuallyChanged] =
+    useState(false);
   const [reference, setReference] = useState("");
   const [taxMode, setTaxMode] = useState<TaxMode>("taxable");
   const [taxLabel, setTaxLabel] = useState("");
@@ -230,6 +257,16 @@ function NewInvoicePageContent() {
       notes,
       lineItems
     );
+  const smartInvoiceDates = getSmartInvoiceDates({
+    customerName,
+    projectTitle,
+    serviceAddress,
+    reference,
+    notes,
+    terms,
+    lineItems,
+    issueDate,
+  });
 
   const [toast, setToast] = useState<{
     type: "success" | "error";
@@ -338,6 +375,7 @@ function NewInvoicePageContent() {
   function handleServiceAddressChange(address: string) {
     setServiceAddress(address);
     applyTaxSuggestion(address);
+    updateDueDateIfAutomatic({ serviceAddress: address });
   }
 
   function handleClientChange(clientId: string) {
@@ -353,6 +391,10 @@ function NewInvoicePageContent() {
       setTaxLabel("");
       setTaxRate("");
       setTaxManuallyChanged(false);
+      updateDueDateIfAutomatic({
+        customerName: "",
+        serviceAddress: "",
+      });
       return;
     }
 
@@ -367,15 +409,32 @@ function NewInvoicePageContent() {
       setServiceAddress(clientServiceAddress);
       applyTaxSuggestion(clientServiceAddress);
     }
+
+    updateDueDateIfAutomatic({
+      customerName: client.name,
+      serviceAddress: clientServiceAddress,
+    });
   }
 
   function resetForm() {
+    const resetInvoiceDates = getSmartInvoiceDates({
+      customerName: "",
+      projectTitle: "",
+      serviceAddress: "",
+      reference: "",
+      notes: "",
+      terms:
+        "Payment due upon invoice. Thank you for your business.",
+      lineItems: [],
+    });
+
     setSelectedClientId("");
     setCustomerName("");
     setProjectTitle("");
     setServiceAddress("");
-    setIssueDate("");
-    setDueDate("");
+    setIssueDate(resetInvoiceDates.issueDate);
+    setDueDate(resetInvoiceDates.dueDate);
+    setDueDateManuallyChanged(false);
     setReference("");
     setTaxMode("taxable");
     setTaxLabel("");
@@ -398,6 +457,41 @@ function NewInvoicePageContent() {
         unitPrice: "",
       },
     ]);
+  }
+
+  function updateDueDateIfAutomatic(
+    overrides: Partial<{
+      customerName: string;
+      projectTitle: string;
+      serviceAddress: string;
+      reference: string;
+      notes: string;
+      terms: string;
+      issueDate: string;
+      lineItems: LineItem[];
+    }>
+  ) {
+    if (dueDateManuallyChanged) {
+      return;
+    }
+
+    setDueDate(
+      getSmartInvoiceDates({
+        customerName: overrides.customerName ?? customerName,
+        projectTitle: overrides.projectTitle ?? projectTitle,
+        serviceAddress: overrides.serviceAddress ?? serviceAddress,
+        reference: overrides.reference ?? reference,
+        notes: overrides.notes ?? notes,
+        terms: overrides.terms ?? terms,
+        lineItems: overrides.lineItems ?? lineItems,
+        issueDate: overrides.issueDate ?? issueDate,
+      }).dueDate
+    );
+  }
+
+  function handleIssueDateChange(value: string) {
+    setIssueDate(value);
+    updateDueDateIfAutomatic({ issueDate: value });
   }
 
   function updateLineItem(
@@ -715,29 +809,47 @@ function NewInvoicePageContent() {
               label="Customer Name"
               placeholder="Enter customer name"
               value={customerName}
-              onChange={setCustomerName}
+              onChange={(value) => {
+                setCustomerName(value);
+                updateDueDateIfAutomatic({ customerName: value });
+              }}
             />
 
             <InputField
               label="Project Title"
               placeholder="Example: Unit 204 Turn"
               value={projectTitle}
-              onChange={setProjectTitle}
+              onChange={(value) => {
+                setProjectTitle(value);
+                updateDueDateIfAutomatic({ projectTitle: value });
+              }}
             />
 
             <div className="grid gap-5 md:grid-cols-2">
               <InputField
                 label="Issue Date"
                 value={issueDate}
-                onChange={setIssueDate}
+                onChange={handleIssueDateChange}
                 type="date"
               />
 
               <InputField
                 label="Due Date"
                 value={dueDate}
-                onChange={setDueDate}
+                onChange={(value) => {
+                  setDueDateManuallyChanged(true);
+                  setDueDate(value);
+                }}
                 type="date"
+                helperText={
+                  dueDateManuallyChanged
+                    ? "Manual due date selected."
+                    : smartInvoiceDates.reason === "apartment"
+                      ? "Auto-set to 30 days for apartment billing."
+                      : smartInvoiceDates.reason === "terms"
+                        ? "Auto-set from terms or notes."
+                        : "Auto-set to due upon receipt."
+                }
               />
             </div>
 
@@ -745,7 +857,10 @@ function NewInvoicePageContent() {
               label="Reference"
               placeholder="Example: Unit 204, PO #123, X4"
               value={reference}
-              onChange={setReference}
+              onChange={(value) => {
+                setReference(value);
+                updateDueDateIfAutomatic({ reference: value });
+              }}
             />
 
             <InputField
@@ -1061,7 +1176,12 @@ function NewInvoicePageContent() {
 
               <textarea
                 value={notes}
-                onChange={(event) => setNotes(event.target.value)}
+                onChange={(event) => {
+                  setNotes(event.target.value);
+                  updateDueDateIfAutomatic({
+                    notes: event.target.value,
+                  });
+                }}
                 placeholder="Internal notes..."
                 className="min-h-32 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
               />
@@ -1074,7 +1194,12 @@ function NewInvoicePageContent() {
 
               <textarea
                 value={terms}
-                onChange={(event) => setTerms(event.target.value)}
+                onChange={(event) => {
+                  setTerms(event.target.value);
+                  updateDueDateIfAutomatic({
+                    terms: event.target.value,
+                  });
+                }}
                 placeholder="Payment terms..."
                 className="min-h-32 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
               />

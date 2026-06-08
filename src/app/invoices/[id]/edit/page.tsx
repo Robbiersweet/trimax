@@ -12,6 +12,7 @@ import { captureServicesFromLineItems } from "../../../lib/captureServicesFromLi
 import { logActivity } from "../../../lib/activityLog";
 import { supabase } from "../../../lib/supabase";
 import { looksLikeApartmentUnitPaintJob } from "../../../utils/jobWorkflow";
+import { getSmartInvoiceDates } from "../../../utils/invoiceDates";
 import {
   formatTaxSummaryLabel,
   getEffectiveTaxRate,
@@ -134,6 +135,8 @@ export default function EditInvoicePage() {
     useState("");
   const [issueDate, setIssueDate] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [dueDateManuallyChanged, setDueDateManuallyChanged] =
+    useState(false);
   const [reference, setReference] = useState("");
   const [serviceAddress, setServiceAddress] =
     useState("");
@@ -354,9 +357,33 @@ export default function EditInvoicePage() {
         (lineItemData ?? []) as SavedLineItem[];
 
       if (savedLineItems.length > 0) {
-        setLineItems(savedLineItems.map(toLineItem));
+        const loadedLineItems = savedLineItems.map(toLineItem);
+        setLineItems(loadedLineItems);
+
+        if (!invoice.issue_date || !invoice.due_date) {
+          const smartDates = getSmartInvoiceDates({
+            customerName: invoice.customer_name ?? "",
+            projectTitle: invoice.project_title ?? "",
+            serviceAddress: invoice.service_address ?? "",
+            reference: invoice.reference ?? "",
+            notes: invoice.notes ?? "",
+            terms:
+              invoice.terms ??
+              "Payment due upon invoice. Thank you for your business.",
+            lineItems: loadedLineItems,
+            issueDate: invoice.issue_date,
+          });
+
+          if (!invoice.issue_date) {
+            setIssueDate(smartDates.issueDate);
+          }
+
+          if (!invoice.due_date) {
+            setDueDate(smartDates.dueDate);
+          }
+        }
       } else {
-        setLineItems([
+        const fallbackLineItems = [
           {
             serviceItemId: "",
             description:
@@ -366,7 +393,32 @@ export default function EditInvoicePage() {
               invoice.invoice_amount
             ),
           },
-        ]);
+        ];
+
+        setLineItems(fallbackLineItems);
+
+        if (!invoice.issue_date || !invoice.due_date) {
+          const smartDates = getSmartInvoiceDates({
+            customerName: invoice.customer_name ?? "",
+            projectTitle: invoice.project_title ?? "",
+            serviceAddress: invoice.service_address ?? "",
+            reference: invoice.reference ?? "",
+            notes: invoice.notes ?? "",
+            terms:
+              invoice.terms ??
+              "Payment due upon invoice. Thank you for your business.",
+            lineItems: fallbackLineItems,
+            issueDate: invoice.issue_date,
+          });
+
+          if (!invoice.issue_date) {
+            setIssueDate(smartDates.issueDate);
+          }
+
+          if (!invoice.due_date) {
+            setDueDate(smartDates.dueDate);
+          }
+        }
       }
 
       setLoading(false);
@@ -396,6 +448,25 @@ export default function EditInvoicePage() {
   function handleServiceAddressChange(address: string) {
     setServiceAddress(address);
     applyTaxSuggestion(address);
+  }
+
+  function handleIssueDateChange(value: string) {
+    setIssueDate(value);
+
+    if (!dueDateManuallyChanged) {
+      setDueDate(
+        getSmartInvoiceDates({
+          customerName,
+          projectTitle,
+          serviceAddress,
+          reference,
+          notes,
+          terms,
+          lineItems,
+          issueDate: value,
+        }).dueDate
+      );
+    }
   }
 
   function updateLineItem(
@@ -658,15 +729,23 @@ export default function EditInvoicePage() {
               <InputField
                 label="Issue Date"
                 value={issueDate}
-                onChange={setIssueDate}
+                onChange={handleIssueDateChange}
                 type="date"
               />
 
               <InputField
                 label="Due Date"
                 value={dueDate}
-                onChange={setDueDate}
+                onChange={(value) => {
+                  setDueDateManuallyChanged(true);
+                  setDueDate(value);
+                }}
                 type="date"
+                helperText={
+                  dueDateManuallyChanged
+                    ? "Manual due date selected."
+                    : "Blank saved due dates are auto-filled from the invoice type."
+                }
               />
             </div>
 

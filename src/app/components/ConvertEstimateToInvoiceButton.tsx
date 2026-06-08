@@ -6,6 +6,7 @@ import Button from "./Button";
 import { getNextDocumentDisplayId } from "../lib/documentNumbers";
 import { logActivity } from "../lib/activityLog";
 import { supabase } from "../lib/supabase";
+import { getSmartInvoiceDates } from "../utils/invoiceDates";
 import { getEffectiveTaxRate } from "../utils/tax";
 
 type ConvertEstimateToInvoiceButtonProps = {
@@ -164,6 +165,20 @@ export default function ConvertEstimateToInvoiceButton({
       fallbackSubtotal * (taxRate / 100);
     const invoiceTotal =
       fallbackSubtotal + taxAmount;
+    const smartInvoiceDates = getSmartInvoiceDates({
+      customerName: estimate.customer_name ?? customerName,
+      projectTitle: estimate.project_title ?? projectTitle,
+      serviceAddress:
+        estimate.service_address ?? estimate.project_address ?? "",
+      reference: estimate.reference ?? "",
+      notes: estimate.notes ?? notes,
+      terms:
+        estimate.terms ??
+        "Payment due upon invoice. Thank you for your business.",
+      lineItems: estimateLineItems.map((item) => ({
+        description: item.description ?? "",
+      })),
+    });
 
     if (invoiceTotal <= 0) {
       setMessage({
@@ -220,6 +235,8 @@ export default function ConvertEstimateToInvoiceButton({
         reference: estimate.reference ?? "",
         invoice_amount:
           formatCurrency(invoiceTotal),
+        issue_date: smartInvoiceDates.issueDate,
+        due_date: smartInvoiceDates.dueDate,
         tax_mode: estimate.tax_mode || "taxable",
         tax_label: estimate.tax_label ?? "Tax",
         tax_rate: taxRate,

@@ -755,10 +755,10 @@ function NewRequestPageContent() {
                 />
 
                 <span>
-                  <span className="block font-semibold text-amber-100">
+                  <span className="block font-semibold text-amber-900">
                     Add full primer to estimate
                   </span>
-                  <span className="text-sm text-amber-100/75">
+                  <span className="text-sm leading-6 text-amber-900">
                     Turn this off when the property wants the smoke noted for
                     reporting but does not want the whole unit primed.
                   </span>
