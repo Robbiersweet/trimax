@@ -265,6 +265,10 @@ function queueHref(
   return `/queue?${params.toString()}`;
 }
 
+function appHref(businessSlug: string, path: string) {
+  return `${path}?business=${businessSlug}`;
+}
+
 export default async function ReportsPage({
   searchParams,
 }: {
@@ -593,6 +597,71 @@ export default async function ReportsPage({
           </Card>
         ) : null}
 
+        <Card className="border-sky-500/20 bg-gradient-to-br from-sky-500/5 via-zinc-950 to-orange-500/5">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm uppercase tracking-[0.3em] text-sky-300">
+                Report Library
+              </p>
+
+              <h2 className="mt-2 text-2xl font-bold">
+                Choose the report you need
+              </h2>
+
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+                Trimax keeps the FreshBooks idea of grouped report cards, but
+                focuses on operations, invoices, payments, tax, and activity
+                instead of broad bookkeeping extras.
+              </p>
+            </div>
+
+            <Link
+              href={appHref(businessSlug, "/activity")}
+              className="text-sm font-semibold text-orange-400 transition hover:text-orange-300"
+            >
+              Open Activity Log
+            </Link>
+          </div>
+
+          <div className="mt-5 grid gap-4 lg:grid-cols-2">
+            <ReportTile
+              label="Invoice Details"
+              description="Open the invoice list to review drafts, sent invoices, split invoices, amounts, and statuses."
+              href={appHref(businessSlug, "/invoices")}
+              badge="Core"
+            />
+            <ReportTile
+              label="Revenue by Client"
+              description="Review client records, then drill into estimates and invoices tied to each customer."
+              href={appHref(businessSlug, "/clients")}
+            />
+            <ReportTile
+              label="Accounts Aging"
+              description="Use invoices and payments together to see unpaid balances and payment attention areas."
+              href={appHref(businessSlug, "/payments")}
+              badge="Money"
+            />
+            <ReportTile
+              label="Sales Tax Summary"
+              description="Use the current report filters with invoice totals and tax labels to review taxable work."
+              href="#financial-reports"
+              badge="Updated"
+            />
+            <ReportTile
+              label="Queue History"
+              description="Review recent property turns, paint due dates, scheduling, completion, and notes."
+              href="#queue-history"
+              badge="Operations"
+            />
+            <ReportTile
+              label="Unit Layout Mix"
+              description="See how many North Creek queue items are being collected as 2x2, 2x1, or not set."
+              href="#job-mix-reports"
+              badge="New"
+            />
+          </div>
+        </Card>
+
         <Card className="p-5">
           <div className="grid gap-5 xl:grid-cols-[1fr_auto_auto] xl:items-end">
             <div>
@@ -782,6 +851,7 @@ export default async function ReportsPage({
           />
         </div>
 
+        <div id="financial-reports" className="scroll-mt-24">
         <RoleVisible
           businessSlug={businessSlug}
           allow={["owner", "admin", "accountant"]}
@@ -833,8 +903,9 @@ export default async function ReportsPage({
             </Card>
           </div>
         </RoleVisible>
+        </div>
 
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div id="job-mix-reports" className="grid scroll-mt-24 gap-4 lg:grid-cols-3">
           <BreakdownCard title="Status Breakdown" items={statusBreakdown} />
           <BreakdownCard title="Paint Type" items={paintBreakdown} />
           <BreakdownCard title="Flooring Type" items={flooringBreakdown} />
@@ -889,7 +960,7 @@ export default async function ReportsPage({
           </Card>
         </div>
 
-        <Card>
+        <Card id="queue-history">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
@@ -1040,6 +1111,52 @@ function MetricCard({
       className="block transition hover:-translate-y-0.5 hover:opacity-95"
     >
       {content}
+    </Link>
+  );
+}
+
+function ReportTile({
+  label,
+  description,
+  href,
+  badge,
+}: {
+  label: string;
+  description: string;
+  href: string;
+  badge?: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group block rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4 transition hover:-translate-y-0.5 hover:border-orange-500/50 hover:bg-zinc-900"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <span className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-sky-500/30 bg-sky-500/10 text-sm font-black text-sky-300">
+            {label
+              .split(" ")
+              .slice(0, 2)
+              .map((word) => word.charAt(0))
+              .join("")}
+          </span>
+
+          <div>
+            <p className="font-semibold text-zinc-100 transition group-hover:text-orange-300">
+              {label}
+            </p>
+            <p className="mt-1 text-sm leading-6 text-zinc-400">
+              {description}
+            </p>
+          </div>
+        </div>
+
+        {badge ? (
+          <span className="shrink-0 rounded-full border border-orange-500/30 bg-orange-500/10 px-2.5 py-1 text-xs font-bold uppercase tracking-[0.12em] text-orange-300">
+            {badge}
+          </span>
+        ) : null}
+      </div>
     </Link>
   );
 }
