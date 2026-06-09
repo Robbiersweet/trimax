@@ -33,6 +33,7 @@ type QueueRequestDraft = {
   property: string;
   unitsText: string;
   paintType: string;
+  unitLayout: string;
   wallPaintColor: string;
   flooring: string;
   priority: string;
@@ -75,6 +76,12 @@ const rnlPaintTypeOptions = [
 const rnlWallPaintColorOptions = [
   "Sherwin-Williams Roman Column (SW 7562)",
   "Sherwin-Williams Nebulous White (SW 7063)",
+  "Confirm with manager",
+];
+
+const northCreekUnitLayoutOptions = [
+  "2x2 - 2 Bed / 2 Bath",
+  "2x1 - 2 Bed / 1 Bath",
   "Confirm with manager",
 ];
 
@@ -126,6 +133,13 @@ function propertyKey(value: string) {
     .replaceAll("&", "and")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+}
+
+function shouldCollectUnitLayout(businessSlug: string, property: string) {
+  return (
+    businessSlug === "rnl-creations" &&
+    propertyKey(property) === "north-creek-apartments"
+  );
 }
 
 function propertyFromParam(
@@ -217,6 +231,7 @@ function hasDraftContent(draft: QueueRequestDraft) {
   return Boolean(
     draft.unitsText ||
       draft.paintType ||
+      draft.unitLayout ||
       draft.wallPaintColor ||
       draft.flooring ||
       draft.smokedIn ||
@@ -286,6 +301,7 @@ function NewRequestPageContent() {
   );
   const [unitsText, setUnitsText] = useState("");
   const [paintType, setPaintType] = useState("");
+  const [unitLayout, setUnitLayout] = useState("");
   const [wallPaintColor, setWallPaintColor] = useState("");
   const [flooring, setFlooring] = useState("");
   const [priority, setPriority] = useState("Normal");
@@ -321,6 +337,7 @@ function NewRequestPageContent() {
       property,
       unitsText,
       paintType,
+      unitLayout,
       wallPaintColor,
       flooring,
       priority,
@@ -339,6 +356,7 @@ function NewRequestPageContent() {
       property,
       unitsText,
       paintType,
+      unitLayout,
       wallPaintColor,
       flooring,
       priority,
@@ -412,6 +430,7 @@ function NewRequestPageContent() {
         setProperty(draft.property ?? "");
         setUnitsText(draft.unitsText ?? "");
         setPaintType(draft.paintType ?? "");
+        setUnitLayout(draft.unitLayout ?? "");
         setWallPaintColor(draft.wallPaintColor ?? "");
         setFlooring(draft.flooring ?? "");
         setPriority(draft.priority ?? "Normal");
@@ -565,6 +584,11 @@ function NewRequestPageContent() {
     loadRenovationMemory();
   }, [business, isJustKleen, property, unitsText]);
 
+  const collectUnitLayout = shouldCollectUnitLayout(
+    businessSlug,
+    property
+  );
+
   async function handleSubmit() {
     setToast(null);
 
@@ -599,6 +623,7 @@ function NewRequestPageContent() {
             property,
             unit,
             paintType,
+            unitLayout: collectUnitLayout ? unitLayout : "",
             wallPaintColor: isJustKleen ? "" : wallPaintColor,
             flooring,
             priority,
@@ -761,7 +786,13 @@ function NewRequestPageContent() {
                   : "Example: North Creek Apartments"
               }
               value={property}
-              onChange={setProperty}
+              onChange={(value) => {
+                setProperty(value);
+
+                if (!shouldCollectUnitLayout(businessSlug, value)) {
+                  setUnitLayout("");
+                }
+              }}
               options={propertyOptions}
             />
 
@@ -775,6 +806,17 @@ function NewRequestPageContent() {
               value={unitsText}
               onChange={setUnitsText}
             />
+
+            {collectUnitLayout ? (
+              <InputField
+                label="Unit Layout"
+                placeholder="Optional: 2x2 or 2x1"
+                value={unitLayout}
+                onChange={setUnitLayout}
+                options={northCreekUnitLayoutOptions}
+                helperText="Optional. Collect this over time so scheduling can show the apartment layout before paint is planned."
+              />
+            ) : null}
 
             {paintMemoryMessage ? (
               <div className="rounded-2xl border border-orange-500/30 bg-orange-500/10 px-4 py-3">

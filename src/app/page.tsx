@@ -17,6 +17,7 @@ type QueueItem = {
   id: string;
   property: string | null;
   unit: string | null;
+  unit_layout: string | null;
   paint_type: string | null;
   flooring: string | null;
   status: string | null;
@@ -1737,6 +1738,7 @@ export default async function DashboardPage({
                       </p>
 
                       <p className="mt-1 text-sm text-zinc-400">
+                        {item.unit_layout ? `Layout ${item.unit_layout} / ` : ""}
                         {item.paint_type || "Paint TBD"} /{" "}
                         {item.flooring || "Flooring TBD"}
                       </p>

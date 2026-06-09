@@ -18,6 +18,7 @@ type QueueItemWithEstimate = {
   status: string | null;
   priority: string | null;
   paint_type: string | null;
+  unit_layout: string | null;
   wall_paint_color: string | null;
   flooring: string | null;
   move_out_date: string | null;
@@ -336,6 +337,7 @@ export default async function QueuePage({
       item.status,
       item.priority,
       item.paint_type,
+      item.unit_layout,
       item.wall_paint_color,
       item.flooring,
       item.move_out_date,
@@ -669,6 +671,7 @@ export default async function QueuePage({
 
                       <p className="mt-2 text-zinc-400">
                         Unit {item.unit || "-"}
+                        {item.unit_layout ? ` / Layout ${item.unit_layout}` : ""}
                       </p>
 
                       <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -696,6 +699,10 @@ export default async function QueuePage({
 
                       <div className="mt-5 grid gap-4 text-sm text-zinc-300 md:grid-cols-2">
                         <Info label="Paint Type" value={item.paint_type} />
+                        <Info
+                          label="Unit Layout"
+                          value={item.unit_layout}
+                        />
                         <Info
                           label="Wall Color"
                           value={item.wall_paint_color}

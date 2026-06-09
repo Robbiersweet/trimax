@@ -22,6 +22,7 @@ type QueueScheduleItem = {
   status: string | null;
   priority: string | null;
   paint_type: string | null;
+  unit_layout?: string | null;
   flooring: string | null;
   ready_date: string | null;
   scheduled_date: string | null;
@@ -86,6 +87,7 @@ function jobTitle(item: QueueScheduleItem) {
 function jobDescription(item: QueueScheduleItem) {
   const details = [
     item.paint_type ? `Paint: ${item.paint_type}` : null,
+    item.unit_layout ? `Layout: ${item.unit_layout}` : null,
     item.flooring ? `Flooring: ${item.flooring}` : null,
     item.priority ? `Priority: ${item.priority}` : null,
     item.ready_date ? `Paint due date: ${item.ready_date}` : null,
@@ -151,9 +153,7 @@ export default async function SchedulePage({
   if (selectedBusiness?.id) {
     const { data, error } = await supabase
       .from("queue_items")
-      .select(
-        "id, property, unit, status, priority, paint_type, flooring, ready_date, scheduled_date, completed_date, notes"
-      )
+      .select("*")
       .eq("business_id", selectedBusiness.id)
       .order("scheduled_date", { ascending: true, nullsFirst: false })
       .order("ready_date", { ascending: true, nullsFirst: false });
@@ -397,6 +397,11 @@ export default async function SchedulePage({
                         {item.priority ? (
                           <span className="rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-sm font-semibold text-orange-300">
                             {item.priority} Priority
+                          </span>
+                        ) : null}
+                        {item.unit_layout ? (
+                          <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-sm font-semibold text-sky-300">
+                            Layout {item.unit_layout}
                           </span>
                         ) : null}
                       </div>

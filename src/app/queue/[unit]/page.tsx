@@ -21,6 +21,7 @@ type SupabaseQueueItem = {
   status: string | null;
   priority: string | null;
   paint_type: string | null;
+  unit_layout: string | null;
   wall_paint_color: string | null;
   flooring: string | null;
   move_out_date: string | null;
@@ -226,6 +227,7 @@ export default async function QueueDetailPage({
     location: item.property,
     description: [
       item.paint_type ? `Paint: ${item.paint_type}` : null,
+      item.unit_layout ? `Layout: ${item.unit_layout}` : null,
       item.wall_paint_color ? `Wall color: ${item.wall_paint_color}` : null,
       item.flooring ? `Flooring: ${item.flooring}` : null,
       item.priority ? `Priority: ${item.priority}` : null,
@@ -386,6 +388,7 @@ export default async function QueueDetailPage({
           <div className="grid gap-6 md:grid-cols-2">
             <Info label="Property" value={item.property ?? ""} />
             <Info label="Priority" value={item.priority ?? ""} />
+            <Info label="Unit Layout" value={item.unit_layout ?? ""} />
             <Info label="Paint Type" value={item.paint_type ?? ""} />
             <Info
               label="Wall Paint Color"

@@ -5,6 +5,7 @@ type CreateQueueItemInput = {
   property: string;
   unit: string;
   paintType: string;
+  unitLayout: string;
   wallPaintColor: string;
   flooring: string;
   priority: string;
@@ -38,6 +39,7 @@ function isMissingQueueColumnError(error: unknown) {
 
   return (
     message.includes("primer_requested") ||
+    message.includes("unit_layout") ||
     message.includes("wall_paint_color")
   );
 }
@@ -51,6 +53,7 @@ export async function createQueueItem(input: CreateQueueItemInput) {
     property: input.property,
     unit: input.unit,
     paint_type: input.paintType,
+    unit_layout: input.unitLayout.trim() || null,
     wall_paint_color: input.wallPaintColor.trim() || null,
     flooring: input.flooring,
     priority: input.priority,
@@ -81,6 +84,7 @@ export async function createQueueItem(input: CreateQueueItemInput) {
       ...queueItemInsert,
     };
     delete legacyQueueItemInsert.primer_requested;
+    delete legacyQueueItemInsert.unit_layout;
     delete legacyQueueItemInsert.wall_paint_color;
 
     const retry = await supabase
@@ -110,6 +114,7 @@ export async function createQueueItem(input: CreateQueueItemInput) {
       property: input.property,
       unit: input.unit,
       paintType: input.paintType,
+      unitLayout: input.unitLayout,
       wallPaintColor: input.wallPaintColor,
       flooring: input.flooring,
       smokedIn: input.smokedIn,

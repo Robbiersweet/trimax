@@ -17,6 +17,7 @@ type QueueItem = {
   id: string;
   property: string | null;
   unit: string | null;
+  unit_layout: string | null;
   status: string | null;
   paint_type: string | null;
   flooring: string | null;
@@ -541,6 +542,10 @@ export default async function ReportsPage({
     filteredQueueItems,
     (item) => item.flooring
   );
+  const unitLayoutBreakdown = countBy(
+    filteredQueueItems,
+    (item) => item.unit_layout
+  );
   const renovationBreakdown = countBy(
     priorRenovationUnits,
     (item) => item.prior_renovation_details || "Prior Renovation"
@@ -833,6 +838,7 @@ export default async function ReportsPage({
           <BreakdownCard title="Status Breakdown" items={statusBreakdown} />
           <BreakdownCard title="Paint Type" items={paintBreakdown} />
           <BreakdownCard title="Flooring Type" items={flooringBreakdown} />
+          <BreakdownCard title="Unit Layout" items={unitLayoutBreakdown} />
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">

@@ -66,6 +66,7 @@ type QueueItem = {
   property: string | null;
   unit: string | null;
   paint_type: string | null;
+  unit_layout: string | null;
   wall_paint_color: string | null;
   flooring: string | null;
   move_out_date: string | null;
@@ -555,6 +556,7 @@ function NewEstimatePageContent() {
       ].filter(Boolean);
       const descriptionParts = [
         unitLabel,
+        loadedQueueItem.unit_layout,
         loadedQueueItem.paint_type,
         loadedQueueItem.wall_paint_color,
         loadedQueueItem.flooring,
@@ -659,6 +661,9 @@ function NewEstimatePageContent() {
         [
           loadedQueueItem.wall_paint_color
             ? `Wall paint color: ${loadedQueueItem.wall_paint_color}`
+            : null,
+          loadedQueueItem.unit_layout
+            ? `Unit layout: ${loadedQueueItem.unit_layout}`
             : null,
           loadedQueueItem.notes,
         ]

@@ -54,6 +54,12 @@ const wallPaintColorOptions = [
   "Confirm with manager",
 ];
 
+const northCreekUnitLayoutOptions = [
+  "2x2 - 2 Bed / 2 Bath",
+  "2x1 - 2 Bed / 1 Bath",
+  "Confirm with manager",
+];
+
 const flooringOptions = [
   "Keep Carpet & Keep Vinyl",
   "Keep Vinyl & Replace Carpet",
@@ -66,6 +72,14 @@ const flooringOptions = [
   "Carpet",
   "Vinyl",
 ];
+
+function propertyKey(value: string) {
+  return value
+    .toLowerCase()
+    .replaceAll("&", "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
 
 export default function EditQueueItemPage() {
   const params = useParams();
@@ -85,6 +99,7 @@ export default function EditQueueItemPage() {
   const [status, setStatus] = useState("");
   const [priority, setPriority] = useState("");
   const [paintType, setPaintType] = useState("");
+  const [unitLayout, setUnitLayout] = useState("");
   const [wallPaintColor, setWallPaintColor] = useState("");
   const [flooring, setFlooring] = useState("");
   const [smokedIn, setSmokedIn] = useState(false);
@@ -148,6 +163,7 @@ export default function EditQueueItemPage() {
       setStatus(data.status ?? "");
       setPriority(data.priority ?? "");
       setPaintType(data.paint_type ?? "");
+      setUnitLayout(data.unit_layout ?? "");
       setWallPaintColor(data.wall_paint_color ?? "");
       setFlooring(data.flooring ?? "");
       setSmokedIn(Boolean(data.smoked_in));
@@ -185,6 +201,7 @@ export default function EditQueueItemPage() {
       status,
       priority,
       paint_type: paintType,
+      unit_layout: unitLayout.trim() || null,
       wall_paint_color: wallPaintColor.trim() || null,
       flooring,
       smoked_in: smokedIn,
@@ -210,12 +227,14 @@ export default function EditQueueItemPage() {
 
     if (
       error?.message?.includes("primer_requested") ||
+      error?.message?.includes("unit_layout") ||
       error?.message?.includes("wall_paint_color")
     ) {
       const legacyUpdatePayload: Record<string, unknown> = {
         ...updatePayload,
       };
       delete legacyUpdatePayload.primer_requested;
+      delete legacyUpdatePayload.unit_layout;
       delete legacyUpdatePayload.wall_paint_color;
 
       const retry = await supabase
@@ -288,6 +307,19 @@ export default function EditQueueItemPage() {
               value={unit}
               onChange={setUnit}
             />
+
+            {businessSlug === "rnl-creations" &&
+            (propertyKey(property) === "north-creek-apartments" ||
+              unitLayout) ? (
+              <InputField
+                label="Unit Layout"
+                placeholder="Optional: 2x2 or 2x1"
+                value={unitLayout}
+                onChange={setUnitLayout}
+                options={northCreekUnitLayoutOptions}
+                helperText="Optional. This helps the schedule show which North Creek layout is being painted."
+              />
+            ) : null}
 
             <div className="grid gap-5 md:grid-cols-2">
               <InputField
