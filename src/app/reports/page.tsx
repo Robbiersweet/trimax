@@ -642,6 +642,11 @@ export default async function ReportsPage({
               badge="Money"
             />
             <ReportTile
+              label="Payments Collected"
+              description="Review recent payment activity and use batch payments when one check covers several invoices."
+              href={appHref(businessSlug, "/payments")}
+            />
+            <ReportTile
               label="Sales Tax Summary"
               description="Use the current report filters with invoice totals and tax labels to review taxable work."
               href="#financial-reports"
@@ -654,10 +659,20 @@ export default async function ReportsPage({
               badge="Operations"
             />
             <ReportTile
+              label="Schedule Calendar"
+              description="Open scheduled work, due-soon units, and calendar downloads for planned paint jobs."
+              href={appHref(businessSlug, "/schedule")}
+            />
+            <ReportTile
               label="Unit Layout Mix"
               description="See how many North Creek queue items are being collected as 2x2, 2x1, or not set."
               href="#job-mix-reports"
               badge="New"
+            />
+            <ReportTile
+              label="Audit Activity"
+              description="Review important queue, estimate, invoice, payment, split, and access request activity."
+              href={appHref(businessSlug, "/activity")}
             />
           </div>
         </Card>
