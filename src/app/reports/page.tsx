@@ -46,6 +46,7 @@ type Invoice = {
   id: string;
   customer_name: string | null;
   invoice_amount: string | number | null;
+  amount_paid: string | number | null;
   status: string | null;
   created_at: string | null;
   tax_mode: string | null;
@@ -256,6 +257,20 @@ function invoiceTaxParts(invoice: Invoice) {
   };
 }
 
+function invoicePaidAmount(invoice: Invoice) {
+  const total = parseMoney(invoice.invoice_amount);
+  const paid = parseMoney(invoice.amount_paid);
+
+  return Math.min(Math.max(paid, 0), Math.max(total, 0));
+}
+
+function invoiceOpenAmount(invoice: Invoice) {
+  return Math.max(
+    parseMoney(invoice.invoice_amount) - invoicePaidAmount(invoice),
+    0
+  );
+}
+
 function reportsHref(
   businessSlug: string,
   options: {
@@ -379,7 +394,7 @@ export default async function ReportsPage({
         supabase
           .from("invoices")
           .select(
-            "id, customer_name, invoice_amount, status, created_at, tax_mode, tax_label, tax_rate, tax_number, split_parent_invoice_id"
+            "id, customer_name, invoice_amount, amount_paid, status, created_at, tax_mode, tax_label, tax_rate, tax_number, split_parent_invoice_id"
           )
           .eq("business_id", selectedBusiness.id)
           .order("created_at", { ascending: false }),
@@ -581,6 +596,16 @@ export default async function ReportsPage({
     0
   );
 
+  const paymentsCollected = filteredInvoices.reduce(
+    (total, invoice) => total + invoicePaidAmount(invoice),
+    0
+  );
+
+  const openReceivables = filteredInvoices.reduce(
+    (total, invoice) => total + invoiceOpenAmount(invoice),
+    0
+  );
+
   const salesTaxSummary = filteredInvoices.reduce(
     (summary, invoice) => {
       const parts = invoiceTaxParts(invoice);
@@ -631,6 +656,35 @@ export default async function ReportsPage({
   )
     .map(([, value]) => value)
     .sort((first, second) => second.taxCollected - first.taxCollected);
+
+  const clientRevenueBreakdown = Array.from(
+    filteredInvoices.reduce((groups, invoice) => {
+      const key = invoice.customer_name?.trim() || "Unknown Client";
+      const existing = groups.get(key) ?? {
+        label: key,
+        invoiceCount: 0,
+        invoiceTotal: 0,
+        paidTotal: 0,
+        openTotal: 0,
+      };
+
+      existing.invoiceCount += 1;
+      existing.invoiceTotal += parseMoney(invoice.invoice_amount);
+      existing.paidTotal += invoicePaidAmount(invoice);
+      existing.openTotal += invoiceOpenAmount(invoice);
+      groups.set(key, existing);
+
+      return groups;
+    }, new Map<string, {
+      label: string;
+      invoiceCount: number;
+      invoiceTotal: number;
+      paidTotal: number;
+      openTotal: number;
+    }>())
+  )
+    .map(([, value]) => value)
+    .sort((first, second) => second.invoiceTotal - first.invoiceTotal);
 
   const statusBreakdown = countBy(filteredQueueItems, (item) =>
     normalizeStatus(item.status)
@@ -728,9 +782,15 @@ export default async function ReportsPage({
               badge="Core"
             />
             <ReportTile
+              label="Profit and Loss Lite"
+              description="Review the income side of the business without pretending Trimax is full accounting software."
+              href="#accounting-lite"
+              badge="New"
+            />
+            <ReportTile
               label="Revenue by Client"
-              description="Review client records, then drill into estimates and invoices tied to each customer."
-              href={appHref(businessSlug, "/clients")}
+              description="See which customers are driving invoice totals, payments collected, and open balances."
+              href="#revenue-by-client"
             />
             <ReportTile
               label="Accounts Aging"
@@ -739,9 +799,9 @@ export default async function ReportsPage({
               badge="Money"
             />
             <ReportTile
-              label="Payments Collected"
-              description="Review recent payment activity and use batch payments when one check covers several invoices."
-              href={appHref(businessSlug, "/payments")}
+              label="Cash Flow Lite"
+              description="Track money collected and outstanding invoice balances from the data already in Trimax."
+              href="#accounting-lite"
             />
             <ReportTile
               label="Sales Tax Summary"
@@ -769,6 +829,11 @@ export default async function ReportsPage({
             <ReportTile
               label="Audit Activity"
               description="Review important queue, estimate, invoice, payment, split, and access request activity."
+              href={appHref(businessSlug, "/activity")}
+            />
+            <ReportTile
+              label="General Ledger Lite"
+              description="Use the Activity Log as the plain-language trail of important workspace events."
               href={appHref(businessSlug, "/activity")}
             />
           </div>
@@ -1014,6 +1079,160 @@ export default async function ReportsPage({
               </p>
             </Card>
           </div>
+
+          <Card
+            id="accounting-lite"
+            className="mt-4 scroll-mt-24 border-sky-500/30 bg-gradient-to-br from-sky-500/10 via-zinc-950 to-emerald-500/5"
+          >
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.3em] text-sky-300">
+                  Accounting Lite
+                </p>
+
+                <h2 className="mt-2 text-2xl font-bold">
+                  Business money snapshot
+                </h2>
+
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+                  Borrowed from FreshBooks, but kept honest for Trimax:
+                  this shows income, payments, open balances, and tax from
+                  invoices. It does not calculate true profit until expenses
+                  and bank activity are tracked here.
+                </p>
+              </div>
+
+              <Link
+                href={appHref(businessSlug, "/payments")}
+                className="text-sm font-semibold text-orange-400 transition hover:text-orange-300"
+              >
+                Open Payments
+              </Link>
+            </div>
+
+            <div className="mt-5 grid gap-3 md:grid-cols-4">
+              <TaxMetric
+                label="Invoice Income"
+                value={formatMoney(invoicedRevenue)}
+              />
+              <TaxMetric
+                label="Payments Collected"
+                value={formatMoney(paymentsCollected)}
+                strong
+              />
+              <TaxMetric
+                label="Open A/R"
+                value={formatMoney(openReceivables)}
+              />
+              <TaxMetric
+                label="Tax Collected"
+                value={formatMoney(salesTaxSummary.taxCollected)}
+              />
+            </div>
+
+            <div className="mt-5 grid gap-3 md:grid-cols-3">
+              <div className="rounded-2xl border border-sky-500/20 bg-black/25 p-4">
+                <p className="text-sm font-bold text-sky-200">
+                  Profit and Loss Lite
+                </p>
+                <p className="mt-2 text-sm leading-6 text-zinc-400">
+                  Useful for revenue review today. True profit needs an
+                  expense tracker before the number should be trusted.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-emerald-500/20 bg-black/25 p-4">
+                <p className="text-sm font-bold text-emerald-200">
+                  Cash Flow Lite
+                </p>
+                <p className="mt-2 text-sm leading-6 text-zinc-400">
+                  Uses invoice payments and open balances so you can see what
+                  has actually been collected.
+                </p>
+              </div>
+
+              <Link
+                href={appHref(businessSlug, "/activity")}
+                className="rounded-2xl border border-orange-500/20 bg-black/25 p-4 transition hover:border-orange-500/50 hover:bg-zinc-900"
+              >
+                <p className="text-sm font-bold text-orange-200">
+                  General Ledger Lite
+                </p>
+                <p className="mt-2 text-sm leading-6 text-zinc-400">
+                  The Activity Log is the current record trail for important
+                  queue, invoice, payment, and access events.
+                </p>
+              </Link>
+            </div>
+          </Card>
+
+          <Card id="revenue-by-client" className="mt-4 scroll-mt-24">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
+                  Revenue by Client
+                </p>
+
+                <h2 className="mt-2 text-2xl font-bold">
+                  Who is driving revenue
+                </h2>
+
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+                  This uses the same report filters and only counts billable
+                  invoices, so split parent invoices do not double count.
+                </p>
+              </div>
+
+              <Link
+                href={appHref(businessSlug, "/clients")}
+                className="text-sm font-semibold text-orange-400 transition hover:text-orange-300"
+              >
+                Open Clients
+              </Link>
+            </div>
+
+            <div className="mt-5 overflow-hidden rounded-2xl border border-zinc-800">
+              <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 bg-zinc-950 px-4 py-3 text-xs font-bold uppercase tracking-[0.18em] text-zinc-500">
+                <span>Client</span>
+                <span className="text-right">Invoiced</span>
+                <span className="text-right">Paid</span>
+                <span className="text-right">Open</span>
+              </div>
+
+              {clientRevenueBreakdown.length === 0 ? (
+                <div className="p-4 text-sm text-zinc-400">
+                  No invoices match this client revenue view yet.
+                </div>
+              ) : (
+                clientRevenueBreakdown.slice(0, 8).map((item) => (
+                  <div
+                    key={item.label}
+                    className="grid grid-cols-[1fr_auto_auto_auto] gap-3 border-t border-zinc-800 px-4 py-3 text-sm"
+                  >
+                    <div>
+                      <p className="font-semibold text-zinc-100">
+                        {item.label}
+                      </p>
+                      <p className="mt-1 text-xs text-zinc-500">
+                        {item.invoiceCount} invoice
+                        {item.invoiceCount === 1 ? "" : "s"}
+                      </p>
+                    </div>
+
+                    <p className="text-right font-semibold text-zinc-200">
+                      {formatMoney(item.invoiceTotal)}
+                    </p>
+                    <p className="text-right font-semibold text-emerald-300">
+                      {formatMoney(item.paidTotal)}
+                    </p>
+                    <p className="text-right font-bold text-orange-300">
+                      {formatMoney(item.openTotal)}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </Card>
 
           <Card className="mt-4 border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-zinc-950 to-orange-500/5">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
