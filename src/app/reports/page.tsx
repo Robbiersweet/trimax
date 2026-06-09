@@ -48,6 +48,10 @@ type Invoice = {
   invoice_amount: string | number | null;
   status: string | null;
   created_at: string | null;
+  tax_mode: string | null;
+  tax_label: string | null;
+  tax_rate: string | number | null;
+  tax_number: string | null;
   split_parent_invoice_id: string | null;
 };
 
@@ -59,6 +63,14 @@ function parseMoney(value: string | number | null) {
   }
 
   return Number(value?.replace(/[^0-9.-]+/g, "") || 0);
+}
+
+function toNumber(value: string | number | null | undefined) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  return Number(value) || 0;
 }
 
 function formatMoney(value: number) {
@@ -210,6 +222,40 @@ function countBy<T>(
     .sort((first, second) => second.count - first.count);
 }
 
+function taxSummaryKey(invoice: Invoice) {
+  const label = invoice.tax_label?.trim() || "Tax";
+  const number = invoice.tax_number?.trim();
+
+  return number ? `${label} #${number}` : label;
+}
+
+function invoiceTaxMode(invoice: Invoice) {
+  return (invoice.tax_mode || "taxable").trim().toLowerCase();
+}
+
+function invoiceTaxParts(invoice: Invoice) {
+  const gross = parseMoney(invoice.invoice_amount);
+  const taxMode = invoiceTaxMode(invoice);
+  const rate = toNumber(invoice.tax_rate);
+
+  if (taxMode === "no_tax" || taxMode === "tax_exempt" || rate <= 0) {
+    return {
+      taxableSales: 0,
+      exemptOrNoTaxSales: gross,
+      taxCollected: 0,
+    };
+  }
+
+  const taxableSales = gross / (1 + rate / 100);
+  const taxCollected = gross - taxableSales;
+
+  return {
+    taxableSales,
+    exemptOrNoTaxSales: 0,
+    taxCollected,
+  };
+}
+
 function reportsHref(
   businessSlug: string,
   options: {
@@ -333,7 +379,7 @@ export default async function ReportsPage({
         supabase
           .from("invoices")
           .select(
-            "id, customer_name, invoice_amount, status, created_at, split_parent_invoice_id"
+            "id, customer_name, invoice_amount, status, created_at, tax_mode, tax_label, tax_rate, tax_number, split_parent_invoice_id"
           )
           .eq("business_id", selectedBusiness.id)
           .order("created_at", { ascending: false }),
@@ -534,6 +580,57 @@ export default async function ReportsPage({
     (total, invoice) => total + parseMoney(invoice.invoice_amount),
     0
   );
+
+  const salesTaxSummary = filteredInvoices.reduce(
+    (summary, invoice) => {
+      const parts = invoiceTaxParts(invoice);
+      summary.taxableSales += parts.taxableSales;
+      summary.exemptOrNoTaxSales += parts.exemptOrNoTaxSales;
+      summary.taxCollected += parts.taxCollected;
+
+      return summary;
+    },
+    {
+      taxableSales: 0,
+      exemptOrNoTaxSales: 0,
+      taxCollected: 0,
+    }
+  );
+
+  const taxBreakdown = Array.from(
+    filteredInvoices.reduce((groups, invoice) => {
+      const parts = invoiceTaxParts(invoice);
+      const key =
+        parts.taxCollected > 0
+          ? taxSummaryKey(invoice)
+          : invoiceTaxMode(invoice) === "tax_exempt"
+            ? "Tax Exempt"
+            : "No Tax / Not Taxed";
+      const existing = groups.get(key) ?? {
+        label: key,
+        invoiceCount: 0,
+        taxableSales: 0,
+        exemptOrNoTaxSales: 0,
+        taxCollected: 0,
+      };
+
+      existing.invoiceCount += 1;
+      existing.taxableSales += parts.taxableSales;
+      existing.exemptOrNoTaxSales += parts.exemptOrNoTaxSales;
+      existing.taxCollected += parts.taxCollected;
+      groups.set(key, existing);
+
+      return groups;
+    }, new Map<string, {
+      label: string;
+      invoiceCount: number;
+      taxableSales: number;
+      exemptOrNoTaxSales: number;
+      taxCollected: number;
+    }>())
+  )
+    .map(([, value]) => value)
+    .sort((first, second) => second.taxCollected - first.taxCollected);
 
   const statusBreakdown = countBy(filteredQueueItems, (item) =>
     normalizeStatus(item.status)
@@ -917,6 +1014,92 @@ export default async function ReportsPage({
               </p>
             </Card>
           </div>
+
+          <Card className="mt-4 border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-zinc-950 to-orange-500/5">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.3em] text-emerald-300">
+                  Sales Tax Summary
+                </p>
+
+                <h2 className="mt-2 text-2xl font-bold">
+                  Tax review for {rangeLabel}
+                </h2>
+
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+                  This summarizes invoice tax settings saved in Trimax. Use it
+                  as a review aid before comparing against official filing
+                  records.
+                </p>
+              </div>
+
+              <Link
+                href={appHref(businessSlug, "/invoices")}
+                className="text-sm font-semibold text-orange-400 transition hover:text-orange-300"
+              >
+                Open Invoices
+              </Link>
+            </div>
+
+            <div className="mt-5 grid gap-3 md:grid-cols-3">
+              <TaxMetric
+                label="Taxable Sales"
+                value={formatMoney(salesTaxSummary.taxableSales)}
+              />
+              <TaxMetric
+                label="Tax Collected"
+                value={formatMoney(salesTaxSummary.taxCollected)}
+                strong
+              />
+              <TaxMetric
+                label="No Tax / Exempt"
+                value={formatMoney(salesTaxSummary.exemptOrNoTaxSales)}
+              />
+            </div>
+
+            <div className="mt-5 overflow-hidden rounded-2xl border border-zinc-800">
+              <div className="grid grid-cols-[1fr_auto_auto] gap-3 bg-zinc-950 px-4 py-3 text-xs font-bold uppercase tracking-[0.18em] text-zinc-500">
+                <span>Tax Area / Number</span>
+                <span className="text-right">Taxable</span>
+                <span className="text-right">Tax</span>
+              </div>
+
+              {taxBreakdown.length === 0 ? (
+                <div className="p-4 text-sm text-zinc-400">
+                  No invoices match this tax report view yet.
+                </div>
+              ) : (
+                taxBreakdown.map((item) => (
+                  <div
+                    key={item.label}
+                    className="grid grid-cols-[1fr_auto_auto] gap-3 border-t border-zinc-800 px-4 py-3 text-sm"
+                  >
+                    <div>
+                      <p className="font-semibold text-zinc-100">
+                        {item.label}
+                      </p>
+                      <p className="mt-1 text-xs text-zinc-500">
+                        {item.invoiceCount} invoice
+                        {item.invoiceCount === 1 ? "" : "s"}
+                        {item.exemptOrNoTaxSales > 0
+                          ? ` / ${formatMoney(
+                              item.exemptOrNoTaxSales
+                            )} no-tax or exempt`
+                          : ""}
+                      </p>
+                    </div>
+
+                    <p className="text-right font-semibold text-zinc-200">
+                      {formatMoney(item.taxableSales)}
+                    </p>
+                    <p className="text-right font-bold text-emerald-300">
+                      {formatMoney(item.taxCollected)}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </Card>
         </RoleVisible>
         </div>
 
@@ -1173,6 +1356,31 @@ function ReportTile({
         ) : null}
       </div>
     </Link>
+  );
+}
+
+function TaxMetric({
+  label,
+  value,
+  strong = false,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+}) {
+  return (
+    <div className="rounded-2xl border border-emerald-500/20 bg-black/25 p-4">
+      <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/80">
+        {label}
+      </p>
+      <p
+        className={`mt-2 text-2xl font-black ${
+          strong ? "text-emerald-300" : "text-zinc-100"
+        }`}
+      >
+        {value}
+      </p>
+    </div>
   );
 }
 
