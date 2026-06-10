@@ -24,6 +24,7 @@ import {
   getTaxSuggestionForAddress,
   type TaxMode,
 } from "../../../utils/tax";
+import { maybeCanonicalApartmentUnitLabel } from "../../../utils/unitLabels";
 
 type Invoice = {
   id: string;
@@ -599,7 +600,7 @@ export default function EditInvoicePage() {
         invoice_amount: formatCurrency(invoiceTotal),
         issue_date: issueDate,
         due_date: dueDate,
-        reference,
+        reference: maybeCanonicalApartmentUnitLabel(reference),
         service_address: serviceAddress,
         tax_mode: taxMode,
         tax_label: taxLabel.trim() || null,

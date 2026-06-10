@@ -23,6 +23,7 @@ import {
   getTaxSuggestionForAddress,
   type TaxMode,
 } from "../../../utils/tax";
+import { maybeCanonicalApartmentUnitLabel } from "../../../utils/unitLabels";
 
 type Estimate = {
   id: string;
@@ -651,7 +652,7 @@ export default function EditEstimatePage() {
         project_title: projectTitle,
         project_address: serviceAddress,
         service_address: serviceAddress,
-        reference,
+        reference: maybeCanonicalApartmentUnitLabel(reference),
         estimate_amount:
           formatCurrency(estimateTotal),
         tax_mode: taxMode,

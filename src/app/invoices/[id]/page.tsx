@@ -16,6 +16,7 @@ import {
   formatTaxSummaryLabel,
   getEffectiveTaxRate,
 } from "../../utils/tax";
+import { maybeCanonicalApartmentUnitLabel } from "../../utils/unitLabels";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -385,11 +386,12 @@ export default async function InvoiceDetailPage({
   const amountDue = Math.max(invoiceTotal - amountPaid, 0);
   const customerName = invoice.customer_name || "Customer";
   const projectTitle = invoice.project_title || customerName || "Invoice";
+  const displayReference = maybeCanonicalApartmentUnitLabel(invoice.reference);
   const smartInvoiceDates = getSmartInvoiceDates({
     customerName,
     projectTitle,
     serviceAddress: invoice.service_address ?? "",
-    reference: invoice.reference ?? "",
+    reference: displayReference,
     notes: invoice.notes ?? "",
     terms:
       invoice.terms ??
@@ -416,7 +418,7 @@ export default async function InvoiceDetailPage({
     amountDue: money(amountDue),
     dueDate: displayDueDate ? formatDate(displayDueDate) : null,
     serviceAddress: invoice.service_address,
-    reference: invoice.reference,
+    reference: displayReference,
   });
 
   const splitWarningAmount =
@@ -496,7 +498,7 @@ export default async function InvoiceDetailPage({
                 projectTitle,
                 issueDate: displayIssueDate,
                 dueDate: displayDueDate,
-                reference: invoice.reference,
+                reference: displayReference,
                 serviceAddress: invoice.service_address,
                 terms: invoice.terms,
                 notes: invoice.notes,
@@ -647,7 +649,7 @@ export default async function InvoiceDetailPage({
                 label="Invoice Number"
                 value={invoice.display_id || "Invoice"}
               />
-              <Info label="Reference" value={invoice.reference || "-"} />
+              <Info label="Reference" value={displayReference || "-"} />
               <Info
                 label="Service Address"
                 value={invoice.service_address || "-"}

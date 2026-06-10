@@ -8,6 +8,7 @@ import Card from "../components/Card";
 import InputField from "../components/InputField";
 import Toast from "../components/Toast";
 import { supabase } from "../lib/supabase";
+import { canonicalApartmentUnitLabel } from "../utils/unitLabels";
 
 type Business = {
   id: string;
@@ -88,7 +89,9 @@ const confirmedNorthCreekUnits = confirmedNorthCreekBuildings.flatMap((building)
     return {
       building_letter: building.buildingLetter,
       unit_number: unitNumber,
-      unit_label: `${building.buildingLetter}${unitNumber}`,
+      unit_label: canonicalApartmentUnitLabel(
+        `${building.buildingLetter}${unitNumber}`
+      ),
       floor: unitNumber % 2 === 1 ? "bottom" : "top",
       floorplan: northCreekFloorplan(building.buildingLetter, unitNumber),
     };
@@ -98,7 +101,7 @@ const confirmedNorthCreekUnits = confirmedNorthCreekBuildings.flatMap((building)
 const confirmedNorthCreekUnitCount = confirmedNorthCreekUnits.length;
 
 function normalizeUnitLabel(value: string) {
-  return value.trim().replace(/\s+/g, "").toUpperCase();
+  return canonicalApartmentUnitLabel(value);
 }
 
 export default function PropertyIntelligencePage() {
@@ -122,19 +125,25 @@ export default function PropertyIntelligencePage() {
       return units;
     }
 
-    return units.filter((unit) =>
-      [
+    return units.filter((unit) => {
+      const canonicalFilter = normalizeUnitLabel(filter);
+      const searchableValues = [
         unit.building_letter,
         unit.unit_label,
+        normalizeUnitLabel(unit.unit_label || ""),
         unit.floor,
         unit.floorplan,
         unit.notes,
       ]
         .filter(Boolean)
         .join(" ")
-        .toLowerCase()
-        .includes(normalizedFilter)
-    );
+        .toLowerCase();
+
+      return (
+        searchableValues.includes(normalizedFilter) ||
+        searchableValues.includes(canonicalFilter.toLowerCase())
+      );
+    });
   }, [filter, units]);
 
   const loadData = useCallback(async () => {
@@ -253,6 +262,14 @@ export default function PropertyIntelligencePage() {
       }
 
       const propertyRow = property ?? (await ensureNorthCreekProperty());
+      const { data: existingUnits, error: existingUnitsError } = await supabase
+        .from("property_units")
+        .select("id, building_letter, unit_number, unit_label")
+        .eq("property_id", propertyRow.id);
+
+      if (existingUnitsError) {
+        throw existingUnitsError;
+      }
 
       if (confirmedNorthCreekUnitCount !== 264) {
         throw new Error(
@@ -260,18 +277,44 @@ export default function PropertyIntelligencePage() {
         );
       }
 
+      const existingUnitBySlot = new Map<string, string>();
+      const existingUnitByCanonicalLabel = new Map<string, string>();
+
+      for (const existingUnit of existingUnits ?? []) {
+        if (existingUnit.building_letter && existingUnit.unit_number) {
+          existingUnitBySlot.set(
+            `${existingUnit.building_letter}-${existingUnit.unit_number}`,
+            existingUnit.id
+          );
+        }
+
+        if (existingUnit.unit_label) {
+          existingUnitByCanonicalLabel.set(
+            normalizeUnitLabel(existingUnit.unit_label),
+            existingUnit.id
+          );
+        }
+      }
+
       const { error } = await supabase.from("property_units").upsert(
-        confirmedNorthCreekUnits.map((unit) => ({
-          business_id: business.id,
-          property_id: propertyRow.id,
-          building_letter: unit.building_letter,
-          unit_number: unit.unit_number,
-          unit_label: unit.unit_label,
-          floor: unit.floor,
-          floorplan: unit.floorplan,
-        })),
+        confirmedNorthCreekUnits.map((unit) => {
+          const existingId =
+            existingUnitBySlot.get(`${unit.building_letter}-${unit.unit_number}`) ??
+            existingUnitByCanonicalLabel.get(unit.unit_label);
+
+          return {
+            ...(existingId ? { id: existingId } : {}),
+            business_id: business.id,
+            property_id: propertyRow.id,
+            building_letter: unit.building_letter,
+            unit_number: unit.unit_number,
+            unit_label: unit.unit_label,
+            floor: unit.floor,
+            floorplan: unit.floorplan,
+          };
+        }),
         {
-          onConflict: "property_id,unit_label",
+          onConflict: "id",
         }
       );
 

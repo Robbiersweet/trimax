@@ -12,6 +12,10 @@ import {
   calendarFileName,
 } from "../../lib/calendar";
 import { supabase } from "../../lib/supabase";
+import {
+  canonicalApartmentUnitLabel,
+  maybeCanonicalApartmentUnitLabel,
+} from "../../utils/unitLabels";
 
 type SupabaseQueueItem = {
   id: string;
@@ -86,7 +90,7 @@ function propertyKey(value: string | null | undefined) {
 }
 
 function normalizeUnitLabel(value: string | null | undefined) {
-  return (value || "").trim().replace(/\s+/g, "").toUpperCase();
+  return canonicalApartmentUnitLabel(value);
 }
 
 function formatFloor(value: string | null | undefined) {
@@ -269,6 +273,7 @@ export default async function QueueDetailPage({
 
   const item = data as SupabaseQueueItem;
   const businessSlug = selectedBusiness.slug;
+  const displayUnit = maybeCanonicalApartmentUnitLabel(item.unit);
 
   let linkedEstimate: LinkedEstimate | null = null;
   let propertyUnitProfile: PropertyUnitProfile | null = null;
@@ -333,7 +338,7 @@ export default async function QueueDetailPage({
     item.completed_date
   );
   const calendarTitle = `${item.property || "Property"}${
-    item.unit ? ` - Unit ${item.unit}` : ""
+    displayUnit ? ` - Unit ${displayUnit}` : ""
   }`;
   const calendarHref = calendarDataUri({
     title: `Trimax: ${calendarTitle}`,
@@ -396,7 +401,7 @@ export default async function QueueDetailPage({
               Trimax Queue
             </p>
 
-            <h1 className="mt-2 text-4xl font-bold">Unit {item.unit}</h1>
+            <h1 className="mt-2 text-4xl font-bold">Unit {displayUnit}</h1>
           </div>
 
           <StatusBadge status={item.status ?? "Pending Estimate"} />
@@ -484,7 +489,7 @@ export default async function QueueDetailPage({
             </p>
 
             <h2 className="mt-2 text-2xl font-bold">
-              {propertyUnitProfile?.unit_label || item.unit || "Unit"} profile
+              {propertyUnitProfile?.unit_label || displayUnit || "Unit"} profile
             </h2>
 
             <div className="mt-5 grid gap-4 md:grid-cols-4">
@@ -494,7 +499,7 @@ export default async function QueueDetailPage({
               />
               <Info
                 label="Unit"
-                value={propertyUnitProfile?.unit_label ?? item.unit ?? ""}
+                value={propertyUnitProfile?.unit_label ?? displayUnit}
               />
               <Info
                 label="Floor"
@@ -614,7 +619,7 @@ export default async function QueueDetailPage({
                 initialScheduledDate={item.scheduled_date}
                 readyDate={item.ready_date}
                 label={`${item.property || "Property"} - Unit ${
-                  item.unit || "-"
+                  displayUnit || "-"
                 }`}
               />
             </div>
@@ -717,7 +722,7 @@ export default async function QueueDetailPage({
             queueItemId={item.id}
             businessId={item.business_id}
             label={`${item.property || "Property"} - Unit ${
-              item.unit || "-"
+              displayUnit || "-"
             }`}
           />
 

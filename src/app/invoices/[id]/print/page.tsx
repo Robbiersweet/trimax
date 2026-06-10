@@ -8,6 +8,7 @@ import {
   getEffectiveTaxRate,
 } from "../../../utils/tax";
 import { getSmartInvoiceDates } from "../../../utils/invoiceDates";
+import { maybeCanonicalApartmentUnitLabel } from "../../../utils/unitLabels";
 
 type Invoice = {
   id: string;
@@ -218,11 +219,12 @@ export default async function InvoicePrintPage({
   const total = subtotal + taxAmount;
   const amountPaid = toNumber(invoice.amount_paid);
   const amountDue = Math.max(total - amountPaid, 0);
+  const displayReference = maybeCanonicalApartmentUnitLabel(invoice.reference);
   const smartInvoiceDates = getSmartInvoiceDates({
     customerName: invoice.customer_name ?? client?.name ?? "",
     projectTitle: invoice.project_title ?? "",
     serviceAddress: invoice.service_address ?? "",
-    reference: invoice.reference ?? "",
+    reference: displayReference,
     notes: invoice.notes ?? "",
     terms:
       invoice.terms ??
@@ -414,7 +416,7 @@ export default async function InvoicePrintPage({
               <PrintLabel>Reference</PrintLabel>
 
               <p className="mt-2 whitespace-pre-line text-base leading-6 print:mt-1 print:text-sm print:leading-5">
-                {invoice.reference || "-"}
+                {displayReference || "-"}
               </p>
             </div>
           </div>

@@ -10,6 +10,7 @@ import InputField from "../components/InputField";
 import Toast from "../components/Toast";
 import { createQueueItem } from "../lib/createQueueItem";
 import { supabase } from "../lib/supabase";
+import { canonicalApartmentUnitLabel } from "../utils/unitLabels";
 
 type Business = {
   id: string;
@@ -175,7 +176,7 @@ function unitListFromText(value: string) {
 }
 
 function normalizeUnitLabel(value: string) {
-  return value.trim().replace(/\s+/g, "").toUpperCase();
+  return canonicalApartmentUnitLabel(value);
 }
 
 function unitLayoutLabel(floorplan: string | null | undefined) {
@@ -546,6 +547,11 @@ function NewRequestPageContent() {
     };
   }, [currentDraft, draftReady, isSaving]);
 
+  const collectUnitLayout = shouldCollectUnitLayout(
+    businessSlug,
+    property
+  );
+
   useEffect(() => {
     async function loadRenovationMemory() {
       if (!business || isJustKleen || !property.trim()) {
@@ -554,7 +560,9 @@ function NewRequestPageContent() {
         return;
       }
 
-      const units = unitListFromText(unitsText);
+      const units = unitListFromText(unitsText).map((unit) =>
+        collectUnitLayout ? normalizeUnitLabel(unit) : unit
+      );
 
       if (units.length !== 1) {
         setRenovationMemoryMessage("");
@@ -626,12 +634,8 @@ function NewRequestPageContent() {
     }
 
     loadRenovationMemory();
-  }, [business, isJustKleen, property, unitsText]);
+  }, [business, collectUnitLayout, isJustKleen, property, unitsText]);
 
-  const collectUnitLayout = shouldCollectUnitLayout(
-    businessSlug,
-    property
-  );
   const units = useMemo(() => unitListFromText(unitsText), [unitsText]);
   const normalizedUnits = useMemo(
     () => units.map(normalizeUnitLabel),
@@ -765,10 +769,14 @@ function NewRequestPageContent() {
       setIsSaving(true);
 
       const createdItems = await Promise.all(
-        units.map((unit) =>
-          createQueueItem({
+        units.map((unit) => {
+          const savedUnit = collectUnitLayout
+            ? normalizeUnitLabel(unit)
+            : unit;
+
+          return createQueueItem({
             property,
-            unit,
+            unit: savedUnit,
             paintType,
             unitLayout: collectUnitLayout ? unitLayout : "",
             wallPaintColor: isJustKleen ? "" : wallPaintColor,
@@ -786,8 +794,8 @@ function NewRequestPageContent() {
             completedDate: "",
             notes,
             businessId: business.id,
-          })
-        )
+          });
+        })
       );
 
       try {

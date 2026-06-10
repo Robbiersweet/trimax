@@ -13,6 +13,7 @@ import Button from "../../../components/Button";
 import InputField from "../../../components/InputField";
 import Toast from "../../../components/Toast";
 import { supabase } from "../../../lib/supabase";
+import { canonicalApartmentUnitLabel } from "../../../utils/unitLabels";
 
 const statusOptions = [
   "Pending Estimate",
@@ -79,6 +80,13 @@ function propertyKey(value: string) {
     .replaceAll("&", "and")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+}
+
+function shouldCanonicalizeUnit(property: string, businessSlug: string) {
+  return (
+    businessSlug === "rnl-creations" &&
+    propertyKey(property) === "north-creek-apartments"
+  );
 }
 
 export default function EditQueueItemPage() {
@@ -197,7 +205,9 @@ export default function EditQueueItemPage() {
 
     const updatePayload = {
       property,
-      unit,
+      unit: shouldCanonicalizeUnit(property, businessSlug)
+        ? canonicalApartmentUnitLabel(unit)
+        : unit,
       status,
       priority,
       paint_type: paintType,

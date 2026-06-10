@@ -164,14 +164,14 @@ seed_units as (
   select *
   from (
     values
-      ('N', 1, 'N1', 'bottom', '2x1'),
-      ('N', 2, 'N2', 'top', '2x1'),
-      ('N', 3, 'N3', 'bottom', '2x1'),
-      ('N', 4, 'N4', 'top', '2x1'),
-      ('N', 5, 'N5', 'bottom', '2x2'),
-      ('N', 6, 'N6', 'top', '2x2'),
-      ('N', 7, 'N7', 'bottom', '2x2'),
-      ('N', 8, 'N8', 'top', '2x2')
+      ('N', 1, 'N01', 'bottom', '2x1'),
+      ('N', 2, 'N02', 'top', '2x1'),
+      ('N', 3, 'N03', 'bottom', '2x1'),
+      ('N', 4, 'N04', 'top', '2x1'),
+      ('N', 5, 'N05', 'bottom', '2x2'),
+      ('N', 6, 'N06', 'top', '2x2'),
+      ('N', 7, 'N07', 'bottom', '2x2'),
+      ('N', 8, 'N08', 'top', '2x2')
   ) as units(building_letter, unit_number, unit_label, floor, floorplan)
 )
 insert into public.property_units (

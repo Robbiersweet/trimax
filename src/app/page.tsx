@@ -6,6 +6,7 @@ import StatusBadge from "./components/StatusBadge";
 import DashboardQuickActions from "./components/DashboardQuickActions";
 import RoleVisible from "./components/RoleVisible";
 import { supabase } from "./lib/supabase";
+import { maybeCanonicalApartmentUnitLabel } from "./utils/unitLabels";
 
 type Business = {
   id: string;
@@ -1734,7 +1735,7 @@ export default async function DashboardPage({
                     <div>
                       <p className="font-semibold">
                         {item.property || "Property"} - Unit{" "}
-                        {item.unit || "-"}
+                        {maybeCanonicalApartmentUnitLabel(item.unit) || "-"}
                       </p>
 
                       <p className="mt-1 text-sm text-zinc-400">

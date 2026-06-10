@@ -8,6 +8,7 @@ import {
   calendarFileName,
 } from "../lib/calendar";
 import { supabase } from "../lib/supabase";
+import { maybeCanonicalApartmentUnitLabel } from "../utils/unitLabels";
 
 type Business = {
   id: string;
@@ -79,7 +80,8 @@ function daysFromToday(value: string | null) {
 
 function jobTitle(item: QueueScheduleItem) {
   const property = item.property || "Property";
-  const unit = item.unit ? ` - Unit ${item.unit}` : "";
+  const displayUnit = maybeCanonicalApartmentUnitLabel(item.unit);
+  const unit = displayUnit ? ` - Unit ${displayUnit}` : "";
 
   return `${property}${unit}`;
 }

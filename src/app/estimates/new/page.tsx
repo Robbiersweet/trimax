@@ -26,6 +26,7 @@ import {
   getTaxSuggestionForAddress,
   type TaxMode,
 } from "../../utils/tax";
+import { maybeCanonicalApartmentUnitLabel } from "../../utils/unitLabels";
 
 type Business = {
   id: string;
@@ -656,7 +657,7 @@ function NewEstimatePageContent() {
         matchingClient?.name ?? loadedQueueItem.property ?? ""
       );
       setProjectTitle(titleParts.join(" - "));
-      setReference(loadedQueueItem.unit ?? "");
+      setReference(maybeCanonicalApartmentUnitLabel(loadedQueueItem.unit));
       setNotes(
         [
           loadedQueueItem.wall_paint_color
@@ -930,7 +931,7 @@ function NewEstimatePageContent() {
         project_title: projectTitle,
         project_address: serviceAddress,
         service_address: serviceAddress,
-        reference,
+        reference: maybeCanonicalApartmentUnitLabel(reference),
         estimate_amount:
           formatCurrency(estimateTotal),
         tax_mode: taxMode,

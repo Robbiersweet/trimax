@@ -30,6 +30,7 @@ import {
   getTaxSuggestionForAddress,
   type TaxMode,
 } from "../../utils/tax";
+import { maybeCanonicalApartmentUnitLabel } from "../../utils/unitLabels";
 
 type Business = {
   id: string;
@@ -669,7 +670,7 @@ function NewInvoicePageContent() {
         invoice_amount: formatCurrency(invoiceTotal),
         issue_date: issueDate,
         due_date: dueDate,
-        reference,
+        reference: maybeCanonicalApartmentUnitLabel(reference),
         tax_mode: taxMode,
         tax_label: taxLabel.trim() || null,
         tax_rate: getEffectiveTaxRate({ taxMode, taxRate }),
@@ -747,7 +748,7 @@ function NewInvoicePageContent() {
             projectTitle,
             issueDate,
             dueDate,
-            reference,
+            reference: maybeCanonicalApartmentUnitLabel(reference),
             serviceAddress,
             terms,
             notes,

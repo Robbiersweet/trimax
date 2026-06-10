@@ -28,6 +28,16 @@ property_row as (
   where p.name = 'North Creek Apartments'
   limit 1
 ),
+canonicalized_existing_units as (
+  update public.property_units pu
+  set unit_label = pu.building_letter || lpad(pu.unit_number::text, 2, '0')
+  from property_row
+  where pu.property_id = property_row.id
+    and pu.building_letter is not null
+    and pu.unit_number is not null
+    and pu.unit_label is distinct from pu.building_letter || lpad(pu.unit_number::text, 2, '0')
+  returning pu.id
+),
 building_map as (
   select *
   from (
@@ -64,7 +74,7 @@ seed_units as (
   select
     building_map.building_letter,
     unit_number,
-    building_map.building_letter || unit_number::text as unit_label,
+    building_map.building_letter || lpad(unit_number::text, 2, '0') as unit_label,
     case
       when unit_number % 2 = 1 then 'bottom'
       else 'top'
@@ -102,6 +112,7 @@ seeded_units as (
   from property_row
   cross join seed_units
   where (select unit_count from expected_count) = 264
+    and (select count(*) from canonicalized_existing_units) >= 0
   on conflict (property_id, unit_label)
   do update set
     building_letter = excluded.building_letter,

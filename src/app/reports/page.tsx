@@ -6,6 +6,7 @@ import DateInputField from "../components/DateInputField";
 import RoleVisible from "../components/RoleVisible";
 import StatusBadge from "../components/StatusBadge";
 import { supabase } from "../lib/supabase";
+import { maybeCanonicalApartmentUnitLabel } from "../utils/unitLabels";
 
 type Business = {
   id: string;
@@ -1364,7 +1365,8 @@ export default async function ReportsPage({
                   className="block rounded-2xl border border-orange-500/20 bg-black/20 px-4 py-3 transition hover:border-orange-500/40"
                 >
                   <p className="font-semibold">
-                    {item.property || "Property"} - Unit {item.unit || "-"}
+                    {item.property || "Property"} - Unit{" "}
+                    {maybeCanonicalApartmentUnitLabel(item.unit) || "-"}
                   </p>
                   <p className="mt-1 text-sm text-zinc-400">
                     {item.prior_renovation_details ||
@@ -1428,7 +1430,7 @@ export default async function ReportsPage({
                     <div className="flex flex-wrap items-center gap-3">
                       <p className="font-semibold">
                         {item.property || "Property"} - Unit{" "}
-                        {item.unit || "-"}
+                        {maybeCanonicalApartmentUnitLabel(item.unit) || "-"}
                       </p>
 
                       <StatusBadge status={normalizeStatus(item.status)} />

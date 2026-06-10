@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { canonicalApartmentUnitLabel } from "../utils/unitLabels";
 
 type UnitHistoryEventType =
   | "paint"
@@ -34,7 +35,7 @@ function propertyKey(value: string | null | undefined) {
 }
 
 function normalizeUnitLabel(value: string | null | undefined) {
-  return (value || "").trim().replace(/\s+/g, "").toUpperCase();
+  return canonicalApartmentUnitLabel(value);
 }
 
 function historyEventType(

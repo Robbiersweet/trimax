@@ -9,6 +9,7 @@ import { createSplitInvoices } from "../lib/splitInvoices";
 import { supabase } from "../lib/supabase";
 import { getSmartInvoiceDates } from "../utils/invoiceDates";
 import { getEffectiveTaxRate } from "../utils/tax";
+import { maybeCanonicalApartmentUnitLabel } from "../utils/unitLabels";
 
 type ConvertEstimateToInvoiceButtonProps = {
   estimateId: string;
@@ -173,7 +174,7 @@ export default function ConvertEstimateToInvoiceButton({
       projectTitle: estimate.project_title ?? projectTitle,
       serviceAddress:
         estimate.service_address ?? estimate.project_address ?? "",
-      reference: estimate.reference ?? "",
+      reference: maybeCanonicalApartmentUnitLabel(estimate.reference),
       notes: estimate.notes ?? notes,
       terms:
         estimate.terms ??
@@ -235,7 +236,7 @@ export default function ConvertEstimateToInvoiceButton({
           estimate.service_address ??
           estimate.project_address ??
           "",
-        reference: estimate.reference ?? "",
+        reference: maybeCanonicalApartmentUnitLabel(estimate.reference),
         invoice_amount:
           formatCurrency(invoiceTotal),
         issue_date: smartInvoiceDates.issueDate,
@@ -346,7 +347,7 @@ export default function ConvertEstimateToInvoiceButton({
               estimate.project_title ?? projectTitle,
             issueDate: smartInvoiceDates.issueDate,
             dueDate: smartInvoiceDates.dueDate,
-            reference: estimate.reference ?? "",
+            reference: maybeCanonicalApartmentUnitLabel(estimate.reference),
             serviceAddress:
               estimate.service_address ??
               estimate.project_address ??

@@ -13,6 +13,7 @@ import {
   formatTaxSummaryLabel,
   getEffectiveTaxRate,
 } from "../../utils/tax";
+import { maybeCanonicalApartmentUnitLabel } from "../../utils/unitLabels";
 
 type SupabaseEstimate = {
   id: string;
@@ -190,7 +191,7 @@ export default async function EstimateDetailsPage({
     amountDue: formatCurrency(estimateTotal),
     serviceAddress:
       estimate.service_address || estimate.project_address,
-    reference: estimate.reference,
+    reference: maybeCanonicalApartmentUnitLabel(estimate.reference),
   });
 
   const { data: invoiceData } = await supabase
@@ -312,7 +313,7 @@ export default async function EstimateDetailsPage({
 
             <Info
               label="Reference"
-              value={estimate.reference ?? ""}
+              value={maybeCanonicalApartmentUnitLabel(estimate.reference)}
             />
 
             <Info

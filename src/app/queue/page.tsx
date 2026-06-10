@@ -4,6 +4,7 @@ import Card from "../components/Card";
 import Button from "../components/Button";
 import StatusBadge from "../components/StatusBadge";
 import { supabase } from "../lib/supabase";
+import { maybeCanonicalApartmentUnitLabel } from "../utils/unitLabels";
 
 type Business = {
   id: string;
@@ -334,6 +335,7 @@ export default async function QueuePage({
     const searchableText = [
       item.property,
       item.unit,
+      maybeCanonicalApartmentUnitLabel(item.unit),
       item.status,
       item.priority,
       item.paint_type,
@@ -604,6 +606,7 @@ export default async function QueuePage({
             </Card>
           ) : (
             filteredQueueItems.map((item) => {
+              const displayUnit = maybeCanonicalApartmentUnitLabel(item.unit);
               const linkedEstimate = item.linked_estimate_id
                 ? estimateById.get(item.linked_estimate_id)
                 : null;
@@ -670,7 +673,7 @@ export default async function QueuePage({
                       </div>
 
                       <p className="mt-2 text-zinc-400">
-                        Unit {item.unit || "-"}
+                        Unit {displayUnit || "-"}
                         {item.unit_layout ? ` / Layout ${item.unit_layout}` : ""}
                       </p>
 

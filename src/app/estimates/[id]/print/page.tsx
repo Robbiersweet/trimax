@@ -6,6 +6,7 @@ import {
   formatTaxSummaryLabel,
   getEffectiveTaxRate,
 } from "../../../utils/tax";
+import { maybeCanonicalApartmentUnitLabel } from "../../../utils/unitLabels";
 
 type Estimate = {
   id: string;
@@ -288,7 +289,7 @@ export default async function EstimatePrintPage({
               <PrintLabel>Reference</PrintLabel>
 
               <p className="mt-2 whitespace-pre-line text-base leading-6">
-                {estimate.reference || "-"}
+                {maybeCanonicalApartmentUnitLabel(estimate.reference) || "-"}
               </p>
             </div>
           </div>
