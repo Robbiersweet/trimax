@@ -34,16 +34,68 @@ type PropertyUnitRow = {
 const floorOptions = ["bottom", "top"];
 const floorplanOptions = ["2x1", "2x2"];
 
-const confirmedNBuildingUnits = [
-  { building_letter: "N", unit_number: 1, unit_label: "N1", floor: "bottom", floorplan: "2x1" },
-  { building_letter: "N", unit_number: 2, unit_label: "N2", floor: "top", floorplan: "2x1" },
-  { building_letter: "N", unit_number: 3, unit_label: "N3", floor: "bottom", floorplan: "2x1" },
-  { building_letter: "N", unit_number: 4, unit_label: "N4", floor: "top", floorplan: "2x1" },
-  { building_letter: "N", unit_number: 5, unit_label: "N5", floor: "bottom", floorplan: "2x2" },
-  { building_letter: "N", unit_number: 6, unit_label: "N6", floor: "top", floorplan: "2x2" },
-  { building_letter: "N", unit_number: 7, unit_label: "N7", floor: "bottom", floorplan: "2x2" },
-  { building_letter: "N", unit_number: 8, unit_label: "N8", floor: "top", floorplan: "2x2" },
+type ConfirmedBuilding = {
+  buildingLetter: string;
+  unitCount: number;
+  floorplan: "2x1" | "2x2" | "mixed";
+};
+
+const confirmedNorthCreekBuildings: ConfirmedBuilding[] = [
+  { buildingLetter: "A", unitCount: 12, floorplan: "2x1" },
+  { buildingLetter: "B", unitCount: 12, floorplan: "2x2" },
+  { buildingLetter: "C", unitCount: 8, floorplan: "2x1" },
+  { buildingLetter: "D", unitCount: 8, floorplan: "2x2" },
+  { buildingLetter: "E", unitCount: 8, floorplan: "2x1" },
+  { buildingLetter: "F", unitCount: 8, floorplan: "2x2" },
+  { buildingLetter: "G", unitCount: 12, floorplan: "2x2" },
+  { buildingLetter: "H", unitCount: 12, floorplan: "2x1" },
+  { buildingLetter: "I", unitCount: 8, floorplan: "2x2" },
+  { buildingLetter: "J", unitCount: 8, floorplan: "2x2" },
+  { buildingLetter: "K", unitCount: 12, floorplan: "2x1" },
+  { buildingLetter: "L", unitCount: 12, floorplan: "2x1" },
+  { buildingLetter: "M", unitCount: 12, floorplan: "2x2" },
+  { buildingLetter: "N", unitCount: 8, floorplan: "mixed" },
+  { buildingLetter: "O", unitCount: 12, floorplan: "2x1" },
+  { buildingLetter: "P", unitCount: 8, floorplan: "2x1" },
+  { buildingLetter: "Q", unitCount: 8, floorplan: "2x1" },
+  { buildingLetter: "R", unitCount: 8, floorplan: "2x2" },
+  { buildingLetter: "S", unitCount: 8, floorplan: "2x2" },
+  { buildingLetter: "T", unitCount: 12, floorplan: "2x1" },
+  { buildingLetter: "U", unitCount: 12, floorplan: "2x2" },
+  { buildingLetter: "V", unitCount: 12, floorplan: "2x2" },
+  { buildingLetter: "W", unitCount: 8, floorplan: "2x2" },
+  { buildingLetter: "X", unitCount: 12, floorplan: "2x1" },
+  { buildingLetter: "Y", unitCount: 12, floorplan: "2x1" },
+  { buildingLetter: "Z", unitCount: 12, floorplan: "2x2" },
 ];
+
+function northCreekFloorplan(buildingLetter: string, unitNumber: number) {
+  if (buildingLetter === "N") {
+    return unitNumber <= 4 ? "2x1" : "2x2";
+  }
+
+  return confirmedNorthCreekBuildings.find(
+    (building) => building.buildingLetter === buildingLetter
+  )?.floorplan === "2x1"
+    ? "2x1"
+    : "2x2";
+}
+
+const confirmedNorthCreekUnits = confirmedNorthCreekBuildings.flatMap((building) =>
+  Array.from({ length: building.unitCount }, (_, index) => {
+    const unitNumber = index + 1;
+
+    return {
+      building_letter: building.buildingLetter,
+      unit_number: unitNumber,
+      unit_label: `${building.buildingLetter}${unitNumber}`,
+      floor: unitNumber % 2 === 1 ? "bottom" : "top",
+      floorplan: northCreekFloorplan(building.buildingLetter, unitNumber),
+    };
+  })
+);
+
+const confirmedNorthCreekUnitCount = confirmedNorthCreekUnits.length;
 
 function normalizeUnitLabel(value: string) {
   return value.trim().replace(/\s+/g, "").toUpperCase();
@@ -191,7 +243,7 @@ export default function PropertyIntelligencePage() {
     return data as PropertyRow;
   }
 
-  async function seedConfirmedNBuilding() {
+  async function seedConfirmedNorthCreekUnits() {
     setIsSaving(true);
     setToast(null);
 
@@ -202,8 +254,14 @@ export default function PropertyIntelligencePage() {
 
       const propertyRow = property ?? (await ensureNorthCreekProperty());
 
+      if (confirmedNorthCreekUnitCount !== 264) {
+        throw new Error(
+          `North Creek seed expected 264 units, but generated ${confirmedNorthCreekUnitCount}.`
+        );
+      }
+
       const { error } = await supabase.from("property_units").upsert(
-        confirmedNBuildingUnits.map((unit) => ({
+        confirmedNorthCreekUnits.map((unit) => ({
           business_id: business.id,
           property_id: propertyRow.id,
           building_letter: unit.building_letter,
@@ -211,7 +269,6 @@ export default function PropertyIntelligencePage() {
           unit_label: unit.unit_label,
           floor: unit.floor,
           floorplan: unit.floorplan,
-          notes: "Seeded from confirmed North Creek N building rule.",
         })),
         {
           onConflict: "property_id,unit_label",
@@ -224,7 +281,7 @@ export default function PropertyIntelligencePage() {
 
       setToast({
         type: "success",
-        message: "Confirmed N building units were seeded.",
+        message: "Confirmed North Creek units were seeded.",
       });
       await loadData();
     } catch (error) {
@@ -234,7 +291,7 @@ export default function PropertyIntelligencePage() {
         message:
           error instanceof Error
             ? error.message
-            : "Unable to seed North Creek units.",
+            : "Unable to seed confirmed North Creek units.",
       });
     } finally {
       setIsSaving(false);
@@ -308,19 +365,19 @@ export default function PropertyIntelligencePage() {
             </p>
           </div>
 
-          <Button onClick={seedConfirmedNBuilding} disabled={isSaving}>
-            {isSaving ? "Saving..." : "Seed Confirmed N Building"}
+          <Button onClick={seedConfirmedNorthCreekUnits} disabled={isSaving}>
+            {isSaving ? "Saving..." : "Seed Confirmed A-Z Units"}
           </Button>
         </div>
 
         <Card className="border-sky-500/30 bg-sky-500/10">
           <p className="font-semibold text-sky-100">
-            Current safe seed: confirmed N building only.
+            Current safe seed: confirmed A-Z building map.
           </p>
           <p className="mt-2 text-sm leading-6 text-zinc-300">
-            Trimax is ready for all A-Z buildings, but it will not guess from
-            the image. Add or correct units here as the property map is
-            confirmed.
+            This seeds {confirmedNorthCreekUnitCount} North Creek units from
+            the confirmed building list. Running it again updates permanent
+            facts without creating duplicates.
           </p>
         </Card>
 
@@ -349,8 +406,8 @@ export default function PropertyIntelligencePage() {
               North Creek has not been seeded yet.
             </p>
             <p className="mt-2 text-sm text-zinc-400">
-              Click Seed Confirmed N Building to create the property and its
-              known N building units.
+              Click Seed Confirmed A-Z Units to create the property and its
+              confirmed 264 unit records.
             </p>
           </Card>
         ) : (
