@@ -829,7 +829,7 @@ export default async function ReportsPage({
             />
             <ReportTile
               label="North Creek Unit Map"
-              description="Open the editable property intelligence map for saved floor, floorplan, and unit notes."
+              description="Open the editable property intelligence map for saved floor, layout, and unit notes."
               href={appHref(businessSlug, "/property-intelligence")}
               badge="Admin"
             />

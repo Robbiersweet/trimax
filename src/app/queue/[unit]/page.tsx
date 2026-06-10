@@ -14,6 +14,7 @@ import {
 import { supabase } from "../../lib/supabase";
 import {
   canonicalApartmentUnitLabel,
+  displayUnitLayout,
   maybeCanonicalApartmentUnitLabel,
 } from "../../utils/unitLabels";
 
@@ -506,8 +507,12 @@ export default async function QueueDetailPage({
                 value={formatFloor(propertyUnitProfile?.floor)}
               />
               <Info
-                label="Floorplan"
-                value={propertyUnitProfile?.floorplan ?? item.unit_layout ?? ""}
+                label="Layout"
+                value={
+                  displayUnitLayout(propertyUnitProfile?.floorplan) ||
+                  item.unit_layout ||
+                  ""
+                }
               />
             </div>
 

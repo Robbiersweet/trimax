@@ -24,3 +24,15 @@ export function maybeCanonicalApartmentUnitLabel(
 
   return normalized || trimmed;
 }
+
+export function displayUnitLayout(value: string | null | undefined) {
+  if (value === "2x1") {
+    return "2 Bedroom / 1 Bath";
+  }
+
+  if (value === "2x2") {
+    return "2 Bedroom / 2 Bath";
+  }
+
+  return value || "";
+}

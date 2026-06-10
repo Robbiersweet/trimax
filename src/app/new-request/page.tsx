@@ -10,7 +10,10 @@ import InputField from "../components/InputField";
 import Toast from "../components/Toast";
 import { createQueueItem } from "../lib/createQueueItem";
 import { supabase } from "../lib/supabase";
-import { canonicalApartmentUnitLabel } from "../utils/unitLabels";
+import {
+  canonicalApartmentUnitLabel,
+  displayUnitLayout,
+} from "../utils/unitLabels";
 
 type Business = {
   id: string;
@@ -1005,9 +1008,9 @@ function NewRequestPageContent() {
                             </p>
                           </div>
                           <div>
-                            <p className="text-zinc-500">Floorplan</p>
+                            <p className="text-zinc-500">Layout</p>
                             <p className="font-semibold text-zinc-100">
-                              {unitProfile.floorplan || "-"}
+                              {displayUnitLayout(unitProfile.floorplan) || "-"}
                             </p>
                           </div>
                         </div>

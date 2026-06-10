@@ -404,7 +404,7 @@ export default function PropertyIntelligencePage() {
 
             <p className="mt-3 max-w-3xl text-zinc-400">
               Store permanent unit facts here so queue requests can auto-fill
-              floor, floorplan, and future property history.
+              floor, layout, and future property history.
             </p>
           </div>
 
@@ -487,7 +487,7 @@ export default function PropertyIntelligencePage() {
                     options={floorOptions}
                   />
                   <InputField
-                    label="Floorplan"
+                    label="Layout"
                     value={unit.floorplan || ""}
                     onChange={(value) =>
                       patchUnit(unit.id, {
