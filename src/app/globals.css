@@ -436,11 +436,110 @@ html.theme-light .outlook-setup-panel .text-sky-200 {
 html.theme-light .report-breakdown-card {
   background:
     linear-gradient(135deg, #ffffff 0%, #fff7ed 48%, #eff6ff 100%) !important;
+  border-color: #dbe3ee !important;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.08) !important;
 }
 
 html.theme-light .report-breakdown-card .bg-black\/25 {
   background-color: #ffffff !important;
   box-shadow: 0 10px 24px rgba(249, 115, 22, 0.08) !important;
+}
+
+html.theme-light .report-breakdown-card .bg-black\/20 {
+  background-color: #ffffff !important;
+  border-color: #d7dde8 !important;
+}
+
+html.theme-light .report-library-card,
+html.theme-light .report-section-card {
+  background:
+    linear-gradient(135deg, #ffffff 0%, #f8fbff 52%, #fff7ed 100%) !important;
+  border-color: #dbe3ee !important;
+  color: #0f172a !important;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.theme-light .report-library-title,
+html.theme-light .report-section-card h2,
+html.theme-light .report-breakdown-card h2 {
+  color: #0f172a !important;
+}
+
+html.theme-light .report-library-kicker,
+html.theme-light .report-section-card .text-sky-300,
+html.theme-light .report-section-card .text-emerald-300,
+html.theme-light .report-section-card .text-purple-300 {
+  color: #075985 !important;
+}
+
+html.theme-light .report-library-copy,
+html.theme-light .report-section-card .text-zinc-400,
+html.theme-light .report-section-card .text-zinc-300,
+html.theme-light .report-breakdown-card .text-zinc-400,
+html.theme-light .report-breakdown-card .text-zinc-300 {
+  color: #475569 !important;
+}
+
+html.theme-light .report-library-action {
+  color: #c2410c !important;
+}
+
+html.theme-light .report-tile,
+html.theme-light .report-info-card,
+html.theme-light .report-metric-card {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-color: #d7dde8 !important;
+  color: #0f172a !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06) !important;
+}
+
+html.theme-light .report-tile:hover,
+html.theme-light .report-info-card:hover {
+  background: #fff7ed !important;
+  border-color: #fb923c !important;
+}
+
+html.theme-light .report-tile-icon {
+  background: #e0f2fe !important;
+  border-color: #7dd3fc !important;
+  color: #0369a1 !important;
+}
+
+html.theme-light .report-tile-title,
+html.theme-light .report-info-card .text-sky-200,
+html.theme-light .report-info-card .text-emerald-200,
+html.theme-light .report-info-card .text-orange-200,
+html.theme-light .report-metric-card .text-zinc-100 {
+  color: #0f172a !important;
+}
+
+html.theme-light .report-tile:hover .report-tile-title {
+  color: #c2410c !important;
+}
+
+html.theme-light .report-tile-copy,
+html.theme-light .report-info-card .text-zinc-400 {
+  color: #475569 !important;
+}
+
+html.theme-light .report-tile-badge {
+  background: #fff7ed !important;
+  border-color: #fdba74 !important;
+  color: #c2410c !important;
+}
+
+html.theme-light .report-metric-card .text-emerald-300,
+html.theme-light .report-metric-card .text-emerald-300\/80 {
+  color: #047857 !important;
+}
+
+html.theme-light .report-row-link {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .report-row-link:hover {
+  background: #f8fafc !important;
 }
 
 .app-notice-card {

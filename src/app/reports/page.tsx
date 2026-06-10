@@ -749,18 +749,18 @@ export default async function ReportsPage({
           </Card>
         ) : null}
 
-        <Card className="border-sky-500/20 bg-gradient-to-br from-sky-500/5 via-zinc-950 to-orange-500/5">
+        <Card className="report-library-card border-sky-500/20 bg-gradient-to-br from-sky-500/5 via-zinc-950 to-orange-500/5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-sm uppercase tracking-[0.3em] text-sky-300">
+              <p className="report-library-kicker text-sm uppercase tracking-[0.3em] text-sky-300">
                 Report Library
               </p>
 
-              <h2 className="mt-2 text-2xl font-bold">
+              <h2 className="report-library-title mt-2 text-2xl font-bold">
                 Choose the report you need
               </h2>
 
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+              <p className="report-library-copy mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
                 Trimax keeps the FreshBooks idea of grouped report cards, but
                 focuses on operations, invoices, payments, tax, and activity
                 instead of broad bookkeeping extras.
@@ -769,7 +769,7 @@ export default async function ReportsPage({
 
             <Link
               href={appHref(businessSlug, "/activity")}
-              className="text-sm font-semibold text-orange-400 transition hover:text-orange-300"
+              className="report-library-action text-sm font-semibold text-orange-400 transition hover:text-orange-300"
             >
               Open Activity Log
             </Link>
@@ -1089,7 +1089,7 @@ export default async function ReportsPage({
 
           <Card
             id="accounting-lite"
-            className="mt-4 scroll-mt-24 border-sky-500/30 bg-gradient-to-br from-sky-500/10 via-zinc-950 to-emerald-500/5"
+            className="report-section-card mt-4 scroll-mt-24 border-sky-500/30 bg-gradient-to-br from-sky-500/10 via-zinc-950 to-emerald-500/5"
           >
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
@@ -1138,7 +1138,7 @@ export default async function ReportsPage({
             </div>
 
             <div className="mt-5 grid gap-3 md:grid-cols-3">
-              <div className="rounded-2xl border border-sky-500/20 bg-black/25 p-4">
+              <div className="report-info-card rounded-2xl border border-sky-500/20 bg-black/25 p-4">
                 <p className="text-sm font-bold text-sky-200">
                   Profit and Loss Lite
                 </p>
@@ -1148,7 +1148,7 @@ export default async function ReportsPage({
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-emerald-500/20 bg-black/25 p-4">
+              <div className="report-info-card rounded-2xl border border-emerald-500/20 bg-black/25 p-4">
                 <p className="text-sm font-bold text-emerald-200">
                   Cash Flow Lite
                 </p>
@@ -1160,7 +1160,7 @@ export default async function ReportsPage({
 
               <Link
                 href={appHref(businessSlug, "/activity")}
-                className="rounded-2xl border border-orange-500/20 bg-black/25 p-4 transition hover:border-orange-500/50 hover:bg-zinc-900"
+                className="report-info-card rounded-2xl border border-orange-500/20 bg-black/25 p-4 transition hover:border-orange-500/50 hover:bg-zinc-900"
               >
                 <p className="text-sm font-bold text-orange-200">
                   General Ledger Lite
@@ -1241,7 +1241,7 @@ export default async function ReportsPage({
             </div>
           </Card>
 
-          <Card className="mt-4 border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-zinc-950 to-orange-500/5">
+          <Card className="report-section-card mt-4 border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-zinc-950 to-orange-500/5">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="text-sm uppercase tracking-[0.3em] text-emerald-300">
@@ -1342,7 +1342,7 @@ export default async function ReportsPage({
             items={renovationBreakdown}
           />
 
-          <Card className="border-orange-500/20 bg-gradient-to-br from-orange-500/5 via-zinc-950 to-emerald-500/5">
+          <Card className="report-section-card border-orange-500/20 bg-gradient-to-br from-orange-500/5 via-zinc-950 to-emerald-500/5">
             <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
               Renovation Watch
             </p>
@@ -1362,7 +1362,7 @@ export default async function ReportsPage({
                 <Link
                   key={item.id}
                   href={`/queue/${item.id}?business=${businessSlug}`}
-                  className="block rounded-2xl border border-orange-500/20 bg-black/20 px-4 py-3 transition hover:border-orange-500/40"
+                  className="report-info-card block rounded-2xl border border-orange-500/20 bg-black/20 px-4 py-3 transition hover:border-orange-500/40"
                 >
                   <p className="font-semibold">
                     {item.property || "Property"} - Unit{" "}
@@ -1377,7 +1377,7 @@ export default async function ReportsPage({
               ))}
 
               {renovationNeededUnits.length === 0 ? (
-                <p className="rounded-2xl border border-zinc-800 bg-black/20 p-4 text-sm text-zinc-400">
+                <p className="report-info-card rounded-2xl border border-zinc-800 bg-black/20 p-4 text-sm text-zinc-400">
                   No matching units are marked with current renovation work.
                 </p>
               ) : null}
@@ -1424,7 +1424,7 @@ export default async function ReportsPage({
                 <Link
                   key={item.id}
                   href={`/queue/${item.id}?business=${businessSlug}`}
-                  className="grid gap-4 border-b border-zinc-800 bg-zinc-950 p-5 transition last:border-b-0 hover:bg-zinc-900 md:grid-cols-[1fr_auto]"
+                  className="report-row-link grid gap-4 border-b border-zinc-800 bg-zinc-950 p-5 transition last:border-b-0 hover:bg-zinc-900 md:grid-cols-[1fr_auto]"
                 >
                   <div>
                     <div className="flex flex-wrap items-center gap-3">
@@ -1466,7 +1466,7 @@ export default async function ReportsPage({
           </div>
         </Card>
 
-        <Card className="border-purple-500/30 bg-gradient-to-br from-purple-500/10 via-sky-500/5 to-emerald-500/10">
+        <Card className="report-section-card border-purple-500/30 bg-gradient-to-br from-purple-500/10 via-sky-500/5 to-emerald-500/10">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.3em] text-purple-300">
@@ -1492,7 +1492,7 @@ export default async function ReportsPage({
               ].map((label) => (
                 <div
                   key={label}
-                  className="rounded-2xl border border-white/10 bg-zinc-950/70 p-4 text-sm font-semibold text-zinc-100"
+                  className="report-info-card rounded-2xl border border-white/10 bg-zinc-950/70 p-4 text-sm font-semibold text-zinc-100"
                 >
                   {label}
                 </div>
@@ -1554,11 +1554,11 @@ function ReportTile({
   return (
     <Link
       href={href}
-      className="group block rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4 transition hover:-translate-y-0.5 hover:border-orange-500/50 hover:bg-zinc-900"
+      className="report-tile group block rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4 transition hover:-translate-y-0.5 hover:border-orange-500/50 hover:bg-zinc-900"
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-3">
-          <span className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-sky-500/30 bg-sky-500/10 text-sm font-black text-sky-300">
+          <span className="report-tile-icon mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-sky-500/30 bg-sky-500/10 text-sm font-black text-sky-300">
             {label
               .split(" ")
               .slice(0, 2)
@@ -1567,17 +1567,17 @@ function ReportTile({
           </span>
 
           <div>
-            <p className="font-semibold text-zinc-100 transition group-hover:text-orange-300">
+            <p className="report-tile-title font-semibold text-zinc-100 transition group-hover:text-orange-300">
               {label}
             </p>
-            <p className="mt-1 text-sm leading-6 text-zinc-400">
+            <p className="report-tile-copy mt-1 text-sm leading-6 text-zinc-400">
               {description}
             </p>
           </div>
         </div>
 
         {badge ? (
-          <span className="shrink-0 rounded-full border border-orange-500/30 bg-orange-500/10 px-2.5 py-1 text-xs font-bold uppercase tracking-[0.12em] text-orange-300">
+          <span className="report-tile-badge shrink-0 rounded-full border border-orange-500/30 bg-orange-500/10 px-2.5 py-1 text-xs font-bold uppercase tracking-[0.12em] text-orange-300">
             {badge}
           </span>
         ) : null}
@@ -1596,7 +1596,7 @@ function TaxMetric({
   strong?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-emerald-500/20 bg-black/25 p-4">
+    <div className="report-metric-card rounded-2xl border border-emerald-500/20 bg-black/25 p-4">
       <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/80">
         {label}
       </p>
