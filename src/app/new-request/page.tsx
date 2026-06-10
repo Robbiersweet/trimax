@@ -43,6 +43,43 @@ type PropertyUnitProfile = {
   notes: string | null;
 };
 
+type UnitHistoryRecord = {
+  property_unit_id: string | null;
+  event_type: string | null;
+  event_date: string | null;
+  paint_type: string | null;
+  flooring: string | null;
+  smoker_remediation: boolean | null;
+  prior_renovation: boolean | null;
+  prior_renovation_details: string | null;
+  queue_item_is_renovation: boolean | null;
+  created_at: string | null;
+};
+
+type QueueHistoryRecord = {
+  unit: string | null;
+  completed_date: string | null;
+  scheduled_date: string | null;
+  created_at: string | null;
+  paint_type: string | null;
+  flooring: string | null;
+  smoked_in: boolean | null;
+  prior_renovation: boolean | null;
+  prior_renovation_details: string | null;
+  renovation_needed: boolean | null;
+  renovation_needed_details: string | null;
+};
+
+type UnitHistorySummary = {
+  lastPaintDate: string;
+  lastPaintType: string;
+  lastFlooring: string;
+  lastRenovation: string;
+  lastSmokerRemediation: "Yes" | "No" | "Never Recorded";
+  totalRecordedTurns: number;
+  hasHistory: boolean;
+};
+
 type QueueRequestDraft = {
   property: string;
   unitsText: string;
@@ -182,6 +219,17 @@ function normalizeUnitLabel(value: string) {
   return canonicalApartmentUnitLabel(value);
 }
 
+function legacyUnpaddedUnitLabel(value: string | null | undefined) {
+  const normalized = normalizeUnitLabel(value || "");
+  const match = normalized.match(/^([A-Z])0([1-9])$/);
+
+  if (!match) {
+    return normalized;
+  }
+
+  return `${match[1]}${match[2]}`;
+}
+
 function unitLayoutLabel(floorplan: string | null | undefined) {
   if (floorplan === "2x1") {
     return "2x1 - 2 Bed / 1 Bath";
@@ -204,6 +252,157 @@ function formatFloor(value: string | null | undefined) {
   }
 
   return "-";
+}
+
+function formatHistoryDate(value: string | null | undefined) {
+  if (!value) {
+    return "";
+  }
+
+  const parsedDate = new Date(`${value.slice(0, 10)}T00:00:00`);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return "";
+  }
+
+  return parsedDate.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function newestHistoryDate(
+  left: string | null | undefined,
+  right: string | null | undefined
+) {
+  const leftTime = left ? new Date(left).getTime() : 0;
+  const rightTime = right ? new Date(right).getTime() : 0;
+
+  if (Number.isNaN(leftTime)) {
+    return right || "";
+  }
+
+  if (Number.isNaN(rightTime)) {
+    return left || "";
+  }
+
+  return leftTime >= rightTime ? left || "" : right || "";
+}
+
+function emptyHistorySummary(): UnitHistorySummary {
+  return {
+    lastPaintDate: "Never Recorded",
+    lastPaintType: "Never Recorded",
+    lastFlooring: "Never Recorded",
+    lastRenovation: "Never Recorded",
+    lastSmokerRemediation: "Never Recorded",
+    totalRecordedTurns: 0,
+    hasHistory: false,
+  };
+}
+
+function buildUnitHistorySummary({
+  unitProfile,
+  historyRows,
+  queueRows,
+}: {
+  unitProfile: PropertyUnitProfile;
+  historyRows: UnitHistoryRecord[];
+  queueRows: QueueHistoryRecord[];
+}) {
+  const summary = emptyHistorySummary();
+
+  for (const row of historyRows) {
+    if (row.property_unit_id !== unitProfile.id) {
+      continue;
+    }
+
+    summary.hasHistory = true;
+
+    if (row.paint_type && summary.lastPaintType === "Never Recorded") {
+      summary.lastPaintType = row.paint_type;
+      summary.lastPaintDate =
+        formatHistoryDate(row.event_date) || summary.lastPaintDate;
+    }
+
+    if (row.flooring && summary.lastFlooring === "Never Recorded") {
+      summary.lastFlooring = row.flooring;
+    }
+
+    if (
+      (row.queue_item_is_renovation ||
+        row.prior_renovation ||
+        row.prior_renovation_details) &&
+      summary.lastRenovation === "Never Recorded"
+    ) {
+      summary.lastRenovation =
+        row.prior_renovation_details ||
+        (row.queue_item_is_renovation ? "Renovation recorded" : "Yes");
+    }
+
+    if (
+      row.smoker_remediation !== null &&
+      summary.lastSmokerRemediation === "Never Recorded"
+    ) {
+      summary.lastSmokerRemediation = row.smoker_remediation ? "Yes" : "No";
+    }
+  }
+
+  const queueRowsForUnit = queueRows.filter(
+    (row) =>
+      normalizeUnitLabel(row.unit || "") ===
+      normalizeUnitLabel(unitProfile.unit_label || "")
+  );
+
+  summary.totalRecordedTurns = queueRowsForUnit.length;
+
+  for (const row of queueRowsForUnit) {
+    summary.hasHistory = true;
+
+    if (row.paint_type && summary.lastPaintType === "Never Recorded") {
+      summary.lastPaintType = row.paint_type;
+      summary.lastPaintDate =
+        formatHistoryDate(
+          newestHistoryDate(row.completed_date, row.scheduled_date) ||
+            row.created_at
+        ) || summary.lastPaintDate;
+    }
+
+    if (row.flooring && summary.lastFlooring === "Never Recorded") {
+      summary.lastFlooring = row.flooring;
+    }
+
+    if (
+      (row.renovation_needed ||
+        row.prior_renovation ||
+        row.renovation_needed_details ||
+        row.prior_renovation_details) &&
+      summary.lastRenovation === "Never Recorded"
+    ) {
+      summary.lastRenovation =
+        row.renovation_needed_details ||
+        row.prior_renovation_details ||
+        (row.renovation_needed ? "Renovation recorded" : "Yes");
+    }
+
+    if (
+      row.smoked_in !== null &&
+      summary.lastSmokerRemediation === "Never Recorded"
+    ) {
+      summary.lastSmokerRemediation = row.smoked_in ? "Yes" : "No";
+    }
+  }
+
+  summary.hasHistory =
+    summary.hasHistory ||
+    summary.totalRecordedTurns > 0 ||
+    summary.lastPaintType !== "Never Recorded" ||
+    summary.lastFlooring !== "Never Recorded" ||
+    summary.lastRenovation !== "Never Recorded" ||
+    summary.lastSmokerRemediation !== "Never Recorded";
+
+  return summary;
 }
 
 function previousRenovationLabel(value: string | null | undefined) {
@@ -362,6 +561,9 @@ function NewRequestPageContent() {
   const [propertyUnits, setPropertyUnits] = useState<PropertyUnitProfile[]>(
     []
   );
+  const [historyByUnitId, setHistoryByUnitId] = useState<
+    Record<string, UnitHistorySummary>
+  >({});
   const [propertyUnitMessage, setPropertyUnitMessage] = useState("");
   const [unitLayoutTouched, setUnitLayoutTouched] = useState(false);
   const [moveOutDate, setMoveOutDate] = useState("");
@@ -673,6 +875,9 @@ function NewRequestPageContent() {
     [selectedUnitProfiles]
   );
   const selectedFloorplansKey = selectedFloorplans.join("|");
+  const selectedUnitProfileKey = selectedUnitProfiles
+    .map((unitProfile) => unitProfile.id)
+    .join("|");
 
   useEffect(() => {
     async function loadPropertyUnits() {
@@ -725,6 +930,97 @@ function NewRequestPageContent() {
 
     loadPropertyUnits();
   }, [business, collectUnitLayout]);
+
+  useEffect(() => {
+    async function loadSelectedUnitHistory() {
+      if (
+        !business ||
+        !collectUnitLayout ||
+        selectedUnitProfiles.length === 0
+      ) {
+        setHistoryByUnitId({});
+        return;
+      }
+
+      const selectedUnitIds = selectedUnitProfiles.map(
+        (unitProfile) => unitProfile.id
+      );
+      const selectedUnitLabels = selectedUnitProfiles
+        .map((unitProfile) => unitProfile.unit_label)
+        .filter((label): label is string => Boolean(label));
+      const selectedQueueUnitLabels = Array.from(
+        new Set(
+          selectedUnitLabels.flatMap((label) => [
+            normalizeUnitLabel(label),
+            legacyUnpaddedUnitLabel(label),
+          ])
+        )
+      );
+
+      const { data: unitHistoryData, error: unitHistoryError } =
+        await supabase
+          .from("unit_history")
+          .select(
+            "property_unit_id, event_type, event_date, paint_type, flooring, smoker_remediation, prior_renovation, prior_renovation_details, queue_item_is_renovation, created_at"
+          )
+          .in("property_unit_id", selectedUnitIds)
+          .order("event_date", { ascending: false, nullsFirst: false })
+          .order("created_at", { ascending: false });
+
+      if (unitHistoryError) {
+        console.warn(
+          "Unit history preview lookup failed:",
+          unitHistoryError.message
+        );
+      }
+
+      const { data: queueHistoryData, error: queueHistoryError } =
+        await supabase
+          .from("queue_items")
+          .select(
+            "unit, completed_date, scheduled_date, created_at, paint_type, flooring, smoked_in, prior_renovation, prior_renovation_details, renovation_needed, renovation_needed_details"
+          )
+          .eq("business_id", business.id)
+          .eq("property", property)
+          .in("unit", selectedQueueUnitLabels)
+          .order("completed_date", { ascending: false, nullsFirst: false })
+          .order("scheduled_date", { ascending: false, nullsFirst: false })
+          .order("created_at", { ascending: false });
+
+      if (queueHistoryError) {
+        console.warn(
+          "Queue history preview lookup failed:",
+          queueHistoryError.message
+        );
+      }
+
+      const unitHistoryRows =
+        (unitHistoryData ?? []) as UnitHistoryRecord[];
+      const queueHistoryRows =
+        (queueHistoryData ?? []) as QueueHistoryRecord[];
+
+      setHistoryByUnitId(
+        Object.fromEntries(
+          selectedUnitProfiles.map((unitProfile) => [
+            unitProfile.id,
+            buildUnitHistorySummary({
+              unitProfile,
+              historyRows: unitHistoryRows,
+              queueRows: queueHistoryRows,
+            }),
+          ])
+        )
+      );
+    }
+
+    loadSelectedUnitHistory();
+  }, [
+    business,
+    collectUnitLayout,
+    property,
+    selectedUnitProfileKey,
+    selectedUnitProfiles,
+  ]);
 
   useEffect(() => {
     if (!collectUnitLayout || unitLayoutTouched) {
@@ -987,32 +1283,120 @@ function NewRequestPageContent() {
                       {selectedUnitProfiles.map((unitProfile) => (
                         <div
                           key={unitProfile.id}
-                          className="grid gap-3 rounded-2xl border border-sky-500/20 bg-zinc-950/70 p-3 text-sm sm:grid-cols-4"
+                          className="rounded-2xl border border-sky-500/20 bg-zinc-950/70 p-3 text-sm"
                         >
-                          <div>
-                            <p className="text-zinc-500">Unit</p>
-                            <p className="font-semibold text-zinc-100">
-                              {unitProfile.unit_label || "-"}
-                            </p>
+                          <div className="grid gap-3 sm:grid-cols-4">
+                            <div>
+                              <p className="text-zinc-500">Unit</p>
+                              <p className="font-semibold text-zinc-100">
+                                {unitProfile.unit_label || "-"}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-zinc-500">Building</p>
+                              <p className="font-semibold text-zinc-100">
+                                {unitProfile.building_letter || "-"}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-zinc-500">Floor</p>
+                              <p className="font-semibold text-zinc-100">
+                                {formatFloor(unitProfile.floor)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-zinc-500">Layout</p>
+                              <p className="font-semibold text-zinc-100">
+                                {displayUnitLayout(unitProfile.floorplan) ||
+                                  "-"}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-zinc-500">Building</p>
-                            <p className="font-semibold text-zinc-100">
-                              {unitProfile.building_letter || "-"}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-zinc-500">Floor</p>
-                            <p className="font-semibold text-zinc-100">
-                              {formatFloor(unitProfile.floor)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-zinc-500">Layout</p>
-                            <p className="font-semibold text-zinc-100">
-                              {displayUnitLayout(unitProfile.floorplan) || "-"}
-                            </p>
-                          </div>
+
+                          {historyByUnitId[unitProfile.id]?.hasHistory ? (
+                            <div className="mt-4 rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4">
+                              <p className="text-xs uppercase tracking-[0.25em] text-sky-300">
+                                History Summary
+                              </p>
+                              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                <div>
+                                  <p className="text-zinc-500">
+                                    Last Paint Date
+                                  </p>
+                                  <p className="font-semibold text-zinc-100">
+                                    {
+                                      historyByUnitId[unitProfile.id]
+                                        .lastPaintDate
+                                    }
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-zinc-500">
+                                    Last Paint Type
+                                  </p>
+                                  <p className="font-semibold text-zinc-100">
+                                    {
+                                      historyByUnitId[unitProfile.id]
+                                        .lastPaintType
+                                    }
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-zinc-500">
+                                    Last Flooring
+                                  </p>
+                                  <p className="font-semibold text-zinc-100">
+                                    {
+                                      historyByUnitId[unitProfile.id]
+                                        .lastFlooring
+                                    }
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-zinc-500">
+                                    Last Renovation
+                                  </p>
+                                  <p className="font-semibold text-zinc-100">
+                                    {
+                                      historyByUnitId[unitProfile.id]
+                                        .lastRenovation
+                                    }
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-zinc-500">
+                                    Last Smoker Remediation
+                                  </p>
+                                  <p className="font-semibold text-zinc-100">
+                                    {
+                                      historyByUnitId[unitProfile.id]
+                                        .lastSmokerRemediation
+                                    }
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-zinc-500">
+                                    Total Recorded Turns
+                                  </p>
+                                  <p className="font-semibold text-zinc-100">
+                                    {
+                                      historyByUnitId[unitProfile.id]
+                                        .totalRecordedTurns
+                                    }
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="mt-4 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4">
+                              <p className="text-xs uppercase tracking-[0.25em] text-sky-300">
+                                History Summary
+                              </p>
+                              <p className="mt-2 font-semibold text-zinc-100">
+                                No recorded history yet.
+                              </p>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
