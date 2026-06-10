@@ -230,6 +230,13 @@ function legacyUnpaddedUnitLabel(value: string | null | undefined) {
   return `${match[1]}${match[2]}`;
 }
 
+function unitOptionAliases(option: string) {
+  return [
+    normalizeUnitLabel(option),
+    legacyUnpaddedUnitLabel(option),
+  ];
+}
+
 function unitLayoutLabel(floorplan: string | null | undefined) {
   if (floorplan === "2x1") {
     return "2x1 - 2 Bed / 1 Bath";
@@ -1262,6 +1269,13 @@ function NewRequestPageContent() {
               value={unitsText}
               onChange={setUnitsText}
               options={unitOptions}
+              maxVisibleOptions={collectUnitLayout ? 10 : undefined}
+              emptyOptionsMessage={
+                collectUnitLayout
+                  ? "No matching North Creek units."
+                  : "No matching options."
+              }
+              optionAliases={collectUnitLayout ? unitOptionAliases : undefined}
             />
 
             {collectUnitLayout ? (

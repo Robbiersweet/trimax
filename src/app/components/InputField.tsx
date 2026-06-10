@@ -11,6 +11,9 @@ type InputFieldProps = {
   type?: string;
   list?: string;
   options?: string[];
+  maxVisibleOptions?: number;
+  emptyOptionsMessage?: string;
+  optionAliases?: (option: string) => string[];
   helperText?: string;
 };
 
@@ -22,6 +25,9 @@ export default function InputField({
   type = "text",
   list,
   options = [],
+  maxVisibleOptions,
+  emptyOptionsMessage = "No matching options.",
+  optionAliases,
   helperText,
 }: InputFieldProps) {
   const [showPassword, setShowPassword] =
@@ -50,12 +56,42 @@ export default function InputField({
       : type;
   const normalizedValue = value.trim().toLowerCase();
   const hasCustomOptions = options.length > 0;
-  const visibleOptions =
+  const optionSearchValues = (option: string) =>
+    [option, ...(optionAliases?.(option) ?? [])].map((alias) =>
+      alias.trim().toLowerCase()
+    );
+  const matchedOptions =
     hasCustomOptions && shouldFilterOptions && normalizedValue
-      ? options.filter((option) =>
-          option.toLowerCase().includes(normalizedValue)
-        )
+      ? options
+          .map((option) => {
+            const searchValues = optionSearchValues(option);
+            const startsWithScore = searchValues.some((alias) =>
+              alias.startsWith(normalizedValue)
+            )
+              ? 0
+              : 1;
+            const includesScore = searchValues.some((alias) =>
+              alias.includes(normalizedValue)
+            )
+              ? 0
+              : 1;
+
+            return {
+              option,
+              rank: startsWithScore + includesScore,
+            };
+          })
+          .filter((item) => item.rank < 2)
+          .sort(
+            (first, second) =>
+              first.rank - second.rank ||
+              first.option.localeCompare(second.option)
+          )
+          .map((item) => item.option)
       : options;
+  const visibleOptions = maxVisibleOptions
+    ? matchedOptions.slice(0, maxVisibleOptions)
+    : matchedOptions;
 
   return (
     <div>
@@ -101,7 +137,7 @@ export default function InputField({
         )}
 
         {hasCustomOptions && isOptionsOpen ? (
-          <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-30 overflow-hidden rounded-2xl border border-zinc-700 bg-zinc-950 shadow-2xl">
+          <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-30 max-h-[300px] overflow-y-auto rounded-2xl border border-zinc-700 bg-zinc-950 shadow-2xl">
             {visibleOptions.length > 0 ? (
               visibleOptions.map((option) => (
                 <button
@@ -120,7 +156,7 @@ export default function InputField({
               ))
             ) : (
               <p className="px-4 py-3 text-sm text-zinc-400">
-                No matching options.
+                {emptyOptionsMessage}
               </p>
             )}
           </div>
