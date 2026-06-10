@@ -29,7 +29,7 @@ create table if not exists public.unit_history (
   id uuid primary key default gen_random_uuid(),
   business_id uuid not null references public.businesses(id) on delete cascade,
   property_unit_id uuid not null references public.property_units(id) on delete cascade,
-  queue_item_id uuid references public.queue_items(id) on delete set null,
+  queue_item_id text references public.queue_items(id) on delete set null,
   event_type text not null default 'general_turn',
   event_date date,
   paint_type text,
