@@ -827,6 +827,12 @@ export default async function ReportsPage({
               badge="New"
             />
             <ReportTile
+              label="North Creek Unit Map"
+              description="Open the editable property intelligence map for saved floor, floorplan, and unit notes."
+              href={appHref(businessSlug, "/property-intelligence")}
+              badge="Admin"
+            />
+            <ReportTile
               label="Audit Activity"
               description="Review important queue, estimate, invoice, payment, split, and access request activity."
               href={appHref(businessSlug, "/activity")}

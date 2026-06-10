@@ -29,6 +29,16 @@ type PaintMemory = {
   paint_type: string | null;
 };
 
+type PropertyUnitProfile = {
+  id: string;
+  building_letter: string | null;
+  unit_number: number | null;
+  unit_label: string | null;
+  floor: string | null;
+  floorplan: string | null;
+  notes: string | null;
+};
+
 type QueueRequestDraft = {
   property: string;
   unitsText: string;
@@ -162,6 +172,34 @@ function unitListFromText(value: string) {
     .split(/[\n,]+/g)
     .map((unit) => unit.trim())
     .filter(Boolean);
+}
+
+function normalizeUnitLabel(value: string) {
+  return value.trim().replace(/\s+/g, "").toUpperCase();
+}
+
+function unitLayoutLabel(floorplan: string | null | undefined) {
+  if (floorplan === "2x1") {
+    return "2x1 - 2 Bed / 1 Bath";
+  }
+
+  if (floorplan === "2x2") {
+    return "2x2 - 2 Bed / 2 Bath";
+  }
+
+  return "";
+}
+
+function formatFloor(value: string | null | undefined) {
+  if (value === "bottom") {
+    return "Bottom";
+  }
+
+  if (value === "top") {
+    return "Top";
+  }
+
+  return "-";
 }
 
 function previousRenovationLabel(value: string | null | undefined) {
@@ -317,6 +355,11 @@ function NewRequestPageContent() {
     useState("");
   const [paintMemoryMessage, setPaintMemoryMessage] =
     useState("");
+  const [propertyUnits, setPropertyUnits] = useState<PropertyUnitProfile[]>(
+    []
+  );
+  const [propertyUnitMessage, setPropertyUnitMessage] = useState("");
+  const [unitLayoutTouched, setUnitLayoutTouched] = useState(false);
   const [moveOutDate, setMoveOutDate] = useState("");
   const [readyDate, setReadyDate] = useState("");
   const [notes, setNotes] = useState("");
@@ -431,6 +474,7 @@ function NewRequestPageContent() {
         setUnitsText(draft.unitsText ?? "");
         setPaintType(draft.paintType ?? "");
         setUnitLayout(draft.unitLayout ?? "");
+        setUnitLayoutTouched(Boolean(draft.unitLayout));
         setWallPaintColor(draft.wallPaintColor ?? "");
         setFlooring(draft.flooring ?? "");
         setPriority(draft.priority ?? "Normal");
@@ -588,6 +632,109 @@ function NewRequestPageContent() {
     businessSlug,
     property
   );
+  const units = useMemo(() => unitListFromText(unitsText), [unitsText]);
+  const normalizedUnits = useMemo(
+    () => units.map(normalizeUnitLabel),
+    [units]
+  );
+  const unitOptions = collectUnitLayout
+    ? propertyUnits.map((unitProfile) => unitProfile.unit_label || "")
+    : [];
+  const selectedUnitProfiles = useMemo(
+    () =>
+      normalizedUnits
+        .map((unitLabel) =>
+          propertyUnits.find(
+            (unitProfile) =>
+              normalizeUnitLabel(unitProfile.unit_label || "") === unitLabel
+          )
+        )
+        .filter((unitProfile): unitProfile is PropertyUnitProfile =>
+          Boolean(unitProfile)
+        ),
+    [normalizedUnits, propertyUnits]
+  );
+  const selectedFloorplans = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          selectedUnitProfiles
+            .map((unitProfile) => unitProfile.floorplan)
+            .filter((floorplan): floorplan is string => Boolean(floorplan))
+        )
+      ),
+    [selectedUnitProfiles]
+  );
+  const selectedFloorplansKey = selectedFloorplans.join("|");
+
+  useEffect(() => {
+    async function loadPropertyUnits() {
+      if (!business || !collectUnitLayout) {
+        setPropertyUnits([]);
+        setPropertyUnitMessage("");
+        return;
+      }
+
+      const { data: propertyData, error: propertyError } = await supabase
+        .from("properties")
+        .select("id")
+        .eq("business_id", business.id)
+        .eq("name", "North Creek Apartments")
+        .limit(1)
+        .maybeSingle();
+
+      if (propertyError || !propertyData) {
+        if (propertyError) {
+          console.warn("Property lookup failed:", propertyError.message);
+        }
+        setPropertyUnits([]);
+        setPropertyUnitMessage(
+          "North Creek unit map is not loaded yet. Run the Property Intelligence SQL, then this form can auto-fill unit facts."
+        );
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("property_units")
+        .select(
+          "id, building_letter, unit_number, unit_label, floor, floorplan, notes"
+        )
+        .eq("property_id", propertyData.id)
+        .order("building_letter", { ascending: true })
+        .order("unit_number", { ascending: true });
+
+      if (error) {
+        console.warn("Property unit lookup failed:", error.message);
+        setPropertyUnits([]);
+        setPropertyUnitMessage(
+          "North Creek unit map is not available yet. Queue creation still works, but unit facts cannot auto-fill."
+        );
+        return;
+      }
+
+      setPropertyUnits((data ?? []) as PropertyUnitProfile[]);
+      setPropertyUnitMessage("");
+    }
+
+    loadPropertyUnits();
+  }, [business, collectUnitLayout]);
+
+  useEffect(() => {
+    if (!collectUnitLayout || unitLayoutTouched) {
+      return;
+    }
+
+    if (selectedFloorplans.length === 1) {
+      window.setTimeout(() => {
+        setUnitLayout(unitLayoutLabel(selectedFloorplans[0]));
+      }, 0);
+    }
+  }, [
+    collectUnitLayout,
+    selectedFloorplans,
+    selectedFloorplansKey,
+    unitLayoutTouched,
+  ]);
 
   async function handleSubmit() {
     setToast(null);
@@ -791,6 +938,7 @@ function NewRequestPageContent() {
 
                 if (!shouldCollectUnitLayout(businessSlug, value)) {
                   setUnitLayout("");
+                  setUnitLayoutTouched(false);
                 }
               }}
               options={propertyOptions}
@@ -805,17 +953,81 @@ function NewRequestPageContent() {
               }
               value={unitsText}
               onChange={setUnitsText}
+              options={unitOptions}
             />
 
             {collectUnitLayout ? (
-              <InputField
-                label="Unit Layout"
-                placeholder="Optional: 2x2 or 2x1"
-                value={unitLayout}
-                onChange={setUnitLayout}
-                options={northCreekUnitLayoutOptions}
-                helperText="Optional. Collect this over time so scheduling can show the apartment layout before paint is planned."
-              />
+              <>
+                {propertyUnitMessage ? (
+                  <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+                    <p className="text-sm font-semibold text-amber-100">
+                      {propertyUnitMessage}
+                    </p>
+                  </div>
+                ) : null}
+
+                {selectedUnitProfiles.length > 0 ? (
+                  <div className="rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4">
+                    <p className="text-sm uppercase tracking-[0.25em] text-sky-300">
+                      Unit Intelligence Preview
+                    </p>
+
+                    <div className="mt-3 grid gap-3">
+                      {selectedUnitProfiles.map((unitProfile) => (
+                        <div
+                          key={unitProfile.id}
+                          className="grid gap-3 rounded-2xl border border-sky-500/20 bg-zinc-950/70 p-3 text-sm sm:grid-cols-4"
+                        >
+                          <div>
+                            <p className="text-zinc-500">Unit</p>
+                            <p className="font-semibold text-zinc-100">
+                              {unitProfile.unit_label || "-"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-zinc-500">Building</p>
+                            <p className="font-semibold text-zinc-100">
+                              {unitProfile.building_letter || "-"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-zinc-500">Floor</p>
+                            <p className="font-semibold text-zinc-100">
+                              {formatFloor(unitProfile.floor)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-zinc-500">Floorplan</p>
+                            <p className="font-semibold text-zinc-100">
+                              {unitProfile.floorplan || "-"}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : normalizedUnits.length > 0 && propertyUnits.length > 0 ? (
+                  <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+                    <p className="text-sm font-semibold text-amber-100">
+                      No saved North Creek unit facts matched this unit yet.
+                      You can still create the queue item and correct the map
+                      later.
+                    </p>
+                  </div>
+                ) : null}
+
+                <InputField
+                  label="Unit Layout"
+                  placeholder="Optional: 2x2 or 2x1"
+                  value={unitLayout}
+                  onChange={(value) => {
+                    setUnitLayoutTouched(true);
+                    setUnitLayout(value);
+                  }}
+                  options={northCreekUnitLayoutOptions}
+                  helperText="Auto-fills from the saved North Creek unit map when Trimax knows this unit. You can still override it."
+                />
+              </>
             ) : null}
 
             {paintMemoryMessage ? (

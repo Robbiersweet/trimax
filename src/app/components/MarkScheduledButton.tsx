@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 import { logActivity } from "../lib/activityLog";
+import { appendUnitHistoryForQueueItem } from "../lib/unitHistory";
 import Button from "./Button";
 import DateInputField from "./DateInputField";
 
@@ -93,6 +94,13 @@ export default function MarkScheduledButton({
       details: {
         scheduledDate,
       },
+    });
+
+    await appendUnitHistoryForQueueItem({
+      queueItemId,
+      businessId,
+      eventType: "scheduled",
+      eventDate: scheduledDate,
     });
 
     setIsSaving(false);

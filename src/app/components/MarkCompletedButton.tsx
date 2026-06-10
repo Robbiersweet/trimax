@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 import { logActivity } from "../lib/activityLog";
+import { appendUnitHistoryForQueueItem } from "../lib/unitHistory";
 import Button from "./Button";
 
 type MarkCompletedButtonProps = {
@@ -55,6 +56,13 @@ export default function MarkCompletedButton({
       details: {
         completedDate: today,
       },
+    });
+
+    await appendUnitHistoryForQueueItem({
+      queueItemId,
+      businessId,
+      eventType: "general_turn",
+      eventDate: today,
     });
 
     setIsSaving(false);

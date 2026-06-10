@@ -51,6 +51,77 @@ type LinkedEstimate = {
   status: string | null;
 };
 
+type PropertyUnitProfile = {
+  id: string;
+  building_letter: string | null;
+  unit_number: number | null;
+  unit_label: string | null;
+  floor: string | null;
+  floorplan: string | null;
+  notes: string | null;
+};
+
+type UnitHistoryEntry = {
+  id: string;
+  event_type: string | null;
+  event_date: string | null;
+  paint_type: string | null;
+  wall_paint_color: string | null;
+  flooring: string | null;
+  smoker_remediation: boolean | null;
+  prior_renovation: boolean | null;
+  prior_renovation_details: string | null;
+  queue_item_is_renovation: boolean | null;
+  notes: string | null;
+  created_at: string | null;
+};
+
+function propertyKey(value: string | null | undefined) {
+  return (value || "")
+    .trim()
+    .toLowerCase()
+    .replaceAll("&", "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function normalizeUnitLabel(value: string | null | undefined) {
+  return (value || "").trim().replace(/\s+/g, "").toUpperCase();
+}
+
+function formatFloor(value: string | null | undefined) {
+  if (value === "bottom") {
+    return "Bottom";
+  }
+
+  if (value === "top") {
+    return "Top";
+  }
+
+  return "-";
+}
+
+function formatHistoryDate(value: string | null) {
+  const date = dateValue(value);
+
+  if (!date) {
+    return "-";
+  }
+
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function latestHistory(
+  entries: UnitHistoryEntry[],
+  matches: (entry: UnitHistoryEntry) => boolean
+) {
+  return entries.find(matches) ?? null;
+}
+
 function dateValue(value: string | null) {
   if (!value) {
     return null;
@@ -200,6 +271,8 @@ export default async function QueueDetailPage({
   const businessSlug = selectedBusiness.slug;
 
   let linkedEstimate: LinkedEstimate | null = null;
+  let propertyUnitProfile: PropertyUnitProfile | null = null;
+  let unitHistory: UnitHistoryEntry[] = [];
 
   if (item.linked_estimate_id) {
     const { data: estimateData } = await supabase
@@ -211,6 +284,47 @@ export default async function QueueDetailPage({
       .maybeSingle();
 
     linkedEstimate = estimateData as LinkedEstimate | null;
+  }
+
+  if (
+    propertyKey(item.property) === "north-creek-apartments" &&
+    normalizeUnitLabel(item.unit)
+  ) {
+    const { data: propertyData } = await supabase
+      .from("properties")
+      .select("id")
+      .eq("business_id", selectedBusiness.id)
+      .eq("name", "North Creek Apartments")
+      .limit(1)
+      .maybeSingle();
+
+    if (propertyData?.id) {
+      const { data: unitData } = await supabase
+        .from("property_units")
+        .select(
+          "id, building_letter, unit_number, unit_label, floor, floorplan, notes"
+        )
+        .eq("property_id", propertyData.id)
+        .eq("unit_label", normalizeUnitLabel(item.unit))
+        .limit(1)
+        .maybeSingle();
+
+      propertyUnitProfile = unitData as PropertyUnitProfile | null;
+
+      if (propertyUnitProfile?.id) {
+        const { data: historyData } = await supabase
+          .from("unit_history")
+          .select(
+            "id, event_type, event_date, paint_type, wall_paint_color, flooring, smoker_remediation, prior_renovation, prior_renovation_details, queue_item_is_renovation, notes, created_at"
+          )
+          .eq("property_unit_id", propertyUnitProfile.id)
+          .order("event_date", { ascending: false, nullsFirst: false })
+          .order("created_at", { ascending: false })
+          .limit(12);
+
+        unitHistory = (historyData ?? []) as UnitHistoryEntry[];
+      }
+    }
   }
 
   const readiness = readyStatus(item);
@@ -244,6 +358,27 @@ export default async function QueueDetailPage({
       .filter(Boolean)
       .join("\n"),
   });
+  const latestPaintHistory = latestHistory(
+    unitHistory,
+    (entry) => entry.event_type === "paint" || Boolean(entry.paint_type)
+  );
+  const latestFlooringHistory = latestHistory(
+    unitHistory,
+    (entry) => entry.event_type === "flooring" || Boolean(entry.flooring)
+  );
+  const latestSmokerHistory = latestHistory(
+    unitHistory,
+    (entry) =>
+      entry.event_type === "smoker_remediation" ||
+      Boolean(entry.smoker_remediation)
+  );
+  const latestRenovationHistory = latestHistory(
+    unitHistory,
+    (entry) =>
+      entry.event_type === "renovation" ||
+      Boolean(entry.prior_renovation) ||
+      Boolean(entry.queue_item_is_renovation)
+  );
 
   return (
     <AppShell>
@@ -341,6 +476,106 @@ export default async function QueueDetailPage({
             </div>
           </Card>
         )}
+
+        {propertyKey(item.property) === "north-creek-apartments" ? (
+          <Card className="border-sky-500/30 bg-gradient-to-br from-sky-500/10 via-zinc-950 to-emerald-500/5">
+            <p className="text-sm uppercase tracking-[0.3em] text-sky-300">
+              Unit Intelligence
+            </p>
+
+            <h2 className="mt-2 text-2xl font-bold">
+              {propertyUnitProfile?.unit_label || item.unit || "Unit"} profile
+            </h2>
+
+            <div className="mt-5 grid gap-4 md:grid-cols-4">
+              <Info
+                label="Building"
+                value={propertyUnitProfile?.building_letter ?? ""}
+              />
+              <Info
+                label="Unit"
+                value={propertyUnitProfile?.unit_label ?? item.unit ?? ""}
+              />
+              <Info
+                label="Floor"
+                value={formatFloor(propertyUnitProfile?.floor)}
+              />
+              <Info
+                label="Floorplan"
+                value={propertyUnitProfile?.floorplan ?? item.unit_layout ?? ""}
+              />
+            </div>
+
+            {!propertyUnitProfile ? (
+              <p className="mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                This unit is not in the saved North Creek unit map yet. The
+                queue item still works, and the unit can be added to the map
+                later.
+              </p>
+            ) : null}
+
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              <HistorySummary
+                label="Latest Paint"
+                entry={latestPaintHistory}
+                fallback={item.paint_type}
+                detail={item.wall_paint_color}
+              />
+              <HistorySummary
+                label="Latest Flooring"
+                entry={latestFlooringHistory}
+                fallback={item.flooring}
+              />
+              <HistorySummary
+                label="Latest Smoker / Remediation"
+                entry={latestSmokerHistory}
+                fallback={item.smoked_in ? "Smoker/remediation flagged" : ""}
+              />
+              <HistorySummary
+                label="Latest Renovation"
+                entry={latestRenovationHistory}
+                fallback={
+                  item.renovation_needed_details ||
+                  item.prior_renovation_details ||
+                  ""
+                }
+              />
+            </div>
+
+            {unitHistory.length > 0 ? (
+              <div className="mt-5 space-y-2">
+                <p className="text-sm font-semibold text-zinc-200">
+                  Recent history
+                </p>
+                {unitHistory.slice(0, 5).map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="rounded-2xl border border-zinc-800 bg-zinc-950/70 px-4 py-3 text-sm"
+                  >
+                    <p className="font-semibold text-zinc-100">
+                      {entry.event_type || "History"} /{" "}
+                      {formatHistoryDate(entry.event_date)}
+                    </p>
+                    <p className="mt-1 text-zinc-400">
+                      {[
+                        entry.paint_type,
+                        entry.wall_paint_color,
+                        entry.flooring,
+                        entry.smoker_remediation
+                          ? "Smoker/remediation"
+                          : null,
+                        entry.prior_renovation_details,
+                        entry.notes,
+                      ]
+                        .filter(Boolean)
+                        .join(" / ") || "No detail saved."}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </Card>
+        ) : null}
 
         <Card>
           <div className="mb-6 grid gap-4 md:grid-cols-3">
@@ -529,6 +764,41 @@ function Info({ label, value }: { label: string; value: string }) {
     <div>
       <p className="text-sm text-zinc-500">{label}</p>
       <p className="mt-1 text-lg font-medium">{value || "-"}</p>
+    </div>
+  );
+}
+
+function HistorySummary({
+  label,
+  entry,
+  fallback,
+  detail,
+}: {
+  label: string;
+  entry: UnitHistoryEntry | null;
+  fallback?: string | null;
+  detail?: string | null;
+}) {
+  const summary =
+    entry?.paint_type ||
+    entry?.wall_paint_color ||
+    entry?.flooring ||
+    entry?.prior_renovation_details ||
+    entry?.notes ||
+    fallback ||
+    "";
+  const subDetail =
+    entry?.event_date
+      ? formatHistoryDate(entry.event_date)
+      : detail || "Current queue item only";
+
+  return (
+    <div className="rounded-2xl border border-sky-500/20 bg-black/25 p-4">
+      <p className="text-sm text-zinc-500">{label}</p>
+      <p className="mt-2 font-semibold text-zinc-100">
+        {summary || "-"}
+      </p>
+      <p className="mt-1 text-sm text-zinc-400">{subDetail}</p>
     </div>
   );
 }
