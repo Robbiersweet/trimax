@@ -621,6 +621,7 @@ export default async function QueueDetailPage({
               <MarkScheduledButton
                 queueItemId={item.id}
                 businessId={item.business_id}
+                businessSlug={businessSlug}
                 initialScheduledDate={item.scheduled_date}
                 readyDate={item.ready_date}
                 label={`${item.property || "Property"} - Unit ${
@@ -726,6 +727,7 @@ export default async function QueueDetailPage({
           <MarkCompletedButton
             queueItemId={item.id}
             businessId={item.business_id}
+            businessSlug={businessSlug}
             label={`${item.property || "Property"} - Unit ${
               displayUnit || "-"
             }`}

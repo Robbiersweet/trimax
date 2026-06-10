@@ -4,18 +4,21 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 import { logActivity } from "../lib/activityLog";
+import { assertCanWriteDuringMaintenance } from "../lib/maintenanceMode";
 import { appendUnitHistoryForQueueItem } from "../lib/unitHistory";
 import Button from "./Button";
 
 type MarkCompletedButtonProps = {
   queueItemId: string;
   businessId?: string | null;
+  businessSlug?: string | null;
   label?: string | null;
 };
 
 export default function MarkCompletedButton({
   queueItemId,
   businessId,
+  businessSlug,
   label,
 }: MarkCompletedButtonProps) {
   const router = useRouter();
@@ -28,19 +31,30 @@ export default function MarkCompletedButton({
 
     const today = new Date().toISOString().slice(0, 10);
 
-    const { error } = await supabase
-      .from("queue_items")
-      .update({
-        status: "Completed",
-        completed_date: today,
-      })
-      .eq("id", queueItemId);
+    let error: unknown = null;
+
+    try {
+      await assertCanWriteDuringMaintenance(businessSlug);
+
+      const result = await supabase
+        .from("queue_items")
+        .update({
+          status: "Completed",
+          completed_date: today,
+        })
+        .eq("id", queueItemId);
+      error = result.error;
+    } catch (caughtError) {
+      error = caughtError;
+    }
 
     if (error) {
       console.error(error);
 
       setErrorMessage(
-        "Unable to mark this queue item completed. Refresh the page, then try again."
+        error instanceof Error
+          ? error.message
+          : "Unable to mark this queue item completed. Refresh the page, then try again."
       );
       setIsSaving(false);
 

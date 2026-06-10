@@ -7,6 +7,11 @@ import {
   useSearchParams,
 } from "next/navigation";
 import { supabase } from "../lib/supabase";
+import {
+  defaultMaintenanceSettings,
+  loadMaintenanceSettings,
+  MaintenanceSettings,
+} from "../lib/maintenanceMode";
 import { canAccessPath } from "../lib/rolePermissions";
 import {
   allowedPropertiesForBusiness,
@@ -80,6 +85,9 @@ export default function AuthGuard({
   const searchParams = useSearchParams();
 
   const [loading, setLoading] = useState(true);
+  const [maintenanceSettings, setMaintenanceSettings] =
+    useState<MaintenanceSettings>(defaultMaintenanceSettings());
+  const [maintenanceBlocked, setMaintenanceBlocked] = useState(false);
 
   useEffect(() => {
     async function checkAuth() {
@@ -200,6 +208,14 @@ export default function AuthGuard({
       );
       const currentRole =
         currentWorkspace?.role ?? "owner";
+      const maintenance = await loadMaintenanceSettings();
+      const canUseAppDuringMaintenance =
+        currentRole === "owner" || currentRole === "admin";
+
+      setMaintenanceSettings(maintenance);
+      setMaintenanceBlocked(
+        maintenance.enabled && !canUseAppDuringMaintenance
+      );
 
       if (
         access.length > 0 &&
@@ -259,6 +275,27 @@ export default function AuthGuard({
         <p className="text-zinc-400">
           Opening workspace...
         </p>
+      </main>
+    );
+  }
+
+  if (maintenanceBlocked) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-zinc-950 px-5 text-white">
+        <section className="w-full max-w-2xl rounded-3xl border border-orange-500/30 bg-zinc-900 p-8 shadow-2xl">
+          <p className="text-sm uppercase tracking-[0.3em] text-orange-300">
+            Trimax Maintenance
+          </p>
+          <h1 className="mt-4 text-4xl font-bold">
+            Trimax is being updated
+          </h1>
+          <p className="mt-4 text-lg leading-8 text-zinc-300">
+            We are making improvements. Please check back in a few minutes.
+          </p>
+          <p className="mt-5 rounded-2xl border border-zinc-700 bg-zinc-950 p-4 text-zinc-200">
+            {maintenanceSettings.message}
+          </p>
+        </section>
       </main>
     );
   }

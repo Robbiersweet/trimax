@@ -7,6 +7,7 @@ import Button from "../components/Button";
 import Card from "../components/Card";
 import InputField from "../components/InputField";
 import Toast from "../components/Toast";
+import { assertCanWriteDuringMaintenance } from "../lib/maintenanceMode";
 import { supabase } from "../lib/supabase";
 import { canonicalApartmentUnitLabel } from "../utils/unitLabels";
 
@@ -257,6 +258,8 @@ export default function PropertyIntelligencePage() {
     setToast(null);
 
     try {
+      await assertCanWriteDuringMaintenance(businessSlug);
+
       if (!business) {
         throw new Error("Workspace is still loading.");
       }
@@ -344,6 +347,20 @@ export default function PropertyIntelligencePage() {
   async function updateUnit(unit: PropertyUnitRow) {
     setIsSaving(true);
     setToast(null);
+
+    try {
+      await assertCanWriteDuringMaintenance(businessSlug);
+    } catch (error) {
+      setToast({
+        type: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Trimax is being updated. Try again in a few minutes.",
+      });
+      setIsSaving(false);
+      return;
+    }
 
     const { error } = await supabase
       .from("property_units")

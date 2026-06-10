@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import { logActivity } from "./activityLog";
+import { assertCanWriteDuringMaintenance } from "./maintenanceMode";
 
 type CreateQueueItemInput = {
   property: string;
@@ -21,6 +22,7 @@ type CreateQueueItemInput = {
   completedDate: string;
   notes: string;
   businessId: string;
+  businessSlug?: string;
 };
 
 function normalizeDate(value: string) {
@@ -45,6 +47,8 @@ function isMissingQueueColumnError(error: unknown) {
 }
 
 export async function createQueueItem(input: CreateQueueItemInput) {
+  await assertCanWriteDuringMaintenance(input.businessSlug);
+
   const id = crypto.randomUUID();
 
   const queueItemInsert = {

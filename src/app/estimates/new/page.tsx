@@ -17,6 +17,7 @@ import Toast from "../../components/Toast";
 import { captureServicesFromLineItems } from "../../lib/captureServicesFromLineItems";
 import { getNextDocumentDisplayId } from "../../lib/documentNumbers";
 import { logActivity } from "../../lib/activityLog";
+import { assertCanWriteDuringMaintenance } from "../../lib/maintenanceMode";
 import { buildSplitInvoicePlan } from "../../lib/splitInvoices";
 import { supabase } from "../../lib/supabase";
 import { looksLikeApartmentUnitPaintJob } from "../../utils/jobWorkflow";
@@ -830,6 +831,19 @@ function NewEstimatePageContent() {
 
   async function handleCreateEstimate() {
     setToast(null);
+
+    try {
+      await assertCanWriteDuringMaintenance(businessSlug);
+    } catch (error) {
+      setToast({
+        type: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Trimax is being updated. Try again in a few minutes.",
+      });
+      return;
+    }
 
     if (!business) {
       setToast({

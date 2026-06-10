@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Button from "./Button";
 import { getNextDocumentDisplayId } from "../lib/documentNumbers";
 import { logActivity } from "../lib/activityLog";
+import { assertCanWriteDuringMaintenance } from "../lib/maintenanceMode";
 import { createSplitInvoices } from "../lib/splitInvoices";
 import { supabase } from "../lib/supabase";
 import { getSmartInvoiceDates } from "../utils/invoiceDates";
@@ -84,6 +85,19 @@ export default function ConvertEstimateToInvoiceButton({
 
   async function handleConvert() {
     setMessage(null);
+
+    try {
+      await assertCanWriteDuringMaintenance(businessSlug);
+    } catch (error) {
+      setMessage({
+        type: "error",
+        text:
+          error instanceof Error
+            ? error.message
+            : "Trimax is being updated. Try again in a few minutes.",
+      });
+      return;
+    }
 
     if (!businessId || !customerName || !projectTitle) {
       setMessage({

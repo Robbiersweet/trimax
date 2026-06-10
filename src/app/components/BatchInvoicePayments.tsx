@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Card from "./Card";
 import DateInputField from "./DateInputField";
 import Toast from "./Toast";
+import { assertCanWriteDuringMaintenance } from "../lib/maintenanceMode";
 import { supabase } from "../lib/supabase";
 import { logActivity } from "../lib/activityLog";
 
@@ -22,6 +23,7 @@ type BatchInvoice = {
 type BatchInvoicePaymentsProps = {
   invoices: BatchInvoice[];
   businessId?: string | null;
+  businessSlug?: string | null;
   initialCustomer?: string | null;
   initialInvoiceIds?: string[];
 };
@@ -179,6 +181,7 @@ function initialInvoiceFocus(
 export default function BatchInvoicePayments({
   invoices,
   businessId,
+  businessSlug,
   initialCustomer,
   initialInvoiceIds,
 }: BatchInvoicePaymentsProps) {
@@ -453,6 +456,8 @@ export default function BatchInvoicePayments({
     setToast(null);
 
     try {
+      await assertCanWriteDuringMaintenance(businessSlug);
+
       for (const invoice of selectedInvoices) {
         const { error } = await supabase
           .from("invoices")
@@ -496,11 +501,13 @@ export default function BatchInvoicePayments({
       setCheckAmount("");
       setInternalNote("");
       router.refresh();
-    } catch {
+    } catch (error) {
       setToast({
         type: "error",
         message:
-          "Unable to apply the batch payment. Refresh, sign in again if needed, then try once more.",
+          error instanceof Error
+            ? error.message
+            : "Unable to apply the batch payment. Refresh, sign in again if needed, then try once more.",
       });
     } finally {
       setIsSaving(false);

@@ -9,6 +9,10 @@ import Card from "../components/Card";
 import InputField from "../components/InputField";
 import PushNotificationSetup from "../components/PushNotificationSetup";
 import Toast from "../components/Toast";
+import {
+  defaultMaintenanceSettings,
+  loadMaintenanceSettings,
+} from "../lib/maintenanceMode";
 import { supabase } from "../lib/supabase";
 import {
   WorkspaceRole,
@@ -164,6 +168,10 @@ function BusinessSettingsPageContent() {
     useState<WorkspaceRole>("member");
   const [splitWarningAmount, setSplitWarningAmount] =
     useState("");
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [maintenanceMessage, setMaintenanceMessage] = useState(
+    defaultMaintenanceSettings().message
+  );
   const [inviteEmail, setInviteEmail] =
     useState("");
   const [inviteRole, setInviteRole] =
@@ -182,6 +190,7 @@ function BusinessSettingsPageContent() {
     useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingMaintenance, setSavingMaintenance] = useState(false);
   const [savingInvite, setSavingInvite] =
     useState(false);
   const [savingPropertyInvite, setSavingPropertyInvite] =
@@ -244,6 +253,11 @@ function BusinessSettingsPageContent() {
         matchingAccess?.role ?? "member"
       )
     );
+
+    const maintenance = await loadMaintenanceSettings();
+    setMaintenanceMode(maintenance.enabled);
+    setMaintenanceMessage(maintenance.message);
+
     setBusiness(selectedBusiness);
     setSplitWarningAmount(
       selectedBusiness.split_warning_amount ===
@@ -419,6 +433,66 @@ function BusinessSettingsPageContent() {
     setToast({
       type: "success",
       message: "Business settings saved.",
+    });
+  }
+
+  async function handleSaveMaintenanceMode() {
+    setToast(null);
+
+    if (!canManageUsers) {
+      setToast({
+        type: "error",
+        message: "Only owners and admins can change Maintenance Mode.",
+      });
+      return;
+    }
+
+    const message =
+      maintenanceMessage.trim() || defaultMaintenanceSettings().message;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    setSavingMaintenance(true);
+
+    const { error } = await supabase.from("app_settings").upsert(
+      [
+        {
+          key: "maintenance_mode",
+          value: maintenanceMode,
+          updated_at: new Date().toISOString(),
+          updated_by: user?.id ?? null,
+        },
+        {
+          key: "maintenance_message",
+          value: message,
+          updated_at: new Date().toISOString(),
+          updated_by: user?.id ?? null,
+        },
+      ],
+      {
+        onConflict: "key",
+      }
+    );
+
+    setSavingMaintenance(false);
+
+    if (error) {
+      console.error(error);
+      setToast({
+        type: "error",
+        message:
+          "Unable to save Maintenance Mode. Run the app_settings SQL if this is the first setup.",
+      });
+      return;
+    }
+
+    setMaintenanceMessage(message);
+    setToast({
+      type: "success",
+      message: maintenanceMode
+        ? "Maintenance Mode is on. Normal users are paused."
+        : "Maintenance Mode is off. Normal users can use Trimax again.",
     });
   }
 
@@ -820,6 +894,77 @@ function BusinessSettingsPageContent() {
           </Card>
         ) : (
           <>
+            {canManageUsers ? (
+              <Card
+                className={
+                  maintenanceMode
+                    ? "border-orange-500/40 bg-orange-500/10"
+                    : "border-emerald-500/30 bg-emerald-500/5"
+                }
+              >
+                <div className="grid gap-5">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
+                        Deployment Safety
+                      </p>
+                      <h2 className="mt-2 text-2xl font-semibold">
+                        Maintenance Mode
+                      </h2>
+                      <p className="mt-2 max-w-3xl text-zinc-400">
+                        Pause normal users while you deploy code, run Supabase
+                        SQL, or test a risky update. Owners and admins can
+                        still use Trimax.
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm">
+                      <p className="text-zinc-500">Current Status</p>
+                      <p
+                        className={
+                          maintenanceMode
+                            ? "mt-1 font-bold text-orange-300"
+                            : "mt-1 font-bold text-emerald-300"
+                        }
+                      >
+                        {maintenanceMode ? "ON" : "OFF"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={maintenanceMode}
+                      onChange={(event) =>
+                        setMaintenanceMode(event.target.checked)
+                      }
+                      className="h-5 w-5 accent-orange-500"
+                    />
+                    <span className="font-semibold">
+                      Turn Maintenance Mode {maintenanceMode ? "ON" : "OFF"}
+                    </span>
+                  </label>
+
+                  <InputField
+                    label="Maintenance Message"
+                    value={maintenanceMessage}
+                    onChange={setMaintenanceMessage}
+                    placeholder={defaultMaintenanceSettings().message}
+                  />
+
+                  <Button
+                    onClick={handleSaveMaintenanceMode}
+                    disabled={savingMaintenance}
+                  >
+                    {savingMaintenance
+                      ? "Saving..."
+                      : "Save Maintenance Mode"}
+                  </Button>
+                </div>
+              </Card>
+            ) : null}
+
             <Card>
               <div className="grid gap-5">
                 <div>

@@ -9,6 +9,7 @@ import Card from "../components/Card";
 import Toast from "../components/Toast";
 import { getNextDocumentDisplayId } from "../lib/documentNumbers";
 import { logActivity } from "../lib/activityLog";
+import { assertCanWriteDuringMaintenance } from "../lib/maintenanceMode";
 import { supabase } from "../lib/supabase";
 
 type ImportType = "clients" | "invoices";
@@ -305,6 +306,19 @@ function ImportsPageContent() {
   async function handleFileChange(file: File | null) {
     setToast(null);
     setLastResult("");
+
+    try {
+      await assertCanWriteDuringMaintenance(businessSlug);
+    } catch (error) {
+      setToast({
+        type: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Trimax is being updated. Try again in a few minutes.",
+      });
+      return;
+    }
 
     if (!file) {
       setFileName("");
@@ -678,6 +692,19 @@ function ImportsPageContent() {
   async function handleImport() {
     setToast(null);
     setLastResult("");
+
+    try {
+      await assertCanWriteDuringMaintenance(businessSlug);
+    } catch (error) {
+      setToast({
+        type: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Trimax is being updated. Try again in a few minutes.",
+      });
+      return;
+    }
 
     if (!business) {
       setToast({

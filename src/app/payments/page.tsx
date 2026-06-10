@@ -620,6 +620,7 @@ export default async function PaymentsPage({
         <div id="batch-payment-tool" className="scroll-mt-6">
           <BatchInvoicePayments
             businessId={business?.id}
+            businessSlug={businessSlug}
             initialCustomer={focusedCustomer}
             initialInvoiceIds={initialInvoiceIds}
             invoices={invoices.map((invoice) => ({

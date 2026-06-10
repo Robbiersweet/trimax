@@ -12,6 +12,7 @@ import Card from "../../../components/Card";
 import Button from "../../../components/Button";
 import InputField from "../../../components/InputField";
 import Toast from "../../../components/Toast";
+import { assertCanWriteDuringMaintenance } from "../../../lib/maintenanceMode";
 import { supabase } from "../../../lib/supabase";
 import { canonicalApartmentUnitLabel } from "../../../utils/unitLabels";
 
@@ -194,6 +195,19 @@ export default function EditQueueItemPage() {
 
   const handleSave = async () => {
     setToast(null);
+
+    try {
+      await assertCanWriteDuringMaintenance(businessSlug);
+    } catch (error) {
+      setToast({
+        type: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Trimax is being updated. Try again in a few minutes.",
+      });
+      return;
+    }
 
     if (!businessId) {
       setToast({

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 import { logActivity } from "../lib/activityLog";
+import { assertCanWriteDuringMaintenance } from "../lib/maintenanceMode";
 import { appendUnitHistoryForQueueItem } from "../lib/unitHistory";
 import Button from "./Button";
 import DateInputField from "./DateInputField";
@@ -11,6 +12,7 @@ import DateInputField from "./DateInputField";
 type MarkScheduledButtonProps = {
   queueItemId: string;
   businessId?: string | null;
+  businessSlug?: string | null;
   label?: string | null;
   initialScheduledDate?: string | null;
   readyDate?: string | null;
@@ -19,6 +21,7 @@ type MarkScheduledButtonProps = {
 export default function MarkScheduledButton({
   queueItemId,
   businessId,
+  businessSlug,
   label,
   initialScheduledDate,
   readyDate,
@@ -66,19 +69,30 @@ export default function MarkScheduledButton({
 
     setIsSaving(true);
 
-    const { error } = await supabase
-      .from("queue_items")
-      .update({
-        status: "Scheduled",
-        scheduled_date: scheduledDate,
-      })
-      .eq("id", queueItemId);
+    let error: unknown = null;
+
+    try {
+      await assertCanWriteDuringMaintenance(businessSlug);
+
+      const result = await supabase
+        .from("queue_items")
+        .update({
+          status: "Scheduled",
+          scheduled_date: scheduledDate,
+        })
+        .eq("id", queueItemId);
+      error = result.error;
+    } catch (caughtError) {
+      error = caughtError;
+    }
 
     if (error) {
       console.error(error);
 
       setErrorMessage(
-        "Unable to save this scheduled date. Refresh the page, then try again."
+        error instanceof Error
+          ? error.message
+          : "Unable to save this scheduled date. Refresh the page, then try again."
       );
       setIsSaving(false);
 

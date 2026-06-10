@@ -1093,6 +1093,7 @@ function NewRequestPageContent() {
             completedDate: "",
             notes,
             businessId: business.id,
+            businessSlug,
           });
         })
       );
