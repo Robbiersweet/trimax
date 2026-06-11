@@ -279,22 +279,49 @@ function formatHistoryDate(value: string | null | undefined) {
   });
 }
 
-function newestHistoryDate(
-  left: string | null | undefined,
-  right: string | null | undefined
-) {
-  const leftTime = left ? new Date(left).getTime() : 0;
-  const rightTime = right ? new Date(right).getTime() : 0;
-
-  if (Number.isNaN(leftTime)) {
-    return right || "";
+function isFutureHistoryDate(value: string | null | undefined) {
+  if (!value) {
+    return false;
   }
 
-  if (Number.isNaN(rightTime)) {
-    return left || "";
+  const parsedDate = new Date(`${value.slice(0, 10)}T00:00:00`);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return false;
   }
 
-  return leftTime >= rightTime ? left || "" : right || "";
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return parsedDate > today;
+}
+
+function isActualUnitHistory(row: UnitHistoryRecord) {
+  const eventType = (row.event_type || "").toLowerCase();
+
+  if (eventType === "scheduled") {
+    return false;
+  }
+
+  if (isFutureHistoryDate(row.event_date)) {
+    return false;
+  }
+
+  return true;
+}
+
+function isPaintUnitHistory(row: UnitHistoryRecord) {
+  const eventType = (row.event_type || "").toLowerCase();
+
+  return (
+    Boolean(row.paint_type) &&
+    ["paint", "general_turn", "renovation"].includes(eventType) &&
+    !isFutureHistoryDate(row.event_date)
+  );
+}
+
+function isCompletedQueueHistory(row: QueueHistoryRecord) {
+  return Boolean(row.completed_date) && !isFutureHistoryDate(row.completed_date);
 }
 
 function emptyHistorySummary(): UnitHistorySummary {
@@ -319,15 +346,18 @@ function buildUnitHistorySummary({
   queueRows: QueueHistoryRecord[];
 }) {
   const summary = emptyHistorySummary();
+  const actualHistoryRows = historyRows.filter(
+    (row) => row.property_unit_id === unitProfile.id && isActualUnitHistory(row)
+  );
 
-  for (const row of historyRows) {
-    if (row.property_unit_id !== unitProfile.id) {
-      continue;
-    }
-
+  for (const row of actualHistoryRows) {
     summary.hasHistory = true;
 
-    if (row.paint_type && summary.lastPaintType === "Never Recorded") {
+    if (
+      isPaintUnitHistory(row) &&
+      row.paint_type &&
+      summary.lastPaintType === "Never Recorded"
+    ) {
       summary.lastPaintType = row.paint_type;
       summary.lastPaintDate =
         formatHistoryDate(row.event_date) || summary.lastPaintDate;
@@ -361,19 +391,22 @@ function buildUnitHistorySummary({
       normalizeUnitLabel(row.unit || "") ===
       normalizeUnitLabel(unitProfile.unit_label || "")
   );
+  const completedQueueRowsForUnit = queueRowsForUnit.filter(
+    isCompletedQueueHistory
+  );
 
-  summary.totalRecordedTurns = queueRowsForUnit.length;
+  summary.totalRecordedTurns = Math.max(
+    actualHistoryRows.length,
+    completedQueueRowsForUnit.length
+  );
 
-  for (const row of queueRowsForUnit) {
+  for (const row of completedQueueRowsForUnit) {
     summary.hasHistory = true;
 
     if (row.paint_type && summary.lastPaintType === "Never Recorded") {
       summary.lastPaintType = row.paint_type;
       summary.lastPaintDate =
-        formatHistoryDate(
-          newestHistoryDate(row.completed_date, row.scheduled_date) ||
-            row.created_at
-        ) || summary.lastPaintDate;
+        formatHistoryDate(row.completed_date) || summary.lastPaintDate;
     }
 
     if (row.flooring && summary.lastFlooring === "Never Recorded") {
