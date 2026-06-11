@@ -790,6 +790,227 @@ html.theme-light .payment-hero-card button:disabled {
   border-color: rgba(148, 163, 184, 0.42) !important;
 }
 
+html.theme-light .dark-surface,
+html.theme-light .dashboard-feature-card,
+html.theme-light .payment-hero-card {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  border-color: #d7dde8 !important;
+  color: #111827 !important;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.theme-light .dark-surface.bg-zinc-950,
+html.theme-light .dark-surface.bg-zinc-950\/60,
+html.theme-light .dark-surface.bg-zinc-950\/70,
+html.theme-light .dark-surface.bg-zinc-900,
+html.theme-light .dark-surface.bg-zinc-900\/80,
+html.theme-light .dark-surface.bg-black,
+html.theme-light .dark-surface.bg-black\/20,
+html.theme-light .dark-surface.bg-black\/25,
+html.theme-light .dark-surface.bg-black\/30,
+html.theme-light .dark-surface.bg-black\/40,
+html.theme-light .dark-surface.bg-black\/50,
+html.theme-light .dashboard-feature-card.bg-zinc-950,
+html.theme-light .dashboard-feature-card.bg-zinc-950\/60,
+html.theme-light .dashboard-feature-card.bg-zinc-950\/70,
+html.theme-light .dashboard-feature-card.bg-zinc-900,
+html.theme-light .dashboard-feature-card.bg-zinc-900\/80,
+html.theme-light .dashboard-feature-card.bg-black,
+html.theme-light .dashboard-feature-card.bg-black\/20,
+html.theme-light .dashboard-feature-card.bg-black\/25,
+html.theme-light .dashboard-feature-card.bg-black\/30,
+html.theme-light .dashboard-feature-card.bg-black\/40,
+html.theme-light .dashboard-feature-card.bg-black\/50 {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+}
+
+html.theme-light .dark-surface .bg-zinc-950,
+html.theme-light .dark-surface .bg-zinc-950\/60,
+html.theme-light .dark-surface .bg-zinc-950\/70,
+html.theme-light .dark-surface .bg-zinc-900,
+html.theme-light .dark-surface .bg-zinc-900\/80,
+html.theme-light .dark-surface .bg-black,
+html.theme-light .dark-surface .bg-black\/20,
+html.theme-light .dark-surface .bg-black\/25,
+html.theme-light .dark-surface .bg-black\/30,
+html.theme-light .dark-surface .bg-black\/40,
+html.theme-light .dark-surface .bg-black\/50,
+html.theme-light .dashboard-feature-card .bg-zinc-950,
+html.theme-light .dashboard-feature-card .bg-zinc-950\/60,
+html.theme-light .dashboard-feature-card .bg-zinc-950\/70,
+html.theme-light .dashboard-feature-card .bg-zinc-900,
+html.theme-light .dashboard-feature-card .bg-zinc-900\/80,
+html.theme-light .dashboard-feature-card .bg-black,
+html.theme-light .dashboard-feature-card .bg-black\/20,
+html.theme-light .dashboard-feature-card .bg-black\/25,
+html.theme-light .dashboard-feature-card .bg-black\/30,
+html.theme-light .dashboard-feature-card .bg-black\/40,
+html.theme-light .dashboard-feature-card .bg-black\/50,
+html.theme-light .payment-hero-card .bg-zinc-950,
+html.theme-light .payment-hero-card .bg-zinc-950\/60,
+html.theme-light .payment-hero-card .bg-zinc-950\/70,
+html.theme-light .payment-hero-card .bg-zinc-900,
+html.theme-light .payment-hero-card .bg-zinc-900\/80,
+html.theme-light .payment-hero-card .bg-black,
+html.theme-light .payment-hero-card .bg-black\/20,
+html.theme-light .payment-hero-card .bg-black\/25,
+html.theme-light .payment-hero-card .bg-black\/30,
+html.theme-light .payment-hero-card .bg-black\/40,
+html.theme-light .payment-hero-card .bg-black\/50 {
+  background: #f8fafc !important;
+  background-color: #f8fafc !important;
+  border-color: #d7dde8 !important;
+}
+
+html.theme-light .dark-surface .text-white,
+html.theme-light .dark-surface .text-zinc-50,
+html.theme-light .dark-surface .text-zinc-100,
+html.theme-light .dark-surface .text-zinc-200,
+html.theme-light .dark-surface .text-slate-50,
+html.theme-light .dark-surface .text-slate-100,
+html.theme-light .dark-surface .text-slate-200,
+html.theme-light .dashboard-feature-card .text-white,
+html.theme-light .dashboard-feature-card .text-zinc-50,
+html.theme-light .dashboard-feature-card .text-zinc-100,
+html.theme-light .dashboard-feature-card .text-zinc-200,
+html.theme-light .dashboard-feature-card .text-slate-50,
+html.theme-light .dashboard-feature-card .text-slate-100,
+html.theme-light .dashboard-feature-card .text-slate-200,
+html.theme-light .payment-hero-card .text-white,
+html.theme-light .payment-hero-card .text-zinc-50,
+html.theme-light .payment-hero-card .text-zinc-100,
+html.theme-light .payment-hero-card .text-zinc-200,
+html.theme-light .payment-hero-card .text-slate-50,
+html.theme-light .payment-hero-card .text-slate-100,
+html.theme-light .payment-hero-card .text-slate-200 {
+  color: #111827 !important;
+}
+
+html.theme-light .dark-surface .text-zinc-300,
+html.theme-light .dark-surface .text-zinc-400,
+html.theme-light .dark-surface .text-zinc-500,
+html.theme-light .dark-surface .text-slate-300,
+html.theme-light .dark-surface .text-slate-400,
+html.theme-light .dark-surface .text-slate-500,
+html.theme-light .dashboard-feature-card .text-zinc-300,
+html.theme-light .dashboard-feature-card .text-zinc-400,
+html.theme-light .dashboard-feature-card .text-zinc-500,
+html.theme-light .dashboard-feature-card .text-slate-300,
+html.theme-light .dashboard-feature-card .text-slate-400,
+html.theme-light .dashboard-feature-card .text-slate-500,
+html.theme-light .payment-hero-card .text-zinc-300,
+html.theme-light .payment-hero-card .text-zinc-400,
+html.theme-light .payment-hero-card .text-zinc-500,
+html.theme-light .payment-hero-card .text-slate-300,
+html.theme-light .payment-hero-card .text-slate-400,
+html.theme-light .payment-hero-card .text-slate-500 {
+  color: #475569 !important;
+}
+
+html.theme-light .dark-surface .text-orange-50,
+html.theme-light .dark-surface .text-orange-100,
+html.theme-light .dark-surface .text-orange-100\/60,
+html.theme-light .dark-surface .text-orange-100\/70,
+html.theme-light .dark-surface .text-orange-100\/80,
+html.theme-light .dark-surface .text-orange-100\/90,
+html.theme-light .dark-surface .text-orange-200,
+html.theme-light .dark-surface .text-orange-200\/70,
+html.theme-light .dark-surface .text-orange-200\/80,
+html.theme-light .dark-surface .text-orange-300,
+html.theme-light .dashboard-feature-card .text-orange-50,
+html.theme-light .dashboard-feature-card .text-orange-100,
+html.theme-light .dashboard-feature-card .text-orange-100\/60,
+html.theme-light .dashboard-feature-card .text-orange-100\/70,
+html.theme-light .dashboard-feature-card .text-orange-100\/80,
+html.theme-light .dashboard-feature-card .text-orange-100\/90,
+html.theme-light .dashboard-feature-card .text-orange-200,
+html.theme-light .dashboard-feature-card .text-orange-200\/70,
+html.theme-light .dashboard-feature-card .text-orange-200\/80,
+html.theme-light .dashboard-feature-card .text-orange-300,
+html.theme-light .payment-hero-card .text-orange-50,
+html.theme-light .payment-hero-card .text-orange-100,
+html.theme-light .payment-hero-card .text-orange-100\/60,
+html.theme-light .payment-hero-card .text-orange-100\/70,
+html.theme-light .payment-hero-card .text-orange-100\/80,
+html.theme-light .payment-hero-card .text-orange-100\/90,
+html.theme-light .payment-hero-card .text-orange-200,
+html.theme-light .payment-hero-card .text-orange-200\/70,
+html.theme-light .payment-hero-card .text-orange-200\/80,
+html.theme-light .payment-hero-card .text-orange-300 {
+  color: #c2410c !important;
+}
+
+html.theme-light .dark-surface .text-green-50,
+html.theme-light .dark-surface .text-green-100,
+html.theme-light .dark-surface .text-green-100\/60,
+html.theme-light .dark-surface .text-green-100\/70,
+html.theme-light .dark-surface .text-green-100\/80,
+html.theme-light .dark-surface .text-green-200,
+html.theme-light .dark-surface .text-green-300,
+html.theme-light .dark-surface .text-emerald-50,
+html.theme-light .dark-surface .text-emerald-100,
+html.theme-light .dark-surface .text-emerald-100\/60,
+html.theme-light .dark-surface .text-emerald-100\/70,
+html.theme-light .dark-surface .text-emerald-100\/80,
+html.theme-light .dark-surface .text-emerald-200,
+html.theme-light .dark-surface .text-emerald-300,
+html.theme-light .dashboard-feature-card .text-green-50,
+html.theme-light .dashboard-feature-card .text-green-100,
+html.theme-light .dashboard-feature-card .text-green-100\/60,
+html.theme-light .dashboard-feature-card .text-green-100\/70,
+html.theme-light .dashboard-feature-card .text-green-100\/80,
+html.theme-light .dashboard-feature-card .text-green-200,
+html.theme-light .dashboard-feature-card .text-green-300,
+html.theme-light .dashboard-feature-card .text-emerald-50,
+html.theme-light .dashboard-feature-card .text-emerald-100,
+html.theme-light .dashboard-feature-card .text-emerald-100\/60,
+html.theme-light .dashboard-feature-card .text-emerald-100\/70,
+html.theme-light .dashboard-feature-card .text-emerald-100\/80,
+html.theme-light .dashboard-feature-card .text-emerald-200,
+html.theme-light .dashboard-feature-card .text-emerald-300,
+html.theme-light .payment-hero-card .text-green-50,
+html.theme-light .payment-hero-card .text-green-100,
+html.theme-light .payment-hero-card .text-green-100\/60,
+html.theme-light .payment-hero-card .text-green-100\/70,
+html.theme-light .payment-hero-card .text-green-100\/80,
+html.theme-light .payment-hero-card .text-green-200,
+html.theme-light .payment-hero-card .text-green-300,
+html.theme-light .payment-hero-card .text-emerald-50,
+html.theme-light .payment-hero-card .text-emerald-100,
+html.theme-light .payment-hero-card .text-emerald-100\/60,
+html.theme-light .payment-hero-card .text-emerald-100\/70,
+html.theme-light .payment-hero-card .text-emerald-100\/80,
+html.theme-light .payment-hero-card .text-emerald-200,
+html.theme-light .payment-hero-card .text-emerald-300 {
+  color: #047857 !important;
+}
+
+html.theme-light .payment-hero-card .payment-hero-label {
+  color: #047857 !important;
+}
+
+html.theme-light .payment-hero-card .payment-hero-copy {
+  color: #334155 !important;
+}
+
+html.theme-light .payment-hero-card .payment-hero-stat {
+  background: #f8fafc !important;
+  background-color: #f8fafc !important;
+  border-color: #d7dde8 !important;
+  color: #111827 !important;
+}
+
+html.theme-light .dark-surface .border-zinc-800,
+html.theme-light .dark-surface .border-zinc-700,
+html.theme-light .dashboard-feature-card .border-zinc-800,
+html.theme-light .dashboard-feature-card .border-zinc-700,
+html.theme-light .payment-hero-card .border-zinc-800,
+html.theme-light .payment-hero-card .border-zinc-700 {
+  border-color: #d7dde8 !important;
+}
+
 .schedule-hero-card {
   color: #f8fafc;
 }
@@ -1081,6 +1302,123 @@ html.theme-light textarea::placeholder {
 html.theme-light .hover\:bg-zinc-800:hover,
 html.theme-light .hover\:bg-zinc-900:hover {
   background-color: #e9eef6 !important;
+}
+
+html.theme-light .dark-surface,
+html.theme-light .dashboard-feature-card,
+html.theme-light .payment-hero-card,
+html.theme-light .schedule-hero-card {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  border-color: #d7dde8 !important;
+  color: #111827 !important;
+}
+
+html.theme-light .dark-surface .bg-zinc-950,
+html.theme-light .dark-surface .bg-zinc-950\/60,
+html.theme-light .dark-surface .bg-zinc-950\/70,
+html.theme-light .dark-surface .bg-zinc-900,
+html.theme-light .dark-surface .bg-zinc-900\/80,
+html.theme-light .dark-surface .bg-black,
+html.theme-light .dark-surface .bg-black\/20,
+html.theme-light .dark-surface .bg-black\/25,
+html.theme-light .dark-surface .bg-black\/30,
+html.theme-light .dark-surface .bg-black\/40,
+html.theme-light .dark-surface .bg-black\/50,
+html.theme-light .dashboard-feature-card .bg-zinc-950,
+html.theme-light .dashboard-feature-card .bg-zinc-950\/60,
+html.theme-light .dashboard-feature-card .bg-zinc-950\/70,
+html.theme-light .dashboard-feature-card .bg-zinc-900,
+html.theme-light .dashboard-feature-card .bg-zinc-900\/80,
+html.theme-light .dashboard-feature-card .bg-black,
+html.theme-light .dashboard-feature-card .bg-black\/20,
+html.theme-light .dashboard-feature-card .bg-black\/25,
+html.theme-light .dashboard-feature-card .bg-black\/30,
+html.theme-light .dashboard-feature-card .bg-black\/40,
+html.theme-light .dashboard-feature-card .bg-black\/50,
+html.theme-light .payment-hero-card .bg-zinc-950,
+html.theme-light .payment-hero-card .bg-zinc-950\/60,
+html.theme-light .payment-hero-card .bg-zinc-950\/70,
+html.theme-light .payment-hero-card .bg-zinc-900,
+html.theme-light .payment-hero-card .bg-zinc-900\/80,
+html.theme-light .payment-hero-card .bg-black,
+html.theme-light .payment-hero-card .bg-black\/20,
+html.theme-light .payment-hero-card .bg-black\/25,
+html.theme-light .payment-hero-card .bg-black\/30,
+html.theme-light .payment-hero-card .bg-black\/40,
+html.theme-light .payment-hero-card .bg-black\/50,
+html.theme-light .schedule-hero-card .bg-zinc-950,
+html.theme-light .schedule-hero-card .bg-zinc-950\/60,
+html.theme-light .schedule-hero-card .bg-zinc-950\/70,
+html.theme-light .schedule-hero-card .bg-zinc-900,
+html.theme-light .schedule-hero-card .bg-zinc-900\/80,
+html.theme-light .schedule-hero-card .bg-black,
+html.theme-light .schedule-hero-card .bg-black\/20,
+html.theme-light .schedule-hero-card .bg-black\/25,
+html.theme-light .schedule-hero-card .bg-black\/30,
+html.theme-light .schedule-hero-card .bg-black\/40,
+html.theme-light .schedule-hero-card .bg-black\/50 {
+  background: #f8fafc !important;
+  background-color: #f8fafc !important;
+  border-color: #d7dde8 !important;
+}
+
+html.theme-light .dark-surface .text-white,
+html.theme-light .dark-surface .text-zinc-50,
+html.theme-light .dark-surface .text-zinc-100,
+html.theme-light .dark-surface .text-zinc-200,
+html.theme-light .dark-surface .text-slate-50,
+html.theme-light .dark-surface .text-slate-100,
+html.theme-light .dark-surface .text-slate-200,
+html.theme-light .dashboard-feature-card .text-white,
+html.theme-light .dashboard-feature-card .text-zinc-50,
+html.theme-light .dashboard-feature-card .text-zinc-100,
+html.theme-light .dashboard-feature-card .text-zinc-200,
+html.theme-light .dashboard-feature-card .text-slate-50,
+html.theme-light .dashboard-feature-card .text-slate-100,
+html.theme-light .dashboard-feature-card .text-slate-200,
+html.theme-light .payment-hero-card .text-white,
+html.theme-light .payment-hero-card .text-zinc-50,
+html.theme-light .payment-hero-card .text-zinc-100,
+html.theme-light .payment-hero-card .text-zinc-200,
+html.theme-light .payment-hero-card .text-slate-50,
+html.theme-light .payment-hero-card .text-slate-100,
+html.theme-light .payment-hero-card .text-slate-200,
+html.theme-light .schedule-hero-card .text-white,
+html.theme-light .schedule-hero-card .text-zinc-50,
+html.theme-light .schedule-hero-card .text-zinc-100,
+html.theme-light .schedule-hero-card .text-zinc-200,
+html.theme-light .schedule-hero-card .text-slate-50,
+html.theme-light .schedule-hero-card .text-slate-100,
+html.theme-light .schedule-hero-card .text-slate-200 {
+  color: #111827 !important;
+}
+
+html.theme-light .dark-surface .text-zinc-300,
+html.theme-light .dark-surface .text-zinc-400,
+html.theme-light .dark-surface .text-zinc-500,
+html.theme-light .dark-surface .text-slate-300,
+html.theme-light .dark-surface .text-slate-400,
+html.theme-light .dark-surface .text-slate-500,
+html.theme-light .dashboard-feature-card .text-zinc-300,
+html.theme-light .dashboard-feature-card .text-zinc-400,
+html.theme-light .dashboard-feature-card .text-zinc-500,
+html.theme-light .dashboard-feature-card .text-slate-300,
+html.theme-light .dashboard-feature-card .text-slate-400,
+html.theme-light .dashboard-feature-card .text-slate-500,
+html.theme-light .payment-hero-card .text-zinc-300,
+html.theme-light .payment-hero-card .text-zinc-400,
+html.theme-light .payment-hero-card .text-zinc-500,
+html.theme-light .payment-hero-card .text-slate-300,
+html.theme-light .payment-hero-card .text-slate-400,
+html.theme-light .payment-hero-card .text-slate-500,
+html.theme-light .schedule-hero-card .text-zinc-300,
+html.theme-light .schedule-hero-card .text-zinc-400,
+html.theme-light .schedule-hero-card .text-zinc-500,
+html.theme-light .schedule-hero-card .text-slate-300,
+html.theme-light .schedule-hero-card .text-slate-400,
+html.theme-light .schedule-hero-card .text-slate-500 {
+  color: #475569 !important;
 }
 
 input[type="number"] {
