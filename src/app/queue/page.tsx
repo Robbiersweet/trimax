@@ -114,6 +114,17 @@ function needsEstimate(item: QueueItemWithEstimate) {
   );
 }
 
+function isClosedQueueItem(item: QueueItemWithEstimate) {
+  const status = normalizeStatus(item.status);
+
+  return (
+    status === "completed" ||
+    status === "invoiced" ||
+    status === "paid" ||
+    Boolean(item.completed_date)
+  );
+}
+
 function daysUntil(value: string | null) {
   const date = dateValue(value);
 
@@ -184,9 +195,18 @@ function viewCopy(view: string) {
     };
   }
 
+  if (view === "history") {
+    return {
+      title: "All History",
+      detail:
+        "Active and completed queue records saved for reporting and unit history.",
+    };
+  }
+
   return {
-    title: "All Work",
-    detail: "All queue items matching the current search and status filters.",
+    title: "Active Work",
+    detail:
+      "Open queue items that still need estimate, scheduling, invoice, or completion attention.",
   };
 }
 
@@ -303,12 +323,23 @@ export default async function QueuePage({
     isReadySoonUnscheduled
   ).length;
   const remediationCount = propertyScopedQueueItems.filter(
-    isRemediationItem
+    (item) => !isClosedQueueItem(item) && isRemediationItem(item)
   ).length;
   const needsEstimateCount =
     propertyScopedQueueItems.filter(needsEstimate).length;
+  const activeWorkCount = propertyScopedQueueItems.filter(
+    (item) => !isClosedQueueItem(item)
+  ).length;
 
   const filteredQueueItems = propertyScopedQueueItems.filter((item) => {
+    if (
+      viewFilter !== "history" &&
+      statusFilter === "all" &&
+      isClosedQueueItem(item)
+    ) {
+      return false;
+    }
+
     if (
       statusFilter !== "all" &&
       normalizeStatus(item.status) !== statusFilter
@@ -362,7 +393,10 @@ export default async function QueuePage({
     {
       label: "All",
       value: "all",
-      count: propertyScopedQueueItems.length,
+      count:
+        viewFilter === "history"
+          ? propertyScopedQueueItems.length
+          : activeWorkCount,
     },
     ...statuses.map((status) => ({
       label: statusLabel(status),
@@ -373,9 +407,9 @@ export default async function QueuePage({
 
   const specialViewLinks = [
     {
-      label: "All Work",
+      label: "Active Work",
       value: "all",
-      count: propertyScopedQueueItems.length,
+      count: activeWorkCount,
     },
     {
       label: "Due Soon",
@@ -391,6 +425,11 @@ export default async function QueuePage({
       label: "Remediation",
       value: "remediation",
       count: remediationCount,
+    },
+    {
+      label: "All History",
+      value: "history",
+      count: propertyScopedQueueItems.length,
     },
   ];
 

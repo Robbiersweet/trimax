@@ -13,6 +13,7 @@ type MarkCompletedButtonProps = {
   businessId?: string | null;
   businessSlug?: string | null;
   label?: string | null;
+  returnToQueue?: boolean;
 };
 
 export default function MarkCompletedButton({
@@ -20,6 +21,7 @@ export default function MarkCompletedButton({
   businessId,
   businessSlug,
   label,
+  returnToQueue = false,
 }: MarkCompletedButtonProps) {
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
@@ -80,6 +82,12 @@ export default function MarkCompletedButton({
     });
 
     setIsSaving(false);
+
+    if (returnToQueue) {
+      router.push(`/queue?business=${businessSlug ?? "rnl-creations"}`);
+      return;
+    }
+
     router.refresh();
   };
 

@@ -701,6 +701,10 @@ export default async function QueueDetailPage({
         />
 
         <div className="flex flex-wrap gap-4">
+          <Link href={`/queue?business=${businessSlug}`}>
+            <Button variant="secondary">Back to Queue</Button>
+          </Link>
+
           {!linkedEstimate && (
             <Link
               href={`/estimates/new?queueId=${item.id}&business=${businessSlug}`}
@@ -731,6 +735,7 @@ export default async function QueueDetailPage({
             label={`${item.property || "Property"} - Unit ${
               displayUnit || "-"
             }`}
+            returnToQueue
           />
 
           <DeleteQueueItemButton
