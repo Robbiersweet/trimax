@@ -718,8 +718,8 @@ export default async function InvoicesPage({
               href={filter.href}
               className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
                 view === filter.value
-                  ? "bg-orange-500 text-black"
-                  : "workspace-filter-link-inactive text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                  ? "bg-sky-600 text-white shadow-sm shadow-sky-900/10"
+                  : "workspace-filter-link-inactive border border-slate-200 bg-white text-slate-700 hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700"
               }`}
             >
               {filter.label}
@@ -734,8 +734,8 @@ export default async function InvoicesPage({
               href={filter.href}
               className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
                 statusFilter === filter.value
-                  ? "bg-orange-500 text-black"
-                  : "workspace-filter-link-inactive text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                  ? "bg-sky-600 text-white shadow-sm shadow-sky-900/10"
+                  : "workspace-filter-link-inactive border border-slate-200 bg-white text-slate-700 hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700"
               }`}
             >
               {filter.label}
@@ -1083,11 +1083,11 @@ export default async function InvoicesPage({
               return (
                 <Card
                   key={invoice.id}
-                  className={`transition hover:border-orange-500/60 hover:bg-zinc-800 ${
+                  className={`transition hover:border-sky-300 hover:bg-sky-50 ${
                     isSplitInvoice
                       ? "border-green-500/30 bg-green-500/5"
                       : hasSplitChildren
-                        ? "border-orange-500/30 bg-orange-500/5"
+                        ? "border-amber-300 bg-amber-50"
                         : ""
                   }`}
                 >
@@ -1106,7 +1106,7 @@ export default async function InvoicesPage({
                           ) : null}
 
                           {hasSplitChildren ? (
-                            <span className="rounded-full border border-orange-500/40 bg-orange-500/10 px-3 py-1 text-xs font-semibold text-orange-200">
+                            <span className="rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
                               {invoice.split_children_count} split invoice
                               {invoice.split_children_count === 1
                                 ? ""
@@ -1164,7 +1164,7 @@ export default async function InvoicesPage({
                     <div className="mt-5 flex flex-wrap gap-3 border-t border-zinc-800 pt-4">
                       <Link
                         href={`/invoices/${invoice.id}${businessQuery}`}
-                        className="rounded-full bg-orange-500 px-4 py-2 text-sm font-black text-black transition hover:bg-orange-400"
+                        className="rounded-full bg-sky-600 px-4 py-2 text-sm font-black text-white transition hover:bg-sky-700"
                       >
                         Open
                       </Link>

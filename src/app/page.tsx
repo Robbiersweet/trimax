@@ -111,22 +111,22 @@ function VisualMoneyBar({
 }) {
   const toneStyles = {
     orange: {
-      dot: "bg-orange-400",
-      panel: "border-orange-500/20 bg-orange-500/5",
-      text: "text-orange-100",
-      ring: "#fb923c",
-      ringSoft: "rgba(251, 146, 60, 0.14)",
-      glow: "shadow-orange-500/20",
-      pulse: "from-orange-400 to-amber-200",
+      dot: "bg-sky-500",
+      panel: "border-sky-500/20 bg-sky-500/5",
+      text: "text-sky-100",
+      ring: "#0284c7",
+      ringSoft: "rgba(2, 132, 199, 0.14)",
+      glow: "shadow-sky-500/20",
+      pulse: "from-sky-500 to-cyan-300",
     },
     amber: {
-      dot: "bg-amber-300",
-      panel: "border-amber-500/20 bg-amber-500/5",
-      text: "text-amber-100",
-      ring: "#fde047",
-      ringSoft: "rgba(253, 224, 71, 0.14)",
-      glow: "shadow-amber-500/20",
-      pulse: "from-amber-300 to-yellow-100",
+      dot: "bg-indigo-500",
+      panel: "border-indigo-500/20 bg-indigo-500/5",
+      text: "text-indigo-100",
+      ring: "#4f46e5",
+      ringSoft: "rgba(79, 70, 229, 0.14)",
+      glow: "shadow-indigo-500/20",
+      pulse: "from-indigo-500 to-sky-300",
     },
     rose: {
       dot: "bg-rose-300",
@@ -1081,10 +1081,10 @@ export default async function DashboardPage({
           ]}
         >
           <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-            <Card className="dark-surface border-orange-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-orange-950/20">
+            <Card className="dashboard-money-section dark-surface border-sky-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-sky-950/20">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                  <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
+                  <p className="text-sm uppercase tracking-[0.3em] text-sky-300">
                     Money Flow
                   </p>
 
@@ -1095,7 +1095,7 @@ export default async function DashboardPage({
 
                 <Link
                   href={`/reports?business=${selectedBusinessSlug}`}
-                  className="text-sm font-semibold text-orange-400"
+                  className="text-sm font-semibold text-sky-400"
                 >
                   Open reports
                 </Link>
@@ -1129,7 +1129,7 @@ export default async function DashboardPage({
               </div>
             </Card>
 
-            <Card className="dark-surface border-sky-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-sky-950/20">
+            <Card className="dashboard-queue-section dark-surface border-sky-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-sky-950/20">
               <p className="text-sm uppercase tracking-[0.3em] text-sky-300">
                 Queue Flow
               </p>
@@ -1184,7 +1184,7 @@ export default async function DashboardPage({
           ]}
         >
           <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-            <Card className="dark-surface border-emerald-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-emerald-950/20">
+            <Card className="dashboard-cash-section dark-surface border-emerald-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-emerald-950/20">
               <p className="text-sm uppercase tracking-[0.3em] text-emerald-300">
                 Collection Health
               </p>
@@ -1229,7 +1229,7 @@ export default async function DashboardPage({
                     Next collection move
                   </p>
 
-                  <span className="rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-orange-200">
+                  <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-sky-200">
                     Batch-ready workflow
                   </span>
                 </div>
@@ -1249,10 +1249,10 @@ export default async function DashboardPage({
               </div>
             </Card>
 
-            <Card className="dark-surface border-violet-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-violet-950/20">
+            <Card className="dashboard-client-section dark-surface border-sky-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-sky-950/20">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                  <p className="text-sm uppercase tracking-[0.3em] text-violet-300">
+                  <p className="text-sm uppercase tracking-[0.3em] text-sky-300">
                     Revenue By Client
                   </p>
 
@@ -1263,7 +1263,7 @@ export default async function DashboardPage({
 
                 <Link
                   href={`/invoices?business=${selectedBusinessSlug}`}
-                  className="text-sm font-semibold text-orange-400"
+                  className="text-sm font-semibold text-sky-400"
                 >
                   View invoices
                 </Link>

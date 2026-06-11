@@ -307,15 +307,15 @@ export default async function SchedulePage({
               href={scheduleHref(businessSlug, card.view, propertyFilter)}
               className={`rounded-3xl border p-5 transition hover:-translate-y-0.5 ${
                 activeView === card.view
-                  ? "border-orange-500 bg-orange-500 text-black shadow-lg shadow-orange-950/20"
-                  : "border-zinc-800 bg-zinc-900 hover:border-orange-500/50"
+                  ? "border-sky-600 bg-sky-600 text-white shadow-lg shadow-sky-900/15"
+                  : "border-slate-200 bg-white text-slate-950 hover:border-sky-300 hover:bg-sky-50"
               }`}
             >
               <p className="text-sm font-semibold">{card.label}</p>
               <p className="mt-3 text-4xl font-black">{card.count}</p>
               <p
                 className={`mt-2 text-sm ${
-                  activeView === card.view ? "text-black/75" : "text-zinc-400"
+                  activeView === card.view ? "text-white/80" : "text-slate-500"
                 }`}
               >
                 {card.detail}
@@ -331,8 +331,8 @@ export default async function SchedulePage({
                 href={scheduleHref(businessSlug, activeView, "all")}
                 className={`rounded-full px-4 py-2 text-sm font-semibold ${
                   propertyFilter === "all"
-                    ? "bg-orange-500 text-black"
-                    : "bg-zinc-950 text-zinc-300 hover:text-orange-300"
+                    ? "bg-sky-600 text-white"
+                    : "border border-slate-200 bg-white text-slate-700 hover:border-sky-300 hover:bg-sky-50"
                 }`}
               >
                 All Properties
@@ -343,8 +343,8 @@ export default async function SchedulePage({
                   href={scheduleHref(businessSlug, activeView, property)}
                   className={`rounded-full px-4 py-2 text-sm font-semibold ${
                     propertyFilter === property
-                      ? "bg-orange-500 text-black"
-                      : "bg-zinc-950 text-zinc-300 hover:text-orange-300"
+                      ? "bg-sky-600 text-white"
+                      : "border border-slate-200 bg-white text-slate-700 hover:border-sky-300 hover:bg-sky-50"
                   }`}
                 >
                   {property}
@@ -476,9 +476,9 @@ function ScheduleFact({
   tone: "green" | "orange" | "zinc";
 }) {
   const toneClasses = {
-    green: "border-green-500/30 bg-green-500/10 text-green-200",
-    orange: "border-orange-500/30 bg-orange-500/10 text-orange-200",
-    zinc: "border-zinc-800 bg-zinc-950 text-zinc-300",
+    green: "border-emerald-200 bg-emerald-50 text-emerald-800",
+    orange: "border-amber-200 bg-amber-50 text-amber-800",
+    zinc: "border-slate-200 bg-white text-slate-700",
   };
 
   return (

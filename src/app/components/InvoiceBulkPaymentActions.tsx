@@ -211,7 +211,7 @@ export default function InvoiceBulkPaymentActions({
             selectInvoices(overdueInvoices.map((invoice) => invoice.id))
           }
           disabled={overdueInvoices.length === 0}
-          className="rounded-full border border-pink-500/40 bg-pink-500/10 px-4 py-2 text-sm font-semibold text-pink-100 transition hover:bg-pink-500/20 disabled:cursor-not-allowed disabled:border-zinc-700 disabled:bg-zinc-900 disabled:text-zinc-500"
+          className="rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:border-rose-300 hover:bg-rose-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
         >
           Select Overdue
         </button>
@@ -231,14 +231,14 @@ export default function InvoiceBulkPaymentActions({
           type="button"
           onClick={() => setSelectedIds([])}
           disabled={selectedIds.length === 0}
-          className="rounded-full border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-200 transition hover:border-orange-400 hover:text-orange-200 disabled:cursor-not-allowed disabled:text-zinc-600"
+          className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700 disabled:cursor-not-allowed disabled:text-slate-400"
         >
           Clear
         </button>
       </div>
 
-      <div className="mt-5 overflow-hidden rounded-2xl border border-zinc-800 bg-black/40">
-        <div className="grid grid-cols-[48px_1fr_130px_140px] items-center gap-3 border-b border-zinc-800 px-4 py-3 text-sm font-semibold text-zinc-300 max-md:grid-cols-[42px_1fr_auto]">
+      <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <div className="grid grid-cols-[48px_1fr_130px_140px] items-center gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 max-md:grid-cols-[42px_1fr_auto]">
           <input
             type="checkbox"
             checked={allSelected}
@@ -263,10 +263,10 @@ export default function InvoiceBulkPaymentActions({
             return (
               <label
                 key={invoice.id}
-                className={`grid cursor-pointer grid-cols-[48px_1fr_130px_140px] items-center gap-3 border-b border-zinc-800 px-4 py-4 transition last:border-b-0 max-md:grid-cols-[42px_1fr_auto] ${
+                className={`payment-prep-row grid cursor-pointer grid-cols-[48px_1fr_130px_140px] items-center gap-3 border-b border-slate-200 px-4 py-4 transition last:border-b-0 max-md:grid-cols-[42px_1fr_auto] ${
                   isSelected
-                    ? "bg-green-500/10"
-                    : "hover:bg-zinc-900/80"
+                    ? "payment-prep-row-selected bg-green-50"
+                    : "bg-white hover:bg-sky-50"
                 }`}
               >
                 <input
@@ -277,30 +277,30 @@ export default function InvoiceBulkPaymentActions({
                 />
 
                 <span>
-                  <span className="block font-semibold text-white">
+                  <span className="block font-semibold text-slate-950">
                     {invoice.displayId} - {invoice.projectTitle}
                   </span>
-                  <span className="mt-1 block text-sm text-zinc-400">
+                  <span className="mt-1 block text-sm text-slate-500">
                     {invoice.customerName} / {invoice.status}
                   </span>
-                  <span className="mt-2 hidden text-xs text-zinc-500 max-md:block">
+                  <span className="mt-2 hidden text-xs text-slate-500 max-md:block">
                     Due {formatDate(invoice.dueDate)}
                   </span>
                 </span>
 
                 <span className="max-md:hidden">
-                  <span className="block text-sm text-zinc-300">
+                  <span className="block text-sm text-slate-700">
                     {formatDate(invoice.dueDate)}
                   </span>
                   {isLate ? (
-                    <span className="mt-1 block text-xs font-semibold text-pink-200">
+                    <span className="mt-1 block text-xs font-semibold text-rose-700">
                       {invoice.daysLate} day
                       {invoice.daysLate === 1 ? "" : "s"} late
                     </span>
                   ) : null}
                 </span>
 
-                <span className="text-right font-black text-green-300">
+                <span className="text-right font-black text-emerald-700">
                   {formatMoney(invoice.amountDue)}
                 </span>
               </label>
@@ -320,7 +320,7 @@ export default function InvoiceBulkPaymentActions({
           className={`rounded-full px-5 py-3 text-center text-sm font-black transition ${
             selectedIds.length > 0
               ? "bg-green-500 text-black hover:bg-green-400"
-              : "border border-zinc-700 text-zinc-200 hover:border-green-400 hover:text-green-200"
+              : "border border-slate-300 bg-white text-slate-700 hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700"
           }`}
         >
           {selectedIds.length > 0

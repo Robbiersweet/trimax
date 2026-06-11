@@ -1618,3 +1618,116 @@ html.theme-light .payment-hero-card .text-pink-100,
 html.theme-light .payment-hero-card .text-pink-200 {
   color: #be123c !important;
 }
+
+/* Final light-mode polish: keep orange for Trimax branding and sidebar nav,
+   but use calmer work-surface colors inside the app content. */
+html.theme-light main a.bg-orange-500,
+html.theme-light main button.bg-orange-500 {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border-color: #1d4ed8 !important;
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.14) !important;
+}
+
+html.theme-light main a.bg-orange-500:hover,
+html.theme-light main button.bg-orange-500:hover {
+  background: #1d4ed8 !important;
+}
+
+html.theme-light main nav a.bg-orange-500,
+html.theme-light main nav button.bg-orange-500 {
+  background: #ff6b00 !important;
+  color: #0f172a !important;
+  border-color: #ff6b00 !important;
+  box-shadow: 0 16px 34px rgba(255, 107, 0, 0.18) !important;
+}
+
+html.theme-light .hover\:bg-zinc-900:hover,
+html.theme-light .hover\:bg-zinc-900\/80:hover,
+html.theme-light .hover\:bg-zinc-800:hover {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .workspace-filter-bar {
+  background: #f8fafc !important;
+  border-color: #d7dde8 !important;
+}
+
+html.theme-light .workspace-filter-link-inactive,
+html.theme-light .queue-filter-link-inactive {
+  background: #ffffff !important;
+  border: 1px solid #d7dde8 !important;
+  color: #334155 !important;
+}
+
+html.theme-light .workspace-filter-link-inactive:hover,
+html.theme-light .queue-filter-link-inactive:hover {
+  background: #eff6ff !important;
+  border-color: #bfdbfe !important;
+  color: #1d4ed8 !important;
+}
+
+html.theme-light .dashboard-money-section,
+html.theme-light .dashboard-queue-section,
+html.theme-light .dashboard-cash-section,
+html.theme-light .dashboard-client-section {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  border-color: #d7dde8 !important;
+  box-shadow: 0 22px 54px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.theme-light .dashboard-feature-card {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  border-color: #d7dde8 !important;
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.06) !important;
+}
+
+html.theme-light .dashboard-feature-card .bg-zinc-950,
+html.theme-light .dashboard-feature-card .bg-black\/55,
+html.theme-light .dashboard-feature-card .bg-zinc-900 {
+  background: #f8fafc !important;
+  background-color: #f8fafc !important;
+}
+
+html.theme-light .dashboard-feature-card .bg-white\/10 {
+  background: #e2e8f0 !important;
+  background-color: #e2e8f0 !important;
+}
+
+html.theme-light .dashboard-feature-card .text-orange-100,
+html.theme-light .dashboard-feature-card .text-orange-200,
+html.theme-light .dashboard-feature-card .text-orange-300,
+html.theme-light .dashboard-feature-card .text-orange-400 {
+  color: #0369a1 !important;
+}
+
+html.theme-light .dashboard-feature-card .from-orange-500,
+html.theme-light .dashboard-feature-card .from-orange-400 {
+  --tw-gradient-from: #2563eb var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgb(37 99 235 / 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+html.theme-light .dashboard-feature-card .via-amber-300,
+html.theme-light .dashboard-feature-card .to-amber-200 {
+  --tw-gradient-to: #22c55e var(--tw-gradient-to-position) !important;
+}
+
+html.theme-light .payment-prep-row:hover {
+  background: #eff6ff !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .payment-prep-row-selected {
+  background: #ecfdf5 !important;
+  color: #064e3b !important;
+}
+
+html.theme-light .text-orange-400:not(nav *),
+html.theme-light .text-orange-300:not(nav *),
+html.theme-light .text-orange-200:not(nav *) {
+  color: #1d4ed8 !important;
+}
