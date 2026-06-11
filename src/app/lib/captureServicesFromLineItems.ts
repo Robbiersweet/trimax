@@ -34,6 +34,16 @@ function serviceNameFromDescription(description: string) {
     : firstLine;
 }
 
+function stripApartmentUnitPrefix(description: string) {
+  const trimmed = description.trim();
+  const withoutUnitPrefix = trimmed
+    .replace(/^.*?\bunit\s+[a-z]\d{1,2}\s*[-:]\s*/i, "")
+    .replace(/^[a-z]\d{1,2}\s*[-:]\s*/i, "")
+    .trim();
+
+  return withoutUnitPrefix || trimmed;
+}
+
 export async function captureServicesFromLineItems({
   businessId,
   lineItems,
@@ -46,11 +56,16 @@ export async function captureServicesFromLineItems({
   }
 
   const serviceCandidates = lineItems
-    .map((item) => ({
-      description: item.description.trim(),
-      quantity: Number(item.quantity) || 1,
-      unitPrice: Number(item.unitPrice) || 0,
-    }))
+    .filter((item) => !item.serviceItemId)
+    .map((item) => {
+      const description = stripApartmentUnitPrefix(item.description);
+
+      return {
+        description,
+        quantity: Number(item.quantity) || 1,
+        unitPrice: Number(item.unitPrice) || 0,
+      };
+    })
     .filter((item) => item.description.length > 0);
 
   if (serviceCandidates.length === 0) {

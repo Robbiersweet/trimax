@@ -280,6 +280,57 @@ function serviceToLineItem(serviceItem: ServiceItem): LineItem {
   };
 }
 
+function stripApartmentUnitPrefix(description: string | null | undefined) {
+  const trimmed = (description || "").trim();
+  const withoutUnitPrefix = trimmed
+    .replace(/^.*?\bunit\s+[a-z]\d{1,2}\s*[-:]\s*/i, "")
+    .replace(/^[a-z]\d{1,2}\s*[-:]\s*/i, "")
+    .trim();
+
+  return withoutUnitPrefix || trimmed;
+}
+
+function serviceDisplayLabel(serviceItem: ServiceItem) {
+  const cleanName = stripApartmentUnitPrefix(serviceItem.name);
+
+  return serviceItem.category
+    ? `${serviceItem.category} - ${cleanName}`
+    : cleanName;
+}
+
+function serviceLineDescription(serviceItem: ServiceItem) {
+  return stripApartmentUnitPrefix(
+    serviceItem.description || serviceItem.name
+  );
+}
+
+function queueLineDescription(
+  queueItem: QueueItem,
+  serviceItem: ServiceItem | null,
+  fallbackParts: Array<string | null>
+) {
+  const unitLabel = maybeCanonicalApartmentUnitLabel(queueItem.unit);
+  const serviceDescription = serviceItem
+    ? serviceLineDescription(serviceItem)
+    : "";
+  const fallbackDescription = fallbackParts.filter(Boolean).join(" - ");
+  const baseDescription =
+    serviceDescription || stripApartmentUnitPrefix(fallbackDescription);
+
+  if (!unitLabel) {
+    return baseDescription || "Apartment Turn";
+  }
+
+  if (
+    !baseDescription ||
+    normalizeMatchText(baseDescription) === normalizeMatchText(unitLabel)
+  ) {
+    return `Unit ${unitLabel}`;
+  }
+
+  return `Unit ${unitLabel} - ${baseDescription}`;
+}
+
 function isUuid(value: string | null) {
   return Boolean(
     value?.match(
@@ -549,8 +600,11 @@ function NewEstimatePageContent() {
       }
 
       const loadedQueueItem = data as QueueItem;
-      const unitLabel = loadedQueueItem.unit
-        ? `Unit ${loadedQueueItem.unit}`
+      const canonicalUnit = maybeCanonicalApartmentUnitLabel(
+        loadedQueueItem.unit
+      );
+      const unitLabel = canonicalUnit
+        ? `Unit ${canonicalUnit}`
         : "Apartment Turn";
       const titleParts = [
         loadedQueueItem.property,
@@ -588,13 +642,17 @@ function NewEstimatePageContent() {
       ) {
         setServiceItems((currentItems) => [...currentItems, renovationService]);
       }
-      const lineDescription =
-        matchingService?.description ||
-        matchingService?.name ||
-        descriptionParts.join(" - ");
+      const lineDescription = queueLineDescription(
+        loadedQueueItem,
+        matchingService,
+        descriptionParts
+      );
       const startingLineItems: LineItem[] = [
         matchingService
-          ? serviceToLineItem(matchingService)
+          ? {
+              ...serviceToLineItem(matchingService),
+              description: lineDescription,
+            }
           : {
               serviceItemId: "",
               description: lineDescription,
@@ -788,9 +846,7 @@ function NewEstimatePageContent() {
           ? {
               ...item,
               serviceItemId,
-              description:
-                selectedService.description ||
-                selectedService.name,
+              description: serviceLineDescription(selectedService),
               quantity: String(
                 Number(
                   selectedService.default_quantity
@@ -1297,9 +1353,7 @@ function NewEstimatePageContent() {
                             key={serviceItem.id}
                             value={serviceItem.id}
                           >
-                            {serviceItem.category
-                              ? `${serviceItem.category} - ${serviceItem.name}`
-                              : serviceItem.name}
+                            {serviceDisplayLabel(serviceItem)}
                           </option>
                         ))}
                       </select>
