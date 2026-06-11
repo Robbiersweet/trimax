@@ -5,10 +5,9 @@ import Button from "../../components/Button";
 import StatusBadge from "../../components/StatusBadge";
 import InternalNotes from "../../components/InternalNotes";
 import DeleteInvoiceButton from "../../components/DeleteInvoiceButton";
-import OutlookDraftPrepCard from "../../components/OutlookDraftPrepCard";
+import InvoiceEmailSendPanel from "../../components/InvoiceEmailSendPanel";
 import SplitInvoicePlanner from "../../components/SplitInvoicePlanner";
 import UpdateInvoiceStatusButton from "../../components/UpdateInvoiceStatusButton";
-import { buildOutlookDraftPreview } from "../../lib/outlookDrafts";
 import { buildSplitInvoicePlan } from "../../lib/splitInvoices";
 import { supabase } from "../../lib/supabase";
 import { getSmartInvoiceDates } from "../../utils/invoiceDates";
@@ -79,7 +78,14 @@ type SplitRelatedInvoice = {
 type Business = {
   id: string;
   slug: string;
+  name: string | null;
   split_warning_amount: number | string | null;
+};
+
+type ClientContact = {
+  name: string | null;
+  contact_name: string | null;
+  email: string | null;
 };
 
 function money(value: number) {
@@ -230,7 +236,7 @@ export default async function InvoiceDetailPage({
 
   const { data: business, error: businessError } = await supabase
     .from("businesses")
-    .select("id, slug, split_warning_amount")
+    .select("id, slug, name, split_warning_amount")
     .eq("slug", businessSlug)
     .limit(1)
     .maybeSingle<Business>();
@@ -297,6 +303,23 @@ export default async function InvoiceDetailPage({
   let linkedEstimate: LinkedEstimate | null = null;
   let splitParentInvoice: SplitRelatedInvoice | null = null;
   let splitRelatedInvoices: SplitRelatedInvoice[] = [];
+  let clientContact: ClientContact | null = null;
+
+  if (invoice.client_id) {
+    const { data, error } = await supabase
+      .from("clients")
+      .select("name, contact_name, email")
+      .eq("id", invoice.client_id)
+      .eq("business_id", business.id)
+      .limit(1)
+      .maybeSingle<ClientContact>();
+
+    if (error) {
+      console.error("Client contact lookup failed:", error);
+    }
+
+    clientContact = data ?? null;
+  }
 
   if (invoice.estimate_id) {
     const { data, error } = await supabase
@@ -386,6 +409,11 @@ export default async function InvoiceDetailPage({
   const amountDue = Math.max(invoiceTotal - amountPaid, 0);
   const customerName = invoice.customer_name || "Customer";
   const projectTitle = invoice.project_title || customerName || "Invoice";
+  const businessName =
+    business.name ||
+    (business.slug === "just-kleen" ? "Just Kleen" : "R&L Creations");
+  const recipientEmail = clientContact?.email ?? null;
+  const invoiceNumber = invoice.display_id || "Invoice";
   const displayReference = maybeCanonicalApartmentUnitLabel(invoice.reference);
   const smartInvoiceDates = getSmartInvoiceDates({
     customerName,
@@ -410,17 +438,6 @@ export default async function InvoiceDetailPage({
   const showFiveStarsBoaPrintButton =
     business.slug === "just-kleen" &&
     looksLikeFiveStarsBoaInvoice(invoice, items);
-  const outlookDraftPreview = buildOutlookDraftPreview("invoice", {
-    businessSlug,
-    customerName,
-    documentNumber: invoice.display_id,
-    projectTitle,
-    amountDue: money(amountDue),
-    dueDate: displayDueDate ? formatDate(displayDueDate) : null,
-    serviceAddress: invoice.service_address,
-    reference: displayReference,
-  });
-
   const splitWarningAmount =
     numberValue(invoice.split_target_amount) ||
     numberValue(business.split_warning_amount);
@@ -625,9 +642,15 @@ export default async function InvoiceDetailPage({
             </Card>
           ) : null}
 
-          <OutlookDraftPrepCard
-            documentLabel="Invoice"
-            preview={outlookDraftPreview}
+          <InvoiceEmailSendPanel
+            invoiceId={invoice.id}
+            businessSlug={businessSlug}
+            businessName={businessName}
+            customerName={customerName}
+            recipientEmail={recipientEmail}
+            documentNumber={invoiceNumber}
+            amountDue={money(amountDue)}
+            dueDate={displayDueDate ? formatDate(displayDueDate) : "-"}
             printHref={`/invoices/${invoice.id}/print${businessQuery}`}
           />
 
