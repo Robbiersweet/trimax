@@ -396,13 +396,24 @@ export default async function QueueDetailPage({
           Back to Queue
         </Link>
 
-        <div className="flex items-start justify-between">
-          <div>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div className="queue-unit-plate queue-unit-plate-large">
+              <span className="queue-unit-plate-label">Unit</span>
+              <span className="queue-unit-plate-value">
+                {displayUnit || "-"}
+              </span>
+            </div>
+
+            <div>
             <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
               Trimax Queue
             </p>
 
-            <h1 className="mt-2 text-4xl font-bold">Unit {displayUnit}</h1>
+              <h1 className="mt-2 text-4xl font-bold">
+                {item.property || "Queue Item"}
+              </h1>
+            </div>
           </div>
 
           <StatusBadge status={item.status ?? "Pending Estimate"} />

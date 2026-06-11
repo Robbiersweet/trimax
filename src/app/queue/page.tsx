@@ -658,63 +658,75 @@ export default async function QueuePage({
                 <Card key={item.id}>
                   <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
                     <div>
-                      <div className="flex flex-wrap items-center gap-3">
-                        <h2 className="text-2xl font-semibold">
-                          {item.property || "Unknown Property"}
-                        </h2>
-
-                        <StatusBadge
-                          status={item.status ?? "Pending Estimate"}
-                        />
-
-                        {item.priority ? (
-                          <span className="queue-priority-pill rounded-full bg-zinc-950 px-3 py-1 text-sm font-semibold text-zinc-300">
-                            {item.priority} Priority
+                      <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
+                        <div className="queue-unit-plate">
+                          <span className="queue-unit-plate-label">Unit</span>
+                          <span className="queue-unit-plate-value">
+                            {displayUnit || "-"}
                           </span>
-                        ) : null}
+                        </div>
 
-                        {item.smoked_in ? (
-                          <span className="queue-remediation-pill rounded-full bg-red-500/20 px-3 py-1 text-sm font-semibold text-red-300">
-                            Remediation
-                          </span>
-                        ) : null}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-3">
+                            <h2 className="text-2xl font-semibold">
+                              {item.property || "Unknown Property"}
+                            </h2>
 
-                        {!item.smoked_in && remediation ? (
-                          <span className="queue-remediation-pill rounded-full bg-red-500/20 px-3 py-1 text-sm font-semibold text-red-300">
-                            Smoke Note
-                          </span>
-                        ) : null}
+                            <StatusBadge
+                              status={item.status ?? "Pending Estimate"}
+                            />
 
-                        {readySoon ? (
-                          <span className="queue-ready-soon-pill rounded-full bg-yellow-500/20 px-3 py-1 text-sm font-semibold text-yellow-200">
-                            Due Soon
-                          </span>
-                        ) : null}
+                            {item.priority ? (
+                              <span className="queue-priority-pill rounded-full bg-zinc-950 px-3 py-1 text-sm font-semibold text-zinc-300">
+                                {item.priority} Priority
+                              </span>
+                            ) : null}
 
-                        {estimateNeeded ? (
-                          <span className="queue-estimate-needed-pill rounded-full bg-purple-500/20 px-3 py-1 text-sm font-semibold text-purple-200">
-                            Needs Estimate
-                          </span>
-                        ) : null}
+                            {item.smoked_in ? (
+                              <span className="queue-remediation-pill rounded-full bg-red-500/20 px-3 py-1 text-sm font-semibold text-red-300">
+                                Remediation
+                              </span>
+                            ) : null}
 
-                        {item.renovation_needed ? (
-                          <span className="rounded-full bg-orange-500/20 px-3 py-1 text-sm font-semibold text-orange-200">
-                            Current Renovation
-                          </span>
-                        ) : null}
+                            {!item.smoked_in && remediation ? (
+                              <span className="queue-remediation-pill rounded-full bg-red-500/20 px-3 py-1 text-sm font-semibold text-red-300">
+                                Smoke Note
+                              </span>
+                            ) : null}
 
-                        {item.prior_renovation ||
-                        item.prior_renovation_details ? (
-                          <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-sm font-semibold text-emerald-200">
-                            Prior Renovation
-                          </span>
-                        ) : null}
+                            {readySoon ? (
+                              <span className="queue-ready-soon-pill rounded-full bg-yellow-500/20 px-3 py-1 text-sm font-semibold text-yellow-200">
+                                Due Soon
+                              </span>
+                            ) : null}
+
+                            {estimateNeeded ? (
+                              <span className="queue-estimate-needed-pill rounded-full bg-purple-500/20 px-3 py-1 text-sm font-semibold text-purple-200">
+                                Needs Estimate
+                              </span>
+                            ) : null}
+
+                            {item.renovation_needed ? (
+                              <span className="rounded-full bg-orange-500/20 px-3 py-1 text-sm font-semibold text-orange-200">
+                                Current Renovation
+                              </span>
+                            ) : null}
+
+                            {item.prior_renovation ||
+                            item.prior_renovation_details ? (
+                              <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-sm font-semibold text-emerald-200">
+                                Prior Renovation
+                              </span>
+                            ) : null}
+                          </div>
+
+                          {item.unit_layout ? (
+                            <p className="mt-2 text-zinc-400">
+                              Layout {item.unit_layout}
+                            </p>
+                          ) : null}
+                        </div>
                       </div>
-
-                      <p className="mt-2 text-zinc-400">
-                        Unit {displayUnit || "-"}
-                        {item.unit_layout ? ` / Layout ${item.unit_layout}` : ""}
-                      </p>
 
                       <div className="mt-5 grid gap-3 sm:grid-cols-3">
                         <LifecyclePill
