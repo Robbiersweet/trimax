@@ -393,6 +393,7 @@ export default async function QueuePage({
     {
       label: "All",
       value: "all",
+      icon: "A",
       count:
         viewFilter === "history"
           ? propertyScopedQueueItems.length
@@ -401,6 +402,7 @@ export default async function QueuePage({
     ...statuses.map((status) => ({
       label: statusLabel(status),
       value: status,
+      icon: queueFilterIcon(statusLabel(status)),
       count: statusCounts.get(status) ?? 0,
     })),
   ];
@@ -409,26 +411,31 @@ export default async function QueuePage({
     {
       label: "Active Work",
       value: "all",
+      icon: "W",
       count: activeWorkCount,
     },
     {
       label: "Due Soon",
       value: "ready-soon",
+      icon: "D",
       count: readySoonCount,
     },
     {
       label: "Needs Estimate",
       value: "needs-estimate",
+      icon: "E",
       count: needsEstimateCount,
     },
     {
       label: "Remediation",
       value: "remediation",
+      icon: "R",
       count: remediationCount,
     },
     {
       label: "All History",
       value: "history",
+      icon: "H",
       count: propertyScopedQueueItems.length,
     },
   ];
@@ -501,7 +508,7 @@ export default async function QueuePage({
                 name="q"
                 defaultValue={searchTerm}
                 placeholder="Search property, unit, paint color, flooring, date, or notes"
-                className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-100"
               />
             </div>
 
@@ -529,17 +536,25 @@ export default async function QueuePage({
                 status: statusFilter,
                 view: filter.value,
               })}
-              className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
                 viewFilter === filter.value
-                  ? "bg-orange-500 text-black"
+                  ? "bg-sky-600 text-white shadow-sm shadow-sky-900/10"
                   : "queue-filter-link-inactive text-zinc-300 hover:bg-zinc-800 hover:text-white"
               }`}
             >
+              <span
+                className={`filter-tab-icon ${
+                  viewFilter === filter.value ? "filter-tab-icon-active" : ""
+                }`}
+                aria-hidden="true"
+              >
+                {filter.icon}
+              </span>
               <span>{filter.label}</span>
               <span
-                className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
+                className={`rounded-full px-2 py-0.5 text-xs ${
                   viewFilter === filter.value
-                    ? "bg-black/15 text-black"
+                    ? "bg-white/20 text-white"
                     : "queue-filter-count-inactive bg-zinc-950 text-zinc-400"
                 }`}
               >
@@ -559,17 +574,25 @@ export default async function QueuePage({
                 status: filter.value,
                 view: viewFilter,
               })}
-              className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
                 statusFilter === filter.value
-                  ? "bg-orange-500 text-black"
+                  ? "bg-sky-600 text-white shadow-sm shadow-sky-900/10"
                   : "queue-filter-link-inactive text-zinc-300 hover:bg-zinc-800 hover:text-white"
               }`}
             >
+              <span
+                className={`filter-tab-icon ${
+                  statusFilter === filter.value ? "filter-tab-icon-active" : ""
+                }`}
+                aria-hidden="true"
+              >
+                {filter.icon}
+              </span>
               <span>{filter.label}</span>
               <span
-                className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
+                className={`rounded-full px-2 py-0.5 text-xs ${
                   statusFilter === filter.value
-                    ? "bg-black/15 text-black"
+                    ? "bg-white/20 text-white"
                     : "queue-filter-count-inactive bg-zinc-950 text-zinc-400"
                 }`}
               >
@@ -579,19 +602,19 @@ export default async function QueuePage({
           ))}
         </div>
 
-        <Card className="border-orange-500/30 bg-orange-500/5 p-5">
+        <Card className="border-sky-200 bg-sky-50/70 p-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
+              <p className="text-sm uppercase tracking-[0.3em] text-sky-600">
                 Current Queue View
               </p>
               <h2 className="mt-2 text-2xl font-bold">
                 {activeView.title}
               </h2>
-              <p className="mt-2 text-zinc-400">{activeView.detail}</p>
+              <p className="mt-2 text-slate-600">{activeView.detail}</p>
             </div>
 
-            <p className="text-sm text-zinc-400">
+            <p className="text-sm text-slate-500">
               Showing {filteredQueueItems.length} of{" "}
               {propertyScopedQueueItems.length}{" "}
               queue items.
@@ -601,16 +624,16 @@ export default async function QueuePage({
 
         <div className="grid gap-6">
           {propertyScopedQueueItems.length === 0 ? (
-            <Card className="border-orange-500/20 bg-gradient-to-br from-orange-500/10 via-zinc-900 to-sky-500/10">
+            <Card className="border-sky-200 bg-white">
               <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
+                  <p className="text-sm uppercase tracking-[0.3em] text-sky-600">
                     Ready For Intake
                   </p>
                   <h2 className="mt-2 text-2xl font-bold">
                     Start this property queue
                   </h2>
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-300">
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
                     Add the first unit when a property manager sends a turn,
                     repair request, or scheduling note. Trimax will keep the
                     work tied to this workspace and property.
@@ -623,16 +646,16 @@ export default async function QueuePage({
               </div>
             </Card>
           ) : filteredQueueItems.length === 0 ? (
-            <Card className="border-sky-500/20 bg-gradient-to-br from-sky-500/10 via-zinc-900 to-orange-500/5">
+            <Card className="border-sky-200 bg-white">
               <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <p className="text-sm uppercase tracking-[0.3em] text-sky-300">
+                  <p className="text-sm uppercase tracking-[0.3em] text-sky-600">
                     Nothing In This View
                   </p>
                   <h2 className="mt-2 text-2xl font-bold">
                     No queue items match these filters
                   </h2>
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-300">
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
                     Try clearing the search or switching back to All Work to
                     see the full property queue.
                   </p>
@@ -842,6 +865,22 @@ function Info({
   );
 }
 
+function queueFilterIcon(label: string) {
+  const normalized = label.toLowerCase();
+
+  if (normalized.includes("completed")) return "C";
+  if (normalized.includes("scheduled")) return "S";
+  if (normalized.includes("pending") || normalized.includes("estimate")) {
+    return "E";
+  }
+  if (normalized.includes("remediation")) return "R";
+  if (normalized.includes("history")) return "H";
+  if (normalized.includes("due")) return "D";
+  if (normalized.includes("active")) return "W";
+
+  return label.slice(0, 1).toUpperCase();
+}
+
 function LifecyclePill({
   label,
   value,
@@ -857,20 +896,20 @@ function LifecyclePill({
     <div
       className={`rounded-2xl border px-4 py-3 ${
         alert
-          ? "border-yellow-500/40 bg-yellow-500/10"
+          ? "border-amber-200 bg-amber-50"
           : value
-          ? "border-orange-500/30 bg-orange-500/10"
-          : "border-zinc-800 bg-zinc-950"
+          ? "border-sky-200 bg-sky-50"
+          : "border-slate-200 bg-white"
       }`}
     >
-      <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+      <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
         {label}
       </p>
-      <p className="mt-1 font-semibold text-zinc-100">
+      <p className="mt-1 font-semibold text-slate-950">
         {value || "-"}
       </p>
       {detail ? (
-        <p className="mt-1 text-xs font-semibold text-yellow-200">
+        <p className="mt-1 text-xs font-semibold text-amber-700">
           {detail}
         </p>
       ) : null}

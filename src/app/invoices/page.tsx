@@ -479,18 +479,22 @@ export default async function InvoicesPage({
     {
       label: "All",
       value: "all",
+      icon: "A",
     },
     {
       label: "Originals",
       value: "originals",
+      icon: "O",
     },
     {
       label: "Split Invoices",
       value: "splits",
+      icon: "S",
     },
     {
       label: "Aging",
       value: "aging",
+      icon: "G",
     },
   ].map((filter) => {
     const params = new URLSearchParams(activeParams);
@@ -511,22 +515,27 @@ export default async function InvoicesPage({
     {
       label: "All Statuses",
       value: "all",
+      icon: "A",
     },
     {
       label: "Draft",
       value: "draft",
+      icon: "D",
     },
     {
       label: "Sent",
       value: "sent",
+      icon: "S",
     },
     {
       label: "Paid",
       value: "paid",
+      icon: "$",
     },
     {
       label: "Overdue",
       value: "overdue",
+      icon: "!",
     },
   ].map((filter) => {
     const params = new URLSearchParams(activeParams);
@@ -612,43 +621,43 @@ export default async function InvoicesPage({
           </div>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
-              <p className="text-sm text-zinc-400">Total Outstanding</p>
-              <p className="mt-2 text-3xl font-black text-white">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4">
+              <p className="text-sm text-slate-500">Total Outstanding</p>
+              <p className="mt-2 text-3xl font-black text-slate-950">
                 {formatMoney(openBalanceTotal)}
               </p>
-              <p className="mt-1 text-sm text-zinc-500">
+              <p className="mt-1 text-sm text-slate-500">
                 {openInvoicesWithAmounts.length} open invoice
                 {openInvoicesWithAmounts.length === 1 ? "" : "s"}.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-pink-500/30 bg-pink-500/10 p-4">
-              <p className="text-sm text-pink-100/80">Past Due</p>
-              <p className="mt-2 text-3xl font-black text-pink-100">
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
+              <p className="text-sm text-rose-700">Past Due</p>
+              <p className="mt-2 text-3xl font-black text-rose-700">
                 {formatMoney(overdueBalanceTotal)}
               </p>
-              <p className="mt-1 text-sm text-pink-100/60">
+              <p className="mt-1 text-sm text-rose-700/75">
                 Invoices at or past due date.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
-              <p className="text-sm text-amber-100/80">Draft Balance</p>
-              <p className="mt-2 text-3xl font-black text-amber-100">
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <p className="text-sm text-amber-700">Draft Balance</p>
+              <p className="mt-2 text-3xl font-black text-amber-800">
                 {formatMoney(draftBalanceTotal)}
               </p>
-              <p className="mt-1 text-sm text-amber-100/60">
+              <p className="mt-1 text-sm text-amber-700/75">
                 Work not sent yet.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-green-500/30 bg-green-500/10 p-4">
-              <p className="text-sm text-green-100/80">Batch Payment Cue</p>
-              <p className="mt-2 text-3xl font-black text-green-100">
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+              <p className="text-sm text-emerald-700">Batch Payment Cue</p>
+              <p className="mt-2 text-3xl font-black text-emerald-800">
                 {customerBalanceRows.filter((customer) => customer.invoiceCount > 1).length}
               </p>
-              <p className="mt-1 text-sm text-green-100/60">
+              <p className="mt-1 text-sm text-emerald-700/75">
                 Customers with multiple open invoices.
               </p>
             </div>
@@ -691,7 +700,7 @@ export default async function InvoicesPage({
                 name="q"
                 defaultValue={searchTerm}
                 placeholder="Search number, project, customer, status, or split source"
-                className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-100"
               />
             </div>
 
@@ -716,13 +725,21 @@ export default async function InvoicesPage({
             <Link
               key={filter.value}
               href={filter.href}
-              className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
                 view === filter.value
                   ? "bg-sky-600 text-white shadow-sm shadow-sky-900/10"
                   : "workspace-filter-link-inactive border border-slate-200 bg-white text-slate-700 hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700"
               }`}
             >
-              {filter.label}
+              <span
+                className={`filter-tab-icon ${
+                  view === filter.value ? "filter-tab-icon-active" : ""
+                }`}
+                aria-hidden="true"
+              >
+                {filter.icon}
+              </span>
+              <span>{filter.label}</span>
             </Link>
           ))}
         </div>
@@ -732,13 +749,21 @@ export default async function InvoicesPage({
             <Link
               key={filter.value}
               href={filter.href}
-              className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
                 statusFilter === filter.value
                   ? "bg-sky-600 text-white shadow-sm shadow-sky-900/10"
                   : "workspace-filter-link-inactive border border-slate-200 bg-white text-slate-700 hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700"
               }`}
             >
-              {filter.label}
+              <span
+                className={`filter-tab-icon ${
+                  statusFilter === filter.value ? "filter-tab-icon-active" : ""
+                }`}
+                aria-hidden="true"
+              >
+                {filter.icon}
+              </span>
+              <span>{filter.label}</span>
             </Link>
           ))}
         </div>
