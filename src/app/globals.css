@@ -1432,3 +1432,189 @@ input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
+
+.app-button-primary {
+  background: #2563eb;
+  color: #ffffff;
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.18);
+}
+
+.app-button-primary:hover {
+  background: #1d4ed8;
+}
+
+.app-button-secondary {
+  background: #27272a;
+  color: #ffffff;
+  border: 1px solid #3f3f46;
+}
+
+.app-button-secondary:hover {
+  background: #3f3f46;
+}
+
+html.theme-light .app-button-primary {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border-color: #1d4ed8 !important;
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.16) !important;
+}
+
+html.theme-light .app-button-primary:hover {
+  background: #1d4ed8 !important;
+}
+
+html.theme-light .app-button-secondary {
+  background: #e8eef7 !important;
+  color: #0f172a !important;
+  border-color: #d7dde8 !important;
+  box-shadow: none !important;
+}
+
+html.theme-light .app-button-secondary:hover {
+  background: #dbeafe !important;
+  border-color: #bfdbfe !important;
+}
+
+html.theme-light .app-button-primary:disabled,
+html.theme-light .app-button-secondary:disabled,
+html.theme-light button:disabled {
+  opacity: 1 !important;
+}
+
+html.theme-light .app-button-primary:disabled,
+html.theme-light .app-button-secondary:disabled {
+  background: #e5e7eb !important;
+  border-color: #d1d5db !important;
+  color: #64748b !important;
+  box-shadow: none !important;
+}
+
+html.theme-light .dashboard-action-card {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  border-color: #d7dde8 !important;
+  color: #111827 !important;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.theme-light .dashboard-action-overlay {
+  background:
+    radial-gradient(circle at 16% 0%, rgba(37, 99, 235, 0.08), transparent 34%),
+    radial-gradient(circle at 86% 96%, rgba(15, 23, 42, 0.05), transparent 28%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(248, 250, 252, 0.96)) !important;
+  opacity: 1 !important;
+}
+
+html.theme-light .dashboard-action-card .dashboard-action-title {
+  color: #111827 !important;
+  text-shadow: none !important;
+}
+
+html.theme-light .dashboard-action-card .dashboard-action-subtitle,
+html.theme-light .dashboard-action-card .dashboard-action-arrow {
+  color: #475569 !important;
+}
+
+html.theme-light .dashboard-action-card:hover .dashboard-action-arrow {
+  color: #2563eb !important;
+}
+
+html.theme-light .dashboard-action-card .dashboard-action-pill {
+  background: #f8fafc !important;
+  color: #334155 !important;
+}
+
+html.theme-light .dashboard-action-card .dashboard-action-glyph {
+  background: #f8fafc !important;
+  color: #334155 !important;
+}
+
+html.theme-light .dashboard-feature-card .text-amber-50,
+html.theme-light .dashboard-feature-card .text-amber-100,
+html.theme-light .dashboard-feature-card .text-amber-100\/60,
+html.theme-light .dashboard-feature-card .text-amber-100\/70,
+html.theme-light .dashboard-feature-card .text-amber-100\/80,
+html.theme-light .dashboard-feature-card .text-amber-100\/90,
+html.theme-light .dashboard-feature-card .text-amber-200,
+html.theme-light .dashboard-feature-card .text-amber-300,
+html.theme-light .dashboard-feature-card .text-yellow-50,
+html.theme-light .dashboard-feature-card .text-yellow-100,
+html.theme-light .dashboard-feature-card .text-yellow-100\/90,
+html.theme-light .dashboard-feature-card .text-yellow-200,
+html.theme-light .dashboard-feature-card .text-yellow-300 {
+  color: #a16207 !important;
+}
+
+html.theme-light .dashboard-feature-card .text-rose-50,
+html.theme-light .dashboard-feature-card .text-rose-100,
+html.theme-light .dashboard-feature-card .text-rose-100\/80,
+html.theme-light .dashboard-feature-card .text-rose-200,
+html.theme-light .dashboard-feature-card .text-rose-300,
+html.theme-light .dashboard-feature-card .text-pink-50,
+html.theme-light .dashboard-feature-card .text-pink-100,
+html.theme-light .dashboard-feature-card .text-pink-200,
+html.theme-light .dashboard-feature-card .text-pink-300 {
+  color: #be123c !important;
+}
+
+html.theme-light .dashboard-feature-card .text-sky-50,
+html.theme-light .dashboard-feature-card .text-sky-100,
+html.theme-light .dashboard-feature-card .text-sky-100\/75,
+html.theme-light .dashboard-feature-card .text-sky-200,
+html.theme-light .dashboard-feature-card .text-sky-300,
+html.theme-light .dashboard-feature-card .text-blue-50,
+html.theme-light .dashboard-feature-card .text-blue-100,
+html.theme-light .dashboard-feature-card .text-blue-200,
+html.theme-light .dashboard-feature-card .text-blue-300,
+html.theme-light .dashboard-feature-card .text-cyan-50,
+html.theme-light .dashboard-feature-card .text-cyan-100,
+html.theme-light .dashboard-feature-card .text-cyan-200,
+html.theme-light .dashboard-feature-card .text-cyan-300 {
+  color: #0369a1 !important;
+}
+
+html.theme-light .dashboard-feature-card .text-purple-50,
+html.theme-light .dashboard-feature-card .text-purple-100,
+html.theme-light .dashboard-feature-card .text-purple-200,
+html.theme-light .dashboard-feature-card .text-purple-300,
+html.theme-light .dashboard-feature-card .text-violet-50,
+html.theme-light .dashboard-feature-card .text-violet-100,
+html.theme-light .dashboard-feature-card .text-violet-200,
+html.theme-light .dashboard-feature-card .text-violet-300,
+html.theme-light .dashboard-feature-card .text-fuchsia-50,
+html.theme-light .dashboard-feature-card .text-fuchsia-100,
+html.theme-light .dashboard-feature-card .text-fuchsia-200,
+html.theme-light .dashboard-feature-card .text-fuchsia-300 {
+  color: #6d28d9 !important;
+}
+
+html.theme-light .payment-hero-card {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  border-color: #d7dde8 !important;
+  color: #111827 !important;
+  box-shadow: 0 20px 46px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.theme-light .payment-hero-card .payment-hero-stat,
+html.theme-light .payment-hero-card .bg-black\/40,
+html.theme-light .payment-hero-card .bg-black\/50 {
+  background: #f8fafc !important;
+  background-color: #f8fafc !important;
+  border-color: #d7dde8 !important;
+  color: #111827 !important;
+}
+
+html.theme-light .payment-hero-card .text-green-100,
+html.theme-light .payment-hero-card .text-green-100\/80,
+html.theme-light .payment-hero-card .text-green-200,
+html.theme-light .payment-hero-card .text-green-300 {
+  color: #047857 !important;
+}
+
+html.theme-light .payment-hero-card .text-pink-100,
+html.theme-light .payment-hero-card .text-pink-200 {
+  color: #be123c !important;
+}

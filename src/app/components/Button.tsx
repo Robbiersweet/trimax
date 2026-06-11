@@ -18,11 +18,11 @@ export default function Button({
   type = "button",
 }: ButtonProps) {
   const base =
-    "inline-flex items-center justify-center rounded-2xl px-5 py-3 text-center font-semibold transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 disabled:cursor-not-allowed disabled:opacity-50";
+    "inline-flex items-center justify-center rounded-2xl px-5 py-3 text-center font-semibold transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:opacity-70";
 
   const styles = {
-    primary: "bg-orange-500 text-black",
-    secondary: "bg-zinc-800 text-white",
+    primary: "app-button-primary",
+    secondary: "app-button-secondary",
   };
 
   return (
