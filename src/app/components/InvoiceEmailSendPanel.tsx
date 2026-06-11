@@ -1,10 +1,16 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Button from "./Button";
 import Card from "./Card";
 import Toast from "./Toast";
+import {
+  defaultInvoiceEmailSettings,
+  emailSettingsKey,
+  normalizeInvoiceEmailSettings,
+  renderEmailTemplate,
+} from "../lib/invoiceEmailSettings";
 import { supabase } from "../lib/supabase";
 
 type InvoiceEmailSendPanelProps = {
@@ -16,6 +22,7 @@ type InvoiceEmailSendPanelProps = {
   documentNumber: string;
   amountDue: string;
   dueDate: string;
+  projectTitle?: string | null;
   printHref: string;
 };
 
@@ -57,6 +64,7 @@ export default function InvoiceEmailSendPanel({
   documentNumber,
   amountDue,
   dueDate,
+  projectTitle,
   printHref,
 }: InvoiceEmailSendPanelProps) {
   const [recipient, setRecipient] = useState(recipientEmail ?? "");
@@ -71,6 +79,14 @@ export default function InvoiceEmailSendPanel({
       dueDate,
     })
   );
+  const [signature, setSignature] = useState(
+    defaultInvoiceEmailSettings({
+      businessSlug,
+      businessName,
+    }).signature
+  );
+  const [replyToEmail, setReplyToEmail] = useState("");
+  const [templateLoaded, setTemplateLoaded] = useState(false);
   const [includePdfNote, setIncludePdfNote] = useState(true);
   const [sending, setSending] = useState(false);
   const [toast, setToast] = useState<{
@@ -79,17 +95,83 @@ export default function InvoiceEmailSendPanel({
   } | null>(null);
 
   const canSend = recipient.trim().includes("@") && subject.trim();
+  const dueDateSentence =
+    dueDate && dueDate !== "-" ? ` due on ${dueDate}` : "";
+  const templateVariables = useMemo(
+    () => ({
+      businessName,
+      invoiceNumber: documentNumber,
+      amountDue,
+      dueDate,
+      dueDateSentence,
+      customerName,
+      projectTitle: projectTitle ?? "",
+    }),
+    [
+      amountDue,
+      businessName,
+      customerName,
+      documentNumber,
+      dueDate,
+      dueDateSentence,
+      projectTitle,
+    ]
+  );
 
   const emailBody = useMemo(() => {
-    return [
-      message.trim(),
-      "",
-      "Thank you,",
-      businessName,
-    ]
+    return [message.trim(), "", signature.trim()]
       .filter(Boolean)
       .join("\n");
-  }, [businessName, message]);
+  }, [message, signature]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadEmailSettings() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const fallback = defaultInvoiceEmailSettings({
+        businessSlug,
+        businessName,
+        currentEmail: user?.email ?? null,
+      });
+      const { data, error } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", emailSettingsKey(businessSlug))
+        .maybeSingle<{ value: unknown }>();
+
+      if (!isActive) {
+        return;
+      }
+
+      if (error) {
+        console.warn("Invoice email settings are not ready yet.", error);
+      }
+
+      const settings = normalizeInvoiceEmailSettings(data?.value, fallback);
+
+      setSubject(
+        renderEmailTemplate(
+          settings.invoiceSubjectTemplate,
+          templateVariables
+        )
+      );
+      setMessage(
+        renderEmailTemplate(settings.invoiceBodyTemplate, templateVariables)
+      );
+      setSignature(settings.signature);
+      setReplyToEmail(settings.replyToEmail);
+      setTemplateLoaded(true);
+    }
+
+    void loadEmailSettings();
+
+    return () => {
+      isActive = false;
+    };
+  }, [businessName, businessSlug, templateVariables]);
 
   async function handleSend() {
     setToast(null);
@@ -122,6 +204,7 @@ export default function InvoiceEmailSendPanel({
           recipientEmail: recipient.trim(),
           subject: subject.trim(),
           message: emailBody,
+          replyToEmail,
           includePdfNote,
         }),
       });
@@ -246,6 +329,12 @@ export default function InvoiceEmailSendPanel({
               {message}
             </p>
 
+            {signature.trim() ? (
+              <p className="mt-6 whitespace-pre-line text-sm leading-6 text-slate-600">
+                {signature}
+              </p>
+            ) : null}
+
             <div className="mt-8">
               <p className="font-semibold text-slate-950">
                 {customerName}
@@ -275,6 +364,9 @@ export default function InvoiceEmailSendPanel({
         <p className="text-sm text-slate-500">
           Direct sending uses a verified email provider so invoices do not look
           like random mail.
+          {templateLoaded
+            ? " This preview is using your saved email settings."
+            : " Loading saved email settings..."}
         </p>
 
         <div className="flex flex-wrap gap-3">

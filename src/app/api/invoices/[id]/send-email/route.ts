@@ -133,12 +133,14 @@ async function requireWorkspaceAccess({
 async function sendWithResend({
   from,
   to,
+  replyTo,
   subject,
   html,
   text,
 }: {
   from: string;
   to: string;
+  replyTo: string | null;
   subject: string;
   html: string;
   text: string;
@@ -163,6 +165,7 @@ async function sendWithResend({
     body: JSON.stringify({
       from,
       to: [to],
+      ...(replyTo ? { reply_to: replyTo } : {}),
       subject,
       html,
       text,
@@ -213,6 +216,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   const recipientEmail = cleanText(body.recipientEmail, 200).toLowerCase();
   const subject = cleanText(body.subject, 240);
   const message = cleanText(body.message, 5000);
+  const replyToEmail = cleanText(body.replyToEmail, 200).toLowerCase();
   const businessSlug = cleanText(body.businessSlug, 80);
   const includePdfNote = Boolean(body.includePdfNote);
 
@@ -226,6 +230,13 @@ export async function POST(request: Request, { params }: RouteParams) {
   if (!subject || !message) {
     return NextResponse.json(
       { error: "Subject and message are required." },
+      { status: 400 }
+    );
+  }
+
+  if (replyToEmail && !isValidEmail(replyToEmail)) {
+    return NextResponse.json(
+      { error: "Enter a valid reply-to email address." },
       { status: 400 }
     );
   }
@@ -308,6 +319,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   const sendResult = await sendWithResend({
     from,
     to: recipientEmail,
+    replyTo: replyToEmail || access.email,
     subject,
     html,
     text: message,

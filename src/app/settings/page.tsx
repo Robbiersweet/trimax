@@ -13,6 +13,11 @@ import {
   defaultMaintenanceSettings,
   loadMaintenanceSettings,
 } from "../lib/maintenanceMode";
+import {
+  defaultInvoiceEmailSettings,
+  emailSettingsKey,
+  normalizeInvoiceEmailSettings,
+} from "../lib/invoiceEmailSettings";
 import { supabase } from "../lib/supabase";
 import {
   WorkspaceRole,
@@ -172,6 +177,18 @@ function BusinessSettingsPageContent() {
   const [maintenanceMessage, setMaintenanceMessage] = useState(
     defaultMaintenanceSettings().message
   );
+  const [replyToEmail, setReplyToEmail] = useState("");
+  const [emailSignature, setEmailSignature] = useState("");
+  const [invoiceSubjectTemplate, setInvoiceSubjectTemplate] = useState("");
+  const [invoiceBodyTemplate, setInvoiceBodyTemplate] = useState("");
+  const [
+    paymentReminderSubjectTemplate,
+    setPaymentReminderSubjectTemplate,
+  ] = useState("");
+  const [
+    paymentReminderBodyTemplate,
+    setPaymentReminderBodyTemplate,
+  ] = useState("");
   const [inviteEmail, setInviteEmail] =
     useState("");
   const [inviteRole, setInviteRole] =
@@ -191,6 +208,7 @@ function BusinessSettingsPageContent() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingMaintenance, setSavingMaintenance] = useState(false);
+  const [savingEmailSettings, setSavingEmailSettings] = useState(false);
   const [savingInvite, setSavingInvite] =
     useState(false);
   const [savingPropertyInvite, setSavingPropertyInvite] =
@@ -257,6 +275,44 @@ function BusinessSettingsPageContent() {
     const maintenance = await loadMaintenanceSettings();
     setMaintenanceMode(maintenance.enabled);
     setMaintenanceMessage(maintenance.message);
+
+    const fallbackEmailSettings = defaultInvoiceEmailSettings({
+      businessSlug,
+      businessName: selectedBusiness.name,
+      currentEmail: user?.email ?? null,
+    });
+
+    const {
+      data: emailSettingsRow,
+      error: emailSettingsError,
+    } = await supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", emailSettingsKey(businessSlug))
+      .maybeSingle<{ value: unknown }>();
+
+    if (emailSettingsError) {
+      console.warn(
+        "Email settings are not ready yet.",
+        emailSettingsError
+      );
+    }
+
+    const emailSettings = normalizeInvoiceEmailSettings(
+      emailSettingsRow?.value,
+      fallbackEmailSettings
+    );
+
+    setReplyToEmail(emailSettings.replyToEmail);
+    setEmailSignature(emailSettings.signature);
+    setInvoiceSubjectTemplate(emailSettings.invoiceSubjectTemplate);
+    setInvoiceBodyTemplate(emailSettings.invoiceBodyTemplate);
+    setPaymentReminderSubjectTemplate(
+      emailSettings.paymentReminderSubjectTemplate
+    );
+    setPaymentReminderBodyTemplate(
+      emailSettings.paymentReminderBodyTemplate
+    );
 
     setBusiness(selectedBusiness);
     setSplitWarningAmount(
@@ -493,6 +549,91 @@ function BusinessSettingsPageContent() {
       message: maintenanceMode
         ? "Maintenance Mode is on. Normal users are paused."
         : "Maintenance Mode is off. Normal users can use Trimax again.",
+    });
+  }
+
+  async function handleSaveEmailSettings() {
+    setToast(null);
+
+    if (!business || !canManageUsers) {
+      setToast({
+        type: "error",
+        message: "Only owners and admins can change email settings.",
+      });
+      return;
+    }
+
+    const replyTo = replyToEmail.trim().toLowerCase();
+
+    if (replyTo && !replyTo.includes("@")) {
+      setToast({
+        type: "error",
+        message: "Enter a valid reply-to email address, or leave it blank.",
+      });
+      return;
+    }
+
+    const fallbackEmailSettings = defaultInvoiceEmailSettings({
+      businessSlug,
+      businessName: business.name,
+      currentEmail,
+    });
+    const nextSettings = {
+      replyToEmail: replyTo,
+      signature: emailSignature.trim() || fallbackEmailSettings.signature,
+      invoiceSubjectTemplate:
+        invoiceSubjectTemplate.trim() ||
+        fallbackEmailSettings.invoiceSubjectTemplate,
+      invoiceBodyTemplate:
+        invoiceBodyTemplate.trim() || fallbackEmailSettings.invoiceBodyTemplate,
+      paymentReminderSubjectTemplate:
+        paymentReminderSubjectTemplate.trim() ||
+        fallbackEmailSettings.paymentReminderSubjectTemplate,
+      paymentReminderBodyTemplate:
+        paymentReminderBodyTemplate.trim() ||
+        fallbackEmailSettings.paymentReminderBodyTemplate,
+    };
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    setSavingEmailSettings(true);
+
+    const { error } = await supabase.from("app_settings").upsert(
+      {
+        key: emailSettingsKey(businessSlug),
+        value: nextSettings,
+        updated_at: new Date().toISOString(),
+        updated_by: user?.id ?? null,
+      },
+      {
+        onConflict: "key",
+      }
+    );
+
+    setSavingEmailSettings(false);
+
+    if (error) {
+      console.error(error);
+      setToast({
+        type: "error",
+        message:
+          "Unable to save email settings. Check the app_settings setup if this is the first time.",
+      });
+      return;
+    }
+
+    setReplyToEmail(nextSettings.replyToEmail);
+    setEmailSignature(nextSettings.signature);
+    setInvoiceSubjectTemplate(nextSettings.invoiceSubjectTemplate);
+    setInvoiceBodyTemplate(nextSettings.invoiceBodyTemplate);
+    setPaymentReminderSubjectTemplate(
+      nextSettings.paymentReminderSubjectTemplate
+    );
+    setPaymentReminderBodyTemplate(nextSettings.paymentReminderBodyTemplate);
+    setToast({
+      type: "success",
+      message: "Email settings saved.",
     });
   }
 
@@ -1017,69 +1158,130 @@ function BusinessSettingsPageContent() {
 
             <Card
               id="outlook-integration"
-              className="outlook-setup-panel scroll-mt-6 border-sky-500/30 bg-sky-500/10"
+              className="scroll-mt-6 border-blue-200 bg-white"
             >
               <div className="grid gap-5">
                 <div>
-                  <p className="text-sm uppercase tracking-[0.3em] text-sky-200">
-                    Manual Email Prep
+                  <p className="text-sm uppercase tracking-[0.3em] text-blue-600">
+                    Customer Email
                   </p>
 
                   <h2 className="mt-2 text-2xl font-semibold">
-                    Customer Email Workflow
+                    Email Customization
                   </h2>
 
-                  <p className="mt-2 max-w-3xl text-sm leading-6 text-sky-100/90">
-                    Trimax prepares customer-ready subjects, messages, PDFs,
-                    and exports. You still review and send from Outlook with
-                    your normal signature and logo.
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+                    Set the reply-to address, message templates, and signature
+                    Trimax uses when sending invoices. This is the FreshBooks
+                    idea, but kept Trimax-branded and under your control.
                   </p>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div className="outlook-step-card rounded-2xl border border-sky-500/20 bg-sky-950/50 p-4">
-                    <p className="text-sm font-semibold text-sky-100">
-                      1. Create Document
+                <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-blue-950">
+                  Direct sending still needs a verified email sender before
+                  live messages leave Trimax. Until then, the invoice page can
+                  preview the exact customer-facing message safely.
+                </div>
+
+                <InputField
+                  label="Reply-to Email Address"
+                  type="email"
+                  placeholder="Example: robbie@rnlcreations.com"
+                  value={replyToEmail}
+                  onChange={setReplyToEmail}
+                />
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-sm font-semibold text-slate-950">
+                      New Invoice Template
                     </p>
-                    <p className="mt-2 text-sm leading-6 text-sky-100/75">
-                      Create the estimate or invoice in Trimax, including the
-                      normal PDF or special BOA / 5 Star 5 format.
+                    <p className="mt-1 text-sm text-slate-600">
+                      Used when you send an invoice from Trimax.
                     </p>
+
+                    <div className="mt-4 grid gap-4">
+                      <InputField
+                        label="Subject"
+                        value={invoiceSubjectTemplate}
+                        onChange={setInvoiceSubjectTemplate}
+                        placeholder="{businessName} sent you invoice {invoiceNumber}"
+                      />
+
+                      <label className="grid gap-2 text-sm font-semibold text-slate-700">
+                        Body
+                        <textarea
+                          value={invoiceBodyTemplate}
+                          onChange={(event) =>
+                            setInvoiceBodyTemplate(event.target.value)
+                          }
+                          rows={5}
+                          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base font-medium text-slate-950 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                          placeholder="{businessName} sent you invoice {invoiceNumber} for {amountDue}."
+                        />
+                      </label>
+                    </div>
                   </div>
 
-                  <div className="outlook-step-card rounded-2xl border border-sky-500/20 bg-sky-950/50 p-4">
-                    <p className="text-sm font-semibold text-sky-100">
-                      2. Copy Message
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-sm font-semibold text-slate-950">
+                      Payment Reminder Template
                     </p>
-                    <p className="mt-2 text-sm leading-6 text-sky-100/75">
-                      Use the subject and message on the document page so the
-                      customer email stays consistent.
+                    <p className="mt-1 text-sm text-slate-600">
+                      Foundation for later reminder automation.
                     </p>
-                  </div>
 
-                  <div className="outlook-step-card rounded-2xl border border-sky-500/20 bg-sky-950/50 p-4">
-                    <p className="text-sm font-semibold text-sky-100">
-                      3. Send From Outlook
-                    </p>
-                    <p className="mt-2 text-sm leading-6 text-sky-100/75">
-                      Attach the PDF or export and send manually from Outlook
-                      with your usual signature.
-                    </p>
+                    <div className="mt-4 grid gap-4">
+                      <InputField
+                        label="Subject"
+                        value={paymentReminderSubjectTemplate}
+                        onChange={setPaymentReminderSubjectTemplate}
+                        placeholder="Reminder: Invoice {invoiceNumber} is due"
+                      />
+
+                      <label className="grid gap-2 text-sm font-semibold text-slate-700">
+                        Body
+                        <textarea
+                          value={paymentReminderBodyTemplate}
+                          onChange={(event) =>
+                            setPaymentReminderBodyTemplate(event.target.value)
+                          }
+                          rows={5}
+                          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base font-medium text-slate-950 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                          placeholder="Your payment of {amountDue} for invoice {invoiceNumber} is due."
+                        />
+                      </label>
+                    </div>
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
-                  <p className="text-sm font-semibold text-white">
-                    Current Approach
-                  </p>
-
-                  <p className="mt-2 text-sm leading-6 text-zinc-400">
-                    Manual sending is active. This avoids Microsoft/Azure setup
-                    and keeps the customer-facing email in your normal Outlook
-                    account. A direct email provider or Outlook integration can
-                    still be added later if the convenience becomes worth it.
-                  </p>
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <label className="grid gap-2 text-sm font-semibold text-slate-700">
+                    Email Signature
+                    <textarea
+                      value={emailSignature}
+                      onChange={(event) => setEmailSignature(event.target.value)}
+                      rows={6}
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base font-medium text-slate-950 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                      placeholder="Name, title, phone, address"
+                    />
+                  </label>
                 </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+                  Dynamic fields you can use:{" "}
+                  <span className="font-semibold text-slate-950">
+                    {"{businessName}"}, {"{invoiceNumber}"}, {"{amountDue}"},{" "}
+                    {"{dueDate}"}, {"{customerName}"}, {"{projectTitle}"}
+                  </span>
+                </div>
+
+                <Button
+                  onClick={handleSaveEmailSettings}
+                  disabled={!canManageUsers || savingEmailSettings}
+                >
+                  {savingEmailSettings ? "Saving..." : "Save Email Settings"}
+                </Button>
               </div>
             </Card>
 

@@ -651,6 +651,7 @@ export default async function InvoiceDetailPage({
             documentNumber={invoiceNumber}
             amountDue={money(amountDue)}
             dueDate={displayDueDate ? formatDate(displayDueDate) : "-"}
+            projectTitle={projectTitle}
             printHref={`/invoices/${invoice.id}/print${businessQuery}`}
           />
 
