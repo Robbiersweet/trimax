@@ -495,7 +495,7 @@ export default async function QueueDetailPage({
         )}
 
         {propertyKey(item.property) === "north-creek-apartments" ? (
-          <Card className="border-sky-500/30 bg-gradient-to-br from-sky-500/10 via-zinc-950 to-emerald-500/5">
+          <Card className="unit-intelligence-card border-sky-500/30 bg-gradient-to-br from-sky-500/10 via-zinc-950 to-emerald-500/5">
             <p className="text-sm uppercase tracking-[0.3em] text-sky-300">
               Unit Intelligence
             </p>
@@ -528,7 +528,7 @@ export default async function QueueDetailPage({
             </div>
 
             {!propertyUnitProfile ? (
-              <p className="mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+              <p className="unit-intelligence-warning mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
                 This unit is not in the saved North Creek unit map yet. The
                 queue item still works, and the unit can be added to the map
                 later.
@@ -571,7 +571,7 @@ export default async function QueueDetailPage({
                 {unitHistory.slice(0, 5).map((entry) => (
                   <div
                     key={entry.id}
-                    className="rounded-2xl border border-zinc-800 bg-zinc-950/70 px-4 py-3 text-sm"
+                    className="unit-intelligence-history-row rounded-2xl border border-zinc-800 bg-zinc-950/70 px-4 py-3 text-sm"
                   >
                     <p className="font-semibold text-zinc-100">
                       {entry.event_type || "History"} /{" "}
@@ -821,7 +821,7 @@ function HistorySummary({
       : detail || "Current queue item only";
 
   return (
-    <div className="rounded-2xl border border-sky-500/20 bg-black/25 p-4">
+    <div className="unit-intelligence-history-card rounded-2xl border border-sky-500/20 bg-black/25 p-4">
       <p className="text-sm text-zinc-500">{label}</p>
       <p className="mt-2 font-semibold text-zinc-100">
         {summary || "-"}

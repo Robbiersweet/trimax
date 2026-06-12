@@ -1858,3 +1858,49 @@ html.theme-light .dashboard-feature-card .text-green-200,
 html.theme-light .dashboard-feature-card .text-green-300 {
   color: #047857 !important;
 }
+
+/* Property intelligence cards need rich color in dark mode and calm contrast in
+   light mode. Keep this scoped so it does not flatten the whole app. */
+html.theme-light .unit-intelligence-card {
+  background:
+    linear-gradient(135deg, rgba(224, 242, 254, 0.95), #ffffff 42%, rgba(236, 253, 245, 0.9)),
+    #ffffff !important;
+  border-color: #bae6fd !important;
+  color: #0f172a !important;
+  box-shadow: 0 22px 54px rgba(14, 116, 144, 0.11) !important;
+}
+
+html.theme-light .unit-intelligence-card .text-white,
+html.theme-light .unit-intelligence-card .text-zinc-50,
+html.theme-light .unit-intelligence-card .text-zinc-100,
+html.theme-light .unit-intelligence-card .text-zinc-200,
+html.theme-light .unit-intelligence-card .text-zinc-300,
+html.theme-light .unit-intelligence-card .text-sky-100,
+html.theme-light .unit-intelligence-card .text-sky-200,
+html.theme-light .unit-intelligence-card .text-sky-300 {
+  color: #0f172a !important;
+}
+
+html.theme-light .unit-intelligence-card .text-zinc-400,
+html.theme-light .unit-intelligence-card .text-zinc-500 {
+  color: #475569 !important;
+}
+
+html.theme-light .unit-intelligence-card > .text-sky-300,
+html.theme-light .unit-intelligence-card .text-sm.uppercase.tracking-\[0\.3em\] {
+  color: #0369a1 !important;
+}
+
+html.theme-light .unit-intelligence-history-card,
+html.theme-light .unit-intelligence-history-row {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06) !important;
+}
+
+html.theme-light .unit-intelligence-warning {
+  background: #fffbeb !important;
+  border-color: #fbbf24 !important;
+  color: #92400e !important;
+}
