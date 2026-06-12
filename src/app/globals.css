@@ -1911,3 +1911,155 @@ html.theme-light .unit-intelligence-warning {
   border-color: #fbbf24 !important;
   color: #92400e !important;
 }
+
+/* Final light-mode cleanup pass for older page sections that still carry
+   dark Tailwind utilities directly in the markup. Keep it scoped to app
+   content so the left navigation can keep its Trimax brand treatment. */
+html.theme-light main section .bg-zinc-950,
+html.theme-light main section .bg-zinc-950\/40,
+html.theme-light main section .bg-zinc-950\/50,
+html.theme-light main section .bg-zinc-950\/60,
+html.theme-light main section .bg-zinc-950\/70,
+html.theme-light main section .bg-zinc-950\/80,
+html.theme-light main section .bg-zinc-900,
+html.theme-light main section .bg-zinc-900\/80,
+html.theme-light main section .bg-black,
+html.theme-light main section .bg-black\/20,
+html.theme-light main section .bg-black\/25,
+html.theme-light main section .bg-black\/30,
+html.theme-light main section .bg-black\/40,
+html.theme-light main section .bg-black\/50,
+html.theme-light main section .bg-black\/55 {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+}
+
+html.theme-light main section .border-zinc-800,
+html.theme-light main section .border-zinc-700 {
+  border-color: #d7dde8 !important;
+}
+
+html.theme-light main section .text-zinc-50,
+html.theme-light main section .text-zinc-100,
+html.theme-light main section .text-zinc-200,
+html.theme-light main section .text-zinc-300 {
+  color: #0f172a !important;
+}
+
+html.theme-light main section .text-zinc-400,
+html.theme-light main section .text-zinc-500 {
+  color: #475569 !important;
+}
+
+html.theme-light main section .text-orange-50,
+html.theme-light main section .text-orange-100,
+html.theme-light main section .text-orange-100\/60,
+html.theme-light main section .text-orange-100\/70,
+html.theme-light main section .text-orange-100\/80,
+html.theme-light main section .text-orange-100\/90,
+html.theme-light main section .text-orange-200,
+html.theme-light main section .text-orange-300,
+html.theme-light main section .text-orange-400 {
+  color: #1d4ed8 !important;
+}
+
+html.theme-light main section .hover\:bg-zinc-900:hover,
+html.theme-light main section .hover\:bg-zinc-900\/80:hover,
+html.theme-light main section .hover\:bg-zinc-800:hover,
+html.theme-light main section .hover\:bg-orange-500\/10:hover {
+  background: #eff6ff !important;
+  color: #0f172a !important;
+}
+
+html.theme-light main section button.bg-orange-500,
+html.theme-light main section a.bg-orange-500,
+html.theme-light main section .file\:bg-orange-500::file-selector-button {
+  background: #2563eb !important;
+  color: #ffffff !important;
+}
+
+html.theme-light main section button.bg-orange-500:hover,
+html.theme-light main section a.bg-orange-500:hover {
+  background: #1d4ed8 !important;
+}
+
+html.theme-light .report-tile,
+html.theme-light .report-info-card,
+html.theme-light .report-section-card,
+html.theme-light .report-breakdown-card,
+html.theme-light .report-metric-card,
+html.theme-light .report-row-link,
+html.theme-light .payment-aging-card,
+html.theme-light .payment-priority-row,
+html.theme-light .payment-customer-card,
+html.theme-light .payment-workflow-step,
+html.theme-light .payment-log-card {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  border-color: #d7dde8 !important;
+  color: #0f172a !important;
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.06) !important;
+}
+
+html.theme-light .report-tile .text-white,
+html.theme-light .report-info-card .text-white,
+html.theme-light .report-section-card .text-white,
+html.theme-light .report-breakdown-card .text-white,
+html.theme-light .report-metric-card .text-white,
+html.theme-light .report-row-link .text-white,
+html.theme-light .payment-aging-card .text-white,
+html.theme-light .payment-priority-row .text-white,
+html.theme-light .payment-customer-card .text-white,
+html.theme-light .payment-workflow-step .text-white,
+html.theme-light .payment-log-card .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light main section .bg-sky-600.text-white,
+html.theme-light main section .bg-blue-600.text-white,
+html.theme-light main section .bg-indigo-600.text-white,
+html.theme-light main section .bg-emerald-500.text-white,
+html.theme-light main section .bg-emerald-600.text-white,
+html.theme-light main section .bg-green-500.text-white,
+html.theme-light main section .bg-green-600.text-white {
+  color: #ffffff !important;
+}
+
+html.theme-light .report-tile:hover,
+html.theme-light .report-row-link:hover,
+html.theme-light .payment-priority-row:hover,
+html.theme-light .payment-customer-card:hover {
+  background: #eff6ff !important;
+  border-color: #bfdbfe !important;
+}
+
+html.theme-light .report-tile-icon,
+html.theme-light .report-tile-badge {
+  background: #eff6ff !important;
+  border-color: #bfdbfe !important;
+  color: #2563eb !important;
+}
+
+html.theme-light .report-breakdown-card .bg-orange-500,
+html.theme-light .report-section-card .bg-orange-500 {
+  background: #2563eb !important;
+}
+
+html.theme-light .payment-aging-card .bg-zinc-800,
+html.theme-light .payment-priority-row .bg-zinc-800,
+html.theme-light .payment-customer-card .bg-zinc-800 {
+  background: #e2e8f0 !important;
+}
+
+html.theme-light .payment-aging-card .text-pink-100,
+html.theme-light .payment-priority-row .text-pink-200 {
+  color: #be123c !important;
+}
+
+html.theme-light .payment-aging-card .text-green-200,
+html.theme-light .payment-customer-card .text-green-200,
+html.theme-light .payment-customer-card .text-green-300,
+html.theme-light .payment-log-card .text-green-200,
+html.theme-light .payment-log-card .text-green-300 {
+  color: #047857 !important;
+}

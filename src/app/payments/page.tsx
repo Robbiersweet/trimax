@@ -580,7 +580,7 @@ export default async function PaymentsPage({
               {agingBuckets.map((bucket) => (
                 <div
                   key={bucket.label}
-                  className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
+                  className="payment-aging-card rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>
@@ -666,7 +666,7 @@ export default async function PaymentsPage({
                   <Link
                     key={invoice.id}
                     href={`/invoices/${invoice.id}${businessQuery}`}
-                    className="grid gap-3 border-b border-zinc-800 bg-zinc-950 p-4 transition last:border-b-0 hover:bg-orange-500/10 md:grid-cols-[1fr_auto_auto]"
+                    className="payment-priority-row grid gap-3 border-b border-zinc-800 bg-zinc-950 p-4 transition last:border-b-0 hover:bg-orange-500/10 md:grid-cols-[1fr_auto_auto]"
                   >
                     <div>
                       <p className="font-semibold text-white">
@@ -749,7 +749,7 @@ export default async function PaymentsPage({
                 return (
                   <div
                     key={group.customerName}
-                    className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
+                    className="payment-customer-card rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div>
@@ -818,7 +818,7 @@ export default async function PaymentsPage({
               ].map((step, index) => (
                 <div
                   key={step}
-                  className="flex gap-4 rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
+                  className="payment-workflow-step flex gap-4 rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
                 >
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-green-500 font-black text-black">
                     {index + 1}
@@ -862,7 +862,7 @@ export default async function PaymentsPage({
                 {paymentLogs.map((log) => (
                   <div
                     key={log.id}
-                    className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
+                    className="payment-log-card rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div>
