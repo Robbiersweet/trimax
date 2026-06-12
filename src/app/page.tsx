@@ -36,6 +36,7 @@ type Estimate = {
   customer_name: string | null;
   estimate_amount: string | null;
   status: string | null;
+  created_at: string | null;
 };
 
 type Invoice = {
@@ -46,6 +47,7 @@ type Invoice = {
   invoice_amount: string | number | null;
   amount_paid: string | number | null;
   status: string | null;
+  issue_date: string | null;
   due_date: string | null;
   updated_at: string | null;
   created_at: string | null;
@@ -309,6 +311,26 @@ function formatShortDate(value: string | null) {
     month: "short",
     day: "numeric",
   });
+}
+
+function dateYear(value: string | null) {
+  const date = dateValue(value);
+
+  return date ? date.getFullYear() : null;
+}
+
+function invoiceBelongsToYear(invoice: Invoice, year: number) {
+  return (
+    dateYear(invoice.issue_date) === year ||
+    (!invoice.issue_date && dateYear(invoice.due_date) === year) ||
+    (!invoice.issue_date &&
+      !invoice.due_date &&
+      dateYear(invoice.created_at) === year)
+  );
+}
+
+function estimateBelongsToYear(estimate: Estimate, year: number) {
+  return dateYear(estimate.created_at) === year;
 }
 
 function normalizeStatus(value: string | null) {
@@ -600,26 +622,43 @@ export default async function DashboardPage({
     })
     .filter((invoice) => invoice.amountDue > 0);
 
+  const workingYear = new Date().getFullYear();
+  const workingYearLabel = String(workingYear);
+  const workingYearEstimates = estimates.filter((estimate) =>
+    estimateBelongsToYear(estimate, workingYear)
+  );
+  const workingYearInvoices = billableInvoices.filter((invoice) =>
+    invoiceBelongsToYear(invoice, workingYear)
+  );
+  const workingYearOpenInvoicesWithAmounts =
+    openInvoicesWithAmounts.filter((invoice) =>
+      invoiceBelongsToYear(invoice, workingYear)
+    );
+  const historicalOpenInvoicesWithAmounts =
+    openInvoicesWithAmounts.filter(
+      (invoice) => !invoiceBelongsToYear(invoice, workingYear)
+    );
+
   const outstandingRevenueTotal =
-    openInvoicesWithAmounts.reduce(
+    workingYearOpenInvoicesWithAmounts.reduce(
       (total, invoice) =>
         total + invoice.amountDue,
       0
     );
 
-  const estimatedRevenueTotal = estimates.reduce(
+  const estimatedRevenueTotal = workingYearEstimates.reduce(
     (total, estimate) =>
       total + parseMoney(estimate.estimate_amount),
     0
   );
 
-  const invoicedRevenueTotal = billableInvoices.reduce(
+  const invoicedRevenueTotal = workingYearInvoices.reduce(
     (total, invoice) =>
       total + parseMoney(invoice.invoice_amount),
     0
   );
 
-  const ytdRevenueTotal = billableInvoices
+  const ytdRevenueTotal = workingYearInvoices
     .filter((invoice) => invoice.status === "Paid")
     .reduce(
       (total, invoice) =>
@@ -664,7 +703,7 @@ export default async function DashboardPage({
       max: Infinity,
     },
   ].map((bucket) => {
-    const bucketInvoices = openInvoicesWithAmounts.filter((invoice) => {
+    const bucketInvoices = workingYearOpenInvoicesWithAmounts.filter((invoice) => {
       if (invoice.daysLate === null || invoice.daysLate < 0) {
         return false;
       }
@@ -761,14 +800,14 @@ export default async function DashboardPage({
     },
   };
 
-  const mostOverdueInvoices = openInvoicesWithAmounts
+  const mostOverdueInvoices = workingYearOpenInvoicesWithAmounts
     .filter((invoice) => (invoice.daysLate ?? -1) >= 0)
     .sort((first, second) => {
       return (second.daysLate ?? 0) - (first.daysLate ?? 0);
     })
     .slice(0, 5);
   const customerBalances = Array.from(
-    openInvoicesWithAmounts
+    workingYearOpenInvoicesWithAmounts
       .reduce(
         (
           groups,
@@ -821,7 +860,7 @@ export default async function DashboardPage({
     .slice(0, 3);
 
   const clientRevenueMix = Array.from(
-    invoices
+    workingYearInvoices
       .reduce(
         (
           groups,
@@ -943,7 +982,7 @@ export default async function DashboardPage({
             <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
               <div>
                 <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
-                  Outstanding Revenue
+                  {workingYearLabel} Open Revenue
                 </p>
 
                 <h2 className="mt-3 text-5xl font-black tracking-tight text-white">
@@ -951,25 +990,36 @@ export default async function DashboardPage({
                 </h2>
 
                 <p className="mt-3 text-zinc-400">
-                  Open invoices, deposits requested,
-                  and unpaid balances.
+                  Current-year open invoices and deposit requests.
+                  Older imported balances stay in history.
                 </p>
+
+                {historicalOpenInvoicesWithAmounts.length > 0 ? (
+                  <p className="mt-2 text-xs text-zinc-500">
+                    {historicalOpenInvoicesWithAmounts.length} older open
+                    invoice
+                    {historicalOpenInvoicesWithAmounts.length === 1
+                      ? ""
+                      : "s"}{" "}
+                    hidden from this dashboard total.
+                  </p>
+                ) : null}
               </div>
 
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
                   <p className="text-zinc-400">
-                    Open Invoices
+                    {workingYearLabel} Open
                   </p>
 
                   <p className="mt-1 text-2xl font-bold">
-                    {openInvoicesWithAmounts.length}
+                    {workingYearOpenInvoicesWithAmounts.length}
                   </p>
                 </div>
 
                 <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
                   <p className="text-zinc-400">
-                    YTD Revenue
+                    {workingYearLabel} Paid
                   </p>
 
                   <p className="mt-1 text-2xl font-bold">
@@ -1002,9 +1052,9 @@ export default async function DashboardPage({
                   </h2>
 
                   <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
-                    Start here when one check may cover several invoices. Each
-                    customer opens the Payments workspace with matching invoices
-                    preselected when possible.
+                    Current-year collection targets only. Older imported
+                    FreshBooks balances stay searchable in invoice history
+                    instead of driving today&apos;s payment workflow.
                   </p>
                 </div>
 
@@ -1091,6 +1141,10 @@ export default async function DashboardPage({
                   <h2 className="mt-2 text-2xl font-bold text-white">
                     Revenue snapshot
                   </h2>
+
+                  <p className="mt-1 text-sm text-zinc-400">
+                    Showing {workingYearLabel} activity by default.
+                  </p>
                 </div>
 
                 <Link
@@ -1311,8 +1365,8 @@ export default async function DashboardPage({
                 </h2>
 
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
-                  A quick Trimax view of what is still unpaid and how
-                  long it has been past due.
+                  Current-year unpaid invoices only, so old imported history
+                  does not distort the working aging view.
                 </p>
               </div>
 
@@ -1487,11 +1541,11 @@ export default async function DashboardPage({
           >
             <Card>
               <p className="text-sm text-zinc-400">
-                Open Invoices
+                {workingYearLabel} Open Invoices
               </p>
 
               <p className="mt-2 text-4xl font-bold">
-                {openInvoicesWithAmounts.length}
+                {workingYearOpenInvoicesWithAmounts.length}
               </p>
 
               <Link
