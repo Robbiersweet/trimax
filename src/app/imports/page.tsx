@@ -49,9 +49,24 @@ type InvoiceImportRow = {
   dueDate: string;
   amount: number;
   amountPaid: number;
+  subtotal: number;
+  taxAmount: number;
+  taxLabel: string;
+  taxRate: number;
   status: string;
   reference: string;
   notes: string;
+  lineItems: InvoiceImportLineItem[];
+  sourceRowNumbers: number[];
+};
+
+type InvoiceImportLineItem = {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+  taxLabel: string;
+  taxAmount: number;
 };
 
 function normalizeHeader(value: string) {
@@ -147,6 +162,14 @@ function moneyValue(value: string) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function roundMoney(value: number) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function roundRate(value: number) {
+  return Math.round((value + Number.EPSILON) * 10000) / 10000;
+}
+
 function dateValue(value: string) {
   const trimmed = value.trim();
 
@@ -163,78 +186,230 @@ function dateValue(value: string) {
   return date.toISOString().slice(0, 10);
 }
 
-function mapClientRow(row: CsvRow): ClientImportRow {
-  return {
-    name: field(row, [
-      "Client",
-      "Client Name",
-      "Customer",
-      "Customer Name",
-      "Organization",
-      "Company",
-      "Name",
-    ]),
-    contactName: field(row, [
-      "Contact Name",
-      "Contact",
-      "First Name",
-      "Primary Contact",
-    ]),
-    email: field(row, ["Email", "Email Address", "Client Email"]),
-    phone: field(row, ["Phone", "Phone Number", "Mobile"]),
-    billingAddress: field(row, [
-      "Billing Address",
-      "Address",
-      "Street",
-      "Client Address",
-    ]),
-    serviceAddress: field(row, [
-      "Service Address",
-      "Shipping Address",
-      "Location",
-    ]),
-    notes: field(row, ["Notes", "Note", "Description"]),
-  };
+function joinAddressParts(parts: string[]) {
+  return parts
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(", ");
 }
 
-function mapInvoiceRow(row: CsvRow): InvoiceImportRow {
-  const freshBooksNumber = field(row, [
-    "Invoice Number",
-    "Invoice #",
-    "Number",
-    "Invoice",
-  ]);
-  const customerName = field(row, [
+function normalizeFreshBooksClientName(name: string) {
+  const trimmedName = name.trim();
+
+  if (trimmedName.toLowerCase() === "north creek") {
+    return "North Creek Apartments";
+  }
+
+  return trimmedName;
+}
+
+function statusLabel(value: string) {
+  const normalized = value.trim().toLowerCase();
+
+  if (normalized === "paid") {
+    return "Paid";
+  }
+
+  if (normalized === "overdue") {
+    return "Overdue";
+  }
+
+  if (normalized === "sent") {
+    return "Sent";
+  }
+
+  return "Draft";
+}
+
+function mapClientRow(row: CsvRow): ClientImportRow {
+  const firstName = field(row, ["First Name", "First"]);
+  const lastName = field(row, ["Last Name", "Last"]);
+  const fullName = [firstName, lastName].filter(Boolean).join(" ");
+  const organization = field(row, [
     "Client",
     "Client Name",
     "Customer",
     "Customer Name",
     "Organization",
     "Company",
+    "Name",
+  ]);
+  const addressLine1 = field(row, [
+    "Address Line 1",
+    "Billing Address",
+    "Address",
+    "Street",
+    "Client Address",
+  ]);
+  const addressLine2 = field(row, ["Address Line 2", "Suite", "Unit"]);
+  const city = field(row, ["City"]);
+  const state = field(row, ["Province/State", "State", "Province"]);
+  const postalCode = field(row, ["Postal Code", "Zip", "Zip Code"]);
+  const country = field(row, ["Country"]);
+  const billingAddress = joinAddressParts([
+    addressLine1,
+    addressLine2,
+    city,
+    state,
+    postalCode,
+    country,
   ]);
 
   return {
-    customerName,
-    freshBooksNumber,
-    projectTitle:
-      field(row, ["Project", "Project Title", "Subject", "Description"]) ||
-      (freshBooksNumber
-        ? `Imported FreshBooks invoice ${freshBooksNumber}`
-        : "Imported FreshBooks invoice"),
-    issueDate: dateValue(
-      field(row, ["Issue Date", "Date", "Invoice Date", "Created Date"])
-    ),
-    dueDate: dateValue(field(row, ["Due Date", "Due"])),
-    amount: moneyValue(
-      field(row, ["Amount", "Invoice Amount", "Total", "Grand Total"])
-    ),
-    amountPaid: moneyValue(field(row, ["Paid", "Amount Paid", "Payments"])),
-    status: field(row, ["Status", "Invoice Status"]) || "Draft",
-    reference: freshBooksNumber
-      ? `FreshBooks ${freshBooksNumber}`
-      : "FreshBooks import",
+    name: normalizeFreshBooksClientName(organization || fullName),
+    contactName:
+      field(row, ["Contact Name", "Contact", "Primary Contact"]) ||
+      (organization ? fullName : ""),
+    email: field(row, ["Email", "Email Address", "Client Email"]),
+    phone: field(row, ["Phone", "Phone Number", "Mobile"]),
+    billingAddress,
+    serviceAddress: field(row, [
+      "Service Address",
+      "Shipping Address",
+      "Location",
+    ]) || billingAddress,
     notes: field(row, ["Notes", "Note", "Description"]),
   };
+}
+
+function mapInvoiceLineItem(row: CsvRow): InvoiceImportLineItem {
+  const itemName = field(row, ["Item Name", "Item", "Service"]);
+  const itemDescription = field(row, [
+    "Item Description",
+    "Description",
+    "Line Description",
+  ]);
+  const lineSubtotal = moneyValue(
+    field(row, ["Line Subtotal", "Subtotal", "Amount"])
+  );
+  const taxAmount =
+    moneyValue(field(row, ["Tax 1 Amount"])) +
+    moneyValue(field(row, ["Tax 2 Amount"]));
+
+  return {
+    description:
+      [itemName, itemDescription].filter(Boolean).join(" - ") ||
+      "FreshBooks line item",
+    quantity: moneyValue(field(row, ["Quantity", "Qty"])) || 1,
+    unitPrice: moneyValue(field(row, ["Rate", "Unit Price", "Price"])),
+    lineTotal: lineSubtotal,
+    taxLabel: [
+      field(row, ["Tax 1 Type"]),
+      field(row, ["Tax 2 Type"]),
+    ]
+      .filter(Boolean)
+      .join(" + "),
+    taxAmount,
+  };
+}
+
+function mapInvoiceRows(rows: CsvRow[]): InvoiceImportRow[] {
+  const groupedInvoices = new Map<string, InvoiceImportRow>();
+
+  rows.forEach((row, index) => {
+    const freshBooksNumber = field(row, [
+      "Invoice Number",
+      "Invoice #",
+      "Number",
+      "Invoice",
+    ]);
+    const customerName = normalizeFreshBooksClientName(
+      field(row, [
+        "Client",
+        "Client Name",
+        "Customer",
+        "Customer Name",
+        "Organization",
+        "Company",
+      ])
+    );
+    const groupKey =
+      getFreshBooksInvoiceDisplayId(freshBooksNumber) ||
+      `${customerName}-${field(row, ["Date Issued", "Issue Date", "Date"])}-${
+        index + 1
+      }`;
+    const lineItem = mapInvoiceLineItem(row);
+    const existingInvoice = groupedInvoices.get(groupKey);
+
+    if (existingInvoice) {
+      existingInvoice.lineItems.push(lineItem);
+      existingInvoice.sourceRowNumbers.push(index + 1);
+      existingInvoice.subtotal = roundMoney(
+        existingInvoice.subtotal + lineItem.lineTotal
+      );
+      existingInvoice.taxAmount = roundMoney(
+        existingInvoice.taxAmount + lineItem.taxAmount
+      );
+      existingInvoice.amount = roundMoney(
+        existingInvoice.subtotal + existingInvoice.taxAmount
+      );
+      existingInvoice.taxRate =
+        existingInvoice.subtotal > 0
+          ? roundRate(
+              (existingInvoice.taxAmount / existingInvoice.subtotal) * 100
+            )
+          : 0;
+      existingInvoice.taxLabel = Array.from(
+        new Set(
+          existingInvoice.lineItems
+            .map((item) => item.taxLabel)
+            .filter(Boolean)
+        )
+      ).join(" + ");
+
+      if (existingInvoice.status === "Paid") {
+        existingInvoice.amountPaid = existingInvoice.amount;
+      }
+
+      return;
+    }
+
+    const subtotal = roundMoney(lineItem.lineTotal);
+    const taxAmount = roundMoney(lineItem.taxAmount);
+    const amount = roundMoney(subtotal + taxAmount);
+    const status = statusLabel(field(row, ["Status", "Invoice Status"]));
+
+    groupedInvoices.set(groupKey, {
+      customerName,
+      freshBooksNumber,
+      projectTitle:
+        field(row, ["Project", "Project Title", "Subject"]) ||
+        (freshBooksNumber
+          ? `FreshBooks invoice ${freshBooksNumber}`
+          : "Imported FreshBooks invoice"),
+      issueDate: dateValue(
+        field(row, [
+          "Date Issued",
+          "Issue Date",
+          "Date",
+          "Invoice Date",
+          "Created Date",
+        ])
+      ),
+      dueDate: dateValue(field(row, ["Date Due", "Due Date", "Due"])),
+      amount,
+      amountPaid:
+        status === "Paid"
+          ? amount
+          : moneyValue(field(row, ["Paid", "Amount Paid", "Payments"])),
+      subtotal,
+      taxAmount,
+      taxLabel: lineItem.taxLabel,
+      taxRate:
+        subtotal > 0 ? roundRate((taxAmount / subtotal) * 100) : 0,
+      status,
+      reference: freshBooksNumber
+        ? `FreshBooks ${freshBooksNumber}`
+        : "FreshBooks import",
+      notes: field(row, ["Notes", "Note"]),
+      lineItems: [lineItem],
+      sourceRowNumbers: [index + 1],
+    });
+  });
+
+  return Array.from(groupedInvoices.values()).filter(
+    (row) => row.customerName && row.amount > 0
+  );
 }
 
 function getFreshBooksInvoiceDisplayId(freshBooksNumber: string) {
@@ -278,10 +453,7 @@ function ImportsPageContent() {
     [rawRows]
   );
   const invoiceRows = useMemo(
-    () =>
-      rawRows
-        .map(mapInvoiceRow)
-        .filter((row) => row.customerName && row.amount > 0),
+    () => mapInvoiceRows(rawRows),
     [rawRows]
   );
   const previewRows =
@@ -582,7 +754,9 @@ function ImportsPageContent() {
           business_id: business.id,
           row_number: index + 1,
           import_type: "invoices",
-          raw_data: rawRows[index] ?? {},
+          raw_data: row.sourceRowNumbers.map(
+            (rowNumber) => rawRows[rowNumber - 1] ?? {}
+          ),
           mapped_data: row,
           status: "error",
           target_table: "invoices",
@@ -602,7 +776,9 @@ function ImportsPageContent() {
           business_id: business.id,
           row_number: index + 1,
           import_type: "invoices",
-          raw_data: rawRows[index] ?? {},
+          raw_data: row.sourceRowNumbers.map(
+            (rowNumber) => rawRows[rowNumber - 1] ?? {}
+          ),
           mapped_data: row,
           status: "skipped",
           target_table: "invoices",
@@ -649,8 +825,9 @@ function ImportsPageContent() {
           issue_date: row.issueDate || null,
           due_date: row.dueDate || null,
           reference: row.reference,
-          tax_label: null,
-          tax_rate: 0,
+          tax_mode: row.taxAmount > 0 ? "taxable" : "no_tax",
+          tax_label: row.taxLabel || null,
+          tax_rate: row.taxRate,
           amount_paid: row.amountPaid,
           terms: "",
           notes,
@@ -665,7 +842,9 @@ function ImportsPageContent() {
           business_id: business.id,
           row_number: index + 1,
           import_type: "invoices",
-          raw_data: rawRows[index] ?? {},
+          raw_data: row.sourceRowNumbers.map(
+            (rowNumber) => rawRows[rowNumber - 1] ?? {}
+          ),
           mapped_data: row,
           status: "error",
           target_table: "invoices",
@@ -674,22 +853,52 @@ function ImportsPageContent() {
         continue;
       }
 
-      await supabase.from("invoice_line_items").insert({
-        invoice_id: (data as { id: string }).id,
-        business_id: business.id,
-        description: row.projectTitle || "Imported FreshBooks invoice",
-        quantity: 1,
-        unit_price: row.amount,
-        line_total: row.amount,
-        sort_order: 0,
-      });
+      const { error: lineItemError } = await supabase
+        .from("invoice_line_items")
+        .insert(
+          row.lineItems.map((item, itemIndex) => ({
+            invoice_id: (data as { id: string }).id,
+            business_id: business.id,
+            description: item.description,
+            quantity: item.quantity,
+            unit_price: item.unitPrice,
+            line_total: item.lineTotal,
+            sort_order: itemIndex,
+          }))
+        );
+
+      if (lineItemError) {
+        await supabase
+          .from("invoices")
+          .delete()
+          .eq("id", (data as { id: string }).id)
+          .eq("business_id", business.id);
+        usedInvoiceDisplayIds.delete(displayId);
+        errorCount += 1;
+        importRows.push({
+          business_id: business.id,
+          row_number: index + 1,
+          import_type: "invoices",
+          raw_data: row.sourceRowNumbers.map(
+            (rowNumber) => rawRows[rowNumber - 1] ?? {}
+          ),
+          mapped_data: row,
+          status: "error",
+          target_table: "invoice_line_items",
+          target_id: (data as { id: string }).id,
+          error_message: lineItemError.message,
+        });
+        continue;
+      }
 
       importedCount += 1;
       importRows.push({
         business_id: business.id,
         row_number: index + 1,
         import_type: "invoices",
-        raw_data: rawRows[index] ?? {},
+        raw_data: row.sourceRowNumbers.map(
+          (rowNumber) => rawRows[rowNumber - 1] ?? {}
+        ),
         mapped_data: row,
         status: "imported",
         target_table: "invoices",
@@ -856,7 +1065,7 @@ function ImportsPageContent() {
             <div className="rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4 text-sm leading-6 text-blue-100">
               {importType === "clients"
                 ? "Client import looks for columns like Client Name, Customer, Email, Phone, Billing Address, Service Address, and Notes."
-                : "Invoice import looks for Client, Invoice Number, Date, Due Date, Amount, Amount Paid, Status, Project, and Notes. It creates one summary line item per imported invoice."}
+                : "FreshBooks invoice import groups CSV line-item rows into invoices, preserves historical invoice numbers like INV-0404, imports tax labels/rates, and creates the matching Trimax line items."}
             </div>
 
             {lastResult ? (
@@ -905,8 +1114,8 @@ function ImportsPageContent() {
               <div className="grid grid-cols-4 gap-4 bg-zinc-950 px-4 py-3 text-sm font-bold text-zinc-400">
                 <span>Name</span>
                 <span>Reference</span>
-                <span>Amount / Email</span>
-                <span>Status / Phone</span>
+                <span>{importType === "clients" ? "Email" : "Total / Lines"}</span>
+                <span>{importType === "clients" ? "Phone" : "Status / Tax"}</span>
               </div>
 
               {previewRows.slice(0, 25).map((row, index) => {
@@ -936,8 +1145,16 @@ function ImportsPageContent() {
                       {getFreshBooksInvoiceDisplayId(invoice.freshBooksNumber) ||
                         invoice.reference}
                     </span>
-                    <span>${invoice.amount.toFixed(2)}</span>
-                    <span>{invoice.status}</span>
+                    <span>
+                      ${invoice.amount.toFixed(2)} / {invoice.lineItems.length}{" "}
+                      line{invoice.lineItems.length === 1 ? "" : "s"}
+                    </span>
+                    <span>
+                      {invoice.status}
+                      {invoice.taxLabel
+                        ? ` / ${invoice.taxLabel} ${invoice.taxRate}%`
+                        : ""}
+                    </span>
                   </div>
                 );
               })}
