@@ -337,6 +337,16 @@ function normalizeStatus(value: string | null) {
   return (value || "Pending Estimate").trim().toLowerCase();
 }
 
+function invoiceStatusKey(value: string | null) {
+  return (value || "Draft").trim().toLowerCase();
+}
+
+function isCollectibleInvoiceStatus(value: string | null) {
+  const status = invoiceStatusKey(value);
+
+  return status !== "paid" && status !== "draft";
+}
+
 function activityLabel(action: string) {
   const labels: Record<string, string> = {
     "queue_item.created": "Queue Created",
@@ -602,8 +612,8 @@ export default async function DashboardPage({
     (invoice) => !splitParentInvoiceIds.has(invoice.id)
   );
 
-  const openInvoices = billableInvoices.filter(
-    (invoice) => invoice.status !== "Paid"
+  const openInvoices = billableInvoices.filter((invoice) =>
+    isCollectibleInvoiceStatus(invoice.status)
   );
 
   const openInvoicesWithAmounts = openInvoices
@@ -1071,7 +1081,9 @@ export default async function DashboardPage({
                   });
                   const invoiceParams = new URLSearchParams({
                     business: selectedBusinessSlug,
-                    q: customer.customerName,
+                    customer: customer.customerName,
+                    collection: "open",
+                    year: workingYearLabel,
                   });
 
                   return (

@@ -101,6 +101,36 @@ function invoiceDaysPastDue(value: string | null) {
   );
 }
 
+function invoiceStatusKey(value: string | null) {
+  return (value || "Draft").trim().toLowerCase();
+}
+
+function isCollectibleInvoiceStatus(value: string | null) {
+  const status = invoiceStatusKey(value);
+
+  return status !== "paid" && status !== "draft";
+}
+
+function dateYear(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value.includes("T") ? value : `${value}T00:00:00`);
+
+  return Number.isNaN(date.getTime()) ? null : date.getFullYear();
+}
+
+function invoiceBelongsToYear(invoice: Invoice, year: number) {
+  return (
+    dateYear(invoice.issue_date) === year ||
+    (!invoice.issue_date && dateYear(invoice.due_date) === year) ||
+    (!invoice.issue_date &&
+      !invoice.due_date &&
+      dateYear(invoice.created_at) === year)
+  );
+}
+
 function parseInvoiceNumber(displayId: string | null) {
   const match = (displayId ?? "").match(/(\d+)/);
   return match ? Number(match[1]) : 0;
@@ -167,10 +197,14 @@ function matchesStatusFilter({
   }
 
   if (statusFilter === "overdue") {
-    return amountDue > 0 && (daysLate ?? -1) >= 0;
+    return (
+      amountDue > 0 &&
+      isCollectibleInvoiceStatus(invoiceStatus) &&
+      (daysLate ?? -1) >= 0
+    );
   }
 
-  return (invoiceStatus || "Draft").toLowerCase() === statusFilter;
+  return invoiceStatusKey(invoiceStatus) === statusFilter;
 }
 
 export default async function InvoicesPage({
@@ -181,11 +215,23 @@ export default async function InvoicesPage({
     q?: string;
     status?: string;
     view?: string;
+    customer?: string;
+    collection?: string;
+    year?: string;
   }>;
 }) {
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const businessSlug = resolvedSearchParams.business ?? "rnl-creations";
   const searchTerm = resolvedSearchParams.q?.trim() ?? "";
+  const customerFilter = resolvedSearchParams.customer?.trim() ?? "";
+  const collectionFilter =
+    resolvedSearchParams.collection === "open" ? "open" : "";
+  const workingYear = new Date().getFullYear();
+  const requestedYear = Number(resolvedSearchParams.year);
+  const yearFilter =
+    Number.isInteger(requestedYear) && requestedYear > 2000
+      ? requestedYear
+      : null;
   const statusFilter =
     resolvedSearchParams.status === "draft" ||
     resolvedSearchParams.status === "sent" ||
@@ -315,6 +361,18 @@ export default async function InvoicesPage({
     activeParams.set("q", searchTerm);
   }
 
+  if (customerFilter) {
+    activeParams.set("customer", customerFilter);
+  }
+
+  if (collectionFilter) {
+    activeParams.set("collection", collectionFilter);
+  }
+
+  if (yearFilter) {
+    activeParams.set("year", String(yearFilter));
+  }
+
   if (statusFilter !== "all") {
     activeParams.set("status", statusFilter);
   }
@@ -329,6 +387,7 @@ export default async function InvoicesPage({
       const amountPaid = parseMoney(invoice.amount_paid);
       const amountDue = Math.max(invoiceTotal - amountPaid, 0);
       const daysLate = invoiceDaysPastDue(invoice.due_date);
+      const collectibleOnly = collectionFilter === "open";
       const searchableText = [
         invoice.display_id,
         invoice.project_title,
@@ -338,6 +397,25 @@ export default async function InvoicesPage({
       ]
         .join(" ")
         .toLowerCase();
+
+      if (
+        customerFilter &&
+        (invoice.customer_name ?? "Unknown Customer").toLowerCase() !==
+          customerFilter.toLowerCase()
+      ) {
+        return false;
+      }
+
+      if (yearFilter && !invoiceBelongsToYear(invoice, yearFilter)) {
+        return false;
+      }
+
+      if (
+        collectibleOnly &&
+        (!isCollectibleInvoiceStatus(invoice.status) || amountDue <= 0)
+      ) {
+        return false;
+      }
 
       if (
         searchTerm &&
@@ -392,7 +470,16 @@ export default async function InvoicesPage({
     .filter(
       (invoice) =>
         invoice.amountDue > 0 &&
-        (invoice.status || "Draft").toLowerCase() !== "paid"
+        isCollectibleInvoiceStatus(invoice.status)
+    );
+
+  const currentYearOpenInvoicesWithAmounts =
+    openInvoicesWithAmounts.filter((invoice) =>
+      invoiceBelongsToYear(invoice, workingYear)
+    );
+  const historicalOpenInvoicesWithAmounts =
+    openInvoicesWithAmounts.filter(
+      (invoice) => !invoiceBelongsToYear(invoice, workingYear)
     );
 
   const agingBuckets = [
@@ -417,7 +504,7 @@ export default async function InvoicesPage({
       max: Infinity,
     },
   ].map((bucket) => {
-    const bucketInvoices = openInvoicesWithAmounts.filter((invoice) => {
+    const bucketInvoices = currentYearOpenInvoicesWithAmounts.filter((invoice) => {
       if (invoice.daysLate === null || invoice.daysLate < 0) {
         return false;
       }
@@ -438,11 +525,11 @@ export default async function InvoicesPage({
     };
   });
 
-  const openBalanceTotal = openInvoicesWithAmounts.reduce(
+  const openBalanceTotal = currentYearOpenInvoicesWithAmounts.reduce(
     (total, invoice) => total + invoice.amountDue,
     0
   );
-  const overdueBalanceTotal = openInvoicesWithAmounts
+  const overdueBalanceTotal = currentYearOpenInvoicesWithAmounts
     .filter((invoice) => (invoice.daysLate ?? -1) >= 0)
     .reduce((total, invoice) => total + invoice.amountDue, 0);
   const draftBalanceTotal = billableInvoicesWithSplitInfo
@@ -465,7 +552,7 @@ export default async function InvoicesPage({
   );
 
   const customerBalanceRows = Array.from(
-    openInvoicesWithAmounts.reduce(
+    currentYearOpenInvoicesWithAmounts.reduce(
       (customers, invoice) => {
         const customerName =
           invoice.customer_name?.trim() || "Unknown Customer";
@@ -657,9 +744,19 @@ export default async function InvoicesPage({
               </h2>
 
               <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
-                A quick Trimax view of open balances, past-due work,
-                drafts, and invoices ready for batch payment.
+                A quick Trimax view of current-year collectible balances,
+                past-due work, drafts, and invoices ready for batch payment.
               </p>
+
+              {historicalOpenInvoicesWithAmounts.length > 0 ? (
+                <p className="mt-2 text-xs text-slate-500">
+                  {historicalOpenInvoicesWithAmounts.length} older imported
+                  open invoice
+                  {historicalOpenInvoicesWithAmounts.length === 1 ? "" : "s"}{" "}
+                  kept in history and hidden from these active collection
+                  totals.
+                </p>
+              ) : null}
             </div>
 
             <div className="flex flex-wrap gap-3">
@@ -675,13 +772,16 @@ export default async function InvoicesPage({
 
           <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-2xl border border-slate-200 bg-white p-4">
-              <p className="text-sm text-slate-500">Total Outstanding</p>
+              <p className="text-sm text-slate-500">
+                {workingYear} Outstanding
+              </p>
               <p className="mt-2 text-3xl font-black text-slate-950">
                 {formatMoney(openBalanceTotal)}
               </p>
               <p className="mt-1 text-sm text-slate-500">
-                {openInvoicesWithAmounts.length} open invoice
-                {openInvoicesWithAmounts.length === 1 ? "" : "s"}.
+                {currentYearOpenInvoicesWithAmounts.length} collectible
+                invoice
+                {currentYearOpenInvoicesWithAmounts.length === 1 ? "" : "s"}.
               </p>
             </div>
 
@@ -744,6 +844,30 @@ export default async function InvoicesPage({
               />
             ) : null}
 
+            {customerFilter ? (
+              <input
+                type="hidden"
+                name="customer"
+                value={customerFilter}
+              />
+            ) : null}
+
+            {collectionFilter ? (
+              <input
+                type="hidden"
+                name="collection"
+                value={collectionFilter}
+              />
+            ) : null}
+
+            {yearFilter ? (
+              <input
+                type="hidden"
+                name="year"
+                value={String(yearFilter)}
+              />
+            ) : null}
+
             <div>
               <label className="mb-2 block text-sm text-zinc-400">
                 Search Invoices
@@ -761,6 +885,9 @@ export default async function InvoicesPage({
               <Button type="submit">Search</Button>
 
               {(searchTerm ||
+                customerFilter ||
+                collectionFilter ||
+                yearFilter ||
                 statusFilter !== "all" ||
                 view !== "all") && (
                 <Link href={`/invoices${businessQuery}`}>
@@ -772,6 +899,23 @@ export default async function InvoicesPage({
             </div>
           </form>
         </Card>
+
+        {customerFilter || collectionFilter || yearFilter ? (
+          <Card className="border-sky-200 bg-sky-50">
+            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-sky-700">
+              Focused Invoice View
+            </p>
+
+            <p className="mt-2 text-sm leading-6 text-slate-700">
+              Showing{" "}
+              {collectionFilter === "open" ? "collectible unpaid " : ""}
+              invoices
+              {customerFilter ? ` for ${customerFilter}` : ""}
+              {yearFilter ? ` from ${yearFilter}` : ""}. Clear the filters to
+              return to the full invoice list.
+            </p>
+          </Card>
+        ) : null}
 
         <div className="workspace-filter-bar flex flex-wrap gap-3 rounded-2xl border border-zinc-800 p-2">
           {viewLinks.map((filter) => (
@@ -823,7 +967,7 @@ export default async function InvoicesPage({
 
         <InvoiceBulkPaymentActions
           businessSlug={businessSlug}
-          invoices={billableInvoicesWithSplitInfo.map((invoice) => ({
+          invoices={openInvoicesWithAmounts.map((invoice) => ({
             id: invoice.id,
             displayId: invoice.display_id ?? "Invoice",
             customerName: invoice.customer_name ?? "Unknown Customer",
@@ -913,7 +1057,9 @@ export default async function InvoicesPage({
 
           <div className="mt-5 grid gap-3 md:grid-cols-3">
             <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
-              <p className="text-sm text-zinc-400">Total Outstanding</p>
+              <p className="text-sm text-zinc-400">
+                {workingYear} Outstanding
+              </p>
               <p className="mt-2 text-3xl font-black text-white">
                 {formatMoney(openBalanceTotal)}
               </p>
@@ -979,7 +1125,8 @@ export default async function InvoicesPage({
                 </h2>
 
                 <p className="mt-2 text-sm leading-6 text-zinc-400">
-                  Useful when one check pays several units or recurring jobs.
+                  Current-year collectible invoices grouped by customer, useful
+                  when one check pays several units or recurring jobs.
                 </p>
               </div>
 
@@ -992,7 +1139,9 @@ export default async function InvoicesPage({
               {customerBalanceRows.map((customer) => {
                 const customerParams = new URLSearchParams({
                   business: businessSlug,
-                  q: customer.customerName,
+                  customer: customer.customerName,
+                  collection: "open",
+                  year: String(workingYear),
                 });
                 const paymentParams = new URLSearchParams({
                   business: businessSlug,

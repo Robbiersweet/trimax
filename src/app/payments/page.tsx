@@ -88,6 +88,16 @@ function daysPastDue(value: string | null) {
   return Math.floor((today.getTime() - dueDate.getTime()) / 86_400_000);
 }
 
+function invoiceStatusKey(value: string | null | undefined) {
+  return (value || "Draft").trim().toLowerCase();
+}
+
+function isCollectibleInvoiceStatus(value: string | null | undefined) {
+  const status = invoiceStatusKey(value);
+
+  return status !== "paid" && status !== "draft";
+}
+
 function activityAmount(log: ActivityLog) {
   const amount = log.details?.amountApplied;
 
@@ -217,7 +227,7 @@ export default async function PaymentsPage({
     .filter(
       (invoice) =>
         invoice.amountDue > 0 &&
-        (invoice.status ?? "Draft").toLowerCase() !== "paid"
+        isCollectibleInvoiceStatus(invoice.status)
     );
 
   const openBalance = payableInvoices.reduce(
@@ -227,9 +237,17 @@ export default async function PaymentsPage({
   const overdueBalance = payableInvoices
     .filter((invoice) => (invoice.daysLate ?? -1) >= 0)
     .reduce((total, invoice) => total + invoice.amountDue, 0);
-  const draftBalance = payableInvoices
-    .filter((invoice) => (invoice.status ?? "Draft").toLowerCase() === "draft")
-    .reduce((total, invoice) => total + invoice.amountDue, 0);
+  const draftBalance = invoices
+    .filter((invoice) => invoiceStatusKey(invoice.status) === "draft")
+    .reduce(
+      (total, invoice) =>
+        total +
+        Math.max(
+          parseMoney(invoice.invoice_amount) - parseMoney(invoice.amount_paid),
+          0
+        ),
+      0
+    );
   const recentPaymentTotal = paymentLogs.reduce(
     (total, log) => total + activityAmount(log),
     0
@@ -623,13 +641,13 @@ export default async function PaymentsPage({
             businessSlug={businessSlug}
             initialCustomer={focusedCustomer}
             initialInvoiceIds={initialInvoiceIds}
-            invoices={invoices.map((invoice) => ({
+            invoices={payableInvoices.map((invoice) => ({
               id: invoice.id,
               displayId: invoice.display_id ?? "Invoice",
               customerName: invoice.customer_name ?? "Unknown Customer",
               projectTitle: invoice.project_title ?? "Untitled Invoice",
-              invoiceAmount: parseMoney(invoice.invoice_amount),
-              amountPaid: parseMoney(invoice.amount_paid),
+              invoiceAmount: invoice.invoiceAmount,
+              amountPaid: invoice.amountPaid,
               status: invoice.status ?? "Draft",
               dueDate: invoice.due_date,
             }))}
@@ -743,7 +761,8 @@ export default async function PaymentsPage({
                 });
                 const customerInvoiceParams = new URLSearchParams({
                   business: businessSlug,
-                  q: group.customerName,
+                  customer: group.customerName,
+                  collection: "open",
                 });
 
                 return (
