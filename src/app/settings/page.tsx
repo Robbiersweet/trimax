@@ -73,6 +73,54 @@ type AccessRequest = {
   updated_at: string | null;
 };
 
+type StorageMetric = {
+  key: string;
+  label: string;
+  count: number | null;
+  warningAt: number;
+  dangerAt: number;
+};
+
+type StorageHealth = {
+  databaseSizeBytes: number | null;
+  databaseSizeLimitBytes: number;
+  metrics: StorageMetric[];
+  lastCheckedAt: string | null;
+  helperReady: boolean;
+};
+
+type StorageHealthRpcRow = {
+  database_size_bytes: number | string | null;
+  invoice_count: number | string | null;
+  estimate_count: number | string | null;
+  queue_count: number | string | null;
+  client_count: number | string | null;
+  import_batch_count: number | string | null;
+  import_row_count: number | string | null;
+  property_unit_count: number | string | null;
+  unit_history_count: number | string | null;
+  activity_log_count: number | string | null;
+};
+
+const freeDatabaseLimitBytes = 500 * 1024 * 1024;
+
+const emptyStorageHealth: StorageHealth = {
+  databaseSizeBytes: null,
+  databaseSizeLimitBytes: freeDatabaseLimitBytes,
+  helperReady: false,
+  lastCheckedAt: null,
+  metrics: [
+    { key: "invoices", label: "Invoices", count: null, warningAt: 7500, dangerAt: 12000 },
+    { key: "estimates", label: "Estimates", count: null, warningAt: 7500, dangerAt: 12000 },
+    { key: "queue_items", label: "Queue Items", count: null, warningAt: 12000, dangerAt: 20000 },
+    { key: "clients", label: "Clients", count: null, warningAt: 1500, dangerAt: 3000 },
+    { key: "property_units", label: "Property Units", count: null, warningAt: 2000, dangerAt: 5000 },
+    { key: "unit_history", label: "Unit History", count: null, warningAt: 15000, dangerAt: 30000 },
+    { key: "import_rows", label: "Import Rows", count: null, warningAt: 25000, dangerAt: 50000 },
+    { key: "activity_logs", label: "Activity Logs", count: null, warningAt: 25000, dangerAt: 50000 },
+  ],
+};
+
 const roleOptions: {
   value: WorkspaceRole;
   label: string;
@@ -144,6 +192,61 @@ function formatDate(value: string | null) {
   });
 }
 
+function toNumber(value: number | string | null | undefined) {
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatNumber(value: number | null) {
+  if (value === null) {
+    return "Needs setup";
+  }
+
+  return value.toLocaleString("en-US");
+}
+
+function formatBytes(value: number | null) {
+  if (value === null) {
+    return "Needs SQL helper";
+  }
+
+  if (value >= 1024 * 1024 * 1024) {
+    return `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  }
+
+  if (value >= 1024 * 1024) {
+    return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  return `${Math.max(1, Math.round(value / 1024)).toLocaleString("en-US")} KB`;
+}
+
+function getHealthTone(metric: StorageMetric) {
+  const count = metric.count ?? 0;
+
+  if (count >= metric.dangerAt) {
+    return {
+      label: "Watch closely",
+      className: "border-red-200 bg-red-50 text-red-900",
+      barClassName: "bg-red-500",
+    };
+  }
+
+  if (count >= metric.warningAt) {
+    return {
+      label: "Growing",
+      className: "border-amber-200 bg-amber-50 text-amber-950",
+      barClassName: "bg-amber-400",
+    };
+  }
+
+  return {
+    label: "Healthy",
+    className: "border-emerald-200 bg-emerald-50 text-emerald-950",
+    barClassName: "bg-emerald-500",
+  };
+}
+
 function BusinessSettingsPageContent() {
   const searchParams = useSearchParams();
 
@@ -209,6 +312,9 @@ function BusinessSettingsPageContent() {
   const [saving, setSaving] = useState(false);
   const [savingMaintenance, setSavingMaintenance] = useState(false);
   const [savingEmailSettings, setSavingEmailSettings] = useState(false);
+  const [storageHealth, setStorageHealth] =
+    useState<StorageHealth>(emptyStorageHealth);
+  const [loadingStorageHealth, setLoadingStorageHealth] = useState(false);
   const [savingInvite, setSavingInvite] =
     useState(false);
   const [savingPropertyInvite, setSavingPropertyInvite] =
@@ -228,6 +334,114 @@ function BusinessSettingsPageContent() {
   const canManageUsers =
     currentRole === "owner" ||
     currentRole === "admin";
+
+  async function loadStorageHealth(selectedBusinessSlug: string) {
+    setLoadingStorageHealth(true);
+
+    const { data, error } = await supabase.rpc(
+      "get_trimax_storage_health",
+      {
+        requested_business_slug: selectedBusinessSlug,
+      }
+    );
+
+    setLoadingStorageHealth(false);
+
+    if (error || !data) {
+      console.warn(
+        "Storage health helper is not ready yet.",
+        error
+      );
+      setStorageHealth({
+        ...emptyStorageHealth,
+        lastCheckedAt: new Date().toISOString(),
+      });
+      return;
+    }
+
+    const rows = Array.isArray(data) ? data : [data];
+    const row = rows[0] as StorageHealthRpcRow | undefined;
+
+    if (!row) {
+      setStorageHealth({
+        ...emptyStorageHealth,
+        lastCheckedAt: new Date().toISOString(),
+      });
+      return;
+    }
+
+    setStorageHealth({
+      databaseSizeBytes: toNumber(row.database_size_bytes),
+      databaseSizeLimitBytes: freeDatabaseLimitBytes,
+      helperReady: true,
+      lastCheckedAt: new Date().toISOString(),
+      metrics: [
+        {
+          key: "invoices",
+          label: "Invoices",
+          count: toNumber(row.invoice_count),
+          warningAt: 7500,
+          dangerAt: 12000,
+        },
+        {
+          key: "estimates",
+          label: "Estimates",
+          count: toNumber(row.estimate_count),
+          warningAt: 7500,
+          dangerAt: 12000,
+        },
+        {
+          key: "queue_items",
+          label: "Queue Items",
+          count: toNumber(row.queue_count),
+          warningAt: 12000,
+          dangerAt: 20000,
+        },
+        {
+          key: "clients",
+          label: "Clients",
+          count: toNumber(row.client_count),
+          warningAt: 1500,
+          dangerAt: 3000,
+        },
+        {
+          key: "property_units",
+          label: "Property Units",
+          count: toNumber(row.property_unit_count),
+          warningAt: 2000,
+          dangerAt: 5000,
+        },
+        {
+          key: "unit_history",
+          label: "Unit History",
+          count: toNumber(row.unit_history_count),
+          warningAt: 15000,
+          dangerAt: 30000,
+        },
+        {
+          key: "import_rows",
+          label: "Import Rows",
+          count: toNumber(row.import_row_count),
+          warningAt: 25000,
+          dangerAt: 50000,
+        },
+        {
+          key: "activity_logs",
+          label: "Activity Logs",
+          count: toNumber(row.activity_log_count),
+          warningAt: 25000,
+          dangerAt: 50000,
+        },
+        {
+          key: "import_batches",
+          label: "Import Batches",
+          count: toNumber(row.import_batch_count),
+          warningAt: 500,
+          dangerAt: 1000,
+        },
+      ],
+    });
+  }
 
   async function loadSettings() {
     setLoading(true);
@@ -271,6 +485,15 @@ function BusinessSettingsPageContent() {
         matchingAccess?.role ?? "member"
       )
     );
+    const normalizedRole = normalizeWorkspaceRole(
+      matchingAccess?.role ?? "member"
+    );
+
+    if (normalizedRole === "owner" || normalizedRole === "admin") {
+      void loadStorageHealth(businessSlug);
+    } else {
+      setStorageHealth(emptyStorageHealth);
+    }
 
     const maintenance = await loadMaintenanceSettings();
     setMaintenanceMode(maintenance.enabled);
@@ -1102,6 +1325,165 @@ function BusinessSettingsPageContent() {
                       ? "Saving..."
                       : "Save Maintenance Mode"}
                   </Button>
+                </div>
+              </Card>
+            ) : null}
+
+            {canManageUsers ? (
+              <Card className="border-sky-200 bg-white">
+                <div className="grid gap-5">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <p className="text-sm uppercase tracking-[0.3em] text-sky-600">
+                        Storage Health
+                      </p>
+                      <h2 className="mt-2 text-2xl font-semibold text-slate-950">
+                        Import readiness and data size
+                      </h2>
+                      <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+                        Use this before FreshBooks imports. Trimax checks record
+                        counts for this workspace and the overall Supabase
+                        database size so you can see when storage is still
+                        comfortable or when an upgrade plan is needed.
+                      </p>
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => loadStorageHealth(businessSlug)}
+                      disabled={loadingStorageHealth}
+                    >
+                      {loadingStorageHealth ? "Checking..." : "Refresh Health"}
+                    </Button>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-[1.2fr_0.8fr]">
+                    <div className="rounded-2xl border border-sky-100 bg-sky-50 p-5">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-sky-900">
+                            Supabase database size
+                          </p>
+                          <p className="mt-2 text-3xl font-black text-slate-950">
+                            {formatBytes(storageHealth.databaseSizeBytes)}
+                          </p>
+                        </div>
+
+                        <p className="text-sm font-semibold text-slate-600">
+                          Free plan guide:{" "}
+                          {formatBytes(storageHealth.databaseSizeLimitBytes)}
+                        </p>
+                      </div>
+
+                      <div className="mt-5 h-3 overflow-hidden rounded-full bg-white">
+                        <div
+                          className="h-full rounded-full bg-sky-500"
+                          style={{
+                            width: `${
+                              storageHealth.databaseSizeBytes === null
+                                ? 0
+                                : Math.min(
+                                    100,
+                                    Math.round(
+                                      (storageHealth.databaseSizeBytes /
+                                        storageHealth.databaseSizeLimitBytes) *
+                                        100
+                                    )
+                                  )
+                            }%`,
+                          }}
+                        />
+                      </div>
+
+                      <p className="mt-3 text-sm leading-6 text-slate-600">
+                        {storageHealth.helperReady
+                          ? "Exact size is available. Text records usually grow slowly; uploaded photos and PDFs grow much faster."
+                          : "Run the Storage Health SQL helper once to unlock exact database size and counts."}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-5">
+                      <p className="text-sm font-semibold text-emerald-900">
+                        FreshBooks import advice
+                      </p>
+                      <p className="mt-2 text-2xl font-black text-emerald-950">
+                        Safe to stage first
+                      </p>
+                      <p className="mt-3 text-sm leading-6 text-emerald-900">
+                        Import clients first, then a small invoice sample, then
+                        the full invoice CSV after the sample looks correct.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    {storageHealth.metrics.map((metric) => {
+                      const tone = getHealthTone(metric);
+                      const percent =
+                        metric.count === null
+                          ? 0
+                          : Math.min(
+                              100,
+                              Math.round((metric.count / metric.dangerAt) * 100)
+                            );
+
+                      return (
+                        <div
+                          key={metric.key}
+                          className={`rounded-2xl border p-4 ${tone.className}`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold">
+                                {metric.label}
+                              </p>
+                              <p className="mt-2 text-3xl font-black">
+                                {formatNumber(metric.count)}
+                              </p>
+                            </div>
+
+                            <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-bold">
+                              {tone.label}
+                            </span>
+                          </div>
+
+                          <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/80">
+                            <div
+                              className={`h-full rounded-full ${tone.barClassName}`}
+                              style={{ width: `${percent}%` }}
+                            />
+                          </div>
+
+                          <p className="mt-3 text-xs font-semibold opacity-75">
+                            Warning near {metric.warningAt.toLocaleString("en-US")} records
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+                    This is a planning panel, not a billing guarantee. Supabase
+                    limits can change by plan, and file uploads will matter more
+                    once Trimax stores photos, PDFs, or attachments.
+                    {storageHealth.lastCheckedAt ? (
+                      <>
+                        {" "}
+                        Last checked{" "}
+                        {new Date(storageHealth.lastCheckedAt).toLocaleString(
+                          "en-US",
+                          {
+                            month: "short",
+                            day: "numeric",
+                            hour: "numeric",
+                            minute: "2-digit",
+                          }
+                        )}
+                        .
+                      </>
+                    ) : null}
+                  </div>
                 </div>
               </Card>
             ) : null}
