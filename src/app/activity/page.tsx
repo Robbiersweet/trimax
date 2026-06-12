@@ -521,7 +521,7 @@ function ActivityPageContent() {
                   filter: typeFilter,
                   searchTerm: "",
                 })}
-                className="rounded-full border border-zinc-700 px-4 py-2 text-sm font-bold text-zinc-300 hover:border-orange-500 hover:text-orange-300"
+                className="app-chip rounded-full border border-zinc-700 px-4 py-2 text-sm font-bold text-zinc-300 hover:border-orange-500 hover:text-orange-300"
               >
                 Clear search
               </Link>
@@ -595,7 +595,7 @@ function ActivityPageContent() {
             </Link>
           </Card>
         ) : (
-          <div className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900">
+          <div className="app-data-table overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
             {filteredLogs.map((log) => {
               const href = entityHref(log, businessSlug);
               const chips = detailChips(log);
@@ -603,7 +603,7 @@ function ActivityPageContent() {
               return (
                 <div
                   key={log.id}
-                  className="grid gap-4 border-b border-zinc-800 p-5 last:border-b-0 md:grid-cols-[1fr_auto]"
+                  className="app-data-table-row grid gap-4 border-b border-zinc-800 p-5 last:border-b-0 md:grid-cols-[1fr_auto]"
                 >
                   <div>
                     <p
@@ -627,7 +627,7 @@ function ActivityPageContent() {
                         {chips.map((chip) => (
                           <span
                             key={`${log.id}-${chip.label}`}
-                            className="rounded-2xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300"
+                            className="app-chip rounded-2xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300"
                           >
                             <span className="text-zinc-500">
                               {chip.label}:{" "}

@@ -1029,7 +1029,7 @@ function ImportsPageContent() {
           <div className="grid gap-5">
             <div className="grid gap-4 md:grid-cols-[260px_1fr]">
               <div>
-                <label className="mb-2 block text-sm text-zinc-400">
+                <label className="app-form-label mb-2 block text-sm text-zinc-400">
                   Import Type
                 </label>
 
@@ -1039,7 +1039,7 @@ function ImportsPageContent() {
                     setImportType(event.target.value as ImportType);
                     setLastResult("");
                   }}
-                  className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+                  className="app-form-input w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
                 >
                   <option value="clients">Clients</option>
                   <option value="invoices">Invoices</option>
@@ -1047,7 +1047,7 @@ function ImportsPageContent() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm text-zinc-400">
+                <label className="app-form-label mb-2 block text-sm text-zinc-400">
                   CSV File
                 </label>
 
@@ -1057,7 +1057,7 @@ function ImportsPageContent() {
                   onChange={(event) =>
                     handleFileChange(event.target.files?.[0] ?? null)
                   }
-                  className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white file:mr-4 file:rounded-xl file:border-0 file:bg-orange-500 file:px-4 file:py-2 file:font-semibold file:text-black"
+                  className="app-file-input w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white file:mr-4 file:rounded-xl file:border-0 file:bg-orange-500 file:px-4 file:py-2 file:font-semibold file:text-black"
                 />
               </div>
             </div>
@@ -1106,12 +1106,12 @@ function ImportsPageContent() {
           </div>
 
           {previewRows.length === 0 ? (
-            <p className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-sm text-zinc-400">
+            <p className="app-empty-state rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-sm text-zinc-400">
               No rows to preview yet.
             </p>
           ) : (
-            <div className="overflow-hidden rounded-2xl border border-zinc-800">
-              <div className="grid grid-cols-4 gap-4 bg-zinc-950 px-4 py-3 text-sm font-bold text-zinc-400">
+            <div className="app-data-table overflow-hidden rounded-2xl border border-zinc-800">
+              <div className="app-data-table-head grid grid-cols-4 gap-4 bg-zinc-950 px-4 py-3 text-sm font-bold text-zinc-400">
                 <span>Name</span>
                 <span>Reference</span>
                 <span>{importType === "clients" ? "Email" : "Total / Lines"}</span>
@@ -1124,7 +1124,7 @@ function ImportsPageContent() {
                   return (
                     <div
                       key={`${client.name}-${index}`}
-                      className="grid grid-cols-4 gap-4 border-t border-zinc-800 px-4 py-3 text-sm text-zinc-200"
+                      className="app-data-table-row grid grid-cols-4 gap-4 border-t border-zinc-800 px-4 py-3 text-sm text-zinc-200"
                     >
                       <span>{client.name}</span>
                       <span>{client.contactName || "-"}</span>
@@ -1138,7 +1138,7 @@ function ImportsPageContent() {
                 return (
                   <div
                     key={`${invoice.customerName}-${index}`}
-                    className="grid grid-cols-4 gap-4 border-t border-zinc-800 px-4 py-3 text-sm text-zinc-200"
+                    className="app-data-table-row grid grid-cols-4 gap-4 border-t border-zinc-800 px-4 py-3 text-sm text-zinc-200"
                   >
                     <span>{invoice.customerName}</span>
                     <span>

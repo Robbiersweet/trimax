@@ -2325,6 +2325,28 @@ html.theme-light .batch-payments-card {
   border-color: #bbf7d0 !important;
 }
 
+html.theme-light .service-capture-card {
+  background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 62%, #f0fdfa 100%) !important;
+  border-color: #a7f3d0 !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .service-capture-card .text-emerald-300,
+html.theme-light .service-capture-card .text-green-300 {
+  color: #047857 !important;
+}
+
+html.theme-light .app-file-input {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .app-file-input::file-selector-button {
+  background: #2563eb !important;
+  color: #ffffff !important;
+}
+
 html.theme-light .app-data-table {
   border-color: #d7dde8 !important;
   box-shadow: 0 14px 32px rgba(15, 23, 42, 0.06) !important;
@@ -2340,6 +2362,18 @@ html.theme-light .app-data-table-row {
   background: #ffffff !important;
   border-color: #e2e8f0 !important;
   color: #0f172a !important;
+}
+
+html.theme-light .app-data-table-row .text-white,
+html.theme-light .app-data-table-row .text-zinc-100,
+html.theme-light .app-data-table-row .text-zinc-200,
+html.theme-light .app-data-table-row .text-zinc-300 {
+  color: #0f172a !important;
+}
+
+html.theme-light .app-data-table-row .text-zinc-400,
+html.theme-light .app-data-table-row .text-zinc-500 {
+  color: #64748b !important;
 }
 
 html.theme-light .app-data-table-row:hover {

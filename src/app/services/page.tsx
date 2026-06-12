@@ -567,7 +567,7 @@ function ServicesPageContent() {
           </div>
         </Card>
 
-        <Card className="border-emerald-500/30 bg-emerald-500/10">
+        <Card className="service-capture-card border-emerald-500/30 bg-emerald-500/10">
           <p className="text-sm uppercase tracking-[0.25em] text-emerald-300">
             Smart Service Capture
           </p>
@@ -666,8 +666,8 @@ function ServicesPageContent() {
                     }
                     className={`rounded-full px-4 py-2 text-sm font-semibold capitalize transition ${
                       statusFilter === status
-                        ? "bg-orange-500 text-black"
-                        : "bg-zinc-800 text-zinc-300 hover:text-orange-400"
+                        ? "app-chip-active bg-orange-500 text-black"
+                        : "app-chip bg-zinc-800 text-zinc-300 hover:text-orange-400"
                     }`}
                   >
                     {status}
@@ -696,7 +696,7 @@ function ServicesPageContent() {
                       event.target.value
                     )
                   }
-                  className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+                  className="app-form-input w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
                 >
                   <option value="all">
                     All Categories
@@ -725,8 +725,8 @@ function ServicesPageContent() {
                   }
                   className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
                     categoryFilter === "all"
-                      ? "border-orange-500 bg-orange-500 text-black"
-                      : "border-zinc-700 bg-zinc-950 text-zinc-300 hover:border-orange-400 hover:text-orange-300"
+                      ? "app-chip-active border-orange-500 bg-orange-500 text-black"
+                      : "app-chip border-zinc-700 bg-zinc-950 text-zinc-300 hover:border-orange-400 hover:text-orange-300"
                   }`}
                 >
                   All categories
@@ -745,8 +745,8 @@ function ServicesPageContent() {
                       className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
                         categoryFilter ===
                         serviceCategory.name
-                          ? "border-orange-500 bg-orange-500 text-black"
-                          : "border-zinc-700 bg-zinc-950 text-zinc-300 hover:border-orange-400 hover:text-orange-300"
+                          ? "app-chip-active border-orange-500 bg-orange-500 text-black"
+                          : "app-chip border-zinc-700 bg-zinc-950 text-zinc-300 hover:border-orange-400 hover:text-orange-300"
                       }`}
                     >
                       {serviceCategory.name}{" "}

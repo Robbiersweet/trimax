@@ -1230,7 +1230,7 @@ function BusinessSettingsPageContent() {
           {returnTo ? (
             <Link
               href={returnTo}
-              className="mb-4 inline-flex rounded-full border border-zinc-700 px-4 py-2 text-sm font-bold text-zinc-200 transition hover:border-orange-400 hover:text-orange-300"
+              className="app-back-button mb-4 inline-flex rounded-full border border-zinc-700 px-4 py-2 text-sm font-bold text-zinc-200 transition hover:border-orange-400 hover:text-orange-300"
             >
               Back to document
             </Link>
@@ -1282,7 +1282,7 @@ function BusinessSettingsPageContent() {
                       </p>
                     </div>
 
-                    <div className="rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm">
+                    <div className="app-soft-panel rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm">
                       <p className="text-zinc-500">Current Status</p>
                       <p
                         className={
@@ -1296,7 +1296,7 @@ function BusinessSettingsPageContent() {
                     </div>
                   </div>
 
-                  <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3">
+                  <label className="app-soft-panel flex cursor-pointer items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3">
                     <input
                       type="checkbox"
                       checked={maintenanceMode}
