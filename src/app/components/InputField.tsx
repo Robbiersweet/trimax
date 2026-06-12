@@ -95,7 +95,7 @@ export default function InputField({
 
   return (
     <div>
-      <label className="mb-2 block text-sm text-zinc-400">
+      <label className="app-form-label mb-2 block text-sm text-zinc-400">
         {label}
       </label>
 
@@ -121,7 +121,7 @@ export default function InputField({
             onChange(event.target.value);
           }}
           placeholder={placeholder}
-          className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 pr-16 text-white outline-none transition focus:border-orange-500"
+          className="app-form-input w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 pr-16 text-white outline-none transition focus:border-orange-500"
         />
 
         {isPasswordField && (
@@ -130,14 +130,14 @@ export default function InputField({
             onClick={() =>
               setShowPassword(!showPassword)
             }
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-zinc-400 hover:text-orange-400"
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-zinc-400 hover:text-orange-400"
           >
             {showPassword ? "Hide" : "Show"}
           </button>
         )}
 
         {hasCustomOptions && isOptionsOpen ? (
-          <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-30 max-h-[300px] overflow-y-auto rounded-2xl border border-zinc-700 bg-zinc-950 shadow-2xl">
+          <div className="app-option-list absolute left-0 right-0 top-[calc(100%+0.5rem)] z-30 max-h-[300px] overflow-y-auto rounded-2xl border border-zinc-700 bg-zinc-950 shadow-2xl">
             {visibleOptions.length > 0 ? (
               visibleOptions.map((option) => (
                 <button
@@ -149,7 +149,7 @@ export default function InputField({
                     setShouldFilterOptions(false);
                     setIsOptionsOpen(false);
                   }}
-                  className="block w-full px-4 py-3 text-left text-sm font-semibold text-white transition hover:bg-zinc-800"
+                  className="app-option-item block w-full px-4 py-3 text-left text-sm font-semibold text-white transition hover:bg-zinc-800"
                 >
                   {option}
                 </button>
@@ -164,7 +164,7 @@ export default function InputField({
       </div>
 
       {helperText ? (
-        <p className="mt-2 text-xs leading-5 text-zinc-500">
+        <p className="app-helper-text mt-2 text-xs leading-5 text-zinc-500">
           {helperText}
         </p>
       ) : null}

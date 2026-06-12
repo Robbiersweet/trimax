@@ -20,8 +20,8 @@ export default function DateInputField({
   name,
   onChange,
   helperText,
-  labelClassName = "mb-2 block text-sm text-zinc-400",
-  inputClassName = "w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 pr-28 text-white outline-none transition focus:border-orange-500",
+  labelClassName = "app-form-label mb-2 block text-sm text-zinc-400",
+  inputClassName = "app-form-input w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 pr-28 text-white outline-none transition focus:border-orange-500",
 }: DateInputFieldProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -59,14 +59,14 @@ export default function DateInputField({
         <button
           type="button"
           onClick={openPicker}
-          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs font-bold text-zinc-100 transition hover:border-orange-400 hover:text-orange-300"
+          className="app-calendar-button absolute right-2 top-1/2 -translate-y-1/2 rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs font-bold text-zinc-100 transition hover:border-orange-400 hover:text-orange-300"
         >
           Calendar
         </button>
       </div>
 
       {helperText ? (
-        <p className="mt-2 text-xs leading-5 text-zinc-500">
+        <p className="app-helper-text mt-2 text-xs leading-5 text-zinc-500">
           {helperText}
         </p>
       ) : null}

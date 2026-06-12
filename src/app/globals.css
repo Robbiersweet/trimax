@@ -2063,3 +2063,164 @@ html.theme-light .payment-log-card .text-green-200,
 html.theme-light .payment-log-card .text-green-300 {
   color: #047857 !important;
 }
+
+/* Shared UI polish. These named classes keep light mode intentional instead of
+   relying on broad Tailwind overrides. */
+.app-card {
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.2);
+}
+
+html.theme-light .app-card {
+  background: #ffffff !important;
+  border-color: #d7dde8 !important;
+  color: #0f172a !important;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.07) !important;
+}
+
+html.theme-light .app-form-label {
+  color: #334155 !important;
+  font-weight: 700;
+}
+
+html.theme-light .app-form-input {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+html.theme-light .app-form-input::placeholder {
+  color: #94a3b8 !important;
+}
+
+html.theme-light .app-form-input:focus {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+}
+
+html.theme-light .app-option-list {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 22px 44px rgba(15, 23, 42, 0.14) !important;
+}
+
+html.theme-light .app-option-item {
+  color: #0f172a !important;
+}
+
+html.theme-light .app-option-item:hover {
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+}
+
+html.theme-light .app-helper-text {
+  color: #64748b !important;
+}
+
+html.theme-light .app-calendar-button {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+html.theme-light .app-calendar-button:hover {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #1d4ed8 !important;
+}
+
+html.theme-light .app-sidebar {
+  background:
+    linear-gradient(180deg, rgba(255, 107, 0, 0.12), transparent 16%),
+    #101114 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #f8fafc !important;
+  box-shadow: 0 22px 48px rgba(15, 23, 42, 0.18) !important;
+}
+
+html.theme-light .app-sidebar .text-white,
+html.theme-light .app-sidebar .text-zinc-100,
+html.theme-light .app-sidebar .text-zinc-200 {
+  color: #f8fafc !important;
+}
+
+html.theme-light .app-sidebar .text-zinc-300,
+html.theme-light .app-sidebar .text-zinc-400 {
+  color: #cbd5e1 !important;
+}
+
+html.theme-light .app-sidebar .text-zinc-500 {
+  color: #94a3b8 !important;
+}
+
+html.theme-light .app-sidebar .text-orange-300,
+html.theme-light .app-sidebar .text-orange-400 {
+  color: #ff9f45 !important;
+}
+
+html.theme-light .app-sidebar-menu-button,
+html.theme-light .app-sidebar-current,
+html.theme-light .app-sidebar-settings,
+html.theme-light .app-user-menu-card {
+  background: rgba(3, 7, 18, 0.46) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #f8fafc !important;
+}
+
+html.theme-light .app-sidebar-nav-link {
+  border: 1px solid transparent;
+}
+
+html.theme-light .app-sidebar-nav-link-active {
+  background: #ff6b00 !important;
+  border-color: #ff8a2a !important;
+  color: #111827 !important;
+  box-shadow: 0 14px 28px rgba(255, 107, 0, 0.2) !important;
+}
+
+html.theme-light .app-sidebar-nav-link-active svg,
+html.theme-light .app-sidebar-nav-link-active .app-sidebar-setup-pill-active {
+  color: #111827 !important;
+}
+
+html.theme-light .app-sidebar-nav-link-inactive {
+  color: #cbd5e1 !important;
+}
+
+html.theme-light .app-sidebar-nav-link-inactive:hover,
+html.theme-light .app-sidebar-sub-link:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: #ffb35c !important;
+}
+
+html.theme-light .app-sidebar-setup-pill {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #cbd5e1 !important;
+}
+
+html.theme-light .app-sidebar-setup-pill-active {
+  background: rgba(17, 24, 39, 0.12) !important;
+}
+
+html.theme-light .app-sidebar-sub-link span:first-child {
+  color: #f8fafc !important;
+}
+
+html.theme-light .app-sidebar-sub-link span:last-child {
+  color: #94a3b8 !important;
+}
+
+html.theme-light .app-sidebar .app-theme-toggle,
+html.theme-light .app-sidebar .app-button-secondary {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  color: #f8fafc !important;
+}
+
+html.theme-light .app-sidebar .app-theme-toggle:hover,
+html.theme-light .app-sidebar .app-button-secondary:hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+  border-color: rgba(255, 159, 69, 0.6) !important;
+  color: #ffb35c !important;
+}

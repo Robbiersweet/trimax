@@ -48,7 +48,7 @@ export default function ThemeToggle({
     <button
       type="button"
       onClick={handleToggle}
-      className={`inline-flex items-center gap-2 rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-2 text-sm font-semibold text-zinc-200 transition hover:border-orange-400 hover:text-orange-300 ${className}`}
+      className={`app-theme-toggle inline-flex items-center gap-2 rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-2 text-sm font-semibold text-zinc-200 transition hover:border-orange-400 hover:text-orange-300 ${className}`}
       aria-label="Switch color theme"
     >
       <span

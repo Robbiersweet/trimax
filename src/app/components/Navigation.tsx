@@ -178,7 +178,7 @@ export default function Navigation() {
   ];
 
   return (
-    <nav className="mb-8 rounded-3xl border border-zinc-800 bg-zinc-900/80 px-4 py-4 shadow-lg sm:px-5 lg:sticky lg:top-5 lg:mb-0 lg:flex lg:h-[calc(100vh-2.5rem)] lg:w-72 lg:shrink-0 lg:flex-col lg:overflow-hidden lg:px-4 lg:py-5">
+    <nav className="app-sidebar mb-8 rounded-2xl border border-zinc-800 bg-zinc-900/80 px-4 py-4 shadow-lg sm:px-5 lg:sticky lg:top-5 lg:mb-0 lg:flex lg:h-[calc(100vh-2.5rem)] lg:w-72 lg:shrink-0 lg:flex-col lg:overflow-hidden lg:px-4 lg:py-5">
       <div className="flex items-center justify-between gap-3 lg:block">
         <Link
           href={`/?business=${business}`}
@@ -213,7 +213,7 @@ export default function Navigation() {
         <button
           type="button"
           onClick={() => setIsMobileMenuOpen((current) => !current)}
-          className="inline-flex shrink-0 items-center rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-2 text-sm font-semibold text-zinc-200 transition hover:border-orange-400 hover:text-orange-300 lg:hidden"
+          className="app-sidebar-menu-button inline-flex shrink-0 items-center rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-2 text-sm font-semibold text-zinc-200 transition hover:border-orange-400 hover:text-orange-300 lg:hidden"
           aria-expanded={isMobileMenuOpen}
           aria-controls="mobile-workspace-menu"
         >
@@ -221,7 +221,7 @@ export default function Navigation() {
         </button>
       </div>
 
-      <div className="mt-3 rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-300 lg:hidden">
+      <div className="app-sidebar-current mt-3 rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-300 lg:hidden">
         <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
           Current
         </p>
@@ -250,10 +250,10 @@ export default function Navigation() {
             <Link
               href={link.href}
               onClick={() => setIsMobileMenuOpen(false)}
-              className={`group flex items-center justify-center gap-2 rounded-2xl px-3 py-2 text-center transition lg:justify-between lg:text-left ${
+              className={`app-sidebar-nav-link group flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-center transition lg:justify-between lg:text-left ${
                 link.active
-                  ? "bg-orange-500 text-black shadow-lg shadow-orange-950/20"
-                  : "hover:bg-zinc-800 hover:text-orange-400"
+                  ? "app-sidebar-nav-link-active bg-orange-500 text-black shadow-lg shadow-orange-950/20"
+                  : "app-sidebar-nav-link-inactive hover:bg-zinc-800 hover:text-orange-400"
               }`}
             >
               <span className="flex min-w-0 items-center gap-2">
@@ -268,8 +268,8 @@ export default function Navigation() {
                   aria-hidden="true"
                   className={`hidden rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.14em] lg:inline ${
                     link.active
-                      ? "bg-black/10 text-black"
-                      : "bg-zinc-800 text-zinc-400"
+                      ? "app-sidebar-setup-pill-active bg-black/10 text-black"
+                      : "app-sidebar-setup-pill bg-zinc-800 text-zinc-400"
                   }`}
                 >
                   Setup
@@ -278,7 +278,7 @@ export default function Navigation() {
             </Link>
 
             {link.key === "settings" && link.active ? (
-              <div className="grid gap-2 rounded-2xl border border-zinc-800 bg-zinc-950 p-2 lg:ml-2">
+              <div className="app-sidebar-settings grid gap-2 rounded-2xl border border-zinc-800 bg-zinc-950 p-2 lg:ml-2">
                 <p className="px-3 pt-1 text-[11px] font-bold uppercase tracking-[0.2em] text-zinc-500">
                   Workspace setup
                 </p>
@@ -288,7 +288,7 @@ export default function Navigation() {
                     key={subLink.href}
                     href={subLink.href}
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="rounded-xl px-3 py-2 text-left transition hover:bg-zinc-800"
+                    className="app-sidebar-sub-link rounded-xl px-3 py-2 text-left transition hover:bg-zinc-800"
                   >
                     <span className="block text-xs font-bold text-zinc-200">
                       {subLink.label}
