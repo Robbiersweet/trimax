@@ -15,7 +15,10 @@ import TaxModeSelect from "../../components/TaxModeSelect";
 import Card from "../../components/Card";
 import Toast from "../../components/Toast";
 import { captureServicesFromLineItems } from "../../lib/captureServicesFromLineItems";
-import { getNextDocumentDisplayId } from "../../lib/documentNumbers";
+import {
+  getNextDocumentDisplayId,
+  normalizeDocumentDisplayId,
+} from "../../lib/documentNumbers";
 import { logActivity } from "../../lib/activityLog";
 import { assertCanWriteDuringMaintenance } from "../../lib/maintenanceMode";
 import {
@@ -130,6 +133,8 @@ function NewInvoicePageContent() {
     useState("");
 
   const [customerName, setCustomerName] =
+    useState("");
+  const [manualDisplayId, setManualDisplayId] =
     useState("");
   const [projectTitle, setProjectTitle] =
     useState("");
@@ -620,11 +625,50 @@ function NewInvoicePageContent() {
     let displayId = "";
 
     try {
-      displayId = await getNextDocumentDisplayId({
-        table: "invoices",
-        prefix: "INV",
-        businessId: business.id,
-      });
+      const normalizedManualDisplayId = manualDisplayId.trim()
+        ? normalizeDocumentDisplayId(manualDisplayId, "INV")
+        : "";
+
+      if (manualDisplayId.trim() && !normalizedManualDisplayId) {
+        setToast({
+          type: "error",
+          message:
+            "Use a simple invoice number like 404 or INV-0404, or leave it blank for the next Trimax number.",
+        });
+
+        return;
+      }
+
+      if (normalizedManualDisplayId) {
+        const { data: existingInvoice, error: displayIdError } =
+          await supabase
+            .from("invoices")
+            .select("id")
+            .eq("business_id", business.id)
+            .eq("display_id", normalizedManualDisplayId)
+            .maybeSingle();
+
+        if (displayIdError) {
+          throw displayIdError;
+        }
+
+        if (existingInvoice) {
+          setToast({
+            type: "error",
+            message: `${normalizedManualDisplayId} already exists in Trimax.`,
+          });
+
+          return;
+        }
+
+        displayId = normalizedManualDisplayId;
+      } else {
+        displayId = await getNextDocumentDisplayId({
+          table: "invoices",
+          prefix: "INV",
+          businessId: business.id,
+        });
+      }
     } catch (error) {
       console.error(error);
 
@@ -869,6 +913,14 @@ function NewInvoicePageContent() {
                 setCustomerName(value);
                 updateDueDateIfAutomatic({ customerName: value });
               }}
+            />
+
+            <InputField
+              label="FreshBooks / Historical Invoice Number"
+              placeholder="Example: 404 or INV-0404"
+              value={manualDisplayId}
+              onChange={setManualDisplayId}
+              helperText="Leave blank for the next Trimax invoice number. Use this only when recreating an older FreshBooks invoice."
             />
 
             <InputField

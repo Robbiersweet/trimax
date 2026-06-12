@@ -7,7 +7,10 @@ import AppShell from "../components/AppShell";
 import Button from "../components/Button";
 import Card from "../components/Card";
 import Toast from "../components/Toast";
-import { getNextDocumentDisplayId } from "../lib/documentNumbers";
+import {
+  getNextDocumentDisplayId,
+  normalizeDocumentDisplayId,
+} from "../lib/documentNumbers";
 import { logActivity } from "../lib/activityLog";
 import { assertCanWriteDuringMaintenance } from "../lib/maintenanceMode";
 import { supabase } from "../lib/supabase";
@@ -232,6 +235,10 @@ function mapInvoiceRow(row: CsvRow): InvoiceImportRow {
       : "FreshBooks import",
     notes: field(row, ["Notes", "Note", "Description"]),
   };
+}
+
+function getFreshBooksInvoiceDisplayId(freshBooksNumber: string) {
+  return normalizeDocumentDisplayId(freshBooksNumber, "INV");
 }
 
 function isDuplicateClient(existingClients: Client[], row: ClientImportRow) {
@@ -551,8 +558,18 @@ function ImportsPageContent() {
       data: { user },
     } = await supabase.auth.getUser();
 
+    const { data: existingInvoiceData } = await supabase
+      .from("invoices")
+      .select("display_id")
+      .eq("business_id", business.id);
+    const usedInvoiceDisplayIds = new Set(
+      (existingInvoiceData ?? [])
+        .map((invoice) => invoice.display_id as string | null)
+        .filter((displayId): displayId is string => Boolean(displayId))
+    );
+
     let importedCount = 0;
-    const skippedCount = 0;
+    let skippedCount = 0;
     let errorCount = 0;
     const importRows: Record<string, unknown>[] = [];
 
@@ -574,11 +591,35 @@ function ImportsPageContent() {
         continue;
       }
 
-      const displayId = await getNextDocumentDisplayId({
-        table: "invoices",
-        prefix: "INV",
-        businessId: business.id,
-      });
+      const importedDisplayId = getFreshBooksInvoiceDisplayId(
+        row.freshBooksNumber
+      );
+      let displayId = importedDisplayId;
+
+      if (displayId && usedInvoiceDisplayIds.has(displayId)) {
+        skippedCount += 1;
+        importRows.push({
+          business_id: business.id,
+          row_number: index + 1,
+          import_type: "invoices",
+          raw_data: rawRows[index] ?? {},
+          mapped_data: row,
+          status: "skipped",
+          target_table: "invoices",
+          error_message: `${displayId} already exists in Trimax.`,
+        });
+        continue;
+      }
+
+      if (!displayId) {
+        displayId = await getNextDocumentDisplayId({
+          table: "invoices",
+          prefix: "INV",
+          businessId: business.id,
+        });
+      }
+
+      usedInvoiceDisplayIds.add(displayId);
       const status =
         row.status.toLowerCase().includes("paid") ||
         row.amountPaid >= row.amount
@@ -586,9 +627,11 @@ function ImportsPageContent() {
           : row.status || "Draft";
       const notes = [
         row.notes,
-        row.freshBooksNumber
-          ? `Imported from FreshBooks invoice ${row.freshBooksNumber}.`
-          : "Imported from FreshBooks CSV.",
+        importedDisplayId
+          ? `Imported from FreshBooks invoice ${importedDisplayId}.`
+          : row.freshBooksNumber
+            ? `Imported from FreshBooks invoice ${row.freshBooksNumber}.`
+            : "Imported from FreshBooks CSV.",
       ]
         .filter(Boolean)
         .join("\n");
@@ -685,7 +728,7 @@ function ImportsPageContent() {
     setLastResult(
       `Imported ${importedCount} invoice${
         importedCount === 1 ? "" : "s"
-      }. Errors ${errorCount}.`
+      }. Skipped ${skippedCount}. Errors ${errorCount}.`
     );
   }
 
@@ -889,7 +932,10 @@ function ImportsPageContent() {
                     className="grid grid-cols-4 gap-4 border-t border-zinc-800 px-4 py-3 text-sm text-zinc-200"
                   >
                     <span>{invoice.customerName}</span>
-                    <span>{invoice.freshBooksNumber || invoice.reference}</span>
+                    <span>
+                      {getFreshBooksInvoiceDisplayId(invoice.freshBooksNumber) ||
+                        invoice.reference}
+                    </span>
                     <span>${invoice.amount.toFixed(2)}</span>
                     <span>{invoice.status}</span>
                   </div>
