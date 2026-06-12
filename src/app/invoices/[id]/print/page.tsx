@@ -29,6 +29,10 @@ type Invoice = {
   tax_rate: number | string | null;
   tax_number: string | null;
   amount_paid: number | string | null;
+  deposit_requested_amount?: number | string | null;
+  deposit_requested_at?: string | null;
+  deposit_status?: string | null;
+  deposit_note?: string | null;
   service_address: string | null;
   split_parent_invoice_id: string | null;
   split_sequence: number | null;
@@ -219,6 +223,25 @@ export default async function InvoicePrintPage({
   const total = subtotal + taxAmount;
   const amountPaid = toNumber(invoice.amount_paid);
   const amountDue = Math.max(total - amountPaid, 0);
+  const depositRequestedAmount = toNumber(
+    invoice.deposit_requested_amount
+  );
+  const depositStatus = String(invoice.deposit_status ?? "none").toLowerCase();
+  const hasDepositRequest =
+    depositStatus === "requested" && depositRequestedAmount > 0;
+  const depositDueNow = hasDepositRequest
+    ? Math.max(depositRequestedAmount - amountPaid, 0)
+    : 0;
+  const customerFacingAmountDue = hasDepositRequest
+    ? depositDueNow
+    : amountDue;
+  const customerFacingDueLabel = hasDepositRequest
+    ? "Deposit Due (USD)"
+    : "Amount Due (USD)";
+  const balanceAfterDepositRequest = Math.max(
+    total - depositRequestedAmount,
+    0
+  );
   const displayReference = maybeCanonicalApartmentUnitLabel(invoice.reference);
   const smartInvoiceDates = getSmartInvoiceDates({
     customerName: invoice.customer_name ?? client?.name ?? "",
@@ -355,10 +378,10 @@ export default async function InvoicePrintPage({
             </div>
 
             <div className="text-right">
-              <PrintLabel>Amount Due (USD)</PrintLabel>
+              <PrintLabel>{customerFacingDueLabel}</PrintLabel>
 
               <p className="mt-2 text-4xl font-light tracking-wide print:mt-1 print:text-2xl">
-                {formatCurrency(amountDue)}
+                {formatCurrency(customerFacingAmountDue)}
               </p>
             </div>
           </div>
@@ -497,6 +520,20 @@ export default async function InvoicePrintPage({
                 value={formatCurrency(total)}
               />
 
+              {hasDepositRequest ? (
+                <>
+                  <PrintSummaryRow
+                    label="Deposit Requested"
+                    value={formatCurrency(depositRequestedAmount)}
+                  />
+
+                  <PrintSummaryRow
+                    label="Remaining After Deposit"
+                    value={formatCurrency(balanceAfterDepositRequest)}
+                  />
+                </>
+              ) : null}
+
               <PrintSummaryRow
                 label="Amount Paid"
                 value={formatCurrency(amountPaid)}
@@ -506,16 +543,26 @@ export default async function InvoicePrintPage({
             <div className="mt-3 border-t-4 border-double border-gray-300 pt-5 print:mt-2 print:pt-2">
               <div className="flex items-center justify-between gap-6">
                 <p className="text-xl text-[#d9aa2f] print:text-base">
-                  Amount Due (USD)
+                  {customerFacingDueLabel}
                 </p>
 
                 <p className="text-xl font-semibold print:text-base">
-                  {formatCurrency(amountDue)}
+                  {formatCurrency(customerFacingAmountDue)}
                 </p>
               </div>
             </div>
           </div>
         </section>
+
+        {hasDepositRequest && invoice.deposit_note ? (
+          <section className="mt-5 rounded border border-emerald-200 bg-emerald-50 px-4 py-3 print:mt-2 print:px-3 print:py-2">
+            <PrintLabel>Deposit Note</PrintLabel>
+
+            <p className="mt-2 max-w-4xl whitespace-pre-line text-base leading-6 print:mt-1 print:text-sm print:leading-5">
+              {invoice.deposit_note}
+            </p>
+          </section>
+        ) : null}
 
         <section className="mt-8 print:mt-3">
           <PrintLabel>Terms</PrintLabel>

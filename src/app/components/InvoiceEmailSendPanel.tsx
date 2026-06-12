@@ -24,6 +24,7 @@ type InvoiceEmailSendPanelProps = {
   dueDate: string;
   projectTitle?: string | null;
   printHref: string;
+  requestType?: "invoice" | "deposit";
 };
 
 function businessLogoSrc(businessSlug: string) {
@@ -34,8 +35,13 @@ function businessLogoSrc(businessSlug: string) {
 
 function defaultSubject(
   businessName: string,
-  documentNumber: string
+  documentNumber: string,
+  requestType: "invoice" | "deposit"
 ) {
+  if (requestType === "deposit") {
+    return `${businessName} sent you a deposit request for ${documentNumber}`;
+  }
+
   return `${businessName} sent you invoice ${documentNumber}`;
 }
 
@@ -44,12 +50,20 @@ function defaultMessage({
   documentNumber,
   amountDue,
   dueDate,
+  requestType,
 }: {
   businessName: string;
   documentNumber: string;
   amountDue: string;
   dueDate: string;
+  requestType: "invoice" | "deposit";
 }) {
+  if (requestType === "deposit") {
+    return `${businessName} sent you a deposit request for ${amountDue} on invoice ${documentNumber}${
+      dueDate && dueDate !== "-" ? `. The invoice due date is ${dueDate}` : ""
+    }.`;
+  }
+
   return `${businessName} sent you invoice ${documentNumber} for ${amountDue}${
     dueDate && dueDate !== "-" ? ` that's due on ${dueDate}` : ""
   }.`;
@@ -66,10 +80,11 @@ export default function InvoiceEmailSendPanel({
   dueDate,
   projectTitle,
   printHref,
+  requestType = "invoice",
 }: InvoiceEmailSendPanelProps) {
   const [recipient, setRecipient] = useState(recipientEmail ?? "");
   const [subject, setSubject] = useState(
-    defaultSubject(businessName, documentNumber)
+    defaultSubject(businessName, documentNumber, requestType)
   );
   const [message, setMessage] = useState(
     defaultMessage({
@@ -77,6 +92,7 @@ export default function InvoiceEmailSendPanel({
       documentNumber,
       amountDue,
       dueDate,
+      requestType,
     })
   );
   const [signature, setSignature] = useState(
@@ -153,13 +169,23 @@ export default function InvoiceEmailSendPanel({
       const settings = normalizeInvoiceEmailSettings(data?.value, fallback);
 
       setSubject(
-        renderEmailTemplate(
-          settings.invoiceSubjectTemplate,
-          templateVariables
-        )
+        requestType === "deposit"
+          ? defaultSubject(businessName, documentNumber, requestType)
+          : renderEmailTemplate(
+              settings.invoiceSubjectTemplate,
+              templateVariables
+            )
       );
       setMessage(
-        renderEmailTemplate(settings.invoiceBodyTemplate, templateVariables)
+        requestType === "deposit"
+          ? defaultMessage({
+              businessName,
+              documentNumber,
+              amountDue,
+              dueDate,
+              requestType,
+            })
+          : renderEmailTemplate(settings.invoiceBodyTemplate, templateVariables)
       );
       setSignature(settings.signature);
       setReplyToEmail(settings.replyToEmail);
@@ -171,7 +197,15 @@ export default function InvoiceEmailSendPanel({
     return () => {
       isActive = false;
     };
-  }, [businessName, businessSlug, templateVariables]);
+  }, [
+    amountDue,
+    businessName,
+    businessSlug,
+    documentNumber,
+    dueDate,
+    requestType,
+    templateVariables,
+  ]);
 
   async function handleSend() {
     setToast(null);
@@ -248,7 +282,9 @@ export default function InvoiceEmailSendPanel({
           Send by Email
         </p>
         <h2 className="mt-1 text-2xl font-black text-slate-950">
-          Send {documentNumber}
+          {requestType === "deposit"
+            ? `Send Deposit Request`
+            : `Send ${documentNumber}`}
         </h2>
       </div>
 
@@ -340,7 +376,8 @@ export default function InvoiceEmailSendPanel({
                 {customerName}
               </p>
               <p className="text-sm text-slate-500">
-                Invoice {documentNumber} - {amountDue}
+                {requestType === "deposit" ? "Deposit request" : "Invoice"}{" "}
+                {documentNumber} - {amountDue}
               </p>
             </div>
 
@@ -379,7 +416,11 @@ export default function InvoiceEmailSendPanel({
             disabled={!canSend || sending}
             className="inline-flex items-center justify-center rounded-2xl border border-emerald-700 bg-emerald-600 px-5 py-3 text-center font-semibold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none"
           >
-            {sending ? "Sending..." : "Send Invoice"}
+            {sending
+              ? "Sending..."
+              : requestType === "deposit"
+                ? "Send Deposit Request"
+                : "Send Invoice"}
           </button>
         </div>
       </div>

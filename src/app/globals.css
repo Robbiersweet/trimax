@@ -480,6 +480,13 @@ html.theme-light .report-breakdown-card .text-zinc-300 {
   color: #475569 !important;
 }
 
+html.theme-light .deposit-request-card {
+  background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 62%, #f0fdfa 100%) !important;
+  border-color: #a7f3d0 !important;
+  color: #0f172a !important;
+  box-shadow: 0 18px 40px rgba(5, 150, 105, 0.09) !important;
+}
+
 html.theme-light .report-library-action {
   color: #c2410c !important;
 }

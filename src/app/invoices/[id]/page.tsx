@@ -6,6 +6,7 @@ import StatusBadge from "../../components/StatusBadge";
 import InternalNotes from "../../components/InternalNotes";
 import DeleteInvoiceButton from "../../components/DeleteInvoiceButton";
 import InvoiceEmailSendPanel from "../../components/InvoiceEmailSendPanel";
+import RequestDepositButton from "../../components/RequestDepositButton";
 import SplitInvoicePlanner from "../../components/SplitInvoicePlanner";
 import UpdateInvoiceStatusButton from "../../components/UpdateInvoiceStatusButton";
 import { buildSplitInvoicePlan } from "../../lib/splitInvoices";
@@ -41,6 +42,10 @@ type Invoice = {
   tax_rate: number | string | null;
   tax_number: string | null;
   amount_paid: number | string | null;
+  deposit_requested_amount?: number | string | null;
+  deposit_requested_at?: string | null;
+  deposit_status?: string | null;
+  deposit_note?: string | null;
   split_warning_enabled: boolean | null;
   split_target_amount: number | string | null;
   split_parent_invoice_id: string | null;
@@ -407,6 +412,23 @@ export default async function InvoiceDetailPage({
   const invoiceTotal = subtotal + taxAmount;
   const amountPaid = numberValue(invoice.amount_paid);
   const amountDue = Math.max(invoiceTotal - amountPaid, 0);
+  const depositRequestedAmount = numberValue(
+    invoice.deposit_requested_amount
+  );
+  const depositStatus = String(invoice.deposit_status ?? "none").toLowerCase();
+  const hasDepositRequest =
+    depositStatus === "requested" && depositRequestedAmount > 0;
+  const depositDueNow = hasDepositRequest
+    ? Math.max(depositRequestedAmount - amountPaid, 0)
+    : 0;
+  const customerFacingAmountDue = hasDepositRequest
+    ? depositDueNow
+    : amountDue;
+  const amountDueLabel = hasDepositRequest ? "Deposit Due" : "Amount Due";
+  const balanceAfterDepositRequest = Math.max(
+    invoiceTotal - depositRequestedAmount,
+    0
+  );
   const customerName = invoice.customer_name || "Customer";
   const projectTitle = invoice.project_title || customerName || "Invoice";
   const businessName =
@@ -649,16 +671,98 @@ export default async function InvoiceDetailPage({
             customerName={customerName}
             recipientEmail={recipientEmail}
             documentNumber={invoiceNumber}
-            amountDue={money(amountDue)}
+            amountDue={money(customerFacingAmountDue)}
             dueDate={displayDueDate ? formatDate(displayDueDate) : "-"}
             projectTitle={projectTitle}
             printHref={`/invoices/${invoice.id}/print${businessQuery}`}
+            requestType={hasDepositRequest ? "deposit" : "invoice"}
           />
+
+          <Card className={hasDepositRequest ? "deposit-request-card" : ""}>
+            <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-start">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.35em] text-emerald-600">
+                  Deposit Request
+                </p>
+                <h2
+                  className={`mt-3 text-2xl font-black ${
+                    hasDepositRequest ? "text-slate-950" : "text-white"
+                  }`}
+                >
+                  {hasDepositRequest
+                    ? `${money(depositRequestedAmount)} requested`
+                    : "No deposit requested yet"}
+                </h2>
+                <p
+                  className={`mt-3 max-w-3xl text-sm leading-6 ${
+                    hasDepositRequest ? "text-slate-600" : "text-zinc-400"
+                  }`}
+                >
+                  {hasDepositRequest
+                    ? `Trimax will show ${money(
+                        customerFacingAmountDue
+                      )} as the deposit due now while keeping the full invoice total at ${money(
+                        invoiceTotal
+                      )}.`
+                    : "Use this when you want the customer to pay part of the invoice now without marking it as paid."}
+                </p>
+
+                {hasDepositRequest ? (
+                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-2xl border border-emerald-200 bg-white p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                        Deposit Due
+                      </p>
+                      <p className="mt-2 text-xl font-black text-emerald-700">
+                        {money(customerFacingAmountDue)}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                        Remaining Later
+                      </p>
+                      <p className="mt-2 text-xl font-black text-slate-950">
+                        {money(balanceAfterDepositRequest)}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                        Requested
+                      </p>
+                      <p className="mt-2 text-base font-black text-slate-950">
+                        {formatDate(invoice.deposit_requested_at ?? null)}
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
+
+                {hasDepositRequest && invoice.deposit_note ? (
+                  <p className="mt-4 rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm text-slate-700">
+                    {invoice.deposit_note}
+                  </p>
+                ) : null}
+              </div>
+
+              <RequestDepositButton
+                invoiceId={invoice.id}
+                businessId={invoice.business_id}
+                invoiceLabel={invoice.display_id || projectTitle}
+                invoiceTotal={invoiceTotal}
+                currentDepositAmount={depositRequestedAmount}
+                currentDepositStatus={invoice.deposit_status}
+                currentDepositNote={invoice.deposit_note}
+              />
+            </div>
+          </Card>
 
           <Card>
             <div className="grid gap-8 md:grid-cols-2">
               <Info label="Customer" value={customerName} />
-              <Info label="Amount Due" value={money(amountDue)} strong />
+              <Info
+                label={amountDueLabel}
+                value={money(customerFacingAmountDue)}
+                strong
+              />
               <Info
                 label="Split Target"
                 value={
@@ -735,12 +839,24 @@ export default async function InvoiceDetailPage({
                 value={money(taxAmount)}
               />
               <SummaryRow label="Total" value={money(invoiceTotal)} />
+              {hasDepositRequest ? (
+                <>
+                  <SummaryRow
+                    label="Deposit Requested"
+                    value={money(depositRequestedAmount)}
+                  />
+                  <SummaryRow
+                    label="Remaining After Deposit"
+                    value={money(balanceAfterDepositRequest)}
+                  />
+                </>
+              ) : null}
               <SummaryRow label="Amount Paid" value={money(amountPaid)} />
 
               <div className="border-t border-zinc-700 pt-4">
                 <SummaryRow
-                  label="Amount Due"
-                  value={money(amountDue)}
+                  label={amountDueLabel}
+                  value={money(customerFacingAmountDue)}
                   strong
                 />
               </div>
