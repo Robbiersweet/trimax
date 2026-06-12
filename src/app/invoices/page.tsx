@@ -20,6 +20,7 @@ type Invoice = {
   invoice_amount: string | number | null;
   amount_paid: string | number | null;
   status: string | null;
+  issue_date: string | null;
   due_date: string | null;
   notes: string | null;
   updated_at: string | null;
@@ -100,6 +101,56 @@ function invoiceDaysPastDue(value: string | null) {
   );
 }
 
+function parseInvoiceNumber(displayId: string | null) {
+  const match = (displayId ?? "").match(/(\d+)/);
+  return match ? Number(match[1]) : 0;
+}
+
+function businessDateTime(value: string | null) {
+  if (!value) {
+    return 0;
+  }
+
+  const date = new Date(`${value}T00:00:00`);
+
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+}
+
+function recordDateTime(value: string | null) {
+  if (!value) {
+    return 0;
+  }
+
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+}
+
+function compareInvoicesByBusinessOrder(
+  first: InvoiceWithSplitInfo,
+  second: InvoiceWithSplitInfo
+) {
+  const dateDifference =
+    businessDateTime(second.issue_date) -
+    businessDateTime(first.issue_date);
+
+  if (dateDifference !== 0) {
+    return dateDifference;
+  }
+
+  const numberDifference =
+    parseInvoiceNumber(second.display_id) -
+    parseInvoiceNumber(first.display_id);
+
+  if (numberDifference !== 0) {
+    return numberDifference;
+  }
+
+  return (
+    recordDateTime(second.created_at) - recordDateTime(first.created_at)
+  );
+}
+
 function matchesStatusFilter({
   statusFilter,
   invoiceStatus,
@@ -175,10 +226,11 @@ export default async function InvoicesPage({
     const { data, error } = await supabase
       .from("invoices")
       .select(
-        "id, display_id, customer_name, project_title, invoice_amount, amount_paid, status, due_date, notes, updated_at, created_at, split_parent_invoice_id, split_sequence, split_count"
+        "id, display_id, customer_name, project_title, invoice_amount, amount_paid, status, issue_date, due_date, notes, updated_at, created_at, split_parent_invoice_id, split_sequence, split_count"
       )
       .eq("business_id", selectedBusiness.id)
-      .order("created_at", { ascending: false });
+      .order("issue_date", { ascending: false, nullsFirst: false })
+      .order("display_id", { ascending: false, nullsFirst: false });
 
     if (error) {
       console.warn("Invoice load with split metadata failed:", error.message);
@@ -186,10 +238,11 @@ export default async function InvoicesPage({
       const { data: fallbackData, error: fallbackError } = await supabase
         .from("invoices")
         .select(
-          "id, display_id, customer_name, project_title, invoice_amount, amount_paid, status, due_date, notes, created_at"
+          "id, display_id, customer_name, project_title, invoice_amount, amount_paid, status, issue_date, due_date, notes, created_at"
         )
         .eq("business_id", selectedBusiness.id)
-        .order("created_at", { ascending: false });
+        .order("issue_date", { ascending: false, nullsFirst: false })
+        .order("display_id", { ascending: false, nullsFirst: false });
 
       if (fallbackError) {
         console.warn("Invoice load failed:", fallbackError.message);
@@ -270,8 +323,8 @@ export default async function InvoicesPage({
     activeParams.set("view", view);
   }
 
-  const filteredInvoices = invoicesWithSplitInfo.filter(
-    (invoice) => {
+  const filteredInvoices = invoicesWithSplitInfo
+    .filter((invoice) => {
       const invoiceTotal = parseMoney(invoice.invoice_amount);
       const amountPaid = parseMoney(invoice.amount_paid);
       const amountDue = Math.max(invoiceTotal - amountPaid, 0);
@@ -318,8 +371,8 @@ export default async function InvoicesPage({
       }
 
       return true;
-    }
-  );
+    })
+    .sort(compareInvoicesByBusinessOrder);
 
   const billableInvoicesWithSplitInfo = invoicesWithSplitInfo.filter(
     (invoice) => invoice.split_children_count === 0
