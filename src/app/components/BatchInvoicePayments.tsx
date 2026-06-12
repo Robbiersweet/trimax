@@ -519,7 +519,7 @@ export default function BatchInvoicePayments({
   }
 
   return (
-    <Card className="border-green-500/30 bg-green-500/5">
+    <Card className="batch-payments-card border-green-500/30 bg-green-500/5">
       {toast ? <Toast type={toast.type} message={toast.message} /> : null}
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -539,21 +539,21 @@ export default function BatchInvoicePayments({
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[520px]">
-          <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+          <div className="app-metric-card rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
             <p className="text-sm text-zinc-400">Open Balance</p>
             <p className="mt-1 text-2xl font-black text-slate-950">
               {formatMoney(openBalance)}
             </p>
           </div>
 
-          <div className="rounded-2xl border border-green-200 bg-green-50 px-5 py-4 shadow-sm">
+          <div className="app-metric-card rounded-2xl border border-green-200 bg-green-50 px-5 py-4 shadow-sm">
             <p className="text-sm text-zinc-400">Selected</p>
             <p className="mt-1 text-2xl font-black text-green-700">
               {selectedInvoices.length}
             </p>
           </div>
 
-          <div className="rounded-2xl border border-green-200 bg-green-50 px-5 py-4 shadow-sm">
+          <div className="app-metric-card rounded-2xl border border-green-200 bg-green-50 px-5 py-4 shadow-sm">
             <p className="text-sm text-zinc-400">Selected Total</p>
             <p className="mt-1 text-2xl font-black text-green-700">
               {formatMoney(selectedTotal)}
@@ -586,7 +586,7 @@ export default function BatchInvoicePayments({
                 key={group.customerName}
                 type="button"
                 onClick={() => selectCustomerGroup(group.customerName)}
-                className="rounded-2xl border border-green-200 bg-white p-4 text-left shadow-sm transition hover:border-green-400 hover:bg-green-50"
+                className="app-action-card rounded-2xl border border-green-200 bg-white p-4 text-left shadow-sm transition hover:border-green-400 hover:bg-green-50"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -669,7 +669,7 @@ export default function BatchInvoicePayments({
         </div>
       ) : null}
 
-      <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="app-soft-panel mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[150px_150px_170px_1fr_auto]">
           <DateInputField
             label="Payment Date"
@@ -792,7 +792,7 @@ export default function BatchInvoicePayments({
         {selectedCustomerBreakdown.length > 0 ? (
           <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm font-semibold text-white">
+              <p className="text-sm font-semibold text-slate-950">
                 Selected payment batch
               </p>
                 <p className="text-sm font-bold text-green-700">
@@ -877,8 +877,8 @@ export default function BatchInvoicePayments({
         </div>
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-2xl border border-zinc-800">
-        <div className="grid grid-cols-[56px_1fr_150px_140px] items-center gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 max-md:grid-cols-[42px_1fr_auto]">
+      <div className="app-data-table mt-4 overflow-hidden rounded-2xl border border-zinc-800">
+        <div className="app-data-table-head grid grid-cols-[56px_1fr_150px_140px] items-center gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 max-md:grid-cols-[42px_1fr_auto]">
           <input
             type="checkbox"
             checked={allVisibleSelected}
@@ -901,7 +901,7 @@ export default function BatchInvoicePayments({
                 className={`grid cursor-pointer grid-cols-[56px_1fr_150px_140px] items-center gap-3 border-b border-zinc-800 px-4 py-4 transition last:border-b-0 max-md:grid-cols-[42px_1fr_auto] ${
                   selectedIds.includes(invoice.id)
                     ? "bg-green-500/10"
-                    : "bg-white hover:bg-slate-50"
+                    : "app-data-table-row bg-white hover:bg-slate-50"
                 }`}
               >
                 <input
@@ -912,7 +912,7 @@ export default function BatchInvoicePayments({
                 />
 
                 <span>
-                  <span className="block font-semibold text-white">
+                  <span className="block font-semibold text-slate-950">
                     {invoice.displayId} - {invoice.projectTitle}
                   </span>
                   <span className="mt-1 block text-sm text-zinc-400">

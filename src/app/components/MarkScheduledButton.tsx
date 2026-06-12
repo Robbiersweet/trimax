@@ -122,7 +122,7 @@ export default function MarkScheduledButton({
   };
 
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3">
+    <div className="app-soft-panel rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3">
       <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
         <DateInputField
           label="Work Date"
@@ -152,8 +152,8 @@ export default function MarkScheduledButton({
             onClick={() => setScheduledDate(quickDate.value)}
             className={`rounded-full border px-3 py-2 text-sm font-semibold transition ${
               scheduledDate === quickDate.value
-                ? "border-orange-500 bg-orange-500 text-black"
-                : "border-zinc-800 bg-zinc-950 text-zinc-300 hover:border-orange-500/70"
+                ? "app-chip-active border-orange-500 bg-orange-500 text-black"
+                : "app-chip border-zinc-800 bg-zinc-950 text-zinc-300 hover:border-orange-500/70"
             }`}
           >
             {quickDate.label}

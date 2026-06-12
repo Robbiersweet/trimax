@@ -2224,3 +2224,162 @@ html.theme-light .app-sidebar .app-button-secondary:hover {
   border-color: rgba(255, 159, 69, 0.6) !important;
   color: #ffb35c !important;
 }
+
+html.theme-light .app-back-button {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
+}
+
+html.theme-light .app-back-button:hover {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #1d4ed8 !important;
+}
+
+html.theme-light .app-soft-panel,
+html.theme-light .app-empty-state,
+html.theme-light .app-list-card,
+html.theme-light .app-metric-card,
+html.theme-light .app-action-card {
+  background: #ffffff !important;
+  border-color: #d7dde8 !important;
+  color: #0f172a !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06) !important;
+}
+
+html.theme-light .app-empty-state {
+  background: #f8fafc !important;
+  color: #64748b !important;
+}
+
+html.theme-light .app-action-card:hover {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+}
+
+html.theme-light .app-chip {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+html.theme-light .app-chip:hover {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #1d4ed8 !important;
+}
+
+html.theme-light .app-chip-active {
+  background: #2563eb !important;
+  border-color: #1d4ed8 !important;
+  color: #ffffff !important;
+}
+
+html.theme-light .push-notification-card {
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.06) !important;
+}
+
+html.theme-light .push-notification-card-idle {
+  background: #ffffff !important;
+  border-color: #d7dde8 !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .push-notification-card-enabled {
+  background: #ecfdf5 !important;
+  border-color: #86efac !important;
+  color: #064e3b !important;
+}
+
+html.theme-light .push-notification-card-enabled .text-green-200,
+html.theme-light .push-notification-card-enabled .text-green-300 {
+  color: #047857 !important;
+}
+
+html.theme-light .outlook-draft-card {
+  background: linear-gradient(135deg, #eff6ff 0%, #ffffff 62%, #f0f9ff 100%) !important;
+  border-color: #bfdbfe !important;
+}
+
+html.theme-light .outlook-draft-preview {
+  background: #ffffff !important;
+  border-color: #bfdbfe !important;
+  color: #0f172a !important;
+  box-shadow: 0 12px 26px rgba(37, 99, 235, 0.07) !important;
+}
+
+html.theme-light .outlook-draft-preview .text-sky-50,
+html.theme-light .outlook-draft-preview .text-sky-100,
+html.theme-light .outlook-draft-preview .text-sky-200 {
+  color: #0f172a !important;
+}
+
+html.theme-light .outlook-draft-preview .uppercase {
+  color: #0369a1 !important;
+}
+
+html.theme-light .batch-payments-card {
+  background: #ffffff !important;
+  border-color: #bbf7d0 !important;
+}
+
+html.theme-light .app-data-table {
+  border-color: #d7dde8 !important;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.06) !important;
+}
+
+html.theme-light .app-data-table-head {
+  background: #f8fafc !important;
+  border-color: #d7dde8 !important;
+  color: #334155 !important;
+}
+
+html.theme-light .app-data-table-row {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .app-data-table-row:hover {
+  background: #eff6ff !important;
+}
+
+html.theme-light main textarea,
+html.theme-light main select,
+html.theme-light main input[type="text"],
+html.theme-light main input[type="email"],
+html.theme-light main input[type="password"],
+html.theme-light main input[type="number"],
+html.theme-light main input[type="search"],
+html.theme-light main input[type="date"],
+html.theme-light main input:not([type]) {
+  background-color: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+html.theme-light main textarea::placeholder,
+html.theme-light main input::placeholder {
+  color: #94a3b8;
+}
+
+html.theme-light main textarea:focus,
+html.theme-light main select:focus,
+html.theme-light main input[type="text"]:focus,
+html.theme-light main input[type="email"]:focus,
+html.theme-light main input[type="password"]:focus,
+html.theme-light main input[type="number"]:focus,
+html.theme-light main input[type="search"]:focus,
+html.theme-light main input[type="date"]:focus,
+html.theme-light main input:not([type]):focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+html.theme-light main .border-t.border-zinc-800,
+html.theme-light main .border-b.border-zinc-800,
+html.theme-light main .divide-y.divide-zinc-800 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #e2e8f0 !important;
+}

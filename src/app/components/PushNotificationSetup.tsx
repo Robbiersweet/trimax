@@ -174,10 +174,10 @@ export default function PushNotificationSetup({
 
   return (
     <div
-      className={`rounded-2xl border p-5 ${
+      className={`push-notification-card rounded-2xl border p-5 ${
         isEnabled
-          ? "border-green-500/30 bg-green-500/10"
-          : "border-zinc-800 bg-zinc-950"
+          ? "push-notification-card-enabled border-green-500/30 bg-green-500/10"
+          : "push-notification-card-idle border-zinc-800 bg-zinc-950"
       }`}
     >
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

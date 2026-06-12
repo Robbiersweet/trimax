@@ -147,7 +147,7 @@ export default function InternalNotes({
   }
 
   return (
-    <div className="rounded-3xl border border-zinc-800 bg-zinc-900/80 p-6">
+    <div className="app-card internal-notes-card rounded-2xl border border-zinc-800 bg-zinc-900/80 p-6">
       {toast ? (
         <Toast
           type={toast.type}
@@ -175,7 +175,7 @@ export default function InternalNotes({
           value={body}
           onChange={(event) => setBody(event.target.value)}
           placeholder="Add an internal update, question, or follow-up..."
-          className="min-h-28 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition placeholder:text-zinc-500 focus:border-orange-500"
+          className="app-form-input min-h-28 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition placeholder:text-zinc-500 focus:border-orange-500"
         />
 
         <div className="flex justify-end">
@@ -194,14 +194,14 @@ export default function InternalNotes({
             Loading notes...
           </p>
         ) : notes.length === 0 ? (
-          <p className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-sm text-zinc-400">
+          <p className="app-empty-state rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-sm text-zinc-400">
             No internal notes yet.
           </p>
         ) : (
           notes.map((note) => (
             <div
               key={note.id}
-              className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
+              className="app-list-card rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
             >
               <div className="flex flex-col gap-1 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
                 <span className="font-semibold text-zinc-300">

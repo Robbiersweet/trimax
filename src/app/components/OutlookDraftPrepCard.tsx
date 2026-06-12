@@ -17,7 +17,7 @@ export default function OutlookDraftPrepCard({
   printHref,
 }: OutlookDraftPrepCardProps) {
   return (
-    <Card className="border-sky-500/30 bg-sky-500/10">
+    <Card className="outlook-draft-card border-sky-500/30 bg-sky-500/10">
       <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr] lg:items-start">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.3em] text-sky-200">
@@ -57,21 +57,21 @@ export default function OutlookDraftPrepCard({
       </div>
 
       <div className="mt-5 grid gap-4">
-        <div className="rounded-2xl border border-sky-500/20 bg-black/25 p-4">
+        <div className="outlook-draft-preview rounded-2xl border border-sky-500/20 bg-black/25 p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-sky-200">
             To
           </p>
           <p className="mt-2 text-sm text-sky-50">{preview.toLabel}</p>
         </div>
 
-        <div className="rounded-2xl border border-sky-500/20 bg-black/25 p-4">
+        <div className="outlook-draft-preview rounded-2xl border border-sky-500/20 bg-black/25 p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-sky-200">
             Subject
           </p>
           <p className="mt-2 text-sm text-sky-50">{preview.subject}</p>
         </div>
 
-        <div className="rounded-2xl border border-sky-500/20 bg-black/25 p-4">
+        <div className="outlook-draft-preview rounded-2xl border border-sky-500/20 bg-black/25 p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-sky-200">
             Message
           </p>
