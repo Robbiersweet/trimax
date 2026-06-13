@@ -665,7 +665,7 @@ export default async function InvoiceDetailPage({
           ) : null}
 
           <InvoiceEmailSendPanel
-            invoiceId={invoice.id}
+            documentId={invoice.id}
             businessSlug={businessSlug}
             businessName={businessName}
             customerName={customerName}

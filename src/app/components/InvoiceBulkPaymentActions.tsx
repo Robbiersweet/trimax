@@ -10,6 +10,7 @@ type InvoiceForBulkPayment = {
   projectTitle: string;
   invoiceAmount: number;
   amountPaid: number;
+  collectionAmountDue?: number;
   status: string;
   dueDate?: string | null;
 };
@@ -79,7 +80,10 @@ export default function InvoiceBulkPaymentActions({
       invoices
         .map((invoice) => ({
           ...invoice,
-          amountDue: Math.max(invoice.invoiceAmount - invoice.amountPaid, 0),
+          amountDue:
+            typeof invoice.collectionAmountDue === "number"
+              ? Math.max(invoice.collectionAmountDue, 0)
+              : Math.max(invoice.invoiceAmount - invoice.amountPaid, 0),
           daysLate: daysPastDue(invoice.dueDate),
         }))
         .filter(

@@ -2886,6 +2886,7 @@ html.theme-light .invoice-line-item-row .text-zinc-400 {
     min-height: 3.125rem;
     justify-content: center;
     padding-inline: 0.75rem;
+    border-radius: 1rem;
   }
 
   .invoice-filter-pill span:last-child {
@@ -2966,6 +2967,43 @@ html.theme-light .invoice-line-item-row .text-zinc-400 {
 .focused-invoice-card,
 .invoice-aging-card {
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.18);
+}
+
+html:not(.theme-light) .invoice-filter-bar {
+  background:
+    linear-gradient(135deg, rgba(24, 24, 27, 0.92), rgba(9, 9, 11, 0.82)),
+    #18181b !important;
+  border-color: #2f3037 !important;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
+}
+
+html:not(.theme-light) .invoice-filter-pill {
+  border-color: #3f3f46 !important;
+  background: #202024 !important;
+  color: #f4f4f5 !important;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 10px 22px rgba(0, 0, 0, 0.18);
+}
+
+html:not(.theme-light) .invoice-filter-pill.bg-sky-600 {
+  background:
+    linear-gradient(135deg, #0284c7, #2563eb),
+    #0284c7 !important;
+  border-color: #38bdf8 !important;
+  color: #ffffff !important;
+}
+
+html:not(.theme-light) .invoice-filter-pill .filter-tab-icon {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: #71717a;
+  color: #d4d4d8;
+}
+
+html:not(.theme-light) .invoice-filter-pill .filter-tab-icon-active {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.36);
+  color: #ffffff;
 }
 
 .invoice-metric-card {

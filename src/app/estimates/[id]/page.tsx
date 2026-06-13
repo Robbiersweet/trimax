@@ -4,6 +4,7 @@ import Card from "../../components/Card";
 import Button from "../../components/Button";
 import ConvertEstimateToInvoiceButton from "../../components/ConvertEstimateToInvoiceButton";
 import DeleteEstimateButton from "../../components/DeleteEstimateButton";
+import InvoiceEmailSendPanel from "../../components/InvoiceEmailSendPanel";
 import OutlookDraftPrepCard from "../../components/OutlookDraftPrepCard";
 import SplitInvoicePlanner from "../../components/SplitInvoicePlanner";
 import { buildOutlookDraftPreview } from "../../lib/outlookDrafts";
@@ -56,7 +57,12 @@ type LinkedInvoice = {
 type Business = {
   id: string;
   slug: string;
+  name: string | null;
   split_warning_amount: number | string | null;
+};
+
+type ClientContact = {
+  email: string | null;
 };
 
 function toNumber(value: number | string | null) {
@@ -97,7 +103,7 @@ export default async function EstimateDetailsPage({
 
   const { data: selectedBusinessData } = await supabase
     .from("businesses")
-    .select("id, slug, split_warning_amount")
+    .select("id, slug, name, split_warning_amount")
     .eq("slug", requestedBusinessSlug)
     .limit(1)
     .maybeSingle();
@@ -203,6 +209,17 @@ export default async function EstimateDetailsPage({
 
   const linkedInvoice = ((invoiceData ?? []) as LinkedInvoice[])[0] ?? null;
 
+  const { data: clientData } = estimate.client_id
+    ? await supabase
+        .from("clients")
+        .select("email")
+        .eq("id", estimate.client_id)
+        .eq("business_id", selectedBusiness.id)
+        .limit(1)
+        .maybeSingle()
+    : { data: null };
+  const clientContact = clientData as ClientContact | null;
+
   return (
     <AppShell>
       <div className="space-y-6">
@@ -283,6 +300,21 @@ export default async function EstimateDetailsPage({
             </div>
           </Card>
         )}
+
+        <InvoiceEmailSendPanel
+          documentId={estimate.id}
+          documentKind="estimate"
+          businessSlug={businessSlug}
+          businessName={selectedBusiness.name ?? "Trimax"}
+          customerName={estimate.customer_name ?? "Customer"}
+          recipientEmail={clientContact?.email ?? null}
+          documentNumber={estimate.display_id ?? "Estimate"}
+          amountDue={formatCurrency(estimateTotal)}
+          dueDate="-"
+          projectTitle={estimate.project_title}
+          printHref={`/estimates/${estimate.id}/print?business=${businessSlug}`}
+          requestType="estimate"
+        />
 
         <OutlookDraftPrepCard
           documentLabel="Estimate"

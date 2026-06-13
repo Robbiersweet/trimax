@@ -46,6 +46,8 @@ type Invoice = {
   customer_name: string | null;
   invoice_amount: string | number | null;
   amount_paid: string | number | null;
+  deposit_requested_amount?: string | number | null;
+  deposit_status?: string | null;
   status: string | null;
   issue_date: string | null;
   due_date: string | null;
@@ -80,6 +82,20 @@ function formatMoney(value: number) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+}
+
+function invoiceCollectionAmountDue(invoice: Invoice) {
+  const invoiceTotal = parseMoney(invoice.invoice_amount);
+  const amountPaid = parseMoney(invoice.amount_paid);
+  const fullAmountDue = Math.max(invoiceTotal - amountPaid, 0);
+  const depositAmount = parseMoney(invoice.deposit_requested_amount ?? null);
+  const hasActiveDeposit =
+    String(invoice.deposit_status ?? "none").toLowerCase() === "requested" &&
+    depositAmount > 0;
+
+  return hasActiveDeposit
+    ? Math.max(depositAmount - amountPaid, 0)
+    : fullAmountDue;
 }
 
 function isDateInCurrentMonth(value: string | null) {
@@ -618,15 +634,9 @@ export default async function DashboardPage({
 
   const openInvoicesWithAmounts = openInvoices
     .map((invoice) => {
-      const invoiceTotal = parseMoney(invoice.invoice_amount);
-      const amountPaid =
-        typeof invoice.amount_paid === "number"
-          ? invoice.amount_paid
-          : parseMoney(String(invoice.amount_paid ?? "0"));
-
       return {
         ...invoice,
-        amountDue: Math.max(invoiceTotal - amountPaid, 0),
+        amountDue: invoiceCollectionAmountDue(invoice),
         daysLate: daysPastDue(invoice.due_date),
       };
     })
@@ -640,10 +650,7 @@ export default async function DashboardPage({
   const workingYearInvoices = billableInvoices.filter((invoice) =>
     invoiceBelongsToYear(invoice, workingYear)
   );
-  const workingYearOpenInvoicesWithAmounts =
-    openInvoicesWithAmounts.filter((invoice) =>
-      invoiceBelongsToYear(invoice, workingYear)
-    );
+  const workingYearOpenInvoicesWithAmounts = openInvoicesWithAmounts;
   const historicalOpenInvoicesWithAmounts =
     openInvoicesWithAmounts.filter(
       (invoice) => !invoiceBelongsToYear(invoice, workingYear)
@@ -992,7 +999,7 @@ export default async function DashboardPage({
             <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
               <div>
                 <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
-                  {workingYearLabel} Open Revenue
+                  Open Revenue
                 </p>
 
                 <h2 className="mt-3 text-5xl font-black tracking-tight text-white">
@@ -1000,8 +1007,8 @@ export default async function DashboardPage({
                 </h2>
 
                 <p className="mt-3 text-zinc-400">
-                  Current-year open invoices and deposit requests.
-                  Older imported balances stay in history.
+                  Open invoices and active deposit requests, including imported
+                  FreshBooks balances.
                 </p>
 
                 {historicalOpenInvoicesWithAmounts.length > 0 ? (
@@ -1011,7 +1018,7 @@ export default async function DashboardPage({
                     {historicalOpenInvoicesWithAmounts.length === 1
                       ? ""
                       : "s"}{" "}
-                    hidden from this dashboard total.
+                    included in this dashboard total.
                   </p>
                 ) : null}
               </div>
@@ -1019,7 +1026,7 @@ export default async function DashboardPage({
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
                   <p className="text-zinc-400">
-                    {workingYearLabel} Open
+                    Open Now
                   </p>
 
                   <p className="mt-1 text-2xl font-bold">
@@ -1062,9 +1069,8 @@ export default async function DashboardPage({
                   </h2>
 
                   <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
-                    Current-year collection targets only. Older imported
-                    FreshBooks balances stay searchable in invoice history
-                    instead of driving today&apos;s payment workflow.
+                    Active collection targets include imported FreshBooks
+                    balances and deposit requests.
                   </p>
                 </div>
 
@@ -1377,8 +1383,8 @@ export default async function DashboardPage({
                 </h2>
 
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
-                  Current-year unpaid invoices only, so old imported history
-                  does not distort the working aging view.
+                  Active unpaid invoices, including imported FreshBooks
+                  balances and deposit requests.
                 </p>
               </div>
 
@@ -1553,7 +1559,7 @@ export default async function DashboardPage({
           >
             <Card>
               <p className="text-sm text-zinc-400">
-                {workingYearLabel} Open Invoices
+                Open Invoices
               </p>
 
               <p className="mt-2 text-4xl font-bold">

@@ -19,6 +19,8 @@ type Invoice = {
   project_title: string | null;
   invoice_amount: string | number | null;
   amount_paid: string | number | null;
+  deposit_requested_amount?: string | number | null;
+  deposit_status?: string | null;
   status: string | null;
   issue_date: string | null;
   due_date: string | null;
@@ -99,6 +101,20 @@ function invoiceDaysPastDue(value: string | null) {
   return Math.floor(
     (today.getTime() - dueDate.getTime()) / 86_400_000
   );
+}
+
+function invoiceCollectionAmountDue(invoice: Invoice) {
+  const invoiceTotal = parseMoney(invoice.invoice_amount);
+  const amountPaid = parseMoney(invoice.amount_paid);
+  const fullAmountDue = Math.max(invoiceTotal - amountPaid, 0);
+  const depositAmount = parseMoney(invoice.deposit_requested_amount ?? null);
+  const hasActiveDeposit =
+    String(invoice.deposit_status ?? "none").toLowerCase() === "requested" &&
+    depositAmount > 0;
+
+  return hasActiveDeposit
+    ? Math.max(depositAmount - amountPaid, 0)
+    : fullAmountDue;
 }
 
 function invoiceStatusKey(value: string | null) {
@@ -272,7 +288,7 @@ export default async function InvoicesPage({
     const { data, error } = await supabase
       .from("invoices")
       .select(
-        "id, display_id, customer_name, project_title, invoice_amount, amount_paid, status, issue_date, due_date, notes, updated_at, created_at, split_parent_invoice_id, split_sequence, split_count"
+        "id, display_id, customer_name, project_title, invoice_amount, amount_paid, deposit_requested_amount, deposit_status, status, issue_date, due_date, notes, updated_at, created_at, split_parent_invoice_id, split_sequence, split_count"
       )
       .eq("business_id", selectedBusiness.id)
       .order("issue_date", { ascending: false, nullsFirst: false })
@@ -383,9 +399,7 @@ export default async function InvoicesPage({
 
   const filteredInvoices = invoicesWithSplitInfo
     .filter((invoice) => {
-      const invoiceTotal = parseMoney(invoice.invoice_amount);
-      const amountPaid = parseMoney(invoice.amount_paid);
-      const amountDue = Math.max(invoiceTotal - amountPaid, 0);
+      const amountDue = invoiceCollectionAmountDue(invoice);
       const daysLate = invoiceDaysPastDue(invoice.due_date);
       const collectibleOnly = collectionFilter === "open";
       const searchableText = [
@@ -458,12 +472,9 @@ export default async function InvoicesPage({
 
   const openInvoicesWithAmounts = billableInvoicesWithSplitInfo
     .map((invoice) => {
-      const invoiceTotal = parseMoney(invoice.invoice_amount);
-      const amountPaid = parseMoney(invoice.amount_paid);
-
       return {
         ...invoice,
-        amountDue: Math.max(invoiceTotal - amountPaid, 0),
+        amountDue: invoiceCollectionAmountDue(invoice),
         daysLate: invoiceDaysPastDue(invoice.due_date),
       };
     })
@@ -473,10 +484,7 @@ export default async function InvoicesPage({
         isCollectibleInvoiceStatus(invoice.status)
     );
 
-  const currentYearOpenInvoicesWithAmounts =
-    openInvoicesWithAmounts.filter((invoice) =>
-      invoiceBelongsToYear(invoice, workingYear)
-    );
+  const currentYearOpenInvoicesWithAmounts = openInvoicesWithAmounts;
   const historicalOpenInvoicesWithAmounts =
     openInvoicesWithAmounts.filter(
       (invoice) => !invoiceBelongsToYear(invoice, workingYear)
@@ -746,8 +754,9 @@ export default async function InvoicesPage({
               </h2>
 
               <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
-                A quick Trimax view of current-year collectible balances,
-                past-due work, drafts, and invoices ready for batch payment.
+                A quick Trimax view of collectible balances, active deposit
+                requests, past-due work, drafts, and invoices ready for batch
+                payment.
               </p>
 
               {historicalOpenInvoicesWithAmounts.length > 0 ? (
@@ -755,8 +764,7 @@ export default async function InvoicesPage({
                   {historicalOpenInvoicesWithAmounts.length} older imported
                   open invoice
                   {historicalOpenInvoicesWithAmounts.length === 1 ? "" : "s"}{" "}
-                  kept in history and hidden from these active collection
-                  totals.
+                  included in these active collection totals.
                 </p>
               ) : null}
             </div>
@@ -779,7 +787,7 @@ export default async function InvoicesPage({
           <div className="invoice-metric-grid mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <div className="invoice-metric-card invoice-metric-neutral rounded-2xl border border-slate-200 bg-white p-4">
               <p className="text-sm text-slate-500">
-                {workingYear} Outstanding
+                Outstanding
               </p>
               <p className="mt-2 text-3xl font-black text-slate-950">
                 {formatMoney(openBalanceTotal)}
@@ -982,6 +990,7 @@ export default async function InvoicesPage({
             projectTitle: invoice.project_title ?? "Untitled Invoice",
             invoiceAmount: parseMoney(invoice.invoice_amount),
             amountPaid: parseMoney(invoice.amount_paid),
+            collectionAmountDue: invoice.amountDue,
             status: invoice.status ?? "Draft",
             dueDate: invoice.due_date,
           }))}
@@ -1068,7 +1077,7 @@ export default async function InvoicesPage({
           <div className="invoice-aging-summary-grid mt-5 grid gap-3 md:grid-cols-3">
             <div className="invoice-aging-summary-card rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
               <p className="text-sm text-zinc-400">
-                {workingYear} Outstanding
+                Outstanding
               </p>
               <p className="mt-2 text-3xl font-black text-white">
                 {formatMoney(openBalanceTotal)}
@@ -1135,8 +1144,8 @@ export default async function InvoicesPage({
                 </h2>
 
                 <p className="mt-2 text-sm leading-6 text-zinc-400">
-                  Current-year collectible invoices grouped by customer, useful
-                  when one check pays several units or recurring jobs.
+                  Collectible invoices grouped by customer, useful when one
+                  check pays several units or recurring jobs.
                 </p>
               </div>
 
@@ -1227,9 +1236,7 @@ export default async function InvoicesPage({
 
             <div className="mt-4 grid gap-3 md:grid-cols-5">
               {recentlyUpdatedInvoices.map((invoice) => {
-                const invoiceTotal = parseMoney(invoice.invoice_amount);
-                const amountPaid = parseMoney(invoice.amount_paid);
-                const amountDue = Math.max(invoiceTotal - amountPaid, 0);
+                const amountDue = invoiceCollectionAmountDue(invoice);
 
                 return (
                   <Link
@@ -1302,9 +1309,7 @@ export default async function InvoicesPage({
               const hasSplitChildren =
                 invoice.split_children_count > 0;
               const isBillableInvoice = !hasSplitChildren;
-              const invoiceTotal = parseMoney(invoice.invoice_amount);
-              const amountPaid = parseMoney(invoice.amount_paid);
-              const amountDue = Math.max(invoiceTotal - amountPaid, 0);
+              const amountDue = invoiceCollectionAmountDue(invoice);
               const displayAmountDue = isBillableInvoice ? amountDue : 0;
               const daysLate = isBillableInvoice
                 ? invoiceDaysPastDue(invoice.due_date)

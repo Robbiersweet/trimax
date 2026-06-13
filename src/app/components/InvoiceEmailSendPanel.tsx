@@ -14,7 +14,8 @@ import {
 import { supabase } from "../lib/supabase";
 
 type InvoiceEmailSendPanelProps = {
-  invoiceId: string;
+  documentId: string;
+  documentKind?: "invoice" | "estimate";
   businessSlug: string;
   businessName: string;
   customerName: string;
@@ -24,7 +25,7 @@ type InvoiceEmailSendPanelProps = {
   dueDate: string;
   projectTitle?: string | null;
   printHref: string;
-  requestType?: "invoice" | "deposit";
+  requestType?: "invoice" | "deposit" | "estimate";
 };
 
 function businessLogoSrc(businessSlug: string) {
@@ -36,10 +37,14 @@ function businessLogoSrc(businessSlug: string) {
 function defaultSubject(
   businessName: string,
   documentNumber: string,
-  requestType: "invoice" | "deposit"
+  requestType: "invoice" | "deposit" | "estimate"
 ) {
   if (requestType === "deposit") {
     return `${businessName} sent you a deposit request for ${documentNumber}`;
+  }
+
+  if (requestType === "estimate") {
+    return `${businessName} sent you estimate ${documentNumber}`;
   }
 
   return `${businessName} sent you invoice ${documentNumber}`;
@@ -56,12 +61,16 @@ function defaultMessage({
   documentNumber: string;
   amountDue: string;
   dueDate: string;
-  requestType: "invoice" | "deposit";
+  requestType: "invoice" | "deposit" | "estimate";
 }) {
   if (requestType === "deposit") {
     return `${businessName} sent you a deposit request for ${amountDue} on invoice ${documentNumber}${
       dueDate && dueDate !== "-" ? `. The invoice due date is ${dueDate}` : ""
     }.`;
+  }
+
+  if (requestType === "estimate") {
+    return `${businessName} sent you estimate ${documentNumber} for ${amountDue}.`;
   }
 
   return `${businessName} sent you invoice ${documentNumber} for ${amountDue}${
@@ -70,7 +79,8 @@ function defaultMessage({
 }
 
 export default function InvoiceEmailSendPanel({
-  invoiceId,
+  documentId,
+  documentKind = "invoice",
   businessSlug,
   businessName,
   customerName,
@@ -82,6 +92,12 @@ export default function InvoiceEmailSendPanel({
   printHref,
   requestType = "invoice",
 }: InvoiceEmailSendPanelProps) {
+  const documentLabel =
+    requestType === "deposit"
+      ? "Deposit request"
+      : requestType === "estimate"
+        ? "Estimate"
+        : "Invoice";
   const [recipient, setRecipient] = useState(recipientEmail ?? "");
   const [subject, setSubject] = useState(
     defaultSubject(businessName, documentNumber, requestType)
@@ -171,6 +187,8 @@ export default function InvoiceEmailSendPanel({
       setSubject(
         requestType === "deposit"
           ? defaultSubject(businessName, documentNumber, requestType)
+          : requestType === "estimate"
+            ? defaultSubject(businessName, documentNumber, requestType)
           : renderEmailTemplate(
               settings.invoiceSubjectTemplate,
               templateVariables
@@ -185,6 +203,14 @@ export default function InvoiceEmailSendPanel({
               dueDate,
               requestType,
             })
+          : requestType === "estimate"
+            ? defaultMessage({
+                businessName,
+                documentNumber,
+                amountDue,
+                dueDate,
+                requestType,
+              })
           : renderEmailTemplate(settings.invoiceBodyTemplate, templateVariables)
       );
       setSignature(settings.signature);
@@ -225,7 +251,9 @@ export default function InvoiceEmailSendPanel({
         data: { session },
       } = await supabase.auth.getSession();
 
-      const response = await fetch(`/api/invoices/${invoiceId}/send-email`, {
+      const response = await fetch(
+        `/api/${documentKind === "estimate" ? "estimates" : "invoices"}/${documentId}/send-email`,
+        {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -241,7 +269,8 @@ export default function InvoiceEmailSendPanel({
           replyToEmail,
           includePdfNote,
         }),
-      });
+        }
+      );
 
       const result = (await response.json().catch(() => ({}))) as {
         error?: string;
@@ -284,6 +313,8 @@ export default function InvoiceEmailSendPanel({
         <h2 className="mt-1 text-2xl font-black leading-tight text-slate-950">
           {requestType === "deposit"
             ? `Send Deposit Request`
+            : requestType === "estimate"
+              ? `Send ${documentNumber}`
             : `Send ${documentNumber}`}
         </h2>
       </div>
@@ -376,8 +407,7 @@ export default function InvoiceEmailSendPanel({
                 {customerName}
               </p>
               <p className="mt-1 text-sm text-slate-500">
-                {requestType === "deposit" ? "Deposit request" : "Invoice"}{" "}
-                {documentNumber} - {amountDue}
+                {documentLabel} {documentNumber} - {amountDue}
               </p>
             </div>
 
@@ -386,7 +416,7 @@ export default function InvoiceEmailSendPanel({
                 href={printHref}
                 className="inline-flex w-full items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-center text-sm font-black text-white sm:w-auto"
               >
-                Internal Invoice Preview
+                Internal {requestType === "estimate" ? "Estimate" : "Invoice"} Preview
               </a>
             </div>
           </div>
@@ -399,7 +429,7 @@ export default function InvoiceEmailSendPanel({
 
       <div className="invoice-email-footer flex flex-col gap-4 border-t border-slate-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <p className="max-w-2xl text-sm leading-6 text-slate-500">
-          Direct sending uses a verified email provider so invoices do not look
+          Direct sending uses a verified email provider so messages do not look
           like random mail.
           {templateLoaded
             ? " This preview is using your saved email settings."
@@ -422,6 +452,8 @@ export default function InvoiceEmailSendPanel({
               ? "Sending..."
               : requestType === "deposit"
                 ? "Send Deposit Request"
+                : requestType === "estimate"
+                  ? "Send Estimate"
                 : "Send Invoice"}
           </button>
         </div>
