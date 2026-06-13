@@ -2769,3 +2769,77 @@ html.theme-light .settings-danger-button {
 html.theme-light .settings-danger-button:hover {
   background: #fee2e2 !important;
 }
+
+.overflow-wrap-anywhere {
+  overflow-wrap: anywhere;
+}
+
+.invoice-email-panel {
+  background: #f8fafc !important;
+  border-color: #dbeafe !important;
+  color: #0f172a !important;
+  box-shadow: 0 22px 52px rgba(15, 23, 42, 0.18) !important;
+}
+
+.invoice-email-header,
+.invoice-email-footer {
+  background: #f1f5f9 !important;
+  border-color: #d7dde8 !important;
+}
+
+.invoice-email-input {
+  color: #020617 !important;
+  caret-color: #0f172a;
+}
+
+.invoice-email-input::placeholder {
+  color: #94a3b8 !important;
+}
+
+.invoice-email-option,
+.invoice-customer-preview {
+  background: #ffffff !important;
+  border-color: #d7dde8 !important;
+  color: #334155 !important;
+}
+
+.invoice-customer-preview p {
+  overflow-wrap: anywhere;
+}
+
+.invoice-line-item-row {
+  min-width: 0;
+}
+
+.invoice-line-item-row > * {
+  min-width: 0;
+}
+
+@media (max-width: 767px) {
+  .invoice-line-items-card {
+    padding: 1rem !important;
+  }
+
+  .invoice-line-item-row {
+    background: rgba(24, 24, 27, 0.72);
+  }
+
+  .invoice-line-item-row:first-of-type {
+    border-top: 0 !important;
+  }
+}
+
+html.theme-light .invoice-line-items-card,
+html.theme-light .invoice-line-item-row {
+  background: #ffffff !important;
+  border-color: #d7dde8 !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .invoice-line-item-row .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light .invoice-line-item-row .text-zinc-400 {
+  color: #64748b !important;
+}

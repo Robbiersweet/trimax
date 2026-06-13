@@ -165,10 +165,10 @@ function Info({
   strong?: boolean;
 }) {
   return (
-    <div>
+    <div className="min-w-0">
       <p className="text-sm text-zinc-400">{label}</p>
       <p
-        className={`mt-2 ${
+        className={`mt-2 min-w-0 overflow-wrap-anywhere ${
           strong ? "text-lg font-bold text-orange-400" : "text-lg text-white"
         }`}
       >
@@ -193,8 +193,8 @@ function SummaryRow({
         strong ? "text-lg font-bold text-orange-400" : ""
       }`}
     >
-      <span className="text-zinc-400">{label}</span>
-      <span className="font-semibold text-white">{value}</span>
+      <span className="min-w-0 text-zinc-400">{label}</span>
+      <span className="shrink-0 font-semibold text-white">{value}</span>
     </div>
   );
 }
@@ -476,8 +476,8 @@ export default async function InvoiceDetailPage({
 
   return (
     <AppShell>
-      <main className="mx-auto w-full max-w-6xl px-6 py-10">
-        <div className="mb-10">
+      <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
+        <div className="mb-8 sm:mb-10">
           <Link
             href={`/invoices${businessQuery}`}
             className="text-sm font-semibold text-orange-400 hover:text-orange-300"
@@ -490,7 +490,7 @@ export default async function InvoiceDetailPage({
               <p className="text-sm font-semibold uppercase tracking-[0.35em] text-orange-400">
                 Invoice Details
               </p>
-              <h1 className="mt-3 text-4xl font-black text-white">
+              <h1 className="mt-3 text-3xl font-black leading-tight text-white sm:text-4xl">
                 {projectTitle}
               </h1>
               <p className="mt-3 text-lg text-zinc-400">
@@ -755,8 +755,8 @@ export default async function InvoiceDetailPage({
             </div>
           </Card>
 
-          <Card>
-            <div className="grid gap-8 md:grid-cols-2">
+          <Card className="invoice-summary-card">
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
               <Info label="Customer" value={customerName} />
               <Info
                 label={amountDueLabel}
@@ -785,17 +785,17 @@ export default async function InvoiceDetailPage({
             </div>
           </Card>
 
-          <Card>
-            <div className="mb-6 flex items-center justify-between gap-4">
+          <Card className="invoice-line-items-card">
+            <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-2xl font-bold text-white">Line Items</h2>
-              <p className="text-2xl font-black text-orange-400">
+              <p className="text-2xl font-black text-orange-400 sm:text-right">
                 {money(amountDue)}
               </p>
             </div>
 
             {items.length > 0 ? (
-              <div className="overflow-hidden rounded-2xl border border-zinc-800">
-                <div className="grid grid-cols-[1fr_90px_130px_130px] gap-4 bg-black/50 px-5 py-4 text-sm font-bold text-zinc-400">
+              <div className="rounded-2xl border border-zinc-800 md:overflow-hidden">
+                <div className="hidden grid-cols-[minmax(0,1fr)_90px_130px_130px] gap-4 bg-black/50 px-5 py-4 text-sm font-bold text-zinc-400 md:grid">
                   <div>Description</div>
                   <div className="text-right">Qty</div>
                   <div className="text-right">Unit</div>
@@ -811,12 +811,27 @@ export default async function InvoiceDetailPage({
                   return (
                     <div
                       key={item.id}
-                      className="grid grid-cols-[1fr_90px_130px_130px] gap-4 border-t border-zinc-800 px-5 py-4 text-white"
+                      className="invoice-line-item-row grid gap-4 border-t border-zinc-800 px-4 py-5 text-white first:border-t-0 md:grid-cols-[minmax(0,1fr)_90px_130px_130px] md:px-5 md:py-4"
                     >
-                      <div>{item.description}</div>
-                      <div className="text-right">{quantity}</div>
-                      <div className="text-right">{money(unitPrice)}</div>
-                      <div className="text-right font-bold text-orange-400">
+                      <div className="min-w-0 whitespace-pre-wrap break-words text-base leading-7 md:leading-6">
+                        {item.description}
+                      </div>
+                      <div className="flex items-center justify-between gap-3 md:block md:text-right">
+                        <span className="text-sm font-semibold text-zinc-400 md:hidden">
+                          Qty
+                        </span>
+                        <span>{quantity}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 md:block md:text-right">
+                        <span className="text-sm font-semibold text-zinc-400 md:hidden">
+                          Unit
+                        </span>
+                        <span>{money(unitPrice)}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 font-bold text-orange-400 md:block md:text-right">
+                        <span className="text-sm font-semibold text-zinc-400 md:hidden">
+                          Total
+                        </span>
                         {money(lineTotal)}
                       </div>
                     </div>
