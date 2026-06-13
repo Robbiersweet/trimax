@@ -265,7 +265,7 @@ export default async function ClientsPage({
           </div>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
+            <div className="app-metric-card rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
               <p className="text-sm text-zinc-400">
                 Total Outstanding
               </p>
@@ -279,7 +279,7 @@ export default async function ClientsPage({
               </p>
             </div>
 
-            <div className="rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4">
+            <div className="client-followup-card rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4">
               <p className="text-sm text-orange-100/80">
                 Clients With Balances
               </p>
@@ -293,7 +293,7 @@ export default async function ClientsPage({
               </p>
             </div>
 
-            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+            <div className="client-estimate-card rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
               <p className="text-sm text-emerald-100/80">
                 Active Estimates
               </p>
@@ -322,7 +322,7 @@ export default async function ClientsPage({
             <div className="mt-3 grid gap-3 md:grid-cols-4">
               <Link
                 href={`/clients/new${businessQuery}`}
-                className="flex min-h-36 flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-700 bg-zinc-950/60 p-4 text-center transition hover:border-orange-400 hover:text-orange-300"
+                className="client-add-card flex min-h-36 flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-700 bg-zinc-950/60 p-4 text-center transition hover:border-orange-400 hover:text-orange-300"
               >
                 <span className="text-3xl font-light text-orange-400">
                   +
@@ -337,7 +337,7 @@ export default async function ClientsPage({
                 <Link
                   key={client.id}
                   href={`/clients/${client.id}${businessQuery}`}
-                  className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 transition hover:border-orange-500/60 hover:bg-zinc-900"
+                  className="client-mini-card rounded-2xl border border-zinc-800 bg-zinc-950 p-4 transition hover:border-orange-500/60 hover:bg-zinc-900"
                 >
                   <div className="flex items-start gap-3">
                     <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-purple-400/40 bg-purple-500/10 text-sm font-black text-purple-200">
@@ -382,7 +382,7 @@ export default async function ClientsPage({
             />
 
             <div>
-              <label className="mb-2 block text-sm text-zinc-400">
+              <label className="app-form-label mb-2 block text-sm text-zinc-400">
                 Search Clients
               </label>
 
@@ -390,7 +390,7 @@ export default async function ClientsPage({
                 name="q"
                 defaultValue={searchTerm}
                 placeholder="Search name, contact, email, phone, or address"
-                className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+                className="app-form-input w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
               />
             </div>
 
@@ -460,7 +460,7 @@ export default async function ClientsPage({
             {filteredClients.map((client) => (
               <Card
                 key={client.id}
-                className="transition hover:border-orange-500/60 hover:bg-zinc-800"
+                className="client-list-card transition hover:border-orange-500/60 hover:bg-zinc-800"
               >
                   <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                     <div>
@@ -534,28 +534,28 @@ export default async function ClientsPage({
                   <div className="mt-5 flex flex-wrap gap-3 border-t border-zinc-800 pt-4">
                     <Link
                       href={`/clients/${client.id}${businessQuery}`}
-                      className="rounded-xl bg-orange-500 px-4 py-2 text-sm font-bold text-black transition hover:bg-orange-400"
+                      className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-blue-700"
                     >
                       Open
                     </Link>
 
                     <Link
                       href={`/clients/${client.id}/edit${businessQuery}`}
-                      className="rounded-xl bg-zinc-800 px-4 py-2 text-sm font-bold text-white transition hover:bg-zinc-700"
+                      className="app-button-secondary rounded-xl bg-zinc-800 px-4 py-2 text-sm font-bold text-white transition hover:bg-zinc-700"
                     >
                       Edit
                     </Link>
 
                     <Link
                       href={`/estimates/new${businessQuery}&clientId=${client.id}`}
-                      className="rounded-xl bg-zinc-800 px-4 py-2 text-sm font-bold text-white transition hover:bg-zinc-700"
+                      className="app-button-secondary rounded-xl bg-zinc-800 px-4 py-2 text-sm font-bold text-white transition hover:bg-zinc-700"
                     >
                       New Estimate
                     </Link>
 
                     <Link
                       href={`/invoices/new${businessQuery}&clientId=${client.id}`}
-                      className="rounded-xl bg-zinc-800 px-4 py-2 text-sm font-bold text-white transition hover:bg-zinc-700"
+                      className="app-button-secondary rounded-xl bg-zinc-800 px-4 py-2 text-sm font-bold text-white transition hover:bg-zinc-700"
                     >
                       New Invoice
                     </Link>

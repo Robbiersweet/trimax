@@ -2417,3 +2417,198 @@ html.theme-light main .border-b.border-zinc-800,
 html.theme-light main .divide-y.divide-zinc-800 > :not([hidden]) ~ :not([hidden]) {
   border-color: #e2e8f0 !important;
 }
+
+/* Queue mobile polish. Keep this at the end so it outranks the older orange
+   unit-plate rule that some installed mobile app sessions can cache. */
+.queue-unit-plate-v2 {
+  background:
+    linear-gradient(135deg, #2563eb, #0ea5e9 70%, #06b6d4),
+    #2563eb !important;
+  border-color: #1d4ed8 !important;
+  color: #ffffff !important;
+  box-shadow:
+    0 18px 42px rgba(37, 99, 235, 0.28),
+    0 1px 0 rgba(255, 255, 255, 0.45) inset !important;
+}
+
+.queue-unit-plate-v2 .queue-unit-plate-label,
+.queue-unit-plate-v2 .queue-unit-plate-value {
+  color: #ffffff !important;
+}
+
+html.theme-light .queue-unit-plate.queue-unit-plate-v2,
+html.theme-light main .queue-unit-plate.queue-unit-plate-v2,
+html.theme-light main section .queue-unit-plate.queue-unit-plate-v2 {
+  background:
+    linear-gradient(135deg, #2563eb, #0ea5e9 70%, #06b6d4),
+    #2563eb !important;
+  border-color: #1d4ed8 !important;
+  color: #ffffff !important;
+  box-shadow:
+    0 18px 42px rgba(37, 99, 235, 0.28),
+    0 1px 0 rgba(255, 255, 255, 0.45) inset !important;
+}
+
+html.theme-light .queue-unit-plate.queue-unit-plate-v2 .queue-unit-plate-label,
+html.theme-light .queue-unit-plate.queue-unit-plate-v2 .queue-unit-plate-value,
+html.theme-light main .queue-unit-plate.queue-unit-plate-v2 .queue-unit-plate-label,
+html.theme-light main .queue-unit-plate.queue-unit-plate-v2 .queue-unit-plate-value {
+  color: #ffffff !important;
+}
+
+html.theme-light .queue-current-renovation-pill {
+  background: #eff6ff !important;
+  border: 1px solid #bfdbfe !important;
+  color: #1d4ed8 !important;
+}
+
+html.theme-light .queue-lifecycle-pill,
+html.theme-light .queue-lifecycle-step-idle {
+  background: #ffffff !important;
+  border-color: #d7dde8 !important;
+  color: #0f172a !important;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05) !important;
+}
+
+html.theme-light .queue-lifecycle-pill-filled {
+  background: #eff6ff !important;
+  border-color: #bfdbfe !important;
+}
+
+html.theme-light .queue-lifecycle-pill-alert {
+  background: #fffbeb !important;
+  border-color: #fde68a !important;
+}
+
+html.theme-light .queue-lifecycle-step-active {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .queue-detail-notice {
+  background: #eff6ff !important;
+  border-color: #bfdbfe !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .queue-detail-notice .text-orange-100,
+html.theme-light .queue-detail-notice .text-orange-100\/80,
+html.theme-light .queue-detail-notice .text-orange-300 {
+  color: #1d4ed8 !important;
+}
+
+html.theme-light .attention-card {
+  background: #ffffff !important;
+  border-color: #d7dde8 !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .attention-card-green {
+  background: #ecfdf5 !important;
+  border-color: #bbf7d0 !important;
+}
+
+html.theme-light .attention-card-orange,
+html.theme-light .attention-card-yellow {
+  background: #fffbeb !important;
+  border-color: #fde68a !important;
+}
+
+html.theme-light .attention-card-red {
+  background: #fef2f2 !important;
+  border-color: #fecaca !important;
+}
+
+html.theme-light .renovation-panel,
+html.theme-light .unit-intelligence-preview {
+  background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 62%, #eff6ff 100%) !important;
+  border-color: #a7f3d0 !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .renovation-panel .text-emerald-300,
+html.theme-light .renovation-panel .text-zinc-100,
+html.theme-light .renovation-panel .text-zinc-300,
+html.theme-light .unit-intelligence-preview .text-sky-300,
+html.theme-light .unit-intelligence-preview .text-zinc-100,
+html.theme-light .unit-intelligence-preview .text-zinc-300 {
+  color: #0f172a !important;
+}
+
+html.theme-light .renovation-panel .text-zinc-400,
+html.theme-light .unit-intelligence-preview .text-zinc-500 {
+  color: #64748b !important;
+}
+
+html.theme-light .unit-intelligence-preview-row {
+  background: #ffffff !important;
+  border-color: #bfdbfe !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .queue-context-card,
+html.theme-light .queue-memory-notice {
+  background: #eff6ff !important;
+  border-color: #bfdbfe !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .queue-context-card .text-orange-400,
+html.theme-light .queue-memory-notice .text-orange-100 {
+  color: #1d4ed8 !important;
+}
+
+html.theme-light .client-followup-card {
+  background: #eff6ff !important;
+  border-color: #bfdbfe !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .client-followup-card .text-orange-100,
+html.theme-light .client-followup-card .text-orange-100\/60,
+html.theme-light .client-followup-card .text-orange-100\/80 {
+  color: #1d4ed8 !important;
+}
+
+html.theme-light .client-estimate-card {
+  background: #ecfdf5 !important;
+  border-color: #bbf7d0 !important;
+  color: #064e3b !important;
+}
+
+html.theme-light .client-estimate-card .text-emerald-100,
+html.theme-light .client-estimate-card .text-emerald-100\/60,
+html.theme-light .client-estimate-card .text-emerald-100\/80 {
+  color: #047857 !important;
+}
+
+html.theme-light .client-add-card,
+html.theme-light .client-mini-card,
+html.theme-light .client-list-card {
+  background: #ffffff !important;
+  border-color: #d7dde8 !important;
+  color: #0f172a !important;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.06) !important;
+}
+
+html.theme-light .client-add-card:hover,
+html.theme-light .client-mini-card:hover,
+html.theme-light .client-list-card:hover {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #1d4ed8 !important;
+}
+
+html.theme-light .client-mini-card .text-white,
+html.theme-light .client-list-card .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light .client-mini-card .text-orange-300 {
+  color: #1d4ed8 !important;
+}
+
+html.theme-light .client-add-card .text-orange-400 {
+  color: #2563eb !important;
+}

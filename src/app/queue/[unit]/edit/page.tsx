@@ -302,7 +302,7 @@ export default function EditQueueItemPage() {
       <div className="mx-auto max-w-3xl space-y-6">
         <Link
           href={`/queue/${queueItemId}?business=${businessSlug}`}
-          className="inline-flex text-sm text-orange-400 hover:text-orange-300"
+          className="app-back-button inline-flex rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-2 text-sm font-semibold text-orange-400 hover:text-orange-300"
         >
           Back to Queue Item
         </Link>
@@ -383,7 +383,7 @@ export default function EditQueueItemPage() {
               options={flooringOptions}
             />
 
-            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+            <div className="renovation-panel rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
               <p className="text-sm uppercase tracking-[0.25em] text-emerald-300">
                 Renovation History
               </p>
@@ -395,7 +395,7 @@ export default function EditQueueItemPage() {
               </p>
 
               <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <label className="flex items-start gap-3 rounded-2xl border border-zinc-700 bg-zinc-950/70 p-4">
+                <label className="app-soft-panel flex items-start gap-3 rounded-2xl border border-zinc-700 bg-zinc-950/70 p-4">
                   <input
                     type="checkbox"
                     checked={priorRenovation}
@@ -419,7 +419,7 @@ export default function EditQueueItemPage() {
                   </span>
                 </label>
 
-                <label className="flex items-start gap-3 rounded-2xl border border-zinc-700 bg-zinc-950/70 p-4">
+                <label className="app-soft-panel flex items-start gap-3 rounded-2xl border border-zinc-700 bg-zinc-950/70 p-4">
                   <input
                     type="checkbox"
                     checked={renovationNeeded}
@@ -467,7 +467,7 @@ export default function EditQueueItemPage() {
               ) : null}
             </div>
 
-            <label className="flex items-center gap-4 rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3">
+            <label className="app-soft-panel flex items-center gap-4 rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3">
               <input
                 type="checkbox"
                 checked={smokedIn}
@@ -546,7 +546,7 @@ export default function EditQueueItemPage() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm text-zinc-400">
+              <label className="app-form-label mb-2 block text-sm text-zinc-400">
                 Notes
               </label>
 
@@ -555,7 +555,7 @@ export default function EditQueueItemPage() {
                 onChange={(event) =>
                   setNotes(event.target.value)
                 }
-                className="min-h-40 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+                className="app-form-input min-h-40 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
               />
             </div>
 

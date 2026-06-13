@@ -1208,7 +1208,7 @@ function NewRequestPageContent() {
       <div className="mx-auto max-w-3xl">
         <Link
           href={cancelHref}
-          className="inline-flex items-center rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-2 text-sm font-semibold text-zinc-300 transition hover:border-orange-400 hover:text-orange-300"
+          className="app-back-button inline-flex items-center rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-2 text-sm font-semibold text-zinc-300 transition hover:border-orange-400 hover:text-orange-300"
         >
           Back to Queue
         </Link>
@@ -1228,7 +1228,7 @@ function NewRequestPageContent() {
         </p>
 
         {business && (
-          <Card className="mt-6 border-orange-500/40">
+          <Card className="queue-context-card mt-6 border-orange-500/40">
             <p className="text-sm uppercase tracking-[0.25em] text-orange-400">
               Selected Business
             </p>
@@ -1268,7 +1268,7 @@ function NewRequestPageContent() {
         <Card className="mt-8">
           <div className="grid gap-5">
             {draftSavedAt && !draftLoaded ? (
-              <p className="rounded-2xl border border-zinc-800 bg-zinc-950/60 px-4 py-3 text-sm text-zinc-400">
+              <p className="app-empty-state rounded-2xl border border-zinc-800 bg-zinc-950/60 px-4 py-3 text-sm text-zinc-400">
                 Draft autosaved at {formatDraftSavedAt(draftSavedAt)}.
               </p>
             ) : null}
@@ -1322,7 +1322,7 @@ function NewRequestPageContent() {
                 ) : null}
 
                 {selectedUnitProfiles.length > 0 ? (
-                  <div className="rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4">
+                  <div className="unit-intelligence-preview rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4">
                     <p className="text-sm uppercase tracking-[0.25em] text-sky-300">
                       Unit Intelligence Preview
                     </p>
@@ -1331,7 +1331,7 @@ function NewRequestPageContent() {
                       {selectedUnitProfiles.map((unitProfile) => (
                         <div
                           key={unitProfile.id}
-                          className="rounded-2xl border border-sky-500/20 bg-zinc-950/70 p-3 text-sm"
+                          className="unit-intelligence-preview-row rounded-2xl border border-sky-500/20 bg-zinc-950/70 p-3 text-sm"
                         >
                           <div className="grid gap-3 sm:grid-cols-4">
                             <div>
@@ -1362,7 +1362,7 @@ function NewRequestPageContent() {
                           </div>
 
                           {historyByUnitId[unitProfile.id]?.hasHistory ? (
-                            <div className="mt-4 rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4">
+                            <div className="unit-intelligence-history-card mt-4 rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4">
                               <p className="text-xs uppercase tracking-[0.25em] text-sky-300">
                                 History Summary
                               </p>
@@ -1436,7 +1436,7 @@ function NewRequestPageContent() {
                               </div>
                             </div>
                           ) : (
-                            <div className="mt-4 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4">
+                            <div className="unit-intelligence-history-card mt-4 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4">
                               <p className="text-xs uppercase tracking-[0.25em] text-sky-300">
                                 History Summary
                               </p>
@@ -1474,7 +1474,7 @@ function NewRequestPageContent() {
             ) : null}
 
             {paintMemoryMessage ? (
-              <div className="rounded-2xl border border-orange-500/30 bg-orange-500/10 px-4 py-3">
+              <div className="queue-memory-notice rounded-2xl border border-orange-500/30 bg-orange-500/10 px-4 py-3">
                 <p className="text-sm font-semibold text-orange-100">
                   {paintMemoryMessage}
                 </p>
@@ -1531,7 +1531,7 @@ function NewRequestPageContent() {
             />
 
             {!isJustKleen ? (
-              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+              <div className="renovation-panel rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
                 <p className="text-sm uppercase tracking-[0.25em] text-emerald-300">
                   Renovation History
                 </p>
@@ -1547,7 +1547,7 @@ function NewRequestPageContent() {
                   property and unit.
                 </p>
 
-                <div className="mt-4 rounded-2xl border border-zinc-700 bg-zinc-950/70 p-4 text-sm leading-6 text-zinc-300">
+                <div className="app-soft-panel mt-4 rounded-2xl border border-zinc-700 bg-zinc-950/70 p-4 text-sm leading-6 text-zinc-300">
                   <p className="font-semibold text-zinc-100">
                     How to use this
                   </p>
@@ -1567,7 +1567,7 @@ function NewRequestPageContent() {
                 ) : null}
 
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <label className="flex items-start gap-3 rounded-2xl border border-zinc-700 bg-zinc-950/70 p-4">
+                  <label className="app-soft-panel flex items-start gap-3 rounded-2xl border border-zinc-700 bg-zinc-950/70 p-4">
                     <input
                       type="checkbox"
                       checked={priorRenovation}
@@ -1591,7 +1591,7 @@ function NewRequestPageContent() {
                     </span>
                   </label>
 
-                  <label className="flex items-start gap-3 rounded-2xl border border-zinc-700 bg-zinc-950/70 p-4">
+                  <label className="app-soft-panel flex items-start gap-3 rounded-2xl border border-zinc-700 bg-zinc-950/70 p-4">
                     <input
                       type="checkbox"
                       checked={renovationNeeded}
@@ -1644,14 +1644,14 @@ function NewRequestPageContent() {
 
             <div className="grid gap-5 md:grid-cols-2">
               <div>
-                <label className="mb-2 block text-sm text-zinc-400">
+                <label className="app-form-label mb-2 block text-sm text-zinc-400">
                   Priority
                 </label>
 
                 <select
                   value={priority}
                   onChange={(event) => setPriority(event.target.value)}
-                  className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+                  className="app-form-input w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
                 >
                   <option>Low</option>
                   <option>Normal</option>
@@ -1660,7 +1660,7 @@ function NewRequestPageContent() {
                 </select>
               </div>
 
-              <label className="flex items-center gap-4 rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3">
+              <label className="app-soft-panel flex items-center gap-4 rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3">
                 <input
                   type="checkbox"
                   checked={smokedIn}
@@ -1726,7 +1726,7 @@ function NewRequestPageContent() {
               helperText="Use the date the property wants painting finished by so urgent units can be prioritized."
             />
 
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 px-4 py-3">
+            <div className="app-soft-panel rounded-2xl border border-zinc-800 bg-zinc-950/60 px-4 py-3">
               <p className="font-semibold text-white">
                 Scheduling happens after submission
               </p>
@@ -1739,7 +1739,7 @@ function NewRequestPageContent() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm text-zinc-400">Notes</label>
+              <label className="app-form-label mb-2 block text-sm text-zinc-400">Notes</label>
 
               <textarea
                 value={notes}
@@ -1749,7 +1749,7 @@ function NewRequestPageContent() {
                     ? "Add notes about access, supplies, timing, special cleaning details, or customer requests..."
                     : "Add notes about smoke, flooring, damages, timing, or access..."
                 }
-                className="min-h-40 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+                className="app-form-input min-h-40 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
               />
             </div>
 
@@ -1764,7 +1764,7 @@ function NewRequestPageContent() {
 
               <Link
                 href={cancelHref}
-                className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-zinc-700 bg-zinc-900 px-6 py-3 text-center font-semibold text-zinc-100 transition hover:border-orange-400 hover:text-orange-300"
+                className="app-button-secondary inline-flex min-h-12 items-center justify-center rounded-2xl border border-zinc-700 bg-zinc-900 px-6 py-3 text-center font-semibold text-zinc-100 transition hover:border-orange-400 hover:text-orange-300"
               >
                 Cancel and return
               </Link>

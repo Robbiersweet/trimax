@@ -263,7 +263,7 @@ export default function EditClientPage() {
                   setNotes(event.target.value)
                 }
                 placeholder="Internal notes..."
-                className="min-h-40 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+                className="app-form-input min-h-40 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
               />
             </div>
 

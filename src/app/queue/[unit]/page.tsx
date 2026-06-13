@@ -398,7 +398,7 @@ export default async function QueueDetailPage({
 
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            <div className="queue-unit-plate queue-unit-plate-large">
+            <div className="queue-unit-plate queue-unit-plate-v2 queue-unit-plate-large">
               <span className="queue-unit-plate-label">Unit</span>
               <span className="queue-unit-plate-value">
                 {displayUnit || "-"}
@@ -617,7 +617,7 @@ export default async function QueueDetailPage({
             />
           </div>
 
-          <div className="mb-6 rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4">
+          <div className="queue-detail-notice mb-6 rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4">
             <p className="text-sm uppercase tracking-[0.25em] text-orange-300">
               Schedule Work
             </p>
@@ -771,11 +771,11 @@ function AttentionCard({
   detail: string;
 }) {
   const toneClasses: Record<string, string> = {
-    green: "border-green-500/40 bg-green-500/10",
-    orange: "border-orange-500/40 bg-orange-500/10",
-    red: "border-red-500/40 bg-red-500/10",
-    yellow: "border-yellow-500/40 bg-yellow-500/10",
-    zinc: "border-zinc-800 bg-zinc-900",
+    green: "attention-card attention-card-green border-green-500/40 bg-green-500/10",
+    orange: "attention-card attention-card-orange border-orange-500/40 bg-orange-500/10",
+    red: "attention-card attention-card-red border-red-500/40 bg-red-500/10",
+    yellow: "attention-card attention-card-yellow border-yellow-500/40 bg-yellow-500/10",
+    zinc: "attention-card attention-card-zinc border-zinc-800 bg-zinc-900",
   };
 
   return (
@@ -844,8 +844,8 @@ function LifecycleStep({
     <div
       className={`rounded-2xl border px-4 py-3 ${
         active
-          ? "border-orange-500/40 bg-orange-500/10"
-          : "border-zinc-800 bg-zinc-950"
+          ? "queue-lifecycle-step-active border-orange-500/40 bg-orange-500/10"
+          : "queue-lifecycle-step-idle border-zinc-800 bg-zinc-950"
       }`}
     >
       <p className="text-sm text-zinc-400">{label}</p>

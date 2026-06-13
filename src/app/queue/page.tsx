@@ -682,7 +682,7 @@ export default async function QueuePage({
                   <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                       <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
-                        <div className="queue-unit-plate">
+                        <div className="queue-unit-plate queue-unit-plate-v2">
                           <span className="queue-unit-plate-label">Unit</span>
                           <span className="queue-unit-plate-value">
                             {displayUnit || "-"}
@@ -730,7 +730,7 @@ export default async function QueuePage({
                             ) : null}
 
                             {item.renovation_needed ? (
-                              <span className="rounded-full bg-orange-500/20 px-3 py-1 text-sm font-semibold text-orange-200">
+                              <span className="queue-current-renovation-pill rounded-full bg-orange-500/20 px-3 py-1 text-sm font-semibold text-orange-200">
                                 Current Renovation
                               </span>
                             ) : null}
@@ -894,12 +894,12 @@ function LifecyclePill({
 }) {
   return (
     <div
-      className={`rounded-2xl border px-4 py-3 ${
+      className={`queue-lifecycle-pill rounded-2xl border px-4 py-3 ${
         alert
-          ? "border-amber-200 bg-amber-50"
+          ? "queue-lifecycle-pill-alert border-amber-200 bg-amber-50"
           : value
-          ? "border-sky-200 bg-sky-50"
-          : "border-slate-200 bg-white"
+          ? "queue-lifecycle-pill-filled border-sky-200 bg-sky-50"
+          : "queue-lifecycle-pill-empty border-slate-200 bg-white"
       }`}
     >
       <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
