@@ -2612,3 +2612,23 @@ html.theme-light .client-mini-card .text-orange-300 {
 html.theme-light .client-add-card .text-orange-400 {
   color: #2563eb !important;
 }
+
+html.theme-light .recurring-template-card {
+  background: #ffffff !important;
+  border-color: #d7dde8 !important;
+  color: #0f172a !important;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.06) !important;
+}
+
+html.theme-light .recurring-template-card .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light .recurring-template-card .text-orange-200,
+html.theme-light .recurring-template-card .text-orange-400 {
+  color: #1d4ed8 !important;
+}
+
+html.theme-light .recurring-template-card .text-green-200 {
+  color: #047857 !important;
+}

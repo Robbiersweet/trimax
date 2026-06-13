@@ -765,7 +765,7 @@ function RecurringInvoicesPageContent() {
                 Trimax will create drafts only; you still review and send.
               </p>
             </div>
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-300">
+            <div className="app-soft-panel rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-300">
               Template total:{" "}
               <span className="font-black text-white">
                 {formatCurrency(templateTotal)}
@@ -782,11 +782,11 @@ function RecurringInvoicesPageContent() {
             />
 
             <div>
-              <label className="mb-2 block text-sm text-zinc-400">Client</label>
+              <label className="app-form-label mb-2 block text-sm text-zinc-400">Client</label>
               <select
                 value={selectedClientId}
                 onChange={(event) => chooseClient(event.target.value)}
-                className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+                className="app-form-input w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
               >
                 <option value="">Choose a client or type the customer below</option>
                 {clients.map((client) => (
@@ -825,7 +825,7 @@ function RecurringInvoicesPageContent() {
             />
 
             <div>
-              <label className="mb-2 block text-sm text-zinc-400">
+              <label className="app-form-label mb-2 block text-sm text-zinc-400">
                 Customer Format
               </label>
               <select
@@ -833,7 +833,7 @@ function RecurringInvoicesPageContent() {
                 onChange={(event) =>
                   setDeliveryFormat(event.target.value as "standard" | "5stars_boa")
                 }
-                className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+                className="app-form-input w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
               >
                 <option value="standard">Normal invoice PDF</option>
                 <option value="5stars_boa">BOA / 5 Star 5 spreadsheet format</option>
@@ -881,20 +881,20 @@ function RecurringInvoicesPageContent() {
 
           <div className="mt-6 space-y-4">
             <div>
-              <label className="mb-2 block text-sm text-zinc-400">Terms</label>
+              <label className="app-form-label mb-2 block text-sm text-zinc-400">Terms</label>
               <textarea
                 value={terms}
                 onChange={(event) => setTerms(event.target.value)}
-                className="min-h-24 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+                className="app-form-input min-h-24 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-sm text-zinc-400">Notes</label>
+              <label className="app-form-label mb-2 block text-sm text-zinc-400">Notes</label>
               <textarea
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
-                className="min-h-24 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+                className="app-form-input min-h-24 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
               />
             </div>
           </div>
@@ -907,7 +907,7 @@ function RecurringInvoicesPageContent() {
               {lineItems.map((item, index) => (
                 <div
                   key={index}
-                  className="grid gap-3 rounded-2xl border border-zinc-800 bg-black/20 p-4 lg:grid-cols-[1fr_120px_160px_auto]"
+                  className="app-soft-panel grid gap-3 rounded-2xl border border-zinc-800 bg-black/20 p-4 lg:grid-cols-[1fr_120px_160px_auto]"
                 >
                   <InputField
                     label="Description"
@@ -955,14 +955,14 @@ function RecurringInvoicesPageContent() {
               onChange={setEmailSubject}
             />
             <div>
-              <label className="mb-2 block text-sm text-zinc-400">
+              <label className="app-form-label mb-2 block text-sm text-zinc-400">
                 Email Body
               </label>
               <textarea
                 value={emailBody}
                 onChange={(event) => setEmailBody(event.target.value)}
                 placeholder="Optional. Blank means Trimax will create a simple email body."
-                className="min-h-36 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+                className="app-form-input min-h-36 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
               />
             </div>
           </div>
@@ -1003,7 +1003,7 @@ function RecurringInvoicesPageContent() {
                 return (
                   <div
                     key={template.id}
-                    className={`rounded-2xl border border-zinc-800 bg-zinc-950 p-4 ${
+                    className={`recurring-template-card rounded-2xl border border-zinc-800 bg-zinc-950 p-4 ${
                       template.is_active ? "" : "opacity-60"
                     }`}
                   >
@@ -1019,16 +1019,16 @@ function RecurringInvoicesPageContent() {
                           {template.project_title}
                         </p>
                         <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
-                          <span className="rounded-full border border-zinc-700 px-3 py-1 text-zinc-300">
+                          <span className="app-chip rounded-full border border-zinc-700 px-3 py-1 text-zinc-300">
                             Monthly on day {template.day_of_month}
                           </span>
-                          <span className="rounded-full border border-orange-500/40 px-3 py-1 text-orange-200">
+                          <span className="app-chip rounded-full border border-orange-500/40 px-3 py-1 text-orange-200">
                             Next draft: {formatDate(template.next_run_date)}
                           </span>
-                          <span className="rounded-full border border-zinc-700 px-3 py-1 text-zinc-300">
+                          <span className="app-chip rounded-full border border-zinc-700 px-3 py-1 text-zinc-300">
                             Due in {template.due_days} days
                           </span>
-                          <span className="rounded-full border border-green-500/40 px-3 py-1 text-green-200">
+                          <span className="app-chip rounded-full border border-green-500/40 px-3 py-1 text-green-200">
                             {template.delivery_format === "5stars_boa"
                               ? "BOA / 5 Star 5 format"
                               : "Normal PDF"}
