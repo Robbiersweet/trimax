@@ -2843,3 +2843,221 @@ html.theme-light .invoice-line-item-row .text-white {
 html.theme-light .invoice-line-item-row .text-zinc-400 {
   color: #64748b !important;
 }
+
+.app-shell-root {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@media (max-width: 767px) {
+  .app-shell-content {
+    padding-top: max(1rem, env(safe-area-inset-top));
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .invoice-dashboard .app-card {
+    border-radius: 1.5rem;
+    padding: 1rem;
+  }
+
+  .invoice-page-actions > a,
+  .invoice-snapshot-actions > a {
+    width: 100%;
+  }
+
+  .invoice-page-actions button,
+  .invoice-snapshot-actions button,
+  .invoice-search-actions button {
+    min-height: 3.25rem;
+  }
+
+  .invoice-search-input {
+    font-size: 1rem;
+    min-width: 0;
+    text-overflow: ellipsis;
+  }
+
+  .invoice-filter-bar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .invoice-filter-pill {
+    min-height: 3.125rem;
+    justify-content: center;
+    padding-inline: 0.75rem;
+  }
+
+  .invoice-filter-pill span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .invoice-metric-grid,
+  .invoice-aging-summary-grid,
+  .invoice-aging-bucket-grid {
+    gap: 0.75rem;
+  }
+
+  .invoice-metric-card,
+  .invoice-aging-summary-card,
+  .invoice-aging-bucket {
+    padding: 1rem !important;
+  }
+
+  .invoice-metric-card p:nth-child(2),
+  .invoice-aging-summary-card p:nth-child(2),
+  .invoice-aging-bucket p:nth-child(2) {
+    font-size: 2rem;
+    line-height: 1.08;
+    overflow-wrap: anywhere;
+  }
+
+  .payment-hero-card {
+    border-radius: 1.5rem !important;
+  }
+
+  .payment-hero-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .payment-hero-stat {
+    padding: 0.75rem !important;
+  }
+
+  .payment-hero-stat p:first-child {
+    font-size: 0.75rem;
+    line-height: 1.2;
+  }
+
+  .payment-hero-stat p:last-child {
+    font-size: 1.5rem;
+    line-height: 1.05;
+    overflow-wrap: anywhere;
+  }
+
+  .payment-chip {
+    flex: 1 1 calc(50% - 0.375rem);
+    min-height: 2.875rem;
+    text-align: center;
+  }
+
+  .payment-prep-table {
+    border-radius: 1.25rem;
+  }
+
+  .payment-prep-row {
+    align-items: start;
+  }
+
+  .payment-prep-row input {
+    margin-top: 0.25rem;
+  }
+
+  .invoice-list-card h2 {
+    font-size: 1.25rem;
+    line-height: 1.25;
+  }
+}
+
+.invoice-snapshot-card,
+.invoice-search-card,
+.focused-invoice-card,
+.invoice-aging-card {
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.18);
+}
+
+.invoice-metric-card {
+  min-width: 0;
+}
+
+.invoice-metric-card p,
+.invoice-aging-summary-card p,
+.invoice-aging-bucket p {
+  min-width: 0;
+}
+
+html:not(.theme-light) .invoice-metric-neutral,
+html:not(.theme-light) .invoice-metric-danger,
+html:not(.theme-light) .invoice-metric-warning,
+html:not(.theme-light) .invoice-metric-success {
+  background: #09090b !important;
+  border-color: #27272a !important;
+  color: #f8fafc !important;
+}
+
+html:not(.theme-light) .invoice-metric-neutral p:first-child,
+html:not(.theme-light) .invoice-metric-neutral p:last-child {
+  color: #a8b3c7 !important;
+}
+
+html:not(.theme-light) .invoice-metric-neutral p:nth-child(2) {
+  color: #f8fafc !important;
+}
+
+html:not(.theme-light) .invoice-metric-danger {
+  background: #2a0d18 !important;
+  border-color: #9f1239 !important;
+}
+
+html:not(.theme-light) .invoice-metric-danger p {
+  color: #fecdd3 !important;
+}
+
+html:not(.theme-light) .invoice-metric-danger p:nth-child(2) {
+  color: #fb7185 !important;
+}
+
+html:not(.theme-light) .invoice-metric-warning {
+  background: #271a06 !important;
+  border-color: #92400e !important;
+}
+
+html:not(.theme-light) .invoice-metric-warning p {
+  color: #fde68a !important;
+}
+
+html:not(.theme-light) .invoice-metric-success {
+  background: #052e1a !important;
+  border-color: #047857 !important;
+}
+
+html:not(.theme-light) .invoice-metric-success p {
+  color: #bbf7d0 !important;
+}
+
+html:not(.theme-light) .invoice-metric-success p:nth-child(2) {
+  color: #34d399 !important;
+}
+
+html:not(.theme-light) .focused-invoice-card {
+  background: #061827 !important;
+  border-color: #0ea5e9 !important;
+}
+
+html:not(.theme-light) .focused-invoice-card .text-slate-700 {
+  color: #bfdbfe !important;
+}
+
+html:not(.theme-light) .payment-prep-row-selected {
+  background: #06351f !important;
+}
+
+html.theme-light .invoice-snapshot-card,
+html.theme-light .invoice-search-card,
+html.theme-light .focused-invoice-card,
+html.theme-light .invoice-aging-card,
+html.theme-light .invoice-list-card {
+  background: #ffffff !important;
+  border-color: #d7dde8 !important;
+  color: #0f172a !important;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.06) !important;
+}
+
+html.theme-light .invoice-aging-bucket,
+html.theme-light .invoice-aging-summary-card {
+  background: #ffffff !important;
+  border-color: #d7dde8 !important;
+  color: #0f172a !important;
+}

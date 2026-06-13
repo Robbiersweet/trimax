@@ -694,14 +694,14 @@ export default async function InvoicesPage({
 
   return (
     <AppShell>
-      <div className="space-y-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="invoice-dashboard space-y-5 sm:space-y-6">
+        <div className="invoice-page-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
               Trimax
             </p>
 
-            <h1 className="mt-2 text-4xl font-bold">Invoices</h1>
+            <h1 className="mt-2 text-4xl font-bold leading-tight">Invoices</h1>
 
             <p className="mt-2 text-zinc-400">
               Showing invoices for{" "}
@@ -709,13 +709,15 @@ export default async function InvoicesPage({
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-3">
+          <div className="invoice-page-actions flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <Link href={`/recurring-invoices${businessQuery}`}>
-              <Button variant="secondary">Recurring Drafts</Button>
+              <Button variant="secondary" className="w-full sm:w-auto">
+                Recurring Drafts
+              </Button>
             </Link>
 
             <Link href={`/invoices/new${businessQuery}`}>
-              <Button>+ New Invoice</Button>
+              <Button className="w-full sm:w-auto">+ New Invoice</Button>
             </Link>
           </div>
         </div>
@@ -732,7 +734,7 @@ export default async function InvoicesPage({
           </Card>
         ) : null}
 
-        <Card className="border-blue-500/20 bg-blue-500/5">
+        <Card className="invoice-snapshot-card border-blue-500/20 bg-blue-500/5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.3em] text-blue-300">
@@ -759,19 +761,23 @@ export default async function InvoicesPage({
               ) : null}
             </div>
 
-            <div className="flex flex-wrap gap-3">
+            <div className="invoice-snapshot-actions flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Link href={`/payments${businessQuery}`}>
-                <Button>Record Batch Payment</Button>
+                <Button className="w-full sm:w-auto">
+                  Record Batch Payment
+                </Button>
               </Link>
 
               <Link href={`/invoices${businessQuery}&view=aging`}>
-                <Button variant="secondary">Aging View</Button>
+                <Button variant="secondary" className="w-full sm:w-auto">
+                  Aging View
+                </Button>
               </Link>
             </div>
           </div>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="invoice-metric-grid mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="invoice-metric-card invoice-metric-neutral rounded-2xl border border-slate-200 bg-white p-4">
               <p className="text-sm text-slate-500">
                 {workingYear} Outstanding
               </p>
@@ -785,7 +791,7 @@ export default async function InvoicesPage({
               </p>
             </div>
 
-            <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
+            <div className="invoice-metric-card invoice-metric-danger rounded-2xl border border-rose-200 bg-rose-50 p-4">
               <p className="text-sm text-rose-700">Past Due</p>
               <p className="mt-2 text-3xl font-black text-rose-700">
                 {formatMoney(overdueBalanceTotal)}
@@ -795,7 +801,7 @@ export default async function InvoicesPage({
               </p>
             </div>
 
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+            <div className="invoice-metric-card invoice-metric-warning rounded-2xl border border-amber-200 bg-amber-50 p-4">
               <p className="text-sm text-amber-700">Draft Balance</p>
               <p className="mt-2 text-3xl font-black text-amber-800">
                 {formatMoney(draftBalanceTotal)}
@@ -805,7 +811,7 @@ export default async function InvoicesPage({
               </p>
             </div>
 
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+            <div className="invoice-metric-card invoice-metric-success rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
               <p className="text-sm text-emerald-700">Batch Payment Cue</p>
               <p className="mt-2 text-3xl font-black text-emerald-800">
                 {customerBalanceRows.filter((customer) => customer.invoiceCount > 1).length}
@@ -817,7 +823,7 @@ export default async function InvoicesPage({
           </div>
         </Card>
 
-        <Card>
+        <Card className="invoice-search-card">
           <form
             action="/invoices"
             className="grid gap-4 md:grid-cols-[1fr_auto]"
@@ -877,12 +883,14 @@ export default async function InvoicesPage({
                 name="q"
                 defaultValue={searchTerm}
                 placeholder="Search number, project, customer, status, or split source"
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-100"
+                className="invoice-search-input w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-950 outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-100"
               />
             </div>
 
-            <div className="flex items-end gap-3">
-              <Button type="submit">Search</Button>
+            <div className="invoice-search-actions flex flex-col gap-3 md:flex-row md:items-end">
+              <Button type="submit" className="w-full md:w-auto">
+                Search
+              </Button>
 
               {(searchTerm ||
                 customerFilter ||
@@ -890,8 +898,8 @@ export default async function InvoicesPage({
                 yearFilter ||
                 statusFilter !== "all" ||
                 view !== "all") && (
-                <Link href={`/invoices${businessQuery}`}>
-                  <Button variant="secondary">
+                <Link href={`/invoices${businessQuery}`} className="w-full md:w-auto">
+                  <Button variant="secondary" className="w-full md:w-auto">
                     Clear
                   </Button>
                 </Link>
@@ -901,7 +909,7 @@ export default async function InvoicesPage({
         </Card>
 
         {customerFilter || collectionFilter || yearFilter ? (
-          <Card className="border-sky-200 bg-sky-50">
+          <Card className="focused-invoice-card border-sky-200 bg-sky-50">
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-sky-700">
               Focused Invoice View
             </p>
@@ -917,12 +925,12 @@ export default async function InvoicesPage({
           </Card>
         ) : null}
 
-        <div className="workspace-filter-bar flex flex-wrap gap-3 rounded-2xl border border-zinc-800 p-2">
+        <div className="invoice-filter-bar workspace-filter-bar flex flex-wrap gap-2 rounded-2xl border border-zinc-800 p-2">
           {viewLinks.map((filter) => (
             <Link
               key={filter.value}
               href={filter.href}
-              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
+              className={`invoice-filter-pill inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
                 view === filter.value
                   ? "bg-sky-600 text-white shadow-sm shadow-sky-900/10"
                   : "workspace-filter-link-inactive border border-slate-200 bg-white text-slate-700 hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700"
@@ -941,12 +949,12 @@ export default async function InvoicesPage({
           ))}
         </div>
 
-        <div className="workspace-filter-bar flex flex-wrap gap-3 rounded-2xl border border-zinc-800 p-2">
+        <div className="invoice-filter-bar workspace-filter-bar flex flex-wrap gap-2 rounded-2xl border border-zinc-800 p-2">
           {statusLinks.map((filter) => (
             <Link
               key={filter.value}
               href={filter.href}
-              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
+              className={`invoice-filter-pill inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
                 statusFilter === filter.value
                   ? "bg-sky-600 text-white shadow-sm shadow-sky-900/10"
                   : "workspace-filter-link-inactive border border-slate-200 bg-white text-slate-700 hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700"
@@ -1033,7 +1041,7 @@ export default async function InvoicesPage({
           </Card>
         ) : null}
 
-        <Card className="border-pink-500/20 bg-pink-500/5">
+        <Card className="invoice-aging-card border-pink-500/20 bg-pink-500/5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.3em] text-pink-300">
@@ -1051,12 +1059,14 @@ export default async function InvoicesPage({
             </div>
 
             <Link href={`/invoices?business=${businessSlug}&view=aging`}>
-              <Button variant="secondary">Open Aging View</Button>
+              <Button variant="secondary" className="w-full sm:w-auto">
+                Open Aging View
+              </Button>
             </Link>
           </div>
 
-          <div className="mt-5 grid gap-3 md:grid-cols-3">
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
+          <div className="invoice-aging-summary-grid mt-5 grid gap-3 md:grid-cols-3">
+            <div className="invoice-aging-summary-card rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
               <p className="text-sm text-zinc-400">
                 {workingYear} Outstanding
               </p>
@@ -1065,14 +1075,14 @@ export default async function InvoicesPage({
               </p>
             </div>
 
-            <div className="rounded-2xl border border-pink-500/30 bg-pink-500/10 p-4">
+            <div className="invoice-aging-summary-card invoice-aging-danger rounded-2xl border border-pink-500/30 bg-pink-500/10 p-4">
               <p className="text-sm text-pink-100/80">Past Due</p>
               <p className="mt-2 text-3xl font-black text-pink-100">
                 {formatMoney(overdueBalanceTotal)}
               </p>
             </div>
 
-            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+            <div className="invoice-aging-summary-card invoice-aging-warning rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
               <p className="text-sm text-amber-100/80">Still In Draft</p>
               <p className="mt-2 text-3xl font-black text-amber-100">
                 {formatMoney(draftBalanceTotal)}
@@ -1080,11 +1090,11 @@ export default async function InvoicesPage({
             </div>
           </div>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="invoice-aging-bucket-grid mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {agingBuckets.map((bucket) => (
               <div
                 key={bucket.label}
-                className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
+                className="invoice-aging-bucket rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
               >
                 <p className="text-sm text-zinc-400">{bucket.label}</p>
 
@@ -1284,7 +1294,7 @@ export default async function InvoicesPage({
             </p>
           </Card>
         ) : (
-          <div className="grid gap-4">
+          <div className="invoice-list grid gap-4">
             {filteredInvoices.map((invoice) => {
               const isSplitInvoice = Boolean(
                 invoice.split_parent_invoice_id
@@ -1310,7 +1320,7 @@ export default async function InvoicesPage({
               return (
                 <Card
                   key={invoice.id}
-                  className={`transition hover:border-sky-300 hover:bg-sky-50 ${
+                  className={`invoice-list-card transition hover:border-sky-300 hover:bg-sky-50 ${
                     isSplitInvoice
                       ? "border-green-500/30 bg-green-500/5"
                       : hasSplitChildren
@@ -1388,17 +1398,17 @@ export default async function InvoicesPage({
                       </div>
                     </div>
 
-                    <div className="mt-5 flex flex-wrap gap-3 border-t border-zinc-800 pt-4">
+                    <div className="invoice-list-actions mt-5 flex flex-col gap-3 border-t border-zinc-800 pt-4 sm:flex-row sm:flex-wrap">
                       <Link
                         href={`/invoices/${invoice.id}${businessQuery}`}
-                        className="rounded-full bg-sky-600 px-4 py-2 text-sm font-black text-white transition hover:bg-sky-700"
+                        className="rounded-full bg-sky-600 px-4 py-2 text-center text-sm font-black text-white transition hover:bg-sky-700"
                       >
                         Open
                       </Link>
 
                       <Link
                         href={`/invoices/${invoice.id}/print${businessQuery}`}
-                        className="rounded-full border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-200 transition hover:border-orange-400 hover:text-orange-300"
+                        className="rounded-full border border-zinc-700 px-4 py-2 text-center text-sm font-semibold text-zinc-200 transition hover:border-orange-400 hover:text-orange-300"
                       >
                         Print
                       </Link>
@@ -1406,7 +1416,7 @@ export default async function InvoicesPage({
                       {displayAmountDue > 0 ? (
                         <Link
                           href={`/payments?${paymentParams.toString()}`}
-                          className="payment-action-button rounded-full border px-4 py-2 text-sm font-semibold transition"
+                          className="payment-action-button rounded-full border px-4 py-2 text-center text-sm font-semibold transition"
                         >
                           Record Payment
                         </Link>

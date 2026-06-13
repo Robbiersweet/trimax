@@ -64,13 +64,13 @@ export default function AppShell({
   }, [isAuthPage]);
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-white">
+    <main className="app-shell-root min-h-screen bg-zinc-950 text-white">
       {isAuthPage ? (
         <div className="mx-auto max-w-6xl px-4 py-5">
           {children}
         </div>
       ) : (
-        <div className="mx-auto flex w-full max-w-[112rem] flex-col px-4 py-5 lg:flex-row lg:gap-6 lg:px-6">
+        <div className="app-shell-content mx-auto flex w-full max-w-[112rem] flex-col px-4 py-5 lg:flex-row lg:gap-6 lg:px-6">
           <Navigation />
 
           <section className="min-w-0 flex-1 lg:py-2">

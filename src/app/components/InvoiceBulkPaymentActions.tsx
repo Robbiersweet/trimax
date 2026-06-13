@@ -153,14 +153,14 @@ export default function InvoiceBulkPaymentActions({
   }
 
   return (
-    <section className="payment-hero-card rounded-[2rem] border border-green-500/25 bg-gradient-to-br from-green-500/10 via-zinc-900 to-zinc-950 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.25)] sm:p-6">
+    <section className="payment-hero-card rounded-[2rem] border border-green-500/25 bg-gradient-to-br from-green-500/10 via-zinc-900 to-zinc-950 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.25)] sm:p-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p className="payment-hero-label text-sm font-semibold uppercase tracking-[0.35em] text-green-300">
             Batch Payment Prep
           </p>
 
-          <h2 className="mt-2 text-2xl font-bold">
+          <h2 className="mt-2 text-2xl font-bold leading-tight sm:text-3xl">
             Select invoices paid by one check
           </h2>
 
@@ -170,7 +170,7 @@ export default function InvoiceBulkPaymentActions({
           </p>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[520px]">
+        <div className="payment-hero-stats grid gap-3 sm:grid-cols-3 lg:min-w-[520px]">
           <div className="payment-hero-stat rounded-2xl border border-zinc-800 bg-black/50 px-4 py-3">
             <p className="text-sm text-zinc-400">Open Invoices</p>
             <p className="mt-1 text-2xl font-black text-white">
@@ -194,13 +194,13 @@ export default function InvoiceBulkPaymentActions({
         </div>
       </div>
 
-      <div className="mt-5 flex flex-wrap gap-2">
+      <div className="payment-quick-actions mt-5 flex flex-wrap gap-2">
         <button
           type="button"
           onClick={() =>
             selectInvoices(payableInvoices.map((invoice) => invoice.id))
           }
-          className="rounded-full bg-green-500 px-4 py-2 text-sm font-black text-black transition hover:bg-green-400"
+          className="payment-chip rounded-full bg-green-500 px-4 py-2 text-sm font-black text-black transition hover:bg-green-400"
         >
           Select All Open
         </button>
@@ -211,7 +211,7 @@ export default function InvoiceBulkPaymentActions({
             selectInvoices(overdueInvoices.map((invoice) => invoice.id))
           }
           disabled={overdueInvoices.length === 0}
-          className="rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:border-rose-300 hover:bg-rose-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+          className="payment-chip rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:border-rose-300 hover:bg-rose-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
         >
           Select Overdue
         </button>
@@ -221,7 +221,7 @@ export default function InvoiceBulkPaymentActions({
             key={group.customerName}
             type="button"
             onClick={() => selectInvoices(group.invoiceIds)}
-            className="rounded-full border border-green-500/40 bg-green-500/10 px-4 py-2 text-sm font-semibold text-green-100 transition hover:bg-green-500/20"
+            className="payment-chip rounded-full border border-green-500/40 bg-green-500/10 px-4 py-2 text-sm font-semibold text-green-100 transition hover:bg-green-500/20"
           >
             {group.customerName} ({group.count})
           </button>
@@ -231,13 +231,13 @@ export default function InvoiceBulkPaymentActions({
           type="button"
           onClick={() => setSelectedIds([])}
           disabled={selectedIds.length === 0}
-          className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700 disabled:cursor-not-allowed disabled:text-slate-400"
+          className="payment-chip rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700 disabled:cursor-not-allowed disabled:text-slate-400"
         >
           Clear
         </button>
       </div>
 
-      <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <div className="payment-prep-table mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white">
         <div className="grid grid-cols-[48px_1fr_130px_140px] items-center gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 max-md:grid-cols-[42px_1fr_auto]">
           <input
             type="checkbox"
@@ -263,7 +263,7 @@ export default function InvoiceBulkPaymentActions({
             return (
               <label
                 key={invoice.id}
-                className={`payment-prep-row grid cursor-pointer grid-cols-[48px_1fr_130px_140px] items-center gap-3 border-b border-slate-200 px-4 py-4 transition last:border-b-0 max-md:grid-cols-[42px_1fr_auto] ${
+                className={`payment-prep-row grid cursor-pointer grid-cols-[48px_1fr_130px_140px] items-center gap-3 border-b border-slate-200 px-4 py-4 transition last:border-b-0 max-md:grid-cols-[34px_minmax(0,1fr)_auto] max-md:gap-2 max-md:px-3 ${
                   isSelected
                     ? "payment-prep-row-selected bg-green-50"
                     : "bg-white hover:bg-sky-50"
@@ -276,8 +276,8 @@ export default function InvoiceBulkPaymentActions({
                   className="h-5 w-5 accent-green-500"
                 />
 
-                <span>
-                  <span className="block font-semibold text-slate-950">
+                <span className="min-w-0">
+                  <span className="block break-words font-semibold leading-snug text-slate-950">
                     {invoice.displayId} - {invoice.projectTitle}
                   </span>
                   <span className="mt-1 block text-sm text-slate-500">
@@ -300,7 +300,7 @@ export default function InvoiceBulkPaymentActions({
                   ) : null}
                 </span>
 
-                <span className="text-right font-black text-emerald-700">
+                <span className="shrink-0 text-right font-black text-emerald-700">
                   {formatMoney(invoice.amountDue)}
                 </span>
               </label>
@@ -317,7 +317,7 @@ export default function InvoiceBulkPaymentActions({
 
         <Link
           href={paymentHref}
-          className={`rounded-full px-5 py-3 text-center text-sm font-black transition ${
+          className={`rounded-full px-5 py-3 text-center text-sm font-black transition sm:shrink-0 ${
             selectedIds.length > 0
               ? "bg-green-500 text-black hover:bg-green-400"
               : "border border-slate-300 bg-white text-slate-700 hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700"
