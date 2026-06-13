@@ -2648,3 +2648,124 @@ html.theme-light .estimate-list-card:hover {
 html.theme-light .estimate-list-card .text-orange-400 {
   color: #1d4ed8 !important;
 }
+
+html.theme-light .document-context-card,
+html.theme-light .document-line-items-panel,
+html.theme-light .document-line-item-row,
+html.theme-light .document-option-card,
+html.theme-light .settings-entry-panel,
+html.theme-light .settings-role-card,
+html.theme-light .settings-permission-card,
+html.theme-light .settings-step-card,
+html.theme-light .settings-access-request-card,
+html.theme-light .settings-data-table {
+  background: #ffffff !important;
+  border-color: #d7dde8 !important;
+  color: #0f172a !important;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.06) !important;
+}
+
+html.theme-light .document-note-panel,
+html.theme-light .settings-note-card,
+html.theme-light .settings-access-panel,
+html.theme-light .settings-empty-state {
+  background: #f8fafc !important;
+  border-color: #d7dde8 !important;
+  color: #475569 !important;
+}
+
+html.theme-light .document-info-panel {
+  background: #eff6ff !important;
+  border-color: #bfdbfe !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .document-warning-panel {
+  background: #fffbeb !important;
+  border-color: #fde68a !important;
+  color: #92400e !important;
+}
+
+html.theme-light .document-line-total {
+  background: #eff6ff !important;
+  border-color: #bfdbfe !important;
+  color: #1d4ed8 !important;
+}
+
+html.theme-light .document-context-card .text-orange-400,
+html.theme-light .document-info-panel .text-orange-100,
+html.theme-light .document-info-panel .text-orange-100\/80,
+html.theme-light .document-info-panel .text-orange-300,
+html.theme-light .document-info-panel .text-purple-100,
+html.theme-light .document-info-panel .text-purple-100\/80,
+html.theme-light .document-info-panel .text-purple-300 {
+  color: #1d4ed8 !important;
+}
+
+html.theme-light .document-warning-panel .text-yellow-100,
+html.theme-light .document-warning-panel .text-yellow-100\/80,
+html.theme-light .document-warning-panel .text-yellow-300 {
+  color: #92400e !important;
+}
+
+html.theme-light .document-option-card .text-white,
+html.theme-light .document-line-item-row .text-white,
+html.theme-light .settings-data-row .text-white,
+html.theme-light .settings-access-request-card .text-white,
+html.theme-light .settings-role-card .text-white,
+html.theme-light .settings-permission-card .font-semibold {
+  color: #0f172a !important;
+}
+
+html.theme-light .document-option-card .text-zinc-400,
+html.theme-light .document-line-item-row .text-zinc-400,
+html.theme-light .settings-data-row .text-zinc-400,
+html.theme-light .settings-data-row .text-zinc-500,
+html.theme-light .settings-access-panel .text-zinc-400,
+html.theme-light .settings-access-panel .text-zinc-500,
+html.theme-light .settings-access-request-card .text-zinc-300,
+html.theme-light .settings-access-request-card .text-zinc-500,
+html.theme-light .settings-step-card .text-zinc-400,
+html.theme-light .settings-role-card .text-zinc-400,
+html.theme-light .settings-permission-card .text-zinc-400 {
+  color: #64748b !important;
+}
+
+html.theme-light .settings-access-panel {
+  background: #eff6ff !important;
+  border-color: #bfdbfe !important;
+}
+
+html.theme-light .settings-step-card .text-green-200 {
+  color: #047857 !important;
+}
+
+html.theme-light .settings-step-card .text-sky-200,
+html.theme-light .settings-step-card .text-orange-200 {
+  color: #1d4ed8 !important;
+}
+
+html.theme-light .settings-data-table-head {
+  background: #f1f5f9 !important;
+  border-color: #d7dde8 !important;
+  color: #475569 !important;
+}
+
+html.theme-light .settings-data-row {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .settings-data-row:hover {
+  background: #f8fafc !important;
+}
+
+html.theme-light .settings-danger-button {
+  background: #f1f5f9 !important;
+  color: #991b1b !important;
+  border: 1px solid #fecaca !important;
+}
+
+html.theme-light .settings-danger-button:hover {
+  background: #fee2e2 !important;
+}

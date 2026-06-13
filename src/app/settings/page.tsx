@@ -1516,7 +1516,7 @@ function BusinessSettingsPageContent() {
                   onChange={setSplitWarningAmount}
                 />
 
-                <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
+                <div className="settings-entry-panel rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
                   <p className="text-sm text-zinc-400">
                     Current Default
                   </p>
@@ -1690,7 +1690,7 @@ function BusinessSettingsPageContent() {
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-3">
-                  <div className="rounded-2xl border border-green-500/20 bg-zinc-950 p-4">
+                  <div className="settings-step-card rounded-2xl border border-green-500/20 bg-zinc-950 p-4">
                     <p className="text-sm font-semibold text-green-200">
                       1. Deploy Trimax
                     </p>
@@ -1700,7 +1700,7 @@ function BusinessSettingsPageContent() {
                     </p>
                   </div>
 
-                  <div className="rounded-2xl border border-sky-500/20 bg-zinc-950 p-4">
+                  <div className="settings-step-card rounded-2xl border border-sky-500/20 bg-zinc-950 p-4">
                     <p className="text-sm font-semibold text-sky-200">
                       2. Add To Home Screen
                     </p>
@@ -1711,7 +1711,7 @@ function BusinessSettingsPageContent() {
                     </p>
                   </div>
 
-                  <div className="rounded-2xl border border-orange-500/20 bg-zinc-950 p-4">
+                  <div className="settings-step-card rounded-2xl border border-orange-500/20 bg-zinc-950 p-4">
                     <p className="text-sm font-semibold text-orange-200">
                       3. Enable Alerts
                     </p>
@@ -1722,7 +1722,7 @@ function BusinessSettingsPageContent() {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
+                <div className="settings-entry-panel rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
                   <p className="text-sm font-semibold text-white">
                     Current Status
                   </p>
@@ -1760,7 +1760,7 @@ function BusinessSettingsPageContent() {
                   </p>
                 </div>
 
-                <div className="grid gap-4 rounded-2xl border border-orange-500/30 bg-orange-500/5 p-5">
+                <div className="settings-access-panel grid gap-4 rounded-2xl border border-orange-500/30 bg-orange-500/5 p-5">
                   <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                     <div>
                       <h3 className="text-xl font-semibold">
@@ -1785,7 +1785,7 @@ function BusinessSettingsPageContent() {
                   </div>
 
                   {accessRequests.length === 0 ? (
-                    <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-sm text-zinc-400">
+                    <div className="settings-empty-state rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-sm text-zinc-400">
                       No access requests are waiting for
                       this workspace.
                     </div>
@@ -1799,7 +1799,7 @@ function BusinessSettingsPageContent() {
                         return (
                           <div
                             key={request.id}
-                            className="grid gap-4 rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
+                            className="settings-access-request-card grid gap-4 rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
                           >
                             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                               <div>
@@ -1872,13 +1872,13 @@ function BusinessSettingsPageContent() {
                             </div>
 
                             {request.company_or_property ? (
-                              <p className="rounded-2xl border border-zinc-800 bg-black/20 p-3 text-sm text-zinc-300">
+                              <p className="settings-note-card rounded-2xl border border-zinc-800 bg-black/20 p-3 text-sm text-zinc-300">
                                 {request.company_or_property}
                               </p>
                             ) : null}
 
                             {request.message ? (
-                              <p className="rounded-2xl border border-zinc-800 bg-black/20 p-3 text-sm leading-6 text-zinc-300">
+                              <p className="settings-note-card rounded-2xl border border-zinc-800 bg-black/20 p-3 text-sm leading-6 text-zinc-300">
                                 {request.message}
                               </p>
                             ) : null}
@@ -1890,12 +1890,12 @@ function BusinessSettingsPageContent() {
                 </div>
 
                 {businessUsers.length === 0 ? (
-                  <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-sm text-zinc-400">
+                  <div className="settings-empty-state rounded-2xl border border-zinc-800 bg-zinc-950 p-5 text-sm text-zinc-400">
                     No workspace users are listed yet.
                   </div>
                 ) : (
-                  <div className="overflow-hidden rounded-2xl border border-zinc-800">
-                    <div className="hidden grid-cols-[1.5fr_1fr_1fr_auto] gap-4 border-b border-zinc-800 bg-zinc-950 px-4 py-3 text-sm font-semibold text-zinc-400 md:grid">
+                  <div className="settings-data-table overflow-hidden rounded-2xl border border-zinc-800">
+                    <div className="settings-data-table-head hidden grid-cols-[1.5fr_1fr_1fr_auto] gap-4 border-b border-zinc-800 bg-zinc-950 px-4 py-3 text-sm font-semibold text-zinc-400 md:grid">
                       <span>Email</span>
                       <span>Role</span>
                       <span>Added</span>
@@ -1915,7 +1915,7 @@ function BusinessSettingsPageContent() {
                         return (
                           <div
                             key={userRow.id}
-                            className="grid gap-4 px-4 py-4 md:grid-cols-[1.5fr_1fr_1fr_auto] md:items-center"
+                            className="settings-data-row grid gap-4 px-4 py-4 md:grid-cols-[1.5fr_1fr_1fr_auto] md:items-center"
                           >
                             <div>
                               <p className="break-all font-semibold text-white">
@@ -1957,7 +1957,7 @@ function BusinessSettingsPageContent() {
                                   updatingUserId ===
                                   userRow.id
                                 }
-                                className="rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+                                  className="app-form-input rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
                               >
                                 {roleOptions.map(
                                   (role) => (
@@ -1996,7 +1996,7 @@ function BusinessSettingsPageContent() {
                                       userRow.id ||
                                     isCurrentUser
                                   }
-                                  className="rounded-2xl bg-zinc-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40"
+                                  className="settings-danger-button rounded-2xl bg-zinc-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40"
                                 >
                                   Remove
                                 </button>
@@ -2016,7 +2016,7 @@ function BusinessSettingsPageContent() {
                 {canManageUsers ? (
                   <div
                     id="add-workspace-user"
-                    className="grid scroll-mt-6 gap-4 rounded-2xl border border-zinc-800 bg-zinc-950 p-5"
+                    className="settings-entry-panel grid scroll-mt-6 gap-4 rounded-2xl border border-zinc-800 bg-zinc-950 p-5"
                   >
                     <div>
                       <h3 className="text-xl font-semibold">
@@ -2042,7 +2042,7 @@ function BusinessSettingsPageContent() {
                       />
 
                       <div>
-                        <label className="mb-2 block text-sm text-zinc-400">
+                        <label className="app-form-label mb-2 block text-sm text-zinc-400">
                           Role
                         </label>
 
@@ -2054,7 +2054,7 @@ function BusinessSettingsPageContent() {
                                 .value as WorkspaceRole
                             )
                           }
-                          className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+                          className="app-form-input w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
                         >
                           {roleOptions.map((role) => (
                             <option
@@ -2110,12 +2110,12 @@ function BusinessSettingsPageContent() {
                       </p>
                     </div>
                   ) : propertyUsers.length === 0 ? (
-                    <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-sm text-zinc-400">
+                    <div className="settings-empty-state rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-sm text-zinc-400">
                       No property team access has been added yet.
                     </div>
                   ) : (
-                    <div className="overflow-hidden rounded-2xl border border-zinc-800">
-                      <div className="hidden grid-cols-[1.2fr_1fr_1fr_auto] gap-4 border-b border-zinc-800 bg-zinc-950 px-4 py-3 text-sm font-semibold text-zinc-400 md:grid">
+                    <div className="settings-data-table overflow-hidden rounded-2xl border border-zinc-800">
+                      <div className="settings-data-table-head hidden grid-cols-[1.2fr_1fr_1fr_auto] gap-4 border-b border-zinc-800 bg-zinc-950 px-4 py-3 text-sm font-semibold text-zinc-400 md:grid">
                         <span>Email</span>
                         <span>Property</span>
                         <span>Access</span>
@@ -2126,7 +2126,7 @@ function BusinessSettingsPageContent() {
                         {propertyUsers.map((userRow) => (
                           <div
                             key={userRow.id}
-                            className="grid gap-4 px-4 py-4 md:grid-cols-[1.2fr_1fr_1fr_auto] md:items-center"
+                            className="settings-data-row grid gap-4 px-4 py-4 md:grid-cols-[1.2fr_1fr_1fr_auto] md:items-center"
                           >
                             <div>
                               <p className="break-all font-semibold text-white">
@@ -2178,7 +2178,7 @@ function BusinessSettingsPageContent() {
                                   disabled={
                                     updatingPropertyUserId === userRow.id
                                   }
-                                  className="rounded-2xl bg-zinc-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40"
+                                  className="settings-danger-button rounded-2xl bg-zinc-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40"
                                 >
                                   Remove
                                 </button>
@@ -2195,7 +2195,7 @@ function BusinessSettingsPageContent() {
                   )}
 
                   {canManageUsers ? (
-                    <div className="grid gap-4 rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
+                    <div className="settings-entry-panel grid gap-4 rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
                       <h3 className="text-lg font-semibold">
                         Add Property Team Member
                       </h3>
@@ -2217,7 +2217,7 @@ function BusinessSettingsPageContent() {
                         />
 
                         <div>
-                          <label className="mb-2 block text-sm text-zinc-400">
+                          <label className="app-form-label mb-2 block text-sm text-zinc-400">
                             Portal Role
                           </label>
 
@@ -2226,7 +2226,7 @@ function BusinessSettingsPageContent() {
                             onChange={(event) =>
                               setPropertyInviteRole(event.target.value)
                             }
-                            className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+                            className="app-form-input w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
                           >
                             <option value="property_manager">
                               Property Manager
@@ -2242,7 +2242,7 @@ function BusinessSettingsPageContent() {
                       </div>
 
                       <div className="grid gap-3 md:grid-cols-3">
-                        <label className="flex items-start gap-3 rounded-2xl border border-zinc-800 bg-black/20 p-4">
+                        <label className="settings-permission-card flex items-start gap-3 rounded-2xl border border-zinc-800 bg-black/20 p-4">
                           <input
                             type="checkbox"
                             checked={propertyCanCreate}
@@ -2261,7 +2261,7 @@ function BusinessSettingsPageContent() {
                           </span>
                         </label>
 
-                        <label className="flex items-start gap-3 rounded-2xl border border-zinc-800 bg-black/20 p-4">
+                        <label className="settings-permission-card flex items-start gap-3 rounded-2xl border border-zinc-800 bg-black/20 p-4">
                           <input
                             type="checkbox"
                             checked={propertyCanUpdate}
@@ -2280,7 +2280,7 @@ function BusinessSettingsPageContent() {
                           </span>
                         </label>
 
-                        <label className="flex items-start gap-3 rounded-2xl border border-zinc-800 bg-black/20 p-4">
+                        <label className="settings-permission-card flex items-start gap-3 rounded-2xl border border-zinc-800 bg-black/20 p-4">
                           <input
                             type="checkbox"
                             checked={propertyCanReports}
@@ -2318,7 +2318,7 @@ function BusinessSettingsPageContent() {
                   {roleOptions.map((role) => (
                     <div
                       key={role.value}
-                      className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
+                      className="settings-role-card rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
                     >
                       <p className="font-semibold text-white">
                         {role.label}

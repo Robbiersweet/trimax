@@ -824,7 +824,7 @@ function NewInvoicePageContent() {
         </h1>
 
         {business && (
-          <Card className="mt-6 border-orange-500/40">
+          <Card className="document-context-card mt-6 border-orange-500/40">
             <p className="text-sm uppercase tracking-[0.25em] text-orange-400">
               Selected Business
             </p>
@@ -966,28 +966,28 @@ function NewInvoicePageContent() {
             </div>
 
             {taxMode === "no_tax" ? (
-              <p className="rounded-2xl border border-zinc-700 bg-zinc-950/50 px-4 py-3 text-sm leading-6 text-zinc-400">
+              <p className="document-note-panel rounded-2xl border border-zinc-700 bg-zinc-950/50 px-4 py-3 text-sm leading-6 text-zinc-400">
                 No tax selected. Trimax will calculate this invoice with a
                 $0.00 tax line.
               </p>
             ) : null}
 
             {taxMode === "tax_exempt" ? (
-              <p className="rounded-2xl border border-zinc-700 bg-zinc-950/50 px-4 py-3 text-sm leading-6 text-zinc-400">
+              <p className="document-note-panel rounded-2xl border border-zinc-700 bg-zinc-950/50 px-4 py-3 text-sm leading-6 text-zinc-400">
                 Tax exempt selected. Trimax will show Tax exempt with a $0.00
                 tax line.
               </p>
             ) : null}
 
             {showTaxSuggestionNote ? (
-              <p className="rounded-2xl border border-orange-500/30 bg-orange-500/10 px-4 py-3 text-sm leading-6 text-orange-100/80">
+              <p className="document-info-panel rounded-2xl border border-orange-500/30 bg-orange-500/10 px-4 py-3 text-sm leading-6 text-orange-100/80">
                 Tax suggestion applied from service address. You can override
                 the tax label or rate.
               </p>
             ) : null}
 
             {showFiveStarsBoaTemplateNote ? (
-              <p className="rounded-2xl border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm leading-6 text-yellow-100/80">
+              <p className="document-warning-panel rounded-2xl border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm leading-6 text-yellow-100/80">
                 5Stars / Bank of America invoice detected. After saving,
                 Trimax will offer the special spreadsheet-style print format
                 for this invoice, while regular invoices keep the normal
@@ -997,14 +997,14 @@ function NewInvoicePageContent() {
 
             {shouldAutoEnableSplitWarning &&
             !splitWarningManuallyChanged ? (
-              <p className="rounded-2xl border border-purple-500/30 bg-purple-500/10 px-4 py-3 text-sm leading-6 text-purple-100/80">
+              <p className="document-info-panel rounded-2xl border border-purple-500/30 bg-purple-500/10 px-4 py-3 text-sm leading-6 text-purple-100/80">
                 Apartment unit paint billing detected. Split warning is on for
                 this job only. Fence, tree, remodel, and other general project
                 invoices stay normal unless you turn this on yourself.
               </p>
             ) : null}
 
-            <label className="flex items-start gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/50 p-4">
+            <label className="document-option-card flex items-start gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/50 p-4">
               <input
                 type="checkbox"
                 checked={effectiveSplitWarningEnabled}
@@ -1040,7 +1040,7 @@ function NewInvoicePageContent() {
               onChange={setSplitTargetAmount}
             />
 
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <div className="document-line-items-panel rounded-2xl border border-zinc-800 bg-zinc-950/40 p-4">
               <div className="flex items-center justify-between gap-4">
                 <h2 className="text-lg font-semibold">
                   Line Items
@@ -1055,7 +1055,7 @@ function NewInvoicePageContent() {
                 {lineItems.map((item, index) => (
                   <div
                     key={index}
-                    className="grid gap-3 rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
+                    className="document-line-item-row grid gap-3 rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
                   >
                     <div>
                       <label className="mb-2 block text-sm text-zinc-400">
@@ -1134,7 +1134,7 @@ function NewInvoicePageContent() {
                           Total
                         </p>
 
-                        <p className="rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 font-semibold text-orange-400">
+                        <p className="document-line-total rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 font-semibold text-orange-400">
                           {formatCurrency(getLineTotal(item))}
                         </p>
                       </div>
@@ -1188,7 +1188,7 @@ function NewInvoicePageContent() {
               </div>
 
               {showSplitWarning && (
-                <div className="mt-6 rounded-2xl border border-yellow-500/60 bg-yellow-500/10 p-4">
+                <div className="document-warning-panel mt-6 rounded-2xl border border-yellow-500/60 bg-yellow-500/10 p-4">
                   <p className="text-sm uppercase tracking-[0.25em] text-yellow-300">
                     Split Warning
                   </p>
@@ -1206,7 +1206,7 @@ function NewInvoicePageContent() {
               )}
 
               {splitPreview && (
-                <div className="mt-4 rounded-2xl border border-orange-500/50 bg-orange-500/10 p-4">
+                <div className="document-info-panel mt-4 rounded-2xl border border-orange-500/50 bg-orange-500/10 p-4">
                   <p className="text-sm uppercase tracking-[0.25em] text-orange-300">
                     Split Preview
                   </p>
