@@ -247,11 +247,11 @@ export default async function EstimateDetailsPage({
         {isOverSplitWarning && (
           <Card className="border-yellow-500/60 bg-yellow-500/10">
             <p className="text-sm uppercase tracking-[0.25em] text-yellow-300">
-              Split Warning
+              Automatic Split Ready
             </p>
 
             <p className="mt-2 text-lg font-semibold text-yellow-100">
-              This estimate would be over{" "}
+              This estimate is over{" "}
               {formatCurrency(effectiveSplitTargetAmount)} after tax.
             </p>
 

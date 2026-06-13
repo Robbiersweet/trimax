@@ -15,7 +15,10 @@ import Toast from "../../../components/Toast";
 import { captureServicesFromLineItems } from "../../../lib/captureServicesFromLineItems";
 import { logActivity } from "../../../lib/activityLog";
 import { assertCanWriteDuringMaintenance } from "../../../lib/maintenanceMode";
-import { buildSplitInvoicePlan } from "../../../lib/splitInvoices";
+import {
+  buildSplitInvoicePlan,
+  createSplitInvoices,
+} from "../../../lib/splitInvoices";
 import { supabase } from "../../../lib/supabase";
 import { looksLikeApartmentUnitPaintJob } from "../../../utils/jobWorkflow";
 import { getSmartInvoiceDates } from "../../../utils/invoiceDates";
@@ -30,6 +33,8 @@ import { maybeCanonicalApartmentUnitLabel } from "../../../utils/unitLabels";
 type Invoice = {
   id: string;
   business_id: string | null;
+  client_id: string | null;
+  display_id: string | null;
   customer_name: string | null;
   project_title: string | null;
   invoice_amount: string | null;
@@ -42,6 +47,7 @@ type Invoice = {
   tax_rate: number | string | null;
   tax_number: string | null;
   amount_paid: number | string | null;
+  split_parent_invoice_id: string | null;
   split_warning_enabled: boolean | null;
   split_target_amount: number | string | null;
   terms: string | null;
@@ -123,6 +129,12 @@ export default function EditInvoicePage() {
   const [businessId, setBusinessId] = useState("");
   const [businessSlug, setBusinessSlug] =
     useState(requestedBusinessSlug);
+  const [invoiceDisplayId, setInvoiceDisplayId] =
+    useState<string | null>(null);
+  const [invoiceClientId, setInvoiceClientId] =
+    useState<string | null>(null);
+  const [invoiceSplitParentId, setInvoiceSplitParentId] =
+    useState<string | null>(null);
   const [serviceItems, setServiceItems] =
     useState<ServiceItem[]>([]);
 
@@ -192,7 +204,19 @@ export default function EditInvoicePage() {
     useState(0);
   const effectiveSplitTargetAmount =
     toNumber(splitTargetAmount) || splitWarningAmount;
-  const shouldAutoEnableSplitWarning = useMemo(() => {
+  const automaticSplitPlan = useMemo(
+    () =>
+      effectiveSplitTargetAmount > 0
+        ? buildSplitInvoicePlan({
+            subtotalAmount: subtotal,
+            targetAmount: effectiveSplitTargetAmount,
+            taxRate: getEffectiveTaxRate({ taxMode, taxRate }),
+          })
+        : [],
+    [effectiveSplitTargetAmount, subtotal, taxMode, taxRate]
+  );
+  const shouldAutoEnableSplitWarning = automaticSplitPlan.length > 0;
+  const looksLikeApartmentSplitJob = useMemo(() => {
     return looksLikeApartmentUnitPaintJob(
       customerName,
       projectTitle,
@@ -205,18 +229,9 @@ export default function EditInvoicePage() {
       : savedSplitWarningEnabled || shouldAutoEnableSplitWarning;
   const showSplitWarning =
     effectiveSplitWarningEnabled &&
-    effectiveSplitTargetAmount > 0 &&
-    buildSplitInvoicePlan({
-      subtotalAmount: subtotal,
-      targetAmount: effectiveSplitTargetAmount,
-      taxRate: getEffectiveTaxRate({ taxMode, taxRate }),
-    }).length > 0;
+    automaticSplitPlan.length > 0;
   const splitPreview = showSplitWarning
-    ? buildSplitInvoicePlan({
-        subtotalAmount: subtotal,
-        targetAmount: effectiveSplitTargetAmount,
-        taxRate: getEffectiveTaxRate({ taxMode, taxRate }),
-      })
+    ? automaticSplitPlan
     : null;
   const taxSuggestion =
     getTaxSuggestionForAddress(serviceAddress);
@@ -282,6 +297,9 @@ export default function EditInvoicePage() {
 
       const invoice = data as Invoice;
 
+      setInvoiceDisplayId(invoice.display_id ?? null);
+      setInvoiceClientId(invoice.client_id ?? null);
+      setInvoiceSplitParentId(invoice.split_parent_invoice_id ?? null);
       setCustomerName(invoice.customer_name ?? "");
       setProjectTitle(invoice.project_title ?? "");
       setIssueDate(invoice.issue_date ?? "");
@@ -682,8 +700,6 @@ export default function EditInvoicePage() {
           }))
         );
 
-    setSaving(false);
-
     if (lineItemError) {
       console.error(lineItemError);
 
@@ -700,6 +716,78 @@ export default function EditInvoicePage() {
       businessId,
       lineItems: validLineItems,
     });
+
+    if (
+      !invoiceSplitParentId &&
+      effectiveSplitWarningEnabled &&
+      effectiveSplitTargetAmount > 0 &&
+      automaticSplitPlan.length > 0
+    ) {
+      const { data: existingSplitInvoices, error: splitCheckError } =
+        await supabase
+          .from("invoices")
+          .select("id")
+          .eq("business_id", businessId)
+          .eq("split_parent_invoice_id", invoiceId)
+          .limit(1);
+
+      if (splitCheckError) {
+        console.error(splitCheckError);
+
+        setToast({
+          type: "error",
+          message:
+            "Invoice saved, but Trimax could not check for existing split drafts.",
+        });
+
+        setSaving(false);
+        return;
+      }
+
+      if ((existingSplitInvoices ?? []).length === 0) {
+        try {
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+
+          await createSplitInvoices({
+            sourceInvoice: {
+              id: invoiceId,
+              displayId: invoiceDisplayId,
+              businessId,
+              businessSlug,
+              clientId: invoiceClientId,
+              customerName,
+              projectTitle,
+              issueDate,
+              dueDate,
+              reference: maybeCanonicalApartmentUnitLabel(reference),
+              serviceAddress,
+              terms,
+              notes,
+            },
+            subtotalAmount: subtotal,
+            targetAmount: effectiveSplitTargetAmount,
+            taxLabel: taxLabel.trim() || "Tax",
+            taxRate: getEffectiveTaxRate({ taxMode, taxRate }),
+            taxMode,
+            taxNumber,
+            createdByUserId: user?.id ?? null,
+          });
+        } catch (splitError) {
+          console.error(splitError);
+
+          setToast({
+            type: "error",
+            message:
+              "Invoice saved, but Trimax could not create the split drafts.",
+          });
+
+          setSaving(false);
+          return;
+        }
+      }
+    }
 
     await logActivity({
       businessId: businessId || null,
@@ -719,6 +807,8 @@ export default function EditInvoicePage() {
     router.push(
       `/invoices/${invoiceId}?business=${businessSlug}`
     );
+
+    setSaving(false);
   }
 
   if (loading) {
@@ -865,9 +955,12 @@ export default function EditInvoicePage() {
             !splitWarningManuallyChanged &&
             !savedSplitWarningEnabled ? (
               <p className="document-info-panel rounded-2xl border border-purple-500/30 bg-purple-500/10 px-4 py-3 text-sm leading-6 text-purple-100/80">
-                Apartment unit paint billing detected. Split warning is on for
-                this job only. Fence, tree, remodel, and other general project
-                invoices stay normal unless you turn this on yourself.
+                Over-threshold billing detected. Trimax will automatically
+                prepare split invoice drafts for this job so no split invoice
+                exceeds the target amount.
+                {looksLikeApartmentSplitJob
+                  ? " Apartment unit work was also detected."
+                  : ""}
               </p>
             ) : null}
 
@@ -884,13 +977,13 @@ export default function EditInvoicePage() {
 
               <span>
                 <span className="block font-semibold text-white">
-                  Use apartment split warning for this job
+                  Automatically split this invoice if it is over the threshold
                 </span>
 
                 <span className="mt-1 block text-sm leading-6 text-zinc-400">
-                  Turn this on only for unit paint work that should stay below
-                  the approved invoice amount. Leave it off for normal jobs,
-                  including North Creek fences, trees, repairs, or remodels.
+                  Leave this on when Trimax should create draft split invoices.
+                  Turn it off only when this invoice should stay as one
+                  document even though it is over the threshold.
                 </span>
               </span>
             </label>
@@ -1064,17 +1157,17 @@ export default function EditInvoicePage() {
               {showSplitWarning && (
                 <div className="document-warning-panel mt-6 rounded-2xl border border-yellow-500/60 bg-yellow-500/10 p-4">
                   <p className="text-sm uppercase tracking-[0.25em] text-yellow-300">
-                    Split Warning
+                    Automatic Split Ready
                   </p>
 
                   <p className="mt-2 text-lg font-semibold text-yellow-100">
-                    This invoice would be over{" "}
+                    This invoice is over{" "}
                     {formatCurrency(effectiveSplitTargetAmount)} after tax.
                   </p>
 
                   <p className="mt-2 text-sm leading-6 text-yellow-100/80">
-                    Consider splitting this apartment work into smaller invoices
-                    before sending.
+                    Save the invoice, then open its detail page to review or
+                    create the split drafts.
                   </p>
                 </div>
               )}

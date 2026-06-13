@@ -506,15 +506,14 @@ export default async function InvoiceDetailPage({
           {showSplitWarning ? (
             <Card className="border-yellow-500/60 bg-yellow-500/10">
               <p className="text-sm font-semibold uppercase tracking-[0.35em] text-yellow-300">
-                Split Warning
+                Automatic Split Ready
               </p>
               <p className="mt-3 text-lg font-bold text-yellow-100">
-                This invoice would be over {money(splitWarningAmount)} after
-                tax.
+                This invoice is over {money(splitWarningAmount)} after tax.
               </p>
               <p className="mt-3 text-sm leading-6 text-yellow-100/80">
-                Trimax can split this apartment work into draft invoices that
-                stay under the target including tax.
+                Trimax can prepare draft split invoices that stay under the
+                target including tax.
               </p>
             </Card>
           ) : null}

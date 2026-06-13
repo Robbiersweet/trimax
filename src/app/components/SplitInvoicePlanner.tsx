@@ -129,7 +129,7 @@ export default function SplitInvoicePlanner({
       <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.35em] text-orange-300">
-            Split Invoice Workflow
+            Split Invoice Plan
           </p>
 
           <p className="mt-3 text-lg font-bold text-orange-100">

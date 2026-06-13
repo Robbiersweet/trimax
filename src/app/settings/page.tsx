@@ -1492,24 +1492,23 @@ function BusinessSettingsPageContent() {
               <div className="grid gap-5">
                 <div>
                   <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
-                    Split Warning
+                    Automatic Splitting
                   </p>
 
                   <h2 className="mt-2 text-2xl font-semibold">
-                    Default Split Warning Amount
+                    Default Split Threshold
                   </h2>
 
                   <p className="mt-2 max-w-3xl text-zinc-400">
-                    This is the default amount Trimax
-                    uses when a job has split warnings
-                    turned on. Leave it blank for a
-                    business that does not need split
-                    warnings by default.
+                    When an invoice or converted estimate is over this amount,
+                    Trimax can automatically prepare draft split invoices so no
+                    single split exceeds the threshold. Leave it blank for a
+                    business that should not split invoices automatically.
                   </p>
                 </div>
 
                 <InputField
-                  label="Default Split Warning Amount"
+                  label="Default Split Threshold"
                   type="number"
                   placeholder="Example: 1300"
                   value={splitWarningAmount}

@@ -418,7 +418,19 @@ function NewEstimatePageContent() {
   );
   const effectiveSplitTargetAmount =
     toNumber(splitTargetAmount) || splitWarningAmount;
-  const shouldAutoEnableSplitWarning = useMemo(() => {
+  const automaticSplitPlan = useMemo(
+    () =>
+      effectiveSplitTargetAmount > 0
+        ? buildSplitInvoicePlan({
+            subtotalAmount: subtotal,
+            targetAmount: effectiveSplitTargetAmount,
+            taxRate: getEffectiveTaxRate({ taxMode, taxRate }),
+          })
+        : [],
+    [effectiveSplitTargetAmount, subtotal, taxMode, taxRate]
+  );
+  const shouldAutoEnableSplitWarning = automaticSplitPlan.length > 0;
+  const looksLikeApartmentSplitJob = useMemo(() => {
     return looksLikeApartmentUnitPaintJob(
       customerName,
       projectTitle,
@@ -431,18 +443,9 @@ function NewEstimatePageContent() {
       : shouldAutoEnableSplitWarning;
   const showSplitWarning =
     effectiveSplitWarningEnabled &&
-    effectiveSplitTargetAmount > 0 &&
-    buildSplitInvoicePlan({
-      subtotalAmount: subtotal,
-      targetAmount: effectiveSplitTargetAmount,
-      taxRate: getEffectiveTaxRate({ taxMode, taxRate }),
-    }).length > 0;
+    automaticSplitPlan.length > 0;
   const splitPreview = showSplitWarning
-    ? buildSplitInvoicePlan({
-        subtotalAmount: subtotal,
-        targetAmount: effectiveSplitTargetAmount,
-        taxRate: getEffectiveTaxRate({ taxMode, taxRate }),
-      })
+    ? automaticSplitPlan
     : null;
   const taxSuggestion =
     getTaxSuggestionForAddress(serviceAddress);
@@ -1267,9 +1270,12 @@ function NewEstimatePageContent() {
             {shouldAutoEnableSplitWarning &&
             !splitWarningManuallyChanged ? (
               <p className="document-info-panel rounded-2xl border border-purple-500/30 bg-purple-500/10 px-4 py-3 text-sm leading-6 text-purple-100/80">
-                Apartment unit paint billing detected. Split warning is on for
-                this job only. Fence, tree, remodel, and other general project
-                estimates stay normal unless you turn this on yourself.
+                Over-threshold billing detected. Trimax will automatically
+                create split invoice drafts when this estimate is converted so
+                no split invoice exceeds the target amount.
+                {looksLikeApartmentSplitJob
+                  ? " Apartment unit work was also detected."
+                  : ""}
               </p>
             ) : null}
 
@@ -1286,13 +1292,13 @@ function NewEstimatePageContent() {
 
               <span>
                 <span className="block font-semibold text-white">
-                  Use apartment split warning for this job
+                  Automatically split this estimate when it becomes an invoice
                 </span>
 
                 <span className="mt-1 block text-sm leading-6 text-zinc-400">
-                  Turn this on only for unit paint work that should stay below
-                  the approved invoice amount. Leave it off for normal jobs,
-                  including North Creek fences, trees, repairs, or remodels.
+                  Leave this on when Trimax should create draft split invoices
+                  during conversion. Turn it off only when this job should stay
+                  as one invoice even though it is over the threshold.
                 </span>
               </span>
             </label>
@@ -1454,17 +1460,17 @@ function NewEstimatePageContent() {
               {showSplitWarning && (
                 <div className="document-warning-panel mt-6 rounded-2xl border border-yellow-500/60 bg-yellow-500/10 p-4">
                   <p className="text-sm uppercase tracking-[0.25em] text-yellow-300">
-                    Split Warning
+                    Automatic Split Ready
                   </p>
 
                   <p className="mt-2 text-lg font-semibold text-yellow-100">
-                    This estimate would be over{" "}
+                    This estimate is over{" "}
                     {formatCurrency(effectiveSplitTargetAmount)} after tax.
                   </p>
 
                   <p className="mt-2 text-sm leading-6 text-yellow-100/80">
-                    Consider splitting this apartment work into smaller invoices
-                    or estimates before sending.
+                    When this estimate is converted, Trimax will create the
+                    split invoice drafts automatically.
                   </p>
                 </div>
               )}
