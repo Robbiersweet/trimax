@@ -187,7 +187,7 @@ export default async function ClientDetailsPage({
       <div className="space-y-6">
         <Link
           href={`/clients${businessQuery}`}
-          className="inline-flex text-sm text-orange-400 hover:text-orange-300"
+          className="app-back-button inline-flex rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-2 text-sm font-semibold text-orange-400 hover:text-orange-300"
         >
           &lt; Back to Clients
         </Link>
@@ -286,7 +286,7 @@ export default async function ClientDetailsPage({
         />
 
         <div className="grid gap-4 md:grid-cols-3">
-          <Card className="border-orange-500/30 bg-orange-500/10">
+          <Card className="client-followup-card border-orange-500/30 bg-orange-500/10">
             <p className="text-sm text-zinc-400">
               Open Balance
             </p>
@@ -351,13 +351,13 @@ export default async function ClientDetailsPage({
               </Link>
             </div>
 
-            <div className="mt-5 divide-y divide-zinc-800 overflow-hidden rounded-2xl border border-zinc-800">
+            <div className="app-data-table mt-5 divide-y divide-zinc-800 overflow-hidden rounded-2xl border border-zinc-800">
               {estimates.length > 0 ? (
                 estimates.map((estimate) => (
                   <Link
                     key={estimate.id}
                     href={`/estimates/${estimate.id}${businessQuery}`}
-                    className="grid gap-3 bg-zinc-950 p-4 transition hover:bg-zinc-900 sm:grid-cols-[1fr_auto]"
+                    className="app-data-table-row grid gap-3 bg-zinc-950 p-4 transition hover:bg-zinc-900 sm:grid-cols-[1fr_auto]"
                   >
                     <div>
                       <p className="font-bold">
@@ -382,7 +382,7 @@ export default async function ClientDetailsPage({
                   </Link>
                 ))
               ) : (
-                <div className="bg-zinc-950 p-4 text-zinc-400">
+                <div className="app-empty-state bg-zinc-950 p-4 text-zinc-400">
                   No estimates for this client yet.
                 </div>
               )}
@@ -410,7 +410,7 @@ export default async function ClientDetailsPage({
               </Link>
             </div>
 
-            <div className="mt-5 divide-y divide-zinc-800 overflow-hidden rounded-2xl border border-zinc-800">
+            <div className="app-data-table mt-5 divide-y divide-zinc-800 overflow-hidden rounded-2xl border border-zinc-800">
               {invoices.length > 0 ? (
                 invoices.map((invoice) => {
                   const amountDue = Math.max(
@@ -423,7 +423,7 @@ export default async function ClientDetailsPage({
                     <Link
                       key={invoice.id}
                       href={`/invoices/${invoice.id}${businessQuery}`}
-                      className="grid gap-3 bg-zinc-950 p-4 transition hover:bg-zinc-900 sm:grid-cols-[1fr_auto]"
+                      className="app-data-table-row grid gap-3 bg-zinc-950 p-4 transition hover:bg-zinc-900 sm:grid-cols-[1fr_auto]"
                     >
                       <div>
                         <p className="font-bold">
@@ -449,7 +449,7 @@ export default async function ClientDetailsPage({
                   );
                 })
               ) : (
-                <div className="bg-zinc-950 p-4 text-zinc-400">
+                <div className="app-empty-state bg-zinc-950 p-4 text-zinc-400">
                   No invoices for this client yet.
                 </div>
               )}

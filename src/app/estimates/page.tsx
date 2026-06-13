@@ -223,7 +223,7 @@ export default async function EstimatesPage({
             ) : null}
 
             <div>
-              <label className="mb-2 block text-sm text-zinc-400">
+              <label className="app-form-label mb-2 block text-sm text-zinc-400">
                 Search Estimates
               </label>
 
@@ -231,7 +231,7 @@ export default async function EstimatesPage({
                 name="q"
                 defaultValue={searchTerm}
                 placeholder="Search number, project, customer, or status"
-                className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+                className="app-form-input w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
               />
             </div>
 
@@ -256,8 +256,8 @@ export default async function EstimatesPage({
               href={filter.href}
               className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
                 statusFilter === filter.value
-                  ? "bg-orange-500 text-black"
-                  : "workspace-filter-link-inactive text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                  ? "app-chip-active bg-orange-500 text-black"
+                  : "app-chip workspace-filter-link-inactive text-zinc-300 hover:bg-zinc-800 hover:text-white"
               }`}
             >
               {filter.label}
@@ -310,7 +310,7 @@ export default async function EstimatesPage({
               return (
                 <Card
                   key={estimate.id}
-                  className="transition hover:border-orange-500/60 hover:bg-zinc-800"
+                  className="estimate-list-card transition hover:border-orange-500/60 hover:bg-zinc-800"
                 >
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div>
@@ -343,14 +343,14 @@ export default async function EstimatesPage({
                   <div className="mt-5 flex flex-wrap gap-3 border-t border-zinc-800 pt-4">
                     <Link
                       href={`/estimates/${estimate.id}${businessQuery}`}
-                      className="rounded-xl bg-orange-500 px-4 py-2 text-sm font-bold text-black transition hover:bg-orange-400"
+                      className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-blue-700"
                     >
                       Open
                     </Link>
 
                     <Link
                       href={`/estimates/${estimate.id}/print${businessQuery}`}
-                      className="rounded-xl bg-zinc-800 px-4 py-2 text-sm font-bold text-white transition hover:bg-zinc-700"
+                      className="app-button-secondary rounded-xl bg-zinc-800 px-4 py-2 text-sm font-bold text-white transition hover:bg-zinc-700"
                     >
                       Print
                     </Link>
@@ -362,7 +362,7 @@ export default async function EstimatesPage({
                     ) : (
                       <Link
                         href={`/estimates/${estimate.id}/edit${businessQuery}`}
-                        className="rounded-xl bg-zinc-800 px-4 py-2 text-sm font-bold text-white transition hover:bg-zinc-700"
+                        className="app-button-secondary rounded-xl bg-zinc-800 px-4 py-2 text-sm font-bold text-white transition hover:bg-zinc-700"
                       >
                         Edit
                       </Link>

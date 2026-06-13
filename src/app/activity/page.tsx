@@ -464,26 +464,26 @@ function ActivityPageContent() {
               ) : null}
 
               <label className="block">
-                <span className="mb-2 block text-sm text-zinc-400">
+                <span className="app-form-label mb-2 block text-sm text-zinc-400">
                   Search activity
                 </span>
                 <input
                   name="q"
                   defaultValue={searchTerm}
                   placeholder="Search invoice number, client, check #, user, notes..."
-                  className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none focus:border-orange-500"
+                  className="app-form-input w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none focus:border-orange-500"
                 />
               </label>
 
               <button
                 type="submit"
-                className="rounded-2xl bg-orange-500 px-6 py-3 font-bold text-black hover:bg-orange-400 md:self-end"
+                className="app-button-primary rounded-2xl bg-orange-500 px-6 py-3 font-bold text-black hover:bg-orange-400 md:self-end"
               >
                 Search
               </button>
             </form>
 
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-400">
+            <div className="app-soft-panel rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-400">
               Showing{" "}
               <span className="font-bold text-white">{filteredLogs.length}</span>{" "}
               of <span className="font-bold text-white">{logs.length}</span>{" "}
@@ -505,8 +505,8 @@ function ActivityPageContent() {
                   })}
                   className={`rounded-full px-4 py-2 text-sm font-bold ${
                     active
-                      ? "bg-orange-500 text-black"
-                      : "bg-zinc-950 text-zinc-200 hover:bg-zinc-800"
+                      ? "app-chip-active bg-orange-500 text-black"
+                      : "app-chip bg-zinc-950 text-zinc-200 hover:bg-zinc-800"
                   }`}
                 >
                   {filter.label}
