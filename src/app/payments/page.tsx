@@ -423,8 +423,9 @@ export default async function PaymentsPage({
             <h1 className="mt-3 text-4xl font-bold">Payment Workspace</h1>
 
             <p className="mt-3 max-w-3xl text-zinc-400">
-              Built for check days: review open invoices, select the ones paid
-              by the same check, and mark the full batch paid together.
+              Built for check days: capture checks, match them to open
+              invoices, apply deposits or full payments, and keep the
+              accounting trail clean.
             </p>
           </div>
 
@@ -475,8 +476,8 @@ export default async function PaymentsPage({
 
             <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
               Trimax will preselect matching open invoices below when possible.
-              Review the invoice list, enter the check details, then mark the
-              selected invoices paid together.
+              Review the invoice list, enter the check details, then apply the
+              payment to the selected invoices together.
             </p>
           </Card>
         ) : null}
@@ -861,9 +862,10 @@ export default async function PaymentsPage({
             <div className="mt-5 grid gap-3">
               {[
                 "Select the customer or leave the list on all open invoices.",
-                "Check the invoices paid by the same check.",
+                "Capture a check photo or enter the check details.",
+                "Let Trimax suggest invoices that match the check amount.",
                 "Enter the check amount and reference number.",
-                "Trimax verifies the total before marking the selected invoices paid.",
+                "Trimax verifies the total before applying the payment.",
               ].map((step, index) => (
                 <div
                   key={step}

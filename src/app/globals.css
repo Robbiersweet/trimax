@@ -2984,6 +2984,23 @@ html.theme-light .invoice-line-item-row .text-zinc-400 {
     margin-top: 0.25rem;
   }
 
+  .check-capture-panel {
+    border-radius: 1.5rem !important;
+  }
+
+  .check-capture-panel h3 {
+    font-size: 1.5rem;
+    line-height: 1.15;
+  }
+
+  .check-capture-panel label {
+    min-width: 0;
+  }
+
+  .check-capture-panel input {
+    font-size: 1rem;
+  }
+
   .payment-prep-row {
     align-items: start;
   }
