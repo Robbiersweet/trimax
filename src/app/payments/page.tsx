@@ -18,6 +18,8 @@ type Invoice = {
   project_title: string | null;
   invoice_amount: string | number | null;
   amount_paid: string | number | null;
+  deposit_requested_amount?: string | number | null;
+  deposit_status?: string | null;
   status: string | null;
   due_date: string | null;
   updated_at: string | null;
@@ -98,6 +100,25 @@ function isCollectibleInvoiceStatus(value: string | null | undefined) {
   return status !== "paid" && status !== "draft";
 }
 
+function hasActiveDepositRequest(invoice: Invoice) {
+  return (
+    String(invoice.deposit_status ?? "none").toLowerCase() === "requested" &&
+    parseMoney(invoice.deposit_requested_amount) > 0
+  );
+}
+
+function invoiceCollectionAmountDue(invoice: Invoice) {
+  const invoiceAmount = parseMoney(invoice.invoice_amount);
+  const amountPaid = parseMoney(invoice.amount_paid);
+  const fullAmountDue = Math.max(invoiceAmount - amountPaid, 0);
+
+  if (!hasActiveDepositRequest(invoice)) {
+    return fullAmountDue;
+  }
+
+  return Math.max(parseMoney(invoice.deposit_requested_amount) - amountPaid, 0);
+}
+
 function activityAmount(log: ActivityLog) {
   const amount = log.details?.amountApplied;
 
@@ -163,7 +184,7 @@ export default async function PaymentsPage({
     const { data: invoiceData, error: invoiceError } = await supabase
       .from("invoices")
       .select(
-        "id, display_id, customer_name, project_title, invoice_amount, amount_paid, status, due_date, updated_at, created_at"
+        "id, display_id, customer_name, project_title, invoice_amount, amount_paid, deposit_requested_amount, deposit_status, status, due_date, updated_at, created_at"
       )
       .eq("business_id", business.id)
       .order("created_at", { ascending: false });
@@ -215,12 +236,14 @@ export default async function PaymentsPage({
     .map((invoice) => {
       const invoiceAmount = parseMoney(invoice.invoice_amount);
       const amountPaid = parseMoney(invoice.amount_paid);
+      const isDepositRequest = hasActiveDepositRequest(invoice);
 
       return {
         ...invoice,
         invoiceAmount,
         amountPaid,
-        amountDue: Math.max(invoiceAmount - amountPaid, 0),
+        amountDue: invoiceCollectionAmountDue(invoice),
+        isDepositRequest,
         daysLate: daysPastDue(invoice.due_date),
       };
     })
@@ -648,6 +671,8 @@ export default async function PaymentsPage({
               projectTitle: invoice.project_title ?? "Untitled Invoice",
               invoiceAmount: invoice.invoiceAmount,
               amountPaid: invoice.amountPaid,
+              collectionAmountDue: invoice.amountDue,
+              isDepositRequest: invoice.isDepositRequest,
               status: invoice.status ?? "Draft",
               dueDate: invoice.due_date,
             }))}
@@ -696,6 +721,11 @@ export default async function PaymentsPage({
                       <p className="mt-1 text-sm text-zinc-500">
                         {invoice.project_title ?? "Untitled Invoice"}
                       </p>
+                      {invoice.isDepositRequest ? (
+                        <span className="mt-3 inline-flex rounded-full border border-emerald-500/35 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200">
+                          Deposit request
+                        </span>
+                      ) : null}
                     </div>
 
                     <div className="md:text-right">
@@ -718,7 +748,7 @@ export default async function PaymentsPage({
 
                     <div className="md:text-right">
                       <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
-                        Balance
+                        {invoice.isDepositRequest ? "Deposit Due" : "Balance"}
                       </p>
                       <p className="mt-1 text-xl font-black text-orange-300">
                         {formatMoney(invoice.amountDue)}

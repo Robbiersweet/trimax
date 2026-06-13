@@ -16,6 +16,8 @@ type BatchInvoice = {
   projectTitle: string;
   invoiceAmount: number;
   amountPaid: number;
+  collectionAmountDue?: number;
+  isDepositRequest?: boolean;
   status: string;
   dueDate?: string | null;
 };
@@ -112,7 +114,10 @@ function initialCustomerFocus(
   const matchingInvoices = invoices
     .map((invoice) => ({
       ...invoice,
-      amountDue: Math.max(invoice.invoiceAmount - invoice.amountPaid, 0),
+      amountDue:
+        typeof invoice.collectionAmountDue === "number"
+          ? Math.max(invoice.collectionAmountDue, 0)
+          : Math.max(invoice.invoiceAmount - invoice.amountPaid, 0),
     }))
     .filter(
       (invoice) =>
@@ -148,7 +153,10 @@ function initialInvoiceFocus(
   const matchingInvoices = invoices
     .map((invoice) => ({
       ...invoice,
-      amountDue: Math.max(invoice.invoiceAmount - invoice.amountPaid, 0),
+      amountDue:
+        typeof invoice.collectionAmountDue === "number"
+          ? Math.max(invoice.collectionAmountDue, 0)
+          : Math.max(invoice.invoiceAmount - invoice.amountPaid, 0),
     }))
     .filter(
       (invoice) =>
@@ -218,10 +226,10 @@ export default function BatchInvoicePayments({
       invoices
         .map((invoice) => ({
           ...invoice,
-          amountDue: Math.max(
-            invoice.invoiceAmount - invoice.amountPaid,
-            0
-          ),
+          amountDue:
+            typeof invoice.collectionAmountDue === "number"
+              ? Math.max(invoice.collectionAmountDue, 0)
+              : Math.max(invoice.invoiceAmount - invoice.amountPaid, 0),
           daysLate: daysPastDue(invoice.dueDate),
         }))
         .filter(
@@ -459,12 +467,29 @@ export default function BatchInvoicePayments({
       await assertCanWriteDuringMaintenance(businessSlug);
 
       for (const invoice of selectedInvoices) {
+        const nextAmountPaid = Math.min(
+          invoice.invoiceAmount,
+          invoice.amountPaid + invoice.amountDue
+        );
+        const isFullyPaid =
+          invoice.invoiceAmount > 0 &&
+          nextAmountPaid >= invoice.invoiceAmount - 0.01;
+        const updatePayload: {
+          amount_paid: number;
+          status: string;
+          deposit_status?: string;
+        } = {
+          amount_paid: nextAmountPaid,
+          status: isFullyPaid ? "Paid" : invoice.status,
+        };
+
+        if (invoice.isDepositRequest && !isFullyPaid) {
+          updatePayload.deposit_status = "paid";
+        }
+
         const { error } = await supabase
           .from("invoices")
-          .update({
-            amount_paid: invoice.invoiceAmount,
-            status: "Paid",
-          })
+          .update(updatePayload)
           .eq("id", invoice.id)
           .eq("business_id", businessId);
 
@@ -485,6 +510,9 @@ export default function BatchInvoicePayments({
             internalNote,
             checkAmount: enteredCheckAmount,
             amountApplied: invoice.amountDue,
+            resultingAmountPaid: nextAmountPaid,
+            paymentOutcome: isFullyPaid ? "paid" : "partial",
+            depositPayment: Boolean(invoice.isDepositRequest),
             batchInvoiceCount: selectedInvoices.length,
           },
         });
@@ -492,9 +520,9 @@ export default function BatchInvoicePayments({
 
       setToast({
         type: "success",
-        message: `Marked ${selectedInvoices.length} invoice${
+        message: `Applied payment to ${selectedInvoices.length} invoice${
           selectedInvoices.length === 1 ? "" : "s"
-        } paid.`,
+        }.`,
       });
       setSelectedIds([]);
       setPaymentReference("");
@@ -757,7 +785,7 @@ export default function BatchInvoicePayments({
               }
               className="w-full rounded-2xl bg-green-500 px-5 py-3 font-semibold text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
             >
-              {isSaving ? "Applying..." : "Mark Selected Paid"}
+              {isSaving ? "Applying..." : "Apply Selected Payment"}
             </button>
           </div>
         </div>
@@ -888,7 +916,7 @@ export default function BatchInvoicePayments({
           />
           <span>Open Invoice</span>
           <span className="max-md:hidden">Due</span>
-          <span className="text-right">Amount Due</span>
+          <span className="text-right">Collection Due</span>
         </div>
 
         <div className="max-h-96 overflow-y-auto">
@@ -918,6 +946,11 @@ export default function BatchInvoicePayments({
                   <span className="mt-1 block text-sm text-zinc-400">
                     {invoice.customerName} / {invoice.status}
                   </span>
+                  {invoice.isDepositRequest ? (
+                    <span className="mt-2 inline-flex rounded-full border border-emerald-500/35 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-200">
+                      Deposit request
+                    </span>
+                  ) : null}
                   <span className="mt-2 hidden text-xs text-zinc-500 max-md:block">
                     Due {formatDate(invoice.dueDate)}
                   </span>

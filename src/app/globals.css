@@ -2954,6 +2954,36 @@ html.theme-light .invoice-line-item-row .text-zinc-400 {
     border-radius: 1.25rem;
   }
 
+  .batch-payments-card {
+    padding: 1rem !important;
+  }
+
+  .batch-payments-card .app-soft-panel {
+    padding: 0.875rem !important;
+  }
+
+  .batch-payments-card .app-metric-card {
+    padding: 0.875rem !important;
+  }
+
+  .batch-payments-card .app-metric-card p:last-child {
+    font-size: 1.5rem;
+    line-height: 1.05;
+    overflow-wrap: anywhere;
+  }
+
+  .batch-payments-card .app-data-table {
+    border-radius: 1.25rem;
+  }
+
+  .batch-payments-card .app-data-table label {
+    align-items: start;
+  }
+
+  .batch-payments-card .app-data-table input[type="checkbox"] {
+    margin-top: 0.25rem;
+  }
+
   .payment-prep-row {
     align-items: start;
   }
