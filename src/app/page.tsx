@@ -89,13 +89,17 @@ function invoiceCollectionAmountDue(invoice: Invoice) {
   const amountPaid = parseMoney(invoice.amount_paid);
   const fullAmountDue = Math.max(invoiceTotal - amountPaid, 0);
   const depositAmount = parseMoney(invoice.deposit_requested_amount ?? null);
-  const hasActiveDeposit =
-    String(invoice.deposit_status ?? "none").toLowerCase() === "requested" &&
-    depositAmount > 0;
 
-  return hasActiveDeposit
+  return hasActiveDepositRequest(invoice)
     ? Math.max(depositAmount - amountPaid, 0)
     : fullAmountDue;
+}
+
+function hasActiveDepositRequest(invoice: Invoice) {
+  return (
+    String(invoice.deposit_status ?? "none").toLowerCase() === "requested" &&
+    parseMoney(invoice.deposit_requested_amount ?? null) > 0
+  );
 }
 
 function isDateInCurrentMonth(value: string | null) {
@@ -375,10 +379,14 @@ function activityLabel(action: string) {
     "invoice.created": "Invoice Created",
     "invoice.updated": "Invoice Updated",
     "invoice.status_updated": "Invoice Updated",
+    "invoice.email_sent": "Invoice Emailed",
+    "invoice.deposit_requested": "Deposit Requested",
+    "invoice.deposit_cleared": "Deposit Cleared",
     "invoice.batch_payment_applied": "Payment Applied",
     "invoice.recurring_draft_created": "Recurring Draft Created",
     "invoice.split_created": "Split Invoices Created",
     "access_request.created": "Access Request Created",
+    "estimate.email_sent": "Estimate Emailed",
     "import.clients_csv_completed": "Client CSV Import",
     "import.invoices_csv_completed": "Invoice CSV Import",
   };
@@ -1894,9 +1902,8 @@ export default async function DashboardPage({
                   })
                   .slice(0, 3)
                   .map((invoice) => {
-                    const invoiceTotal = parseMoney(invoice.invoice_amount);
-                    const amountPaid = parseMoney(invoice.amount_paid);
-                    const amountDue = Math.max(invoiceTotal - amountPaid, 0);
+                    const amountDue = invoiceCollectionAmountDue(invoice);
+                    const isDepositRequest = hasActiveDepositRequest(invoice);
                     const daysLate = daysPastDue(invoice.due_date);
                     const isLate =
                       amountDue > 0 &&
@@ -1923,6 +1930,12 @@ export default async function DashboardPage({
 
                               <StatusBadge status={invoice.status || "Draft"} />
 
+                              {isDepositRequest ? (
+                                <span className="rounded-full border border-emerald-500/35 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200">
+                                  Deposit request
+                                </span>
+                              ) : null}
+
                               {isLate ? (
                                 <span className="rounded-full border border-pink-500/35 bg-pink-500/10 px-3 py-1 text-xs font-semibold text-pink-200">
                                   {daysLate} day
@@ -1948,7 +1961,9 @@ export default async function DashboardPage({
                             </p>
 
                             <p className="text-sm text-zinc-400">
-                              Amount Due
+                              {isDepositRequest
+                                ? "Deposit Due"
+                                : "Collection Due"}
                             </p>
 
                             <p className="mt-2 text-xs text-zinc-500">

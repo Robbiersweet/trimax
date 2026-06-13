@@ -2889,10 +2889,16 @@ html.theme-light .invoice-line-item-row .text-zinc-400 {
     border-radius: 1rem;
   }
 
-  .invoice-filter-pill span:last-child {
+  .invoice-filter-pill .filter-tab-label {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .invoice-filter-pill .filter-tab-count {
+    min-width: 1.5rem;
+    height: 1.5rem;
+    padding-inline: 0.35rem;
   }
 
   .invoice-metric-grid,
@@ -3003,6 +3009,32 @@ html:not(.theme-light) .invoice-filter-pill .filter-tab-icon {
 html:not(.theme-light) .invoice-filter-pill .filter-tab-icon-active {
   background: rgba(255, 255, 255, 0.14);
   border-color: rgba(255, 255, 255, 0.36);
+  color: #ffffff;
+}
+
+.filter-tab-count {
+  display: inline-flex;
+  min-width: 1.65rem;
+  height: 1.65rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0 0.45rem;
+  background: rgba(15, 23, 42, 0.08);
+  color: currentColor;
+  font-size: 0.75rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+html:not(.theme-light) .filter-tab-count {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+}
+
+html.theme-light .invoice-filter-pill.bg-sky-600 .filter-tab-count,
+html:not(.theme-light) .invoice-filter-pill.bg-sky-600 .filter-tab-count {
+  background: rgba(255, 255, 255, 0.2);
   color: #ffffff;
 }
 

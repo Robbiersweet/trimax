@@ -108,13 +108,17 @@ function invoiceCollectionAmountDue(invoice: Invoice) {
   const amountPaid = parseMoney(invoice.amount_paid);
   const fullAmountDue = Math.max(invoiceTotal - amountPaid, 0);
   const depositAmount = parseMoney(invoice.deposit_requested_amount ?? null);
-  const hasActiveDeposit =
-    String(invoice.deposit_status ?? "none").toLowerCase() === "requested" &&
-    depositAmount > 0;
 
-  return hasActiveDeposit
+  return hasActiveDepositRequest(invoice)
     ? Math.max(depositAmount - amountPaid, 0)
     : fullAmountDue;
+}
+
+function hasActiveDepositRequest(invoice: Invoice) {
+  return (
+    String(invoice.deposit_status ?? "none").toLowerCase() === "requested" &&
+    parseMoney(invoice.deposit_requested_amount ?? null) > 0
+  );
 }
 
 function invoiceStatusKey(value: string | null) {
@@ -623,26 +627,58 @@ export default async function InvoicesPage({
     )
     .slice(0, 6);
 
+  const viewCounts = {
+    all: invoicesWithSplitInfo.length,
+    originals: invoicesWithSplitInfo.filter(
+      (invoice) => !invoice.split_parent_invoice_id
+    ).length,
+    splits: invoicesWithSplitInfo.filter((invoice) =>
+      Boolean(invoice.split_parent_invoice_id)
+    ).length,
+    aging: openInvoicesWithAmounts.filter(
+      (invoice) => (invoice.daysLate ?? -1) >= 0
+    ).length,
+  };
+  const statusCounts = {
+    all: invoicesWithSplitInfo.length,
+    draft: invoicesWithSplitInfo.filter(
+      (invoice) => invoiceStatusKey(invoice.status) === "draft"
+    ).length,
+    sent: invoicesWithSplitInfo.filter(
+      (invoice) => invoiceStatusKey(invoice.status) === "sent"
+    ).length,
+    paid: invoicesWithSplitInfo.filter(
+      (invoice) => invoiceStatusKey(invoice.status) === "paid"
+    ).length,
+    overdue: openInvoicesWithAmounts.filter(
+      (invoice) => (invoice.daysLate ?? -1) >= 0
+    ).length,
+  };
+
   const viewLinks = [
     {
       label: "All",
       value: "all",
       icon: "A",
+      count: viewCounts.all,
     },
     {
       label: "Originals",
       value: "originals",
       icon: "O",
+      count: viewCounts.originals,
     },
     {
       label: "Split Invoices",
       value: "splits",
       icon: "S",
+      count: viewCounts.splits,
     },
     {
       label: "Aging",
       value: "aging",
       icon: "G",
+      count: viewCounts.aging,
     },
   ].map((filter) => {
     const params = new URLSearchParams(activeParams);
@@ -664,26 +700,31 @@ export default async function InvoicesPage({
       label: "All Statuses",
       value: "all",
       icon: "A",
+      count: statusCounts.all,
     },
     {
       label: "Draft",
       value: "draft",
       icon: "D",
+      count: statusCounts.draft,
     },
     {
       label: "Sent",
       value: "sent",
       icon: "S",
+      count: statusCounts.sent,
     },
     {
       label: "Paid",
       value: "paid",
       icon: "$",
+      count: statusCounts.paid,
     },
     {
       label: "Overdue",
       value: "overdue",
       icon: "!",
+      count: statusCounts.overdue,
     },
   ].map((filter) => {
     const params = new URLSearchParams(activeParams);
@@ -952,7 +993,8 @@ export default async function InvoicesPage({
               >
                 {filter.icon}
               </span>
-              <span>{filter.label}</span>
+              <span className="filter-tab-label">{filter.label}</span>
+              <span className="filter-tab-count">{filter.count}</span>
             </Link>
           ))}
         </div>
@@ -976,7 +1018,8 @@ export default async function InvoicesPage({
               >
                 {filter.icon}
               </span>
-              <span>{filter.label}</span>
+              <span className="filter-tab-label">{filter.label}</span>
+              <span className="filter-tab-count">{filter.count}</span>
             </Link>
           ))}
         </div>
@@ -1237,6 +1280,7 @@ export default async function InvoicesPage({
             <div className="mt-4 grid gap-3 md:grid-cols-5">
               {recentlyUpdatedInvoices.map((invoice) => {
                 const amountDue = invoiceCollectionAmountDue(invoice);
+                const isDepositRequest = hasActiveDepositRequest(invoice);
 
                 return (
                   <Link
@@ -1253,16 +1297,21 @@ export default async function InvoicesPage({
                     </p>
 
                     <p className="mt-3 border-t border-zinc-800 pt-3 text-xs uppercase tracking-[0.2em] text-zinc-500">
-                      Amount Due
+                      {isDepositRequest ? "Deposit Due" : "Collection Due"}
                     </p>
 
                     <p className="mt-1 font-bold">
                       {formatMoney(amountDue)}
                     </p>
 
-                    <p className="mt-2 text-sm text-zinc-400">
-                      {invoice.status ?? "Draft"}
-                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2 text-sm text-zinc-400">
+                      <span>{invoice.status ?? "Draft"}</span>
+                      {isDepositRequest ? (
+                        <span className="rounded-full border border-emerald-500/35 bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-200">
+                          Deposit request
+                        </span>
+                      ) : null}
+                    </div>
                   </Link>
                 );
               })}
@@ -1316,6 +1365,7 @@ export default async function InvoicesPage({
                 : null;
               const isPastDue =
                 displayAmountDue > 0 && (daysLate ?? -1) >= 0;
+              const isDepositRequest = hasActiveDepositRequest(invoice);
 
               const paymentParams = new URLSearchParams({
                 business: businessSlug,
@@ -1355,6 +1405,12 @@ export default async function InvoicesPage({
                                 : "s"}
                             </span>
                           ) : null}
+
+                          {isDepositRequest && isBillableInvoice ? (
+                            <span className="rounded-full border border-emerald-500/35 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200">
+                              Deposit request
+                            </span>
+                          ) : null}
                         </div>
 
                         <h2 className="mt-1 text-2xl font-semibold">
@@ -1383,7 +1439,9 @@ export default async function InvoicesPage({
 
                         <p className="mt-1 text-xs uppercase tracking-[0.2em] text-zinc-500">
                           {isBillableInvoice
-                            ? "Amount Due"
+                            ? isDepositRequest
+                              ? "Deposit Due"
+                              : "Collection Due"
                             : "Use split invoices"}
                         </p>
 

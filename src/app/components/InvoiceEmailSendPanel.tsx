@@ -98,6 +98,7 @@ export default function InvoiceEmailSendPanel({
       : requestType === "estimate"
         ? "Estimate"
         : "Invoice";
+  const documentLabelLower = documentLabel.toLowerCase();
   const [recipient, setRecipient] = useState(recipientEmail ?? "");
   const [subject, setSubject] = useState(
     defaultSubject(businessName, documentNumber, requestType)
@@ -282,14 +283,14 @@ export default function InvoiceEmailSendPanel({
           type: "error",
           message:
             result.error ??
-            "Trimax could not send this invoice email yet.",
+            `Trimax could not send this ${documentLabelLower} email yet.`,
         });
         return;
       }
 
       setToast({
         type: "success",
-        message: result.message ?? "Invoice email sent.",
+        message: result.message ?? `${documentLabel} email sent.`,
       });
     } catch {
       setToast({
@@ -439,7 +440,7 @@ export default function InvoiceEmailSendPanel({
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
           <a href={printHref} className="w-full sm:w-auto">
             <Button variant="secondary" className="w-full sm:w-auto">
-              Preview Invoice
+              Preview {requestType === "estimate" ? "Estimate" : "Invoice"}
             </Button>
           </a>
           <button
