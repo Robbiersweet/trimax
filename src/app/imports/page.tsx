@@ -419,6 +419,13 @@ function getFreshBooksInvoiceDisplayId(freshBooksNumber: string) {
   return normalizeDocumentDisplayId(freshBooksNumber, "INV");
 }
 
+function formatMoney(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(value);
+}
+
 function isDuplicateClient(existingClients: Client[], row: ClientImportRow) {
   const rowName = row.name.trim().toLowerCase();
   const rowEmail = row.email.trim().toLowerCase();
@@ -461,6 +468,39 @@ function ImportsPageContent() {
   );
   const previewRows =
     importType === "clients" ? clientRows : invoiceRows;
+  const splitTargetAmount = Number(business?.split_warning_amount) || 0;
+  const invoicePreviewRows = importType === "invoices" ? invoiceRows : [];
+  const clientPreviewRows = importType === "clients" ? clientRows : [];
+  const previewInvoiceTotal = invoicePreviewRows.reduce(
+    (total, row) => total + row.amount,
+    0
+  );
+  const previewInvoiceLineCount = invoicePreviewRows.reduce(
+    (total, row) => total + row.lineItems.length,
+    0
+  );
+  const previewSplitReadyCount = invoicePreviewRows.filter(
+    (row) =>
+      splitTargetAmount > 0 &&
+      row.amount - row.amountPaid > splitTargetAmount &&
+      looksLikeApartmentUnitPaintJob(
+        row.customerName,
+        row.projectTitle,
+        row.lineItems
+      )
+  ).length;
+  const previewOpenInvoiceCount = invoicePreviewRows.filter(
+    (row) => row.amount > row.amountPaid
+  ).length;
+  const clientRowsWithEmail = clientPreviewRows.filter((row) =>
+    row.email.trim()
+  ).length;
+  const clientRowsWithPhone = clientPreviewRows.filter((row) =>
+    row.phone.trim()
+  ).length;
+  const clientRowsWithAddress = clientPreviewRows.filter(
+    (row) => row.billingAddress.trim() || row.serviceAddress.trim()
+  ).length;
 
   useEffect(() => {
     async function loadBusiness() {
@@ -1132,10 +1172,10 @@ function ImportsPageContent() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4 text-sm leading-6 text-blue-100">
+            <div className="import-guidance rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4 text-sm leading-6 text-blue-100">
               {importType === "clients"
                 ? "Client import looks for columns like Client Name, Customer, Email, Phone, Billing Address, Service Address, and Notes."
-                : "FreshBooks invoice import groups CSV line-item rows into invoices, preserves historical invoice numbers like INV-0404, imports tax labels/rates, and creates the matching Trimax line items."}
+                : "FreshBooks invoice import groups line-item rows into invoices, preserves historical invoice numbers like INV-0404, imports tax labels/rates, and automatically creates apartment-paint split drafts when a matching invoice is over the threshold."}
             </div>
 
             {lastResult ? (
@@ -1164,6 +1204,110 @@ function ImportsPageContent() {
         </Card>
 
         <Card>
+          <div className="import-readiness-panel rounded-3xl border border-white/10 bg-zinc-950/70 p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.3em] text-sky-300">
+                  Import Readiness
+                </p>
+                <h2 className="mt-2 text-2xl font-bold">
+                  {fileName
+                    ? importType === "clients"
+                      ? "Client rows ready to review"
+                      : "Invoice rows ready to review"
+                    : "Choose a CSV to preview"}
+                </h2>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+                  {importType === "clients"
+                    ? "Trimax checks for usable contact details before you import, so client records arrive clean enough for invoices, estimates, and reminders."
+                    : "Apartment paint invoices over the split threshold will create draft split invoices automatically. Other imported invoices stay as original invoices."}
+                </p>
+              </div>
+
+              {importType === "invoices" ? (
+                <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+                  Split threshold:{" "}
+                  <span className="font-bold">
+                    {splitTargetAmount > 0
+                      ? formatMoney(splitTargetAmount)
+                      : "Not set"}
+                  </span>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="mt-5 grid gap-3 md:grid-cols-4">
+              <div className="import-readiness-metric rounded-2xl border border-white/10 bg-black/30 p-4">
+                <p className="text-xs uppercase tracking-[0.22em] text-zinc-500">
+                  Rows
+                </p>
+                <p className="mt-2 text-3xl font-bold">{previewRows.length}</p>
+              </div>
+
+              {importType === "clients" ? (
+                <>
+                  <div className="import-readiness-metric rounded-2xl border border-white/10 bg-black/30 p-4">
+                    <p className="text-xs uppercase tracking-[0.22em] text-zinc-500">
+                      Email Ready
+                    </p>
+                    <p className="mt-2 text-3xl font-bold">
+                      {clientRowsWithEmail}
+                    </p>
+                  </div>
+                  <div className="import-readiness-metric rounded-2xl border border-white/10 bg-black/30 p-4">
+                    <p className="text-xs uppercase tracking-[0.22em] text-zinc-500">
+                      Phone Ready
+                    </p>
+                    <p className="mt-2 text-3xl font-bold">
+                      {clientRowsWithPhone}
+                    </p>
+                  </div>
+                  <div className="import-readiness-metric rounded-2xl border border-white/10 bg-black/30 p-4">
+                    <p className="text-xs uppercase tracking-[0.22em] text-zinc-500">
+                      Address Ready
+                    </p>
+                    <p className="mt-2 text-3xl font-bold">
+                      {clientRowsWithAddress}
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="import-readiness-metric rounded-2xl border border-white/10 bg-black/30 p-4">
+                    <p className="text-xs uppercase tracking-[0.22em] text-zinc-500">
+                      Open Invoices
+                    </p>
+                    <p className="mt-2 text-3xl font-bold">
+                      {previewOpenInvoiceCount}
+                    </p>
+                  </div>
+                  <div className="import-readiness-metric rounded-2xl border border-white/10 bg-black/30 p-4">
+                    <p className="text-xs uppercase tracking-[0.22em] text-zinc-500">
+                      Import Total
+                    </p>
+                    <p className="mt-2 text-3xl font-bold">
+                      {formatMoney(previewInvoiceTotal)}
+                    </p>
+                  </div>
+                  <div className="import-readiness-metric rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                    <p className="text-xs uppercase tracking-[0.22em] text-emerald-300">
+                      Split Drafts
+                    </p>
+                    <p className="mt-2 text-3xl font-bold">
+                      {previewSplitReadyCount}
+                    </p>
+                    <p className="mt-1 text-xs text-zinc-400">
+                      {previewInvoiceLineCount} line item
+                      {previewInvoiceLineCount === 1 ? "" : "s"} detected.
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </Card>
+
+        <Card>
           <div className="mb-4 flex items-center justify-between gap-4">
             <div>
               <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
@@ -1180,7 +1324,7 @@ function ImportsPageContent() {
               No rows to preview yet.
             </p>
           ) : (
-            <div className="app-data-table overflow-hidden rounded-2xl border border-zinc-800">
+            <div className="app-data-table import-preview-table overflow-hidden rounded-2xl border border-zinc-800">
               <div className="app-data-table-head grid grid-cols-4 gap-4 bg-zinc-950 px-4 py-3 text-sm font-bold text-zinc-400">
                 <span>Name</span>
                 <span>Reference</span>
@@ -1194,7 +1338,7 @@ function ImportsPageContent() {
                   return (
                     <div
                       key={`${client.name}-${index}`}
-                      className="app-data-table-row grid grid-cols-4 gap-4 border-t border-zinc-800 px-4 py-3 text-sm text-zinc-200"
+                      className="app-data-table-row import-preview-row grid grid-cols-4 gap-4 border-t border-zinc-800 px-4 py-3 text-sm text-zinc-200"
                     >
                       <span>{client.name}</span>
                       <span>{client.contactName || "-"}</span>
@@ -1205,18 +1349,46 @@ function ImportsPageContent() {
                 }
 
                 const invoice = row as InvoiceImportRow;
+                const invoiceDisplayId =
+                  getFreshBooksInvoiceDisplayId(invoice.freshBooksNumber) ||
+                  invoice.reference;
+                const splitReady =
+                  splitTargetAmount > 0 &&
+                  invoice.amount - invoice.amountPaid > splitTargetAmount &&
+                  looksLikeApartmentUnitPaintJob(
+                    invoice.customerName,
+                    invoice.projectTitle,
+                    invoice.lineItems
+                  );
+                const invoicePaid = invoice.amount <= invoice.amountPaid;
                 return (
                   <div
                     key={`${invoice.customerName}-${index}`}
-                    className="app-data-table-row grid grid-cols-4 gap-4 border-t border-zinc-800 px-4 py-3 text-sm text-zinc-200"
+                    className="app-data-table-row import-preview-row grid grid-cols-4 gap-4 border-t border-zinc-800 px-4 py-3 text-sm text-zinc-200"
                   >
                     <span>{invoice.customerName}</span>
-                    <span>
-                      {getFreshBooksInvoiceDisplayId(invoice.freshBooksNumber) ||
-                        invoice.reference}
+                    <span className="space-y-1">
+                      <span className="block font-semibold">
+                        {invoiceDisplayId}
+                      </span>
+                      <span
+                        className={`import-status-pill ${
+                          splitReady
+                            ? "import-status-pill-split"
+                            : invoicePaid
+                              ? "import-status-pill-paid"
+                              : "import-status-pill-open"
+                        }`}
+                      >
+                        {splitReady
+                          ? "Split drafts ready"
+                          : invoicePaid
+                            ? "Paid"
+                            : "Open"}
+                      </span>
                     </span>
                     <span>
-                      ${invoice.amount.toFixed(2)} / {invoice.lineItems.length}{" "}
+                      {formatMoney(invoice.amount)} / {invoice.lineItems.length}{" "}
                       line{invoice.lineItems.length === 1 ? "" : "s"}
                     </span>
                     <span>

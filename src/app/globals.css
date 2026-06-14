@@ -3751,6 +3751,122 @@ html.theme-light .payment-priority-row:hover {
   border-color: #bfdbfe !important;
 }
 
+.import-readiness-panel {
+  box-shadow: 0 18px 48px rgba(2, 6, 23, 0.18);
+}
+
+.import-readiness-metric {
+  min-height: 122px;
+}
+
+.import-status-pill {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  padding: 0.2rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.import-status-pill-open {
+  background: rgba(14, 165, 233, 0.12);
+  border-color: rgba(56, 189, 248, 0.36);
+  color: #bae6fd;
+}
+
+.import-status-pill-paid {
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(74, 222, 128, 0.36);
+  color: #bbf7d0;
+}
+
+.import-status-pill-split {
+  background: rgba(16, 185, 129, 0.14);
+  border-color: rgba(52, 211, 153, 0.42);
+  color: #a7f3d0;
+}
+
+@media (max-width: 760px) {
+  .import-preview-table .app-data-table-head,
+  .import-preview-table .import-preview-row {
+    grid-template-columns: 1fr !important;
+    gap: 0.65rem !important;
+  }
+
+  .import-preview-table .app-data-table-head span:nth-child(n + 2) {
+    display: none;
+  }
+}
+
+html.theme-light .import-guidance {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #1e3a8a !important;
+}
+
+html.theme-light .import-readiness-panel {
+  background:
+    radial-gradient(circle at 88% 4%, rgba(14, 165, 233, 0.12), transparent 30%),
+    linear-gradient(135deg, #ffffff, #f8fafc) !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 22px 55px rgba(15, 23, 42, 0.1) !important;
+}
+
+html.theme-light .import-readiness-panel h2,
+html.theme-light .import-readiness-panel .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light .import-readiness-panel .text-zinc-400,
+html.theme-light .import-readiness-panel .text-zinc-500 {
+  color: #475569 !important;
+}
+
+html.theme-light .import-readiness-panel .text-sky-300 {
+  color: #0369a1 !important;
+}
+
+html.theme-light .import-readiness-panel .text-emerald-300,
+html.theme-light .import-readiness-panel .text-emerald-100 {
+  color: #047857 !important;
+}
+
+html.theme-light .import-readiness-panel .bg-black\/30,
+html.theme-light .import-readiness-metric {
+  background: #ffffff !important;
+  border-color: #d7dde8 !important;
+  color: #0f172a !important;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.06) !important;
+}
+
+html.theme-light .import-readiness-panel .bg-emerald-500\/10 {
+  background: #ecfdf5 !important;
+  border-color: #86efac !important;
+  color: #047857 !important;
+}
+
+html.theme-light .import-status-pill-open {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #1d4ed8 !important;
+}
+
+html.theme-light .import-status-pill-paid {
+  background: #ecfdf5 !important;
+  border-color: #86efac !important;
+  color: #047857 !important;
+}
+
+html.theme-light .import-status-pill-split {
+  background: #dcfce7 !important;
+  border-color: #4ade80 !important;
+  color: #166534 !important;
+}
+
 html.theme-light .payment-prep-row-selected,
 html.theme-light .app-data-table-row.bg-green-500\/10 {
   background: #ecfdf5 !important;
