@@ -219,6 +219,8 @@ export async function POST(request: Request, { params }: RouteParams) {
   const replyToEmail = cleanText(body.replyToEmail, 200).toLowerCase();
   const businessSlug = cleanText(body.businessSlug, 80);
   const includePdfNote = Boolean(body.includePdfNote);
+  const emailPurpose =
+    cleanText(body.emailPurpose, 40) === "reminder" ? "reminder" : "send";
 
   if (!isValidEmail(recipientEmail)) {
     return NextResponse.json(
@@ -332,19 +334,24 @@ export async function POST(request: Request, { params }: RouteParams) {
     );
   }
 
-  await supabase
-    .from("invoices")
-    .update({
-      status: "sent",
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", invoice.id);
+  if (emailPurpose !== "reminder") {
+    await supabase
+      .from("invoices")
+      .update({
+        status: "sent",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", invoice.id);
+  }
 
   await supabase.from("activity_logs").insert({
     business_id: invoice.business_id,
     actor_user_id: access.userId,
     actor_email: access.email,
-    action: "invoice.email_sent",
+    action:
+      emailPurpose === "reminder"
+        ? "invoice.payment_reminder_sent"
+        : "invoice.email_sent",
     entity_type: "invoice",
     entity_id: invoice.id,
     entity_label: invoice.display_id ?? invoice.project_title ?? "Invoice",
@@ -355,6 +362,11 @@ export async function POST(request: Request, { params }: RouteParams) {
   });
 
   return NextResponse.json({
-    message: `${invoice.display_id ?? "Invoice"} was sent to ${recipientEmail}.`,
+    message:
+      emailPurpose === "reminder"
+        ? `Payment reminder for ${
+            invoice.display_id ?? "Invoice"
+          } was sent to ${recipientEmail}.`
+        : `${invoice.display_id ?? "Invoice"} was sent to ${recipientEmail}.`,
   });
 }

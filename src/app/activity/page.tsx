@@ -142,6 +142,8 @@ function actionLabel(action: string) {
     "invoice.created": "Invoice Created",
     "invoice.updated": "Invoice Updated",
     "invoice.status_updated": "Invoice Status Updated",
+    "invoice.email_sent": "Invoice Emailed",
+    "invoice.payment_reminder_sent": "Payment Reminder Sent",
     "invoice.batch_payment_applied": "Batch Payment Applied",
     "invoice.recurring_draft_created": "Recurring Draft Created",
     "invoice.split_created": "Split Invoices Created",

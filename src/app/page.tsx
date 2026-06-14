@@ -381,6 +381,7 @@ function activityLabel(action: string) {
     "invoice.updated": "Invoice Updated",
     "invoice.status_updated": "Invoice Updated",
     "invoice.email_sent": "Invoice Emailed",
+    "invoice.payment_reminder_sent": "Payment Reminder Sent",
     "invoice.deposit_requested": "Deposit Requested",
     "invoice.deposit_cleared": "Deposit Cleared",
     "invoice.batch_payment_applied": "Payment Applied",

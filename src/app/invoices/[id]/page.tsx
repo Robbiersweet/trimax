@@ -127,6 +127,23 @@ function formatDate(value: string | null) {
   }).format(date);
 }
 
+function daysPastDue(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return Math.floor((today.getTime() - date.getTime()) / 86_400_000);
+}
+
 function looksLikeFiveStarsBoaInvoice(
   invoice: Invoice,
   lineItems: InvoiceLineItem[]
@@ -457,6 +474,12 @@ export default async function InvoiceDetailPage({
     invoice.due_date ?? smartInvoiceDates.dueDate;
   const status = invoice.status || "Draft";
   const normalizedStatus = status.toLowerCase();
+  const daysLate = daysPastDue(displayDueDate);
+  const isPaymentLate =
+    customerFacingAmountDue > 0 &&
+    daysLate !== null &&
+    daysLate > 0 &&
+    !["paid", "draft"].includes(normalizedStatus);
   const showFiveStarsBoaPrintButton =
     business.slug === "just-kleen" &&
     looksLikeFiveStarsBoaInvoice(invoice, items);
@@ -676,6 +699,48 @@ export default async function InvoiceDetailPage({
             printHref={`/invoices/${invoice.id}/print${businessQuery}`}
             requestType={hasDepositRequest ? "deposit" : "invoice"}
           />
+
+          {isPaymentLate ? (
+            <section className="late-reminder-section rounded-3xl border border-rose-500/30 bg-rose-500/10 p-4 sm:p-5">
+              <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.35em] text-rose-300">
+                    Late Payment Reminder
+                  </p>
+                  <h2 className="mt-2 text-2xl font-black text-white">
+                    Invoice is {daysLate} day
+                    {daysLate === 1 ? "" : "s"} past due
+                  </h2>
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-rose-100/80">
+                    Send a polite payment reminder using the reminder template
+                    saved in Settings. Trimax logs the reminder separately from
+                    the original invoice send.
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-rose-500/25 bg-black/20 px-4 py-3 text-sm">
+                  <p className="text-rose-100/70">Balance due</p>
+                  <p className="mt-1 text-xl font-black text-rose-100">
+                    {money(customerFacingAmountDue)}
+                  </p>
+                </div>
+              </div>
+
+              <InvoiceEmailSendPanel
+                documentId={invoice.id}
+                businessSlug={businessSlug}
+                businessName={businessName}
+                customerName={customerName}
+                recipientEmail={recipientEmail}
+                documentNumber={invoiceNumber}
+                amountDue={money(customerFacingAmountDue)}
+                dueDate={displayDueDate ? formatDate(displayDueDate) : "-"}
+                projectTitle={projectTitle}
+                printHref={`/invoices/${invoice.id}/print${businessQuery}`}
+                requestType="reminder"
+              />
+            </section>
+          ) : null}
 
           <Card className={hasDepositRequest ? "deposit-request-card" : ""}>
             <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-start">

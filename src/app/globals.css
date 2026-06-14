@@ -3624,6 +3624,31 @@ html.theme-light .payment-balance-check .bg-black\/20 {
   border-color: #d7dde8 !important;
 }
 
+html.theme-light .late-reminder-section {
+  background: #fff1f2 !important;
+  border-color: #fb7185 !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .late-reminder-section .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light .late-reminder-section .text-rose-300 {
+  color: #be123c !important;
+}
+
+html.theme-light .late-reminder-section .text-rose-100,
+html.theme-light .late-reminder-section .text-rose-100\/70,
+html.theme-light .late-reminder-section .text-rose-100\/80 {
+  color: #9f1239 !important;
+}
+
+html.theme-light .late-reminder-section .bg-black\/20 {
+  background: rgba(255, 255, 255, 0.72) !important;
+  border-color: #fecdd3 !important;
+}
+
 html.theme-light .payment-chip,
 html.theme-light .invoice-filter-pill {
   box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);

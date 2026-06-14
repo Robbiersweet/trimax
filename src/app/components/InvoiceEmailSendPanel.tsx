@@ -25,7 +25,7 @@ type InvoiceEmailSendPanelProps = {
   dueDate: string;
   projectTitle?: string | null;
   printHref: string;
-  requestType?: "invoice" | "deposit" | "estimate";
+  requestType?: "invoice" | "deposit" | "estimate" | "reminder";
 };
 
 function businessLogoSrc(businessSlug: string) {
@@ -37,8 +37,12 @@ function businessLogoSrc(businessSlug: string) {
 function defaultSubject(
   businessName: string,
   documentNumber: string,
-  requestType: "invoice" | "deposit" | "estimate"
+  requestType: "invoice" | "deposit" | "estimate" | "reminder"
 ) {
+  if (requestType === "reminder") {
+    return `Payment reminder for invoice ${documentNumber}`;
+  }
+
   if (requestType === "deposit") {
     return `${businessName} sent you a deposit request for ${documentNumber}`;
   }
@@ -61,8 +65,14 @@ function defaultMessage({
   documentNumber: string;
   amountDue: string;
   dueDate: string;
-  requestType: "invoice" | "deposit" | "estimate";
+  requestType: "invoice" | "deposit" | "estimate" | "reminder";
 }) {
+  if (requestType === "reminder") {
+    return `This is a friendly reminder that invoice ${documentNumber} for ${amountDue}${
+      dueDate && dueDate !== "-" ? ` was due on ${dueDate}` : " is past due"
+    }. Please send payment when available, or reply if you have any questions.`;
+  }
+
   if (requestType === "deposit") {
     return `${businessName} sent you a deposit request for ${amountDue} on invoice ${documentNumber}${
       dueDate && dueDate !== "-" ? `. The invoice due date is ${dueDate}` : ""
@@ -95,6 +105,8 @@ export default function InvoiceEmailSendPanel({
   const documentLabel =
     requestType === "deposit"
       ? "Deposit request"
+      : requestType === "reminder"
+        ? "Payment reminder"
       : requestType === "estimate"
         ? "Estimate"
         : "Invoice";
@@ -188,6 +200,11 @@ export default function InvoiceEmailSendPanel({
       setSubject(
         requestType === "deposit"
           ? defaultSubject(businessName, documentNumber, requestType)
+          : requestType === "reminder"
+            ? renderEmailTemplate(
+                settings.paymentReminderSubjectTemplate,
+                templateVariables
+              )
           : requestType === "estimate"
             ? defaultSubject(businessName, documentNumber, requestType)
           : renderEmailTemplate(
@@ -204,6 +221,11 @@ export default function InvoiceEmailSendPanel({
               dueDate,
               requestType,
             })
+          : requestType === "reminder"
+            ? renderEmailTemplate(
+                settings.paymentReminderBodyTemplate,
+                templateVariables
+              )
           : requestType === "estimate"
             ? defaultMessage({
                 businessName,
@@ -269,6 +291,7 @@ export default function InvoiceEmailSendPanel({
           message: emailBody,
           replyToEmail,
           includePdfNote,
+          emailPurpose: requestType === "reminder" ? "reminder" : "send",
         }),
         }
       );
@@ -314,6 +337,8 @@ export default function InvoiceEmailSendPanel({
         <h2 className="mt-1 text-2xl font-black leading-tight text-slate-950">
           {requestType === "deposit"
             ? `Send Deposit Request`
+            : requestType === "reminder"
+              ? `Send Payment Reminder`
             : requestType === "estimate"
               ? `Send ${documentNumber}`
             : `Send ${documentNumber}`}
@@ -453,6 +478,8 @@ export default function InvoiceEmailSendPanel({
               ? "Sending..."
               : requestType === "deposit"
                 ? "Send Deposit Request"
+                : requestType === "reminder"
+                  ? "Send Reminder"
                 : requestType === "estimate"
                   ? "Send Estimate"
                 : "Send Invoice"}
