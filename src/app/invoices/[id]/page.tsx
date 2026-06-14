@@ -701,7 +701,10 @@ export default async function InvoiceDetailPage({
           />
 
           {isPaymentLate ? (
-            <section className="late-reminder-section rounded-3xl border border-rose-500/30 bg-rose-500/10 p-4 sm:p-5">
+            <section
+              id="late-payment-reminder"
+              className="late-reminder-section scroll-mt-6 rounded-3xl border border-rose-500/30 bg-rose-500/10 p-4 sm:p-5"
+            >
               <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <p className="text-sm font-semibold uppercase tracking-[0.35em] text-rose-300">

@@ -1495,6 +1495,7 @@ export default async function InvoicesPage({
               const isPastDue =
                 displayAmountDue > 0 && (daysLate ?? -1) >= 0;
               const isDepositRequest = hasActiveDepositRequest(invoice);
+              const reminderHref = `/invoices/${invoice.id}${businessQuery}#late-payment-reminder`;
 
               const paymentParams = new URLSearchParams({
                 business: businessSlug,
@@ -1611,6 +1612,15 @@ export default async function InvoicesPage({
                           className="payment-action-button rounded-full border px-4 py-2 text-center text-sm font-semibold transition"
                         >
                           Record Payment
+                        </Link>
+                      ) : null}
+
+                      {isPastDue ? (
+                        <Link
+                          href={reminderHref}
+                          className="rounded-full border border-rose-300 bg-rose-50 px-4 py-2 text-center text-sm font-black text-rose-800 transition hover:border-rose-400 hover:bg-rose-100"
+                        >
+                          Send Reminder
                         </Link>
                       ) : null}
                     </div>

@@ -1609,7 +1609,8 @@ function BusinessSettingsPageContent() {
                       Payment Reminder Template
                     </p>
                     <p className="mt-1 text-sm text-slate-600">
-                      Foundation for later reminder automation.
+                      Used by manual late reminders and the automated overdue
+                      reminder run.
                     </p>
 
                     <div className="mt-4 grid gap-4">
@@ -1617,7 +1618,7 @@ function BusinessSettingsPageContent() {
                         label="Subject"
                         value={paymentReminderSubjectTemplate}
                         onChange={setPaymentReminderSubjectTemplate}
-                        placeholder="Reminder: Invoice {invoiceNumber} is due"
+                        placeholder="Reminder: Invoice {invoiceNumber} is past due"
                       />
 
                       <label className="grid gap-2 text-sm font-semibold text-slate-700">
@@ -1629,9 +1630,46 @@ function BusinessSettingsPageContent() {
                           }
                           rows={5}
                           className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base font-medium text-slate-950 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                          placeholder="Your payment of {amountDue} for invoice {invoiceNumber} is due."
+                          placeholder="Your payment of {amountDue} for invoice {invoiceNumber} {dueDateSentence}."
                         />
                       </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                  <p className="text-sm font-semibold uppercase tracking-[0.24em] text-emerald-700">
+                    Late Payment Workflow
+                  </p>
+                  <div className="mt-4 grid gap-3 md:grid-cols-3">
+                    <div className="rounded-2xl border border-emerald-200 bg-white p-4">
+                      <p className="font-semibold text-slate-950">
+                        Manual send
+                      </p>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">
+                        Overdue invoice pages show a payment reminder composer
+                        with this template prefilled.
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-emerald-200 bg-white p-4">
+                      <p className="font-semibold text-slate-950">
+                        Automation ready
+                      </p>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">
+                        The scheduled reminder run skips invoices reminded in
+                        the last 7 days.
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-emerald-200 bg-white p-4">
+                      <p className="font-semibold text-slate-950">
+                        Guardrails
+                      </p>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">
+                        Paid invoices, drafts, and customers without an email
+                        address are left alone.
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -1653,7 +1691,8 @@ function BusinessSettingsPageContent() {
                   Dynamic fields you can use:{" "}
                   <span className="font-semibold text-slate-950">
                     {"{businessName}"}, {"{invoiceNumber}"}, {"{amountDue}"},{" "}
-                    {"{dueDate}"}, {"{customerName}"}, {"{projectTitle}"}
+                    {"{dueDate}"}, {"{dueDateSentence}"}, {"{customerName}"},{" "}
+                    {"{projectTitle}"}
                   </span>
                 </div>
 

@@ -47,9 +47,9 @@ export function defaultInvoiceEmailSettings({
     invoiceBodyTemplate:
       "{businessName} sent you invoice {invoiceNumber} for {amountDue}{dueDateSentence}.",
     paymentReminderSubjectTemplate:
-      "Reminder: Invoice {invoiceNumber} from {businessName} is due",
+      "Reminder: Invoice {invoiceNumber} from {businessName} is past due",
     paymentReminderBodyTemplate:
-      "Your payment of {amountDue} for invoice {invoiceNumber} from {businessName} is {dueDateSentence}.",
+      "Your payment of {amountDue} for invoice {invoiceNumber} from {businessName} {dueDateSentence}.",
   };
 }
 

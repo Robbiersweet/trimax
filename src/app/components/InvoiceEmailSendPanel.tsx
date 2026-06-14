@@ -141,7 +141,13 @@ export default function InvoiceEmailSendPanel({
 
   const canSend = recipient.trim().includes("@") && subject.trim();
   const dueDateSentence =
-    dueDate && dueDate !== "-" ? ` due on ${dueDate}` : "";
+    dueDate && dueDate !== "-"
+      ? requestType === "reminder"
+        ? `was due on ${dueDate}`
+        : ` due on ${dueDate}`
+      : requestType === "reminder"
+        ? "is past due"
+        : "";
   const templateVariables = useMemo(
     () => ({
       businessName,
