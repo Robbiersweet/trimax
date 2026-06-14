@@ -3208,3 +3208,90 @@ html.theme-light .invoice-aging-summary-card {
   border-color: #d7dde8 !important;
   color: #0f172a !important;
 }
+
+/* Final light-mode status-badge contrast guard. Some dashboard cards carry
+   dark-surface for dark mode, so this must outrank those nested badge rules. */
+html.theme-light main .dashboard-feature-card .status-badge,
+html.theme-light main .client-list-card .status-badge,
+html.theme-light main .estimate-list-card .status-badge,
+html.theme-light main .invoice-list-card .status-badge,
+html.theme-light main .report-row-link .status-badge,
+html.theme-light main .queue-list-card .status-badge {
+  border: 1px solid #cbd5e1 !important;
+  background: #f8fafc !important;
+  color: #334155 !important;
+}
+
+html.theme-light main .dashboard-feature-card .status-badge-pending-estimate,
+html.theme-light main .client-list-card .status-badge-pending-estimate,
+html.theme-light main .estimate-list-card .status-badge-pending-estimate,
+html.theme-light main .invoice-list-card .status-badge-pending-estimate,
+html.theme-light main .report-row-link .status-badge-pending-estimate,
+html.theme-light main .queue-list-card .status-badge-pending-estimate {
+  border-color: #fbbf24 !important;
+  background: #fffbeb !important;
+  color: #92400e !important;
+}
+
+html.theme-light main .dashboard-feature-card .status-badge-scheduled,
+html.theme-light main .dashboard-feature-card .status-badge-draft,
+html.theme-light main .client-list-card .status-badge-scheduled,
+html.theme-light main .client-list-card .status-badge-draft,
+html.theme-light main .estimate-list-card .status-badge-scheduled,
+html.theme-light main .estimate-list-card .status-badge-draft,
+html.theme-light main .invoice-list-card .status-badge-scheduled,
+html.theme-light main .invoice-list-card .status-badge-draft,
+html.theme-light main .report-row-link .status-badge-scheduled,
+html.theme-light main .report-row-link .status-badge-draft,
+html.theme-light main .queue-list-card .status-badge-scheduled,
+html.theme-light main .queue-list-card .status-badge-draft {
+  border-color: #bfdbfe !important;
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+}
+
+html.theme-light main .dashboard-feature-card .status-badge-completed,
+html.theme-light main .dashboard-feature-card .status-badge-archived,
+html.theme-light main .client-list-card .status-badge-completed,
+html.theme-light main .client-list-card .status-badge-archived,
+html.theme-light main .estimate-list-card .status-badge-completed,
+html.theme-light main .estimate-list-card .status-badge-archived,
+html.theme-light main .invoice-list-card .status-badge-completed,
+html.theme-light main .invoice-list-card .status-badge-archived,
+html.theme-light main .report-row-link .status-badge-completed,
+html.theme-light main .report-row-link .status-badge-archived,
+html.theme-light main .queue-list-card .status-badge-completed,
+html.theme-light main .queue-list-card .status-badge-archived {
+  border-color: #cbd5e1 !important;
+  background: #f1f5f9 !important;
+  color: #334155 !important;
+}
+
+html.theme-light main .dashboard-feature-card .status-badge-ready,
+html.theme-light main .dashboard-feature-card .status-badge-paid,
+html.theme-light main .dashboard-feature-card .status-badge-sent,
+html.theme-light main .dashboard-feature-card .status-badge-invoiced,
+html.theme-light main .client-list-card .status-badge-ready,
+html.theme-light main .client-list-card .status-badge-paid,
+html.theme-light main .client-list-card .status-badge-sent,
+html.theme-light main .client-list-card .status-badge-invoiced,
+html.theme-light main .estimate-list-card .status-badge-ready,
+html.theme-light main .estimate-list-card .status-badge-paid,
+html.theme-light main .estimate-list-card .status-badge-sent,
+html.theme-light main .estimate-list-card .status-badge-invoiced,
+html.theme-light main .invoice-list-card .status-badge-ready,
+html.theme-light main .invoice-list-card .status-badge-paid,
+html.theme-light main .invoice-list-card .status-badge-sent,
+html.theme-light main .invoice-list-card .status-badge-invoiced,
+html.theme-light main .report-row-link .status-badge-ready,
+html.theme-light main .report-row-link .status-badge-paid,
+html.theme-light main .report-row-link .status-badge-sent,
+html.theme-light main .report-row-link .status-badge-invoiced,
+html.theme-light main .queue-list-card .status-badge-ready,
+html.theme-light main .queue-list-card .status-badge-paid,
+html.theme-light main .queue-list-card .status-badge-sent,
+html.theme-light main .queue-list-card .status-badge-invoiced {
+  border-color: #bbf7d0 !important;
+  background: #ecfdf5 !important;
+  color: #047857 !important;
+}
