@@ -10,6 +10,7 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import AppShell from "../../components/AppShell";
 import Button from "../../components/Button";
+import DocumentReadinessPanel from "../../components/DocumentReadinessPanel";
 import InputField from "../../components/InputField";
 import TaxModeSelect from "../../components/TaxModeSelect";
 import Card from "../../components/Card";
@@ -213,6 +214,9 @@ function NewInvoicePageContent() {
   const invoiceTotal = subtotal + taxAmount;
   const amountDue =
     invoiceTotal - (Number(amountPaid) || 0);
+  const readyLineItems = lineItems.filter(
+    (item) => item.description.trim() && getLineTotal(item) > 0
+  );
   const splitWarningAmount = toNumber(
     business?.split_warning_amount
   );
@@ -272,6 +276,65 @@ function NewInvoicePageContent() {
     lineItems,
     issueDate,
   });
+  const invoiceReadinessSteps = [
+    {
+      label: "Client",
+      detail: customerName.trim()
+        ? customerName.trim()
+        : "Choose or enter a customer",
+      status: customerName.trim() ? "ready" : "attention",
+    },
+    {
+      label: "Project",
+      detail: projectTitle.trim()
+        ? projectTitle.trim()
+        : "Add a project title",
+      status: projectTitle.trim() ? "ready" : "attention",
+    },
+    {
+      label: "Line items",
+      detail:
+        readyLineItems.length > 0
+          ? `${readyLineItems.length} billable line ${
+              readyLineItems.length === 1 ? "item" : "items"
+            }`
+          : "Add at least one priced line",
+      status: readyLineItems.length > 0 ? "ready" : "attention",
+    },
+    {
+      label: "Due date",
+      detail: dueDate
+        ? dueDateManuallyChanged
+          ? "Manual date selected"
+          : smartInvoiceDates.reason === "apartment"
+            ? "Apartment terms applied"
+            : "Smart due date applied"
+        : "Choose a due date",
+      status: dueDate ? "ready" : "attention",
+    },
+    {
+      label: "Tax",
+      detail:
+        taxMode === "taxable"
+          ? taxRate
+            ? `${taxRate}% ${taxLabel || "tax"}`
+            : "Taxable, rate needed"
+          : taxMode === "tax_exempt"
+            ? "Tax exempt"
+            : "No tax",
+      status: taxMode === "taxable" && !taxRate ? "attention" : "ready",
+    },
+    {
+      label: "Split",
+      detail: showSplitWarning
+        ? `${automaticSplitPlan.length} draft splits ready`
+        : effectiveSplitWarningEnabled
+          ? "Split enabled"
+          : "No split needed",
+      status:
+        showSplitWarning || !effectiveSplitWarningEnabled ? "ready" : "waiting",
+    },
+  ] as const;
 
   const [toast, setToast] = useState<{
     type: "success" | "error";
@@ -838,6 +901,18 @@ function NewInvoicePageContent() {
             </p>
           </Card>
         )}
+
+        <div className="mt-6">
+          <DocumentReadinessPanel
+            eyebrow="Invoice Readiness"
+            title="Create with confidence"
+            totalLabel="Amount Due"
+            totalValue={formatCurrency(amountDue)}
+            secondaryLabel="Invoice total"
+            secondaryValue={formatCurrency(invoiceTotal)}
+            steps={[...invoiceReadinessSteps]}
+          />
+        </div>
 
         <Card className="mt-8">
           <div className="grid gap-5">

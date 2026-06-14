@@ -2809,6 +2809,89 @@ html.theme-light .document-line-total {
   color: #1d4ed8 !important;
 }
 
+.document-readiness-panel {
+  box-shadow:
+    0 22px 52px rgba(2, 6, 23, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.document-readiness-step {
+  box-shadow: 0 12px 28px rgba(2, 6, 23, 0.12);
+}
+
+.document-readiness-step[data-status="ready"] {
+  border-color: rgba(52, 211, 153, 0.34);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.document-readiness-step[data-status="attention"] {
+  border-color: rgba(251, 191, 36, 0.48);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.document-readiness-step[data-status="waiting"] {
+  border-color: rgba(56, 189, 248, 0.32);
+  background: rgba(14, 165, 233, 0.08);
+}
+
+.document-readiness-step[data-status="ready"] .document-readiness-dot {
+  background: #34d399;
+  box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.12);
+}
+
+.document-readiness-step[data-status="attention"] .document-readiness-dot {
+  background: #facc15;
+  box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.14);
+}
+
+.document-readiness-step[data-status="waiting"] .document-readiness-dot {
+  background: #38bdf8;
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.12);
+}
+
+html.theme-light .document-readiness-panel {
+  background:
+    linear-gradient(135deg, #eff6ff, #ffffff 58%, #ecfdf5) !important;
+  border-color: #bfdbfe !important;
+  color: #0f172a !important;
+  box-shadow: 0 20px 46px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.theme-light .document-readiness-panel .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light .document-readiness-panel .text-zinc-200,
+html.theme-light .document-readiness-panel .text-zinc-300,
+html.theme-light .document-readiness-panel .text-zinc-400 {
+  color: #475569 !important;
+}
+
+html.theme-light .document-readiness-label {
+  color: #0369a1 !important;
+}
+
+html.theme-light .document-readiness-total,
+html.theme-light .document-readiness-step {
+  background: rgba(255, 255, 255, 0.82) !important;
+  border-color: #d7dde8 !important;
+}
+
+html.theme-light .document-readiness-step[data-status="ready"] {
+  background: #ecfdf5 !important;
+  border-color: #86efac !important;
+}
+
+html.theme-light .document-readiness-step[data-status="attention"] {
+  background: #fffbeb !important;
+  border-color: #facc15 !important;
+}
+
+html.theme-light .document-readiness-step[data-status="waiting"] {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+}
+
 html.theme-light .document-context-card .text-orange-400,
 html.theme-light .document-info-panel .text-orange-100,
 html.theme-light .document-info-panel .text-orange-100\/80,

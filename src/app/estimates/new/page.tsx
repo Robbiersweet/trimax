@@ -10,6 +10,7 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import AppShell from "../../components/AppShell";
 import Button from "../../components/Button";
+import DocumentReadinessPanel from "../../components/DocumentReadinessPanel";
 import InputField from "../../components/InputField";
 import TaxModeSelect from "../../components/TaxModeSelect";
 import Card from "../../components/Card";
@@ -413,6 +414,9 @@ function NewEstimatePageContent() {
   }, [subtotal, taxMode, taxRate]);
 
   const estimateTotal = subtotal + taxAmount;
+  const readyLineItems = lineItems.filter(
+    (item) => item.description.trim() && getLineTotal(item) > 0
+  );
   const splitWarningAmount = toNumber(
     business?.split_warning_amount
   );
@@ -452,6 +456,61 @@ function NewEstimatePageContent() {
     getTaxSuggestionForAddress(serviceAddress);
   const showTaxSuggestionNote =
     Boolean(taxSuggestion) && !taxManuallyChanged;
+  const estimateReadinessSteps = [
+    {
+      label: "Client",
+      detail: customerName.trim()
+        ? customerName.trim()
+        : "Choose or enter a customer",
+      status: customerName.trim() ? "ready" : "attention",
+    },
+    {
+      label: "Project",
+      detail: projectTitle.trim()
+        ? projectTitle.trim()
+        : "Add a project title",
+      status: projectTitle.trim() ? "ready" : "attention",
+    },
+    {
+      label: "Line items",
+      detail:
+        readyLineItems.length > 0
+          ? `${readyLineItems.length} priced line ${
+              readyLineItems.length === 1 ? "item" : "items"
+            }`
+          : "Add at least one priced line",
+      status: readyLineItems.length > 0 ? "ready" : "attention",
+    },
+    {
+      label: "Tax",
+      detail:
+        taxMode === "taxable"
+          ? taxRate
+            ? `${taxRate}% ${taxLabel || "tax"}`
+            : "Taxable, rate needed"
+          : taxMode === "tax_exempt"
+            ? "Tax exempt"
+            : "No tax",
+      status: taxMode === "taxable" && !taxRate ? "attention" : "ready",
+    },
+    {
+      label: "Address",
+      detail: serviceAddress.trim()
+        ? "Service address added"
+        : "Optional, but useful for tax",
+      status: serviceAddress.trim() ? "ready" : "waiting",
+    },
+    {
+      label: "Split",
+      detail: showSplitWarning
+        ? `${automaticSplitPlan.length} future split invoices`
+        : effectiveSplitWarningEnabled
+          ? "Split enabled"
+          : "No split needed",
+      status:
+        showSplitWarning || !effectiveSplitWarningEnabled ? "ready" : "waiting",
+    },
+  ] as const;
 
   const [toast, setToast] = useState<{
     type: "success" | "error";
@@ -1155,6 +1214,18 @@ function NewEstimatePageContent() {
             </p>
           </Card>
         ) : null}
+
+        <div className="mt-6">
+          <DocumentReadinessPanel
+            eyebrow="Estimate Readiness"
+            title="Ready for customer review"
+            totalLabel="Estimate Total"
+            totalValue={formatCurrency(estimateTotal)}
+            secondaryLabel="Line items"
+            secondaryValue={String(readyLineItems.length)}
+            steps={[...estimateReadinessSteps]}
+          />
+        </div>
 
         <Card className="mt-8">
           <div className="grid gap-5">
