@@ -630,9 +630,27 @@ export default async function InvoicesPage({
     (total, invoice) => total + invoice.amountDue,
     0
   );
-  const overdueBalanceTotal = currentYearOpenInvoicesWithAmounts
-    .filter((invoice) => (invoice.daysLate ?? -1) >= 0)
+  const overdueInvoices = currentYearOpenInvoicesWithAmounts.filter(
+    (invoice) => (invoice.daysLate ?? -1) >= 0
+  );
+  const overdueBalanceTotal = overdueInvoices
     .reduce((total, invoice) => total + invoice.amountDue, 0);
+  const oldestOverdueInvoice = [...overdueInvoices].sort(
+    (first, second) => (second.daysLate ?? 0) - (first.daysLate ?? 0)
+  )[0];
+  const depositRequestInvoices = currentYearOpenInvoicesWithAmounts.filter(
+    (invoice) => hasActiveDepositRequest(invoice)
+  );
+  const depositRequestTotal = depositRequestInvoices.reduce(
+    (total, invoice) => total + invoice.amountDue,
+    0
+  );
+  const soonDueInvoices = currentYearOpenInvoicesWithAmounts.filter(
+    (invoice) =>
+      invoice.daysLate !== null &&
+      invoice.daysLate < 0 &&
+      invoice.daysLate >= -7
+  );
   const draftBalanceTotal = billableInvoicesWithSplitInfo
     .filter(
       (invoice) => (invoice.status || "Draft").toLowerCase() === "draft"
@@ -715,6 +733,85 @@ export default async function InvoicesPage({
           .includes("recurring draft prepared by trimax")
     )
     .slice(0, 6);
+  const batchPaymentCustomerCount = customerBalanceRows.filter(
+    (customer) => customer.invoiceCount > 1
+  ).length;
+  const nextMoneyMoves = [
+    {
+      label: "Reminder Queue",
+      title:
+        overdueInvoices.length > 0
+          ? "Send the oldest late reminder"
+          : "No overdue reminders due",
+      metric: formatMoney(overdueBalanceTotal),
+      detail:
+        overdueInvoices.length > 0
+          ? `${overdueInvoices.length} overdue invoice${
+              overdueInvoices.length === 1 ? "" : "s"
+            } need follow-up.`
+          : soonDueInvoices.length > 0
+            ? `${soonDueInvoices.length} invoice${
+                soonDueInvoices.length === 1 ? "" : "s"
+              } due in the next 7 days.`
+            : "No late invoice pressure right now.",
+      href: oldestOverdueInvoice
+        ? `/invoices/${oldestOverdueInvoice.id}${businessQuery}#late-payment-reminder`
+        : `/invoices${businessQuery}&view=aging`,
+      action: overdueInvoices.length > 0 ? "Send Reminder" : "Review Aging",
+      tone: "danger",
+    },
+    {
+      label: "Deposits",
+      title:
+        depositRequestInvoices.length > 0
+          ? "Collect active deposits"
+          : "No deposits waiting",
+      metric: formatMoney(depositRequestTotal),
+      detail:
+        depositRequestInvoices.length > 0
+          ? `${depositRequestInvoices.length} active deposit request${
+              depositRequestInvoices.length === 1 ? "" : "s"
+            } can be applied before final collection.`
+          : "Deposit requests will appear here once created.",
+      href: `/payments${businessQuery}`,
+      action: "Open Payments",
+      tone: "success",
+    },
+    {
+      label: "Drafts",
+      title:
+        draftsToSend.length > 0
+          ? "Review prepared drafts"
+          : "Draft balance is visible",
+      metric: formatMoney(draftBalanceTotal),
+      detail:
+        draftsToSend.length > 0
+          ? `${draftsToSend.length} recurring draft${
+              draftsToSend.length === 1 ? "" : "s"
+            } may be ready to send.`
+          : "Draft invoices stay out of collection totals until sent.",
+      href: `/recurring-invoices${businessQuery}`,
+      action: "Open Drafts",
+      tone: "warning",
+    },
+    {
+      label: "Batch Checks",
+      title:
+        batchPaymentCustomerCount > 0
+          ? "Group invoices by check"
+          : "Batch workspace ready",
+      metric: String(batchPaymentCustomerCount),
+      detail:
+        batchPaymentCustomerCount > 0
+          ? `${batchPaymentCustomerCount} customer${
+              batchPaymentCustomerCount === 1 ? "" : "s"
+            } have multiple open invoices.`
+          : "Use this when one check covers several invoices.",
+      href: `/payments${businessQuery}`,
+      action: "Record Check",
+      tone: "info",
+    },
+  ];
 
   const viewCounts = {
     all: invoicesWithSplitInfo.length,
@@ -952,12 +1049,63 @@ export default async function InvoicesPage({
             <div className="invoice-metric-card invoice-metric-success rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
               <p className="text-sm text-emerald-700">Batch Payment Cue</p>
               <p className="mt-2 text-3xl font-black text-emerald-800">
-                {customerBalanceRows.filter((customer) => customer.invoiceCount > 1).length}
+                {batchPaymentCustomerCount}
               </p>
               <p className="mt-1 text-sm text-emerald-700/75">
                 Customers with multiple open invoices.
               </p>
             </div>
+          </div>
+        </Card>
+
+        <Card className="invoice-next-moves-card border-sky-500/20 bg-zinc-950">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-sm uppercase tracking-[0.3em] text-sky-300">
+                Next Money Moves
+              </p>
+              <h2 className="mt-2 text-2xl font-bold">
+                The fastest route to cleaner books
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+                Trimax turns invoice status into direct next steps: remind late
+                customers, collect deposits, send drafts, or apply one check to
+                several invoices.
+              </p>
+            </div>
+
+            <Link href={`/payments${businessQuery}`}>
+              <Button className="w-full sm:w-auto">
+                Open Payment Workspace
+              </Button>
+            </Link>
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {nextMoneyMoves.map((move) => (
+              <Link
+                key={move.label}
+                href={move.href}
+                data-tone={move.tone}
+                className="invoice-next-move-card group rounded-2xl border border-white/10 bg-black/30 p-4 transition hover:-translate-y-0.5 hover:border-sky-300/60"
+              >
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-sky-200">
+                  {move.label}
+                </p>
+                <p className="mt-3 text-3xl font-black text-white">
+                  {move.metric}
+                </p>
+                <h3 className="mt-3 font-bold text-white">
+                  {move.title}
+                </h3>
+                <p className="mt-2 min-h-[3rem] text-sm leading-6 text-zinc-400">
+                  {move.detail}
+                </p>
+                <span className="mt-4 inline-flex rounded-full border border-white/10 px-3 py-2 text-sm font-black text-white transition group-hover:border-white/25 group-hover:bg-white/10">
+                  {move.action}
+                </span>
+              </Link>
+            ))}
           </div>
         </Card>
 
