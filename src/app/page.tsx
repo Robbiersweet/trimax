@@ -831,6 +831,24 @@ export default async function DashboardPage({
       return (second.daysLate ?? 0) - (first.daysLate ?? 0);
     })
     .slice(0, 5);
+  const pastDueInvoices = workingYearOpenInvoicesWithAmounts.filter(
+    (invoice) => (invoice.daysLate ?? -1) > 0
+  );
+  const pastDueTotal = pastDueInvoices.reduce(
+    (total, invoice) => total + invoice.amountDue,
+    0
+  );
+  const depositRequestInvoices = workingYearOpenInvoicesWithAmounts
+    .filter(hasActiveDepositRequest)
+    .sort((first, second) => second.amountDue - first.amountDue);
+  const depositRequestTotal = depositRequestInvoices.reduce(
+    (total, invoice) => total + invoice.amountDue,
+    0
+  );
+  const largestOpenInvoice =
+    [...workingYearOpenInvoicesWithAmounts].sort(
+      (first, second) => second.amountDue - first.amountDue
+    )[0] ?? null;
   const customerBalances = Array.from(
     workingYearOpenInvoicesWithAmounts
       .reduce(
@@ -938,6 +956,73 @@ export default async function DashboardPage({
     invoicedRevenueTotal > 0
       ? Math.round((outstandingRevenueTotal / invoicedRevenueTotal) * 100)
       : 0;
+  const priorityInvoice =
+    mostOverdueInvoices[0] ??
+    depositRequestInvoices[0] ??
+    largestOpenInvoice;
+  const priorityCustomerBalance = customerBalances[0] ?? null;
+  const priorityPaymentParams = new URLSearchParams({
+    business: selectedBusinessSlug,
+    customer:
+      priorityCustomerBalance?.customerName ??
+      priorityInvoice?.customer_name ??
+      "",
+  });
+  const priorityHeadline =
+    pastDueInvoices.length > 0
+      ? "Collect past-due money first"
+      : depositRequestInvoices.length > 0
+        ? "Follow up on active deposits"
+        : largestOpenInvoice
+          ? "Keep the cash queue moving"
+          : "Accounting is quiet";
+  const priorityDetail =
+    pastDueInvoices.length > 0
+      ? `${pastDueInvoices.length} overdue invoice${
+          pastDueInvoices.length === 1 ? "" : "s"
+        } account for ${formatMoney(pastDueTotal)}.`
+      : depositRequestInvoices.length > 0
+        ? `${depositRequestInvoices.length} deposit request${
+            depositRequestInvoices.length === 1 ? "" : "s"
+          } still need collection.`
+        : largestOpenInvoice
+          ? `${largestOpenInvoice.customer_name ?? "A customer"} has ${formatMoney(
+              largestOpenInvoice.amountDue
+            )} still open.`
+          : "No open invoice balance needs attention right now.";
+  const priorityCards = [
+    {
+      label: "Past Due",
+      value: formatMoney(pastDueTotal),
+      detail: `${pastDueInvoices.length} invoice${
+        pastDueInvoices.length === 1 ? "" : "s"
+      }`,
+      href: `/invoices?business=${selectedBusinessSlug}&view=aging`,
+      className: "border-rose-500/25 bg-rose-500/10 text-rose-100",
+    },
+    {
+      label: "Deposits",
+      value: formatMoney(depositRequestTotal),
+      detail: `${depositRequestInvoices.length} active request${
+        depositRequestInvoices.length === 1 ? "" : "s"
+      }`,
+      href: depositRequestInvoices[0]
+        ? `/invoices/${depositRequestInvoices[0].id}?business=${selectedBusinessSlug}`
+        : `/invoices?business=${selectedBusinessSlug}`,
+      className: "border-emerald-500/25 bg-emerald-500/10 text-emerald-100",
+    },
+    {
+      label: "Largest Open",
+      value: largestOpenInvoice
+        ? formatMoney(largestOpenInvoice.amountDue)
+        : "$0.00",
+      detail: largestOpenInvoice?.customer_name ?? "No open invoice",
+      href: largestOpenInvoice
+        ? `/invoices/${largestOpenInvoice.id}?business=${selectedBusinessSlug}`
+        : `/invoices?business=${selectedBusinessSlug}`,
+      className: "border-sky-500/25 bg-sky-500/10 text-sky-100",
+    },
+  ];
 
   return (
     <AppShell>
@@ -1050,6 +1135,82 @@ export default async function DashboardPage({
                   <p className="mt-1 text-2xl font-bold">
                     {ytdRevenue}
                   </p>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </RoleVisible>
+
+        <RoleVisible
+          businessSlug={selectedBusinessSlug}
+          allow={[
+            "owner",
+            "admin",
+            "accountant",
+          ]}
+        >
+          <Card className="dashboard-cash-priority dark-surface overflow-hidden border-sky-500/20 bg-gradient-to-br from-zinc-950 via-zinc-900 to-sky-950/25">
+            <div className="relative">
+              <span
+                aria-hidden="true"
+                className="absolute -right-16 -top-20 h-48 w-48 rounded-full bg-sky-400/10 blur-3xl"
+              />
+              <span
+                aria-hidden="true"
+                className="absolute -bottom-20 left-8 h-44 w-44 rounded-full bg-emerald-400/10 blur-3xl"
+              />
+
+              <div className="relative grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
+                <div>
+                  <p className="text-sm uppercase tracking-[0.3em] text-sky-300">
+                    Cash Priority Radar
+                  </p>
+
+                  <h2 className="mt-3 text-3xl font-black tracking-tight text-white">
+                    {priorityHeadline}
+                  </h2>
+
+                  <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-300">
+                    {priorityDetail}
+                  </p>
+
+                  <div className="mt-5 flex flex-wrap gap-3">
+                    <Link
+                      href={`/payments?${priorityPaymentParams.toString()}`}
+                      className="rounded-full bg-sky-400 px-5 py-3 text-sm font-black text-zinc-950 shadow-lg shadow-sky-500/20 transition hover:-translate-y-0.5 hover:bg-sky-300"
+                    >
+                      Open Best Payment Target
+                    </Link>
+
+                    <Link
+                      href={`/invoices?business=${selectedBusinessSlug}&view=aging`}
+                      className="rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:border-sky-300/50 hover:bg-white/10"
+                    >
+                      Review Aging
+                    </Link>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {priorityCards.map((card) => (
+                    <Link
+                      key={card.label}
+                      href={card.href}
+                      className={`dashboard-priority-card rounded-2xl border p-4 transition hover:-translate-y-0.5 ${card.className}`}
+                    >
+                      <p className="text-xs font-black uppercase tracking-[0.24em] opacity-75">
+                        {card.label}
+                      </p>
+
+                      <p className="mt-3 text-2xl font-black tracking-tight">
+                        {card.value}
+                      </p>
+
+                      <p className="mt-2 line-clamp-2 text-sm leading-5 text-zinc-300">
+                        {card.detail}
+                      </p>
+                    </Link>
+                  ))}
                 </div>
               </div>
             </div>

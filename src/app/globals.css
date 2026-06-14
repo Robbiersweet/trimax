@@ -3449,6 +3449,46 @@ html.theme-light .payment-aging-card .bg-zinc-950 {
   background: #e2e8f0 !important;
 }
 
+html.theme-light .dashboard-cash-priority {
+  background:
+    radial-gradient(circle at 86% 0%, rgba(14, 165, 233, 0.12), transparent 34%),
+    radial-gradient(circle at 12% 100%, rgba(16, 185, 129, 0.1), transparent 30%),
+    linear-gradient(135deg, #ffffff, #f8fafc) !important;
+  border-color: #cbd5e1 !important;
+  color: #111827 !important;
+  box-shadow: 0 22px 55px rgba(15, 23, 42, 0.1) !important;
+}
+
+html.theme-light .dashboard-cash-priority h2,
+html.theme-light .dashboard-cash-priority .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light .dashboard-cash-priority .text-zinc-300,
+html.theme-light .dashboard-cash-priority .text-zinc-400 {
+  color: #475569 !important;
+}
+
+html.theme-light .dashboard-cash-priority .text-sky-300 {
+  color: #0369a1 !important;
+}
+
+html.theme-light .dashboard-cash-priority .border-white\/15 {
+  border-color: #cbd5e1 !important;
+}
+
+html.theme-light .dashboard-cash-priority .bg-white\/5 {
+  background: #ffffff !important;
+}
+
+html.theme-light .dashboard-priority-card {
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.theme-light .dashboard-priority-card .text-zinc-300 {
+  color: #475569 !important;
+}
+
 html.theme-light .payment-chip,
 html.theme-light .invoice-filter-pill {
   box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
