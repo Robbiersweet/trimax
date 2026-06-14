@@ -943,7 +943,7 @@ export default function BatchInvoicePayments({
               Trimax will suggest the invoices that fit that check.
             </p>
 
-            <label className="mt-4 flex min-h-44 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-sky-400/50 bg-black/30 p-4 text-center transition hover:border-sky-300 hover:bg-sky-500/10">
+            <div className="check-photo-dropzone mt-4 flex min-h-44 flex-col items-center justify-center rounded-2xl border border-dashed border-sky-400/50 bg-black/30 p-4 text-center">
               {checkImagePreview ? (
                 <span className="grid gap-3">
                   <span
@@ -967,20 +967,37 @@ export default function BatchInvoicePayments({
                     Add check photo
                   </span>
                   <span className="mt-1 block text-xs text-zinc-400">
-                    Camera opens on mobile when available
+                    Open the camera on mobile or choose an existing image
                   </span>
                 </span>
               )}
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="sr-only"
-                onChange={(event) =>
-                  captureCheckImage(event.target.files?.[0])
-                }
-              />
-            </label>
+              <div className="mt-4 flex flex-wrap justify-center gap-2">
+                <label className="check-camera-action inline-flex cursor-pointer rounded-full bg-sky-500 px-4 py-2 text-sm font-black text-white transition hover:bg-sky-600">
+                  Open Camera
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="sr-only"
+                    onChange={(event) =>
+                      captureCheckImage(event.target.files?.[0])
+                    }
+                  />
+                </label>
+
+                <label className="check-gallery-action inline-flex cursor-pointer rounded-full border border-sky-300/50 px-4 py-2 text-sm font-semibold text-sky-100 transition hover:border-sky-200 hover:bg-sky-500/10">
+                  Choose Photo
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    onChange={(event) =>
+                      captureCheckImage(event.target.files?.[0])
+                    }
+                  />
+                </label>
+              </div>
+            </div>
           </div>
 
           <div className="grid gap-4">
@@ -1100,7 +1117,7 @@ export default function BatchInvoicePayments({
                   capturedAmountValue <= 0 ||
                   suggestedCheckMatches.length === 0
                 }
-                className="mt-4 w-full rounded-2xl bg-sky-500 px-5 py-3 font-black text-white transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+                className="check-match-button mt-4 w-full rounded-2xl bg-sky-500 px-5 py-3 font-black text-white transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-600"
               >
                 Use Check Match
               </button>
