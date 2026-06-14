@@ -2702,7 +2702,9 @@ html.theme-light .client-estimate-card .text-emerald-100\/80 {
 
 html.theme-light .client-add-card,
 html.theme-light .client-mini-card,
-html.theme-light .client-list-card {
+html.theme-light .client-list-card,
+html.theme-light .client-command-card,
+html.theme-light .client-next-action {
   background: #ffffff !important;
   border-color: #d7dde8 !important;
   color: #0f172a !important;
@@ -2711,15 +2713,38 @@ html.theme-light .client-list-card {
 
 html.theme-light .client-add-card:hover,
 html.theme-light .client-mini-card:hover,
-html.theme-light .client-list-card:hover {
+html.theme-light .client-list-card:hover,
+html.theme-light .client-command-card:hover {
   background: #eff6ff !important;
   border-color: #93c5fd !important;
   color: #1d4ed8 !important;
 }
 
 html.theme-light .client-mini-card .text-white,
-html.theme-light .client-list-card .text-white {
+html.theme-light .client-list-card .text-white,
+html.theme-light .client-command-card .text-white,
+html.theme-light .client-next-action .text-white {
   color: #0f172a !important;
+}
+
+html.theme-light .client-command-card .text-zinc-400,
+html.theme-light .client-command-card .text-zinc-500,
+html.theme-light .client-next-action .text-zinc-500 {
+  color: #475569 !important;
+}
+
+html.theme-light .client-command-card .text-sky-100,
+html.theme-light .client-command-card .text-sky-300 {
+  color: #0369a1 !important;
+}
+
+html.theme-light .client-command-card .bg-white\/10 {
+  background: #ffffff !important;
+  border-color: #bfdbfe !important;
+}
+
+html.theme-light .client-command-card .border-white\/15 {
+  border-color: #bfdbfe !important;
 }
 
 html.theme-light .client-mini-card .text-orange-300 {

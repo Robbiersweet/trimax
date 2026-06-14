@@ -210,6 +210,32 @@ export default async function ClientsPage({
       );
     })
     .slice(0, 3);
+  const clientCommandQueue = [...clients]
+    .filter((client) => {
+      const summary = clientSummaries[client.id];
+
+      return (
+        (summary?.openBalance ?? 0) > 0 ||
+        (summary?.activeEstimates ?? 0) > 0
+      );
+    })
+    .sort((first, second) => {
+      const firstSummary = clientSummaries[first.id];
+      const secondSummary = clientSummaries[second.id];
+
+      if ((secondSummary?.openBalance ?? 0) !== (firstSummary?.openBalance ?? 0)) {
+        return (
+          (secondSummary?.openBalance ?? 0) -
+          (firstSummary?.openBalance ?? 0)
+        );
+      }
+
+      return (
+        (secondSummary?.activeEstimates ?? 0) -
+        (firstSummary?.activeEstimates ?? 0)
+      );
+    })
+    .slice(0, 4);
 
   return (
     <AppShell>
@@ -307,6 +333,110 @@ export default async function ClientsPage({
               </p>
             </div>
           </div>
+
+          {clientCommandQueue.length > 0 ? (
+            <div className="mt-6">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-sm uppercase tracking-[0.3em] text-sky-300">
+                    Client Command Queue
+                  </p>
+
+                  <h2 className="mt-2 text-xl font-bold">
+                    Best client follow-ups
+                  </h2>
+                </div>
+
+                <Link
+                  href={`/payments${businessQuery}`}
+                  className="text-sm font-semibold text-sky-300 transition hover:text-sky-100"
+                >
+                  Open payment workspace
+                </Link>
+              </div>
+
+              <div className="mt-3 grid gap-3 lg:grid-cols-4">
+                {clientCommandQueue.map((client) => {
+                  const summary = clientSummaries[client.id];
+                  const paymentParams = new URLSearchParams({
+                    business: businessSlug,
+                    customer: client.name,
+                  });
+                  const invoiceParams = new URLSearchParams({
+                    business: businessSlug,
+                    customer: client.name,
+                    collection: "open",
+                  });
+                  const hasOpenBalance = (summary?.openBalance ?? 0) > 0;
+
+                  return (
+                    <div
+                      key={client.id}
+                      className="client-command-card rounded-2xl border border-sky-500/25 bg-sky-500/10 p-4"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-white">
+                            {client.name}
+                          </p>
+                          <p className="mt-1 text-sm text-zinc-400">
+                            {hasOpenBalance
+                              ? `${summary.openInvoices} open invoice${
+                                  summary.openInvoices === 1 ? "" : "s"
+                                }`
+                              : `${summary?.activeEstimates ?? 0} active estimate${
+                                  (summary?.activeEstimates ?? 0) === 1
+                                    ? ""
+                                    : "s"
+                                }`}
+                          </p>
+                        </div>
+
+                        <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-black text-sky-100">
+                          {hasOpenBalance ? "Collect" : "Estimate"}
+                        </span>
+                      </div>
+
+                      <p className="mt-4 text-2xl font-black text-white">
+                        {hasOpenBalance
+                          ? formatMoney(summary.openBalance)
+                          : `${summary?.activeEstimates ?? 0} active`}
+                      </p>
+
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {hasOpenBalance ? (
+                          <Link
+                            href={`/payments?${paymentParams.toString()}`}
+                            className="rounded-full bg-sky-400 px-3 py-2 text-sm font-black text-slate-950 transition hover:bg-sky-300"
+                          >
+                            Record Payment
+                          </Link>
+                        ) : (
+                          <Link
+                            href={`/estimates/new${businessQuery}&clientId=${client.id}`}
+                            className="rounded-full bg-emerald-400 px-3 py-2 text-sm font-black text-slate-950 transition hover:bg-emerald-300"
+                          >
+                            New Estimate
+                          </Link>
+                        )}
+
+                        <Link
+                          href={
+                            hasOpenBalance
+                              ? `/invoices?${invoiceParams.toString()}`
+                              : `/clients/${client.id}${businessQuery}`
+                          }
+                          className="rounded-full border border-white/15 px-3 py-2 text-sm font-semibold text-white transition hover:border-sky-200 hover:bg-white/10"
+                        >
+                          Review
+                        </Link>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
 
           <div className="mt-6">
             <div className="flex items-center justify-between gap-4">
@@ -457,11 +587,19 @@ export default async function ClientsPage({
               </p>
             </div>
 
-            {filteredClients.map((client) => (
-              <Card
-                key={client.id}
-                className="client-list-card transition hover:border-orange-500/60 hover:bg-zinc-800"
-              >
+            {filteredClients.map((client) => {
+              const summary = clientSummaries[client.id];
+              const paymentParams = new URLSearchParams({
+                business: businessSlug,
+                customer: client.name,
+              });
+              const hasOpenBalance = (summary?.openBalance ?? 0) > 0;
+
+              return (
+                <Card
+                  key={client.id}
+                  className="client-list-card transition hover:border-orange-500/60 hover:bg-zinc-800"
+                >
                   <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                       <h2 className="text-2xl font-semibold">
@@ -497,10 +635,10 @@ export default async function ClientsPage({
                     <SummaryPill
                       label="Open Balance"
                       value={formatMoney(
-                        clientSummaries[client.id]?.openBalance ?? 0
+                        summary?.openBalance ?? 0
                       )}
                       tone={
-                        (clientSummaries[client.id]?.openBalance ?? 0) > 0
+                        (summary?.openBalance ?? 0) > 0
                           ? "orange"
                           : "zinc"
                       }
@@ -509,10 +647,10 @@ export default async function ClientsPage({
                     <SummaryPill
                       label="Open Invoices"
                       value={String(
-                        clientSummaries[client.id]?.openInvoices ?? 0
+                        summary?.openInvoices ?? 0
                       )}
                       tone={
-                        (clientSummaries[client.id]?.openInvoices ?? 0) > 0
+                        (summary?.openInvoices ?? 0) > 0
                           ? "blue"
                           : "zinc"
                       }
@@ -521,14 +659,28 @@ export default async function ClientsPage({
                     <SummaryPill
                       label="Active Estimates"
                       value={String(
-                        clientSummaries[client.id]?.activeEstimates ?? 0
+                        summary?.activeEstimates ?? 0
                       )}
                       tone={
-                        (clientSummaries[client.id]?.activeEstimates ?? 0) > 0
+                        (summary?.activeEstimates ?? 0) > 0
                           ? "emerald"
                           : "zinc"
                       }
                     />
+                  </div>
+
+                  <div className="client-next-action mt-5 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
+                    <p className="text-xs font-black uppercase tracking-[0.22em] text-zinc-500">
+                      Next Best Action
+                    </p>
+
+                    <p className="mt-2 text-sm font-semibold text-white">
+                      {hasOpenBalance
+                        ? `Collect ${formatMoney(summary?.openBalance ?? 0)} from open invoices.`
+                        : (summary?.activeEstimates ?? 0) > 0
+                          ? "Follow up on active estimates or convert approved work."
+                          : "Client profile is ready for the next estimate or invoice."}
+                    </p>
                   </div>
 
                   <div className="mt-5 flex flex-wrap gap-3 border-t border-zinc-800 pt-4">
@@ -560,6 +712,15 @@ export default async function ClientsPage({
                       New Invoice
                     </Link>
 
+                    {hasOpenBalance ? (
+                      <Link
+                        href={`/payments?${paymentParams.toString()}`}
+                        className="payment-action-button rounded-xl border px-4 py-2 text-sm font-bold transition"
+                      >
+                        Record Payment
+                      </Link>
+                    ) : null}
+
                     <DeleteClientButton
                       clientId={client.id}
                       clientName={client.name}
@@ -571,8 +732,9 @@ export default async function ClientsPage({
                       }
                     />
                   </div>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>
