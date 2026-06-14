@@ -3729,6 +3729,40 @@ html.theme-light .check-capture-panel .text-green-300 {
   color: #047857 !important;
 }
 
+.payment-reconciliation-panel {
+  box-shadow:
+    0 18px 44px rgba(2, 6, 23, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.payment-reconciliation-panel[data-status="ready"] {
+  border-color: rgba(52, 211, 153, 0.38);
+  background:
+    linear-gradient(135deg, rgba(16, 185, 129, 0.14), rgba(2, 6, 23, 0.82));
+}
+
+.payment-reconciliation-panel[data-status="review"] {
+  border-color: rgba(56, 189, 248, 0.38);
+  background:
+    linear-gradient(135deg, rgba(14, 165, 233, 0.14), rgba(2, 6, 23, 0.82));
+}
+
+.payment-reconciliation-panel[data-status="attention"] {
+  border-color: rgba(251, 191, 36, 0.44);
+  background:
+    linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(2, 6, 23, 0.82));
+}
+
+.payment-reconciliation-status {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+}
+
+.payment-reconciliation-metric {
+  min-height: 118px;
+}
+
 .payment-guide-step {
   box-shadow:
     0 14px 32px rgba(2, 6, 23, 0.14),
@@ -3775,11 +3809,64 @@ html.theme-light .check-capture-panel .text-green-300 {
 }
 
 html.theme-light .payment-guide-step,
+html.theme-light .payment-reconciliation-panel,
 html.theme-light .payment-empty-state {
   background: #ffffff !important;
   border-color: #d7dde8 !important;
   color: #0f172a !important;
   box-shadow: 0 16px 36px rgba(15, 23, 42, 0.07) !important;
+}
+
+html.theme-light .payment-reconciliation-panel[data-status="ready"] {
+  background:
+    linear-gradient(135deg, #ecfdf5, #ffffff 60%, #f8fafc) !important;
+  border-color: #86efac !important;
+}
+
+html.theme-light .payment-reconciliation-panel[data-status="review"] {
+  background:
+    linear-gradient(135deg, #eff6ff, #ffffff 60%, #f8fafc) !important;
+  border-color: #93c5fd !important;
+}
+
+html.theme-light .payment-reconciliation-panel[data-status="attention"] {
+  background:
+    linear-gradient(135deg, #fffbeb, #ffffff 60%, #f8fafc) !important;
+  border-color: #facc15 !important;
+}
+
+html.theme-light .payment-reconciliation-panel .text-white,
+html.theme-light .payment-reconciliation-panel h3 {
+  color: #0f172a !important;
+}
+
+html.theme-light .payment-reconciliation-panel .text-zinc-400,
+html.theme-light .payment-reconciliation-panel .text-zinc-500 {
+  color: #475569 !important;
+}
+
+html.theme-light .payment-reconciliation-panel .text-emerald-300 {
+  color: #047857 !important;
+}
+
+html.theme-light .payment-reconciliation-metric,
+html.theme-light .payment-reconciliation-panel .bg-black\/30 {
+  background: #ffffff !important;
+  border-color: #d7dde8 !important;
+  color: #0f172a !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06) !important;
+}
+
+html.theme-light .payment-reconciliation-status {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .payment-reconciliation-panel button.border-white\/15 {
+  border-color: #cbd5e1 !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
 }
 
 html.theme-light .payment-guide-step[data-status="complete"] {

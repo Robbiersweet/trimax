@@ -513,6 +513,70 @@ export default function BatchInvoicePayments({
       status: paymentCanApply ? "active" : "waiting",
     },
   ];
+  const reconciliationStatus =
+    selectedInvoices.length === 0
+      ? "Select invoices"
+      : enteredCheckAmount === null
+        ? "Enter check amount"
+        : checkAmountMatches
+          ? "Ready to apply"
+          : hasSuggestedPaymentMatch
+            ? "Better match available"
+            : "Needs review";
+  const reconciliationTone =
+    selectedInvoices.length === 0 || enteredCheckAmount === null
+      ? "waiting"
+      : checkAmountMatches
+        ? "ready"
+        : hasSuggestedPaymentMatch
+          ? "review"
+          : "attention";
+  const reconciliationSummary = [
+    {
+      label: "Selected",
+      value: formatMoney(selectedTotal),
+      detail: `${selectedInvoices.length} invoice${
+        selectedInvoices.length === 1 ? "" : "s"
+      }`,
+    },
+    {
+      label: "Check",
+      value:
+        enteredCheckAmount === null
+          ? "Not entered"
+          : formatMoney(enteredCheckAmount),
+      detail:
+        capturedAmountValue > 0
+          ? `Captured ${formatMoney(capturedAmountValue)}`
+          : "Manual entry",
+    },
+    {
+      label: "Difference",
+      value:
+        enteredCheckAmount === null
+          ? "-"
+          : formatMoney(Math.abs(checkDifference)),
+      detail:
+        enteredCheckAmount === null
+          ? "Waiting"
+          : checkAmountMatches
+            ? "Balanced"
+            : checkDifferenceLabel,
+    },
+    {
+      label: "Suggested",
+      value:
+        suggestedPaymentMatches.length > 0
+          ? formatMoney(suggestedPaymentTotal)
+          : "No match",
+      detail:
+        suggestedPaymentMatches.length > 0
+          ? `${suggestedPaymentMatches.length} invoice${
+              suggestedPaymentMatches.length === 1 ? "" : "s"
+            }`
+          : "Enter amount to match",
+    },
+  ];
 
   useEffect(() => {
     return () => {
@@ -990,6 +1054,97 @@ export default function BatchInvoicePayments({
           </div>
         </div>
       ) : null}
+
+      <div
+        data-status={reconciliationTone}
+        className="payment-reconciliation-panel mt-6 rounded-3xl border border-white/10 bg-zinc-950 p-4 sm:p-5"
+      >
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-emerald-300">
+              Reconciliation Check
+            </p>
+            <h3 className="mt-2 text-2xl font-black text-white">
+              {reconciliationStatus}
+            </h3>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+              Trimax compares the selected invoice total against the check
+              amount before it will post the payment.
+            </p>
+          </div>
+
+          <div className="payment-reconciliation-status rounded-2xl border px-4 py-3 text-sm font-black">
+            {paymentCanApply
+              ? "Balanced"
+              : hasSuggestedPaymentMatch
+                ? "Use best match"
+                : "In progress"}
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {reconciliationSummary.map((item) => (
+            <div
+              key={item.label}
+              className="payment-reconciliation-metric rounded-2xl border border-white/10 bg-black/30 p-4"
+            >
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">
+                {item.label}
+              </p>
+              <p className="mt-2 text-2xl font-black text-white">
+                {item.value}
+              </p>
+              <p className="mt-1 text-sm text-zinc-400">
+                {item.detail}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-5 flex flex-wrap gap-3">
+          {capturedAmountValue > 0 ? (
+            <button
+              type="button"
+              onClick={() => {
+                setPaymentType("Check");
+                setCheckAmount(formatMoney(capturedAmountValue));
+                setPaymentReference(capturedCheckReference.trim());
+                const matchingCustomer = customerGroups.find(
+                  (group) =>
+                    group.customerName.toLowerCase() ===
+                    checkPayor.trim().toLowerCase()
+                );
+                if (matchingCustomer) {
+                  setCustomerFilter(matchingCustomer.customerName);
+                }
+              }}
+              className="rounded-2xl bg-sky-500 px-4 py-3 text-sm font-black text-white transition hover:bg-sky-600"
+            >
+              Use Captured Details
+            </button>
+          ) : null}
+
+          {hasSuggestedPaymentMatch ? (
+            <button
+              type="button"
+              onClick={applyEnteredAmountMatch}
+              className="rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-black text-black transition hover:bg-emerald-400"
+            >
+              Select Best Match
+            </button>
+          ) : null}
+
+          {selectedInvoices.length > 0 ? (
+            <button
+              type="button"
+              onClick={fillSelectedTotal}
+              className="rounded-2xl border border-white/15 px-4 py-3 text-sm font-black text-white transition hover:border-white/30 hover:bg-white/10"
+            >
+              Use Selected Total
+            </button>
+          ) : null}
+        </div>
+      </div>
 
       <div
         id="check-capture"
