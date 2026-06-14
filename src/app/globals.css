@@ -2924,6 +2924,44 @@ html.theme-light .settings-danger-button:hover {
   overflow-wrap: anywhere;
 }
 
+.invoice-email-ready-card {
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+}
+
+.invoice-email-ready-card[data-status="ready"] {
+  border-color: #bbf7d0 !important;
+  background: #f0fdf4 !important;
+}
+
+.invoice-email-ready-card[data-status="attention"] {
+  border-color: #fcd34d !important;
+  background: #fffbeb !important;
+}
+
+.invoice-email-ready-card[data-status="waiting"] {
+  border-color: #bfdbfe !important;
+  background: #eff6ff !important;
+}
+
+.invoice-email-ready-card[data-status="ready"] .invoice-email-ready-dot {
+  background: #16a34a;
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.12);
+}
+
+.invoice-email-ready-card[data-status="attention"] .invoice-email-ready-dot {
+  background: #f59e0b;
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.14);
+}
+
+.invoice-email-ready-card[data-status="waiting"] .invoice-email-ready-dot {
+  background: #0ea5e9;
+  box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.12);
+}
+
+.invoice-email-warning {
+  box-shadow: 0 12px 28px rgba(245, 158, 11, 0.08);
+}
+
 .invoice-line-item-row {
   min-width: 0;
 }

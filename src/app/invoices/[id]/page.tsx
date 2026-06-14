@@ -989,7 +989,11 @@ export default async function InvoiceDetailPage({
               />
             ) : null}
 
-            <Button variant="secondary">Send Reminder</Button>
+            {isPaymentLate ? (
+              <a href="#late-payment-reminder">
+                <Button variant="secondary">Send Reminder</Button>
+              </a>
+            ) : null}
 
             {showFiveStarsBoaPrintButton ? (
               <Link

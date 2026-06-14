@@ -174,6 +174,30 @@ export default function InvoiceEmailSendPanel({
       .filter(Boolean)
       .join("\n");
   }, [message, signature]);
+  const sendReadiness = [
+    {
+      label: "Recipient",
+      detail: recipient.trim().includes("@")
+        ? recipient.trim()
+        : "Add a customer email",
+      status: recipient.trim().includes("@") ? "ready" : "attention",
+    },
+    {
+      label: "Template",
+      detail: templateLoaded ? "Saved settings loaded" : "Loading settings",
+      status: templateLoaded ? "ready" : "waiting",
+    },
+    {
+      label: "Preview",
+      detail: message.trim() ? "Customer message ready" : "Message is empty",
+      status: message.trim() ? "ready" : "attention",
+    },
+    {
+      label: "PDF note",
+      detail: includePdfNote ? "Mentioned in email" : "Not mentioned",
+      status: includePdfNote ? "ready" : "waiting",
+    },
+  ];
 
   useEffect(() => {
     let isActive = true;
@@ -353,6 +377,28 @@ export default function InvoiceEmailSendPanel({
 
       <div className="grid gap-6 p-4 sm:p-5 lg:grid-cols-[0.95fr_1.05fr]">
         <div className="space-y-4">
+          <div className="invoice-email-readiness grid gap-2 sm:grid-cols-2">
+            {sendReadiness.map((item) => (
+              <div
+                key={item.label}
+                data-status={item.status}
+                className="invoice-email-ready-card rounded-2xl border border-slate-200 bg-white px-4 py-3"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+                    {item.label}
+                  </p>
+
+                  <span className="invoice-email-ready-dot h-2.5 w-2.5 rounded-full" />
+                </div>
+
+                <p className="mt-2 truncate text-sm font-semibold text-slate-950">
+                  {item.detail}
+                </p>
+              </div>
+            ))}
+          </div>
+
           <div>
             <label className="text-sm font-semibold text-slate-600">
               To
@@ -404,6 +450,13 @@ export default function InvoiceEmailSendPanel({
               attachment needs the next PDF-rendering step.
             </span>
           </label>
+
+          {!recipient.trim().includes("@") ? (
+            <div className="invoice-email-warning rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+              Add the customer email here or save one on the client profile so
+              future invoices come prefilled.
+            </div>
+          ) : null}
         </div>
 
         <div className="invoice-customer-preview overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -460,13 +513,20 @@ export default function InvoiceEmailSendPanel({
       </div>
 
       <div className="invoice-email-footer flex flex-col gap-4 border-t border-slate-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-        <p className="max-w-2xl text-sm leading-6 text-slate-500">
-          Direct sending uses a verified email provider so messages do not look
-          like random mail.
-          {templateLoaded
-            ? " This preview is using your saved email settings."
-            : " Loading saved email settings..."}
-        </p>
+        <div className="max-w-2xl">
+          <p className="text-sm font-semibold text-slate-700">
+            {canSend
+              ? `${documentLabel} is ready to send`
+              : `Finish the ${documentLabelLower} email setup`}
+          </p>
+          <p className="mt-1 text-sm leading-6 text-slate-500">
+            Direct sending uses a verified email provider so messages do not
+            look like random mail.
+            {templateLoaded
+              ? " This preview is using your saved email settings."
+              : " Loading saved email settings..."}
+          </p>
+        </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
           <a href={printHref} className="w-full sm:w-auto">
