@@ -929,7 +929,10 @@ export default function BatchInvoicePayments({
         </div>
       ) : null}
 
-      <div className="check-capture-panel mt-6 overflow-hidden rounded-3xl border border-sky-500/30 bg-gradient-to-br from-sky-500/10 via-zinc-950 to-emerald-500/10">
+      <div
+        id="check-capture"
+        className="check-capture-panel scroll-mt-6 mt-6 overflow-hidden rounded-3xl border border-sky-500/30 bg-gradient-to-br from-sky-500/10 via-zinc-950 to-emerald-500/10"
+      >
         <div className="grid gap-5 p-4 md:grid-cols-[0.8fr_1.2fr] md:p-5">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-sky-300">

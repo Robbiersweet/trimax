@@ -1028,6 +1028,60 @@ export default async function DashboardPage({
       className: "border-sky-500/25 bg-sky-500/10 text-sky-100",
     },
   ];
+  const commandCenterItems = [
+    {
+      label: "Collect",
+      title: priorityCustomerBalance
+        ? `Collect from ${priorityCustomerBalance.customerName}`
+        : "Open payment workspace",
+      metric: priorityCustomerBalance
+        ? formatMoney(priorityCustomerBalance.total)
+        : outstandingRevenue,
+      detail: priorityCustomerBalance
+        ? `${priorityCustomerBalance.count} open invoice${
+            priorityCustomerBalance.count === 1 ? "" : "s"
+          } ready to reconcile.`
+        : "Review open balances and apply incoming checks.",
+      href: `/payments?${priorityPaymentParams.toString()}`,
+      action: "Open Payments",
+      tone: "collect",
+    },
+    {
+      label: "Remind",
+      title:
+        pastDueInvoices.length > 0
+          ? "Send late payment reminders"
+          : "No late reminders due",
+      metric: String(pastDueInvoices.length),
+      detail:
+        pastDueInvoices.length > 0
+          ? `${formatMoney(pastDueTotal)} is past due across open invoices.`
+          : "The overdue reminder queue is clear right now.",
+      href: `/invoices?business=${selectedBusinessSlug}&view=aging`,
+      action: "Review Aging",
+      tone: "remind",
+    },
+    {
+      label: "Capture",
+      title: "Photograph a check",
+      metric: String(workingYearOpenInvoicesWithAmounts.length),
+      detail:
+        "Open the camera-ready check workflow and match payments to invoices.",
+      href: `/payments?business=${selectedBusinessSlug}#check-capture`,
+      action: "Capture Check",
+      tone: "capture",
+    },
+    {
+      label: "Create",
+      title: "Send the next invoice",
+      metric: workingYearLabel,
+      detail:
+        "Create an invoice, request a deposit, or turn approved work into billable revenue.",
+      href: `/invoices/new?business=${selectedBusinessSlug}`,
+      action: "New Invoice",
+      tone: "create",
+    },
+  ];
 
   return (
     <AppShell>
@@ -1154,6 +1208,66 @@ export default async function DashboardPage({
             "accountant",
           ]}
         >
+          <Card className="dashboard-command-center dark-surface overflow-hidden border-sky-500/20 bg-zinc-950">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="dashboard-command-label text-sm uppercase tracking-[0.3em] text-sky-300">
+                  Today&apos;s Command Center
+                </p>
+
+                <h2 className="mt-2 text-3xl font-black tracking-tight text-white">
+                  The next best accounting moves
+                </h2>
+
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
+                  Start with collection, reminders, check capture, or a new
+                  invoice without hunting through the dashboard.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
+                <p className="text-zinc-400">Open revenue</p>
+                <p className="mt-1 text-xl font-black text-white">
+                  {outstandingRevenue}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              {commandCenterItems.map((item) => (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  data-tone={item.tone}
+                  className="dashboard-command-card group rounded-2xl border border-zinc-800 bg-black/30 p-4 transition hover:-translate-y-0.5 hover:border-sky-300/60"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-xs font-black uppercase tracking-[0.24em] text-sky-200">
+                      {item.label}
+                    </p>
+
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm font-black text-white">
+                      {item.metric}
+                    </span>
+                  </div>
+
+                  <h3 className="mt-4 text-lg font-black text-white">
+                    {item.title}
+                  </h3>
+
+                  <p className="mt-2 min-h-12 text-sm leading-6 text-zinc-300">
+                    {item.detail}
+                  </p>
+
+                  <p className="mt-4 inline-flex items-center gap-2 text-sm font-black text-sky-200 transition group-hover:text-white">
+                    {item.action}
+                    <span aria-hidden="true">&gt;</span>
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </Card>
+
           <Card className="dashboard-cash-priority dark-surface overflow-hidden border-sky-500/20 bg-gradient-to-br from-zinc-950 via-zinc-900 to-sky-950/25">
             <div className="relative">
               <span
@@ -2161,6 +2275,15 @@ export default async function DashboardPage({
                               className="payment-action-button dashboard-payment-action rounded-full border px-4 py-2 text-sm font-semibold transition"
                             >
                               Record Payment
+                            </Link>
+                          ) : null}
+
+                          {isLate ? (
+                            <Link
+                              href={`/invoices/${invoice.id}?business=${selectedBusinessSlug}#late-payment-reminder`}
+                              className="rounded-full border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-black text-rose-800 transition hover:border-rose-400 hover:bg-rose-100"
+                            >
+                              Send Reminder
                             </Link>
                           ) : null}
                         </div>
