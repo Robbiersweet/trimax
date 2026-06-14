@@ -1414,7 +1414,7 @@ export default async function ReportsPage({
                 </p>
                 <Link
                   href={`/queue?business=${businessSlug}`}
-                  className="mt-4 inline-flex rounded-full bg-orange-500 px-4 py-2 text-sm font-bold text-black transition hover:bg-orange-400"
+                  className="app-button-primary mt-4 inline-flex rounded-full px-4 py-2 text-sm font-bold"
                 >
                   Open Queue
                 </Link>

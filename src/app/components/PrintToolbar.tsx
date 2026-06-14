@@ -61,7 +61,7 @@ export default function PrintToolbar({
           <button
             type="button"
             onClick={handlePrint}
-            className="rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold text-black hover:bg-orange-400"
+            className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
           >
             Print / Save PDF
           </button>

@@ -1975,7 +1975,7 @@ export default async function DashboardPage({
                         <div className="mt-4 flex flex-wrap gap-3 border-t border-zinc-800 pt-4">
                           <Link
                             href={`/invoices/${invoice.id}?business=${selectedBusinessSlug}`}
-                            className="rounded-full bg-orange-500 px-4 py-2 text-sm font-black text-black transition hover:bg-orange-400"
+                            className="app-button-primary rounded-full px-4 py-2 text-sm font-black"
                           >
                             Open
                           </Link>

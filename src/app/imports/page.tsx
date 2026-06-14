@@ -1057,7 +1057,7 @@ function ImportsPageContent() {
                   onChange={(event) =>
                     handleFileChange(event.target.files?.[0] ?? null)
                   }
-                  className="app-file-input w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white file:mr-4 file:rounded-xl file:border-0 file:bg-orange-500 file:px-4 file:py-2 file:font-semibold file:text-black"
+                  className="app-file-input w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white file:mr-4 file:rounded-xl file:border-0 file:bg-blue-600 file:px-4 file:py-2 file:font-semibold file:text-white"
                 />
               </div>
             </div>

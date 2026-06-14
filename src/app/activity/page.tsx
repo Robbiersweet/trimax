@@ -477,7 +477,7 @@ function ActivityPageContent() {
 
               <button
                 type="submit"
-                className="app-button-primary rounded-2xl bg-orange-500 px-6 py-3 font-bold text-black hover:bg-orange-400 md:self-end"
+                className="app-button-primary rounded-2xl px-6 py-3 font-bold md:self-end"
               >
                 Search
               </button>
@@ -563,7 +563,7 @@ function ActivityPageContent() {
             <div className="mt-5 flex flex-wrap gap-3">
               <Link
                 href={`/queue?business=${businessSlug}`}
-                className="rounded-full bg-orange-500 px-4 py-2 text-sm font-bold text-black transition hover:bg-orange-400"
+                className="app-button-primary rounded-full px-4 py-2 text-sm font-bold"
               >
                 Open Queue
               </Link>
@@ -589,7 +589,7 @@ function ActivityPageContent() {
                 filter: "all",
                 searchTerm: "",
               })}
-              className="mt-5 inline-flex rounded-full bg-orange-500 px-4 py-2 text-sm font-bold text-black transition hover:bg-orange-400"
+              className="app-button-primary mt-5 inline-flex rounded-full px-4 py-2 text-sm font-bold"
             >
               Show All Activity
             </Link>

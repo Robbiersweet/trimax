@@ -31,7 +31,7 @@ export default function InvoicePrintErrorPage({
           <button
             type="button"
             onClick={reset}
-            className="rounded-2xl bg-orange-500 px-5 py-3 font-semibold text-black"
+            className="rounded-2xl bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700"
           >
             Retry print page
           </button>

@@ -1834,7 +1834,7 @@ function BusinessSettingsPageContent() {
                                       )
                                     }
                                     disabled={isUpdating}
-                                    className="rounded-2xl bg-orange-500 px-4 py-2 text-sm font-semibold text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="app-button-primary rounded-2xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                                   >
                                     Prepare Invite
                                   </button>
