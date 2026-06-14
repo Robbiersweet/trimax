@@ -1496,19 +1496,19 @@ function BusinessSettingsPageContent() {
                   </p>
 
                   <h2 className="mt-2 text-2xl font-semibold">
-                    Default Split Threshold
+                    Apartment Paint Split Threshold
                   </h2>
 
                   <p className="mt-2 max-w-3xl text-zinc-400">
-                    When an invoice or converted estimate is over this amount,
-                    Trimax can automatically prepare draft split invoices so no
-                    single split exceeds the threshold. Leave it blank for a
-                    business that should not split invoices automatically.
+                    This is the default target for North Creek apartment paint
+                    work that needs to be split into smaller invoices. Other
+                    over-threshold jobs stay as normal invoices unless you
+                    manually turn splitting on for that specific document.
                   </p>
                 </div>
 
                 <InputField
-                  label="Default Split Threshold"
+                  label="Apartment Paint Split Threshold"
                   type="number"
                   placeholder="Example: 1300"
                   value={splitWarningAmount}

@@ -229,7 +229,6 @@ function NewInvoicePageContent() {
         : [],
     [effectiveSplitTargetAmount, subtotal, taxMode, taxRate]
   );
-  const shouldAutoEnableSplitWarning = automaticSplitPlan.length > 0;
   const looksLikeApartmentSplitJob = useMemo(() => {
     return looksLikeApartmentUnitPaintJob(
       customerName,
@@ -237,6 +236,8 @@ function NewInvoicePageContent() {
       lineItems
     );
   }, [customerName, projectTitle, lineItems]);
+  const shouldAutoEnableSplitWarning =
+    looksLikeApartmentSplitJob && automaticSplitPlan.length > 0;
   const effectiveSplitWarningEnabled =
     splitWarningManuallyChanged
       ? splitWarningEnabled
@@ -1001,12 +1002,9 @@ function NewInvoicePageContent() {
             {shouldAutoEnableSplitWarning &&
             !splitWarningManuallyChanged ? (
               <p className="document-info-panel rounded-2xl border border-purple-500/30 bg-purple-500/10 px-4 py-3 text-sm leading-6 text-purple-100/80">
-                Over-threshold billing detected. Trimax will automatically
-                create split invoice drafts when you save so no split invoice
-                exceeds the target amount.
-                {looksLikeApartmentSplitJob
-                  ? " Apartment unit work was also detected."
-                  : ""}
+                Apartment paint billing detected over the split threshold.
+                Trimax will automatically create split invoice drafts when you
+                save so no split invoice exceeds the target amount.
               </p>
             ) : null}
 
@@ -1023,13 +1021,14 @@ function NewInvoicePageContent() {
 
               <span>
                 <span className="block font-semibold text-white">
-                  Automatically split this invoice if it is over the threshold
+                  Split this apartment paint invoice when it is over the threshold
                 </span>
 
                 <span className="mt-1 block text-sm leading-6 text-zinc-400">
-                  Leave this on when Trimax should create draft split invoices
-                  after saving. Turn it off only when this invoice should stay
-                  as one document even though it is over the threshold.
+                  Leave this on for North Creek apartment paint work that
+                  should stay below the approved invoice amount. Turn it on
+                  manually for another invoice only when you truly want Trimax
+                  to create split drafts.
                 </span>
               </span>
             </label>
