@@ -476,6 +476,43 @@ export default function BatchInvoicePayments({
     enteredCheckAmount !== null &&
     !checkAmountMatches &&
     suggestedPaymentMatches.length > 0;
+  const paymentCanApply =
+    !isSaving && selectedInvoices.length > 0 && checkAmountMatches;
+  const paymentGuideSteps = [
+    {
+      label: "1",
+      title: "Find the invoices",
+      detail:
+        selectedInvoices.length > 0
+          ? `${selectedInvoices.length} selected`
+          : "Capture a check or select invoices below",
+      status: selectedInvoices.length > 0 ? "complete" : "active",
+    },
+    {
+      label: "2",
+      title: "Verify the total",
+      detail:
+        enteredCheckAmount === null
+          ? "Enter the check amount"
+          : checkAmountMatches
+            ? "Amount matches"
+            : `${formatMoney(Math.abs(checkDifference))} ${checkDifferenceLabel}`,
+      status:
+        selectedInvoices.length === 0
+          ? "waiting"
+          : checkAmountMatches
+            ? "complete"
+            : "attention",
+    },
+    {
+      label: "3",
+      title: "Apply payment",
+      detail: paymentCanApply
+        ? "Ready to post"
+        : "Locked until the batch checks out",
+      status: paymentCanApply ? "active" : "waiting",
+    },
+  ];
 
   useEffect(() => {
     return () => {
@@ -872,6 +909,31 @@ export default function BatchInvoicePayments({
         </div>
       ) : null}
 
+      <div className="payment-guide mt-6 grid gap-3 md:grid-cols-3">
+        {paymentGuideSteps.map((step) => (
+          <div
+            key={step.label}
+            data-status={step.status}
+            className="payment-guide-step rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
+          >
+            <div className="flex items-start gap-3">
+              <span className="payment-guide-marker grid h-9 w-9 shrink-0 place-items-center rounded-full border text-sm font-black">
+                {step.label}
+              </span>
+
+              <span>
+                <span className="block font-black text-white">
+                  {step.title}
+                </span>
+                <span className="mt-1 block text-sm leading-5 text-zinc-400">
+                  {step.detail}
+                </span>
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+
       {focusedCustomer ? (
         <div className="mt-6 rounded-2xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm leading-6 text-green-50">
           Payment workspace opened for{" "}
@@ -999,6 +1061,20 @@ export default function BatchInvoicePayments({
                     }
                   />
                 </label>
+
+                {checkImagePreview ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      URL.revokeObjectURL(checkImagePreview);
+                      setCheckImagePreview("");
+                      setCheckImageName("");
+                    }}
+                    className="inline-flex rounded-full border border-slate-400/40 px-4 py-2 text-sm font-semibold text-zinc-200 transition hover:border-slate-300 hover:bg-white/10"
+                  >
+                    Clear Photo
+                  </button>
+                ) : null}
               </div>
             </div>
           </div>
@@ -1110,6 +1186,25 @@ export default function BatchInvoicePayments({
                       {formatMoney(suggestedCheckTotal)}
                     </span>
                   </div>
+
+                  {capturedAmountValue > 0 ? (
+                    <div className="flex items-center justify-between gap-3 text-sm">
+                      <span className="text-zinc-400">
+                        Check difference
+                      </span>
+                      <span
+                        className={`font-black ${
+                          hasExactCheckMatch
+                            ? "text-emerald-300"
+                            : "text-amber-200"
+                        }`}
+                      >
+                        {formatMoney(
+                          Math.abs(capturedAmountValue - suggestedCheckTotal)
+                        )}
+                      </span>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
 
@@ -1122,7 +1217,7 @@ export default function BatchInvoicePayments({
                 }
                 className="check-match-button mt-4 w-full rounded-2xl bg-sky-500 px-5 py-3 font-black text-white transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-600"
               >
-                Use Check Match
+                {hasExactCheckMatch ? "Use Exact Match" : "Use Check Match"}
               </button>
             </div>
           </div>
@@ -1211,9 +1306,7 @@ export default function BatchInvoicePayments({
               type="button"
               onClick={applyBatchPayment}
               disabled={
-                isSaving ||
-                selectedInvoices.length === 0 ||
-                !checkAmountMatches
+                !paymentCanApply
               }
               className="w-full rounded-2xl bg-green-500 px-5 py-3 font-semibold text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
             >

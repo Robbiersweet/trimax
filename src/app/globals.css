@@ -3486,6 +3486,100 @@ html.theme-light .check-capture-panel .text-green-300 {
   color: #047857 !important;
 }
 
+.payment-guide-step {
+  box-shadow:
+    0 14px 32px rgba(2, 6, 23, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.payment-guide-step[data-status="complete"] {
+  border-color: rgba(52, 211, 153, 0.36);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.payment-guide-step[data-status="active"] {
+  border-color: rgba(56, 189, 248, 0.38);
+  background: rgba(14, 165, 233, 0.1);
+}
+
+.payment-guide-step[data-status="attention"] {
+  border-color: rgba(251, 191, 36, 0.46);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.payment-guide-marker {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+}
+
+.payment-guide-step[data-status="complete"] .payment-guide-marker {
+  border-color: rgba(52, 211, 153, 0.4);
+  background: #34d399;
+  color: #022c22;
+}
+
+.payment-guide-step[data-status="active"] .payment-guide-marker {
+  border-color: rgba(56, 189, 248, 0.42);
+  background: #38bdf8;
+  color: #082f49;
+}
+
+.payment-guide-step[data-status="attention"] .payment-guide-marker {
+  border-color: rgba(251, 191, 36, 0.48);
+  background: #facc15;
+  color: #422006;
+}
+
+html.theme-light .payment-guide-step,
+html.theme-light .payment-empty-state {
+  background: #ffffff !important;
+  border-color: #d7dde8 !important;
+  color: #0f172a !important;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.07) !important;
+}
+
+html.theme-light .payment-guide-step[data-status="complete"] {
+  background: #ecfdf5 !important;
+  border-color: #86efac !important;
+}
+
+html.theme-light .payment-guide-step[data-status="active"] {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+}
+
+html.theme-light .payment-guide-step[data-status="attention"] {
+  background: #fffbeb !important;
+  border-color: #facc15 !important;
+}
+
+html.theme-light .payment-guide-step .text-white,
+html.theme-light .payment-empty-state .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light .payment-guide-step .text-zinc-400,
+html.theme-light .payment-empty-state .text-zinc-400 {
+  color: #475569 !important;
+}
+
+html.theme-light .payment-guide-marker {
+  border-color: rgba(100, 116, 139, 0.24);
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+html.theme-light .payment-empty-state {
+  background:
+    linear-gradient(135deg, #eff6ff, #ffffff 62%, #f8fafc) !important;
+  border-color: #bfdbfe !important;
+}
+
+html.theme-light .payment-empty-state .text-sky-300 {
+  color: #0369a1 !important;
+}
+
 html.theme-light .app-data-table {
   background: #ffffff !important;
   border-color: #d7dde8 !important;

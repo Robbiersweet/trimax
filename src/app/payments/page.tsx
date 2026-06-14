@@ -597,6 +597,38 @@ export default async function PaymentsPage({
           </Card>
         </div>
 
+        {payableInvoices.length === 0 ? (
+          <Card className="payment-empty-state border-sky-500/25 bg-sky-500/5">
+            <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-sky-300">
+                  Payment Desk Clear
+                </p>
+
+                <h2 className="mt-2 text-3xl font-black">
+                  No open invoices need payment right now
+                </h2>
+
+                <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-400">
+                  When an invoice, deposit request, or imported FreshBooks
+                  balance is collectible, it will appear here for check capture
+                  and batch payment matching.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <Link href={`/invoices/new${businessQuery}`}>
+                  <Button>New Invoice</Button>
+                </Link>
+
+                <Link href={`/invoices${businessQuery}`}>
+                  <Button variant="secondary">Review Invoices</Button>
+                </Link>
+              </div>
+            </div>
+          </Card>
+        ) : null}
+
         {payableInvoices.length > 0 ? (
           <Card className="border-pink-500/20 bg-pink-500/5">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
