@@ -993,6 +993,7 @@ export default async function DashboardPage({
   const priorityCards = [
     {
       label: "Past Due",
+      tone: "danger",
       value: formatMoney(pastDueTotal),
       detail: `${pastDueInvoices.length} invoice${
         pastDueInvoices.length === 1 ? "" : "s"
@@ -1002,6 +1003,7 @@ export default async function DashboardPage({
     },
     {
       label: "Deposits",
+      tone: "success",
       value: formatMoney(depositRequestTotal),
       detail: `${depositRequestInvoices.length} active request${
         depositRequestInvoices.length === 1 ? "" : "s"
@@ -1013,6 +1015,7 @@ export default async function DashboardPage({
     },
     {
       label: "Largest Open",
+      tone: "info",
       value: largestOpenInvoice
         ? formatMoney(largestOpenInvoice.amountDue)
         : "$0.00",
@@ -1196,6 +1199,7 @@ export default async function DashboardPage({
                     <Link
                       key={card.label}
                       href={card.href}
+                      data-tone={card.tone}
                       className={`dashboard-priority-card rounded-2xl border p-4 transition hover:-translate-y-0.5 ${card.className}`}
                     >
                       <p className="text-xs font-black uppercase tracking-[0.24em] opacity-75">
