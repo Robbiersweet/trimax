@@ -13,7 +13,9 @@ import {
 } from "../lib/documentNumbers";
 import { logActivity } from "../lib/activityLog";
 import { assertCanWriteDuringMaintenance } from "../lib/maintenanceMode";
+import { createSplitInvoices } from "../lib/splitInvoices";
 import { supabase } from "../lib/supabase";
+import { looksLikeApartmentUnitPaintJob } from "../utils/jobWorkflow";
 
 type ImportType = "clients" | "invoices";
 
@@ -21,6 +23,7 @@ type Business = {
   id: string;
   name: string;
   slug: string;
+  split_warning_amount: number | string | null;
 };
 
 type Client = {
@@ -463,7 +466,7 @@ function ImportsPageContent() {
     async function loadBusiness() {
       const { data, error } = await supabase
         .from("businesses")
-        .select("id, name, slug")
+        .select("id, name, slug, split_warning_amount")
         .eq("slug", businessSlug)
         .limit(1)
         .maybeSingle();
@@ -811,6 +814,22 @@ function ImportsPageContent() {
       ]
         .filter(Boolean)
         .join("\n");
+      const splitTargetAmount =
+        Number(business.split_warning_amount) || 0;
+      const splitSubtotal =
+        row.subtotal > 0
+          ? row.subtotal
+          : Math.max(row.amount - row.taxAmount, 0);
+      const shouldCreateSplitInvoices =
+        splitTargetAmount > 0 &&
+        row.amount > row.amountPaid &&
+        looksLikeApartmentUnitPaintJob(
+          row.customerName,
+          row.projectTitle,
+          row.lineItems.map((item) => ({
+            description: item.description,
+          }))
+        );
 
       const { data, error } = await supabase
         .from("invoices")
@@ -829,6 +848,10 @@ function ImportsPageContent() {
           tax_label: row.taxLabel || null,
           tax_rate: row.taxRate,
           amount_paid: row.amountPaid,
+          split_warning_enabled: shouldCreateSplitInvoices,
+          split_target_amount: shouldCreateSplitInvoices
+            ? splitTargetAmount
+            : null,
           terms: "",
           notes,
           status,
@@ -889,6 +912,53 @@ function ImportsPageContent() {
           error_message: lineItemError.message,
         });
         continue;
+      }
+
+      if (shouldCreateSplitInvoices) {
+        try {
+          await createSplitInvoices({
+            sourceInvoice: {
+              id: (data as { id: string }).id,
+              displayId,
+              businessId: business.id,
+              businessSlug: business.slug,
+              clientId: client.id,
+              customerName: row.customerName,
+              projectTitle: row.projectTitle,
+              issueDate: row.issueDate || null,
+              dueDate: row.dueDate || null,
+              reference: row.reference,
+              serviceAddress: "",
+              terms: "",
+              notes,
+            },
+            subtotalAmount: splitSubtotal,
+            targetAmount: splitTargetAmount,
+            taxLabel: row.taxLabel || "Tax",
+            taxRate: row.taxRate,
+            taxMode: row.taxAmount > 0 ? "taxable" : "no_tax",
+            taxNumber: null,
+            createdByUserId: user?.id ?? null,
+          });
+        } catch (splitError) {
+          console.error(splitError);
+          errorCount += 1;
+          importRows.push({
+            business_id: business.id,
+            row_number: index + 1,
+            import_type: "invoices",
+            raw_data: row.sourceRowNumbers.map(
+              (rowNumber) => rawRows[rowNumber - 1] ?? {}
+            ),
+            mapped_data: row,
+            status: "error",
+            target_table: "invoices",
+            target_id: (data as { id: string }).id,
+            error_message:
+              "Invoice imported, but automatic split drafts failed.",
+          });
+          continue;
+        }
       }
 
       importedCount += 1;
