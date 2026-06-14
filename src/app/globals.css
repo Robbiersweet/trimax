@@ -3494,6 +3494,31 @@ html.theme-light .invoice-filter-pill {
   box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
 }
 
+.invoice-filter-group {
+  background:
+    linear-gradient(135deg, rgba(24, 24, 27, 0.82), rgba(9, 9, 11, 0.74)),
+    #18181b;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18);
+}
+
+.filter-tab-icon svg {
+  display: block;
+}
+
+html.theme-light .invoice-filter-group {
+  background: #ffffff !important;
+  border-color: #d7dde8 !important;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.07) !important;
+}
+
+html.theme-light .invoice-filter-group .text-sky-300 {
+  color: #0369a1 !important;
+}
+
+html.theme-light .invoice-filter-group .text-zinc-500 {
+  color: #64748b !important;
+}
+
 html.theme-light .app-button-secondary,
 html.theme-light main .rounded-full.border.border-zinc-700,
 html.theme-light main .rounded-xl.bg-zinc-800 {

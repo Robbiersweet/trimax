@@ -45,6 +45,95 @@ type InvoiceWithSplitInfo = Invoice & {
   split_parent_display_id: string | null;
 };
 
+type InvoiceFilterIconName =
+  | "all"
+  | "originals"
+  | "splits"
+  | "aging"
+  | "draft"
+  | "sent"
+  | "paid"
+  | "overdue";
+
+function InvoiceFilterIcon({ icon }: { icon: InvoiceFilterIconName }) {
+  const iconProps = {
+    className: "h-4 w-4",
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 2,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+
+  switch (icon) {
+    case "all":
+      return (
+        <svg {...iconProps}>
+          <path d="M4 5h16" />
+          <path d="M4 12h16" />
+          <path d="M4 19h16" />
+        </svg>
+      );
+    case "originals":
+      return (
+        <svg {...iconProps}>
+          <path d="M7 3h8l4 4v14H7Z" />
+          <path d="M15 3v5h5" />
+          <path d="M10 13h6" />
+          <path d="M10 17h4" />
+        </svg>
+      );
+    case "splits":
+      return (
+        <svg {...iconProps}>
+          <path d="M5 4h7v7H5Z" />
+          <path d="M12 13h7v7h-7Z" />
+          <path d="M12 7h3a4 4 0 0 1 4 4v2" />
+          <path d="M12 17H9a4 4 0 0 1-4-4v-2" />
+        </svg>
+      );
+    case "aging":
+      return (
+        <svg {...iconProps}>
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 7v5l3 2" />
+        </svg>
+      );
+    case "draft":
+      return (
+        <svg {...iconProps}>
+          <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z" />
+          <path d="M14 3v6h6" />
+          <path d="M8 17h5" />
+        </svg>
+      );
+    case "sent":
+      return (
+        <svg {...iconProps}>
+          <path d="m22 2-7 20-4-9-9-4Z" />
+          <path d="M22 2 11 13" />
+        </svg>
+      );
+    case "paid":
+      return (
+        <svg {...iconProps}>
+          <circle cx="12" cy="12" r="9" />
+          <path d="m8.5 12.5 2.25 2.25L16 9.5" />
+        </svg>
+      );
+    case "overdue":
+      return (
+        <svg {...iconProps}>
+          <path d="M10.3 4.1 2.7 17.3A2 2 0 0 0 4.4 20h15.2a2 2 0 0 0 1.7-2.7L13.7 4.1a2 2 0 0 0-3.4 0Z" />
+          <path d="M12 9v4" />
+          <path d="M12 17h.01" />
+        </svg>
+      );
+  }
+}
+
 function parseMoney(value: string | number | null) {
   if (typeof value === "number") {
     return Number.isFinite(value) ? value : 0;
@@ -659,25 +748,25 @@ export default async function InvoicesPage({
     {
       label: "All",
       value: "all",
-      icon: "A",
+      icon: "all" as const,
       count: viewCounts.all,
     },
     {
       label: "Originals",
       value: "originals",
-      icon: "O",
+      icon: "originals" as const,
       count: viewCounts.originals,
     },
     {
       label: "Split Invoices",
       value: "splits",
-      icon: "S",
+      icon: "splits" as const,
       count: viewCounts.splits,
     },
     {
       label: "Aging",
       value: "aging",
-      icon: "G",
+      icon: "aging" as const,
       count: viewCounts.aging,
     },
   ].map((filter) => {
@@ -699,31 +788,31 @@ export default async function InvoicesPage({
     {
       label: "All Statuses",
       value: "all",
-      icon: "A",
+      icon: "all" as const,
       count: statusCounts.all,
     },
     {
       label: "Draft",
       value: "draft",
-      icon: "D",
+      icon: "draft" as const,
       count: statusCounts.draft,
     },
     {
       label: "Sent",
       value: "sent",
-      icon: "S",
+      icon: "sent" as const,
       count: statusCounts.sent,
     },
     {
       label: "Paid",
       value: "paid",
-      icon: "$",
+      icon: "paid" as const,
       count: statusCounts.paid,
     },
     {
       label: "Overdue",
       value: "overdue",
-      icon: "!",
+      icon: "overdue" as const,
       count: statusCounts.overdue,
     },
   ].map((filter) => {
@@ -974,54 +1063,94 @@ export default async function InvoicesPage({
           </Card>
         ) : null}
 
-        <div className="invoice-filter-bar workspace-filter-bar flex flex-wrap gap-2 rounded-2xl border border-zinc-800 p-2">
-          {viewLinks.map((filter) => (
-            <Link
-              key={filter.value}
-              href={filter.href}
-              className={`invoice-filter-pill inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
-                view === filter.value
-                  ? "bg-sky-600 text-white shadow-sm shadow-sky-900/10"
-                  : "workspace-filter-link-inactive border border-slate-200 bg-white text-slate-700 hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700"
-              }`}
-            >
-              <span
-                className={`filter-tab-icon ${
-                  view === filter.value ? "filter-tab-icon-active" : ""
-                }`}
-                aria-hidden="true"
-              >
-                {filter.icon}
-              </span>
-              <span className="filter-tab-label">{filter.label}</span>
-              <span className="filter-tab-count">{filter.count}</span>
-            </Link>
-          ))}
-        </div>
+        <div className="grid gap-3 xl:grid-cols-[0.9fr_1.1fr]">
+          <section
+            aria-label="Invoice type filters"
+            className="invoice-filter-group rounded-2xl border border-zinc-800 p-3"
+          >
+            <div className="mb-3 flex items-center justify-between gap-3 px-1">
+              <p className="text-xs font-black uppercase tracking-[0.24em] text-sky-300">
+                Invoice Type
+              </p>
+              <p className="text-xs text-zinc-500">
+                {viewCounts.all} total
+              </p>
+            </div>
 
-        <div className="invoice-filter-bar workspace-filter-bar flex flex-wrap gap-2 rounded-2xl border border-zinc-800 p-2">
-          {statusLinks.map((filter) => (
-            <Link
-              key={filter.value}
-              href={filter.href}
-              className={`invoice-filter-pill inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
-                statusFilter === filter.value
-                  ? "bg-sky-600 text-white shadow-sm shadow-sky-900/10"
-                  : "workspace-filter-link-inactive border border-slate-200 bg-white text-slate-700 hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700"
-              }`}
-            >
-              <span
-                className={`filter-tab-icon ${
-                  statusFilter === filter.value ? "filter-tab-icon-active" : ""
-                }`}
-                aria-hidden="true"
-              >
-                {filter.icon}
-              </span>
-              <span className="filter-tab-label">{filter.label}</span>
-              <span className="filter-tab-count">{filter.count}</span>
-            </Link>
-          ))}
+            <div className="invoice-filter-bar workspace-filter-bar flex flex-wrap gap-2 rounded-2xl border border-zinc-800 p-2">
+              {viewLinks.map((filter) => {
+                const isActive = view === filter.value;
+
+                return (
+                  <Link
+                    key={filter.value}
+                    href={filter.href}
+                    aria-current={isActive ? "page" : undefined}
+                    className={`invoice-filter-pill inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                      isActive
+                        ? "bg-sky-600 text-white shadow-sm shadow-sky-900/10"
+                        : "workspace-filter-link-inactive border border-slate-200 bg-white text-slate-700 hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700"
+                    }`}
+                  >
+                    <span
+                      className={`filter-tab-icon ${
+                        isActive ? "filter-tab-icon-active" : ""
+                      }`}
+                      aria-hidden="true"
+                    >
+                      <InvoiceFilterIcon icon={filter.icon} />
+                    </span>
+                    <span className="filter-tab-label">{filter.label}</span>
+                    <span className="filter-tab-count">{filter.count}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+
+          <section
+            aria-label="Invoice status filters"
+            className="invoice-filter-group rounded-2xl border border-zinc-800 p-3"
+          >
+            <div className="mb-3 flex items-center justify-between gap-3 px-1">
+              <p className="text-xs font-black uppercase tracking-[0.24em] text-sky-300">
+                Status
+              </p>
+              <p className="text-xs text-zinc-500">
+                {statusCounts.overdue} overdue
+              </p>
+            </div>
+
+            <div className="invoice-filter-bar workspace-filter-bar flex flex-wrap gap-2 rounded-2xl border border-zinc-800 p-2">
+              {statusLinks.map((filter) => {
+                const isActive = statusFilter === filter.value;
+
+                return (
+                  <Link
+                    key={filter.value}
+                    href={filter.href}
+                    aria-current={isActive ? "page" : undefined}
+                    className={`invoice-filter-pill inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                      isActive
+                        ? "bg-sky-600 text-white shadow-sm shadow-sky-900/10"
+                        : "workspace-filter-link-inactive border border-slate-200 bg-white text-slate-700 hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700"
+                    }`}
+                  >
+                    <span
+                      className={`filter-tab-icon ${
+                        isActive ? "filter-tab-icon-active" : ""
+                      }`}
+                      aria-hidden="true"
+                    >
+                      <InvoiceFilterIcon icon={filter.icon} />
+                    </span>
+                    <span className="filter-tab-label">{filter.label}</span>
+                    <span className="filter-tab-count">{filter.count}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
         </div>
 
         <InvoiceBulkPaymentActions
