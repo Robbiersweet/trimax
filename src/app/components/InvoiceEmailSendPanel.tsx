@@ -174,6 +174,126 @@ export default function InvoiceEmailSendPanel({
       .filter(Boolean)
       .join("\n");
   }, [message, signature]);
+  const quickMessages = useMemo(() => {
+    const dueText =
+      dueDate && dueDate !== "-"
+        ? requestType === "reminder"
+          ? `was due on ${dueDate}`
+          : `is due on ${dueDate}`
+        : requestType === "reminder"
+          ? "is past due"
+          : "";
+    const friendlyProject = projectTitle?.trim()
+      ? ` for ${projectTitle.trim()}`
+      : "";
+
+    if (requestType === "reminder") {
+      return [
+        {
+          label: "Friendly",
+          text: `Hi ${customerName}, this is a friendly reminder that ${documentNumber} for ${amountDue} ${dueText}. Please send payment when available, or reply if you have any questions.`,
+        },
+        {
+          label: "Short",
+          text: `Reminder: ${documentNumber} for ${amountDue} ${dueText}. Please send payment when available. Thank you.`,
+        },
+        {
+          label: "Firm",
+          text: `${documentNumber} for ${amountDue} ${dueText}. Please arrange payment or reply with a status update today. Thank you.`,
+        },
+      ];
+    }
+
+    if (requestType === "deposit") {
+      return [
+        {
+          label: "Standard",
+          text: `${businessName} sent you a deposit request for ${amountDue} on ${documentNumber}${friendlyProject}${
+            dueText ? `. The invoice ${dueText}` : ""
+          }.`,
+        },
+        {
+          label: "Simple",
+          text: `Please use ${documentNumber} to submit the requested ${amountDue} deposit${friendlyProject}.`,
+        },
+        {
+          label: "Detailed",
+          text: `${businessName} is requesting a ${amountDue} deposit on ${documentNumber}${friendlyProject}${
+            dueText ? `. The invoice ${dueText}` : ""
+          }. Reply with any questions before sending payment.`,
+        },
+      ];
+    }
+
+    if (requestType === "estimate") {
+      return [
+        {
+          label: "Standard",
+          text: `${businessName} sent you estimate ${documentNumber} for ${amountDue}${friendlyProject}.`,
+        },
+        {
+          label: "Review",
+          text: `Please review estimate ${documentNumber} for ${amountDue}${friendlyProject}. Reply with approval or any questions.`,
+        },
+        {
+          label: "Brief",
+          text: `Estimate ${documentNumber} for ${amountDue} is ready for your review.`,
+        },
+      ];
+    }
+
+    return [
+      {
+        label: "Standard",
+        text: `${businessName} sent you invoice ${documentNumber} for ${amountDue}${
+          dueText ? `, which ${dueText}` : ""
+        }.`,
+      },
+      {
+        label: "Brief",
+        text: `Invoice ${documentNumber} for ${amountDue}${
+          dueText ? ` ${dueText}` : ""
+        }. Thank you.`,
+      },
+      {
+        label: "Warm",
+        text: `Hi ${customerName}, ${businessName} sent invoice ${documentNumber} for ${amountDue}${friendlyProject}${
+          dueText ? `. It ${dueText}` : ""
+        }. Thank you for your business.`,
+      },
+    ];
+  }, [
+    amountDue,
+    businessName,
+    customerName,
+    documentNumber,
+    dueDate,
+    projectTitle,
+    requestType,
+  ]);
+  const deliveryBrief = [
+    {
+      label: "Customer",
+      value: customerName || "Customer",
+    },
+    {
+      label: "Document",
+      value: `${documentLabel} ${documentNumber}`,
+    },
+    {
+      label: requestType === "reminder" ? "Past-due amount" : "Amount",
+      value: amountDue,
+    },
+    {
+      label: requestType === "reminder" ? "Due status" : "Due date",
+      value:
+        dueDate && dueDate !== "-"
+          ? requestType === "reminder"
+            ? `Due ${dueDate}`
+            : dueDate
+          : "Not set",
+    },
+  ];
   const sendReadiness = [
     {
       label: "Recipient",
@@ -373,6 +493,21 @@ export default function InvoiceEmailSendPanel({
               ? `Send ${documentNumber}`
             : `Send ${documentNumber}`}
         </h2>
+        <div className="invoice-delivery-brief mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          {deliveryBrief.map((item) => (
+            <div
+              key={item.label}
+              className="rounded-2xl border border-slate-200 bg-white px-4 py-3"
+            >
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+                {item.label}
+              </p>
+              <p className="mt-1 truncate text-sm font-semibold text-slate-950">
+                {item.value}
+              </p>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="grid gap-6 p-4 sm:p-5 lg:grid-cols-[0.95fr_1.05fr]">
@@ -427,9 +562,23 @@ export default function InvoiceEmailSendPanel({
           </div>
 
           <div>
-            <label className="text-sm font-semibold text-slate-600">
-              Message
-            </label>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <label className="text-sm font-semibold text-slate-600">
+                Message
+              </label>
+              <div className="invoice-email-tone-row flex flex-wrap gap-2">
+                {quickMessages.map((quickMessage) => (
+                  <button
+                    key={quickMessage.label}
+                    type="button"
+                    onClick={() => setMessage(quickMessage.text)}
+                    className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-700 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700"
+                  >
+                    {quickMessage.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <textarea
               value={message}
               onChange={(event) => setMessage(event.target.value)}

@@ -3012,6 +3012,10 @@ html.theme-light .settings-danger-button:hover {
   border-color: #d7dde8 !important;
 }
 
+.invoice-delivery-brief > div {
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+}
+
 .invoice-email-input {
   color: #020617 !important;
   caret-color: #0f172a;
@@ -3068,6 +3072,15 @@ html.theme-light .settings-danger-button:hover {
 
 .invoice-email-warning {
   box-shadow: 0 12px 28px rgba(245, 158, 11, 0.08);
+}
+
+.invoice-email-tone-row button {
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+}
+
+.invoice-email-tone-row button:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
 }
 
 .invoice-line-item-row {
