@@ -3295,3 +3295,144 @@ html.theme-light main .queue-list-card .status-badge-invoiced {
   background: #ecfdf5 !important;
   color: #047857 !important;
 }
+
+/* Premium accounting workspace polish. These rules keep the payment and
+   invoice work surfaces readable, tactile, and consistent across themes. */
+.app-card {
+  box-shadow:
+    0 18px 45px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+html.theme-light .app-card {
+  background: #ffffff !important;
+  border-color: #d7dde8 !important;
+  color: #0f172a !important;
+  box-shadow:
+    0 18px 44px rgba(15, 23, 42, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78) !important;
+}
+
+html.theme-light .app-card:not(.dark-surface) .text-white,
+html.theme-light .app-card:not(.dark-surface) .text-zinc-50,
+html.theme-light .app-card:not(.dark-surface) .text-zinc-100,
+html.theme-light .app-card:not(.dark-surface) .text-zinc-200 {
+  color: #0f172a !important;
+}
+
+html.theme-light .app-card:not(.dark-surface) .text-zinc-300,
+html.theme-light .app-card:not(.dark-surface) .text-zinc-400 {
+  color: #475569 !important;
+}
+
+html.theme-light .app-card:not(.dark-surface) .text-zinc-500,
+html.theme-light .app-card:not(.dark-surface) .text-zinc-600 {
+  color: #64748b !important;
+}
+
+html.theme-light .app-soft-panel,
+html.theme-light .app-metric-card,
+html.theme-light .check-capture-panel,
+html.theme-light .batch-payments-card .app-soft-panel,
+html.theme-light .batch-payments-card .app-metric-card {
+  background: #ffffff !important;
+  border-color: #d7dde8 !important;
+  color: #0f172a !important;
+  box-shadow:
+    0 14px 34px rgba(15, 23, 42, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82) !important;
+}
+
+html.theme-light .check-capture-panel {
+  background:
+    linear-gradient(135deg, #eff6ff 0%, #ffffff 56%, #ecfdf5 100%) !important;
+  border-color: #bfdbfe !important;
+}
+
+html.theme-light .check-capture-panel .bg-black\/35,
+html.theme-light .check-capture-panel .bg-zinc-950,
+html.theme-light .check-capture-panel .bg-zinc-900 {
+  background: rgba(255, 255, 255, 0.82) !important;
+  border-color: #dbeafe !important;
+}
+
+html.theme-light .check-capture-panel .text-zinc-200,
+html.theme-light .check-capture-panel .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light .check-capture-panel .text-zinc-300,
+html.theme-light .check-capture-panel .text-zinc-400,
+html.theme-light .check-capture-panel .text-zinc-500 {
+  color: #475569 !important;
+}
+
+html.theme-light .check-capture-panel .text-emerald-300,
+html.theme-light .check-capture-panel .text-green-300 {
+  color: #047857 !important;
+}
+
+html.theme-light .app-data-table {
+  background: #ffffff !important;
+  border-color: #d7dde8 !important;
+  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.06) !important;
+}
+
+html.theme-light .app-data-table-head {
+  background: #f1f5f9 !important;
+  border-color: #d7dde8 !important;
+  color: #334155 !important;
+}
+
+html.theme-light .app-data-table-row,
+html.theme-light .payment-priority-row {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .app-data-table-row:hover,
+html.theme-light .payment-priority-row:hover {
+  background: #eff6ff !important;
+  border-color: #bfdbfe !important;
+}
+
+html.theme-light .payment-prep-row-selected,
+html.theme-light .app-data-table-row.bg-green-500\/10 {
+  background: #ecfdf5 !important;
+  border-color: #86efac !important;
+}
+
+html.theme-light .payment-aging-card {
+  background: #ffffff !important;
+  border-color: #d7dde8 !important;
+  color: #0f172a !important;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06) !important;
+}
+
+html.theme-light .payment-aging-card .bg-zinc-800,
+html.theme-light .payment-aging-card .bg-zinc-900,
+html.theme-light .payment-aging-card .bg-zinc-950 {
+  background: #e2e8f0 !important;
+}
+
+html.theme-light .payment-chip,
+html.theme-light .invoice-filter-pill {
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
+}
+
+html.theme-light .app-button-secondary,
+html.theme-light main .rounded-full.border.border-zinc-700,
+html.theme-light main .rounded-xl.bg-zinc-800 {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+html.theme-light .app-button-secondary:hover,
+html.theme-light main .rounded-full.border.border-zinc-700:hover,
+html.theme-light main .rounded-xl.bg-zinc-800:hover {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #1d4ed8 !important;
+}
