@@ -425,6 +425,9 @@ export default function BatchInvoicePayments({
       : Number((enteredCheckAmount - selectedTotal).toFixed(2));
   const checkAmountMatches =
     enteredCheckAmount === null || Math.abs(checkDifference) < 0.01;
+  const checkDifferenceLabel =
+    checkDifference > 0 ? "unassigned" : "over-selected";
+  const selectedRemainingBalance = Math.max(openBalance - selectedTotal, 0);
 
   const allVisibleSelected =
     visibleInvoices.length > 0 &&
@@ -456,6 +459,23 @@ export default function BatchInvoicePayments({
     capturedAmountValue > 0 &&
     suggestedCheckMatches.length > 0 &&
     Math.abs(suggestedCheckTotal - capturedAmountValue) < 0.01;
+  const suggestedPaymentMatches = useMemo(
+    () =>
+      findMatchingInvoices(
+        payableInvoices,
+        enteredCheckAmount ?? 0,
+        customerFilter === "all" ? "" : customerFilter
+      ),
+    [customerFilter, enteredCheckAmount, payableInvoices]
+  );
+  const suggestedPaymentTotal = suggestedPaymentMatches.reduce(
+    (total, invoice) => total + invoice.amountDue,
+    0
+  );
+  const hasSuggestedPaymentMatch =
+    enteredCheckAmount !== null &&
+    !checkAmountMatches &&
+    suggestedPaymentMatches.length > 0;
 
   useEffect(() => {
     return () => {
@@ -609,6 +629,40 @@ export default function BatchInvoicePayments({
       message: hasExactCheckMatch
         ? "Trimax matched the check to open invoices."
         : "Trimax selected the closest open invoices. Review before applying.",
+    });
+  }
+
+  function applyEnteredAmountMatch() {
+    if (enteredCheckAmount === null || enteredCheckAmount <= 0) {
+      setToast({
+        type: "error",
+        message: "Enter a check amount before asking Trimax to match it.",
+      });
+      return;
+    }
+
+    if (suggestedPaymentMatches.length === 0) {
+      setToast({
+        type: "error",
+        message: "Trimax could not find a better invoice match for that check.",
+      });
+      return;
+    }
+
+    setSelectedIds(suggestedPaymentMatches.map((invoice) => invoice.id));
+    const matchedCustomers = Array.from(
+      new Set(suggestedPaymentMatches.map((invoice) => invoice.customerName))
+    );
+    setCustomerFilter(matchedCustomers.length === 1 ? matchedCustomers[0] : "all");
+    setInternalNote(
+      `Check amount match for ${formatMoney(enteredCheckAmount)}`
+    );
+    setToast({
+      type: "success",
+      message:
+        Math.abs(suggestedPaymentTotal - enteredCheckAmount) < 0.01
+          ? "Trimax found an exact invoice selection for that check amount."
+          : "Trimax selected the closest invoice group. Review before applying.",
     });
   }
 
@@ -1150,28 +1204,93 @@ export default function BatchInvoicePayments({
 
         {selectedInvoices.length > 0 ? (
           <div
-            className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${
+            className={`payment-balance-check mt-4 rounded-2xl border p-4 text-sm ${
               checkAmountMatches
                 ? "border-green-500/30 bg-green-500/10 text-green-100"
                 : "border-yellow-500/40 bg-yellow-500/10 text-yellow-100"
             }`}
           >
-            {enteredCheckAmount === null ? (
-              <span>
-                Selected invoices total {formatMoney(selectedTotal)}. Enter
-                the check amount if you want Trimax to verify the batch
-                before applying it.
-              </span>
-            ) : checkAmountMatches ? (
-              <span>
-                Check amount matches the selected invoice total.
-              </span>
-            ) : (
-              <span>
-                Check amount is off by {formatMoney(checkDifference)}.
-                Adjust the selection or check amount before applying.
-              </span>
-            )}
+            <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
+              <div>
+                <p className="font-bold">
+                  {enteredCheckAmount === null
+                    ? "Ready to verify this batch"
+                    : checkAmountMatches
+                      ? "Check amount matches this batch"
+                      : "Check amount needs attention"}
+                </p>
+
+                <p className="mt-1 leading-6">
+                  {enteredCheckAmount === null ? (
+                    <>
+                      Selected invoices total {formatMoney(selectedTotal)}.
+                      Enter the check amount if you want Trimax to verify the
+                      batch before applying it.
+                    </>
+                  ) : checkAmountMatches ? (
+                    <>
+                      The entered check amount matches the selected invoice
+                      total.
+                    </>
+                  ) : (
+                    <>
+                      {formatMoney(Math.abs(checkDifference))} is{" "}
+                      {checkDifferenceLabel}. Adjust the selection, update the
+                      check amount, or let Trimax search for a better match.
+                    </>
+                  )}
+                </p>
+              </div>
+
+              {hasSuggestedPaymentMatch ? (
+                <button
+                  type="button"
+                  onClick={applyEnteredAmountMatch}
+                  className="rounded-2xl bg-sky-500 px-4 py-3 font-black text-white transition hover:bg-sky-600"
+                >
+                  Use Best Match
+                </button>
+              ) : null}
+            </div>
+
+            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+              <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                <p className="text-xs uppercase tracking-[0.18em] opacity-70">
+                  Selected
+                </p>
+                <p className="mt-1 font-black">
+                  {formatMoney(selectedTotal)}
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                <p className="text-xs uppercase tracking-[0.18em] opacity-70">
+                  Check
+                </p>
+                <p className="mt-1 font-black">
+                  {enteredCheckAmount === null
+                    ? "Not entered"
+                    : formatMoney(enteredCheckAmount)}
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                <p className="text-xs uppercase tracking-[0.18em] opacity-70">
+                  Still Open
+                </p>
+                <p className="mt-1 font-black">
+                  {formatMoney(selectedRemainingBalance)}
+                </p>
+              </div>
+            </div>
+
+            {hasSuggestedPaymentMatch ? (
+              <p className="mt-3 text-xs leading-5 opacity-80">
+                Best match: {suggestedPaymentMatches.length} invoice
+                {suggestedPaymentMatches.length === 1 ? "" : "s"} totaling{" "}
+                {formatMoney(suggestedPaymentTotal)}.
+              </p>
+            ) : null}
           </div>
         ) : null}
 

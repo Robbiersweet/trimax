@@ -3489,6 +3489,25 @@ html.theme-light .dashboard-priority-card .text-zinc-300 {
   color: #475569 !important;
 }
 
+html.theme-light .payment-balance-check {
+  color: #0f172a !important;
+}
+
+html.theme-light .payment-balance-check.bg-green-500\/10 {
+  background: #ecfdf5 !important;
+  border-color: #86efac !important;
+}
+
+html.theme-light .payment-balance-check.bg-yellow-500\/10 {
+  background: #fffbeb !important;
+  border-color: #fcd34d !important;
+}
+
+html.theme-light .payment-balance-check .bg-black\/20 {
+  background: rgba(255, 255, 255, 0.72) !important;
+  border-color: #d7dde8 !important;
+}
+
 html.theme-light .payment-chip,
 html.theme-light .invoice-filter-pill {
   box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
