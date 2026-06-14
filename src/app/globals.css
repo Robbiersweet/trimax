@@ -1568,6 +1568,39 @@ html.theme-light .dashboard-action-card .dashboard-action-glyph {
   color: #334155 !important;
 }
 
+html.theme-light .dashboard-action-card[data-tone="queue"] .dashboard-action-glyph {
+  color: #2563eb !important;
+}
+
+html.theme-light .dashboard-action-card[data-tone="estimate"] .dashboard-action-glyph {
+  color: #7c3aed !important;
+}
+
+html.theme-light .dashboard-action-card[data-tone="invoice"] .dashboard-action-glyph {
+  color: #059669 !important;
+}
+
+html.theme-light .dashboard-action-card[data-tone="payment"] .dashboard-action-glyph {
+  color: #0284c7 !important;
+}
+
+html.theme-light .dashboard-action-card[data-tone="review"] .dashboard-action-glyph {
+  color: #b45309 !important;
+}
+
+html.theme-light .dashboard-action-card[data-tone="reports"] .dashboard-action-glyph {
+  color: #c026d3 !important;
+}
+
+html.theme-light .dashboard-action-card[data-tone="print"] .dashboard-action-glyph {
+  color: #0891b2 !important;
+}
+
+html.theme-light .dashboard-action-card .dashboard-action-arrow {
+  background: #f8fafc !important;
+  border-color: #d7dde8 !important;
+}
+
 html.theme-light .dashboard-feature-card .text-amber-50,
 html.theme-light .dashboard-feature-card .text-amber-100,
 html.theme-light .dashboard-feature-card .text-amber-100\/60,

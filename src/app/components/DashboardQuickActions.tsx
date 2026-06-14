@@ -12,15 +12,105 @@ type DashboardQuickActionsProps = {
   businessSlug: string;
 };
 
+type QuickActionIcon =
+  | "queue"
+  | "estimate"
+  | "invoice"
+  | "payment"
+  | "review"
+  | "reports"
+  | "print";
+
 type QuickAction = {
   key: DashboardActionKey;
   title: string;
   subtitle: string;
   href: string;
   label: string;
-  glyph: string;
+  icon: QuickActionIcon;
   tone: "queue" | "estimate" | "invoice" | "payment" | "review" | "reports" | "print";
 };
+
+function DashboardCommandIcon({ icon }: { icon: QuickActionIcon }) {
+  const iconProps = {
+    className: "h-5 w-5",
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 2,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+
+  switch (icon) {
+    case "queue":
+      return (
+        <svg {...iconProps}>
+          <path d="M8 4h8" />
+          <path d="M9 2h6a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H9A1 1 0 0 1 8 5V3a1 1 0 0 1 1-1Z" />
+          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+          <path d="M8 11h8" />
+          <path d="M8 16h5" />
+        </svg>
+      );
+    case "estimate":
+      return (
+        <svg {...iconProps}>
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
+          <path d="M14 2v6h6" />
+          <path d="M8 13h8" />
+          <path d="M8 17h5" />
+        </svg>
+      );
+    case "invoice":
+      return (
+        <svg {...iconProps}>
+          <path d="M5 3v18l3-2 3 2 3-2 3 2 2-1.33V3Z" />
+          <path d="M8 8h8" />
+          <path d="M8 12h8" />
+          <path d="M8 16h5" />
+        </svg>
+      );
+    case "payment":
+      return (
+        <svg {...iconProps}>
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 7v10" />
+          <path d="M15 9.5c-.42-.85-1.46-1.5-3-1.5-1.66 0-3 .9-3 2s1.34 2 3 2 3 .9 3 2-1.34 2-3 2c-1.54 0-2.58-.65-3-1.5" />
+        </svg>
+      );
+    case "review":
+      return (
+        <svg {...iconProps}>
+          <path d="m3.5 6 1.5 1.5L8 4.5" />
+          <path d="M11 6h9" />
+          <path d="m3.5 12 1.5 1.5L8 10.5" />
+          <path d="M11 12h9" />
+          <path d="m3.5 18 1.5 1.5L8 16.5" />
+          <path d="M11 18h9" />
+        </svg>
+      );
+    case "reports":
+      return (
+        <svg {...iconProps}>
+          <path d="M4 20V10" />
+          <path d="M10 20V4" />
+          <path d="M16 20v-7" />
+          <path d="M22 20H2" />
+        </svg>
+      );
+    case "print":
+      return (
+        <svg {...iconProps}>
+          <path d="M6 9V3h12v6" />
+          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+          <path d="M6 14h12v7H6Z" />
+          <path d="M17 12h.01" />
+        </svg>
+      );
+  }
+}
 
 const actionTones: Record<
   QuickAction["tone"],
@@ -150,7 +240,7 @@ export default function DashboardQuickActions({
           : "Add apartment turn or property request",
         href: `/new-request?business=${businessSlug}`,
         label: isJustKleen ? "Work" : "Queue",
-        glyph: "Q",
+        icon: "queue",
         tone: "queue",
       },
       {
@@ -159,7 +249,7 @@ export default function DashboardQuickActions({
         subtitle: "Create a customer estimate",
         href: `/estimates/new?business=${businessSlug}`,
         label: "Estimate",
-        glyph: "E",
+        icon: "estimate",
         tone: "estimate",
       },
       {
@@ -168,7 +258,7 @@ export default function DashboardQuickActions({
         subtitle: "Create invoice or deposit request",
         href: `/invoices/new?business=${businessSlug}`,
         label: "Invoice",
-        glyph: "I",
+        icon: "invoice",
         tone: "invoice",
       },
       {
@@ -177,7 +267,7 @@ export default function DashboardQuickActions({
         subtitle: "Apply one check to many invoices",
         href: `/payments?business=${businessSlug}`,
         label: "Payment",
-        glyph: "$",
+        icon: "payment",
         tone: "payment",
       },
       {
@@ -188,7 +278,7 @@ export default function DashboardQuickActions({
           : "Check upcoming units",
         href: `/queue?business=${businessSlug}`,
         label: "Review",
-        glyph: "R",
+        icon: "review",
         tone: "review",
       },
       {
@@ -199,7 +289,7 @@ export default function DashboardQuickActions({
           : "Review unit history and readiness",
         href: `/reports?business=${businessSlug}`,
         label: "Reports",
-        glyph: "%",
+        icon: "reports",
         tone: "reports",
       },
       {
@@ -208,7 +298,7 @@ export default function DashboardQuickActions({
         subtitle: "Estimates and invoices",
         href: `/estimates?business=${businessSlug}`,
         label: "Print",
-        glyph: "P",
+        icon: "print",
         tone: "print",
       },
     ],
@@ -239,9 +329,11 @@ export default function DashboardQuickActions({
           <Link
             key={action.key}
             href={action.href}
+            data-tone={action.tone}
+            aria-label={`${action.title}: ${action.subtitle}`}
             className={[
-              "dashboard-feature-card dashboard-action-card dark-surface group relative min-h-40 overflow-hidden rounded-2xl border p-4 transition",
-              "bg-zinc-950 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:-translate-y-0.5 hover:shadow-2xl",
+              "dashboard-feature-card dashboard-action-card dark-surface group relative min-h-44 overflow-hidden rounded-2xl border p-4 transition",
+              "bg-zinc-950 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:-translate-y-0.5 hover:shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/80 focus-visible:ring-offset-2 focus-visible:ring-offset-black",
               tone.border,
               tone.background,
               tone.hover,
@@ -281,11 +373,11 @@ export default function DashboardQuickActions({
                 <span
                   aria-hidden="true"
                   className={[
-                    "dashboard-action-glyph grid h-9 w-9 shrink-0 place-items-center rounded-xl border text-sm font-black shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition group-hover:scale-105",
+                    "dashboard-action-glyph grid h-10 w-10 shrink-0 place-items-center rounded-xl border shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition group-hover:scale-105",
                     tone.glyph,
                   ].join(" ")}
                 >
-                  {action.glyph}
+                  <DashboardCommandIcon icon={action.icon} />
                 </span>
               </div>
 
@@ -300,7 +392,7 @@ export default function DashboardQuickActions({
 
                 <span
                   aria-hidden="true"
-                  className="dashboard-action-arrow text-lg font-semibold text-white/75 transition group-hover:translate-x-0.5 group-hover:text-white"
+                  className="dashboard-action-arrow grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/10 bg-white/10 text-lg font-semibold text-white/75 transition group-hover:translate-x-0.5 group-hover:border-white/20 group-hover:bg-white/15 group-hover:text-white"
                 >
                   &gt;
                 </span>
