@@ -1216,6 +1216,67 @@ function BusinessSettingsPageContent() {
     });
   }
 
+  const emailReadinessItems = [
+    {
+      label: "Reply-to",
+      value: replyToEmail.trim() || currentEmail || "Not set",
+      status:
+        replyToEmail.trim().includes("@") || currentEmail?.includes("@")
+          ? "ready"
+          : "attention",
+    },
+    {
+      label: "Invoice Template",
+      value:
+        invoiceSubjectTemplate.trim() && invoiceBodyTemplate.trim()
+          ? "Ready"
+          : "Needs copy",
+      status:
+        invoiceSubjectTemplate.trim() && invoiceBodyTemplate.trim()
+          ? "ready"
+          : "attention",
+    },
+    {
+      label: "Reminder Template",
+      value:
+        paymentReminderSubjectTemplate.trim() &&
+        paymentReminderBodyTemplate.trim()
+          ? "Ready"
+          : "Needs copy",
+      status:
+        paymentReminderSubjectTemplate.trim() &&
+        paymentReminderBodyTemplate.trim()
+          ? "ready"
+          : "attention",
+    },
+    {
+      label: "Signature",
+      value: emailSignature.trim() ? "Included" : "Using default",
+      status: "ready",
+    },
+  ];
+  const emailPreviewVariables = {
+    businessName: business?.name ?? "R&L Creations",
+    invoiceNumber: "INV-0402",
+    amountDue: "$1,099.00",
+    dueDate: "06/06/26",
+    dueDateSentence: "was due on 06/06/26",
+    customerName: "North Creek Apartments",
+    projectTitle: "Unit K08",
+  };
+  const previewInvoiceSubject = invoiceSubjectTemplate
+    .replace(/\{([a-zA-Z0-9_]+)\}/g, (match, key) => {
+      return emailPreviewVariables[
+        key as keyof typeof emailPreviewVariables
+      ] ?? match;
+    });
+  const previewReminderBody = paymentReminderBodyTemplate
+    .replace(/\{([a-zA-Z0-9_]+)\}/g, (match, key) => {
+      return emailPreviewVariables[
+        key as keyof typeof emailPreviewVariables
+      ] ?? match;
+    });
+
   return (
     <AppShell>
       {toast && (
@@ -1562,6 +1623,63 @@ function BusinessSettingsPageContent() {
                   Direct sending still needs a verified email sender before
                   live messages leave Trimax. Until then, the invoice page can
                   preview the exact customer-facing message safely.
+                </div>
+
+                <div className="settings-email-readiness rounded-3xl border border-sky-200 bg-sky-50 p-4">
+                  <div className="grid gap-4 lg:grid-cols-[1fr_0.9fr] lg:items-start">
+                    <div>
+                      <p className="text-sm font-black uppercase tracking-[0.26em] text-sky-700">
+                        Delivery Readiness
+                      </p>
+                      <h3 className="mt-2 text-2xl font-black text-slate-950">
+                        Invoice and reminder sending at a glance
+                      </h3>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">
+                        These settings feed the invoice sender, deposit request
+                        sender, manual late reminders, and the automated
+                        overdue reminder run.
+                      </p>
+
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        {emailReadinessItems.map((item) => (
+                          <div
+                            key={item.label}
+                            data-status={item.status}
+                            className="settings-email-ready-card rounded-2xl border bg-white p-4"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">
+                                {item.label}
+                              </p>
+                              <span className="settings-email-ready-dot h-2.5 w-2.5 rounded-full" />
+                            </div>
+                            <p className="mt-2 truncate text-sm font-semibold text-slate-950">
+                              {item.value}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="settings-email-preview rounded-2xl border border-slate-200 bg-white p-4">
+                      <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-500">
+                        Live Example
+                      </p>
+                      <p className="mt-3 text-sm font-semibold text-slate-950">
+                        {previewInvoiceSubject ||
+                          "Invoice subject preview appears here"}
+                      </p>
+                      <p className="mt-3 whitespace-pre-line text-sm leading-6 text-slate-600">
+                        {previewReminderBody ||
+                          "Reminder body preview appears here as you edit the template."}
+                      </p>
+                      <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-900">
+                        Automatic reminders skip paid invoices, drafts,
+                        customers without email, and invoices reminded in the
+                        last 7 days.
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <InputField

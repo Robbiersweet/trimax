@@ -2834,6 +2834,57 @@ html.theme-light .document-line-total {
   color: #1d4ed8 !important;
 }
 
+.settings-email-readiness {
+  box-shadow: 0 18px 42px rgba(14, 165, 233, 0.1);
+}
+
+.settings-email-ready-card,
+.settings-email-preview {
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+}
+
+.settings-email-ready-card[data-status="ready"] {
+  border-color: #86efac;
+  background: #ecfdf5;
+}
+
+.settings-email-ready-card[data-status="attention"] {
+  border-color: #facc15;
+  background: #fffbeb;
+}
+
+.settings-email-ready-card[data-status="ready"] .settings-email-ready-dot {
+  background: #16a34a;
+  box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.12);
+}
+
+.settings-email-ready-card[data-status="attention"] .settings-email-ready-dot {
+  background: #f59e0b;
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.14);
+}
+
+html.theme-light .settings-email-readiness {
+  background:
+    linear-gradient(135deg, #eff6ff, #ffffff 58%, #ecfdf5) !important;
+  border-color: #bfdbfe !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .settings-email-ready-card,
+html.theme-light .settings-email-preview {
+  color: #0f172a !important;
+}
+
+html.theme-light .settings-email-ready-card[data-status="ready"] {
+  background: #ecfdf5 !important;
+  border-color: #86efac !important;
+}
+
+html.theme-light .settings-email-ready-card[data-status="attention"] {
+  background: #fffbeb !important;
+  border-color: #facc15 !important;
+}
+
 .document-readiness-panel {
   box-shadow:
     0 22px 52px rgba(2, 6, 23, 0.18),
