@@ -790,6 +790,26 @@ html.theme-light .dark-surface .payment-action-button:hover {
   color: #cbd5e1 !important;
 }
 
+.payment-cockpit,
+.payment-cockpit-card,
+.payment-next-target {
+  box-shadow:
+    0 18px 44px rgba(2, 6, 23, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.payment-cockpit-card[data-tone="success"] {
+  border-color: rgba(52, 211, 153, 0.34);
+}
+
+.payment-cockpit-card[data-tone="danger"] {
+  border-color: rgba(244, 63, 94, 0.36);
+}
+
+.payment-cockpit-card[data-tone="info"] {
+  border-color: rgba(56, 189, 248, 0.34);
+}
+
 html.theme-light .payment-hero-card {
   background:
     radial-gradient(circle at 12% 8%, rgba(187, 247, 208, 0.2), transparent 34%),
@@ -848,6 +868,65 @@ html.theme-light .payment-hero-card .bg-black\/50 {
 html.theme-light .payment-hero-card button:disabled {
   color: #94a3b8 !important;
   border-color: rgba(148, 163, 184, 0.42) !important;
+}
+
+html.theme-light .payment-cockpit {
+  background:
+    linear-gradient(135deg, #ffffff 0%, #f8fbff 58%, #eff6ff 100%) !important;
+  border-color: #bfdbfe !important;
+  color: #0f172a !important;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.theme-light .payment-cockpit h2,
+html.theme-light .payment-cockpit .text-white,
+html.theme-light .payment-cockpit-card .text-white,
+html.theme-light .payment-next-target .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light .payment-cockpit .text-zinc-300,
+html.theme-light .payment-cockpit .text-zinc-400,
+html.theme-light .payment-cockpit-card .text-zinc-300,
+html.theme-light .payment-cockpit-card .text-zinc-400,
+html.theme-light .payment-next-target .text-zinc-300,
+html.theme-light .payment-next-target .text-zinc-400 {
+  color: #475569 !important;
+}
+
+html.theme-light .payment-cockpit .text-sky-200,
+html.theme-light .payment-cockpit .text-sky-300,
+html.theme-light .payment-next-target .text-sky-200 {
+  color: #0369a1 !important;
+}
+
+html.theme-light .payment-cockpit-card,
+html.theme-light .payment-next-target {
+  background: #ffffff !important;
+  border-color: #d7dde8 !important;
+  color: #0f172a !important;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.06) !important;
+}
+
+html.theme-light .payment-cockpit-card:hover {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+}
+
+html.theme-light .payment-cockpit-card[data-tone="success"] {
+  background: #ecfdf5 !important;
+  border-color: #86efac !important;
+}
+
+html.theme-light .payment-cockpit-card[data-tone="danger"] {
+  background: #fff1f2 !important;
+  border-color: #fda4af !important;
+}
+
+html.theme-light .payment-cockpit-card[data-tone="info"],
+html.theme-light .payment-next-target {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
 }
 
 html.theme-light .dark-surface,

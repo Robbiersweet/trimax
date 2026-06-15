@@ -257,8 +257,18 @@ export default async function PaymentsPage({
     (total, invoice) => total + invoice.amountDue,
     0
   );
+  const depositRequestInvoices = payableInvoices.filter(
+    (invoice) => invoice.isDepositRequest
+  );
+  const depositRequestBalance = depositRequestInvoices.reduce(
+    (total, invoice) => total + invoice.amountDue,
+    0
+  );
+  const overdueInvoices = payableInvoices.filter(
+    (invoice) => (invoice.daysLate ?? -1) >= 0
+  );
   const overdueBalance = payableInvoices
-    .filter((invoice) => (invoice.daysLate ?? -1) >= 0)
+    .filter((invoice) => overdueInvoices.includes(invoice))
     .reduce((total, invoice) => total + invoice.amountDue, 0);
   const draftBalance = invoices
     .filter((invoice) => invoiceStatusKey(invoice.status) === "draft")
@@ -377,6 +387,7 @@ export default async function PaymentsPage({
       return second.amountDue - first.amountDue;
     })
     .slice(0, 6);
+  const bestCollectionTarget = paymentPriority[0] ?? null;
   const focusedCustomerInvoices = focusedCustomer
     ? payableInvoices.filter(
         (invoice) =>
@@ -410,6 +421,55 @@ export default async function PaymentsPage({
       : focusedCustomer
         ? "Trimax is focused on this customer so one check can be applied cleanly."
         : "Trimax is showing every unpaid invoice for this workspace.";
+  const batchCandidateGroups = customerPaymentGroups.filter(
+    (group) => group.count > 1
+  );
+  const collectionReadiness =
+    payableInvoices.length === 0
+      ? "Clear"
+      : overdueInvoices.length > 0
+        ? "Collect overdue first"
+        : batchCandidateGroups.length > 0
+          ? "Batch payment ready"
+          : "Ready for check entry";
+  const cockpitCards = [
+    {
+      label: "Collect First",
+      value: bestCollectionTarget
+        ? formatMoney(bestCollectionTarget.amountDue)
+        : "$0.00",
+      detail: bestCollectionTarget
+        ? `${bestCollectionTarget.customer_name ?? "Unknown Customer"} · ${
+            bestCollectionTarget.display_id ?? "Invoice"
+          }`
+        : "No urgent invoice target",
+      href: bestCollectionTarget
+        ? `/invoices/${bestCollectionTarget.id}${businessQuery}`
+        : `/invoices${businessQuery}`,
+      tone: overdueInvoices.length > 0 ? "danger" : "info",
+    },
+    {
+      label: "Overdue Exposure",
+      value: formatMoney(overdueBalance),
+      detail: `${invoiceCountLabel(overdueInvoices.length)} at or past due`,
+      href: `/invoices${businessQuery}&view=aging`,
+      tone: overdueInvoices.length > 0 ? "danger" : "neutral",
+    },
+    {
+      label: "Deposit Requests",
+      value: formatMoney(depositRequestBalance),
+      detail: `${invoiceCountLabel(depositRequestInvoices.length)} asking for partial payment`,
+      href: `/invoices${businessQuery}&collection=open`,
+      tone: depositRequestInvoices.length > 0 ? "success" : "neutral",
+    },
+    {
+      label: "Batch Candidates",
+      value: String(batchCandidateGroups.length),
+      detail: "Customers with multiple open invoices",
+      href: "#customer-payment-queue",
+      tone: batchCandidateGroups.length > 0 ? "success" : "info",
+    },
+  ];
 
   return (
     <AppShell>
@@ -499,6 +559,90 @@ export default async function PaymentsPage({
             </p>
           </Card>
         ) : null}
+
+        <Card className="payment-cockpit border-sky-500/20 bg-gradient-to-br from-zinc-950 via-slate-950 to-zinc-900">
+          <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr] xl:items-start">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-sky-300">
+                Collections Cockpit
+              </p>
+
+              <h2 className="mt-3 text-3xl font-black text-white">
+                {collectionReadiness}
+              </h2>
+
+              <p className="mt-3 text-sm leading-6 text-zinc-300">
+                Trimax is reading open balances, deposit requests, due dates,
+                and customer groupings so check entry starts with the smartest
+                target instead of a raw invoice list.
+              </p>
+
+              {bestCollectionTarget ? (
+                <div className="payment-next-target mt-5 rounded-2xl border border-sky-400/20 bg-sky-500/10 p-4">
+                  <p className="text-xs font-black uppercase tracking-[0.24em] text-sky-200">
+                    Next Best Collection Move
+                  </p>
+
+                  <p className="mt-2 text-lg font-black text-white">
+                    {bestCollectionTarget.customer_name ?? "Unknown Customer"}
+                  </p>
+
+                  <p className="mt-1 text-sm leading-6 text-zinc-300">
+                    {bestCollectionTarget.display_id ?? "Invoice"} ·{" "}
+                    {bestCollectionTarget.isDepositRequest
+                      ? "deposit request"
+                      : "open balance"}{" "}
+                    · {formatMoney(bestCollectionTarget.amountDue)}
+                  </p>
+
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <Link
+                      href={`/payments?${new URLSearchParams({
+                        business: businessSlug,
+                        customer:
+                          bestCollectionTarget.customer_name ??
+                          "Unknown Customer",
+                      }).toString()}`}
+                      className="rounded-xl bg-sky-500 px-4 py-2 text-sm font-black text-white transition hover:bg-sky-600"
+                    >
+                      Focus Payment
+                    </Link>
+
+                    <Link
+                      href={`/invoices/${bestCollectionTarget.id}${businessQuery}`}
+                      className="rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-2 text-sm font-black text-zinc-100 transition hover:border-sky-400 hover:text-sky-200"
+                    >
+                      Open Invoice
+                    </Link>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              {cockpitCards.map((card) => (
+                <Link
+                  key={card.label}
+                  href={card.href}
+                  className="payment-cockpit-card rounded-2xl border border-zinc-800 bg-black/35 p-4 transition hover:-translate-y-0.5 hover:border-sky-400/60"
+                  data-tone={card.tone}
+                >
+                  <p className="text-xs font-black uppercase tracking-[0.22em] text-zinc-400">
+                    {card.label}
+                  </p>
+
+                  <p className="mt-3 text-2xl font-black text-white">
+                    {card.value}
+                  </p>
+
+                  <p className="mt-2 text-sm leading-5 text-zinc-400">
+                    {card.detail}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </Card>
 
         {payableInvoices.length > 0 ? (
           <Card className="payment-hero-card dark-surface border-green-400/30 bg-gradient-to-br from-green-500/15 via-zinc-950 to-orange-500/10">
@@ -713,7 +857,7 @@ export default async function PaymentsPage({
         </div>
 
         {paymentPriority.length > 0 ? (
-          <Card>
+          <Card id="customer-payment-queue">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
