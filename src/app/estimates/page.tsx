@@ -23,12 +23,18 @@ type Estimate = {
   hasLinkedInvoice?: boolean;
 };
 
-function formatMoney(value: string | number | null) {
-  const parsed = Number(value ?? 0);
-
-  if (!Number.isFinite(parsed)) {
-    return "$0.00";
+function parseEstimateAmount(value: string | number | null) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0;
   }
+
+  const parsed = Number(String(value ?? "0").replace(/[^0-9.-]/g, ""));
+
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatMoney(value: string | number | null) {
+  const parsed = parseEstimateAmount(value);
 
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -146,6 +152,77 @@ export default async function EstimatesPage({
     return searchableText.includes(searchTerm.toLowerCase());
   });
 
+  const draftEstimates = estimates.filter(
+    (estimate) => getStatusKey(estimate.status) === "draft"
+  );
+  const approvedEstimates = estimates.filter(
+    (estimate) => getStatusKey(estimate.status) === "approved"
+  );
+  const convertedEstimates = estimates.filter(
+    (estimate) =>
+      getStatusKey(estimate.status) === "converted" || estimate.hasLinkedInvoice
+  );
+  const approvedReadyForInvoice = approvedEstimates.filter(
+    (estimate) => !estimate.hasLinkedInvoice
+  );
+  const openEstimates = estimates.filter(
+    (estimate) =>
+      getStatusKey(estimate.status) !== "converted" && !estimate.hasLinkedInvoice
+  );
+  const topOpenEstimate = [...openEstimates].sort(
+    (left, right) =>
+      parseEstimateAmount(right.estimate_amount) -
+      parseEstimateAmount(left.estimate_amount)
+  )[0];
+  const totalEstimateValue = estimates.reduce(
+    (total, estimate) => total + parseEstimateAmount(estimate.estimate_amount),
+    0
+  );
+  const readyForInvoiceValue = approvedReadyForInvoice.reduce(
+    (total, estimate) => total + parseEstimateAmount(estimate.estimate_amount),
+    0
+  );
+  const filteredEstimateValue = filteredEstimates.reduce(
+    (total, estimate) => total + parseEstimateAmount(estimate.estimate_amount),
+    0
+  );
+  const conversionRate = estimates.length
+    ? Math.round((convertedEstimates.length / estimates.length) * 100)
+    : 0;
+  const estimateHealthCards = [
+    {
+      label: "Proposal Pipeline",
+      value: formatMoney(totalEstimateValue),
+      detail: `${estimates.length} total estimate${estimates.length === 1 ? "" : "s"}`,
+      tone: "info",
+      href: `/estimates${businessQuery}`,
+    },
+    {
+      label: "Ready to Invoice",
+      value: formatMoney(readyForInvoiceValue),
+      detail: `${approvedReadyForInvoice.length} approved estimate${approvedReadyForInvoice.length === 1 ? "" : "s"}`,
+      tone: approvedReadyForInvoice.length > 0 ? "success" : "neutral",
+      href:
+        approvedReadyForInvoice[0]?.id
+          ? `/estimates/${approvedReadyForInvoice[0].id}${businessQuery}`
+          : `/estimates${businessQuery}&status=approved`,
+    },
+    {
+      label: "Draft Follow-up",
+      value: String(draftEstimates.length),
+      detail: "Proposals still being prepared",
+      tone: draftEstimates.length > 0 ? "warning" : "neutral",
+      href: `/estimates${businessQuery}&status=draft`,
+    },
+    {
+      label: "Conversion Health",
+      value: `${conversionRate}%`,
+      detail: `${convertedEstimates.length} converted or linked`,
+      tone: conversionRate >= 60 ? "success" : "info",
+      href: `/estimates${businessQuery}&status=converted`,
+    },
+  ];
+
   const filterLinks = [
     {
       label: "All",
@@ -202,6 +279,87 @@ export default async function EstimatesPage({
             </p>
           </Card>
         ) : null}
+
+        <Card className="estimate-command-center overflow-hidden border-sky-500/20 bg-gradient-to-br from-zinc-950 via-zinc-900 to-slate-950">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <div className="max-w-3xl">
+              <p className="text-sm uppercase tracking-[0.32em] text-sky-300">
+                Estimate Command Center
+              </p>
+
+              <h2 className="mt-3 text-3xl font-black text-white">
+                Turn proposals into billable work
+              </h2>
+
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-300">
+                Keep draft proposals moving, spot approved work that is ready for
+                invoicing, and track how much future revenue is still sitting in
+                estimates.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <Link href={`/estimates/new${businessQuery}`}>
+                <Button>New Estimate</Button>
+              </Link>
+
+              <Link href={`/invoices${businessQuery}`}>
+                <Button variant="secondary">Open Invoices</Button>
+              </Link>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {estimateHealthCards.map((metric) => (
+              <Link
+                key={metric.label}
+                href={metric.href}
+                className="estimate-health-card rounded-2xl border border-zinc-800 bg-black/35 p-4 transition hover:-translate-y-0.5 hover:border-sky-400/60"
+                data-tone={metric.tone}
+              >
+                <p className="text-xs font-bold uppercase tracking-[0.24em] text-zinc-400">
+                  {metric.label}
+                </p>
+
+                <p className="mt-3 text-2xl font-black text-white">
+                  {metric.value}
+                </p>
+
+                <p className="mt-2 text-sm leading-5 text-zinc-400">
+                  {metric.detail}
+                </p>
+              </Link>
+            ))}
+          </div>
+
+          {topOpenEstimate ? (
+            <div className="estimate-top-open mt-5 flex flex-col gap-4 rounded-2xl border border-sky-400/20 bg-sky-500/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.24em] text-sky-200">
+                  Highest Open Proposal
+                </p>
+
+                <p className="mt-2 text-lg font-bold text-white">
+                  {topOpenEstimate.project_title ||
+                    topOpenEstimate.display_id ||
+                    "Open estimate"}
+                </p>
+
+                <p className="mt-1 text-sm text-zinc-300">
+                  {topOpenEstimate.customer_name || "Unknown customer"} ·{" "}
+                  {formatMoney(topOpenEstimate.estimate_amount)}
+                </p>
+              </div>
+
+              <Link
+                href={`/estimates/${topOpenEstimate.id}${businessQuery}`}
+                className="rounded-xl bg-sky-500 px-4 py-2 text-center text-sm font-black text-white transition hover:bg-sky-600"
+              >
+                Review Estimate
+              </Link>
+            </div>
+          ) : null}
+        </Card>
 
         <Card>
           <form
@@ -265,6 +423,19 @@ export default async function EstimatesPage({
           ))}
         </div>
 
+        {estimates.length > 0 ? (
+          <div className="estimate-filter-summary flex flex-col gap-2 rounded-2xl border border-zinc-800 bg-zinc-900/60 px-4 py-3 text-sm text-zinc-300 sm:flex-row sm:items-center sm:justify-between">
+            <span>
+              Showing {filteredEstimates.length} of {estimates.length} estimates
+              {searchTerm ? ` matching "${searchTerm}"` : ""}.
+            </span>
+
+            <span className="font-bold text-sky-300">
+              Filtered value: {formatMoney(filteredEstimateValue)}
+            </span>
+          </div>
+        ) : null}
+
         {estimates.length === 0 ? (
           <Card>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -301,6 +472,35 @@ export default async function EstimatesPage({
               const statusKey = getStatusKey(estimate.status);
               const isConverted = statusKey === "converted";
               const isLinkedToInvoice = Boolean(estimate.hasLinkedInvoice);
+              const readyToInvoice = statusKey === "approved" && !isLinkedToInvoice;
+              const nextAction =
+                isConverted || isLinkedToInvoice
+                  ? {
+                      label: "Invoice connected",
+                      detail:
+                        "This estimate is already converted or linked to an invoice.",
+                      tone: "success",
+                    }
+                  : readyToInvoice
+                    ? {
+                        label: "Ready to invoice",
+                        detail:
+                          "Approved work is waiting. Open it and convert the proposal into an invoice.",
+                        tone: "success",
+                      }
+                    : statusKey === "draft"
+                      ? {
+                          label: "Finish proposal",
+                          detail:
+                            "Review the scope, pricing, and terms so this can be sent or approved.",
+                          tone: "warning",
+                        }
+                      : {
+                          label: "Review status",
+                          detail:
+                            "Confirm the next step before this estimate moves into billing.",
+                          tone: "info",
+                        };
               const estimateLabel =
                 estimate.display_id ||
                 estimate.project_title ||
@@ -338,6 +538,23 @@ export default async function EstimatesPage({
                         />
                       </div>
                     </div>
+                  </div>
+
+                  <div
+                    className="estimate-next-action mt-5 rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4"
+                    data-tone={nextAction.tone}
+                  >
+                    <p className="text-xs font-bold uppercase tracking-[0.24em] text-sky-300">
+                      Next Best Action
+                    </p>
+
+                    <p className="mt-2 text-base font-bold text-white">
+                      {nextAction.label}
+                    </p>
+
+                    <p className="mt-1 text-sm leading-5 text-zinc-400">
+                      {nextAction.detail}
+                    </p>
                   </div>
 
                   <div className="mt-5 flex flex-wrap gap-3 border-t border-zinc-800 pt-4">

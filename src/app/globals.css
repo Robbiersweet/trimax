@@ -2963,6 +2963,107 @@ html.theme-light .estimate-list-card .text-orange-400 {
   color: #1d4ed8 !important;
 }
 
+.estimate-command-center,
+.estimate-health-card,
+.estimate-top-open,
+.estimate-next-action,
+.estimate-filter-summary {
+  box-shadow:
+    0 18px 44px rgba(2, 6, 23, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.estimate-health-card[data-tone="success"],
+.estimate-next-action[data-tone="success"] {
+  border-color: rgba(52, 211, 153, 0.34);
+}
+
+.estimate-health-card[data-tone="warning"],
+.estimate-next-action[data-tone="warning"] {
+  border-color: rgba(251, 191, 36, 0.38);
+}
+
+.estimate-health-card[data-tone="info"],
+.estimate-next-action[data-tone="info"] {
+  border-color: rgba(56, 189, 248, 0.34);
+}
+
+html.theme-light .estimate-command-center {
+  background:
+    linear-gradient(135deg, #ffffff 0%, #f8fbff 58%, #eff6ff 100%) !important;
+  border-color: #bfdbfe !important;
+  color: #0f172a !important;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.theme-light .estimate-command-center h2,
+html.theme-light .estimate-command-center .text-white,
+html.theme-light .estimate-health-card .text-white,
+html.theme-light .estimate-top-open .text-white,
+html.theme-light .estimate-next-action .text-white,
+html.theme-light .estimate-filter-summary .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light .estimate-command-center .text-zinc-300,
+html.theme-light .estimate-command-center .text-zinc-400,
+html.theme-light .estimate-health-card .text-zinc-300,
+html.theme-light .estimate-health-card .text-zinc-400,
+html.theme-light .estimate-top-open .text-zinc-300,
+html.theme-light .estimate-top-open .text-zinc-400,
+html.theme-light .estimate-next-action .text-zinc-300,
+html.theme-light .estimate-next-action .text-zinc-400,
+html.theme-light .estimate-filter-summary {
+  color: #475569 !important;
+}
+
+html.theme-light .estimate-command-center .text-sky-200,
+html.theme-light .estimate-command-center .text-sky-300,
+html.theme-light .estimate-health-card .text-sky-300,
+html.theme-light .estimate-next-action .text-sky-300,
+html.theme-light .estimate-filter-summary .text-sky-300 {
+  color: #0369a1 !important;
+}
+
+html.theme-light .estimate-health-card,
+html.theme-light .estimate-next-action,
+html.theme-light .estimate-filter-summary {
+  background: #ffffff !important;
+  border-color: #d7dde8 !important;
+  color: #0f172a !important;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.06) !important;
+}
+
+html.theme-light .estimate-health-card:hover {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+}
+
+html.theme-light .estimate-health-card[data-tone="success"],
+html.theme-light .estimate-next-action[data-tone="success"] {
+  background: #ecfdf5 !important;
+  border-color: #86efac !important;
+}
+
+html.theme-light .estimate-health-card[data-tone="warning"],
+html.theme-light .estimate-next-action[data-tone="warning"] {
+  background: #fffbeb !important;
+  border-color: #fde68a !important;
+}
+
+html.theme-light .estimate-health-card[data-tone="info"],
+html.theme-light .estimate-next-action[data-tone="info"] {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+}
+
+html.theme-light .estimate-top-open {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #0f172a !important;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.06) !important;
+}
+
 html.theme-light .document-context-card,
 html.theme-light .document-line-items-panel,
 html.theme-light .document-line-item-row,
