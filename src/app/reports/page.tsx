@@ -606,6 +606,11 @@ export default async function ReportsPage({
     (total, invoice) => total + invoiceOpenAmount(invoice),
     0
   );
+  const collectionRate =
+    invoicedRevenue > 0
+      ? Math.round((paymentsCollected / invoicedRevenue) * 100)
+      : 0;
+  const paymentGap = Math.max(invoicedRevenue - paymentsCollected, 0);
 
   const salesTaxSummary = filteredInvoices.reduce(
     (summary, invoice) => {
@@ -686,6 +691,52 @@ export default async function ReportsPage({
   )
     .map(([, value]) => value)
     .sort((first, second) => second.invoiceTotal - first.invoiceTotal);
+  const strongestClient = clientRevenueBreakdown[0] ?? null;
+  const cashHealthCards = [
+    {
+      label: "Collection Rate",
+      value: `${collectionRate}%`,
+      detail:
+        invoicedRevenue > 0
+          ? `${formatMoney(paymentsCollected)} collected from ${formatMoney(
+              invoicedRevenue
+            )} invoiced.`
+          : "No invoice income in this view yet.",
+      href: appHref(businessSlug, "/payments"),
+      tone: collectionRate >= 80 ? "success" : collectionRate >= 50 ? "info" : "warning",
+    },
+    {
+      label: "Payment Gap",
+      value: formatMoney(paymentGap),
+      detail:
+        paymentGap > 0
+          ? "Still open in this report view."
+          : "No unpaid gap in this report view.",
+      href: appHref(businessSlug, "/invoices"),
+      tone: paymentGap > 0 ? "warning" : "success",
+    },
+    {
+      label: "Top Client",
+      value: strongestClient?.label ?? "Not enough data",
+      detail: strongestClient
+        ? `${formatMoney(strongestClient.invoiceTotal)} invoiced across ${
+            strongestClient.invoiceCount
+          } invoice${strongestClient.invoiceCount === 1 ? "" : "s"}.`
+        : "Client revenue will appear once invoices match this view.",
+      href: appHref(businessSlug, "/clients"),
+      tone: "info",
+    },
+    {
+      label: "Tax Set-Aside",
+      value: formatMoney(salesTaxSummary.taxCollected),
+      detail:
+        salesTaxSummary.taxCollected > 0
+          ? "Review before comparing to official filing records."
+          : "No tax collected in this filtered view.",
+      href: "#financial-reports",
+      tone: "success",
+    },
+  ];
 
   const statusBreakdown = countBy(filteredQueueItems, (item) =>
     normalizeStatus(item.status)
@@ -1135,6 +1186,44 @@ export default async function ReportsPage({
                 label="Tax Collected"
                 value={formatMoney(salesTaxSummary.taxCollected)}
               />
+            </div>
+
+            <div className="report-cash-health mt-5 rounded-3xl border border-white/10 bg-black/25 p-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-sm font-black uppercase tracking-[0.26em] text-emerald-300">
+                    Cash Health
+                  </p>
+                  <h3 className="mt-2 text-2xl font-black text-white">
+                    What the money picture is saying
+                  </h3>
+                </div>
+
+                <p className="text-sm text-zinc-400">
+                  {rangeLabel} / {propertyLabel}
+                </p>
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                {cashHealthCards.map((card) => (
+                  <Link
+                    key={card.label}
+                    href={card.href}
+                    data-tone={card.tone}
+                    className="report-cash-health-card rounded-2xl border border-white/10 bg-zinc-950/80 p-4 transition hover:-translate-y-0.5 hover:border-sky-300/60"
+                  >
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">
+                      {card.label}
+                    </p>
+                    <p className="mt-3 line-clamp-2 text-2xl font-black text-white">
+                      {card.value}
+                    </p>
+                    <p className="mt-2 min-h-[3rem] text-sm leading-6 text-zinc-400">
+                      {card.detail}
+                    </p>
+                  </Link>
+                ))}
+              </div>
             </div>
 
             <div className="mt-5 grid gap-3 md:grid-cols-3">
