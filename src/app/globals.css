@@ -2757,6 +2757,7 @@ html.theme-light .client-add-card,
 html.theme-light .client-mini-card,
 html.theme-light .client-list-card,
 html.theme-light .client-command-card,
+html.theme-light .client-health-card,
 html.theme-light .client-next-action {
   background: #ffffff !important;
   border-color: #d7dde8 !important;
@@ -2767,15 +2768,133 @@ html.theme-light .client-next-action {
 html.theme-light .client-add-card:hover,
 html.theme-light .client-mini-card:hover,
 html.theme-light .client-list-card:hover,
-html.theme-light .client-command-card:hover {
+html.theme-light .client-command-card:hover,
+html.theme-light .client-health-card:hover {
   background: #eff6ff !important;
   border-color: #93c5fd !important;
   color: #1d4ed8 !important;
 }
 
+.client-health-panel {
+  box-shadow:
+    0 18px 44px rgba(2, 6, 23, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.client-health-card[data-tone="success"] {
+  border-color: rgba(52, 211, 153, 0.32);
+}
+
+.client-health-card[data-tone="warning"] {
+  border-color: rgba(251, 191, 36, 0.36);
+}
+
+.client-health-card[data-tone="info"] {
+  border-color: rgba(56, 189, 248, 0.32);
+}
+
+.client-detail-command {
+  box-shadow:
+    0 18px 44px rgba(2, 6, 23, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.client-contact-ready-card[data-status="ready"] {
+  border-color: rgba(52, 211, 153, 0.34);
+}
+
+.client-contact-ready-card[data-status="attention"] {
+  border-color: rgba(251, 191, 36, 0.46);
+}
+
+.client-contact-ready-card[data-status="ready"] .client-contact-ready-dot {
+  background: #34d399;
+  box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.12);
+}
+
+.client-contact-ready-card[data-status="attention"] .client-contact-ready-dot {
+  background: #facc15;
+  box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.14);
+}
+
+html.theme-light .client-health-panel {
+  background:
+    linear-gradient(135deg, #eff6ff 0%, #ffffff 58%, #ecfdf5 100%) !important;
+  border-color: #bfdbfe !important;
+  color: #0f172a !important;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.theme-light .client-health-panel h2,
+html.theme-light .client-health-card .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light .client-health-panel .text-zinc-400,
+html.theme-light .client-health-card .text-zinc-400,
+html.theme-light .client-health-card .text-zinc-500 {
+  color: #475569 !important;
+}
+
+html.theme-light .client-health-card[data-tone="success"] {
+  background: #ecfdf5 !important;
+  border-color: #86efac !important;
+}
+
+html.theme-light .client-health-card[data-tone="warning"] {
+  background: #fffbeb !important;
+  border-color: #facc15 !important;
+}
+
+html.theme-light .client-health-card[data-tone="info"] {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+}
+
+html.theme-light .client-detail-command {
+  background:
+    linear-gradient(135deg, #eff6ff 0%, #ffffff 58%, #ecfdf5 100%) !important;
+  border-color: #bfdbfe !important;
+  color: #0f172a !important;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.theme-light .client-detail-command h2,
+html.theme-light .client-contact-ready-card .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light .client-detail-command .text-zinc-300,
+html.theme-light .client-detail-command .text-zinc-400,
+html.theme-light .client-contact-ready-card .text-zinc-500 {
+  color: #475569 !important;
+}
+
+html.theme-light .client-detail-command .text-sky-300 {
+  color: #0369a1 !important;
+}
+
+html.theme-light .client-contact-ready-card {
+  background: #ffffff !important;
+  border-color: #d7dde8 !important;
+  color: #0f172a !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06) !important;
+}
+
+html.theme-light .client-contact-ready-card[data-status="ready"] {
+  background: #ecfdf5 !important;
+  border-color: #86efac !important;
+}
+
+html.theme-light .client-contact-ready-card[data-status="attention"] {
+  background: #fffbeb !important;
+  border-color: #facc15 !important;
+}
+
 html.theme-light .client-mini-card .text-white,
 html.theme-light .client-list-card .text-white,
 html.theme-light .client-command-card .text-white,
+html.theme-light .client-health-card .text-white,
 html.theme-light .client-next-action .text-white {
   color: #0f172a !important;
 }

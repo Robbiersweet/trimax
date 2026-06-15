@@ -181,6 +181,52 @@ export default async function ClientDetailsPage({
     (total, estimate) => total + parseMoney(estimate.estimate_amount),
     0
   );
+  const contactReadiness = [
+    {
+      label: "Email",
+      value: client.email?.trim().includes("@") ? "Ready" : "Missing",
+      status: client.email?.trim().includes("@") ? "ready" : "attention",
+    },
+    {
+      label: "Phone",
+      value: client.phone?.trim() ? "Ready" : "Missing",
+      status: client.phone?.trim() ? "ready" : "attention",
+    },
+    {
+      label: "Address",
+      value:
+        client.service_address?.trim() || client.billing_address?.trim()
+          ? "Ready"
+          : "Missing",
+      status:
+        client.service_address?.trim() || client.billing_address?.trim()
+          ? "ready"
+          : "attention",
+    },
+  ];
+  const actionHref =
+    openBalance > 0
+      ? `/payments?${new URLSearchParams({
+          business: businessSlug,
+          customer: client.name,
+        }).toString()}`
+      : estimates.length > 0
+        ? `/estimates/new${businessQuery}&clientId=${client.id}`
+        : `/invoices/new${businessQuery}&clientId=${client.id}`;
+  const actionLabel =
+    openBalance > 0
+      ? "Record Payment"
+      : estimates.length > 0
+        ? "Follow Up Estimate"
+        : "Create Invoice";
+  const actionDetail =
+    openBalance > 0
+      ? `${formatMoney(openBalance)} is still open across recent invoices.`
+      : estimates.length > 0
+        ? `${estimates.length} recent estimate${
+            estimates.length === 1 ? "" : "s"
+          } can be reviewed or converted.`
+        : "This client is ready for the next invoice or estimate.";
 
   return (
     <AppShell>
@@ -275,6 +321,51 @@ export default async function ClientDetailsPage({
             <p className="mt-2 leading-7 text-zinc-300">
               {client.notes || "No notes added."}
             </p>
+          </div>
+        </Card>
+
+        <Card className="client-detail-command border-sky-500/25 bg-sky-500/10">
+          <div className="grid gap-5 lg:grid-cols-[1fr_0.9fr] lg:items-start">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.3em] text-sky-300">
+                Client Command
+              </p>
+              <h2 className="mt-2 text-2xl font-black">
+                Next best customer move
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
+                {actionDetail}
+              </p>
+
+              <div className="mt-4 flex flex-wrap gap-3">
+                <Link href={actionHref}>
+                  <Button>{actionLabel}</Button>
+                </Link>
+                <Link href={`/clients/${client.id}/edit${businessQuery}`}>
+                  <Button variant="secondary">Complete Profile</Button>
+                </Link>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+              {contactReadiness.map((item) => (
+                <div
+                  key={item.label}
+                  data-status={item.status}
+                  className="client-contact-ready-card rounded-2xl border border-white/10 bg-black/25 p-4"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">
+                      {item.label}
+                    </p>
+                    <span className="client-contact-ready-dot h-2.5 w-2.5 rounded-full" />
+                  </div>
+                  <p className="mt-2 text-lg font-black text-white">
+                    {item.value}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         </Card>
 

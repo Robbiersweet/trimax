@@ -191,6 +191,26 @@ export default async function ClientsPage({
       total + (clientSummaries[client.id]?.openBalance ?? 0),
     0
   );
+  const clientsWithEmail = clients.filter((client) =>
+    client.email?.trim().includes("@")
+  ).length;
+  const clientsWithPhone = clients.filter((client) =>
+    client.phone?.trim()
+  ).length;
+  const clientsWithAddress = clients.filter(
+    (client) => client.service_address?.trim() || client.billing_address?.trim()
+  ).length;
+  const contactReadyClients = clients.filter(
+    (client) =>
+      client.email?.trim().includes("@") &&
+      Boolean(client.phone?.trim()) &&
+      Boolean(client.service_address?.trim() || client.billing_address?.trim())
+  ).length;
+  const topBalanceClient = [...clients].sort(
+    (first, second) =>
+      (clientSummaries[second.id]?.openBalance ?? 0) -
+      (clientSummaries[first.id]?.openBalance ?? 0)
+  )[0];
   const clientsWithOpenBalances = clients.filter(
     (client) => (clientSummaries[client.id]?.openBalance ?? 0) > 0
   ).length;
@@ -236,6 +256,53 @@ export default async function ClientsPage({
       );
     })
     .slice(0, 4);
+  const clientHealthCards = [
+    {
+      label: "Contact Ready",
+      value: `${contactReadyClients}/${clients.length}`,
+      detail:
+        clients.length > 0
+          ? `${clientsWithEmail} email, ${clientsWithPhone} phone, ${clientsWithAddress} address.`
+          : "Add clients to build a reusable customer book.",
+      href: `/clients${businessQuery}`,
+      tone: "info",
+    },
+    {
+      label: "Payment Follow-up",
+      value: formatMoney(totalOpenBalance),
+      detail:
+        clientsWithOpenBalances > 0
+          ? `${clientsWithOpenBalances} client${
+              clientsWithOpenBalances === 1 ? "" : "s"
+            } with open balances.`
+          : "No client balances need collection right now.",
+      href: `/payments${businessQuery}`,
+      tone: clientsWithOpenBalances > 0 ? "warning" : "success",
+    },
+    {
+      label: "Estimate Follow-up",
+      value: String(activeEstimateTotal),
+      detail:
+        activeEstimateTotal > 0
+          ? "Open proposals are ready for follow-up or conversion."
+          : "No active estimate follow-up needed.",
+      href: `/estimates${businessQuery}`,
+      tone: activeEstimateTotal > 0 ? "success" : "info",
+    },
+    {
+      label: "Top Account",
+      value: topBalanceClient?.name ?? "Not enough data",
+      detail: topBalanceClient
+        ? `${formatMoney(
+            clientSummaries[topBalanceClient.id]?.openBalance ?? 0
+          )} currently open.`
+        : "Top client appears once invoices exist.",
+      href: topBalanceClient
+        ? `/clients/${topBalanceClient.id}${businessQuery}`
+        : `/clients/new${businessQuery}`,
+      tone: "info",
+    },
+  ];
 
   return (
     <AppShell>
@@ -331,6 +398,44 @@ export default async function ClientsPage({
               <p className="mt-1 text-sm text-emerald-100/60">
                 Work still in proposal stage.
               </p>
+            </div>
+          </div>
+
+          <div className="client-health-panel mt-6 rounded-3xl border border-white/10 bg-zinc-950/70 p-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-sm font-black uppercase tracking-[0.28em] text-sky-300">
+                  Client Health
+                </p>
+                <h2 className="mt-2 text-xl font-bold text-white">
+                  Customer book readiness
+                </h2>
+              </div>
+
+              <p className="text-sm text-zinc-400">
+                Accounting and follow-up signal
+              </p>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              {clientHealthCards.map((card) => (
+                <Link
+                  key={card.label}
+                  href={card.href}
+                  data-tone={card.tone}
+                  className="client-health-card rounded-2xl border border-white/10 bg-black/25 p-4 transition hover:-translate-y-0.5 hover:border-sky-300/60"
+                >
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">
+                    {card.label}
+                  </p>
+                  <p className="mt-3 line-clamp-2 text-2xl font-black text-white">
+                    {card.value}
+                  </p>
+                  <p className="mt-2 min-h-[3rem] text-sm leading-6 text-zinc-400">
+                    {card.detail}
+                  </p>
+                </Link>
+              ))}
             </div>
           </div>
 
