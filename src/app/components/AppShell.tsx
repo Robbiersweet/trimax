@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import Navigation from "./Navigation";
+import NavigationHistoryTracker from "./NavigationHistoryTracker";
 import QuickCommandCenter from "./QuickCommandCenter";
 import {
   defaultMaintenanceSettings,
@@ -66,6 +67,7 @@ export default function AppShell({
 
   return (
     <main className="app-shell-root min-h-screen bg-zinc-950 text-white">
+      <NavigationHistoryTracker />
       {isAuthPage ? (
         <div className="mx-auto max-w-6xl px-4 py-5">
           {children}

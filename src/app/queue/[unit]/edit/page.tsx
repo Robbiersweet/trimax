@@ -6,8 +6,8 @@ import {
   useRouter,
   useSearchParams,
 } from "next/navigation";
-import Link from "next/link";
 import AppShell from "../../../components/AppShell";
+import BackButton from "../../../components/BackButton";
 import Card from "../../../components/Card";
 import Button from "../../../components/Button";
 import InputField from "../../../components/InputField";
@@ -300,12 +300,10 @@ export default function EditQueueItemPage() {
       )}
 
       <div className="mx-auto max-w-3xl space-y-6">
-        <Link
-          href={`/queue/${queueItemId}?business=${businessSlug}`}
-          className="app-back-button inline-flex rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-2 text-sm font-semibold text-orange-400 hover:text-orange-300"
-        >
-          Back to Queue Item
-        </Link>
+        <BackButton
+          label="Back"
+          fallbackHref={`/queue/${queueItemId}?business=${businessSlug}`}
+        />
 
         <div>
           <p className="text-sm uppercase tracking-[0.3em] text-orange-400">

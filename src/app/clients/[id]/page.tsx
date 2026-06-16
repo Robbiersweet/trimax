@@ -1,5 +1,6 @@
 import Link from "next/link";
 import AppShell from "../../components/AppShell";
+import BackButton from "../../components/BackButton";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import DeleteClientButton from "../../components/DeleteClientButton";
@@ -231,12 +232,7 @@ export default async function ClientDetailsPage({
   return (
     <AppShell>
       <div className="space-y-6">
-        <Link
-          href={`/clients${businessQuery}`}
-          className="app-back-button inline-flex rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-2 text-sm font-semibold text-orange-400 hover:text-orange-300"
-        >
-          &lt; Back to Clients
-        </Link>
+        <BackButton label="Back" fallbackHref={`/clients${businessQuery}`} />
 
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>

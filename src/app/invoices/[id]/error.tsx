@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import BackButton from "../../components/BackButton";
 
 export default function InvoiceErrorPage({
   reset,
@@ -37,12 +37,11 @@ export default function InvoiceErrorPage({
             Retry invoice
           </button>
 
-          <Link
-            href={backHref}
-            className="rounded-2xl bg-zinc-800 px-5 py-3 font-semibold text-white"
-          >
-            Back to invoices
-          </Link>
+          <BackButton
+            label="Back"
+            fallbackHref={backHref}
+            className="border-zinc-700 bg-zinc-800 text-white"
+          />
         </div>
       </div>
     </main>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import AppShell from "../components/AppShell";
+import BackButton from "../components/BackButton";
 import Button from "../components/Button";
 import Card from "../components/Card";
 import InputField from "../components/InputField";
@@ -744,12 +745,7 @@ function RecurringInvoicesPageContent() {
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <Link
-              href={`/invoices${businessQuery}`}
-              className="text-sm font-semibold text-orange-400 hover:text-orange-300"
-            >
-              Back to Invoices
-            </Link>
+            <BackButton label="Back" fallbackHref={`/invoices${businessQuery}`} />
 
             <p className="mt-4 text-sm uppercase tracking-[0.3em] text-orange-400">
               Recurring Drafts

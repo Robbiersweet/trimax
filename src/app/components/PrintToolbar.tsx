@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import BackButton from "./BackButton";
 
 type PrintToolbarProps = {
   backHref: string;
@@ -32,12 +33,11 @@ export default function PrintToolbar({
   return (
     <div className="sticky top-0 z-10 border-b border-zinc-200 bg-white/95 px-6 py-4 text-black shadow-sm print:hidden">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3">
-        <Link
-          href={backHref}
-          className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-100"
-        >
-          {backLabel}
-        </Link>
+        <BackButton
+          label={backLabel.toLowerCase().startsWith("back to") ? "Back" : backLabel}
+          fallbackHref={backHref}
+          className="rounded-xl border-zinc-300 bg-white text-zinc-700 hover:border-blue-500 hover:bg-zinc-100 hover:text-blue-700"
+        />
 
         <div className="flex flex-wrap items-center gap-3">
           {alternateHref && alternateLabel ? (

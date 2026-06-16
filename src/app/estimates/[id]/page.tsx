@@ -1,5 +1,6 @@
 import Link from "next/link";
 import AppShell from "../../components/AppShell";
+import BackButton from "../../components/BackButton";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import ConvertEstimateToInvoiceButton from "../../components/ConvertEstimateToInvoiceButton";
@@ -223,12 +224,10 @@ export default async function EstimateDetailsPage({
   return (
     <AppShell>
       <div className="space-y-6">
-        <Link
-          href={`/estimates?business=${businessSlug}`}
-          className="text-sm text-orange-400"
-        >
-          Back to Estimates
-        </Link>
+        <BackButton
+          label="Back"
+          fallbackHref={`/estimates?business=${businessSlug}`}
+        />
 
         <div>
           <p className="text-sm uppercase tracking-[0.3em] text-orange-400">

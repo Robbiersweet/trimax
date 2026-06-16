@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import BackButton from "../../../components/BackButton";
 
 export default function InvoicePrintErrorPage({
   reset,
@@ -36,12 +36,11 @@ export default function InvoicePrintErrorPage({
             Retry print page
           </button>
 
-          <Link
-            href={backHref}
-            className="rounded-2xl bg-zinc-900 px-5 py-3 font-semibold text-white"
-          >
-            Back to invoices
-          </Link>
+          <BackButton
+            label="Back"
+            fallbackHref={backHref}
+            className="border-zinc-700 bg-zinc-900 text-white"
+          />
         </div>
       </div>
     </main>

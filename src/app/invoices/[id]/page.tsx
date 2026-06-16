@@ -1,5 +1,6 @@
 import Link from "next/link";
 import AppShell from "../../components/AppShell";
+import BackButton from "../../components/BackButton";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import StatusBadge from "../../components/StatusBadge";
@@ -228,12 +229,7 @@ function ProblemCard({
   return (
     <AppShell>
       <main className="mx-auto w-full max-w-4xl px-6 py-10">
-        <Link
-          href={`/invoices${businessQuery}`}
-          className="text-sm font-semibold text-orange-400 hover:text-orange-300"
-        >
-          Back to Invoices
-        </Link>
+        <BackButton label="Back" fallbackHref={`/invoices${businessQuery}`} />
 
         <Card className="mt-6">
           <p className="text-sm font-semibold uppercase tracking-[0.35em] text-orange-400">
@@ -501,12 +497,7 @@ export default async function InvoiceDetailPage({
     <AppShell>
       <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
         <div className="mb-8 sm:mb-10">
-          <Link
-            href={`/invoices${businessQuery}`}
-            className="text-sm font-semibold text-orange-400 hover:text-orange-300"
-          >
-            Back to Invoices
-          </Link>
+          <BackButton label="Back" fallbackHref={`/invoices${businessQuery}`} />
 
           <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>

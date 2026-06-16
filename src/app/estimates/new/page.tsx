@@ -9,6 +9,7 @@ import {
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AppShell from "../../components/AppShell";
+import BackButton from "../../components/BackButton";
 import Button from "../../components/Button";
 import DocumentReadinessPanel from "../../components/DocumentReadinessPanel";
 import InputField from "../../components/InputField";
@@ -1174,6 +1175,8 @@ function NewEstimatePageContent() {
       )}
 
       <div className="mx-auto max-w-4xl">
+        <BackButton label="Back" fallbackHref={`/estimates?business=${businessSlug}`} />
+
         <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
           Trimax
         </p>

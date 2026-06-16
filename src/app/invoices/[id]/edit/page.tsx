@@ -7,6 +7,7 @@ import {
   useSearchParams,
 } from "next/navigation";
 import AppShell from "../../../components/AppShell";
+import BackButton from "../../../components/BackButton";
 import Card from "../../../components/Card";
 import Button from "../../../components/Button";
 import InputField from "../../../components/InputField";
@@ -832,6 +833,11 @@ export default function EditInvoicePage() {
       )}
 
       <div className="mx-auto max-w-4xl">
+        <BackButton
+          label="Back"
+          fallbackHref={`/invoices/${invoiceId}?business=${businessSlug}`}
+        />
+
         <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
           Invoice Details
         </p>

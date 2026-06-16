@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import AppShell from "../components/AppShell";
+import BackButton from "../components/BackButton";
 import Button from "../components/Button";
 import Card from "../components/Card";
 import InputField from "../components/InputField";
@@ -1372,12 +1373,11 @@ function BusinessSettingsPageContent() {
       <div className="space-y-6">
         <div>
           {returnTo ? (
-            <Link
-              href={returnTo}
-              className="app-back-button mb-4 inline-flex rounded-full border border-zinc-700 px-4 py-2 text-sm font-bold text-zinc-200 transition hover:border-orange-400 hover:text-orange-300"
-            >
-              Back to document
-            </Link>
+            <BackButton
+              label="Back"
+              fallbackHref={returnTo}
+              className="mb-4 rounded-full"
+            />
           ) : null}
 
           <p className="text-sm uppercase tracking-[0.3em] text-orange-400">

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import AppShell from "../../components/AppShell";
+import BackButton from "../../components/BackButton";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import StatusBadge from "../../components/StatusBadge";
@@ -389,12 +390,7 @@ export default async function QueueDetailPage({
   return (
     <AppShell>
       <div className="space-y-6">
-        <Link
-          href={`/queue?business=${businessSlug}`}
-          className="inline-flex text-sm text-orange-400 hover:text-orange-300"
-        >
-          Back to Queue
-        </Link>
+        <BackButton label="Back" fallbackHref={`/queue?business=${businessSlug}`} />
 
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -712,9 +708,7 @@ export default async function QueueDetailPage({
         />
 
         <div className="flex flex-wrap gap-4">
-          <Link href={`/queue?business=${businessSlug}`}>
-            <Button variant="secondary">Back to Queue</Button>
-          </Link>
+          <BackButton label="Back" fallbackHref={`/queue?business=${businessSlug}`} />
 
           {!linkedEstimate && (
             <Link

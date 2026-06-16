@@ -1,6 +1,6 @@
-import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
+import BackButton from "../../../components/BackButton";
 import PrintToolbar from "../../../components/PrintToolbar";
 import { supabase } from "../../../lib/supabase";
 import {
@@ -584,12 +584,11 @@ export default async function InvoicePrintPage({
         )}
 
         <div className="mt-12 print:hidden">
-          <Link
-            href={`/invoices/${invoice.id}?business=${businessSlug}`}
-            className="text-orange-600 underline"
-          >
-            Back to Invoice
-          </Link>
+          <BackButton
+            label="Back"
+            fallbackHref={`/invoices/${invoice.id}?business=${businessSlug}`}
+            className="border-zinc-300 bg-white text-zinc-700 hover:border-blue-500 hover:text-blue-700"
+          />
         </div>
       </div>
     </main>
@@ -890,12 +889,11 @@ function FiveStarsBoaPrintPage({
         </div>
 
         <div className="mt-10 print:hidden">
-          <Link
-            href={`/invoices/${invoice.id}?business=${businessSlug}`}
-            className="text-orange-600 underline"
-          >
-            Back to Invoice
-          </Link>
+          <BackButton
+            label="Back"
+            fallbackHref={`/invoices/${invoice.id}?business=${businessSlug}`}
+            className="border-zinc-300 bg-white text-zinc-700 hover:border-blue-500 hover:text-blue-700"
+          />
         </div>
       </div>
     </main>

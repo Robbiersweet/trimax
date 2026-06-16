@@ -1,5 +1,5 @@
-import Link from "next/link";
 import Image from "next/image";
+import BackButton from "../../../components/BackButton";
 import PrintToolbar from "../../../components/PrintToolbar";
 import { supabase } from "../../../lib/supabase";
 import {
@@ -401,12 +401,11 @@ export default async function EstimatePrintPage({
         </section>
 
         <div className="mt-12 print:hidden">
-          <Link
-            href={`/estimates/${estimate.id}?business=${businessSlug}`}
-            className="text-orange-600 underline"
-          >
-            Back to Estimate
-          </Link>
+          <BackButton
+            label="Back"
+            fallbackHref={`/estimates/${estimate.id}?business=${businessSlug}`}
+            className="border-zinc-300 bg-white text-zinc-700 hover:border-blue-500 hover:text-blue-700"
+          />
         </div>
       </div>
     </main>
