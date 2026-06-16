@@ -5435,6 +5435,24 @@ html.theme-light .dashboard-mobile-priority-card[data-tone="checks"] {
   background: rgba(14, 165, 233, 0.14);
 }
 
+.quick-command-hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  padding: 0.75rem 0.85rem 0;
+}
+
+.quick-command-hints span {
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
 .quick-command-results {
   display: grid;
   gap: 0.55rem;
@@ -5461,7 +5479,8 @@ html.theme-light .dashboard-mobile-priority-card[data-tone="checks"] {
 }
 
 .quick-command-result:hover,
-.quick-command-result:focus-visible {
+.quick-command-result:focus-visible,
+.quick-command-result[data-active="true"] {
   transform: translateY(-1px);
   border-color: rgba(125, 211, 252, 0.5);
   background: rgba(14, 165, 233, 0.13);
@@ -5545,6 +5564,14 @@ html.theme-light .dashboard-mobile-priority-card[data-tone="checks"] {
     grid-column: 1 / -1;
     justify-self: stretch;
   }
+
+  .quick-command-hints {
+    padding-top: 0.65rem;
+  }
+
+  .quick-command-hints span {
+    font-size: 0.68rem;
+  }
 }
 
 html.theme-light .quick-command-launcher {
@@ -5571,6 +5598,16 @@ html.theme-light .quick-command-panel {
 
 html.theme-light .quick-command-search-row {
   border-color: #d7dde8 !important;
+}
+
+html.theme-light .quick-command-hints {
+  border-color: #e2e8f0 !important;
+}
+
+html.theme-light .quick-command-hints span {
+  background: #f8fafc !important;
+  border-color: #d7dde8 !important;
+  color: #475569 !important;
 }
 
 html.theme-light .quick-command-search-icon {
@@ -5600,7 +5637,8 @@ html.theme-light .quick-command-result {
 }
 
 html.theme-light .quick-command-result:hover,
-html.theme-light .quick-command-result:focus-visible {
+html.theme-light .quick-command-result:focus-visible,
+html.theme-light .quick-command-result[data-active="true"] {
   background: #eff6ff !important;
   border-color: #93c5fd !important;
 }

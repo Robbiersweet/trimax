@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type CommandTone =
@@ -52,9 +52,11 @@ function commandMatches(command: CommandItem, query: string) {
 }
 
 export default function QuickCommandCenter() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const business = searchParams.get("business") ?? "rnl-creations";
 
@@ -158,6 +160,19 @@ export default function QuickCommandCenter() {
   const filteredCommands = commands
     .filter((command) => commandMatches(command, query.trim().toLowerCase()))
     .slice(0, 8);
+  const selectedCommand =
+    filteredCommands[Math.min(selectedIndex, filteredCommands.length - 1)];
+
+  function openCommandCenter() {
+    setIsOpen(true);
+    setSelectedIndex(0);
+  }
+
+  function closeCommandCenter() {
+    setIsOpen(false);
+    setQuery("");
+    setSelectedIndex(0);
+  }
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -168,12 +183,13 @@ export default function QuickCommandCenter() {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         setIsOpen((current) => !current);
+        setSelectedIndex(0);
         return;
       }
 
       if (event.key === "/") {
         event.preventDefault();
-        setIsOpen(true);
+        openCommandCenter();
       }
     }
 
@@ -198,11 +214,11 @@ export default function QuickCommandCenter() {
     <>
       <button
         type="button"
-        onClick={() => setIsOpen(true)}
+        onClick={openCommandCenter}
         className="quick-command-launcher"
         aria-label="Open quick command center"
       >
-        <span aria-hidden="true">⌕</span>
+        <span aria-hidden="true">/</span>
         <span>Command</span>
       </button>
 
@@ -212,7 +228,7 @@ export default function QuickCommandCenter() {
           role="presentation"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) {
-              setIsOpen(false);
+              closeCommandCenter();
             }
           }}
         >
@@ -224,15 +240,38 @@ export default function QuickCommandCenter() {
           >
             <div className="quick-command-search-row">
               <span aria-hidden="true" className="quick-command-search-icon">
-                ⌕
+                /
               </span>
               <input
                 ref={searchInputRef}
                 value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setSelectedIndex(0);
+                }}
                 onKeyDown={(event) => {
                   if (event.key === "Escape") {
-                    setIsOpen(false);
+                    closeCommandCenter();
+                  }
+
+                  if (event.key === "ArrowDown") {
+                    event.preventDefault();
+                    setSelectedIndex((current) =>
+                      filteredCommands.length === 0
+                        ? 0
+                        : Math.min(current + 1, filteredCommands.length - 1)
+                    );
+                  }
+
+                  if (event.key === "ArrowUp") {
+                    event.preventDefault();
+                    setSelectedIndex((current) => Math.max(current - 1, 0));
+                  }
+
+                  if (event.key === "Enter" && selectedCommand) {
+                    event.preventDefault();
+                    closeCommandCenter();
+                    router.push(selectedCommand.href);
                   }
                 }}
                 placeholder="Search workflows, invoices, checks, queue..."
@@ -240,7 +279,7 @@ export default function QuickCommandCenter() {
               />
               <button
                 type="button"
-                onClick={() => setIsOpen(false)}
+                onClick={closeCommandCenter}
                 className="quick-command-close"
                 aria-label="Close quick command center"
               >
@@ -248,15 +287,23 @@ export default function QuickCommandCenter() {
               </button>
             </div>
 
+            <div className="quick-command-hints">
+              <span>Type to filter</span>
+              <span>Enter opens highlighted</span>
+              <span>/ or Ctrl+K opens</span>
+            </div>
+
             <div className="quick-command-results">
               {filteredCommands.length > 0 ? (
-                filteredCommands.map((command) => (
+                filteredCommands.map((command, index) => (
                   <Link
                     key={command.href}
                     href={command.href}
                     data-tone={command.tone}
+                    data-active={index === selectedIndex}
                     className="quick-command-result"
-                    onClick={() => setIsOpen(false)}
+                    onMouseEnter={() => setSelectedIndex(index)}
+                    onClick={closeCommandCenter}
                   >
                     <span className="quick-command-result-mark" />
                     <span className="min-w-0">
