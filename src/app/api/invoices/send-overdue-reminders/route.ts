@@ -187,18 +187,17 @@ async function sendWithResend({
   return { ok: true, status: response.status, error: null };
 }
 
-function isAuthorized(request: Request) {
-  const secret = process.env.TRIMAX_REMINDER_CRON_SECRET;
+export async function POST(request: Request) {
+  const reminderSecret = process.env.TRIMAX_REMINDER_CRON_SECRET;
 
-  if (!secret) {
-    return true;
+  if (!reminderSecret) {
+    return NextResponse.json(
+      { error: "Reminder automation is missing TRIMAX_REMINDER_CRON_SECRET." },
+      { status: 503 }
+    );
   }
 
-  return request.headers.get("x-trimax-cron-secret") === secret;
-}
-
-export async function POST(request: Request) {
-  if (!isAuthorized(request)) {
+  if (request.headers.get("x-trimax-cron-secret") !== reminderSecret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

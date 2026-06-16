@@ -4511,6 +4511,34 @@ html.theme-light .dashboard-cash-priority {
     linear-gradient(135deg, rgba(99, 102, 241, 0.16), rgba(2, 6, 23, 0.62));
 }
 
+.dashboard-queue-command {
+  box-shadow: 0 22px 60px rgba(2, 6, 23, 0.2);
+}
+
+.dashboard-queue-command-card[data-tone="sky"] {
+  border-color: rgba(56, 189, 248, 0.3);
+  background:
+    linear-gradient(135deg, rgba(14, 165, 233, 0.16), rgba(2, 6, 23, 0.62));
+}
+
+.dashboard-queue-command-card[data-tone="amber"] {
+  border-color: rgba(251, 191, 36, 0.3);
+  background:
+    linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(2, 6, 23, 0.62));
+}
+
+.dashboard-queue-command-card[data-tone="emerald"] {
+  border-color: rgba(52, 211, 153, 0.3);
+  background:
+    linear-gradient(135deg, rgba(16, 185, 129, 0.16), rgba(2, 6, 23, 0.62));
+}
+
+.dashboard-queue-command-card[data-tone="rose"] {
+  border-color: rgba(251, 113, 133, 0.3);
+  background:
+    linear-gradient(135deg, rgba(244, 63, 94, 0.16), rgba(2, 6, 23, 0.62));
+}
+
 html.theme-light .dashboard-command-center {
   background:
     linear-gradient(135deg, #ffffff, #f8fafc) !important;
@@ -4570,6 +4598,74 @@ html.theme-light .dashboard-command-card[data-tone="create"] {
 }
 
 html.theme-light .dashboard-command-card span {
+  background: rgba(255, 255, 255, 0.78) !important;
+  color: #0f172a !important;
+  border-color: rgba(100, 116, 139, 0.24) !important;
+}
+
+html.theme-light .dashboard-queue-command {
+  background:
+    radial-gradient(circle at 88% 0%, rgba(14, 165, 233, 0.1), transparent 32%),
+    linear-gradient(135deg, #ffffff, #f8fafc) !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 22px 55px rgba(15, 23, 42, 0.1) !important;
+}
+
+html.theme-light .dashboard-queue-command h2,
+html.theme-light .dashboard-queue-command .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light .dashboard-queue-command .text-zinc-300,
+html.theme-light .dashboard-queue-command .text-zinc-400 {
+  color: #475569 !important;
+}
+
+html.theme-light .dashboard-queue-command .text-sky-300,
+html.theme-light .dashboard-queue-command .text-sky-200 {
+  color: #0369a1 !important;
+}
+
+html.theme-light .dashboard-queue-command .bg-white\/5,
+html.theme-light .dashboard-queue-command .bg-black\/30,
+html.theme-light .dashboard-queue-command .bg-zinc-900,
+html.theme-light .dashboard-queue-command .bg-zinc-950 {
+  background: #ffffff !important;
+}
+
+html.theme-light .dashboard-queue-command .border-white\/10,
+html.theme-light .dashboard-queue-command .border-white\/15,
+html.theme-light .dashboard-queue-command .border-zinc-800 {
+  border-color: #d7dde8 !important;
+}
+
+html.theme-light .dashboard-queue-command-card {
+  color: #0f172a !important;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.theme-light .dashboard-queue-command-card[data-tone="sky"] {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+}
+
+html.theme-light .dashboard-queue-command-card[data-tone="amber"] {
+  background: #fffbeb !important;
+  border-color: #fcd34d !important;
+}
+
+html.theme-light .dashboard-queue-command-card[data-tone="emerald"] {
+  background: #ecfdf5 !important;
+  border-color: #6ee7b7 !important;
+}
+
+html.theme-light .dashboard-queue-command-card[data-tone="rose"] {
+  background: #fff1f2 !important;
+  border-color: #fb7185 !important;
+}
+
+html.theme-light .dashboard-queue-command-card span {
   background: rgba(255, 255, 255, 0.78) !important;
   color: #0f172a !important;
   border-color: rgba(100, 116, 139, 0.24) !important;

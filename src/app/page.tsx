@@ -1082,6 +1082,65 @@ export default async function DashboardPage({
       tone: "create",
     },
   ];
+  const queueFocusHeadline =
+    readySoonUnscheduled.length > 0
+      ? "Schedule ready units first"
+      : queueItemsNeedingEstimate.length > 0
+        ? "Finish queue estimates"
+        : remediationQueueItems.length > 0
+          ? "Watch remediation risk"
+          : scheduledQueueItems.length > 0
+            ? "Work is already scheduled"
+            : "Queue is calm";
+  const queueFocusDetail =
+    readySoonUnscheduled.length > 0
+      ? `${readySoonUnscheduled.length} unit${
+          readySoonUnscheduled.length === 1 ? "" : "s"
+        } are due within 7 days and not scheduled.`
+      : queueItemsNeedingEstimate.length > 0
+        ? `${queueItemsNeedingEstimate.length} queue item${
+            queueItemsNeedingEstimate.length === 1 ? "" : "s"
+          } still need an estimate before billing can move.`
+        : remediationQueueItems.length > 0
+          ? `${remediationQueueItems.length} item${
+              remediationQueueItems.length === 1 ? "" : "s"
+            } have smoker or remediation notes.`
+          : scheduledQueueItems.length > 0
+            ? `${scheduledQueueItems.length} job${
+                scheduledQueueItems.length === 1 ? "" : "s"
+              } are on the schedule.`
+            : "No active queue work needs immediate attention.";
+  const queueActionItems = [
+    {
+      label: "Needs Estimate",
+      value: queueItemsNeedingEstimate.length,
+      detail: "Queue work not linked to an estimate",
+      href: `/queue?business=${selectedBusinessSlug}&view=needs-estimate`,
+      tone: "sky",
+    },
+    {
+      label: "Ready Soon",
+      value: readySoonUnscheduled.length,
+      detail: "Due within 7 days and unscheduled",
+      href: `/queue?business=${selectedBusinessSlug}&view=ready-soon`,
+      tone: "amber",
+    },
+    {
+      label: "Scheduled",
+      value: scheduledQueueItems.length,
+      detail: "Jobs already on the calendar",
+      href: `/queue?business=${selectedBusinessSlug}&status=scheduled`,
+      tone: "emerald",
+    },
+    {
+      label: "Remediation",
+      value: remediationQueueItems.length,
+      detail: "Smoker or extra-prep watch list",
+      href: `/queue?business=${selectedBusinessSlug}&view=remediation`,
+      tone: "rose",
+    },
+  ];
+  const recentQueueItems = queueItems.slice(0, 3);
 
   return (
     <AppShell>
@@ -1199,6 +1258,104 @@ export default async function DashboardPage({
             </div>
           </Card>
         </RoleVisible>
+
+        <Card className="dashboard-queue-command dark-surface overflow-hidden border-sky-500/20 bg-gradient-to-br from-zinc-950 via-zinc-900 to-emerald-950/20">
+          <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr] xl:items-start">
+            <div>
+              <p className="dashboard-section-label text-sm uppercase tracking-[0.3em] text-sky-300">
+                Queue Command
+              </p>
+
+              <h2 className="mt-2 text-3xl font-black tracking-tight text-white">
+                {queueFocusHeadline}
+              </h2>
+
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-300">
+                {queueFocusDetail} This keeps apartment turns visible without
+                making the dashboard feel like a full queue page.
+              </p>
+
+              <div className="mt-5 flex flex-wrap gap-3">
+                <Link
+                  href={`/queue?business=${selectedBusinessSlug}`}
+                  className="rounded-full bg-sky-400 px-5 py-3 text-sm font-black text-zinc-950 shadow-lg shadow-sky-500/20 transition hover:-translate-y-0.5 hover:bg-sky-300"
+                >
+                  Open Queue
+                </Link>
+
+                <Link
+                  href={`/new-request?business=${selectedBusinessSlug}`}
+                  className="rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:border-sky-300/50 hover:bg-white/10"
+                >
+                  New Queue Item
+                </Link>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              {queueActionItems.map((item) => (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  data-tone={item.tone}
+                  className="dashboard-queue-command-card rounded-2xl border border-zinc-800 bg-black/30 p-4 transition hover:-translate-y-0.5 hover:border-sky-300/60"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-xs font-black uppercase tracking-[0.22em] text-zinc-400">
+                      {item.label}
+                    </p>
+
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm font-black text-white">
+                      {item.value}
+                    </span>
+                  </div>
+
+                  <p className="mt-3 text-sm leading-5 text-zinc-300">
+                    {item.detail}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          {recentQueueItems.length > 0 ? (
+            <div className="dashboard-queue-mini-list mt-5 grid gap-3 lg:grid-cols-3">
+              {recentQueueItems.map((item) => (
+                <Link
+                  key={item.id}
+                  href={`/queue/${item.id}?business=${selectedBusinessSlug}`}
+                  className="dashboard-feature-card dark-surface rounded-2xl border border-zinc-800 bg-zinc-950 p-4 transition hover:border-sky-400/60"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-white">
+                        {item.property || "Property"} - Unit{" "}
+                        {maybeCanonicalApartmentUnitLabel(item.unit) || "-"}
+                      </p>
+
+                      <p className="mt-1 truncate text-sm text-zinc-400">
+                        {item.paint_type || "Paint TBD"} /{" "}
+                        {item.flooring || "Flooring TBD"}
+                      </p>
+                    </div>
+
+                    <StatusBadge status={item.status || "Pending"} />
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                    <span className="rounded-full border border-zinc-800 bg-zinc-900 px-3 py-1 text-zinc-300">
+                      Due {formatShortDate(item.ready_date)}
+                    </span>
+
+                    <span className="rounded-full border border-zinc-800 bg-zinc-900 px-3 py-1 text-zinc-300">
+                      Scheduled {formatShortDate(item.scheduled_date)}
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : null}
+        </Card>
 
         <RoleVisible
           businessSlug={selectedBusinessSlug}
@@ -1751,7 +1908,7 @@ export default async function DashboardPage({
           </Card>
         </RoleVisible>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="hidden gap-4 md:grid md:grid-cols-2">
           <Card className="border-yellow-500/30 bg-yellow-500/5">
             <p className="text-sm uppercase tracking-[0.3em] text-yellow-300">
               Scheduling Attention
@@ -1804,7 +1961,7 @@ export default async function DashboardPage({
           </Card>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="hidden gap-4 md:grid md:grid-cols-3">
           <Card>
             <p className="text-sm text-zinc-400">
               Active Queue
@@ -1866,7 +2023,7 @@ export default async function DashboardPage({
           </RoleVisible>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="hidden gap-4 md:grid md:grid-cols-3">
           <Card>
             <p className="text-sm text-zinc-400">
               Scheduled Jobs
