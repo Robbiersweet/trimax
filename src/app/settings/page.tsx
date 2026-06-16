@@ -1284,6 +1284,60 @@ function BusinessSettingsPageContent() {
       status: "ready",
     },
   ];
+  const emailLaunchSteps = [
+    {
+      label: "Sender profile",
+      detail: senderEmail.trim()
+        ? `${senderName.trim() || business?.name || "Trimax"} is the visible sender.`
+        : "Add the email address customers will see.",
+      ready: senderEmail.trim().includes("@"),
+    },
+    {
+      label: "Reply path",
+      detail:
+        replyToEmail.trim() || currentEmail
+          ? "Customer replies have a destination."
+          : "Add a reply-to inbox for customer responses.",
+      ready:
+        replyToEmail.trim().includes("@") ||
+        Boolean(currentEmail?.includes("@")),
+    },
+    {
+      label: "Invoice message",
+      detail: "Subject and body are prepared for new invoice sends.",
+      ready: Boolean(
+        invoiceSubjectTemplate.trim() && invoiceBodyTemplate.trim()
+      ),
+    },
+    {
+      label: "Reminder message",
+      detail: "Late payment reminder copy is ready.",
+      ready: Boolean(
+        paymentReminderSubjectTemplate.trim() &&
+          paymentReminderBodyTemplate.trim()
+      ),
+    },
+    {
+      label: "Signature",
+      detail: emailSignature.trim()
+        ? "Signature is included on customer messages."
+        : "Trimax will use the default signature.",
+      ready: true,
+    },
+  ];
+  const emailLaunchReadyCount = emailLaunchSteps.filter(
+    (step) => step.ready
+  ).length;
+  const emailLaunchPercent = Math.round(
+    (emailLaunchReadyCount / emailLaunchSteps.length) * 100
+  );
+  const nextEmailLaunchStep =
+    emailLaunchSteps.find((step) => !step.ready) ?? {
+      label: "Ready to send",
+      detail:
+        "Workspace email setup looks ready. Provider connection is checked when a message sends.",
+      ready: true,
+    };
   const emailPreviewVariables = {
     businessName: business?.name ?? "R&L Creations",
     invoiceNumber: "INV-0402",
@@ -1653,6 +1707,54 @@ function BusinessSettingsPageContent() {
                   key behind the scenes. After that, each workspace can manage
                   its own sender name, sender email, reply-to, templates, and
                   signature here without touching deployment settings.
+                </div>
+
+                <div className="settings-email-launch-panel rounded-3xl border p-5">
+                  <div className="grid gap-5 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
+                    <div>
+                      <p className="text-sm font-black uppercase tracking-[0.24em]">
+                        Email Launch Checklist
+                      </p>
+                      <h3 className="mt-2 text-3xl font-black">
+                        {emailLaunchPercent}% ready
+                      </h3>
+                      <p className="mt-2 text-sm leading-6">
+                        Next: {nextEmailLaunchStep.label}.{" "}
+                        {nextEmailLaunchStep.detail}
+                      </p>
+
+                      <div className="mt-4 h-3 overflow-hidden rounded-full">
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${emailLaunchPercent}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {emailLaunchSteps.map((step) => (
+                        <div
+                          key={step.label}
+                          data-ready={step.ready ? "true" : "false"}
+                          className="settings-email-launch-step rounded-2xl border p-4"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-sm font-black">
+                              {step.label}
+                            </p>
+                            <span className="rounded-full px-3 py-1 text-xs font-black">
+                              {step.ready ? "Ready" : "Needs setup"}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-sm leading-6">
+                            {step.detail}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="settings-email-readiness rounded-3xl border border-sky-200 bg-sky-50 p-4">
