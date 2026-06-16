@@ -5700,6 +5700,14 @@ html.theme-light .dashboard-mobile-priority-card[data-tone="checks"] {
   background: #f472b6;
 }
 
+.quick-command-result[data-tone="setup"] .quick-command-result-mark {
+  background: #22d3ee;
+}
+
+.quick-command-result[data-tone="security"] .quick-command-result-mark {
+  background: #fb7185;
+}
+
 .quick-command-result-title,
 .quick-command-result-detail {
   display: block;

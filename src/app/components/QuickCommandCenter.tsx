@@ -10,6 +10,8 @@ type CommandTone =
   | "create"
   | "client"
   | "report"
+  | "setup"
+  | "security"
   | "system";
 
 type CommandItem = {
@@ -130,6 +132,35 @@ export default function QuickCommandCenter() {
         keywords: ["overdue", "late", "reminder", "aging", "past due"],
       },
       {
+        title: "Email Launch Checklist",
+        detail: "Set sender address, reply-to, invoice copy, and reminders.",
+        href: `/settings?business=${business}#outlook-integration`,
+        tone: "setup",
+        keywords: [
+          "email",
+          "sender",
+          "from",
+          "reply",
+          "domain",
+          "resend",
+          "delivery",
+        ],
+      },
+      {
+        title: "Reminder Templates",
+        detail: "Tune manual and automated late payment reminder copy.",
+        href: `/settings?business=${business}#outlook-integration`,
+        tone: "setup",
+        keywords: [
+          "late",
+          "overdue",
+          "payment",
+          "reminder",
+          "template",
+          "automation",
+        ],
+      },
+      {
         title: "Deposit Requests",
         detail: "Review invoices with active deposit collection.",
         href: `/invoices?business=${business}&collection=open`,
@@ -191,6 +222,35 @@ export default function QuickCommandCenter() {
         href: `/settings?business=${business}`,
         tone: "system",
         keywords: ["setup", "security", "roles", "notifications"],
+      },
+      {
+        title: "Security Controls",
+        detail: "Open session lock, roles, access, and maintenance controls.",
+        href: `/settings?business=${business}#user-role-integration`,
+        tone: "security",
+        keywords: [
+          "security",
+          "session",
+          "lock",
+          "roles",
+          "access",
+          "users",
+          "maintenance",
+        ],
+      },
+      {
+        title: "Phone App Setup",
+        detail: "Install Trimax on mobile and enable queue notifications.",
+        href: `/settings?business=${business}#phone-app-notifications`,
+        tone: "setup",
+        keywords: [
+          "mobile",
+          "phone",
+          "pwa",
+          "install",
+          "alerts",
+          "notifications",
+        ],
       },
     ],
     [business]
@@ -359,6 +419,19 @@ export default function QuickCommandCenter() {
               {!normalizedQuery && recentCommands.length > 0 ? (
                 <p className="quick-command-section-label">
                   Recent workflows
+                </p>
+              ) : null}
+
+              {!normalizedQuery && recentCommands.length === 0 ? (
+                <p className="quick-command-section-label">
+                  Suggested workflows
+                </p>
+              ) : null}
+
+              {normalizedQuery ? (
+                <p className="quick-command-section-label">
+                  {visibleCommands.length} match
+                  {visibleCommands.length === 1 ? "" : "es"}
                 </p>
               ) : null}
 

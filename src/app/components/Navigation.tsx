@@ -166,8 +166,8 @@ export default function Navigation() {
       href: `/settings?business=${business}#phone-app-notifications`,
     },
     {
-      label: "Email Prep",
-      description: "Manual sending",
+      label: "Email Launch",
+      description: "Sender setup",
       href: `/settings?business=${business}#outlook-integration`,
     },
     {
