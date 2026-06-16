@@ -67,6 +67,11 @@ export default function AppShell({
 
   return (
     <main className="app-shell-root min-h-screen bg-zinc-950 text-white">
+      {!isAuthPage ? (
+        <a className="app-skip-link" href="#trimax-main-content">
+          Skip to main content
+        </a>
+      ) : null}
       <NavigationHistoryTracker />
       {isAuthPage ? (
         <div className="mx-auto max-w-6xl px-4 py-5">
@@ -77,7 +82,12 @@ export default function AppShell({
           <Navigation />
           <QuickCommandCenter />
 
-          <section className="min-w-0 flex-1 lg:py-2">
+          <section
+            aria-label="Trimax workspace content"
+            className="min-w-0 flex-1 outline-none lg:py-2"
+            id="trimax-main-content"
+            tabIndex={-1}
+          >
             {maintenance.enabled && canManageMaintenance ? (
               <div className="mb-4 rounded-2xl border border-orange-500/40 bg-orange-500/15 px-4 py-3 text-sm font-semibold text-orange-100">
                 Maintenance Mode is ON. Normal users are temporarily paused.
