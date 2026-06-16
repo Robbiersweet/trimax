@@ -8,7 +8,8 @@ export const SESSION_ABSOLUTE_TIMEOUT_MS = 12 * 60 * 60 * 1000;
 export type SessionSecurityReason =
   | "new-browser-session"
   | "idle-timeout"
-  | "session-expired";
+  | "session-expired"
+  | "manual-lock";
 
 export type SessionSecurityStatus =
   | {
@@ -161,6 +162,10 @@ export function sessionSecurityMessage(
 
   if (reason === "new-browser-session") {
     return "For security, Trimax signs you out when the app is reopened after the browser window was closed.";
+  }
+
+  if (reason === "manual-lock") {
+    return "Trimax was locked. Sign in again to continue.";
   }
 
   return null;

@@ -5308,6 +5308,19 @@ html.theme-light .dashboard-aging-section .border-zinc-800 {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
+.lock-session-button {
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  background: rgba(14, 165, 233, 0.12);
+  color: #e0f2fe;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.lock-session-button:hover {
+  border-color: rgba(125, 211, 252, 0.5);
+  background: rgba(14, 165, 233, 0.18);
+  color: #f0f9ff;
+}
+
 .dashboard-mobile-priority {
   border: 1px solid rgba(56, 189, 248, 0.24);
   border-radius: 1.25rem;
@@ -5354,6 +5367,19 @@ html.theme-light .secure-session-badge p,
 html.theme-light .secure-session-badge .text-emerald-100,
 html.theme-light .secure-session-badge .text-emerald-100\/75 {
   color: #065f46 !important;
+}
+
+html.theme-light .lock-session-button {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #1d4ed8 !important;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.1) !important;
+}
+
+html.theme-light .lock-session-button:hover {
+  background: #dbeafe !important;
+  border-color: #60a5fa !important;
+  color: #1e3a8a !important;
 }
 
 html.theme-light .dashboard-mobile-priority {
