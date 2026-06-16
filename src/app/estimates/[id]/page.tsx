@@ -481,6 +481,12 @@ export default async function EstimateDetailsPage({
             </Button>
           </Link>
 
+          <a href="#send-estimate">
+            <Button>
+              Send Estimate
+            </Button>
+          </a>
+
           {!linkedInvoice && (
             <Link
               href={`/estimates/${estimate.id}/edit?business=${businessSlug}`}

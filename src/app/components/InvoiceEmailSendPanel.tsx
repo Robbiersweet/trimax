@@ -477,7 +477,16 @@ export default function InvoiceEmailSendPanel({
   }
 
   return (
-    <Card className="invoice-email-panel overflow-hidden border-sky-200 bg-white p-0">
+    <Card
+      id={
+        requestType === "estimate"
+          ? "send-estimate"
+          : requestType === "reminder"
+            ? "late-payment-reminder"
+            : "send-document"
+      }
+      className="invoice-email-panel scroll-mt-6 overflow-hidden border-sky-200 bg-white p-0"
+    >
       {toast ? <Toast type={toast.type} message={toast.message} /> : null}
 
       <div className="invoice-email-header border-b border-slate-200 bg-slate-100 px-5 py-4">

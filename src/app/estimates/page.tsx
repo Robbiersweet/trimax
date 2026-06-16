@@ -566,6 +566,13 @@ export default async function EstimatesPage({
                     </Link>
 
                     <Link
+                      href={`/estimates/${estimate.id}${businessQuery}#send-estimate`}
+                      className="rounded-xl border border-emerald-600 bg-emerald-500 px-4 py-2 text-sm font-bold text-white shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-600"
+                    >
+                      Send
+                    </Link>
+
+                    <Link
                       href={`/estimates/${estimate.id}/print${businessQuery}`}
                       className="app-button-secondary rounded-xl bg-zinc-800 px-4 py-2 text-sm font-bold text-white transition hover:bg-zinc-700"
                     >
