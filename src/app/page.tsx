@@ -507,7 +507,7 @@ export default async function DashboardPage({
 
   const { data: businessData } = await supabase
     .from("businesses")
-    .select("*")
+    .select("id, name, slug")
     .order("name", { ascending: true });
 
   const businesses =
@@ -541,19 +541,23 @@ export default async function DashboardPage({
     ] = await Promise.all([
       supabase
         .from("queue_items")
-        .select("*")
+        .select(
+          "id, property, unit, unit_layout, paint_type, flooring, status, ready_date, scheduled_date, completed_date, smoked_in, notes, linked_estimate_id"
+        )
         .eq("business_id", selectedBusiness.id)
         .order("created_at", { ascending: false }),
 
       supabase
         .from("estimates")
-        .select("*")
+        .select("id, project_title, customer_name, estimate_amount, status, created_at")
         .eq("business_id", selectedBusiness.id)
         .order("created_at", { ascending: false }),
 
       supabase
         .from("invoices")
-        .select("*")
+        .select(
+          "id, display_id, project_title, customer_name, invoice_amount, amount_paid, deposit_requested_amount, deposit_status, status, issue_date, due_date, updated_at, created_at, split_parent_invoice_id"
+        )
         .eq("business_id", selectedBusiness.id)
         .order("created_at", { ascending: false }),
 
@@ -577,56 +581,73 @@ export default async function DashboardPage({
       (activityResponse.data ?? []) as ActivityLog[];
   }
 
-  const activeQueueItems = queueItems.filter(
-    (item) =>
-      normalizeStatus(item.status) !== "scheduled" &&
-      !isClosedQueueStatus(item.status)
-  );
-
-  const scheduledQueueItems = queueItems.filter(
-    (item) =>
-      item.status === "Scheduled" ||
-      Boolean(item.scheduled_date)
-  );
-
-  const completedThisMonth = queueItems.filter(
-    (item) =>
-      isDateInCurrentMonth(item.completed_date) ||
-      (item.status === "Completed" &&
-        isDateInCurrentMonth(item.scheduled_date))
-  );
-
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   const sevenDaysFromNow = new Date(today);
   sevenDaysFromNow.setDate(today.getDate() + 7);
 
-  const readySoonUnscheduled = queueItems.filter((item) => {
-    const readyDate = dateValue(item.ready_date);
-    const status = normalizeStatus(item.status);
+  const queueSummary = queueItems.reduce(
+    (summary, item) => {
+      const status = normalizeStatus(item.status);
+      const isClosed = isClosedQueueStatus(item.status);
+      const readyDate = dateValue(item.ready_date);
 
-    return (
-      Boolean(readyDate) &&
-      readyDate! >= today &&
-      readyDate! <= sevenDaysFromNow &&
-      !item.scheduled_date &&
-      status !== "scheduled" &&
-      status !== "completed"
-    );
-  });
+      if (status !== "scheduled" && !isClosed) {
+        summary.active.push(item);
+      }
 
-  const remediationQueueItems = queueItems.filter(
-    (item) =>
-      item.smoked_in ||
-      (item.notes || "").toLowerCase().includes("smok")
+      if (item.status === "Scheduled" || Boolean(item.scheduled_date)) {
+        summary.scheduled.push(item);
+      }
+
+      if (
+        isDateInCurrentMonth(item.completed_date) ||
+        (item.status === "Completed" &&
+          isDateInCurrentMonth(item.scheduled_date))
+      ) {
+        summary.completedThisMonth.push(item);
+      }
+
+      if (
+        Boolean(readyDate) &&
+        readyDate! >= today &&
+        readyDate! <= sevenDaysFromNow &&
+        !item.scheduled_date &&
+        status !== "scheduled" &&
+        status !== "completed"
+      ) {
+        summary.readySoonUnscheduled.push(item);
+      }
+
+      if (
+        item.smoked_in ||
+        (item.notes || "").toLowerCase().includes("smok")
+      ) {
+        summary.remediation.push(item);
+      }
+
+      if (!item.linked_estimate_id && !isClosed) {
+        summary.needingEstimate.push(item);
+      }
+
+      return summary;
+    },
+    {
+      active: [] as QueueItem[],
+      scheduled: [] as QueueItem[],
+      completedThisMonth: [] as QueueItem[],
+      readySoonUnscheduled: [] as QueueItem[],
+      remediation: [] as QueueItem[],
+      needingEstimate: [] as QueueItem[],
+    }
   );
-
-  const queueItemsNeedingEstimate = queueItems.filter(
-    (item) =>
-      !item.linked_estimate_id &&
-      !isClosedQueueStatus(item.status)
-  );
+  const activeQueueItems = queueSummary.active;
+  const scheduledQueueItems = queueSummary.scheduled;
+  const completedThisMonth = queueSummary.completedThisMonth;
+  const readySoonUnscheduled = queueSummary.readySoonUnscheduled;
+  const remediationQueueItems = queueSummary.remediation;
+  const queueItemsNeedingEstimate = queueSummary.needingEstimate;
 
   const splitParentInvoiceIds = new Set(
     invoices

@@ -258,7 +258,9 @@ export default async function QueuePage({
   if (selectedBusiness?.id) {
     const { data, error } = await supabase
       .from("queue_items")
-      .select("*")
+      .select(
+        "id, property, unit, status, priority, paint_type, unit_layout, wall_paint_color, flooring, move_out_date, ready_date, scheduled_date, completed_date, smoked_in, prior_renovation, prior_renovation_details, renovation_needed, renovation_needed_details, notes, linked_estimate_id"
+      )
       .eq("business_id", selectedBusiness.id)
       .order("created_at", { ascending: false });
 

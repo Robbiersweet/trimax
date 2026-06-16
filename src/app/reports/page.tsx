@@ -382,7 +382,9 @@ export default async function ReportsPage({
       await Promise.all([
         supabase
           .from("queue_items")
-          .select("*")
+          .select(
+            "id, property, unit, unit_layout, status, paint_type, flooring, move_out_date, ready_date, scheduled_date, completed_date, smoked_in, prior_renovation, prior_renovation_details, renovation_needed, renovation_needed_details, notes, created_at"
+          )
           .eq("business_id", selectedBusiness.id)
           .order("created_at", { ascending: false }),
 
