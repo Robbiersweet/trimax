@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import Navigation from "./Navigation";
+import QuickCommandCenter from "./QuickCommandCenter";
 import {
   defaultMaintenanceSettings,
   loadMaintenanceSettings,
@@ -72,6 +73,7 @@ export default function AppShell({
       ) : (
         <div className="app-shell-content mx-auto flex w-full max-w-[112rem] flex-col px-4 py-5 lg:flex-row lg:gap-6 lg:px-6">
           <Navigation />
+          <QuickCommandCenter />
 
           <section className="min-w-0 flex-1 lg:py-2">
             {maintenance.enabled && canManageMaintenance ? (
