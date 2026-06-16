@@ -338,6 +338,9 @@ function BusinessSettingsPageContent() {
   const canManageUsers =
     currentRole === "owner" ||
     currentRole === "admin";
+  const canManageEmailSettings =
+    canManageUsers ||
+    currentRole === "accountant";
 
   async function loadStorageHealth(selectedBusinessSlug: string) {
     setLoadingStorageHealth(true);
@@ -785,10 +788,11 @@ function BusinessSettingsPageContent() {
   async function handleSaveEmailSettings() {
     setToast(null);
 
-    if (!business || !canManageUsers) {
+    if (!business || !canManageEmailSettings) {
       setToast({
         type: "error",
-        message: "Only owners and admins can change email settings.",
+        message:
+          "Only owners, admins, and accountants can change email settings.",
       });
       return;
     }
@@ -2009,10 +2013,16 @@ function BusinessSettingsPageContent() {
 
                 <Button
                   onClick={handleSaveEmailSettings}
-                  disabled={!canManageUsers || savingEmailSettings}
+                  disabled={!business || !canManageEmailSettings || savingEmailSettings}
                 >
                   {savingEmailSettings ? "Saving..." : "Save Email Settings"}
                 </Button>
+                {!canManageEmailSettings ? (
+                  <p className="text-sm font-semibold text-slate-500">
+                    Email settings can be saved by workspace owners, admins, or
+                    accountants.
+                  </p>
+                ) : null}
               </div>
             </Card>
 
