@@ -330,11 +330,23 @@ html.theme-light .dark-surface .status-badge-archived {
   color: #e0f2fe !important;
 }
 
-html.theme-light .dark-surface .status-badge-scheduled {
+html.theme-light .dark-surface .status-badge-scheduled,
+html.theme-light .dark-surface .status-badge-sent {
   color: #bae6fd !important;
 }
 
+html.theme-light .dark-surface .status-badge-ready,
+html.theme-light .dark-surface .status-badge-invoiced,
+html.theme-light .dark-surface .status-badge-paid,
+html.theme-light .dark-surface .status-badge-approved,
+html.theme-light .dark-surface .status-badge-converted,
+html.theme-light .dark-surface .status-badge-partially-paid,
+html.theme-light .dark-surface .status-badge-deposit-request {
+  color: #bbf7d0 !important;
+}
+
 html.theme-light .dark-surface .status-badge-on-hold,
+html.theme-light .dark-surface .status-badge-overdue,
 html.theme-light .dark-surface .dashboard-remediation-pill {
   background-color: rgba(127, 29, 29, 0.38) !important;
   border-color: rgba(252, 165, 165, 0.42) !important;
@@ -2044,7 +2056,12 @@ html.theme-light .status-badge-archived {
 
 html.theme-light .status-badge-sent,
 html.theme-light .status-badge-paid,
-html.theme-light .status-badge-ready {
+html.theme-light .status-badge-ready,
+html.theme-light .status-badge-invoiced,
+html.theme-light .status-badge-approved,
+html.theme-light .status-badge-converted,
+html.theme-light .status-badge-partially-paid,
+html.theme-light .status-badge-deposit-request {
   border-color: #bbf7d0 !important;
   background: #ecfdf5 !important;
   color: #047857 !important;
@@ -4193,26 +4210,50 @@ html.theme-light main .dashboard-feature-card .status-badge-ready,
 html.theme-light main .dashboard-feature-card .status-badge-paid,
 html.theme-light main .dashboard-feature-card .status-badge-sent,
 html.theme-light main .dashboard-feature-card .status-badge-invoiced,
+html.theme-light main .dashboard-feature-card .status-badge-approved,
+html.theme-light main .dashboard-feature-card .status-badge-converted,
+html.theme-light main .dashboard-feature-card .status-badge-partially-paid,
+html.theme-light main .dashboard-feature-card .status-badge-deposit-request,
 html.theme-light main .client-list-card .status-badge-ready,
 html.theme-light main .client-list-card .status-badge-paid,
 html.theme-light main .client-list-card .status-badge-sent,
 html.theme-light main .client-list-card .status-badge-invoiced,
+html.theme-light main .client-list-card .status-badge-approved,
+html.theme-light main .client-list-card .status-badge-converted,
+html.theme-light main .client-list-card .status-badge-partially-paid,
+html.theme-light main .client-list-card .status-badge-deposit-request,
 html.theme-light main .estimate-list-card .status-badge-ready,
 html.theme-light main .estimate-list-card .status-badge-paid,
 html.theme-light main .estimate-list-card .status-badge-sent,
 html.theme-light main .estimate-list-card .status-badge-invoiced,
+html.theme-light main .estimate-list-card .status-badge-approved,
+html.theme-light main .estimate-list-card .status-badge-converted,
+html.theme-light main .estimate-list-card .status-badge-partially-paid,
+html.theme-light main .estimate-list-card .status-badge-deposit-request,
 html.theme-light main .invoice-list-card .status-badge-ready,
 html.theme-light main .invoice-list-card .status-badge-paid,
 html.theme-light main .invoice-list-card .status-badge-sent,
 html.theme-light main .invoice-list-card .status-badge-invoiced,
+html.theme-light main .invoice-list-card .status-badge-approved,
+html.theme-light main .invoice-list-card .status-badge-converted,
+html.theme-light main .invoice-list-card .status-badge-partially-paid,
+html.theme-light main .invoice-list-card .status-badge-deposit-request,
 html.theme-light main .report-row-link .status-badge-ready,
 html.theme-light main .report-row-link .status-badge-paid,
 html.theme-light main .report-row-link .status-badge-sent,
 html.theme-light main .report-row-link .status-badge-invoiced,
+html.theme-light main .report-row-link .status-badge-approved,
+html.theme-light main .report-row-link .status-badge-converted,
+html.theme-light main .report-row-link .status-badge-partially-paid,
+html.theme-light main .report-row-link .status-badge-deposit-request,
 html.theme-light main .queue-list-card .status-badge-ready,
 html.theme-light main .queue-list-card .status-badge-paid,
 html.theme-light main .queue-list-card .status-badge-sent,
-html.theme-light main .queue-list-card .status-badge-invoiced {
+html.theme-light main .queue-list-card .status-badge-invoiced,
+html.theme-light main .queue-list-card .status-badge-approved,
+html.theme-light main .queue-list-card .status-badge-converted,
+html.theme-light main .queue-list-card .status-badge-partially-paid,
+html.theme-light main .queue-list-card .status-badge-deposit-request {
   border-color: #bbf7d0 !important;
   background: #ecfdf5 !important;
   color: #047857 !important;
