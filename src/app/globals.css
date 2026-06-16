@@ -5255,6 +5255,16 @@ html.theme-light .dashboard-hero-card .bg-zinc-900 {
   color: #f8fafc;
 }
 
+.dashboard-map-metric {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  max-width: 6.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .dashboard-map-link[data-tone="focus"] {
   background: rgba(14, 165, 233, 0.12);
   border-color: rgba(56, 189, 248, 0.34);
@@ -5391,6 +5401,12 @@ html.theme-light .dashboard-map-report-link {
 html.theme-light .dashboard-map-link {
   color: #0f172a !important;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05) !important;
+}
+
+html.theme-light .dashboard-map-metric {
+  background: rgba(255, 255, 255, 0.74) !important;
+  border-color: rgba(100, 116, 139, 0.22) !important;
+  color: #0f172a !important;
 }
 
 html.theme-light .dashboard-map-link[data-tone="focus"] {

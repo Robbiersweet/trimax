@@ -1254,30 +1254,35 @@ export default async function DashboardPage({
     {
       label: "Focus",
       detail: "Top 3 moves",
+      metric: "3",
       href: "#dashboard-focus",
       tone: "focus",
     },
     {
       label: "Accounting",
       detail: "Cash actions",
+      metric: outstandingRevenue,
       href: "#dashboard-accounting",
       tone: "accounting",
     },
     {
       label: "Queue",
       detail: "Turns and jobs",
+      metric: String(activeQueueItems.length),
       href: "#dashboard-queue",
       tone: "queue",
     },
     {
       label: "Reports",
       detail: "Money and aging",
+      metric: workingYearLabel,
       href: "#dashboard-reports",
       tone: "reports",
     },
     {
       label: "Activity",
       detail: "Recent changes",
+      metric: String(activityLogs.length),
       href: "#dashboard-activity",
       tone: "activity",
     },
@@ -1489,8 +1494,14 @@ export default async function DashboardPage({
                   data-tone={item.tone}
                   className="dashboard-map-link rounded-2xl border p-3 transition hover:-translate-y-0.5"
                 >
-                  <span className="block text-sm font-black">
-                    {item.label}
+                  <span className="flex items-start justify-between gap-3">
+                    <span className="block text-sm font-black">
+                      {item.label}
+                    </span>
+
+                    <span className="dashboard-map-metric rounded-full border px-2.5 py-1 text-xs font-black">
+                      {item.metric}
+                    </span>
                   </span>
 
                   <span className="mt-1 block text-xs font-semibold opacity-80">
