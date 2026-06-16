@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import Button from "./Button";
 import { supabase } from "../lib/supabase";
+import { clearSecureBrowserSession } from "../lib/sessionSecurity";
 
 type LogoutButtonProps = {
   className?: string;
@@ -14,6 +15,7 @@ export default function LogoutButton({
   const router = useRouter();
 
   async function handleLogout() {
+    clearSecureBrowserSession();
     await supabase.auth.signOut();
 
     router.push("/login");

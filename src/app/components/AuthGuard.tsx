@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   usePathname,
   useRouter,
@@ -23,6 +23,11 @@ import {
   loadWorkspaceAccess,
   preferredWorkspaceSlug,
 } from "../lib/workspaceAccess";
+import {
+  clearSecureBrowserSession,
+  getSessionSecurityStatus,
+  recordSecureActivity,
+} from "../lib/sessionSecurity";
 
 type AuthGuardProps = {
   children: React.ReactNode;
@@ -89,6 +94,67 @@ export default function AuthGuard({
     useState<MaintenanceSettings>(defaultMaintenanceSettings());
   const [maintenanceBlocked, setMaintenanceBlocked] = useState(false);
 
+  const expireSession = useCallback(async (reason: string) => {
+    clearSecureBrowserSession();
+    await supabase.auth.signOut();
+    setLoading(false);
+    router.replace(`/login?security=${reason}`);
+  }, [router]);
+
+  useEffect(() => {
+    const activityEvents = [
+      "click",
+      "keydown",
+      "mousemove",
+      "scroll",
+      "touchstart",
+    ];
+
+    function recordActivity() {
+      recordSecureActivity();
+    }
+
+    async function checkSessionOnResume() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        return;
+      }
+
+      const status = getSessionSecurityStatus();
+
+      if (!status.valid) {
+        await expireSession(status.reason);
+      }
+    }
+
+    for (const eventName of activityEvents) {
+      window.addEventListener(eventName, recordActivity, {
+        passive: true,
+      });
+    }
+
+    window.addEventListener("focus", checkSessionOnResume);
+    document.addEventListener(
+      "visibilitychange",
+      checkSessionOnResume
+    );
+
+    return () => {
+      for (const eventName of activityEvents) {
+        window.removeEventListener(eventName, recordActivity);
+      }
+
+      window.removeEventListener("focus", checkSessionOnResume);
+      document.removeEventListener(
+        "visibilitychange",
+        checkSessionOnResume
+      );
+    };
+  }, [expireSession]);
+
   useEffect(() => {
     async function checkAuth() {
       const {
@@ -107,6 +173,17 @@ export default function AuthGuard({
       if (!session && isPublicPage) {
         setLoading(false);
         return;
+      }
+
+      if (session) {
+        const status = getSessionSecurityStatus();
+
+        if (!status.valid) {
+          await expireSession(status.reason);
+          return;
+        }
+
+        recordSecureActivity();
       }
 
       const access = await loadWorkspaceAccess();
@@ -267,7 +344,7 @@ export default function AuthGuard({
     }
 
     checkAuth();
-  }, [pathname, router, searchParams]);
+  }, [expireSession, pathname, router, searchParams]);
 
   if (loading) {
     return (

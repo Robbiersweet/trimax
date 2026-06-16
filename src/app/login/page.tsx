@@ -10,6 +10,10 @@ import InputField from "../components/InputField";
 import Toast from "../components/Toast";
 import { supabase } from "../lib/supabase";
 import {
+  sessionSecurityMessage,
+  startSecureBrowserSession,
+} from "../lib/sessionSecurity";
+import {
   loadWorkspaceAccess,
   preferredWorkspaceSlug,
 } from "../lib/workspaceAccess";
@@ -18,6 +22,9 @@ function LoginPageContent() {
   const searchParams = useSearchParams();
   const businessSlug =
     searchParams.get("business") ?? "rnl-creations";
+  const securityMessage = sessionSecurityMessage(
+    searchParams.get("security")
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -48,6 +55,8 @@ function LoginPageContent() {
 
       return;
     }
+
+    startSecureBrowserSession();
 
     const access = await loadWorkspaceAccess();
     const nextBusinessSlug = preferredWorkspaceSlug(
@@ -82,6 +91,12 @@ function LoginPageContent() {
           Sign in to your Trimax workspace.
           Access is by invitation only.
         </p>
+
+        {securityMessage && (
+          <div className="mt-5 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-900">
+            {securityMessage}
+          </div>
+        )}
 
         <Card className="mt-8">
           <div className="grid gap-5">
