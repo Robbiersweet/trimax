@@ -1168,6 +1168,67 @@ export default async function DashboardPage({
       tone: "checks",
     },
   ];
+  const dashboardFocusItems = [
+    {
+      label: "Collect",
+      title: priorityCustomerBalance
+        ? priorityCustomerBalance.customerName
+        : priorityInvoice?.customer_name ?? "Open payment workspace",
+      metric: priorityCustomerBalance
+        ? formatMoney(priorityCustomerBalance.total)
+        : priorityInvoice
+          ? formatMoney(invoiceCollectionAmountDue(priorityInvoice))
+          : outstandingRevenue,
+      detail: priorityCustomerBalance
+        ? `${priorityCustomerBalance.count} open invoice${
+            priorityCustomerBalance.count === 1 ? "" : "s"
+          } ready for payment review.`
+        : "Open balances and deposit requests are ready to reconcile.",
+      href: `/payments?${priorityPaymentParams.toString()}`,
+      tone: "collect",
+    },
+    {
+      label: "Queue",
+      title: queueFocusHeadline,
+      metric: String(activeQueueItems.length),
+      detail: queueFocusDetail,
+      href: `/queue?business=${selectedBusinessSlug}`,
+      tone: "queue",
+    },
+    {
+      label: "Follow Up",
+      title:
+        pastDueInvoices.length > 0
+          ? "Late reminders"
+          : depositRequestInvoices.length > 0
+            ? "Deposit requests"
+            : "Check capture",
+      metric:
+        pastDueInvoices.length > 0
+          ? String(pastDueInvoices.length)
+          : depositRequestInvoices.length > 0
+            ? String(depositRequestInvoices.length)
+            : String(workingYearOpenInvoicesWithAmounts.length),
+      detail:
+        pastDueInvoices.length > 0
+          ? `${formatMoney(pastDueTotal)} is past due and ready for reminder review.`
+          : depositRequestInvoices.length > 0
+            ? `${formatMoney(depositRequestTotal)} is waiting on active deposit requests.`
+            : "Use check capture when a payment arrives and Trimax will suggest invoice matches.",
+      href:
+        pastDueInvoices.length > 0
+          ? `/invoices?business=${selectedBusinessSlug}&view=aging`
+          : depositRequestInvoices[0]
+            ? `/invoices/${depositRequestInvoices[0].id}?business=${selectedBusinessSlug}`
+            : `/payments?business=${selectedBusinessSlug}#check-capture`,
+      tone:
+        pastDueInvoices.length > 0
+          ? "late"
+          : depositRequestInvoices.length > 0
+            ? "deposit"
+            : "checks",
+    },
+  ];
 
   return (
     <AppShell>
@@ -1337,6 +1398,63 @@ export default async function DashboardPage({
               </div>
             </div>
           </Card>
+        </RoleVisible>
+
+        <RoleVisible
+          businessSlug={selectedBusinessSlug}
+          allow={[
+            "owner",
+            "admin",
+            "accountant",
+          ]}
+        >
+          <section className="dashboard-focus-strip">
+            <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="dashboard-section-label text-sm uppercase tracking-[0.3em] text-sky-300">
+                  Today&apos;s Focus
+                </p>
+
+                <h2 className="mt-1 text-2xl font-black tracking-tight">
+                  Three moves worth your attention
+                </h2>
+              </div>
+
+              <p className="max-w-xl text-sm leading-6 text-zinc-400">
+                Trimax keeps the dashboard centered on the work that moves
+                money, schedules, and customer follow-up forward.
+              </p>
+            </div>
+
+            <div className="mt-4 grid gap-3 lg:grid-cols-3">
+              {dashboardFocusItems.map((item) => (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  data-tone={item.tone}
+                  className="dashboard-focus-card rounded-2xl border p-4 transition hover:-translate-y-0.5"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-xs font-black uppercase tracking-[0.18em]">
+                      {item.label}
+                    </p>
+
+                    <span className="dashboard-focus-metric rounded-full border px-3 py-1 text-sm font-black">
+                      {item.metric}
+                    </span>
+                  </div>
+
+                  <h3 className="mt-4 line-clamp-2 text-lg font-black">
+                    {item.title}
+                  </h3>
+
+                  <p className="mt-2 line-clamp-3 text-sm leading-6">
+                    {item.detail}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </section>
         </RoleVisible>
 
         <Card className="dashboard-queue-command dark-surface hidden overflow-hidden border-sky-500/20 bg-gradient-to-br from-zinc-950 via-zinc-900 to-emerald-950/20 lg:block">
@@ -2061,77 +2179,77 @@ export default async function DashboardPage({
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-          <Card className="dashboard-workstream-card">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
-                  Queue Pulse
-                </p>
+            <Card className="dashboard-workstream-card">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
+                    Queue Pulse
+                  </p>
 
-                <h2 className="mt-2 text-2xl font-bold">
-                  Recent Queue Items
-                </h2>
+                  <h2 className="mt-2 text-2xl font-bold">
+                    Recent Queue Items
+                  </h2>
+                </div>
+
+                <Link
+                  href={`/queue?business=${selectedBusinessSlug}`}
+                  className="text-sm font-semibold text-orange-400"
+                >
+                  View all
+                </Link>
               </div>
 
-              <Link
-                href={`/queue?business=${selectedBusinessSlug}`}
-                className="text-sm font-semibold text-orange-400"
-              >
-                View all
-              </Link>
-            </div>
+              <div className="mt-4 space-y-3">
+                {queueItems.slice(0, 3).map((item) => (
+                  <Link
+                    key={item.id}
+                    href={`/queue/${item.id}?business=${selectedBusinessSlug}`}
+                    className="dashboard-feature-card dark-surface block rounded-2xl border border-zinc-800 bg-zinc-950 p-4 transition hover:border-orange-500/60 hover:bg-zinc-900"
+                  >
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className="font-semibold">
+                          {item.property || "Property"} - Unit{" "}
+                          {maybeCanonicalApartmentUnitLabel(item.unit) || "-"}
+                        </p>
 
-            <div className="mt-4 space-y-3">
-              {queueItems.slice(0, 3).map((item) => (
-                <Link
-                  key={item.id}
-                  href={`/queue/${item.id}?business=${selectedBusinessSlug}`}
-                  className="dashboard-feature-card dark-surface block rounded-2xl border border-zinc-800 bg-zinc-950 p-4 transition hover:border-orange-500/60 hover:bg-zinc-900"
-                >
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <p className="font-semibold">
-                        {item.property || "Property"} - Unit{" "}
-                        {maybeCanonicalApartmentUnitLabel(item.unit) || "-"}
-                      </p>
+                        <p className="mt-1 text-sm text-zinc-400">
+                          {item.unit_layout ? `Layout ${item.unit_layout} / ` : ""}
+                          {item.paint_type || "Paint TBD"} /{" "}
+                          {item.flooring || "Flooring TBD"}
+                        </p>
 
-                      <p className="mt-1 text-sm text-zinc-400">
-                        {item.unit_layout ? `Layout ${item.unit_layout} / ` : ""}
-                        {item.paint_type || "Paint TBD"} /{" "}
-                        {item.flooring || "Flooring TBD"}
-                      </p>
-
-                      <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                        <span className="rounded-full border border-zinc-800 bg-zinc-900 px-3 py-1 text-zinc-300">
-                          Paint due {formatShortDate(item.ready_date)}
-                        </span>
-
-                        <span className="rounded-full border border-zinc-800 bg-zinc-900 px-3 py-1 text-zinc-300">
-                          Scheduled {formatShortDate(item.scheduled_date)}
-                        </span>
-
-                        {item.smoked_in ? (
-                          <span className="dashboard-remediation-pill rounded-full border border-red-500/35 bg-red-500/10 px-3 py-1 font-semibold text-red-200">
-                            Remediation
+                        <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                          <span className="rounded-full border border-zinc-800 bg-zinc-900 px-3 py-1 text-zinc-300">
+                            Paint due {formatShortDate(item.ready_date)}
                           </span>
-                        ) : null}
+
+                          <span className="rounded-full border border-zinc-800 bg-zinc-900 px-3 py-1 text-zinc-300">
+                            Scheduled {formatShortDate(item.scheduled_date)}
+                          </span>
+
+                          {item.smoked_in ? (
+                            <span className="dashboard-remediation-pill rounded-full border border-red-500/35 bg-red-500/10 px-3 py-1 font-semibold text-red-200">
+                              Remediation
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
+
+                      <StatusBadge
+                        status={item.status || "Pending"}
+                      />
                     </div>
+                  </Link>
+                ))}
 
-                    <StatusBadge
-                      status={item.status || "Pending"}
-                    />
-                  </div>
-                </Link>
-              ))}
-
-              {queueItems.length === 0 && (
-                <p className="text-sm text-zinc-400">
-                  No queue items for this business yet.
-                </p>
-              )}
-            </div>
-          </Card>
+                {queueItems.length === 0 && (
+                  <p className="text-sm text-zinc-400">
+                    No queue items for this business yet.
+                  </p>
+                )}
+              </div>
+            </Card>
 
           <RoleVisible
             businessSlug={selectedBusinessSlug}

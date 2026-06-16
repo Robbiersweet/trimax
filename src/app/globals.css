@@ -4963,10 +4963,57 @@ html.theme-light .dashboard-hero-card .bg-zinc-900 {
 }
 
 .dashboard-collection-targets,
+.dashboard-focus-card,
 .dashboard-workstream-card,
 .dashboard-activity-section,
 .dashboard-aging-section {
   box-shadow: 0 20px 52px rgba(2, 6, 23, 0.16);
+}
+
+.dashboard-focus-strip {
+  border: 1px solid rgba(56, 189, 248, 0.18);
+  border-radius: 1.25rem;
+  background:
+    radial-gradient(circle at 86% 0%, rgba(14, 165, 233, 0.12), transparent 30%),
+    linear-gradient(135deg, rgba(24, 24, 27, 0.72), rgba(9, 9, 11, 0.74));
+  padding: 1rem;
+  box-shadow: 0 20px 52px rgba(2, 6, 23, 0.18);
+}
+
+.dashboard-focus-card {
+  color: #f8fafc;
+  min-height: 168px;
+}
+
+.dashboard-focus-card p:last-child {
+  color: rgba(226, 232, 240, 0.82);
+}
+
+.dashboard-focus-metric {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.dashboard-focus-card[data-tone="collect"] {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.18), rgba(2, 6, 23, 0.62));
+  border-color: rgba(56, 189, 248, 0.34);
+}
+
+.dashboard-focus-card[data-tone="queue"] {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(2, 6, 23, 0.62));
+  border-color: rgba(129, 140, 248, 0.34);
+}
+
+.dashboard-focus-card[data-tone="late"] {
+  background: linear-gradient(135deg, rgba(244, 63, 94, 0.18), rgba(2, 6, 23, 0.62));
+  border-color: rgba(251, 113, 133, 0.36);
+}
+
+.dashboard-focus-card[data-tone="deposit"],
+.dashboard-focus-card[data-tone="checks"] {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(2, 6, 23, 0.62));
+  border-color: rgba(52, 211, 153, 0.36);
 }
 
 .dashboard-collection-target-card {
@@ -5015,6 +5062,49 @@ html.theme-light .dashboard-collection-targets .text-emerald-300 {
 html.theme-light .dashboard-collection-targets .text-zinc-400,
 html.theme-light .dashboard-collection-targets .text-zinc-500 {
   color: #475569 !important;
+}
+
+html.theme-light .dashboard-focus-strip {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.07) !important;
+}
+
+html.theme-light .dashboard-focus-card {
+  color: #0f172a !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06) !important;
+}
+
+html.theme-light .dashboard-focus-card p:last-child {
+  color: #475569 !important;
+}
+
+html.theme-light .dashboard-focus-card[data-tone="collect"] {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+}
+
+html.theme-light .dashboard-focus-card[data-tone="queue"] {
+  background: #eef2ff !important;
+  border-color: #a5b4fc !important;
+}
+
+html.theme-light .dashboard-focus-card[data-tone="late"] {
+  background: #fff1f2 !important;
+  border-color: #fb7185 !important;
+}
+
+html.theme-light .dashboard-focus-card[data-tone="deposit"],
+html.theme-light .dashboard-focus-card[data-tone="checks"] {
+  background: #ecfdf5 !important;
+  border-color: #86efac !important;
+}
+
+html.theme-light .dashboard-focus-metric {
+  background: rgba(255, 255, 255, 0.78) !important;
+  border-color: rgba(100, 116, 139, 0.22) !important;
+  color: #0f172a !important;
 }
 
 html.theme-light .dashboard-collection-target-card {
