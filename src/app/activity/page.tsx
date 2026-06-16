@@ -441,6 +441,62 @@ function ActivityPageContent() {
     return searchableActivityText(log).includes(searchTerm.toLowerCase());
   }), [logs, searchTerm, typeFilter]);
 
+  const activityPulse = useMemo(() => {
+    const latestTimestamp = logs.reduce((latest, log) => {
+      if (!log.created_at) {
+        return latest;
+      }
+
+      const timestamp = new Date(log.created_at).getTime();
+
+      return Number.isFinite(timestamp) ? Math.max(latest, timestamp) : latest;
+    }, 0);
+    const sevenDaysAgo = latestTimestamp - 7 * 24 * 60 * 60 * 1000;
+    const recentCount = logs.filter((log) => {
+      if (!log.created_at || latestTimestamp === 0) {
+        return false;
+      }
+
+      const timestamp = new Date(log.created_at).getTime();
+
+      return Number.isFinite(timestamp) && timestamp >= sevenDaysAgo;
+    }).length;
+    const paymentCount = logs.filter((log) => activityMatchesType(log, "payment")).length;
+    const reminderCount = logs.filter((log) =>
+      log.action.includes("reminder") || log.action.includes("email_sent")
+    ).length;
+    const latestLog = logs[0];
+
+    return [
+      {
+        label: "Total Trail",
+        value: String(logs.length),
+        detail: "All recorded workspace actions",
+        href: activityFilterHref({ businessSlug, filter: "all", searchTerm: "" }),
+      },
+      {
+        label: "Last 7 Days",
+        value: String(recentCount),
+        detail: "Recent changes and sends",
+        href: activityFilterHref({ businessSlug, filter: "all", searchTerm: "" }),
+      },
+      {
+        label: "Payment Proof",
+        value: String(paymentCount),
+        detail: "Checks and payment actions",
+        href: activityFilterHref({ businessSlug, filter: "payment", searchTerm: "" }),
+      },
+      {
+        label: "Send History",
+        value: String(reminderCount),
+        detail: latestLog
+          ? `Latest: ${actionLabel(latestLog.action)}`
+          : "Invoice emails and reminders",
+        href: activityFilterHref({ businessSlug, filter: "invoice", searchTerm: "" }),
+      },
+    ];
+  }, [businessSlug, logs]);
+
   return (
     <AppShell>
       <div className="space-y-6">
@@ -456,6 +512,55 @@ function ActivityPageContent() {
             and split-invoice actions for {business?.name ?? "this business"}.
           </p>
         </div>
+
+        <Card className="activity-command-card border-sky-500/20 bg-gradient-to-br from-zinc-950 via-zinc-900 to-slate-950">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-sm uppercase tracking-[0.3em] text-sky-300">
+                Proof Center
+              </p>
+
+              <h2 className="mt-2 text-2xl font-black text-white">
+                Find the paper trail fast
+              </h2>
+
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
+                Every sent invoice, reminder, payment, split, estimate, and
+                queue move should leave a clean trail here for follow-up and
+                accountability.
+              </p>
+            </div>
+
+            <Link
+              href={`/reports?business=${businessSlug}`}
+              className="app-button-primary inline-flex rounded-2xl px-5 py-3 text-sm font-black"
+            >
+              Open Reports
+            </Link>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {activityPulse.map((item) => (
+              <Link
+                key={item.label}
+                href={item.href}
+                className="activity-pulse-card rounded-2xl border border-white/10 bg-black/30 p-4 transition hover:-translate-y-0.5 hover:border-sky-300/60"
+              >
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-sky-200">
+                  {item.label}
+                </p>
+
+                <p className="mt-3 text-3xl font-black text-white">
+                  {item.value}
+                </p>
+
+                <p className="mt-2 text-sm leading-5 text-zinc-400">
+                  {item.detail}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </Card>
 
         <Card>
           <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
@@ -552,49 +657,69 @@ function ActivityPageContent() {
             </p>
           </Card>
         ) : logs.length === 0 ? (
-          <Card>
-            <p className="font-semibold text-white">
-              No activity has been recorded for this workspace yet.
-            </p>
+          <Card className="app-empty-state border-sky-200 bg-sky-50">
+            <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-sky-700">
+                  Clean Slate
+                </p>
 
-            <p className="mt-2 text-sm leading-6 text-zinc-400">
-              New queue, estimate, invoice, payment, and split actions will
-              appear here as they are created in this workspace.
-            </p>
+                <h2 className="mt-2 text-2xl font-black text-slate-950">
+                  Activity will appear here automatically
+                </h2>
 
-            <div className="mt-5 flex flex-wrap gap-3">
-              <Link
-                href={`/queue?business=${businessSlug}`}
-                className="app-button-primary rounded-full px-4 py-2 text-sm font-bold"
-              >
-                Open Queue
-              </Link>
-              <Link
-                href={`/invoices?business=${businessSlug}`}
-                className="rounded-full border border-zinc-700 px-4 py-2 text-sm font-bold text-zinc-200 transition hover:border-orange-400 hover:text-orange-300"
-              >
-                Open Invoices
-              </Link>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                  New queue, estimate, invoice, payment, email, and split
+                  actions will build a searchable workspace trail as you work.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Link
+                  href={`/queue?business=${businessSlug}`}
+                  className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-center text-sm font-black text-slate-800 shadow-sm transition hover:border-sky-300 hover:bg-sky-50"
+                >
+                  Open Queue
+                </Link>
+                <Link
+                  href={`/invoices?business=${businessSlug}`}
+                  className="app-button-primary rounded-2xl px-5 py-3 text-center text-sm font-black"
+                >
+                  Open Invoices
+                </Link>
+              </div>
             </div>
           </Card>
         ) : filteredLogs.length === 0 ? (
-          <Card>
-            <p className="font-semibold text-white">No matching activity found.</p>
+          <Card className="app-empty-state border-dashed border-slate-300 bg-white">
+            <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-500">
+                  Search Check
+                </p>
 
-            <p className="mt-2 text-sm leading-6 text-zinc-400">
-              Try a different search term or switch back to All.
-            </p>
+                <h2 className="mt-2 text-2xl font-black text-slate-950">
+                  No activity matches this view
+                </h2>
 
-            <Link
-              href={activityFilterHref({
-                businessSlug,
-                filter: "all",
-                searchTerm: "",
-              })}
-              className="app-button-primary mt-5 inline-flex rounded-full px-4 py-2 text-sm font-bold"
-            >
-              Show All Activity
-            </Link>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                  Try a broader search or return to the full activity trail to
+                  verify the latest invoices, reminders, payments, and queue
+                  updates.
+                </p>
+              </div>
+
+              <Link
+                href={activityFilterHref({
+                  businessSlug,
+                  filter: "all",
+                  searchTerm: "",
+                })}
+                className="app-button-primary inline-flex rounded-2xl px-5 py-3 text-center text-sm font-black"
+              >
+                Show All Activity
+              </Link>
+            </div>
           </Card>
         ) : (
           <div className="app-data-table overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">

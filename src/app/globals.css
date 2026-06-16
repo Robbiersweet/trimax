@@ -5279,6 +5279,29 @@ html.theme-light main .app-sky-pill.text-sky-300 {
   color: #0c4a6e !important;
 }
 
+html.theme-light .activity-command-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 52%, #eef6ff 100%) !important;
+  border-color: #bfdbfe !important;
+  color: #0f172a !important;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+}
+
+html.theme-light .activity-command-card h2,
+html.theme-light .activity-command-card .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light .activity-command-card .text-zinc-300,
+html.theme-light .activity-command-card .text-zinc-400 {
+  color: #475569 !important;
+}
+
+html.theme-light .activity-pulse-card {
+  background: #ffffff !important;
+  border-color: #dbeafe !important;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.06);
+}
+
 .dashboard-hero-card {
   box-shadow: 0 24px 70px rgba(2, 6, 23, 0.24);
 }
