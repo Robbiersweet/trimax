@@ -7,6 +7,10 @@ import {
   normalizeInvoiceEmailSettings,
   renderEmailTemplate,
 } from "../../../lib/invoiceEmailSettings";
+import {
+  createPdfAttachment,
+  type EmailAttachment,
+} from "../../../lib/pdfAttachments";
 
 type GenericTable = {
   Row: Record<string, unknown>;
@@ -139,6 +143,7 @@ async function sendWithResend({
   subject,
   html,
   text,
+  attachments,
 }: {
   from: string;
   to: string;
@@ -148,6 +153,7 @@ async function sendWithResend({
   subject: string;
   html: string;
   text: string;
+  attachments?: EmailAttachment[];
 }) {
   const apiKey = process.env.RESEND_API_KEY;
 
@@ -172,6 +178,7 @@ async function sendWithResend({
       ...(replyTo ? { reply_to: replyTo } : {}),
       ...(cc ? { cc: [cc] } : {}),
       ...(bcc ? { bcc: [bcc] } : {}),
+      ...(attachments?.length ? { attachments } : {}),
       subject,
       html,
       text,
@@ -420,6 +427,32 @@ export async function POST(request: Request) {
           </div>
         </div>
       `;
+      const pdfAttachment = createPdfAttachment({
+        filename: invoiceLabel,
+        title: invoiceLabel,
+        subtitle: business.name ?? "Trimax",
+        sections: [
+          {
+            title: "Customer",
+            lines: [
+              invoice.customer_name ?? "Customer",
+              invoice.project_title ? `Project: ${invoice.project_title}` : "",
+            ].filter(Boolean),
+          },
+          {
+            title: "Payment Reminder",
+            lines: [
+              `Amount due: ${formatMoney(amountDue)}`,
+              `Due date: ${dueDate}`,
+              "This invoice is past due.",
+            ],
+          },
+          {
+            title: "Message",
+            lines: message.split("\n").filter(Boolean),
+          },
+        ],
+      });
 
       const result = await sendWithResend({
         from,
@@ -430,6 +463,7 @@ export async function POST(request: Request) {
         subject,
         html,
         text: message,
+        attachments: [pdfAttachment],
       });
 
       if (!result.ok) {
@@ -455,6 +489,7 @@ export async function POST(request: Request) {
           cc_email: ccEmail || null,
           cc_source: ccSource,
           bcc_email: bccEmail && isValidEmail(bccEmail) ? bccEmail : null,
+          pdf_attached: true,
           automated: true,
         },
       });

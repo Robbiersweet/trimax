@@ -322,7 +322,7 @@ export default function InvoiceEmailSendPanel({
     },
     {
       label: "PDF note",
-      detail: includePdfNote ? "Mentioned in email" : "Not mentioned",
+      detail: includePdfNote ? "PDF will attach" : "No attachment",
       status: includePdfNote ? "ready" : "waiting",
     },
   ];
@@ -637,8 +637,7 @@ export default function InvoiceEmailSendPanel({
               className="mt-1 h-4 w-4"
             />
             <span>
-              Mention that a PDF copy is attached. Actual automatic PDF
-              attachment needs the next PDF-rendering step.
+              Attach a PDF copy of this {documentLabelLower} to the email.
             </span>
           </label>
 

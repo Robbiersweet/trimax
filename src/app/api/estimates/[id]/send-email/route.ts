@@ -6,6 +6,10 @@ import {
   formatSenderAddress,
   normalizeInvoiceEmailSettings,
 } from "../../../../lib/invoiceEmailSettings";
+import {
+  createPdfAttachment,
+  type EmailAttachment,
+} from "../../../../lib/pdfAttachments";
 
 type GenericTable = {
   Row: Record<string, unknown>;
@@ -23,6 +27,7 @@ type Database = {
       businesses: GenericTable;
       clients: GenericTable;
       estimates: GenericTable;
+      estimate_line_items: GenericTable;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -44,7 +49,18 @@ type EstimateRow = {
   display_id: string | null;
   customer_name: string | null;
   project_title: string | null;
+  project_address: string | null;
+  service_address: string | null;
+  estimate_amount: string | number | null;
+  reference: string | null;
   status: string | null;
+};
+
+type EstimateLineItemRow = {
+  description: string | null;
+  quantity: string | number | null;
+  unit_price: string | number | null;
+  line_total: string | number | null;
 };
 
 type BusinessRow = {
@@ -96,6 +112,23 @@ function plainTextToHtml(value: string) {
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function parseMoney(value: string | number | null) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  const parsed = Number(String(value ?? "0").replace(/[^0-9.-]/g, ""));
+
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatMoney(value: number) {
+  return value.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+  });
 }
 
 async function requireWorkspaceAccess({
@@ -152,6 +185,7 @@ async function sendWithResend({
   subject,
   html,
   text,
+  attachments,
 }: {
   from: string;
   to: string;
@@ -161,6 +195,7 @@ async function sendWithResend({
   subject: string;
   html: string;
   text: string;
+  attachments?: EmailAttachment[];
 }) {
   const apiKey = process.env.RESEND_API_KEY;
 
@@ -185,6 +220,7 @@ async function sendWithResend({
       ...(replyTo ? { reply_to: replyTo } : {}),
       ...(cc ? { cc: [cc] } : {}),
       ...(bcc ? { bcc: [bcc] } : {}),
+      ...(attachments?.length ? { attachments } : {}),
       subject,
       html,
       text,
@@ -263,7 +299,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   const { data: estimate, error: estimateError } = await supabase
     .from("estimates")
     .select(
-      "id, business_id, client_id, display_id, customer_name, project_title, status"
+      "id, business_id, client_id, display_id, customer_name, project_title, project_address, service_address, estimate_amount, reference, status"
     )
     .eq("id", id)
     .limit(1)
@@ -359,6 +395,51 @@ export async function POST(request: Request, { params }: RouteParams) {
     senderName: emailSettings.senderName || business.name || "Trimax",
     senderEmail,
   });
+  const { data: lineItems } = await supabase
+    .from("estimate_line_items")
+    .select("description, quantity, unit_price, line_total")
+    .eq("estimate_id", estimate.id)
+    .order("sort_order", { ascending: true })
+    .returns<EstimateLineItemRow[]>();
+  const total = parseMoney(estimate.estimate_amount);
+  const pdfAttachment = includePdfNote
+    ? createPdfAttachment({
+        filename: estimate.display_id ?? "estimate",
+        title: estimate.display_id ?? "Estimate",
+        subtitle: business.name ?? "Trimax",
+        sections: [
+          {
+            title: "Customer",
+            lines: [
+              estimate.customer_name ?? "Customer",
+              estimate.project_title ? `Project: ${estimate.project_title}` : "",
+              estimate.service_address || estimate.project_address
+                ? `Service address: ${
+                    estimate.service_address || estimate.project_address
+                  }`
+                : "",
+              estimate.reference ? `Reference: ${estimate.reference}` : "",
+            ].filter(Boolean),
+          },
+          {
+            title: "Line Items",
+            lines:
+              lineItems && lineItems.length > 0
+                ? lineItems.map(
+                    (item) =>
+                      `${item.description ?? "Line item"} - Qty ${
+                        item.quantity ?? 1
+                      } - ${formatMoney(parseMoney(item.line_total))}`
+                  )
+                : ["Line items are available in Trimax."],
+          },
+          {
+            title: "Total",
+            lines: [`Estimate total: ${formatMoney(total)}`],
+          },
+        ],
+      })
+    : null;
 
   const html = `
     <div style="font-family: Arial, sans-serif; color: #1f3347; line-height: 1.6; max-width: 640px; margin: 0 auto;">
@@ -371,7 +452,7 @@ export async function POST(request: Request, { params }: RouteParams) {
         <p style="font-size: 16px;">${plainTextToHtml(message)}</p>
         ${
           includePdfNote
-            ? `<p style="font-size: 14px; color: #52677c;">A PDF copy should be attached once Trimax PDF attachments are connected.</p>`
+            ? `<p style="font-size: 14px; color: #52677c;">A PDF copy is attached.</p>`
             : ""
         }
       </div>
@@ -390,6 +471,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     subject,
     html,
     text: message,
+    attachments: pdfAttachment ? [pdfAttachment] : undefined,
   });
 
   if (!sendResult.ok) {
@@ -421,6 +503,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       cc_email: ccEmail || null,
       cc_source: ccSource,
       bcc_email: bccEmail && isValidEmail(bccEmail) ? bccEmail : null,
+      pdf_attached: Boolean(pdfAttachment),
     },
   });
 
@@ -429,6 +512,6 @@ export async function POST(request: Request, { params }: RouteParams) {
       ccEmail ? " and CC'd" : ""
     }${
       bccEmail && isValidEmail(bccEmail) ? " and privately copied." : "."
-    }`,
+    }${pdfAttachment ? " PDF attached." : ""}`,
   });
 }

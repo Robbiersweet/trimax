@@ -6,6 +6,10 @@ import {
   formatSenderAddress,
   normalizeInvoiceEmailSettings,
 } from "../../../../lib/invoiceEmailSettings";
+import {
+  createPdfAttachment,
+  type EmailAttachment,
+} from "../../../../lib/pdfAttachments";
 
 type GenericTable = {
   Row: Record<string, unknown>;
@@ -23,6 +27,7 @@ type Database = {
       businesses: GenericTable;
       clients: GenericTable;
       invoices: GenericTable;
+      invoice_line_items: GenericTable;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -44,7 +49,20 @@ type InvoiceRow = {
   display_id: string | null;
   customer_name: string | null;
   project_title: string | null;
+  invoice_amount: string | number | null;
+  amount_paid: string | number | null;
+  due_date: string | null;
+  issue_date: string | null;
+  reference: string | null;
+  service_address: string | null;
   status: string | null;
+};
+
+type InvoiceLineItemRow = {
+  description: string | null;
+  quantity: string | number | null;
+  unit_price: string | number | null;
+  line_total: string | number | null;
 };
 
 type BusinessRow = {
@@ -96,6 +114,41 @@ function plainTextToHtml(value: string) {
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function parseMoney(value: string | number | null) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  const parsed = Number(String(value ?? "0").replace(/[^0-9.-]/g, ""));
+
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatMoney(value: number) {
+  return value.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+  });
+}
+
+function formatDate(value: string | null) {
+  if (!value) {
+    return "-";
+  }
+
+  const date = new Date(value.includes("T") ? value : `${value}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleDateString("en-US", {
+    month: "2-digit",
+    day: "2-digit",
+    year: "numeric",
+  });
 }
 
 async function requireWorkspaceAccess({
@@ -152,6 +205,7 @@ async function sendWithResend({
   subject,
   html,
   text,
+  attachments,
 }: {
   from: string;
   to: string;
@@ -161,6 +215,7 @@ async function sendWithResend({
   subject: string;
   html: string;
   text: string;
+  attachments?: EmailAttachment[];
 }) {
   const apiKey = process.env.RESEND_API_KEY;
 
@@ -185,6 +240,7 @@ async function sendWithResend({
       ...(replyTo ? { reply_to: replyTo } : {}),
       ...(cc ? { cc: [cc] } : {}),
       ...(bcc ? { bcc: [bcc] } : {}),
+      ...(attachments?.length ? { attachments } : {}),
       subject,
       html,
       text,
@@ -265,7 +321,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   const { data: invoice, error: invoiceError } = await supabase
     .from("invoices")
     .select(
-      "id, business_id, client_id, display_id, customer_name, project_title, status"
+      "id, business_id, client_id, display_id, customer_name, project_title, invoice_amount, amount_paid, due_date, issue_date, reference, service_address, status"
     )
     .eq("id", id)
     .limit(1)
@@ -361,6 +417,62 @@ export async function POST(request: Request, { params }: RouteParams) {
     senderName: emailSettings.senderName || business.name || "Trimax",
     senderEmail,
   });
+  const { data: lineItems } = await supabase
+    .from("invoice_line_items")
+    .select("description, quantity, unit_price, line_total")
+    .eq("invoice_id", invoice.id)
+    .order("sort_order", { ascending: true })
+    .returns<InvoiceLineItemRow[]>();
+  const total = parseMoney(invoice.invoice_amount);
+  const amountPaid = parseMoney(invoice.amount_paid);
+  const amountDue = Math.max(total - amountPaid, 0);
+  const pdfAttachment = includePdfNote
+    ? createPdfAttachment({
+        filename: invoice.display_id ?? "invoice",
+        title: invoice.display_id ?? "Invoice",
+        subtitle: business.name ?? "Trimax",
+        sections: [
+          {
+            title: "Customer",
+            lines: [
+              invoice.customer_name ?? "Customer",
+              invoice.project_title ? `Project: ${invoice.project_title}` : "",
+              invoice.service_address
+                ? `Service address: ${invoice.service_address}`
+                : "",
+              invoice.reference ? `Reference: ${invoice.reference}` : "",
+            ].filter(Boolean),
+          },
+          {
+            title: "Dates",
+            lines: [
+              `Issue date: ${formatDate(invoice.issue_date)}`,
+              `Due date: ${formatDate(invoice.due_date)}`,
+            ],
+          },
+          {
+            title: "Line Items",
+            lines:
+              lineItems && lineItems.length > 0
+                ? lineItems.map(
+                    (item) =>
+                      `${item.description ?? "Line item"} - Qty ${
+                        item.quantity ?? 1
+                      } - ${formatMoney(parseMoney(item.line_total))}`
+                  )
+                : ["Line items are available in Trimax."],
+          },
+          {
+            title: "Totals",
+            lines: [
+              `Total: ${formatMoney(total)}`,
+              `Amount paid: ${formatMoney(amountPaid)}`,
+              `Amount due: ${formatMoney(amountDue)}`,
+            ],
+          },
+        ],
+      })
+    : null;
 
   const html = `
     <div style="font-family: Arial, sans-serif; color: #1f3347; line-height: 1.6; max-width: 640px; margin: 0 auto;">
@@ -373,7 +485,7 @@ export async function POST(request: Request, { params }: RouteParams) {
         <p style="font-size: 16px;">${plainTextToHtml(message)}</p>
         ${
           includePdfNote
-            ? `<p style="font-size: 14px; color: #52677c;">A PDF copy should be attached once Trimax PDF attachments are connected.</p>`
+            ? `<p style="font-size: 14px; color: #52677c;">A PDF copy is attached.</p>`
             : ""
         }
       </div>
@@ -392,6 +504,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     subject,
     html,
     text: message,
+    attachments: pdfAttachment ? [pdfAttachment] : undefined,
   });
 
   if (!sendResult.ok) {
@@ -429,6 +542,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       cc_email: ccEmail || null,
       cc_source: ccSource,
       bcc_email: bccEmail && isValidEmail(bccEmail) ? bccEmail : null,
+      pdf_attached: Boolean(pdfAttachment),
     },
   });
 
@@ -439,11 +553,11 @@ export async function POST(request: Request, { params }: RouteParams) {
             invoice.display_id ?? "Invoice"
           } was sent to ${recipientEmail}${ccEmail ? " and CC'd." : ""}${
             bccEmail && isValidEmail(bccEmail) ? " It was privately copied." : "."
-          }`
+          }${pdfAttachment ? " PDF attached." : ""}`
         : `${invoice.display_id ?? "Invoice"} was sent to ${recipientEmail}${
             ccEmail ? " and CC'd" : ""
           }${
             bccEmail && isValidEmail(bccEmail) ? " and privately copied." : "."
-          }`,
+          }${pdfAttachment ? " PDF attached." : ""}`,
   });
 }
