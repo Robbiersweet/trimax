@@ -1,4 +1,6 @@
 export type InvoiceEmailSettings = {
+  senderName: string;
+  senderEmail: string;
   replyToEmail: string;
   signature: string;
   invoiceSubjectTemplate: string;
@@ -41,6 +43,8 @@ export function defaultInvoiceEmailSettings({
         ].join("\n");
 
   return {
+    senderName: businessName,
+    senderEmail: "",
     replyToEmail: currentEmail ?? "",
     signature,
     invoiceSubjectTemplate: `${businessName} sent you invoice {invoiceNumber}`,
@@ -64,6 +68,14 @@ export function normalizeInvoiceEmailSettings(
   const candidate = value as Partial<Record<keyof InvoiceEmailSettings, unknown>>;
 
   return {
+    senderName:
+      typeof candidate.senderName === "string"
+        ? candidate.senderName
+        : fallback.senderName,
+    senderEmail:
+      typeof candidate.senderEmail === "string"
+        ? candidate.senderEmail
+        : fallback.senderEmail,
     replyToEmail:
       typeof candidate.replyToEmail === "string"
         ? candidate.replyToEmail
@@ -89,6 +101,23 @@ export function normalizeInvoiceEmailSettings(
         ? candidate.paymentReminderBodyTemplate
         : fallback.paymentReminderBodyTemplate,
   };
+}
+
+export function formatSenderAddress({
+  senderName,
+  senderEmail,
+}: {
+  senderName: string;
+  senderEmail: string;
+}) {
+  const email = senderEmail.trim().toLowerCase();
+  const name = senderName.trim();
+
+  if (!name) {
+    return email;
+  }
+
+  return `${name.replace(/[<>"]/g, "")} <${email}>`;
 }
 
 export function renderEmailTemplate(

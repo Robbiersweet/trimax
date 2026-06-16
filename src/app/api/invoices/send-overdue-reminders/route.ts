@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import {
   defaultInvoiceEmailSettings,
   emailSettingsKey,
+  formatSenderAddress,
   normalizeInvoiceEmailSettings,
   renderEmailTemplate,
 } from "../../../lib/invoiceEmailSettings";
@@ -202,11 +203,10 @@ export async function POST(request: Request) {
   }
 
   const supabase = getAdminClient();
-  const from = process.env.TRIMAX_EMAIL_FROM;
 
-  if (!supabase || !from) {
+  if (!supabase) {
     return NextResponse.json(
-      { error: "Reminder automation is missing email or Supabase settings." },
+      { error: "Reminder automation is missing Supabase settings." },
       { status: 503 }
     );
   }
@@ -316,6 +316,22 @@ export async function POST(request: Request) {
         businessName: business.name ?? "Trimax",
       })
     );
+    const senderEmail =
+      settings.senderEmail.trim() || process.env.TRIMAX_EMAIL_FROM || "";
+
+    if (!senderEmail || !isValidEmail(senderEmail)) {
+      failed.push({
+        invoice: business.name ?? business.slug,
+        error:
+          "No sender address is configured. Add one in Settings > Customer Email.",
+      });
+      continue;
+    }
+
+    const from = formatSenderAddress({
+      senderName: settings.senderName || business.name || "Trimax",
+      senderEmail,
+    });
 
     for (const invoice of candidateInvoices) {
       const invoiceLabel = invoice.display_id ?? "Invoice";
@@ -407,6 +423,7 @@ export async function POST(request: Request) {
         details: {
           recipient_email: recipient,
           subject,
+          sender_email: senderEmail,
           automated: true,
         },
       });

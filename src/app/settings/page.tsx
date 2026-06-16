@@ -280,6 +280,8 @@ function BusinessSettingsPageContent() {
   const [maintenanceMessage, setMaintenanceMessage] = useState(
     defaultMaintenanceSettings().message
   );
+  const [senderName, setSenderName] = useState("");
+  const [senderEmail, setSenderEmail] = useState("");
   const [replyToEmail, setReplyToEmail] = useState("");
   const [emailSignature, setEmailSignature] = useState("");
   const [invoiceSubjectTemplate, setInvoiceSubjectTemplate] = useState("");
@@ -526,6 +528,8 @@ function BusinessSettingsPageContent() {
       fallbackEmailSettings
     );
 
+    setSenderName(emailSettings.senderName);
+    setSenderEmail(emailSettings.senderEmail);
     setReplyToEmail(emailSettings.replyToEmail);
     setEmailSignature(emailSettings.signature);
     setInvoiceSubjectTemplate(emailSettings.invoiceSubjectTemplate);
@@ -787,6 +791,17 @@ function BusinessSettingsPageContent() {
     }
 
     const replyTo = replyToEmail.trim().toLowerCase();
+    const fromEmail = senderEmail.trim().toLowerCase();
+    const fromName =
+      senderName.trim() || business.name || "Trimax";
+
+    if (fromEmail && !fromEmail.includes("@")) {
+      setToast({
+        type: "error",
+        message: "Enter a valid sender email address, or leave it blank.",
+      });
+      return;
+    }
 
     if (replyTo && !replyTo.includes("@")) {
       setToast({
@@ -802,6 +817,8 @@ function BusinessSettingsPageContent() {
       currentEmail,
     });
     const nextSettings = {
+      senderName: fromName,
+      senderEmail: fromEmail,
       replyToEmail: replyTo,
       signature: emailSignature.trim() || fallbackEmailSettings.signature,
       invoiceSubjectTemplate:
@@ -846,6 +863,8 @@ function BusinessSettingsPageContent() {
       return;
     }
 
+    setSenderName(nextSettings.senderName);
+    setSenderEmail(nextSettings.senderEmail);
     setReplyToEmail(nextSettings.replyToEmail);
     setEmailSignature(nextSettings.signature);
     setInvoiceSubjectTemplate(nextSettings.invoiceSubjectTemplate);
@@ -1217,6 +1236,16 @@ function BusinessSettingsPageContent() {
   }
 
   const emailReadinessItems = [
+    {
+      label: "Sender",
+      value: senderEmail.trim()
+        ? `${senderName.trim() || business?.name || "Trimax"} <${senderEmail.trim()}>`
+        : "Use platform default",
+      status:
+        senderEmail.trim().includes("@") || !senderEmail.trim()
+          ? "ready"
+          : "attention",
+    },
     {
       label: "Reply-to",
       value: replyToEmail.trim() || currentEmail || "Not set",
@@ -1620,9 +1649,10 @@ function BusinessSettingsPageContent() {
                 </div>
 
                 <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-blue-950">
-                  Direct sending still needs a verified email sender before
-                  live messages leave Trimax. Until then, the invoice page can
-                  preview the exact customer-facing message safely.
+                  Direct sending needs one verified sending domain and provider
+                  key behind the scenes. After that, each workspace can manage
+                  its own sender name, sender email, reply-to, templates, and
+                  signature here without touching deployment settings.
                 </div>
 
                 <div className="settings-email-readiness rounded-3xl border border-sky-200 bg-sky-50 p-4">
@@ -1682,13 +1712,37 @@ function BusinessSettingsPageContent() {
                   </div>
                 </div>
 
-                <InputField
-                  label="Reply-to Email Address"
-                  type="email"
-                  placeholder="Example: robbie@rnlcreations.com"
-                  value={replyToEmail}
-                  onChange={setReplyToEmail}
-                />
+                <div className="grid gap-4 md:grid-cols-3">
+                  <InputField
+                    label="Sender Display Name"
+                    placeholder="Example: R&L Creations"
+                    value={senderName}
+                    onChange={setSenderName}
+                  />
+
+                  <InputField
+                    label="Sender Email Address"
+                    type="email"
+                    placeholder="Example: invoices@rnlcreations.com"
+                    value={senderEmail}
+                    onChange={setSenderEmail}
+                  />
+
+                  <InputField
+                    label="Reply-to Email Address"
+                    type="email"
+                    placeholder="Example: robbie@rnlcreations.com"
+                    value={replyToEmail}
+                    onChange={setReplyToEmail}
+                  />
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+                  The sender address should belong to the verified sending
+                  domain for this Trimax installation. The reply-to can be your
+                  everyday inbox, so customers can respond directly to the right
+                  person.
+                </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">

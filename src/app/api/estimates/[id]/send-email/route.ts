@@ -1,5 +1,11 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import {
+  defaultInvoiceEmailSettings,
+  emailSettingsKey,
+  formatSenderAddress,
+  normalizeInvoiceEmailSettings,
+} from "../../../../lib/invoiceEmailSettings";
 
 type GenericTable = {
   Row: Record<string, unknown>;
@@ -12,6 +18,7 @@ type Database = {
   public: {
     Tables: {
       activity_logs: GenericTable;
+      app_settings: GenericTable;
       business_users: GenericTable;
       businesses: GenericTable;
       estimates: GenericTable;
@@ -152,7 +159,7 @@ async function sendWithResend({
       ok: false,
       status: 503,
       error:
-        "Direct email is designed, but the email sender is not connected yet. Add RESEND_API_KEY and TRIMAX_EMAIL_FROM in Vercel when you are ready.",
+        "Direct email is designed, but the email provider is not connected yet. Connect the provider key once for this Trimax installation, then manage sender addresses in Settings.",
     };
   }
 
@@ -283,17 +290,36 @@ export async function POST(request: Request, { params }: RouteParams) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const from = process.env.TRIMAX_EMAIL_FROM;
+  const { data: emailSettingsRow } = await supabase
+    .from("app_settings")
+    .select("value")
+    .eq("key", emailSettingsKey(business.slug))
+    .maybeSingle<{ value: unknown }>();
+  const emailSettings = normalizeInvoiceEmailSettings(
+    emailSettingsRow?.value,
+    defaultInvoiceEmailSettings({
+      businessSlug: business.slug,
+      businessName: business.name ?? "Trimax",
+      currentEmail: access.email,
+    })
+  );
+  const senderEmail =
+    emailSettings.senderEmail.trim() || process.env.TRIMAX_EMAIL_FROM || "";
 
-  if (!from) {
+  if (!senderEmail || !isValidEmail(senderEmail)) {
     return NextResponse.json(
       {
         error:
-          "Direct email is designed, but no sender address is connected yet. Add TRIMAX_EMAIL_FROM in Vercel after the sending domain is verified.",
+          "Direct email is designed, but no sender address is connected yet. Open Settings > Customer Email and add a sender address from the verified sending domain.",
       },
       { status: 503 }
     );
   }
+
+  const from = formatSenderAddress({
+    senderName: emailSettings.senderName || business.name || "Trimax",
+    senderEmail,
+  });
 
   const html = `
     <div style="font-family: Arial, sans-serif; color: #1f3347; line-height: 1.6; max-width: 640px; margin: 0 auto;">
@@ -350,6 +376,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     details: {
       recipient_email: recipientEmail,
       subject,
+      sender_email: senderEmail,
     },
   });
 
