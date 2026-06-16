@@ -477,8 +477,26 @@ export default async function ClientDetailsPage({
                   </Link>
                 ))
               ) : (
-                <div className="app-empty-state bg-zinc-950 p-4 text-zinc-400">
-                  No estimates for this client yet.
+                <div className="app-empty-state rounded-2xl border border-dashed border-zinc-800 bg-zinc-950 p-5">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="font-black text-white">
+                        No estimates for this client yet
+                      </p>
+
+                      <p className="mt-2 text-sm leading-6 text-zinc-400">
+                        Start with an estimate when the customer needs to
+                        approve scope or pricing before work becomes billable.
+                      </p>
+                    </div>
+
+                    <Link
+                      href={`/estimates/new${businessQuery}&clientId=${client.id}`}
+                      className="app-button-secondary inline-flex justify-center rounded-2xl px-5 py-3 text-sm font-black"
+                    >
+                      New Estimate
+                    </Link>
+                  </div>
                 </div>
               )}
             </div>
@@ -544,8 +562,26 @@ export default async function ClientDetailsPage({
                   );
                 })
               ) : (
-                <div className="app-empty-state bg-zinc-950 p-4 text-zinc-400">
-                  No invoices for this client yet.
+                <div className="app-empty-state rounded-2xl border border-dashed border-zinc-800 bg-zinc-950 p-5">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="font-black text-white">
+                        No invoices for this client yet
+                      </p>
+
+                      <p className="mt-2 text-sm leading-6 text-zinc-400">
+                        Create the first invoice when this account is ready for
+                        billing, deposits, reminders, and payment tracking.
+                      </p>
+                    </div>
+
+                    <Link
+                      href={`/invoices/new${businessQuery}&clientId=${client.id}`}
+                      className="app-button-primary inline-flex justify-center rounded-2xl px-5 py-3 text-sm font-black"
+                    >
+                      New Invoice
+                    </Link>
+                  </div>
                 </div>
               )}
             </div>

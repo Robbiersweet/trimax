@@ -2550,6 +2550,14 @@ html.theme-light .app-empty-state {
   color: #64748b !important;
 }
 
+html.theme-light .app-empty-state .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light .app-empty-state .text-zinc-400 {
+  color: #475569 !important;
+}
+
 html.theme-light .app-action-card:hover {
   background: #eff6ff !important;
   border-color: #93c5fd !important;
