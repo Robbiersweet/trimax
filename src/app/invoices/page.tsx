@@ -1597,34 +1597,67 @@ export default async function InvoicesPage({
         ) : null}
 
         {invoicesWithSplitInfo.length === 0 ? (
-          <Card>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <Card className="app-empty-state border-sky-200 bg-sky-50">
+            <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
               <div>
-                <p className="font-semibold text-white">
-                  No invoices are showing in this view.
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-sky-700">
+                  Invoice Desk Ready
                 </p>
 
-                <p className="mt-2 text-sm leading-6 text-zinc-400">
-                  Create a new invoice directly, or convert an approved
-                  estimate when you want the estimate details to carry forward.
+                <h2 className="mt-2 text-2xl font-black text-slate-950">
+                  Create the first invoice
+                </h2>
+
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                  Start a new invoice directly, manage recurring drafts, or
+                  convert an approved estimate when proposal details should
+                  carry forward.
                 </p>
               </div>
 
-              <Link href={`/invoices/new${businessQuery}`}>
-                <Button>New Invoice</Button>
-              </Link>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Link href={`/recurring-invoices${businessQuery}`}>
+                  <Button variant="secondary" className="w-full sm:w-auto">
+                    Recurring Drafts
+                  </Button>
+                </Link>
+
+                <Link href={`/invoices/new${businessQuery}`}>
+                  <Button className="w-full sm:w-auto">New Invoice</Button>
+                </Link>
+              </div>
             </div>
           </Card>
         ) : filteredInvoices.length === 0 ? (
-          <Card>
-            <p className="font-semibold text-white">
-              No invoices match those filters.
-            </p>
+          <Card className="app-empty-state border-dashed border-slate-300 bg-white">
+            <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-500">
+                  Filter Check
+                </p>
 
-            <p className="mt-2 text-sm leading-6 text-zinc-400">
-              Clear the search or switch back to All and All Statuses to see
-              every invoice in this workspace.
-            </p>
+                <h2 className="mt-2 text-2xl font-black text-slate-950">
+                  No invoices match this view
+                </h2>
+
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                  Clear the filters to return to the full invoice list, or open
+                  a new invoice when this is a fresh billing item.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Link href={`/invoices${businessQuery}`}>
+                  <Button variant="secondary" className="w-full sm:w-auto">
+                    Show All Invoices
+                  </Button>
+                </Link>
+
+                <Link href={`/invoices/new${businessQuery}`}>
+                  <Button className="w-full sm:w-auto">New Invoice</Button>
+                </Link>
+              </div>
+            </div>
           </Card>
         ) : (
           <div className="invoice-list grid gap-4">

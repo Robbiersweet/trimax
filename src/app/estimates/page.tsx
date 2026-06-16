@@ -437,34 +437,66 @@ export default async function EstimatesPage({
         ) : null}
 
         {estimates.length === 0 ? (
-          <Card>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <Card className="app-empty-state border-sky-200 bg-sky-50">
+            <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
               <div>
-                <p className="font-semibold text-white">
-                  No estimates have been created yet.
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-sky-700">
+                  Estimate Workspace Ready
                 </p>
 
-                <p className="mt-2 text-sm leading-6 text-zinc-400">
-                  Start an estimate from here, or create one from a queue item
-                  when apartment turn details should carry forward.
+                <h2 className="mt-2 text-2xl font-black text-slate-950">
+                  Start the first proposal
+                </h2>
+
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                  Create a clean estimate from scratch, or open the queue when
+                  apartment turn details should carry into the proposal.
                 </p>
               </div>
 
-              <Link href={`/estimates/new${businessQuery}`}>
-                <Button>New Estimate</Button>
-              </Link>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Link href={`/queue${businessQuery}`}>
+                  <Button variant="secondary" className="w-full sm:w-auto">
+                    Open Queue
+                  </Button>
+                </Link>
+
+                <Link href={`/estimates/new${businessQuery}`}>
+                  <Button className="w-full sm:w-auto">New Estimate</Button>
+                </Link>
+              </div>
             </div>
           </Card>
         ) : filteredEstimates.length === 0 ? (
-          <Card>
-            <p className="font-semibold text-white">
-              No estimates match those filters.
-            </p>
+          <Card className="app-empty-state border-dashed border-slate-300 bg-white">
+            <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-500">
+                  Filter Check
+                </p>
 
-            <p className="mt-2 text-sm leading-6 text-zinc-400">
-              Clear the search or switch back to All to see every estimate in
-              this workspace.
-            </p>
+                <h2 className="mt-2 text-2xl font-black text-slate-950">
+                  No estimates match this view
+                </h2>
+
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                  Try a broader search, switch back to all estimate statuses, or
+                  start a fresh proposal if this is new work.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Link href={`/estimates${businessQuery}`}>
+                  <Button variant="secondary" className="w-full sm:w-auto">
+                    Show All Estimates
+                  </Button>
+                </Link>
+
+                <Link href={`/estimates/new${businessQuery}`}>
+                  <Button className="w-full sm:w-auto">New Estimate</Button>
+                </Link>
+              </div>
+            </div>
           </Card>
         ) : (
           <div className="grid gap-4">
