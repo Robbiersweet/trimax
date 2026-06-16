@@ -1250,6 +1250,38 @@ export default async function DashboardPage({
             : "checks",
     },
   ];
+  const dashboardSectionLinks = [
+    {
+      label: "Focus",
+      detail: "Top 3 moves",
+      href: "#dashboard-focus",
+      tone: "focus",
+    },
+    {
+      label: "Accounting",
+      detail: "Cash actions",
+      href: "#dashboard-accounting",
+      tone: "accounting",
+    },
+    {
+      label: "Queue",
+      detail: "Turns and jobs",
+      href: "#dashboard-queue",
+      tone: "queue",
+    },
+    {
+      label: "Reports",
+      detail: "Money and aging",
+      href: "#dashboard-reports",
+      tone: "reports",
+    },
+    {
+      label: "Activity",
+      detail: "Recent changes",
+      href: "#dashboard-activity",
+      tone: "activity",
+    },
+  ];
 
   return (
     <AppShell>
@@ -1429,7 +1461,56 @@ export default async function DashboardPage({
             "accountant",
           ]}
         >
-          <section className="dashboard-focus-strip">
+          <section className="dashboard-map rounded-3xl border border-sky-500/20 bg-zinc-950/70 p-4">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="dashboard-section-label text-xs font-black uppercase tracking-[0.24em] text-sky-300">
+                  Dashboard Map
+                </p>
+
+                <h2 className="mt-1 text-xl font-black tracking-tight text-white">
+                  Jump straight to the section you need
+                </h2>
+              </div>
+
+              <Link
+                href={`/reports?business=${selectedBusinessSlug}`}
+                className="dashboard-map-report-link rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-black text-sky-100 transition hover:border-sky-300/50 hover:bg-sky-500/10"
+              >
+                Full reports
+              </Link>
+            </div>
+
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+              {dashboardSectionLinks.map((item) => (
+                <a
+                  key={item.label}
+                  href={item.href}
+                  data-tone={item.tone}
+                  className="dashboard-map-link rounded-2xl border p-3 transition hover:-translate-y-0.5"
+                >
+                  <span className="block text-sm font-black">
+                    {item.label}
+                  </span>
+
+                  <span className="mt-1 block text-xs font-semibold opacity-80">
+                    {item.detail}
+                  </span>
+                </a>
+              ))}
+            </div>
+          </section>
+        </RoleVisible>
+
+        <RoleVisible
+          businessSlug={selectedBusinessSlug}
+          allow={[
+            "owner",
+            "admin",
+            "accountant",
+          ]}
+        >
+          <section id="dashboard-focus" className="dashboard-focus-strip scroll-mt-6">
             <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
               <div>
                 <p className="dashboard-section-label text-sm uppercase tracking-[0.3em] text-sky-300">
@@ -1478,7 +1559,10 @@ export default async function DashboardPage({
           </section>
         </RoleVisible>
 
-        <Card className="dashboard-queue-command dark-surface hidden overflow-hidden border-sky-500/20 bg-gradient-to-br from-zinc-950 via-zinc-900 to-emerald-950/20 lg:block">
+        <Card
+          id="dashboard-queue"
+          className="dashboard-queue-command dark-surface hidden scroll-mt-6 overflow-hidden border-sky-500/20 bg-gradient-to-br from-zinc-950 via-zinc-900 to-emerald-950/20 lg:block"
+        >
           <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr] xl:items-start">
             <div>
               <p className="dashboard-section-label text-sm uppercase tracking-[0.3em] text-sky-300">
@@ -1584,7 +1668,10 @@ export default async function DashboardPage({
             "accountant",
           ]}
         >
-          <Card className="dashboard-command-center dark-surface overflow-hidden border-sky-500/20 bg-zinc-950">
+          <Card
+            id="dashboard-accounting"
+            className="dashboard-command-center dark-surface scroll-mt-6 overflow-hidden border-sky-500/20 bg-zinc-950"
+          >
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <p className="dashboard-command-label text-sm uppercase tracking-[0.3em] text-sky-300">
@@ -1813,7 +1900,10 @@ export default async function DashboardPage({
             "accountant",
           ]}
         >
-          <div className="hidden gap-4 lg:grid xl:grid-cols-[1.2fr_0.8fr]">
+          <div
+            id="dashboard-reports"
+            className="hidden scroll-mt-6 gap-4 lg:grid xl:grid-cols-[1.2fr_0.8fr]"
+          >
             <Card className="dashboard-money-section dark-surface border-sky-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-sky-950/20">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
@@ -2127,7 +2217,10 @@ export default async function DashboardPage({
           </Card>
         </RoleVisible>
 
-        <Card className="dashboard-activity-section hidden lg:block">
+        <Card
+          id="dashboard-activity"
+          className="dashboard-activity-section hidden scroll-mt-6 lg:block"
+        >
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
@@ -2181,7 +2274,7 @@ export default async function DashboardPage({
           </div>
         </Card>
 
-        <section className="dashboard-workstream-section">
+        <section id="dashboard-workstream" className="dashboard-workstream-section scroll-mt-6">
           <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="dashboard-section-label text-sm uppercase tracking-[0.3em] text-sky-300">
