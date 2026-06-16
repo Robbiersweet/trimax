@@ -455,6 +455,66 @@ function activityHref(log: ActivityLog, businessSlug: string) {
   return `/activity?business=${businessSlug}`;
 }
 
+function activityDetailValue(
+  details: ActivityLog["details"],
+  key: string
+) {
+  const value = details?.[key];
+
+  return typeof value === "string" && value.trim()
+    ? value.trim()
+    : null;
+}
+
+function activityMoneyValue(
+  details: ActivityLog["details"],
+  key: string
+) {
+  const value = details?.[key];
+
+  if (typeof value === "number") {
+    return formatMoney(value);
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    return formatMoney(parseMoney(value));
+  }
+
+  return null;
+}
+
+function activityProofDetail(log: ActivityLog) {
+  const recipient = activityDetailValue(log.details, "recipient_email");
+  const ccEmail = activityDetailValue(log.details, "cc_email");
+  const pdfAttached = log.details?.pdf_attached === true;
+  const depositAmount = activityMoneyValue(log.details, "depositAmount");
+  const paymentAmount = activityMoneyValue(log.details, "amountApplied");
+
+  if (recipient) {
+    const parts = [`To ${recipient}`];
+
+    if (ccEmail) {
+      parts.push(`CC ${ccEmail}`);
+    }
+
+    if (pdfAttached) {
+      parts.push("PDF attached");
+    }
+
+    return parts.join(" / ");
+  }
+
+  if (paymentAmount) {
+    return `${paymentAmount} applied`;
+  }
+
+  if (depositAmount) {
+    return `${depositAmount} requested`;
+  }
+
+  return log.actor_email ? `Logged by ${log.actor_email}` : "Logged in Trimax";
+}
+
 function relativeTime(value: string | null) {
   if (!value) {
     return "Recently";
@@ -568,7 +628,7 @@ export default async function DashboardPage({
         )
         .eq("business_id", selectedBusiness.id)
         .order("created_at", { ascending: false })
-        .limit(5),
+        .limit(10),
     ]);
 
     queueItems =
@@ -1287,6 +1347,19 @@ export default async function DashboardPage({
       tone: "activity",
     },
   ];
+  const proofActions = new Set([
+    "estimate.email_sent",
+    "invoice.email_sent",
+    "invoice.payment_reminder_sent",
+    "invoice.deposit_requested",
+    "invoice.deposit_cleared",
+    "invoice.batch_payment_applied",
+    "invoice.recurring_draft_created",
+    "invoice.split_created",
+  ]);
+  const communicationProofLogs = activityLogs
+    .filter((log) => proofActions.has(log.action))
+    .slice(0, 3);
 
   return (
     <AppShell>
@@ -1739,6 +1812,62 @@ export default async function DashboardPage({
                   </p>
                 </Link>
               ))}
+            </div>
+
+            <div className="dashboard-proof-strip mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.24em] text-sky-200">
+                    Communication Proof
+                  </p>
+
+                  <h3 className="mt-1 text-lg font-black text-white">
+                    Recently logged customer touches
+                  </h3>
+                </div>
+
+                <Link
+                  href={`/activity?business=${selectedBusinessSlug}`}
+                  className="text-sm font-black text-sky-200 transition hover:text-white"
+                >
+                  Open activity
+                </Link>
+              </div>
+
+              <div className="mt-3 grid gap-3 lg:grid-cols-3">
+                {communicationProofLogs.map((log) => (
+                  <Link
+                    key={log.id}
+                    href={activityHref(log, selectedBusinessSlug)}
+                    className="dashboard-proof-card rounded-2xl border border-white/10 bg-black/25 p-4 transition hover:-translate-y-0.5 hover:border-sky-300/50"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-xs font-black uppercase tracking-[0.18em] text-sky-200">
+                        {activityLabel(log.action)}
+                      </p>
+
+                      <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-black text-white">
+                        {relativeTime(log.created_at)}
+                      </span>
+                    </div>
+
+                    <p className="mt-3 line-clamp-1 font-black text-white">
+                      {log.entity_label ?? "Workspace activity"}
+                    </p>
+
+                    <p className="mt-1 line-clamp-2 text-sm leading-5 text-zinc-300">
+                      {activityProofDetail(log)}
+                    </p>
+                  </Link>
+                ))}
+
+                {communicationProofLogs.length === 0 ? (
+                  <p className="dashboard-proof-card rounded-2xl border border-dashed border-white/15 bg-black/20 p-4 text-sm leading-6 text-zinc-300 lg:col-span-3">
+                    Send an invoice, estimate, reminder, deposit request, or
+                    payment batch and Trimax will show the latest proof here.
+                  </p>
+                ) : null}
+              </div>
             </div>
           </Card>
 
