@@ -299,14 +299,14 @@ export default function QuickCommandCenter() {
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if (isTypingTarget(event.target)) {
-        return;
-      }
-
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         setIsOpen((current) => !current);
         setSelectedIndex(0);
+        return;
+      }
+
+      if (isTypingTarget(event.target)) {
         return;
       }
 
@@ -343,6 +343,9 @@ export default function QuickCommandCenter() {
       >
         <span aria-hidden="true">/</span>
         <span>Command</span>
+        <span className="quick-command-shortcut" aria-hidden="true">
+          Ctrl K
+        </span>
       </button>
 
       {isOpen ? (
@@ -367,6 +370,16 @@ export default function QuickCommandCenter() {
               </span>
               <input
                 ref={searchInputRef}
+                aria-activedescendant={
+                  selectedCommand
+                    ? `quick-command-${selectedCommand.href
+                        .replace(/[^a-zA-Z0-9]+/g, "-")
+                        .replace(/^-|-$/g, "")}`
+                    : undefined
+                }
+                aria-autocomplete="list"
+                aria-controls="quick-command-results"
+                aria-expanded={isOpen}
                 value={query}
                 onChange={(event) => {
                   setQuery(event.target.value);
@@ -398,6 +411,7 @@ export default function QuickCommandCenter() {
                 }}
                 placeholder="Search workflows, invoices, checks, queue..."
                 className="quick-command-input"
+                role="combobox"
               />
               <button
                 type="button"
@@ -410,12 +424,21 @@ export default function QuickCommandCenter() {
             </div>
 
             <div className="quick-command-hints">
-              <span>Type to filter</span>
-              <span>Enter opens highlighted</span>
-              <span>/ or Ctrl+K opens</span>
+              <span>
+                <kbd>Type</kbd> filters
+              </span>
+              <span>
+                <kbd>Enter</kbd> opens
+              </span>
+              <span>
+                <kbd>Esc</kbd> closes
+              </span>
+              <span>
+                <kbd>/</kbd> or <kbd>Ctrl K</kbd>
+              </span>
             </div>
 
-            <div className="quick-command-results">
+            <div className="quick-command-results" id="quick-command-results">
               {!normalizedQuery && recentCommands.length > 0 ? (
                 <p className="quick-command-section-label">
                   Recent workflows
@@ -439,6 +462,9 @@ export default function QuickCommandCenter() {
                 visibleCommands.map((command, index) => (
                   <Link
                     key={command.href}
+                    id={`quick-command-${command.href
+                      .replace(/[^a-zA-Z0-9]+/g, "-")
+                      .replace(/^-|-$/g, "")}`}
                     href={command.href}
                     data-tone={command.tone}
                     data-active={index === selectedIndex}
