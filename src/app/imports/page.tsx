@@ -30,6 +30,11 @@ type Client = {
   id: string;
   name: string;
   email: string | null;
+  phone: string | null;
+  contact_name: string | null;
+  billing_address: string | null;
+  service_address: string | null;
+  notes: string | null;
 };
 
 type CsvRow = Record<string, string>;
@@ -263,8 +268,24 @@ function mapClientRow(row: CsvRow): ClientImportRow {
     contactName:
       field(row, ["Contact Name", "Contact", "Primary Contact"]) ||
       (organization ? fullName : ""),
-    email: field(row, ["Email", "Email Address", "Client Email"]),
-    phone: field(row, ["Phone", "Phone Number", "Mobile"]),
+    email: field(row, [
+      "Email",
+      "Email Address",
+      "Client Email",
+      "Primary Email",
+      "Contact Email",
+      "Billing Email",
+      "Customer Email",
+    ]),
+    phone: field(row, [
+      "Phone",
+      "Phone Number",
+      "Mobile",
+      "Mobile Phone",
+      "Work Phone",
+      "Business Phone",
+      "Client Phone",
+    ]),
     billingAddress,
     serviceAddress: field(row, [
       "Service Address",
@@ -426,11 +447,11 @@ function formatMoney(value: number) {
   }).format(value);
 }
 
-function isDuplicateClient(existingClients: Client[], row: ClientImportRow) {
+function findMatchingClient(existingClients: Client[], row: ClientImportRow) {
   const rowName = row.name.trim().toLowerCase();
   const rowEmail = row.email.trim().toLowerCase();
 
-  return existingClients.some((client) => {
+  return existingClients.find((client) => {
     const clientName = client.name.trim().toLowerCase();
     const clientEmail = (client.email ?? "").trim().toLowerCase();
 
@@ -439,6 +460,36 @@ function isDuplicateClient(existingClients: Client[], row: ClientImportRow) {
       (rowEmail && clientEmail === rowEmail)
     );
   });
+}
+
+function getClientBackfill(row: ClientImportRow, client: Client) {
+  const backfill: Record<string, string> = {};
+
+  if (row.email && !client.email?.trim()) {
+    backfill.email = row.email.trim().toLowerCase();
+  }
+
+  if (row.phone && !client.phone?.trim()) {
+    backfill.phone = row.phone;
+  }
+
+  if (row.contactName && !client.contact_name?.trim()) {
+    backfill.contact_name = row.contactName;
+  }
+
+  if (row.billingAddress && !client.billing_address?.trim()) {
+    backfill.billing_address = row.billingAddress;
+  }
+
+  if (row.serviceAddress && !client.service_address?.trim()) {
+    backfill.service_address = row.serviceAddress;
+  }
+
+  if (row.notes && !client.notes?.trim()) {
+    backfill.notes = row.notes;
+  }
+
+  return backfill;
 }
 
 function ImportsPageContent() {
@@ -609,7 +660,9 @@ function ImportsPageContent() {
 
     const { data: existingData } = await supabase
       .from("clients")
-      .select("id, name, email")
+      .select(
+        "id, name, email, phone, contact_name, billing_address, service_address, notes"
+      )
       .eq("business_id", business.id);
     const existingClients = (existingData ?? []) as Client[];
     const {
@@ -622,7 +675,50 @@ function ImportsPageContent() {
     const importRows: Record<string, unknown>[] = [];
 
     for (const [index, row] of clientRows.entries()) {
-      if (isDuplicateClient(existingClients, row)) {
+      const matchingClient = findMatchingClient(existingClients, row);
+
+      if (matchingClient) {
+        const backfill = getClientBackfill(row, matchingClient);
+
+        if (Object.keys(backfill).length > 0) {
+          const { error } = await supabase
+            .from("clients")
+            .update(backfill)
+            .eq("id", matchingClient.id)
+            .eq("business_id", business.id);
+
+          if (error) {
+            errorCount += 1;
+            importRows.push({
+              business_id: business.id,
+              row_number: index + 1,
+              import_type: "clients",
+              raw_data: rawRows[index] ?? {},
+              mapped_data: row,
+              status: "error",
+              target_table: "clients",
+              target_id: matchingClient.id,
+              error_message:
+                error.message ?? "Unable to update existing client.",
+            });
+            continue;
+          }
+
+          Object.assign(matchingClient, backfill);
+          importedCount += 1;
+          importRows.push({
+            business_id: business.id,
+            row_number: index + 1,
+            import_type: "clients",
+            raw_data: rawRows[index] ?? {},
+            mapped_data: row,
+            status: "imported",
+            target_table: "clients",
+            target_id: matchingClient.id,
+          });
+          continue;
+        }
+
         skippedCount += 1;
         importRows.push({
           business_id: business.id,
@@ -632,7 +728,7 @@ function ImportsPageContent() {
           mapped_data: row,
           status: "skipped",
           target_table: "clients",
-          error_message: "Skipped possible duplicate client.",
+          error_message: "Skipped duplicate client with no blank fields to fill.",
         });
         continue;
       }
@@ -650,7 +746,9 @@ function ImportsPageContent() {
           service_address: row.serviceAddress || row.billingAddress || null,
           notes: row.notes || null,
         })
-        .select("id, name, email")
+        .select(
+          "id, name, email, phone, contact_name, billing_address, service_address, notes"
+        )
         .single();
 
       if (error || !data) {
@@ -747,7 +845,9 @@ function ImportsPageContent() {
         name: customerName,
         notes: "Created during CSV invoice import.",
       })
-      .select("id, name, email")
+      .select(
+        "id, name, email, phone, contact_name, billing_address, service_address, notes"
+      )
       .single();
 
     if (!data) {
@@ -766,7 +866,9 @@ function ImportsPageContent() {
 
     const { data: existingClientData } = await supabase
       .from("clients")
-      .select("id, name, email")
+      .select(
+        "id, name, email, phone, contact_name, billing_address, service_address, notes"
+      )
       .eq("business_id", business.id);
     const clients = (existingClientData ?? []) as Client[];
     const {
