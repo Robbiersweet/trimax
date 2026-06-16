@@ -127,6 +127,33 @@ function drawBox(commands: string[], x: number, y: number, w: number, h: number)
   commands.push("Q");
 }
 
+function drawBrandMark(commands: string[], x: number, y: number) {
+  commands.push("q");
+  commands.push("0.07 0.10 0.14 rg");
+  commands.push(`${x} ${y} 44 44 re f`);
+  commands.push("0.88 0.65 0.16 RG");
+  commands.push(`${x + 5} ${y + 5} 34 34 re S`);
+  commands.push("Q");
+  addText({
+    commands,
+    x: x + 12,
+    y: y + 25,
+    text: "R&L",
+    size: 10,
+    font: "F2",
+    color: "1 1 1",
+  });
+  addText({
+    commands,
+    x: x + 9,
+    y: y + 13,
+    text: "TRIMAX",
+    size: 5,
+    font: "F2",
+    color: "0.88 0.65 0.16",
+  });
+}
+
 function makePdf({
   title,
   subtitle,
@@ -151,9 +178,10 @@ function makePdf({
       )
   );
 
+  drawBrandMark(commands, 54, 704);
   addText({
     commands,
-    x: 54,
+    x: 112,
     y: 742,
     text: subtitle ?? "Trimax",
     size: 16,
@@ -161,7 +189,7 @@ function makePdf({
   });
   addText({
     commands,
-    x: 54,
+    x: 112,
     y: 722,
     text: "1011 90th St SW #B",
     size: 9,
@@ -169,7 +197,7 @@ function makePdf({
   });
   addText({
     commands,
-    x: 54,
+    x: 112,
     y: 708,
     text: "Everett, WA 98204",
     size: 9,
@@ -177,7 +205,7 @@ function makePdf({
   });
   addText({
     commands,
-    x: 54,
+    x: 112,
     y: 694,
     text: "(425) 350-4898",
     size: 9,
@@ -186,7 +214,7 @@ function makePdf({
 
   addText({
     commands,
-    x: 410,
+    x: 394,
     y: 735,
     text: title,
     size: 22,
@@ -301,7 +329,7 @@ function makePdf({
       tableY -= 10;
     });
 
-  const totalsY = Math.min(tableY - 18, 260);
+  const totalsY = Math.max(tableY - 92, 178);
   drawBox(commands, 342, totalsY - 12, 216, 90);
   addText({
     commands,
@@ -326,7 +354,7 @@ function makePdf({
     });
   });
 
-  let notesY = totalsY - 45;
+  let notesY = Math.min(totalsY + 62, tableY - 24);
   otherSections.slice(0, 2).forEach((section) => {
     addText({
       commands,
