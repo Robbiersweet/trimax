@@ -4825,3 +4825,49 @@ html.theme-light main .rounded-xl.bg-zinc-800:hover {
   border-color: #93c5fd !important;
   color: #1d4ed8 !important;
 }
+
+/* Final light-mode contrast guard: pale sky/cyan text was too hard to read on
+   white cards, especially small uppercase section labels. */
+html.theme-light main .text-sky-50,
+html.theme-light main .text-sky-100,
+html.theme-light main .text-sky-100\/60,
+html.theme-light main .text-sky-100\/70,
+html.theme-light main .text-sky-100\/75,
+html.theme-light main .text-sky-100\/80,
+html.theme-light main .text-sky-100\/90,
+html.theme-light main .text-sky-200,
+html.theme-light main .text-sky-200\/70,
+html.theme-light main .text-sky-200\/80,
+html.theme-light main .text-sky-300,
+html.theme-light main .text-cyan-50,
+html.theme-light main .text-cyan-100,
+html.theme-light main .text-cyan-200,
+html.theme-light main .text-cyan-300,
+html.theme-light main .text-blue-50,
+html.theme-light main .text-blue-100,
+html.theme-light main .text-blue-200,
+html.theme-light main .text-blue-300,
+html.theme-light main .dashboard-section-label,
+html.theme-light main .dashboard-command-label,
+html.theme-light main .report-library-kicker,
+html.theme-light main .document-readiness-label {
+  color: #075985 !important;
+}
+
+html.theme-light main .text-sky-400,
+html.theme-light main .text-cyan-400,
+html.theme-light main .text-blue-400,
+html.theme-light main a.text-sky-400,
+html.theme-light main a.text-cyan-400,
+html.theme-light main a.text-blue-400 {
+  color: #0369a1 !important;
+}
+
+html.theme-light main a.text-sky-400:hover,
+html.theme-light main a.text-cyan-400:hover,
+html.theme-light main a.text-blue-400:hover,
+html.theme-light main .hover\:text-sky-100:hover,
+html.theme-light main .hover\:text-sky-200:hover,
+html.theme-light main .hover\:text-sky-300:hover {
+  color: #1d4ed8 !important;
+}
