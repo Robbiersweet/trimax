@@ -3,7 +3,6 @@ import AppShell from "./components/AppShell";
 import Card from "./components/Card";
 import Button from "./components/Button";
 import StatusBadge from "./components/StatusBadge";
-import DashboardQuickActions from "./components/DashboardQuickActions";
 import RoleVisible from "./components/RoleVisible";
 import { supabase } from "./lib/supabase";
 import { maybeCanonicalApartmentUnitLabel } from "./utils/unitLabels";
@@ -696,8 +695,6 @@ export default async function DashboardPage({
   const outstandingRevenue = formatMoney(
     outstandingRevenueTotal
   );
-  const estimatedRevenue = formatMoney(estimatedRevenueTotal);
-  const invoicedRevenue = formatMoney(invoicedRevenueTotal);
   const ytdRevenue = formatMoney(ytdRevenueTotal);
 
   const revenueVisualMax = Math.max(
@@ -1586,7 +1583,7 @@ export default async function DashboardPage({
           ]}
         >
           {customerBalances.length > 0 ? (
-            <Card className="border-green-500/20 bg-green-500/5">
+            <Card className="dashboard-collection-targets dark-surface border-green-500/20 bg-green-500/5">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <p className="text-sm uppercase tracking-[0.3em] text-green-300">
@@ -1624,7 +1621,7 @@ export default async function DashboardPage({
                   return (
                     <div
                       key={customer.customerName}
-                      className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
+                      className="dashboard-collection-target-card rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div>
@@ -1677,7 +1674,7 @@ export default async function DashboardPage({
             "accountant",
           ]}
         >
-          <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+          <div className="hidden gap-4 lg:grid xl:grid-cols-[1.2fr_0.8fr]">
             <Card className="dashboard-money-section dark-surface border-sky-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-sky-950/20">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
@@ -1785,7 +1782,7 @@ export default async function DashboardPage({
             "accountant",
           ]}
         >
-          <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+          <div className="hidden gap-4 lg:grid xl:grid-cols-[0.9fr_1.1fr]">
             <Card className="dashboard-cash-section dark-surface border-emerald-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-emerald-950/20">
               <p className="dashboard-section-label text-sm uppercase tracking-[0.3em] text-emerald-300">
                 Collection Health
@@ -1901,7 +1898,7 @@ export default async function DashboardPage({
             "accountant",
           ]}
         >
-          <Card className="border-pink-500/20 bg-pink-500/5">
+          <Card className="dashboard-aging-section hidden border-pink-500/20 bg-pink-500/5 lg:block">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <p className="text-sm uppercase tracking-[0.3em] text-pink-300">
@@ -1991,267 +1988,7 @@ export default async function DashboardPage({
           </Card>
         </RoleVisible>
 
-        <div className="hidden">
-          <Card className="border-yellow-500/30 bg-yellow-500/5">
-            <p className="text-sm uppercase tracking-[0.3em] text-yellow-300">
-              Scheduling Attention
-            </p>
-
-            <p className="mt-3 text-4xl font-bold">
-              {readySoonUnscheduled.length}
-            </p>
-
-            <p className="mt-2 text-zinc-300">
-              Units are within 7 days of the requested paint finish date and are not scheduled.
-            </p>
-
-            <p className="mt-2 text-sm text-zinc-400">
-              Start here when coordinating turns with property managers.
-            </p>
-
-            <Link
-              href={`/queue?business=${selectedBusinessSlug}&view=ready-soon`}
-              className="mt-4 inline-block text-sm text-orange-400"
-            >
-              Open due soon queue
-            </Link>
-          </Card>
-
-          <Card className="border-red-500/30 bg-red-500/5">
-            <p className="text-sm uppercase tracking-[0.3em] text-red-300">
-              Remediation Watch
-            </p>
-
-            <p className="mt-3 text-4xl font-bold">
-              {remediationQueueItems.length}
-            </p>
-
-            <p className="mt-2 text-zinc-300">
-              Queue items flagged for smoker or remediation attention.
-            </p>
-
-            <p className="mt-2 text-sm text-zinc-400">
-              Useful for spotting extra labor, odor treatment, and schedule
-              risk.
-            </p>
-
-            <Link
-              href={`/queue?business=${selectedBusinessSlug}&view=remediation`}
-              className="mt-4 inline-block text-sm text-orange-400"
-            >
-              Open remediation queue
-            </Link>
-          </Card>
-        </div>
-
-        <div className="hidden">
-          <Card>
-            <p className="text-sm text-zinc-400">
-              Active Queue
-            </p>
-
-            <p className="mt-2 text-4xl font-bold">
-              {activeQueueItems.length}
-            </p>
-
-            <Link
-              href={`/queue?business=${selectedBusinessSlug}`}
-              className="mt-4 inline-block text-sm text-orange-400"
-            >
-              View queue
-            </Link>
-          </Card>
-
-          <Card>
-            <p className="text-sm text-zinc-400">
-              Queue Needs Estimate
-            </p>
-
-            <p className="mt-2 text-4xl font-bold">
-              {queueItemsNeedingEstimate.length}
-            </p>
-
-            <Link
-              href={`/queue?business=${selectedBusinessSlug}&view=needs-estimate`}
-              className="mt-4 inline-block text-sm text-orange-400"
-            >
-              View queue items
-            </Link>
-          </Card>
-
-          <RoleVisible
-            businessSlug={selectedBusinessSlug}
-            allow={[
-              "owner",
-              "admin",
-              "accountant",
-            ]}
-          >
-            <Card>
-              <p className="text-sm text-zinc-400">
-                Open Invoices
-              </p>
-
-              <p className="mt-2 text-4xl font-bold">
-                {workingYearOpenInvoicesWithAmounts.length}
-              </p>
-
-              <Link
-                href={`/invoices?business=${selectedBusinessSlug}`}
-                className="mt-4 inline-block text-sm text-orange-400"
-              >
-                View invoices
-              </Link>
-            </Card>
-          </RoleVisible>
-        </div>
-
-        <div className="hidden">
-          <Card>
-            <p className="text-sm text-zinc-400">
-              Scheduled Jobs
-            </p>
-
-            <p className="mt-2 text-4xl font-bold">
-              {scheduledQueueItems.length}
-            </p>
-
-            <Link
-              href={`/queue?business=${selectedBusinessSlug}&status=scheduled`}
-              className="mt-4 inline-block text-sm text-orange-400"
-            >
-              View scheduled
-            </Link>
-          </Card>
-
-          <Card>
-            <p className="text-sm text-zinc-400">
-              Completed This Month
-            </p>
-
-            <p className="mt-2 text-4xl font-bold">
-              {completedThisMonth.length}
-            </p>
-
-            <Link
-              href={`/queue?business=${selectedBusinessSlug}&status=completed`}
-              className="mt-4 inline-block text-sm text-orange-400"
-            >
-              View completed
-            </Link>
-          </Card>
-
-          <Card>
-            <p className="text-sm text-zinc-400">
-              Reporting Memory
-            </p>
-
-            <p className="mt-2 text-4xl font-bold">
-              {queueItems.length}
-            </p>
-
-            <p className="mt-4 text-sm text-zinc-400">
-              Retained apartment turn and property queue records for this
-              business.
-            </p>
-
-            <Link
-              href={`/reports?business=${selectedBusinessSlug}`}
-              className="mt-4 inline-block text-sm text-orange-400"
-            >
-              Open reports
-            </Link>
-          </Card>
-        </div>
-
-        <RoleVisible
-          businessSlug={selectedBusinessSlug}
-          allow={[
-            "owner",
-            "admin",
-            "accountant",
-          ]}
-        >
-          <div className="hidden">
-            <Card>
-              <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
-                Estimated Revenue
-              </p>
-
-              <p className="mt-3 text-4xl font-black">
-                {estimatedRevenue}
-              </p>
-
-              <p className="mt-3 text-zinc-400">
-                Total estimate value currently stored for{" "}
-                {selectedBusiness?.name ??
-                  "this business"}
-                .
-              </p>
-            </Card>
-
-            <Card>
-              <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
-                Invoiced Revenue
-              </p>
-
-              <p className="mt-3 text-4xl font-black">
-                {invoicedRevenue}
-              </p>
-
-              <p className="mt-3 text-zinc-400">
-                Total invoice value currently stored for{" "}
-                {selectedBusiness?.name ??
-                  "this business"}
-                .
-              </p>
-            </Card>
-          </div>
-        </RoleVisible>
-
-        <Card className="hidden">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
-                Next Action
-              </p>
-
-              <h2 className="mt-2 text-2xl font-bold">
-                Review apartment/unit queue items
-              </h2>
-
-              <p className="mt-2 text-zinc-400">
-                Queue is for unit turns and property-manager intake. Normal
-                estimates and invoices can still start directly from their own
-                pages.
-              </p>
-            </div>
-
-            <Link
-              href={`/queue?business=${selectedBusinessSlug}`}
-            >
-              <Button>Review Queue</Button>
-            </Link>
-          </div>
-        </Card>
-
-        <Card className="hidden">
-          <div className="mb-4">
-            <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
-              Action Center
-            </p>
-
-            <h2 className="mt-2 text-2xl font-bold">
-              Quick Actions
-            </h2>
-          </div>
-
-          <DashboardQuickActions
-            businessSlug={selectedBusinessSlug}
-          />
-        </Card>
-
-        <Card>
+        <Card className="dashboard-activity-section hidden lg:block">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
@@ -2305,8 +2042,26 @@ export default async function DashboardPage({
           </div>
         </Card>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <Card>
+        <section className="dashboard-workstream-section">
+          <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="dashboard-section-label text-sm uppercase tracking-[0.3em] text-sky-300">
+                Workstream
+              </p>
+
+              <h2 className="mt-1 text-2xl font-black tracking-tight">
+                Recent queue and invoice movement
+              </h2>
+            </div>
+
+            <p className="max-w-2xl text-sm leading-6 text-zinc-400">
+              The newest operational and accounting records stay together here
+              so the dashboard ends with what changed most recently.
+            </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+          <Card className="dashboard-workstream-card">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
@@ -2386,7 +2141,7 @@ export default async function DashboardPage({
               "accountant",
             ]}
           >
-            <Card>
+            <Card className="dashboard-workstream-card">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
@@ -2539,7 +2294,8 @@ export default async function DashboardPage({
               </div>
             </Card>
           </RoleVisible>
-        </div>
+          </div>
+        </section>
       </div>
     </AppShell>
   );

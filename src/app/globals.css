@@ -4962,6 +4962,100 @@ html.theme-light .dashboard-hero-card .bg-zinc-900 {
   color: #0f172a !important;
 }
 
+.dashboard-collection-targets,
+.dashboard-workstream-card,
+.dashboard-activity-section,
+.dashboard-aging-section {
+  box-shadow: 0 20px 52px rgba(2, 6, 23, 0.16);
+}
+
+.dashboard-collection-target-card {
+  min-height: 168px;
+}
+
+.dashboard-workstream-section {
+  padding-top: 0.25rem;
+}
+
+.dashboard-workstream-card {
+  min-height: 100%;
+}
+
+.dashboard-workstream-card > div:last-child {
+  min-height: 140px;
+}
+
+@media (max-width: 760px) {
+  .dashboard-workstream-section {
+    padding-top: 0;
+  }
+
+  .dashboard-workstream-section > div:first-child p:last-child {
+    display: none;
+  }
+}
+
+html.theme-light .dashboard-collection-targets {
+  background: #ffffff !important;
+  border-color: #bbf7d0 !important;
+  color: #0f172a !important;
+  box-shadow: 0 22px 55px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.theme-light .dashboard-collection-targets .text-white,
+html.theme-light .dashboard-collection-targets h2 {
+  color: #0f172a !important;
+}
+
+html.theme-light .dashboard-collection-targets .text-green-300,
+html.theme-light .dashboard-collection-targets .text-emerald-300 {
+  color: #047857 !important;
+}
+
+html.theme-light .dashboard-collection-targets .text-zinc-400,
+html.theme-light .dashboard-collection-targets .text-zinc-500 {
+  color: #475569 !important;
+}
+
+html.theme-light .dashboard-collection-target-card {
+  background: #f8fafc !important;
+  border-color: #d7dde8 !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05) !important;
+}
+
+html.theme-light .dashboard-workstream-section {
+  color: #0f172a !important;
+}
+
+html.theme-light .dashboard-workstream-card,
+html.theme-light .dashboard-activity-section,
+html.theme-light .dashboard-aging-section {
+  background: #ffffff !important;
+  border-color: #d7dde8 !important;
+  color: #0f172a !important;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.07) !important;
+}
+
+html.theme-light .dashboard-workstream-card h2,
+html.theme-light .dashboard-workstream-card .font-semibold,
+html.theme-light .dashboard-activity-section h2,
+html.theme-light .dashboard-aging-section h2 {
+  color: #0f172a !important;
+}
+
+html.theme-light .dashboard-workstream-card .text-orange-400,
+html.theme-light .dashboard-workstream-card a.text-orange-400,
+html.theme-light .dashboard-activity-section .text-orange-400 {
+  color: #0369a1 !important;
+}
+
+html.theme-light .dashboard-workstream-card .border-zinc-800,
+html.theme-light .dashboard-workstream-card .border-zinc-700,
+html.theme-light .dashboard-activity-section .border-zinc-800,
+html.theme-light .dashboard-aging-section .border-zinc-800 {
+  border-color: #d7dde8 !important;
+}
+
 .secure-session-badge {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
