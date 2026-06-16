@@ -11,6 +11,7 @@ import {
   createPdfAttachment,
   type EmailAttachment,
 } from "../../../lib/pdfAttachments";
+import { createPrintPagePdfAttachment } from "../../../lib/printPagePdf";
 
 type GenericTable = {
   Row: Record<string, unknown>;
@@ -34,6 +35,9 @@ type Database = {
     CompositeTypes: Record<string, never>;
   };
 };
+
+export const runtime = "nodejs";
+export const maxDuration = 60;
 
 type BusinessRow = {
   id: string;
@@ -427,7 +431,7 @@ export async function POST(request: Request) {
           </div>
         </div>
       `;
-      const pdfAttachment = createPdfAttachment({
+      const fallbackPdfAttachment = createPdfAttachment({
         filename: invoiceLabel,
         title: invoiceLabel,
         subtitle: business.name ?? "Trimax",
@@ -453,6 +457,19 @@ export async function POST(request: Request) {
           },
         ],
       });
+      let pdfAttachment = fallbackPdfAttachment;
+
+      try {
+        pdfAttachment = await createPrintPagePdfAttachment({
+          url: new URL(
+            `/invoices/${invoice.id}/print?business=${business.slug}`,
+            request.url
+          ).toString(),
+          filename: invoiceLabel,
+        });
+      } catch (error) {
+        console.warn("Print-page PDF render failed. Using fallback PDF.", error);
+      }
 
       const result = await sendWithResend({
         from,

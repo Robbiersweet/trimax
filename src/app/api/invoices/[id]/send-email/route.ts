@@ -10,6 +10,7 @@ import {
   createPdfAttachment,
   type EmailAttachment,
 } from "../../../../lib/pdfAttachments";
+import { createPrintPagePdfAttachment } from "../../../../lib/printPagePdf";
 
 type GenericTable = {
   Row: Record<string, unknown>;
@@ -37,6 +38,9 @@ type Database = {
 };
 
 type AdminClient = SupabaseClient<Database>;
+
+export const runtime = "nodejs";
+export const maxDuration = 60;
 
 type RouteParams = {
   params: Promise<{ id: string }>;
@@ -426,7 +430,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   const total = parseMoney(invoice.invoice_amount);
   const amountPaid = parseMoney(invoice.amount_paid);
   const amountDue = Math.max(total - amountPaid, 0);
-  const pdfAttachment = includePdfNote
+  const fallbackPdfAttachment = includePdfNote
     ? createPdfAttachment({
         filename: invoice.display_id ?? "invoice",
         title: invoice.display_id ?? "Invoice",
@@ -473,6 +477,21 @@ export async function POST(request: Request, { params }: RouteParams) {
         ],
       })
     : null;
+  let pdfAttachment = fallbackPdfAttachment;
+
+  if (includePdfNote) {
+    try {
+      pdfAttachment = await createPrintPagePdfAttachment({
+        url: new URL(
+          `/invoices/${invoice.id}/print?business=${business.slug}`,
+          request.url
+        ).toString(),
+        filename: invoice.display_id ?? "invoice",
+      });
+    } catch (error) {
+      console.warn("Print-page PDF render failed. Using fallback PDF.", error);
+    }
+  }
 
   const html = `
     <div style="font-family: Arial, sans-serif; color: #1f3347; line-height: 1.6; max-width: 640px; margin: 0 auto;">

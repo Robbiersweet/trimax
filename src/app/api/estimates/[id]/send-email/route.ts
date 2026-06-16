@@ -10,6 +10,7 @@ import {
   createPdfAttachment,
   type EmailAttachment,
 } from "../../../../lib/pdfAttachments";
+import { createPrintPagePdfAttachment } from "../../../../lib/printPagePdf";
 
 type GenericTable = {
   Row: Record<string, unknown>;
@@ -37,6 +38,9 @@ type Database = {
 };
 
 type AdminClient = SupabaseClient<Database>;
+
+export const runtime = "nodejs";
+export const maxDuration = 60;
 
 type RouteParams = {
   params: Promise<{ id: string }>;
@@ -402,7 +406,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     .order("sort_order", { ascending: true })
     .returns<EstimateLineItemRow[]>();
   const total = parseMoney(estimate.estimate_amount);
-  const pdfAttachment = includePdfNote
+  const fallbackPdfAttachment = includePdfNote
     ? createPdfAttachment({
         filename: estimate.display_id ?? "estimate",
         title: estimate.display_id ?? "Estimate",
@@ -440,6 +444,21 @@ export async function POST(request: Request, { params }: RouteParams) {
         ],
       })
     : null;
+  let pdfAttachment = fallbackPdfAttachment;
+
+  if (includePdfNote) {
+    try {
+      pdfAttachment = await createPrintPagePdfAttachment({
+        url: new URL(
+          `/estimates/${estimate.id}/print?business=${business.slug}`,
+          request.url
+        ).toString(),
+        filename: estimate.display_id ?? "estimate",
+      });
+    } catch (error) {
+      console.warn("Print-page PDF render failed. Using fallback PDF.", error);
+    }
+  }
 
   const html = `
     <div style="font-family: Arial, sans-serif; color: #1f3347; line-height: 1.6; max-width: 640px; margin: 0 auto;">

@@ -11,10 +11,12 @@
     "check": "npm run lint && npm run build"
   },
   "dependencies": {
+    "@sparticuz/chromium": "^149.0.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.0",
     "@types/web-push": "^3.6.4",
     "next": "16.2.6",
+    "puppeteer-core": "^25.1.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "web-push": "^3.6.7"
