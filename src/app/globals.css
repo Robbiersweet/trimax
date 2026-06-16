@@ -3026,6 +3026,126 @@ html.theme-light .recurring-template-card .text-green-200 {
   color: #047857 !important;
 }
 
+.recurring-command-panel {
+  box-shadow:
+    0 18px 44px rgba(2, 6, 23, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.recurring-metric-card {
+  border-color: rgba(56, 189, 248, 0.22);
+  background: rgba(2, 6, 23, 0.42);
+  color: #e2e8f0;
+}
+
+.recurring-metric-card p:first-child {
+  color: #7dd3fc;
+}
+
+.recurring-metric-card p:last-child {
+  color: #94a3b8;
+}
+
+.recurring-schedule-pill {
+  border-color: rgba(148, 163, 184, 0.36);
+  background: rgba(15, 23, 42, 0.68);
+  color: #e2e8f0;
+}
+
+.recurring-schedule-pill[data-tone="scheduled"] {
+  border-color: rgba(56, 189, 248, 0.38);
+  background: rgba(14, 165, 233, 0.14);
+  color: #bae6fd;
+}
+
+.recurring-schedule-pill[data-tone="due"] {
+  border-color: rgba(52, 211, 153, 0.42);
+  background: rgba(16, 185, 129, 0.14);
+  color: #bbf7d0;
+}
+
+.recurring-schedule-pill[data-tone="paused"] {
+  border-color: rgba(250, 204, 21, 0.42);
+  background: rgba(234, 179, 8, 0.14);
+  color: #fef08a;
+}
+
+.recurring-schedule-pill[data-tone="archived"] {
+  border-color: rgba(148, 163, 184, 0.28);
+  background: rgba(71, 85, 105, 0.2);
+  color: #cbd5e1;
+}
+
+html.theme-light .recurring-command-panel {
+  background: linear-gradient(135deg, #eff6ff 0%, #ffffff 68%) !important;
+  border-color: #bfdbfe !important;
+  color: #0f172a !important;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.theme-light .recurring-command-panel .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light .recurring-command-panel .text-zinc-300,
+html.theme-light .recurring-command-panel .text-zinc-400 {
+  color: #475569 !important;
+}
+
+html.theme-light .recurring-command-panel .text-sky-200,
+html.theme-light .recurring-command-panel .text-sky-300 {
+  color: #0369a1 !important;
+}
+
+html.theme-light .recurring-command-panel .bg-zinc-950 {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.theme-light .recurring-metric-card {
+  border-color: #bfdbfe !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .recurring-metric-card p:first-child {
+  color: #0369a1 !important;
+}
+
+html.theme-light .recurring-metric-card p:last-child {
+  color: #475569 !important;
+}
+
+html.theme-light .recurring-schedule-pill {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+}
+
+html.theme-light .recurring-schedule-pill[data-tone="scheduled"] {
+  border-color: #7dd3fc;
+  background: #e0f2fe;
+  color: #075985;
+}
+
+html.theme-light .recurring-schedule-pill[data-tone="due"] {
+  border-color: #6ee7b7;
+  background: #dcfce7;
+  color: #047857;
+}
+
+html.theme-light .recurring-schedule-pill[data-tone="paused"] {
+  border-color: #facc15;
+  background: #fef9c3;
+  color: #92400e;
+}
+
+html.theme-light .recurring-schedule-pill[data-tone="archived"] {
+  border-color: #cbd5e1;
+  background: #f1f5f9;
+  color: #475569;
+}
+
 html.theme-light .estimate-list-card {
   background: #ffffff !important;
   border-color: #d7dde8 !important;

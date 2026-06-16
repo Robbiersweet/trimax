@@ -52,6 +52,7 @@ type RecurringTemplate = {
   email_body: string | null;
   line_items: RecurringLineItem[] | null;
   next_run_date: string | null;
+  last_generated_for_date: string | null;
   businesses: {
     name: string | null;
   } | null;
@@ -150,6 +151,21 @@ async function createInvoiceFromTemplate(
   supabase: AdminClient,
   template: RecurringTemplate
 ) {
+  const issueDateInput = template.next_run_date ?? toDateInputValue(new Date());
+
+  if (template.last_generated_for_date === issueDateInput) {
+    await supabase
+      .from("recurring_invoice_templates")
+      .update({
+        next_run_date: addMonthsToDateInput(template.next_run_date),
+        last_error: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", template.id);
+
+    return null;
+  }
+
   const templateLineItems = (template.line_items ?? []).filter(
     (item) => item.description?.trim() && Number(item.quantity) > 0
   );
@@ -158,9 +174,7 @@ async function createInvoiceFromTemplate(
     throw new Error("Template has no usable line items.");
   }
 
-  const issueDate = template.next_run_date
-    ? new Date(`${template.next_run_date}T00:00:00`)
-    : new Date();
+  const issueDate = new Date(`${issueDateInput}T00:00:00`);
   const dueDate = addDays(issueDate, Number(template.due_days) || 0);
   const subtotal = templateLineItems.reduce(
     (total, item) => total + lineTotal(item),
@@ -258,7 +272,7 @@ async function createInvoiceFromTemplate(
     .update({
       last_generated_invoice_id: invoice.id,
       last_generated_at: new Date().toISOString(),
-      last_generated_for_date: toDateInputValue(issueDate),
+      last_generated_for_date: issueDateInput,
       next_run_date: addMonthsToDateInput(template.next_run_date),
       last_error: null,
       updated_at: new Date().toISOString(),
@@ -316,7 +330,9 @@ export async function GET(request: Request) {
   for (const template of templates) {
     try {
       const displayId = await createInvoiceFromTemplate(supabase, template);
-      created.push(displayId);
+      if (displayId) {
+        created.push(displayId);
+      }
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Unknown recurring draft error.";

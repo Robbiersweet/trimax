@@ -123,6 +123,51 @@ function addMonthsToDateInput(value: string | null) {
   return toDateInputValue(nextDate);
 }
 
+function daysUntilDate(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const target = new Date(`${value}T00:00:00`);
+
+  if (Number.isNaN(target.getTime())) {
+    return null;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  target.setHours(0, 0, 0, 0);
+
+  return Math.round((target.getTime() - today.getTime()) / 86400000);
+}
+
+function scheduleStatusLabel(template: RecurringTemplate) {
+  if (!template.is_active) {
+    return "Archived";
+  }
+
+  if (!template.auto_create_drafts) {
+    return "Paused";
+  }
+
+  const days = daysUntilDate(template.next_run_date);
+
+  if (days === null) {
+    return "Needs date";
+  }
+
+  if (days < 0) {
+    const overdueDays = Math.abs(days);
+    return `${overdueDays} day${overdueDays === 1 ? "" : "s"} overdue`;
+  }
+
+  if (days === 0) {
+    return "Due today";
+  }
+
+  return `Runs in ${days} day${days === 1 ? "" : "s"}`;
+}
+
 function lineTotal(item: RecurringLineItem) {
   return (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0);
 }
@@ -190,6 +235,7 @@ function RecurringInvoicesPageContent() {
   const [deliveryFormat, setDeliveryFormat] = useState<"standard" | "5stars_boa">(
     "standard"
   );
+  const [autoCreateDrafts, setAutoCreateDrafts] = useState(true);
   const [nextRunDate, setNextRunDate] = useState(toDateInputValue(new Date()));
   const [dayOfMonth, setDayOfMonth] = useState("1");
   const [dueDays, setDueDays] = useState("30");
@@ -209,6 +255,24 @@ function RecurringInvoicesPageContent() {
     () => lineItems.reduce((total, item) => total + lineTotal(item), 0),
     [lineItems]
   );
+  const activeTemplates = templates.filter((template) => template.is_active);
+  const autoCreateTemplates = activeTemplates.filter(
+    (template) => template.auto_create_drafts
+  );
+  const pausedTemplates = activeTemplates.filter(
+    (template) => !template.auto_create_drafts
+  );
+  const dueTemplates = autoCreateTemplates.filter((template) => {
+    const days = daysUntilDate(template.next_run_date);
+    return days !== null && days <= 0;
+  });
+  const nextScheduledTemplate = autoCreateTemplates
+    .filter((template) => daysUntilDate(template.next_run_date) !== null)
+    .sort(
+      (first, second) =>
+        (daysUntilDate(first.next_run_date) ?? 9999) -
+        (daysUntilDate(second.next_run_date) ?? 9999)
+    )[0];
 
   useEffect(() => {
     async function loadPageData() {
@@ -341,7 +405,7 @@ function RecurringInvoicesPageContent() {
         delivery_format: deliveryFormat,
         frequency: "monthly",
         next_run_date: nextRunDate || toDateInputValue(new Date()),
-        auto_create_drafts: true,
+        auto_create_drafts: autoCreateDrafts,
         day_of_month: Math.min(Math.max(Number(dayOfMonth) || 1, 1), 28),
         due_days: Math.min(Math.max(Number(dueDays) || 0, 0), 120),
         tax_label: taxLabel.trim() || null,
@@ -383,6 +447,7 @@ function RecurringInvoicesPageContent() {
     setServiceAddress("");
     setReference("");
     setDeliveryFormat("standard");
+    setAutoCreateDrafts(true);
     setNextRunDate(toDateInputValue(new Date()));
     setDayOfMonth("1");
     setDueDays("30");
@@ -614,6 +679,49 @@ function RecurringInvoicesPageContent() {
     );
   }
 
+  async function toggleAutoCreateDrafts(template: RecurringTemplate) {
+    if (!business) {
+      return;
+    }
+
+    const nextValue = !template.auto_create_drafts;
+    const { error } = await supabase
+      .from("recurring_invoice_templates")
+      .update({
+        auto_create_drafts: nextValue,
+        last_error: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", template.id)
+      .eq("business_id", business.id);
+
+    if (error) {
+      setToast({
+        type: "error",
+        message: "Recurring draft automation could not be updated.",
+      });
+      return;
+    }
+
+    setTemplates((current) =>
+      current.map((item) =>
+        item.id === template.id
+          ? {
+              ...item,
+              auto_create_drafts: nextValue,
+              last_error: null,
+            }
+          : item
+      )
+    );
+    setToast({
+      type: "success",
+      message: nextValue
+        ? `${template.name} will auto-create monthly drafts.`
+        : `${template.name} is paused. You can still create drafts manually.`,
+    });
+  }
+
   async function copyToClipboard(value: string, label: string) {
     try {
       await navigator.clipboard.writeText(value);
@@ -840,21 +948,39 @@ function RecurringInvoicesPageContent() {
               </select>
             </div>
 
-              <InputField
-                label="Next Draft Date"
-                type="date"
-                value={nextRunDate}
-                onChange={setNextRunDate}
-                helperText="Trimax will create the draft on this date, then move the template ahead one month."
+            <label className="app-soft-panel flex min-h-[82px] cursor-pointer items-start gap-3 rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3">
+              <input
+                type="checkbox"
+                checked={autoCreateDrafts}
+                onChange={(event) => setAutoCreateDrafts(event.target.checked)}
+                className="mt-1 h-5 w-5 accent-sky-500"
               />
+              <span>
+                <span className="block text-sm font-semibold text-white">
+                  Auto-create monthly drafts
+                </span>
+                <span className="mt-1 block text-sm leading-5 text-zinc-400">
+                  Trimax will prepare the draft on the schedule. Leave this off
+                  if you only want to create drafts manually.
+                </span>
+              </span>
+            </label>
 
-              <InputField
-                label="Day of Month"
-                type="number"
-                value={dayOfMonth}
-                onChange={setDayOfMonth}
-                helperText="Use the same day as the next draft date. This keeps the schedule clear."
-              />
+            <InputField
+              label="Next Draft Date"
+              type="date"
+              value={nextRunDate}
+              onChange={setNextRunDate}
+              helperText="Trimax will create the draft on this date, then move the template ahead one month."
+            />
+
+            <InputField
+              label="Day of Month"
+              type="number"
+              value={dayOfMonth}
+              onChange={setDayOfMonth}
+              helperText="Use the same day as the next draft date. This keeps the schedule clear."
+            />
 
             <InputField
               label="Due Days After Invoice Date"
@@ -974,6 +1100,87 @@ function RecurringInvoicesPageContent() {
           </div>
         </Card>
 
+        <Card className="recurring-command-panel border-sky-500/20 bg-sky-500/5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-sm uppercase tracking-[0.3em] text-sky-300">
+                Recurring Workflow
+              </p>
+              <h2 className="mt-2 text-2xl font-bold">
+                Draft schedule command center
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+                FreshBooks-style recurring invoices, with a safer Trimax
+                default: create drafts first, review them, then send when ready.
+              </p>
+            </div>
+
+            <Link href={`/invoices${businessQuery}&status=draft`}>
+              <Button variant="secondary">Review Draft Invoices</Button>
+            </Link>
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-4">
+            <div className="recurring-metric-card rounded-2xl border p-4">
+              <p className="text-xs font-black uppercase tracking-[0.2em]">
+                Active
+              </p>
+              <p className="mt-2 text-3xl font-black">
+                {activeTemplates.length}
+              </p>
+              <p className="mt-1 text-sm">Templates in use</p>
+            </div>
+
+            <div className="recurring-metric-card rounded-2xl border p-4">
+              <p className="text-xs font-black uppercase tracking-[0.2em]">
+                Auto Draft
+              </p>
+              <p className="mt-2 text-3xl font-black">
+                {autoCreateTemplates.length}
+              </p>
+              <p className="mt-1 text-sm">Scheduled monthly</p>
+            </div>
+
+            <div className="recurring-metric-card rounded-2xl border p-4">
+              <p className="text-xs font-black uppercase tracking-[0.2em]">
+                Due Now
+              </p>
+              <p className="mt-2 text-3xl font-black">
+                {dueTemplates.length}
+              </p>
+              <p className="mt-1 text-sm">Ready to create</p>
+            </div>
+
+            <div className="recurring-metric-card rounded-2xl border p-4">
+              <p className="text-xs font-black uppercase tracking-[0.2em]">
+                Paused
+              </p>
+              <p className="mt-2 text-3xl font-black">
+                {pausedTemplates.length}
+              </p>
+              <p className="mt-1 text-sm">Manual only</p>
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-sm leading-6 text-zinc-300">
+            {nextScheduledTemplate ? (
+              <>
+                Next automatic draft:{" "}
+                <span className="font-black text-white">
+                  {nextScheduledTemplate.name}
+                </span>{" "}
+                on{" "}
+                <span className="font-black text-sky-200">
+                  {formatDate(nextScheduledTemplate.next_run_date)}
+                </span>
+                .
+              </>
+            ) : (
+              "No automatic recurring drafts are currently scheduled. Turn on auto-create for a template when you want Trimax to prepare it monthly."
+            )}
+          </div>
+        </Card>
+
         <Card>
           <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
             Saved Templates
@@ -999,6 +1206,15 @@ function RecurringInvoicesPageContent() {
                 const taxAmount =
                   subtotal * ((Number(template.tax_rate) || 0) / 100);
                 const total = subtotal + taxAmount;
+                const scheduleStatus = scheduleStatusLabel(template);
+                const scheduleDays = daysUntilDate(template.next_run_date);
+                const scheduleTone = !template.is_active
+                  ? "archived"
+                  : !template.auto_create_drafts
+                    ? "paused"
+                    : scheduleDays !== null && scheduleDays <= 0
+                      ? "due"
+                      : "scheduled";
 
                 return (
                   <div
@@ -1019,6 +1235,12 @@ function RecurringInvoicesPageContent() {
                           {template.project_title}
                         </p>
                         <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
+                          <span
+                            className="recurring-schedule-pill rounded-full border px-3 py-1"
+                            data-tone={scheduleTone}
+                          >
+                            {scheduleStatus}
+                          </span>
                           <span className="app-chip rounded-full border border-zinc-700 px-3 py-1 text-zinc-300">
                             Monthly on day {template.day_of_month}
                           </span>
@@ -1067,6 +1289,16 @@ function RecurringInvoicesPageContent() {
                         >
                           <Button variant="secondary">Open Last Draft</Button>
                         </Link>
+                      ) : null}
+                      {template.is_active ? (
+                        <Button
+                          variant="secondary"
+                          onClick={() => toggleAutoCreateDrafts(template)}
+                        >
+                          {template.auto_create_drafts
+                            ? "Pause Auto Drafts"
+                            : "Resume Auto Drafts"}
+                        </Button>
                       ) : null}
                       {template.is_active ? (
                         <Button
