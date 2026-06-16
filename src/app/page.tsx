@@ -1748,7 +1748,7 @@ export default async function DashboardPage({
                     Next collection move
                   </p>
 
-                  <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-sky-200">
+                  <span className="app-sky-pill rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-sky-200">
                     Batch-ready workflow
                   </span>
                 </div>
