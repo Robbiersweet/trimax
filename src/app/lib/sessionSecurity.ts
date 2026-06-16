@@ -19,6 +19,12 @@ export type SessionSecurityStatus =
       reason: SessionSecurityReason;
     };
 
+export type SessionSecuritySnapshot = {
+  hasSecureSession: boolean;
+  idleRemainingMs: number;
+  sessionRemainingMs: number;
+};
+
 function nowMs() {
   return Date.now();
 }
@@ -110,6 +116,36 @@ export function getSessionSecurityStatus(): SessionSecurityStatus {
   }
 
   return { valid: true };
+}
+
+export function getSessionSecuritySnapshot(): SessionSecuritySnapshot {
+  if (typeof window === "undefined") {
+    return {
+      hasSecureSession: false,
+      idleRemainingMs: 0,
+      sessionRemainingMs: 0,
+    };
+  }
+
+  const now = nowMs();
+  const sessionStartedAt = readNumber(SESSION_STARTED_AT_KEY);
+  const lastActivityAt = readNumber(LAST_ACTIVITY_AT_KEY);
+  const hasSecureSession =
+    window.sessionStorage.getItem(ACTIVE_BROWSER_SESSION_KEY) ===
+    "true";
+
+  return {
+    hasSecureSession,
+    idleRemainingMs: lastActivityAt
+      ? Math.max(SESSION_IDLE_TIMEOUT_MS - (now - lastActivityAt), 0)
+      : 0,
+    sessionRemainingMs: sessionStartedAt
+      ? Math.max(
+          SESSION_ABSOLUTE_TIMEOUT_MS - (now - sessionStartedAt),
+          0
+        )
+      : 0,
+  };
 }
 
 export function sessionSecurityMessage(

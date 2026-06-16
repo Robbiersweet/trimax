@@ -1141,6 +1141,36 @@ export default async function DashboardPage({
     },
   ];
   const recentQueueItems = queueItems.slice(0, 3);
+  const mobilePriorityItems = [
+    {
+      label: "Collect",
+      value: outstandingRevenue,
+      detail: "Open revenue",
+      href: `/payments?${priorityPaymentParams.toString()}`,
+      tone: "collect",
+    },
+    {
+      label: "Queue",
+      value: String(activeQueueItems.length),
+      detail: "Active items",
+      href: `/queue?business=${selectedBusinessSlug}`,
+      tone: "queue",
+    },
+    {
+      label: "Late",
+      value: String(pastDueInvoices.length),
+      detail: formatMoney(pastDueTotal),
+      href: `/invoices?business=${selectedBusinessSlug}&view=aging`,
+      tone: "late",
+    },
+    {
+      label: "Checks",
+      value: String(workingYearOpenInvoicesWithAmounts.length),
+      detail: "Match payments",
+      href: `/payments?business=${selectedBusinessSlug}#check-capture`,
+      tone: "checks",
+    },
+  ];
 
   return (
     <AppShell>
@@ -1173,6 +1203,59 @@ export default async function DashboardPage({
             </p>
           </div>
         </div>
+
+        <RoleVisible
+          businessSlug={selectedBusinessSlug}
+          allow={[
+            "owner",
+            "admin",
+            "accountant",
+          ]}
+        >
+          <section className="dashboard-mobile-priority lg:hidden">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="dashboard-mobile-priority-kicker text-xs font-black uppercase tracking-[0.18em] text-sky-300">
+                  Priority Rail
+                </p>
+
+                <h2 className="mt-1 text-lg font-black">
+                  Start here
+                </h2>
+              </div>
+
+              <Link
+                href={`/reports?business=${selectedBusinessSlug}`}
+                className="dashboard-mobile-priority-link rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-black text-sky-100"
+              >
+                Reports
+              </Link>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              {mobilePriorityItems.map((item) => (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  data-tone={item.tone}
+                  className="dashboard-mobile-priority-card rounded-2xl border p-4 transition active:scale-[0.98]"
+                >
+                  <p className="text-xs font-black uppercase tracking-[0.14em]">
+                    {item.label}
+                  </p>
+
+                  <p className="mt-2 truncate text-2xl font-black">
+                    {item.value}
+                  </p>
+
+                  <p className="mt-1 text-xs font-semibold opacity-80">
+                    {item.detail}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </section>
+        </RoleVisible>
 
         <RoleVisible
           businessSlug={selectedBusinessSlug}

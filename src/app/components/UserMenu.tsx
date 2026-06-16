@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { supabase } from "../lib/supabase";
 import { loadWorkspaceAccess } from "../lib/workspaceAccess";
 import LogoutButton from "./LogoutButton";
+import SecureSessionBadge from "./SecureSessionBadge";
 import ThemeToggle from "./ThemeToggle";
 
 type UserData = {
@@ -94,6 +95,10 @@ export default function UserMenu({
           {formatRole(user?.role ?? null)}
         </p>
       </div>
+
+      <SecureSessionBadge
+        className={isSidebar ? "w-full" : ""}
+      />
 
       <LogoutButton
         className={isSidebar ? "w-full" : ""}
