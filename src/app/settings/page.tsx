@@ -1703,10 +1703,11 @@ function BusinessSettingsPageContent() {
                 </div>
 
                 <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-blue-950">
-                  Direct sending needs one verified sending domain and provider
-                  key behind the scenes. After that, each workspace can manage
-                  its own sender name, sender email, reply-to, templates, and
-                  signature here without touching deployment settings.
+                  App users configure email here inside Trimax. The hidden
+                  delivery provider is connected once by the Trimax app owner,
+                  then each workspace manages its own sender name, sender email,
+                  reply-to, templates, and signature without touching deployment
+                  settings.
                 </div>
 
                 <div className="settings-email-launch-panel rounded-3xl border p-5">
@@ -1840,10 +1841,9 @@ function BusinessSettingsPageContent() {
                 </div>
 
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
-                  The sender address should belong to the verified sending
-                  domain for this Trimax installation. The reply-to can be your
-                  everyday inbox, so customers can respond directly to the right
-                  person.
+                  For the smoothest setup, use the sender domain connected to
+                  Trimax delivery. The reply-to can be your everyday inbox, so
+                  customers can respond directly to the right person.
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">

@@ -159,7 +159,7 @@ async function sendWithResend({
       ok: false,
       status: 503,
       error:
-        "Direct email is designed, but the email provider is not connected yet. Connect the provider key once for this Trimax installation, then manage sender addresses in Settings.",
+        "Direct email is almost ready, but Trimax delivery has not been enabled for this installation yet. Once the app owner enables delivery, each workspace can manage its sender address in Settings.",
     };
   }
 
@@ -312,7 +312,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     return NextResponse.json(
       {
         error:
-          "Direct email is designed, but no sender address is connected yet. Open Settings > Customer Email and add a sender address from the verified sending domain.",
+          "No sender address is connected for this workspace yet. Open Settings > Customer Email and add the address customers should see.",
       },
       { status: 503 }
     );

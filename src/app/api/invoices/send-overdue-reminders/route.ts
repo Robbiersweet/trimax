@@ -150,7 +150,8 @@ async function sendWithResend({
     return {
       ok: false,
       status: 503,
-      error: "Email provider is not connected.",
+      error:
+        "Trimax delivery has not been enabled for this installation yet.",
     };
   }
 
@@ -323,7 +324,7 @@ export async function POST(request: Request) {
       failed.push({
         invoice: business.name ?? business.slug,
         error:
-          "No sender address is configured. Add one in Settings > Customer Email.",
+          "No sender address is configured for this workspace. Add one in Settings > Customer Email.",
       });
       continue;
     }
