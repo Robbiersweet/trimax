@@ -18,6 +18,7 @@ Do not run SQL that includes `drop table`, `delete from`, or `truncate` unless y
 6. `2026-05-26-invoice-updated-at.sql`
 7. `2026-05-26-outlook-draft-workflow.sql`
 8. `2026-05-26-queue-renovation-fields.sql`
+9. `2026-06-15-performance-indexes.sql`
 
 ## Workspace Access
 
@@ -46,6 +47,10 @@ Run `2026-05-26-queue-renovation-fields.sql` before using prior renovation memor
 ## Invoice Updated Dates
 
 Run `2026-05-26-invoice-updated-at.sql` so invoice lists, payment screens, and dashboard recent-invoice views can sort by the latest invoice changes.
+
+## Performance Indexes
+
+Run `2026-06-15-performance-indexes.sql` after the core tables exist. It adds safe, repeatable indexes for the dashboard, invoices, payments, queue, reports, and client pages so workspace-scoped lists stay fast as Trimax grows.
 
 ## Outlook Draft Workflow
 

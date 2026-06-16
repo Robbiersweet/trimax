@@ -79,7 +79,7 @@ export default async function ClientsPage({
 
   const { data: businessData } = await supabase
     .from("businesses")
-    .select("*")
+    .select("id, name, slug")
     .eq("slug", businessSlug)
     .single();
 
@@ -95,7 +95,9 @@ export default async function ClientsPage({
       await Promise.all([
         supabase
           .from("clients")
-          .select("*")
+          .select(
+            "id, name, contact_name, email, phone, billing_address, service_address"
+          )
           .eq("business_id", selectedBusiness.id)
           .order("created_at", {
             ascending: false,
@@ -186,50 +188,66 @@ export default async function ClientsPage({
 
     return searchableText.includes(searchTerm.toLowerCase());
   });
-  const totalOpenBalance = clients.reduce(
-    (total, client) =>
-      total + (clientSummaries[client.id]?.openBalance ?? 0),
-    0
+  const clientReadiness = clients.reduce(
+    (readiness, client) => {
+      const summary = clientSummaries[client.id];
+      const hasEmail = client.email?.trim().includes("@") ?? false;
+      const hasPhone = Boolean(client.phone?.trim());
+      const hasAddress = Boolean(
+        client.service_address?.trim() || client.billing_address?.trim()
+      );
+
+      readiness.totalOpenBalance += summary?.openBalance ?? 0;
+      readiness.activeEstimateTotal += summary?.activeEstimates ?? 0;
+
+      if (hasEmail) {
+        readiness.clientsWithEmail += 1;
+      }
+
+      if (hasPhone) {
+        readiness.clientsWithPhone += 1;
+      }
+
+      if (hasAddress) {
+        readiness.clientsWithAddress += 1;
+      }
+
+      if (hasEmail && hasPhone && hasAddress) {
+        readiness.contactReadyClients += 1;
+      }
+
+      if ((summary?.openBalance ?? 0) > 0) {
+        readiness.clientsWithOpenBalances += 1;
+      }
+
+      return readiness;
+    },
+    {
+      activeEstimateTotal: 0,
+      clientsWithAddress: 0,
+      clientsWithEmail: 0,
+      clientsWithOpenBalances: 0,
+      clientsWithPhone: 0,
+      contactReadyClients: 0,
+      totalOpenBalance: 0,
+    }
   );
-  const clientsWithEmail = clients.filter((client) =>
-    client.email?.trim().includes("@")
-  ).length;
-  const clientsWithPhone = clients.filter((client) =>
-    client.phone?.trim()
-  ).length;
-  const clientsWithAddress = clients.filter(
-    (client) => client.service_address?.trim() || client.billing_address?.trim()
-  ).length;
-  const contactReadyClients = clients.filter(
-    (client) =>
-      client.email?.trim().includes("@") &&
-      Boolean(client.phone?.trim()) &&
-      Boolean(client.service_address?.trim() || client.billing_address?.trim())
-  ).length;
-  const topBalanceClient = [...clients].sort(
+  const {
+    activeEstimateTotal,
+    clientsWithAddress,
+    clientsWithEmail,
+    clientsWithOpenBalances,
+    clientsWithPhone,
+    contactReadyClients,
+    totalOpenBalance,
+  } = clientReadiness;
+  const clientsByOpenBalance = [...clients].sort(
     (first, second) =>
       (clientSummaries[second.id]?.openBalance ?? 0) -
       (clientSummaries[first.id]?.openBalance ?? 0)
-  )[0];
-  const clientsWithOpenBalances = clients.filter(
-    (client) => (clientSummaries[client.id]?.openBalance ?? 0) > 0
-  ).length;
-  const activeEstimateTotal = clients.reduce(
-    (total, client) =>
-      total + (clientSummaries[client.id]?.activeEstimates ?? 0),
-    0
   );
-  const recentlyActiveClients = [...clients]
-    .sort((first, second) => {
-      const firstSummary = clientSummaries[first.id];
-      const secondSummary = clientSummaries[second.id];
-
-      return (
-        (secondSummary?.openBalance ?? 0) -
-        (firstSummary?.openBalance ?? 0)
-      );
-    })
-    .slice(0, 3);
+  const topBalanceClient = clientsByOpenBalance[0];
+  const recentlyActiveClients = clientsByOpenBalance.slice(0, 3);
   const clientCommandQueue = [...clients]
     .filter((client) => {
       const summary = clientSummaries[client.id];
