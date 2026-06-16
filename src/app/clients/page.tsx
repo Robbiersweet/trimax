@@ -2,6 +2,7 @@ import Link from "next/link";
 import AppShell from "../components/AppShell";
 import Card from "../components/Card";
 import Button from "../components/Button";
+import ClientSmartSearch from "../components/ClientSmartSearch";
 import DeleteClientButton from "../components/DeleteClientButton";
 import { supabase } from "../lib/supabase";
 
@@ -624,41 +625,11 @@ export default async function ClientsPage({
         </Card>
 
         <Card>
-          <form
-            action="/clients"
-            className="grid gap-4 md:grid-cols-[1fr_auto]"
-          >
-            <input
-              type="hidden"
-              name="business"
-              value={businessSlug}
-            />
-
-            <div>
-              <label className="app-form-label mb-2 block text-sm text-zinc-400">
-                Search Clients
-              </label>
-
-              <input
-                name="q"
-                defaultValue={searchTerm}
-                placeholder="Search name, contact, email, phone, or address"
-                className="app-form-input w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
-              />
-            </div>
-
-            <div className="flex items-end gap-3">
-              <Button type="submit">Search</Button>
-
-              {searchTerm ? (
-                <Link href={`/clients${businessQuery}`}>
-                  <Button variant="secondary">
-                    Clear
-                  </Button>
-                </Link>
-              ) : null}
-            </div>
-          </form>
+          <ClientSmartSearch
+            clients={clients}
+            businessSlug={businessSlug}
+            initialSearchTerm={searchTerm}
+          />
         </Card>
 
         {clients.length === 0 ? (
