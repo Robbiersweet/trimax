@@ -284,6 +284,7 @@ function BusinessSettingsPageContent() {
   const [senderName, setSenderName] = useState("");
   const [senderEmail, setSenderEmail] = useState("");
   const [replyToEmail, setReplyToEmail] = useState("");
+  const [ccEmail, setCcEmail] = useState("");
   const [bccEmail, setBccEmail] = useState("");
   const [emailSignature, setEmailSignature] = useState("");
   const [invoiceSubjectTemplate, setInvoiceSubjectTemplate] = useState("");
@@ -536,6 +537,7 @@ function BusinessSettingsPageContent() {
     setSenderName(emailSettings.senderName);
     setSenderEmail(emailSettings.senderEmail);
     setReplyToEmail(emailSettings.replyToEmail);
+    setCcEmail(emailSettings.ccEmail);
     setBccEmail(emailSettings.bccEmail);
     setEmailSignature(emailSettings.signature);
     setInvoiceSubjectTemplate(emailSettings.invoiceSubjectTemplate);
@@ -798,6 +800,7 @@ function BusinessSettingsPageContent() {
     }
 
     const replyTo = replyToEmail.trim().toLowerCase();
+    const ccCopy = ccEmail.trim().toLowerCase();
     const bccCopy = bccEmail.trim().toLowerCase();
     const fromEmail = senderEmail.trim().toLowerCase();
     const fromName =
@@ -819,6 +822,14 @@ function BusinessSettingsPageContent() {
       return;
     }
 
+    if (ccCopy && !ccCopy.includes("@")) {
+      setToast({
+        type: "error",
+        message: "Enter a valid CC email address, or leave it blank.",
+      });
+      return;
+    }
+
     if (bccCopy && !bccCopy.includes("@")) {
       setToast({
         type: "error",
@@ -836,6 +847,7 @@ function BusinessSettingsPageContent() {
       senderName: fromName,
       senderEmail: fromEmail,
       replyToEmail: replyTo,
+      ccEmail: ccCopy,
       bccEmail: bccCopy,
       signature: emailSignature.trim() || fallbackEmailSettings.signature,
       invoiceSubjectTemplate:
@@ -883,6 +895,7 @@ function BusinessSettingsPageContent() {
     setSenderName(nextSettings.senderName);
     setSenderEmail(nextSettings.senderEmail);
     setReplyToEmail(nextSettings.replyToEmail);
+    setCcEmail(nextSettings.ccEmail);
     setBccEmail(nextSettings.bccEmail);
     setEmailSignature(nextSettings.signature);
     setInvoiceSubjectTemplate(nextSettings.invoiceSubjectTemplate);
@@ -1273,6 +1286,14 @@ function BusinessSettingsPageContent() {
           : "attention",
     },
     {
+      label: "Visible copy",
+      value: ccEmail.trim() || "Off",
+      status:
+        ccEmail.trim().includes("@") || !ccEmail.trim()
+          ? "ready"
+          : "attention",
+    },
+    {
       label: "Private copy",
       value: bccEmail.trim() || "Off",
       status:
@@ -1333,6 +1354,13 @@ function BusinessSettingsPageContent() {
       detail: bccEmail.trim()
         ? "A private copy will be BCC'd to your inbox."
         : "Optional: BCC yourself on sent invoices and reminders.",
+      ready: true,
+    },
+    {
+      label: "Assistant copy",
+      detail: ccEmail.trim()
+        ? "A visible CC will go to the assistant manager."
+        : "Optional: CC an assistant manager when sending customer email.",
       ready: true,
     },
     {
@@ -1847,7 +1875,7 @@ function BusinessSettingsPageContent() {
                   </div>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
                   <InputField
                     label="Sender Display Name"
                     placeholder="Example: R&L Creations"
@@ -1872,6 +1900,15 @@ function BusinessSettingsPageContent() {
                   />
 
                   <InputField
+                    label="CC Email"
+                    type="email"
+                    placeholder="Example: assistant@rnlcreations.com"
+                    value={ccEmail}
+                    onChange={setCcEmail}
+                    helperText="Optional. Customers can see this copied email address."
+                  />
+
+                  <InputField
                     label="BCC Copy Email"
                     type="email"
                     placeholder="Example: robbie@rnlcreations.com"
@@ -1884,7 +1921,8 @@ function BusinessSettingsPageContent() {
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
                   For the smoothest setup, use the sender domain connected to
                   Trimax delivery. The reply-to can be your everyday inbox, so
-                  customers can respond directly to the right person.
+                  customers can respond directly to the right person. CC is
+                  visible to the customer; BCC is private.
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">

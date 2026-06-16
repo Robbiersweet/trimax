@@ -2,6 +2,7 @@ export type InvoiceEmailSettings = {
   senderName: string;
   senderEmail: string;
   replyToEmail: string;
+  ccEmail: string;
   bccEmail: string;
   signature: string;
   invoiceSubjectTemplate: string;
@@ -47,6 +48,7 @@ export function defaultInvoiceEmailSettings({
     senderName: businessName,
     senderEmail: "",
     replyToEmail: currentEmail ?? "",
+    ccEmail: "",
     bccEmail: "",
     signature,
     invoiceSubjectTemplate: `${businessName} sent you invoice {invoiceNumber}`,
@@ -82,6 +84,10 @@ export function normalizeInvoiceEmailSettings(
       typeof candidate.replyToEmail === "string"
         ? candidate.replyToEmail
         : fallback.replyToEmail,
+    ccEmail:
+      typeof candidate.ccEmail === "string"
+        ? candidate.ccEmail
+        : fallback.ccEmail,
     bccEmail:
       typeof candidate.bccEmail === "string"
         ? candidate.bccEmail
