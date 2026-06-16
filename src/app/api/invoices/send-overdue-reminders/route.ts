@@ -53,6 +53,7 @@ type InvoiceRow = {
 type ClientRow = {
   id: string;
   email: string | null;
+  cc_email: string | null;
 };
 
 type ActivityRow = {
@@ -292,12 +293,15 @@ export async function POST(request: Request) {
       clientIds.length > 0
         ? await supabase
             .from("clients")
-            .select("id, email")
+            .select("id, email, cc_email")
             .in("id", clientIds)
             .returns<ClientRow[]>()
         : { data: [] };
     const clientEmails = new Map(
       (clients ?? []).map((client) => [client.id, client.email])
+    );
+    const clientCcEmails = new Map(
+      (clients ?? []).map((client) => [client.id, client.cc_email])
     );
     const { data: recentLogs } = await supabase
       .from("activity_logs")
@@ -325,7 +329,7 @@ export async function POST(request: Request) {
     );
     const senderEmail =
       settings.senderEmail.trim() || process.env.TRIMAX_EMAIL_FROM || "";
-    const ccEmail = settings.ccEmail.trim().toLowerCase();
+    const fallbackCcEmail = settings.ccEmail.trim().toLowerCase();
     const bccEmail = settings.bccEmail.trim().toLowerCase();
 
     if (!senderEmail || !isValidEmail(senderEmail)) {
@@ -353,6 +357,19 @@ export async function POST(request: Request) {
       const recipient = invoice.client_id
         ? clientEmails.get(invoice.client_id) ?? ""
         : "";
+      const clientCcEmail = invoice.client_id
+        ? (clientCcEmails.get(invoice.client_id) ?? "").trim().toLowerCase()
+        : "";
+      const ccEmail = isValidEmail(clientCcEmail)
+        ? clientCcEmail
+        : isValidEmail(fallbackCcEmail)
+          ? fallbackCcEmail
+          : "";
+      const ccSource = ccEmail
+        ? ccEmail === clientCcEmail
+          ? "client"
+          : "workspace"
+        : null;
 
       if (!recipient || !isValidEmail(recipient)) {
         skipped.push(`${invoiceLabel}: no client email`);
@@ -408,7 +425,7 @@ export async function POST(request: Request) {
         from,
         to: recipient,
         replyTo: settings.replyToEmail || null,
-        cc: ccEmail && isValidEmail(ccEmail) ? ccEmail : null,
+        cc: ccEmail || null,
         bcc: bccEmail && isValidEmail(bccEmail) ? bccEmail : null,
         subject,
         html,
@@ -435,7 +452,8 @@ export async function POST(request: Request) {
           recipient_email: recipient,
           subject,
           sender_email: senderEmail,
-          cc_email: ccEmail && isValidEmail(ccEmail) ? ccEmail : null,
+          cc_email: ccEmail || null,
+          cc_source: ccSource,
           bcc_email: bccEmail && isValidEmail(bccEmail) ? bccEmail : null,
           automated: true,
         },

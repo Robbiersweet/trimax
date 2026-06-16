@@ -14,6 +14,7 @@ type Client = {
   name: string;
   contact_name: string | null;
   email: string | null;
+  cc_email: string | null;
   phone: string | null;
   billing_address: string | null;
   service_address: string | null;
@@ -194,6 +195,11 @@ export default async function ClientDetailsPage({
       status: client.phone?.trim() ? "ready" : "attention",
     },
     {
+      label: "CC",
+      value: client.cc_email?.trim().includes("@") ? "Set" : "Optional",
+      status: "ready",
+    },
+    {
       label: "Address",
       value:
         client.service_address?.trim() || client.billing_address?.trim()
@@ -293,6 +299,8 @@ export default async function ClientDetailsPage({
 
             <Info label="Email" value={client.email} />
 
+            <Info label="CC Email" value={client.cc_email} />
+
             <Info label="Phone" value={client.phone} />
 
             <Info
@@ -343,7 +351,7 @@ export default async function ClientDetailsPage({
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
               {contactReadiness.map((item) => (
                 <div
                   key={item.label}

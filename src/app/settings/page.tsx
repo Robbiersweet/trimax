@@ -1286,7 +1286,7 @@ function BusinessSettingsPageContent() {
           : "attention",
     },
     {
-      label: "Visible copy",
+      label: "Default visible copy",
       value: ccEmail.trim() || "Off",
       status:
         ccEmail.trim().includes("@") || !ccEmail.trim()
@@ -1357,10 +1357,10 @@ function BusinessSettingsPageContent() {
       ready: true,
     },
     {
-      label: "Assistant copy",
+      label: "Default assistant copy",
       detail: ccEmail.trim()
-        ? "A visible CC will go to the assistant manager."
-        : "Optional: CC an assistant manager when sending customer email.",
+        ? "Used only when a client profile does not have its own CC."
+        : "Optional fallback. Client-specific CC emails take priority.",
       ready: true,
     },
     {
@@ -1900,12 +1900,12 @@ function BusinessSettingsPageContent() {
                   />
 
                   <InputField
-                    label="CC Email"
+                    label="Default CC Email"
                     type="email"
                     placeholder="Example: assistant@rnlcreations.com"
                     value={ccEmail}
                     onChange={setCcEmail}
-                    helperText="Optional. Customers can see this copied email address."
+                    helperText="Optional fallback. Add client-specific CC emails on each client profile."
                   />
 
                   <InputField
@@ -1921,8 +1921,9 @@ function BusinessSettingsPageContent() {
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
                   For the smoothest setup, use the sender domain connected to
                   Trimax delivery. The reply-to can be your everyday inbox, so
-                  customers can respond directly to the right person. CC is
-                  visible to the customer; BCC is private.
+                  customers can respond directly to the right person. Client
+                  profile CC emails are used first; this default CC is only a
+                  fallback. BCC is private.
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">

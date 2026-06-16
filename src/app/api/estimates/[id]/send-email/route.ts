@@ -21,6 +21,7 @@ type Database = {
       app_settings: GenericTable;
       business_users: GenericTable;
       businesses: GenericTable;
+      clients: GenericTable;
       estimates: GenericTable;
     };
     Views: Record<string, never>;
@@ -39,6 +40,7 @@ type RouteParams = {
 type EstimateRow = {
   id: string;
   business_id: string;
+  client_id: string | null;
   display_id: string | null;
   customer_name: string | null;
   project_title: string | null;
@@ -54,6 +56,10 @@ type BusinessRow = {
 type BusinessUserRow = {
   id: string;
   role: string | null;
+};
+
+type ClientEmailRouteRow = {
+  cc_email: string | null;
 };
 
 function getAdminClient() {
@@ -256,7 +262,9 @@ export async function POST(request: Request, { params }: RouteParams) {
 
   const { data: estimate, error: estimateError } = await supabase
     .from("estimates")
-    .select("id, business_id, display_id, customer_name, project_title, status")
+    .select(
+      "id, business_id, client_id, display_id, customer_name, project_title, status"
+    )
     .eq("id", id)
     .limit(1)
     .maybeSingle<EstimateRow>();
@@ -311,7 +319,30 @@ export async function POST(request: Request, { params }: RouteParams) {
   );
   const senderEmail =
     emailSettings.senderEmail.trim() || process.env.TRIMAX_EMAIL_FROM || "";
-  const ccEmail = emailSettings.ccEmail.trim().toLowerCase();
+  const { data: clientEmailRoute } = estimate.client_id
+    ? await supabase
+        .from("clients")
+        .select("cc_email")
+        .eq("id", estimate.client_id)
+        .eq("business_id", estimate.business_id)
+        .limit(1)
+        .maybeSingle<ClientEmailRouteRow>()
+    : { data: null };
+  const clientCcEmail = cleanText(
+    clientEmailRoute?.cc_email,
+    200
+  ).toLowerCase();
+  const fallbackCcEmail = emailSettings.ccEmail.trim().toLowerCase();
+  const ccEmail = isValidEmail(clientCcEmail)
+    ? clientCcEmail
+    : isValidEmail(fallbackCcEmail)
+      ? fallbackCcEmail
+      : "";
+  const ccSource = ccEmail
+    ? ccEmail === clientCcEmail
+      ? "client"
+      : "workspace"
+    : null;
   const bccEmail = emailSettings.bccEmail.trim().toLowerCase();
 
   if (!senderEmail || !isValidEmail(senderEmail)) {
@@ -354,7 +385,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     from,
     to: recipientEmail,
     replyTo: replyToEmail || access.email,
-    cc: ccEmail && isValidEmail(ccEmail) ? ccEmail : null,
+    cc: ccEmail || null,
     bcc: bccEmail && isValidEmail(bccEmail) ? bccEmail : null,
     subject,
     html,
@@ -387,14 +418,15 @@ export async function POST(request: Request, { params }: RouteParams) {
       recipient_email: recipientEmail,
       subject,
       sender_email: senderEmail,
-      cc_email: ccEmail && isValidEmail(ccEmail) ? ccEmail : null,
+      cc_email: ccEmail || null,
+      cc_source: ccSource,
       bcc_email: bccEmail && isValidEmail(bccEmail) ? bccEmail : null,
     },
   });
 
   return NextResponse.json({
     message: `${estimate.display_id ?? "Estimate"} was sent to ${recipientEmail}${
-      ccEmail && isValidEmail(ccEmail) ? " and CC'd" : ""
+      ccEmail ? " and CC'd" : ""
     }${
       bccEmail && isValidEmail(bccEmail) ? " and privately copied." : "."
     }`,

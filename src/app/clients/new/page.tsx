@@ -22,6 +22,7 @@ export default function NewClientPage() {
   const [contactName, setContactName] =
     useState("");
   const [email, setEmail] = useState("");
+  const [ccEmail, setCcEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [billingAddress, setBillingAddress] =
     useState("");
@@ -44,6 +45,27 @@ export default function NewClientPage() {
       setToast({
         type: "error",
         message: "Client name is required.",
+      });
+
+      return;
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedCcEmail = ccEmail.trim().toLowerCase();
+
+    if (normalizedEmail && !normalizedEmail.includes("@")) {
+      setToast({
+        type: "error",
+        message: "Enter a valid customer email address.",
+      });
+
+      return;
+    }
+
+    if (normalizedCcEmail && !normalizedCcEmail.includes("@")) {
+      setToast({
+        type: "error",
+        message: "Enter a valid CC email address.",
       });
 
       return;
@@ -83,7 +105,8 @@ export default function NewClientPage() {
 
         name,
         contact_name: contactName,
-        email,
+        email: normalizedEmail || null,
+        cc_email: normalizedCcEmail || null,
         phone,
         billing_address: billingAddress,
         service_address:
@@ -157,6 +180,14 @@ export default function NewClientPage() {
               placeholder="billing@example.com"
               value={email}
               onChange={setEmail}
+            />
+
+            <InputField
+              label="CC Email"
+              placeholder="assistant-manager@example.com"
+              value={ccEmail}
+              onChange={setCcEmail}
+              helperText="Optional. This customer-visible copy is used for this client's invoices, estimates, and reminders."
             />
 
             <InputField

@@ -20,6 +20,7 @@ type Client = {
   name: string;
   contact_name: string | null;
   email: string | null;
+  cc_email: string | null;
   phone: string | null;
   billing_address: string | null;
   service_address: string | null;
@@ -46,6 +47,7 @@ export default function EditClientPage() {
   const [contactName, setContactName] =
     useState("");
   const [email, setEmail] = useState("");
+  const [ccEmail, setCcEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [billingAddress, setBillingAddress] =
     useState("");
@@ -113,6 +115,7 @@ export default function EditClientPage() {
       setName(client.name ?? "");
       setContactName(client.contact_name ?? "");
       setEmail(client.email ?? "");
+      setCcEmail(client.cc_email ?? "");
       setPhone(client.phone ?? "");
       setBillingAddress(client.billing_address ?? "");
       setServiceAddress(client.service_address ?? "");
@@ -148,12 +151,36 @@ export default function EditClientPage() {
       return;
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedCcEmail = ccEmail.trim().toLowerCase();
+
+    if (normalizedEmail && !normalizedEmail.includes("@")) {
+      setToast({
+        type: "error",
+        message: "Enter a valid customer email address.",
+      });
+
+      setSaving(false);
+      return;
+    }
+
+    if (normalizedCcEmail && !normalizedCcEmail.includes("@")) {
+      setToast({
+        type: "error",
+        message: "Enter a valid CC email address.",
+      });
+
+      setSaving(false);
+      return;
+    }
+
     const { error } = await supabase
       .from("clients")
       .update({
         name,
         contact_name: contactName,
-        email,
+        email: normalizedEmail || null,
+        cc_email: normalizedCcEmail || null,
         phone,
         billing_address: billingAddress,
         service_address:
@@ -235,6 +262,14 @@ export default function EditClientPage() {
               placeholder="billing@example.com"
               value={email}
               onChange={setEmail}
+            />
+
+            <InputField
+              label="CC Email"
+              placeholder="assistant-manager@example.com"
+              value={ccEmail}
+              onChange={setCcEmail}
+              helperText="Optional. This customer-visible copy is used for this client's invoices, estimates, and reminders."
             />
 
             <InputField
