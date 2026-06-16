@@ -133,6 +133,7 @@ async function sendWithResend({
   from,
   to,
   replyTo,
+  bcc,
   subject,
   html,
   text,
@@ -140,6 +141,7 @@ async function sendWithResend({
   from: string;
   to: string;
   replyTo: string | null;
+  bcc: string | null;
   subject: string;
   html: string;
   text: string;
@@ -165,6 +167,7 @@ async function sendWithResend({
       from,
       to: [to],
       ...(replyTo ? { reply_to: replyTo } : {}),
+      ...(bcc ? { bcc: [bcc] } : {}),
       subject,
       html,
       text,
@@ -319,6 +322,7 @@ export async function POST(request: Request) {
     );
     const senderEmail =
       settings.senderEmail.trim() || process.env.TRIMAX_EMAIL_FROM || "";
+    const bccEmail = settings.bccEmail.trim().toLowerCase();
 
     if (!senderEmail || !isValidEmail(senderEmail)) {
       failed.push({
@@ -400,6 +404,7 @@ export async function POST(request: Request) {
         from,
         to: recipient,
         replyTo: settings.replyToEmail || null,
+        bcc: bccEmail && isValidEmail(bccEmail) ? bccEmail : null,
         subject,
         html,
         text: message,
@@ -425,6 +430,7 @@ export async function POST(request: Request) {
           recipient_email: recipient,
           subject,
           sender_email: senderEmail,
+          bcc_email: bccEmail && isValidEmail(bccEmail) ? bccEmail : null,
           automated: true,
         },
       });

@@ -284,6 +284,7 @@ function BusinessSettingsPageContent() {
   const [senderName, setSenderName] = useState("");
   const [senderEmail, setSenderEmail] = useState("");
   const [replyToEmail, setReplyToEmail] = useState("");
+  const [bccEmail, setBccEmail] = useState("");
   const [emailSignature, setEmailSignature] = useState("");
   const [invoiceSubjectTemplate, setInvoiceSubjectTemplate] = useState("");
   const [invoiceBodyTemplate, setInvoiceBodyTemplate] = useState("");
@@ -532,6 +533,7 @@ function BusinessSettingsPageContent() {
     setSenderName(emailSettings.senderName);
     setSenderEmail(emailSettings.senderEmail);
     setReplyToEmail(emailSettings.replyToEmail);
+    setBccEmail(emailSettings.bccEmail);
     setEmailSignature(emailSettings.signature);
     setInvoiceSubjectTemplate(emailSettings.invoiceSubjectTemplate);
     setInvoiceBodyTemplate(emailSettings.invoiceBodyTemplate);
@@ -792,6 +794,7 @@ function BusinessSettingsPageContent() {
     }
 
     const replyTo = replyToEmail.trim().toLowerCase();
+    const bccCopy = bccEmail.trim().toLowerCase();
     const fromEmail = senderEmail.trim().toLowerCase();
     const fromName =
       senderName.trim() || business.name || "Trimax";
@@ -812,6 +815,14 @@ function BusinessSettingsPageContent() {
       return;
     }
 
+    if (bccCopy && !bccCopy.includes("@")) {
+      setToast({
+        type: "error",
+        message: "Enter a valid BCC copy email address, or leave it blank.",
+      });
+      return;
+    }
+
     const fallbackEmailSettings = defaultInvoiceEmailSettings({
       businessSlug,
       businessName: business.name,
@@ -821,6 +832,7 @@ function BusinessSettingsPageContent() {
       senderName: fromName,
       senderEmail: fromEmail,
       replyToEmail: replyTo,
+      bccEmail: bccCopy,
       signature: emailSignature.trim() || fallbackEmailSettings.signature,
       invoiceSubjectTemplate:
         invoiceSubjectTemplate.trim() ||
@@ -867,6 +879,7 @@ function BusinessSettingsPageContent() {
     setSenderName(nextSettings.senderName);
     setSenderEmail(nextSettings.senderEmail);
     setReplyToEmail(nextSettings.replyToEmail);
+    setBccEmail(nextSettings.bccEmail);
     setEmailSignature(nextSettings.signature);
     setInvoiceSubjectTemplate(nextSettings.invoiceSubjectTemplate);
     setInvoiceBodyTemplate(nextSettings.invoiceBodyTemplate);
@@ -1256,6 +1269,14 @@ function BusinessSettingsPageContent() {
           : "attention",
     },
     {
+      label: "Private copy",
+      value: bccEmail.trim() || "Off",
+      status:
+        bccEmail.trim().includes("@") || !bccEmail.trim()
+          ? "ready"
+          : "attention",
+    },
+    {
       label: "Invoice Template",
       value:
         invoiceSubjectTemplate.trim() && invoiceBodyTemplate.trim()
@@ -1302,6 +1323,13 @@ function BusinessSettingsPageContent() {
       ready:
         replyToEmail.trim().includes("@") ||
         Boolean(currentEmail?.includes("@")),
+    },
+    {
+      label: "Proof copy",
+      detail: bccEmail.trim()
+        ? "A private copy will be BCC'd to your inbox."
+        : "Optional: BCC yourself on sent invoices and reminders.",
+      ready: true,
     },
     {
       label: "Invoice message",
@@ -1815,7 +1843,7 @@ function BusinessSettingsPageContent() {
                   </div>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                   <InputField
                     label="Sender Display Name"
                     placeholder="Example: R&L Creations"
@@ -1837,6 +1865,15 @@ function BusinessSettingsPageContent() {
                     placeholder="Example: robbie@rnlcreations.com"
                     value={replyToEmail}
                     onChange={setReplyToEmail}
+                  />
+
+                  <InputField
+                    label="BCC Copy Email"
+                    type="email"
+                    placeholder="Example: robbie@rnlcreations.com"
+                    value={bccEmail}
+                    onChange={setBccEmail}
+                    helperText="Optional. Trimax privately copies this inbox on invoice sends, estimate sends, and late reminders."
                   />
                 </div>
 

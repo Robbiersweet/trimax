@@ -141,6 +141,7 @@ async function sendWithResend({
   from,
   to,
   replyTo,
+  bcc,
   subject,
   html,
   text,
@@ -148,6 +149,7 @@ async function sendWithResend({
   from: string;
   to: string;
   replyTo: string | null;
+  bcc: string | null;
   subject: string;
   html: string;
   text: string;
@@ -173,6 +175,7 @@ async function sendWithResend({
       from,
       to: [to],
       ...(replyTo ? { reply_to: replyTo } : {}),
+      ...(bcc ? { bcc: [bcc] } : {}),
       subject,
       html,
       text,
@@ -305,6 +308,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   );
   const senderEmail =
     emailSettings.senderEmail.trim() || process.env.TRIMAX_EMAIL_FROM || "";
+  const bccEmail = emailSettings.bccEmail.trim().toLowerCase();
 
   if (!senderEmail || !isValidEmail(senderEmail)) {
     return NextResponse.json(
@@ -346,6 +350,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     from,
     to: recipientEmail,
     replyTo: replyToEmail || access.email,
+    bcc: bccEmail && isValidEmail(bccEmail) ? bccEmail : null,
     subject,
     html,
     text: message,
@@ -377,10 +382,13 @@ export async function POST(request: Request, { params }: RouteParams) {
       recipient_email: recipientEmail,
       subject,
       sender_email: senderEmail,
+      bcc_email: bccEmail && isValidEmail(bccEmail) ? bccEmail : null,
     },
   });
 
   return NextResponse.json({
-    message: `${estimate.display_id ?? "Estimate"} was sent to ${recipientEmail}.`,
+    message: `${estimate.display_id ?? "Estimate"} was sent to ${recipientEmail}${
+      bccEmail && isValidEmail(bccEmail) ? " and privately copied." : "."
+    }`,
   });
 }
