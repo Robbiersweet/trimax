@@ -1289,7 +1289,7 @@ export default async function DashboardPage({
             </Card>
           }
         >
-          <Card className="dark-surface border-orange-500/30 bg-gradient-to-br from-zinc-900 to-zinc-950">
+          <Card className="dashboard-hero-card dark-surface border-orange-500/30 bg-gradient-to-br from-zinc-900 to-zinc-950">
             <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
               <div>
                 <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
@@ -1342,7 +1342,7 @@ export default async function DashboardPage({
           </Card>
         </RoleVisible>
 
-        <Card className="dashboard-queue-command dark-surface overflow-hidden border-sky-500/20 bg-gradient-to-br from-zinc-950 via-zinc-900 to-emerald-950/20">
+        <Card className="dashboard-queue-command dark-surface hidden overflow-hidden border-sky-500/20 bg-gradient-to-br from-zinc-950 via-zinc-900 to-emerald-950/20 lg:block">
           <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr] xl:items-start">
             <div>
               <p className="dashboard-section-label text-sm uppercase tracking-[0.3em] text-sky-300">
@@ -1991,7 +1991,7 @@ export default async function DashboardPage({
           </Card>
         </RoleVisible>
 
-        <div className="hidden gap-4 md:grid md:grid-cols-2">
+        <div className="hidden">
           <Card className="border-yellow-500/30 bg-yellow-500/5">
             <p className="text-sm uppercase tracking-[0.3em] text-yellow-300">
               Scheduling Attention
@@ -2044,7 +2044,7 @@ export default async function DashboardPage({
           </Card>
         </div>
 
-        <div className="hidden gap-4 md:grid md:grid-cols-3">
+        <div className="hidden">
           <Card>
             <p className="text-sm text-zinc-400">
               Active Queue
@@ -2106,7 +2106,7 @@ export default async function DashboardPage({
           </RoleVisible>
         </div>
 
-        <div className="hidden gap-4 md:grid md:grid-cols-3">
+        <div className="hidden">
           <Card>
             <p className="text-sm text-zinc-400">
               Scheduled Jobs
@@ -2172,7 +2172,7 @@ export default async function DashboardPage({
             "accountant",
           ]}
         >
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="hidden">
             <Card>
               <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
                 Estimated Revenue
@@ -2209,7 +2209,7 @@ export default async function DashboardPage({
           </div>
         </RoleVisible>
 
-        <Card>
+        <Card className="hidden">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
@@ -2235,7 +2235,7 @@ export default async function DashboardPage({
           </div>
         </Card>
 
-        <Card>
+        <Card className="hidden">
           <div className="mb-4">
             <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
               Action Center
