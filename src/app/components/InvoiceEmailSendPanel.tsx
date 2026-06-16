@@ -20,6 +20,7 @@ type InvoiceEmailSendPanelProps = {
   businessName: string;
   customerName: string;
   recipientEmail: string | null;
+  clientCcEmail?: string | null;
   documentNumber: string;
   amountDue: string;
   dueDate: string;
@@ -95,6 +96,7 @@ export default function InvoiceEmailSendPanel({
   businessName,
   customerName,
   recipientEmail,
+  clientCcEmail,
   documentNumber,
   amountDue,
   dueDate,
@@ -112,6 +114,7 @@ export default function InvoiceEmailSendPanel({
         : "Invoice";
   const documentLabelLower = documentLabel.toLowerCase();
   const [recipient, setRecipient] = useState(recipientEmail ?? "");
+  const visibleClientCc = clientCcEmail?.trim() ?? "";
   const [subject, setSubject] = useState(
     defaultSubject(businessName, documentNumber, requestType)
   );
@@ -301,6 +304,11 @@ export default function InvoiceEmailSendPanel({
         ? recipient.trim()
         : "Add a customer email",
       status: recipient.trim().includes("@") ? "ready" : "attention",
+    },
+    {
+      label: "CC",
+      detail: visibleClientCc || "No client CC saved",
+      status: visibleClientCc.includes("@") ? "ready" : "waiting",
     },
     {
       label: "Template",
@@ -556,6 +564,31 @@ export default function InvoiceEmailSendPanel({
             />
             <p className="mt-2 text-xs text-slate-500">
               Pulled from the client profile when an email is saved there.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-slate-600">
+                  CC
+                </p>
+                <p className="mt-1 overflow-wrap-anywhere text-base font-semibold text-slate-950">
+                  {visibleClientCc || "No assistant manager CC saved"}
+                </p>
+              </div>
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-black ${
+                  visibleClientCc.includes("@")
+                    ? "bg-emerald-100 text-emerald-800"
+                    : "bg-slate-200 text-slate-600"
+                }`}
+              >
+                {visibleClientCc.includes("@") ? "Will copy" : "Optional"}
+              </span>
+            </div>
+            <p className="mt-2 text-xs leading-5 text-slate-500">
+              Set this on the client profile. Customers can see CC recipients.
             </p>
           </div>
 

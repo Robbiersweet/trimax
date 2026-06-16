@@ -92,6 +92,7 @@ type ClientContact = {
   name: string | null;
   contact_name: string | null;
   email: string | null;
+  cc_email: string | null;
 };
 
 function money(value: number) {
@@ -326,7 +327,7 @@ export default async function InvoiceDetailPage({
   if (invoice.client_id) {
     const { data, error } = await supabase
       .from("clients")
-      .select("name, contact_name, email")
+      .select("name, contact_name, email, cc_email")
       .eq("id", invoice.client_id)
       .eq("business_id", business.id)
       .limit(1)
@@ -683,6 +684,7 @@ export default async function InvoiceDetailPage({
             businessName={businessName}
             customerName={customerName}
             recipientEmail={recipientEmail}
+            clientCcEmail={clientContact?.cc_email ?? null}
             documentNumber={invoiceNumber}
             amountDue={money(customerFacingAmountDue)}
             dueDate={displayDueDate ? formatDate(displayDueDate) : "-"}
@@ -726,6 +728,7 @@ export default async function InvoiceDetailPage({
                 businessName={businessName}
                 customerName={customerName}
                 recipientEmail={recipientEmail}
+                clientCcEmail={clientContact?.cc_email ?? null}
                 documentNumber={invoiceNumber}
                 amountDue={money(customerFacingAmountDue)}
                 dueDate={displayDueDate ? formatDate(displayDueDate) : "-"}

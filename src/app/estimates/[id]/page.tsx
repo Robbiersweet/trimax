@@ -64,6 +64,7 @@ type Business = {
 
 type ClientContact = {
   email: string | null;
+  cc_email: string | null;
 };
 
 function toNumber(value: number | string | null) {
@@ -213,7 +214,7 @@ export default async function EstimateDetailsPage({
   const { data: clientData } = estimate.client_id
     ? await supabase
         .from("clients")
-        .select("email")
+        .select("email, cc_email")
         .eq("id", estimate.client_id)
         .eq("business_id", selectedBusiness.id)
         .limit(1)
@@ -307,6 +308,7 @@ export default async function EstimateDetailsPage({
           businessName={selectedBusiness.name ?? "Trimax"}
           customerName={estimate.customer_name ?? "Customer"}
           recipientEmail={clientContact?.email ?? null}
+          clientCcEmail={clientContact?.cc_email ?? null}
           documentNumber={estimate.display_id ?? "Estimate"}
           amountDue={formatCurrency(estimateTotal)}
           dueDate="-"
