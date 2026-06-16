@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   usePathname,
+  useRouter,
   useSearchParams,
 } from "next/navigation";
 import {
@@ -16,6 +17,7 @@ import UserMenu from "./UserMenu";
 
 export default function Navigation() {
   const pathname = usePathname();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [role, setRole] =
     useState<string | null>(null);
@@ -60,122 +62,158 @@ export default function Navigation() {
     };
   }, [business]);
 
-  const navLinks: {
-    key: NavPermissionKey;
-    label: string;
-    href: string;
-    active: boolean;
-    icon: NavIconKey;
-  }[] = [
+  const navLinks = useMemo<
     {
-      key: "dashboard",
-      label: "Dashboard",
-      href: `/?business=${business}`,
-      active: pathname === "/",
-      icon: "dashboard",
-    },
-    {
-      key: "queue",
-      label: "Queue",
-      href: `/queue?business=${business}`,
-      active: pathname.startsWith("/queue"),
-      icon: "queue",
-    },
-    {
-      key: "schedule",
-      label: "Schedule",
-      href: `/schedule?business=${business}`,
-      active: pathname.startsWith("/schedule"),
-      icon: "schedule",
-    },
-    {
-      key: "estimates",
-      label: "Estimates",
-      href: `/estimates?business=${business}`,
-      active: pathname.startsWith("/estimates"),
-      icon: "estimates",
-    },
-    {
-      key: "invoices",
-      label: "Invoices",
-      href: `/invoices?business=${business}`,
-      active: pathname.startsWith("/invoices"),
-      icon: "invoices",
-    },
-    {
-      key: "payments",
-      label: "Payments",
-      href: `/payments?business=${business}`,
-      active: pathname.startsWith("/payments"),
-      icon: "payments",
-    },
-    {
-      key: "clients",
-      label: "Clients",
-      href: `/clients?business=${business}`,
-      active: pathname.startsWith("/clients"),
-      icon: "clients",
-    },
-    {
-      key: "imports",
-      label: "Imports",
-      href: `/imports?business=${business}`,
-      active: pathname.startsWith("/imports"),
-      icon: "imports",
-    },
-    {
-      key: "services",
-      label: "Services",
-      href: `/services?business=${business}`,
-      active: pathname.startsWith("/services"),
-      icon: "services",
-    },
-    {
-      key: "reports",
-      label: "Reports",
-      href: `/reports?business=${business}`,
-      active: pathname.startsWith("/reports"),
-      icon: "reports",
-    },
-    {
-      key: "activity",
-      label: "Activity",
-      href: `/activity?business=${business}`,
-      active: pathname.startsWith("/activity"),
-      icon: "activity",
-    },
-    {
-      key: "settings",
-      label: "Settings",
-      href: `/settings?business=${business}`,
-      active: pathname.startsWith("/settings"),
-      icon: "settings",
-    },
-  ];
+      key: NavPermissionKey;
+      label: string;
+      href: string;
+      active: boolean;
+      icon: NavIconKey;
+    }[]
+  >(
+    () => [
+      {
+        key: "dashboard",
+        label: "Dashboard",
+        href: `/?business=${business}`,
+        active: pathname === "/",
+        icon: "dashboard",
+      },
+      {
+        key: "queue",
+        label: "Queue",
+        href: `/queue?business=${business}`,
+        active: pathname.startsWith("/queue"),
+        icon: "queue",
+      },
+      {
+        key: "schedule",
+        label: "Schedule",
+        href: `/schedule?business=${business}`,
+        active: pathname.startsWith("/schedule"),
+        icon: "schedule",
+      },
+      {
+        key: "estimates",
+        label: "Estimates",
+        href: `/estimates?business=${business}`,
+        active: pathname.startsWith("/estimates"),
+        icon: "estimates",
+      },
+      {
+        key: "invoices",
+        label: "Invoices",
+        href: `/invoices?business=${business}`,
+        active: pathname.startsWith("/invoices"),
+        icon: "invoices",
+      },
+      {
+        key: "payments",
+        label: "Payments",
+        href: `/payments?business=${business}`,
+        active: pathname.startsWith("/payments"),
+        icon: "payments",
+      },
+      {
+        key: "clients",
+        label: "Clients",
+        href: `/clients?business=${business}`,
+        active: pathname.startsWith("/clients"),
+        icon: "clients",
+      },
+      {
+        key: "imports",
+        label: "Imports",
+        href: `/imports?business=${business}`,
+        active: pathname.startsWith("/imports"),
+        icon: "imports",
+      },
+      {
+        key: "services",
+        label: "Services",
+        href: `/services?business=${business}`,
+        active: pathname.startsWith("/services"),
+        icon: "services",
+      },
+      {
+        key: "reports",
+        label: "Reports",
+        href: `/reports?business=${business}`,
+        active: pathname.startsWith("/reports"),
+        icon: "reports",
+      },
+      {
+        key: "activity",
+        label: "Activity",
+        href: `/activity?business=${business}`,
+        active: pathname.startsWith("/activity"),
+        icon: "activity",
+      },
+      {
+        key: "settings",
+        label: "Settings",
+        href: `/settings?business=${business}`,
+        active: pathname.startsWith("/settings"),
+        icon: "settings",
+      },
+    ],
+    [business, pathname]
+  );
 
-  const visibleNavLinks = navLinks.filter(
-    (link) =>
-      isLoadingRole ||
-      canAccessNavItem(role, link.key)
+  const visibleNavLinks = useMemo(
+    () =>
+      navLinks.filter(
+        (link) =>
+          isLoadingRole ||
+          canAccessNavItem(role, link.key)
+      ),
+    [isLoadingRole, navLinks, role]
   );
   const activeLink = visibleNavLinks.find((link) => link.active);
-  const settingsSubLinks = [
-    {
-      label: "Phone App + Alerts",
-      description: "Install setup",
-      href: `/settings?business=${business}#phone-app-notifications`,
-    },
-    {
-      label: "Email Launch",
-      description: "Sender setup",
-      href: `/settings?business=${business}#outlook-integration`,
-    },
-    {
-      label: "User Role Integration",
-      description: "Portal access",
-      href: `/settings?business=${business}#user-role-integration`,
-    },
-  ];
+  const settingsSubLinks = useMemo(
+    () => [
+      {
+        label: "Phone App + Alerts",
+        description: "Install setup",
+        href: `/settings?business=${business}#phone-app-notifications`,
+      },
+      {
+        label: "Email Launch",
+        description: "Sender setup",
+        href: `/settings?business=${business}#outlook-integration`,
+      },
+      {
+        label: "User Role Integration",
+        description: "Portal access",
+        href: `/settings?business=${business}#user-role-integration`,
+      },
+    ],
+    [business]
+  );
+
+  useEffect(() => {
+    if (isLoadingRole) {
+      return;
+    }
+
+    const prefetchHrefs = [
+      ...visibleNavLinks.map((link) => link.href),
+      ...settingsSubLinks.map((link) => link.href),
+      `/payments?business=${business}#check-capture`,
+      `/invoices?business=${business}&view=aging`,
+      `/settings?business=${business}#outlook-integration`,
+    ];
+
+    const uniqueHrefs = Array.from(new Set(prefetchHrefs));
+
+    const timer = window.setTimeout(() => {
+      for (const href of uniqueHrefs) {
+        router.prefetch(href);
+      }
+    }, 300);
+
+    return () => window.clearTimeout(timer);
+  }, [business, isLoadingRole, router, settingsSubLinks, visibleNavLinks]);
 
   return (
     <nav className="app-sidebar mb-8 rounded-2xl border border-zinc-800 bg-zinc-900/80 px-4 py-4 shadow-lg sm:px-5 lg:sticky lg:top-5 lg:mb-0 lg:flex lg:h-[calc(100vh-2.5rem)] lg:w-72 lg:shrink-0 lg:flex-col lg:overflow-hidden lg:px-4 lg:py-5">
