@@ -459,6 +459,39 @@ export default function BatchInvoicePayments({
     capturedAmountValue > 0 &&
     suggestedCheckMatches.length > 0 &&
     Math.abs(suggestedCheckTotal - capturedAmountValue) < 0.01;
+  const checkMatchConfidence =
+    capturedAmountValue <= 0
+      ? {
+          label: "Waiting",
+          detail: "Enter the check amount to let Trimax search open invoices.",
+          tone: "waiting",
+        }
+      : hasExactCheckMatch
+        ? {
+            label: "Exact match",
+            detail: "The selected invoices equal the photographed check.",
+            tone: "exact",
+          }
+        : suggestedCheckMatches.length > 0
+          ? {
+              label: "Review match",
+              detail: `${formatMoney(
+                Math.abs(capturedAmountValue - suggestedCheckTotal)
+              )} difference from the closest invoice group.`,
+              tone: "review",
+            }
+          : {
+              label: "No match",
+              detail: "Try the customer name, check amount, or select invoices manually.",
+              tone: "none",
+            };
+  const checkCaptureSteps = [
+    checkImagePreview ? "Photo ready" : "Capture check",
+    capturedAmountValue > 0 ? formatMoney(capturedAmountValue) : "Enter amount",
+    suggestedCheckMatches.length > 0
+      ? checkMatchConfidence.label
+      : "Match invoices",
+  ];
   const suggestedPaymentMatches = useMemo(
     () =>
       findMatchingInvoices(
@@ -692,6 +725,11 @@ export default function BatchInvoicePayments({
 
     setCheckImagePreview(URL.createObjectURL(file));
     setCheckImageName(file.name);
+    setToast({
+      type: "success",
+      message:
+        "Check photo added. Confirm the amount and payor so Trimax can match it.",
+    });
   }
 
   function applyCheckCaptureMatch() {
@@ -1163,6 +1201,22 @@ export default function BatchInvoicePayments({
               Trimax will suggest the invoices that fit that check.
             </p>
 
+            <div className="check-capture-steps mt-4 grid gap-2 sm:grid-cols-3">
+              {checkCaptureSteps.map((step, index) => (
+                <div
+                  key={`${step}-${index}`}
+                  className="check-capture-step rounded-2xl border border-white/10 bg-black/25 px-3 py-2"
+                >
+                  <span className="text-[0.68rem] font-black uppercase tracking-[0.22em] text-sky-300">
+                    Step {index + 1}
+                  </span>
+                  <span className="mt-1 block text-sm font-black text-white">
+                    {step}
+                  </span>
+                </div>
+              ))}
+            </div>
+
             <div className="check-photo-dropzone mt-4 flex min-h-44 flex-col items-center justify-center rounded-2xl border border-dashed border-sky-400/50 bg-black/30 p-4 text-center">
               {checkImagePreview ? (
                 <span className="grid gap-3">
@@ -1184,16 +1238,16 @@ export default function BatchInvoicePayments({
                     +
                   </span>
                   <span className="mt-2 block font-semibold text-white">
-                    Add check photo
+                    Start with the check photo
                   </span>
                   <span className="mt-1 block text-xs text-zinc-400">
-                    Open the camera on mobile or choose an existing image
+                    Camera opens directly on phones that support it
                   </span>
                 </span>
               )}
               <div className="mt-4 flex flex-wrap justify-center gap-2">
                 <label className="check-camera-action inline-flex cursor-pointer rounded-full bg-sky-500 px-4 py-2 text-sm font-black text-white transition hover:bg-sky-600">
-                  Open Camera
+                  Capture with Camera
                   <input
                     type="file"
                     accept="image/*"
@@ -1206,7 +1260,7 @@ export default function BatchInvoicePayments({
                 </label>
 
                 <label className="check-gallery-action inline-flex cursor-pointer rounded-full border border-sky-300/50 px-4 py-2 text-sm font-semibold text-sky-100 transition hover:border-sky-200 hover:bg-sky-500/10">
-                  Choose Photo
+                  Choose Existing Photo
                   <input
                     type="file"
                     accept="image/*"
@@ -1278,37 +1332,24 @@ export default function BatchInvoicePayments({
               </label>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-black/35 p-4">
+            <div
+              data-match-tone={checkMatchConfidence.tone}
+              className="check-match-card rounded-2xl border border-white/10 bg-black/35 p-4"
+            >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <p className="text-sm font-semibold text-zinc-200">
                     Suggested match
                   </p>
                   <p className="mt-1 text-sm leading-6 text-zinc-400">
-                    {capturedAmountValue > 0
-                      ? hasExactCheckMatch
-                        ? "Exact match found."
-                        : suggestedCheckMatches.length > 0
-                          ? "Closest match found. Review before applying."
-                          : "No match yet. Adjust amount or payor."
-                      : "Enter a check amount to find invoices."}
+                    {checkMatchConfidence.detail}
                   </p>
                 </div>
 
                 <span
-                  className={`rounded-full px-3 py-1 text-xs font-black ${
-                    hasExactCheckMatch
-                      ? "bg-emerald-500 text-black"
-                      : suggestedCheckMatches.length > 0
-                        ? "bg-amber-300 text-amber-950"
-                        : "bg-zinc-800 text-zinc-300"
-                  }`}
+                  className="check-match-pill rounded-full px-3 py-1 text-xs font-black"
                 >
-                  {hasExactCheckMatch
-                    ? "Exact"
-                    : suggestedCheckMatches.length > 0
-                      ? "Review"
-                      : "Waiting"}
+                  {checkMatchConfidence.label}
                 </span>
               </div>
 
