@@ -20,6 +20,8 @@ type CommandItem = {
   keywords: string[];
 };
 
+const RECENT_COMMANDS_STORAGE_KEY = "trimax-recent-commands";
+
 function isTypingTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) {
     return false;
@@ -51,12 +53,49 @@ function commandMatches(command: CommandItem, query: string) {
   return haystack.includes(query);
 }
 
+function loadRecentCommandHrefs() {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(
+      window.localStorage.getItem(RECENT_COMMANDS_STORAGE_KEY) ?? "[]"
+    );
+
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveRecentCommandHref(href: string, currentHrefs: string[]) {
+  const nextHrefs = [href, ...currentHrefs.filter((item) => item !== href)]
+    .slice(0, 4);
+
+  try {
+    window.localStorage.setItem(
+      RECENT_COMMANDS_STORAGE_KEY,
+      JSON.stringify(nextHrefs)
+    );
+  } catch {
+    // Recent command memory is a convenience, so storage failures are safe.
+  }
+
+  return nextHrefs;
+}
+
 export default function QuickCommandCenter() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [recentCommandHrefs, setRecentCommandHrefs] = useState(
+    loadRecentCommandHrefs
+  );
   const searchInputRef = useRef<HTMLInputElement>(null);
   const business = searchParams.get("business") ?? "rnl-creations";
 
@@ -157,11 +196,23 @@ export default function QuickCommandCenter() {
     [business]
   );
 
-  const filteredCommands = commands
-    .filter((command) => commandMatches(command, query.trim().toLowerCase()))
+  const normalizedQuery = query.trim().toLowerCase();
+  const recentCommands = recentCommandHrefs
+    .map((href) => commands.find((command) => command.href === href))
+    .filter((command): command is CommandItem => Boolean(command));
+  const visibleCommands = (
+    normalizedQuery
+      ? commands.filter((command) => commandMatches(command, normalizedQuery))
+      : [
+          ...recentCommands,
+          ...commands.filter(
+            (command) => !recentCommandHrefs.includes(command.href)
+          ),
+        ]
+  )
     .slice(0, 8);
   const selectedCommand =
-    filteredCommands[Math.min(selectedIndex, filteredCommands.length - 1)];
+    visibleCommands[Math.min(selectedIndex, visibleCommands.length - 1)];
 
   function openCommandCenter() {
     setIsOpen(true);
@@ -172,6 +223,18 @@ export default function QuickCommandCenter() {
     setIsOpen(false);
     setQuery("");
     setSelectedIndex(0);
+  }
+
+  function rememberCommand(command: CommandItem) {
+    setRecentCommandHrefs((currentHrefs) =>
+      saveRecentCommandHref(command.href, currentHrefs)
+    );
+  }
+
+  function runCommand(command: CommandItem) {
+    rememberCommand(command);
+    closeCommandCenter();
+    router.push(command.href);
   }
 
   useEffect(() => {
@@ -257,9 +320,9 @@ export default function QuickCommandCenter() {
                   if (event.key === "ArrowDown") {
                     event.preventDefault();
                     setSelectedIndex((current) =>
-                      filteredCommands.length === 0
+                      visibleCommands.length === 0
                         ? 0
-                        : Math.min(current + 1, filteredCommands.length - 1)
+                        : Math.min(current + 1, visibleCommands.length - 1)
                     );
                   }
 
@@ -270,8 +333,7 @@ export default function QuickCommandCenter() {
 
                   if (event.key === "Enter" && selectedCommand) {
                     event.preventDefault();
-                    closeCommandCenter();
-                    router.push(selectedCommand.href);
+                    runCommand(selectedCommand);
                   }
                 }}
                 placeholder="Search workflows, invoices, checks, queue..."
@@ -294,21 +356,38 @@ export default function QuickCommandCenter() {
             </div>
 
             <div className="quick-command-results">
-              {filteredCommands.length > 0 ? (
-                filteredCommands.map((command, index) => (
+              {!normalizedQuery && recentCommands.length > 0 ? (
+                <p className="quick-command-section-label">
+                  Recent workflows
+                </p>
+              ) : null}
+
+              {visibleCommands.length > 0 ? (
+                visibleCommands.map((command, index) => (
                   <Link
                     key={command.href}
                     href={command.href}
                     data-tone={command.tone}
                     data-active={index === selectedIndex}
+                    data-recent={recentCommandHrefs.includes(command.href)}
                     className="quick-command-result"
                     onMouseEnter={() => setSelectedIndex(index)}
-                    onClick={closeCommandCenter}
+                    onClick={() => {
+                      rememberCommand(command);
+                      closeCommandCenter();
+                    }}
                   >
                     <span className="quick-command-result-mark" />
                     <span className="min-w-0">
-                      <span className="quick-command-result-title">
-                        {command.title}
+                      <span className="quick-command-title-row">
+                        <span className="quick-command-result-title">
+                          {command.title}
+                        </span>
+                        {recentCommandHrefs.includes(command.href) ? (
+                          <span className="quick-command-recent-pill">
+                            Recent
+                          </span>
+                        ) : null}
                       </span>
                       <span className="quick-command-result-detail">
                         {command.detail}
