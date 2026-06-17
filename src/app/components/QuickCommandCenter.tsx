@@ -39,11 +39,7 @@ function isTypingTarget(target: EventTarget | null) {
   );
 }
 
-function commandMatches(command: CommandItem, query: string) {
-  if (!query) {
-    return true;
-  }
-
+function commandSearchText(command: CommandItem) {
   const haystack = [
     command.title,
     command.detail,
@@ -52,7 +48,56 @@ function commandMatches(command: CommandItem, query: string) {
     .join(" ")
     .toLowerCase();
 
-  return haystack.includes(query);
+  return haystack;
+}
+
+function queryTokens(query: string) {
+  return query
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
+}
+
+function commandSearchScore(
+  command: CommandItem,
+  query: string,
+  recentCommandHrefs: string[]
+) {
+  if (!query) {
+    return recentCommandHrefs.includes(command.href) ? 100 : 10;
+  }
+
+  const title = command.title.toLowerCase();
+  const haystack = commandSearchText(command);
+  const tokens = queryTokens(query);
+
+  if (tokens.length === 0) {
+    return 0;
+  }
+
+  if (!tokens.every((token) => haystack.includes(token))) {
+    return 0;
+  }
+
+  let score = 20;
+
+  if (title === query) {
+    score += 100;
+  } else if (title.startsWith(query)) {
+    score += 70;
+  } else if (title.includes(query)) {
+    score += 45;
+  } else if (haystack.includes(query)) {
+    score += 25;
+  }
+
+  score += tokens.filter((token) => title.includes(token)).length * 12;
+
+  if (recentCommandHrefs.includes(command.href)) {
+    score += 8;
+  }
+
+  return score;
 }
 
 function loadRecentCommandHrefs() {
@@ -354,7 +399,18 @@ export default function QuickCommandCenter() {
     .filter((command): command is CommandItem => Boolean(command));
   const visibleCommands = (
     normalizedQuery
-      ? commands.filter((command) => commandMatches(command, normalizedQuery))
+      ? commands
+          .map((command) => ({
+            command,
+            score: commandSearchScore(
+              command,
+              normalizedQuery,
+              recentCommandHrefs
+            ),
+          }))
+          .filter((result) => result.score > 0)
+          .sort((first, second) => second.score - first.score)
+          .map((result) => result.command)
       : [
           ...recentCommands,
           ...commands.filter(
@@ -362,7 +418,7 @@ export default function QuickCommandCenter() {
           ),
         ]
   )
-    .slice(0, 8);
+    .slice(0, 10);
   const selectedCommand =
     visibleCommands[Math.min(selectedIndex, visibleCommands.length - 1)];
 
@@ -501,7 +557,7 @@ export default function QuickCommandCenter() {
                     runCommand(selectedCommand);
                   }
                 }}
-                placeholder="Search workflows, invoices, checks, queue..."
+                placeholder="Try: pdf, check stub, job photos, recurring..."
                 className="quick-command-input"
                 role="combobox"
               />
