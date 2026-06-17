@@ -237,7 +237,7 @@ function actionLabel(action: string) {
 
 function actionTone(action: string) {
   if (action.includes("payment")) {
-    return "text-green-300 border-green-500/30 bg-green-500/10";
+    return "text-emerald-200 border-emerald-400/30 bg-emerald-400/10";
   }
 
   if (action.includes("split")) {
@@ -265,6 +265,30 @@ function actionTone(action: string) {
   }
 
   return "text-zinc-300 border-zinc-700 bg-zinc-950";
+}
+
+function actionAccent(action: string) {
+  if (action.includes("payment")) {
+    return "bg-emerald-300 shadow-[0_0_24px_rgba(110,231,183,0.5)]";
+  }
+
+  if (action.includes("split")) {
+    return "bg-orange-300 shadow-[0_0_24px_rgba(253,186,116,0.5)]";
+  }
+
+  if (action.startsWith("queue_item")) {
+    return "bg-sky-300 shadow-[0_0_24px_rgba(125,211,252,0.5)]";
+  }
+
+  if (action.startsWith("estimate")) {
+    return "bg-violet-300 shadow-[0_0_24px_rgba(196,181,253,0.5)]";
+  }
+
+  if (action.startsWith("invoice")) {
+    return "bg-amber-300 shadow-[0_0_24px_rgba(252,211,77,0.5)]";
+  }
+
+  return "bg-zinc-400";
 }
 
 function detailChips(log: ActivityLog): DetailChip[] {
@@ -681,7 +705,7 @@ function ActivityPageContent() {
           </p>
         </div>
 
-        <Card className="activity-command-card border-sky-500/20 bg-gradient-to-br from-zinc-950 via-zinc-900 to-slate-950">
+        <Card className="activity-command-card futuristic-proof-card border-sky-500/20 bg-gradient-to-br from-zinc-950 via-zinc-900 to-slate-950">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.3em] text-sky-300">
@@ -730,7 +754,7 @@ function ActivityPageContent() {
           </div>
         </Card>
 
-        <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-950/40 via-zinc-950 to-zinc-950">
+        <Card className="futuristic-audit-card border-emerald-500/20 bg-gradient-to-br from-emerald-950/40 via-zinc-950 to-zinc-950">
           <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-start">
             <div>
               <p className="text-sm uppercase tracking-[0.3em] text-emerald-300">
@@ -947,7 +971,7 @@ function ActivityPageContent() {
             </div>
           </Card>
         ) : (
-          <div className="app-data-table overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
+          <div className="activity-timeline overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
             {filteredLogs.map((log) => {
               const href = entityHref(log, businessSlug);
               const chips = detailChips(log);
@@ -955,8 +979,14 @@ function ActivityPageContent() {
               return (
                 <div
                   key={log.id}
-                  className="app-data-table-row grid gap-4 border-b border-zinc-800 p-5 last:border-b-0 md:grid-cols-[1fr_auto]"
+                  className="activity-timeline-row relative grid gap-4 border-b border-zinc-800 p-5 pl-9 last:border-b-0 md:grid-cols-[1fr_auto]"
                 >
+                  <span
+                    className={`activity-timeline-dot absolute left-4 top-6 h-2.5 w-2.5 rounded-full ${actionAccent(
+                      log.action
+                    )}`}
+                  />
+
                   <div>
                     <p
                       className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] ${actionTone(
@@ -966,7 +996,7 @@ function ActivityPageContent() {
                       {actionLabel(log.action)}
                     </p>
 
-                    <p className="mt-3 text-lg font-semibold">
+                    <p className="mt-3 text-lg font-semibold text-white">
                       {log.entity_label || log.entity_type}
                     </p>
 
@@ -979,7 +1009,7 @@ function ActivityPageContent() {
                         {chips.map((chip) => (
                           <span
                             key={`${log.id}-${chip.label}`}
-                            className="app-chip rounded-2xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300"
+                            className="activity-proof-chip rounded-2xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300"
                           >
                             <span className="text-zinc-500">
                               {chip.label}:{" "}
@@ -994,7 +1024,7 @@ function ActivityPageContent() {
                   </div>
 
                   <div className="flex flex-col gap-2 md:items-end">
-                    <p className="text-sm text-zinc-400">
+                    <p className="activity-time-pill rounded-full border border-zinc-800 bg-black/30 px-3 py-1 text-sm text-zinc-300">
                       {formatDateTime(log.created_at)}
                     </p>
 
