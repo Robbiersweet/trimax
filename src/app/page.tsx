@@ -1013,6 +1013,103 @@ export default async function DashboardPage({
   const topPriorityStack = topPriorityStackCandidates
     .sort((first, second) => second.score - first.score)
     .slice(0, 4);
+  const intelligenceBriefItems: {
+    label: string;
+    title: string;
+    detail: string;
+    href: string;
+    action: string;
+    tone: string;
+  }[] = [];
+
+  if (pastDueInvoices.length > 0) {
+    intelligenceBriefItems.push({
+      label: "Cash",
+      title: `${formatMoney(pastDueTotal)} is past due`,
+      detail: `${pastDueInvoices.length} invoice${
+        pastDueInvoices.length === 1 ? "" : "s"
+      } should be handled before new billing work pulls attention away.`,
+      href: `/invoices?business=${selectedBusinessSlug}&view=aging`,
+      action: "Review aging",
+      tone: "rose",
+    });
+  } else if (depositRequestInvoices.length > 0) {
+    intelligenceBriefItems.push({
+      label: "Cash",
+      title: `${formatMoney(depositRequestTotal)} in active deposit requests`,
+      detail: "Deposit requests are open and ready to follow up without marking the whole invoice paid.",
+      href:
+        depositRequestInvoices[0]?.id
+          ? `/invoices/${depositRequestInvoices[0].id}?business=${selectedBusinessSlug}`
+          : `/invoices?business=${selectedBusinessSlug}&collection=open`,
+      action: "Open deposit",
+      tone: "emerald",
+    });
+  } else {
+    intelligenceBriefItems.push({
+      label: "Cash",
+      title: `${collectionRate}% of ${workingYearLabel} invoicing is paid`,
+      detail:
+        workingYearOpenInvoicesWithAmounts.length > 0
+          ? `${workingYearOpenInvoicesWithAmounts.length} open balance${
+              workingYearOpenInvoicesWithAmounts.length === 1 ? "" : "s"
+            } still need payment attention.`
+          : "No open invoice balance needs immediate collection attention.",
+      href: `/payments?business=${selectedBusinessSlug}`,
+      action: "Open payments",
+      tone: "sky",
+    });
+  }
+
+  if (readySoonUnscheduled.length > 0) {
+    intelligenceBriefItems.push({
+      label: "Queue",
+      title: `${readySoonUnscheduled.length} due-soon unit${
+        readySoonUnscheduled.length === 1 ? "" : "s"
+      } not scheduled`,
+      detail: "These are the queue items most likely to create a schedule scramble.",
+      href: `/queue?business=${selectedBusinessSlug}&view=ready-soon`,
+      action: "Schedule work",
+      tone: "amber",
+    });
+  } else if (queueItemsNeedingEstimate.length > 0) {
+    intelligenceBriefItems.push({
+      label: "Queue",
+      title: `${queueItemsNeedingEstimate.length} queue item${
+        queueItemsNeedingEstimate.length === 1 ? "" : "s"
+      } need estimates`,
+      detail: "Estimate gaps block invoice creation, so this is the cleanest operational next step.",
+      href: `/queue?business=${selectedBusinessSlug}&view=needs-estimate`,
+      action: "Build estimates",
+      tone: "violet",
+    });
+  } else {
+    intelligenceBriefItems.push({
+      label: "Queue",
+      title: "Queue pressure is low",
+      detail:
+        activeQueueItems.length > 0
+          ? `${activeQueueItems.length} active item${
+              activeQueueItems.length === 1 ? "" : "s"
+            } remain visible, with no urgent schedule gap detected.`
+          : "No active queue work is asking for immediate attention.",
+      href: `/queue?business=${selectedBusinessSlug}`,
+      action: "Open queue",
+      tone: "emerald",
+    });
+  }
+
+  intelligenceBriefItems.push({
+    label: "Proof",
+    title: auditHealthLabel,
+    detail: auditHealthDetail,
+    href:
+      totalRiskFlags > 0
+        ? `/activity?business=${selectedBusinessSlug}`
+        : `/reports?business=${selectedBusinessSlug}`,
+    action: totalRiskFlags > 0 ? "Review proof" : "Open reports",
+    tone: totalRiskFlags > 0 ? "rose" : "emerald",
+  });
 
   return (
     <AppShell>
@@ -1221,6 +1318,73 @@ export default async function DashboardPage({
                   </p>
                 </div>
               </div>
+            </div>
+          </Card>
+        </RoleVisible>
+
+        <RoleVisible
+          businessSlug={selectedBusinessSlug}
+          allow={[
+            "owner",
+            "admin",
+            "accountant",
+          ]}
+        >
+          <Card className="dashboard-autopilot-brief dark-surface overflow-hidden border-sky-500/20 bg-gradient-to-br from-zinc-950 via-zinc-900 to-slate-950">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="dashboard-section-label text-sm uppercase tracking-[0.3em] text-sky-300">
+                  Autopilot Brief
+                </p>
+
+                <h2 className="mt-2 text-2xl font-black tracking-tight text-white">
+                  Trimax read the room
+                </h2>
+
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
+                  A compact readout of the strongest cash, queue, and proof
+                  signals in this workspace right now.
+                </p>
+              </div>
+
+              <Link
+                href={`/?business=${selectedBusinessSlug}#dashboard-accounting`}
+                className="dashboard-autopilot-command rounded-full border border-sky-400/30 bg-sky-400/10 px-4 py-2 text-sm font-black text-sky-100 transition hover:border-sky-300 hover:bg-sky-400/15"
+              >
+                Open command center
+              </Link>
+            </div>
+
+            <div className="mt-5 grid gap-3 lg:grid-cols-3">
+              {intelligenceBriefItems.map((item) => (
+                <Link
+                  key={`${item.label}-${item.title}`}
+                  href={item.href}
+                  data-tone={item.tone}
+                  className="dashboard-autopilot-card rounded-2xl border p-4 transition hover:-translate-y-0.5"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-xs font-black uppercase tracking-[0.2em]">
+                      {item.label}
+                    </p>
+
+                    <span className="dashboard-autopilot-pulse h-2.5 w-2.5 rounded-full" />
+                  </div>
+
+                  <h3 className="mt-4 text-lg font-black text-white">
+                    {item.title}
+                  </h3>
+
+                  <p className="mt-2 min-h-12 text-sm leading-6 text-zinc-300">
+                    {item.detail}
+                  </p>
+
+                  <p className="mt-4 text-sm font-black">
+                    {item.action}
+                    <span aria-hidden="true"> &gt;</span>
+                  </p>
+                </Link>
+              ))}
             </div>
           </Card>
         </RoleVisible>
