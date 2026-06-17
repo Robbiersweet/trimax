@@ -65,6 +65,14 @@ body {
     line-height: 1.18;
   }
 
+  .standard-invoice-print,
+  .standard-invoice-print * {
+    box-sizing: border-box;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
+
   .standard-invoice-print section,
   .standard-invoice-print .print-keep-together {
     break-inside: avoid;

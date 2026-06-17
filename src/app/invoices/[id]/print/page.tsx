@@ -338,7 +338,7 @@ export default async function InvoicePrintPage({
       />
 
       <div className="standard-invoice-print mx-auto max-w-5xl bg-white print:max-w-none print:px-4 print:py-3">
-        <section className="grid grid-cols-2 gap-8 print:gap-4">
+        <section className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-8 print:grid-cols-2 print:gap-4">
           <div>
             <Image
               src="/Brand/rnl-multi-colors.png"
@@ -350,7 +350,7 @@ export default async function InvoicePrintPage({
             />
           </div>
 
-          <div className="text-right text-base leading-6 print:text-sm print:leading-5">
+          <div className="overflow-wrap-anywhere text-left text-base leading-6 sm:text-right print:text-right print:text-sm print:leading-5">
             <p className="font-semibold">
               {companyName}
             </p>
@@ -362,7 +362,7 @@ export default async function InvoicePrintPage({
         </section>
 
         <section className="mt-6 border-y border-gray-200 py-4 print:mt-2 print:py-2">
-          <div className="grid gap-8 md:grid-cols-[1.4fr_1fr]">
+          <div className="grid gap-4 sm:grid-cols-[1.4fr_1fr] sm:gap-8 print:grid-cols-[1.4fr_1fr]">
             <div>
               <p className="text-sm uppercase tracking-[0.25em] text-[#d9aa2f] print:text-[10px]">
                 Invoice
@@ -379,7 +379,7 @@ export default async function InvoicePrintPage({
               ) : null}
             </div>
 
-            <div className="text-right">
+            <div className="text-left sm:text-right print:text-right">
               <PrintLabel>{customerFacingDueLabel}</PrintLabel>
 
               <p className="mt-2 text-4xl font-light tracking-wide print:mt-1 print:text-2xl">
@@ -389,16 +389,16 @@ export default async function InvoicePrintPage({
           </div>
         </section>
 
-        <section className="mt-7 grid grid-cols-[1.5fr_1fr_1fr_1.25fr] gap-7 print:mt-3 print:gap-4">
-          <div>
+        <section className="mt-7 grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1.25fr] lg:gap-7 print:mt-3 print:grid-cols-[1.5fr_1fr_1fr_1.25fr] print:gap-4">
+          <div className="min-w-0 overflow-wrap-anywhere">
             <PrintLabel>Billed To</PrintLabel>
 
-            <p className="mt-2 text-base leading-6 print:mt-1 print:text-sm print:leading-5">
+            <p className="mt-2 overflow-wrap-anywhere text-base leading-6 print:mt-1 print:text-sm print:leading-5">
               {billedToName}
             </p>
 
             {billedToAddress && (
-              <p className="whitespace-pre-line text-base leading-6 print:text-sm print:leading-5">
+              <p className="overflow-wrap-anywhere whitespace-pre-line text-base leading-6 print:text-sm print:leading-5">
                 {billedToAddress}
               </p>
             )}
@@ -407,14 +407,14 @@ export default async function InvoicePrintPage({
               <div className="mt-5 print:mt-2">
                 <PrintLabel>Service Address</PrintLabel>
 
-                <p className="mt-2 whitespace-pre-line text-base leading-6 print:mt-1 print:text-sm print:leading-5">
+                <p className="mt-2 overflow-wrap-anywhere whitespace-pre-line text-base leading-6 print:mt-1 print:text-sm print:leading-5">
                   {serviceAddress}
                 </p>
               </div>
             ) : null}
           </div>
 
-          <div>
+          <div className="min-w-0">
             <PrintLabel>Date of Issue</PrintLabel>
 
             <p className="mt-2 text-base print:mt-1 print:text-sm">
@@ -430,28 +430,28 @@ export default async function InvoicePrintPage({
             </div>
           </div>
 
-          <div>
+          <div className="min-w-0 overflow-wrap-anywhere">
             <PrintLabel>Invoice Number</PrintLabel>
 
-            <p className="mt-2 text-base print:mt-1 print:text-sm">
+            <p className="mt-2 overflow-wrap-anywhere text-base print:mt-1 print:text-sm">
               {invoice.display_id || "Invoice"}
             </p>
 
             <div className="mt-5 print:mt-2">
               <PrintLabel>Reference</PrintLabel>
 
-              <p className="mt-2 whitespace-pre-line text-base leading-6 print:mt-1 print:text-sm print:leading-5">
+              <p className="mt-2 overflow-wrap-anywhere whitespace-pre-line text-base leading-6 print:mt-1 print:text-sm print:leading-5">
                 {displayReference || "-"}
               </p>
             </div>
           </div>
 
-          <div>
+          <div className="min-w-0 overflow-wrap-anywhere">
             {shouldShowProjectTitle ? (
               <>
                 <PrintLabel>Project</PrintLabel>
 
-                <p className="mt-2 whitespace-pre-line text-base leading-6 print:mt-1 print:text-sm print:leading-5">
+                <p className="mt-2 overflow-wrap-anywhere whitespace-pre-line text-base leading-6 print:mt-1 print:text-sm print:leading-5">
                   {documentTitle}
                 </p>
               </>
@@ -460,7 +460,7 @@ export default async function InvoicePrintPage({
         </section>
 
         <section className="print-break-auto mt-7 print:mt-3">
-          <table className="standard-print-table w-full border-collapse text-base print:text-[9.5pt]">
+          <table className="standard-print-table w-full table-fixed border-collapse text-base print:text-[9.5pt]">
             <thead>
               <tr className="border-t-4 border-[#e8bd3f] text-[#d9aa2f]">
                 <th className="py-3 pr-4 text-left font-normal print:py-1.5">
@@ -560,7 +560,7 @@ export default async function InvoicePrintPage({
           <section className="mt-5 rounded border border-emerald-200 bg-emerald-50 px-4 py-3 print:mt-2 print:px-3 print:py-2">
             <PrintLabel>Deposit Note</PrintLabel>
 
-            <p className="mt-2 max-w-4xl whitespace-pre-line text-base leading-6 print:mt-1 print:text-sm print:leading-5">
+            <p className="mt-2 max-w-4xl overflow-wrap-anywhere whitespace-pre-line text-base leading-6 print:mt-1 print:text-sm print:leading-5">
               {invoice.deposit_note}
             </p>
           </section>
@@ -569,7 +569,7 @@ export default async function InvoicePrintPage({
         <section className="mt-8 print:mt-3">
           <PrintLabel>Terms</PrintLabel>
 
-          <p className="mt-3 max-w-4xl text-base leading-6 print:mt-1 print:text-sm print:leading-5">
+          <p className="mt-3 max-w-4xl overflow-wrap-anywhere text-base leading-6 print:mt-1 print:text-sm print:leading-5">
             {invoice.terms ||
               "Payment due upon invoice. Thank you for your business."}
           </p>
@@ -579,7 +579,7 @@ export default async function InvoicePrintPage({
           <section className="mt-5 print:mt-2">
             <PrintLabel>Notes</PrintLabel>
 
-            <p className="mt-3 max-w-4xl whitespace-pre-line text-base leading-6 print:mt-1 print:text-sm print:leading-5">
+            <p className="mt-3 max-w-4xl overflow-wrap-anywhere whitespace-pre-line text-base leading-6 print:mt-1 print:text-sm print:leading-5">
               {invoice.notes}
             </p>
           </section>
@@ -618,9 +618,9 @@ function PrintSummaryRow({
 }) {
   return (
     <div className="flex items-center justify-between gap-6 py-1 text-lg print:gap-4 print:py-0.5 print:text-sm">
-      <p>{label}</p>
+      <p className="min-w-0 overflow-wrap-anywhere">{label}</p>
 
-      <p>{value}</p>
+      <p className="shrink-0">{value}</p>
     </div>
   );
 }
@@ -638,16 +638,16 @@ function PrintLineItemRow({
 }) {
   return (
     <tr className="border-b border-gray-200 align-top">
-      <td className="whitespace-pre-line py-2.5 pr-4 leading-6 print:py-1.5 print:leading-4">
+      <td className="overflow-wrap-anywhere whitespace-pre-line py-2.5 pr-4 leading-6 print:py-1.5 print:leading-4">
         {description}
       </td>
-      <td className="px-3 py-2.5 text-right print:py-1.5">
+      <td className="overflow-wrap-anywhere px-3 py-2.5 text-right print:py-1.5">
         {rate}
       </td>
-      <td className="px-3 py-2.5 text-right print:py-1.5">
+      <td className="overflow-wrap-anywhere px-3 py-2.5 text-right print:py-1.5">
         {quantity}
       </td>
-      <td className="py-2.5 pl-3 text-right print:py-1.5">
+      <td className="overflow-wrap-anywhere py-2.5 pl-3 text-right print:py-1.5">
         {total}
       </td>
     </tr>

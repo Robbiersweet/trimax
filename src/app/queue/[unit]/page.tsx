@@ -833,8 +833,8 @@ export default async function QueueDetailPage({
           </Card>
         ) : null}
 
-        <Card>
-          <div className="mb-6 grid gap-4 md:grid-cols-3">
+        <Card className="min-w-0 overflow-hidden">
+          <div className="mb-6 grid min-w-0 gap-4 md:grid-cols-3">
             <LifecycleStep
               label="Move Out"
               value={item.move_out_date}
@@ -852,7 +852,7 @@ export default async function QueueDetailPage({
             />
           </div>
 
-          <div className="queue-detail-notice mb-6 rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4">
+          <div className="queue-detail-notice mb-6 min-w-0 overflow-hidden rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4">
             <p className="text-sm uppercase tracking-[0.25em] text-orange-300">
               Schedule Work
             </p>

@@ -122,8 +122,8 @@ export default function MarkScheduledButton({
   };
 
   return (
-    <div className="app-soft-panel rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3">
-      <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+    <div className="app-soft-panel min-w-0 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950/60 p-3">
+      <div className="grid min-w-0 gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
         <DateInputField
           label="Work Date"
           value={scheduledDate}
@@ -135,6 +135,7 @@ export default function MarkScheduledButton({
           onClick={handleMarkScheduled}
           variant="secondary"
           disabled={isSaving}
+          className="w-full md:w-auto"
         >
           {isSaving
             ? "Scheduling..."
