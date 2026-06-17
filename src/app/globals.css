@@ -5744,7 +5744,6 @@ html.theme-light .dashboard-hero-signal {
 .dashboard-collection-targets,
 .dashboard-focus-card,
 .dashboard-workstream-card,
-.dashboard-activity-section,
 .dashboard-aging-section {
   box-shadow: 0 20px 52px rgba(2, 6, 23, 0.16);
 }
@@ -6016,7 +6015,6 @@ html.theme-light .dashboard-workstream-section {
 }
 
 html.theme-light .dashboard-workstream-card,
-html.theme-light .dashboard-activity-section,
 html.theme-light .dashboard-aging-section {
   background: #ffffff !important;
   border-color: #d7dde8 !important;
@@ -6026,20 +6024,17 @@ html.theme-light .dashboard-aging-section {
 
 html.theme-light .dashboard-workstream-card h2,
 html.theme-light .dashboard-workstream-card .font-semibold,
-html.theme-light .dashboard-activity-section h2,
 html.theme-light .dashboard-aging-section h2 {
   color: #0f172a !important;
 }
 
 html.theme-light .dashboard-workstream-card .text-orange-400,
-html.theme-light .dashboard-workstream-card a.text-orange-400,
-html.theme-light .dashboard-activity-section .text-orange-400 {
+html.theme-light .dashboard-workstream-card a.text-orange-400 {
   color: #0369a1 !important;
 }
 
 html.theme-light .dashboard-workstream-card .border-zinc-800,
 html.theme-light .dashboard-workstream-card .border-zinc-700,
-html.theme-light .dashboard-activity-section .border-zinc-800,
 html.theme-light .dashboard-aging-section .border-zinc-800 {
   border-color: #d7dde8 !important;
 }
