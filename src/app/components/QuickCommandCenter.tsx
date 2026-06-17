@@ -21,7 +21,7 @@ type CommandItem = {
   href: string;
   tone: CommandTone;
   keywords: string[];
-  source?: "static" | "record" | "fallback";
+  source?: "static" | "record" | "fallback" | "smart";
   actionLabel?: string;
 };
 
@@ -73,6 +73,36 @@ type ClientSearchRecord = {
   contact_name: string | null;
   email: string | null;
   phone: string | null;
+};
+
+type SmartInvoiceRecord = {
+  id: string;
+  display_id: string | null;
+  customer_name: string | null;
+  project_title: string | null;
+  status: string | null;
+  due_date: string | null;
+  invoice_amount: string | number | null;
+  amount_paid: string | number | null;
+};
+
+type SmartEstimateRecord = {
+  id: string;
+  display_id: string | null;
+  customer_name: string | null;
+  project_title: string | null;
+  status: string | null;
+  estimate_amount: string | number | null;
+};
+
+type SmartQueueRecord = {
+  id: string;
+  property: string | null;
+  unit: string | null;
+  status: string | null;
+  priority: string | null;
+  ready_date: string | null;
+  scheduled_date: string | null;
 };
 
 const RECENT_COMMANDS_STORAGE_KEY = "trimax-recent-commands";
@@ -170,6 +200,36 @@ function commandIntent(value: string): {
     ? normalized.replace(matchedAction.pattern, "").trim()
     : normalized;
 
+  if (!matchedAction) {
+    const inlineActionPatterns: { action: CommandAction; pattern: RegExp }[] = [
+      { action: "remind", pattern: /\b(remind|reminder|late)\b/i },
+      { action: "send", pattern: /\b(send|email|mail)\b/i },
+      { action: "pay", pattern: /\b(pay|paid|payment|collect)\b/i },
+      { action: "print", pattern: /\b(print|pdf|download)\b/i },
+      { action: "edit", pattern: /\b(edit|update|change)\b/i },
+      { action: "schedule", pattern: /\b(schedule|calendar)\b/i },
+      { action: "complete", pattern: /\b(complete|done|finish|close)\b/i },
+      { action: "convert", pattern: /\b(convert)\b/i },
+      { action: "create", pattern: /\b(create|new|add)\b/i },
+    ];
+    const inlineAction = inlineActionPatterns.find(({ pattern }) =>
+      pattern.test(normalized)
+    );
+
+    if (inlineAction) {
+      const inlineCleanQuery = normalized
+        .replace(inlineAction.pattern, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      return {
+        action: inlineAction.action,
+        lookup: canonicalDocumentSearch(inlineCleanQuery || normalized),
+        cleanQuery: inlineCleanQuery,
+      };
+    }
+  }
+
   if (!cleanQuery && lower.includes("invoice")) {
     return { action, lookup: canonicalDocumentSearch("invoice"), cleanQuery };
   }
@@ -209,6 +269,57 @@ function queueUnitNeedles(value: string) {
 
 function safeIlikeNeedle(value: string) {
   return value.replace(/[%_,]/g, "").trim();
+}
+
+function numberValue(value: string | number | null | undefined) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  const parsed = Number(String(value ?? 0).replace(/[^0-9.-]/g, ""));
+
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatMoney(value: string | number | null | undefined) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(numberValue(value));
+}
+
+function daysFromToday(value: string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return Math.round((date.getTime() - today.getTime()) / 86_400_000);
+}
+
+function shortDate(value: string | null | undefined) {
+  if (!value) {
+    return "-";
+  }
+
+  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
 }
 
 function invoiceActionCommand(
@@ -506,6 +617,161 @@ function clientActionCommand(
   };
 }
 
+function buildSmartCommands({
+  business,
+  invoices,
+  estimates,
+  queueItems,
+}: {
+  business: string;
+  invoices: SmartInvoiceRecord[];
+  estimates: SmartEstimateRecord[];
+  queueItems: SmartQueueRecord[];
+}) {
+  const commands: CommandItem[] = [];
+  const openInvoices = invoices.filter((invoice) => {
+    const status = invoice.status?.toLowerCase() ?? "";
+    const total = numberValue(invoice.invoice_amount);
+    const paid = numberValue(invoice.amount_paid);
+
+    return status !== "paid" && total - paid > 0;
+  });
+  const overdueInvoices = openInvoices
+    .map((invoice) => ({
+      invoice,
+      daysLate: -(daysFromToday(invoice.due_date) ?? 0),
+    }))
+    .filter(({ daysLate }) => daysLate > 0)
+    .sort((first, second) => second.daysLate - first.daysLate);
+  const draftInvoice = invoices.find(
+    (invoice) => invoice.status?.toLowerCase() === "draft"
+  );
+  const draftEstimate = estimates.find(
+    (estimate) => estimate.status?.toLowerCase() === "draft"
+  );
+  const unscheduledQueueItem = queueItems.find(
+    (item) => !item.scheduled_date && item.status?.toLowerCase() !== "completed"
+  );
+  const dueSoonQueueItem = queueItems
+    .map((item) => ({
+      item,
+      daysUntilDue: daysFromToday(item.ready_date),
+    }))
+    .filter(
+      ({ item, daysUntilDue }) =>
+        !item.scheduled_date &&
+        item.status?.toLowerCase() !== "completed" &&
+        daysUntilDue !== null &&
+        daysUntilDue <= 7
+    )
+    .sort((first, second) => {
+      const firstDays = first.daysUntilDue ?? 999;
+      const secondDays = second.daysUntilDue ?? 999;
+
+      return firstDays - secondDays;
+    })[0];
+
+  if (overdueInvoices[0]) {
+    const { invoice, daysLate } = overdueInvoices[0];
+    const dueAmount =
+      numberValue(invoice.invoice_amount) - numberValue(invoice.amount_paid);
+
+    commands.push({
+      title: `Send reminder for ${invoice.display_id ?? "oldest overdue invoice"}`,
+      detail: `${invoice.customer_name ?? "Customer"} / ${formatMoney(
+        dueAmount
+      )} due / ${daysLate} day${daysLate === 1 ? "" : "s"} late`,
+      href: `/invoices/${invoice.id}?business=${business}#late-payment-reminder`,
+      tone: "cash",
+      keywords: ["smart", "overdue", "late", "reminder", "collect"],
+      source: "smart",
+      actionLabel: "Remind",
+    });
+  }
+
+  if (openInvoices.length > 0) {
+    const openTotal = openInvoices.reduce(
+      (total, invoice) =>
+        total +
+        Math.max(
+          numberValue(invoice.invoice_amount) - numberValue(invoice.amount_paid),
+          0
+        ),
+      0
+    );
+
+    commands.push({
+      title: "Collect open revenue",
+      detail: `${openInvoices.length} open invoice${
+        openInvoices.length === 1 ? "" : "s"
+      } / ${formatMoney(openTotal)} still collectible`,
+      href: `/payments?business=${business}`,
+      tone: "cash",
+      keywords: ["smart", "collect", "payment", "revenue", "check"],
+      source: "smart",
+      actionLabel: "Collect",
+    });
+  }
+
+  if (draftInvoice) {
+    commands.push({
+      title: `Send draft ${draftInvoice.display_id ?? "invoice"}`,
+      detail:
+        [draftInvoice.customer_name, draftInvoice.project_title]
+          .filter(Boolean)
+          .join(" / ") || "Draft invoice ready for review",
+      href: `/invoices/${draftInvoice.id}?business=${business}#send-invoice`,
+      tone: "cash",
+      keywords: ["smart", "draft", "invoice", "send"],
+      source: "smart",
+      actionLabel: "Send",
+    });
+  }
+
+  if (draftEstimate) {
+    commands.push({
+      title: `Send estimate ${draftEstimate.display_id ?? ""}`.trim(),
+      detail:
+        [draftEstimate.customer_name, draftEstimate.project_title]
+          .filter(Boolean)
+          .join(" / ") || "Draft estimate ready for review",
+      href: `/estimates/${draftEstimate.id}?business=${business}#send-estimate`,
+      tone: "create",
+      keywords: ["smart", "draft", "estimate", "send"],
+      source: "smart",
+      actionLabel: "Send",
+    });
+  }
+
+  if (dueSoonQueueItem) {
+    commands.push({
+      title: `Schedule ${dueSoonQueueItem.item.unit ?? "next due unit"}`,
+      detail: `${dueSoonQueueItem.item.property ?? "Queue"} / paint due ${shortDate(
+        dueSoonQueueItem.item.ready_date
+      )}`,
+      href: `/queue/${dueSoonQueueItem.item.id}?business=${business}#schedule-work`,
+      tone: "queue",
+      keywords: ["smart", "schedule", "queue", "paint due"],
+      source: "smart",
+      actionLabel: "Schedule",
+    });
+  } else if (unscheduledQueueItem) {
+    commands.push({
+      title: `Schedule ${unscheduledQueueItem.unit ?? "queue item"}`,
+      detail: `${unscheduledQueueItem.property ?? "Queue"} / ${
+        unscheduledQueueItem.status ?? "not scheduled"
+      }`,
+      href: `/queue/${unscheduledQueueItem.id}?business=${business}#schedule-work`,
+      tone: "queue",
+      keywords: ["smart", "schedule", "queue", "unscheduled"],
+      source: "smart",
+      actionLabel: "Schedule",
+    });
+  }
+
+  return commands;
+}
+
 function commandSearchScore(
   command: CommandItem,
   query: string,
@@ -589,7 +855,10 @@ export default function QuickCommandCenter() {
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [recordCommands, setRecordCommands] = useState<CommandItem[]>([]);
+  const [smartCommands, setSmartCommands] = useState<CommandItem[]>([]);
   const [isResolvingRecords, setIsResolvingRecords] = useState(false);
+  const [isResolvingSmartCommands, setIsResolvingSmartCommands] =
+    useState(false);
   const [recentCommandHrefs, setRecentCommandHrefs] = useState(
     loadRecentCommandHrefs
   );
@@ -619,6 +888,38 @@ export default function QuickCommandCenter() {
         href: `/payments?business=${business}`,
         tone: "cash",
         keywords: ["check", "batch", "collect", "paid", "money"],
+      },
+      {
+        title: "Who owes me?",
+        detail: "Open open invoices and aging so you can collect first.",
+        href: `/invoices?business=${business}&view=aging`,
+        tone: "cash",
+        keywords: [
+          "who owes me",
+          "owed",
+          "money",
+          "collect",
+          "past due",
+          "aging",
+          "receivable",
+        ],
+        actionLabel: "Collect",
+      },
+      {
+        title: "What needs attention?",
+        detail: "Jump to the dashboard focus map and current operating flags.",
+        href: `/?business=${business}#dashboard-map`,
+        tone: "system",
+        keywords: [
+          "attention",
+          "today",
+          "next",
+          "focus",
+          "priority",
+          "important",
+          "flags",
+        ],
+        actionLabel: "Review",
       },
       {
         title: "Capture Check",
@@ -1031,8 +1332,15 @@ export default function QuickCommandCenter() {
         ]
       : [
           ...recentCommands,
-          ...commands.filter(
+          ...smartCommands.filter(
             (command) => !recentCommandHrefs.includes(command.href)
+          ),
+          ...commands.filter(
+            (command) =>
+              !recentCommandHrefs.includes(command.href) &&
+              !smartCommands.some(
+                (smartCommand) => smartCommand.href === command.href
+              )
           ),
         ]
   )
@@ -1051,6 +1359,7 @@ export default function QuickCommandCenter() {
     setSelectedIndex(0);
     setRecordCommands([]);
     setIsResolvingRecords(false);
+    setIsResolvingSmartCommands(false);
   }
 
   function rememberCommand(command: CommandItem) {
@@ -1064,6 +1373,80 @@ export default function QuickCommandCenter() {
     closeCommandCenter();
     router.push(command.href);
   }
+
+  useEffect(() => {
+    if (!isOpen || normalizedQuery) {
+      return;
+    }
+
+    let isActive = true;
+    const timer = window.setTimeout(async () => {
+      setIsResolvingSmartCommands(true);
+
+      const { data: businessData } = await supabase
+        .from("businesses")
+        .select("id, slug")
+        .eq("slug", business)
+        .limit(1)
+        .maybeSingle();
+
+      if (!isActive) {
+        return;
+      }
+
+      const selectedBusiness = businessData as BusinessRecord | null;
+
+      if (!selectedBusiness?.id) {
+        setSmartCommands([]);
+        setIsResolvingSmartCommands(false);
+        return;
+      }
+
+      const [invoiceResult, estimateResult, queueResult] = await Promise.all([
+        supabase
+          .from("invoices")
+          .select(
+            "id, display_id, customer_name, project_title, status, due_date, invoice_amount, amount_paid"
+          )
+          .eq("business_id", selectedBusiness.id)
+          .order("due_date", { ascending: true, nullsFirst: false })
+          .order("created_at", { ascending: false })
+          .limit(20),
+        supabase
+          .from("estimates")
+          .select("id, display_id, customer_name, project_title, status, estimate_amount")
+          .eq("business_id", selectedBusiness.id)
+          .order("created_at", { ascending: false })
+          .limit(12),
+        supabase
+          .from("queue_items")
+          .select("id, property, unit, status, priority, ready_date, scheduled_date")
+          .eq("business_id", selectedBusiness.id)
+          .order("ready_date", { ascending: true, nullsFirst: false })
+          .order("created_at", { ascending: false })
+          .limit(20),
+      ]);
+
+      if (!isActive) {
+        return;
+      }
+
+      setSmartCommands(
+        buildSmartCommands({
+          business,
+          invoices: (invoiceResult.data ?? []) as SmartInvoiceRecord[],
+          estimates: (estimateResult.data ?? []) as SmartEstimateRecord[],
+          queueItems: (queueResult.data ?? []) as SmartQueueRecord[],
+        })
+      );
+      setIsResolvingSmartCommands(false);
+    }, 120);
+
+    return () => {
+      isActive = false;
+      window.clearTimeout(timer);
+    };
+  }, [business, isOpen, normalizedQuery]);
 
   useEffect(() => {
     if (!isOpen || recordLookupQuery.trim().length < 2) {
@@ -1363,7 +1746,9 @@ export default function QuickCommandCenter() {
                   </p>
                 </div>
                 <span>
-                  {isResolvingRecords ? "Searching..." : `${visibleCommands.length} ready`}
+                  {isResolvingRecords || isResolvingSmartCommands
+                    ? "Thinking..."
+                    : `${visibleCommands.length} ready`}
                 </span>
               </div>
 
@@ -1373,7 +1758,15 @@ export default function QuickCommandCenter() {
                 </p>
               ) : null}
 
-              {!normalizedQuery && recentCommands.length === 0 ? (
+              {!normalizedQuery && smartCommands.length > 0 ? (
+                <p className="quick-command-section-label">
+                  Smart suggestions from current work
+                </p>
+              ) : null}
+
+              {!normalizedQuery &&
+              recentCommands.length === 0 &&
+              smartCommands.length === 0 ? (
                 <p className="quick-command-section-label">
                   Suggested workflows
                 </p>
@@ -1423,6 +1816,11 @@ export default function QuickCommandCenter() {
                         {command.source === "record" ? (
                           <span className="quick-command-recent-pill">
                             Record
+                          </span>
+                        ) : null}
+                        {command.source === "smart" ? (
+                          <span className="quick-command-smart-pill">
+                            Smart
                           </span>
                         ) : null}
                         {command.actionLabel ? (
