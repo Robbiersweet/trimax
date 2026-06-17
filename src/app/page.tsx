@@ -1360,6 +1360,61 @@ export default async function DashboardPage({
   const communicationProofLogs = activityLogs
     .filter((log) => proofActions.has(log.action))
     .slice(0, 3);
+  const reminderInvoiceIds = new Set(
+    activityLogs
+      .filter((log) => log.action === "invoice.payment_reminder_sent")
+      .map((log) => log.entity_id)
+      .filter(Boolean)
+  );
+  const pastDueWithoutReminderCount = pastDueInvoices.filter(
+    (invoice) => !reminderInvoiceIds.has(invoice.id)
+  ).length;
+  const customerEmailWithoutPdfCount = activityLogs.filter(
+    (log) =>
+      [
+        "estimate.email_sent",
+        "invoice.email_sent",
+        "invoice.payment_reminder_sent",
+      ].includes(log.action) && log.details?.pdf_attached !== true
+  ).length;
+  const paymentWithoutImageProofCount = activityLogs.filter(
+    (log) =>
+      log.action === "invoice.batch_payment_applied" &&
+      !log.details?.paymentAttachmentId &&
+      !log.details?.paymentImagePath
+  ).length;
+  const riskRadarItems = [
+    {
+      label: "Reminder Gap",
+      value: pastDueWithoutReminderCount,
+      detail:
+        pastDueWithoutReminderCount > 0
+          ? "Past-due invoices without a logged reminder"
+          : "Past-due reminders are accounted for",
+      href: `/invoices?business=${selectedBusinessSlug}&view=aging`,
+      tone: pastDueWithoutReminderCount > 0 ? "rose" : "emerald",
+    },
+    {
+      label: "PDF Gap",
+      value: customerEmailWithoutPdfCount,
+      detail:
+        customerEmailWithoutPdfCount > 0
+          ? "Sent messages without attached PDF proof"
+          : "Recent sends include PDF proof",
+      href: `/activity?business=${selectedBusinessSlug}&type=invoice&q=pdf`,
+      tone: customerEmailWithoutPdfCount > 0 ? "amber" : "emerald",
+    },
+    {
+      label: "Image Gap",
+      value: paymentWithoutImageProofCount,
+      detail:
+        paymentWithoutImageProofCount > 0
+          ? "Payments recorded without check or stub images"
+          : "Payment image proof is current",
+      href: `/activity?business=${selectedBusinessSlug}&type=payment`,
+      tone: paymentWithoutImageProofCount > 0 ? "sky" : "emerald",
+    },
+  ];
 
   return (
     <AppShell>
@@ -1867,6 +1922,52 @@ export default async function DashboardPage({
                     payment batch and Trimax will show the latest proof here.
                   </p>
                 ) : null}
+              </div>
+            </div>
+
+            <div className="dashboard-risk-radar mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
+              <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-200">
+                    Risk Radar
+                  </p>
+
+                  <h3 className="mt-1 text-lg font-black text-white">
+                    Future-proofing checks
+                  </h3>
+                </div>
+
+                <Link
+                  href={`/activity?business=${selectedBusinessSlug}`}
+                  className="text-sm font-black text-cyan-200 transition hover:text-white"
+                >
+                  Audit trail
+                </Link>
+              </div>
+
+              <div className="mt-3 grid gap-3 lg:grid-cols-3">
+                {riskRadarItems.map((item) => (
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                    data-tone={item.tone}
+                    className="dashboard-risk-card rounded-2xl border border-white/10 bg-zinc-950/70 p-4 transition hover:-translate-y-0.5 hover:border-cyan-300/50"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
+                        {item.label}
+                      </p>
+
+                      <span className="dashboard-risk-count rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm font-black text-white">
+                        {item.value}
+                      </span>
+                    </div>
+
+                    <p className="mt-3 text-sm leading-6 text-zinc-300">
+                      {item.detail}
+                    </p>
+                  </Link>
+                ))}
               </div>
             </div>
           </Card>
