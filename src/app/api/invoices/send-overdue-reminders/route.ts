@@ -458,6 +458,7 @@ export async function POST(request: Request) {
         ],
       });
       let pdfAttachment = fallbackPdfAttachment;
+      let pdfAttachmentSource: "print-page" | "fallback" = "fallback";
 
       try {
         pdfAttachment = await createPrintPagePdfAttachment({
@@ -467,6 +468,7 @@ export async function POST(request: Request) {
           ).toString(),
           filename: invoiceLabel,
         });
+        pdfAttachmentSource = "print-page";
       } catch (error) {
         console.warn("Print-page PDF render failed. Using fallback PDF.", error);
       }
@@ -507,6 +509,7 @@ export async function POST(request: Request) {
           cc_source: ccSource,
           bcc_email: bccEmail && isValidEmail(bccEmail) ? bccEmail : null,
           pdf_attached: true,
+          pdf_attachment_source: pdfAttachmentSource,
           automated: true,
         },
       });

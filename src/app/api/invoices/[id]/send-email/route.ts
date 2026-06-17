@@ -480,6 +480,8 @@ export async function POST(request: Request, { params }: RouteParams) {
       })
     : null;
   let pdfAttachment = fallbackPdfAttachment;
+  let pdfAttachmentSource: "print-page" | "fallback" | "none" =
+    fallbackPdfAttachment ? "fallback" : "none";
 
   if (includePdfNote) {
     try {
@@ -490,6 +492,7 @@ export async function POST(request: Request, { params }: RouteParams) {
         ).toString(),
         filename: invoice.display_id ?? "invoice",
       });
+      pdfAttachmentSource = "print-page";
     } catch (error) {
       console.warn("Print-page PDF render failed. Using fallback PDF.", error);
     }
@@ -564,6 +567,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       cc_source: ccSource,
       bcc_email: bccEmail && isValidEmail(bccEmail) ? bccEmail : null,
       pdf_attached: Boolean(pdfAttachment),
+      pdf_attachment_source: pdfAttachmentSource,
     },
   });
 
