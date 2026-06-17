@@ -491,7 +491,7 @@ export default function InvoiceEmailSendPanel({
           ? "send-estimate"
           : requestType === "reminder"
             ? "late-payment-reminder"
-            : "send-document"
+            : "send-invoice"
       }
       className="invoice-email-panel scroll-mt-6 overflow-hidden border-sky-200 bg-white p-0"
     >

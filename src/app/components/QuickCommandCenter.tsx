@@ -22,7 +22,20 @@ type CommandItem = {
   tone: CommandTone;
   keywords: string[];
   source?: "static" | "record" | "fallback";
+  actionLabel?: string;
 };
+
+type CommandAction =
+  | "open"
+  | "pay"
+  | "print"
+  | "send"
+  | "remind"
+  | "edit"
+  | "schedule"
+  | "complete"
+  | "convert"
+  | "create";
 
 type BusinessRecord = {
   id: string;
@@ -128,6 +141,46 @@ function canonicalDocumentSearch(value: string) {
   };
 }
 
+function commandIntent(value: string): {
+  action: CommandAction;
+  lookup: ReturnType<typeof canonicalDocumentSearch>;
+  cleanQuery: string;
+} {
+  const normalized = value.trim().replace(/\s+/g, " ");
+  const lower = normalized.toLowerCase();
+  const actionPatterns: { action: CommandAction; pattern: RegExp }[] = [
+    { action: "remind", pattern: /^(send\s+)?(late\s+)?reminder\s+/i },
+    { action: "remind", pattern: /^remind\s+/i },
+    { action: "send", pattern: /^(send|email|mail)\s+/i },
+    { action: "pay", pattern: /^(pay|paid|payment|collect|record\s+payment)\s+/i },
+    { action: "print", pattern: /^(print|pdf|download)\s+/i },
+    { action: "edit", pattern: /^(edit|update|change)\s+/i },
+    { action: "schedule", pattern: /^(schedule|calendar)\s+/i },
+    { action: "complete", pattern: /^(complete|done|finish|close)\s+/i },
+    { action: "convert", pattern: /^(convert|invoice\s+from)\s+/i },
+    { action: "create", pattern: /^(create|new|add)\s+/i },
+    { action: "open", pattern: /^(open|view|go\s+to)\s+/i },
+  ];
+
+  const matchedAction = actionPatterns.find(({ pattern }) =>
+    pattern.test(normalized)
+  );
+  const action = matchedAction?.action ?? "open";
+  const cleanQuery = matchedAction
+    ? normalized.replace(matchedAction.pattern, "").trim()
+    : normalized;
+
+  if (!cleanQuery && lower.includes("invoice")) {
+    return { action, lookup: canonicalDocumentSearch("invoice"), cleanQuery };
+  }
+
+  return {
+    action,
+    lookup: canonicalDocumentSearch(cleanQuery || normalized),
+    cleanQuery,
+  };
+}
+
 function normalizeLookupValue(value: string) {
   return value
     .trim()
@@ -156,6 +209,301 @@ function queueUnitNeedles(value: string) {
 
 function safeIlikeNeedle(value: string) {
   return value.replace(/[%_,]/g, "").trim();
+}
+
+function invoiceActionCommand(
+  invoice: InvoiceSearchRecord,
+  business: string,
+  action: CommandAction
+): CommandItem {
+  const label = invoice.display_id ?? "Invoice";
+  const descriptor =
+    [invoice.customer_name, invoice.project_title, invoice.status]
+      .filter(Boolean)
+      .join(" / ") || "Invoice record";
+  const encodedLabel = encodeURIComponent(label);
+
+  if (action === "pay") {
+    return {
+      title: `Record payment for ${label}`,
+      detail: descriptor,
+      href: `/payments?business=${business}&q=${encodedLabel}`,
+      tone: "cash",
+      keywords: ["pay", "payment", "collect", "invoice", label],
+      source: "record",
+      actionLabel: "Pay",
+    };
+  }
+
+  if (action === "print") {
+    return {
+      title: `Print ${label}`,
+      detail: descriptor,
+      href: `/invoices/${invoice.id}/print?business=${business}`,
+      tone: "report",
+      keywords: ["print", "pdf", "invoice", label],
+      source: "record",
+      actionLabel: "Print",
+    };
+  }
+
+  if (action === "send") {
+    return {
+      title: `Send ${label}`,
+      detail: descriptor,
+      href: `/invoices/${invoice.id}?business=${business}#send-invoice`,
+      tone: "cash",
+      keywords: ["send", "email", "invoice", label],
+      source: "record",
+      actionLabel: "Send",
+    };
+  }
+
+  if (action === "remind") {
+    return {
+      title: `Send reminder for ${label}`,
+      detail: descriptor,
+      href: `/invoices/${invoice.id}?business=${business}#late-payment-reminder`,
+      tone: "cash",
+      keywords: ["remind", "reminder", "late", "overdue", "invoice", label],
+      source: "record",
+      actionLabel: "Remind",
+    };
+  }
+
+  if (action === "edit") {
+    return {
+      title: `Edit ${label}`,
+      detail: descriptor,
+      href: `/invoices/${invoice.id}/edit?business=${business}`,
+      tone: "setup",
+      keywords: ["edit", "update", "invoice", label],
+      source: "record",
+      actionLabel: "Edit",
+    };
+  }
+
+  return {
+    title: label,
+    detail: descriptor,
+    href: `/invoices/${invoice.id}?business=${business}`,
+    tone: "cash",
+    keywords: [
+      "invoice",
+      invoice.display_id ?? "",
+      invoice.customer_name ?? "",
+      invoice.project_title ?? "",
+    ],
+    source: "record",
+    actionLabel: "Open",
+  };
+}
+
+function estimateActionCommand(
+  estimate: EstimateSearchRecord,
+  business: string,
+  action: CommandAction
+): CommandItem {
+  const label = estimate.display_id ?? "Estimate";
+  const descriptor =
+    [estimate.customer_name, estimate.project_title, estimate.status]
+      .filter(Boolean)
+      .join(" / ") || "Estimate record";
+
+  if (action === "print") {
+    return {
+      title: `Print ${label}`,
+      detail: descriptor,
+      href: `/estimates/${estimate.id}/print?business=${business}`,
+      tone: "report",
+      keywords: ["print", "pdf", "estimate", label],
+      source: "record",
+      actionLabel: "Print",
+    };
+  }
+
+  if (action === "send") {
+    return {
+      title: `Send ${label}`,
+      detail: descriptor,
+      href: `/estimates/${estimate.id}?business=${business}#send-estimate`,
+      tone: "create",
+      keywords: ["send", "email", "estimate", label],
+      source: "record",
+      actionLabel: "Send",
+    };
+  }
+
+  if (action === "edit") {
+    return {
+      title: `Edit ${label}`,
+      detail: descriptor,
+      href: `/estimates/${estimate.id}/edit?business=${business}`,
+      tone: "setup",
+      keywords: ["edit", "update", "estimate", label],
+      source: "record",
+      actionLabel: "Edit",
+    };
+  }
+
+  if (action === "convert") {
+    return {
+      title: `Convert ${label} to invoice`,
+      detail: descriptor,
+      href: `/estimates/${estimate.id}?business=${business}`,
+      tone: "create",
+      keywords: ["convert", "invoice", "estimate", label],
+      source: "record",
+      actionLabel: "Convert",
+    };
+  }
+
+  return {
+    title: label,
+    detail: descriptor,
+    href: `/estimates/${estimate.id}?business=${business}`,
+    tone: "create",
+    keywords: [
+      "estimate",
+      estimate.display_id ?? "",
+      estimate.customer_name ?? "",
+      estimate.project_title ?? "",
+    ],
+    source: "record",
+    actionLabel: "Open",
+  };
+}
+
+function queueActionCommand(
+  item: QueueSearchRecord,
+  business: string,
+  action: CommandAction
+): CommandItem {
+  const label = `Queue ${item.unit ?? "Item"}`;
+  const descriptor =
+    [
+      item.property,
+      item.status,
+      item.priority ? `${item.priority} priority` : "",
+      item.ready_date ? `Paint due ${item.ready_date}` : "",
+    ]
+      .filter(Boolean)
+      .join(" / ") || "Queue item";
+
+  if (action === "create" || action === "convert") {
+    return {
+      title: `Create estimate for ${label}`,
+      detail: descriptor,
+      href: `/estimates/new?queueId=${item.id}&business=${business}`,
+      tone: "create",
+      keywords: ["create", "estimate", "queue", "unit", item.unit ?? ""],
+      source: "record",
+      actionLabel: "Estimate",
+    };
+  }
+
+  if (action === "edit") {
+    return {
+      title: `Edit ${label}`,
+      detail: descriptor,
+      href: `/queue/${item.id}/edit?business=${business}`,
+      tone: "setup",
+      keywords: ["edit", "queue", "unit", item.unit ?? ""],
+      source: "record",
+      actionLabel: "Edit",
+    };
+  }
+
+  if (action === "schedule") {
+    return {
+      title: `Schedule ${label}`,
+      detail: descriptor,
+      href: `/queue/${item.id}?business=${business}#schedule-work`,
+      tone: "queue",
+      keywords: ["schedule", "calendar", "queue", "unit", item.unit ?? ""],
+      source: "record",
+      actionLabel: "Schedule",
+    };
+  }
+
+  if (action === "complete") {
+    return {
+      title: `Complete ${label}`,
+      detail: descriptor,
+      href: `/queue/${item.id}?business=${business}#complete-work`,
+      tone: "queue",
+      keywords: ["complete", "done", "finish", "queue", "unit", item.unit ?? ""],
+      source: "record",
+      actionLabel: "Complete",
+    };
+  }
+
+  return {
+    title: label,
+    detail: descriptor,
+    href: `/queue/${item.id}?business=${business}`,
+    tone: "queue",
+    keywords: [
+      "queue",
+      "unit",
+      item.unit ?? "",
+      item.property ?? "",
+      item.status ?? "",
+    ],
+    source: "record",
+    actionLabel: "Open",
+  };
+}
+
+function clientActionCommand(
+  client: ClientSearchRecord,
+  business: string,
+  action: CommandAction
+): CommandItem {
+  const label = client.name ?? "Client";
+  const descriptor =
+    [client.contact_name, client.email, client.phone].filter(Boolean).join(" / ") ||
+    "Client record";
+
+  if (action === "create") {
+    return {
+      title: `New invoice for ${label}`,
+      detail: descriptor,
+      href: `/invoices/new?business=${business}&clientId=${client.id}`,
+      tone: "create",
+      keywords: ["new", "invoice", "client", "customer", label],
+      source: "record",
+      actionLabel: "Invoice",
+    };
+  }
+
+  if (action === "edit") {
+    return {
+      title: `Edit ${label}`,
+      detail: descriptor,
+      href: `/clients/${client.id}/edit?business=${business}`,
+      tone: "setup",
+      keywords: ["edit", "client", "customer", label],
+      source: "record",
+      actionLabel: "Edit",
+    };
+  }
+
+  return {
+    title: label,
+    detail: descriptor,
+    href: `/clients/${client.id}?business=${business}`,
+    tone: "client",
+    keywords: [
+      "client",
+      "customer",
+      client.name ?? "",
+      client.contact_name ?? "",
+      client.email ?? "",
+    ],
+    source: "record",
+    actionLabel: "Open",
+  };
 }
 
 function commandSearchScore(
@@ -405,6 +753,20 @@ export default function QuickCommandCenter() {
         keywords: ["bill", "send", "freshbooks", "accounting"],
       },
       {
+        title: "New Queue Request",
+        detail: "Add a unit turn, paint due date, priority, and scope.",
+        href: `/new-request?business=${business}`,
+        tone: "create",
+        keywords: ["new", "add", "queue", "unit", "request", "turn"],
+      },
+      {
+        title: "Schedule",
+        detail: "Open scheduled queue work and calendar planning.",
+        href: `/schedule?business=${business}`,
+        tone: "queue",
+        keywords: ["calendar", "schedule", "work date", "paint date"],
+      },
+      {
         title: "Invoices",
         detail: "Search, filter, split, print, and collect invoices.",
         href: `/invoices?business=${business}`,
@@ -452,6 +814,20 @@ export default function QuickCommandCenter() {
         href: `/clients?business=${business}`,
         tone: "client",
         keywords: ["customer", "contacts", "account", "property"],
+      },
+      {
+        title: "New Client",
+        detail: "Create a customer profile with email, CC, and contact info.",
+        href: `/clients/new?business=${business}`,
+        tone: "create",
+        keywords: ["new", "add", "client", "customer", "contact", "email"],
+      },
+      {
+        title: "Imports",
+        detail: "Bring FreshBooks data, invoices, estimates, and queue rows into Trimax.",
+        href: `/imports?business=${business}`,
+        tone: "setup",
+        keywords: ["import", "freshbooks", "upload", "csv", "invoice"],
       },
       {
         title: "Reports",
@@ -538,7 +914,8 @@ export default function QuickCommandCenter() {
     .map((href) => commands.find((command) => command.href === href))
     .filter((command): command is CommandItem => Boolean(command));
   const fallbackRecordCommands = useMemo<CommandItem[]>(() => {
-    const lookup = canonicalDocumentSearch(recordLookupQuery);
+    const intent = commandIntent(recordLookupQuery);
+    const lookup = intent.lookup;
     const cleanValue = normalizeLookupValue(lookup.value);
     const encoded = encodeURIComponent(cleanValue || recordLookupQuery);
 
@@ -550,11 +927,18 @@ export default function QuickCommandCenter() {
       return [
         {
           title: `Search invoices for ${cleanValue}`,
-          detail: "No exact invoice shortcut yet. Open invoice search with this value.",
-          href: `/invoices?business=${business}&q=${encoded}`,
+          detail:
+            intent.action === "pay"
+              ? "No exact invoice shortcut yet. Open Payments with this search."
+              : "No exact invoice shortcut yet. Open invoice search with this value.",
+          href:
+            intent.action === "pay"
+              ? `/payments?business=${business}&q=${encoded}`
+              : `/invoices?business=${business}&q=${encoded}`,
           tone: "cash",
           keywords: ["invoice", cleanValue],
           source: "fallback",
+          actionLabel: intent.action === "pay" ? "Pay" : "Search",
         },
       ];
     }
@@ -568,6 +952,7 @@ export default function QuickCommandCenter() {
           tone: "create",
           keywords: ["estimate", cleanValue],
           source: "fallback",
+          actionLabel: "Search",
         },
       ];
     }
@@ -581,6 +966,7 @@ export default function QuickCommandCenter() {
           tone: "queue",
           keywords: ["queue", "unit", cleanValue],
           source: "fallback",
+          actionLabel: "Search",
         },
       ];
     }
@@ -594,6 +980,7 @@ export default function QuickCommandCenter() {
           tone: "client",
           keywords: ["client", "customer", cleanValue],
           source: "fallback",
+          actionLabel: "Search",
         },
       ];
     }
@@ -606,6 +993,7 @@ export default function QuickCommandCenter() {
         tone: "cash",
         keywords: ["invoice", cleanValue],
         source: "fallback",
+        actionLabel: "Search",
       },
       {
         title: `Search queue for ${cleanValue}`,
@@ -614,6 +1002,7 @@ export default function QuickCommandCenter() {
         tone: "queue",
         keywords: ["queue", "unit", cleanValue],
         source: "fallback",
+        actionLabel: "Search",
       },
     ];
   }, [business, recordLookupQuery]);
@@ -683,9 +1072,11 @@ export default function QuickCommandCenter() {
 
     let isActive = true;
     const timer = window.setTimeout(async () => {
-      const lookup = canonicalDocumentSearch(recordLookupQuery);
+      const intent = commandIntent(recordLookupQuery);
+      const lookup = intent.lookup;
       const lookupValue = normalizeLookupValue(lookup.value);
       const needle = safeIlikeNeedle(displayIdNeedle(lookupValue));
+      const textNeedle = safeIlikeNeedle(lookupValue);
       const queueNeedles = queueUnitNeedles(lookupValue);
 
       if (!lookupValue || (!needle && queueNeedles.length === 0)) {
@@ -725,30 +1116,14 @@ export default function QuickCommandCenter() {
           .from("invoices")
           .select("id, display_id, customer_name, project_title, status")
           .eq("business_id", selectedBusiness.id)
-          .ilike("display_id", `%${needle}%`)
+          .or(
+            `display_id.ilike.%${needle}%,customer_name.ilike.%${textNeedle}%,project_title.ilike.%${textNeedle}%,reference.ilike.%${textNeedle}%`
+          )
           .order("created_at", { ascending: false })
           .limit(5);
 
         ((data ?? []) as InvoiceSearchRecord[]).forEach((invoice) => {
-          nextCommands.push({
-            title: invoice.display_id ?? "Invoice",
-            detail: [
-              invoice.customer_name,
-              invoice.project_title,
-              invoice.status,
-            ]
-              .filter(Boolean)
-              .join(" / ") || "Open invoice record",
-            href: `/invoices/${invoice.id}?business=${business}`,
-            tone: "cash",
-            keywords: [
-              "invoice",
-              invoice.display_id ?? "",
-              invoice.customer_name ?? "",
-              invoice.project_title ?? "",
-            ],
-            source: "record",
-          });
+          nextCommands.push(invoiceActionCommand(invoice, business, intent.action));
         });
       }
 
@@ -760,30 +1135,16 @@ export default function QuickCommandCenter() {
           .from("estimates")
           .select("id, display_id, customer_name, project_title, status")
           .eq("business_id", selectedBusiness.id)
-          .ilike("display_id", `%${needle}%`)
+          .or(
+            `display_id.ilike.%${needle}%,customer_name.ilike.%${textNeedle}%,project_title.ilike.%${textNeedle}%,reference.ilike.%${textNeedle}%`
+          )
           .order("created_at", { ascending: false })
           .limit(5);
 
         ((data ?? []) as EstimateSearchRecord[]).forEach((estimate) => {
-          nextCommands.push({
-            title: estimate.display_id ?? "Estimate",
-            detail: [
-              estimate.customer_name,
-              estimate.project_title,
-              estimate.status,
-            ]
-              .filter(Boolean)
-              .join(" / ") || "Open estimate record",
-            href: `/estimates/${estimate.id}?business=${business}`,
-            tone: "create",
-            keywords: [
-              "estimate",
-              estimate.display_id ?? "",
-              estimate.customer_name ?? "",
-              estimate.project_title ?? "",
-            ],
-            source: "record",
-          });
+          nextCommands.push(
+            estimateActionCommand(estimate, business, intent.action)
+          );
         });
       }
 
@@ -802,27 +1163,7 @@ export default function QuickCommandCenter() {
             .limit(5);
 
           ((data ?? []) as QueueSearchRecord[]).forEach((item) => {
-            nextCommands.push({
-              title: `Queue ${item.unit ?? "Item"}`,
-              detail: [
-                item.property,
-                item.status,
-                item.priority ? `${item.priority} priority` : "",
-                item.ready_date ? `Paint due ${item.ready_date}` : "",
-              ]
-                .filter(Boolean)
-                .join(" / ") || "Open queue item",
-              href: `/queue/${item.id}?business=${business}`,
-              tone: "queue",
-              keywords: [
-                "queue",
-                "unit",
-                item.unit ?? "",
-                item.property ?? "",
-                item.status ?? "",
-              ],
-              source: "record",
-            });
+            nextCommands.push(queueActionCommand(item, business, intent.action));
           });
         }
       }
@@ -842,22 +1183,7 @@ export default function QuickCommandCenter() {
             .limit(5);
 
           ((data ?? []) as ClientSearchRecord[]).forEach((client) => {
-            nextCommands.push({
-              title: client.name ?? "Client",
-              detail: [client.contact_name, client.email, client.phone]
-                .filter(Boolean)
-                .join(" / ") || "Open client record",
-              href: `/clients/${client.id}?business=${business}`,
-              tone: "client",
-              keywords: [
-                "client",
-                "customer",
-                client.name ?? "",
-                client.contact_name ?? "",
-                client.email ?? "",
-              ],
-              source: "record",
-            });
+            nextCommands.push(clientActionCommand(client, business, intent.action));
           });
         }
       }
@@ -998,7 +1324,7 @@ export default function QuickCommandCenter() {
                     runCommand(selectedCommand);
                   }
                 }}
-                placeholder="Try: INV 502, EST 505, Q G03, North Creek..."
+                placeholder="Try: pay INV 502, print EST 505, schedule G03..."
                 className="quick-command-input"
                 role="combobox"
               />
@@ -1032,7 +1358,8 @@ export default function QuickCommandCenter() {
                 <div>
                   <p className="quick-command-brief-kicker">Command Matrix</p>
                   <p className="quick-command-brief-title">
-                    Jump to invoices, estimates, queue units, clients, and workflows.
+                    Type records or actions: pay, print, send, remind, edit,
+                    schedule, complete.
                   </p>
                 </div>
                 <span>
@@ -1096,6 +1423,11 @@ export default function QuickCommandCenter() {
                         {command.source === "record" ? (
                           <span className="quick-command-recent-pill">
                             Record
+                          </span>
+                        ) : null}
+                        {command.actionLabel ? (
+                          <span className="quick-command-action-pill">
+                            {command.actionLabel}
                           </span>
                         ) : null}
                       </span>

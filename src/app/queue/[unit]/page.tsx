@@ -852,7 +852,10 @@ export default async function QueueDetailPage({
             />
           </div>
 
-          <div className="queue-detail-notice mb-6 min-w-0 overflow-hidden rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4">
+          <div
+            id="schedule-work"
+            className="queue-detail-notice mb-6 min-w-0 scroll-mt-6 overflow-hidden rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4"
+          >
             <p className="text-sm uppercase tracking-[0.25em] text-orange-300">
               Schedule Work
             </p>
@@ -946,7 +949,7 @@ export default async function QueueDetailPage({
           title="Queue Item Conversation"
         />
 
-        <div className="flex flex-wrap gap-4">
+        <div id="complete-work" className="flex scroll-mt-6 flex-wrap gap-4">
           <BackButton label="Back" fallbackHref={`/queue?business=${businessSlug}`} />
 
           {!linkedEstimate && (
