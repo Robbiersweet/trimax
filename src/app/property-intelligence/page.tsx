@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import AppShell from "../components/AppShell";
+import BackButton from "../components/BackButton";
 import Button from "../components/Button";
 import Card from "../components/Card";
 import InputField from "../components/InputField";
@@ -44,9 +45,20 @@ function normalizeUnitLabel(value: string) {
   return canonicalApartmentUnitLabel(value);
 }
 
+function safeInternalRoute(value: string | null) {
+  return Boolean(value && value.startsWith("/") && !value.startsWith("//"))
+    ? value
+    : null;
+}
+
 export default function PropertyIntelligencePage() {
   const searchParams = useSearchParams();
   const businessSlug = searchParams.get("business") ?? "rnl-creations";
+  const returnTo = safeInternalRoute(searchParams.get("returnTo"));
+  const backFallbackHref = returnTo ?? `/queue?business=${businessSlug}`;
+  const backLabel = returnTo?.startsWith("/queue/")
+    ? "Back to Queue Item"
+    : "Back";
   const [business, setBusiness] = useState<Business | null>(null);
   const [property, setProperty] = useState<PropertyRow | null>(null);
   const [units, setUnits] = useState<PropertyUnitRow[]>([]);
@@ -348,6 +360,8 @@ export default function PropertyIntelligencePage() {
       {toast ? <Toast type={toast.type} message={toast.message} /> : null}
 
       <div className="space-y-6">
+        <BackButton label={backLabel} fallbackHref={backFallbackHref} />
+
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-sm uppercase tracking-[0.3em] text-orange-400">

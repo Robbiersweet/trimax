@@ -755,7 +755,9 @@ export default async function QueueDetailPage({
                 saved row is missing, so Trimax is showing the confirmed map
                 fallback for now.{" "}
                 <Link
-                  href={`/property-intelligence?business=${businessSlug}`}
+                  href={`/property-intelligence?business=${businessSlug}&returnTo=${encodeURIComponent(
+                    `/queue/${item.id}?business=${businessSlug}`
+                  )}`}
                   className="font-black underline decoration-sky-300/60 underline-offset-4"
                 >
                   Open Property Intelligence
