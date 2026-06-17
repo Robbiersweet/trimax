@@ -1692,7 +1692,10 @@ function BusinessSettingsPageContent() {
               </Card>
             ) : null}
 
-            <Card className="settings-media-strategy border-emerald-200 bg-emerald-50">
+            <Card
+              id="media-filing-strategy"
+              className="settings-media-strategy scroll-mt-6 border-emerald-200 bg-emerald-50"
+            >
               <div className="grid gap-5">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div>
