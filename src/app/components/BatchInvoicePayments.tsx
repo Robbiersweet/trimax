@@ -74,6 +74,79 @@ function customerMatchesPayor(customerName: string, payor: string) {
   );
 }
 
+function invoiceSearchText(invoice: PayableInvoice) {
+  return [
+    invoice.displayId,
+    invoice.customerName,
+    invoice.projectTitle,
+    invoice.status,
+    invoice.dueDate,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+function extractMoneyValues(text: string) {
+  const matches =
+    text.match(/\$?\s*\d{1,3}(?:,\d{3})*(?:\.\d{2})\b|\b\d+\.\d{2}\b/g) ??
+    [];
+
+  return matches
+    .map((match) => parseMoney(match))
+    .filter((value) => value > 0);
+}
+
+function extractUnitCodes(text: string) {
+  return Array.from(new Set(text.match(/\b[A-Z]\d{2}[A-Z]?\b/gi) ?? [])).map(
+    (code) => code.toUpperCase()
+  );
+}
+
+function extractCheckNumber(text: string) {
+  const match = text.match(/\b(?:CK|CHECK)\s*#?\s*:?\s*(\d{3,})\b/i);
+
+  return match?.[1] ?? "";
+}
+
+function extractTotalAmount(text: string) {
+  const explicitTotal = text.match(/\bTOTAL\s*:?\s*\$?\s*([\d,]+\.\d{2})/i);
+
+  if (explicitTotal?.[1]) {
+    return parseMoney(explicitTotal[1]);
+  }
+
+  const values = extractMoneyValues(text);
+
+  return values.length > 0 ? Math.max(...values) : 0;
+}
+
+function extractLikelyPayor(text: string) {
+  const propertyLine = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find((line) => /north\s+creek|apartment|property/i.test(line));
+
+  return propertyLine ?? "";
+}
+
+function parseRemittanceLines(text: string) {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const amounts = extractMoneyValues(line);
+
+      return {
+        text: line,
+        amount: amounts.at(-1) ?? 0,
+        unitCodes: extractUnitCodes(line),
+      };
+    })
+    .filter((line) => line.amount > 0 && !/\bTOTAL\b/i.test(line.text));
+}
+
 function findMatchingInvoices(
   invoices: PayableInvoice[],
   amount: number,
@@ -143,7 +216,72 @@ function findMatchingInvoices(
       return currentTotal + invoice.amountDue <= amount + 0.01
         ? [...matches, invoice]
         : matches;
-    }, []);
+  }, []);
+}
+
+function findRemittanceMatches(invoices: PayableInvoice[], stubText: string) {
+  const totalAmount = extractTotalAmount(stubText);
+  const lineItems = parseRemittanceLines(stubText);
+  const totalMatches = invoices.filter(
+    (invoice) => Math.abs(invoice.amountDue - totalAmount) < 0.01
+  );
+
+  if (totalMatches.length === 1) {
+    return {
+      matches: totalMatches,
+      totalAmount,
+      lineItems,
+      confidence: "exact-total" as const,
+    };
+  }
+
+  const lineMatches = lineItems
+    .map((line) => {
+      const candidates = invoices
+        .filter((invoice) => Math.abs(invoice.amountDue - line.amount) < 0.01)
+        .map((invoice) => {
+          const searchText = invoiceSearchText(invoice);
+          const unitScore = line.unitCodes.some((unit) =>
+            searchText.includes(unit.toLowerCase())
+          )
+            ? 4
+            : 0;
+          const words = line.text
+            .toLowerCase()
+            .split(/[^a-z0-9]+/)
+            .filter((word) => word.length >= 3);
+          const wordScore = words.filter((word) => searchText.includes(word))
+            .length;
+
+          return {
+            invoice,
+            score: unitScore + wordScore,
+          };
+        })
+        .sort((first, second) => second.score - first.score);
+
+      return candidates[0]?.invoice ?? null;
+    })
+    .filter((invoice): invoice is PayableInvoice => Boolean(invoice));
+  const uniqueMatches = Array.from(
+    new Map(lineMatches.map((invoice) => [invoice.id, invoice])).values()
+  );
+  const matchedTotal = uniqueMatches.reduce(
+    (total, invoice) => total + invoice.amountDue,
+    0
+  );
+
+  return {
+    matches: uniqueMatches,
+    totalAmount,
+    lineItems,
+    confidence:
+      uniqueMatches.length > 0 && Math.abs(matchedTotal - totalAmount) < 0.01
+        ? ("line-total" as const)
+        : uniqueMatches.length > 0
+          ? ("line-review" as const)
+          : ("none" as const),
+  };
 }
 
 function formatDate(value?: string | null) {
@@ -306,6 +444,7 @@ export default function BatchInvoicePayments({
     startingFocus ? formatMoney(startingFocus.total) : ""
   );
   const [capturedCheckReference, setCapturedCheckReference] = useState("");
+  const [remittanceStubText, setRemittanceStubText] = useState("");
   const [internalNote, setInternalNote] = useState(
     startedFromInvoiceSelection
       ? "Selected invoice batch payment"
@@ -455,6 +594,49 @@ export default function BatchInvoicePayments({
     (total, invoice) => total + invoice.amountDue,
     0
   );
+  const remittanceMatch = useMemo(
+    () => findRemittanceMatches(payableInvoices, remittanceStubText),
+    [payableInvoices, remittanceStubText]
+  );
+  const remittanceSuggestedTotal = remittanceMatch.matches.reduce(
+    (total, invoice) => total + invoice.amountDue,
+    0
+  );
+  const hasRemittanceStub = remittanceStubText.trim().length > 0;
+  const hasRemittanceMatch = remittanceMatch.matches.length > 0;
+  const remittanceConfidence =
+    remittanceMatch.confidence === "exact-total"
+      ? {
+          label: "Invoice total match",
+          detail: "The stub total matches one open invoice.",
+          tone: "exact",
+        }
+      : remittanceMatch.confidence === "line-total"
+        ? {
+            label: "Line total match",
+            detail: "The stub line amounts match open invoices.",
+            tone: "exact",
+          }
+        : remittanceMatch.confidence === "line-review"
+          ? {
+              label: "Review lines",
+              detail:
+                "Trimax found invoice clues, but the selected total does not equal the stub total yet.",
+              tone: "review",
+            }
+          : hasRemittanceStub
+            ? {
+                label: "No stub match",
+                detail:
+                  "Try adding the unit, invoice date, description, and line amount from the stub.",
+                tone: "none",
+              }
+            : {
+                label: "Waiting",
+                detail:
+                  "Paste the stub text or OCR result to match by unit, date, description, and amount.",
+                tone: "waiting",
+              };
   const hasExactCheckMatch =
     capturedAmountValue > 0 &&
     suggestedCheckMatches.length > 0 &&
@@ -490,7 +672,9 @@ export default function BatchInvoicePayments({
     capturedAmountValue > 0 ? formatMoney(capturedAmountValue) : "Enter amount",
     suggestedCheckMatches.length > 0
       ? checkMatchConfidence.label
-      : "Match invoices",
+      : hasRemittanceMatch
+        ? remittanceConfidence.label
+        : "Match invoices",
   ];
   const suggestedPaymentMatches = useMemo(
     () =>
@@ -771,6 +955,69 @@ export default function BatchInvoicePayments({
     });
   }
 
+  function applyRemittanceStubMatch() {
+    if (!hasRemittanceStub) {
+      setToast({
+        type: "error",
+        message: "Paste the check stub text before matching invoices.",
+      });
+      return;
+    }
+
+    if (!hasRemittanceMatch) {
+      setToast({
+        type: "error",
+        message:
+          "Trimax could not match that stub to open invoices yet. Add the unit, line amount, or check total.",
+      });
+      return;
+    }
+
+    const parsedCheckNumber = extractCheckNumber(remittanceStubText);
+    const parsedTotal = remittanceMatch.totalAmount;
+    const parsedPayor = extractLikelyPayor(remittanceStubText);
+    const matchedCustomers = Array.from(
+      new Set(remittanceMatch.matches.map((invoice) => invoice.customerName))
+    );
+
+    setPaymentType("Check");
+    setSelectedIds(remittanceMatch.matches.map((invoice) => invoice.id));
+    setCheckAmount(
+      parsedTotal > 0
+        ? formatMoney(parsedTotal)
+        : formatMoney(remittanceSuggestedTotal)
+    );
+    setCapturedCheckAmount(
+      parsedTotal > 0
+        ? formatMoney(parsedTotal)
+        : formatMoney(remittanceSuggestedTotal)
+    );
+
+    if (parsedCheckNumber) {
+      setCapturedCheckReference(parsedCheckNumber);
+      setPaymentReference(parsedCheckNumber);
+    }
+
+    if (parsedPayor && !checkPayor.trim()) {
+      setCheckPayor(parsedPayor);
+    }
+
+    setCustomerFilter(matchedCustomers.length === 1 ? matchedCustomers[0] : "all");
+    setInternalNote(
+      `Remittance stub match${
+        checkImageName ? ` from ${checkImageName}` : ""
+      }`
+    );
+    setToast({
+      type: "success",
+      message:
+        remittanceMatch.confidence === "exact-total" ||
+        remittanceMatch.confidence === "line-total"
+          ? "Trimax matched the stub to open invoices."
+          : "Trimax selected the best stub clues. Review before applying.",
+    });
+  }
+
   function applyEnteredAmountMatch() {
     if (enteredCheckAmount === null || enteredCheckAmount <= 0) {
       setToast({
@@ -885,6 +1132,16 @@ export default function BatchInvoicePayments({
             paymentOutcome: isFullyPaid ? "paid" : "partial",
             depositPayment: Boolean(invoice.isDepositRequest),
             batchInvoiceCount: selectedInvoices.length,
+            remittanceStubMatched: hasRemittanceStub && hasRemittanceMatch,
+            remittanceStubTotal: hasRemittanceStub
+              ? remittanceMatch.totalAmount
+              : null,
+            remittanceStubLineCount: hasRemittanceStub
+              ? remittanceMatch.lineItems.length
+              : null,
+            remittanceMatchConfidence: hasRemittanceStub
+              ? remittanceMatch.confidence
+              : null,
           },
         });
       }
@@ -899,6 +1156,7 @@ export default function BatchInvoicePayments({
       setPaymentReference("");
       setCheckAmount("");
       setInternalNote("");
+      setRemittanceStubText("");
       router.refresh();
     } catch (error) {
       setToast({
@@ -1330,6 +1588,127 @@ export default function BatchInvoicePayments({
                   className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-sky-500"
                 />
               </label>
+            </div>
+
+            <div
+              data-match-tone={remittanceConfidence.tone}
+              className="remittance-stub-card rounded-2xl border border-white/10 bg-black/30 p-4"
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-zinc-200">
+                    Remittance stub reader
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-zinc-400">
+                    Paste the stub text from the photo. Trimax looks for unit
+                    codes like J08, service descriptions, line amounts, check
+                    number, and total.
+                  </p>
+                </div>
+
+                <span className="check-match-pill rounded-full px-3 py-1 text-xs font-black">
+                  {remittanceConfidence.label}
+                </span>
+              </div>
+
+              <textarea
+                value={remittanceStubText}
+                onChange={(event) => setRemittanceStubText(event.target.value)}
+                placeholder={`Example:\nDATE: 06/03/2026 CK#: 2697 TOTAL: $1,373.75\nNorth Creek Apartment Paint Service 400 - 05/06/2026 J08A full primer 1,099.00\nNorth Creek Apartment Paint Service 401 - 05/07/2026 J08B additional primer 274.75`}
+                className="mt-4 min-h-32 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm leading-6 text-slate-950 outline-none transition focus:border-sky-500"
+              />
+
+              <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_auto] lg:items-start">
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <div className="rounded-xl border border-white/10 bg-zinc-950 px-3 py-2">
+                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                      Stub Total
+                    </p>
+                    <p className="mt-1 font-black text-white">
+                      {remittanceMatch.totalAmount > 0
+                        ? formatMoney(remittanceMatch.totalAmount)
+                        : "-"}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-white/10 bg-zinc-950 px-3 py-2">
+                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                      Lines Read
+                    </p>
+                    <p className="mt-1 font-black text-white">
+                      {remittanceMatch.lineItems.length}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-white/10 bg-zinc-950 px-3 py-2">
+                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                      Matched
+                    </p>
+                    <p className="mt-1 font-black text-white">
+                      {remittanceMatch.matches.length}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={applyRemittanceStubMatch}
+                  disabled={!hasRemittanceMatch}
+                  className="check-match-button rounded-2xl bg-emerald-500 px-5 py-3 font-black text-black transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-600"
+                >
+                  Use Stub Match
+                </button>
+              </div>
+
+              {remittanceMatch.lineItems.length > 0 ? (
+                <div className="mt-4 grid gap-2">
+                  {remittanceMatch.lineItems.slice(0, 4).map((line, index) => (
+                    <div
+                      key={`${line.text}-${index}`}
+                      className="rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <span className="min-w-0">
+                          <span className="block truncate font-semibold text-white">
+                            {line.unitCodes.length > 0
+                              ? line.unitCodes.join(", ")
+                              : "Stub line"}
+                          </span>
+                          <span className="mt-0.5 block truncate text-zinc-400">
+                            {line.text}
+                          </span>
+                        </span>
+                        <span className="font-black text-emerald-300">
+                          {formatMoney(line.amount)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              {remittanceMatch.matches.length > 0 ? (
+                <div className="mt-4 grid gap-2">
+                  {remittanceMatch.matches.slice(0, 4).map((invoice) => (
+                    <div
+                      key={invoice.id}
+                      className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm"
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate font-semibold text-white">
+                          {invoice.displayId} - {invoice.projectTitle}
+                        </span>
+                        <span className="mt-0.5 block truncate text-zinc-400">
+                          {invoice.customerName}
+                        </span>
+                      </span>
+                      <span className="font-black text-emerald-300">
+                        {formatMoney(invoice.amountDue)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
 
             <div

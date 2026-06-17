@@ -4428,7 +4428,19 @@ html.theme-light .check-match-card {
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06) !important;
 }
 
+html.theme-light .remittance-stub-card {
+  background: #ffffff !important;
+  border-color: #bfdbfe !important;
+  color: #0f172a !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06) !important;
+}
+
 html.theme-light .check-match-card[data-match-tone="exact"] {
+  background: linear-gradient(135deg, #ecfdf5, #ffffff 62%) !important;
+  border-color: #86efac !important;
+}
+
+html.theme-light .remittance-stub-card[data-match-tone="exact"] {
   background: linear-gradient(135deg, #ecfdf5, #ffffff 62%) !important;
   border-color: #86efac !important;
 }
@@ -4438,7 +4450,17 @@ html.theme-light .check-match-card[data-match-tone="review"] {
   border-color: #facc15 !important;
 }
 
+html.theme-light .remittance-stub-card[data-match-tone="review"] {
+  background: linear-gradient(135deg, #fffbeb, #ffffff 62%) !important;
+  border-color: #facc15 !important;
+}
+
 html.theme-light .check-match-card[data-match-tone="none"] {
+  background: linear-gradient(135deg, #fff1f2, #ffffff 62%) !important;
+  border-color: #fb7185 !important;
+}
+
+html.theme-light .remittance-stub-card[data-match-tone="none"] {
   background: linear-gradient(135deg, #fff1f2, #ffffff 62%) !important;
   border-color: #fb7185 !important;
 }
