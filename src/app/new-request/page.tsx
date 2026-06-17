@@ -71,6 +71,16 @@ type QueueHistoryRecord = {
   renovation_needed_details: string | null;
 };
 
+type ActiveQueueItem = {
+  id: string;
+  unit: string | null;
+  status: string | null;
+  priority: string | null;
+  ready_date: string | null;
+  scheduled_date: string | null;
+  created_at: string | null;
+};
+
 type UnitHistorySummary = {
   lastPaintDate: string;
   lastPaintType: string;
@@ -260,6 +270,53 @@ function formatFloor(value: string | null | undefined) {
   }
 
   return "-";
+}
+
+function dateValue(value: string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  const parsedDate = new Date(`${value.slice(0, 10)}T00:00:00`);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return null;
+  }
+
+  return parsedDate;
+}
+
+function formatShortDate(value: string | null | undefined) {
+  const parsedDate = dateValue(value);
+
+  if (!parsedDate) {
+    return "-";
+  }
+
+  return parsedDate.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function daysBetweenDates(
+  startValue: string | null | undefined,
+  endValue: string | null | undefined
+) {
+  const start = dateValue(startValue);
+  const end = dateValue(endValue);
+
+  if (!start || !end) {
+    return null;
+  }
+
+  return Math.round((end.getTime() - start.getTime()) / 86400000);
+}
+
+function isOpenQueueStatus(status: string | null | undefined) {
+  const normalized = (status || "").trim().toLowerCase();
+
+  return !["completed", "invoiced", "paid", "archived"].includes(normalized);
 }
 
 function formatHistoryDate(value: string | null | undefined) {
@@ -610,6 +667,10 @@ function NewRequestPageContent() {
   const [moveOutDate, setMoveOutDate] = useState("");
   const [readyDate, setReadyDate] = useState("");
   const [notes, setNotes] = useState("");
+  const [prioritySignals, setPrioritySignals] = useState<ActiveQueueItem[]>(
+    []
+  );
+  const [isCheckingPriority, setIsCheckingPriority] = useState(false);
 
   const [isSaving, setIsSaving] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
@@ -887,9 +948,96 @@ function NewRequestPageContent() {
     () => units.map(normalizeUnitLabel),
     [units]
   );
+  const normalizedUnitsKey = normalizedUnits.join("|");
   const unitOptions = collectUnitLayout
     ? propertyUnits.map((unitProfile) => unitProfile.unit_label || "")
     : [];
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadPrioritySignals() {
+      if (
+        !business ||
+        isJustKleen ||
+        !property.trim() ||
+        !readyDate ||
+        normalizedUnits.length === 0
+      ) {
+        setPrioritySignals([]);
+        setIsCheckingPriority(false);
+        return;
+      }
+
+      setIsCheckingPriority(true);
+
+      const selectedUnitSet = new Set(
+        normalizedUnits.flatMap((unit) => [
+          normalizeUnitLabel(unit),
+          legacyUnpaddedUnitLabel(unit),
+        ])
+      );
+
+      const { data, error } = await supabase
+        .from("queue_items")
+        .select(
+          "id, unit, status, priority, ready_date, scheduled_date, created_at"
+        )
+        .eq("business_id", business.id)
+        .eq("property", property)
+        .is("completed_date", null)
+        .order("ready_date", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: true });
+
+      if (!isActive) {
+        return;
+      }
+
+      setIsCheckingPriority(false);
+
+      if (error) {
+        console.warn("Priority intelligence lookup failed:", error.message);
+        setPrioritySignals([]);
+        return;
+      }
+
+      const rows = ((data ?? []) as ActiveQueueItem[]).filter((item) => {
+        if (!isOpenQueueStatus(item.status)) {
+          return false;
+        }
+
+        const unitLabel = normalizeUnitLabel(item.unit || "");
+
+        if (selectedUnitSet.has(unitLabel)) {
+          return false;
+        }
+
+        const dayGap = daysBetweenDates(item.ready_date, readyDate);
+
+        if (dayGap === null) {
+          return false;
+        }
+
+        return Math.abs(dayGap) <= 3 || (dayGap > 0 && dayGap <= 7);
+      });
+
+      setPrioritySignals(rows.slice(0, 4));
+    }
+
+    loadPrioritySignals();
+
+    return () => {
+      isActive = false;
+    };
+  }, [
+    business,
+    isJustKleen,
+    normalizedUnits,
+    normalizedUnitsKey,
+    property,
+    readyDate,
+  ]);
+
   const selectedUnitProfiles = useMemo(
     () =>
       normalizedUnits
@@ -1079,6 +1227,34 @@ function NewRequestPageContent() {
     selectedFloorplansKey,
     unitLayoutTouched,
   ]);
+
+  const priorityLeadUnit = prioritySignals[0] ?? null;
+  const priorityLeadUnitLabel = priorityLeadUnit
+    ? normalizeUnitLabel(priorityLeadUnit.unit || "")
+    : "";
+  const requestedUnitLabel =
+    normalizedUnits.length === 1
+      ? normalizedUnits[0]
+      : `${normalizedUnits.length} units`;
+  const priorityNoteText = priorityLeadUnit
+    ? `Priority check: ${requestedUnitLabel} may need to jump ahead of ${priorityLeadUnitLabel || "an existing queue item"} due ${formatShortDate(priorityLeadUnit.ready_date)}. Confirm with management before scheduling.`
+    : "";
+
+  function addPriorityNote() {
+    if (!priorityNoteText) {
+      return;
+    }
+
+    setNotes((currentNotes) => {
+      if (currentNotes.includes(priorityNoteText)) {
+        return currentNotes;
+      }
+
+      return [currentNotes.trim(), priorityNoteText]
+        .filter(Boolean)
+        .join("\n\n");
+    });
+  }
 
   async function handleSubmit() {
     setToast(null);
@@ -1721,6 +1897,126 @@ function NewRequestPageContent() {
               type="date"
               helperText="Use the date the property wants painting finished by so urgent units can be prioritized."
             />
+
+            {!isJustKleen && readyDate && units.length > 0 ? (
+              <div
+                className={`rounded-2xl border px-4 py-4 ${
+                  prioritySignals.length > 0
+                    ? "border-amber-400/40 bg-amber-500/10"
+                    : "border-emerald-500/30 bg-emerald-500/10"
+                }`}
+              >
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p
+                      className={`text-sm uppercase tracking-[0.22em] ${
+                        prioritySignals.length > 0
+                          ? "text-amber-200"
+                          : "text-emerald-200"
+                      }`}
+                    >
+                      Priority Check
+                    </p>
+
+                    <h2 className="mt-2 text-lg font-black text-white">
+                      {isCheckingPriority
+                        ? "Checking active queue..."
+                        : prioritySignals.length > 0
+                          ? "Possible queue order conflict"
+                          : "No active due-date conflict found"}
+                    </h2>
+
+                    <p className="mt-2 text-sm leading-6 text-zinc-300">
+                      {prioritySignals.length > 0
+                        ? `Trimax found active ${property} work already due on or near ${formatShortDate(readyDate)}. Review whether ${requestedUnitLabel} should jump ahead before submitting.`
+                        : "Trimax did not find another active unit that appears to conflict with this paint due date."}
+                    </p>
+                  </div>
+
+                  {prioritySignals.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPriority("Urgent");
+                        addPriorityNote();
+                      }}
+                      className="app-button-primary inline-flex min-h-11 shrink-0 items-center justify-center rounded-2xl px-4 py-2 text-sm font-black"
+                    >
+                      Mark Urgent
+                    </button>
+                  ) : null}
+                </div>
+
+                {prioritySignals.length > 0 ? (
+                  <div className="mt-4 space-y-2">
+                    {prioritySignals.map((item) => {
+                      const dayGap = daysBetweenDates(
+                        item.ready_date,
+                        readyDate
+                      );
+                      const dueCopy =
+                        dayGap === 0
+                          ? "same paint due date"
+                          : dayGap && dayGap > 0
+                            ? `due ${dayGap} day${dayGap === 1 ? "" : "s"} before this request`
+                            : `within ${Math.abs(dayGap ?? 0)} day${
+                                Math.abs(dayGap ?? 0) === 1 ? "" : "s"
+                              } of this request`;
+
+                      return (
+                        <div
+                          key={item.id}
+                          className="app-soft-panel rounded-2xl border border-amber-400/20 bg-zinc-950/70 px-4 py-3"
+                        >
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                              <p className="font-black text-white">
+                                Unit {normalizeUnitLabel(item.unit || "-")}
+                              </p>
+                              <p className="mt-1 text-sm leading-6 text-zinc-400">
+                                Paint due {formatShortDate(item.ready_date)} /{" "}
+                                {item.scheduled_date
+                                  ? `scheduled ${formatShortDate(
+                                      item.scheduled_date
+                                    )}`
+                                  : "not scheduled yet"}{" "}
+                                / {item.priority || "Normal"} priority /{" "}
+                                {dueCopy}
+                              </p>
+                            </div>
+
+                            <Link
+                              href={`/queue/${item.id}?business=${businessSlug}`}
+                              className="app-button-secondary inline-flex min-h-10 items-center justify-center rounded-2xl px-4 py-2 text-sm font-black"
+                            >
+                              Open
+                            </Link>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={addPriorityNote}
+                        className="app-button-secondary inline-flex min-h-11 items-center justify-center rounded-2xl px-4 py-2 text-sm font-black"
+                      >
+                        Add Priority Note
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setPriority("High")}
+                        className="app-button-secondary inline-flex min-h-11 items-center justify-center rounded-2xl px-4 py-2 text-sm font-black"
+                      >
+                        Set High Priority
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
 
             <div className="app-soft-panel rounded-2xl border border-zinc-800 bg-zinc-950/60 px-4 py-3">
               <p className="font-semibold text-white">
