@@ -30,6 +30,13 @@ type DetailChip = {
   value: string;
 };
 
+type AuditSignal = {
+  label: string;
+  count: number;
+  detail: string;
+  status: "ready" | "watch" | "quiet";
+};
+
 type ActivityTypeFilter =
   | "all"
   | "queue"
@@ -123,6 +130,79 @@ function formatDetailValue(value: unknown) {
   return String(value);
 }
 
+function escapeCsv(value: unknown) {
+  const stringValue = String(value ?? "");
+
+  if (
+    stringValue.includes(",") ||
+    stringValue.includes("\"") ||
+    stringValue.includes("\n") ||
+    stringValue.includes("\r")
+  ) {
+    return `"${stringValue.replace(/"/g, "\"\"")}"`;
+  }
+
+  return stringValue;
+}
+
+function downloadCsv({
+  fileName,
+  logs,
+}: {
+  fileName: string;
+  logs: ActivityLog[];
+}) {
+  const rows = [
+    [
+      "Date",
+      "Action",
+      "Item",
+      "Type",
+      "User",
+      "Recipient",
+      "CC",
+      "Private Copy",
+      "PDF Attached",
+      "Payment Reference",
+      "Check Amount",
+      "Amount Applied",
+      "Details",
+    ],
+    ...logs.map((log) => {
+      const details = log.details ?? {};
+
+      return [
+        formatDateTime(log.created_at),
+        actionLabel(log.action),
+        log.entity_label ?? "",
+        log.entity_type,
+        log.actor_email ?? "",
+        formatDetailValue(details.recipient_email),
+        formatDetailValue(details.cc_email),
+        formatDetailValue(details.bcc_email),
+        formatDetailValue(details.pdf_attached),
+        formatDetailValue(details.paymentReference),
+        formatMoney(details.checkAmount),
+        formatMoney(details.amountApplied),
+        JSON.stringify(details),
+      ];
+    }),
+  ];
+  const csv = rows
+    .map((row) => row.map((value) => escapeCsv(value)).join(","))
+    .join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 function prettifyKey(key: string) {
   return key
     .replace(/([A-Z])/g, " $1")
@@ -190,6 +270,31 @@ function actionTone(action: string) {
 function detailChips(log: ActivityLog): DetailChip[] {
   const details = log.details ?? {};
 
+  if (
+    log.action === "invoice.email_sent" ||
+    log.action === "invoice.payment_reminder_sent" ||
+    log.action === "estimate.email_sent"
+  ) {
+    return [
+      { label: "To", value: formatDetailValue(details.recipient_email) },
+      { label: "CC", value: formatDetailValue(details.cc_email) },
+      { label: "Private Copy", value: formatDetailValue(details.bcc_email) },
+      { label: "Subject", value: formatDetailValue(details.subject) },
+      {
+        label: "PDF",
+        value:
+          details.pdf_attached === true
+            ? `Attached${
+                details.pdf_attachment_source
+                  ? ` (${formatDetailValue(details.pdf_attachment_source)})`
+                  : ""
+              }`
+            : "Not attached",
+      },
+      { label: "Sender", value: formatDetailValue(details.sender_email) },
+    ].filter((chip) => chip.value.length > 0);
+  }
+
   if (log.action === "invoice.batch_payment_applied") {
     return [
       { label: "Payment Date", value: formatDate(details.paymentDate) },
@@ -203,6 +308,14 @@ function detailChips(log: ActivityLog): DetailChip[] {
       {
         label: "Batch Count",
         value: formatDetailValue(details.batchInvoiceCount),
+      },
+      {
+        label: "Stub Match",
+        value: formatDetailValue(details.remittanceStubMatched),
+      },
+      {
+        label: "Stub Image",
+        value: formatDetailValue(details.paymentImageFileName),
       },
       { label: "Note", value: formatDetailValue(details.internalNote) },
     ].filter((chip) => chip.value.length > 0);
@@ -352,6 +465,47 @@ function activityFilterHref({
   return `/activity?${params.toString()}`;
 }
 
+function buildAuditSignals(logs: ActivityLog[]): AuditSignal[] {
+  const sendCount = logs.filter(
+    (log) => log.action.includes("email_sent") || log.action.includes("reminder")
+  ).length;
+  const pdfCount = logs.filter((log) => log.details?.pdf_attached === true).length;
+  const paymentCount = logs.filter((log) =>
+    log.action.includes("payment")
+  ).length;
+  const paymentAttachmentCount = logs.filter(
+    (log) => Boolean(log.details?.paymentAttachmentId) || Boolean(log.details?.paymentImagePath)
+  ).length;
+
+  return [
+    {
+      label: "Send Proof",
+      count: sendCount,
+      detail: "Invoices, estimates, and reminders with recipients and subjects",
+      status: sendCount > 0 ? "ready" : "quiet",
+    },
+    {
+      label: "PDF Proof",
+      count: pdfCount,
+      detail: "Customer-facing PDFs attached to outgoing messages",
+      status: pdfCount > 0 ? "ready" : sendCount > 0 ? "watch" : "quiet",
+    },
+    {
+      label: "Payment Proof",
+      count: paymentCount,
+      detail: "Checks, references, notes, and applied amounts",
+      status: paymentCount > 0 ? "ready" : "quiet",
+    },
+    {
+      label: "Image Proof",
+      count: paymentAttachmentCount,
+      detail: "Stored check or remittance images linked to payment actions",
+      status:
+        paymentAttachmentCount > 0 ? "ready" : paymentCount > 0 ? "watch" : "quiet",
+    },
+  ];
+}
+
 function ActivityPageContent() {
   const searchParams = useSearchParams();
   const businessSlug = searchParams.get("business") ?? "rnl-creations";
@@ -496,6 +650,20 @@ function ActivityPageContent() {
       },
     ];
   }, [businessSlug, logs]);
+  const auditSignals = useMemo(() => buildAuditSignals(filteredLogs), [filteredLogs]);
+  const exportFileName = useMemo(() => {
+    const parts = [
+      "trimax-audit-trail",
+      businessSlug,
+      typeFilter !== "all" ? typeFilter : null,
+      searchTerm.length > 0
+        ? searchTerm.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+        : null,
+      new Date().toISOString().slice(0, 10),
+    ].filter(Boolean);
+
+    return `${parts.join("-")}.csv`;
+  }, [businessSlug, searchTerm, typeFilter]);
 
   return (
     <AppShell>
@@ -559,6 +727,63 @@ function ActivityPageContent() {
                 </p>
               </Link>
             ))}
+          </div>
+        </Card>
+
+        <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-950/40 via-zinc-950 to-zinc-950">
+          <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-start">
+            <div>
+              <p className="text-sm uppercase tracking-[0.3em] text-emerald-300">
+                Audit Readiness
+              </p>
+
+              <h2 className="mt-2 text-2xl font-black text-white">
+                Evidence packet for this view
+              </h2>
+
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
+                Export the filtered trail when you need proof of delivery,
+                payment history, check references, attached PDFs, or stored
+                remittance images.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => downloadCsv({ fileName: exportFileName, logs: filteredLogs })}
+              disabled={filteredLogs.length === 0}
+              className="app-button-primary inline-flex rounded-2xl px-5 py-3 text-sm font-black disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Export Audit CSV
+            </button>
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {auditSignals.map((signal) => {
+              const tone =
+                signal.status === "ready"
+                  ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-100"
+                  : signal.status === "watch"
+                    ? "border-amber-400/30 bg-amber-400/10 text-amber-100"
+                    : "border-zinc-700 bg-black/20 text-zinc-300";
+
+              return (
+                <div
+                  key={signal.label}
+                  className={`rounded-2xl border p-4 ${tone}`}
+                >
+                  <p className="text-xs font-black uppercase tracking-[0.22em] opacity-80">
+                    {signal.label}
+                  </p>
+
+                  <p className="mt-3 text-3xl font-black">{signal.count}</p>
+
+                  <p className="mt-2 text-sm leading-5 opacity-80">
+                    {signal.detail}
+                  </p>
+                </div>
+              );
+            })}
           </div>
         </Card>
 
