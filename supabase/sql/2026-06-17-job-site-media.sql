@@ -2,6 +2,34 @@
 -- This keeps Trimax lightweight by storing searchable photo metadata and links,
 -- while allowing originals to live in Supabase, OneDrive, a NAS, or a home-drive archive.
 
+create or replace function public.trimax_current_user_email()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select lower(coalesce(auth.jwt() ->> 'email', ''));
+$$;
+
+create or replace function public.trimax_has_business_access(target_business_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.business_users bu
+    where bu.business_id = target_business_id
+      and (
+        bu.user_id = auth.uid()
+        or lower(bu.email) = public.trimax_current_user_email()
+      )
+  );
+$$;
+
 create table if not exists public.job_site_media_files (
   id uuid primary key default gen_random_uuid(),
   business_id uuid not null references public.businesses(id) on delete cascade,
