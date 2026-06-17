@@ -3618,13 +3618,16 @@ html.theme-light .settings-step-card .text-orange-200 {
 }
 
 html.theme-light .settings-media-strategy,
-html.theme-light .settings-media-option {
+html.theme-light .settings-media-option,
+html.theme-light .settings-media-setup {
   color: #0f172a !important;
   box-shadow: 0 16px 36px rgba(15, 23, 42, 0.06);
 }
 
 html.theme-light .settings-media-strategy .text-slate-600,
-html.theme-light .settings-media-strategy .text-slate-700 {
+html.theme-light .settings-media-strategy .text-slate-700,
+html.theme-light .settings-media-setup .text-slate-600,
+html.theme-light .settings-media-setup .text-slate-700 {
   color: #475569 !important;
 }
 
@@ -3639,14 +3642,23 @@ html:not(.theme-light) .settings-media-option {
   border-color: rgba(148, 163, 184, 0.18) !important;
 }
 
+html:not(.theme-light) .settings-media-setup {
+  background: rgba(2, 6, 23, 0.7) !important;
+  border-color: rgba(148, 163, 184, 0.18) !important;
+}
+
 html:not(.theme-light) .settings-media-strategy h2,
 html:not(.theme-light) .settings-media-strategy h3,
-html:not(.theme-light) .settings-media-strategy .text-slate-950 {
+html:not(.theme-light) .settings-media-strategy .text-slate-950,
+html:not(.theme-light) .settings-media-setup h3,
+html:not(.theme-light) .settings-media-setup .text-slate-950 {
   color: #f8fafc !important;
 }
 
 html:not(.theme-light) .settings-media-strategy .text-slate-600,
-html:not(.theme-light) .settings-media-strategy .text-slate-700 {
+html:not(.theme-light) .settings-media-strategy .text-slate-700,
+html:not(.theme-light) .settings-media-setup .text-slate-600,
+html:not(.theme-light) .settings-media-setup .text-slate-700 {
   color: #cbd5e1 !important;
 }
 
