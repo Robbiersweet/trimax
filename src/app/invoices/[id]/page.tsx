@@ -95,6 +95,15 @@ type ClientContact = {
   cc_email: string | null;
 };
 
+type ActivityLog = {
+  id: string;
+  actor_email: string | null;
+  action: string;
+  entity_label: string | null;
+  details: Record<string, unknown> | null;
+  created_at: string | null;
+};
+
 function money(value: number) {
   const safeValue = Number.isFinite(value) ? value : 0;
 
@@ -126,6 +135,21 @@ function formatDate(value: string | null) {
     month: "2-digit",
     day: "2-digit",
     year: "2-digit",
+  }).format(date);
+}
+
+function formatDateTime(value: string | null) {
+  if (!value) return "-";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
   }).format(date);
 }
 
@@ -174,6 +198,129 @@ function looksLikeFiveStarsBoaInvoice(
   return hasFiveStars || hasBankOfAmerica;
 }
 
+function detailText(
+  details: Record<string, unknown> | null | undefined,
+  key: string
+) {
+  const value = details?.[key];
+
+  if (typeof value === "string") {
+    return value.trim() || null;
+  }
+
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  return null;
+}
+
+function detailMoney(
+  details: Record<string, unknown> | null | undefined,
+  key: string
+) {
+  const value = details?.[key];
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? numberValue(value)
+        : 0;
+
+  return parsed > 0 ? money(parsed) : null;
+}
+
+function formatPdfSource(source: string | null) {
+  if (!source) return null;
+  if (source === "print-page") return "Customer PDF matched print page";
+  if (source === "fallback") return "Backup PDF used";
+  return source;
+}
+
+function activityLabel(action: string) {
+  const labels: Record<string, string> = {
+    "invoice.email_sent": "Invoice sent",
+    "invoice.payment_reminder_sent": "Payment reminder sent",
+    "invoice.deposit_requested": "Deposit requested",
+    "invoice.deposit_cleared": "Deposit cleared",
+    "invoice.batch_payment_applied": "Payment recorded",
+    "invoice.status_updated": "Status changed",
+    "invoice.split_created": "Split invoice created",
+    "invoice.recurring_draft_created": "Recurring draft created",
+  };
+
+  return labels[action] ?? action.replaceAll("_", " ");
+}
+
+function evidenceFields(log: ActivityLog) {
+  const details = log.details ?? {};
+  const fields: { label: string; value: string | null }[] = [];
+  const push = (label: string, value: string | null) => {
+    if (value) fields.push({ label, value });
+  };
+
+  if (
+    log.action === "invoice.email_sent" ||
+    log.action === "invoice.payment_reminder_sent"
+  ) {
+    push("To", detailText(details, "recipient_email"));
+    push("CC", detailText(details, "cc_email"));
+    push("Private copy", detailText(details, "bcc_email"));
+    push("Subject", detailText(details, "subject"));
+    push(
+      "PDF",
+      detailText(details, "pdf_attached") === "true"
+        ? formatPdfSource(detailText(details, "pdf_attachment_source")) ??
+            "Attached"
+        : "Not attached"
+    );
+    push("Sender", detailText(details, "sender_email"));
+    return fields;
+  }
+
+  if (log.action === "invoice.batch_payment_applied") {
+    push("Amount applied", detailMoney(details, "amountApplied"));
+    push("Check amount", detailMoney(details, "checkAmount"));
+    push("Reference", detailText(details, "paymentReference"));
+    push("Payment date", detailText(details, "paymentDate"));
+    push("Outcome", detailText(details, "paymentOutcome"));
+    push("Stub image", detailText(details, "paymentImageFileName"));
+    push("Internal note", detailText(details, "internalNote"));
+    return fields;
+  }
+
+  if (log.action === "invoice.deposit_requested") {
+    push("Deposit amount", detailMoney(details, "depositAmount"));
+    push("Note", detailText(details, "note"));
+    return fields;
+  }
+
+  if (log.action === "invoice.deposit_cleared") {
+    push("Result", "Deposit request cleared");
+    return fields;
+  }
+
+  Object.entries(details)
+    .slice(0, 6)
+    .forEach(([key, value]) => {
+      if (
+        typeof value === "string" ||
+        typeof value === "number" ||
+        typeof value === "boolean"
+      ) {
+        push(
+          key
+            .replace(/_/g, " ")
+            .replace(/([a-z])([A-Z])/g, "$1 $2")
+            .replace(/^./, (letter) => letter.toUpperCase()),
+          String(value)
+        );
+      }
+    });
+
+  return fields;
+}
+
 function Info({
   label,
   value,
@@ -215,6 +362,86 @@ function SummaryRow({
       <span className="min-w-0 text-zinc-400">{label}</span>
       <span className="shrink-0 font-semibold text-white">{value}</span>
     </div>
+  );
+}
+
+function EvidenceTrail({ logs }: { logs: ActivityLog[] }) {
+  return (
+    <Card>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.35em] text-sky-300">
+            Proof Vault
+          </p>
+          <h2 className="mt-3 text-2xl font-black text-white">
+            Invoice evidence trail
+          </h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+            Trimax keeps the important proof in one place: sends, reminders,
+            deposit actions, payment applications, check references, and stored
+            payment images.
+          </p>
+        </div>
+        <div className="rounded-2xl border border-sky-400/20 bg-sky-400/10 px-4 py-3 text-sm text-sky-100">
+          {logs.length} saved event{logs.length === 1 ? "" : "s"}
+        </div>
+      </div>
+
+      {logs.length > 0 ? (
+        <div className="mt-6 space-y-4">
+          {logs.map((log) => {
+            const fields = evidenceFields(log);
+
+            return (
+              <div
+                key={log.id}
+                className="rounded-2xl border border-zinc-800 bg-black/30 p-4"
+              >
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="font-black text-white">
+                      {activityLabel(log.action)}
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-500">
+                      {log.actor_email
+                        ? `Recorded by ${log.actor_email}`
+                        : "Recorded by Trimax"}
+                    </p>
+                  </div>
+                  <p className="text-sm font-semibold text-zinc-400">
+                    {formatDateTime(log.created_at)}
+                  </p>
+                </div>
+
+                {fields.length > 0 ? (
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {fields.map((field) => (
+                      <div
+                        key={`${log.id}-${field.label}`}
+                        className="rounded-xl border border-zinc-800 bg-zinc-950/70 px-3 py-2"
+                      >
+                        <p className="text-[0.72rem] font-bold uppercase tracking-[0.18em] text-zinc-500">
+                          {field.label}
+                        </p>
+                        <p className="mt-1 overflow-wrap-anywhere text-sm font-semibold text-zinc-100">
+                          {field.value}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="mt-6 rounded-2xl border border-dashed border-zinc-800 bg-black/20 p-5 text-sm leading-6 text-zinc-400">
+          No proof events have been logged for this invoice yet. Customer
+          emails, late reminders, deposit requests, and payment applications
+          will appear here automatically as they happen.
+        </div>
+      )}
+    </Card>
   );
 }
 
@@ -323,6 +550,7 @@ export default async function InvoiceDetailPage({
   let splitParentInvoice: SplitRelatedInvoice | null = null;
   let splitRelatedInvoices: SplitRelatedInvoice[] = [];
   let clientContact: ClientContact | null = null;
+  let invoiceActivityLogs: ActivityLog[] = [];
 
   if (invoice.client_id) {
     const { data, error } = await supabase
@@ -354,6 +582,22 @@ export default async function InvoiceDetailPage({
 
     linkedEstimate = data ?? null;
   }
+
+  const { data: activityData, error: activityError } = await supabase
+    .from("activity_logs")
+    .select("id, actor_email, action, entity_label, details, created_at")
+    .eq("business_id", business.id)
+    .eq("entity_type", "invoice")
+    .eq("entity_id", invoice.id)
+    .order("created_at", { ascending: false })
+    .limit(20)
+    .returns<ActivityLog[]>();
+
+  if (activityError) {
+    console.error("Invoice activity lookup failed:", activityError);
+  }
+
+  invoiceActivityLogs = activityData ?? [];
 
   if (invoice.split_parent_invoice_id) {
     const { data: parentData, error: parentError } = await supabase
@@ -938,6 +1182,8 @@ export default async function InvoiceDetailPage({
               </div>
             </div>
           </Card>
+
+          <EvidenceTrail logs={invoiceActivityLogs} />
 
           <Card>
             <Info label="Notes" value={invoice.notes || "No notes added."} />
