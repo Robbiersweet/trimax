@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { supabase } from "../lib/supabase";
 
 type CommandTone =
   | "cash"
@@ -20,6 +21,45 @@ type CommandItem = {
   href: string;
   tone: CommandTone;
   keywords: string[];
+  source?: "static" | "record" | "fallback";
+};
+
+type BusinessRecord = {
+  id: string;
+  slug: string | null;
+};
+
+type InvoiceSearchRecord = {
+  id: string;
+  display_id: string | null;
+  customer_name: string | null;
+  project_title: string | null;
+  status: string | null;
+};
+
+type EstimateSearchRecord = {
+  id: string;
+  display_id: string | null;
+  customer_name: string | null;
+  project_title: string | null;
+  status: string | null;
+};
+
+type QueueSearchRecord = {
+  id: string;
+  property: string | null;
+  unit: string | null;
+  status: string | null;
+  priority: string | null;
+  ready_date: string | null;
+};
+
+type ClientSearchRecord = {
+  id: string;
+  name: string | null;
+  contact_name: string | null;
+  email: string | null;
+  phone: string | null;
 };
 
 const RECENT_COMMANDS_STORAGE_KEY = "trimax-recent-commands";
@@ -56,6 +96,66 @@ function queryTokens(query: string) {
     .split(/\s+/)
     .map((token) => token.trim())
     .filter(Boolean);
+}
+
+function canonicalDocumentSearch(value: string) {
+  const normalized = value.trim().toUpperCase().replace(/\s+/g, " ");
+  const match = normalized.match(
+    /^(INV|INVOICE|EST|ESTIMATE|Q|QUEUE|UNIT|CLIENT|CUSTOMER)\s*[-#:]?\s*(.+)$/
+  );
+
+  if (!match) {
+    return {
+      type: "general" as const,
+      value: normalized,
+    };
+  }
+
+  const rawType = match[1];
+  const rawValue = match[2].trim();
+  const type =
+    rawType === "INV" || rawType === "INVOICE"
+      ? "invoice"
+      : rawType === "EST" || rawType === "ESTIMATE"
+        ? "estimate"
+        : rawType === "CLIENT" || rawType === "CUSTOMER"
+          ? "client"
+          : "queue";
+
+  return {
+    type,
+    value: rawValue,
+  };
+}
+
+function normalizeLookupValue(value: string) {
+  return value
+    .trim()
+    .replace(/^[-#:\s]+/, "")
+    .replace(/\s+/g, " ")
+    .toUpperCase();
+}
+
+function displayIdNeedle(value: string) {
+  const normalized = normalizeLookupValue(value);
+  const numeric = normalized.match(/\d+/)?.[0] ?? "";
+
+  return numeric || normalized.replace(/[^A-Z0-9]+/g, "");
+}
+
+function queueUnitNeedles(value: string) {
+  const normalized = normalizeLookupValue(value);
+  const compact = normalized.replace(/[^A-Z0-9]+/g, "");
+  const padded = compact.replace(/^([A-Z])([1-9])$/, "$10$2");
+  const unpadded = compact.replace(/^([A-Z])0([1-9])$/, "$1$2");
+
+  return Array.from(new Set([normalized, compact, padded, unpadded])).filter(
+    Boolean
+  );
+}
+
+function safeIlikeNeedle(value: string) {
+  return value.replace(/[%_,]/g, "").trim();
 }
 
 function commandSearchScore(
@@ -140,11 +240,14 @@ export default function QuickCommandCenter() {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [recordCommands, setRecordCommands] = useState<CommandItem[]>([]);
+  const [isResolvingRecords, setIsResolvingRecords] = useState(false);
   const [recentCommandHrefs, setRecentCommandHrefs] = useState(
     loadRecentCommandHrefs
   );
   const searchInputRef = useRef<HTMLInputElement>(null);
   const business = searchParams.get("business") ?? "rnl-creations";
+  const canResolveRecords = isOpen && query.trim().length >= 2;
 
   const commands = useMemo<CommandItem[]>(
     () => [
@@ -430,23 +533,113 @@ export default function QuickCommandCenter() {
   );
 
   const normalizedQuery = query.trim().toLowerCase();
+  const recordLookupQuery = query.trim();
   const recentCommands = recentCommandHrefs
     .map((href) => commands.find((command) => command.href === href))
     .filter((command): command is CommandItem => Boolean(command));
+  const fallbackRecordCommands = useMemo<CommandItem[]>(() => {
+    const lookup = canonicalDocumentSearch(recordLookupQuery);
+    const cleanValue = normalizeLookupValue(lookup.value);
+    const encoded = encodeURIComponent(cleanValue || recordLookupQuery);
+
+    if (!cleanValue) {
+      return [];
+    }
+
+    if (lookup.type === "invoice") {
+      return [
+        {
+          title: `Search invoices for ${cleanValue}`,
+          detail: "No exact invoice shortcut yet. Open invoice search with this value.",
+          href: `/invoices?business=${business}&q=${encoded}`,
+          tone: "cash",
+          keywords: ["invoice", cleanValue],
+          source: "fallback",
+        },
+      ];
+    }
+
+    if (lookup.type === "estimate") {
+      return [
+        {
+          title: `Search estimates for ${cleanValue}`,
+          detail: "No exact estimate shortcut yet. Open estimate search with this value.",
+          href: `/estimates?business=${business}&q=${encoded}`,
+          tone: "create",
+          keywords: ["estimate", cleanValue],
+          source: "fallback",
+        },
+      ];
+    }
+
+    if (lookup.type === "queue") {
+      return [
+        {
+          title: `Search queue for ${cleanValue}`,
+          detail: "Open queue search for this unit, property, or request.",
+          href: `/queue?business=${business}&q=${encoded}`,
+          tone: "queue",
+          keywords: ["queue", "unit", cleanValue],
+          source: "fallback",
+        },
+      ];
+    }
+
+    if (lookup.type === "client") {
+      return [
+        {
+          title: `Search clients for ${cleanValue}`,
+          detail: "Open the client book with this search filled in.",
+          href: `/clients?business=${business}&q=${encoded}`,
+          tone: "client",
+          keywords: ["client", "customer", cleanValue],
+          source: "fallback",
+        },
+      ];
+    }
+
+    return [
+      {
+        title: `Search invoices for ${cleanValue}`,
+        detail: "Search invoice numbers, customers, projects, and statuses.",
+        href: `/invoices?business=${business}&q=${encoded}`,
+        tone: "cash",
+        keywords: ["invoice", cleanValue],
+        source: "fallback",
+      },
+      {
+        title: `Search queue for ${cleanValue}`,
+        detail: "Search active queue units, properties, notes, and paint due dates.",
+        href: `/queue?business=${business}&q=${encoded}`,
+        tone: "queue",
+        keywords: ["queue", "unit", cleanValue],
+        source: "fallback",
+      },
+    ];
+  }, [business, recordLookupQuery]);
   const visibleCommands = (
     normalizedQuery
-      ? commands
-          .map((command) => ({
-            command,
-            score: commandSearchScore(
+      ? [
+          ...(canResolveRecords ? recordCommands : []),
+          ...fallbackRecordCommands.filter(
+            (fallback) =>
+              !(canResolveRecords ? recordCommands : []).some(
+                (record) => record.href === fallback.href
+              )
+          ),
+          ...commands
+            .map((command) => ({
               command,
-              normalizedQuery,
-              recentCommandHrefs
-            ),
-          }))
-          .filter((result) => result.score > 0)
-          .sort((first, second) => second.score - first.score)
-          .map((result) => result.command)
+              score: commandSearchScore(
+                command,
+                normalizedQuery,
+                recentCommandHrefs
+              ),
+            }))
+            .filter((result) => result.score > 0)
+            .sort((first, second) => second.score - first.score)
+            .map((result) => result.command),
+        ]
       : [
           ...recentCommands,
           ...commands.filter(
@@ -467,6 +660,8 @@ export default function QuickCommandCenter() {
     setIsOpen(false);
     setQuery("");
     setSelectedIndex(0);
+    setRecordCommands([]);
+    setIsResolvingRecords(false);
   }
 
   function rememberCommand(command: CommandItem) {
@@ -480,6 +675,210 @@ export default function QuickCommandCenter() {
     closeCommandCenter();
     router.push(command.href);
   }
+
+  useEffect(() => {
+    if (!isOpen || recordLookupQuery.trim().length < 2) {
+      return;
+    }
+
+    let isActive = true;
+    const timer = window.setTimeout(async () => {
+      const lookup = canonicalDocumentSearch(recordLookupQuery);
+      const lookupValue = normalizeLookupValue(lookup.value);
+      const needle = safeIlikeNeedle(displayIdNeedle(lookupValue));
+      const queueNeedles = queueUnitNeedles(lookupValue);
+
+      if (!lookupValue || (!needle && queueNeedles.length === 0)) {
+        setRecordCommands([]);
+        setIsResolvingRecords(false);
+        return;
+      }
+
+      setIsResolvingRecords(true);
+
+      const { data: businessData } = await supabase
+        .from("businesses")
+        .select("id, slug")
+        .eq("slug", business)
+        .limit(1)
+        .maybeSingle();
+
+      if (!isActive) {
+        return;
+      }
+
+      const selectedBusiness = businessData as BusinessRecord | null;
+
+      if (!selectedBusiness?.id) {
+        setRecordCommands([]);
+        setIsResolvingRecords(false);
+        return;
+      }
+
+      const nextCommands: CommandItem[] = [];
+
+      if (
+        (lookup.type === "invoice" || lookup.type === "general") &&
+        needle.length >= 2
+      ) {
+        const { data } = await supabase
+          .from("invoices")
+          .select("id, display_id, customer_name, project_title, status")
+          .eq("business_id", selectedBusiness.id)
+          .ilike("display_id", `%${needle}%`)
+          .order("created_at", { ascending: false })
+          .limit(5);
+
+        ((data ?? []) as InvoiceSearchRecord[]).forEach((invoice) => {
+          nextCommands.push({
+            title: invoice.display_id ?? "Invoice",
+            detail: [
+              invoice.customer_name,
+              invoice.project_title,
+              invoice.status,
+            ]
+              .filter(Boolean)
+              .join(" / ") || "Open invoice record",
+            href: `/invoices/${invoice.id}?business=${business}`,
+            tone: "cash",
+            keywords: [
+              "invoice",
+              invoice.display_id ?? "",
+              invoice.customer_name ?? "",
+              invoice.project_title ?? "",
+            ],
+            source: "record",
+          });
+        });
+      }
+
+      if (
+        (lookup.type === "estimate" || lookup.type === "general") &&
+        needle.length >= 2
+      ) {
+        const { data } = await supabase
+          .from("estimates")
+          .select("id, display_id, customer_name, project_title, status")
+          .eq("business_id", selectedBusiness.id)
+          .ilike("display_id", `%${needle}%`)
+          .order("created_at", { ascending: false })
+          .limit(5);
+
+        ((data ?? []) as EstimateSearchRecord[]).forEach((estimate) => {
+          nextCommands.push({
+            title: estimate.display_id ?? "Estimate",
+            detail: [
+              estimate.customer_name,
+              estimate.project_title,
+              estimate.status,
+            ]
+              .filter(Boolean)
+              .join(" / ") || "Open estimate record",
+            href: `/estimates/${estimate.id}?business=${business}`,
+            tone: "create",
+            keywords: [
+              "estimate",
+              estimate.display_id ?? "",
+              estimate.customer_name ?? "",
+              estimate.project_title ?? "",
+            ],
+            source: "record",
+          });
+        });
+      }
+
+      if (lookup.type === "queue" || lookup.type === "general") {
+        const queueNeedle = safeIlikeNeedle(queueNeedles[0] ?? lookupValue);
+
+        if (queueNeedle.length >= 1) {
+          const { data } = await supabase
+            .from("queue_items")
+            .select("id, property, unit, status, priority, ready_date")
+            .eq("business_id", selectedBusiness.id)
+            .or(
+              `unit.ilike.%${queueNeedle}%,property.ilike.%${queueNeedle}%,notes.ilike.%${queueNeedle}%`
+            )
+            .order("created_at", { ascending: false })
+            .limit(5);
+
+          ((data ?? []) as QueueSearchRecord[]).forEach((item) => {
+            nextCommands.push({
+              title: `Queue ${item.unit ?? "Item"}`,
+              detail: [
+                item.property,
+                item.status,
+                item.priority ? `${item.priority} priority` : "",
+                item.ready_date ? `Paint due ${item.ready_date}` : "",
+              ]
+                .filter(Boolean)
+                .join(" / ") || "Open queue item",
+              href: `/queue/${item.id}?business=${business}`,
+              tone: "queue",
+              keywords: [
+                "queue",
+                "unit",
+                item.unit ?? "",
+                item.property ?? "",
+                item.status ?? "",
+              ],
+              source: "record",
+            });
+          });
+        }
+      }
+
+      if (lookup.type === "client" || lookup.type === "general") {
+        const clientNeedle = safeIlikeNeedle(lookupValue);
+
+        if (clientNeedle.length >= 2) {
+          const { data } = await supabase
+            .from("clients")
+            .select("id, name, contact_name, email, phone")
+            .eq("business_id", selectedBusiness.id)
+            .or(
+              `name.ilike.%${clientNeedle}%,contact_name.ilike.%${clientNeedle}%,email.ilike.%${clientNeedle}%,phone.ilike.%${clientNeedle}%`
+            )
+            .order("name", { ascending: true })
+            .limit(5);
+
+          ((data ?? []) as ClientSearchRecord[]).forEach((client) => {
+            nextCommands.push({
+              title: client.name ?? "Client",
+              detail: [client.contact_name, client.email, client.phone]
+                .filter(Boolean)
+                .join(" / ") || "Open client record",
+              href: `/clients/${client.id}?business=${business}`,
+              tone: "client",
+              keywords: [
+                "client",
+                "customer",
+                client.name ?? "",
+                client.contact_name ?? "",
+                client.email ?? "",
+              ],
+              source: "record",
+            });
+          });
+        }
+      }
+
+      if (!isActive) {
+        return;
+      }
+
+      const uniqueCommands = Array.from(
+        new Map(nextCommands.map((command) => [command.href, command])).values()
+      ).slice(0, 8);
+
+      setRecordCommands(uniqueCommands);
+      setIsResolvingRecords(false);
+    }, 180);
+
+    return () => {
+      isActive = false;
+      window.clearTimeout(timer);
+    };
+  }, [business, isOpen, recordLookupQuery]);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -566,8 +965,14 @@ export default function QuickCommandCenter() {
                 aria-expanded={isOpen}
                 value={query}
                 onChange={(event) => {
-                  setQuery(event.target.value);
+                  const nextQuery = event.target.value;
+                  setQuery(nextQuery);
                   setSelectedIndex(0);
+
+                  if (nextQuery.trim().length < 2) {
+                    setRecordCommands([]);
+                    setIsResolvingRecords(false);
+                  }
                 }}
                 onKeyDown={(event) => {
                   if (event.key === "Escape") {
@@ -593,7 +998,7 @@ export default function QuickCommandCenter() {
                     runCommand(selectedCommand);
                   }
                 }}
-                placeholder="Try: pdf, check stub, job photos, recurring..."
+                placeholder="Try: INV 502, EST 505, Q G03, North Creek..."
                 className="quick-command-input"
                 role="combobox"
               />
@@ -627,10 +1032,12 @@ export default function QuickCommandCenter() {
                 <div>
                   <p className="quick-command-brief-kicker">Command Matrix</p>
                   <p className="quick-command-brief-title">
-                    Launch payments, proof, queue, and setup without hunting.
+                    Jump to invoices, estimates, queue units, clients, and workflows.
                   </p>
                 </div>
-                <span>{visibleCommands.length} ready</span>
+                <span>
+                  {isResolvingRecords ? "Searching..." : `${visibleCommands.length} ready`}
+                </span>
               </div>
 
               {!normalizedQuery && recentCommands.length > 0 ? (
@@ -647,7 +1054,12 @@ export default function QuickCommandCenter() {
 
               {normalizedQuery ? (
                 <p className="quick-command-section-label">
-                  {visibleCommands.length} match
+                  {recordCommands.length > 0
+                    ? `${recordCommands.length} record match${
+                        recordCommands.length === 1 ? "" : "es"
+                      } / `
+                    : ""}
+                  {visibleCommands.length} total match
                   {visibleCommands.length === 1 ? "" : "es"}
                 </p>
               ) : null}
@@ -679,6 +1091,11 @@ export default function QuickCommandCenter() {
                         {recentCommandHrefs.includes(command.href) ? (
                           <span className="quick-command-recent-pill">
                             Recent
+                          </span>
+                        ) : null}
+                        {command.source === "record" ? (
+                          <span className="quick-command-recent-pill">
+                            Record
                           </span>
                         ) : null}
                       </span>
