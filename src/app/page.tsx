@@ -1114,9 +1114,9 @@ export default async function DashboardPage({
   return (
     <AppShell>
       <div className="space-y-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="dashboard-masthead flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
+            <p className="dashboard-masthead-kicker text-sm uppercase tracking-[0.3em] text-orange-400">
               Trimax
             </p>
 
@@ -1134,7 +1134,7 @@ export default async function DashboardPage({
 
           <Link
             href={`/settings?business=${selectedBusinessSlug}`}
-            className="rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm transition hover:-translate-y-0.5 hover:border-sky-400/60"
+            className="dashboard-workspace-pill rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm transition hover:-translate-y-0.5 hover:border-sky-400/60"
           >
             <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
               Workspace
