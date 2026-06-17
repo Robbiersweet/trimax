@@ -1132,7 +1132,10 @@ export default async function DashboardPage({
             </p>
           </div>
 
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm">
+          <Link
+            href={`/settings?business=${selectedBusinessSlug}`}
+            className="rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm transition hover:-translate-y-0.5 hover:border-sky-400/60"
+          >
             <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
               Workspace
             </p>
@@ -1140,7 +1143,7 @@ export default async function DashboardPage({
             <p className="mt-1 font-semibold text-orange-300">
               {selectedBusiness?.name ?? "Trimax"}
             </p>
-          </div>
+          </Link>
         </div>
 
         <RoleVisible
@@ -1241,32 +1244,41 @@ export default async function DashboardPage({
               </div>
 
               <div className="grid gap-2 sm:grid-cols-3">
-                <div className="dashboard-hero-signal rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                <Link
+                  href={`/activity?business=${selectedBusinessSlug}`}
+                  className="dashboard-hero-signal rounded-xl border border-white/10 bg-black/20 px-3 py-2 transition hover:-translate-y-0.5 hover:border-sky-300/60"
+                >
                   <p className="text-[0.68rem] font-black uppercase tracking-[0.18em] text-zinc-400">
                     Audit
                   </p>
                   <p className="mt-1 text-sm font-black text-white">
                     {totalRiskFlags} flag{totalRiskFlags === 1 ? "" : "s"}
                   </p>
-                </div>
+                </Link>
 
-                <div className="dashboard-hero-signal rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                <Link
+                  href={`/payments?business=${selectedBusinessSlug}`}
+                  className="dashboard-hero-signal rounded-xl border border-white/10 bg-black/20 px-3 py-2 transition hover:-translate-y-0.5 hover:border-sky-300/60"
+                >
                   <p className="text-[0.68rem] font-black uppercase tracking-[0.18em] text-zinc-400">
                     Collection
                   </p>
                   <p className="mt-1 text-sm font-black text-white">
                     {collectionRate}% paid
                   </p>
-                </div>
+                </Link>
 
-                <div className="dashboard-hero-signal rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                <Link
+                  href={`/queue?business=${selectedBusinessSlug}`}
+                  className="dashboard-hero-signal rounded-xl border border-white/10 bg-black/20 px-3 py-2 transition hover:-translate-y-0.5 hover:border-sky-300/60"
+                >
                   <p className="text-[0.68rem] font-black uppercase tracking-[0.18em] text-zinc-400">
                     Queue
                   </p>
                   <p className="mt-1 text-sm font-black text-white">
                     {activeQueueItems.length} active
                   </p>
-                </div>
+                </Link>
               </div>
             </div>
 
@@ -1298,7 +1310,10 @@ export default async function DashboardPage({
               </div>
 
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
+                <Link
+                  href={`/invoices?business=${selectedBusinessSlug}&collection=open`}
+                  className="dashboard-hero-signal rounded-2xl border border-zinc-800 bg-zinc-950 p-4 transition hover:-translate-y-0.5 hover:border-sky-300/60"
+                >
                   <p className="text-zinc-400">
                     Open Now
                   </p>
@@ -1306,9 +1321,12 @@ export default async function DashboardPage({
                   <p className="mt-1 text-2xl font-bold">
                     {workingYearOpenInvoicesWithAmounts.length}
                   </p>
-                </div>
+                </Link>
 
-                <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
+                <Link
+                  href={`/reports?business=${selectedBusinessSlug}#revenue-by-client`}
+                  className="dashboard-hero-signal rounded-2xl border border-zinc-800 bg-zinc-950 p-4 transition hover:-translate-y-0.5 hover:border-sky-300/60"
+                >
                   <p className="text-zinc-400">
                     {workingYearLabel} Paid
                   </p>
@@ -1316,7 +1334,7 @@ export default async function DashboardPage({
                   <p className="mt-1 text-2xl font-bold">
                     {ytdRevenue}
                   </p>
-                </div>
+                </Link>
               </div>
             </div>
           </Card>
@@ -1847,9 +1865,12 @@ export default async function DashboardPage({
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div>
-                          <p className="font-semibold text-white">
+                          <Link
+                            href={`/invoices?${invoiceParams.toString()}`}
+                            className="font-semibold text-white transition hover:text-green-300"
+                          >
                             {customer.customerName}
-                          </p>
+                          </Link>
                           <p className="mt-1 text-sm text-zinc-500">
                             {customer.count} open invoice
                             {customer.count === 1 ? "" : "s"}
@@ -1978,10 +1999,13 @@ export default async function DashboardPage({
                               ) : null}
                             </div>
 
-                            <p className="font-semibold">
+                            <Link
+                              href={`/invoices/${invoice.id}?business=${selectedBusinessSlug}`}
+                              className="font-semibold transition hover:text-orange-300"
+                            >
                               {invoice.project_title ||
                                 "Untitled Invoice"}
-                            </p>
+                            </Link>
 
                             <p className="mt-1 text-sm text-zinc-400">
                               {invoice.customer_name ||
