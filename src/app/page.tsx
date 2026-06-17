@@ -1310,43 +1310,6 @@ export default async function DashboardPage({
             : "checks",
     },
   ];
-  const dashboardSectionLinks = [
-    {
-      label: "Focus",
-      detail: "Top 3 moves",
-      metric: "3",
-      href: "#dashboard-focus",
-      tone: "focus",
-    },
-    {
-      label: "Accounting",
-      detail: "Cash actions",
-      metric: outstandingRevenue,
-      href: "#dashboard-accounting",
-      tone: "accounting",
-    },
-    {
-      label: "Queue",
-      detail: "Turns and jobs",
-      metric: String(activeQueueItems.length),
-      href: "#dashboard-queue",
-      tone: "queue",
-    },
-    {
-      label: "Reports",
-      detail: "Money and aging",
-      metric: workingYearLabel,
-      href: "#dashboard-reports",
-      tone: "reports",
-    },
-    {
-      label: "Activity",
-      detail: "Recent changes",
-      metric: String(activityLogs.length),
-      href: "#dashboard-activity",
-      tone: "activity",
-    },
-  ];
   const proofActions = new Set([
     "estimate.email_sent",
     "invoice.email_sent",
@@ -1747,61 +1710,6 @@ export default async function DashboardPage({
               </div>
             </div>
           </Card>
-        </RoleVisible>
-
-        <RoleVisible
-          businessSlug={selectedBusinessSlug}
-          allow={[
-            "owner",
-            "admin",
-            "accountant",
-          ]}
-        >
-          <section className="dashboard-map rounded-3xl border border-sky-500/20 bg-zinc-950/70 p-4">
-            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="dashboard-section-label text-xs font-black uppercase tracking-[0.24em] text-sky-300">
-                  Dashboard Map
-                </p>
-
-                <h2 className="mt-1 text-xl font-black tracking-tight text-white">
-                  Jump straight to the section you need
-                </h2>
-              </div>
-
-              <Link
-                href={`/reports?business=${selectedBusinessSlug}`}
-                className="dashboard-map-report-link rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-black text-sky-100 transition hover:border-sky-300/50 hover:bg-sky-500/10"
-              >
-                Full reports
-              </Link>
-            </div>
-
-            <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
-              {dashboardSectionLinks.map((item) => (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  data-tone={item.tone}
-                  className="dashboard-map-link rounded-2xl border p-3 transition hover:-translate-y-0.5"
-                >
-                  <span className="flex items-start justify-between gap-3">
-                    <span className="block text-sm font-black">
-                      {item.label}
-                    </span>
-
-                    <span className="dashboard-map-metric rounded-full border px-2.5 py-1 text-xs font-black">
-                      {item.metric}
-                    </span>
-                  </span>
-
-                  <span className="mt-1 block text-xs font-semibold opacity-80">
-                    {item.detail}
-                  </span>
-                </a>
-              ))}
-            </div>
-          </section>
         </RoleVisible>
 
         <RoleVisible
