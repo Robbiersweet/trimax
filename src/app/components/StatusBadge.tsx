@@ -75,6 +75,10 @@ export default function StatusBadge({ status }: StatusBadgeProps) {
       className: "bg-emerald-500/20 text-emerald-300",
       tone: "invoiced",
     },
+    "invoice sent": {
+      className: "bg-emerald-500/20 text-emerald-300",
+      tone: "invoice-sent",
+    },
     paid: {
       className: "bg-emerald-500/20 text-emerald-300",
       tone: "paid",

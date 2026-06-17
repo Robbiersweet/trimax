@@ -58,6 +58,24 @@ type LinkedEstimate = {
   status: string | null;
 };
 
+type LinkedInvoice = {
+  id: string;
+  display_id: string | null;
+  project_title: string | null;
+  status: string | null;
+  invoice_amount: string | number | null;
+  amount_paid: string | number | null;
+  due_date: string | null;
+  created_at: string | null;
+};
+
+type InvoiceActivityLog = {
+  id: string;
+  action: string;
+  details: Record<string, unknown> | null;
+  created_at: string | null;
+};
+
 type PropertyUnitProfile = {
   id: string | null;
   building_letter: string | null;
@@ -120,6 +138,57 @@ function formatHistoryDate(value: string | null) {
     day: "numeric",
     year: "numeric",
   });
+}
+
+function formatMoney(value: string | number | null | undefined) {
+  const amount =
+    typeof value === "number"
+      ? value
+      : Number(String(value ?? "").replace(/[^0-9.-]+/g, ""));
+
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(Number.isFinite(amount) ? amount : 0);
+}
+
+function formatEventDateTime(value: string | null | undefined) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function detailValue(
+  details: Record<string, unknown> | null | undefined,
+  key: string
+) {
+  const value = details?.[key];
+
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .filter((item) => item !== null && item !== undefined)
+      .map((item) => String(item))
+      .join(", ");
+  }
+
+  return String(value);
 }
 
 function latestHistory(
@@ -279,6 +348,8 @@ export default async function QueueDetailPage({
   const displayUnit = maybeCanonicalApartmentUnitLabel(item.unit);
 
   let linkedEstimate: LinkedEstimate | null = null;
+  let linkedInvoice: LinkedInvoice | null = null;
+  let linkedInvoiceActivity: InvoiceActivityLog | null = null;
   let propertyUnitProfile: PropertyUnitProfile | null = null;
   let unitHistory: UnitHistoryEntry[] = [];
   const isNorthCreekQueueItem =
@@ -299,6 +370,37 @@ export default async function QueueDetailPage({
       .maybeSingle();
 
     linkedEstimate = estimateData as LinkedEstimate | null;
+
+    const { data: invoiceData } = await supabase
+      .from("invoices")
+      .select(
+        "id, display_id, project_title, status, invoice_amount, amount_paid, due_date, created_at"
+      )
+      .eq("estimate_id", item.linked_estimate_id)
+      .eq("business_id", selectedBusiness.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    linkedInvoice = invoiceData as LinkedInvoice | null;
+
+    if (linkedInvoice?.id) {
+      const { data: activityData } = await supabase
+        .from("activity_logs")
+        .select("id, action, details, created_at")
+        .eq("business_id", selectedBusiness.id)
+        .eq("entity_type", "invoice")
+        .eq("entity_id", linkedInvoice.id)
+        .in("action", [
+          "invoice.email_sent",
+          "invoice.payment_reminder_sent",
+        ])
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      linkedInvoiceActivity =
+        ((activityData ?? []) as InvoiceActivityLog[])[0] ?? null;
+    }
   }
 
   if (isNorthCreekQueueItem && normalizedUnitLabel) {
@@ -407,6 +509,16 @@ export default async function QueueDetailPage({
       Boolean(entry.prior_renovation) ||
       Boolean(entry.queue_item_is_renovation)
   );
+  const invoiceRecipient = detailValue(
+    linkedInvoiceActivity?.details,
+    "recipient_email"
+  );
+  const invoiceCc = detailValue(linkedInvoiceActivity?.details, "cc_email");
+  const invoicePdfAttached =
+    linkedInvoiceActivity?.details?.pdf_attached === true;
+  const invoiceWasSent =
+    Boolean(linkedInvoiceActivity) ||
+    linkedInvoice?.status?.trim().toLowerCase() === "sent";
 
   return (
     <AppShell>
@@ -433,7 +545,18 @@ export default async function QueueDetailPage({
             </div>
           </div>
 
-          <StatusBadge status={item.status ?? "Pending Estimate"} />
+          <div className="flex flex-wrap gap-2">
+            <StatusBadge status={item.status ?? "Pending Estimate"} />
+            {linkedInvoice ? (
+              <StatusBadge
+                status={
+                  invoiceWasSent
+                    ? "Invoice Sent"
+                    : linkedInvoice.status ?? "Invoiced"
+                }
+              />
+            ) : null}
+          </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
@@ -506,6 +629,88 @@ export default async function QueueDetailPage({
                 href={`/estimates/${linkedEstimate.id}?business=${businessSlug}`}
               >
                 <Button variant="secondary">Open Estimate</Button>
+              </Link>
+            </div>
+          </Card>
+        )}
+
+        {linkedInvoice && (
+          <Card className="border-emerald-500/40 bg-gradient-to-br from-emerald-500/10 via-zinc-950 to-sky-500/5">
+            <p className="text-sm uppercase tracking-[0.25em] text-emerald-300">
+              Linked Invoice
+            </p>
+
+            <div className="mt-3 grid gap-4 lg:grid-cols-[1fr_auto] lg:items-start">
+              <div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <p className="text-xl font-semibold">
+                    {linkedInvoice.display_id ?? "Invoice"}
+                  </p>
+                  <StatusBadge status={linkedInvoice.status ?? "Invoiced"} />
+                </div>
+
+                <p className="mt-1 text-sm text-zinc-400">
+                  {linkedInvoice.project_title ?? "No project title"}
+                </p>
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-emerald-500/20 bg-black/30 px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                      Invoice Total
+                    </p>
+                    <p className="mt-1 text-lg font-black text-white">
+                      {formatMoney(linkedInvoice.invoice_amount)}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-emerald-500/20 bg-black/30 px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                      Due Date
+                    </p>
+                    <p className="mt-1 text-lg font-black text-white">
+                      {formatHistoryDate(linkedInvoice.due_date)}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-emerald-500/20 bg-black/30 px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                      Delivery
+                    </p>
+                    <p className="mt-1 text-lg font-black text-white">
+                      {invoiceWasSent ? "Sent" : "Not sent yet"}
+                    </p>
+                  </div>
+                </div>
+
+                {linkedInvoiceActivity ? (
+                  <div className="mt-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-50">
+                    <p className="font-black">
+                      Sent proof saved{" "}
+                      {formatEventDateTime(linkedInvoiceActivity.created_at)
+                        ? `on ${formatEventDateTime(
+                            linkedInvoiceActivity.created_at
+                          )}`
+                        : ""}
+                    </p>
+                    <p className="mt-1 text-emerald-100/80">
+                      {invoiceRecipient
+                        ? `To ${invoiceRecipient}`
+                        : "Recipient saved in the activity log"}
+                      {invoiceCc ? `, CC ${invoiceCc}` : ""}
+                      {invoicePdfAttached ? ". PDF attached." : "."}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-2xl border border-sky-500/25 bg-sky-500/10 px-4 py-3 text-sm text-sky-100">
+                    {invoiceWasSent
+                      ? "Invoice is marked sent. No email activity proof was found yet, so the invoice page is the best place to confirm delivery details."
+                      : "Invoice created from this estimate. Send it from the invoice page when you are ready to notify the customer."}
+                  </div>
+                )}
+              </div>
+
+              <Link href={`/invoices/${linkedInvoice.id}?business=${businessSlug}`}>
+                <Button variant={linkedInvoiceActivity ? "secondary" : "primary"}>
+                  Open Invoice
+                </Button>
               </Link>
             </div>
           </Card>
