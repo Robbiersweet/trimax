@@ -10,6 +10,7 @@ import Button from "../components/Button";
 import InputField from "../components/InputField";
 import Toast from "../components/Toast";
 import { createQueueItem } from "../lib/createQueueItem";
+import { logActivity } from "../lib/activityLog";
 import { supabase } from "../lib/supabase";
 import {
   canonicalApartmentUnitLabel,
@@ -79,6 +80,7 @@ type ActiveQueueItem = {
   ready_date: string | null;
   scheduled_date: string | null;
   created_at: string | null;
+  notes: string | null;
 };
 
 type UnitHistorySummary = {
@@ -317,6 +319,10 @@ function isOpenQueueStatus(status: string | null | undefined) {
   const normalized = (status || "").trim().toLowerCase();
 
   return !["completed", "invoiced", "paid", "archived"].includes(normalized);
+}
+
+function priorityBehindNewRequest(value: string | null | undefined) {
+  return value === "Urgent" ? "High" : "Normal";
 }
 
 function formatHistoryDate(value: string | null | undefined) {
@@ -671,6 +677,9 @@ function NewRequestPageContent() {
     []
   );
   const [isCheckingPriority, setIsCheckingPriority] = useState(false);
+  const [plannedPrioritySwapIds, setPlannedPrioritySwapIds] = useState<
+    string[]
+  >([]);
 
   const [isSaving, setIsSaving] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
@@ -965,6 +974,7 @@ function NewRequestPageContent() {
         normalizedUnits.length === 0
       ) {
         setPrioritySignals([]);
+        setPlannedPrioritySwapIds([]);
         setIsCheckingPriority(false);
         return;
       }
@@ -981,7 +991,7 @@ function NewRequestPageContent() {
       const { data, error } = await supabase
         .from("queue_items")
         .select(
-          "id, unit, status, priority, ready_date, scheduled_date, created_at"
+          "id, unit, status, priority, ready_date, scheduled_date, created_at, notes"
         )
         .eq("business_id", business.id)
         .eq("property", property)
@@ -1022,6 +1032,9 @@ function NewRequestPageContent() {
       });
 
       setPrioritySignals(rows.slice(0, 4));
+      setPlannedPrioritySwapIds((currentIds) =>
+        currentIds.filter((id) => rows.some((row) => row.id === id))
+      );
     }
 
     loadPrioritySignals();
@@ -1256,6 +1269,20 @@ function NewRequestPageContent() {
     });
   }
 
+  function planPrioritySwap(item: ActiveQueueItem) {
+    setPriority("Urgent");
+    setPlannedPrioritySwapIds((currentIds) =>
+      currentIds.includes(item.id) ? currentIds : [...currentIds, item.id]
+    );
+    addPriorityNote();
+  }
+
+  function unplanPrioritySwap(itemId: string) {
+    setPlannedPrioritySwapIds((currentIds) =>
+      currentIds.filter((id) => id !== itemId)
+    );
+  }
+
   async function handleSubmit() {
     setToast(null);
 
@@ -1283,6 +1310,19 @@ function NewRequestPageContent() {
 
     try {
       setIsSaving(true);
+      const plannedPrioritySwaps = prioritySignals.filter((item) =>
+        plannedPrioritySwapIds.includes(item.id)
+      );
+      const submittedPriority =
+        plannedPrioritySwaps.length > 0 ? "Urgent" : priority;
+      const submittedNotes = [
+        notes.trim(),
+        plannedPrioritySwaps.length > 0 && priorityNoteText
+          ? `${priorityNoteText} Trimax will keep the selected existing unit behind this new request.`
+          : "",
+      ]
+        .filter(Boolean)
+        .join("\n\n");
 
       const createdItems = await Promise.all(
         units.map((unit) => {
@@ -1297,7 +1337,7 @@ function NewRequestPageContent() {
             unitLayout: collectUnitLayout ? unitLayout : "",
             wallPaintColor: isJustKleen ? "" : wallPaintColor,
             flooring,
-            priority,
+            priority: submittedPriority,
             smokedIn,
             primerRequested: smokedIn && primerRequested,
             priorRenovation,
@@ -1308,12 +1348,59 @@ function NewRequestPageContent() {
             readyDate,
             scheduledDate: "",
             completedDate: "",
-            notes,
+            notes: submittedNotes,
             businessId: business.id,
             businessSlug,
           });
         })
       );
+
+      if (plannedPrioritySwaps.length > 0) {
+        await Promise.all(
+          plannedPrioritySwaps.map(async (item) => {
+            const targetUnit = normalizeUnitLabel(item.unit || "");
+            const swapNote = `Priority swap: ${requestedUnitLabel} was placed ahead of ${targetUnit || "this queue item"} on ${new Date().toLocaleDateString("en-US")}. Keep this unit behind the new urgent request unless management changes it.`;
+            const updatedNotes = [item.notes?.trim(), swapNote]
+              .filter(Boolean)
+              .join("\n\n");
+
+            const { error } = await supabase
+              .from("queue_items")
+              .update({
+                priority: priorityBehindNewRequest(item.priority),
+                notes: updatedNotes,
+              })
+              .eq("id", item.id)
+              .eq("business_id", business.id);
+
+            if (error) {
+              console.warn("Priority swap update failed:", error.message);
+              return;
+            }
+
+            await logActivity({
+              businessId: business.id,
+              action: "queue_item.priority_swapped",
+              entityType: "queue_item",
+              entityId: item.id,
+              entityLabel: `${property || "Property"} - Unit ${
+                targetUnit || "-"
+              }`,
+              details: {
+                movedBehind: requestedUnitLabel,
+                previousPriority: item.priority,
+                newPriority: priorityBehindNewRequest(item.priority),
+                newQueueItemIds: createdItems.map(
+                  (createdItem) => createdItem.id
+                ),
+                newQueueUnits: createdItems
+                  .map((createdItem) => createdItem.unit)
+                  .filter(Boolean),
+              },
+            });
+          })
+        );
+      }
 
       try {
         const {
@@ -1332,7 +1419,7 @@ function NewRequestPageContent() {
               businessSlug: business.slug,
               property,
               units: createdItems.map((item) => item.unit ?? "").filter(Boolean),
-              priority,
+              priority: submittedPriority,
             }),
           });
         }
@@ -1937,12 +2024,13 @@ function NewRequestPageContent() {
                     <button
                       type="button"
                       onClick={() => {
-                        setPriority("Urgent");
-                        addPriorityNote();
+                        if (priorityLeadUnit) {
+                          planPrioritySwap(priorityLeadUnit);
+                        }
                       }}
                       className="app-button-primary inline-flex min-h-11 shrink-0 items-center justify-center rounded-2xl px-4 py-2 text-sm font-black"
                     >
-                      Mark Urgent
+                      Put New Request First
                     </button>
                   ) : null}
                 </div>
@@ -1953,6 +2041,9 @@ function NewRequestPageContent() {
                       const dayGap = daysBetweenDates(
                         item.ready_date,
                         readyDate
+                      );
+                      const isSwapPlanned = plannedPrioritySwapIds.includes(
+                        item.id
                       );
                       const dueCopy =
                         dayGap === 0
@@ -1983,20 +2074,52 @@ function NewRequestPageContent() {
                                 / {item.priority || "Normal"} priority /{" "}
                                 {dueCopy}
                               </p>
+                              {isSwapPlanned ? (
+                                <p className="mt-2 inline-flex rounded-full border border-emerald-400/30 bg-emerald-500/15 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-emerald-100">
+                                  Will move behind new request on submit
+                                </p>
+                              ) : null}
                             </div>
 
-                            <Link
-                              href={`/queue/${item.id}?business=${businessSlug}`}
-                              className="app-button-secondary inline-flex min-h-10 items-center justify-center rounded-2xl px-4 py-2 text-sm font-black"
-                            >
-                              Open
-                            </Link>
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  isSwapPlanned
+                                    ? unplanPrioritySwap(item.id)
+                                    : planPrioritySwap(item)
+                                }
+                                className={
+                                  isSwapPlanned
+                                    ? "app-button-secondary inline-flex min-h-10 items-center justify-center rounded-2xl px-4 py-2 text-sm font-black"
+                                    : "app-button-primary inline-flex min-h-10 items-center justify-center rounded-2xl px-4 py-2 text-sm font-black"
+                                }
+                              >
+                                {isSwapPlanned
+                                  ? "Undo Swap"
+                                  : "Put Behind New"}
+                              </button>
+
+                              <Link
+                                href={`/queue/${item.id}?business=${businessSlug}`}
+                                className="app-button-secondary inline-flex min-h-10 items-center justify-center rounded-2xl px-4 py-2 text-sm font-black"
+                              >
+                                Open
+                              </Link>
+                            </div>
                           </div>
                         </div>
                       );
                     })}
 
                     <div className="flex flex-wrap gap-2 pt-1">
+                      {plannedPrioritySwapIds.length > 0 ? (
+                        <p className="w-full rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-100">
+                          On submit, the new request will be saved as Urgent
+                          and selected existing units will be placed behind it.
+                        </p>
+                      ) : null}
+
                       <button
                         type="button"
                         onClick={addPriorityNote}
