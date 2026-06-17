@@ -1383,6 +1383,22 @@ export default async function DashboardPage({
       !log.details?.paymentAttachmentId &&
       !log.details?.paymentImagePath
   ).length;
+  const totalRiskFlags =
+    pastDueWithoutReminderCount +
+    customerEmailWithoutPdfCount +
+    paymentWithoutImageProofCount;
+  const auditHealthLabel =
+    totalRiskFlags === 0
+      ? "Audit trail clean"
+      : totalRiskFlags <= 2
+        ? "Minor proof gaps"
+        : "Proof review needed";
+  const auditHealthDetail =
+    totalRiskFlags === 0
+      ? "Trimax sees no obvious proof gaps in the current dashboard snapshot."
+      : `${totalRiskFlags} proof gap${
+          totalRiskFlags === 1 ? "" : "s"
+        } should be reviewed before month-end or a client follow-up.`;
   const riskRadarItems = [
     {
       label: "Reminder Gap",
@@ -1391,6 +1407,8 @@ export default async function DashboardPage({
         pastDueWithoutReminderCount > 0
           ? "Past-due invoices without a logged reminder"
           : "Past-due reminders are accounted for",
+      action:
+        pastDueWithoutReminderCount > 0 ? "Review aging" : "Looks clean",
       href: `/invoices?business=${selectedBusinessSlug}&view=aging`,
       tone: pastDueWithoutReminderCount > 0 ? "rose" : "emerald",
     },
@@ -1401,6 +1419,8 @@ export default async function DashboardPage({
         customerEmailWithoutPdfCount > 0
           ? "Sent messages without attached PDF proof"
           : "Recent sends include PDF proof",
+      action:
+        customerEmailWithoutPdfCount > 0 ? "Open proof log" : "Looks clean",
       href: `/activity?business=${selectedBusinessSlug}&type=invoice&q=pdf`,
       tone: customerEmailWithoutPdfCount > 0 ? "amber" : "emerald",
     },
@@ -1411,6 +1431,8 @@ export default async function DashboardPage({
         paymentWithoutImageProofCount > 0
           ? "Payments recorded without check or stub images"
           : "Payment image proof is current",
+      action:
+        paymentWithoutImageProofCount > 0 ? "Review payments" : "Looks clean",
       href: `/activity?business=${selectedBusinessSlug}&type=payment`,
       tone: paymentWithoutImageProofCount > 0 ? "sky" : "emerald",
     },
@@ -1933,16 +1955,26 @@ export default async function DashboardPage({
                   </p>
 
                   <h3 className="mt-1 text-lg font-black text-white">
-                    Future-proofing checks
+                    {auditHealthLabel}
                   </h3>
+
+                  <p className="mt-1 max-w-2xl text-sm leading-6 text-zinc-300">
+                    {auditHealthDetail}
+                  </p>
                 </div>
 
-                <Link
-                  href={`/activity?business=${selectedBusinessSlug}`}
-                  className="text-sm font-black text-cyan-200 transition hover:text-white"
-                >
-                  Audit trail
-                </Link>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="dashboard-risk-health rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm font-black text-white">
+                    {totalRiskFlags} flag{totalRiskFlags === 1 ? "" : "s"}
+                  </span>
+
+                  <Link
+                    href={`/activity?business=${selectedBusinessSlug}`}
+                    className="text-sm font-black text-cyan-200 transition hover:text-white"
+                  >
+                    Audit trail
+                  </Link>
+                </div>
               </div>
 
               <div className="mt-3 grid gap-3 lg:grid-cols-3">
@@ -1965,6 +1997,11 @@ export default async function DashboardPage({
 
                     <p className="mt-3 text-sm leading-6 text-zinc-300">
                       {item.detail}
+                    </p>
+
+                    <p className="mt-3 text-sm font-black text-cyan-100">
+                      {item.action}
+                      <span aria-hidden="true"> &gt;</span>
                     </p>
                   </Link>
                 ))}

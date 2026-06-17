@@ -5224,10 +5224,15 @@ html.theme-light .dashboard-risk-card .text-zinc-300 {
 
 html.theme-light .dashboard-proof-card .bg-white\/5,
 html.theme-light .dashboard-risk-card .bg-white\/5,
-html.theme-light .dashboard-risk-count {
+html.theme-light .dashboard-risk-count,
+html.theme-light .dashboard-risk-health {
   background: #eff6ff !important;
   border-color: #bfdbfe !important;
   color: #0f172a !important;
+}
+
+html.theme-light .dashboard-risk-card .text-cyan-100 {
+  color: #0369a1 !important;
 }
 
 html.theme-light .dashboard-queue-command {
