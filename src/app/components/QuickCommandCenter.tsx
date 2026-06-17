@@ -153,7 +153,14 @@ export default function QuickCommandCenter() {
         detail: "Open the accounting and operations command view.",
         href: `/?business=${business}`,
         tone: "system",
-        keywords: ["home", "overview", "command", "today"],
+        keywords: ["home", "overview", "command", "today", "platinum"],
+      },
+      {
+        title: "Platinum Signal",
+        detail: "Jump to the dashboard command signal and top operating metrics.",
+        href: `/?business=${business}#dashboard-focus`,
+        tone: "system",
+        keywords: ["platinum", "signal", "hero", "hud", "dashboard"],
       },
       {
         title: "Record Payment",
@@ -235,6 +242,35 @@ export default function QuickCommandCenter() {
           "send",
           "delivery",
           "resend",
+        ],
+      },
+      {
+        title: "Risk Radar",
+        detail: "Review proof gaps for reminders, PDFs, and payment images.",
+        href: `/?business=${business}#dashboard-accounting`,
+        tone: "security",
+        keywords: [
+          "risk",
+          "radar",
+          "audit",
+          "proof",
+          "pdf",
+          "reminder",
+          "image",
+        ],
+      },
+      {
+        title: "Audit Export",
+        detail: "Open the activity center and export a filtered evidence CSV.",
+        href: `/activity?business=${business}`,
+        tone: "report",
+        keywords: [
+          "audit",
+          "export",
+          "csv",
+          "proof",
+          "activity",
+          "evidence",
         ],
       },
       {
@@ -587,6 +623,16 @@ export default function QuickCommandCenter() {
             </div>
 
             <div className="quick-command-results" id="quick-command-results">
+              <div className="quick-command-brief">
+                <div>
+                  <p className="quick-command-brief-kicker">Command Matrix</p>
+                  <p className="quick-command-brief-title">
+                    Launch payments, proof, queue, and setup without hunting.
+                  </p>
+                </div>
+                <span>{visibleCommands.length} ready</span>
+              </div>
+
               {!normalizedQuery && recentCommands.length > 0 ? (
                 <p className="quick-command-section-label">
                   Recent workflows
