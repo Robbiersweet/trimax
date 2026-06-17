@@ -4470,6 +4470,35 @@ html.theme-light .check-match-pill {
   color: #334155 !important;
 }
 
+html.theme-light .check-ocr-status {
+  background: #f8fafc !important;
+  border-color: #dbeafe !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .check-ocr-status[data-status="ready"] {
+  background: #ecfdf5 !important;
+  border-color: #86efac !important;
+}
+
+html.theme-light .check-ocr-status[data-status="manual"] {
+  background: #fffbeb !important;
+  border-color: #facc15 !important;
+}
+
+html.theme-light .check-ocr-status[data-status="error"] {
+  background: #fff1f2 !important;
+  border-color: #fb7185 !important;
+}
+
+html.theme-light .check-ocr-status .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light .check-ocr-status .text-zinc-400 {
+  color: #475569 !important;
+}
+
 html.theme-light .check-capture-panel .bg-black\/35,
 html.theme-light .check-capture-panel .bg-zinc-950,
 html.theme-light .check-capture-panel .bg-zinc-900 {

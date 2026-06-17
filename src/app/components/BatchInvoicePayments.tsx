@@ -40,6 +40,16 @@ type ToastState = {
   message: string;
 } | null;
 
+type CheckOcrStatus = "idle" | "reading" | "ready" | "manual" | "error";
+
+type CheckStubOcrResponse = {
+  stubText?: string;
+  payor?: string;
+  checkNumber?: string;
+  totalAmount?: number;
+  error?: string;
+};
+
 function formatMoney(value: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -330,6 +340,22 @@ function todayInputValue() {
   return `${year}-${month}-${day}`;
 }
 
+function fileToDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+      } else {
+        reject(new Error("The check photo could not be read."));
+      }
+    };
+    reader.onerror = () => reject(new Error("The check photo could not be read."));
+    reader.readAsDataURL(file);
+  });
+}
+
 function initialCustomerFocus(
   invoices: BatchInvoice[],
   customerName?: string | null
@@ -445,6 +471,10 @@ export default function BatchInvoicePayments({
   );
   const [capturedCheckReference, setCapturedCheckReference] = useState("");
   const [remittanceStubText, setRemittanceStubText] = useState("");
+  const [checkOcrStatus, setCheckOcrStatus] = useState<CheckOcrStatus>("idle");
+  const [checkOcrMessage, setCheckOcrMessage] = useState(
+    "Photo reader is ready when the server OCR key is connected."
+  );
   const [internalNote, setInternalNote] = useState(
     startedFromInvoiceSelection
       ? "Selected invoice batch payment"
@@ -898,6 +928,74 @@ export default function BatchInvoicePayments({
     setCheckAmount("");
   }
 
+  async function extractCheckStubFromPhoto(file: File) {
+    if (file.size > 8_000_000) {
+      setCheckOcrStatus("manual");
+      setCheckOcrMessage(
+        "That photo is large. Paste the stub text manually or retake a closer photo."
+      );
+      return;
+    }
+
+    setCheckOcrStatus("reading");
+    setCheckOcrMessage("Reading the check stub from the photo...");
+
+    try {
+      const imageDataUrl = await fileToDataUrl(file);
+      const response = await fetch("/api/payments/extract-check-stub", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ imageDataUrl }),
+      });
+      const data = (await response.json().catch(() => ({}))) as CheckStubOcrResponse;
+
+      if (!response.ok) {
+        setCheckOcrStatus(response.status === 503 ? "manual" : "error");
+        setCheckOcrMessage(
+          data.error ??
+            "Trimax could not read that photo. Paste the stub text manually."
+        );
+        return;
+      }
+
+      if (!data.stubText?.trim()) {
+        setCheckOcrStatus("manual");
+        setCheckOcrMessage(
+          "Trimax did not find readable stub text. Paste the line details manually."
+        );
+        return;
+      }
+
+      setRemittanceStubText(data.stubText);
+
+      if (typeof data.totalAmount === "number" && data.totalAmount > 0) {
+        setCapturedCheckAmount(formatMoney(data.totalAmount));
+      }
+
+      if (data.checkNumber?.trim()) {
+        setCapturedCheckReference(data.checkNumber.trim());
+      }
+
+      if (data.payor?.trim() && !checkPayor.trim()) {
+        setCheckPayor(data.payor.trim());
+      }
+
+      setCheckOcrStatus("ready");
+      setCheckOcrMessage(
+        "Stub text extracted. Review the suggested invoice match before applying."
+      );
+    } catch (error) {
+      setCheckOcrStatus("error");
+      setCheckOcrMessage(
+        error instanceof Error
+          ? error.message
+          : "Trimax could not read that photo. Paste the stub text manually."
+      );
+    }
+  }
+
   function captureCheckImage(file: File | undefined) {
     if (!file) {
       return;
@@ -909,10 +1007,11 @@ export default function BatchInvoicePayments({
 
     setCheckImagePreview(URL.createObjectURL(file));
     setCheckImageName(file.name);
+    void extractCheckStubFromPhoto(file);
     setToast({
       type: "success",
       message:
-        "Check photo added. Confirm the amount and payor so Trimax can match it.",
+        "Check photo added. Trimax will try to read the stub automatically.",
     });
   }
 
@@ -1594,6 +1693,41 @@ export default function BatchInvoicePayments({
               data-match-tone={remittanceConfidence.tone}
               className="remittance-stub-card rounded-2xl border border-white/10 bg-black/30 p-4"
             >
+              <div
+                data-status={checkOcrStatus}
+                className="check-ocr-status mb-4 rounded-2xl border border-white/10 bg-zinc-950 px-4 py-3 text-sm leading-6"
+              >
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <span className="font-black text-white">
+                    {checkOcrStatus === "reading"
+                      ? "Reading photo"
+                      : checkOcrStatus === "ready"
+                        ? "Photo text ready"
+                        : checkOcrStatus === "manual"
+                          ? "Manual review"
+                          : checkOcrStatus === "error"
+                            ? "Photo reader needs help"
+                            : "Photo reader ready"}
+                  </span>
+
+                  <span className="rounded-full border border-white/10 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-sky-200">
+                    {checkOcrStatus === "reading"
+                      ? "Working"
+                      : checkOcrStatus === "ready"
+                        ? "OCR"
+                        : checkOcrStatus === "manual"
+                          ? "Paste text"
+                          : checkOcrStatus === "error"
+                            ? "Retry"
+                            : "Ready"}
+                  </span>
+                </div>
+
+                <p className="mt-2 text-zinc-400">
+                  {checkOcrMessage}
+                </p>
+              </div>
+
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <p className="text-sm font-semibold text-zinc-200">
