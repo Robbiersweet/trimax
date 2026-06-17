@@ -1692,6 +1692,86 @@ function BusinessSettingsPageContent() {
               </Card>
             ) : null}
 
+            <Card className="settings-media-strategy border-emerald-200 bg-emerald-50">
+              <div className="grid gap-5">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <p className="text-sm uppercase tracking-[0.3em] text-emerald-700">
+                      Media Filing Strategy
+                    </p>
+                    <h2 className="mt-2 text-2xl font-semibold text-slate-950">
+                      Keep job-site photos useful without bloating Trimax
+                    </h2>
+                    <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-700">
+                      Photos are valuable proof, but originals can get heavy.
+                      The best Trimax path is a hybrid: store searchable
+                      metadata and proof links in the app, keep large originals
+                      in a cheaper archive, and only upload must-have proof
+                      images directly to Trimax.
+                    </p>
+                  </div>
+
+                  <span className="rounded-full border border-emerald-300 bg-white px-4 py-2 text-sm font-black text-emerald-800">
+                    Hybrid recommended
+                  </span>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div className="settings-media-option rounded-2xl border border-emerald-200 bg-white p-4">
+                    <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-700">
+                      Best For Receipts
+                    </p>
+                    <h3 className="mt-3 text-lg font-black text-slate-950">
+                      Trimax proof files
+                    </h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      Store check stubs, payment proof, invoice attachments, and
+                      a small set of important job photos directly with the
+                      record.
+                    </p>
+                  </div>
+
+                  <div className="settings-media-option rounded-2xl border border-sky-200 bg-white p-4">
+                    <p className="text-xs font-black uppercase tracking-[0.22em] text-sky-700">
+                      Best For Volume
+                    </p>
+                    <h3 className="mt-3 text-lg font-black text-slate-950">
+                      Home drive or NAS archive
+                    </h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      Keep large job-site originals on your storage drive.
+                      Trimax can keep the folder name, file name, job, unit,
+                      date, tags, and notes as the searchable index.
+                    </p>
+                  </div>
+
+                  <div className="settings-media-option rounded-2xl border border-amber-200 bg-white p-4">
+                    <p className="text-xs font-black uppercase tracking-[0.22em] text-amber-700">
+                      Best For Mobile
+                    </p>
+                    <h3 className="mt-3 text-lg font-black text-slate-950">
+                      Synced cloud folder
+                    </h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      Use OneDrive, iCloud, Dropbox, or a NAS sync folder when
+                      phone access matters. Trimax can store the shared link
+                      instead of the full original.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-emerald-200 bg-white p-4 text-sm leading-6 text-slate-700">
+                  <span className="font-black text-slate-950">
+                    Recommended next build:
+                  </span>{" "}
+                  add a Job Photos filing screen that captures a photo, tags it
+                  to a client, unit, queue item, estimate, or invoice, then lets
+                  you choose whether Trimax stores the original or only stores a
+                  reference to your outside archive.
+                </div>
+              </div>
+            </Card>
+
             <Card>
               <div className="grid gap-5">
                 <div>

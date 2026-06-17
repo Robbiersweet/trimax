@@ -91,5 +91,5 @@ For Just Kleen:
 - Replace development-friendly RLS with role/property-aware policies.
 - Encrypt Outlook tokens before enabling live Microsoft draft creation.
 - Add production logging/monitoring.
-- Decide on attachment/photo storage rules.
+- Run `supabase/sql/2026-06-17-job-site-media.sql` and use the hybrid photo strategy: Trimax stores searchable media references and critical proof files; large job-site originals can live in a home-drive/NAS/cloud archive.
 - Add stronger property-manager portal boundaries for property managers, assistant managers, maintenance managers, and similar users.
