@@ -1555,10 +1555,51 @@ export default async function DashboardPage({
             </Card>
           }
         >
-          <Card className="dashboard-hero-card dark-surface border-orange-500/30 bg-gradient-to-br from-zinc-900 to-zinc-950">
+          <Card className="dashboard-hero-card dark-surface border-sky-500/30 bg-gradient-to-br from-zinc-900 to-zinc-950">
+            <div className="dashboard-hero-hud mb-6 flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.26em] text-sky-200">
+                  Platinum Command Signal
+                </p>
+
+                <p className="mt-1 text-sm text-zinc-300">
+                  {auditHealthLabel} for {selectedBusiness?.name ?? "Trimax"}.
+                </p>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-3">
+                <div className="dashboard-hero-signal rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                  <p className="text-[0.68rem] font-black uppercase tracking-[0.18em] text-zinc-400">
+                    Audit
+                  </p>
+                  <p className="mt-1 text-sm font-black text-white">
+                    {totalRiskFlags} flag{totalRiskFlags === 1 ? "" : "s"}
+                  </p>
+                </div>
+
+                <div className="dashboard-hero-signal rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                  <p className="text-[0.68rem] font-black uppercase tracking-[0.18em] text-zinc-400">
+                    Collection
+                  </p>
+                  <p className="mt-1 text-sm font-black text-white">
+                    {collectionRate}% paid
+                  </p>
+                </div>
+
+                <div className="dashboard-hero-signal rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                  <p className="text-[0.68rem] font-black uppercase tracking-[0.18em] text-zinc-400">
+                    Queue
+                  </p>
+                  <p className="mt-1 text-sm font-black text-white">
+                    {activeQueueItems.length} active
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
               <div>
-                <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
+                <p className="text-sm uppercase tracking-[0.3em] text-sky-300">
                   Open Revenue
                 </p>
 
