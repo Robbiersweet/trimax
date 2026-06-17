@@ -13,6 +13,7 @@ import {
   calendarFileName,
 } from "../../lib/calendar";
 import { supabase } from "../../lib/supabase";
+import { getConfirmedNorthCreekUnit } from "../../utils/northCreekUnits";
 import {
   canonicalApartmentUnitLabel,
   displayUnitLayout,
@@ -58,7 +59,7 @@ type LinkedEstimate = {
 };
 
 type PropertyUnitProfile = {
-  id: string;
+  id: string | null;
   building_letter: string | null;
   unit_number: number | null;
   unit_label: string | null;
@@ -280,6 +281,13 @@ export default async function QueueDetailPage({
   let linkedEstimate: LinkedEstimate | null = null;
   let propertyUnitProfile: PropertyUnitProfile | null = null;
   let unitHistory: UnitHistoryEntry[] = [];
+  const isNorthCreekQueueItem =
+    propertyKey(item.property) === "north-creek-apartments";
+  const normalizedUnitLabel = normalizeUnitLabel(item.unit);
+  const confirmedNorthCreekUnit =
+    isNorthCreekQueueItem && normalizedUnitLabel
+      ? getConfirmedNorthCreekUnit(normalizedUnitLabel)
+      : null;
 
   if (item.linked_estimate_id) {
     const { data: estimateData } = await supabase
@@ -293,10 +301,7 @@ export default async function QueueDetailPage({
     linkedEstimate = estimateData as LinkedEstimate | null;
   }
 
-  if (
-    propertyKey(item.property) === "north-creek-apartments" &&
-    normalizeUnitLabel(item.unit)
-  ) {
+  if (isNorthCreekQueueItem && normalizedUnitLabel) {
     const { data: propertyData } = await supabase
       .from("properties")
       .select("id")
@@ -312,7 +317,7 @@ export default async function QueueDetailPage({
           "id, building_letter, unit_number, unit_label, floor, floorplan, notes"
         )
         .eq("property_id", propertyData.id)
-        .eq("unit_label", normalizeUnitLabel(item.unit))
+        .eq("unit_label", normalizedUnitLabel)
         .limit(1)
         .maybeSingle();
 
@@ -333,6 +338,22 @@ export default async function QueueDetailPage({
       }
     }
   }
+
+  const displayUnitProfile =
+    propertyUnitProfile ??
+    (confirmedNorthCreekUnit
+      ? {
+          id: null,
+          building_letter: confirmedNorthCreekUnit.building_letter,
+          unit_number: confirmedNorthCreekUnit.unit_number,
+          unit_label: confirmedNorthCreekUnit.unit_label,
+          floor: confirmedNorthCreekUnit.floor,
+          floorplan: confirmedNorthCreekUnit.floorplan,
+          notes: null,
+        }
+      : null);
+  const isUsingConfirmedUnitFallback =
+    Boolean(displayUnitProfile) && !propertyUnitProfile;
 
   const readiness = readyStatus(item);
   const turnaroundDays = daysBetween(
@@ -490,40 +511,53 @@ export default async function QueueDetailPage({
           </Card>
         )}
 
-        {propertyKey(item.property) === "north-creek-apartments" ? (
+        {isNorthCreekQueueItem ? (
           <Card className="unit-intelligence-card border-sky-500/30 bg-gradient-to-br from-sky-500/10 via-zinc-950 to-emerald-500/5">
             <p className="text-sm uppercase tracking-[0.3em] text-sky-300">
               Unit Intelligence
             </p>
 
             <h2 className="mt-2 text-2xl font-bold">
-              {propertyUnitProfile?.unit_label || displayUnit || "Unit"} profile
+              {displayUnitProfile?.unit_label || displayUnit || "Unit"} profile
             </h2>
 
             <div className="mt-5 grid gap-4 md:grid-cols-4">
               <Info
                 label="Building"
-                value={propertyUnitProfile?.building_letter ?? ""}
+                value={displayUnitProfile?.building_letter ?? ""}
               />
               <Info
                 label="Unit"
-                value={propertyUnitProfile?.unit_label ?? displayUnit}
+                value={displayUnitProfile?.unit_label ?? displayUnit}
               />
               <Info
                 label="Floor"
-                value={formatFloor(propertyUnitProfile?.floor)}
+                value={formatFloor(displayUnitProfile?.floor)}
               />
               <Info
                 label="Layout"
                 value={
-                  displayUnitLayout(propertyUnitProfile?.floorplan) ||
+                  displayUnitLayout(displayUnitProfile?.floorplan) ||
                   item.unit_layout ||
                   ""
                 }
               />
             </div>
 
-            {!propertyUnitProfile ? (
+            {isUsingConfirmedUnitFallback ? (
+              <p className="unit-intelligence-warning mt-4 rounded-2xl border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-100">
+                This unit is in the confirmed North Creek map. The permanent
+                saved row is missing, so Trimax is showing the confirmed map
+                fallback for now.{" "}
+                <Link
+                  href={`/property-intelligence?business=${businessSlug}`}
+                  className="font-black underline decoration-sky-300/60 underline-offset-4"
+                >
+                  Open Property Intelligence
+                </Link>{" "}
+                and sync the North Creek map to restore the saved profile row.
+              </p>
+            ) : !displayUnitProfile ? (
               <p className="unit-intelligence-warning mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
                 This unit is not in the saved North Creek unit map yet. The
                 queue item still works, and the unit can be added to the map

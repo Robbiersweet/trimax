@@ -9,6 +9,10 @@ import InputField from "../components/InputField";
 import Toast from "../components/Toast";
 import { assertCanWriteDuringMaintenance } from "../lib/maintenanceMode";
 import { supabase } from "../lib/supabase";
+import {
+  confirmedNorthCreekUnitCount,
+  confirmedNorthCreekUnits,
+} from "../utils/northCreekUnits";
 import { canonicalApartmentUnitLabel } from "../utils/unitLabels";
 
 type Business = {
@@ -35,71 +39,6 @@ type PropertyUnitRow = {
 
 const floorOptions = ["bottom", "top"];
 const floorplanOptions = ["2x1", "2x2"];
-
-type ConfirmedBuilding = {
-  buildingLetter: string;
-  unitCount: number;
-  floorplan: "2x1" | "2x2" | "mixed";
-};
-
-const confirmedNorthCreekBuildings: ConfirmedBuilding[] = [
-  { buildingLetter: "A", unitCount: 12, floorplan: "2x1" },
-  { buildingLetter: "B", unitCount: 12, floorplan: "2x2" },
-  { buildingLetter: "C", unitCount: 8, floorplan: "2x1" },
-  { buildingLetter: "D", unitCount: 8, floorplan: "2x2" },
-  { buildingLetter: "E", unitCount: 8, floorplan: "2x1" },
-  { buildingLetter: "F", unitCount: 8, floorplan: "2x2" },
-  { buildingLetter: "G", unitCount: 12, floorplan: "2x2" },
-  { buildingLetter: "H", unitCount: 12, floorplan: "2x1" },
-  { buildingLetter: "I", unitCount: 8, floorplan: "2x2" },
-  { buildingLetter: "J", unitCount: 8, floorplan: "2x2" },
-  { buildingLetter: "K", unitCount: 12, floorplan: "2x1" },
-  { buildingLetter: "L", unitCount: 12, floorplan: "2x1" },
-  { buildingLetter: "M", unitCount: 12, floorplan: "2x2" },
-  { buildingLetter: "N", unitCount: 8, floorplan: "mixed" },
-  { buildingLetter: "O", unitCount: 12, floorplan: "2x1" },
-  { buildingLetter: "P", unitCount: 8, floorplan: "2x1" },
-  { buildingLetter: "Q", unitCount: 8, floorplan: "2x1" },
-  { buildingLetter: "R", unitCount: 8, floorplan: "2x2" },
-  { buildingLetter: "S", unitCount: 8, floorplan: "2x2" },
-  { buildingLetter: "T", unitCount: 12, floorplan: "2x1" },
-  { buildingLetter: "U", unitCount: 12, floorplan: "2x2" },
-  { buildingLetter: "V", unitCount: 12, floorplan: "2x2" },
-  { buildingLetter: "W", unitCount: 8, floorplan: "2x2" },
-  { buildingLetter: "X", unitCount: 12, floorplan: "2x1" },
-  { buildingLetter: "Y", unitCount: 12, floorplan: "2x1" },
-  { buildingLetter: "Z", unitCount: 12, floorplan: "2x2" },
-];
-
-function northCreekFloorplan(buildingLetter: string, unitNumber: number) {
-  if (buildingLetter === "N") {
-    return unitNumber <= 4 ? "2x1" : "2x2";
-  }
-
-  return confirmedNorthCreekBuildings.find(
-    (building) => building.buildingLetter === buildingLetter
-  )?.floorplan === "2x1"
-    ? "2x1"
-    : "2x2";
-}
-
-const confirmedNorthCreekUnits = confirmedNorthCreekBuildings.flatMap((building) =>
-  Array.from({ length: building.unitCount }, (_, index) => {
-    const unitNumber = index + 1;
-
-    return {
-      building_letter: building.buildingLetter,
-      unit_number: unitNumber,
-      unit_label: canonicalApartmentUnitLabel(
-        `${building.buildingLetter}${unitNumber}`
-      ),
-      floor: unitNumber % 2 === 1 ? "bottom" : "top",
-      floorplan: northCreekFloorplan(building.buildingLetter, unitNumber),
-    };
-  })
-);
-
-const confirmedNorthCreekUnitCount = confirmedNorthCreekUnits.length;
 
 function normalizeUnitLabel(value: string) {
   return canonicalApartmentUnitLabel(value);

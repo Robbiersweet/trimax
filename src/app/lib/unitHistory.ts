@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { getConfirmedNorthCreekUnit } from "../utils/northCreekUnits";
 import { canonicalApartmentUnitLabel } from "../utils/unitLabels";
 
 type UnitHistoryEventType =
@@ -121,19 +122,56 @@ export async function appendUnitHistoryForQueueItem({
     return;
   }
 
-  const { data: unitData, error: unitError } = await supabase
+  const { data: existingUnitData, error: unitError } = await supabase
     .from("property_units")
     .select("id")
     .eq("property_id", propertyData.id)
     .eq("unit_label", normalizeUnitLabel(item.unit))
     .limit(1)
     .maybeSingle();
+  let unitData = existingUnitData;
 
   if (unitError || !unitData) {
     if (unitError) {
       console.warn("Unit history unit lookup failed:", unitError.message);
     }
-    return;
+
+    const confirmedUnit = getConfirmedNorthCreekUnit(item.unit);
+
+    if (!confirmedUnit) {
+      return;
+    }
+
+    const { data: restoredUnit, error: restoreError } = await supabase
+      .from("property_units")
+      .upsert(
+        {
+          business_id: businessId,
+          property_id: propertyData.id,
+          building_letter: confirmedUnit.building_letter,
+          unit_number: confirmedUnit.unit_number,
+          unit_label: confirmedUnit.unit_label,
+          floor: confirmedUnit.floor,
+          floorplan: confirmedUnit.floorplan,
+        },
+        {
+          onConflict: "property_id,unit_label",
+        }
+      )
+      .select("id")
+      .single();
+
+    if (restoreError || !restoredUnit) {
+      if (restoreError) {
+        console.warn(
+          "Unit history unit restore failed:",
+          restoreError.message
+        );
+      }
+      return;
+    }
+
+    unitData = restoredUnit;
   }
 
   const resolvedEventType = historyEventType(eventType, item);
