@@ -6,6 +6,8 @@ import BackButton from "./BackButton";
 type PrintToolbarProps = {
   backHref: string;
   backLabel: string;
+  documentLabel?: string;
+  documentTitle?: string;
   alternateHref?: string;
   alternateLabel?: string;
   downloadHref?: string;
@@ -16,6 +18,8 @@ type PrintToolbarProps = {
 export default function PrintToolbar({
   backHref,
   backLabel,
+  documentLabel = "Customer document",
+  documentTitle,
   alternateHref,
   alternateLabel,
   downloadHref,
@@ -31,19 +35,30 @@ export default function PrintToolbar({
   }
 
   return (
-    <div className="sticky top-0 z-10 border-b border-zinc-200 bg-white/95 px-6 py-4 text-black shadow-sm print:hidden">
+    <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/92 px-4 py-3 text-slate-950 shadow-[0_12px_34px_rgba(15,23,42,0.08)] backdrop-blur-xl print:hidden">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3">
-        <BackButton
-          label={backLabel.toLowerCase().startsWith("back to") ? "Back" : backLabel}
-          fallbackHref={backHref}
-          className="rounded-xl border-zinc-300 bg-white text-zinc-700 hover:border-blue-500 hover:bg-zinc-100 hover:text-blue-700"
-        />
+        <div className="flex min-w-0 items-center gap-3">
+          <BackButton
+            label={backLabel.toLowerCase().startsWith("back to") ? "Back" : backLabel}
+            fallbackHref={backHref}
+            className="rounded-full border-slate-300 bg-white px-4 py-2 text-sm font-black text-slate-700 shadow-sm hover:border-blue-500 hover:bg-blue-50 hover:text-blue-700"
+          />
+
+          <div className="min-w-0">
+            <p className="text-[0.68rem] font-black uppercase tracking-[0.24em] text-sky-700">
+              {documentLabel}
+            </p>
+            <p className="truncate text-sm font-black text-slate-950">
+              {documentTitle || suggestedFileName || "Ready to print"}
+            </p>
+          </div>
+        </div>
 
         <div className="flex flex-wrap items-center gap-3">
           {alternateHref && alternateLabel ? (
             <Link
               href={alternateHref}
-              className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-100"
+              className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-black text-slate-700 shadow-sm hover:bg-slate-50"
             >
               {alternateLabel}
             </Link>
@@ -52,7 +67,7 @@ export default function PrintToolbar({
           {downloadHref && downloadLabel ? (
             <a
               href={downloadHref}
-              className="rounded-xl border border-emerald-600 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
+              className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-black text-emerald-800 shadow-sm hover:bg-emerald-100"
             >
               {downloadLabel}
             </a>
@@ -61,7 +76,7 @@ export default function PrintToolbar({
           <button
             type="button"
             onClick={handlePrint}
-            className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+            className="rounded-full bg-blue-600 px-5 py-2 text-sm font-black text-white shadow-[0_14px_30px_rgba(37,99,235,0.24)] hover:bg-blue-700"
           >
             Print / Save PDF
           </button>

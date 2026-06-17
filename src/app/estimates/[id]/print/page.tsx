@@ -128,6 +128,7 @@ export default async function EstimatePrintPage({
   const estimate = data as Estimate;
   const businessSlug =
     business?.slug || requestedBusinessSlug;
+  const suggestedFileName = estimate.display_id || "Estimate";
 
   const { data: clientData } = estimate.client_id
     ? await supabase
@@ -193,6 +194,9 @@ export default async function EstimatePrintPage({
       <PrintToolbar
         backHref={`/estimates/${estimate.id}?business=${businessSlug}`}
         backLabel="Back to Estimate"
+        documentLabel="Customer Estimate"
+        documentTitle={estimate.display_id || documentTitle}
+        suggestedFileName={suggestedFileName}
       />
 
       <div className="mx-auto max-w-5xl bg-white print:max-w-none print:px-6 print:py-4">

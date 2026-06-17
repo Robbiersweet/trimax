@@ -322,6 +322,8 @@ export default async function InvoicePrintPage({
       <PrintToolbar
         backHref={`/invoices/${invoice.id}?business=${businessSlug}`}
         backLabel="Back to Invoice"
+        documentLabel="Customer Invoice"
+        documentTitle={invoice.display_id || documentTitle}
         alternateHref={
           shouldOfferFiveStarsTemplate
             ? specialTemplateHref
@@ -720,6 +722,8 @@ function FiveStarsBoaPrintPage({
       <PrintToolbar
         backHref={backHref}
         backLabel="Back to Invoice"
+        documentLabel="Special Invoice Format"
+        documentTitle={invoice.display_id || "Invoice"}
         alternateHref={standardTemplateHref}
         alternateLabel="Use Standard Format"
         downloadHref={excelHref}
