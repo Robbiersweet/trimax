@@ -1437,6 +1437,106 @@ export default async function DashboardPage({
       tone: paymentWithoutImageProofCount > 0 ? "sky" : "emerald",
     },
   ];
+  const topPriorityStackCandidates: {
+    action: string;
+    detail: string;
+    href: string;
+    label: string;
+    metric: string;
+    score: number;
+    tone: string;
+  }[] = [];
+
+  if (priorityInvoice) {
+    const priorityInvoiceAmountDue = invoiceCollectionAmountDue(priorityInvoice);
+    const priorityInvoiceDaysLate = daysPastDue(priorityInvoice.due_date) ?? -1;
+    const isPriorityDeposit = hasActiveDepositRequest(priorityInvoice);
+
+    topPriorityStackCandidates.push({
+      action: isPriorityDeposit ? "Open deposit" : "Open invoice",
+      detail:
+        priorityInvoice.customer_name ??
+        priorityInvoice.project_title ??
+        "Customer balance",
+      href: `/invoices/${priorityInvoice.id}?business=${selectedBusinessSlug}`,
+      label:
+        priorityInvoiceDaysLate > 0
+          ? "Past-due collection"
+          : isPriorityDeposit
+            ? "Deposit follow-up"
+            : "Largest open invoice",
+      metric: formatMoney(priorityInvoiceAmountDue),
+      score:
+        (priorityInvoiceDaysLate > 0 ? 900 : isPriorityDeposit ? 760 : 520) +
+        Math.min(priorityInvoiceAmountDue / 100, 140),
+      tone:
+        priorityInvoiceDaysLate > 0
+          ? "rose"
+          : isPriorityDeposit
+            ? "emerald"
+            : "sky",
+    });
+  }
+
+  if (readySoonUnscheduled[0]) {
+    const item = readySoonUnscheduled[0];
+
+    topPriorityStackCandidates.push({
+      action: "Schedule",
+      detail: `${item.property || "Property"} - Unit ${
+        maybeCanonicalApartmentUnitLabel(item.unit) || "-"
+      }`,
+      href: `/queue/${item.id}?business=${selectedBusinessSlug}`,
+      label: "Ready unit waiting",
+      metric: formatShortDate(item.ready_date),
+      score: 720,
+      tone: "amber",
+    });
+  }
+
+  if (queueItemsNeedingEstimate[0]) {
+    const item = queueItemsNeedingEstimate[0];
+
+    topPriorityStackCandidates.push({
+      action: "Build estimate",
+      detail: `${item.property || "Property"} - Unit ${
+        maybeCanonicalApartmentUnitLabel(item.unit) || "-"
+      }`,
+      href: `/queue/${item.id}?business=${selectedBusinessSlug}`,
+      label: "Estimate needed",
+      metric: String(queueItemsNeedingEstimate.length),
+      score: 680,
+      tone: "violet",
+    });
+  }
+
+  if (totalRiskFlags > 0) {
+    topPriorityStackCandidates.push({
+      action: "Review proof",
+      detail: auditHealthDetail,
+      href: `/activity?business=${selectedBusinessSlug}`,
+      label: "Proof gap",
+      metric: String(totalRiskFlags),
+      score: 640 + totalRiskFlags * 20,
+      tone: "rose",
+    });
+  }
+
+  if (workingYearOpenInvoicesWithAmounts.length > 0) {
+    topPriorityStackCandidates.push({
+      action: "Capture check",
+      detail: "Match incoming payments to the best open invoices.",
+      href: `/payments?business=${selectedBusinessSlug}#check-capture`,
+      label: "Payment matching",
+      metric: String(workingYearOpenInvoicesWithAmounts.length),
+      score: 420,
+      tone: "emerald",
+    });
+  }
+
+  const topPriorityStack = topPriorityStackCandidates
+    .sort((first, second) => second.score - first.score)
+    .slice(0, 4);
 
   return (
     <AppShell>
@@ -1730,33 +1830,92 @@ export default async function DashboardPage({
               </p>
             </div>
 
-            <div className="mt-4 grid gap-3 lg:grid-cols-3">
-              {dashboardFocusItems.map((item) => (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  data-tone={item.tone}
-                  className="dashboard-focus-card rounded-2xl border p-4 transition hover:-translate-y-0.5"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="text-xs font-black uppercase tracking-[0.18em]">
-                      {item.label}
-                    </p>
+            <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_0.72fr]">
+              <div className="grid gap-3 lg:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3">
+                {dashboardFocusItems.map((item) => (
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                    data-tone={item.tone}
+                    className="dashboard-focus-card rounded-2xl border p-4 transition hover:-translate-y-0.5"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-xs font-black uppercase tracking-[0.18em]">
+                        {item.label}
+                      </p>
 
-                    <span className="dashboard-focus-metric rounded-full border px-3 py-1 text-sm font-black">
-                      {item.metric}
-                    </span>
+                      <span className="dashboard-focus-metric rounded-full border px-3 py-1 text-sm font-black">
+                        {item.metric}
+                      </span>
+                    </div>
+
+                    <h3 className="mt-4 line-clamp-2 text-lg font-black">
+                      {item.title}
+                    </h3>
+
+                    <p className="mt-2 line-clamp-3 text-sm leading-6">
+                      {item.detail}
+                    </p>
+                  </Link>
+                ))}
+              </div>
+
+              <div className="dashboard-priority-stack rounded-2xl border p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.2em]">
+                      Priority Stack
+                    </p>
+                    <h3 className="mt-1 text-lg font-black">
+                      Cream at the top
+                    </h3>
                   </div>
 
-                  <h3 className="mt-4 line-clamp-2 text-lg font-black">
-                    {item.title}
-                  </h3>
+                  <span className="dashboard-priority-stack-count rounded-full border px-3 py-1 text-sm font-black">
+                    {topPriorityStack.length}
+                  </span>
+                </div>
 
-                  <p className="mt-2 line-clamp-3 text-sm leading-6">
-                    {item.detail}
-                  </p>
-                </Link>
-              ))}
+                <div className="mt-4 space-y-2.5">
+                  {topPriorityStack.length > 0 ? (
+                    topPriorityStack.map((item, index) => (
+                      <Link
+                        key={`${item.label}-${item.href}`}
+                        href={item.href}
+                        data-tone={item.tone}
+                        className="dashboard-priority-stack-item group grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl border p-3 transition hover:-translate-y-0.5"
+                      >
+                        <span className="dashboard-priority-stack-rank grid h-9 w-9 place-items-center rounded-full text-sm font-black">
+                          {index + 1}
+                        </span>
+
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-black">
+                            {item.label}
+                          </span>
+                          <span className="mt-0.5 block truncate text-xs font-semibold">
+                            {item.detail}
+                          </span>
+                        </span>
+
+                        <span className="text-right">
+                          <span className="block text-sm font-black">
+                            {item.metric}
+                          </span>
+                          <span className="mt-0.5 block text-[0.68rem] font-black uppercase tracking-[0.12em]">
+                            {item.action}
+                          </span>
+                        </span>
+                      </Link>
+                    ))
+                  ) : (
+                    <div className="dashboard-priority-stack-empty rounded-2xl border border-dashed p-4 text-sm leading-6">
+                      Nothing is pressing right now. The workspace is clean and
+                      ready for the next job, invoice, or payment.
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </section>
         </RoleVisible>
