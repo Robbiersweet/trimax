@@ -462,6 +462,18 @@ export default async function DashboardPage({
   const billableInvoices = invoices.filter(
     (invoice) => !splitParentInvoiceIds.has(invoice.id)
   );
+  const recentBillableInvoices = [...billableInvoices]
+    .sort((first, second) => {
+      const firstDate = new Date(
+        first.updated_at ?? first.created_at ?? "1970-01-01"
+      ).getTime();
+      const secondDate = new Date(
+        second.updated_at ?? second.created_at ?? "1970-01-01"
+      ).getTime();
+
+      return secondDate - firstDate;
+    })
+    .slice(0, 3);
 
   const openInvoices = billableInvoices.filter((invoice) =>
     isCollectibleInvoiceStatus(invoice.status)
@@ -1716,92 +1728,19 @@ export default async function DashboardPage({
           <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="dashboard-section-label text-sm uppercase tracking-[0.3em] text-sky-300">
-                Workstream
+                Accounting Pulse
               </p>
 
               <h2 className="mt-1 text-2xl font-black tracking-tight">
-                Recent queue and invoice movement
+                Recent invoice movement
               </h2>
             </div>
 
             <p className="max-w-2xl text-sm leading-6 text-zinc-400">
-              The newest operational and accounting records stay together here
-              so the dashboard ends with what changed most recently.
+              The newest billable records stay close at hand so collection,
+              reminders, printing, and payment entry are always one move away.
             </p>
           </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card className="dashboard-workstream-card">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
-                    Queue Pulse
-                  </p>
-
-                  <h2 className="mt-2 text-2xl font-bold">
-                    Recent Queue Items
-                  </h2>
-                </div>
-
-                <Link
-                  href={`/queue?business=${selectedBusinessSlug}`}
-                  className="text-sm font-semibold text-orange-400"
-                >
-                  View all
-                </Link>
-              </div>
-
-              <div className="mt-4 space-y-3">
-                {queueItems.slice(0, 3).map((item) => (
-                  <Link
-                    key={item.id}
-                    href={`/queue/${item.id}?business=${selectedBusinessSlug}`}
-                    className="dashboard-feature-card dark-surface block rounded-2xl border border-zinc-800 bg-zinc-950 p-4 transition hover:border-orange-500/60 hover:bg-zinc-900"
-                  >
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                      <div>
-                        <p className="font-semibold">
-                          {item.property || "Property"} - Unit{" "}
-                          {maybeCanonicalApartmentUnitLabel(item.unit) || "-"}
-                        </p>
-
-                        <p className="mt-1 text-sm text-zinc-400">
-                          {item.unit_layout ? `Layout ${item.unit_layout} / ` : ""}
-                          {item.paint_type || "Paint TBD"} /{" "}
-                          {item.flooring || "Flooring TBD"}
-                        </p>
-
-                        <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                          <span className="rounded-full border border-zinc-800 bg-zinc-900 px-3 py-1 text-zinc-300">
-                            Paint due {formatShortDate(item.ready_date)}
-                          </span>
-
-                          <span className="rounded-full border border-zinc-800 bg-zinc-900 px-3 py-1 text-zinc-300">
-                            Scheduled {formatShortDate(item.scheduled_date)}
-                          </span>
-
-                          {item.smoked_in ? (
-                            <span className="dashboard-remediation-pill rounded-full border border-red-500/35 bg-red-500/10 px-3 py-1 font-semibold text-red-200">
-                              Remediation
-                            </span>
-                          ) : null}
-                        </div>
-                      </div>
-
-                      <StatusBadge
-                        status={item.status || "Pending"}
-                      />
-                    </div>
-                  </Link>
-                ))}
-
-                {queueItems.length === 0 && (
-                  <p className="text-sm text-zinc-400">
-                    No queue items for this business yet.
-                  </p>
-                )}
-              </div>
-            </Card>
 
           <RoleVisible
             businessSlug={selectedBusinessSlug}
@@ -1832,23 +1771,7 @@ export default async function DashboardPage({
               </div>
 
               <div className="mt-4 space-y-3">
-                {billableInvoices
-                  .sort((first, second) => {
-                    const firstDate = new Date(
-                      first.updated_at ??
-                        first.created_at ??
-                        "1970-01-01"
-                    ).getTime();
-                    const secondDate = new Date(
-                      second.updated_at ??
-                        second.created_at ??
-                        "1970-01-01"
-                    ).getTime();
-
-                    return secondDate - firstDate;
-                  })
-                  .slice(0, 3)
-                  .map((invoice) => {
+                {recentBillableInvoices.map((invoice) => {
                     const amountDue = invoiceCollectionAmountDue(invoice);
                     const isDepositRequest = hasActiveDepositRequest(invoice);
                     const daysLate = daysPastDue(invoice.due_date);
@@ -1964,7 +1887,6 @@ export default async function DashboardPage({
               </div>
             </Card>
           </RoleVisible>
-          </div>
         </section>
       </div>
     </AppShell>
