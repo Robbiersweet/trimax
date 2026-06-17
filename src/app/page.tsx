@@ -29,15 +29,6 @@ type QueueItem = {
   linked_estimate_id: string | null;
 };
 
-type Estimate = {
-  id: string;
-  project_title: string | null;
-  customer_name: string | null;
-  estimate_amount: string | null;
-  status: string | null;
-  created_at: string | null;
-};
-
 type Invoice = {
   id: string;
   display_id: string | null;
@@ -98,144 +89,6 @@ function hasActiveDepositRequest(invoice: Invoice) {
   return (
     String(invoice.deposit_status ?? "none").toLowerCase() === "requested" &&
     parseMoney(invoice.deposit_requested_amount ?? null) > 0
-  );
-}
-
-function isDateInCurrentMonth(value: string | null) {
-  if (!value) {
-    return false;
-  }
-
-  const date = new Date(`${value}T00:00:00`);
-  const now = new Date();
-
-  if (Number.isNaN(date.getTime())) {
-    return false;
-  }
-
-  return (
-    date.getFullYear() === now.getFullYear() &&
-    date.getMonth() === now.getMonth()
-  );
-}
-
-function VisualMoneyBar({
-  label,
-  value,
-  max,
-  tone,
-}: {
-  label: string;
-  value: number;
-  max: number;
-  tone: "orange" | "amber" | "rose" | "emerald";
-}) {
-  const toneStyles = {
-    orange: {
-      dot: "bg-sky-500",
-      panel: "border-sky-500/20 bg-sky-500/5",
-      text: "text-sky-100",
-      ring: "#0284c7",
-      ringSoft: "rgba(2, 132, 199, 0.14)",
-      glow: "shadow-sky-500/20",
-      pulse: "from-sky-500 to-cyan-300",
-    },
-    amber: {
-      dot: "bg-indigo-500",
-      panel: "border-indigo-500/20 bg-indigo-500/5",
-      text: "text-indigo-100",
-      ring: "#4f46e5",
-      ringSoft: "rgba(79, 70, 229, 0.14)",
-      glow: "shadow-indigo-500/20",
-      pulse: "from-indigo-500 to-sky-300",
-    },
-    rose: {
-      dot: "bg-rose-300",
-      panel: "border-rose-500/20 bg-rose-500/5",
-      text: "text-rose-100",
-      ring: "#f9a8d4",
-      ringSoft: "rgba(249, 168, 212, 0.14)",
-      glow: "shadow-rose-500/20",
-      pulse: "from-rose-300 to-pink-200",
-    },
-    emerald: {
-      dot: "bg-emerald-300",
-      panel: "border-emerald-500/20 bg-emerald-500/5",
-      text: "text-emerald-100",
-      ring: "#6ee7b7",
-      ringSoft: "rgba(110, 231, 183, 0.14)",
-      glow: "shadow-emerald-500/20",
-      pulse: "from-emerald-300 to-teal-200",
-    },
-  }[tone];
-  const percent = Math.min(
-    Math.max((value / Math.max(max, 1)) * 100, 0),
-    100
-  );
-  const displayPercent = Math.round(percent);
-  const activePulseCount = Math.max(
-    value > 0 ? 1 : 0,
-    Math.ceil(percent / 20)
-  );
-
-  return (
-    <div
-      data-tone={tone}
-      className={`dashboard-feature-card dark-surface relative overflow-hidden rounded-2xl border p-4 ${toneStyles.panel}`}
-    >
-      <span
-        aria-hidden="true"
-        className={`absolute -right-10 -top-10 h-28 w-28 rounded-full bg-gradient-to-br ${toneStyles.pulse} opacity-10 blur-2xl`}
-      />
-
-      <div className="relative flex items-center gap-4">
-        <div
-          className={`grid h-20 w-20 shrink-0 place-items-center rounded-full shadow-2xl ${toneStyles.glow}`}
-          style={{
-            background: `conic-gradient(${toneStyles.ring} ${percent}%, rgba(255,255,255,0.1) ${percent}% 100%)`,
-          }}
-        >
-          <div className="grid h-[4.4rem] w-[4.4rem] place-items-center rounded-full bg-zinc-950 text-center ring-1 ring-white/10">
-            <span className={`text-lg font-black ${toneStyles.text}`}>
-              {displayPercent}%
-            </span>
-          </div>
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className={`h-3 w-3 rounded-full ${toneStyles.dot}`} />
-            <p className="truncate text-sm font-semibold text-slate-100">
-              {label}
-            </p>
-          </div>
-
-          <p className={`mt-2 text-xl font-black ${toneStyles.text}`}>
-            {formatMoney(value)}
-          </p>
-
-          <div className="mt-3 grid grid-cols-5 gap-1.5">
-            {[0, 1, 2, 3, 4].map((pulseIndex) => (
-              <span
-                key={pulseIndex}
-                aria-hidden="true"
-                className={`h-2 rounded-full ${
-                  pulseIndex < activePulseCount
-                    ? `bg-gradient-to-r ${toneStyles.pulse}`
-                    : "bg-white/10"
-                }`}
-                style={{
-                  boxShadow:
-                    pulseIndex < activePulseCount
-                      ? `0 0 16px ${toneStyles.ringSoft}`
-                      : undefined,
-                }}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -347,10 +200,6 @@ function invoiceBelongsToYear(invoice: Invoice, year: number) {
       !invoice.due_date &&
       dateYear(invoice.created_at) === year)
   );
-}
-
-function estimateBelongsToYear(estimate: Estimate, year: number) {
-  return dateYear(estimate.created_at) === year;
 }
 
 function normalizeStatus(value: string | null) {
@@ -556,14 +405,12 @@ export default async function DashboardPage({
     selectedBusiness?.slug ?? "rnl-creations";
 
   let queueItems: QueueItem[] = [];
-  let estimates: Estimate[] = [];
   let invoices: Invoice[] = [];
   let activityLogs: ActivityLog[] = [];
 
   if (selectedBusiness) {
     const [
       queueResponse,
-      estimateResponse,
       invoiceResponse,
       activityResponse,
     ] = await Promise.all([
@@ -572,12 +419,6 @@ export default async function DashboardPage({
         .select(
           "id, property, unit, unit_layout, paint_type, flooring, status, ready_date, scheduled_date, completed_date, smoked_in, notes, linked_estimate_id"
         )
-        .eq("business_id", selectedBusiness.id)
-        .order("created_at", { ascending: false }),
-
-      supabase
-        .from("estimates")
-        .select("id, project_title, customer_name, estimate_amount, status, created_at")
         .eq("business_id", selectedBusiness.id)
         .order("created_at", { ascending: false }),
 
@@ -601,8 +442,6 @@ export default async function DashboardPage({
 
     queueItems =
       (queueResponse.data ?? []) as QueueItem[];
-    estimates =
-      (estimateResponse.data ?? []) as Estimate[];
     invoices =
       (invoiceResponse.data ?? []) as Invoice[];
     activityLogs =
@@ -627,14 +466,6 @@ export default async function DashboardPage({
 
       if (item.status === "Scheduled" || Boolean(item.scheduled_date)) {
         summary.scheduled.push(item);
-      }
-
-      if (
-        isDateInCurrentMonth(item.completed_date) ||
-        (item.status === "Completed" &&
-          isDateInCurrentMonth(item.scheduled_date))
-      ) {
-        summary.completedThisMonth.push(item);
       }
 
       if (
@@ -664,7 +495,6 @@ export default async function DashboardPage({
     {
       active: [] as QueueItem[],
       scheduled: [] as QueueItem[],
-      completedThisMonth: [] as QueueItem[],
       readySoonUnscheduled: [] as QueueItem[],
       remediation: [] as QueueItem[],
       needingEstimate: [] as QueueItem[],
@@ -672,7 +502,6 @@ export default async function DashboardPage({
   );
   const activeQueueItems = queueSummary.active;
   const scheduledQueueItems = queueSummary.scheduled;
-  const completedThisMonth = queueSummary.completedThisMonth;
   const readySoonUnscheduled = queueSummary.readySoonUnscheduled;
   const remediationQueueItems = queueSummary.remediation;
   const queueItemsNeedingEstimate = queueSummary.needingEstimate;
@@ -702,9 +531,6 @@ export default async function DashboardPage({
 
   const workingYear = new Date().getFullYear();
   const workingYearLabel = String(workingYear);
-  const workingYearEstimates = estimates.filter((estimate) =>
-    estimateBelongsToYear(estimate, workingYear)
-  );
   const workingYearInvoices = billableInvoices.filter((invoice) =>
     invoiceBelongsToYear(invoice, workingYear)
   );
@@ -720,12 +546,6 @@ export default async function DashboardPage({
         total + invoice.amountDue,
       0
     );
-
-  const estimatedRevenueTotal = workingYearEstimates.reduce(
-    (total, estimate) =>
-      total + parseMoney(estimate.estimate_amount),
-    0
-  );
 
   const invoicedRevenueTotal = workingYearInvoices.reduce(
     (total, invoice) =>
@@ -745,14 +565,6 @@ export default async function DashboardPage({
     outstandingRevenueTotal
   );
   const ytdRevenue = formatMoney(ytdRevenueTotal);
-
-  const revenueVisualMax = Math.max(
-    outstandingRevenueTotal,
-    estimatedRevenueTotal,
-    invoicedRevenueTotal,
-    ytdRevenueTotal,
-    1
-  );
 
   const agingBuckets = [
     {
@@ -801,77 +613,6 @@ export default async function DashboardPage({
     ...agingBuckets.map((bucket) => bucket.amount),
     1
   );
-
-  const queueFlow = [
-    {
-      label: "Review",
-      value: queueItemsNeedingEstimate.length,
-      detail: "Needs estimate",
-      href: `/queue?business=${selectedBusinessSlug}&view=needs-estimate`,
-      tone: "purple",
-    },
-    {
-      label: "Schedule",
-      value: readySoonUnscheduled.length,
-      detail: "Ready soon",
-      href: `/queue?business=${selectedBusinessSlug}&view=ready-soon`,
-      tone: "amber",
-    },
-    {
-      label: "Work",
-      value: scheduledQueueItems.length,
-      detail: "Scheduled",
-      href: `/queue?business=${selectedBusinessSlug}&status=scheduled`,
-      tone: "sky",
-    },
-    {
-      label: "Done",
-      value: completedThisMonth.length,
-      detail: "This month",
-      href: `/queue?business=${selectedBusinessSlug}&status=completed`,
-      tone: "emerald",
-    },
-  ];
-
-  const queueFlowStyles: Record<
-    string,
-    {
-      accent: string;
-      card: string;
-      count: string;
-      label: string;
-      step: string;
-    }
-  > = {
-    amber: {
-      accent: "bg-amber-400",
-      card: "border-amber-500/20 bg-amber-500/5 hover:border-amber-300/50",
-      count: "text-amber-100",
-      label: "text-amber-200/80",
-      step: "border-amber-400/20 bg-amber-400/10 text-amber-100",
-    },
-    emerald: {
-      accent: "bg-emerald-400",
-      card: "border-emerald-500/20 bg-emerald-500/5 hover:border-emerald-300/50",
-      count: "text-emerald-100",
-      label: "text-emerald-200/80",
-      step: "border-emerald-400/20 bg-emerald-400/10 text-emerald-100",
-    },
-    purple: {
-      accent: "bg-purple-400",
-      card: "border-purple-500/20 bg-purple-500/5 hover:border-purple-300/50",
-      count: "text-purple-100",
-      label: "text-purple-200/80",
-      step: "border-purple-400/20 bg-purple-400/10 text-purple-100",
-    },
-    sky: {
-      accent: "bg-sky-400",
-      card: "border-sky-500/20 bg-sky-500/5 hover:border-sky-300/50",
-      count: "text-sky-100",
-      label: "text-sky-200/80",
-      step: "border-sky-400/20 bg-sky-400/10 text-sky-100",
-    },
-  };
 
   const mostOverdueInvoices = workingYearOpenInvoicesWithAmounts
     .filter((invoice) => (invoice.daysLate ?? -1) >= 0)
@@ -2119,117 +1860,6 @@ export default async function DashboardPage({
               </div>
             </Card>
           ) : null}
-        </RoleVisible>
-
-        <RoleVisible
-          businessSlug={selectedBusinessSlug}
-          allow={[
-            "owner",
-            "admin",
-            "accountant",
-          ]}
-        >
-          <div
-            id="dashboard-reports"
-            className="hidden scroll-mt-6 gap-4 lg:grid xl:grid-cols-[1.2fr_0.8fr]"
-          >
-            <Card className="dashboard-money-section dark-surface border-sky-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-sky-950/20">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <p className="dashboard-section-label text-sm uppercase tracking-[0.3em] text-sky-300">
-                    Money Flow
-                  </p>
-
-                  <h2 className="mt-2 text-2xl font-bold text-white">
-                    Revenue snapshot
-                  </h2>
-
-                  <p className="mt-1 text-sm text-zinc-400">
-                    Showing {workingYearLabel} activity by default.
-                  </p>
-                </div>
-
-                <Link
-                  href={`/reports?business=${selectedBusinessSlug}`}
-                  className="text-sm font-semibold text-sky-400"
-                >
-                  Open reports
-                </Link>
-              </div>
-
-              <div className="mt-6 grid gap-3">
-                <VisualMoneyBar
-                  label="Estimated"
-                  value={estimatedRevenueTotal}
-                  max={revenueVisualMax}
-                  tone="orange"
-                />
-                <VisualMoneyBar
-                  label="Invoiced"
-                  value={invoicedRevenueTotal}
-                  max={revenueVisualMax}
-                  tone="amber"
-                />
-                <VisualMoneyBar
-                  label="Outstanding"
-                  value={outstandingRevenueTotal}
-                  max={revenueVisualMax}
-                  tone="rose"
-                />
-                <VisualMoneyBar
-                  label="Paid YTD"
-                  value={ytdRevenueTotal}
-                  max={revenueVisualMax}
-                  tone="emerald"
-                />
-              </div>
-            </Card>
-
-            <Card className="dashboard-queue-section dark-surface border-sky-500/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-sky-950/20">
-              <p className="dashboard-section-label text-sm uppercase tracking-[0.3em] text-sky-300">
-                Queue Flow
-              </p>
-
-              <h2 className="mt-2 text-2xl font-bold text-white">
-                Turnover pipeline
-              </h2>
-
-              <div className="mt-6 grid grid-cols-2 gap-3">
-                {queueFlow.map((step, index) => {
-                  const style = queueFlowStyles[step.tone];
-
-                  return (
-                    <Link
-                      key={step.label}
-                      href={step.href}
-                      data-tone={step.tone}
-                      className={`dashboard-flow-card relative overflow-hidden rounded-2xl border p-4 transition hover:-translate-y-0.5 ${style.card}`}
-                    >
-                      <span className={`absolute inset-x-0 top-0 h-1 ${style.accent}`} />
-
-                      <div className="flex items-start justify-between gap-3">
-                        <p className={`text-xs uppercase tracking-[0.2em] ${style.label}`}>
-                          {step.label}
-                        </p>
-
-                        <span className={`rounded-full border px-2 py-0.5 text-[0.65rem] font-black ${style.step}`}>
-                          {index + 1}
-                        </span>
-                      </div>
-
-                      <p className={`mt-3 text-3xl font-black ${style.count}`}>
-                        {step.value}
-                      </p>
-
-                      <p className="mt-1 text-sm text-zinc-400">
-                        {step.detail}
-                      </p>
-                    </Link>
-                  );
-                })}
-              </div>
-            </Card>
-          </div>
         </RoleVisible>
 
         <RoleVisible
