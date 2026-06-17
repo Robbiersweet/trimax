@@ -288,6 +288,35 @@ function formatMoney(value: string | number | null | undefined) {
   }).format(numberValue(value));
 }
 
+function invoiceDueAmount(invoice: SmartInvoiceRecord) {
+  return Math.max(
+    numberValue(invoice.invoice_amount) - numberValue(invoice.amount_paid),
+    0
+  );
+}
+
+function queuePriorityScore(value: string | null | undefined) {
+  const normalized = value?.toLowerCase() ?? "";
+
+  if (normalized.includes("urgent")) {
+    return 4;
+  }
+
+  if (normalized.includes("high")) {
+    return 3;
+  }
+
+  if (normalized.includes("normal")) {
+    return 2;
+  }
+
+  if (normalized.includes("low")) {
+    return 1;
+  }
+
+  return 0;
+}
+
 function daysFromToday(value: string | null | undefined) {
   if (!value) {
     return null;
@@ -631,11 +660,12 @@ function buildSmartCommands({
   const commands: CommandItem[] = [];
   const openInvoices = invoices.filter((invoice) => {
     const status = invoice.status?.toLowerCase() ?? "";
-    const total = numberValue(invoice.invoice_amount);
-    const paid = numberValue(invoice.amount_paid);
 
-    return status !== "paid" && total - paid > 0;
+    return status !== "paid" && invoiceDueAmount(invoice) > 0;
   });
+  const largestOpenInvoice = [...openInvoices].sort(
+    (first, second) => invoiceDueAmount(second) - invoiceDueAmount(first)
+  )[0];
   const overdueInvoices = openInvoices
     .map((invoice) => ({
       invoice,
@@ -649,6 +679,24 @@ function buildSmartCommands({
   const draftEstimate = estimates.find(
     (estimate) => estimate.status?.toLowerCase() === "draft"
   );
+  const approvedEstimate = estimates.find((estimate) =>
+    ["approved", "accepted"].includes(estimate.status?.toLowerCase() ?? "")
+  );
+  const urgentQueueItem = [...queueItems]
+    .filter((item) => item.status?.toLowerCase() !== "completed")
+    .sort((first, second) => {
+      const priorityDelta =
+        queuePriorityScore(second.priority) - queuePriorityScore(first.priority);
+
+      if (priorityDelta !== 0) {
+        return priorityDelta;
+      }
+
+      return (
+        (daysFromToday(first.ready_date) ?? 999) -
+        (daysFromToday(second.ready_date) ?? 999)
+      );
+    })[0];
   const unscheduledQueueItem = queueItems.find(
     (item) => !item.scheduled_date && item.status?.toLowerCase() !== "completed"
   );
@@ -691,12 +739,7 @@ function buildSmartCommands({
 
   if (openInvoices.length > 0) {
     const openTotal = openInvoices.reduce(
-      (total, invoice) =>
-        total +
-        Math.max(
-          numberValue(invoice.invoice_amount) - numberValue(invoice.amount_paid),
-          0
-        ),
+      (total, invoice) => total + invoiceDueAmount(invoice),
       0
     );
 
@@ -710,6 +753,28 @@ function buildSmartCommands({
       keywords: ["smart", "collect", "payment", "revenue", "check"],
       source: "smart",
       actionLabel: "Collect",
+    });
+  }
+
+  if (largestOpenInvoice) {
+    commands.push({
+      title: `Open largest invoice ${largestOpenInvoice.display_id ?? ""}`.trim(),
+      detail: `${largestOpenInvoice.customer_name ?? "Customer"} / ${formatMoney(
+        invoiceDueAmount(largestOpenInvoice)
+      )} still due`,
+      href: `/invoices/${largestOpenInvoice.id}?business=${business}`,
+      tone: "cash",
+      keywords: [
+        "smart",
+        "largest",
+        "biggest",
+        "highest",
+        "open",
+        "invoice",
+        "collect",
+      ],
+      source: "smart",
+      actionLabel: "Open",
     });
   }
 
@@ -740,6 +805,56 @@ function buildSmartCommands({
       keywords: ["smart", "draft", "estimate", "send"],
       source: "smart",
       actionLabel: "Send",
+    });
+  }
+
+  if (approvedEstimate) {
+    commands.push({
+      title: `Convert approved estimate ${
+        approvedEstimate.display_id ?? ""
+      }`.trim(),
+      detail:
+        [approvedEstimate.customer_name, approvedEstimate.project_title]
+          .filter(Boolean)
+          .join(" / ") || "Approved estimate is ready for invoice review",
+      href: `/estimates/${approvedEstimate.id}?business=${business}`,
+      tone: "create",
+      keywords: [
+        "smart",
+        "approved",
+        "accepted",
+        "estimate",
+        "convert",
+        "invoice",
+      ],
+      source: "smart",
+      actionLabel: "Convert",
+    });
+  }
+
+  if (urgentQueueItem && queuePriorityScore(urgentQueueItem.priority) >= 3) {
+    commands.push({
+      title: `Open ${urgentQueueItem.priority ?? "priority"} queue ${
+        urgentQueueItem.unit ?? "item"
+      }`,
+      detail: `${urgentQueueItem.property ?? "Queue"} / ${
+        urgentQueueItem.ready_date
+          ? `paint due ${shortDate(urgentQueueItem.ready_date)}`
+          : urgentQueueItem.status ?? "active"
+      }`,
+      href: `/queue/${urgentQueueItem.id}?business=${business}`,
+      tone: "queue",
+      keywords: [
+        "smart",
+        "urgent",
+        "high",
+        "priority",
+        "queue",
+        "next",
+        "unit",
+      ],
+      source: "smart",
+      actionLabel: "Open",
     });
   }
 
@@ -1317,7 +1432,7 @@ export default function QuickCommandCenter() {
                 (record) => record.href === fallback.href
               )
           ),
-          ...commands
+          ...[...smartCommands, ...commands]
             .map((command) => ({
               command,
               score: commandSearchScore(
@@ -1344,6 +1459,10 @@ export default function QuickCommandCenter() {
           ),
         ]
   )
+    .filter(
+      (command, index, allCommands) =>
+        allCommands.findIndex((item) => item.href === command.href) === index
+    )
     .slice(0, 10);
   const selectedCommand =
     visibleCommands[Math.min(selectedIndex, visibleCommands.length - 1)];
@@ -1375,7 +1494,7 @@ export default function QuickCommandCenter() {
   }
 
   useEffect(() => {
-    if (!isOpen || normalizedQuery) {
+    if (!isOpen) {
       return;
     }
 
@@ -1446,7 +1565,7 @@ export default function QuickCommandCenter() {
       isActive = false;
       window.clearTimeout(timer);
     };
-  }, [business, isOpen, normalizedQuery]);
+  }, [business, isOpen]);
 
   useEffect(() => {
     if (!isOpen || recordLookupQuery.trim().length < 2) {
