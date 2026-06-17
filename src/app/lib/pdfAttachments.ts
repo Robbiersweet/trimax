@@ -119,6 +119,13 @@ function addWrappedText({
   return nextY;
 }
 
+function getWrappedLineCount(lines: string[], maxLength: number) {
+  return lines.reduce(
+    (count, line) => count + wrapLine(line, maxLength).length,
+    0
+  );
+}
+
 function drawBox(commands: string[], x: number, y: number, w: number, h: number) {
   commands.push("q");
   commands.push("0.94 0.97 1 rg");
@@ -225,18 +232,37 @@ function makePdf({
   commands.push("54 670 504 0 re S");
   commands.push("Q");
 
-  drawBox(commands, 54, 560, 260, 82);
+  const customerLines = (customer?.lines ?? ["Customer"])
+    .map(cleanPdfText)
+    .filter(Boolean)
+    .slice(0, 7);
+  const dateLines = (dates?.lines ?? [])
+    .map(cleanPdfText)
+    .filter(Boolean)
+    .slice(0, 5);
+  const customerWrappedLineCount = getWrappedLineCount(customerLines, 38);
+  const dateWrappedLineCount = getWrappedLineCount(dateLines, 31);
+  const detailBoxHeight = Math.max(
+    110,
+    38 + Math.max(customerWrappedLineCount, dateWrappedLineCount) * 13
+  );
+  const detailBoxTop = 642;
+  const detailBoxY = detailBoxTop - detailBoxHeight;
+  const detailHeadingY = detailBoxTop - 22;
+  const detailFirstLineY = detailBoxTop - 44;
+
+  drawBox(commands, 54, detailBoxY, 260, detailBoxHeight);
   addText({
     commands,
     x: 72,
-    y: 620,
+    y: detailHeadingY,
     text: "BILLED TO",
     size: 8,
     font: "F2",
     color: "0.52 0.38 0.10",
   });
-  let customerY = 600;
-  (customer?.lines ?? ["Customer"]).slice(0, 5).forEach((line, index) => {
+  let customerY = detailFirstLineY;
+  customerLines.forEach((line, index) => {
     customerY = addWrappedText({
       commands,
       x: 72,
@@ -249,18 +275,18 @@ function makePdf({
     });
   });
 
-  drawBox(commands, 334, 560, 224, 82);
+  drawBox(commands, 334, detailBoxY, 224, detailBoxHeight);
   addText({
     commands,
     x: 352,
-    y: 620,
+    y: detailHeadingY,
     text: "DOCUMENT DETAILS",
     size: 8,
     font: "F2",
     color: "0.52 0.38 0.10",
   });
-  let dateY = 600;
-  (dates?.lines ?? []).slice(0, 4).forEach((line) => {
+  let dateY = detailFirstLineY;
+  dateLines.forEach((line) => {
     dateY = addWrappedText({
       commands,
       x: 352,
@@ -272,7 +298,7 @@ function makePdf({
     });
   });
 
-  let tableY = 520;
+  let tableY = detailBoxY - 42;
   addText({
     commands,
     x: 54,
@@ -293,15 +319,16 @@ function makePdf({
   });
   commands.push("q");
   commands.push("0.88 0.65 0.16 RG");
-  commands.push("54 505 504 0 re S");
+  commands.push(`54 ${tableY - 15} 504 0 re S`);
   commands.push("Q");
-  tableY = 482;
+  tableY -= 38;
 
   (lineItems?.lines ?? ["Line items are available in Trimax."])
     .slice(0, 12)
     .forEach((line) => {
       const amount = moneyFromLine(line);
       const description = lineWithoutTrailingMoney(line);
+      const rowStartY = tableY;
 
       tableY = addWrappedText({
         commands,
@@ -316,7 +343,7 @@ function makePdf({
         addText({
           commands,
           x: 495,
-          y: tableY + 12,
+          y: rowStartY,
           text: amount,
           size: 9,
           font: "F2",
@@ -329,7 +356,7 @@ function makePdf({
       tableY -= 10;
     });
 
-  const totalsY = Math.max(tableY - 92, 178);
+  const totalsY = Math.max(tableY - 104, 170);
   drawBox(commands, 342, totalsY - 12, 216, 90);
   addText({
     commands,
