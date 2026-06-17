@@ -460,9 +460,11 @@ export async function POST(request: Request, { params }: RouteParams) {
               lineItems && lineItems.length > 0
                 ? lineItems.map(
                     (item) =>
-                      `${item.description ?? "Line item"} - Qty ${
+                      `${item.description ?? "Line item"} - Rate ${formatMoney(
+                        parseMoney(item.unit_price)
+                      )} - Qty ${
                         item.quantity ?? 1
-                      } - ${formatMoney(parseMoney(item.line_total))}`
+                      } - Total ${formatMoney(parseMoney(item.line_total))}`
                   )
                 : ["Line items are available in Trimax."],
           },

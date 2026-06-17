@@ -64,6 +64,35 @@ function lineWithoutTrailingMoney(value: string) {
   return cleanPdfText(value).replace(/\s*-\s*\$[\d,]+(?:\.\d{2})?\s*$/, "");
 }
 
+function parseLineItem(value: string) {
+  const text = cleanPdfText(value);
+  const totalMatch = text.match(/\s+-\s+Total\s+(\$[\d,]+(?:\.\d{2})?)\s*$/i);
+  const legacyTotal = moneyFromLine(text);
+  const total = totalMatch?.[1] ?? legacyTotal;
+  const withoutTotal = totalMatch
+    ? text.slice(0, totalMatch.index).trim()
+    : lineWithoutTrailingMoney(text);
+  const quantityMatch = withoutTotal.match(/\s+-\s+Qty\s+([^\s-]+)\s*$/i);
+  const quantity = quantityMatch?.[1] ?? "";
+  const withoutQuantity = quantityMatch
+    ? withoutTotal.slice(0, quantityMatch.index).trim()
+    : withoutTotal;
+  const rateMatch = withoutQuantity.match(
+    /\s+-\s+Rate\s+(\$[\d,]+(?:\.\d{2})?)\s*$/i
+  );
+  const rate = rateMatch?.[1] ?? "";
+  const description = rateMatch
+    ? withoutQuantity.slice(0, rateMatch.index).trim()
+    : withoutQuantity;
+
+  return {
+    description: description || "Line item",
+    rate,
+    quantity,
+    total,
+  };
+}
+
 function addText({
   commands,
   x,
@@ -184,6 +213,15 @@ function makePdf({
         section.title
       )
   );
+  const isEstimate =
+    title.toLowerCase().includes("est") ||
+    sections.some((section) =>
+      section.lines.some((line) => line.toLowerCase().includes("estimate total"))
+    );
+  const isReminder = Boolean(
+    sections.find((section) => section.title === "Payment Reminder")
+  );
+  const documentLabel = isReminder ? "REMINDER" : isEstimate ? "ESTIMATE" : "INVOICE";
 
   drawBrandMark(commands, 54, 704);
   addText({
@@ -221,11 +259,20 @@ function makePdf({
 
   addText({
     commands,
-    x: 394,
-    y: 735,
-    text: title,
-    size: 22,
+    x: 412,
+    y: 744,
+    text: documentLabel,
+    size: 18,
     font: "F2",
+  });
+  addText({
+    commands,
+    x: 412,
+    y: 722,
+    text: title,
+    size: 14,
+    font: "F2",
+    color: "0.35 0.43 0.52",
   });
   commands.push("q");
   commands.push("0.88 0.65 0.16 RG");
@@ -310,7 +357,25 @@ function makePdf({
   });
   addText({
     commands,
-    x: 488,
+    x: 374,
+    y: tableY,
+    text: "Rate",
+    size: 9,
+    font: "F2",
+    color: "0.52 0.38 0.10",
+  });
+  addText({
+    commands,
+    x: 438,
+    y: tableY,
+    text: "Qty",
+    size: 9,
+    font: "F2",
+    color: "0.52 0.38 0.10",
+  });
+  addText({
+    commands,
+    x: 497,
     y: tableY,
     text: "Line Total",
     size: 9,
@@ -326,25 +391,42 @@ function makePdf({
   (lineItems?.lines ?? ["Line items are available in Trimax."])
     .slice(0, 12)
     .forEach((line) => {
-      const amount = moneyFromLine(line);
-      const description = lineWithoutTrailingMoney(line);
+      const item = parseLineItem(line);
       const rowStartY = tableY;
 
       tableY = addWrappedText({
         commands,
         x: 54,
         y: tableY,
-        text: description,
-        maxLength: 68,
+        text: item.description,
+        maxLength: 54,
         size: 9,
         leading: 12,
       });
-      if (amount) {
+      if (item.rate) {
+        addText({
+          commands,
+          x: 374,
+          y: rowStartY,
+          text: item.rate,
+          size: 9,
+        });
+      }
+      if (item.quantity) {
+        addText({
+          commands,
+          x: 444,
+          y: rowStartY,
+          text: item.quantity,
+          size: 9,
+        });
+      }
+      if (item.total) {
         addText({
           commands,
           x: 495,
           y: rowStartY,
-          text: amount,
+          text: item.total,
           size: 9,
           font: "F2",
         });
