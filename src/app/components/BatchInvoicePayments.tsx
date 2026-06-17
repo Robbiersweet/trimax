@@ -50,6 +50,12 @@ type CheckStubOcrResponse = {
   error?: string;
 };
 
+type FiledPaymentImage = {
+  id: string;
+  storagePath: string;
+  fileName: string;
+} | null;
+
 function formatMoney(value: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -356,6 +362,16 @@ function fileToDataUrl(file: File) {
   });
 }
 
+function safeStorageFileName(fileName: string) {
+  const cleaned = fileName
+    .trim()
+    .replace(/[^a-z0-9._-]+/gi, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  return cleaned || "payment-image.jpg";
+}
+
 function initialCustomerFocus(
   invoices: BatchInvoice[],
   customerName?: string | null
@@ -465,6 +481,9 @@ export default function BatchInvoicePayments({
   );
   const [checkImagePreview, setCheckImagePreview] = useState("");
   const [checkImageName, setCheckImageName] = useState("");
+  const [checkImageFile, setCheckImageFile] = useState<File | null>(null);
+  const [filedPaymentImage, setFiledPaymentImage] =
+    useState<FiledPaymentImage>(null);
   const [checkPayor, setCheckPayor] = useState("");
   const [capturedCheckAmount, setCapturedCheckAmount] = useState(
     startingFocus ? formatMoney(startingFocus.total) : ""
@@ -928,6 +947,73 @@ export default function BatchInvoicePayments({
     setCheckAmount("");
   }
 
+  async function filePaymentImage() {
+    if (!checkImageFile || !businessId) {
+      return null;
+    }
+
+    const extension =
+      checkImageFile.type === "image/png"
+        ? "png"
+        : checkImageFile.type === "image/webp"
+          ? "webp"
+          : "jpg";
+    const storageFileName = `${crypto.randomUUID()}-${safeStorageFileName(
+      checkImageFile.name
+    )}`;
+    const storagePath = `${businessId}/payments/${new Date()
+      .toISOString()
+      .slice(0, 10)}/${storageFileName}.${extension}`;
+    const bucket = "trimax-payment-images";
+    const { error: uploadError } = await supabase.storage
+      .from(bucket)
+      .upload(storagePath, checkImageFile, {
+        cacheControl: "31536000",
+        contentType: checkImageFile.type || "image/jpeg",
+        upsert: false,
+      });
+
+    if (uploadError) {
+      throw new Error(
+        "Trimax could not file the check image yet. Confirm the payment image storage setup has been run, then try again."
+      );
+    }
+
+    const { data: attachment, error: attachmentError } = await supabase
+      .from("payment_attachments")
+      .insert({
+        business_id: businessId,
+        storage_bucket: bucket,
+        storage_path: storagePath,
+        file_name: checkImageFile.name || checkImageName || storageFileName,
+        content_type: checkImageFile.type || null,
+        file_size: checkImageFile.size,
+        check_number: paymentReference || capturedCheckReference || null,
+        check_amount: enteredCheckAmount ?? (capturedAmountValue || null),
+        payor: checkPayor || null,
+        remittance_stub_text: remittanceStubText || null,
+        matched_invoice_ids: selectedInvoices.map((invoice) => invoice.id),
+      })
+      .select("id, storage_path, file_name")
+      .single();
+
+    if (attachmentError || !attachment) {
+      throw new Error(
+        "Trimax uploaded the image, but could not save the filing record. Please try again before applying this payment."
+      );
+    }
+
+    const filedImage = {
+      id: String(attachment.id),
+      storagePath: String(attachment.storage_path),
+      fileName: String(attachment.file_name ?? checkImageFile.name),
+    };
+
+    setFiledPaymentImage(filedImage);
+
+    return filedImage;
+  }
+
   async function extractCheckStubFromPhoto(file: File) {
     if (file.size > 8_000_000) {
       setCheckOcrStatus("manual");
@@ -1007,6 +1093,8 @@ export default function BatchInvoicePayments({
 
     setCheckImagePreview(URL.createObjectURL(file));
     setCheckImageName(file.name);
+    setCheckImageFile(file);
+    setFiledPaymentImage(null);
     void extractCheckStubFromPhoto(file);
     setToast({
       type: "success",
@@ -1182,6 +1270,7 @@ export default function BatchInvoicePayments({
 
     try {
       await assertCanWriteDuringMaintenance(businessSlug);
+      const filedImage = await filePaymentImage();
 
       for (const invoice of selectedInvoices) {
         const nextAmountPaid = Math.min(
@@ -1241,6 +1330,9 @@ export default function BatchInvoicePayments({
             remittanceMatchConfidence: hasRemittanceStub
               ? remittanceMatch.confidence
               : null,
+            paymentAttachmentId: filedImage?.id ?? null,
+            paymentImagePath: filedImage?.storagePath ?? null,
+            paymentImageFileName: filedImage?.fileName ?? null,
           },
         });
       }
@@ -1256,6 +1348,13 @@ export default function BatchInvoicePayments({
       setCheckAmount("");
       setInternalNote("");
       setRemittanceStubText("");
+      setCheckImageFile(null);
+      setCheckImageName("");
+      if (checkImagePreview) {
+        URL.revokeObjectURL(checkImagePreview);
+        setCheckImagePreview("");
+      }
+      setFiledPaymentImage(null);
       router.refresh();
     } catch (error) {
       setToast({
@@ -1635,6 +1734,8 @@ export default function BatchInvoicePayments({
                       URL.revokeObjectURL(checkImagePreview);
                       setCheckImagePreview("");
                       setCheckImageName("");
+                      setCheckImageFile(null);
+                      setFiledPaymentImage(null);
                     }}
                     className="inline-flex rounded-full border border-slate-400/40 px-4 py-2 text-sm font-semibold text-zinc-200 transition hover:border-slate-300 hover:bg-white/10"
                   >
@@ -1642,6 +1743,21 @@ export default function BatchInvoicePayments({
                   </button>
                 ) : null}
               </div>
+
+              {checkImageFile ? (
+                <div className="payment-image-filing-status mt-4 rounded-2xl border border-white/10 bg-zinc-950 px-4 py-3 text-left text-sm leading-6">
+                  <p className="font-black text-white">
+                    {filedPaymentImage
+                      ? "Image filed"
+                      : "Image will be filed with this payment"}
+                  </p>
+                  <p className="mt-1 text-zinc-400">
+                    {filedPaymentImage
+                      ? `${filedPaymentImage.fileName} is linked to the payment trail.`
+                      : "When you apply the selected payment, Trimax will save this photo and link it to the matched invoices."}
+                  </p>
+                </div>
+              ) : null}
             </div>
           </div>
 

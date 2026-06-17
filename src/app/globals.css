@@ -4499,6 +4499,20 @@ html.theme-light .check-ocr-status .text-zinc-400 {
   color: #475569 !important;
 }
 
+html.theme-light .payment-image-filing-status {
+  background: #ffffff !important;
+  border-color: #dbeafe !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .payment-image-filing-status .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light .payment-image-filing-status .text-zinc-400 {
+  color: #475569 !important;
+}
+
 html.theme-light .check-capture-panel .bg-black\/35,
 html.theme-light .check-capture-panel .bg-zinc-950,
 html.theme-light .check-capture-panel .bg-zinc-900 {
