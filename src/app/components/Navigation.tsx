@@ -290,8 +290,8 @@ export default function Navigation() {
               onClick={() => setIsMobileMenuOpen(false)}
               className={`app-sidebar-nav-link group flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-center transition lg:justify-between lg:text-left ${
                 link.active
-                  ? "app-sidebar-nav-link-active bg-orange-500 text-black shadow-lg shadow-orange-950/20"
-                  : "app-sidebar-nav-link-inactive hover:bg-zinc-800 hover:text-orange-400"
+                  ? "app-sidebar-nav-link-active text-white shadow-lg"
+                  : "app-sidebar-nav-link-inactive hover:bg-zinc-800 hover:text-sky-300"
               }`}
             >
               <span className="flex min-w-0 items-center gap-2">
@@ -306,7 +306,7 @@ export default function Navigation() {
                   aria-hidden="true"
                   className={`hidden rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.14em] lg:inline ${
                     link.active
-                      ? "app-sidebar-setup-pill-active bg-black/10 text-black"
+                      ? "app-sidebar-setup-pill-active bg-white/15 text-sky-50"
                       : "app-sidebar-setup-pill bg-zinc-800 text-zinc-400"
                   }`}
                 >
