@@ -6,6 +6,7 @@ import Button from "../../components/Button";
 import StatusBadge from "../../components/StatusBadge";
 import InternalNotes from "../../components/InternalNotes";
 import DeleteInvoiceButton from "../../components/DeleteInvoiceButton";
+import CopyProofSummaryButton from "../../components/CopyProofSummaryButton";
 import InvoiceEmailSendPanel from "../../components/InvoiceEmailSendPanel";
 import RequestDepositButton from "../../components/RequestDepositButton";
 import SplitInvoicePlanner from "../../components/SplitInvoicePlanner";
@@ -365,7 +366,41 @@ function SummaryRow({
   );
 }
 
-function EvidenceTrail({ logs }: { logs: ActivityLog[] }) {
+function buildProofSummary(logs: ActivityLog[], invoiceLabel: string) {
+  if (logs.length === 0) {
+    return "";
+  }
+
+  const entries = logs.map((log) => {
+    const fields = evidenceFields(log);
+    const fieldLines = fields.map(
+      (field) => `  - ${field.label}: ${field.value}`
+    );
+    const actor = log.actor_email ? ` by ${log.actor_email}` : " by Trimax";
+
+    return [
+      `${formatDateTime(log.created_at)} - ${activityLabel(log.action)}${actor}`,
+      ...fieldLines,
+    ].join("\n");
+  });
+
+  return [
+    `Trimax proof summary for ${invoiceLabel}`,
+    `${logs.length} saved event${logs.length === 1 ? "" : "s"}`,
+    "",
+    ...entries,
+  ].join("\n\n");
+}
+
+function EvidenceTrail({
+  invoiceLabel,
+  logs,
+}: {
+  invoiceLabel: string;
+  logs: ActivityLog[];
+}) {
+  const proofSummary = buildProofSummary(logs, invoiceLabel);
+
   return (
     <Card>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -382,8 +417,14 @@ function EvidenceTrail({ logs }: { logs: ActivityLog[] }) {
             payment images.
           </p>
         </div>
-        <div className="rounded-2xl border border-sky-400/20 bg-sky-400/10 px-4 py-3 text-sm text-sky-100">
-          {logs.length} saved event{logs.length === 1 ? "" : "s"}
+        <div className="flex flex-col gap-2 sm:items-end">
+          <div className="rounded-2xl border border-sky-400/20 bg-sky-400/10 px-4 py-3 text-sm text-sky-100">
+            {logs.length} saved event{logs.length === 1 ? "" : "s"}
+          </div>
+          <CopyProofSummaryButton
+            disabled={logs.length === 0}
+            summary={proofSummary}
+          />
         </div>
       </div>
 
@@ -1183,7 +1224,10 @@ export default async function InvoiceDetailPage({
             </div>
           </Card>
 
-          <EvidenceTrail logs={invoiceActivityLogs} />
+          <EvidenceTrail
+            invoiceLabel={invoice.display_id || projectTitle || "Invoice"}
+            logs={invoiceActivityLogs}
+          />
 
           <Card>
             <Info label="Notes" value={invoice.notes || "No notes added."} />
