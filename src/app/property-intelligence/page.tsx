@@ -55,6 +55,7 @@ export default function PropertyIntelligencePage() {
   const searchParams = useSearchParams();
   const businessSlug = searchParams.get("business") ?? "rnl-creations";
   const returnTo = safeInternalRoute(searchParams.get("returnTo"));
+  const focusUnit = normalizeUnitLabel(searchParams.get("unit") ?? "");
   const backFallbackHref = returnTo ?? `/queue?business=${businessSlug}`;
   const backLabel = returnTo?.startsWith("/queue/")
     ? "Back to Queue Item"
@@ -64,7 +65,7 @@ export default function PropertyIntelligencePage() {
   const [units, setUnits] = useState<PropertyUnitRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [filter, setFilter] = useState("");
+  const [filter, setFilter] = useState(focusUnit);
   const [toast, setToast] = useState<{
     type: "success" | "error";
     message: string;
@@ -360,7 +361,18 @@ export default function PropertyIntelligencePage() {
       {toast ? <Toast type={toast.type} message={toast.message} /> : null}
 
       <div className="space-y-6">
-        <BackButton label={backLabel} fallbackHref={backFallbackHref} />
+        <div className="flex flex-wrap items-center gap-3">
+          <BackButton
+            label={backLabel}
+            fallbackHref={backFallbackHref}
+            preferFallback={Boolean(returnTo)}
+          />
+          {focusUnit ? (
+            <span className="app-sky-pill rounded-full border border-sky-500/30 bg-sky-500/10 px-4 py-2 text-sm font-black text-sky-100">
+              Focused on {focusUnit}
+            </span>
+          ) : null}
+        </div>
 
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>

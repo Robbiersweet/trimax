@@ -7,6 +7,7 @@ type BackButtonProps = {
   label?: string;
   fallbackHref?: string;
   className?: string;
+  preferFallback?: boolean;
 };
 
 function isSafeInternalRoute(value: string | null): value is string {
@@ -17,11 +18,17 @@ export default function BackButton({
   label = "Back",
   fallbackHref = "/",
   className = "",
+  preferFallback = false,
 }: BackButtonProps) {
   const router = useRouter();
   const pathname = usePathname();
 
   function handleBack() {
+    if (preferFallback && isSafeInternalRoute(fallbackHref)) {
+      router.push(fallbackHref);
+      return;
+    }
+
     const previousRoute = sessionStorage.getItem(previousTrimaxRouteKey);
 
     if (
