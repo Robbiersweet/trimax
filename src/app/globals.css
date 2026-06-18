@@ -3,6 +3,8 @@
 :root {
   --background: #0a0a0a;
   --foreground: #ededed;
+  --trimax-accent-text: #7dd3fc;
+  --trimax-accent-strong: #bae6fd;
 }
 
 @theme inline {
@@ -16,6 +18,8 @@ html.theme-light {
   color-scheme: light;
   --background: #f5f7fb;
   --foreground: #111827;
+  --trimax-accent-text: #075985;
+  --trimax-accent-strong: #0f172a;
 }
 
 body {
@@ -314,7 +318,7 @@ html.theme-light .dark-surface .text-cyan-50,
 html.theme-light .dark-surface .text-cyan-100,
 html.theme-light .dark-surface .text-cyan-200,
 html.theme-light .dark-surface .text-cyan-300 {
-  color: #bae6fd !important;
+  color: #38bdf8 !important;
 }
 
 html.theme-light .dark-surface .text-purple-50,
@@ -6055,7 +6059,7 @@ html.theme-light .activity-proof-chip .font-semibold {
 .dashboard-section-label,
 .dashboard-command-label,
 .dashboard-workflow-label {
-  color: #38bdf8;
+  color: var(--trimax-accent-text);
   text-shadow: 0 0 18px rgba(56, 189, 248, 0.16);
 }
 
@@ -8127,6 +8131,114 @@ html.theme-light main .schedule-hero-count {
   background: #ffffff !important;
   border-color: #cbd5e1 !important;
   color: #334155 !important;
+}
+
+html.theme-light body main :is(
+  .dashboard-command-center,
+  .dashboard-revenue-flow,
+  .dashboard-proof-strip,
+  .dashboard-risk-radar,
+  .dashboard-workflow-map,
+  .dashboard-focus-strip,
+  .dashboard-collection-targets,
+  .dashboard-workstream-section,
+  .dashboard-property-team,
+  .report-section-card,
+  .payment-cockpit,
+  .estimate-command-center,
+  .invoice-next-moves-card,
+  .activity-timeline,
+  .client-command-card
+) :is(
+  .text-sky-50,
+  .text-sky-100,
+  .text-sky-100\/60,
+  .text-sky-100\/70,
+  .text-sky-100\/75,
+  .text-sky-100\/80,
+  .text-sky-100\/90,
+  .text-sky-200,
+  .text-sky-200\/70,
+  .text-sky-200\/80,
+  .text-sky-300,
+  .text-cyan-50,
+  .text-cyan-100,
+  .text-cyan-100\/60,
+  .text-cyan-100\/70,
+  .text-cyan-100\/75,
+  .text-cyan-100\/80,
+  .text-cyan-100\/90,
+  .text-cyan-200,
+  .text-cyan-200\/70,
+  .text-cyan-200\/80,
+  .text-cyan-300,
+  .dashboard-command-label,
+  .dashboard-section-label,
+  .dashboard-workflow-label,
+  .report-library-kicker,
+  .document-readiness-label,
+  .quick-command-section-label
+) {
+  color: #0f172a !important;
+  text-shadow: none !important;
+}
+
+html.theme-light body main :is(
+  .dashboard-command-center,
+  .dashboard-revenue-flow,
+  .dashboard-proof-strip,
+  .dashboard-risk-radar,
+  .dashboard-workflow-map,
+  .dashboard-focus-strip,
+  .dashboard-collection-targets,
+  .dashboard-workstream-section,
+  .dashboard-property-team,
+  .report-section-card,
+  .payment-cockpit,
+  .estimate-command-center,
+  .invoice-next-moves-card,
+  .activity-timeline,
+  .client-command-card
+) a:is(
+  .text-sky-50,
+  .text-sky-100,
+  .text-sky-200,
+  .text-sky-300,
+  .text-cyan-50,
+  .text-cyan-100,
+  .text-cyan-200,
+  .text-cyan-300
+) {
+  color: #075985 !important;
+}
+
+html.theme-light body main :is(
+  .dashboard-command-center,
+  .dashboard-revenue-flow,
+  .dashboard-proof-strip,
+  .dashboard-risk-radar,
+  .dashboard-workflow-map,
+  .dashboard-focus-strip,
+  .dashboard-collection-targets,
+  .dashboard-workstream-section,
+  .dashboard-property-team,
+  .report-section-card,
+  .payment-cockpit,
+  .estimate-command-center,
+  .invoice-next-moves-card,
+  .activity-timeline,
+  .client-command-card
+) a:is(
+  .text-sky-50,
+  .text-sky-100,
+  .text-sky-200,
+  .text-sky-300,
+  .text-cyan-50,
+  .text-cyan-100,
+  .text-cyan-200,
+  .text-cyan-300
+):hover {
+  color: #1e3a8a !important;
 }
 
 html.theme-light body main .dashboard-workflow-map .dashboard-workflow-label,
