@@ -730,6 +730,25 @@ html.theme-light .app-toast {
     inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
 }
 
+.app-toast {
+  bottom: calc(6.75rem + env(safe-area-inset-bottom, 0px));
+  right: max(1rem, env(safe-area-inset-right, 0px));
+}
+
+@media (min-width: 900px) {
+  .app-toast {
+    bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px));
+    right: calc(1.25rem + env(safe-area-inset-right, 0px));
+  }
+}
+
+@media (max-width: 520px) {
+  .app-toast {
+    left: max(1rem, env(safe-area-inset-left, 0px));
+    right: max(1rem, env(safe-area-inset-right, 0px));
+  }
+}
+
 html.theme-light .app-toast-success {
   background:
     linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%) !important;

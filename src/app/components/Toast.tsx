@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type ToastProps = {
   type: "success" | "error";
@@ -11,21 +11,64 @@ type ToastProps = {
 export default function Toast({ type, message, durationMs }: ToastProps) {
   const toastKey = `${type}:${message}`;
   const [dismissedKey, setDismissedKey] = useState<string | null>(null);
+  const [pausedKey, setPausedKey] = useState<string | null>(null);
   const timeoutMs = durationMs ?? (type === "success" ? 20_000 : 30_000);
+  const isPaused = pausedKey === toastKey;
+  const remainingMsRef = useRef(timeoutMs);
+  const startedAtRef = useRef<number | null>(null);
+  const timerRef = useRef<number | null>(null);
+
+  const clearTimer = useCallback(() => {
+    if (timerRef.current !== null) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
-    if (timeoutMs <= 0) {
+    remainingMsRef.current = timeoutMs;
+    startedAtRef.current = null;
+    clearTimer();
+  }, [clearTimer, timeoutMs, toastKey]);
+
+  useEffect(() => {
+    if (timeoutMs <= 0 || isPaused || dismissedKey === toastKey) {
       return;
     }
 
-    const timer = window.setTimeout(() => {
+    startedAtRef.current = window.Date.now();
+    timerRef.current = window.setTimeout(() => {
       setDismissedKey(toastKey);
-    }, timeoutMs);
+    }, remainingMsRef.current);
 
     return () => {
-      window.clearTimeout(timer);
+      clearTimer();
     };
-  }, [timeoutMs, toastKey]);
+  }, [clearTimer, dismissedKey, isPaused, timeoutMs, toastKey]);
+
+  const pauseToast = () => {
+    if (timeoutMs <= 0 || isPaused || dismissedKey === toastKey) {
+      return;
+    }
+
+    if (startedAtRef.current !== null) {
+      remainingMsRef.current = Math.max(
+        0,
+        remainingMsRef.current - (window.Date.now() - startedAtRef.current),
+      );
+    }
+
+    clearTimer();
+    setPausedKey(toastKey);
+  };
+
+  const resumeToast = () => {
+    if (timeoutMs <= 0 || dismissedKey === toastKey) {
+      return;
+    }
+
+    setPausedKey((currentKey) => (currentKey === toastKey ? null : currentKey));
+  };
 
   if (dismissedKey === toastKey) {
     return null;
@@ -41,7 +84,11 @@ export default function Toast({ type, message, durationMs }: ToastProps) {
   return (
     <div
       aria-live={type === "error" ? "assertive" : "polite"}
-      className={`app-toast fixed bottom-6 right-6 z-50 flex max-w-[calc(100vw-2rem)] items-start gap-3 overflow-hidden rounded-2xl border px-5 py-4 text-sm font-semibold leading-6 shadow-2xl sm:max-w-md ${styles[type]}`}
+      className={`app-toast fixed z-50 flex max-w-[calc(100vw-2rem)] items-start gap-3 overflow-hidden rounded-2xl border px-5 py-4 text-sm font-semibold leading-6 shadow-2xl sm:max-w-md ${styles[type]}`}
+      onBlur={resumeToast}
+      onFocus={pauseToast}
+      onMouseEnter={pauseToast}
+      onMouseLeave={resumeToast}
       role={type === "error" ? "alert" : "status"}
     >
       <span
@@ -63,7 +110,10 @@ export default function Toast({ type, message, durationMs }: ToastProps) {
         <span
           aria-hidden="true"
           className="app-toast-progress absolute bottom-0 left-0 h-1 w-full origin-left"
-          style={{ animationDuration: `${timeoutMs}ms` }}
+          style={{
+            animationDuration: `${timeoutMs}ms`,
+            animationPlayState: isPaused ? "paused" : "running",
+          }}
         />
       ) : null}
     </div>
