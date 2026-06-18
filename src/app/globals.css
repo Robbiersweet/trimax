@@ -3228,7 +3228,7 @@ html.theme-light .recurring-template-card .text-green-200 {
 }
 
 .recurring-metric-card p:first-child {
-  color: #7dd3fc;
+  color: var(--trimax-accent-text);
 }
 
 .recurring-metric-card p:last-child {
@@ -3244,7 +3244,7 @@ html.theme-light .recurring-template-card .text-green-200 {
 .recurring-schedule-pill[data-tone="scheduled"] {
   border-color: rgba(56, 189, 248, 0.38);
   background: rgba(14, 165, 233, 0.14);
-  color: #bae6fd;
+  color: var(--trimax-readable-accent);
 }
 
 .recurring-schedule-pill[data-tone="due"] {
@@ -5011,7 +5011,7 @@ html.theme-light .payment-priority-row:hover {
 .import-status-pill-open {
   background: rgba(14, 165, 233, 0.12);
   border-color: rgba(56, 189, 248, 0.36);
-  color: #bae6fd;
+  color: var(--trimax-accent-strong);
 }
 
 .import-status-pill-paid {
@@ -5203,7 +5203,7 @@ html.theme-light .dashboard-readable-link:hover {
 }
 
 .dashboard-revenue-flow-card p:first-child {
-  color: #bae6fd;
+  color: var(--trimax-readable-accent);
 }
 
 .dashboard-revenue-flow-card span {
@@ -5498,7 +5498,7 @@ html.theme-light .dashboard-readable-link:hover {
 }
 
 .dashboard-proof-flight-copy span {
-  color: #bae6fd;
+  color: var(--trimax-readable-accent);
   font-size: 0.68rem;
   font-weight: 950;
   letter-spacing: 0.16em;
@@ -7122,7 +7122,7 @@ html.theme-light .dashboard-hero-signal:hover {
 
 .dashboard-workflow-node-label,
 .dashboard-workflow-pill {
-  color: #bae6fd;
+  color: var(--trimax-readable-accent);
 }
 
 .dashboard-workflow-node-label {
@@ -7426,7 +7426,7 @@ html.theme-light .dashboard-workflow-stat[data-tone="rose"] {
 }
 
 .dashboard-priority-stack p:first-child {
-  color: #bae6fd;
+  color: var(--trimax-readable-accent);
 }
 
 .dashboard-priority-stack-count {
@@ -7451,7 +7451,7 @@ html.theme-light .dashboard-workflow-stat[data-tone="rose"] {
 }
 
 .dashboard-next-best-move span span:first-child {
-  color: #bae6fd;
+  color: var(--trimax-readable-accent);
 }
 
 .dashboard-next-best-move strong {
@@ -7524,7 +7524,7 @@ html.theme-light .dashboard-workflow-stat[data-tone="rose"] {
 }
 
 .dashboard-priority-stack-item > span:last-child span:last-child {
-  color: #bae6fd;
+  color: var(--trimax-readable-accent);
 }
 
 .dashboard-priority-stack-item[data-tone="rose"] .dashboard-priority-stack-rank {
@@ -7544,7 +7544,7 @@ html.theme-light .dashboard-workflow-stat[data-tone="rose"] {
 
 .dashboard-priority-stack-item[data-tone="sky"] .dashboard-priority-stack-rank {
   background: rgba(14, 165, 233, 0.18);
-  color: #bae6fd;
+  color: var(--trimax-readable-accent);
 }
 
 .dashboard-priority-stack-item[data-tone="violet"] .dashboard-priority-stack-rank {
@@ -7658,7 +7658,7 @@ html.theme-light .dashboard-workflow-stat[data-tone="rose"] {
 }
 
 .dashboard-memory-node span {
-  color: #bae6fd;
+  color: var(--trimax-readable-accent);
   display: block;
   font-size: 0.68rem;
   font-weight: 900;
@@ -7723,7 +7723,7 @@ html.theme-light .dashboard-workflow-stat[data-tone="rose"] {
 }
 
 .dashboard-pattern-label {
-  color: #bae6fd;
+  color: var(--trimax-readable-accent);
 }
 
 .dashboard-pattern-signal {
@@ -8441,7 +8441,7 @@ html.theme-light .dashboard-mobile-priority-card[data-tone="checks"] {
   height: 2.25rem;
   border-radius: 999px;
   background: rgba(14, 165, 233, 0.14);
-  color: #7dd3fc;
+  color: var(--trimax-accent-text);
   font-size: 1.2rem;
 }
 
@@ -8575,7 +8575,7 @@ html.theme-light .dashboard-mobile-priority-card[data-tone="checks"] {
 }
 
 .quick-command-brief-kicker {
-  color: #7dd3fc;
+  color: var(--trimax-readable-accent);
   font-size: 0.68rem;
   font-weight: 950;
   letter-spacing: 0.22em;
@@ -8603,7 +8603,7 @@ html.theme-light .dashboard-mobile-priority-card[data-tone="checks"] {
 }
 
 .quick-command-section-label {
-  color: #7dd3fc;
+  color: var(--trimax-readable-accent);
   font-size: 0.72rem;
   font-weight: 950;
   letter-spacing: 0.2em;
@@ -8704,7 +8704,7 @@ html.theme-light .dashboard-mobile-priority-card[data-tone="checks"] {
   border: 1px solid rgba(125, 211, 252, 0.24);
   border-radius: 999px;
   background: rgba(14, 165, 233, 0.12);
-  color: #bae6fd;
+  color: var(--trimax-readable-accent);
   font-size: 0.68rem;
   font-weight: 950;
   padding: 0.25rem 0.5rem;
