@@ -1190,6 +1190,42 @@ export default async function DashboardPage({
     action: totalRiskFlags > 0 ? "Review proof" : "Open reports",
     tone: totalRiskFlags > 0 ? "rose" : "emerald",
   });
+  const workflowMapStats = [
+    {
+      label: "Collection",
+      value: `${collectionRate}% paid`,
+      href: `/payments?${priorityPaymentParams.toString()}`,
+      tone:
+        collectionRate >= 90
+          ? "emerald"
+          : collectionRate >= 65
+            ? "sky"
+            : "amber",
+    },
+    {
+      label: "Queue",
+      value:
+        readySoonUnscheduled.length > 0
+          ? `${readySoonUnscheduled.length} ready soon`
+          : `${activeQueueItems.length} active`,
+      href: `/queue?business=${selectedBusinessSlug}`,
+      tone:
+        readySoonUnscheduled.length > 0
+          ? "amber"
+          : activeQueueItems.length > 0
+            ? "sky"
+            : "emerald",
+    },
+    {
+      label: "Audit",
+      value:
+        totalRiskFlags === 0
+          ? "clean"
+          : `${totalRiskFlags} to check`,
+      href: `/activity?business=${selectedBusinessSlug}`,
+      tone: totalRiskFlags === 0 ? "emerald" : "rose",
+    },
+  ];
 
   return (
     <AppShell>
@@ -1613,16 +1649,18 @@ export default async function DashboardPage({
                   and proof records.
                 </p>
 
-                <div className="mt-5 flex flex-wrap gap-2">
-                  <span className="dashboard-workflow-pill rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.14em]">
-                    Live counts
-                  </span>
-                  <span className="dashboard-workflow-pill rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.14em]">
-                    Clickable steps
-                  </span>
-                  <span className="dashboard-workflow-pill rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.14em]">
-                    Audit ready
-                  </span>
+                <div className="dashboard-workflow-stat-strip mt-5 grid gap-2 sm:grid-cols-3">
+                  {workflowMapStats.map((stat) => (
+                    <Link
+                      key={stat.label}
+                      href={stat.href}
+                      data-tone={stat.tone}
+                      className="dashboard-workflow-stat rounded-2xl border px-3 py-2 transition hover:-translate-y-0.5"
+                    >
+                      <span>{stat.label}</span>
+                      <strong>{stat.value}</strong>
+                    </Link>
+                  ))}
                 </div>
               </div>
 

@@ -6427,6 +6427,55 @@ html.theme-light .dashboard-hero-signal:hover {
   border-color: rgba(125, 211, 252, 0.28);
 }
 
+.dashboard-workflow-stat {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.35rem;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(125, 211, 252, 0.14), transparent 36%),
+    rgba(15, 23, 42, 0.46);
+  border-color: rgba(148, 163, 184, 0.2);
+  color: #f8fafc;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 12px 28px rgba(2, 6, 23, 0.16);
+}
+
+.dashboard-workflow-stat span {
+  color: #cbd5e1;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.dashboard-workflow-stat strong {
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-workflow-stat[data-tone="emerald"] {
+  border-color: rgba(52, 211, 153, 0.36);
+}
+
+.dashboard-workflow-stat[data-tone="sky"] {
+  border-color: rgba(56, 189, 248, 0.36);
+}
+
+.dashboard-workflow-stat[data-tone="amber"] {
+  border-color: rgba(251, 191, 36, 0.38);
+}
+
+.dashboard-workflow-stat[data-tone="rose"] {
+  border-color: rgba(251, 113, 133, 0.4);
+}
+
 html.theme-light .dashboard-workflow-map {
   background:
     radial-gradient(circle at 82% 18%, rgba(14, 165, 233, 0.1), transparent 28%),
@@ -6478,6 +6527,46 @@ html.theme-light .dashboard-workflow-pill {
   background: #ffffff;
   border-color: #cbd5e1;
   color: #0f172a;
+}
+
+html.theme-light .dashboard-workflow-stat {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+  box-shadow:
+    0 12px 26px rgba(15, 23, 42, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+html.theme-light .dashboard-workflow-stat:hover {
+  border-color: #2563eb;
+  box-shadow:
+    0 16px 34px rgba(37, 99, 235, 0.1),
+    0 0 0 1px rgba(37, 99, 235, 0.08);
+}
+
+html.theme-light .dashboard-workflow-stat span {
+  color: #475569;
+}
+
+html.theme-light .dashboard-workflow-stat strong {
+  color: #0f172a;
+}
+
+html.theme-light .dashboard-workflow-stat[data-tone="emerald"] {
+  border-color: #34d399;
+}
+
+html.theme-light .dashboard-workflow-stat[data-tone="sky"] {
+  border-color: #38bdf8;
+}
+
+html.theme-light .dashboard-workflow-stat[data-tone="amber"] {
+  border-color: #f59e0b;
+}
+
+html.theme-light .dashboard-workflow-stat[data-tone="rose"] {
+  border-color: #fb7185;
 }
 
 @media (max-width: 767px) {
