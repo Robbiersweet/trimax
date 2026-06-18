@@ -80,11 +80,12 @@ export default function Toast({ type, message, durationMs }: ToastProps) {
     error:
       "app-toast-error border-red-400/45 bg-red-950 text-red-50 shadow-red-950/30",
   };
+  const title = type === "success" ? "Done" : "Needs attention";
 
   return (
     <div
       aria-live={type === "error" ? "assertive" : "polite"}
-      className={`app-toast fixed z-50 flex max-w-[calc(100vw-2rem)] items-start gap-3 overflow-hidden rounded-2xl border px-5 py-4 text-sm font-semibold leading-6 shadow-2xl sm:max-w-md ${styles[type]}`}
+      className={`app-toast fixed z-50 flex max-w-[calc(100vw-2rem)] items-start gap-3 overflow-hidden rounded-2xl border px-5 py-4 text-sm leading-6 shadow-2xl sm:max-w-md ${styles[type]}`}
       onBlur={resumeToast}
       onFocus={pauseToast}
       onMouseEnter={pauseToast}
@@ -93,18 +94,23 @@ export default function Toast({ type, message, durationMs }: ToastProps) {
     >
       <span
         aria-hidden="true"
-        className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-white/15 text-[0.7rem] font-black"
+        className="app-toast-icon mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-white/15 text-sm font-black"
       >
-        {type === "success" ? "OK" : "!"}
+        {type === "success" ? "✓" : "!"}
       </span>
-      <span className="min-w-0 flex-1">{message}</span>
+      <span className="min-w-0 flex-1">
+        <span className="app-toast-title block text-xs font-black uppercase tracking-[0.16em]">
+          {title}
+        </span>
+        <span className="block font-semibold">{message}</span>
+      </span>
       <button
         aria-label="Dismiss notification"
-        className="rounded-full px-2 py-0.5 text-xs font-black leading-5 opacity-70 transition hover:bg-white/10 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-white/50"
+        className="app-toast-dismiss rounded-full px-2 py-0.5 text-xs font-black leading-5 opacity-70 transition hover:bg-white/10 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-white/50"
         onClick={() => setDismissedKey(toastKey)}
         type="button"
       >
-        x
+        ×
       </button>
       {timeoutMs > 0 ? (
         <span
