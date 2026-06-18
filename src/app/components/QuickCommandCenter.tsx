@@ -963,6 +963,134 @@ function saveRecentCommandHref(href: string, currentHrefs: string[]) {
   return nextHrefs;
 }
 
+function buildIntentShortcutCommands(
+  query: string,
+  business: string
+): CommandItem[] {
+  const normalized = query.trim().toLowerCase();
+
+  if (!normalized) {
+    return [];
+  }
+
+  const commands: CommandItem[] = [];
+  const hasAny = (...terms: string[]) =>
+    terms.some((term) => normalized.includes(term));
+  const hasAll = (...terms: string[]) =>
+    terms.every((term) => normalized.includes(term));
+
+  if (
+    hasAny("what should i do", "next best", "today", "attention", "priority")
+  ) {
+    commands.push({
+      title: "Show my next best moves",
+      detail:
+        "Jump to the dashboard focus map, proof checks, queue pressure, and accounting priorities.",
+      href: `/?business=${business}#dashboard-focus`,
+      tone: "system",
+      keywords: ["intent", "today", "priority", "attention", "next"],
+      source: "smart",
+      actionLabel: "Focus",
+    });
+  }
+
+  if (
+    hasAny("overdue", "past due", "late", "reminder") ||
+    hasAll("who", "owes")
+  ) {
+    commands.push({
+      title: "Find money that needs follow-up",
+      detail:
+        "Open aging, overdue invoices, and late reminder workflows for collection.",
+      href: `/invoices?business=${business}&view=aging`,
+      tone: "cash",
+      keywords: ["intent", "overdue", "late", "aging", "reminder", "collect"],
+      source: "smart",
+      actionLabel: "Collect",
+    });
+  }
+
+  if (hasAny("check", "stub", "remittance", "photo", "camera", "capture")) {
+    commands.push({
+      title: "Capture and match a check",
+      detail:
+        "Open the payment camera workflow for check stubs and invoice matching.",
+      href: `/payments?business=${business}#check-capture`,
+      tone: "cash",
+      keywords: ["intent", "check", "stub", "photo", "camera", "match"],
+      source: "smart",
+      actionLabel: "Capture",
+    });
+  }
+
+  if (hasAny("proof", "audit", "evidence", "receipt", "sent email")) {
+    commands.push({
+      title: "Open the proof center",
+      detail:
+        "Review sent emails, reminders, PDF attachments, payments, and activity evidence.",
+      href: `/activity?business=${business}`,
+      tone: "security",
+      keywords: ["intent", "proof", "audit", "evidence", "activity"],
+      source: "smart",
+      actionLabel: "Proof",
+    });
+  }
+
+  if (hasAny("email", "sender", "reply", "cc", "bcc", "pdf", "resend")) {
+    commands.push({
+      title: "Open email and PDF delivery settings",
+      detail:
+        "Manage sender, reply-to, client CC, private copy, templates, and attachments.",
+      href: `/settings?business=${business}#outlook-integration`,
+      tone: "setup",
+      keywords: ["intent", "email", "sender", "cc", "bcc", "pdf"],
+      source: "smart",
+      actionLabel: "Settings",
+    });
+  }
+
+  if (hasAny("secure", "security", "lock", "logout", "session")) {
+    commands.push({
+      title: "Open security controls",
+      detail:
+        "Review session lock, user access, roles, and app security settings.",
+      href: `/settings?business=${business}#user-role-integration`,
+      tone: "security",
+      keywords: ["intent", "security", "lock", "session", "roles"],
+      source: "smart",
+      actionLabel: "Secure",
+    });
+  }
+
+  if (hasAny("schedule", "calendar", "paint due", "queue priority")) {
+    commands.push({
+      title: "Open queue scheduling",
+      detail:
+        "Review scheduled work, paint due dates, and queue priority planning.",
+      href: `/schedule?business=${business}`,
+      tone: "queue",
+      keywords: ["intent", "schedule", "calendar", "paint", "queue"],
+      source: "smart",
+      actionLabel: "Schedule",
+    });
+  }
+
+  if (hasAny("split", "apartment paint", "threshold")) {
+    commands.push({
+      title: "Review split invoice workflow",
+      detail:
+        "Open invoices where apartment-paint billing and split workflow decisions happen.",
+      href: `/invoices?business=${business}&collection=open`,
+      tone: "cash",
+      keywords: ["intent", "split", "threshold", "apartment", "paint"],
+      source: "smart",
+      actionLabel: "Invoices",
+    });
+  }
+
+  return commands;
+}
+
 export default function QuickCommandCenter() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1326,6 +1454,10 @@ export default function QuickCommandCenter() {
 
   const normalizedQuery = query.trim().toLowerCase();
   const recordLookupQuery = query.trim();
+  const intentShortcutCommands = useMemo(
+    () => buildIntentShortcutCommands(recordLookupQuery, business),
+    [business, recordLookupQuery]
+  );
   const recentCommands = recentCommandHrefs
     .map((href) => commands.find((command) => command.href === href))
     .filter((command): command is CommandItem => Boolean(command));
@@ -1425,6 +1557,7 @@ export default function QuickCommandCenter() {
   const visibleCommands = (
     normalizedQuery
       ? [
+          ...intentShortcutCommands,
           ...(canResolveRecords ? recordCommands : []),
           ...fallbackRecordCommands.filter(
             (fallback) =>
@@ -1826,7 +1959,7 @@ export default function QuickCommandCenter() {
                     runCommand(selectedCommand);
                   }
                 }}
-                placeholder="Try: pay INV 502, print EST 505, schedule G03..."
+                placeholder="Try: overdue, proof, check photo, pay INV 502, schedule G03..."
                 className="quick-command-input"
                 role="combobox"
               />
@@ -1860,8 +1993,8 @@ export default function QuickCommandCenter() {
                 <div>
                   <p className="quick-command-brief-kicker">Command Matrix</p>
                   <p className="quick-command-brief-title">
-                    Type records or actions: pay, print, send, remind, edit,
-                    schedule, complete.
+                    Type records, actions, or plain goals like overdue, proof,
+                    check photo, security, or schedule.
                   </p>
                 </div>
                 <span>
