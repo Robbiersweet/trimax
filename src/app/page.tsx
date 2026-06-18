@@ -913,6 +913,50 @@ export default async function DashboardPage({
       tone: paymentWithoutImageProofCount > 0 ? "sky" : "emerald",
     },
   ];
+  const workflowMapNodes = [
+    {
+      label: "Queue",
+      title: "Work enters Trimax",
+      detail: `${activeQueueItems.length} active`,
+      href: `/queue?business=${selectedBusinessSlug}`,
+      tone: "queue",
+    },
+    {
+      label: "Schedule",
+      title: "Plan the work",
+      detail: `${scheduledQueueItems.length} scheduled`,
+      href: `/schedule?business=${selectedBusinessSlug}`,
+      tone: "schedule",
+    },
+    {
+      label: "Estimate",
+      title: "Price the job",
+      detail: `${queueItemsNeedingEstimate.length} need estimate`,
+      href: `/queue?business=${selectedBusinessSlug}&view=needs-estimate`,
+      tone: "estimate",
+    },
+    {
+      label: "Invoice",
+      title: "Send the bill",
+      detail: `${workingYearOpenInvoicesWithAmounts.length} open`,
+      href: `/invoices?business=${selectedBusinessSlug}`,
+      tone: "invoice",
+    },
+    {
+      label: "Payment",
+      title: "Match the check",
+      detail: outstandingRevenue,
+      href: `/payments?${priorityPaymentParams.toString()}`,
+      tone: "payment",
+    },
+    {
+      label: "Proof",
+      title: "Keep records ready",
+      detail: `${totalRiskFlags} to check`,
+      href: `/activity?business=${selectedBusinessSlug}`,
+      tone: "proof",
+    },
+  ];
   const topPriorityStackCandidates: {
     action: string;
     detail: string;
@@ -1403,6 +1447,71 @@ export default async function DashboardPage({
                   </p>
                 </Link>
               ))}
+            </div>
+          </Card>
+        </RoleVisible>
+
+        <RoleVisible
+          businessSlug={selectedBusinessSlug}
+          allow={[
+            "owner",
+            "admin",
+            "accountant",
+          ]}
+        >
+          <Card className="dashboard-workflow-map dark-surface overflow-hidden border-sky-500/20 bg-zinc-950">
+            <div className="grid gap-6 xl:grid-cols-[0.72fr_1fr] xl:items-center">
+              <div>
+                <p className="dashboard-section-label text-sm uppercase tracking-[0.3em] text-sky-300">
+                  Workflow Map
+                </p>
+
+                <h2 className="mt-2 text-3xl font-black tracking-tight text-white">
+                  See the whole job-to-cash path
+                </h2>
+
+                <p className="mt-3 max-w-xl text-sm leading-6 text-zinc-300">
+                  A compact visual map of how Trimax moves work from queue
+                  intake to scheduling, estimates, invoices, payment matching,
+                  and proof records.
+                </p>
+
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <span className="dashboard-workflow-pill rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.14em]">
+                    Live counts
+                  </span>
+                  <span className="dashboard-workflow-pill rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.14em]">
+                    Clickable steps
+                  </span>
+                  <span className="dashboard-workflow-pill rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.14em]">
+                    Audit ready
+                  </span>
+                </div>
+              </div>
+
+              <div className="dashboard-workflow-stage" aria-label="Trimax workflow map">
+                <div className="dashboard-workflow-core">
+                  <p>Trimax</p>
+                  <span>Operations Core</span>
+                </div>
+
+                <div className="dashboard-workflow-orbit">
+                  {workflowMapNodes.map((node) => (
+                    <Link
+                      key={node.label}
+                      href={node.href}
+                      data-tone={node.tone}
+                      className="dashboard-workflow-node"
+                    >
+                      <span className="dashboard-workflow-node-label">
+                        {node.label}
+                      </span>
+                      <strong>{node.title}</strong>
+                      <span>{node.detail}</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
             </div>
           </Card>
         </RoleVisible>
