@@ -7206,6 +7206,69 @@ html.theme-light .app-card:focus-within {
   transform: translateY(0);
 }
 
+.app-button-primary:disabled,
+.app-button-secondary:disabled,
+.app-back-button:disabled,
+.app-chip:disabled,
+.payment-action-button:disabled,
+.check-match-button:disabled,
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed !important;
+  transform: none !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
+}
+
+.app-button-primary:disabled:hover,
+.app-button-secondary:disabled:hover,
+.app-back-button:disabled:hover,
+.app-chip:disabled:hover,
+.payment-action-button:disabled:hover,
+.check-match-button:disabled:hover,
+button:disabled:hover,
+[aria-disabled="true"]:hover {
+  transform: none !important;
+}
+
+html.theme-light main button:disabled,
+html.theme-light main .app-button-primary:disabled,
+html.theme-light main .app-button-secondary:disabled,
+html.theme-light main .app-back-button:disabled,
+html.theme-light main .app-chip:disabled,
+html.theme-light main .payment-action-button:disabled,
+html.theme-light main .check-match-button:disabled,
+html.theme-light main [aria-disabled="true"] {
+  background: linear-gradient(145deg, #f1f5f9, #e2e8f0) !important;
+  border-color: #cbd5e1 !important;
+  color: #475569 !important;
+  opacity: 1 !important;
+}
+
+html.theme-light main button:disabled *,
+html.theme-light main [aria-disabled="true"] * {
+  color: #475569 !important;
+}
+
+html:not(.theme-light) main button:disabled,
+html:not(.theme-light) main .app-button-primary:disabled,
+html:not(.theme-light) main .app-button-secondary:disabled,
+html:not(.theme-light) main .app-back-button:disabled,
+html:not(.theme-light) main .app-chip:disabled,
+html:not(.theme-light) main .payment-action-button:disabled,
+html:not(.theme-light) main .check-match-button:disabled,
+html:not(.theme-light) main [aria-disabled="true"] {
+  background: linear-gradient(145deg, rgba(39, 39, 42, 0.9), rgba(24, 24, 27, 0.96)) !important;
+  border-color: rgba(148, 163, 184, 0.22) !important;
+  color: #cbd5e1 !important;
+  opacity: 1 !important;
+}
+
+html:not(.theme-light) main button:disabled *,
+html:not(.theme-light) main [aria-disabled="true"] * {
+  color: #cbd5e1 !important;
+}
+
 main [class*="tracking-[0.3em]"],
 main [class*="tracking-[0.35em]"] {
   text-shadow: 0 0 18px rgba(56, 189, 248, 0.18);
