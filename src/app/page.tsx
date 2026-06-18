@@ -643,6 +643,38 @@ export default async function DashboardPage({
     ...item,
     percent: Math.max(5, Math.round((item.value / revenueFlowMax) * 100)),
   }));
+  const cashLaneTotal = Math.max(
+    ytdRevenueTotal +
+      outstandingRevenueTotal +
+      depositRequestTotal +
+      pastDueTotal,
+    1
+  );
+  const cashLaneItems = [
+    {
+      label: "Paid",
+      value: ytdRevenueTotal,
+      tone: "paid",
+    },
+    {
+      label: "Open",
+      value: outstandingRevenueTotal,
+      tone: "open",
+    },
+    {
+      label: "Deposits",
+      value: depositRequestTotal,
+      tone: "deposit",
+    },
+    {
+      label: "Past Due",
+      value: pastDueTotal,
+      tone: "late",
+    },
+  ].map((item) => ({
+    ...item,
+    percent: Math.max(4, Math.round((item.value / cashLaneTotal) * 100)),
+  }));
   const priorityInvoice =
     mostOverdueInvoices[0] ??
     depositRequestInvoices[0] ??
@@ -2000,6 +2032,45 @@ export default async function DashboardPage({
                     </div>
                   </Link>
                 ))}
+              </div>
+
+              <div
+                className="dashboard-cash-lane mt-4"
+                aria-label="Cash position visual summary"
+              >
+                <div className="dashboard-cash-lane-track">
+                  {cashLaneItems.map((item) => (
+                    <span
+                      key={item.label}
+                      data-tone={item.tone}
+                      className="dashboard-cash-lane-segment"
+                      style={{ flexBasis: `${item.percent}%` }}
+                      title={`${item.label}: ${formatMoney(item.value)}`}
+                    />
+                  ))}
+                </div>
+
+                <div className="dashboard-cash-lane-legend">
+                  {cashLaneItems.map((item) => (
+                    <Link
+                      key={item.label}
+                      href={
+                        item.tone === "paid"
+                          ? `/reports?business=${selectedBusinessSlug}`
+                          : item.tone === "late"
+                            ? `/invoices?business=${selectedBusinessSlug}&view=aging`
+                            : item.tone === "deposit"
+                              ? `/invoices?business=${selectedBusinessSlug}&collection=open`
+                              : `/payments?business=${selectedBusinessSlug}`
+                      }
+                      data-tone={item.tone}
+                    >
+                      <span />
+                      <strong>{item.label}</strong>
+                      <em>{formatMoney(item.value)}</em>
+                    </Link>
+                  ))}
+                </div>
               </div>
             </div>
 
