@@ -29,8 +29,28 @@ type BusinessUserRow = {
     | null;
 };
 
+type PropertyWorkspaceRow = {
+  id: string;
+  role: string | null;
+  business_id: string | null;
+  user_id: string | null;
+  email: string | null;
+  businesses:
+    | {
+        id: string;
+        name: string;
+        slug: string;
+      }
+    | {
+        id: string;
+        name: string;
+        slug: string;
+      }[]
+    | null;
+};
+
 function normalizeBusiness(
-  row: BusinessUserRow
+  row: BusinessUserRow | PropertyWorkspaceRow
 ) {
   if (Array.isArray(row.businesses)) {
     return row.businesses[0] ?? null;
@@ -103,7 +123,7 @@ export async function loadWorkspaceAccess() {
     );
   }
 
-  return rows
+  const workspaceAccess = rows
     .map((row) => {
       const business = normalizeBusiness(row);
 
@@ -122,6 +142,83 @@ export async function loadWorkspaceAccess() {
       (item): item is WorkspaceAccess =>
         Boolean(item)
     );
+
+  const { data: propertyData, error: propertyError } =
+    await supabase
+      .from("property_users")
+      .select(
+        `
+          id,
+          role,
+          business_id,
+          user_id,
+          email,
+          businesses (
+            id,
+            name,
+            slug
+          )
+        `
+      )
+      .or(
+        userEmail
+          ? `user_id.eq.${user.id},email.ilike.${userEmail}`
+          : `user_id.eq.${user.id}`
+      )
+      .order("created_at", { ascending: true });
+
+  if (propertyError) {
+    return workspaceAccess;
+  }
+
+  const propertyRows =
+    (propertyData ?? []) as PropertyWorkspaceRow[];
+  const pendingPropertyRows = propertyRows.filter(
+    (row) =>
+      !row.user_id &&
+      row.email?.toLowerCase() === userEmail
+  );
+
+  if (pendingPropertyRows.length > 0) {
+    await Promise.all(
+      pendingPropertyRows.map((row) =>
+        supabase
+          .from("property_users")
+          .update({
+            user_id: user.id,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", row.id)
+      )
+    );
+  }
+
+  for (const row of propertyRows) {
+    const business = normalizeBusiness(row);
+
+    if (!business?.id || !business.slug) {
+      continue;
+    }
+
+    const alreadyHasWorkspace =
+      workspaceAccess.some(
+        (workspace) =>
+          workspace.businessId === business.id
+      );
+
+    if (alreadyHasWorkspace) {
+      continue;
+    }
+
+    workspaceAccess.push({
+      businessId: business.id,
+      businessName: business.name,
+      businessSlug: business.slug,
+      role: row.role ?? "property_manager",
+    });
+  }
+
+  return workspaceAccess;
 }
 
 export function preferredWorkspaceSlug(
