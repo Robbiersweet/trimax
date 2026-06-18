@@ -9738,8 +9738,28 @@ html.theme-light body main
 }
 
 .app-shell-content {
+  isolation: isolate;
   position: relative;
   z-index: 1;
+}
+
+.app-shell-content::after {
+  background:
+    linear-gradient(90deg, rgba(125, 211, 252, 0.06) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(125, 211, 252, 0.04) 1px, transparent 1px),
+    radial-gradient(circle at 72% 8%, rgba(14, 165, 233, 0.12), transparent 18rem);
+  background-size:
+    76px 76px,
+    76px 76px,
+    auto;
+  border-radius: 2rem;
+  content: "";
+  inset: 0;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.82), transparent 34rem);
+  opacity: 0.72;
+  pointer-events: none;
+  position: absolute;
+  z-index: -1;
 }
 
 html.theme-light .app-shell-root::before {
@@ -9747,6 +9767,14 @@ html.theme-light .app-shell-root::before {
     radial-gradient(circle at 14% 6%, rgba(37, 99, 235, 0.12), transparent 28rem),
     radial-gradient(circle at 88% 0%, rgba(20, 184, 166, 0.1), transparent 24rem),
     linear-gradient(115deg, rgba(248, 250, 252, 0), rgba(226, 232, 240, 0.62) 48%, rgba(248, 250, 252, 0));
+}
+
+html.theme-light .app-shell-content::after {
+  background:
+    linear-gradient(90deg, rgba(37, 99, 235, 0.055) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(37, 99, 235, 0.04) 1px, transparent 1px),
+    radial-gradient(circle at 72% 8%, rgba(37, 99, 235, 0.1), transparent 18rem);
+  opacity: 0.58;
 }
 
 .dashboard-workflow-stage {
