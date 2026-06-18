@@ -8251,3 +8251,148 @@ html.theme-light body main .dashboard-section-label {
 html.theme-light body main .dashboard-section-label {
   font-weight: 900;
 }
+
+/* Visual polish pass: make the app shell and primary workflow surfaces feel
+   more deliberate without adding extra dashboard clutter. */
+.app-shell-root {
+  position: relative;
+}
+
+.app-shell-root::before {
+  background:
+    radial-gradient(circle at 14% 6%, rgba(14, 165, 233, 0.16), transparent 28rem),
+    radial-gradient(circle at 88% 0%, rgba(16, 185, 129, 0.11), transparent 24rem),
+    linear-gradient(115deg, rgba(2, 6, 23, 0), rgba(14, 165, 233, 0.04) 48%, rgba(2, 6, 23, 0));
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: fixed;
+  z-index: 0;
+}
+
+.app-shell-content {
+  position: relative;
+  z-index: 1;
+}
+
+html.theme-light .app-shell-root::before {
+  background:
+    radial-gradient(circle at 14% 6%, rgba(37, 99, 235, 0.12), transparent 28rem),
+    radial-gradient(circle at 88% 0%, rgba(20, 184, 166, 0.1), transparent 24rem),
+    linear-gradient(115deg, rgba(248, 250, 252, 0), rgba(226, 232, 240, 0.62) 48%, rgba(248, 250, 252, 0));
+}
+
+.dashboard-workflow-stage {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 0 0 1px rgba(125, 211, 252, 0.06),
+    0 26px 64px rgba(2, 6, 23, 0.28);
+}
+
+.dashboard-workflow-stage::before {
+  opacity: 0.72;
+}
+
+.dashboard-workflow-core {
+  animation: trimaxCoreGlow 5.5s ease-in-out infinite;
+}
+
+.dashboard-workflow-node {
+  overflow: hidden;
+}
+
+.dashboard-workflow-node::after {
+  background:
+    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.18), transparent);
+  content: "";
+  height: 100%;
+  left: -60%;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  transform: skewX(-18deg);
+  transition: left 420ms ease;
+  width: 42%;
+}
+
+.dashboard-workflow-node:hover::after {
+  left: 118%;
+}
+
+.dashboard-action-card,
+.dashboard-autopilot-card,
+.dashboard-focus-card,
+.dashboard-priority-stack-item,
+.quick-command-result {
+  will-change: transform;
+}
+
+.quick-command-launcher {
+  animation: trimaxCommandFloat 4.8s ease-in-out infinite;
+}
+
+.quick-command-panel {
+  animation: trimaxPanelIn 170ms ease-out;
+}
+
+html.theme-light .dashboard-workflow-stage {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    inset 0 0 0 1px rgba(37, 99, 235, 0.08),
+    0 26px 64px rgba(15, 23, 42, 0.1);
+}
+
+html.theme-light .dashboard-workflow-node::after {
+  background:
+    linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.12), transparent);
+}
+
+@keyframes trimaxCommandFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes trimaxPanelIn {
+  from {
+    opacity: 0;
+    transform: translateY(0.35rem) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes trimaxCoreGlow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 8px rgba(14, 165, 233, 0.08),
+      0 22px 44px rgba(2, 6, 23, 0.32);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 12px rgba(14, 165, 233, 0.05),
+      0 24px 52px rgba(14, 165, 233, 0.24);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-workflow-core,
+  .quick-command-launcher,
+  .quick-command-panel {
+    animation: none;
+  }
+
+  .dashboard-workflow-node::after {
+    transition: none;
+  }
+}

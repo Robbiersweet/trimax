@@ -3,7 +3,14 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  NavPermissionKey,
+  WorkspaceRole,
+  canAccessNavItem,
+  normalizeWorkspaceRole,
+} from "../lib/rolePermissions";
 import { supabase } from "../lib/supabase";
+import { loadWorkspaceAccess } from "../lib/workspaceAccess";
 
 type CommandTone =
   | "cash"
@@ -132,6 +139,61 @@ function commandSearchText(command: CommandItem) {
     .toLowerCase();
 
   return haystack;
+}
+
+function permissionForHref(href: string): NavPermissionKey {
+  if (href.startsWith("/queue") || href.startsWith("/new-request")) {
+    return "queue";
+  }
+
+  if (
+    href.startsWith("/property-intelligence") ||
+    href.startsWith("/schedule")
+  ) {
+    return href.startsWith("/schedule") ? "schedule" : "queue";
+  }
+
+  if (href.startsWith("/estimates")) {
+    return "estimates";
+  }
+
+  if (href.startsWith("/invoices") || href.startsWith("/recurring-invoices")) {
+    return "invoices";
+  }
+
+  if (href.startsWith("/payments")) {
+    return "payments";
+  }
+
+  if (href.startsWith("/clients")) {
+    return "clients";
+  }
+
+  if (href.startsWith("/imports")) {
+    return "imports";
+  }
+
+  if (href.startsWith("/services")) {
+    return "services";
+  }
+
+  if (href.startsWith("/reports")) {
+    return "reports";
+  }
+
+  if (href.startsWith("/activity")) {
+    return "activity";
+  }
+
+  if (href.startsWith("/settings")) {
+    return "settings";
+  }
+
+  return "dashboard";
+}
+
+function commandAllowedForRole(command: CommandItem, role: WorkspaceRole) {
+  return canAccessNavItem(role, permissionForHref(command.href));
 }
 
 function queryTokens(query: string) {
@@ -1099,6 +1161,7 @@ export default function QuickCommandCenter() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [recordCommands, setRecordCommands] = useState<CommandItem[]>([]);
   const [smartCommands, setSmartCommands] = useState<CommandItem[]>([]);
+  const [role, setRole] = useState<WorkspaceRole>("member");
   const [isResolvingRecords, setIsResolvingRecords] = useState(false);
   const [isResolvingSmartCommands, setIsResolvingSmartCommands] =
     useState(false);
@@ -1108,6 +1171,29 @@ export default function QuickCommandCenter() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const business = searchParams.get("business") ?? "rnl-creations";
   const canResolveRecords = isOpen && query.trim().length >= 2;
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadRole() {
+      const access = await loadWorkspaceAccess();
+      const workspace = access.find(
+        (item) => item.businessSlug === business
+      );
+
+      if (!isActive) {
+        return;
+      }
+
+      setRole(normalizeWorkspaceRole(workspace?.role ?? "member"));
+    }
+
+    loadRole();
+
+    return () => {
+      isActive = false;
+    };
+  }, [business]);
 
   const commands = useMemo<CommandItem[]>(
     () => [
@@ -1455,11 +1541,23 @@ export default function QuickCommandCenter() {
   const normalizedQuery = query.trim().toLowerCase();
   const recordLookupQuery = query.trim();
   const intentShortcutCommands = useMemo(
-    () => buildIntentShortcutCommands(recordLookupQuery, business),
-    [business, recordLookupQuery]
+    () =>
+      buildIntentShortcutCommands(recordLookupQuery, business).filter(
+        (command) => commandAllowedForRole(command, role)
+      ),
+    [business, recordLookupQuery, role]
+  );
+  const allowedCommands = useMemo(
+    () =>
+      commands.filter((command) =>
+        commandAllowedForRole(command, role)
+      ),
+    [commands, role]
   );
   const recentCommands = recentCommandHrefs
-    .map((href) => commands.find((command) => command.href === href))
+    .map((href) =>
+      allowedCommands.find((command) => command.href === href)
+    )
     .filter((command): command is CommandItem => Boolean(command));
   const fallbackRecordCommands = useMemo<CommandItem[]>(() => {
     const intent = commandIntent(recordLookupQuery);
@@ -1554,18 +1652,36 @@ export default function QuickCommandCenter() {
       },
     ];
   }, [business, recordLookupQuery]);
+  const allowedFallbackRecordCommands = useMemo(
+    () =>
+      fallbackRecordCommands.filter((command) =>
+        commandAllowedForRole(command, role)
+      ),
+    [fallbackRecordCommands, role]
+  );
+  const allowedSmartCommands = useMemo(
+    () =>
+      smartCommands.filter((command) =>
+        commandAllowedForRole(command, role)
+      ),
+    [smartCommands, role]
+  );
   const visibleCommands = (
     normalizedQuery
       ? [
           ...intentShortcutCommands,
-          ...(canResolveRecords ? recordCommands : []),
-          ...fallbackRecordCommands.filter(
+          ...(canResolveRecords
+            ? recordCommands.filter((command) =>
+                commandAllowedForRole(command, role)
+              )
+            : []),
+          ...allowedFallbackRecordCommands.filter(
             (fallback) =>
               !(canResolveRecords ? recordCommands : []).some(
                 (record) => record.href === fallback.href
               )
           ),
-          ...[...smartCommands, ...commands]
+          ...[...allowedSmartCommands, ...allowedCommands]
             .map((command) => ({
               command,
               score: commandSearchScore(
@@ -1580,13 +1696,13 @@ export default function QuickCommandCenter() {
         ]
       : [
           ...recentCommands,
-          ...smartCommands.filter(
+          ...allowedSmartCommands.filter(
             (command) => !recentCommandHrefs.includes(command.href)
           ),
-          ...commands.filter(
+          ...allowedCommands.filter(
             (command) =>
               !recentCommandHrefs.includes(command.href) &&
-              !smartCommands.some(
+              !allowedSmartCommands.some(
                 (smartCommand) => smartCommand.href === command.href
               )
           ),
@@ -1655,28 +1771,38 @@ export default function QuickCommandCenter() {
       }
 
       const [invoiceResult, estimateResult, queueResult] = await Promise.all([
-        supabase
-          .from("invoices")
-          .select(
-            "id, display_id, customer_name, project_title, status, due_date, invoice_amount, amount_paid"
-          )
-          .eq("business_id", selectedBusiness.id)
-          .order("due_date", { ascending: true, nullsFirst: false })
-          .order("created_at", { ascending: false })
-          .limit(20),
-        supabase
-          .from("estimates")
-          .select("id, display_id, customer_name, project_title, status, estimate_amount")
-          .eq("business_id", selectedBusiness.id)
-          .order("created_at", { ascending: false })
-          .limit(12),
-        supabase
-          .from("queue_items")
-          .select("id, property, unit, status, priority, ready_date, scheduled_date")
-          .eq("business_id", selectedBusiness.id)
-          .order("ready_date", { ascending: true, nullsFirst: false })
-          .order("created_at", { ascending: false })
-          .limit(20),
+        canAccessNavItem(role, "invoices")
+          ? supabase
+              .from("invoices")
+              .select(
+                "id, display_id, customer_name, project_title, status, due_date, invoice_amount, amount_paid"
+              )
+              .eq("business_id", selectedBusiness.id)
+              .order("due_date", { ascending: true, nullsFirst: false })
+              .order("created_at", { ascending: false })
+              .limit(20)
+          : Promise.resolve({ data: [] }),
+        canAccessNavItem(role, "estimates")
+          ? supabase
+              .from("estimates")
+              .select(
+                "id, display_id, customer_name, project_title, status, estimate_amount"
+              )
+              .eq("business_id", selectedBusiness.id)
+              .order("created_at", { ascending: false })
+              .limit(12)
+          : Promise.resolve({ data: [] }),
+        canAccessNavItem(role, "queue")
+          ? supabase
+              .from("queue_items")
+              .select(
+                "id, property, unit, status, priority, ready_date, scheduled_date"
+              )
+              .eq("business_id", selectedBusiness.id)
+              .order("ready_date", { ascending: true, nullsFirst: false })
+              .order("created_at", { ascending: false })
+              .limit(20)
+          : Promise.resolve({ data: [] }),
       ]);
 
       if (!isActive) {
@@ -1698,7 +1824,7 @@ export default function QuickCommandCenter() {
       isActive = false;
       window.clearTimeout(timer);
     };
-  }, [business, isOpen]);
+  }, [business, isOpen, role]);
 
   useEffect(() => {
     if (!isOpen || recordLookupQuery.trim().length < 2) {
@@ -1745,6 +1871,7 @@ export default function QuickCommandCenter() {
 
       if (
         (lookup.type === "invoice" || lookup.type === "general") &&
+        canAccessNavItem(role, "invoices") &&
         needle.length >= 2
       ) {
         const { data } = await supabase
@@ -1764,6 +1891,7 @@ export default function QuickCommandCenter() {
 
       if (
         (lookup.type === "estimate" || lookup.type === "general") &&
+        canAccessNavItem(role, "estimates") &&
         needle.length >= 2
       ) {
         const { data } = await supabase
@@ -1783,7 +1911,10 @@ export default function QuickCommandCenter() {
         });
       }
 
-      if (lookup.type === "queue" || lookup.type === "general") {
+      if (
+        (lookup.type === "queue" || lookup.type === "general") &&
+        canAccessNavItem(role, "queue")
+      ) {
         const queueNeedle = safeIlikeNeedle(queueNeedles[0] ?? lookupValue);
 
         if (queueNeedle.length >= 1) {
@@ -1803,7 +1934,10 @@ export default function QuickCommandCenter() {
         }
       }
 
-      if (lookup.type === "client" || lookup.type === "general") {
+      if (
+        (lookup.type === "client" || lookup.type === "general") &&
+        canAccessNavItem(role, "clients")
+      ) {
         const clientNeedle = safeIlikeNeedle(lookupValue);
 
         if (clientNeedle.length >= 2) {
@@ -1839,7 +1973,7 @@ export default function QuickCommandCenter() {
       isActive = false;
       window.clearTimeout(timer);
     };
-  }, [business, isOpen, recordLookupQuery]);
+  }, [business, isOpen, recordLookupQuery, role]);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
