@@ -1035,6 +1035,75 @@ export default async function DashboardPage({
       tone: paymentWithoutImageProofCount > 0 ? "sky" : "emerald",
     },
   ];
+  const activityActionCounts = activityLogs.reduce(
+    (counts, log) => {
+      counts[log.action] = (counts[log.action] ?? 0) + 1;
+
+      return counts;
+    },
+    {} as Record<string, number>
+  );
+  const sentWithPdfCount = activityLogs.filter(
+    (log) =>
+      [
+        "estimate.email_sent",
+        "invoice.email_sent",
+        "invoice.payment_reminder_sent",
+      ].includes(log.action) && log.details?.pdf_attached === true
+  ).length;
+  const paymentWithImageProofCount = activityLogs.filter(
+    (log) =>
+      log.action === "invoice.batch_payment_applied" &&
+      (log.details?.paymentAttachmentId || log.details?.paymentImagePath)
+  ).length;
+  const proofFlightRecorderSteps = [
+    {
+      label: "Estimate",
+      title: "Scope priced",
+      value:
+        (activityActionCounts["estimate.created"] ?? 0) +
+        (activityActionCounts["estimate.email_sent"] ?? 0),
+      detail: "Estimate events captured",
+      href: `/activity?business=${selectedBusinessSlug}&type=estimate`,
+      tone: "violet",
+    },
+    {
+      label: "Invoice",
+      title: "Bill sent",
+      value: activityActionCounts["invoice.email_sent"] ?? 0,
+      detail: "Customer sends logged",
+      href: `/activity?business=${selectedBusinessSlug}&type=invoice`,
+      tone: "sky",
+    },
+    {
+      label: "Reminder",
+      title: "Follow-up trail",
+      value: activityActionCounts["invoice.payment_reminder_sent"] ?? 0,
+      detail: "Late reminders recorded",
+      href: `/activity?business=${selectedBusinessSlug}&type=invoice&q=reminder`,
+      tone: "rose",
+    },
+    {
+      label: "Payment",
+      title: "Check matched",
+      value: activityActionCounts["invoice.batch_payment_applied"] ?? 0,
+      detail: "Payment events saved",
+      href: `/activity?business=${selectedBusinessSlug}&type=payment`,
+      tone: "emerald",
+    },
+    {
+      label: "Proof",
+      title: "Evidence attached",
+      value: sentWithPdfCount + paymentWithImageProofCount,
+      detail: "PDFs and payment photos",
+      href: `/activity?business=${selectedBusinessSlug}`,
+      tone: "cyan",
+    },
+  ];
+  const proofFlightRecorderTotal = proofFlightRecorderSteps.reduce(
+    (total, step) => total + step.value,
+    0
+  );
   const workflowMapNodes = [
     {
       label: "Queue",
@@ -2215,6 +2284,57 @@ export default async function DashboardPage({
                   </p>
                 </Link>
               ))}
+            </div>
+
+            <div className="dashboard-proof-flight mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-200">
+                    Proof Flight Recorder
+                  </p>
+
+                  <h3 className="mt-1 text-lg font-black text-white">
+                    Every job-to-cash move leaves a trail
+                  </h3>
+
+                  <p className="mt-1 max-w-3xl text-sm leading-6 text-zinc-300">
+                    Trimax does more than store invoices. It connects the work,
+                    customer messages, reminders, payments, PDFs, and check
+                    proof into one defensible record.
+                  </p>
+                </div>
+
+                <Link
+                  href={`/activity?business=${selectedBusinessSlug}`}
+                  className="dashboard-proof-flight-total rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm transition hover:-translate-y-0.5 hover:border-cyan-300/60"
+                >
+                  <span>Tracked events</span>
+                  <strong>{proofFlightRecorderTotal}</strong>
+                </Link>
+              </div>
+
+              <div className="dashboard-proof-flight-line mt-5">
+                {proofFlightRecorderSteps.map((step, index) => (
+                  <Link
+                    key={step.label}
+                    href={step.href}
+                    data-tone={step.tone}
+                    className="dashboard-proof-flight-step"
+                  >
+                    <span className="dashboard-proof-flight-index">
+                      {index + 1}
+                    </span>
+                    <span className="dashboard-proof-flight-copy">
+                      <span>{step.label}</span>
+                      <strong>{step.title}</strong>
+                      <em>{step.detail}</em>
+                    </span>
+                    <span className="dashboard-proof-flight-count">
+                      {step.value}
+                    </span>
+                  </Link>
+                ))}
+              </div>
             </div>
 
             <div className="dashboard-proof-strip mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
