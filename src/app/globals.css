@@ -5,6 +5,8 @@
   --foreground: #ededed;
   --trimax-accent-text: #7dd3fc;
   --trimax-accent-strong: #bae6fd;
+  --trimax-readable-accent: #dff7ff;
+  --trimax-readable-link: #dff7ff;
 }
 
 @theme inline {
@@ -5078,6 +5080,41 @@ html.theme-light .payment-aging-card .bg-zinc-950 {
 
 .dashboard-command-center {
   box-shadow: 0 22px 60px rgba(2, 6, 23, 0.2);
+}
+
+.dashboard-readable-label,
+.dashboard-readable-card-label {
+  color: var(--trimax-readable-accent);
+  text-shadow: 0 1px 14px rgba(14, 165, 233, 0.18);
+}
+
+.dashboard-readable-card-label {
+  letter-spacing: 0.18em;
+}
+
+.dashboard-readable-link {
+  color: var(--trimax-readable-link);
+  text-decoration: none;
+  text-shadow: 0 1px 14px rgba(14, 165, 233, 0.14);
+}
+
+.dashboard-readable-link:hover {
+  color: #ffffff;
+}
+
+html.theme-light .dashboard-readable-label,
+html.theme-light .dashboard-readable-card-label {
+  color: #0f172a !important;
+  text-shadow: none !important;
+}
+
+html.theme-light .dashboard-readable-link {
+  color: #075985 !important;
+  text-shadow: none !important;
+}
+
+html.theme-light .dashboard-readable-link:hover {
+  color: #1e3a8a !important;
 }
 
 .dashboard-command-card[data-tone="collect"] {

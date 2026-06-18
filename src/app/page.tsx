@@ -1879,7 +1879,7 @@ export default async function DashboardPage({
           <section className="dashboard-mobile-priority lg:hidden">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="dashboard-mobile-priority-kicker text-xs font-black uppercase tracking-[0.18em] text-sky-300">
+                <p className="dashboard-mobile-priority-kicker dashboard-readable-label text-xs font-black uppercase tracking-[0.18em]">
                   Priority Rail
                 </p>
 
@@ -2112,7 +2112,7 @@ export default async function DashboardPage({
           <Card className="dashboard-hero-card dark-surface border-sky-500/30 bg-gradient-to-br from-zinc-900 to-zinc-950">
             <div className="dashboard-hero-hud mb-6 flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.26em] text-sky-200">
+                <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.26em]">
                   Platinum Command Signal
                 </p>
 
@@ -2162,7 +2162,7 @@ export default async function DashboardPage({
 
             <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
               <div>
-                <p className="text-sm uppercase tracking-[0.3em] text-sky-300">
+                <p className="dashboard-readable-label text-sm uppercase tracking-[0.3em]">
                   Open Revenue
                 </p>
 
@@ -2757,7 +2757,7 @@ export default async function DashboardPage({
             <div className="dashboard-revenue-flow mt-5 rounded-2xl border border-white/10 bg-white/5 p-4">
               <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                 <div>
-                  <p className="text-xs font-black uppercase tracking-[0.2em] text-sky-200">
+                  <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.2em]">
                     Money Flow
                   </p>
 
@@ -2768,7 +2768,7 @@ export default async function DashboardPage({
 
                 <Link
                   href={`/reports?business=${selectedBusinessSlug}#money-flow`}
-                  className="text-sm font-black text-sky-200 transition hover:text-white"
+                  className="dashboard-readable-link text-sm font-black transition"
                 >
                   Open reports
                 </Link>
@@ -2861,7 +2861,7 @@ export default async function DashboardPage({
                   className="dashboard-command-card group rounded-2xl border border-zinc-800 bg-black/30 p-4 transition hover:-translate-y-0.5 hover:border-sky-300/60"
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <p className="text-xs font-black uppercase tracking-[0.24em] text-sky-200">
+                    <p className="dashboard-readable-card-label text-xs font-black uppercase tracking-[0.24em]">
                       {item.label}
                     </p>
 
@@ -2878,7 +2878,7 @@ export default async function DashboardPage({
                     {item.detail}
                   </p>
 
-                  <p className="mt-4 inline-flex items-center gap-2 text-sm font-black text-sky-200 transition group-hover:text-white">
+                  <p className="dashboard-readable-link mt-4 inline-flex items-center gap-2 text-sm font-black transition group-hover:text-white">
                     {item.action}
                     <span aria-hidden="true">&gt;</span>
                   </p>
@@ -2889,7 +2889,7 @@ export default async function DashboardPage({
             <div className="dashboard-proof-flight mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                 <div>
-                  <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-200">
+                  <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.24em]">
                     Proof Flight Recorder
                   </p>
 
@@ -2940,7 +2940,7 @@ export default async function DashboardPage({
             <div className="dashboard-proof-strip mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
               <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                 <div>
-                  <p className="text-xs font-black uppercase tracking-[0.24em] text-sky-200">
+                  <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.24em]">
                     Recent Activity
                   </p>
 
@@ -2951,7 +2951,7 @@ export default async function DashboardPage({
 
                 <Link
                   href={`/activity?business=${selectedBusinessSlug}`}
-                  className="text-sm font-black text-sky-200 transition hover:text-white"
+                  className="dashboard-readable-link text-sm font-black transition"
                 >
                   Open activity
                 </Link>
@@ -2965,7 +2965,7 @@ export default async function DashboardPage({
                     className="dashboard-proof-card rounded-2xl border border-white/10 bg-black/25 p-4 transition hover:-translate-y-0.5 hover:border-sky-300/50"
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <p className="text-xs font-black uppercase tracking-[0.18em] text-sky-200">
+                      <p className="dashboard-readable-card-label text-xs font-black uppercase tracking-[0.18em]">
                         {activityLabel(log.action)}
                       </p>
 
@@ -2996,7 +2996,7 @@ export default async function DashboardPage({
             <div className="dashboard-risk-radar mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
               <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                 <div>
-                  <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-200">
+                  <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.24em]">
                     Records To Check
                   </p>
 
@@ -3016,7 +3016,7 @@ export default async function DashboardPage({
 
                   <Link
                     href={`/activity?business=${selectedBusinessSlug}`}
-                    className="text-sm font-black text-cyan-200 transition hover:text-white"
+                    className="dashboard-readable-link text-sm font-black transition"
                   >
                     Audit trail
                   </Link>
@@ -3032,7 +3032,7 @@ export default async function DashboardPage({
                     className="dashboard-risk-card rounded-2xl border border-white/10 bg-zinc-950/70 p-4 transition hover:-translate-y-0.5 hover:border-cyan-300/50"
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
+                      <p className="dashboard-readable-card-label text-xs font-black uppercase tracking-[0.18em]">
                         {item.label}
                       </p>
 
@@ -3045,7 +3045,7 @@ export default async function DashboardPage({
                       {item.detail}
                     </p>
 
-                    <p className="mt-3 text-sm font-black text-cyan-100">
+                    <p className="dashboard-readable-link mt-3 text-sm font-black">
                       {item.action}
                       <span aria-hidden="true"> &gt;</span>
                     </p>
