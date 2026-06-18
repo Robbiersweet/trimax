@@ -6052,6 +6052,13 @@ html.theme-light .activity-proof-chip .font-semibold {
   text-shadow: 0 0 18px rgba(56, 189, 248, 0.24);
 }
 
+.dashboard-section-label,
+.dashboard-command-label,
+.dashboard-workflow-label {
+  color: #38bdf8;
+  text-shadow: 0 0 18px rgba(56, 189, 248, 0.16);
+}
+
 .dashboard-workspace-pill {
   min-width: 10rem;
   background:
@@ -8031,4 +8038,15 @@ html.theme-light main .schedule-hero-count {
   background: #ffffff !important;
   border-color: #cbd5e1 !important;
   color: #334155 !important;
+}
+
+html.theme-light body main .dashboard-workflow-map .dashboard-workflow-label,
+html.theme-light body main .dashboard-workflow-map .dashboard-section-label,
+html.theme-light body main .dashboard-section-label {
+  color: #0f172a !important;
+  text-shadow: none !important;
+}
+
+html.theme-light body main .dashboard-section-label {
+  font-weight: 900;
 }

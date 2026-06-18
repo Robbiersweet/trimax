@@ -1532,7 +1532,7 @@ export default async function DashboardPage({
           <Card className="dashboard-autopilot-brief dark-surface overflow-hidden border-sky-500/20 bg-gradient-to-br from-zinc-950 via-zinc-900 to-slate-950">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <p className="dashboard-section-label text-sm uppercase tracking-[0.3em] text-sky-300">
+                <p className="dashboard-section-label text-sm uppercase tracking-[0.3em]">
                   Autopilot Brief
                 </p>
 
@@ -1599,7 +1599,7 @@ export default async function DashboardPage({
           <Card className="dashboard-workflow-map dark-surface overflow-hidden border-sky-500/20 bg-zinc-950">
             <div className="grid gap-6 xl:grid-cols-[0.72fr_1fr] xl:items-center">
               <div>
-                <p className="dashboard-workflow-label dashboard-section-label text-sm uppercase tracking-[0.3em] text-sky-300">
+                <p className="dashboard-workflow-label dashboard-section-label text-sm uppercase tracking-[0.3em]">
                   Workflow Map
                 </p>
 
@@ -1664,7 +1664,7 @@ export default async function DashboardPage({
           <section id="dashboard-focus" className="dashboard-focus-strip scroll-mt-6">
             <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
               <div>
-                <p className="dashboard-section-label text-sm uppercase tracking-[0.3em] text-sky-300">
+                <p className="dashboard-section-label text-sm uppercase tracking-[0.3em]">
                   Today&apos;s Focus
                 </p>
 
@@ -1775,7 +1775,7 @@ export default async function DashboardPage({
         >
           <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr] xl:items-start">
             <div>
-              <p className="dashboard-section-label text-sm uppercase tracking-[0.3em] text-sky-300">
+              <p className="dashboard-section-label text-sm uppercase tracking-[0.3em]">
                 Queue Command
               </p>
 
@@ -1884,7 +1884,7 @@ export default async function DashboardPage({
           >
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <p className="dashboard-command-label text-sm uppercase tracking-[0.3em] text-sky-300">
+                <p className="dashboard-command-label text-sm uppercase tracking-[0.3em]">
                   Today&apos;s Command Center
                 </p>
 
@@ -2217,7 +2217,7 @@ export default async function DashboardPage({
         <section id="dashboard-workstream" className="dashboard-workstream-section scroll-mt-6">
           <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
-              <p className="dashboard-section-label text-sm uppercase tracking-[0.3em] text-sky-300">
+              <p className="dashboard-section-label text-sm uppercase tracking-[0.3em]">
                 Accounting Pulse
               </p>
 
