@@ -113,6 +113,14 @@ type SmartQueueRecord = {
 };
 
 const RECENT_COMMANDS_STORAGE_KEY = "trimax-recent-commands";
+const COMMAND_EXAMPLES = [
+  "pay INV 502",
+  "send estimate",
+  "schedule D01",
+  "proof",
+  "check photo",
+  "who owes",
+];
 
 function isTypingTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) {
@@ -1792,6 +1800,14 @@ export default function QuickCommandCenter() {
     router.push(command.href);
   }
 
+  function applyCommandExample(example: string) {
+    setQuery(example);
+    setSelectedIndex(0);
+    setRecordCommands([]);
+    setIsResolvingRecords(false);
+    window.setTimeout(() => searchInputRef.current?.focus(), 0);
+  }
+
   useEffect(() => {
     if (!isOpen) {
       return;
@@ -2171,6 +2187,27 @@ export default function QuickCommandCenter() {
                 <kbd>/</kbd> or <kbd>Ctrl K</kbd>
               </span>
             </div>
+
+            {!normalizedQuery ? (
+              <div
+                className="quick-command-examples"
+                aria-label="Command examples"
+              >
+                <span className="quick-command-examples-label">
+                  Try one
+                </span>
+                {COMMAND_EXAMPLES.map((example) => (
+                  <button
+                    key={example}
+                    type="button"
+                    className="quick-command-example-chip"
+                    onClick={() => applyCommandExample(example)}
+                  >
+                    {example}
+                  </button>
+                ))}
+              </div>
+            ) : null}
 
             <div className="quick-command-results" id="quick-command-results">
               <div className="quick-command-brief">
