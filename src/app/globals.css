@@ -7381,6 +7381,91 @@ html.theme-light .dashboard-workflow-stat[data-tone="rose"] {
   color: #cbd5e1;
 }
 
+.dashboard-pattern-radar {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(14, 165, 233, 0.16), transparent 30%),
+    radial-gradient(circle at 92% 18%, rgba(16, 185, 129, 0.12), transparent 28%),
+    linear-gradient(135deg, rgba(9, 9, 11, 0.92), rgba(15, 23, 42, 0.9));
+  box-shadow:
+    0 24px 58px rgba(2, 6, 23, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.dashboard-pattern-radar-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.dashboard-pattern-card {
+  background: rgba(15, 23, 42, 0.74);
+  border-color: rgba(148, 163, 184, 0.18);
+  color: #e2e8f0;
+  min-height: 176px;
+}
+
+.dashboard-pattern-card:hover {
+  border-color: rgba(125, 211, 252, 0.48);
+}
+
+.dashboard-pattern-card strong {
+  color: #ffffff;
+}
+
+.dashboard-pattern-label {
+  color: #bae6fd;
+}
+
+.dashboard-pattern-signal {
+  background: rgba(2, 6, 23, 0.48);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.dashboard-pattern-card[data-tone="cash"] {
+  border-color: rgba(52, 211, 153, 0.32);
+}
+
+.dashboard-pattern-card[data-tone="invoice"] {
+  border-color: rgba(96, 165, 250, 0.34);
+}
+
+.dashboard-pattern-card[data-tone="queue"],
+.dashboard-pattern-card[data-tone="schedule"] {
+  border-color: rgba(251, 191, 36, 0.34);
+}
+
+.dashboard-pattern-card[data-tone="late"] {
+  border-color: rgba(251, 113, 133, 0.34);
+}
+
+.dashboard-pattern-card[data-tone="proof"] {
+  border-color: rgba(45, 212, 191, 0.34);
+}
+
+.dashboard-pattern-empty {
+  border-color: rgba(148, 163, 184, 0.24);
+  color: #cbd5e1;
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 1180px) {
+  .dashboard-pattern-radar-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .dashboard-pattern-radar-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-pattern-card {
+    min-height: 0;
+  }
+}
+
 .dashboard-collection-target-card {
   min-height: 168px;
 }
@@ -7544,6 +7629,81 @@ html.theme-light .dashboard-priority-stack-item > span:last-child span:last-chil
 }
 
 html.theme-light .dashboard-priority-stack-empty {
+  border-color: #cbd5e1 !important;
+  color: #475569 !important;
+}
+
+html.theme-light .dashboard-pattern-radar {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.07) !important;
+}
+
+html.theme-light .dashboard-pattern-radar h2,
+html.theme-light .dashboard-pattern-card strong {
+  color: #0f172a !important;
+}
+
+html.theme-light .dashboard-pattern-radar .text-zinc-300 {
+  color: #475569 !important;
+}
+
+html.theme-light .dashboard-pattern-radar-link {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .dashboard-pattern-radar-link:hover {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+}
+
+html.theme-light .dashboard-pattern-card {
+  background: #f8fafc !important;
+  border-color: #d7dde8 !important;
+  color: #334155 !important;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05) !important;
+}
+
+html.theme-light .dashboard-pattern-label {
+  color: #075985 !important;
+}
+
+html.theme-light .dashboard-pattern-signal {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .dashboard-pattern-card[data-tone="cash"] {
+  background: #ecfdf5 !important;
+  border-color: #86efac !important;
+}
+
+html.theme-light .dashboard-pattern-card[data-tone="invoice"] {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+}
+
+html.theme-light .dashboard-pattern-card[data-tone="queue"],
+html.theme-light .dashboard-pattern-card[data-tone="schedule"] {
+  background: #fffbeb !important;
+  border-color: #fbbf24 !important;
+}
+
+html.theme-light .dashboard-pattern-card[data-tone="late"] {
+  background: #fff1f2 !important;
+  border-color: #fb7185 !important;
+}
+
+html.theme-light .dashboard-pattern-card[data-tone="proof"] {
+  background: #f0fdfa !important;
+  border-color: #5eead4 !important;
+}
+
+html.theme-light .dashboard-pattern-empty {
   border-color: #cbd5e1 !important;
   color: #475569 !important;
 }

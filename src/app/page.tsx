@@ -602,6 +602,7 @@ export default async function DashboardPage({
   )
     .sort((first, second) => second.total - first.total)
     .slice(0, 3);
+  const topCustomerBalance = customerBalances[0] ?? null;
 
   const collectionRate =
     invoicedRevenueTotal > 0
@@ -675,6 +676,67 @@ export default async function DashboardPage({
     ...item,
     percent: Math.max(4, Math.round((item.value / cashLaneTotal) * 100)),
   }));
+  const paidInvoicesWithTiming = workingYearInvoices
+    .filter((invoice) => invoice.status === "Paid" && invoice.updated_at)
+    .map((invoice) => {
+      const dueDate = dateValue(invoice.due_date);
+      const paidDate = invoice.updated_at
+        ? new Date(invoice.updated_at)
+        : null;
+
+      if (!dueDate || !paidDate || Number.isNaN(paidDate.getTime())) {
+        return null;
+      }
+
+      paidDate.setHours(0, 0, 0, 0);
+
+      return Math.round((paidDate.getTime() - dueDate.getTime()) / 86_400_000);
+    })
+    .filter((days): days is number => days !== null);
+  const averagePaymentTiming =
+    paidInvoicesWithTiming.length > 0
+      ? Math.round(
+          paidInvoicesWithTiming.reduce((total, days) => total + days, 0) /
+            paidInvoicesWithTiming.length
+        )
+      : null;
+  const repeatedInvoiceAmountPattern = Array.from(
+    workingYearInvoices
+      .reduce(
+        (
+          groups,
+          invoice
+        ): Map<number, { amount: number; count: number; total: number }> => {
+          const amount = Math.round(parseMoney(invoice.invoice_amount) * 100) / 100;
+
+          if (amount <= 0) {
+            return groups;
+          }
+
+          const current = groups.get(amount) ?? {
+            amount,
+            count: 0,
+            total: 0,
+          };
+
+          groups.set(amount, {
+            amount,
+            count: current.count + 1,
+            total: current.total + amount,
+          });
+
+          return groups;
+        },
+        new Map<number, { amount: number; count: number; total: number }>()
+      )
+      .values()
+  )
+    .filter((pattern) => pattern.count >= 3)
+    .sort((first, second) => second.count - first.count)[0];
+  const queueEstimateBottleneckRate =
+    activeQueueItems.length > 0
+      ? Math.round((queueItemsNeedingEstimate.length / activeQueueItems.length) * 100)
+      : 0;
   const priorityInvoice =
     mostOverdueInvoices[0] ??
     depositRequestInvoices[0] ??
@@ -1104,6 +1166,103 @@ export default async function DashboardPage({
     (total, step) => total + step.value,
     0
   );
+  const patternRecognitionItems: {
+    label: string;
+    title: string;
+    detail: string;
+    href: string;
+    signal: string;
+    tone: string;
+  }[] = [];
+
+  if (
+    topCustomerBalance &&
+    outstandingRevenueTotal > 0 &&
+    topCustomerBalance.total / outstandingRevenueTotal >= 0.45
+  ) {
+    patternRecognitionItems.push({
+      label: "Cash Pattern",
+      title: `${topCustomerBalance.customerName} drives most open revenue`,
+      detail: `${Math.round(
+        (topCustomerBalance.total / outstandingRevenueTotal) * 100
+      )}% of open revenue is concentrated in this customer, so payment follow-up here moves the needle fastest.`,
+      href: `/payments?business=${selectedBusinessSlug}&customer=${encodeURIComponent(
+        topCustomerBalance.customerName
+      )}`,
+      signal: formatMoney(topCustomerBalance.total),
+      tone: "cash",
+    });
+  }
+
+  if (repeatedInvoiceAmountPattern) {
+    patternRecognitionItems.push({
+      label: "Billing Pattern",
+      title: `${formatMoney(repeatedInvoiceAmountPattern.amount)} repeats often`,
+      detail: `${repeatedInvoiceAmountPattern.count} invoices share this amount. Trimax can treat this as a recurring unit-price signal when reviewing checks and invoice batches.`,
+      href: `/invoices?business=${selectedBusinessSlug}`,
+      signal: `${repeatedInvoiceAmountPattern.count}x`,
+      tone: "invoice",
+    });
+  }
+
+  if (queueEstimateBottleneckRate >= 50 && queueItemsNeedingEstimate.length > 0) {
+    patternRecognitionItems.push({
+      label: "Queue Pattern",
+      title: "Estimates are the current bottleneck",
+      detail: `${queueEstimateBottleneckRate}% of active queue work still needs pricing before it can become billable revenue.`,
+      href: `/queue?business=${selectedBusinessSlug}&view=needs-estimate`,
+      signal: `${queueEstimateBottleneckRate}%`,
+      tone: "queue",
+    });
+  }
+
+  if (readySoonUnscheduled.length >= 2) {
+    patternRecognitionItems.push({
+      label: "Schedule Pattern",
+      title: "Due-soon work is stacking up",
+      detail: `${readySoonUnscheduled.length} units are due within 7 days without a schedule date. That pattern usually turns into last-minute pressure.`,
+      href: `/queue?business=${selectedBusinessSlug}&view=ready-soon`,
+      signal: `${readySoonUnscheduled.length}`,
+      tone: "schedule",
+    });
+  }
+
+  if (averagePaymentTiming !== null) {
+    patternRecognitionItems.push({
+      label: "Payment Pattern",
+      title:
+        averagePaymentTiming > 0
+          ? "Payments are landing after due dates"
+          : "Payments are landing on time",
+      detail:
+        averagePaymentTiming > 0
+          ? `Paid invoices average ${averagePaymentTiming} day${
+              averagePaymentTiming === 1 ? "" : "s"
+            } after their due date. Reminder timing may be worth tightening.`
+          : `Paid invoices average ${Math.abs(averagePaymentTiming)} day${
+              Math.abs(averagePaymentTiming) === 1 ? "" : "s"
+            } before or on the due date.`,
+      href: `/reports?business=${selectedBusinessSlug}`,
+      signal:
+        averagePaymentTiming > 0
+          ? `+${averagePaymentTiming}d`
+          : `${averagePaymentTiming}d`,
+      tone: averagePaymentTiming > 0 ? "late" : "proof",
+    });
+  }
+
+  if (totalRiskFlags === 0 && proofFlightRecorderTotal > 0) {
+    patternRecognitionItems.push({
+      label: "Proof Pattern",
+      title: "Recent proof trail is clean",
+      detail: "Recent sends, reminders, payments, and attachment checks are lining up without obvious proof gaps.",
+      href: `/activity?business=${selectedBusinessSlug}`,
+      signal: "Clean",
+      tone: "proof",
+    });
+  }
+
+  const visiblePatternRecognitionItems = patternRecognitionItems.slice(0, 4);
   const workflowMapNodes = [
     {
       label: "Queue",
@@ -1855,6 +2014,80 @@ export default async function DashboardPage({
                   </p>
                 </Link>
               ))}
+            </div>
+          </Card>
+        </RoleVisible>
+
+        <RoleVisible
+          businessSlug={selectedBusinessSlug}
+          allow={[
+            "owner",
+            "admin",
+            "accountant",
+          ]}
+        >
+          <Card className="dashboard-pattern-radar dark-surface overflow-hidden border-sky-500/20 bg-zinc-950">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="dashboard-section-label text-sm uppercase tracking-[0.3em]">
+                  Pattern Radar
+                </p>
+
+                <h2 className="mt-2 text-2xl font-black tracking-tight text-white">
+                  Useful patterns Trimax noticed
+                </h2>
+
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
+                  Trimax watches for repeated invoice amounts, customer cash
+                  concentration, queue bottlenecks, schedule pressure, payment
+                  timing, and proof consistency.
+                </p>
+              </div>
+
+              <Link
+                href={`/reports?business=${selectedBusinessSlug}`}
+                className="dashboard-pattern-radar-link rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-black text-white transition hover:-translate-y-0.5 hover:border-sky-300/60"
+              >
+                Open reports
+              </Link>
+            </div>
+
+            <div className="dashboard-pattern-radar-grid mt-5">
+              {visiblePatternRecognitionItems.length > 0 ? (
+                visiblePatternRecognitionItems.map((item) => (
+                  <Link
+                    key={`${item.label}-${item.title}`}
+                    href={item.href}
+                    data-tone={item.tone}
+                    className="dashboard-pattern-card rounded-2xl border p-4 transition hover:-translate-y-0.5"
+                  >
+                    <span className="flex items-start justify-between gap-3">
+                      <span>
+                        <span className="dashboard-pattern-label block text-xs font-black uppercase tracking-[0.18em]">
+                          {item.label}
+                        </span>
+                        <strong className="mt-2 block text-lg leading-6">
+                          {item.title}
+                        </strong>
+                      </span>
+
+                      <span className="dashboard-pattern-signal rounded-full border px-3 py-1 text-xs font-black">
+                        {item.signal}
+                      </span>
+                    </span>
+
+                    <span className="mt-3 block text-sm leading-6">
+                      {item.detail}
+                    </span>
+                  </Link>
+                ))
+              ) : (
+                <div className="dashboard-pattern-empty rounded-2xl border border-dashed p-4 text-sm leading-6">
+                  No strong pattern needs attention right now. Trimax will
+                  surface one here when cash, queue, billing, payment, or proof
+                  behavior starts repeating.
+                </div>
+              )}
             </div>
           </Card>
         </RoleVisible>
