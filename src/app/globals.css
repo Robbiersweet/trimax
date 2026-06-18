@@ -736,6 +736,39 @@ html.theme-light .app-toast-error {
   color: #7f1d1d !important;
 }
 
+.app-toast-progress {
+  animation-name: toast-progress-shrink;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.app-toast-success .app-toast-progress {
+  background: linear-gradient(90deg, #34d399, #a7f3d0);
+}
+
+.app-toast-error .app-toast-progress {
+  background: linear-gradient(90deg, #fb7185, #fecdd3);
+}
+
+html.theme-light .app-toast-success .app-toast-progress {
+  background: linear-gradient(90deg, #059669, #34d399);
+}
+
+html.theme-light .app-toast-error .app-toast-progress {
+  background: linear-gradient(90deg, #be123c, #fb7185);
+}
+
+@keyframes toast-progress-shrink {
+  from {
+    transform: scaleX(1);
+  }
+
+  to {
+    transform: scaleX(0);
+  }
+}
+
 html.theme-light .status-badge-needs-review {
   background-color: #fef3c7 !important;
   border-color: #f59e0b !important;

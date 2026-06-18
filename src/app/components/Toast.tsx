@@ -41,9 +41,15 @@ export default function Toast({ type, message, durationMs }: ToastProps) {
   return (
     <div
       aria-live={type === "error" ? "assertive" : "polite"}
-      className={`app-toast fixed bottom-6 right-6 z-50 flex max-w-[calc(100vw-2rem)] items-start gap-3 rounded-2xl border px-5 py-4 text-sm font-semibold leading-6 shadow-2xl sm:max-w-md ${styles[type]}`}
+      className={`app-toast fixed bottom-6 right-6 z-50 flex max-w-[calc(100vw-2rem)] items-start gap-3 overflow-hidden rounded-2xl border px-5 py-4 text-sm font-semibold leading-6 shadow-2xl sm:max-w-md ${styles[type]}`}
       role={type === "error" ? "alert" : "status"}
     >
+      <span
+        aria-hidden="true"
+        className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-white/15 text-[0.7rem] font-black"
+      >
+        {type === "success" ? "OK" : "!"}
+      </span>
       <span className="min-w-0 flex-1">{message}</span>
       <button
         aria-label="Dismiss notification"
@@ -53,6 +59,13 @@ export default function Toast({ type, message, durationMs }: ToastProps) {
       >
         x
       </button>
+      {timeoutMs > 0 ? (
+        <span
+          aria-hidden="true"
+          className="app-toast-progress absolute bottom-0 left-0 h-1 w-full origin-left"
+          style={{ animationDuration: `${timeoutMs}ms` }}
+        />
+      ) : null}
     </div>
   );
 }
