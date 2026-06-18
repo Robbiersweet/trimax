@@ -6657,6 +6657,7 @@ html.theme-light .activity-proof-chip .font-semibold {
 
 .dashboard-masthead {
   position: relative;
+  overflow: hidden;
   border-radius: 1.5rem;
   padding: 1rem;
   background:
@@ -6666,6 +6667,34 @@ html.theme-light .activity-proof-chip .font-semibold {
   box-shadow:
     0 16px 42px rgba(2, 6, 23, 0.16),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.dashboard-masthead::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  background:
+    linear-gradient(90deg, rgba(56, 189, 248, 0.42), rgba(16, 185, 129, 0.16), transparent 72%);
+  height: 1px;
+}
+
+.dashboard-masthead::after {
+  position: absolute;
+  top: -40%;
+  bottom: -40%;
+  left: -32%;
+  width: 22%;
+  pointer-events: none;
+  content: "";
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+  transform: rotate(18deg);
+  animation: trimaxMastheadSheen 8s ease-in-out infinite;
+}
+
+.dashboard-masthead > * {
+  position: relative;
+  z-index: 1;
 }
 
 .dashboard-masthead-kicker {
@@ -6781,6 +6810,14 @@ html.theme-light .dashboard-masthead {
     linear-gradient(135deg, #ffffff, #f8fafc) !important;
   border-color: #dbeafe !important;
   box-shadow: 0 16px 40px rgba(15, 23, 42, 0.07) !important;
+}
+
+html.theme-light .dashboard-masthead::before {
+  background: linear-gradient(90deg, rgba(37, 99, 235, 0.38), rgba(20, 184, 166, 0.18), transparent 72%);
+}
+
+html.theme-light .dashboard-masthead::after {
+  background: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.08), transparent);
 }
 
 html.theme-light .dashboard-workspace-pill {
@@ -9581,6 +9618,24 @@ html.theme-light .dashboard-workflow-node::after {
   }
 }
 
+@keyframes trimaxMastheadSheen {
+  0%,
+  42%,
+  100% {
+    left: -32%;
+    opacity: 0;
+  }
+
+  52% {
+    opacity: 1;
+  }
+
+  70% {
+    left: 112%;
+    opacity: 0;
+  }
+}
+
 @keyframes trimaxCoreGlow {
   0%,
   100% {
@@ -9597,6 +9652,7 @@ html.theme-light .dashboard-workflow-node::after {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .dashboard-masthead::after,
   .dashboard-workflow-core,
   .quick-command-launcher,
   .quick-command-panel {
