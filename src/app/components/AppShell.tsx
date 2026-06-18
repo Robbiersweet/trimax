@@ -84,7 +84,7 @@ export default function AppShell({
 
           <section
             aria-label="Trimax workspace content"
-            className="min-w-0 flex-1 outline-none lg:py-2"
+            className="app-workspace-panel min-w-0 flex-1 outline-none lg:py-2"
             id="trimax-main-content"
             tabIndex={-1}
           >
