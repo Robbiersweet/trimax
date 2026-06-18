@@ -1281,35 +1281,136 @@ export default async function DashboardPage({
 
         <RoleVisible
           businessSlug={selectedBusinessSlug}
+          allow={["property_manager"]}
+        >
+          <Card className="dashboard-property-team dark-surface overflow-hidden border-emerald-500/25 bg-gradient-to-br from-zinc-950 via-slate-950 to-zinc-900">
+            <div className="dashboard-property-team-grid">
+              <div>
+                <p className="dashboard-property-team-kicker text-sm font-black uppercase tracking-[0.24em] text-emerald-200">
+                  Property Team View
+                </p>
+
+                <h2 className="mt-3 text-3xl font-black tracking-tight text-white">
+                  Queue and schedule at a glance
+                </h2>
+
+                <p className="mt-3 max-w-3xl text-zinc-300">
+                  Property-team users see active units, ready dates, scheduled
+                  work, and property reports here. Accounting tools stay
+                  reserved for owner, admin, and accounting roles.
+                </p>
+
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <Link href={`/queue?business=${selectedBusinessSlug}`}>
+                    <Button>Open Queue</Button>
+                  </Link>
+
+                  <Link href={`/new-request?business=${selectedBusinessSlug}`}>
+                    <Button variant="secondary">Add Queue Item</Button>
+                  </Link>
+
+                  <Link href={`/schedule?business=${selectedBusinessSlug}`}>
+                    <Button variant="secondary">Open Schedule</Button>
+                  </Link>
+                </div>
+              </div>
+
+              <div className="dashboard-property-team-panel rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div className="grid grid-cols-2 gap-3">
+                  {queueActionItems.map((item) => (
+                    <Link
+                      key={item.label}
+                      href={item.href}
+                      className="dashboard-property-team-metric rounded-xl border border-white/10 bg-white/5 p-3 transition hover:-translate-y-0.5 hover:border-emerald-300/60"
+                    >
+                      <p className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-zinc-400">
+                        {item.label}
+                      </p>
+
+                      <p className="mt-2 text-2xl font-black text-white">
+                        {item.value}
+                      </p>
+
+                      <p className="mt-1 text-xs font-semibold text-zinc-300">
+                        {item.detail}
+                      </p>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-400">
+                    Recent Queue Work
+                  </p>
+
+                  <p className="mt-1 text-sm text-zinc-300">
+                    The latest units they can open and update.
+                  </p>
+                </div>
+
+                <Link
+                  href={`/queue?business=${selectedBusinessSlug}`}
+                  className="rounded-full border border-white/10 px-3 py-2 text-xs font-black text-emerald-100 transition hover:border-emerald-300/60"
+                >
+                  View All
+                </Link>
+              </div>
+
+              <div className="mt-4 grid gap-3 lg:grid-cols-3">
+                {recentQueueItems.length > 0 ? (
+                  recentQueueItems.map((item) => (
+                    <Link
+                      key={item.id}
+                      href={`/queue/${item.id}?business=${selectedBusinessSlug}`}
+                      className="dashboard-property-team-item rounded-2xl border border-white/10 bg-white/[0.04] p-4 transition hover:-translate-y-0.5 hover:border-emerald-300/60"
+                    >
+                      <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">
+                        Unit{" "}
+                        {maybeCanonicalApartmentUnitLabel(item.unit) ?? "-"}
+                      </p>
+
+                      <h3 className="mt-2 text-lg font-black text-white">
+                        {item.property ?? "Property"}
+                      </h3>
+
+                      <p className="mt-1 text-sm text-zinc-300">
+                        {item.paint_type ||
+                          item.flooring ||
+                          item.status ||
+                          "Queue item"}
+                      </p>
+
+                      <div className="mt-4 grid grid-cols-2 gap-2 text-xs font-semibold text-zinc-300">
+                        <span className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                          Ready {formatShortDate(item.ready_date)}
+                        </span>
+                        <span className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                          Scheduled {formatShortDate(item.scheduled_date)}
+                        </span>
+                      </div>
+                    </Link>
+                  ))
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-4 text-sm text-zinc-300 lg:col-span-3">
+                    No queue items are active right now.
+                  </div>
+                )}
+              </div>
+            </div>
+          </Card>
+        </RoleVisible>
+
+        <RoleVisible
+          businessSlug={selectedBusinessSlug}
           allow={[
             "owner",
             "admin",
             "accountant",
           ]}
-          fallback={
-            <Card className="border-orange-500/30 bg-gradient-to-br from-zinc-900 to-zinc-950">
-              <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
-                Property Coordination
-              </p>
-
-              <h2 className="mt-3 text-3xl font-black tracking-tight">
-                Review active queue items
-              </h2>
-
-              <p className="mt-3 max-w-3xl text-zinc-400">
-                This workspace view focuses on queue
-                intake, readiness dates, scheduling, and
-                property reports.
-              </p>
-
-              <Link
-                href={`/queue?business=${selectedBusinessSlug}`}
-                className="mt-5 inline-block"
-              >
-                <Button>Open Queue</Button>
-              </Link>
-            </Card>
-          }
         >
           <Card className="dashboard-hero-card dark-surface border-sky-500/30 bg-gradient-to-br from-zinc-900 to-zinc-950">
             <div className="dashboard-hero-hud mb-6 flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 lg:flex-row lg:items-center lg:justify-between">

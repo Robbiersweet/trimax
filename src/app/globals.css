@@ -5232,6 +5232,44 @@ html.theme-light .payment-aging-card .bg-zinc-950 {
   box-shadow: 0 0 0 5px rgba(167, 139, 250, 0.12);
 }
 
+.dashboard-property-team {
+  color: #f8fafc;
+  box-shadow:
+    0 24px 64px rgba(2, 6, 23, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.dashboard-property-team-grid {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.dashboard-property-team-kicker {
+  color: #a7f3d0;
+}
+
+.dashboard-property-team-panel,
+.dashboard-property-team-item,
+.dashboard-property-team-metric {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 14px 34px rgba(2, 6, 23, 0.16);
+}
+
+.dashboard-property-team-metric:hover,
+.dashboard-property-team-item:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 18px 42px rgba(16, 185, 129, 0.16);
+}
+
+@media (min-width: 1024px) {
+  .dashboard-property-team-grid {
+    grid-template-columns: minmax(0, 1.12fr) minmax(360px, 0.88fr);
+    align-items: start;
+  }
+}
+
 .dashboard-proof-strip {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
@@ -5491,6 +5529,48 @@ html.theme-light .dashboard-autopilot-card[data-tone="sky"] p:last-child {
 html.theme-light .dashboard-autopilot-card[data-tone="violet"] p:first-child,
 html.theme-light .dashboard-autopilot-card[data-tone="violet"] p:last-child {
   color: #6d28d9 !important;
+}
+
+html.theme-light .dashboard-property-team {
+  background:
+    radial-gradient(circle at 88% 0%, rgba(16, 185, 129, 0.12), transparent 30%),
+    linear-gradient(135deg, #ffffff, #f8fafc) !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.1) !important;
+}
+
+html.theme-light .dashboard-property-team h2,
+html.theme-light .dashboard-property-team h3,
+html.theme-light .dashboard-property-team .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light .dashboard-property-team .text-zinc-300,
+html.theme-light .dashboard-property-team .text-zinc-400,
+html.theme-light .dashboard-property-team .text-zinc-500 {
+  color: #475569 !important;
+}
+
+html.theme-light .dashboard-property-team-kicker {
+  color: #047857 !important;
+}
+
+html.theme-light .dashboard-property-team-panel,
+html.theme-light .dashboard-property-team-item,
+html.theme-light .dashboard-property-team-metric {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.theme-light .dashboard-property-team-item:hover,
+html.theme-light .dashboard-property-team-metric:hover {
+  border-color: #059669 !important;
+  box-shadow:
+    0 18px 42px rgba(5, 150, 105, 0.13),
+    0 0 0 1px rgba(5, 150, 105, 0.1) !important;
 }
 
 html.theme-light .dashboard-proof-strip {

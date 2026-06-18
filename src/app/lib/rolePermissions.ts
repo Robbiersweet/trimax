@@ -134,6 +134,16 @@ export function normalizeWorkspaceRole(
     return normalized;
   }
 
+  if (
+    normalized === "assistant_manager" ||
+    normalized === "maintenance_manager" ||
+    normalized === "property_team" ||
+    normalized === "property_staff" ||
+    normalized === "manager"
+  ) {
+    return "property_manager";
+  }
+
   return "member";
 }
 

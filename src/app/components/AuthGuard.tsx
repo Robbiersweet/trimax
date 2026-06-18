@@ -12,7 +12,10 @@ import {
   loadMaintenanceSettings,
   MaintenanceSettings,
 } from "../lib/maintenanceMode";
-import { canAccessPath } from "../lib/rolePermissions";
+import {
+  canAccessPath,
+  normalizeWorkspaceRole,
+} from "../lib/rolePermissions";
 import {
   allowedPropertiesForBusiness,
   canAccessProperty,
@@ -283,8 +286,9 @@ export default function AuthGuard({
         (workspace) =>
           workspace.businessSlug === selectedBusiness
       );
-      const currentRole =
-        currentWorkspace?.role ?? "owner";
+      const currentRole = normalizeWorkspaceRole(
+        currentWorkspace?.role ?? "owner"
+      );
       const maintenance = await loadMaintenanceSettings();
       const canUseAppDuringMaintenance =
         currentRole === "owner" || currentRole === "admin";
