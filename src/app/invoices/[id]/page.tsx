@@ -486,6 +486,117 @@ function EvidenceTrail({
   );
 }
 
+type InvoiceIntelligenceAction = {
+  href: string;
+  label: string;
+  title: string;
+  detail: string;
+};
+
+function InvoiceIntelligence({
+  amountDueLabel,
+  balanceDue,
+  hasDepositRequest,
+  hasPaymentProof,
+  hasPdfProof,
+  hasReminderProof,
+  hasSendProof,
+  isPaymentLate,
+  nextAction,
+}: {
+  amountDueLabel: string;
+  balanceDue: number;
+  hasDepositRequest: boolean;
+  hasPaymentProof: boolean;
+  hasPdfProof: boolean;
+  hasReminderProof: boolean;
+  hasSendProof: boolean;
+  isPaymentLate: boolean;
+  nextAction: InvoiceIntelligenceAction;
+}) {
+  const steps = [
+    {
+      label: "Send Proof",
+      value: hasSendProof ? "Saved" : "Needed",
+      done: hasSendProof,
+    },
+    {
+      label: "PDF Copy",
+      value: hasPdfProof ? "Attached" : "Missing",
+      done: hasPdfProof,
+    },
+    {
+      label: "Payment",
+      value: balanceDue <= 0 ? "Clear" : money(balanceDue),
+      done: balanceDue <= 0 || hasPaymentProof,
+    },
+    {
+      label: "Reminder",
+      value: isPaymentLate ? (hasReminderProof ? "Sent" : "Due") : "Quiet",
+      done: !isPaymentLate || hasReminderProof,
+    },
+    {
+      label: "Deposit",
+      value: hasDepositRequest ? "Active" : "None",
+      done: !hasDepositRequest,
+    },
+  ];
+
+  return (
+    <Card className="invoice-intelligence-card overflow-hidden border-sky-500/30 bg-gradient-to-br from-sky-500/10 via-zinc-950 to-emerald-500/10">
+      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.35em] text-sky-300">
+            Invoice Intelligence
+          </p>
+          <h2 className="mt-3 text-2xl font-black text-white">
+            {nextAction.title}
+          </h2>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-300">
+            {nextAction.detail}
+          </p>
+
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <Link href={nextAction.href}>
+              <Button>{nextAction.label}</Button>
+            </Link>
+            <div className="rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm">
+              <p className="text-zinc-400">{amountDueLabel}</p>
+              <p className="mt-1 text-lg font-black text-white">
+                {money(balanceDue)}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          {steps.map((step) => (
+            <div
+              key={step.label}
+              className={`invoice-intelligence-step rounded-2xl border px-4 py-3 ${
+                step.done
+                  ? "border-emerald-400/30 bg-emerald-400/10"
+                  : "border-sky-400/20 bg-black/25"
+              }`}
+            >
+              <p className="text-[0.72rem] font-bold uppercase tracking-[0.25em] text-zinc-500">
+                {step.label}
+              </p>
+              <p
+                className={`mt-2 text-lg font-black ${
+                  step.done ? "text-emerald-200" : "text-white"
+                }`}
+              >
+                {step.value}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 function ProblemCard({
   title,
   message,
@@ -778,6 +889,75 @@ export default async function InvoiceDetailPage({
     splitPlan.length > 0;
   const canCreateSplitInvoices =
     showSplitWarning && splitRelatedInvoices.length === 0;
+  const latestSendLog = invoiceActivityLogs.find(
+    (log) => log.action === "invoice.email_sent"
+  );
+  const latestReminderLog = invoiceActivityLogs.find(
+    (log) => log.action === "invoice.payment_reminder_sent"
+  );
+  const latestPaymentLog = invoiceActivityLogs.find(
+    (log) => log.action === "invoice.batch_payment_applied"
+  );
+  const hasSendProof = Boolean(latestSendLog);
+  const hasReminderProof = Boolean(latestReminderLog);
+  const hasPaymentProof = Boolean(latestPaymentLog);
+  const hasPdfProof = invoiceActivityLogs.some((log) => {
+    const isEmailProof =
+      log.action === "invoice.email_sent" ||
+      log.action === "invoice.payment_reminder_sent";
+
+    return isEmailProof && detailText(log.details, "pdf_attached") === "true";
+  });
+  const paymentHref = `/payments${businessQuery}${
+    businessQuery ? "&" : "?"
+  }customer=${encodeURIComponent(customerName)}`;
+  const invoiceIntelligenceAction: InvoiceIntelligenceAction =
+    normalizedStatus === "draft"
+      ? {
+          href: "#send-invoice",
+          label: "Send Invoice",
+          title: "Send this invoice next",
+          detail:
+            "This invoice is still in draft. Send it from Trimax so the email, PDF attachment, recipient, and sender proof are saved together.",
+        }
+      : hasDepositRequest && depositDueNow > 0
+        ? {
+            href: paymentHref,
+            label: "Open Payments",
+            title: "Collect the active deposit",
+            detail: `${money(depositDueNow)} is still open on this deposit request. The payment workspace can apply it without closing the full invoice early.`,
+          }
+        : isPaymentLate && !hasReminderProof
+          ? {
+              href: "#late-payment-reminder",
+              label: "Send Reminder",
+              title: "A late reminder is due",
+              detail: `This invoice is ${daysLate ?? 0} day${
+                daysLate === 1 ? "" : "s"
+              } past due and no reminder proof is saved yet.`,
+            }
+          : customerFacingAmountDue > 0
+            ? {
+                href: paymentHref,
+                label: "Collect Balance",
+                title: "Balance is ready to collect",
+                detail: `${money(customerFacingAmountDue)} remains open. Use Payments when a check, batch payment, or deposit arrives so the audit trail stays attached.`,
+              }
+            : normalizedStatus !== "paid"
+              ? {
+                  href: "#invoice-actions",
+                  label: "Review Actions",
+                  title: "Balance looks clear",
+                  detail:
+                    "The calculated balance is zero. Review the invoice actions and mark it paid if the proof matches what happened.",
+                }
+              : {
+                  href: "#proof-vault",
+                  label: "Open Proof Vault",
+                  title: "Proof looks current",
+                  detail:
+                    "This invoice is paid. The proof vault below keeps the send, reminder, payment, and attachment history together for future lookup.",
+                };
 
   return (
     <AppShell>
@@ -803,6 +983,18 @@ export default async function InvoiceDetailPage({
         </div>
 
         <div className="space-y-6">
+          <InvoiceIntelligence
+            amountDueLabel={amountDueLabel}
+            balanceDue={customerFacingAmountDue}
+            hasDepositRequest={hasDepositRequest}
+            hasPaymentProof={hasPaymentProof}
+            hasPdfProof={hasPdfProof}
+            hasReminderProof={hasReminderProof}
+            hasSendProof={hasSendProof}
+            isPaymentLate={isPaymentLate}
+            nextAction={invoiceIntelligenceAction}
+          />
+
           {showSplitWarning ? (
             <Card className="border-yellow-500/60 bg-yellow-500/10">
               <p className="text-sm font-semibold uppercase tracking-[0.35em] text-yellow-300">
@@ -963,20 +1155,22 @@ export default async function InvoiceDetailPage({
             </Card>
           ) : null}
 
-          <InvoiceEmailSendPanel
-            documentId={invoice.id}
-            businessSlug={businessSlug}
-            businessName={businessName}
-            customerName={customerName}
-            recipientEmail={recipientEmail}
-            clientCcEmail={clientContact?.cc_email ?? null}
-            documentNumber={invoiceNumber}
-            amountDue={money(customerFacingAmountDue)}
-            dueDate={displayDueDate ? formatDate(displayDueDate) : "-"}
-            projectTitle={projectTitle}
-            printHref={`/invoices/${invoice.id}/print${businessQuery}`}
-            requestType={hasDepositRequest ? "deposit" : "invoice"}
-          />
+          <div id="send-invoice" className="scroll-mt-6">
+            <InvoiceEmailSendPanel
+              documentId={invoice.id}
+              businessSlug={businessSlug}
+              businessName={businessName}
+              customerName={customerName}
+              recipientEmail={recipientEmail}
+              clientCcEmail={clientContact?.cc_email ?? null}
+              documentNumber={invoiceNumber}
+              amountDue={money(customerFacingAmountDue)}
+              dueDate={displayDueDate ? formatDate(displayDueDate) : "-"}
+              projectTitle={projectTitle}
+              printHref={`/invoices/${invoice.id}/print${businessQuery}`}
+              requestType={hasDepositRequest ? "deposit" : "invoice"}
+            />
+          </div>
 
           {isPaymentLate ? (
             <section
@@ -1224,10 +1418,12 @@ export default async function InvoiceDetailPage({
             </div>
           </Card>
 
-          <EvidenceTrail
-            invoiceLabel={invoice.display_id || projectTitle || "Invoice"}
-            logs={invoiceActivityLogs}
-          />
+          <div id="proof-vault" className="scroll-mt-6">
+            <EvidenceTrail
+              invoiceLabel={invoice.display_id || projectTitle || "Invoice"}
+              logs={invoiceActivityLogs}
+            />
+          </div>
 
           <Card>
             <Info label="Notes" value={invoice.notes || "No notes added."} />
@@ -1246,7 +1442,7 @@ export default async function InvoiceDetailPage({
             </Card>
           ) : null}
 
-          <div className="flex flex-wrap gap-4">
+          <div id="invoice-actions" className="flex scroll-mt-6 flex-wrap gap-4">
             {normalizedStatus === "draft" ? (
               <UpdateInvoiceStatusButton
                 invoiceId={invoice.id}
