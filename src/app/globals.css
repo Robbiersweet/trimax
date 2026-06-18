@@ -7444,6 +7444,20 @@ html.theme-light .dashboard-workflow-stat[data-tone="rose"] {
   border-color: rgba(45, 212, 191, 0.34);
 }
 
+.dashboard-pattern-card[data-tone="turnover"] {
+  border-color: rgba(168, 85, 247, 0.38);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(168, 85, 247, 0.16), transparent 34%),
+    rgba(15, 23, 42, 0.74);
+}
+
+.dashboard-pattern-card[data-tone="seasonal"] {
+  border-color: rgba(20, 184, 166, 0.38);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(20, 184, 166, 0.16), transparent 34%),
+    rgba(15, 23, 42, 0.74);
+}
+
 .dashboard-pattern-empty {
   border-color: rgba(148, 163, 184, 0.24);
   color: #cbd5e1;
@@ -7699,6 +7713,16 @@ html.theme-light .dashboard-pattern-card[data-tone="late"] {
 }
 
 html.theme-light .dashboard-pattern-card[data-tone="proof"] {
+  background: #f0fdfa !important;
+  border-color: #5eead4 !important;
+}
+
+html.theme-light .dashboard-pattern-card[data-tone="turnover"] {
+  background: #f5f3ff !important;
+  border-color: #c4b5fd !important;
+}
+
+html.theme-light .dashboard-pattern-card[data-tone="seasonal"] {
   background: #f0fdfa !important;
   border-color: #5eead4 !important;
 }

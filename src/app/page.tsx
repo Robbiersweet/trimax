@@ -21,12 +21,14 @@ type QueueItem = {
   paint_type: string | null;
   flooring: string | null;
   status: string | null;
+  move_out_date: string | null;
   ready_date: string | null;
   scheduled_date: string | null;
   completed_date: string | null;
   smoked_in: boolean | null;
   notes: string | null;
   linked_estimate_id: string | null;
+  created_at: string | null;
 };
 
 type Invoice = {
@@ -132,6 +134,38 @@ function formatShortDate(value: string | null) {
     month: "short",
     day: "numeric",
   });
+}
+
+function monthName(value: number) {
+  return new Date(2026, value, 1).toLocaleString("en-US", {
+    month: "long",
+  });
+}
+
+function firstUnitLabelFromText(value: string | null | undefined) {
+  const normalized = maybeCanonicalApartmentUnitLabel(value ?? "");
+
+  if (normalized) {
+    return normalized;
+  }
+
+  const match = (value ?? "").match(/\b([A-Z])\s*-?\s*0?(\d{1,2})\b/i);
+
+  return match ? maybeCanonicalApartmentUnitLabel(`${match[1]}${match[2]}`) : null;
+}
+
+function compactPatternText(...values: (string | null | undefined)[]) {
+  return values
+    .filter((value): value is string => Boolean(value?.trim()))
+    .map((value) =>
+      value
+        .trim()
+        .replace(/\s+/g, " ")
+        .replace(/\bunit\s+[a-z]\d{1,2}\b/gi, "unit")
+        .replace(/\b[a-z]\d{1,2}\b/gi, "unit")
+        .toLowerCase()
+    )
+    .join(" / ");
 }
 
 function dateYear(value: string | null) {
@@ -365,7 +399,7 @@ export default async function DashboardPage({
       supabase
         .from("queue_items")
         .select(
-          "id, property, unit, unit_layout, paint_type, flooring, status, ready_date, scheduled_date, completed_date, smoked_in, notes, linked_estimate_id"
+          "id, property, unit, unit_layout, paint_type, flooring, status, move_out_date, ready_date, scheduled_date, completed_date, smoked_in, notes, linked_estimate_id, created_at"
         )
         .eq("business_id", selectedBusiness.id)
         .order("created_at", { ascending: false }),
@@ -1174,6 +1208,198 @@ export default async function DashboardPage({
     signal: string;
     tone: string;
   }[] = [];
+  const unitTurnoverPatterns = Array.from(
+    queueItems
+      .reduce(
+        (
+          groups,
+          item
+        ): Map<
+          string,
+          {
+            property: string;
+            unit: string;
+            moveOutDates: Date[];
+            latestItemId: string;
+          }
+        > => {
+          const unit = firstUnitLabelFromText(item.unit);
+          const moveOutDate = dateValue(item.move_out_date);
+
+          if (!unit || !moveOutDate) {
+            return groups;
+          }
+
+          const property = item.property ?? "Property";
+          const key = `${property.toLowerCase()}::${unit}`;
+          const current = groups.get(key) ?? {
+            property,
+            unit,
+            moveOutDates: [] as Date[],
+            latestItemId: item.id,
+          };
+
+          current.moveOutDates.push(moveOutDate);
+
+          if (
+            !current.latestItemId ||
+            moveOutDate.getTime() >
+              Math.max(...current.moveOutDates.map((date) => date.getTime()))
+          ) {
+            current.latestItemId = item.id;
+          }
+
+          groups.set(key, current);
+
+          return groups;
+        },
+        new Map<
+          string,
+          {
+            property: string;
+            unit: string;
+            moveOutDates: Date[];
+            latestItemId: string;
+          }
+        >()
+      )
+      .values()
+  )
+    .map((pattern) => {
+      const sortedDates = [...pattern.moveOutDates].sort(
+        (first, second) => first.getTime() - second.getTime()
+      );
+      const intervals = sortedDates
+        .slice(1)
+        .map((date, index) =>
+          Math.round(
+            (date.getTime() - sortedDates[index].getTime()) / 86_400_000
+          )
+        );
+      const averageDays =
+        intervals.length > 0
+          ? Math.round(
+              intervals.reduce((total, days) => total + days, 0) /
+                intervals.length
+            )
+          : null;
+
+      return {
+        ...pattern,
+        averageDays,
+        count: sortedDates.length,
+      };
+    })
+    .filter(
+      (pattern) =>
+        pattern.count >= 2 &&
+        pattern.averageDays !== null &&
+        pattern.averageDays >= 240 &&
+        pattern.averageDays <= 520
+    )
+    .sort((first, second) => {
+      const firstDistance = Math.abs((first.averageDays ?? 365) - 365);
+      const secondDistance = Math.abs((second.averageDays ?? 365) - 365);
+
+      return firstDistance - secondDistance;
+    });
+  const seasonalServicePatterns = Array.from(
+    [
+      ...queueItems.map((item) => ({
+        customer: item.property ?? "Property",
+        date: dateValue(item.ready_date ?? item.move_out_date ?? item.created_at),
+        href: `/queue/${item.id}?business=${selectedBusinessSlug}`,
+        service: compactPatternText(item.paint_type, item.flooring, item.notes),
+      })),
+      ...billableInvoices.map((invoice) => ({
+        customer: invoice.customer_name ?? "Customer",
+        date: dateValue(invoice.issue_date ?? invoice.due_date ?? invoice.created_at),
+        href: `/invoices/${invoice.id}?business=${selectedBusinessSlug}`,
+        service: compactPatternText(invoice.project_title),
+      })),
+    ]
+      .reduce(
+        (
+          groups,
+          record
+        ): Map<
+          string,
+          {
+            customer: string;
+            service: string;
+            month: number;
+            count: number;
+            href: string;
+          }
+        > => {
+          if (!record.date || record.service.length < 8) {
+            return groups;
+          }
+
+          const month = record.date.getMonth();
+          const key = `${record.customer.toLowerCase()}::${record.service}::${month}`;
+          const current = groups.get(key) ?? {
+            customer: record.customer,
+            service: record.service,
+            month,
+            count: 0,
+            href: record.href,
+          };
+
+          groups.set(key, {
+            ...current,
+            count: current.count + 1,
+            href: record.href,
+          });
+
+          return groups;
+        },
+        new Map<
+          string,
+          {
+            customer: string;
+            service: string;
+            month: number;
+            count: number;
+            href: string;
+          }
+        >()
+      )
+      .values()
+  )
+    .filter((pattern) => pattern.count >= 2)
+    .sort((first, second) => second.count - first.count);
+
+  if (unitTurnoverPatterns[0]) {
+    const pattern = unitTurnoverPatterns[0];
+    const averageDays = pattern.averageDays ?? 365;
+
+    patternRecognitionItems.push({
+      label: "Turnover Memory",
+      title: `${pattern.unit} appears to turn about yearly`,
+      detail: `${pattern.property} has ${pattern.count} saved move-outs for this unit, averaging about ${averageDays} days between turns. Trimax can flag this unit earlier when that window approaches again.`,
+      href: `/queue/${pattern.latestItemId}?business=${selectedBusinessSlug}`,
+      signal: `${Math.round(averageDays / 30)} mo`,
+      tone: "turnover",
+    });
+  }
+
+  if (seasonalServicePatterns[0]) {
+    const pattern = seasonalServicePatterns[0];
+
+    patternRecognitionItems.push({
+      label: "Seasonal Memory",
+      title: `${pattern.customer} repeats similar work in ${monthName(
+        pattern.month
+      )}`,
+      detail: `${pattern.count} saved records share a similar work fingerprint in ${monthName(
+        pattern.month
+      )}. This is the kind of pattern Trimax can use to remind you before the call comes in.`,
+      href: pattern.href,
+      signal: `${pattern.count}x`,
+      tone: "seasonal",
+    });
+  }
 
   if (
     topCustomerBalance &&
@@ -2034,13 +2260,13 @@ export default async function DashboardPage({
                 </p>
 
                 <h2 className="mt-2 text-2xl font-black tracking-tight text-white">
-                  Useful patterns Trimax noticed
+                  Recurring patterns Trimax noticed
                 </h2>
 
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
-                  Trimax watches for repeated invoice amounts, customer cash
-                  concentration, queue bottlenecks, schedule pressure, payment
-                  timing, and proof consistency.
+                  Trimax watches for apartment turnover rhythm, seasonal service
+                  calls, repeated work fingerprints, and the operational patterns
+                  that can help you get ahead of the next request.
                 </p>
               </div>
 
@@ -2084,8 +2310,8 @@ export default async function DashboardPage({
               ) : (
                 <div className="dashboard-pattern-empty rounded-2xl border border-dashed p-4 text-sm leading-6">
                   No strong pattern needs attention right now. Trimax will
-                  surface one here when cash, queue, billing, payment, or proof
-                  behavior starts repeating.
+                  surface one here when a unit, customer, service type, or
+                  seasonal request starts repeating.
                 </div>
               )}
             </div>
