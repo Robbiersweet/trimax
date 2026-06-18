@@ -7388,3 +7388,79 @@ html.theme-light .invoice-intelligence-card .text-emerald-200 {
       inset 0 1px 0 rgba(255, 255, 255, 0.86) !important;
   }
 }
+
+/* Light-mode accent policy:
+   Do not let pale sky/cyan/blue utility text become the default for new
+   surfaces. Dark mode can keep the luminous blue look; light mode uses
+   stronger ink so every future panel starts readable. */
+html.theme-light main .text-sky-50,
+html.theme-light main .text-sky-100,
+html.theme-light main .text-sky-100\/60,
+html.theme-light main .text-sky-100\/70,
+html.theme-light main .text-sky-100\/75,
+html.theme-light main .text-sky-100\/80,
+html.theme-light main .text-sky-100\/90,
+html.theme-light main .text-sky-200,
+html.theme-light main .text-sky-200\/70,
+html.theme-light main .text-sky-200\/80,
+html.theme-light main .text-sky-300,
+html.theme-light main .text-cyan-50,
+html.theme-light main .text-cyan-100,
+html.theme-light main .text-cyan-100\/60,
+html.theme-light main .text-cyan-100\/70,
+html.theme-light main .text-cyan-100\/75,
+html.theme-light main .text-cyan-100\/80,
+html.theme-light main .text-cyan-100\/90,
+html.theme-light main .text-cyan-200,
+html.theme-light main .text-cyan-200\/70,
+html.theme-light main .text-cyan-200\/80,
+html.theme-light main .text-cyan-300,
+html.theme-light main .text-blue-50,
+html.theme-light main .text-blue-100,
+html.theme-light main .text-blue-100\/60,
+html.theme-light main .text-blue-100\/70,
+html.theme-light main .text-blue-100\/75,
+html.theme-light main .text-blue-100\/80,
+html.theme-light main .text-blue-100\/90,
+html.theme-light main .text-blue-200,
+html.theme-light main .text-blue-200\/70,
+html.theme-light main .text-blue-200\/80,
+html.theme-light main .text-blue-300,
+html.theme-light main .dashboard-section-label,
+html.theme-light main .dashboard-command-label,
+html.theme-light main .dashboard-mobile-priority-kicker,
+html.theme-light main .report-library-kicker,
+html.theme-light main .document-readiness-label,
+html.theme-light main .quick-command-section-label {
+  color: #075985 !important;
+}
+
+html.theme-light main a.text-sky-100,
+html.theme-light main a.text-sky-200,
+html.theme-light main a.text-sky-300,
+html.theme-light main a.text-cyan-100,
+html.theme-light main a.text-cyan-200,
+html.theme-light main a.text-cyan-300,
+html.theme-light main a.text-blue-100,
+html.theme-light main a.text-blue-200,
+html.theme-light main a.text-blue-300,
+html.theme-light main .dashboard-autopilot-command,
+html.theme-light main .proof-summary-copy-button,
+html.theme-light main .app-sky-pill {
+  color: #1d4ed8 !important;
+}
+
+html.theme-light main a.text-sky-100:hover,
+html.theme-light main a.text-sky-200:hover,
+html.theme-light main a.text-sky-300:hover,
+html.theme-light main a.text-cyan-100:hover,
+html.theme-light main a.text-cyan-200:hover,
+html.theme-light main a.text-cyan-300:hover,
+html.theme-light main a.text-blue-100:hover,
+html.theme-light main a.text-blue-200:hover,
+html.theme-light main a.text-blue-300:hover,
+html.theme-light main .dashboard-autopilot-command:hover,
+html.theme-light main .proof-summary-copy-button:hover,
+html.theme-light main .app-sky-pill:hover {
+  color: #1e3a8a !important;
+}
