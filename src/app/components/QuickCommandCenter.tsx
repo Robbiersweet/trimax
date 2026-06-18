@@ -1098,6 +1098,38 @@ function buildIntentShortcutCommands(
     });
   }
 
+  if (
+    hasAny(
+      "pattern",
+      "patterns",
+      "repeat",
+      "repeats",
+      "seasonal",
+      "turnover",
+      "yearly",
+      "frequency",
+      "memory"
+    )
+  ) {
+    commands.push({
+      title: "Review recurring patterns",
+      detail:
+        "Jump to Trimax pattern memory for turnover rhythm, seasonal service calls, and repeated work.",
+      href: `/?business=${business}#dashboard-pattern-radar`,
+      tone: "system",
+      keywords: [
+        "intent",
+        "pattern",
+        "repeat",
+        "seasonal",
+        "turnover",
+        "memory",
+      ],
+      source: "smart",
+      actionLabel: "Pattern",
+    });
+  }
+
   if (hasAny("email", "sender", "reply", "cc", "bcc", "pdf", "resend")) {
     commands.push({
       title: "Open email and PDF delivery settings",
@@ -1339,6 +1371,24 @@ export default function QuickCommandCenter() {
           "reminder",
           "image",
         ],
+      },
+      {
+        title: "Pattern Radar",
+        detail:
+          "Review recurring unit turnover, seasonal service, and repeated work signals.",
+        href: `/?business=${business}#dashboard-pattern-radar`,
+        tone: "system",
+        keywords: [
+          "pattern",
+          "patterns",
+          "memory",
+          "repeat",
+          "seasonal",
+          "turnover",
+          "frequency",
+          "yearly",
+        ],
+        actionLabel: "Patterns",
       },
       {
         title: "Audit Export",

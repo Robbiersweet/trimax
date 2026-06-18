@@ -20,6 +20,8 @@ html.theme-light {
   --foreground: #111827;
   --trimax-accent-text: #075985;
   --trimax-accent-strong: #0f172a;
+  --trimax-readable-accent: #0f172a;
+  --trimax-readable-link: #075985;
 }
 
 body {
@@ -9327,6 +9329,75 @@ html.theme-light body main .dashboard-section-label {
 
 html.theme-light body main .dashboard-section-label {
   font-weight: 900;
+}
+
+html.theme-light body main
+  :is(
+    .dashboard-section-label,
+    .dashboard-command-label,
+    .dashboard-workflow-label,
+    .dashboard-pattern-label,
+    .document-readiness-label,
+    .quick-command-section-label
+  ) {
+  color: var(--trimax-readable-accent) !important;
+  text-shadow: none !important;
+}
+
+html.theme-light body main
+  :is(
+    p,
+    span,
+    strong,
+    em,
+    label,
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6
+  ):is(
+    .text-sky-50,
+    .text-sky-100,
+    .text-sky-100\/60,
+    .text-sky-100\/70,
+    .text-sky-100\/75,
+    .text-sky-100\/80,
+    .text-sky-100\/90,
+    .text-sky-200,
+    .text-sky-200\/70,
+    .text-sky-200\/80,
+    .text-sky-300,
+    .text-cyan-50,
+    .text-cyan-100,
+    .text-cyan-100\/60,
+    .text-cyan-100\/70,
+    .text-cyan-100\/75,
+    .text-cyan-100\/80,
+    .text-cyan-100\/90,
+    .text-cyan-200,
+    .text-cyan-200\/70,
+    .text-cyan-200\/80,
+    .text-cyan-300
+  ) {
+  color: var(--trimax-readable-accent) !important;
+  text-shadow: none !important;
+}
+
+html.theme-light body main
+  a:is(
+    .text-sky-50,
+    .text-sky-100,
+    .text-sky-200,
+    .text-sky-300,
+    .text-cyan-50,
+    .text-cyan-100,
+    .text-cyan-200,
+    .text-cyan-300
+  ):not([class*="bg-sky-"]):not([class*="bg-cyan-"]) {
+  color: var(--trimax-readable-link) !important;
+  text-shadow: none !important;
 }
 
 /* Visual polish pass: make the app shell and primary workflow surfaces feel

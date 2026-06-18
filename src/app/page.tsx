@@ -2278,7 +2278,10 @@ export default async function DashboardPage({
             "accountant",
           ]}
         >
-          <Card className="dashboard-pattern-radar dark-surface overflow-hidden border-sky-500/20 bg-zinc-950">
+          <Card
+            id="dashboard-pattern-radar"
+            className="dashboard-pattern-radar dark-surface scroll-mt-6 overflow-hidden border-sky-500/20 bg-zinc-950"
+          >
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <p className="dashboard-section-label text-sm uppercase tracking-[0.3em]">
