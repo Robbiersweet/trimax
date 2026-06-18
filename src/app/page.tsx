@@ -1498,7 +1498,7 @@ export default async function DashboardPage({
           <Card className="dashboard-workflow-map dark-surface overflow-hidden border-sky-500/20 bg-zinc-950">
             <div className="grid gap-6 xl:grid-cols-[0.72fr_1fr] xl:items-center">
               <div>
-                <p className="dashboard-section-label text-sm uppercase tracking-[0.3em] text-sky-300">
+                <p className="dashboard-workflow-label dashboard-section-label text-sm uppercase tracking-[0.3em] text-sky-300">
                   Workflow Map
                 </p>
 

@@ -6350,6 +6350,10 @@ html.theme-light .dashboard-workflow-map {
   box-shadow: 0 22px 55px rgba(15, 23, 42, 0.1) !important;
 }
 
+html.theme-light .dashboard-workflow-label {
+  color: #0f172a !important;
+}
+
 html.theme-light .dashboard-workflow-stage {
   border-color: #cbd5e1;
   background:
@@ -7922,7 +7926,8 @@ html.theme-light main .dashboard-autopilot-command {
 
 html.theme-light main .dashboard-command-card .text-sky-200,
 html.theme-light main .dashboard-proof-strip .text-sky-200,
-html.theme-light main .dashboard-autopilot-card p:first-child {
+html.theme-light main .dashboard-autopilot-card p:first-child,
+html.theme-light main .dashboard-workflow-label {
   color: #0f172a !important;
 }
 
