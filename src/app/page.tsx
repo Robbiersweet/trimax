@@ -1150,10 +1150,12 @@ export default async function DashboardPage({
   ];
   const topPriorityStackCandidates: {
     action: string;
+    confidence: number;
     detail: string;
     href: string;
     label: string;
     metric: string;
+    reason: string;
     score: number;
     tone: string;
   }[] = [];
@@ -1165,6 +1167,12 @@ export default async function DashboardPage({
 
     topPriorityStackCandidates.push({
       action: isPriorityDeposit ? "Open deposit" : "Open invoice",
+      confidence:
+        priorityInvoiceDaysLate > 0
+          ? 96
+          : isPriorityDeposit
+            ? 88
+            : 74,
       detail:
         priorityInvoice.customer_name ??
         priorityInvoice.project_title ??
@@ -1177,6 +1185,14 @@ export default async function DashboardPage({
             ? "Deposit follow-up"
             : "Largest open invoice",
       metric: formatMoney(priorityInvoiceAmountDue),
+      reason:
+        priorityInvoiceDaysLate > 0
+          ? `${priorityInvoiceDaysLate} day${
+              priorityInvoiceDaysLate === 1 ? "" : "s"
+            } late and still collectible`
+          : isPriorityDeposit
+            ? "Active deposit request is still open"
+            : "Highest unpaid balance in the current workspace",
       score:
         (priorityInvoiceDaysLate > 0 ? 900 : isPriorityDeposit ? 760 : 520) +
         Math.min(priorityInvoiceAmountDue / 100, 140),
@@ -1194,12 +1210,14 @@ export default async function DashboardPage({
 
     topPriorityStackCandidates.push({
       action: "Schedule",
+      confidence: 91,
       detail: `${item.property || "Property"} - Unit ${
         maybeCanonicalApartmentUnitLabel(item.unit) || "-"
       }`,
       href: `/queue/${item.id}?business=${selectedBusinessSlug}`,
       label: "Ready unit waiting",
       metric: formatShortDate(item.ready_date),
+      reason: "Paint due soon and no scheduled date is saved",
       score: 720,
       tone: "amber",
     });
@@ -1210,12 +1228,14 @@ export default async function DashboardPage({
 
     topPriorityStackCandidates.push({
       action: "Build estimate",
+      confidence: 84,
       detail: `${item.property || "Property"} - Unit ${
         maybeCanonicalApartmentUnitLabel(item.unit) || "-"
       }`,
       href: `/queue/${item.id}?business=${selectedBusinessSlug}`,
       label: "Estimate needed",
       metric: String(queueItemsNeedingEstimate.length),
+      reason: "Queue work cannot become billable until it is priced",
       score: 680,
       tone: "violet",
     });
@@ -1224,10 +1244,12 @@ export default async function DashboardPage({
   if (totalRiskFlags > 0) {
     topPriorityStackCandidates.push({
       action: "Review proof",
+      confidence: Math.min(98, 78 + totalRiskFlags * 4),
       detail: auditHealthDetail,
       href: `/activity?business=${selectedBusinessSlug}`,
       label: "Proof gap",
       metric: String(totalRiskFlags),
+      reason: "Missing proof can slow follow-up, payment review, or audits",
       score: 640 + totalRiskFlags * 20,
       tone: "rose",
     });
@@ -1236,10 +1258,12 @@ export default async function DashboardPage({
   if (workingYearOpenInvoicesWithAmounts.length > 0) {
     topPriorityStackCandidates.push({
       action: "Capture check",
+      confidence: 69,
       detail: "Match incoming payments to the best open invoices.",
       href: `/payments?business=${selectedBusinessSlug}#check-capture`,
       label: "Payment matching",
       metric: String(workingYearOpenInvoicesWithAmounts.length),
+      reason: "Open balances are ready for check-stub matching",
       score: 420,
       tone: "emerald",
     });
@@ -1248,6 +1272,7 @@ export default async function DashboardPage({
   const topPriorityStack = topPriorityStackCandidates
     .sort((first, second) => second.score - first.score)
     .slice(0, 4);
+  const leadingPriorityMove = topPriorityStack[0] ?? null;
   const intelligenceBriefItems: {
     label: string;
     title: string;
@@ -1958,6 +1983,33 @@ export default async function DashboardPage({
               </div>
 
               <div className="dashboard-priority-stack rounded-2xl border p-4">
+                {leadingPriorityMove ? (
+                  <Link
+                    href={leadingPriorityMove.href}
+                    data-tone={leadingPriorityMove.tone}
+                    className="dashboard-next-best-move mb-3 block rounded-2xl border p-3 transition hover:-translate-y-0.5"
+                  >
+                    <span className="flex items-start justify-between gap-3">
+                      <span>
+                        <span className="block text-xs font-black uppercase tracking-[0.2em]">
+                          Trimax Recommends
+                        </span>
+                        <strong className="mt-1 block text-lg">
+                          {leadingPriorityMove.action}
+                        </strong>
+                      </span>
+
+                      <span className="dashboard-next-best-confidence rounded-full border px-3 py-1 text-xs font-black">
+                        {leadingPriorityMove.confidence}%
+                      </span>
+                    </span>
+
+                    <span className="mt-2 block text-sm leading-5">
+                      {leadingPriorityMove.reason}
+                    </span>
+                  </Link>
+                ) : null}
+
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-xs font-black uppercase tracking-[0.2em]">
@@ -1993,11 +2045,17 @@ export default async function DashboardPage({
                           <span className="mt-0.5 block truncate text-xs font-semibold">
                             {item.detail}
                           </span>
+                          <span className="dashboard-priority-stack-reason mt-1 block text-[0.68rem] font-bold">
+                            {item.reason}
+                          </span>
                         </span>
 
                         <span className="text-right">
                           <span className="block text-sm font-black">
                             {item.metric}
+                          </span>
+                          <span className="dashboard-priority-stack-confidence mt-0.5 block text-[0.68rem] font-black">
+                            {item.confidence}%
                           </span>
                           <span className="mt-0.5 block text-[0.68rem] font-black uppercase tracking-[0.12em]">
                             {item.action}

@@ -7290,6 +7290,35 @@ html.theme-light .dashboard-workflow-stat[data-tone="rose"] {
   color: #e0f2fe;
 }
 
+.dashboard-next-best-move {
+  background:
+    radial-gradient(circle at 90% 0%, rgba(56, 189, 248, 0.18), transparent 32%),
+    linear-gradient(135deg, rgba(14, 165, 233, 0.14), rgba(15, 23, 42, 0.82));
+  border-color: rgba(125, 211, 252, 0.28);
+  color: #e0f2fe;
+  box-shadow:
+    0 16px 38px rgba(14, 165, 233, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.dashboard-next-best-move:hover {
+  border-color: rgba(125, 211, 252, 0.58);
+}
+
+.dashboard-next-best-move span span:first-child {
+  color: #bae6fd;
+}
+
+.dashboard-next-best-move strong {
+  color: #ffffff;
+}
+
+.dashboard-next-best-confidence {
+  background: rgba(2, 6, 23, 0.42);
+  border-color: rgba(125, 211, 252, 0.24);
+  color: #ffffff;
+}
+
 .dashboard-priority-stack-item {
   background: rgba(15, 23, 42, 0.78);
   border-color: rgba(148, 163, 184, 0.18);
@@ -7306,6 +7335,15 @@ html.theme-light .dashboard-workflow-stat[data-tone="rose"] {
 }
 
 .dashboard-priority-stack-item span span:nth-child(2) {
+  color: #cbd5e1;
+}
+
+.dashboard-priority-stack-reason {
+  color: #93c5fd;
+  white-space: normal;
+}
+
+.dashboard-priority-stack-confidence {
   color: #cbd5e1;
 }
 
@@ -7451,6 +7489,27 @@ html.theme-light .dashboard-priority-stack-count {
   color: #1d4ed8 !important;
 }
 
+html.theme-light .dashboard-next-best-move {
+  background: linear-gradient(135deg, #eff6ff, #ffffff 55%, #eef2ff) !important;
+  border-color: #93c5fd !important;
+  color: #334155 !important;
+  box-shadow: 0 14px 30px rgba(37, 99, 235, 0.08) !important;
+}
+
+html.theme-light .dashboard-next-best-move span span:first-child {
+  color: #075985 !important;
+}
+
+html.theme-light .dashboard-next-best-move strong {
+  color: #0f172a !important;
+}
+
+html.theme-light .dashboard-next-best-confidence {
+  background: #ffffff !important;
+  border-color: #bfdbfe !important;
+  color: #1d4ed8 !important;
+}
+
 html.theme-light .dashboard-priority-stack-item {
   background: #f8fafc !important;
   border-color: #d7dde8 !important;
@@ -7470,6 +7529,14 @@ html.theme-light .dashboard-priority-stack-rank {
 
 html.theme-light .dashboard-priority-stack-item span span:nth-child(2) {
   color: #475569 !important;
+}
+
+html.theme-light .dashboard-priority-stack-reason {
+  color: #1d4ed8 !important;
+}
+
+html.theme-light .dashboard-priority-stack-confidence {
+  color: #64748b !important;
 }
 
 html.theme-light .dashboard-priority-stack-item > span:last-child span:last-child {
