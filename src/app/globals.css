@@ -5334,6 +5334,16 @@ html.theme-light .dashboard-readable-link:hover {
   margin-top: 0.25rem;
 }
 
+.dashboard-proof-flight-total em {
+  color: #cbd5e1;
+  display: block;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 750;
+  line-height: 1.25;
+  margin-top: 0.35rem;
+}
+
 .dashboard-proof-flight-line {
   display: grid;
   gap: 0.65rem;
@@ -5973,7 +5983,8 @@ html.theme-light .dashboard-proof-flight-total strong {
 }
 
 html.theme-light .dashboard-proof-flight .text-zinc-300,
-html.theme-light .dashboard-proof-flight-total span {
+html.theme-light .dashboard-proof-flight-total span,
+html.theme-light .dashboard-proof-flight-total em {
   color: #475569 !important;
 }
 

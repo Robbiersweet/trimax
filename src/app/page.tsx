@@ -59,6 +59,8 @@ type ActivityLog = {
   created_at: string | null;
 };
 
+const DASHBOARD_ACTIVITY_SNAPSHOT_LIMIT = 80;
+
 function parseMoney(value: string | number | null) {
   if (typeof value === "number") {
     return Number.isFinite(value) ? value : 0;
@@ -419,7 +421,7 @@ export default async function DashboardPage({
         )
         .eq("business_id", selectedBusiness.id)
         .order("created_at", { ascending: false })
-        .limit(10),
+        .limit(DASHBOARD_ACTIVITY_SNAPSHOT_LIMIT),
     ]);
 
     queueItems =
@@ -1042,7 +1044,13 @@ export default async function DashboardPage({
     },
   ];
   const proofActions = new Set([
+    "estimate.created",
+    "estimate.updated",
+    "estimate.converted_to_invoice",
     "estimate.email_sent",
+    "invoice.created",
+    "invoice.updated",
+    "invoice.status_updated",
     "invoice.email_sent",
     "invoice.payment_reminder_sent",
     "invoice.deposit_requested",
@@ -1158,16 +1166,24 @@ export default async function DashboardPage({
       title: "Scope priced",
       value:
         (activityActionCounts["estimate.created"] ?? 0) +
+        (activityActionCounts["estimate.updated"] ?? 0) +
+        (activityActionCounts["estimate.converted_to_invoice"] ?? 0) +
         (activityActionCounts["estimate.email_sent"] ?? 0),
-      detail: "Estimate events captured",
+      detail: "Estimate changes and sends",
       href: `/activity?business=${selectedBusinessSlug}&type=estimate`,
       tone: "violet",
     },
     {
       label: "Invoice",
-      title: "Bill sent",
-      value: activityActionCounts["invoice.email_sent"] ?? 0,
-      detail: "Customer sends logged",
+      title: "Billing trail",
+      value:
+        (activityActionCounts["invoice.created"] ?? 0) +
+        (activityActionCounts["invoice.updated"] ?? 0) +
+        (activityActionCounts["invoice.status_updated"] ?? 0) +
+        (activityActionCounts["invoice.email_sent"] ?? 0) +
+        (activityActionCounts["invoice.split_created"] ?? 0) +
+        (activityActionCounts["invoice.recurring_draft_created"] ?? 0),
+      detail: "Invoices created, sent, and changed",
       href: `/activity?business=${selectedBusinessSlug}&type=invoice`,
       tone: "sky",
     },
@@ -1181,9 +1197,12 @@ export default async function DashboardPage({
     },
     {
       label: "Payment",
-      title: "Check matched",
-      value: activityActionCounts["invoice.batch_payment_applied"] ?? 0,
-      detail: "Payment events saved",
+      title: "Money tracked",
+      value:
+        (activityActionCounts["invoice.batch_payment_applied"] ?? 0) +
+        (activityActionCounts["invoice.deposit_requested"] ?? 0) +
+        (activityActionCounts["invoice.deposit_cleared"] ?? 0),
+      detail: "Payments and deposit actions",
       href: `/activity?business=${selectedBusinessSlug}&type=payment`,
       tone: "emerald",
     },
@@ -1200,6 +1219,12 @@ export default async function DashboardPage({
     (total, step) => total + step.value,
     0
   );
+  const proofFlightRecorderWindowLabel =
+    activityLogs.length >= DASHBOARD_ACTIVITY_SNAPSHOT_LIMIT
+      ? `Recent ${DASHBOARD_ACTIVITY_SNAPSHOT_LIMIT}+ records`
+      : `${activityLogs.length} recent record${
+          activityLogs.length === 1 ? "" : "s"
+        } scanned`;
   const patternRecognitionItems: {
     label: string;
     title: string;
@@ -2910,6 +2935,7 @@ export default async function DashboardPage({
                 >
                   <span>Tracked events</span>
                   <strong>{proofFlightRecorderTotal}</strong>
+                  <em>{proofFlightRecorderWindowLabel}</em>
                 </Link>
               </div>
 
