@@ -607,6 +607,42 @@ export default async function DashboardPage({
     invoicedRevenueTotal > 0
       ? Math.round((ytdRevenueTotal / invoicedRevenueTotal) * 100)
       : 0;
+  const revenueFlowMax = Math.max(
+    invoicedRevenueTotal,
+    ytdRevenueTotal,
+    outstandingRevenueTotal,
+    pastDueTotal,
+    1
+  );
+  const revenueFlowItems = [
+    {
+      label: "Invoiced",
+      value: invoicedRevenueTotal,
+      detail: `${collectionRate}% collected`,
+      tone: "invoice",
+    },
+    {
+      label: "Paid",
+      value: ytdRevenueTotal,
+      detail: "Cleared this year",
+      tone: "paid",
+    },
+    {
+      label: "Open",
+      value: outstandingRevenueTotal,
+      detail: `${workingYearOpenInvoicesWithAmounts.length} open`,
+      tone: "open",
+    },
+    {
+      label: "Past Due",
+      value: pastDueTotal,
+      detail: `${pastDueInvoices.length} late`,
+      tone: "late",
+    },
+  ].map((item) => ({
+    ...item,
+    percent: Math.max(5, Math.round((item.value / revenueFlowMax) * 100)),
+  }));
   const priorityInvoice =
     mostOverdueInvoices[0] ??
     depositRequestInvoices[0] ??
@@ -1766,6 +1802,65 @@ export default async function DashboardPage({
                 <p className="mt-1 text-xl font-black text-white">
                   {outstandingRevenue}
                 </p>
+              </div>
+            </div>
+
+            <div className="dashboard-revenue-flow mt-5 rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-sky-200">
+                    Money Flow
+                  </p>
+
+                  <h3 className="mt-1 text-lg font-black text-white">
+                    Revenue status at a glance
+                  </h3>
+                </div>
+
+                <Link
+                  href={`/reports?business=${selectedBusinessSlug}#money-flow`}
+                  className="text-sm font-black text-sky-200 transition hover:text-white"
+                >
+                  Open reports
+                </Link>
+              </div>
+
+              <div className="mt-4 grid gap-3 lg:grid-cols-4">
+                {revenueFlowItems.map((item) => (
+                  <Link
+                    key={item.label}
+                    href={
+                      item.tone === "late"
+                        ? `/invoices?business=${selectedBusinessSlug}&view=aging`
+                        : item.tone === "paid"
+                          ? `/reports?business=${selectedBusinessSlug}`
+                          : item.tone === "open"
+                            ? `/payments?business=${selectedBusinessSlug}`
+                            : `/invoices?business=${selectedBusinessSlug}`
+                    }
+                    data-tone={item.tone}
+                    className="dashboard-revenue-flow-card rounded-2xl border p-4 transition hover:-translate-y-0.5"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-xs font-black uppercase tracking-[0.16em]">
+                        {item.label}
+                      </p>
+
+                      <span>{item.detail}</span>
+                    </div>
+
+                    <p className="mt-4 text-2xl font-black">
+                      {formatMoney(item.value)}
+                    </p>
+
+                    <div className="dashboard-revenue-flow-track mt-4">
+                      <span
+                        className="dashboard-revenue-flow-bar"
+                        style={{ width: `${item.percent}%` }}
+                      />
+                    </div>
+                  </Link>
+                ))}
               </div>
             </div>
 
