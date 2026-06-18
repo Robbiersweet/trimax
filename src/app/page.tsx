@@ -1529,6 +1529,7 @@ export default async function DashboardPage({
       label: "Queue",
       title: "Work enters Trimax",
       detail: `${activeQueueItems.length} active`,
+      action: "Open Queue",
       href: `/queue?business=${selectedBusinessSlug}`,
       tone: "queue",
     },
@@ -1536,6 +1537,7 @@ export default async function DashboardPage({
       label: "Schedule",
       title: "Plan the work",
       detail: `${scheduledQueueItems.length} scheduled`,
+      action: "Open Schedule",
       href: `/schedule?business=${selectedBusinessSlug}`,
       tone: "schedule",
     },
@@ -1543,6 +1545,7 @@ export default async function DashboardPage({
       label: "Estimate",
       title: "Price the job",
       detail: `${queueItemsNeedingEstimate.length} need estimate`,
+      action: "Build Estimates",
       href: `/queue?business=${selectedBusinessSlug}&view=needs-estimate`,
       tone: "estimate",
     },
@@ -1550,6 +1553,7 @@ export default async function DashboardPage({
       label: "Invoice",
       title: "Send the bill",
       detail: `${workingYearOpenInvoicesWithAmounts.length} open`,
+      action: "Open Invoices",
       href: `/invoices?business=${selectedBusinessSlug}`,
       tone: "invoice",
     },
@@ -1557,6 +1561,7 @@ export default async function DashboardPage({
       label: "Payment",
       title: "Match the check",
       detail: outstandingRevenue,
+      action: "Match Payments",
       href: `/payments?${priorityPaymentParams.toString()}`,
       tone: "payment",
     },
@@ -1564,6 +1569,7 @@ export default async function DashboardPage({
       label: "Proof",
       title: "Keep records ready",
       detail: `${totalRiskFlags} to check`,
+      action: "Open Proof",
       href: `/activity?business=${selectedBusinessSlug}`,
       tone: "proof",
     },
@@ -2442,6 +2448,9 @@ export default async function DashboardPage({
                       </span>
                       <strong>{node.title}</strong>
                       <span>{node.detail}</span>
+                      <span className="dashboard-workflow-node-action">
+                        {node.action} <span aria-hidden="true">-&gt;</span>
+                      </span>
                     </Link>
                   ))}
                 </div>

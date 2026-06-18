@@ -7012,11 +7012,22 @@ html.theme-light .dashboard-hero-signal:hover {
   line-height: 1.25;
 }
 
-.dashboard-workflow-node span:last-child {
+.dashboard-workflow-node > span:not(.dashboard-workflow-node-label):not(.dashboard-workflow-node-action) {
   margin-top: 0.6rem;
   color: #cbd5e1;
   font-size: 0.82rem;
   font-weight: 700;
+}
+
+.dashboard-workflow-node-action {
+  align-items: center;
+  color: #e0f2fe;
+  display: inline-flex;
+  font-size: 0.74rem;
+  font-weight: 900;
+  gap: 0.25rem;
+  letter-spacing: 0.04em;
+  margin-top: 0.7rem;
 }
 
 .dashboard-workflow-node[data-tone="queue"] {
@@ -7140,8 +7151,12 @@ html.theme-light .dashboard-workflow-node-label {
   color: #0f172a;
 }
 
-html.theme-light .dashboard-workflow-node span:last-child {
+html.theme-light .dashboard-workflow-node > span:not(.dashboard-workflow-node-label):not(.dashboard-workflow-node-action) {
   color: #475569;
+}
+
+html.theme-light .dashboard-workflow-node-action {
+  color: #075985;
 }
 
 html.theme-light .dashboard-workflow-pill {
