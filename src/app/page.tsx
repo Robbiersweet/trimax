@@ -2572,6 +2572,15 @@ export default async function DashboardPage({
                           <span className="dashboard-priority-stack-reason mt-1 block text-[0.68rem] font-bold">
                             {item.reason}
                           </span>
+                          <span
+                            className="dashboard-priority-confidence-track mt-2 block"
+                            aria-label={`${item.confidence}% recommendation confidence`}
+                          >
+                            <span
+                              className="dashboard-priority-confidence-fill block"
+                              style={{ width: `${item.confidence}%` }}
+                            />
+                          </span>
                         </span>
 
                         <span className="text-right">
