@@ -1489,6 +1489,32 @@ export default async function DashboardPage({
   }
 
   const visiblePatternRecognitionItems = patternRecognitionItems.slice(0, 4);
+  const patternMemoryNodes = [
+    {
+      label: "Units",
+      value: unitTurnoverPatterns.length,
+      detail: "turnover rhythms",
+      tone: "turnover",
+    },
+    {
+      label: "Season",
+      value: seasonalServicePatterns.length,
+      detail: "recurring service windows",
+      tone: "seasonal",
+    },
+    {
+      label: "Billing",
+      value: repeatedInvoiceAmountPattern?.count ?? 0,
+      detail: "repeated invoice amounts",
+      tone: "invoice",
+    },
+    {
+      label: "Proof",
+      value: proofFlightRecorderTotal,
+      detail: "logged evidence events",
+      tone: "proof",
+    },
+  ];
   const workflowMapNodes = [
     {
       label: "Queue",
@@ -2276,6 +2302,28 @@ export default async function DashboardPage({
               >
                 Open reports
               </Link>
+            </div>
+
+            <div className="dashboard-memory-orbit mt-5">
+              <div className="dashboard-memory-core">
+                <span>Trimax</span>
+                <strong>Pattern Memory</strong>
+                <em>{visiblePatternRecognitionItems.length} active signals</em>
+              </div>
+
+              <div className="dashboard-memory-node-grid">
+                {patternMemoryNodes.map((node) => (
+                  <div
+                    key={node.label}
+                    data-tone={node.tone}
+                    className="dashboard-memory-node"
+                  >
+                    <span>{node.label}</span>
+                    <strong>{node.value}</strong>
+                    <em>{node.detail}</em>
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="dashboard-pattern-radar-grid mt-5">
