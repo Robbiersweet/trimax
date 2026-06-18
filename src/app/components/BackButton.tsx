@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
+import { useMemo } from "react";
 import {
   previousTrimaxRouteKey,
   trimaxRouteStackKey,
@@ -31,6 +32,85 @@ function readRouteStack() {
   }
 }
 
+function routeHint(route: string | null) {
+  if (!isSafeInternalRoute(route)) {
+    return "Previous Trimax screen";
+  }
+
+  const pathname = route.split("?")[0] ?? route;
+
+  if (pathname.startsWith("/queue/")) {
+    return "Queue item";
+  }
+
+  if (pathname === "/queue") {
+    return "Queue list";
+  }
+
+  if (pathname.startsWith("/invoices/") && pathname.includes("/print")) {
+    return "Invoice print view";
+  }
+
+  if (pathname.startsWith("/invoices/")) {
+    return "Invoice detail";
+  }
+
+  if (pathname === "/invoices") {
+    return "Invoice list";
+  }
+
+  if (pathname.startsWith("/estimates/") && pathname.includes("/print")) {
+    return "Estimate print view";
+  }
+
+  if (pathname.startsWith("/estimates/")) {
+    return "Estimate detail";
+  }
+
+  if (pathname === "/estimates") {
+    return "Estimate list";
+  }
+
+  if (pathname.startsWith("/clients/")) {
+    return "Client profile";
+  }
+
+  if (pathname === "/clients") {
+    return "Client list";
+  }
+
+  if (pathname === "/property-intelligence") {
+    return "Property intelligence";
+  }
+
+  if (pathname === "/payments") {
+    return "Payments";
+  }
+
+  if (pathname === "/settings") {
+    return "Settings";
+  }
+
+  if (pathname === "/") {
+    return "Dashboard";
+  }
+
+  return "Previous Trimax screen";
+}
+
+function findStackedPreviousRoute(currentRoute: string, pathname: string) {
+  const routeStack = readRouteStack();
+  const stackWithoutCurrent =
+    routeStack[routeStack.length - 1] === currentRoute
+      ? routeStack.slice(0, -1)
+      : routeStack.filter((route) => route !== currentRoute);
+
+  return stackWithoutCurrent
+    .slice()
+    .reverse()
+    .find((route) => route !== currentRoute && route !== pathname);
+}
+
 export default function BackButton({
   label = "Back",
   fallbackHref = "/",
@@ -39,6 +119,8 @@ export default function BackButton({
 }: BackButtonProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const fallbackHint = useMemo(() => routeHint(fallbackHref), [fallbackHref]);
+  const targetHint = preferFallback ? fallbackHint : "Previous Trimax screen";
 
   function handleBack() {
     const currentRoute = window.location.pathname + window.location.search;
@@ -53,10 +135,7 @@ export default function BackButton({
       routeStack[routeStack.length - 1] === currentRoute
         ? routeStack.slice(0, -1)
         : routeStack.filter((route) => route !== currentRoute);
-    const stackedPreviousRoute = stackWithoutCurrent
-      .slice()
-      .reverse()
-      .find((route) => route !== currentRoute && route !== pathname);
+    const stackedPreviousRoute = findStackedPreviousRoute(currentRoute, pathname);
 
     if (stackedPreviousRoute) {
       sessionStorage.setItem(
@@ -90,11 +169,17 @@ export default function BackButton({
     <button
       type="button"
       onClick={handleBack}
-      aria-label="Go back to the previous Trimax screen"
-      title="Go back to the previous Trimax screen"
-      className={`app-back-button rounded-2xl border border-zinc-700 bg-zinc-900 px-4 py-2 text-sm font-semibold text-zinc-300 transition hover:border-sky-500 hover:text-sky-300 ${className}`}
+      aria-label={`Go back to ${targetHint}`}
+      title={`Go back to ${targetHint}`}
+      className={`app-back-button inline-flex items-center gap-3 rounded-2xl border border-zinc-700 bg-zinc-900 px-4 py-2 text-left text-sm font-semibold text-zinc-300 transition hover:border-sky-500 hover:text-sky-300 ${className}`}
     >
-      &lt;- {label}
+      <span className="app-back-button-arrow" aria-hidden="true">
+        &larr;
+      </span>
+      <span className="min-w-0">
+        <span className="app-back-button-label block">{label}</span>
+        <span className="app-back-button-meta block">{targetHint}</span>
+      </span>
     </button>
   );
 }

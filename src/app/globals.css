@@ -2611,16 +2611,42 @@ html.theme-light .app-sidebar .app-button-secondary:hover {
 }
 
 html.theme-light .app-back-button {
-  background: #ffffff !important;
+  background: linear-gradient(135deg, #ffffff, #f8fafc) !important;
   border-color: #cbd5e1 !important;
   color: #334155 !important;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
+  box-shadow:
+    0 12px 26px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 html.theme-light .app-back-button:hover {
   background: #eff6ff !important;
   border-color: #93c5fd !important;
   color: #1d4ed8 !important;
+}
+
+html.theme-light .app-back-button-arrow {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+
+html.theme-light .app-back-button-label {
+  color: #0f172a;
+}
+
+html.theme-light .app-back-button-meta {
+  color: #475569;
+}
+
+html.theme-light .app-back-button:hover .app-back-button-arrow {
+  background: #dbeafe;
+  border-color: #60a5fa;
+  color: #1e40af;
+}
+
+html.theme-light .app-back-button:hover .app-back-button-meta {
+  color: #334155;
 }
 
 html.theme-light .app-soft-panel,
@@ -9005,11 +9031,56 @@ html.theme-light .app-card:focus-within {
     transform 160ms ease;
 }
 
+.app-back-button {
+  box-shadow:
+    0 12px 28px rgba(2, 6, 23, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.app-back-button-arrow {
+  display: grid;
+  height: 2rem;
+  place-items: center;
+  width: 2rem;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.app-back-button-label {
+  color: #f8fafc;
+  font-size: 0.9rem;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.app-back-button-meta {
+  color: #94a3b8;
+  font-size: 0.68rem;
+  font-weight: 850;
+  line-height: 1.2;
+  margin-top: 0.18rem;
+}
+
 .app-button-primary:hover,
 .app-button-secondary:hover,
 .app-back-button:hover,
 .app-chip:hover {
   transform: translateY(-1px);
+}
+
+.app-back-button:hover .app-back-button-arrow {
+  border-color: rgba(125, 211, 252, 0.55);
+  background: rgba(14, 165, 233, 0.12);
+  color: #e0f2fe;
+}
+
+.app-back-button:hover .app-back-button-meta {
+  color: #cbd5e1;
 }
 
 .app-button-primary:active,
