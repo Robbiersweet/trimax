@@ -1204,6 +1204,7 @@ export default async function DashboardPage({
     label: string;
     title: string;
     detail: string;
+    action: string;
     href: string;
     signal: string;
     tone: string;
@@ -1238,14 +1239,14 @@ export default async function DashboardPage({
             moveOutDates: [] as Date[],
             latestItemId: item.id,
           };
+          const previousLatestTime =
+            current.moveOutDates.length > 0
+              ? Math.max(...current.moveOutDates.map((date) => date.getTime()))
+              : 0;
 
           current.moveOutDates.push(moveOutDate);
 
-          if (
-            !current.latestItemId ||
-            moveOutDate.getTime() >
-              Math.max(...current.moveOutDates.map((date) => date.getTime()))
-          ) {
+          if (!current.latestItemId || moveOutDate.getTime() > previousLatestTime) {
             current.latestItemId = item.id;
           }
 
@@ -1378,6 +1379,7 @@ export default async function DashboardPage({
       label: "Turnover Memory",
       title: `${pattern.unit} appears to turn about yearly`,
       detail: `${pattern.property} has ${pattern.count} saved move-outs for this unit, averaging about ${averageDays} days between turns. Trimax can flag this unit earlier when that window approaches again.`,
+      action: "Open matching unit",
       href: `/queue/${pattern.latestItemId}?business=${selectedBusinessSlug}`,
       signal: `${Math.round(averageDays / 30)} mo`,
       tone: "turnover",
@@ -1395,6 +1397,7 @@ export default async function DashboardPage({
       detail: `${pattern.count} saved records share a similar work fingerprint in ${monthName(
         pattern.month
       )}. This is the kind of pattern Trimax can use to remind you before the call comes in.`,
+      action: "Review matching work",
       href: pattern.href,
       signal: `${pattern.count}x`,
       tone: "seasonal",
@@ -1412,6 +1415,7 @@ export default async function DashboardPage({
       detail: `${Math.round(
         (topCustomerBalance.total / outstandingRevenueTotal) * 100
       )}% of open revenue is concentrated in this customer, so payment follow-up here moves the needle fastest.`,
+      action: "Open payment target",
       href: `/payments?business=${selectedBusinessSlug}&customer=${encodeURIComponent(
         topCustomerBalance.customerName
       )}`,
@@ -1425,6 +1429,7 @@ export default async function DashboardPage({
       label: "Billing Pattern",
       title: `${formatMoney(repeatedInvoiceAmountPattern.amount)} repeats often`,
       detail: `${repeatedInvoiceAmountPattern.count} invoices share this amount. Trimax can treat this as a recurring unit-price signal when reviewing checks and invoice batches.`,
+      action: "Review invoices",
       href: `/invoices?business=${selectedBusinessSlug}`,
       signal: `${repeatedInvoiceAmountPattern.count}x`,
       tone: "invoice",
@@ -1436,6 +1441,7 @@ export default async function DashboardPage({
       label: "Queue Pattern",
       title: "Estimates are the current bottleneck",
       detail: `${queueEstimateBottleneckRate}% of active queue work still needs pricing before it can become billable revenue.`,
+      action: "Open estimate queue",
       href: `/queue?business=${selectedBusinessSlug}&view=needs-estimate`,
       signal: `${queueEstimateBottleneckRate}%`,
       tone: "queue",
@@ -1447,6 +1453,7 @@ export default async function DashboardPage({
       label: "Schedule Pattern",
       title: "Due-soon work is stacking up",
       detail: `${readySoonUnscheduled.length} units are due within 7 days without a schedule date. That pattern usually turns into last-minute pressure.`,
+      action: "Schedule work",
       href: `/queue?business=${selectedBusinessSlug}&view=ready-soon`,
       signal: `${readySoonUnscheduled.length}`,
       tone: "schedule",
@@ -1468,6 +1475,7 @@ export default async function DashboardPage({
           : `Paid invoices average ${Math.abs(averagePaymentTiming)} day${
               Math.abs(averagePaymentTiming) === 1 ? "" : "s"
             } before or on the due date.`,
+      action: "Open reports",
       href: `/reports?business=${selectedBusinessSlug}`,
       signal:
         averagePaymentTiming > 0
@@ -1482,6 +1490,7 @@ export default async function DashboardPage({
       label: "Proof Pattern",
       title: "Recent proof trail is clean",
       detail: "Recent sends, reminders, payments, and attachment checks are lining up without obvious proof gaps.",
+      action: "Open activity",
       href: `/activity?business=${selectedBusinessSlug}`,
       signal: "Clean",
       tone: "proof",
@@ -2355,6 +2364,11 @@ export default async function DashboardPage({
 
                     <span className="mt-3 block text-sm leading-6">
                       {item.detail}
+                    </span>
+
+                    <span className="dashboard-pattern-action mt-4 inline-flex items-center gap-2 text-sm font-black">
+                      {item.action}
+                      <span aria-hidden="true">-&gt;</span>
                     </span>
                   </Link>
                 ))
