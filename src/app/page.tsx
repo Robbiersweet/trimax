@@ -800,6 +800,60 @@ export default async function DashboardPage({
     },
   ];
   const recentQueueItems = queueItems.slice(0, 3);
+  const propertyHandoffItems = activeQueueItems
+    .map((item) => {
+      const readyDays = daysPastDue(item.ready_date);
+      const readyDate = dateValue(item.ready_date);
+      const status = normalizeStatus(item.status);
+      const needsSchedule = !item.scheduled_date;
+      const needsEstimate = !item.linked_estimate_id;
+      const readySoon =
+        readyDate !== null &&
+        readyDays !== null &&
+        readyDays >= -7 &&
+        readyDays <= 7;
+      const tone = needsSchedule
+        ? readySoon
+          ? "amber"
+          : "sky"
+        : needsEstimate
+          ? "violet"
+          : "emerald";
+      const action = needsSchedule
+        ? "Schedule"
+        : needsEstimate
+          ? "Estimate"
+          : status.includes("completed")
+            ? "Done"
+            : "Open";
+      const detail = needsSchedule
+        ? readySoon
+          ? `Paint due ${formatShortDate(item.ready_date)}`
+          : "Needs a work date"
+        : needsEstimate
+          ? "Estimate not linked yet"
+          : `Scheduled ${formatShortDate(item.scheduled_date)}`;
+      const urgencyBucket = needsSchedule
+        ? readySoon
+          ? 0
+          : 1
+        : needsEstimate
+          ? 2
+          : 3;
+      const sortScore =
+        urgencyBucket * 10_000_000_000_000 +
+        (readyDate?.getTime() ?? Number.MAX_SAFE_INTEGER);
+
+      return {
+        ...item,
+        action,
+        detail,
+        sortScore,
+        tone,
+      };
+    })
+    .sort((first, second) => first.sortScore - second.sortScore)
+    .slice(0, 4);
   const mobilePriorityItems = [
     {
       label: "Collect",
@@ -1405,6 +1459,61 @@ export default async function DashboardPage({
                     </Link>
                   ))}
                 </div>
+              </div>
+            </div>
+
+            <div className="dashboard-property-handoff mt-6 rounded-2xl border border-white/10 bg-black/20 p-4">
+              <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-200">
+                    Morning Handoff
+                  </p>
+
+                  <h3 className="mt-1 text-xl font-black text-white">
+                    What needs their attention next
+                  </h3>
+                </div>
+
+                <Link
+                  href={`/schedule?business=${selectedBusinessSlug}`}
+                  className="rounded-full border border-white/10 px-3 py-2 text-xs font-black text-emerald-100 transition hover:border-emerald-300/60"
+                >
+                  Open Schedule
+                </Link>
+              </div>
+
+              <div className="dashboard-property-handoff-lane mt-4">
+                {propertyHandoffItems.length > 0 ? (
+                  propertyHandoffItems.map((item, index) => (
+                    <Link
+                      key={item.id}
+                      href={`/queue/${item.id}?business=${selectedBusinessSlug}`}
+                      data-tone={item.tone}
+                      className="dashboard-property-handoff-card"
+                    >
+                      <span className="dashboard-property-handoff-rank">
+                        {index + 1}
+                      </span>
+
+                      <span className="min-w-0">
+                        <strong>
+                          {maybeCanonicalApartmentUnitLabel(item.unit) ??
+                            item.unit ??
+                            "Unit"}
+                        </strong>
+                        <em>{item.detail}</em>
+                      </span>
+
+                      <span className="dashboard-property-handoff-action">
+                        {item.action}
+                      </span>
+                    </Link>
+                  ))
+                ) : (
+                  <div className="dashboard-property-handoff-empty">
+                    No active unit needs handoff attention right now.
+                  </div>
+                )}
               </div>
             </div>
 
