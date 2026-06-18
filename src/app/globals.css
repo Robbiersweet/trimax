@@ -9856,6 +9856,49 @@ html.theme-light .app-workspace-panel::before {
   will-change: transform;
 }
 
+:is(a, button).dashboard-autopilot-card,
+:is(a, button).dashboard-pattern-card,
+:is(a, button).dashboard-focus-card,
+:is(a, button).dashboard-queue-command-card,
+:is(a, button).dashboard-command-card,
+:is(a, button).dashboard-proof-card,
+:is(a, button).dashboard-risk-card,
+:is(a, button).dashboard-mobile-priority-card,
+:is(a, button).dashboard-workflow-node {
+  cursor: pointer;
+  outline: none;
+  position: relative;
+}
+
+:is(a, button).dashboard-autopilot-card:focus-visible,
+:is(a, button).dashboard-pattern-card:focus-visible,
+:is(a, button).dashboard-focus-card:focus-visible,
+:is(a, button).dashboard-queue-command-card:focus-visible,
+:is(a, button).dashboard-command-card:focus-visible,
+:is(a, button).dashboard-proof-card:focus-visible,
+:is(a, button).dashboard-risk-card:focus-visible,
+:is(a, button).dashboard-mobile-priority-card:focus-visible,
+:is(a, button).dashboard-workflow-node:focus-visible {
+  border-color: rgba(125, 211, 252, 0.72) !important;
+  box-shadow:
+    0 0 0 4px rgba(14, 165, 233, 0.18),
+    0 22px 52px rgba(14, 165, 233, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  transform: translateY(-1px);
+}
+
+:is(a, button).dashboard-autopilot-card:active,
+:is(a, button).dashboard-pattern-card:active,
+:is(a, button).dashboard-focus-card:active,
+:is(a, button).dashboard-queue-command-card:active,
+:is(a, button).dashboard-command-card:active,
+:is(a, button).dashboard-proof-card:active,
+:is(a, button).dashboard-risk-card:active,
+:is(a, button).dashboard-mobile-priority-card:active,
+:is(a, button).dashboard-workflow-node:active {
+  transform: translateY(0) scale(0.99);
+}
+
 .quick-command-launcher {
   animation: trimaxCommandFloat 4.8s ease-in-out infinite;
 }
@@ -9874,6 +9917,22 @@ html.theme-light .dashboard-workflow-stage {
 html.theme-light .dashboard-workflow-node::after {
   background:
     linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.12), transparent);
+}
+
+html.theme-light :is(a, button).dashboard-autopilot-card:focus-visible,
+html.theme-light :is(a, button).dashboard-pattern-card:focus-visible,
+html.theme-light :is(a, button).dashboard-focus-card:focus-visible,
+html.theme-light :is(a, button).dashboard-queue-command-card:focus-visible,
+html.theme-light :is(a, button).dashboard-command-card:focus-visible,
+html.theme-light :is(a, button).dashboard-proof-card:focus-visible,
+html.theme-light :is(a, button).dashboard-risk-card:focus-visible,
+html.theme-light :is(a, button).dashboard-mobile-priority-card:focus-visible,
+html.theme-light :is(a, button).dashboard-workflow-node:focus-visible {
+  border-color: #2563eb !important;
+  box-shadow:
+    0 0 0 4px rgba(37, 99, 235, 0.15),
+    0 20px 44px rgba(37, 99, 235, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.88) !important;
 }
 
 @keyframes trimaxCommandFloat {
