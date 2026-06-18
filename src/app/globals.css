@@ -7183,6 +7183,29 @@ html.theme-light main [class*="tracking-[0.35em]"] {
   text-shadow: none;
 }
 
+html.theme-light .queue-workflow-intelligence {
+  background:
+    radial-gradient(circle at 88% 0%, rgba(14, 165, 233, 0.12), transparent 30%),
+    linear-gradient(135deg, #ffffff, #f8fafc) !important;
+  border-color: #bfdbfe !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .queue-workflow-intelligence .queue-workflow-step {
+  background: #ffffff !important;
+  border-color: #d7dde8 !important;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05) !important;
+}
+
+html.theme-light .queue-workflow-intelligence .queue-workflow-step.border-emerald-400\/30 {
+  background: #ecfdf5 !important;
+  border-color: #86efac !important;
+}
+
+html.theme-light .queue-workflow-intelligence .text-emerald-200 {
+  color: #047857 !important;
+}
+
 @media screen {
   main h1 {
     letter-spacing: 0;

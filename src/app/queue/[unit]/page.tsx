@@ -61,6 +61,7 @@ type LinkedEstimate = {
 type LinkedInvoice = {
   id: string;
   display_id: string | null;
+  customer_name: string | null;
   project_title: string | null;
   status: string | null;
   invoice_amount: string | number | null;
@@ -150,6 +151,15 @@ function formatMoney(value: string | number | null | undefined) {
     style: "currency",
     currency: "USD",
   }).format(Number.isFinite(amount) ? amount : 0);
+}
+
+function moneyNumber(value: string | number | null | undefined) {
+  const amount =
+    typeof value === "number"
+      ? value
+      : Number(String(value ?? "").replace(/[^0-9.-]+/g, ""));
+
+  return Number.isFinite(amount) ? amount : 0;
 }
 
 function formatEventDateTime(value: string | null | undefined) {
@@ -374,7 +384,7 @@ export default async function QueueDetailPage({
     const { data: invoiceData } = await supabase
       .from("invoices")
       .select(
-        "id, display_id, project_title, status, invoice_amount, amount_paid, due_date, created_at"
+        "id, display_id, customer_name, project_title, status, invoice_amount, amount_paid, due_date, created_at"
       )
       .eq("estimate_id", item.linked_estimate_id)
       .eq("business_id", selectedBusiness.id)
@@ -519,6 +529,67 @@ export default async function QueueDetailPage({
   const invoiceWasSent =
     Boolean(linkedInvoiceActivity) ||
     linkedInvoice?.status?.trim().toLowerCase() === "sent";
+  const linkedInvoiceBalance = linkedInvoice
+    ? Math.max(
+        moneyNumber(linkedInvoice.invoice_amount) -
+          moneyNumber(linkedInvoice.amount_paid),
+        0
+      )
+    : null;
+  const invoiceIsPaid =
+    Boolean(linkedInvoice) &&
+    (linkedInvoice?.status?.trim().toLowerCase() === "paid" ||
+      linkedInvoiceBalance === 0);
+  const workflowNextAction = !linkedEstimate
+    ? {
+        title: "Create the estimate",
+        detail:
+          "This queue item has not generated an estimate yet. Start there so Trimax can carry the job into invoicing.",
+        href: `/estimates/new?queueId=${item.id}&business=${businessSlug}`,
+        action: "Create Estimate",
+      }
+    : !linkedInvoice
+      ? {
+          title: "Convert estimate to invoice",
+          detail:
+            "The estimate exists, but no invoice is attached yet. Convert it when the work is ready to bill.",
+          href: `/estimates/${linkedEstimate.id}?business=${businessSlug}`,
+          action: "Open Estimate",
+        }
+      : !invoiceWasSent
+        ? {
+            title: "Send invoice",
+            detail:
+              "The invoice exists, but Trimax has not found saved send proof yet.",
+            href: `/invoices/${linkedInvoice.id}?business=${businessSlug}`,
+            action: "Open Invoice",
+          }
+        : !invoiceIsPaid
+          ? {
+              title: "Watch payment",
+              detail: `${formatMoney(
+                linkedInvoiceBalance
+              )} is still open. Payment matching and reminders stay tied to this invoice.`,
+              href: `/payments?business=${businessSlug}&customer=${encodeURIComponent(
+                linkedInvoice.customer_name ?? item.property ?? ""
+              )}`,
+              action: "Open Payments",
+            }
+          : !item.completed_date
+            ? {
+                title: "Mark queue item complete",
+                detail:
+                  "Billing is paid, but this unit still has no completed date saved.",
+                href: `#complete-work`,
+                action: "Complete Work",
+              }
+            : {
+                title: "Workflow complete",
+                detail:
+                  "Estimate, invoice, payment, and completion are all accounted for.",
+                href: `/activity?business=${businessSlug}&type=queue`,
+                action: "View Proof",
+              };
 
   return (
     <AppShell>
@@ -558,6 +629,16 @@ export default async function QueueDetailPage({
             ) : null}
           </div>
         </div>
+
+        <QueueWorkflowIntelligence
+          linkedEstimate={linkedEstimate}
+          linkedInvoice={linkedInvoice}
+          invoiceWasSent={invoiceWasSent}
+          invoiceIsPaid={invoiceIsPaid}
+          invoiceBalance={linkedInvoiceBalance}
+          completedDate={item.completed_date}
+          nextAction={workflowNextAction}
+        />
 
         <div className="grid gap-4 md:grid-cols-3">
           <AttentionCard
@@ -1023,6 +1104,107 @@ function AttentionCard({
       <p className="text-sm text-zinc-400">{label}</p>
       <p className="mt-2 text-2xl font-bold">{value}</p>
       <p className="mt-2 text-sm text-zinc-300">{detail}</p>
+    </Card>
+  );
+}
+
+function QueueWorkflowIntelligence({
+  linkedEstimate,
+  linkedInvoice,
+  invoiceWasSent,
+  invoiceIsPaid,
+  invoiceBalance,
+  completedDate,
+  nextAction,
+}: {
+  linkedEstimate: LinkedEstimate | null;
+  linkedInvoice: LinkedInvoice | null;
+  invoiceWasSent: boolean;
+  invoiceIsPaid: boolean;
+  invoiceBalance: number | null;
+  completedDate: string | null;
+  nextAction: {
+    title: string;
+    detail: string;
+    href: string;
+    action: string;
+  };
+}) {
+  const steps = [
+    {
+      label: "Estimate",
+      value: linkedEstimate?.display_id ?? "Needed",
+      done: Boolean(linkedEstimate),
+    },
+    {
+      label: "Invoice",
+      value: linkedInvoice?.display_id ?? "Not created",
+      done: Boolean(linkedInvoice),
+    },
+    {
+      label: "Sent Proof",
+      value: invoiceWasSent ? "Saved" : "Missing",
+      done: invoiceWasSent,
+    },
+    {
+      label: "Payment",
+      value: invoiceIsPaid
+        ? "Paid"
+        : invoiceBalance !== null
+          ? `${formatMoney(invoiceBalance)} open`
+          : "Pending",
+      done: invoiceIsPaid,
+    },
+    {
+      label: "Completion",
+      value: completedDate ? formatHistoryDate(completedDate) : "Open",
+      done: Boolean(completedDate),
+    },
+  ];
+
+  return (
+    <Card className="queue-workflow-intelligence border-sky-500/30 bg-gradient-to-br from-sky-500/10 via-zinc-950 to-indigo-500/10">
+      <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-start">
+        <div>
+          <p className="text-sm font-black uppercase tracking-[0.28em] text-sky-300">
+            Workflow Intelligence
+          </p>
+          <h2 className="mt-2 text-2xl font-black text-white">
+            {nextAction.title}
+          </h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
+            {nextAction.detail}
+          </p>
+        </div>
+
+        <Link href={nextAction.href}>
+          <Button variant="primary">{nextAction.action}</Button>
+        </Link>
+      </div>
+
+      <div className="mt-5 grid gap-3 md:grid-cols-5">
+        {steps.map((step) => (
+          <div
+            key={step.label}
+            className={`queue-workflow-step rounded-2xl border px-4 py-3 ${
+              step.done
+                ? "border-emerald-400/30 bg-emerald-500/10"
+                : "border-zinc-700 bg-black/25"
+            }`}
+          >
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">
+              {step.label}
+            </p>
+            <p
+              className={`mt-2 text-sm font-black ${
+                step.done ? "text-emerald-200" : "text-zinc-200"
+              }`}
+            >
+              {step.value}
+            </p>
+          </div>
+        ))}
+      </div>
     </Card>
   );
 }
