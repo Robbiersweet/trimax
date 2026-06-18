@@ -865,50 +865,50 @@ export default async function DashboardPage({
     paymentWithoutImageProofCount;
   const auditHealthLabel =
     totalRiskFlags === 0
-      ? "Audit trail clean"
+      ? "Records look complete"
       : totalRiskFlags <= 2
-        ? "Minor proof gaps"
-        : "Proof review needed";
+        ? "Items need review"
+        : "Records need attention";
   const auditHealthDetail =
     totalRiskFlags === 0
-      ? "Trimax sees no obvious proof gaps in the current dashboard snapshot."
-      : `${totalRiskFlags} proof gap${
+      ? "Invoices, reminders, PDFs, and payment photos look accounted for in the current dashboard snapshot."
+      : `${totalRiskFlags} item${
           totalRiskFlags === 1 ? "" : "s"
-        } should be reviewed before month-end or a client follow-up.`;
+        } should be checked before month-end or a client follow-up.`;
   const riskRadarItems = [
     {
-      label: "Reminder Gap",
+      label: "Reminder Needed",
       value: pastDueWithoutReminderCount,
       detail:
         pastDueWithoutReminderCount > 0
           ? "Past-due invoices without a logged reminder"
-          : "Past-due reminders are accounted for",
+          : "Past-due reminders are up to date",
       action:
-        pastDueWithoutReminderCount > 0 ? "Review aging" : "Looks clean",
+        pastDueWithoutReminderCount > 0 ? "Review aging" : "Up to date",
       href: `/invoices?business=${selectedBusinessSlug}&view=aging`,
       tone: pastDueWithoutReminderCount > 0 ? "rose" : "emerald",
     },
     {
-      label: "PDF Gap",
+      label: "PDF Missing",
       value: customerEmailWithoutPdfCount,
       detail:
         customerEmailWithoutPdfCount > 0
-          ? "Sent messages without attached PDF proof"
-          : "Recent sends include PDF proof",
+          ? "Sent messages that may need invoice PDF proof"
+          : "Recent sends include PDF attachments",
       action:
-        customerEmailWithoutPdfCount > 0 ? "Open proof log" : "Looks clean",
+        customerEmailWithoutPdfCount > 0 ? "Open activity" : "Up to date",
       href: `/activity?business=${selectedBusinessSlug}&type=invoice&q=pdf`,
       tone: customerEmailWithoutPdfCount > 0 ? "amber" : "emerald",
     },
     {
-      label: "Image Gap",
+      label: "Payment Photo Missing",
       value: paymentWithoutImageProofCount,
       detail:
         paymentWithoutImageProofCount > 0
           ? "Payments recorded without check or stub images"
-          : "Payment image proof is current",
+          : "Payment photos are attached where needed",
       action:
-        paymentWithoutImageProofCount > 0 ? "Review payments" : "Looks clean",
+        paymentWithoutImageProofCount > 0 ? "Review payments" : "Up to date",
       href: `/activity?business=${selectedBusinessSlug}&type=payment`,
       tone: paymentWithoutImageProofCount > 0 ? "sky" : "emerald",
     },
@@ -1698,11 +1698,11 @@ export default async function DashboardPage({
               <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.24em] text-sky-200">
-                    Communication Proof
+                    Recent Activity
                   </p>
 
                   <h3 className="mt-1 text-lg font-black text-white">
-                    Recently logged customer touches
+                    Recent customer emails and payment records
                   </h3>
                 </div>
 
@@ -1754,7 +1754,7 @@ export default async function DashboardPage({
               <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-200">
-                    Risk Radar
+                    Records To Check
                   </p>
 
                   <h3 className="mt-1 text-lg font-black text-white">
