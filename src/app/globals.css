@@ -9915,6 +9915,14 @@ html.theme-light .active-job-session-dock .text-zinc-400 {
   color: #475569 !important;
 }
 
+html.theme-light .active-job-session-dock .text-zinc-200 {
+  color: #334155 !important;
+}
+
+html.theme-light .active-job-session-dock .text-rose-100 {
+  color: #be123c !important;
+}
+
 html.theme-light .job-session-panel .text-sky-200,
 html.theme-light .job-session-panel .text-sky-300,
 html.theme-light .labor-intelligence-kicker,
@@ -9974,10 +9982,16 @@ html.theme-light .job-session-breakdown .text-violet-200 {
 
 html.theme-light .job-session-modal,
 html.theme-light .job-session-preset,
+html.theme-light .job-session-history-action,
 html.theme-light .labor-metric-card {
   background: #ffffff !important;
   border-color: #d7dde8 !important;
   color: #0f172a !important;
+}
+
+html.theme-light .job-session-history-action {
+  border-color: #f59e0b !important;
+  color: #92400e !important;
 }
 
 html.theme-light .labor-metric-card.border-amber-400\/35 {

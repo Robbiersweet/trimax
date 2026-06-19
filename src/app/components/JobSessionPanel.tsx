@@ -112,6 +112,37 @@ function blankBreakdown(): BreakdownDraft {
   };
 }
 
+function defaultBreakdownDrafts(jobType?: string | null): BreakdownDraft[] {
+  const normalized = (jobType ?? "").toLowerCase();
+
+  if (normalized.includes("cabinet")) {
+    return [
+      { workType: "Prep", minutes: "", percentage: "20", notes: "" },
+      { workType: "Cabinets", minutes: "", percentage: "70", notes: "" },
+      { workType: "Touch Ups", minutes: "", percentage: "10", notes: "" },
+    ];
+  }
+
+  if (normalized.includes("clean")) {
+    return [
+      { workType: "Cleaning", minutes: "", percentage: "80", notes: "" },
+      { workType: "Inspection", minutes: "", percentage: "20", notes: "" },
+    ];
+  }
+
+  if (normalized.includes("admin") || normalized.includes("estimate")) {
+    return [
+      { workType: "Admin", minutes: "", percentage: "100", notes: "" },
+    ];
+  }
+
+  return [
+    { workType: "Prep", minutes: "", percentage: "15", notes: "" },
+    { workType: "Paint", minutes: "", percentage: "75", notes: "" },
+    { workType: "Touch Ups", minutes: "", percentage: "10", notes: "" },
+  ];
+}
+
 export default function JobSessionPanel({
   businessId,
   businessSlug,
@@ -373,11 +404,7 @@ export default function JobSessionPanel({
     const stopped = data as JobSession;
     setActiveSession(null);
     setStoppedSession(stopped);
-    setBreakdownDrafts([
-      { ...blankBreakdown(), workType: "Prep" },
-      { ...blankBreakdown(), workType: "Paint" },
-      { ...blankBreakdown(), workType: "Material Run" },
-    ]);
+    setBreakdownDrafts(defaultBreakdownDrafts(stopped.job_type));
     await loadSessions(userId);
   }
 
@@ -492,6 +519,12 @@ export default function JobSessionPanel({
         draftIndex === index ? { ...draft, [field]: value } : draft
       )
     );
+  }
+
+  function openBreakdownForSession(session: JobSession) {
+    setMessage(null);
+    setStoppedSession(session);
+    setBreakdownDrafts(defaultBreakdownDrafts(session.job_type));
   }
 
   const breakdownBySession = useMemo(() => {
@@ -842,9 +875,21 @@ export default function JobSessionPanel({
                         ? "Breakdown saved"
                         : session.ended_at
                           ? "Needs breakdown"
-                          : "Active"}
+                        : "Active"}
                     </span>
                   </div>
+
+                  {session.ended_at && sessionBreakdowns.length === 0 ? (
+                    <div className="mt-3 flex justify-start">
+                      <button
+                        className="job-session-history-action rounded-2xl border border-amber-300/30 bg-amber-300/15 px-4 py-2 text-sm font-black text-amber-100 transition hover:-translate-y-0.5 hover:bg-amber-300/25"
+                        onClick={() => openBreakdownForSession(session)}
+                        type="button"
+                      >
+                        Break Down Time
+                      </button>
+                    </div>
+                  ) : null}
 
                   {sessionBreakdowns.length > 0 ? (
                     <div className="mt-3 flex flex-wrap gap-2">
