@@ -194,6 +194,39 @@ export default async function JobSessionsPage({
           ) / completedSessions.length
         )
       : 0;
+  const completedSessionAverages = Array.from(
+    completedSessions.reduce((map, session) => {
+      const label = session.job_type?.trim() || "General Work";
+      const minutes =
+        session.total_minutes ??
+        minutesBetween(session.started_at, session.ended_at);
+
+      if (minutes <= 0) {
+        return map;
+      }
+
+      const current = map.get(label) ?? { count: 0, minutes: 0 };
+      map.set(label, {
+        count: current.count + 1,
+        minutes: current.minutes + minutes,
+      });
+
+      return map;
+    }, new Map<string, { count: number; minutes: number }>())
+  )
+    .map(([label, value]) => ({
+      label,
+      averageMinutes: Math.round(value.minutes / value.count),
+      count: value.count,
+      totalMinutes: value.minutes,
+    }))
+    .sort(
+      (first, second) =>
+        second.count - first.count ||
+        second.totalMinutes - first.totalMinutes ||
+        first.label.localeCompare(second.label)
+    );
+  const strongestLaborPattern = completedSessionAverages[0] ?? null;
   const workTypeTotals = Array.from(
     breakdowns.reduce((map, breakdown) => {
       const label = breakdown.work_type?.trim() || "Other";
@@ -380,6 +413,53 @@ export default async function JobSessionsPage({
             </p>
           </Card>
         ) : null}
+
+        <Card className="job-session-hub-card job-session-forecast-card">
+          <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+            <div>
+              <p className="section-kicker text-sm font-black uppercase tracking-[0.24em] text-sky-300">
+                Labor Forecast
+              </p>
+              <h2 className="mt-2 text-2xl font-black">
+                {strongestLaborPattern
+                  ? `${strongestLaborPattern.label} usually runs ${formatDuration(
+                      strongestLaborPattern.averageMinutes
+                    )}`
+                  : "Trimax is learning your labor rhythm"}
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-zinc-400">
+                Completed sessions become simple planning guidance, so future
+                jobs can be scheduled with real Trimax history instead of
+                guesswork.
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              {completedSessionAverages.length === 0 ? (
+                <EmptyState
+                  title="No completed labor history yet"
+                  detail="Stop a few sessions and Trimax will begin showing typical job times."
+                />
+              ) : (
+                completedSessionAverages.slice(0, 4).map((item) => (
+                  <div key={item.label} className="job-session-forecast-row">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.16em] text-sky-200">
+                        {item.label}
+                      </p>
+                      <p className="mt-2 text-2xl font-black">
+                        {formatDuration(item.averageMinutes)}
+                      </p>
+                    </div>
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-black">
+                      {item.count}x
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </Card>
 
         <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
           <Card className="job-session-hub-card">
