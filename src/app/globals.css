@@ -9879,6 +9879,10 @@ html.theme-light .app-workspace-panel::before {
     0 14px 30px rgba(2, 6, 23, 0.13);
 }
 
+.job-session-start-actions > button {
+  min-height: 3.5rem;
+}
+
 .job-session-breakdown {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
