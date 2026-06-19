@@ -341,10 +341,24 @@ export default function JobSessionPanel({
     }, 0);
 
     const tolerance = Math.max(5, Math.round(total * 0.05));
+    const variance = effectiveMinutes - total;
+    const remainingMinutes = Math.max(total - effectiveMinutes, 0);
+    const overMinutes = Math.max(effectiveMinutes - total, 0);
+    const statusLabel =
+      total === 0
+        ? "Ready"
+        : Math.abs(variance) <= tolerance
+          ? "Close enough"
+          : variance < 0
+            ? `${formatDuration(remainingMinutes)} left`
+            : `${formatDuration(overMinutes)} over`;
 
     return {
       effectiveMinutes,
       isClose: total === 0 || Math.abs(effectiveMinutes - total) <= tolerance,
+      overMinutes,
+      remainingMinutes,
+      statusLabel,
     };
   }, [breakdownDrafts, stoppedSession?.total_minutes]);
 
@@ -1018,15 +1032,18 @@ export default function JobSessionPanel({
                 Rough categories are enough. You can also skip this for now.
               </p>
             </div>
-            <p
-              className={`rounded-full px-3 py-2 text-sm font-black ${
+            <div
+              className={`rounded-2xl px-4 py-3 text-sm font-black ${
                 breakdownTotals.isClose
                   ? "bg-emerald-400 text-emerald-950"
                   : "bg-amber-300 text-amber-950"
               }`}
             >
-              {formatDuration(breakdownTotals.effectiveMinutes)} assigned
-            </p>
+              <p>{formatDuration(breakdownTotals.effectiveMinutes)} assigned</p>
+              <p className="mt-1 text-xs opacity-80">
+                {breakdownTotals.statusLabel}
+              </p>
+            </div>
           </div>
 
           <div className="mt-4 grid gap-2 sm:grid-cols-4">
@@ -1106,6 +1123,11 @@ export default function JobSessionPanel({
               </div>
             ))}
           </div>
+
+          <p className="mt-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm font-semibold text-violet-100/80">
+            Use either minutes or percentages. Trimax accepts a close match, so
+            this can stay quick at the end of the day.
+          </p>
 
           <div className="mt-4 flex flex-col gap-3 sm:flex-row">
             <button

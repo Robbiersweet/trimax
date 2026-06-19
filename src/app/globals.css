@@ -10084,6 +10084,11 @@ html.theme-light .job-session-breakdown .text-violet-200 {
   color: #5b21b6 !important;
 }
 
+html.theme-light .job-session-breakdown .bg-black\/20 {
+  background: #ffffff !important;
+  border-color: #ddd6fe !important;
+}
+
 html.theme-light .job-session-modal,
 html.theme-light .job-session-preset,
 html.theme-light .job-session-history-action,
