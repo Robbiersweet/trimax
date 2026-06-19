@@ -2678,6 +2678,25 @@ html.theme-light .app-workspace-back-hint {
   color: #64748b !important;
 }
 
+html.theme-light .app-workspace-context-label {
+  color: #0369a1 !important;
+}
+
+html.theme-light .app-workspace-back-action {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #075985 !important;
+  box-shadow:
+    0 12px 26px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.96);
+}
+
+html.theme-light .app-workspace-back-action:hover {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #1d4ed8 !important;
+}
+
 html.theme-light .app-back-button:hover {
   background: #eff6ff !important;
   border-color: #93c5fd !important;
@@ -9187,6 +9206,37 @@ html.theme-light .app-card:focus-within {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.app-workspace-context {
+  padding-left: 0.25rem;
+}
+
+.app-workspace-back-action {
+  box-shadow:
+    0 12px 26px rgba(2, 6, 23, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .app-workspace-back-bar {
+    align-items: stretch;
+  }
+
+  .app-workspace-context {
+    align-items: flex-start;
+    flex-basis: 100%;
+    padding-left: 0;
+  }
+
+  .app-workspace-context > div {
+    text-align: left;
+  }
+
+  .app-workspace-back-action {
+    margin-left: auto;
+  }
 }
 
 .app-back-button-arrow {
