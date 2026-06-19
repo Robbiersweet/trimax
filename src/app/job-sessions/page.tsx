@@ -341,6 +341,16 @@ export default async function JobSessionsPage({
         (first.unit || "").localeCompare(second.unit || "")
     )
     .slice(0, 4);
+  const activeQueueItems = queueItems.filter((item) => !isClosedQueueItem(item));
+  const readyWorkStats = {
+    urgent: activeQueueItems.filter((item) => {
+      const dueInDays = daysUntil(item.ready_date);
+      return dueInDays !== null && dueInDays <= 0;
+    }).length,
+    unscheduled: activeQueueItems.filter((item) => !item.scheduled_date).length,
+    untimed: activeQueueItems.filter((item) => !sessionQueueItemIds.has(item.id))
+      .length,
+  };
   const nextAction =
     activeSessions.length > 0
       ? {
@@ -469,6 +479,14 @@ export default async function JobSessionsPage({
                 one, tap Start Job Session, and Trimax will keep the labor tied
                 to the right unit.
               </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <ReadyWorkStat label="Urgent" value={readyWorkStats.urgent} />
+                <ReadyWorkStat
+                  label="Unscheduled"
+                  value={readyWorkStats.unscheduled}
+                />
+                <ReadyWorkStat label="No labor yet" value={readyWorkStats.untimed} />
+              </div>
             </div>
             <Link
               href={`/queue?business=${businessSlug}`}
@@ -485,10 +503,11 @@ export default async function JobSessionsPage({
                 detail="New queue work will appear here as soon as it is added."
               />
             ) : (
-              readyWorkItems.map((item) => (
+              readyWorkItems.map((item, index) => (
                 <ReadyWorkRow
                   key={item.id}
                   item={item}
+                  rank={index + 1}
                   businessSlug={businessSlug}
                 />
               ))
@@ -913,8 +932,24 @@ function FirstRunStep({
   );
 }
 
+function ReadyWorkStat({
+  label,
+  value,
+}: {
+  label: string;
+  value: number;
+}) {
+  return (
+    <span className="job-session-ready-stat inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-black text-zinc-200">
+      <span className="text-emerald-200">{value}</span>
+      {label}
+    </span>
+  );
+}
+
 function ReadyWorkRow({
   item,
+  rank,
   businessSlug,
 }: {
   item: QueueItem & {
@@ -922,6 +957,7 @@ function ReadyWorkRow({
     hasSession: boolean;
     isScheduled: boolean;
   };
+  rank: number;
   businessSlug: string;
 }) {
   const dueLabel =
@@ -937,6 +973,16 @@ function ReadyWorkRow({
     : item.isScheduled
       ? "Scheduled"
       : "Ready";
+  const startReason =
+    item.hasSession
+      ? "Labor already started"
+      : item.dueInDays !== null && item.dueInDays < 0
+        ? "Late work first"
+        : item.dueInDays === 0
+          ? "Due today"
+          : !item.isScheduled
+            ? "Needs schedule"
+            : "Ready to track";
 
   return (
     <Link
@@ -944,13 +990,16 @@ function ReadyWorkRow({
       className="job-session-ready-row rounded-2xl border border-white/10 bg-black/25 p-4 transition hover:-translate-y-0.5"
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-black text-white">
-            {item.property || "Property"}
-          </p>
-          <p className="mt-1 text-3xl font-black">
-            {item.unit || "Unit"}
-          </p>
+        <div className="flex min-w-0 gap-3">
+          <span className="job-session-ready-rank flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-emerald-300/25 bg-emerald-300/10 text-sm font-black text-emerald-200">
+            {rank}
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-black text-white">
+              {item.property || "Property"}
+            </p>
+            <p className="mt-1 text-3xl font-black">{item.unit || "Unit"}</p>
+          </div>
         </div>
         <span
           className={`rounded-full border px-3 py-1 text-xs font-black ${
@@ -967,6 +1016,9 @@ function ReadyWorkRow({
         <p className="truncate">
           {item.paint_type || "Paint work"}{" "}
           {item.unit_layout ? `/ ${item.unit_layout}` : ""}
+        </p>
+        <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-200">
+          {startReason}
         </p>
         <div className="flex flex-wrap gap-2">
           <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-black text-zinc-300">

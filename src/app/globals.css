@@ -9951,6 +9951,11 @@ html.theme-light .app-workspace-panel::before {
   min-height: 10.5rem;
 }
 
+.job-session-ready-rank,
+.job-session-ready-stat {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
 .job-session-forecast-card {
   background:
     radial-gradient(circle at top left, rgba(56, 189, 248, 0.16), transparent 34%),
@@ -10210,6 +10215,23 @@ html.theme-light .job-session-ready-row .text-zinc-400 {
 
 html.theme-light .job-session-ready-row .bg-white\/5 {
   background: #f8fafc !important;
+}
+
+html.theme-light .job-session-ready-rank {
+  background: #ecfdf5 !important;
+  border-color: #86efac !important;
+  color: #047857 !important;
+}
+
+html.theme-light .job-session-ready-stat {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+html.theme-light .job-session-ready-stat .text-emerald-200,
+html.theme-light .job-session-ready-row .text-emerald-200 {
+  color: #047857 !important;
 }
 
 html.theme-light .job-session-setup-card {
