@@ -57,6 +57,23 @@ type Invoice = {
   split_parent_invoice_id: string | null;
 };
 
+type JobSession = {
+  id: string;
+  property_name: string | null;
+  unit_label: string | null;
+  job_type: string | null;
+  started_at: string | null;
+  ended_at: string | null;
+  total_minutes: number | null;
+  invoice_id: string | null;
+  created_at: string | null;
+};
+
+type JobSessionBreakdown = {
+  id: string;
+  job_session_id: string;
+};
+
 type ReportRange = "week" | "month" | "all" | "custom";
 
 function parseMoney(value: string | number | null) {
@@ -82,6 +99,16 @@ function formatMoney(value: number) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+}
+
+function formatHoursFromMinutes(value: number) {
+  const hours = value / 60;
+
+  if (hours >= 10) {
+    return `${Math.round(hours)}h`;
+  }
+
+  return `${hours.toFixed(1)}h`;
 }
 
 function formatDate(value: string | null) {
@@ -376,9 +403,17 @@ export default async function ReportsPage({
   let queueItems: QueueItem[] = [];
   let estimates: Estimate[] = [];
   let invoices: Invoice[] = [];
+  let jobSessions: JobSession[] = [];
+  let jobSessionBreakdowns: JobSessionBreakdown[] = [];
 
   if (selectedBusiness?.id) {
-    const [queueResponse, estimateResponse, invoiceResponse] =
+    const [
+      queueResponse,
+      estimateResponse,
+      invoiceResponse,
+      jobSessionResponse,
+      jobBreakdownResponse,
+    ] =
       await Promise.all([
         supabase
           .from("queue_items")
@@ -401,6 +436,19 @@ export default async function ReportsPage({
           )
           .eq("business_id", selectedBusiness.id)
           .order("created_at", { ascending: false }),
+
+        supabase
+          .from("job_sessions")
+          .select(
+            "id, property_name, unit_label, job_type, started_at, ended_at, total_minutes, invoice_id, created_at"
+          )
+          .eq("business_id", selectedBusiness.id)
+          .order("started_at", { ascending: false }),
+
+        supabase
+          .from("job_session_breakdowns")
+          .select("id, job_session_id")
+          .eq("business_id", selectedBusiness.id),
       ]);
 
     if (queueResponse.error) {
@@ -433,9 +481,29 @@ export default async function ReportsPage({
       );
     }
 
+    if (jobSessionResponse.error) {
+      console.warn(
+        "Report job session data could not be loaded:",
+        jobSessionResponse.error.message
+      );
+      reportLoadMessages.push(
+        "Job session report data will appear after the Job Sessions SQL is run in Supabase."
+      );
+    }
+
+    if (jobBreakdownResponse.error) {
+      console.warn(
+        "Report job session breakdown data could not be loaded:",
+        jobBreakdownResponse.error.message
+      );
+    }
+
     queueItems = (queueResponse.data ?? []) as QueueItem[];
     estimates = (estimateResponse.data ?? []) as Estimate[];
     invoices = (invoiceResponse.data ?? []) as Invoice[];
+    jobSessions = (jobSessionResponse.data ?? []) as JobSession[];
+    jobSessionBreakdowns =
+      (jobBreakdownResponse.data ?? []) as JobSessionBreakdown[];
   }
 
   const properties = Array.from(
@@ -760,6 +828,80 @@ export default async function ReportsPage({
     (item) => item.prior_renovation_details || "Prior Renovation"
   );
   const unitHistory = filteredQueueItems.slice(0, 12);
+  const completedJobSessions = jobSessions.filter(
+    (session) => Boolean(session.ended_at) && (session.total_minutes ?? 0) > 0
+  );
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+  const laborMinutesThisMonth = completedJobSessions
+    .filter((session) => {
+      const endedAt = session.ended_at ? new Date(session.ended_at) : null;
+
+      return Boolean(endedAt) && endedAt! >= monthStart;
+    })
+    .reduce(
+      (total, session) => total + Math.max(session.total_minutes ?? 0, 0),
+      0
+    );
+  const breakdownSessionIds = new Set(
+    jobSessionBreakdowns.map((breakdown) => breakdown.job_session_id)
+  );
+  const sessionsMissingBreakdown = completedJobSessions.filter(
+    (session) => !breakdownSessionIds.has(session.id)
+  ).length;
+  const invoiceById = new Map(invoices.map((invoice) => [invoice.id, invoice]));
+  const laborSessionsWithInvoices = completedJobSessions.filter(
+    (session) => session.invoice_id && invoiceById.has(session.invoice_id)
+  );
+  const laborInvoiceRevenue = Array.from(
+    new Set(
+      laborSessionsWithInvoices
+        .map((session) => session.invoice_id)
+        .filter((id): id is string => Boolean(id))
+    )
+  ).reduce((total, invoiceId) => {
+    const invoice = invoiceById.get(invoiceId);
+
+    return total + (invoice ? parseMoney(invoice.invoice_amount) : 0);
+  }, 0);
+  const laborInvoiceMinutes = laborSessionsWithInvoices.reduce(
+    (total, session) => total + Math.max(session.total_minutes ?? 0, 0),
+    0
+  );
+  const revenuePerLaborHour =
+    laborInvoiceMinutes > 0
+      ? laborInvoiceRevenue / (laborInvoiceMinutes / 60)
+      : null;
+
+  function averageSessionHoursBy(
+    getLabel: (session: JobSession) => string | null | undefined
+  ) {
+    const groups = completedJobSessions.reduce((map, session) => {
+      const label = getLabel(session)?.trim() || "Not Set";
+      const current = map.get(label) ?? { minutes: 0, count: 0 };
+      current.minutes += Math.max(session.total_minutes ?? 0, 0);
+      current.count += 1;
+      map.set(label, current);
+
+      return map;
+    }, new Map<string, { minutes: number; count: number }>());
+
+    return Array.from(groups.entries())
+      .map(([label, value]) => ({
+        label,
+        hours: value.count > 0 ? value.minutes / value.count / 60 : 0,
+        count: value.count,
+      }))
+      .sort((first, second) => second.hours - first.hours)[0];
+  }
+
+  const averageByJobType = averageSessionHoursBy(
+    (session) => session.job_type
+  );
+  const averageByProperty = averageSessionHoursBy(
+    (session) => session.property_name
+  );
 
   return (
     <AppShell>
@@ -801,6 +943,78 @@ export default async function ReportsPage({
             </p>
           </Card>
         ) : null}
+
+        <Card
+          id="labor-intelligence"
+          className="labor-intelligence-card border-emerald-500/25 bg-gradient-to-br from-emerald-500/10 via-zinc-950 to-sky-500/10"
+        >
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="labor-intelligence-kicker text-sm uppercase tracking-[0.3em] text-emerald-300">
+                Labor Intelligence
+              </p>
+
+              <h2 className="mt-2 text-2xl font-bold">
+                Job session basics
+              </h2>
+
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+                Phase 1 keeps this simple: start work, stop work, then rebuild
+                the day into rough categories when you have a minute.
+              </p>
+            </div>
+
+            <Link
+              href={queueHref(businessSlug, {
+                status: "scheduled",
+              })}
+              className="app-button-secondary inline-flex rounded-2xl px-4 py-3 text-sm font-black"
+            >
+              Open Scheduled Work
+            </Link>
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-5">
+            <LaborMetric
+              label="This Month"
+              value={formatHoursFromMinutes(laborMinutesThisMonth)}
+              detail="Completed session time"
+            />
+            <LaborMetric
+              label="Avg Job Type"
+              value={
+                averageByJobType
+                  ? `${averageByJobType.hours.toFixed(1)}h`
+                  : "-"
+              }
+              detail={averageByJobType?.label ?? "Waiting for sessions"}
+            />
+            <LaborMetric
+              label="Avg Property"
+              value={
+                averageByProperty
+                  ? `${averageByProperty.hours.toFixed(1)}h`
+                  : "-"
+              }
+              detail={averageByProperty?.label ?? "Waiting for sessions"}
+            />
+            <LaborMetric
+              label="Revenue / Hour"
+              value={
+                revenuePerLaborHour !== null
+                  ? formatMoney(revenuePerLaborHour)
+                  : "-"
+              }
+              detail="Only when invoice is linked"
+            />
+            <LaborMetric
+              label="Need Breakdown"
+              value={sessionsMissingBreakdown}
+              detail="Stopped sessions"
+              urgent={sessionsMissingBreakdown > 0}
+            />
+          </div>
+        </Card>
 
         <Card className="report-library-card border-sky-500/20 bg-gradient-to-br from-sky-500/5 via-zinc-950 to-orange-500/5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -1593,6 +1807,34 @@ export default async function ReportsPage({
         </Card>
       </div>
     </AppShell>
+  );
+}
+
+function LaborMetric({
+  label,
+  value,
+  detail,
+  urgent = false,
+}: {
+  label: string;
+  value: string | number;
+  detail: string;
+  urgent?: boolean;
+}) {
+  return (
+    <div
+      className={`labor-metric-card rounded-2xl border p-4 ${
+        urgent
+          ? "border-amber-400/35 bg-amber-500/10"
+          : "border-emerald-400/20 bg-black/25"
+      }`}
+    >
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-200">
+        {label}
+      </p>
+      <p className="mt-3 text-3xl font-black leading-none">{value}</p>
+      <p className="mt-2 text-sm leading-5 text-zinc-400">{detail}</p>
+    </div>
   );
 }
 

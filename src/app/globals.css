@@ -9851,6 +9851,102 @@ html.theme-light .app-workspace-panel::before {
     );
 }
 
+.job-session-panel {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 24px 54px rgba(2, 6, 23, 0.22);
+}
+
+.job-session-active {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 18px 44px rgba(16, 185, 129, 0.16);
+}
+
+.job-session-breakdown {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 18px 44px rgba(124, 58, 237, 0.12);
+}
+
+.labor-intelligence-card {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 22px 52px rgba(2, 6, 23, 0.2);
+}
+
+.labor-metric-card {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 14px 32px rgba(2, 6, 23, 0.16);
+}
+
+html.theme-light .job-session-panel,
+html.theme-light .labor-intelligence-card {
+  background:
+    linear-gradient(135deg, #ffffff 0%, #ecfdf5 50%, #eff6ff 100%) !important;
+  border-color: #bfdbfe !important;
+  color: #0f172a !important;
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.theme-light .job-session-panel .text-sky-200,
+html.theme-light .job-session-panel .text-sky-300,
+html.theme-light .labor-intelligence-kicker,
+html.theme-light .labor-metric-card .text-emerald-200 {
+  color: #075985 !important;
+}
+
+html.theme-light .job-session-panel .text-zinc-300,
+html.theme-light .job-session-panel .text-zinc-400,
+html.theme-light .job-session-panel .text-zinc-500,
+html.theme-light .labor-intelligence-card .text-zinc-400,
+html.theme-light .labor-metric-card .text-zinc-400 {
+  color: #475569 !important;
+}
+
+html.theme-light .job-session-panel .bg-black\/20,
+html.theme-light .job-session-panel .bg-black\/25,
+html.theme-light .job-session-panel .bg-black\/35,
+html.theme-light .labor-metric-card.bg-black\/25 {
+  background: #ffffff !important;
+}
+
+html.theme-light .job-session-active {
+  background: #ecfdf5 !important;
+  border-color: #86efac !important;
+  color: #064e3b !important;
+}
+
+html.theme-light .job-session-active .text-emerald-50\/85,
+html.theme-light .job-session-active .text-emerald-100\/70,
+html.theme-light .job-session-active .text-emerald-200 {
+  color: #047857 !important;
+}
+
+html.theme-light .job-session-breakdown {
+  background: #f5f3ff !important;
+  border-color: #c4b5fd !important;
+  color: #2e1065 !important;
+}
+
+html.theme-light .job-session-breakdown .text-violet-100\/80,
+html.theme-light .job-session-breakdown .text-violet-200 {
+  color: #5b21b6 !important;
+}
+
+html.theme-light .job-session-modal,
+html.theme-light .labor-metric-card {
+  background: #ffffff !important;
+  border-color: #d7dde8 !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .labor-metric-card.border-amber-400\/35 {
+  background: #fffbeb !important;
+  border-color: #f59e0b !important;
+}
+
 .dashboard-workflow-stage {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),

@@ -6,6 +6,7 @@ import Button from "../../components/Button";
 import StatusBadge from "../../components/StatusBadge";
 import DeleteQueueItemButton from "../../components/DeleteQueueItemButton";
 import InternalNotes from "../../components/InternalNotes";
+import JobSessionPanel from "../../components/JobSessionPanel";
 import MarkCompletedButton from "../../components/MarkCompletedButton";
 import MarkScheduledButton from "../../components/MarkScheduledButton";
 import {
@@ -638,6 +639,16 @@ export default async function QueueDetailPage({
           invoiceBalance={linkedInvoiceBalance}
           completedDate={item.completed_date}
           nextAction={workflowNextAction}
+        />
+
+        <JobSessionPanel
+          businessId={selectedBusiness.id}
+          propertyName={item.property}
+          unitLabel={displayUnit || item.unit}
+          queueItemId={item.id}
+          estimateId={linkedEstimate?.id ?? item.linked_estimate_id}
+          invoiceId={linkedInvoice?.id ?? null}
+          jobType={item.paint_type || item.renovation_needed_details || "Paint"}
         />
 
         <div className="grid gap-4 md:grid-cols-3">
