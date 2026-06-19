@@ -38,7 +38,7 @@ create table if not exists public.job_sessions (
   property_name text,
   unit_id uuid references public.property_units(id) on delete set null,
   unit_label text,
-  queue_item_id uuid references public.queue_items(id) on delete set null,
+  queue_item_id text references public.queue_items(id) on delete set null,
   estimate_id uuid references public.estimates(id) on delete set null,
   invoice_id uuid references public.invoices(id) on delete set null,
   job_type text not null default 'General',
