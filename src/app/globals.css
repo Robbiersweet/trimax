@@ -9873,6 +9873,12 @@ html.theme-light .app-workspace-panel::before {
     0 18px 44px rgba(245, 158, 11, 0.14);
 }
 
+.job-session-snapshot > div {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 14px 30px rgba(2, 6, 23, 0.13);
+}
+
 .job-session-breakdown {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
@@ -9950,6 +9956,22 @@ html.theme-light .job-session-panel .bg-black\/25,
 html.theme-light .job-session-panel .bg-black\/35,
 html.theme-light .labor-metric-card.bg-black\/25 {
   background: #ffffff !important;
+}
+
+html.theme-light .job-session-snapshot > div {
+  background: #ffffff !important;
+  border-color: #d7dde8 !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .job-session-snapshot .border-amber-300\/35 {
+  background: #fffbeb !important;
+  border-color: #f59e0b !important;
+}
+
+html.theme-light .job-session-snapshot .border-emerald-300\/25 {
+  background: #ecfdf5 !important;
+  border-color: #34d399 !important;
 }
 
 html.theme-light .job-session-active {

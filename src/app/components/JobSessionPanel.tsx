@@ -539,6 +539,32 @@ export default function JobSessionPanel({
     return map;
   }, [breakdowns]);
 
+  const sessionSummary = useMemo(() => {
+    const completedSessions = sessions.filter((session) => session.ended_at);
+    const completedMinutes = completedSessions.reduce(
+      (total, session) =>
+        total +
+        Math.max(
+          session.total_minutes ??
+            minutesBetween(session.started_at, session.ended_at),
+          0
+        ),
+      0
+    );
+    const missingBreakdownCount = completedSessions.filter(
+      (session) => (breakdownBySession.get(session.id) ?? []).length === 0
+    ).length;
+    const workerCount = new Set(sessions.map((session) => session.user_id)).size;
+    const latestSession = sessions[0] ?? null;
+
+    return {
+      completedMinutes,
+      missingBreakdownCount,
+      workerCount,
+      latestSession,
+    };
+  }, [breakdownBySession, sessions]);
+
   const activeElsewhereHref = otherActiveSession?.queue_item_id
     ? `/queue/${otherActiveSession.queue_item_id}?business=${
         businessSlug ?? "rnl-creations"
@@ -577,6 +603,61 @@ export default function JobSessionPanel({
           {message}
         </p>
       ) : null}
+
+      <div className="job-session-snapshot mt-5 grid gap-3 md:grid-cols-4">
+        <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-sky-200">
+            Job Labor
+          </p>
+          <p className="mt-3 text-2xl font-black">
+            {formatDuration(sessionSummary.completedMinutes)}
+          </p>
+          <p className="mt-1 text-sm text-zinc-400">Completed time</p>
+        </div>
+
+        <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-sky-200">
+            Crew
+          </p>
+          <p className="mt-3 text-2xl font-black">
+            {sessionSummary.workerCount || "-"}
+          </p>
+          <p className="mt-1 text-sm text-zinc-400">People with sessions</p>
+        </div>
+
+        <div
+          className={`rounded-2xl border p-4 ${
+            sessionSummary.missingBreakdownCount > 0
+              ? "border-amber-300/35 bg-amber-300/10"
+              : "border-emerald-300/25 bg-emerald-400/10"
+          }`}
+        >
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-sky-200">
+            Breakdown
+          </p>
+          <p className="mt-3 text-2xl font-black">
+            {sessionSummary.missingBreakdownCount}
+          </p>
+          <p className="mt-1 text-sm text-zinc-400">Sessions to finish</p>
+        </div>
+
+        <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-sky-200">
+            Latest
+          </p>
+          <p className="mt-3 truncate text-base font-black">
+            {sessionSummary.latestSession?.job_type || "No session yet"}
+          </p>
+          <p className="mt-1 text-sm text-zinc-400">
+            {sessionSummary.latestSession
+              ? formatTime(
+                  sessionSummary.latestSession.ended_at ??
+                    sessionSummary.latestSession.started_at
+                )
+              : "Start when work begins"}
+          </p>
+        </div>
+      </div>
 
       {otherActiveSession ? (
         <div className="job-session-active-elsewhere mt-5 rounded-3xl border border-amber-400/35 bg-amber-500/10 p-4">
