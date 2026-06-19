@@ -1101,6 +1101,40 @@ export default async function DashboardPage({
       : `${totalRiskFlags} item${
           totalRiskFlags === 1 ? "" : "s"
         } should be checked before month-end or a client follow-up.`;
+  const proofHealthScore = Math.max(0, 100 - totalRiskFlags * 18);
+  const queueHealthScore = Math.max(
+    0,
+    100 - readySoonUnscheduled.length * 14 - queueItemsNeedingEstimate.length * 10
+  );
+  const pastDueHealthScore = Math.max(0, 100 - pastDueInvoices.length * 16);
+  const operatingAltitudeScore = Math.max(
+    0,
+    Math.min(
+      100,
+      Math.round(
+        collectionRate * 0.45 +
+          proofHealthScore * 0.25 +
+          queueHealthScore * 0.2 +
+          pastDueHealthScore * 0.1
+      )
+    )
+  );
+  const operatingAltitudeLabel =
+    operatingAltitudeScore >= 88
+      ? "High altitude"
+      : operatingAltitudeScore >= 70
+        ? "Climbing clean"
+        : operatingAltitudeScore >= 48
+          ? "Needs attention"
+          : "Low altitude";
+  const operatingAltitudeDetail =
+    operatingAltitudeScore >= 88
+      ? "Cash, queue, and proof signals are running clean."
+      : operatingAltitudeScore >= 70
+        ? "The workspace is strong, with a few signals worth watching."
+        : operatingAltitudeScore >= 48
+          ? "Trimax sees pressure in collection, queue, or records."
+          : "Important work needs attention before momentum drops.";
   const riskRadarItems = [
     {
       label: "Reminder Needed",
@@ -2180,6 +2214,34 @@ export default async function DashboardPage({
 
                 <p className="mt-1 text-sm text-zinc-300">
                   {auditHealthLabel} for {selectedBusiness?.name ?? "Trimax"}.
+                </p>
+              </div>
+
+              <div className="dashboard-operating-altimeter rounded-2xl border p-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[0.68rem] font-black uppercase tracking-[0.18em]">
+                      Operating Altimeter
+                    </p>
+                    <strong className="mt-1 block text-lg">
+                      {operatingAltitudeLabel}
+                    </strong>
+                  </div>
+
+                  <span className="dashboard-operating-altimeter-score rounded-full border px-3 py-1 text-sm font-black">
+                    {operatingAltitudeScore}%
+                  </span>
+                </div>
+
+                <div
+                  className="dashboard-operating-altimeter-track mt-3"
+                  aria-label={`Operating altitude ${operatingAltitudeScore}%`}
+                >
+                  <span style={{ width: `${operatingAltitudeScore}%` }} />
+                </div>
+
+                <p className="mt-2 text-xs leading-5">
+                  {operatingAltitudeDetail}
                 </p>
               </div>
 
