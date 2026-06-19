@@ -169,6 +169,7 @@ export default async function JobSessionsPage({
   );
   const activeSessions = sessions.filter((session) => !session.ended_at);
   const completedSessions = sessions.filter((session) => session.ended_at);
+  const hasNoSessionData = sessions.length === 0 && !setupMessage;
   const missingBreakdownSessions = completedSessions.filter(
     (session) => !breakdownSessionIds.has(session.id)
   );
@@ -355,6 +356,44 @@ export default async function JobSessionsPage({
             />
           </div>
         </div>
+
+        {hasNoSessionData ? (
+          <Card className="job-session-hub-card job-session-first-run-card">
+            <div className="grid gap-5 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
+              <div>
+                <p className="section-kicker text-sm font-black uppercase tracking-[0.24em] text-emerald-300">
+                  Ready To Use
+                </p>
+                <h2 className="mt-2 text-2xl font-black">
+                  Your first session will unlock the dashboard
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-zinc-400">
+                  The system is connected now. Start from any queue item, stop
+                  when the work block is done, then add a rough breakdown if it
+                  is useful.
+                </p>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-3">
+                <FirstRunStep
+                  number="1"
+                  title="Open a queue item"
+                  detail="Pick the unit you are about to work on."
+                />
+                <FirstRunStep
+                  number="2"
+                  title="Start once"
+                  detail="Let the timer run while normal work happens."
+                />
+                <FirstRunStep
+                  number="3"
+                  title="Stop and split"
+                  detail="Use quick percentages or skip the breakdown."
+                />
+              </div>
+            </div>
+          </Card>
+        ) : null}
 
         <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
           <Card className="job-session-hub-card job-session-next-card border-sky-500/25 bg-gradient-to-br from-sky-500/10 via-zinc-950 to-emerald-500/10">
@@ -711,6 +750,26 @@ function HubMetric({
       </p>
       <p className="mt-2 text-3xl font-black">{value}</p>
       <p className="mt-1 text-sm text-zinc-400">{detail}</p>
+    </div>
+  );
+}
+
+function FirstRunStep({
+  number,
+  title,
+  detail,
+}: {
+  number: string;
+  title: string;
+  detail: string;
+}) {
+  return (
+    <div className="job-session-first-run-step rounded-2xl border border-white/10 bg-black/25 p-4">
+      <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-emerald-300/30 bg-emerald-300/10 text-sm font-black text-emerald-200">
+        {number}
+      </span>
+      <p className="mt-3 font-black text-white">{title}</p>
+      <p className="mt-1 text-sm leading-6 text-zinc-400">{detail}</p>
     </div>
   );
 }
