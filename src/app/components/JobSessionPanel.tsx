@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 
@@ -51,6 +52,7 @@ type BreakdownDraft = {
 
 type JobSessionPanelProps = {
   businessId: string;
+  businessSlug?: string | null;
   propertyName: string | null;
   unitLabel: string | null;
   queueItemId: string;
@@ -112,6 +114,7 @@ function blankBreakdown(): BreakdownDraft {
 
 export default function JobSessionPanel({
   businessId,
+  businessSlug,
   propertyName,
   unitLabel,
   queueItemId,
@@ -259,16 +262,18 @@ export default function JobSessionPanel({
   }, [businessId, queueItemId]);
 
   useEffect(() => {
-    if (!activeSession) {
+    const timerSession = activeSession ?? otherActiveSession;
+
+    if (!timerSession) {
       return;
     }
 
     const interval = window.setInterval(() => {
-      setElapsedMinutes(minutesBetween(activeSession.started_at));
+      setElapsedMinutes(minutesBetween(timerSession.started_at));
     }, 30000);
 
     return () => window.clearInterval(interval);
-  }, [activeSession]);
+  }, [activeSession, otherActiveSession]);
 
   const breakdownTotals = useMemo(() => {
     const total = stoppedSession?.total_minutes ?? 0;
@@ -501,6 +506,12 @@ export default function JobSessionPanel({
     return map;
   }, [breakdowns]);
 
+  const activeElsewhereHref = otherActiveSession?.queue_item_id
+    ? `/queue/${otherActiveSession.queue_item_id}?business=${
+        businessSlug ?? "rnl-creations"
+      }`
+    : `/queue?business=${businessSlug ?? "rnl-creations"}`;
+
   return (
     <section className="job-session-panel rounded-3xl border border-sky-500/25 bg-gradient-to-br from-sky-500/10 via-zinc-950 to-emerald-500/10 p-4 shadow-2xl shadow-sky-950/20 sm:p-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -556,6 +567,12 @@ export default function JobSessionPanel({
             <p className="rounded-2xl border border-amber-300/25 bg-black/25 px-4 py-3 text-sm font-bold text-amber-100">
               Stop that session before starting another.
             </p>
+            <Link
+              href={activeElsewhereHref}
+              className="app-button-secondary rounded-2xl px-4 py-3 text-center text-sm font-black"
+            >
+              Open Active Job
+            </Link>
           </div>
         </div>
       ) : null}

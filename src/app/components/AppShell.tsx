@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import ActiveJobSessionDock from "./ActiveJobSessionDock";
 import Navigation from "./Navigation";
 import NavigationHistoryTracker from "./NavigationHistoryTracker";
 import QuickCommandCenter from "./QuickCommandCenter";
@@ -81,6 +82,7 @@ export default function AppShell({
         <div className="app-shell-content mx-auto flex w-full max-w-[112rem] flex-col px-4 py-5 lg:flex-row lg:gap-6 lg:px-6">
           <Navigation />
           <QuickCommandCenter />
+          <ActiveJobSessionDock />
 
           <section
             aria-label="Trimax workspace content"

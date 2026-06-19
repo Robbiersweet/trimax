@@ -643,6 +643,7 @@ export default async function QueueDetailPage({
 
         <JobSessionPanel
           businessId={selectedBusiness.id}
+          businessSlug={businessSlug}
           propertyName={item.property}
           unitLabel={displayUnit || item.unit}
           queueItemId={item.id}
