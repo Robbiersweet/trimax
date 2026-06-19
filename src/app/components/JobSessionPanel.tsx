@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { logActivity } from "../lib/activityLog";
 import { supabase } from "../lib/supabase";
 
 const WORK_TYPES = [
@@ -372,6 +373,21 @@ export default function JobSessionPanel({
     setShowStartModal(false);
     setNotesDraft("");
     setActiveSession(data as JobSession);
+    await logActivity({
+      businessId,
+      action: "job_session.started",
+      entityType: "queue_item",
+      entityId: queueItemId,
+      entityLabel: `${propertyName || "Property"}${
+        unitLabel ? ` / Unit ${unitLabel}` : ""
+      }`,
+      details: {
+        jobSessionId: (data as JobSession).id,
+        jobType: (data as JobSession).job_type,
+        startedAt: (data as JobSession).started_at,
+        notes: (data as JobSession).notes,
+      },
+    });
     await loadSessions(userId);
   }
 
@@ -405,6 +421,22 @@ export default function JobSessionPanel({
     setActiveSession(null);
     setStoppedSession(stopped);
     setBreakdownDrafts(defaultBreakdownDrafts(stopped.job_type));
+    await logActivity({
+      businessId,
+      action: "job_session.stopped",
+      entityType: "queue_item",
+      entityId: queueItemId,
+      entityLabel: `${propertyName || "Property"}${
+        unitLabel ? ` / Unit ${unitLabel}` : ""
+      }`,
+      details: {
+        jobSessionId: stopped.id,
+        jobType: stopped.job_type,
+        startedAt: stopped.started_at,
+        endedAt: stopped.ended_at,
+        totalMinutes: stopped.total_minutes,
+      },
+    });
     await loadSessions(userId);
   }
 
@@ -416,6 +448,20 @@ export default function JobSessionPanel({
     if (skip) {
       setStoppedSession(null);
       setMessage("Session saved. Breakdown skipped for now.");
+      await logActivity({
+        businessId,
+        action: "job_session.breakdown_skipped",
+        entityType: "queue_item",
+        entityId: queueItemId,
+        entityLabel: `${propertyName || "Property"}${
+          unitLabel ? ` / Unit ${unitLabel}` : ""
+        }`,
+        details: {
+          jobSessionId: stoppedSession.id,
+          jobType: stoppedSession.job_type,
+          totalMinutes: stoppedSession.total_minutes,
+        },
+      });
       await loadSessions(userId, { preserveMessage: true });
       return;
     }
@@ -477,6 +523,22 @@ export default function JobSessionPanel({
 
     setStoppedSession(null);
     setMessage("Session and breakdown saved.");
+    await logActivity({
+      businessId,
+      action: "job_session.breakdown_saved",
+      entityType: "queue_item",
+      entityId: queueItemId,
+      entityLabel: `${propertyName || "Property"}${
+        unitLabel ? ` / Unit ${unitLabel}` : ""
+      }`,
+      details: {
+        jobSessionId: stoppedSession.id,
+        jobType: stoppedSession.job_type,
+        totalMinutes: stoppedSession.total_minutes,
+        assignedMinutes: breakdownTotals.effectiveMinutes,
+        workTypes: rows.map((row) => row.work_type).join(", "),
+      },
+    });
     await loadSessions(userId, { preserveMessage: true });
   }
 

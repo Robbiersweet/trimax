@@ -10049,6 +10049,44 @@ html.theme-light .job-session-history-action {
   color: #92400e !important;
 }
 
+html.theme-light .job-session-hub-hero,
+html.theme-light .job-session-hub-card,
+html.theme-light .job-session-hub-row,
+html.theme-light .job-session-hub-metric {
+  background: linear-gradient(135deg, #ffffff, #f8fafc) !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.1) !important;
+}
+
+html.theme-light .job-session-setup-card {
+  background: #fffbeb !important;
+  border-color: #f59e0b !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .job-session-hub-hero .text-zinc-300,
+html.theme-light .job-session-hub-card .text-zinc-300,
+html.theme-light .job-session-hub-card .text-zinc-400,
+html.theme-light .job-session-hub-row .text-zinc-300,
+html.theme-light .job-session-hub-row .text-zinc-400,
+html.theme-light .job-session-hub-metric .text-zinc-400 {
+  color: #475569 !important;
+}
+
+html.theme-light .job-session-hub-card .text-white,
+html.theme-light .job-session-hub-row .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light .job-session-hub-row.bg-black\/25,
+html.theme-light .job-session-hub-metric.bg-black\/25,
+html.theme-light .job-session-hub-card .bg-black\/20,
+html.theme-light .job-session-hub-card .bg-black\/25 {
+  background: #ffffff !important;
+  border-color: #d7dde8 !important;
+}
+
 html.theme-light .labor-metric-card.border-amber-400\/35 {
   background: #fffbeb !important;
   border-color: #f59e0b !important;

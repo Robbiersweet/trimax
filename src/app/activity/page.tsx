@@ -54,8 +54,8 @@ const activityFilters: Array<{ label: string; value: ActivityTypeFilter }> = [
   { label: "Splits", value: "split" },
 ];
 
-function formatDateTime(value: string | null) {
-  if (!value) {
+function formatDateTime(value: unknown) {
+  if (typeof value !== "string" || value.length === 0) {
     return "-";
   }
 
@@ -227,6 +227,10 @@ function actionLabel(action: string) {
     "invoice.batch_payment_applied": "Batch Payment Applied",
     "invoice.recurring_draft_created": "Recurring Draft Created",
     "invoice.split_created": "Split Invoices Created",
+    "job_session.started": "Job Session Started",
+    "job_session.stopped": "Job Session Stopped",
+    "job_session.breakdown_saved": "Job Time Breakdown Saved",
+    "job_session.breakdown_skipped": "Job Time Breakdown Skipped",
     "access_request.created": "Access Request Created",
     "import.clients_csv_completed": "Client CSV Import",
     "import.invoices_csv_completed": "Invoice CSV Import",
@@ -246,6 +250,10 @@ function actionTone(action: string) {
 
   if (action.startsWith("queue_item")) {
     return "text-sky-300 border-sky-500/30 bg-sky-500/10";
+  }
+
+  if (action.startsWith("job_session")) {
+    return "text-teal-200 border-teal-400/30 bg-teal-400/10";
   }
 
   if (action.startsWith("estimate")) {
@@ -278,6 +286,10 @@ function actionAccent(action: string) {
 
   if (action.startsWith("queue_item")) {
     return "bg-sky-300 shadow-[0_0_24px_rgba(125,211,252,0.5)]";
+  }
+
+  if (action.startsWith("job_session")) {
+    return "bg-teal-300 shadow-[0_0_24px_rgba(94,234,212,0.5)]";
   }
 
   if (action.startsWith("estimate")) {
@@ -372,6 +384,18 @@ function detailChips(log: ActivityLog): DetailChip[] {
         label: "Completed",
         value: formatDate(details.completedDate),
       },
+    ].filter((chip) => chip.value.length > 0);
+  }
+
+  if (log.action.startsWith("job_session")) {
+    return [
+      { label: "Job Type", value: formatDetailValue(details.jobType) },
+      { label: "Started", value: formatDateTime(details.startedAt) },
+      { label: "Ended", value: formatDateTime(details.endedAt) },
+      { label: "Minutes", value: formatDetailValue(details.totalMinutes) },
+      { label: "Assigned", value: formatDetailValue(details.assignedMinutes) },
+      { label: "Work Types", value: formatDetailValue(details.workTypes) },
+      { label: "Note", value: formatDetailValue(details.notes) },
     ].filter((chip) => chip.value.length > 0);
   }
 

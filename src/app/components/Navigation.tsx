@@ -87,6 +87,13 @@ export default function Navigation() {
         icon: "queue",
       },
       {
+        key: "job_sessions",
+        label: "Job Sessions",
+        href: `/job-sessions?business=${business}`,
+        active: pathname.startsWith("/job-sessions"),
+        icon: "job_sessions",
+      },
+      {
         key: "schedule",
         label: "Schedule",
         href: `/schedule?business=${business}`,
@@ -353,6 +360,7 @@ export default function Navigation() {
 type NavIconKey =
   | "dashboard"
   | "queue"
+  | "job_sessions"
   | "schedule"
   | "estimates"
   | "invoices"
@@ -415,6 +423,15 @@ function NavIcon({
             <path d="M4 10h16" />
             <path d="M12 14v4" />
             <path d="M10 16h4" />
+          </>
+        ) : null}
+        {icon === "job_sessions" ? (
+          <>
+            <path d="M9 2h6" />
+            <path d="M12 2v3" />
+            <circle cx="12" cy="13" r="7" />
+            <path d="M12 13V9" />
+            <path d="m12 13 3 2" />
           </>
         ) : null}
         {icon === "estimates" ? (
