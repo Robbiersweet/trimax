@@ -430,6 +430,76 @@ export default async function JobSessionsPage({
             detail: "Open the next job and start a session when work begins.",
             href: `/queue?business=${businessSlug}&view=ready-soon`,
           };
+  const fieldReadinessScore = Math.max(
+    0,
+    Math.min(
+      100,
+      72 +
+        Math.min(completedSessions.length, 8) * 2 +
+        (readyWorkItems.length > 0 ? 8 : 0) -
+        missingBreakdownSessions.length * 10 -
+        readyWorkStats.urgent * 6 -
+        readyWorkStats.untimed * 3
+    )
+  );
+  const fieldReadinessLabel =
+    fieldReadinessScore >= 86
+      ? "Field ready"
+      : fieldReadinessScore >= 68
+        ? "Ready with cleanup"
+        : fieldReadinessScore >= 48
+          ? "Needs attention"
+          : "Needs setup";
+  const fieldReadinessItems = [
+    {
+      label: "Start Path",
+      value:
+        readyWorkItems.length > 0
+          ? `${readyWorkItems.length} ready`
+          : "Queue clear",
+      detail:
+        readyWorkItems.length > 0
+          ? "Open the top unit and start from its queue page."
+          : "New queue work will appear here when it is added.",
+      tone: readyWorkItems.length > 0 ? "emerald" : "sky",
+    },
+    {
+      label: "Cleanup",
+      value:
+        missingBreakdownSessions.length > 0
+          ? `${missingBreakdownSessions.length} split`
+          : "Clean",
+      detail:
+        missingBreakdownSessions.length > 0
+          ? "Stopped sessions need a rough breakdown or skip."
+          : "No stopped session needs follow-up right now.",
+      tone: missingBreakdownSessions.length > 0 ? "amber" : "emerald",
+    },
+    {
+      label: "Memory",
+      value:
+        completedSessions.length > 0
+          ? `${completedSessions.length} saved`
+          : "Learning",
+      detail:
+        completedSessions.length > 0
+          ? "Completed sessions are building real job timing."
+          : "The first completed session starts labor forecasting.",
+      tone: completedSessions.length > 0 ? "sky" : "amber",
+    },
+    {
+      label: "Pressure",
+      value:
+        readyWorkStats.urgent > 0
+          ? `${readyWorkStats.urgent} urgent`
+          : `${readyWorkStats.unscheduled} unscheduled`,
+      detail:
+        readyWorkStats.urgent > 0
+          ? "Handle overdue or due-today units before new work."
+          : "Unscheduled work is the next planning risk.",
+      tone: readyWorkStats.urgent > 0 ? "rose" : "sky",
+    },
+  ];
   const unitLaborLedger = Array.from(
     completedSessions.reduce((map, session) => {
       const label = sessionLabel(session);
@@ -572,6 +642,35 @@ export default async function JobSessionsPage({
               detail="Review when convenient"
               urgent={missingBreakdownSessions.length > 0}
             />
+          </div>
+
+          <div className="job-session-field-readiness mt-5 rounded-2xl border border-white/10 bg-black/25 p-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-emerald-200">
+                  Field Readiness
+                </p>
+                <h2 className="mt-1 text-2xl font-black">
+                  {fieldReadinessLabel}
+                </h2>
+              </div>
+
+              <div className="job-session-field-readiness-gauge">
+                <span>{fieldReadinessScore}%</span>
+                <div
+                  aria-label={`Field readiness ${fieldReadinessScore}%`}
+                  className="job-session-field-readiness-track"
+                >
+                  <i style={{ width: `${fieldReadinessScore}%` }} />
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-2 md:grid-cols-4">
+              {fieldReadinessItems.map((item) => (
+                <FieldReadinessChip key={item.label} item={item} />
+              ))}
+            </div>
           </div>
         </div>
 
@@ -1088,6 +1187,30 @@ function ReadyWorkStat({
       <span className="text-emerald-200">{value}</span>
       {label}
     </span>
+  );
+}
+
+function FieldReadinessChip({
+  item,
+}: {
+  item: {
+    label: string;
+    value: string;
+    detail: string;
+    tone: string;
+  };
+}) {
+  return (
+    <div
+      className="job-session-field-readiness-chip rounded-2xl border p-3"
+      data-tone={item.tone}
+    >
+      <p className="text-[0.68rem] font-black uppercase tracking-[0.18em]">
+        {item.label}
+      </p>
+      <p className="mt-2 text-xl font-black">{item.value}</p>
+      <p className="mt-1 text-xs leading-5">{item.detail}</p>
+    </div>
   );
 }
 

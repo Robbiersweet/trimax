@@ -10740,6 +10740,79 @@ html.theme-light .app-workspace-panel::before {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
+.job-session-field-readiness {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 18px 46px rgba(2, 6, 23, 0.16);
+}
+
+.job-session-field-readiness-gauge {
+  min-width: min(100%, 18rem);
+}
+
+.job-session-field-readiness-gauge span {
+  display: block;
+  color: #ffffff;
+  font-size: 1.35rem;
+  font-weight: 950;
+  text-align: right;
+}
+
+.job-session-field-readiness-track {
+  height: 0.55rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.2);
+  box-shadow: inset 0 1px 2px rgba(2, 6, 23, 0.42);
+}
+
+.job-session-field-readiness-track i {
+  display: block;
+  height: 100%;
+  min-width: 0.4rem;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #fb7185, #f59e0b 34%, #38bdf8 68%, #34d399);
+  box-shadow: 0 0 24px rgba(56, 189, 248, 0.32);
+}
+
+.job-session-field-readiness-chip {
+  background: rgba(2, 6, 23, 0.34);
+  border-color: rgba(148, 163, 184, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.job-session-field-readiness-chip p:first-child {
+  color: #e2e8f0;
+}
+
+.job-session-field-readiness-chip p:nth-child(2) {
+  color: #ffffff;
+}
+
+.job-session-field-readiness-chip p:last-child {
+  color: #cbd5e1;
+}
+
+.job-session-field-readiness-chip[data-tone="emerald"] {
+  border-color: rgba(52, 211, 153, 0.34);
+  background: linear-gradient(135deg, rgba(6, 78, 59, 0.42), rgba(2, 6, 23, 0.32));
+}
+
+.job-session-field-readiness-chip[data-tone="sky"] {
+  border-color: rgba(56, 189, 248, 0.34);
+  background: linear-gradient(135deg, rgba(12, 74, 110, 0.42), rgba(2, 6, 23, 0.32));
+}
+
+.job-session-field-readiness-chip[data-tone="amber"] {
+  border-color: rgba(245, 158, 11, 0.38);
+  background: linear-gradient(135deg, rgba(120, 53, 15, 0.38), rgba(2, 6, 23, 0.32));
+}
+
+.job-session-field-readiness-chip[data-tone="rose"] {
+  border-color: rgba(244, 63, 94, 0.38);
+  background: linear-gradient(135deg, rgba(136, 19, 55, 0.38), rgba(2, 6, 23, 0.32));
+}
+
 .job-session-forecast-card {
   background:
     radial-gradient(circle at top left, rgba(56, 189, 248, 0.16), transparent 34%),
@@ -11090,6 +11163,67 @@ html.theme-light .job-session-ready-stat {
 html.theme-light .job-session-ready-stat .text-emerald-200,
 html.theme-light .job-session-ready-row .text-emerald-200 {
   color: #047857 !important;
+}
+
+html.theme-light .job-session-field-readiness {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 18px 46px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.theme-light .job-session-field-readiness .text-emerald-200 {
+  color: #047857 !important;
+}
+
+html.theme-light .job-session-field-readiness-gauge span {
+  color: #0f172a !important;
+}
+
+html.theme-light .job-session-field-readiness-track {
+  background: #e2e8f0 !important;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.theme-light .job-session-field-readiness-track i {
+  box-shadow: none !important;
+}
+
+html.theme-light .job-session-field-readiness-chip {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05) !important;
+}
+
+html.theme-light .job-session-field-readiness-chip p:first-child {
+  color: #334155 !important;
+}
+
+html.theme-light .job-session-field-readiness-chip p:nth-child(2) {
+  color: #0f172a !important;
+}
+
+html.theme-light .job-session-field-readiness-chip p:last-child {
+  color: #475569 !important;
+}
+
+html.theme-light .job-session-field-readiness-chip[data-tone="emerald"] {
+  background: #ecfdf5 !important;
+  border-color: #6ee7b7 !important;
+}
+
+html.theme-light .job-session-field-readiness-chip[data-tone="sky"] {
+  background: #f0f9ff !important;
+  border-color: #7dd3fc !important;
+}
+
+html.theme-light .job-session-field-readiness-chip[data-tone="amber"] {
+  background: #fffbeb !important;
+  border-color: #fbbf24 !important;
+}
+
+html.theme-light .job-session-field-readiness-chip[data-tone="rose"] {
+  background: #fff1f2 !important;
+  border-color: #fb7185 !important;
 }
 
 html.theme-light .job-session-setup-card {
