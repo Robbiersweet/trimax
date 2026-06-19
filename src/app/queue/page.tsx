@@ -40,6 +40,19 @@ type LinkedEstimate = {
   display_id: string | null;
 };
 
+type QueueJobSession = {
+  id: string;
+  queue_item_id: string | null;
+  started_at: string | null;
+  ended_at: string | null;
+  total_minutes: number | null;
+};
+
+type QueueJobSessionBreakdown = {
+  id: string;
+  job_session_id: string;
+};
+
 function normalizeStatus(value: string | null) {
   return (value || "Pending Estimate").trim().toLowerCase();
 }
@@ -136,6 +149,36 @@ function daysUntil(value: string | null) {
   today.setHours(0, 0, 0, 0);
 
   return Math.round((date.getTime() - today.getTime()) / 86400000);
+}
+
+function minutesBetween(startedAt: string | null, endedAt: string | null) {
+  if (!startedAt) {
+    return 0;
+  }
+
+  const start = new Date(startedAt).getTime();
+  const end = endedAt ? new Date(endedAt).getTime() : Date.now();
+
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) {
+    return 0;
+  }
+
+  return Math.round((end - start) / 60000);
+}
+
+function formatSessionMinutes(minutes: number) {
+  if (minutes <= 0) {
+    return "0m";
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+
+  if (hours <= 0) {
+    return `${remainder}m`;
+  }
+
+  return remainder > 0 ? `${hours}h ${remainder}m` : `${hours}h`;
 }
 
 function queueHref(
@@ -254,23 +297,53 @@ export default async function QueuePage({
   const selectedBusiness = businessData as Business | null;
 
   let queueItems: QueueItemWithEstimate[] = [];
+  let jobSessions: QueueJobSession[] = [];
+  let jobSessionBreakdowns: QueueJobSessionBreakdown[] = [];
 
   if (selectedBusiness?.id) {
-    const { data, error } = await supabase
-      .from("queue_items")
-      .select(
-        "id, property, unit, status, priority, paint_type, unit_layout, wall_paint_color, flooring, move_out_date, ready_date, scheduled_date, completed_date, smoked_in, prior_renovation, prior_renovation_details, renovation_needed, renovation_needed_details, notes, linked_estimate_id"
-      )
-      .eq("business_id", selectedBusiness.id)
-      .order("created_at", { ascending: false });
+    const [queueResponse, jobSessionResponse, jobBreakdownResponse] =
+      await Promise.all([
+        supabase
+          .from("queue_items")
+          .select(
+            "id, property, unit, status, priority, paint_type, unit_layout, wall_paint_color, flooring, move_out_date, ready_date, scheduled_date, completed_date, smoked_in, prior_renovation, prior_renovation_details, renovation_needed, renovation_needed_details, notes, linked_estimate_id"
+          )
+          .eq("business_id", selectedBusiness.id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("job_sessions")
+          .select("id, queue_item_id, started_at, ended_at, total_minutes")
+          .eq("business_id", selectedBusiness.id),
+        supabase
+          .from("job_session_breakdowns")
+          .select("id, job_session_id")
+          .eq("business_id", selectedBusiness.id),
+      ]);
 
-    if (error) {
-      console.warn("Queue items could not be loaded:", error.message);
+    if (queueResponse.error) {
+      console.warn("Queue items could not be loaded:", queueResponse.error.message);
       queueLoadMessage =
         "Queue items could not be loaded. Try signing in again; if this stays here, the queue access settings need attention.";
     }
 
-    queueItems = (data ?? []) as QueueItemWithEstimate[];
+    if (jobSessionResponse.error) {
+      console.warn(
+        "Queue job sessions could not be loaded:",
+        jobSessionResponse.error.message
+      );
+    }
+
+    if (jobBreakdownResponse.error) {
+      console.warn(
+        "Queue job session breakdowns could not be loaded:",
+        jobBreakdownResponse.error.message
+      );
+    }
+
+    queueItems = (queueResponse.data ?? []) as QueueItemWithEstimate[];
+    jobSessions = (jobSessionResponse.data ?? []) as QueueJobSession[];
+    jobSessionBreakdowns =
+      (jobBreakdownResponse.data ?? []) as QueueJobSessionBreakdown[];
   }
 
   const linkedEstimateIds = queueItems
@@ -291,6 +364,20 @@ export default async function QueuePage({
   const estimateById = new Map(
     linkedEstimates.map((estimate) => [estimate.id, estimate])
   );
+  const breakdownSessionIds = new Set(
+    jobSessionBreakdowns.map((breakdown) => breakdown.job_session_id)
+  );
+  const sessionsByQueueItemId = jobSessions.reduce((map, session) => {
+    if (!session.queue_item_id) {
+      return map;
+    }
+
+    const current = map.get(session.queue_item_id) ?? [];
+    current.push(session);
+    map.set(session.queue_item_id, current);
+
+    return map;
+  }, new Map<string, QueueJobSession[]>());
 
   const propertyScopedQueueItems = queueItems.filter((item) => {
     if (propertyFilter === "all") {
@@ -678,6 +765,25 @@ export default async function QueuePage({
               const remediation = isRemediationItem(item);
               const estimateNeeded = needsEstimate(item);
               const readyDays = daysUntil(item.ready_date);
+              const itemJobSessions = sessionsByQueueItemId.get(item.id) ?? [];
+              const activeJobSessionCount = itemJobSessions.filter(
+                (session) => !session.ended_at
+              ).length;
+              const completedJobSessionCount = itemJobSessions.filter(
+                (session) => session.ended_at
+              ).length;
+              const missingBreakdownCount = itemJobSessions.filter(
+                (session) =>
+                  Boolean(session.ended_at) &&
+                  !breakdownSessionIds.has(session.id)
+              ).length;
+              const jobSessionMinutes = itemJobSessions.reduce(
+                (total, session) =>
+                  total +
+                  (session.total_minutes ??
+                    minutesBetween(session.started_at, session.ended_at)),
+                0
+              );
 
               return (
                 <Card key={item.id}>
@@ -820,6 +926,13 @@ export default async function QueuePage({
                           {linkedEstimate.display_id ?? "Estimate"}
                         </p>
                       ) : null}
+
+                      <LaborCue
+                        activeCount={activeJobSessionCount}
+                        completedCount={completedJobSessionCount}
+                        missingBreakdownCount={missingBreakdownCount}
+                        totalMinutes={jobSessionMinutes}
+                      />
                     </div>
 
                     <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
@@ -849,6 +962,48 @@ export default async function QueuePage({
         </div>
       </div>
     </AppShell>
+  );
+}
+
+function LaborCue({
+  activeCount,
+  completedCount,
+  missingBreakdownCount,
+  totalMinutes,
+}: {
+  activeCount: number;
+  completedCount: number;
+  missingBreakdownCount: number;
+  totalMinutes: number;
+}) {
+  if (activeCount === 0 && completedCount === 0) {
+    return (
+      <div className="queue-labor-cue mt-4 inline-flex flex-wrap items-center gap-2 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-sm font-bold text-sky-100">
+        <span className="queue-labor-dot" aria-hidden="true" />
+        Open this item to start a job session
+      </div>
+    );
+  }
+
+  return (
+    <div className="queue-labor-cue mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-emerald-400/25 bg-emerald-400/10 px-3 py-2 text-sm font-bold text-emerald-100">
+      <span className="queue-labor-dot queue-labor-dot-active" aria-hidden="true" />
+      <span>
+        {activeCount > 0
+          ? `${activeCount} session running`
+          : `${formatSessionMinutes(totalMinutes)} recorded`}
+      </span>
+      {completedCount > 0 ? (
+        <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-xs">
+          {completedCount} stopped
+        </span>
+      ) : null}
+      {missingBreakdownCount > 0 ? (
+        <span className="rounded-full border border-amber-300/30 bg-amber-300/15 px-2 py-0.5 text-xs text-amber-100">
+          {missingBreakdownCount} need breakdown
+        </span>
+      ) : null}
+    </div>
   );
 }
 

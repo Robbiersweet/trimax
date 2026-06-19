@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { logActivity } from "../lib/activityLog";
 import { supabase } from "../lib/supabase";
 
 type ActiveJobSession = {
   id: string;
+  business_id: string;
   property_name: string | null;
   unit_label: string | null;
   queue_item_id: string | null;
@@ -73,7 +75,7 @@ export default function ActiveJobSessionDock() {
       const { data, error } = await supabase
         .from("job_sessions")
         .select(
-          "id, property_name, unit_label, queue_item_id, job_type, started_at"
+          "id, business_id, property_name, unit_label, queue_item_id, job_type, started_at"
         )
         .eq("business_id", businessData.id)
         .eq("user_id", userId)
@@ -127,10 +129,14 @@ export default function ActiveJobSessionDock() {
     setIsStopping(true);
 
     const stoppedQueueItemId = activeSession.queue_item_id;
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("job_sessions")
       .update({ ended_at: new Date().toISOString() })
-      .eq("id", activeSession.id);
+      .eq("id", activeSession.id)
+      .select(
+        "id, business_id, property_name, unit_label, queue_item_id, job_type, started_at, ended_at, total_minutes"
+      )
+      .single();
 
     setIsStopping(false);
 
@@ -144,6 +150,31 @@ export default function ActiveJobSessionDock() {
 
     setActiveSession(null);
     setElapsedMinutes(0);
+    const stoppedSession = data as (ActiveJobSession & {
+      ended_at: string | null;
+      total_minutes: number | null;
+    }) | null;
+
+    if (stoppedSession) {
+      await logActivity({
+        businessId: stoppedSession.business_id,
+        action: "job_session.stopped",
+        entityType: "queue_item",
+        entityId: stoppedSession.queue_item_id,
+        entityLabel: `${stoppedSession.property_name || "Property"}${
+          stoppedSession.unit_label ? ` / Unit ${stoppedSession.unit_label}` : ""
+        }`,
+        details: {
+          jobSessionId: stoppedSession.id,
+          jobType: stoppedSession.job_type,
+          startedAt: stoppedSession.started_at,
+          endedAt: stoppedSession.ended_at,
+          totalMinutes: stoppedSession.total_minutes,
+          stoppedFrom: "global_dock",
+        },
+      });
+    }
+
     setStoppedNotice({
       message: "Session stopped. Open the job when you are ready to break down the time.",
       queueItemId: stoppedQueueItemId,
