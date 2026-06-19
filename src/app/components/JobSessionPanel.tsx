@@ -159,6 +159,7 @@ export default function JobSessionPanel({
   const [otherActiveSession, setOtherActiveSession] =
     useState<JobSession | null>(null);
   const [sessions, setSessions] = useState<JobSession[]>([]);
+  const [businessSessions, setBusinessSessions] = useState<JobSession[]>([]);
   const [breakdowns, setBreakdowns] = useState<JobSessionBreakdown[]>([]);
   const [elapsedMinutes, setElapsedMinutes] = useState(0);
   const [showStartModal, setShowStartModal] = useState(false);
@@ -244,6 +245,21 @@ export default function JobSessionPanel({
           ? minutesBetween(activeAnywhere.started_at)
           : 0
     );
+
+    const { data: businessSessionData, error: businessSessionError } =
+      await supabase
+        .from("job_sessions")
+        .select(
+          "id, business_id, user_id, property_name, unit_label, queue_item_id, estimate_id, invoice_id, job_type, started_at, ended_at, total_minutes, notes, created_at"
+        )
+        .eq("business_id", businessId)
+        .not("ended_at", "is", null)
+        .order("started_at", { ascending: false })
+        .limit(100);
+
+    if (!businessSessionError) {
+      setBusinessSessions((businessSessionData ?? []) as JobSession[]);
+    }
 
     const sessionIds = loadedSessions.map((session) => session.id);
 
@@ -627,6 +643,46 @@ export default function JobSessionPanel({
     };
   }, [breakdownBySession, sessions]);
 
+  const laborGuide = useMemo(() => {
+    const normalizedJobType = displayJobType.trim().toLowerCase();
+    const completedBusinessSessions = businessSessions.filter(
+      (session) => session.ended_at
+    );
+    const matchingSessions = completedBusinessSessions.filter(
+      (session) =>
+        (session.job_type || "General").trim().toLowerCase() ===
+        normalizedJobType
+    );
+    const sourceSessions =
+      matchingSessions.length > 0 ? matchingSessions : completedBusinessSessions;
+    const averageMinutes =
+      sourceSessions.length > 0
+        ? Math.round(
+            sourceSessions.reduce(
+              (total, session) =>
+                total +
+                Math.max(
+                  session.total_minutes ??
+                    minutesBetween(session.started_at, session.ended_at),
+                  0
+                ),
+              0
+            ) / sourceSessions.length
+          )
+        : 0;
+    const remainingMinutes =
+      averageMinutes > 0
+        ? Math.max(averageMinutes - sessionSummary.completedMinutes, 0)
+        : 0;
+
+    return {
+      averageMinutes,
+      remainingMinutes,
+      sampleCount: sourceSessions.length,
+      matchedJobType: matchingSessions.length > 0,
+    };
+  }, [businessSessions, displayJobType, sessionSummary.completedMinutes]);
+
   const activeElsewhereHref = otherActiveSession?.queue_item_id
     ? `/queue/${otherActiveSession.queue_item_id}?business=${
         businessSlug ?? "rnl-creations"
@@ -728,6 +784,51 @@ export default function JobSessionPanel({
                 )
               : "Start when work begins"}
           </p>
+        </div>
+      </div>
+
+      <div className="job-session-labor-guide mt-5 rounded-3xl border border-sky-300/20 bg-black/25 p-4">
+        <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-sky-200">
+              Field Guide
+            </p>
+            <h3 className="mt-2 text-xl font-black">
+              {laborGuide.sampleCount > 0
+                ? `${displayJobType} usually takes ${formatDuration(
+                    laborGuide.averageMinutes
+                  )}`
+                : "Trimax will learn this job rhythm"}
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-zinc-400">
+              {laborGuide.sampleCount > 0
+                ? `Based on ${laborGuide.sampleCount} completed ${
+                    laborGuide.matchedJobType ? displayJobType : "job"
+                  } session${laborGuide.sampleCount === 1 ? "" : "s"}.`
+                : "After a few completed sessions, this card will show a realistic planning target for future work."}
+            </p>
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-2 lg:min-w-[22rem]">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-zinc-400">
+                Recorded
+              </p>
+              <p className="mt-2 text-2xl font-black">
+                {formatDuration(sessionSummary.completedMinutes)}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-zinc-400">
+                Target Left
+              </p>
+              <p className="mt-2 text-2xl font-black">
+                {laborGuide.sampleCount > 0
+                  ? formatDuration(laborGuide.remainingMinutes)
+                  : "-"}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
