@@ -500,6 +500,56 @@ export default async function JobSessionsPage({
       tone: readyWorkStats.urgent > 0 ? "rose" : "sky",
     },
   ];
+  const laborAdvantageLoop = [
+    {
+      label: "Start",
+      title: readyWorkItems.length > 0 ? "Queue-ready" : "Waiting on queue",
+      detail:
+        readyWorkItems.length > 0
+          ? `${readyWorkItems.length} job${readyWorkItems.length === 1 ? "" : "s"} can start from the queue.`
+          : "New ready work will appear here automatically.",
+      value: readyWorkItems.length,
+      tone: readyWorkItems.length > 0 ? "emerald" : "sky",
+    },
+    {
+      label: "Work",
+      title: activeSessions.length > 0 ? "Session running" : "No active clock",
+      detail:
+        activeSessions.length > 0
+          ? "Field time is being captured without task switching."
+          : "Start once, work normally, then stop when done.",
+      value: activeSessions.length,
+      tone: activeSessions.length > 0 ? "emerald" : "sky",
+    },
+    {
+      label: "Clean Up",
+      title:
+        missingBreakdownSessions.length > 0
+          ? "Breakdown needed"
+          : "Nothing waiting",
+      detail:
+        missingBreakdownSessions.length > 0
+          ? "Stopped sessions need a rough split or intentional skip."
+          : "Stopped sessions are clean right now.",
+      value: missingBreakdownSessions.length,
+      tone: missingBreakdownSessions.length > 0 ? "amber" : "emerald",
+    },
+    {
+      label: "Learn",
+      title:
+        completedSessions.length > 0
+          ? "Memory building"
+          : "First session pending",
+      detail:
+        completedSessions.length > 0
+          ? `${completedSessions.length} completed session${
+              completedSessions.length === 1 ? "" : "s"
+            } can guide future planning.`
+          : "The first completed session starts Trimax labor memory.",
+      value: completedSessions.length,
+      tone: completedSessions.length > 0 ? "violet" : "amber",
+    },
+  ];
   const unitLaborLedger = Array.from(
     completedSessions.reduce((map, session) => {
       const label = sessionLabel(session);
@@ -642,6 +692,47 @@ export default async function JobSessionsPage({
               detail="Review when convenient"
               urgent={missingBreakdownSessions.length > 0}
             />
+          </div>
+
+          <div className="job-session-advantage-loop mt-5 rounded-2xl border border-white/10 bg-black/25 p-4">
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-sky-200">
+                  Labor Advantage Loop
+                </p>
+                <h2 className="mt-1 text-2xl font-black">
+                  Field time turns into planning memory
+                </h2>
+              </div>
+
+              <span className="job-session-advantage-badge rounded-full border px-3 py-1 text-xs font-black">
+                Low friction by design
+              </span>
+            </div>
+
+            <div className="job-session-advantage-grid mt-4">
+              {laborAdvantageLoop.map((item, index) => (
+                <div
+                  key={item.label}
+                  data-tone={item.tone}
+                  className="job-session-advantage-step"
+                >
+                  <span className="job-session-advantage-index">
+                    {index + 1}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="job-session-advantage-label">
+                      {item.label}
+                    </span>
+                    <strong>{item.title}</strong>
+                    <em>{item.detail}</em>
+                  </span>
+                  <span className="job-session-advantage-value">
+                    {item.value}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="job-session-field-readiness mt-5 rounded-2xl border border-white/10 bg-black/25 p-4">
