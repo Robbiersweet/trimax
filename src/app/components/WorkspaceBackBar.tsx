@@ -155,12 +155,13 @@ export default function WorkspaceBackBar() {
         className="app-shell-back-button"
       />
       <div className="app-workspace-context flex min-w-0 flex-1 items-center justify-between gap-3 sm:justify-end">
-        <div className="min-w-0 text-right">
+        <div className="app-workspace-context-copy min-w-0 text-right">
           <p className="app-workspace-context-label truncate text-xs font-black uppercase tracking-[0.18em] text-sky-200">
+            <span className="app-workspace-context-dot" aria-hidden="true" />
             {context.label}
           </p>
           <p className="app-workspace-back-hint text-xs font-bold text-zinc-500">
-            {context.detailLabel} / back returns to your previous Trimax screen.
+            {context.detailLabel} / Back returns to your previous Trimax screen.
           </p>
         </div>
         <Link

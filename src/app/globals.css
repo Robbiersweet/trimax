@@ -2667,11 +2667,26 @@ html.theme-light .app-back-button {
 }
 
 html.theme-light .app-workspace-back-bar {
-  background: rgba(255, 255, 255, 0.78) !important;
+  background:
+    radial-gradient(circle at 4% 50%, rgba(37, 99, 235, 0.08), transparent 16rem),
+    radial-gradient(circle at 92% 0%, rgba(5, 150, 105, 0.07), transparent 18rem),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(248, 250, 252, 0.88)) !important;
   border-color: #dbeafe !important;
   box-shadow:
     0 18px 44px rgba(15, 23, 42, 0.08),
+    0 0 0 1px rgba(37, 99, 235, 0.04),
     inset 0 1px 0 rgba(255, 255, 255, 0.96);
+}
+
+html.theme-light .app-workspace-back-bar::before {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(37, 99, 235, 0.42),
+      rgba(5, 150, 105, 0.24),
+      rgba(217, 119, 6, 0.16),
+      transparent 84%
+    );
 }
 
 html.theme-light .app-workspace-back-hint {
@@ -2679,12 +2694,24 @@ html.theme-light .app-workspace-back-hint {
 }
 
 html.theme-light .app-workspace-context-label {
-  color: #0369a1 !important;
+  color: #075985 !important;
+}
+
+html.theme-light .app-workspace-context-copy {
+  border-right-color: #dbeafe;
+}
+
+html.theme-light .app-workspace-context-dot {
+  background: #059669;
+  box-shadow:
+    0 0 0 4px rgba(5, 150, 105, 0.1),
+    0 0 16px rgba(5, 150, 105, 0.28);
 }
 
 html.theme-light .app-workspace-back-action {
-  background: #ffffff !important;
-  border-color: #cbd5e1 !important;
+  background:
+    linear-gradient(135deg, #ffffff, #eff6ff) !important;
+  border-color: #bfdbfe !important;
   color: #075985 !important;
   box-shadow:
     0 12px 26px rgba(15, 23, 42, 0.08),
@@ -2692,7 +2719,8 @@ html.theme-light .app-workspace-back-action {
 }
 
 html.theme-light .app-workspace-back-action:hover {
-  background: #eff6ff !important;
+  background:
+    linear-gradient(135deg, #eff6ff, #ecfdf5) !important;
   border-color: #93c5fd !important;
   color: #1d4ed8 !important;
 }
@@ -9205,9 +9233,41 @@ html.theme-light .app-card:focus-within {
 }
 
 .app-workspace-back-bar {
+  background:
+    radial-gradient(circle at 4% 50%, rgba(14, 165, 233, 0.16), transparent 16rem),
+    radial-gradient(circle at 92% 0%, rgba(16, 185, 129, 0.12), transparent 18rem),
+    linear-gradient(135deg, rgba(15, 23, 42, 0.58), rgba(2, 6, 23, 0.36)) !important;
   box-shadow:
     0 18px 44px rgba(2, 6, 23, 0.18),
+    0 0 0 1px rgba(125, 211, 252, 0.05),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  isolation: isolate;
+  overflow: hidden;
+  position: relative;
+}
+
+.app-workspace-back-bar::before {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(125, 211, 252, 0.42),
+      rgba(52, 211, 153, 0.28),
+      rgba(245, 158, 11, 0.16),
+      transparent 84%
+    );
+  content: "";
+  height: 2px;
+  inset-inline: 1rem;
+  opacity: 0.68;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  z-index: 0;
+}
+
+.app-workspace-back-bar > * {
+  position: relative;
+  z-index: 1;
 }
 
 .app-shell-back-button {
@@ -9225,11 +9285,46 @@ html.theme-light .app-card:focus-within {
   padding-left: 0.25rem;
 }
 
+.app-workspace-context-copy {
+  border-right: 1px solid rgba(148, 163, 184, 0.16);
+  padding-right: 0.85rem;
+}
+
+.app-workspace-context-label {
+  align-items: center;
+  color: var(--trimax-readable-accent) !important;
+  display: inline-flex;
+  gap: 0.45rem;
+}
+
+.app-workspace-context-dot {
+  background: #34d399;
+  border-radius: 999px;
+  box-shadow:
+    0 0 0 4px rgba(52, 211, 153, 0.1),
+    0 0 18px rgba(52, 211, 153, 0.45);
+  display: inline-flex;
+  height: 0.45rem;
+  width: 0.45rem;
+}
+
 .app-workspace-back-action {
+  background:
+    linear-gradient(135deg, rgba(14, 165, 233, 0.16), rgba(16, 185, 129, 0.08)) !important;
+  border-color: rgba(125, 211, 252, 0.24) !important;
   box-shadow:
     0 12px 26px rgba(2, 6, 23, 0.16),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: #e0f2fe !important;
   white-space: nowrap;
+}
+
+.app-workspace-back-action:hover {
+  background:
+    linear-gradient(135deg, rgba(14, 165, 233, 0.22), rgba(16, 185, 129, 0.14)) !important;
+  box-shadow:
+    0 16px 34px rgba(14, 165, 233, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 @media (max-width: 640px) {
@@ -9245,6 +9340,11 @@ html.theme-light .app-card:focus-within {
 
   .app-workspace-context > div {
     text-align: left;
+  }
+
+  .app-workspace-context-copy {
+    border-right: 0;
+    padding-right: 0;
   }
 
   .app-workspace-back-action {
