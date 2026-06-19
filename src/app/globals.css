@@ -2484,6 +2484,7 @@ html.theme-light .app-calendar-button:hover {
 
 html.theme-light .app-sidebar {
   background:
+    linear-gradient(120deg, rgba(255, 255, 255, 0.075), transparent 18rem),
     radial-gradient(circle at 20% 0%, rgba(14, 165, 233, 0.22), transparent 32%),
     radial-gradient(circle at 105% 12%, rgba(99, 102, 241, 0.16), transparent 28%),
     linear-gradient(180deg, rgba(37, 99, 235, 0.16), transparent 20%),
@@ -2496,7 +2497,9 @@ html.theme-light .app-sidebar {
 .app-sidebar {
   position: relative;
   overflow: hidden;
+  isolation: isolate;
   background:
+    linear-gradient(120deg, rgba(255, 255, 255, 0.075), transparent 18rem),
     radial-gradient(circle at 20% 0%, rgba(14, 165, 233, 0.22), transparent 30%),
     radial-gradient(circle at 105% 12%, rgba(99, 102, 241, 0.18), transparent 28%),
     linear-gradient(180deg, rgba(37, 99, 235, 0.14), transparent 20%),
@@ -2538,11 +2541,33 @@ html.theme-light .app-sidebar {
 
 .app-sidebar-nav-link {
   border: 1px solid transparent;
+  min-height: 2.6rem;
+  overflow: hidden;
   position: relative;
+}
+
+.app-sidebar-nav-link::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.14), transparent);
+  content: "";
+  inset: 0 auto 0 -45%;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  transform: skewX(-18deg);
+  transition:
+    opacity 180ms ease,
+    transform 260ms ease;
+  width: 38%;
+}
+
+.app-sidebar-nav-link:hover::after {
+  opacity: 1;
+  transform: translateX(360%) skewX(-18deg);
 }
 
 .app-sidebar-nav-link-active {
   background:
+    radial-gradient(circle at 15% 20%, rgba(255, 255, 255, 0.24), transparent 1.8rem),
     linear-gradient(135deg, #2563eb, #0284c7) !important;
   border-color: rgba(191, 219, 254, 0.45) !important;
   color: #ffffff !important;
@@ -2553,20 +2578,25 @@ html.theme-light .app-sidebar {
 
 .app-sidebar-nav-link-active::before {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.85), rgba(125, 211, 252, 0.85));
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(52, 211, 153, 0.92));
   border-radius: 999px;
   content: "";
-  inset: 0.55rem auto 0.55rem -0.42rem;
+  inset: 0.5rem auto 0.5rem 0.35rem;
   position: absolute;
-  width: 0.18rem;
+  width: 0.2rem;
 }
 
+.app-sidebar-nav-link-active span,
 .app-sidebar-nav-link-active svg {
   color: #ffffff !important;
 }
 
 .app-sidebar-nav-link-inactive:hover {
-  border-color: rgba(125, 211, 252, 0.18);
+  background:
+    linear-gradient(135deg, rgba(14, 165, 233, 0.12), rgba(15, 23, 42, 0.14)) !important;
+  border-color: rgba(125, 211, 252, 0.24);
+  color: #e0f2fe !important;
+  transform: translateX(2px);
 }
 
 html.theme-light .app-sidebar .text-white,
@@ -2604,12 +2634,14 @@ html.theme-light .app-sidebar-nav-link {
 
 html.theme-light .app-sidebar-nav-link-active {
   background:
+    radial-gradient(circle at 15% 20%, rgba(255, 255, 255, 0.24), transparent 1.8rem),
     linear-gradient(135deg, #2563eb, #0284c7) !important;
   border-color: rgba(191, 219, 254, 0.55) !important;
   color: #ffffff !important;
   box-shadow: 0 14px 28px rgba(37, 99, 235, 0.24) !important;
 }
 
+html.theme-light .app-sidebar-nav-link-active span,
 html.theme-light .app-sidebar-nav-link-active svg,
 html.theme-light .app-sidebar-nav-link-active .app-sidebar-setup-pill-active {
   color: #ffffff !important;
@@ -2621,9 +2653,9 @@ html.theme-light .app-sidebar-nav-link-inactive {
 
 html.theme-light .app-sidebar-nav-link-inactive:hover,
 html.theme-light .app-sidebar-sub-link:hover {
-  background: rgba(255, 255, 255, 0.08) !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
-  color: #bfdbfe !important;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.14), rgba(255, 255, 255, 0.08)) !important;
+  border-color: rgba(125, 211, 252, 0.28) !important;
+  color: #e0f2fe !important;
 }
 
 html.theme-light .app-sidebar-setup-pill {

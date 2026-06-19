@@ -295,6 +295,7 @@ export default function Navigation() {
             <Link
               href={link.href}
               onClick={() => setIsMobileMenuOpen(false)}
+              aria-current={link.active ? "page" : undefined}
               className={`app-sidebar-nav-link group flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-center transition lg:justify-between lg:text-left ${
                 link.active
                   ? "app-sidebar-nav-link-active text-white shadow-lg"
