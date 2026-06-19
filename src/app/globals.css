@@ -9917,6 +9917,8 @@ html.theme-light .app-workspace-panel::before {
 .job-session-next-card,
 .job-session-first-run-card,
 .job-session-first-run-step,
+.job-session-ready-board,
+.job-session-ready-row,
 .job-session-mix-card,
 .job-session-forecast-card,
 .job-session-forecast-row,
@@ -9937,6 +9939,16 @@ html.theme-light .app-workspace-panel::before {
 
 .job-session-first-run-step {
   min-height: 9.25rem;
+}
+
+.job-session-ready-board {
+  background:
+    radial-gradient(circle at top right, rgba(20, 184, 166, 0.13), transparent 32%),
+    rgba(15, 23, 42, 0.66);
+}
+
+.job-session-ready-row {
+  min-height: 10.5rem;
 }
 
 .job-session-forecast-card {
@@ -10174,6 +10186,30 @@ html.theme-light .job-session-first-run-step .text-zinc-400 {
 
 html.theme-light .job-session-first-run-step .text-emerald-200 {
   color: #047857 !important;
+}
+
+html.theme-light .job-session-ready-board {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.theme-light .job-session-ready-row {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .job-session-ready-row .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light .job-session-ready-row .text-zinc-300,
+html.theme-light .job-session-ready-row .text-zinc-400 {
+  color: #475569 !important;
+}
+
+html.theme-light .job-session-ready-row .bg-white\/5 {
+  background: #f8fafc !important;
 }
 
 html.theme-light .job-session-setup-card {

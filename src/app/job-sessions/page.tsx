@@ -32,6 +32,18 @@ type JobSessionBreakdown = {
   minutes: number | null;
 };
 
+type QueueItem = {
+  id: string;
+  property: string | null;
+  unit: string | null;
+  status: string | null;
+  paint_type: string | null;
+  unit_layout: string | null;
+  ready_date: string | null;
+  scheduled_date: string | null;
+  completed_date: string | null;
+};
+
 function formatDateTime(value: string | null) {
   if (!value) {
     return "-";
@@ -102,6 +114,44 @@ function monthKey(value: Date) {
   return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function dateValue(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date;
+}
+
+function daysUntil(value: string | null) {
+  const date = dateValue(value);
+
+  if (!date) {
+    return null;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return Math.round((date.getTime() - today.getTime()) / 86400000);
+}
+
+function isClosedQueueItem(item: QueueItem) {
+  const status = (item.status || "").trim().toLowerCase();
+
+  return (
+    status === "completed" ||
+    status === "invoiced" ||
+    status === "paid" ||
+    Boolean(item.completed_date)
+  );
+}
+
 export default async function JobSessionsPage({
   searchParams,
 }: {
@@ -120,6 +170,7 @@ export default async function JobSessionsPage({
   const selectedBusiness = businessData as Business | null;
   let sessions: JobSession[] = [];
   let breakdowns: JobSessionBreakdown[] = [];
+  let queueItems: QueueItem[] = [];
   let setupMessage: string | null = null;
 
   if (businessError) {
@@ -129,7 +180,7 @@ export default async function JobSessionsPage({
   }
 
   if (selectedBusiness?.id) {
-    const [sessionResponse, breakdownResponse] = await Promise.all([
+    const [sessionResponse, breakdownResponse, queueResponse] = await Promise.all([
       supabase
         .from("job_sessions")
         .select(
@@ -142,6 +193,14 @@ export default async function JobSessionsPage({
         .from("job_session_breakdowns")
         .select("id, job_session_id, work_type, minutes")
         .eq("business_id", selectedBusiness.id),
+      supabase
+        .from("queue_items")
+        .select(
+          "id, property, unit, status, paint_type, unit_layout, ready_date, scheduled_date, completed_date"
+        )
+        .eq("business_id", selectedBusiness.id)
+        .order("ready_date", { ascending: true, nullsFirst: false })
+        .limit(40),
     ]);
 
     if (sessionResponse.error) {
@@ -160,8 +219,16 @@ export default async function JobSessionsPage({
       );
     }
 
+    if (queueResponse.error) {
+      console.warn(
+        "Job Sessions ready work could not be loaded:",
+        queueResponse.error.message
+      );
+    }
+
     sessions = (sessionResponse.data ?? []) as JobSession[];
     breakdowns = (breakdownResponse.data ?? []) as JobSessionBreakdown[];
+    queueItems = (queueResponse.data ?? []) as QueueItem[];
   }
 
   const breakdownSessionIds = new Set(
@@ -243,6 +310,37 @@ export default async function JobSessionsPage({
     0
   );
   const topWorkType = workTypeTotals[0] ?? null;
+  const sessionQueueItemIds = new Set(
+    sessions
+      .map((session) => session.queue_item_id)
+      .filter((id): id is string => Boolean(id))
+  );
+  const readyWorkItems = queueItems
+    .filter((item) => !isClosedQueueItem(item))
+    .map((item) => {
+      const dueInDays = daysUntil(item.ready_date);
+      const hasSession = sessionQueueItemIds.has(item.id);
+      const isScheduled = Boolean(item.scheduled_date);
+      const score =
+        (hasSession ? 100 : 0) +
+        (isScheduled ? 20 : 0) +
+        (dueInDays === null ? 40 : Math.max(dueInDays, -20));
+
+      return {
+        ...item,
+        dueInDays,
+        hasSession,
+        isScheduled,
+        score,
+      };
+    })
+    .sort(
+      (first, second) =>
+        first.score - second.score ||
+        (first.property || "").localeCompare(second.property || "") ||
+        (first.unit || "").localeCompare(second.unit || "")
+    )
+    .slice(0, 4);
   const nextAction =
     activeSessions.length > 0
       ? {
@@ -356,6 +454,47 @@ export default async function JobSessionsPage({
             />
           </div>
         </div>
+
+        <Card className="job-session-hub-card job-session-ready-board">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="section-kicker text-sm font-black uppercase tracking-[0.24em] text-emerald-300">
+                Ready Work
+              </p>
+              <h2 className="mt-2 text-2xl font-black">
+                Open a unit and start the field clock
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-zinc-400">
+                These are live queue items that still need work attention. Open
+                one, tap Start Job Session, and Trimax will keep the labor tied
+                to the right unit.
+              </p>
+            </div>
+            <Link
+              href={`/queue?business=${businessSlug}`}
+              className="app-button-secondary inline-flex rounded-2xl px-4 py-2 text-sm font-black"
+            >
+              See Full Queue
+            </Link>
+          </div>
+
+          <div className="mt-5 grid gap-3 lg:grid-cols-4">
+            {readyWorkItems.length === 0 ? (
+              <EmptyState
+                title="No active queue work found"
+                detail="New queue work will appear here as soon as it is added."
+              />
+            ) : (
+              readyWorkItems.map((item) => (
+                <ReadyWorkRow
+                  key={item.id}
+                  item={item}
+                  businessSlug={businessSlug}
+                />
+              ))
+            )}
+          </div>
+        </Card>
 
         {hasNoSessionData ? (
           <Card className="job-session-hub-card job-session-first-run-card">
@@ -771,6 +910,76 @@ function FirstRunStep({
       <p className="mt-3 font-black text-white">{title}</p>
       <p className="mt-1 text-sm leading-6 text-zinc-400">{detail}</p>
     </div>
+  );
+}
+
+function ReadyWorkRow({
+  item,
+  businessSlug,
+}: {
+  item: QueueItem & {
+    dueInDays: number | null;
+    hasSession: boolean;
+    isScheduled: boolean;
+  };
+  businessSlug: string;
+}) {
+  const dueLabel =
+    item.dueInDays === null
+      ? "No paint due"
+      : item.dueInDays < 0
+        ? `${Math.abs(item.dueInDays)}d late`
+        : item.dueInDays === 0
+          ? "Due today"
+          : `${item.dueInDays}d out`;
+  const statusLabel = item.hasSession
+    ? "Has labor"
+    : item.isScheduled
+      ? "Scheduled"
+      : "Ready";
+
+  return (
+    <Link
+      href={queueItemHref(businessSlug, item.id)}
+      className="job-session-ready-row rounded-2xl border border-white/10 bg-black/25 p-4 transition hover:-translate-y-0.5"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-black text-white">
+            {item.property || "Property"}
+          </p>
+          <p className="mt-1 text-3xl font-black">
+            {item.unit || "Unit"}
+          </p>
+        </div>
+        <span
+          className={`rounded-full border px-3 py-1 text-xs font-black ${
+            item.dueInDays !== null && item.dueInDays <= 1
+              ? "border-amber-300/35 bg-amber-300/10 text-amber-200"
+              : "border-emerald-300/35 bg-emerald-300/10 text-emerald-200"
+          }`}
+        >
+          {dueLabel}
+        </span>
+      </div>
+
+      <div className="mt-4 space-y-2 text-sm text-zinc-400">
+        <p className="truncate">
+          {item.paint_type || "Paint work"}{" "}
+          {item.unit_layout ? `/ ${item.unit_layout}` : ""}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-black text-zinc-300">
+            {statusLabel}
+          </span>
+          {item.status ? (
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-black text-zinc-300">
+              {item.status}
+            </span>
+          ) : null}
+        </div>
+      </div>
+    </Link>
   );
 }
 
