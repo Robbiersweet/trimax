@@ -10030,6 +10030,15 @@ html.theme-light .job-session-labor-guide .bg-white\/5 {
   border-color: #cbd5e1 !important;
 }
 
+html.theme-light .job-session-labor-guide .bg-white\/10 {
+  background: #e2e8f0 !important;
+}
+
+html.theme-light .job-session-labor-guide .border-amber-300\/30 {
+  background: #fffbeb !important;
+  border-color: #f59e0b !important;
+}
+
 html.theme-light .job-session-snapshot .border-amber-300\/35 {
   background: #fffbeb !important;
   border-color: #f59e0b !important;

@@ -674,9 +674,31 @@ export default function JobSessionPanel({
       averageMinutes > 0
         ? Math.max(averageMinutes - sessionSummary.completedMinutes, 0)
         : 0;
+    const overMinutes =
+      averageMinutes > 0
+        ? Math.max(sessionSummary.completedMinutes - averageMinutes, 0)
+        : 0;
+    const paceLabel =
+      averageMinutes <= 0
+        ? "Learning"
+        : overMinutes > 0
+          ? `${formatDuration(overMinutes)} over`
+          : remainingMinutes > 0
+            ? "On pace"
+            : "At target";
+    const progressPercent =
+      averageMinutes > 0
+        ? Math.min(
+            Math.round((sessionSummary.completedMinutes / averageMinutes) * 100),
+            140
+          )
+        : 0;
 
     return {
       averageMinutes,
+      overMinutes,
+      paceLabel,
+      progressPercent,
       remainingMinutes,
       sampleCount: sourceSessions.length,
       matchedJobType: matchingSessions.length > 0,
@@ -809,13 +831,27 @@ export default function JobSessionPanel({
             </p>
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-2 lg:min-w-[22rem]">
+          <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[28rem]">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-zinc-400">
                 Recorded
               </p>
               <p className="mt-2 text-2xl font-black">
                 {formatDuration(sessionSummary.completedMinutes)}
+              </p>
+            </div>
+            <div
+              className={`rounded-2xl border p-3 ${
+                laborGuide.overMinutes > 0
+                  ? "border-amber-300/30 bg-amber-300/10"
+                  : "border-white/10 bg-white/5"
+              }`}
+            >
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-zinc-400">
+                Pace
+              </p>
+              <p className="mt-2 text-2xl font-black">
+                {laborGuide.paceLabel}
               </p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
@@ -825,11 +861,23 @@ export default function JobSessionPanel({
               <p className="mt-2 text-2xl font-black">
                 {laborGuide.sampleCount > 0
                   ? formatDuration(laborGuide.remainingMinutes)
-                  : "-"}
+                : "-"}
               </p>
             </div>
           </div>
         </div>
+        {laborGuide.sampleCount > 0 ? (
+          <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
+            <div
+              className={`h-full rounded-full ${
+                laborGuide.overMinutes > 0
+                  ? "bg-gradient-to-r from-amber-300 to-rose-400"
+                  : "bg-gradient-to-r from-emerald-300 via-sky-300 to-blue-500"
+              }`}
+              style={{ width: `${Math.max(laborGuide.progressPercent, 4)}%` }}
+            />
+          </div>
+        ) : null}
       </div>
 
       {otherActiveSession ? (
