@@ -28,6 +28,8 @@ type JobSession = {
 type JobSessionBreakdown = {
   id: string;
   job_session_id: string;
+  work_type: string | null;
+  minutes: number | null;
 };
 
 function formatDateTime(value: string | null) {
@@ -138,7 +140,7 @@ export default async function JobSessionsPage({
         .limit(80),
       supabase
         .from("job_session_breakdowns")
-        .select("id, job_session_id")
+        .select("id, job_session_id, work_type, minutes")
         .eq("business_id", selectedBusiness.id),
     ]);
 
@@ -192,6 +194,42 @@ export default async function JobSessionsPage({
           ) / completedSessions.length
         )
       : 0;
+  const workTypeTotals = Array.from(
+    breakdowns.reduce((map, breakdown) => {
+      const label = breakdown.work_type?.trim() || "Other";
+      map.set(label, (map.get(label) ?? 0) + Math.max(breakdown.minutes ?? 0, 0));
+      return map;
+    }, new Map<string, number>())
+  )
+    .map(([label, minutes]) => ({ label, minutes }))
+    .filter((item) => item.minutes > 0)
+    .sort((first, second) => second.minutes - first.minutes);
+  const totalBreakdownMinutes = workTypeTotals.reduce(
+    (total, item) => total + item.minutes,
+    0
+  );
+  const topWorkType = workTypeTotals[0] ?? null;
+  const nextAction =
+    activeSessions.length > 0
+      ? {
+          label: "Open Running Session",
+          detail: "A job is currently on the clock.",
+          href: queueItemHref(businessSlug, activeSessions[0].queue_item_id),
+        }
+      : missingBreakdownSessions.length > 0
+        ? {
+            label: "Finish Time Breakdown",
+            detail: "Stopped labor needs rough categories.",
+            href: queueItemHref(
+              businessSlug,
+              missingBreakdownSessions[0].queue_item_id
+            ),
+          }
+        : {
+            label: "Start From Queue",
+            detail: "Open the next job and start a session when work begins.",
+            href: `/queue?business=${businessSlug}&view=ready-soon`,
+          };
 
   return (
     <AppShell>
@@ -242,6 +280,87 @@ export default async function JobSessionsPage({
               urgent={missingBreakdownSessions.length > 0}
             />
           </div>
+        </div>
+
+        <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+          <Card className="job-session-hub-card job-session-next-card border-sky-500/25 bg-gradient-to-br from-sky-500/10 via-zinc-950 to-emerald-500/10">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="section-kicker text-sm font-black uppercase tracking-[0.24em] text-sky-300">
+                  Next Move
+                </p>
+                <h2 className="mt-2 text-2xl font-black">
+                  {nextAction.label}
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-zinc-400">
+                  {nextAction.detail}
+                </p>
+              </div>
+
+              <Link
+                href={nextAction.href}
+                className="app-button-primary inline-flex rounded-2xl px-5 py-3 text-sm font-black"
+              >
+                Continue
+              </Link>
+            </div>
+          </Card>
+
+          <Card className="job-session-hub-card job-session-mix-card">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="section-kicker text-sm font-black uppercase tracking-[0.24em] text-emerald-300">
+                  Time Mix
+                </p>
+                <h2 className="mt-2 text-2xl font-black">
+                  {topWorkType
+                    ? `${topWorkType.label} is the biggest bucket`
+                    : "Breakdowns will build the labor picture"}
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-zinc-400">
+                  Once sessions are broken down, Trimax can show where real
+                  labor time is going without making anyone switch tasks all
+                  day.
+                </p>
+              </div>
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm font-black">
+                {formatDuration(totalBreakdownMinutes)}
+              </span>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {workTypeTotals.length === 0 ? (
+                <EmptyState
+                  title="No labor categories yet"
+                  detail="Stop a session and save a breakdown to start seeing the mix."
+                />
+              ) : (
+                workTypeTotals.slice(0, 5).map((item) => {
+                  const width =
+                    totalBreakdownMinutes > 0
+                      ? Math.max((item.minutes / totalBreakdownMinutes) * 100, 4)
+                      : 0;
+
+                  return (
+                    <div key={item.label} className="job-session-mix-row">
+                      <div className="flex items-center justify-between gap-3 text-sm">
+                        <p className="font-black">{item.label}</p>
+                        <p className="font-black text-zinc-300">
+                          {formatDuration(item.minutes)}
+                        </p>
+                      </div>
+                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-emerald-300 via-sky-300 to-blue-500"
+                          style={{ width: `${width}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </Card>
         </div>
 
         {setupMessage ? (
