@@ -6,6 +6,7 @@ import ActiveJobSessionDock from "./ActiveJobSessionDock";
 import Navigation from "./Navigation";
 import NavigationHistoryTracker from "./NavigationHistoryTracker";
 import QuickCommandCenter from "./QuickCommandCenter";
+import WorkspaceBackBar from "./WorkspaceBackBar";
 import {
   defaultMaintenanceSettings,
   loadMaintenanceSettings,
@@ -95,6 +96,7 @@ export default function AppShell({
                 Maintenance Mode is ON. Normal users are temporarily paused.
               </div>
             ) : null}
+            <WorkspaceBackBar />
             {children}
           </section>
         </div>

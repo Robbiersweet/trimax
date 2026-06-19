@@ -2666,6 +2666,18 @@ html.theme-light .app-back-button {
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
+html.theme-light .app-workspace-back-bar {
+  background: rgba(255, 255, 255, 0.78) !important;
+  border-color: #dbeafe !important;
+  box-shadow:
+    0 18px 44px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.96);
+}
+
+html.theme-light .app-workspace-back-hint {
+  color: #64748b !important;
+}
+
 html.theme-light .app-back-button:hover {
   background: #eff6ff !important;
   border-color: #93c5fd !important;
@@ -9158,6 +9170,23 @@ html.theme-light .app-card:focus-within {
   box-shadow:
     0 12px 28px rgba(2, 6, 23, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.app-workspace-back-bar {
+  box-shadow:
+    0 18px 44px rgba(2, 6, 23, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.app-shell-back-button {
+  min-height: 3.25rem;
+}
+
+.app-shell-back-button .app-back-button-meta {
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-back-button-arrow {
