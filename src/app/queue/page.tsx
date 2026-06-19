@@ -3,6 +3,7 @@ import AppShell from "../components/AppShell";
 import Card from "../components/Card";
 import Button from "../components/Button";
 import StatusBadge from "../components/StatusBadge";
+import RoleVisible from "../components/RoleVisible";
 import { supabase } from "../lib/supabase";
 import { maybeCanonicalApartmentUnitLabel } from "../utils/unitLabels";
 
@@ -927,12 +928,17 @@ export default async function QueuePage({
                         </p>
                       ) : null}
 
-                      <LaborCue
-                        activeCount={activeJobSessionCount}
-                        completedCount={completedJobSessionCount}
-                        missingBreakdownCount={missingBreakdownCount}
-                        totalMinutes={jobSessionMinutes}
-                      />
+                      <RoleVisible
+                        businessSlug={businessSlug}
+                        allow={["owner", "admin"]}
+                      >
+                        <LaborCue
+                          activeCount={activeJobSessionCount}
+                          completedCount={completedJobSessionCount}
+                          missingBreakdownCount={missingBreakdownCount}
+                          totalMinutes={jobSessionMinutes}
+                        />
+                      </RoleVisible>
                     </div>
 
                     <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">

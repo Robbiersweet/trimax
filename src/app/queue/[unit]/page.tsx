@@ -9,6 +9,7 @@ import InternalNotes from "../../components/InternalNotes";
 import JobSessionPanel from "../../components/JobSessionPanel";
 import MarkCompletedButton from "../../components/MarkCompletedButton";
 import MarkScheduledButton from "../../components/MarkScheduledButton";
+import RoleVisible from "../../components/RoleVisible";
 import {
   calendarDataUri,
   calendarFileName,
@@ -641,16 +642,18 @@ export default async function QueueDetailPage({
           nextAction={workflowNextAction}
         />
 
-        <JobSessionPanel
-          businessId={selectedBusiness.id}
-          businessSlug={businessSlug}
-          propertyName={item.property}
-          unitLabel={displayUnit || item.unit}
-          queueItemId={item.id}
-          estimateId={linkedEstimate?.id ?? item.linked_estimate_id}
-          invoiceId={linkedInvoice?.id ?? null}
-          jobType={item.paint_type || item.renovation_needed_details || "Paint"}
-        />
+        <RoleVisible businessSlug={businessSlug} allow={["owner", "admin"]}>
+          <JobSessionPanel
+            businessId={selectedBusiness.id}
+            businessSlug={businessSlug}
+            propertyName={item.property}
+            unitLabel={displayUnit || item.unit}
+            queueItemId={item.id}
+            estimateId={linkedEstimate?.id ?? item.linked_estimate_id}
+            invoiceId={linkedInvoice?.id ?? null}
+            jobType={item.paint_type || item.renovation_needed_details || "Paint"}
+          />
+        </RoleVisible>
 
         <div className="grid gap-4 md:grid-cols-3">
           <AttentionCard

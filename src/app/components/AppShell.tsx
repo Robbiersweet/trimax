@@ -26,6 +26,7 @@ export default function AppShell({
   const [maintenance, setMaintenance] =
     useState<MaintenanceSettings>(defaultMaintenanceSettings());
   const [canManageMaintenance, setCanManageMaintenance] = useState(false);
+  const [canUseJobSessions, setCanUseJobSessions] = useState(false);
 
   const isAuthPage =
     pathname.startsWith("/login") ||
@@ -58,6 +59,7 @@ export default function AppShell({
 
       setMaintenance(settings);
       setCanManageMaintenance(role === "owner" || role === "admin");
+      setCanUseJobSessions(role === "owner" || role === "admin");
     }
 
     loadBannerState();
@@ -86,7 +88,7 @@ export default function AppShell({
         <div className="app-shell-content mx-auto flex w-full max-w-[112rem] flex-col px-4 py-5 lg:flex-row lg:gap-6 lg:px-6">
           <Navigation />
           <QuickCommandCenter />
-          <ActiveJobSessionDock />
+          {canUseJobSessions ? <ActiveJobSessionDock /> : null}
 
           <section
             aria-label="Trimax workspace content"

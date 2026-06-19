@@ -110,7 +110,7 @@ const rolePermissions: Record<
     ],
   },
   property_manager: {
-    nav: ["dashboard", "queue", "job_sessions", "schedule", "reports"],
+    nav: ["dashboard", "queue", "schedule", "reports"],
     actions: ["new_queue", "review_queue", "reports"],
   },
   member: {

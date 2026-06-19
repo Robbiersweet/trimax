@@ -416,6 +416,7 @@ export default async function ReportsPage({
     .maybeSingle();
 
   const reportLoadMessages: string[] = [];
+  const laborReportLoadMessages: string[] = [];
 
   if (businessError) {
     console.warn("Reports workspace lookup failed:", businessError.message);
@@ -512,7 +513,7 @@ export default async function ReportsPage({
         "Report job session data could not be loaded:",
         jobSessionResponse.error.message
       );
-      reportLoadMessages.push(
+      laborReportLoadMessages.push(
         "Job session report data will appear after the Job Sessions SQL is run in Supabase."
       );
     }
@@ -974,176 +975,190 @@ export default async function ReportsPage({
           </Card>
         ) : null}
 
-        <Card
-          id="labor-intelligence"
-          className="labor-intelligence-card border-emerald-500/25 bg-gradient-to-br from-emerald-500/10 via-zinc-950 to-sky-500/10"
-        >
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="labor-intelligence-kicker text-sm uppercase tracking-[0.3em] text-emerald-300">
-                Labor Intelligence
+        <RoleVisible businessSlug={businessSlug} allow={["owner", "admin"]}>
+          {laborReportLoadMessages.length > 0 ? (
+            <Card className="app-notice-card border-amber-500/40 bg-amber-500/10">
+              <p className="text-sm font-semibold text-amber-200">
+                Labor report notice
               </p>
 
-              <h2 className="mt-2 text-2xl font-bold">
-                Job session basics
-              </h2>
-
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
-                Phase 1 keeps this simple: start work, stop work, then rebuild
-                the day into rough categories when you have a minute.
+              <p className="mt-2 text-sm leading-6 text-amber-100/90">
+                {laborReportLoadMessages.join(" ")}
               </p>
-            </div>
+            </Card>
+          ) : null}
 
-            <Link
-              href={queueHref(businessSlug, {
-                status: "scheduled",
-              })}
-              className="app-button-secondary inline-flex rounded-2xl px-4 py-3 text-sm font-black"
-            >
-              Open Scheduled Work
-            </Link>
-          </div>
+          <Card
+            id="labor-intelligence"
+            className="labor-intelligence-card border-emerald-500/25 bg-gradient-to-br from-emerald-500/10 via-zinc-950 to-sky-500/10"
+          >
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="labor-intelligence-kicker text-sm uppercase tracking-[0.3em] text-emerald-300">
+                  Labor Intelligence
+                </p>
 
-          <div className="mt-5 grid gap-3 md:grid-cols-5">
-            <LaborMetric
-              label="This Month"
-              value={formatHoursFromMinutes(laborMinutesThisMonth)}
-              detail="Completed session time"
-            />
-            <LaborMetric
-              label="Avg Job Type"
-              value={
-                averageByJobType
-                  ? `${averageByJobType.hours.toFixed(1)}h`
-                  : "-"
-              }
-              detail={averageByJobType?.label ?? "Waiting for sessions"}
-            />
-            <LaborMetric
-              label="Avg Property"
-              value={
-                averageByProperty
-                  ? `${averageByProperty.hours.toFixed(1)}h`
-                  : "-"
-              }
-              detail={averageByProperty?.label ?? "Waiting for sessions"}
-            />
-            <LaborMetric
-              label="Revenue / Hour"
-              value={
-                revenuePerLaborHour !== null
-                  ? formatMoney(revenuePerLaborHour)
-                  : "-"
-              }
-              detail="Only when invoice is linked"
-            />
-            <LaborMetric
-              label="Need Breakdown"
-              value={sessionsMissingBreakdown}
-              detail="Stopped sessions"
-              urgent={sessionsMissingBreakdown > 0}
-            />
-          </div>
+                <h2 className="mt-2 text-2xl font-bold">
+                  Job session basics
+                </h2>
 
-          <div className="mt-5 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-            <div className="labor-review-panel rounded-3xl border border-white/10 bg-black/25 p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-200">
-                    Recent Sessions
-                  </p>
-                  <h3 className="mt-2 text-xl font-black">
-                    Latest labor records
-                  </h3>
-                </div>
-                <span className="rounded-full border border-white/10 px-3 py-1 text-xs font-black text-zinc-300">
-                  {completedJobSessions.length} total
-                </span>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+                  Phase 1 keeps this simple: start work, stop work, then rebuild
+                  the day into rough categories when you have a minute.
+                </p>
               </div>
 
-              <div className="mt-4 space-y-3">
-                {recentCompletedJobSessions.length > 0 ? (
-                  recentCompletedJobSessions.map((session) => (
-                    <Link
-                      key={session.id}
-                      href={queueItemHref(businessSlug, session.queue_item_id)}
-                      className="labor-session-row block rounded-2xl border border-white/10 bg-zinc-950/55 p-4 transition hover:-translate-y-0.5 hover:border-emerald-300/40"
-                    >
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <p className="font-black">
-                            {session.property_name || "Property"}
-                            {session.unit_label
-                              ? ` / Unit ${session.unit_label}`
-                              : ""}
-                          </p>
-                          <p className="mt-1 text-sm text-zinc-400">
-                            {session.job_type || "Job"} ended{" "}
-                            {formatDateTime(session.ended_at)}
-                          </p>
+              <Link
+                href={queueHref(businessSlug, {
+                  status: "scheduled",
+                })}
+                className="app-button-secondary inline-flex rounded-2xl px-4 py-3 text-sm font-black"
+              >
+                Open Scheduled Work
+              </Link>
+            </div>
+
+            <div className="mt-5 grid gap-3 md:grid-cols-5">
+              <LaborMetric
+                label="This Month"
+                value={formatHoursFromMinutes(laborMinutesThisMonth)}
+                detail="Completed session time"
+              />
+              <LaborMetric
+                label="Avg Job Type"
+                value={
+                  averageByJobType
+                    ? `${averageByJobType.hours.toFixed(1)}h`
+                    : "-"
+                }
+                detail={averageByJobType?.label ?? "Waiting for sessions"}
+              />
+              <LaborMetric
+                label="Avg Property"
+                value={
+                  averageByProperty
+                    ? `${averageByProperty.hours.toFixed(1)}h`
+                    : "-"
+                }
+                detail={averageByProperty?.label ?? "Waiting for sessions"}
+              />
+              <LaborMetric
+                label="Revenue / Hour"
+                value={
+                  revenuePerLaborHour !== null
+                    ? formatMoney(revenuePerLaborHour)
+                    : "-"
+                }
+                detail="Only when invoice is linked"
+              />
+              <LaborMetric
+                label="Need Breakdown"
+                value={sessionsMissingBreakdown}
+                detail="Stopped sessions"
+                urgent={sessionsMissingBreakdown > 0}
+              />
+            </div>
+
+            <div className="mt-5 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+              <div className="labor-review-panel rounded-3xl border border-white/10 bg-black/25 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-200">
+                      Recent Sessions
+                    </p>
+                    <h3 className="mt-2 text-xl font-black">
+                      Latest labor records
+                    </h3>
+                  </div>
+                  <span className="rounded-full border border-white/10 px-3 py-1 text-xs font-black text-zinc-300">
+                    {completedJobSessions.length} total
+                  </span>
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  {recentCompletedJobSessions.length > 0 ? (
+                    recentCompletedJobSessions.map((session) => (
+                      <Link
+                        key={session.id}
+                        href={queueItemHref(businessSlug, session.queue_item_id)}
+                        className="labor-session-row block rounded-2xl border border-white/10 bg-zinc-950/55 p-4 transition hover:-translate-y-0.5 hover:border-emerald-300/40"
+                      >
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <p className="font-black">
+                              {session.property_name || "Property"}
+                              {session.unit_label
+                                ? ` / Unit ${session.unit_label}`
+                                : ""}
+                            </p>
+                            <p className="mt-1 text-sm text-zinc-400">
+                              {session.job_type || "Job"} ended{" "}
+                              {formatDateTime(session.ended_at)}
+                            </p>
+                          </div>
+                          <span className="rounded-full bg-emerald-400 px-3 py-1 text-xs font-black text-emerald-950">
+                            {formatHoursFromMinutes(session.total_minutes ?? 0)}
+                          </span>
                         </div>
-                        <span className="rounded-full bg-emerald-400 px-3 py-1 text-xs font-black text-emerald-950">
-                          {formatHoursFromMinutes(session.total_minutes ?? 0)}
-                        </span>
-                      </div>
-                    </Link>
-                  ))
-                ) : (
-                  <p className="rounded-2xl border border-dashed border-white/15 p-4 text-sm text-zinc-400">
-                    Completed job sessions will appear here after the first
-                    stop.
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="labor-review-panel rounded-3xl border border-amber-400/25 bg-amber-500/10 p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-200">
-                    Follow-Up
-                  </p>
-                  <h3 className="mt-2 text-xl font-black">
-                    Missing breakdowns
-                  </h3>
+                      </Link>
+                    ))
+                  ) : (
+                    <p className="rounded-2xl border border-dashed border-white/15 p-4 text-sm text-zinc-400">
+                      Completed job sessions will appear here after the first
+                      stop.
+                    </p>
+                  )}
                 </div>
-                <span className="rounded-full bg-amber-300 px-3 py-1 text-xs font-black text-amber-950">
-                  {sessionsMissingBreakdown}
-                </span>
               </div>
 
-              <div className="mt-4 space-y-3">
-                {sessionsNeedingBreakdown.length > 0 ? (
-                  sessionsNeedingBreakdown.map((session) => (
-                    <Link
-                      key={session.id}
-                      href={queueItemHref(businessSlug, session.queue_item_id)}
-                      className="labor-session-row block rounded-2xl border border-amber-300/20 bg-black/25 p-4 transition hover:-translate-y-0.5 hover:border-amber-300/50"
-                    >
-                      <p className="font-black">
-                        {session.property_name || "Property"}
-                        {session.unit_label
-                          ? ` / Unit ${session.unit_label}`
-                          : ""}
-                      </p>
-                      <p className="mt-1 text-sm text-zinc-400">
-                        {formatHoursFromMinutes(session.total_minutes ?? 0)}{" "}
-                        still needs categories
-                      </p>
-                      <p className="mt-3 text-sm font-black text-amber-200">
-                        Open job to break down time
-                      </p>
-                    </Link>
-                  ))
-                ) : (
-                  <p className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-4 text-sm font-semibold text-emerald-100">
-                    Labor records are caught up.
-                  </p>
-                )}
+              <div className="labor-review-panel rounded-3xl border border-amber-400/25 bg-amber-500/10 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-200">
+                      Follow-Up
+                    </p>
+                    <h3 className="mt-2 text-xl font-black">
+                      Missing breakdowns
+                    </h3>
+                  </div>
+                  <span className="rounded-full bg-amber-300 px-3 py-1 text-xs font-black text-amber-950">
+                    {sessionsMissingBreakdown}
+                  </span>
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  {sessionsNeedingBreakdown.length > 0 ? (
+                    sessionsNeedingBreakdown.map((session) => (
+                      <Link
+                        key={session.id}
+                        href={queueItemHref(businessSlug, session.queue_item_id)}
+                        className="labor-session-row block rounded-2xl border border-amber-300/20 bg-black/25 p-4 transition hover:-translate-y-0.5 hover:border-amber-300/50"
+                      >
+                        <p className="font-black">
+                          {session.property_name || "Property"}
+                          {session.unit_label
+                            ? ` / Unit ${session.unit_label}`
+                            : ""}
+                        </p>
+                        <p className="mt-1 text-sm text-zinc-400">
+                          {formatHoursFromMinutes(session.total_minutes ?? 0)}{" "}
+                          still needs categories
+                        </p>
+                        <p className="mt-3 text-sm font-black text-amber-200">
+                          Open job to break down time
+                        </p>
+                      </Link>
+                    ))
+                  ) : (
+                    <p className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-4 text-sm font-semibold text-emerald-100">
+                      Labor records are caught up.
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        </Card>
+          </Card>
+        </RoleVisible>
 
         <Card className="report-library-card border-sky-500/20 bg-gradient-to-br from-sky-500/5 via-zinc-950 to-orange-500/5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
