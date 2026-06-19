@@ -9065,6 +9065,18 @@ html.theme-light {
   scrollbar-color: rgba(37, 99, 235, 0.38) rgba(226, 232, 240, 0.92);
 }
 
+::selection {
+  background: rgba(14, 165, 233, 0.34);
+  color: #ffffff;
+  text-shadow: none;
+}
+
+html.theme-light ::selection {
+  background: rgba(37, 99, 235, 0.18);
+  color: #020617;
+  text-shadow: none;
+}
+
 ::-webkit-scrollbar {
   height: 0.7rem;
   width: 0.7rem;
