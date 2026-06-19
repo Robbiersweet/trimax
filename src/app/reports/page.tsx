@@ -61,6 +61,7 @@ type JobSession = {
   id: string;
   property_name: string | null;
   unit_label: string | null;
+  queue_item_id: string | null;
   job_type: string | null;
   started_at: string | null;
   ended_at: string | null;
@@ -126,6 +127,25 @@ function formatDate(value: string | null) {
     month: "short",
     day: "numeric",
     year: "numeric",
+  });
+}
+
+function formatDateTime(value: string | null) {
+  if (!value) {
+    return "-";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
   });
 }
 
@@ -358,6 +378,12 @@ function appHref(businessSlug: string, path: string) {
   return `${path}?business=${businessSlug}`;
 }
 
+function queueItemHref(businessSlug: string, queueItemId: string | null) {
+  return queueItemId
+    ? `/queue/${queueItemId}?business=${businessSlug}`
+    : queueHref(businessSlug);
+}
+
 export default async function ReportsPage({
   searchParams,
 }: {
@@ -440,7 +466,7 @@ export default async function ReportsPage({
         supabase
           .from("job_sessions")
           .select(
-            "id, property_name, unit_label, job_type, started_at, ended_at, total_minutes, invoice_id, created_at"
+            "id, property_name, unit_label, queue_item_id, job_type, started_at, ended_at, total_minutes, invoice_id, created_at"
           )
           .eq("business_id", selectedBusiness.id)
           .order("started_at", { ascending: false }),
@@ -902,6 +928,10 @@ export default async function ReportsPage({
   const averageByProperty = averageSessionHoursBy(
     (session) => session.property_name
   );
+  const recentCompletedJobSessions = completedJobSessions.slice(0, 4);
+  const sessionsNeedingBreakdown = completedJobSessions
+    .filter((session) => !breakdownSessionIds.has(session.id))
+    .slice(0, 3);
 
   return (
     <AppShell>
@@ -1013,6 +1043,105 @@ export default async function ReportsPage({
               detail="Stopped sessions"
               urgent={sessionsMissingBreakdown > 0}
             />
+          </div>
+
+          <div className="mt-5 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+            <div className="labor-review-panel rounded-3xl border border-white/10 bg-black/25 p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-200">
+                    Recent Sessions
+                  </p>
+                  <h3 className="mt-2 text-xl font-black">
+                    Latest labor records
+                  </h3>
+                </div>
+                <span className="rounded-full border border-white/10 px-3 py-1 text-xs font-black text-zinc-300">
+                  {completedJobSessions.length} total
+                </span>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                {recentCompletedJobSessions.length > 0 ? (
+                  recentCompletedJobSessions.map((session) => (
+                    <Link
+                      key={session.id}
+                      href={queueItemHref(businessSlug, session.queue_item_id)}
+                      className="labor-session-row block rounded-2xl border border-white/10 bg-zinc-950/55 p-4 transition hover:-translate-y-0.5 hover:border-emerald-300/40"
+                    >
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <p className="font-black">
+                            {session.property_name || "Property"}
+                            {session.unit_label
+                              ? ` / Unit ${session.unit_label}`
+                              : ""}
+                          </p>
+                          <p className="mt-1 text-sm text-zinc-400">
+                            {session.job_type || "Job"} ended{" "}
+                            {formatDateTime(session.ended_at)}
+                          </p>
+                        </div>
+                        <span className="rounded-full bg-emerald-400 px-3 py-1 text-xs font-black text-emerald-950">
+                          {formatHoursFromMinutes(session.total_minutes ?? 0)}
+                        </span>
+                      </div>
+                    </Link>
+                  ))
+                ) : (
+                  <p className="rounded-2xl border border-dashed border-white/15 p-4 text-sm text-zinc-400">
+                    Completed job sessions will appear here after the first
+                    stop.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="labor-review-panel rounded-3xl border border-amber-400/25 bg-amber-500/10 p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-200">
+                    Follow-Up
+                  </p>
+                  <h3 className="mt-2 text-xl font-black">
+                    Missing breakdowns
+                  </h3>
+                </div>
+                <span className="rounded-full bg-amber-300 px-3 py-1 text-xs font-black text-amber-950">
+                  {sessionsMissingBreakdown}
+                </span>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                {sessionsNeedingBreakdown.length > 0 ? (
+                  sessionsNeedingBreakdown.map((session) => (
+                    <Link
+                      key={session.id}
+                      href={queueItemHref(businessSlug, session.queue_item_id)}
+                      className="labor-session-row block rounded-2xl border border-amber-300/20 bg-black/25 p-4 transition hover:-translate-y-0.5 hover:border-amber-300/50"
+                    >
+                      <p className="font-black">
+                        {session.property_name || "Property"}
+                        {session.unit_label
+                          ? ` / Unit ${session.unit_label}`
+                          : ""}
+                      </p>
+                      <p className="mt-1 text-sm text-zinc-400">
+                        {formatHoursFromMinutes(session.total_minutes ?? 0)}{" "}
+                        still needs categories
+                      </p>
+                      <p className="mt-3 text-sm font-black text-amber-200">
+                        Open job to break down time
+                      </p>
+                    </Link>
+                  ))
+                ) : (
+                  <p className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-4 text-sm font-semibold text-emerald-100">
+                    Labor records are caught up.
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         </Card>
 
