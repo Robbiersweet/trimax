@@ -121,6 +121,8 @@ export default function JobSessionPanel({
 }: JobSessionPanelProps) {
   const [userId, setUserId] = useState<string | null>(null);
   const [activeSession, setActiveSession] = useState<JobSession | null>(null);
+  const [otherActiveSession, setOtherActiveSession] =
+    useState<JobSession | null>(null);
   const [sessions, setSessions] = useState<JobSession[]>([]);
   const [breakdowns, setBreakdowns] = useState<JobSessionBreakdown[]>([]);
   const [elapsedMinutes, setElapsedMinutes] = useState(0);
@@ -137,8 +139,33 @@ export default function JobSessionPanel({
 
   const displayJobType = jobTypeDraft || jobType || "Paint";
 
-  async function loadSessions(currentUserId?: string | null) {
-    setMessage(null);
+  async function loadSessions(
+    currentUserId?: string | null,
+    options?: { preserveMessage?: boolean }
+  ) {
+    if (!options?.preserveMessage) {
+      setMessage(null);
+    }
+
+    let activeAnywhere: JobSession | null = null;
+
+    if (currentUserId) {
+      const { data: activeData, error: activeError } = await supabase
+        .from("job_sessions")
+        .select(
+          "id, business_id, user_id, property_name, unit_label, queue_item_id, estimate_id, invoice_id, job_type, started_at, ended_at, total_minutes, notes, created_at"
+        )
+        .eq("business_id", businessId)
+        .eq("user_id", currentUserId)
+        .is("ended_at", null)
+        .order("started_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!activeError) {
+        activeAnywhere = activeData as JobSession | null;
+      }
+    }
 
     const { data: sessionData, error: sessionError } = await supabase
       .from("job_sessions")
@@ -169,9 +196,18 @@ export default function JobSessionPanel({
 
     setSetupMissing(false);
     setSessions(loadedSessions);
-    setActiveSession(loadedActive);
+    setActiveSession(loadedActive ?? null);
+    setOtherActiveSession(
+      activeAnywhere && activeAnywhere.queue_item_id !== queueItemId
+        ? activeAnywhere
+        : null
+    );
     setElapsedMinutes(
-      loadedActive ? minutesBetween(loadedActive.started_at) : 0
+      loadedActive
+        ? minutesBetween(loadedActive.started_at)
+        : activeAnywhere
+          ? minutesBetween(activeAnywhere.started_at)
+          : 0
     );
 
     const sessionIds = loadedSessions.map((session) => session.id);
@@ -348,7 +384,7 @@ export default function JobSessionPanel({
     if (skip) {
       setStoppedSession(null);
       setMessage("Session saved. Breakdown skipped for now.");
-      await loadSessions(userId);
+      await loadSessions(userId, { preserveMessage: true });
       return;
     }
 
@@ -409,7 +445,40 @@ export default function JobSessionPanel({
 
     setStoppedSession(null);
     setMessage("Session and breakdown saved.");
-    await loadSessions(userId);
+    await loadSessions(userId, { preserveMessage: true });
+  }
+
+  function applyBreakdownPreset(
+    preset: "paint" | "cabinet" | "material" | "admin"
+  ) {
+    if (preset === "paint") {
+      setBreakdownDrafts([
+        { workType: "Prep", minutes: "", percentage: "15", notes: "" },
+        { workType: "Paint", minutes: "", percentage: "75", notes: "" },
+        { workType: "Touch Ups", minutes: "", percentage: "10", notes: "" },
+      ]);
+      return;
+    }
+
+    if (preset === "cabinet") {
+      setBreakdownDrafts([
+        { workType: "Prep", minutes: "", percentage: "20", notes: "" },
+        { workType: "Cabinets", minutes: "", percentage: "70", notes: "" },
+        { workType: "Touch Ups", minutes: "", percentage: "10", notes: "" },
+      ]);
+      return;
+    }
+
+    if (preset === "material") {
+      setBreakdownDrafts([
+        { workType: "Material Run", minutes: "", percentage: "100", notes: "" },
+      ]);
+      return;
+    }
+
+    setBreakdownDrafts([
+      { workType: "Admin", minutes: "", percentage: "100", notes: "" },
+    ]);
   }
 
   function updateBreakdown(index: number, field: keyof BreakdownDraft, value: string) {
@@ -450,7 +519,7 @@ export default function JobSessionPanel({
         {!activeSession ? (
           <button
             className="app-button-primary rounded-2xl px-5 py-4 text-base font-black"
-            disabled={setupMissing || isBusy}
+            disabled={setupMissing || isBusy || Boolean(otherActiveSession)}
             onClick={() => setShowStartModal(true)}
             type="button"
           >
@@ -463,6 +532,32 @@ export default function JobSessionPanel({
         <p className="mt-4 rounded-2xl border border-sky-500/25 bg-black/25 px-4 py-3 text-sm font-semibold text-sky-100">
           {message}
         </p>
+      ) : null}
+
+      {otherActiveSession ? (
+        <div className="job-session-active-elsewhere mt-5 rounded-3xl border border-amber-400/35 bg-amber-500/10 p-4">
+          <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-200">
+                Active Somewhere Else
+              </p>
+              <h3 className="mt-2 text-2xl font-black">
+                {formatDuration(elapsedMinutes)}
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-amber-50/85">
+                {otherActiveSession.property_name || "Property"}{" "}
+                {otherActiveSession.unit_label
+                  ? `/ Unit ${otherActiveSession.unit_label}`
+                  : ""}{" "}
+                / {otherActiveSession.job_type || "Job"}
+              </p>
+            </div>
+
+            <p className="rounded-2xl border border-amber-300/25 bg-black/25 px-4 py-3 text-sm font-bold text-amber-100">
+              Stop that session before starting another.
+            </p>
+          </div>
+        </div>
       ) : null}
 
       {activeSession ? (
@@ -575,6 +670,37 @@ export default function JobSessionPanel({
             >
               {formatDuration(breakdownTotals.effectiveMinutes)} assigned
             </p>
+          </div>
+
+          <div className="mt-4 grid gap-2 sm:grid-cols-4">
+            <button
+              className="job-session-preset rounded-2xl border border-white/10 bg-black/25 px-3 py-3 text-sm font-black transition hover:border-sky-300/50"
+              onClick={() => applyBreakdownPreset("paint")}
+              type="button"
+            >
+              Paint Day
+            </button>
+            <button
+              className="job-session-preset rounded-2xl border border-white/10 bg-black/25 px-3 py-3 text-sm font-black transition hover:border-sky-300/50"
+              onClick={() => applyBreakdownPreset("cabinet")}
+              type="button"
+            >
+              Cabinets
+            </button>
+            <button
+              className="job-session-preset rounded-2xl border border-white/10 bg-black/25 px-3 py-3 text-sm font-black transition hover:border-sky-300/50"
+              onClick={() => applyBreakdownPreset("material")}
+              type="button"
+            >
+              Material Run
+            </button>
+            <button
+              className="job-session-preset rounded-2xl border border-white/10 bg-black/25 px-3 py-3 text-sm font-black transition hover:border-sky-300/50"
+              onClick={() => applyBreakdownPreset("admin")}
+              type="button"
+            >
+              Admin
+            </button>
           </div>
 
           <div className="mt-4 space-y-3">

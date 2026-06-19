@@ -149,8 +149,14 @@ create policy "Allow business job session update"
 on public.job_sessions
 for update
 to authenticated
-using (public.trimax_has_business_access(business_id))
-with check (public.trimax_has_business_access(business_id));
+using (
+  public.trimax_has_business_access(business_id)
+  and user_id = auth.uid()
+)
+with check (
+  public.trimax_has_business_access(business_id)
+  and user_id = auth.uid()
+);
 
 drop policy if exists "Allow business job breakdown read"
   on public.job_session_breakdowns;
@@ -183,5 +189,23 @@ create policy "Allow business job breakdown update"
 on public.job_session_breakdowns
 for update
 to authenticated
-using (public.trimax_has_business_access(business_id))
-with check (public.trimax_has_business_access(business_id));
+using (
+  public.trimax_has_business_access(business_id)
+  and exists (
+    select 1
+    from public.job_sessions js
+    where js.id = job_session_breakdowns.job_session_id
+      and js.business_id = job_session_breakdowns.business_id
+      and js.user_id = auth.uid()
+  )
+)
+with check (
+  public.trimax_has_business_access(business_id)
+  and exists (
+    select 1
+    from public.job_sessions js
+    where js.id = job_session_breakdowns.job_session_id
+      and js.business_id = job_session_breakdowns.business_id
+      and js.user_id = auth.uid()
+  )
+);
