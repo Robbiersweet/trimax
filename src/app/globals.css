@@ -10347,6 +10347,29 @@ html.theme-light .app-workspace-panel::before {
     rgba(15, 23, 42, 0.66);
 }
 
+.job-session-planning-card {
+  background:
+    radial-gradient(circle at 12% 10%, rgba(14, 165, 233, 0.16), transparent 24rem),
+    radial-gradient(circle at 90% 0%, rgba(168, 85, 247, 0.12), transparent 22rem),
+    rgba(15, 23, 42, 0.68);
+  border-color: rgba(125, 211, 252, 0.2);
+}
+
+.job-session-planning-signal {
+  min-height: 15.5rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 16px 36px rgba(2, 6, 23, 0.14);
+}
+
+.job-session-planning-signal:hover {
+  border-color: rgba(125, 211, 252, 0.34);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 20px 48px rgba(14, 165, 233, 0.1),
+    0 16px 36px rgba(2, 6, 23, 0.18);
+}
+
 .job-session-ready-row {
   min-height: 10.5rem;
 }
@@ -10632,6 +10655,44 @@ html.theme-light .job-session-first-run-step .text-emerald-200 {
 html.theme-light .job-session-ready-board {
   background: #ffffff !important;
   border-color: #cbd5e1 !important;
+}
+
+html.theme-light .job-session-planning-card {
+  background:
+    radial-gradient(circle at 12% 10%, rgba(14, 116, 144, 0.08), transparent 24rem),
+    radial-gradient(circle at 90% 0%, rgba(124, 58, 237, 0.07), transparent 22rem),
+    #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.theme-light .job-session-planning-signal {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .job-session-planning-signal:hover {
+  border-color: #93c5fd !important;
+  box-shadow:
+    0 20px 46px rgba(37, 99, 235, 0.1),
+    0 12px 28px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.theme-light .job-session-planning-signal .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light .job-session-planning-signal .text-zinc-400 {
+  color: #475569 !important;
+}
+
+html.theme-light .job-session-planning-signal .text-sky-200 {
+  color: #075985 !important;
+}
+
+html.theme-light .job-session-planning-signal .bg-white\/5 {
+  background: #f8fafc !important;
+  border-color: #d7dde8 !important;
 }
 
 html.theme-light .job-session-ready-row {

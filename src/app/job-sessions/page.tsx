@@ -152,6 +152,31 @@ function isClosedQueueItem(item: QueueItem) {
   );
 }
 
+function normalizeWorkLabel(value: string | null | undefined) {
+  return (value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function planningConfidence(sampleCount: number) {
+  if (sampleCount >= 5) {
+    return "High";
+  }
+
+  if (sampleCount >= 2) {
+    return "Building";
+  }
+
+  if (sampleCount === 1) {
+    return "Early";
+  }
+
+  return "Learning";
+}
+
 export default async function JobSessionsPage({
   searchParams,
 }: {
@@ -295,6 +320,39 @@ export default async function JobSessionsPage({
         first.label.localeCompare(second.label)
     );
   const strongestLaborPattern = completedSessionAverages[0] ?? null;
+  const completedAveragesByKey = new Map(
+    completedSessionAverages.map((item) => [
+      normalizeWorkLabel(item.label),
+      item,
+    ])
+  );
+  const propertyLaborAverages = Array.from(
+    completedSessions.reduce((map, session) => {
+      const label = session.property_name?.trim() || "Property";
+      const minutes =
+        session.total_minutes ??
+        minutesBetween(session.started_at, session.ended_at);
+
+      if (minutes <= 0) {
+        return map;
+      }
+
+      const current = map.get(label) ?? { count: 0, minutes: 0 };
+      map.set(label, {
+        count: current.count + 1,
+        minutes: current.minutes + minutes,
+      });
+
+      return map;
+    }, new Map<string, { count: number; minutes: number }>())
+  ).map(([label, value]) => ({
+    label,
+    count: value.count,
+    averageMinutes: Math.round(value.minutes / value.count),
+  }));
+  const propertyAveragesByKey = new Map(
+    propertyLaborAverages.map((item) => [normalizeWorkLabel(item.label), item])
+  );
   const workTypeTotals = Array.from(
     breakdowns.reduce((map, breakdown) => {
       const label = breakdown.work_type?.trim() || "Other";
@@ -413,6 +471,58 @@ export default async function JobSessionsPage({
         second.count - first.count ||
         first.label.localeCompare(second.label)
     );
+  const laborPlanningSignals = readyWorkItems.slice(0, 3).map((item) => {
+    const jobKey = normalizeWorkLabel(item.paint_type);
+    const propertyKey = normalizeWorkLabel(item.property);
+    const matchedJobPattern =
+      completedAveragesByKey.get(jobKey) ??
+      completedSessionAverages.find((pattern) => {
+        const patternKey = normalizeWorkLabel(pattern.label);
+        return (
+          Boolean(jobKey) &&
+          (patternKey.includes(jobKey) || jobKey.includes(patternKey))
+        );
+      }) ??
+      null;
+    const propertyPattern = propertyAveragesByKey.get(propertyKey) ?? null;
+    const estimatedMinutes =
+      matchedJobPattern?.averageMinutes ??
+      propertyPattern?.averageMinutes ??
+      strongestLaborPattern?.averageMinutes ??
+      0;
+    const sampleCount =
+      matchedJobPattern?.count ??
+      propertyPattern?.count ??
+      strongestLaborPattern?.count ??
+      0;
+    const pressure =
+      item.dueInDays === null
+        ? "No due date"
+        : item.dueInDays < 0
+          ? `${Math.abs(item.dueInDays)}d late`
+          : item.dueInDays === 0
+            ? "Due today"
+            : `${item.dueInDays}d out`;
+    const guidance =
+      item.hasSession
+        ? "Labor already started. Use history to compare pace."
+        : estimatedMinutes > 0
+          ? `Plan around ${formatDuration(estimatedMinutes)} before scheduling another tight turn.`
+          : "Start one session here to teach Trimax this work pattern.";
+
+    return {
+      id: item.id,
+      property: item.property || "Property",
+      unit: item.unit || "Unit",
+      jobType: item.paint_type || "Work",
+      estimateLabel:
+        estimatedMinutes > 0 ? formatDuration(estimatedMinutes) : "Learning",
+      confidence: planningConfidence(sampleCount),
+      pressure,
+      guidance,
+      href: queueItemHref(businessSlug, item.id),
+    };
+  });
 
   return (
     <AppShell>
@@ -510,6 +620,40 @@ export default async function JobSessionsPage({
                   rank={index + 1}
                   businessSlug={businessSlug}
                 />
+              ))
+            )}
+          </div>
+        </Card>
+
+        <Card className="job-session-hub-card job-session-planning-card">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="section-kicker text-sm font-black uppercase tracking-[0.24em] text-sky-300">
+                Labor Intelligence
+              </p>
+              <h2 className="mt-2 text-2xl font-black">
+                Plan the next work block with real history
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+                Trimax compares ready queue work against completed sessions so
+                you can see which units have enough labor memory to guide the
+                schedule.
+              </p>
+            </div>
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm font-black">
+              {completedSessions.length} completed
+            </span>
+          </div>
+
+          <div className="mt-5 grid gap-3 lg:grid-cols-3">
+            {laborPlanningSignals.length === 0 ? (
+              <EmptyState
+                title="No planning signals yet"
+                detail="Active queue work and completed sessions will create labor guidance here."
+              />
+            ) : (
+              laborPlanningSignals.map((signal) => (
+                <LaborPlanningSignal key={signal.id} signal={signal} />
               ))
             )}
           </div>
@@ -1031,6 +1175,69 @@ function ReadyWorkRow({
           ) : null}
         </div>
       </div>
+    </Link>
+  );
+}
+
+function LaborPlanningSignal({
+  signal,
+}: {
+  signal: {
+    href: string;
+    property: string;
+    unit: string;
+    jobType: string;
+    estimateLabel: string;
+    confidence: string;
+    pressure: string;
+    guidance: string;
+  };
+}) {
+  const confidenceTone =
+    signal.confidence === "High"
+      ? "border-emerald-300/35 bg-emerald-300/10 text-emerald-200"
+      : signal.confidence === "Building"
+        ? "border-sky-300/35 bg-sky-300/10 text-sky-200"
+        : "border-amber-300/35 bg-amber-300/10 text-amber-200";
+
+  return (
+    <Link
+      href={signal.href}
+      className="job-session-planning-signal rounded-2xl border border-white/10 bg-black/25 p-4 transition hover:-translate-y-0.5"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-black text-white">
+            {signal.property}
+          </p>
+          <p className="mt-1 text-3xl font-black">{signal.unit}</p>
+        </div>
+        <span
+          className={`rounded-full border px-3 py-1 text-xs font-black ${confidenceTone}`}
+        >
+          {signal.confidence}
+        </span>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-zinc-400">
+            Expected
+          </p>
+          <p className="mt-1 text-xl font-black">{signal.estimateLabel}</p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-zinc-400">
+            Schedule
+          </p>
+          <p className="mt-1 text-xl font-black">{signal.pressure}</p>
+        </div>
+      </div>
+
+      <p className="mt-4 text-sm leading-6 text-zinc-400">{signal.guidance}</p>
+      <p className="mt-3 text-xs font-black uppercase tracking-[0.16em] text-sky-200">
+        {signal.jobType}
+      </p>
     </Link>
   );
 }
