@@ -1135,6 +1135,45 @@ export default async function DashboardPage({
         : operatingAltitudeScore >= 48
           ? "Trimax sees pressure in collection, queue, or records."
           : "Important work needs attention before momentum drops.";
+  const operatingAltitudeSignals = [
+    {
+      label: "Cash",
+      value: `${collectionRate}%`,
+      detail: "collected",
+      score: collectionRate,
+      tone: collectionRate >= 70 ? "emerald" : "amber",
+    },
+    {
+      label: "Proof",
+      value:
+        totalRiskFlags === 0
+          ? "Clean"
+          : `${totalRiskFlags} flag${totalRiskFlags === 1 ? "" : "s"}`,
+      detail: "records",
+      score: proofHealthScore,
+      tone: totalRiskFlags === 0 ? "emerald" : "rose",
+    },
+    {
+      label: "Queue",
+      value:
+        readySoonUnscheduled.length > 0
+          ? `${readySoonUnscheduled.length} soon`
+          : `${activeQueueItems.length} active`,
+      detail: "workflow",
+      score: queueHealthScore,
+      tone: readySoonUnscheduled.length > 0 ? "amber" : "sky",
+    },
+    {
+      label: "Aging",
+      value:
+        pastDueInvoices.length === 0
+          ? "Clear"
+          : `${pastDueInvoices.length} late`,
+      detail: "invoices",
+      score: pastDueHealthScore,
+      tone: pastDueInvoices.length === 0 ? "emerald" : "rose",
+    },
+  ];
   const riskRadarItems = [
     {
       label: "Reminder Needed",
@@ -2243,6 +2282,36 @@ export default async function DashboardPage({
                 <p className="mt-2 text-xs leading-5">
                   {operatingAltitudeDetail}
                 </p>
+
+                <div className="dashboard-operating-altimeter-breakdown mt-3 grid grid-cols-2 gap-2">
+                  {operatingAltitudeSignals.map((signal) => (
+                    <div
+                      key={signal.label}
+                      className="dashboard-operating-altimeter-chip rounded-xl border p-2"
+                      data-tone={signal.tone}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <span>
+                          <span className="block text-[0.62rem] font-black uppercase tracking-[0.16em]">
+                            {signal.label}
+                          </span>
+                          <strong className="mt-0.5 block text-sm">
+                            {signal.value}
+                          </strong>
+                        </span>
+
+                        <em className="not-italic">{signal.detail}</em>
+                      </div>
+
+                      <div
+                        className="dashboard-operating-altimeter-mini-track mt-2"
+                        aria-label={`${signal.label} signal ${signal.score}%`}
+                      >
+                        <span style={{ width: `${signal.score}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="grid gap-2 sm:grid-cols-3">
