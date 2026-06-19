@@ -74,6 +74,9 @@ export default function AppShell({
           Skip to main content
         </a>
       ) : null}
+      {!isAuthPage ? (
+        <div className="app-platinum-horizon" aria-hidden="true" />
+      ) : null}
       <NavigationHistoryTracker />
       {isAuthPage ? (
         <div className="mx-auto max-w-6xl px-4 py-5">

@@ -9844,6 +9844,45 @@ html.theme-light body main
   position: relative;
 }
 
+.app-platinum-horizon {
+  background:
+    linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(14, 165, 233, 0.62) 20%,
+      rgba(16, 185, 129, 0.56) 48%,
+      rgba(245, 158, 11, 0.5) 72%,
+      transparent 100%
+    );
+  box-shadow:
+    0 0 22px rgba(14, 165, 233, 0.2),
+    0 0 38px rgba(16, 185, 129, 0.12);
+  height: 3px;
+  inset-inline: 0;
+  overflow: hidden;
+  pointer-events: none;
+  position: fixed;
+  top: 0;
+  z-index: 60;
+}
+
+.app-platinum-horizon::after {
+  animation: trimaxPlatinumSweep 7s ease-in-out infinite;
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.74),
+      rgba(250, 204, 21, 0.42),
+      transparent
+    );
+  content: "";
+  filter: blur(0.5px);
+  inset-block: 0;
+  position: absolute;
+  width: 28vw;
+}
+
 .app-shell-root::before {
   background:
     radial-gradient(circle at 14% 6%, rgba(14, 165, 233, 0.16), transparent 28rem),
@@ -9909,6 +9948,21 @@ html.theme-light .app-shell-root::before {
     radial-gradient(circle at 14% 6%, rgba(37, 99, 235, 0.12), transparent 28rem),
     radial-gradient(circle at 88% 0%, rgba(20, 184, 166, 0.1), transparent 24rem),
     linear-gradient(115deg, rgba(248, 250, 252, 0), rgba(226, 232, 240, 0.62) 48%, rgba(248, 250, 252, 0));
+}
+
+html.theme-light .app-platinum-horizon {
+  background:
+    linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(37, 99, 235, 0.72) 20%,
+      rgba(5, 150, 105, 0.62) 48%,
+      rgba(217, 119, 6, 0.54) 72%,
+      transparent 100%
+    );
+  box-shadow:
+    0 0 16px rgba(37, 99, 235, 0.14),
+    0 0 28px rgba(5, 150, 105, 0.1);
 }
 
 html.theme-light .app-shell-content::after {
@@ -10590,6 +10644,24 @@ html.theme-light :is(a, button).dashboard-workflow-node:focus-visible {
   }
 }
 
+@keyframes trimaxPlatinumSweep {
+  0%,
+  18%,
+  100% {
+    opacity: 0;
+    transform: translateX(-36vw);
+  }
+
+  34% {
+    opacity: 1;
+  }
+
+  62% {
+    opacity: 0.8;
+    transform: translateX(108vw);
+  }
+}
+
 @keyframes trimaxMastheadSheen {
   0%,
   42%,
@@ -10627,6 +10699,7 @@ html.theme-light :is(a, button).dashboard-workflow-node:focus-visible {
   .dashboard-masthead::after,
   .dashboard-workflow-core,
   .app-workspace-panel,
+  .app-platinum-horizon::after,
   .quick-command-launcher,
   .quick-command-panel {
     animation: none;
