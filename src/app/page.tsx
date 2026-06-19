@@ -1941,6 +1941,54 @@ export default async function DashboardPage({
     action: totalRiskFlags > 0 ? "Review proof" : "Open reports",
     tone: totalRiskFlags > 0 ? "rose" : "emerald",
   });
+  const trimaxAdvantageLoop = [
+    {
+      label: "Notice",
+      title:
+        visiblePatternRecognitionItems[0]?.title ??
+        "Trimax keeps watching the business rhythm",
+      detail:
+        visiblePatternRecognitionItems[0]?.detail ??
+        "Queue, invoice, payment, and proof signals are scanned together so patterns do not stay buried in separate pages.",
+      href:
+        visiblePatternRecognitionItems[0]?.href ??
+        `/reports?business=${selectedBusinessSlug}`,
+      metric:
+        visiblePatternRecognitionItems[0]?.signal ??
+        `${visiblePatternRecognitionItems.length} signal${
+          visiblePatternRecognitionItems.length === 1 ? "" : "s"
+        }`,
+      tone: visiblePatternRecognitionItems[0]?.tone ?? "sky",
+    },
+    {
+      label: "Decide",
+      title: leadingPriorityMove?.label ?? "The next move stays obvious",
+      detail:
+        leadingPriorityMove?.reason ??
+        "Trimax ranks collection, queue, proof, and payment work so the best next action rises above the noise.",
+      href:
+        leadingPriorityMove?.href ??
+        `/?business=${selectedBusinessSlug}#dashboard-focus`,
+      metric: leadingPriorityMove
+        ? `${leadingPriorityMove.confidence}%`
+        : `${priorityStackAverageConfidence}%`,
+      tone: leadingPriorityMove?.tone ?? "sky",
+    },
+    {
+      label: "Prove",
+      title:
+        totalRiskFlags > 0
+          ? "Proof gaps are visible before they become problems"
+          : "The work trail is defensible",
+      detail: auditHealthDetail,
+      href: `/activity?business=${selectedBusinessSlug}`,
+      metric:
+        totalRiskFlags > 0
+          ? `${totalRiskFlags} flag${totalRiskFlags === 1 ? "" : "s"}`
+          : proofFlightRecorderWindowLabel,
+      tone: totalRiskFlags > 0 ? "rose" : "emerald",
+    },
+  ];
   const workflowMapStats = [
     {
       label: "Collection",
@@ -2484,6 +2532,51 @@ export default async function DashboardPage({
                   </p>
                 </Link>
               ))}
+            </div>
+
+            <div className="dashboard-advantage-loop mt-5 rounded-2xl border p-4">
+              <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.22em]">
+                    Trimax Advantage Loop
+                  </p>
+
+                  <h3 className="mt-1 text-xl font-black text-white">
+                    Notice, decide, and prove the work
+                  </h3>
+                </div>
+
+                <span className="dashboard-advantage-loop-badge rounded-full border px-3 py-1 text-xs font-black">
+                  Live business OS
+                </span>
+              </div>
+
+              <div className="dashboard-advantage-loop-grid mt-4">
+                {trimaxAdvantageLoop.map((item, index) => (
+                  <Link
+                    key={`${item.label}-${item.title}`}
+                    href={item.href}
+                    data-tone={item.tone}
+                    className="dashboard-advantage-loop-step"
+                  >
+                    <span className="dashboard-advantage-loop-index">
+                      {index + 1}
+                    </span>
+
+                    <span className="min-w-0">
+                      <span className="dashboard-advantage-loop-label">
+                        {item.label}
+                      </span>
+                      <strong>{item.title}</strong>
+                      <em>{item.detail}</em>
+                    </span>
+
+                    <span className="dashboard-advantage-loop-metric">
+                      {item.metric}
+                    </span>
+                  </Link>
+                ))}
+              </div>
             </div>
 
             {missionChainItems.length > 0 ? (
