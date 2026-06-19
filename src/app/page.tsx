@@ -1834,6 +1834,16 @@ export default async function DashboardPage({
         tone: leadingPriorityMove.tone,
       }
     : null;
+  const missionChainItems = topPriorityStack.slice(0, 3).map((item, index) => ({
+    ...item,
+    step: index + 1,
+    connector:
+      index === 0
+        ? "Start here"
+        : index === 1
+          ? "Then"
+          : "Finish with",
+  }));
   const intelligenceBriefItems: {
     label: string;
     title: string;
@@ -2475,6 +2485,53 @@ export default async function DashboardPage({
                 </Link>
               ))}
             </div>
+
+            {missionChainItems.length > 0 ? (
+              <div className="dashboard-mission-chain mt-5 rounded-2xl border p-4">
+                <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                  <div>
+                    <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.22em]">
+                      Trimax Mission Chain
+                    </p>
+
+                    <h3 className="mt-1 text-xl font-black text-white">
+                      The cleanest path from attention to action
+                    </h3>
+                  </div>
+
+                  <span className="dashboard-mission-chain-score rounded-full border px-3 py-1 text-xs font-black">
+                    {priorityStackAverageConfidence}% aligned
+                  </span>
+                </div>
+
+                <div className="dashboard-mission-chain-rail mt-4">
+                  {missionChainItems.map((item) => (
+                    <Link
+                      key={`${item.step}-${item.href}`}
+                      href={item.href}
+                      data-tone={item.tone}
+                      className="dashboard-mission-step"
+                    >
+                      <span className="dashboard-mission-step-number">
+                        {item.step}
+                      </span>
+
+                      <span className="min-w-0">
+                        <span className="dashboard-mission-step-connector">
+                          {item.connector}
+                        </span>
+                        <strong>{item.label}</strong>
+                        <em>{item.reason}</em>
+                      </span>
+
+                      <span className="dashboard-mission-step-action">
+                        {item.action}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </Card>
         </RoleVisible>
 
