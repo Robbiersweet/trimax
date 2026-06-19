@@ -263,6 +263,47 @@ export default async function JobSessionsPage({
             detail: "Open the next job and start a session when work begins.",
             href: `/queue?business=${businessSlug}&view=ready-soon`,
           };
+  const unitLaborLedger = Array.from(
+    completedSessions.reduce((map, session) => {
+      const label = sessionLabel(session);
+      const minutes =
+        session.total_minutes ??
+        minutesBetween(session.started_at, session.ended_at);
+
+      if (minutes <= 0) {
+        return map;
+      }
+
+      const current = map.get(label) ?? {
+        count: 0,
+        lastWorkedAt: "",
+        minutes: 0,
+        missingBreakdowns: 0,
+        queueItemId: session.queue_item_id,
+      };
+      const workedAt = session.ended_at ?? session.started_at ?? "";
+
+      map.set(label, {
+        count: current.count + 1,
+        lastWorkedAt:
+          workedAt > current.lastWorkedAt ? workedAt : current.lastWorkedAt,
+        minutes: current.minutes + minutes,
+        missingBreakdowns:
+          current.missingBreakdowns +
+          (breakdownSessionIds.has(session.id) ? 0 : 1),
+        queueItemId: current.queueItemId ?? session.queue_item_id,
+      });
+
+      return map;
+    }, new Map<string, { count: number; lastWorkedAt: string; minutes: number; missingBreakdowns: number; queueItemId: string | null }>())
+  )
+    .map(([label, value]) => ({ label, ...value }))
+    .sort(
+      (first, second) =>
+        second.minutes - first.minutes ||
+        second.count - first.count ||
+        first.label.localeCompare(second.label)
+    );
 
   return (
     <AppShell>
@@ -536,6 +577,71 @@ export default async function JobSessionsPage({
             </div>
           </Card>
         </div>
+
+        <Card className="job-session-hub-card">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="section-kicker text-sm font-black uppercase tracking-[0.24em] text-sky-300">
+                Unit Labor Ledger
+              </p>
+              <h2 className="mt-2 text-2xl font-black">
+                Where field time is accumulating
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-zinc-400">
+                A quick way to recall which jobs have the most real labor
+                attached and whether any stopped sessions still need cleanup.
+              </p>
+            </div>
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm font-black">
+              {unitLaborLedger.length} jobs
+            </span>
+          </div>
+
+          <div className="mt-5 grid gap-3 lg:grid-cols-2">
+            {unitLaborLedger.length === 0 ? (
+              <EmptyState
+                title="No completed unit labor yet"
+                detail="Completed sessions will build a searchable unit labor memory here."
+              />
+            ) : (
+              unitLaborLedger.slice(0, 6).map((item) => (
+                <Link
+                  key={item.label}
+                  href={queueItemHref(businessSlug, item.queueItemId)}
+                  className="job-session-ledger-row rounded-2xl border border-white/10 bg-black/25 p-4 transition hover:-translate-y-0.5"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-black text-white">{item.label}</p>
+                      <p className="mt-1 text-sm text-zinc-400">
+                        Last worked {formatDateTime(item.lastWorkedAt)}
+                      </p>
+                    </div>
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm font-black">
+                      {formatDuration(item.minutes)}
+                    </span>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-black text-zinc-300">
+                      {item.count} session{item.count === 1 ? "" : "s"}
+                    </span>
+                    <span
+                      className={`rounded-full border px-3 py-1 text-xs font-black ${
+                        item.missingBreakdowns > 0
+                          ? "border-amber-300/35 bg-amber-300/10 text-amber-200"
+                          : "border-emerald-300/35 bg-emerald-300/10 text-emerald-200"
+                      }`}
+                    >
+                      {item.missingBreakdowns > 0
+                        ? `${item.missingBreakdowns} to break down`
+                        : "Clean"}
+                    </span>
+                  </div>
+                </Link>
+              ))
+            )}
+          </div>
+        </Card>
 
         <Card className="job-session-hub-card">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

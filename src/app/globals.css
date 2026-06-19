@@ -9918,6 +9918,7 @@ html.theme-light .app-workspace-panel::before {
 .job-session-mix-card,
 .job-session-forecast-card,
 .job-session-forecast-row,
+.job-session-ledger-row,
 .job-session-mix-row {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
@@ -10158,9 +10159,19 @@ html.theme-light .job-session-hub-row .text-white {
 html.theme-light .job-session-hub-row.bg-black\/25,
 html.theme-light .job-session-hub-metric.bg-black\/25,
 html.theme-light .job-session-hub-card .bg-black\/20,
-html.theme-light .job-session-hub-card .bg-black\/25 {
+html.theme-light .job-session-hub-card .bg-black\/25,
+html.theme-light .job-session-ledger-row {
   background: #ffffff !important;
   border-color: #d7dde8 !important;
+}
+
+html.theme-light .job-session-ledger-row .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light .job-session-ledger-row .text-zinc-300,
+html.theme-light .job-session-ledger-row .text-zinc-400 {
+  color: #475569 !important;
 }
 
 html.theme-light .job-session-forecast-card {
