@@ -1724,6 +1724,43 @@ export default async function DashboardPage({
     .sort((first, second) => second.score - first.score)
     .slice(0, 4);
   const leadingPriorityMove = topPriorityStack[0] ?? null;
+  const priorityStackAverageConfidence =
+    topPriorityStack.length > 0
+      ? Math.round(
+          topPriorityStack.reduce((total, item) => total + item.confidence, 0) /
+            topPriorityStack.length,
+        )
+      : 0;
+  const priorityStackSignal = leadingPriorityMove
+    ? {
+        confidence: priorityStackAverageConfidence,
+        detail:
+          topPriorityStack.length > 1
+            ? `Trimax is ranking this above ${
+                topPriorityStack.length - 1
+              } other move${
+                topPriorityStack.length === 2 ? "" : "s"
+              } because ${
+                leadingPriorityMove.reason.charAt(0).toLowerCase() +
+                leadingPriorityMove.reason.slice(1)
+              }.`
+            : `Trimax is treating this as the clearest next move because ${
+                leadingPriorityMove.reason.charAt(0).toLowerCase() +
+                leadingPriorityMove.reason.slice(1)
+              }.`,
+        label:
+          leadingPriorityMove.tone === "rose"
+            ? "Cash risk"
+            : leadingPriorityMove.tone === "amber"
+              ? "Schedule pressure"
+              : leadingPriorityMove.tone === "emerald"
+                ? "Collection path"
+                : leadingPriorityMove.tone === "violet"
+                  ? "Pricing bottleneck"
+                  : "Best next move",
+        tone: leadingPriorityMove.tone,
+      }
+    : null;
   const intelligenceBriefItems: {
     label: string;
     title: string;
@@ -2550,7 +2587,7 @@ export default async function DashboardPage({
                     <span className="flex items-start justify-between gap-3">
                       <span>
                         <span className="block text-xs font-black uppercase tracking-[0.2em]">
-                          Trimax Recommends
+                          Trimax Command Signal
                         </span>
                         <strong className="mt-1 block text-lg">
                           {leadingPriorityMove.action}
@@ -2568,13 +2605,45 @@ export default async function DashboardPage({
                   </Link>
                 ) : null}
 
+                {priorityStackSignal ? (
+                  <div
+                    className="dashboard-priority-signal mb-4 rounded-2xl border p-3"
+                    data-tone={priorityStackSignal.tone}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="flex min-w-0 items-center gap-3">
+                        <span
+                          aria-hidden="true"
+                          className="dashboard-priority-signal-orb"
+                        />
+                        <span className="min-w-0">
+                          <span className="dashboard-priority-signal-label block text-[0.65rem] font-black uppercase tracking-[0.18em]">
+                            Mountain Signal
+                          </span>
+                          <strong className="mt-1 block truncate text-sm">
+                            {priorityStackSignal.label}
+                          </strong>
+                        </span>
+                      </span>
+
+                      <span className="dashboard-priority-signal-confidence rounded-full border px-2.5 py-1 text-xs font-black">
+                        {priorityStackSignal.confidence}% aligned
+                      </span>
+                    </div>
+
+                    <p className="mt-3 text-xs leading-5">
+                      {priorityStackSignal.detail}
+                    </p>
+                  </div>
+                ) : null}
+
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-xs font-black uppercase tracking-[0.2em]">
                       Priority Stack
                     </p>
                     <h3 className="mt-1 text-lg font-black">
-                      Cream at the top
+                      Highest leverage first
                     </h3>
                   </div>
 

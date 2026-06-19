@@ -7598,6 +7598,105 @@ html.theme-light .dashboard-workflow-stat[data-tone="rose"] {
   color: #ffffff;
 }
 
+.dashboard-priority-signal {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(15, 23, 42, 0.42)),
+    rgba(2, 6, 23, 0.44);
+  border-color: rgba(125, 211, 252, 0.22);
+  color: #f8fafc;
+  overflow: hidden;
+  position: relative;
+}
+
+.dashboard-priority-signal::before {
+  background: linear-gradient(90deg, transparent, rgba(125, 211, 252, 0.42), transparent);
+  content: "";
+  height: 1px;
+  left: 0.75rem;
+  opacity: 0.72;
+  position: absolute;
+  right: 0.75rem;
+  top: 0;
+}
+
+.dashboard-priority-signal-orb {
+  background: radial-gradient(circle at 35% 30%, #ffffff, #38bdf8 32%, #0f766e 100%);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 999px;
+  box-shadow: 0 0 24px rgba(56, 189, 248, 0.26);
+  display: inline-block;
+  flex: 0 0 auto;
+  height: 1.85rem;
+  width: 1.85rem;
+}
+
+.dashboard-priority-signal-label {
+  color: #bae6fd;
+}
+
+.dashboard-priority-signal p {
+  color: rgba(226, 232, 240, 0.84);
+}
+
+.dashboard-priority-signal-confidence {
+  background: rgba(2, 6, 23, 0.42);
+  border-color: rgba(125, 211, 252, 0.24);
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.dashboard-priority-signal[data-tone="rose"] {
+  border-color: rgba(251, 113, 133, 0.34);
+}
+
+.dashboard-priority-signal[data-tone="rose"]::before {
+  background: linear-gradient(90deg, transparent, rgba(251, 113, 133, 0.5), transparent);
+}
+
+.dashboard-priority-signal[data-tone="rose"] .dashboard-priority-signal-orb {
+  background: radial-gradient(circle at 35% 30%, #ffffff, #fb7185 32%, #9f1239 100%);
+  box-shadow: 0 0 24px rgba(251, 113, 133, 0.24);
+}
+
+.dashboard-priority-signal[data-tone="amber"] {
+  border-color: rgba(245, 158, 11, 0.38);
+}
+
+.dashboard-priority-signal[data-tone="amber"]::before {
+  background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.52), transparent);
+}
+
+.dashboard-priority-signal[data-tone="amber"] .dashboard-priority-signal-orb {
+  background: radial-gradient(circle at 35% 30%, #ffffff, #f59e0b 32%, #92400e 100%);
+  box-shadow: 0 0 24px rgba(245, 158, 11, 0.22);
+}
+
+.dashboard-priority-signal[data-tone="emerald"] {
+  border-color: rgba(52, 211, 153, 0.34);
+}
+
+.dashboard-priority-signal[data-tone="emerald"]::before {
+  background: linear-gradient(90deg, transparent, rgba(52, 211, 153, 0.48), transparent);
+}
+
+.dashboard-priority-signal[data-tone="emerald"] .dashboard-priority-signal-orb {
+  background: radial-gradient(circle at 35% 30%, #ffffff, #34d399 32%, #047857 100%);
+  box-shadow: 0 0 24px rgba(52, 211, 153, 0.22);
+}
+
+.dashboard-priority-signal[data-tone="violet"] {
+  border-color: rgba(167, 139, 250, 0.34);
+}
+
+.dashboard-priority-signal[data-tone="violet"]::before {
+  background: linear-gradient(90deg, transparent, rgba(167, 139, 250, 0.48), transparent);
+}
+
+.dashboard-priority-signal[data-tone="violet"] .dashboard-priority-signal-orb {
+  background: radial-gradient(circle at 35% 30%, #ffffff, #a78bfa 32%, #5b21b6 100%);
+  box-shadow: 0 0 24px rgba(167, 139, 250, 0.22);
+}
+
 .dashboard-priority-stack-item {
   background: rgba(15, 23, 42, 0.78);
   border-color: rgba(148, 163, 184, 0.18);
@@ -8080,6 +8179,63 @@ html.theme-light .dashboard-next-best-confidence {
   background: #ffffff !important;
   border-color: #bfdbfe !important;
   color: #1d4ed8 !important;
+}
+
+html.theme-light .dashboard-priority-signal {
+  background: linear-gradient(135deg, #f8fafc, #ffffff) !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.05) !important;
+}
+
+html.theme-light .dashboard-priority-signal::before {
+  background: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.38), transparent) !important;
+}
+
+html.theme-light .dashboard-priority-signal-label {
+  color: #075985 !important;
+}
+
+html.theme-light .dashboard-priority-signal p {
+  color: #475569 !important;
+}
+
+html.theme-light .dashboard-priority-signal-confidence {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .dashboard-priority-signal[data-tone="rose"] {
+  border-color: #fb7185 !important;
+}
+
+html.theme-light .dashboard-priority-signal[data-tone="rose"]::before {
+  background: linear-gradient(90deg, transparent, rgba(225, 29, 72, 0.42), transparent) !important;
+}
+
+html.theme-light .dashboard-priority-signal[data-tone="amber"] {
+  border-color: #f59e0b !important;
+}
+
+html.theme-light .dashboard-priority-signal[data-tone="amber"]::before {
+  background: linear-gradient(90deg, transparent, rgba(180, 83, 9, 0.42), transparent) !important;
+}
+
+html.theme-light .dashboard-priority-signal[data-tone="emerald"] {
+  border-color: #34d399 !important;
+}
+
+html.theme-light .dashboard-priority-signal[data-tone="emerald"]::before {
+  background: linear-gradient(90deg, transparent, rgba(5, 150, 105, 0.38), transparent) !important;
+}
+
+html.theme-light .dashboard-priority-signal[data-tone="violet"] {
+  border-color: #a78bfa !important;
+}
+
+html.theme-light .dashboard-priority-signal[data-tone="violet"]::before {
+  background: linear-gradient(90deg, transparent, rgba(124, 58, 237, 0.38), transparent) !important;
 }
 
 html.theme-light .dashboard-priority-stack-item {
