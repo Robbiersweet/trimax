@@ -1773,6 +1773,12 @@ export default function QuickCommandCenter() {
     .slice(0, 10);
   const selectedCommand =
     visibleCommands[Math.min(selectedIndex, visibleCommands.length - 1)];
+  const selectedCommandSourceLabel =
+    selectedCommand?.source === "smart"
+      ? "Smart suggestion"
+      : selectedCommand?.source === "record"
+        ? "Record match"
+        : "Workflow";
 
   function openCommandCenter() {
     setIsOpen(true);
@@ -2224,6 +2230,26 @@ export default function QuickCommandCenter() {
                     : `${visibleCommands.length} ready`}
                 </span>
               </div>
+
+              {selectedCommand ? (
+                <div
+                  className="quick-command-route"
+                  data-tone={selectedCommand.tone}
+                >
+                  <div className="quick-command-route-main">
+                    <p className="quick-command-route-kicker">
+                      Best command route
+                    </p>
+                    <strong>{selectedCommand.title}</strong>
+                    <span>{selectedCommand.detail}</span>
+                  </div>
+                  <div className="quick-command-route-meta">
+                    <span>{selectedCommandSourceLabel}</span>
+                    <span>{selectedCommand.actionLabel ?? "Open"}</span>
+                    <span>Enter opens</span>
+                  </div>
+                </div>
+              ) : null}
 
               {!normalizedQuery && recentCommands.length > 0 ? (
                 <p className="quick-command-section-label">
