@@ -12836,14 +12836,34 @@ html.theme-light :is(a, button).dashboard-workflow-node:focus-visible {
 }
 
 .property-sales-empty-board {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
   background:
     radial-gradient(circle at 0% 0%, rgba(56, 189, 248, 0.16), transparent 36%),
     linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(2, 6, 23, 0.74));
   border-color: rgba(125, 211, 252, 0.24);
+}
+
+.property-sales-readiness-card,
+.property-sales-billing-signal,
+.property-sales-history-empty,
+.property-sales-empty-actions {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 14px 32px rgba(0, 0, 0, 0.16);
+}
+
+.property-sales-billing-signal {
+  position: relative;
+  overflow: hidden;
+}
+
+.property-sales-billing-signal::after {
+  content: "";
+  position: absolute;
+  inset: auto 1rem 0 1rem;
+  height: 0.14rem;
+  border-radius: 999px 999px 0 0;
+  background: linear-gradient(90deg, #34d399, #38bdf8);
+  opacity: 0.72;
 }
 
 .property-sales-photo-slot {
@@ -12865,10 +12885,30 @@ html.theme-light :is(a, button).dashboard-workflow-node:focus-visible {
 }
 
 .property-sales-photo-slot span {
+  display: grid;
+  gap: 0.25rem;
   border-radius: 999px;
   background: rgba(2, 6, 23, 0.62);
   padding: 0.45rem 0.75rem;
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+}
+
+.property-sales-photo-slot strong,
+.property-sales-photo-slot small {
+  display: block;
+}
+
+.property-sales-photo-slot strong {
+  color: #e0f2fe;
+  font-size: 0.86rem;
+  line-height: 1.15;
+}
+
+.property-sales-photo-slot small {
+  color: #cbd5e1;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0;
 }
 
 html.theme-light .property-sales-page .dark-surface {
@@ -12909,19 +12949,31 @@ html.theme-light .property-sales-page .property-sales-metric,
 html.theme-light .property-sales-page .property-sales-confidence-card,
 html.theme-light .property-sales-page .property-sales-meeting-strip,
 html.theme-light .property-sales-page .property-sales-meeting-step,
-html.theme-light .property-sales-page .property-sales-proof-point {
+html.theme-light .property-sales-page .property-sales-proof-point,
+html.theme-light .property-sales-page .property-sales-readiness-card,
+html.theme-light .property-sales-page .property-sales-history-empty,
+html.theme-light .property-sales-page .property-sales-empty-actions {
   background: #ffffff !important;
   border-color: #cbd5e1 !important;
 }
 
 html.theme-light .property-sales-page .property-sales-scope-note,
-html.theme-light .property-sales-page .property-sales-empty-board {
+html.theme-light .property-sales-page .property-sales-empty-board,
+html.theme-light .property-sales-page .property-sales-billing-signal {
   background: linear-gradient(135deg, #eff6ff, #ecfdf5) !important;
   border-color: #93c5fd !important;
 }
 
 html.theme-light .property-sales-page .property-sales-photo-slot span {
   background: rgba(255, 255, 255, 0.86);
+}
+
+html.theme-light .property-sales-page .property-sales-photo-slot strong {
+  color: #0f172a !important;
+}
+
+html.theme-light .property-sales-page .property-sales-photo-slot small {
+  color: #475569 !important;
 }
 
 html.theme-light .property-sales-page .property-sales-copy-brief {

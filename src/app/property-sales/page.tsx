@@ -724,6 +724,61 @@ export default async function PropertySalesPage({
     status: invoice.status ?? "invoice",
     date: invoice.issue_date ?? invoice.created_at,
   }));
+  const readinessSteps = [
+    {
+      label: "Billing found",
+      value:
+        invoices.length > 0
+          ? `${invoices.length} invoice${invoices.length === 1 ? "" : "s"}`
+          : "None yet",
+      detail:
+        invoices.length > 0
+          ? `${formatMoney(
+              invoices.reduce(
+                (total, invoice) => total + parseMoney(invoice.invoice_amount),
+                0
+              )
+            )} stays visible while the turn board waits for linked queue work.`
+          : "Invoices will appear here once this property has billable work.",
+    },
+    {
+      label: "Turn board",
+      value:
+        pipelineCards.length > 0
+          ? `${pipelineCards.length} active`
+          : "Waiting",
+      detail:
+        pipelineCards.length > 0
+          ? "The manager-facing pipeline is already populated."
+          : "Queue items tied to this property will fill the pipeline automatically.",
+    },
+    {
+      label: "Best next move",
+      value: pipelineCards.length > 0 ? "Review turns" : "Add first turn",
+      detail:
+        pipelineCards.length > 0
+          ? "Open the work queue to keep dates, estimates, and completion status current."
+          : "Use the queue when management sends the next unit so sales and operations stay connected.",
+    },
+  ];
+  const photoProofSlots = [
+    {
+      label: "Before",
+      detail: "Starting condition",
+    },
+    {
+      label: "After",
+      detail: "Finished turn",
+    },
+    {
+      label: "Touch-up",
+      detail: "Follow-up proof",
+    },
+    {
+      label: "Manager OK",
+      detail: "Approval record",
+    },
+  ];
   const salesConfidenceCards = [
     {
       label: "Live Visibility",
@@ -1086,14 +1141,43 @@ export default async function PropertySalesPage({
 
             {hasBillingWithoutTurnPipeline ? (
               <div className="property-sales-scope-note mt-5 rounded-2xl border p-4">
-                <p className="text-sm font-black text-white">
-                  Billing is visible, but no active turn cards are linked yet.
-                </p>
-                <p className="mt-2 text-sm leading-6 text-zinc-300">
-                  Trimax found invoices for this property, while the turn pipeline
-                  is waiting for queue items tied to this same property. This keeps
-                  imported billing from being mistaken for active apartment turns.
-                </p>
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <p className="text-sm font-black text-white">
+                      Billing is visible, but no active turn cards are linked yet.
+                    </p>
+                    <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
+                      Trimax found invoices for this property, while the turn
+                      pipeline is waiting for queue items tied to this same
+                      property. This keeps imported billing from being mistaken
+                      for active apartment turns.
+                    </p>
+                  </div>
+                  <Link
+                    href={`/queue?business=${businessSlug}`}
+                    className="inline-flex items-center justify-center rounded-2xl border border-sky-300/40 bg-sky-400/15 px-4 py-3 text-sm font-black text-white transition hover:-translate-y-0.5"
+                  >
+                    Link the next turn
+                  </Link>
+                </div>
+                <div className="property-sales-readiness-grid mt-4 grid gap-3 md:grid-cols-3">
+                  {readinessSteps.map((step) => (
+                    <div
+                      key={step.label}
+                      className="property-sales-readiness-card rounded-2xl border border-white/10 bg-black/20 p-3"
+                    >
+                      <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.18em]">
+                        {step.label}
+                      </p>
+                      <p className="mt-2 text-lg font-black text-white">
+                        {step.value}
+                      </p>
+                      <p className="mt-1 text-sm leading-5 text-zinc-300">
+                        {step.detail}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : null}
           </Card>
@@ -1152,7 +1236,7 @@ export default async function PropertySalesPage({
 
           {hasNoTurnPipeline ? (
             <div className="property-sales-empty-board mt-5 rounded-3xl border p-5">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(18rem,0.36fr)] xl:items-start">
                 <div>
                   <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.22em]">
                     Live Pipeline Status
@@ -1164,12 +1248,43 @@ export default async function PropertySalesPage({
                     {noPipelineMessage}
                   </p>
                 </div>
-                <Link
-                  href={`/queue?business=${businessSlug}`}
-                  className="rounded-2xl border border-sky-300/40 bg-sky-400/15 px-4 py-3 text-center text-sm font-black text-white transition hover:-translate-y-0.5"
-                >
-                  Open Queue
-                </Link>
+                <div className="property-sales-empty-actions rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.18em]">
+                    Next Action
+                  </p>
+                  <p className="mt-2 text-base font-black text-white">
+                    Add or open a queue request
+                  </p>
+                  <p className="mt-2 text-sm leading-5 text-zinc-300">
+                    Once a manager adds the next unit for this property, it will
+                    land in this pipeline automatically.
+                  </p>
+                  <Link
+                    href={`/queue?business=${businessSlug}`}
+                    className="mt-4 inline-flex w-full items-center justify-center rounded-2xl border border-sky-300/40 bg-sky-400/15 px-4 py-3 text-center text-sm font-black text-white transition hover:-translate-y-0.5"
+                  >
+                    Open Queue
+                  </Link>
+                </div>
+              </div>
+
+              <div className="property-sales-readiness-grid mt-5 grid gap-3 md:grid-cols-3">
+                {readinessSteps.map((step) => (
+                  <div
+                    key={step.label}
+                    className="property-sales-readiness-card rounded-2xl border border-white/10 bg-black/20 p-3"
+                  >
+                    <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.18em]">
+                      {step.label}
+                    </p>
+                    <p className="mt-2 text-lg font-black text-white">
+                      {step.value}
+                    </p>
+                    <p className="mt-1 text-sm leading-5 text-zinc-300">
+                      {step.detail}
+                    </p>
+                  </div>
+                ))}
               </div>
 
               {recentBillingSignals.length > 0 ? (
@@ -1178,10 +1293,10 @@ export default async function PropertySalesPage({
                     <Link
                       key={signal.id}
                       href={`/invoices/${signal.id}?business=${businessSlug}`}
-                      className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-4 transition hover:-translate-y-0.5 hover:border-emerald-200/60"
+                      className="property-sales-billing-signal rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-4 transition hover:-translate-y-0.5 hover:border-emerald-200/60"
                     >
-                      <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-100">
-                        Billing Signal
+                      <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.18em]">
+                        Billing record
                       </p>
                       <h4 className="mt-2 text-lg font-black text-white">
                         {signal.displayId}
@@ -1199,6 +1314,9 @@ export default async function PropertySalesPage({
                           {signal.status}
                         </p>
                       </div>
+                      <p className="mt-3 text-xs font-bold text-zinc-400">
+                        Issued {formatDate(signal.date)}
+                      </p>
                     </Link>
                   ))}
                 </div>
@@ -1324,6 +1442,52 @@ export default async function PropertySalesPage({
             </div>
 
             <div className="mt-5 grid gap-3 lg:grid-cols-2">
+              {unitHistory.length === 0 ? (
+                <div className="property-sales-history-empty rounded-2xl border border-white/10 bg-black/20 p-4 lg:col-span-2">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.18em]">
+                        History Builder
+                      </p>
+                      <h3 className="mt-2 text-xl font-black text-white">
+                        Unit memory starts when turns are linked
+                      </h3>
+                      <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
+                        The sales view is ready to show previous paint colors,
+                        notes, estimates, invoices, labor, and proof photos.
+                        Link the next queue item to this property and Trimax
+                        will start building this memory automatically.
+                      </p>
+                    </div>
+                    <Link
+                      href={`/queue?business=${businessSlug}`}
+                      className="inline-flex items-center justify-center rounded-2xl border border-emerald-300/30 bg-emerald-400/10 px-4 py-3 text-sm font-black text-white transition hover:-translate-y-0.5"
+                    >
+                      Build first memory
+                    </Link>
+                  </div>
+                  <div className="mt-4 grid gap-3 md:grid-cols-3">
+                    {[
+                      "Queue request",
+                      "Estimate or invoice",
+                      "Photos and notes",
+                    ].map((item) => (
+                      <div
+                        key={item}
+                        className="rounded-2xl border border-white/10 bg-white/[0.04] p-3"
+                      >
+                        <p className="text-sm font-black text-white">
+                          {item}
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-zinc-400">
+                          Saved with the unit record for future sales calls.
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
               {unitHistory.slice(0, 6).map((history) => (
                 <div
                   key={history.unit}
@@ -1408,10 +1572,10 @@ export default async function PropertySalesPage({
                     <Link
                       key={signal.id}
                       href={`/invoices/${signal.id}?business=${businessSlug}`}
-                      className="rounded-2xl border border-sky-300/20 bg-sky-400/10 p-4 transition hover:-translate-y-0.5 hover:border-sky-200/60"
+                      className="property-sales-billing-signal rounded-2xl border border-sky-300/20 bg-sky-400/10 p-4 transition hover:-translate-y-0.5 hover:border-sky-200/60"
                     >
-                      <p className="text-xs font-black uppercase tracking-[0.2em] text-sky-100">
-                        Invoice Memory
+                      <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.2em]">
+                        Imported billing memory
                       </p>
                       <h3 className="mt-2 text-xl font-black text-white">
                         {signal.unitLabel
@@ -1446,12 +1610,6 @@ export default async function PropertySalesPage({
                 </div>
               ) : null}
 
-              {unitHistory.length === 0 && recentBillingSignals.length === 0 ? (
-                <p className="rounded-2xl border border-dashed border-white/10 bg-black/20 p-4 text-sm leading-6 text-zinc-400">
-                  No unit history exists for this property yet. New turn records
-                  will begin building the property memory automatically.
-                </p>
-              ) : null}
             </div>
           </Card>
 
@@ -1469,12 +1627,15 @@ export default async function PropertySalesPage({
             </p>
 
             <div className="mt-5 grid grid-cols-2 gap-3">
-              {["Before", "After", "Touch-up", "Manager OK"].map((label) => (
+              {photoProofSlots.map((slot) => (
                 <div
-                  key={label}
-                  className="property-sales-photo-slot grid aspect-[4/3] place-items-center rounded-2xl border border-dashed border-sky-300/30 bg-sky-400/5 text-center text-sm font-black text-sky-100"
+                  key={slot.label}
+                  className="property-sales-photo-slot grid aspect-[4/3] place-items-center rounded-2xl border border-dashed border-sky-300/30 bg-sky-400/5 text-center"
                 >
-                  <span>{label} photo</span>
+                  <span>
+                    <strong>{slot.label} photo</strong>
+                    <small>{slot.detail}</small>
+                  </span>
                 </div>
               ))}
             </div>
