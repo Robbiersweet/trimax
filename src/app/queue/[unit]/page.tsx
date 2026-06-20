@@ -10,6 +10,7 @@ import JobSessionPanel from "../../components/JobSessionPanel";
 import MarkCompletedButton from "../../components/MarkCompletedButton";
 import MarkScheduledButton from "../../components/MarkScheduledButton";
 import RoleVisible from "../../components/RoleVisible";
+import SyncUnitProfileButton from "../../components/SyncUnitProfileButton";
 import {
   calendarDataUri,
   calendarFileName,
@@ -364,6 +365,7 @@ export default async function QueueDetailPage({
   let linkedInvoice: LinkedInvoice | null = null;
   let linkedInvoiceActivity: InvoiceActivityLog | null = null;
   let propertyUnitProfile: PropertyUnitProfile | null = null;
+  let northCreekPropertyId: string | null = null;
   let unitHistory: UnitHistoryEntry[] = [];
   const isNorthCreekQueueItem =
     propertyKey(item.property) === "north-creek-apartments";
@@ -426,6 +428,8 @@ export default async function QueueDetailPage({
       .maybeSingle();
 
     if (propertyData?.id) {
+      northCreekPropertyId = propertyData.id;
+
       const { data: unitData } = await supabase
         .from("property_units")
         .select(
@@ -871,16 +875,24 @@ export default async function QueueDetailPage({
                       map and is using that trusted fallback for the profile.
                     </p>
                   </div>
-                  <Link
-                    href={`/property-intelligence?business=${businessSlug}&unit=${encodeURIComponent(
-                      displayUnit || item.unit || ""
-                    )}&returnTo=${encodeURIComponent(
-                      `/queue/${item.id}?business=${businessSlug}`
-                    )}`}
-                    className="inline-flex shrink-0 items-center justify-center rounded-2xl border border-sky-300/40 bg-sky-400/15 px-4 py-2 font-black text-sky-50 transition hover:-translate-y-0.5 hover:border-sky-200"
-                  >
-                    Sync Profile
-                  </Link>
+                  {northCreekPropertyId && confirmedNorthCreekUnit ? (
+                    <SyncUnitProfileButton
+                      businessId={selectedBusiness.id}
+                      propertyId={northCreekPropertyId}
+                      unit={confirmedNorthCreekUnit}
+                    />
+                  ) : (
+                    <Link
+                      href={`/property-intelligence?business=${businessSlug}&unit=${encodeURIComponent(
+                        displayUnit || item.unit || ""
+                      )}&returnTo=${encodeURIComponent(
+                        `/queue/${item.id}?business=${businessSlug}`
+                      )}`}
+                      className="inline-flex shrink-0 items-center justify-center rounded-2xl border border-sky-300/40 bg-sky-400/15 px-4 py-2 font-black text-sky-50 transition hover:-translate-y-0.5 hover:border-sky-200"
+                    >
+                      Open Property Intelligence
+                    </Link>
+                  )}
                 </div>
               </div>
             ) : !displayUnitProfile ? (
