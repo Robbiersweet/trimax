@@ -757,6 +757,26 @@ export default async function PropertySalesPage({
     "Outlet Repairs",
     "Proof Packets",
   ];
+  const meetingDemoSteps = [
+    {
+      step: "1",
+      title: "Show the pipeline",
+      detail:
+        "Walk through open requests, estimates, schedule status, active work, completed turns, and invoices from one property screen.",
+    },
+    {
+      step: "2",
+      title: "Open a unit memory",
+      detail:
+        "Point to paint color, notes, prior estimates, invoices, labor history, and photo placeholders so managers see proof staying attached.",
+    },
+    {
+      step: "3",
+      title: "Close with follow-up",
+      detail:
+        "Show how Trimax keeps next steps visible: reminders, payment proof, missing records, and the exact work R&L owns next.",
+    },
+  ];
 
   const overviewCards = [
     {
@@ -906,6 +926,49 @@ export default async function PropertySalesPage({
                   </h3>
                   <p className="mt-2 text-sm leading-6 text-zinc-300">
                     {card.detail}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="property-sales-meeting-strip mt-5 rounded-3xl border border-cyan-400/20 bg-black/20 p-4">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.22em]">
+                  Meeting Mode
+                </p>
+                <h3 className="mt-2 text-2xl font-black text-white">
+                  Three-minute walkthrough for prospects
+                </h3>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
+                  Use this as your sales script: show the manager what they get
+                  before they ever ask for a status update, invoice copy, paint
+                  color, or proof photo.
+                </p>
+              </div>
+              <Link
+                href={`/property-sales?business=${businessSlug}&demo=evergreen`}
+                className="inline-flex items-center justify-center rounded-2xl border border-cyan-300/40 bg-cyan-400/10 px-4 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:border-cyan-200"
+              >
+                Open Private Demo
+              </Link>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              {meetingDemoSteps.map((step) => (
+                <div
+                  key={step.title}
+                  className="property-sales-meeting-step rounded-2xl border border-white/10 bg-white/[0.04] p-4"
+                >
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-400/10 text-sm font-black text-white">
+                    {step.step}
+                  </span>
+                  <h4 className="mt-3 text-base font-black text-white">
+                    {step.title}
+                  </h4>
+                  <p className="mt-2 text-sm leading-6 text-zinc-300">
+                    {step.detail}
                   </p>
                 </div>
               ))}
