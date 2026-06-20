@@ -442,7 +442,14 @@ function matchesPropertyName(
   itemValue: string | null | undefined,
   propertyLabel: string
 ) {
-  return normalizeText(itemValue) === normalizeText(propertyLabel);
+  const itemText = normalizeText(itemValue);
+  const labelText = normalizeText(propertyLabel);
+
+  if (!itemText || !labelText) {
+    return false;
+  }
+
+  return itemText === labelText || itemText.includes(labelText);
 }
 
 function unitMatchesDocument(unit: string | null, title: string | null) {
@@ -451,6 +458,21 @@ function unitMatchesDocument(unit: string | null, title: string | null) {
   }
 
   return title.toLowerCase().includes(unit.toLowerCase());
+}
+
+function extractUnitLabelFromTitle(title: string | null | undefined) {
+  if (!title) {
+    return null;
+  }
+
+  const explicitUnit = title.match(/\bunit\s+([a-z]?\d{2,4}[a-z]?)\b/i);
+
+  if (explicitUnit?.[1]) {
+    return explicitUnit[1].toUpperCase();
+  }
+
+  const compactUnit = title.match(/\b([a-z]\d{2,4}[a-z]?)\b/i);
+  return compactUnit?.[1]?.toUpperCase() ?? null;
 }
 
 function notesPreview(value: string | null | undefined) {
@@ -483,7 +505,7 @@ async function loadLivePropertyData(
           "id, property, unit, status, priority, paint_type, unit_layout, wall_paint_color, flooring, move_out_date, ready_date, scheduled_date, completed_date, smoked_in, prior_renovation, renovation_needed, notes, linked_estimate_id, created_at, updated_at"
         )
         .eq("business_id", business.id)
-        .ilike("property", propertyLabel)
+        .ilike("property", `%${propertyLabel}%`)
         .order("updated_at", { ascending: false, nullsFirst: false })
         .limit(120),
       supabase
@@ -492,7 +514,7 @@ async function loadLivePropertyData(
           "id, display_id, customer_name, project_title, estimate_amount, status, created_at"
         )
         .eq("business_id", business.id)
-        .ilike("customer_name", propertyLabel)
+        .ilike("customer_name", `%${propertyLabel}%`)
         .order("created_at", { ascending: false })
         .limit(40),
       supabase
@@ -501,7 +523,7 @@ async function loadLivePropertyData(
           "id, display_id, customer_name, project_title, invoice_amount, amount_paid, status, issue_date, due_date, created_at"
         )
         .eq("business_id", business.id)
-        .ilike("customer_name", propertyLabel)
+        .ilike("customer_name", `%${propertyLabel}%`)
         .order("created_at", { ascending: false })
         .limit(50),
       supabase
@@ -510,7 +532,7 @@ async function loadLivePropertyData(
           "id, property_name, unit_label, job_type, started_at, ended_at, total_minutes, invoice_id"
         )
         .eq("business_id", business.id)
-        .ilike("property_name", propertyLabel)
+        .ilike("property_name", `%${propertyLabel}%`)
         .order("started_at", { ascending: false })
         .limit(80),
     ]);
@@ -693,6 +715,14 @@ export default async function PropertySalesPage({
   const noPipelineMessage = hasBillingWithoutTurnPipeline
     ? "New queue requests will appear here as soon as management adds units for this property. Existing invoice totals still stay in the overview so sales and billing stay honest."
     : "New queue requests will appear here as soon as management adds units for this property.";
+  const recentBillingSignals = invoices.slice(0, 4).map((invoice) => ({
+    id: invoice.id,
+    displayId: invoice.display_id ?? "Invoice",
+    unitLabel: extractUnitLabelFromTitle(invoice.project_title),
+    amount: parseMoney(invoice.invoice_amount),
+    status: invoice.status ?? "invoice",
+    date: invoice.issue_date ?? invoice.created_at,
+  }));
 
   const overviewCards = [
     {
@@ -893,23 +923,57 @@ export default async function PropertySalesPage({
 
           {hasNoTurnPipeline ? (
             <div className="property-sales-empty-board mt-5 rounded-3xl border p-5">
-              <div>
-                <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.22em]">
-                  Live Pipeline Status
-                </p>
-                <h3 className="mt-2 text-xl font-black text-white">
-                  No active turn records are linked to {propertyLabel} yet
-                </h3>
-                <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
-                  {noPipelineMessage}
-                </p>
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.22em]">
+                    Live Pipeline Status
+                  </p>
+                  <h3 className="mt-2 text-xl font-black text-white">
+                    No active turn records are linked to {propertyLabel} yet
+                  </h3>
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
+                    {noPipelineMessage}
+                  </p>
+                </div>
+                <Link
+                  href={`/queue?business=${businessSlug}`}
+                  className="rounded-2xl border border-sky-300/40 bg-sky-400/15 px-4 py-3 text-center text-sm font-black text-white transition hover:-translate-y-0.5"
+                >
+                  Open Queue
+                </Link>
               </div>
-              <Link
-                href={`/queue?business=${businessSlug}`}
-                className="rounded-2xl border border-sky-300/40 bg-sky-400/15 px-4 py-3 text-sm font-black text-white transition hover:-translate-y-0.5"
-              >
-                Open Queue
-              </Link>
+
+              {recentBillingSignals.length > 0 ? (
+                <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  {recentBillingSignals.map((signal) => (
+                    <Link
+                      key={signal.id}
+                      href={`/invoices/${signal.id}?business=${businessSlug}`}
+                      className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-4 transition hover:-translate-y-0.5 hover:border-emerald-200/60"
+                    >
+                      <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-100">
+                        Billing Signal
+                      </p>
+                      <h4 className="mt-2 text-lg font-black text-white">
+                        {signal.displayId}
+                      </h4>
+                      <p className="mt-1 text-sm text-zinc-300">
+                        {signal.unitLabel
+                          ? `Unit ${signal.unitLabel}`
+                          : propertyLabel}
+                      </p>
+                      <div className="mt-3 flex items-end justify-between gap-3">
+                        <p className="text-xl font-black text-emerald-100">
+                          {formatMoney(signal.amount)}
+                        </p>
+                        <p className="text-xs font-bold uppercase text-zinc-400">
+                          {signal.status}
+                        </p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
             </div>
           ) : null}
 
@@ -1109,7 +1173,51 @@ export default async function PropertySalesPage({
                 </div>
               ))}
 
-              {unitHistory.length === 0 ? (
+              {unitHistory.length === 0 && recentBillingSignals.length > 0 ? (
+                <div className="grid gap-3 lg:col-span-2 lg:grid-cols-2">
+                  {recentBillingSignals.map((signal) => (
+                    <Link
+                      key={signal.id}
+                      href={`/invoices/${signal.id}?business=${businessSlug}`}
+                      className="rounded-2xl border border-sky-300/20 bg-sky-400/10 p-4 transition hover:-translate-y-0.5 hover:border-sky-200/60"
+                    >
+                      <p className="text-xs font-black uppercase tracking-[0.2em] text-sky-100">
+                        Invoice Memory
+                      </p>
+                      <h3 className="mt-2 text-xl font-black text-white">
+                        {signal.unitLabel
+                          ? `Unit ${signal.unitLabel}`
+                          : signal.displayId}
+                      </h3>
+                      <dl className="mt-4 grid gap-3 text-sm text-zinc-300 sm:grid-cols-2">
+                        <div>
+                          <dt className="text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+                            Invoice
+                          </dt>
+                          <dd className="mt-1 font-bold text-white">
+                            {signal.displayId}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+                            Amount
+                          </dt>
+                          <dd className="mt-1 font-bold text-white">
+                            {formatMoney(signal.amount)}
+                          </dd>
+                        </div>
+                      </dl>
+                      <p className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-sm leading-6 text-zinc-300">
+                        Trimax found billing for this property. Add or link the
+                        matching queue item when you want this to become a full
+                        unit history card.
+                      </p>
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
+
+              {unitHistory.length === 0 && recentBillingSignals.length === 0 ? (
                 <p className="rounded-2xl border border-dashed border-white/10 bg-black/20 p-4 text-sm leading-6 text-zinc-400">
                   No unit history exists for this property yet. New turn records
                   will begin building the property memory automatically.
