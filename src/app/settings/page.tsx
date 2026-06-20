@@ -1558,7 +1558,7 @@ function BusinessSettingsPageContent() {
             ) : null}
 
             {canManageUsers ? (
-              <Card className="border-sky-200 bg-white">
+              <Card className="settings-storage-health border-sky-200 bg-white">
                 <div className="grid gap-5">
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div>
@@ -1691,7 +1691,7 @@ function BusinessSettingsPageContent() {
                     })}
                   </div>
 
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+                  <div className="settings-readable-note rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
                     This is a planning panel, not a billing guarantee. Supabase
                     limits can change by plan, and file uploads will matter more
                     once Trimax stores photos, PDFs, or attachments.
@@ -1787,7 +1787,7 @@ function BusinessSettingsPageContent() {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-emerald-200 bg-white p-4 text-sm leading-6 text-slate-700">
+                <div className="settings-readable-note rounded-2xl border border-emerald-200 bg-white p-4 text-sm leading-6 text-slate-700">
                   <span className="font-black text-slate-950">
                     Recommended next build:
                   </span>{" "}
@@ -1926,7 +1926,7 @@ function BusinessSettingsPageContent() {
                   </p>
                 </div>
 
-                <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-blue-950">
+                <div className="settings-readable-note rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-blue-950">
                   App users configure email here inside Trimax. The hidden
                   delivery provider is connected once by the Trimax app owner,
                   then each workspace manages its own sender name, sender email,
@@ -2082,7 +2082,7 @@ function BusinessSettingsPageContent() {
                   />
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+                <div className="settings-readable-note rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
                   For the smoothest setup, use the sender domain connected to
                   Trimax delivery. The reply-to can be your everyday inbox, so
                   customers can respond directly to the right person. Client
@@ -2205,7 +2205,7 @@ function BusinessSettingsPageContent() {
                   </label>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+                <div className="settings-readable-note rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
                   Dynamic fields you can use:{" "}
                   <span className="font-semibold text-slate-950">
                     {"{businessName}"}, {"{invoiceNumber}"}, {"{amountDue}"},{" "}
