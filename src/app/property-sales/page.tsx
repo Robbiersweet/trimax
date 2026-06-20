@@ -1,6 +1,7 @@
 import Link from "next/link";
 import AppShell from "../components/AppShell";
 import Card from "../components/Card";
+import CopyManagerBriefButton from "../components/CopyManagerBriefButton";
 import { supabase } from "../lib/supabase";
 
 type Business = {
@@ -816,6 +817,28 @@ export default async function PropertySalesPage({
           : "Unit history starts building as work moves through Trimax.",
     },
   ];
+  const managerBriefSummary = [
+    `${propertyLabel} Trimax property brief`,
+    "",
+    `Open turns: ${openRequests.length}`,
+    `Need estimate: ${pendingEstimateCount}`,
+    `Approved or scheduled: ${approvedScheduledCount}`,
+    `In progress: ${inProgressCount}`,
+    `Completed this month: ${completedThisMonth.length}`,
+    `Billed this month: ${
+      billedThisMonth ? formatMoney(billedThisMonth) : "No invoice data yet"
+    }`,
+    `Revenue per labor hour: ${
+      revenuePerLaborHour === null
+        ? "Needs job session data"
+        : formatMoney(revenuePerLaborHour)
+    }`,
+    "",
+    "What Trimax gives the property team:",
+    "- A clear pipeline from request to invoice.",
+    "- Unit history with paint, notes, invoices, labor, and proof placeholders.",
+    "- Faster follow-up because pricing, schedule, proof, and billing gaps stay visible.",
+  ].join("\n");
 
   const overviewCards = [
     {
@@ -1086,6 +1109,9 @@ export default async function PropertySalesPage({
               Every card answers the manager question: what is open, what is
               priced, what is scheduled, what is done, and what has been billed?
             </p>
+            <div className="mt-4">
+              <CopyManagerBriefButton brief={managerBriefSummary} />
+            </div>
             <div className="mt-4 grid gap-3">
               {managerProofPoints.map((point) => (
                 <div

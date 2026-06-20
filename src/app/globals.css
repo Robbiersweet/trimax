@@ -12666,6 +12666,17 @@ html.theme-light .property-sales-page .property-sales-photo-slot span {
   background: rgba(255, 255, 255, 0.86);
 }
 
+html.theme-light .property-sales-page .property-sales-copy-brief {
+  background: #0f172a !important;
+  border-color: #0f172a !important;
+  color: #ffffff !important;
+}
+
+html.theme-light .property-sales-page .property-sales-copy-brief:hover {
+  background: #0369a1 !important;
+  border-color: #0284c7 !important;
+}
+
 html.theme-light .property-sales-page .property-sales-client-command {
   background: linear-gradient(135deg, #ffffff, #f8fbff 48%, #ecfeff) !important;
   border-color: rgba(14, 116, 144, 0.24) !important;
