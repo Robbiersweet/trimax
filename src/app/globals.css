@@ -11058,6 +11058,20 @@ html.theme-light body main
   z-index: 60;
 }
 
+.app-platinum-horizon::before {
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 26px,
+      rgba(255, 255, 255, 0.28) 26px 27px,
+      transparent 27px 54px
+    );
+  content: "";
+  inset: 0;
+  opacity: 0.38;
+  position: absolute;
+}
+
 .app-platinum-horizon::after {
   animation: trimaxPlatinumSweep 7s ease-in-out infinite;
   background:
@@ -11073,6 +11087,7 @@ html.theme-light body main
   inset-block: 0;
   position: absolute;
   width: 28vw;
+  z-index: 1;
 }
 
 .app-shell-root::before {
@@ -11080,6 +11095,18 @@ html.theme-light body main
     radial-gradient(circle at 14% 6%, rgba(14, 165, 233, 0.16), transparent 28rem),
     radial-gradient(circle at 88% 0%, rgba(16, 185, 129, 0.11), transparent 24rem),
     linear-gradient(115deg, rgba(2, 6, 23, 0), rgba(14, 165, 233, 0.04) 48%, rgba(2, 6, 23, 0));
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: fixed;
+  z-index: 0;
+}
+
+.app-shell-root::after {
+  background:
+    radial-gradient(circle at 88% 92%, rgba(59, 130, 246, 0.11), transparent 24rem),
+    radial-gradient(circle at 18% 88%, rgba(16, 185, 129, 0.08), transparent 22rem),
+    linear-gradient(180deg, transparent 58%, rgba(2, 6, 23, 0.38));
   content: "";
   inset: 0;
   pointer-events: none;
@@ -11140,6 +11167,13 @@ html.theme-light .app-shell-root::before {
     radial-gradient(circle at 14% 6%, rgba(37, 99, 235, 0.12), transparent 28rem),
     radial-gradient(circle at 88% 0%, rgba(20, 184, 166, 0.1), transparent 24rem),
     linear-gradient(115deg, rgba(248, 250, 252, 0), rgba(226, 232, 240, 0.62) 48%, rgba(248, 250, 252, 0));
+}
+
+html.theme-light .app-shell-root::after {
+  background:
+    radial-gradient(circle at 88% 92%, rgba(37, 99, 235, 0.08), transparent 24rem),
+    radial-gradient(circle at 18% 88%, rgba(5, 150, 105, 0.06), transparent 22rem),
+    linear-gradient(180deg, transparent 64%, rgba(226, 232, 240, 0.42));
 }
 
 html.theme-light .app-platinum-horizon {
