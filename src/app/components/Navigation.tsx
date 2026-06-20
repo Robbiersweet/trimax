@@ -87,6 +87,13 @@ export default function Navigation() {
         icon: "queue",
       },
       {
+        key: "property_sales",
+        label: "Property Sales",
+        href: `/property-sales?business=${business}&property=north-creek-apartments`,
+        active: pathname.startsWith("/property-sales"),
+        icon: "property_sales",
+      },
+      {
         key: "job_sessions",
         label: "Job Sessions",
         href: `/job-sessions?business=${business}`,
@@ -361,6 +368,7 @@ export default function Navigation() {
 type NavIconKey =
   | "dashboard"
   | "queue"
+  | "property_sales"
   | "job_sessions"
   | "schedule"
   | "estimates"
@@ -414,6 +422,16 @@ function NavIcon({
             <circle cx="4" cy="6" r="1" />
             <circle cx="4" cy="12" r="1" />
             <circle cx="4" cy="18" r="1" />
+          </>
+        ) : null}
+        {icon === "property_sales" ? (
+          <>
+            <path d="M4 20V8l8-4 8 4v12" />
+            <path d="M8 20v-7h8v7" />
+            <path d="M8 10h.01" />
+            <path d="M12 10h.01" />
+            <path d="M16 10h.01" />
+            <path d="M4 20h16" />
           </>
         ) : null}
         {icon === "schedule" ? (

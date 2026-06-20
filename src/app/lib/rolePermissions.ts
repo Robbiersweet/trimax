@@ -10,6 +10,7 @@ export type WorkspaceRole =
 export type NavPermissionKey =
   | "dashboard"
   | "queue"
+  | "property_sales"
   | "job_sessions"
   | "schedule"
   | "estimates"
@@ -42,6 +43,7 @@ const rolePermissions: Record<
     nav: [
       "dashboard",
       "queue",
+      "property_sales",
       "job_sessions",
       "schedule",
       "estimates",
@@ -68,6 +70,7 @@ const rolePermissions: Record<
     nav: [
       "dashboard",
       "queue",
+      "property_sales",
       "job_sessions",
       "schedule",
       "estimates",
@@ -93,6 +96,7 @@ const rolePermissions: Record<
   accountant: {
     nav: [
       "dashboard",
+      "property_sales",
       "estimates",
       "invoices",
       "payments",
@@ -110,7 +114,7 @@ const rolePermissions: Record<
     ],
   },
   property_manager: {
-    nav: ["dashboard", "queue", "schedule", "reports"],
+    nav: ["dashboard", "queue", "property_sales", "schedule", "reports"],
     actions: ["new_queue", "review_queue", "reports"],
   },
   member: {
@@ -177,6 +181,10 @@ export function navPermissionForPath(
 
   if (pathname.startsWith("/job-sessions")) {
     return "job_sessions";
+  }
+
+  if (pathname.startsWith("/property-sales")) {
+    return "property_sales";
   }
 
   if (pathname.startsWith("/new-request")) {

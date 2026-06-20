@@ -154,6 +154,10 @@ function permissionForHref(href: string): NavPermissionKey {
     return "queue";
   }
 
+  if (href.startsWith("/property-sales")) {
+    return "property_sales";
+  }
+
   if (
     href.startsWith("/property-intelligence") ||
     href.startsWith("/schedule")
@@ -1243,6 +1247,38 @@ export default function QuickCommandCenter() {
         href: `/?business=${business}`,
         tone: "system",
         keywords: ["home", "overview", "command", "today", "platinum"],
+      },
+      {
+        title: "Property Sales Dashboard",
+        detail:
+          "Open the manager-friendly property pipeline for North Creek turns, estimates, invoices, and unit memory.",
+        href: `/property-sales?business=${business}&property=north-creek-apartments`,
+        tone: "report",
+        keywords: [
+          "property",
+          "sales",
+          "manager",
+          "demo",
+          "pipeline",
+          "turnover",
+          "north creek",
+        ],
+        actionLabel: "Open",
+      },
+      {
+        title: "Evergreen Demo Dashboard",
+        detail:
+          "Show a private sample property dashboard without exposing real client data.",
+        href: `/property-sales?business=${business}&demo=evergreen`,
+        tone: "report",
+        keywords: [
+          "evergreen",
+          "demo",
+          "sales demo",
+          "sample",
+          "apartment manager",
+        ],
+        actionLabel: "Demo",
       },
       {
         title: "Platinum Signal",
