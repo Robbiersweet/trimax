@@ -862,22 +862,27 @@ export default async function QueueDetailPage({
             </div>
 
             {isUsingConfirmedUnitFallback ? (
-              <p className="unit-intelligence-warning mt-4 rounded-2xl border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-100">
-                This unit is in the confirmed North Creek map. The permanent
-                saved row is missing, so Trimax is showing the confirmed map
-                fallback for now.{" "}
-                <Link
-                  href={`/property-intelligence?business=${businessSlug}&unit=${encodeURIComponent(
-                    displayUnit || item.unit || ""
-                  )}&returnTo=${encodeURIComponent(
-                    `/queue/${item.id}?business=${businessSlug}`
-                  )}`}
-                  className="font-black underline decoration-sky-300/60 underline-offset-4"
-                >
-                  Open Property Intelligence
-                </Link>{" "}
-                and sync the North Creek map to restore the saved profile row.
-              </p>
+              <div className="unit-intelligence-map-confirmed mt-4 rounded-2xl border px-4 py-3 text-sm">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="font-black text-sky-50">Map confirmed</p>
+                    <p className="mt-1 leading-6 text-sky-100/85">
+                      Trimax recognizes this unit from the confirmed North Creek
+                      map and is using that trusted fallback for the profile.
+                    </p>
+                  </div>
+                  <Link
+                    href={`/property-intelligence?business=${businessSlug}&unit=${encodeURIComponent(
+                      displayUnit || item.unit || ""
+                    )}&returnTo=${encodeURIComponent(
+                      `/queue/${item.id}?business=${businessSlug}`
+                    )}`}
+                    className="inline-flex shrink-0 items-center justify-center rounded-2xl border border-sky-300/40 bg-sky-400/15 px-4 py-2 font-black text-sky-50 transition hover:-translate-y-0.5 hover:border-sky-200"
+                  >
+                    Sync Profile
+                  </Link>
+                </div>
+              </div>
             ) : !displayUnitProfile ? (
               <p className="unit-intelligence-warning mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
                 This unit is not in the saved North Creek unit map yet. The
@@ -1278,7 +1283,11 @@ function HistorySummary({
   const subDetail =
     entry?.event_date
       ? formatHistoryDate(entry.event_date)
-      : detail || "Current queue item only";
+      : detail
+        ? detail
+        : fallback
+          ? "From current queue item"
+          : "No saved history yet";
 
   return (
     <div className="unit-intelligence-history-card rounded-2xl border border-sky-500/20 bg-black/25 p-4">
