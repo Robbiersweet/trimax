@@ -795,11 +795,22 @@ export default async function QueuePage({
                     minutesBetween(session.started_at, session.ended_at)),
                 0
               );
+              const nextMove = activeJobSessionCount
+                ? "Work in progress"
+                : estimateNeeded
+                  ? "Estimate needed"
+                  : !item.scheduled_date && readySoon
+                    ? "Schedule this unit"
+                    : !item.scheduled_date
+                      ? "Pick a work date"
+                      : linkedEstimate
+                        ? "Ready to manage"
+                        : "Queue active";
 
               return (
-                <Card key={item.id}>
-                  <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
+                <Card key={item.id} className="queue-list-card queue-dispatch-card">
+                  <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_12rem] xl:items-start">
+                    <div className="min-w-0">
                       <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
                         <div className="queue-unit-plate queue-unit-plate-v2">
                           <span className="queue-unit-plate-label">Unit</span>
@@ -867,6 +878,11 @@ export default async function QueuePage({
                               Layout {item.unit_layout}
                             </p>
                           ) : null}
+
+                          <div className="queue-next-move mt-4 inline-flex items-center gap-2 rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1.5 text-sm font-bold text-sky-100">
+                            <span className="queue-next-move-dot" aria-hidden="true" />
+                            {nextMove}
+                          </div>
                         </div>
                       </div>
 
@@ -951,7 +967,7 @@ export default async function QueuePage({
                       </RoleVisible>
                     </div>
 
-                    <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
+                    <div className="queue-card-action-rail flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/20 p-3 sm:flex-row xl:flex-col">
                       <Link href={`/queue/${item.id}${businessQuery}`}>
                         <Button>Open Queue Item</Button>
                       </Link>

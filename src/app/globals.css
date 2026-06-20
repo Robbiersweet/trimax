@@ -3016,6 +3016,67 @@ html.theme-light main .divide-y.divide-zinc-800 > :not([hidden]) ~ :not([hidden]
   color: #ffffff !important;
 }
 
+.queue-dispatch-card {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(14, 165, 233, 0.09), transparent 18rem),
+    linear-gradient(135deg, rgba(39, 39, 42, 0.98), rgba(24, 24, 27, 0.96)) !important;
+  border-color: rgba(125, 211, 252, 0.14) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 20px 48px rgba(2, 6, 23, 0.22) !important;
+}
+
+.queue-dispatch-card:hover {
+  border-color: rgba(56, 189, 248, 0.28) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 24px 58px rgba(14, 165, 233, 0.11) !important;
+}
+
+.queue-card-action-rail {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 14px 34px rgba(2, 6, 23, 0.2);
+}
+
+.queue-next-move {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.queue-next-move-dot {
+  background: #38bdf8;
+  border-radius: 999px;
+  box-shadow: 0 0 18px rgba(56, 189, 248, 0.58);
+  height: 0.48rem;
+  width: 0.48rem;
+}
+
+.queue-lifecycle-pill {
+  background:
+    linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(24, 24, 27, 0.92)) !important;
+  border-color: rgba(125, 211, 252, 0.16) !important;
+  color: #f8fafc !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+
+.queue-lifecycle-pill p {
+  color: #f8fafc !important;
+}
+
+.queue-lifecycle-pill p:first-child {
+  color: #94a3b8 !important;
+}
+
+.queue-lifecycle-pill-alert {
+  background:
+    linear-gradient(135deg, rgba(69, 46, 16, 0.86), rgba(24, 24, 27, 0.95)) !important;
+  border-color: rgba(245, 158, 11, 0.42) !important;
+}
+
+.queue-lifecycle-pill-alert p:last-child {
+  color: #fde68a !important;
+}
+
 html.theme-light .queue-unit-plate.queue-unit-plate-v2,
 html.theme-light main .queue-unit-plate.queue-unit-plate-v2,
 html.theme-light main section .queue-unit-plate.queue-unit-plate-v2 {
@@ -3042,12 +3103,43 @@ html.theme-light .queue-current-renovation-pill {
   color: #1d4ed8 !important;
 }
 
+html.theme-light .queue-dispatch-card {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(14, 165, 233, 0.08), transparent 18rem),
+    #ffffff !important;
+  border-color: #d7dde8 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 18px 42px rgba(15, 23, 42, 0.08) !important;
+}
+
+html.theme-light .queue-card-action-rail {
+  background: #f8fafc !important;
+  border-color: #d7dde8 !important;
+}
+
+html.theme-light .queue-next-move {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #0f172a !important;
+}
+
 html.theme-light .queue-lifecycle-pill,
 html.theme-light .queue-lifecycle-step-idle {
   background: #ffffff !important;
   border-color: #d7dde8 !important;
   color: #0f172a !important;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05) !important;
+}
+
+html.theme-light .queue-lifecycle-pill p,
+html.theme-light .queue-lifecycle-step-idle p {
+  color: #0f172a !important;
+}
+
+html.theme-light .queue-lifecycle-pill p:first-child,
+html.theme-light .queue-lifecycle-step-idle p:first-child {
+  color: #64748b !important;
 }
 
 html.theme-light .queue-lifecycle-pill-filled {
