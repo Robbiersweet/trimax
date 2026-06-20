@@ -159,7 +159,7 @@ export default function TechnicianDashboard() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [setupMissing, setSetupMissing] = useState(false);
-  const [currentTime, setCurrentTime] = useState<number | null>(null);
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
 
   async function loadTechnicianWorkspace(slug = businessSlug) {
     const { data: userData } = await supabase.auth.getUser();

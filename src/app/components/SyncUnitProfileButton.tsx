@@ -26,11 +26,12 @@ export default function SyncUnitProfileButton({
 }: SyncUnitProfileButtonProps) {
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSync() {
-    if (isSaving) {
+    if (isSaving || isSaved) {
       return;
     }
 
@@ -63,14 +64,19 @@ export default function SyncUnitProfileButton({
       return;
     }
 
-    setMessage("Profile saved. Refreshing this queue item...");
+    setIsSaved(true);
+    setMessage("Profile saved. This unit is now in the property map.");
+    setIsSaving(false);
     router.refresh();
   }
 
   return (
-    <div className="flex shrink-0 flex-col items-start gap-2 md:items-end">
-      <Button onClick={handleSync} disabled={isSaving} className="px-4 py-2">
-        {isSaving ? "Saving..." : "Save Profile"}
+    <div
+      className="flex shrink-0 flex-col items-start gap-2 md:items-end"
+      aria-live="polite"
+    >
+      <Button onClick={handleSync} disabled={isSaving || isSaved} className="px-4 py-2">
+        {isSaved ? "Saved" : isSaving ? "Saving..." : "Save Profile"}
       </Button>
       {message ? (
         <p className="text-xs font-black text-emerald-100">{message}</p>
