@@ -7376,14 +7376,76 @@ html.theme-light .activity-proof-chip .font-semibold {
 }
 
 .dashboard-hero-hud {
+  display: grid !important;
+  grid-template-columns: minmax(15rem, 0.82fr) minmax(22rem, 1.05fr) minmax(11rem, 0.5fr);
+  align-items: stretch !important;
+  gap: 1rem !important;
+  padding: 1rem !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.12), transparent 34%),
+    linear-gradient(135deg, rgba(15, 23, 42, 0.66), rgba(2, 6, 23, 0.4)) !important;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
     0 16px 34px rgba(2, 6, 23, 0.2);
   backdrop-filter: blur(12px);
 }
 
+.dashboard-hero-hud-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.dashboard-hero-next-move {
+  display: block;
+  border: 1px solid rgba(125, 211, 252, 0.2);
+  border-radius: 1rem;
+  background:
+    linear-gradient(135deg, rgba(14, 165, 233, 0.14), rgba(2, 6, 23, 0.34));
+  color: #f8fafc;
+  padding: 0.85rem;
+  text-decoration: none;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.dashboard-hero-next-move:hover {
+  border-color: rgba(125, 211, 252, 0.52);
+  background:
+    linear-gradient(135deg, rgba(14, 165, 233, 0.22), rgba(2, 6, 23, 0.42));
+  transform: translateY(-1px);
+}
+
+.dashboard-hero-next-move span,
+.dashboard-hero-next-move em {
+  display: block;
+  color: #bae6fd;
+  font-size: 0.66rem;
+  font-style: normal;
+  font-weight: 950;
+  letter-spacing: 0.16em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.dashboard-hero-next-move strong {
+  display: block;
+  color: #ffffff;
+  font-size: 1.05rem;
+  line-height: 1.22;
+  margin-top: 0.35rem;
+}
+
+.dashboard-hero-next-move em {
+  color: #fbbf24;
+  margin-top: 0.45rem;
+}
+
 .dashboard-operating-altimeter {
-  min-width: min(100%, 22rem);
+  min-width: 0;
   background:
     radial-gradient(circle at 90% 0%, rgba(52, 211, 153, 0.16), transparent 38%),
     linear-gradient(135deg, rgba(14, 165, 233, 0.12), rgba(2, 6, 23, 0.56));
@@ -7502,13 +7564,26 @@ html.theme-light .activity-proof-chip .font-semibold {
 }
 
 .dashboard-hero-signal {
-  min-width: 8rem;
+  min-width: 0;
   background:
     linear-gradient(135deg, rgba(15, 23, 42, 0.84), rgba(2, 6, 23, 0.58)) !important;
   border-color: rgba(148, 163, 184, 0.2) !important;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     0 12px 28px rgba(2, 6, 23, 0.18);
+}
+
+.dashboard-hero-signal-grid {
+  align-self: stretch;
+  grid-template-columns: 1fr !important;
+  min-width: 0;
+}
+
+.dashboard-hero-hud .dashboard-hero-signal {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .dashboard-hero-signal:hover {
@@ -7519,7 +7594,35 @@ html.theme-light .activity-proof-chip .font-semibold {
     0 18px 38px rgba(14, 165, 233, 0.14);
 }
 
+.dashboard-hero-revenue-row {
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+  padding-top: 1.1rem;
+}
+
+.dashboard-hero-revenue-metrics {
+  min-width: min(100%, 21rem);
+}
+
+@media (max-width: 1180px) {
+  .dashboard-hero-hud {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .dashboard-hero-signal-grid {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
 @media (max-width: 760px) {
+  .dashboard-hero-hud {
+    grid-template-columns: 1fr !important;
+  }
+
+  .dashboard-hero-signal-grid {
+    grid-template-columns: 1fr !important;
+  }
+
   .dashboard-hero-card {
     border-radius: 1.25rem !important;
   }
@@ -7609,6 +7712,35 @@ html.theme-light .dashboard-hero-hud,
 html.theme-light .dashboard-hero-signal {
   background: rgba(255, 255, 255, 0.82) !important;
   border-color: #dbeafe !important;
+}
+
+html.theme-light .dashboard-hero-hud {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.08), transparent 34%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(248, 250, 252, 0.9)) !important;
+}
+
+html.theme-light .dashboard-hero-next-move {
+  background: linear-gradient(135deg, #eff6ff, #ffffff) !important;
+  border-color: #93c5fd !important;
+  color: #0f172a !important;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06) !important;
+}
+
+html.theme-light .dashboard-hero-next-move span {
+  color: #075985 !important;
+}
+
+html.theme-light .dashboard-hero-next-move strong {
+  color: #0f172a !important;
+}
+
+html.theme-light .dashboard-hero-next-move em {
+  color: #92400e !important;
+}
+
+html.theme-light .dashboard-hero-revenue-row {
+  border-top-color: #dbeafe !important;
 }
 
 html.theme-light .dashboard-operating-altimeter {
