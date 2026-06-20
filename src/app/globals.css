@@ -12483,10 +12483,44 @@ html.theme-light :is(a, button).dashboard-workflow-node:focus-visible {
 }
 
 .property-sales-metric,
-.property-sales-unit-card {
+.property-sales-unit-card,
+.property-sales-confidence-card {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.07),
     0 18px 38px rgba(0, 0, 0, 0.22);
+}
+
+.property-sales-client-command {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.property-sales-client-command::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(56, 189, 248, 0.18), transparent 34%),
+    radial-gradient(circle at 92% 18%, rgba(16, 185, 129, 0.14), transparent 32%),
+    linear-gradient(135deg, rgba(2, 6, 23, 0.86), rgba(15, 23, 42, 0.72));
+}
+
+.property-sales-confidence-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.property-sales-confidence-card::after {
+  content: "";
+  position: absolute;
+  inset: auto 1rem 0 1rem;
+  height: 0.18rem;
+  border-radius: 999px 999px 0 0;
+  background: linear-gradient(90deg, #38bdf8, #34d399, #f59e0b);
+  opacity: 0.7;
 }
 
 .property-sales-kanban {
@@ -12590,7 +12624,8 @@ html.theme-light .property-sales-page .property-sales-selector {
 
 html.theme-light .property-sales-page .property-sales-column,
 html.theme-light .property-sales-page .property-sales-unit-card,
-html.theme-light .property-sales-page .property-sales-metric {
+html.theme-light .property-sales-page .property-sales-metric,
+html.theme-light .property-sales-page .property-sales-confidence-card {
   background: #ffffff !important;
   border-color: #cbd5e1 !important;
 }
@@ -12603,6 +12638,18 @@ html.theme-light .property-sales-page .property-sales-empty-board {
 
 html.theme-light .property-sales-page .property-sales-photo-slot span {
   background: rgba(255, 255, 255, 0.86);
+}
+
+html.theme-light .property-sales-page .property-sales-client-command {
+  background: linear-gradient(135deg, #ffffff, #f8fbff 48%, #ecfeff) !important;
+  border-color: rgba(14, 116, 144, 0.24) !important;
+}
+
+html.theme-light .property-sales-page .property-sales-client-command::before {
+  background:
+    radial-gradient(circle at 12% 10%, rgba(14, 165, 233, 0.1), transparent 34%),
+    radial-gradient(circle at 92% 18%, rgba(16, 185, 129, 0.1), transparent 32%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.84), rgba(241, 245, 249, 0.72));
 }
 
 .technician-page {

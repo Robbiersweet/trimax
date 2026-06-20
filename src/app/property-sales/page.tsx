@@ -723,6 +723,40 @@ export default async function PropertySalesPage({
     status: invoice.status ?? "invoice",
     date: invoice.issue_date ?? invoice.created_at,
   }));
+  const salesConfidenceCards = [
+    {
+      label: "Live Visibility",
+      title: "Managers see every turn without chasing texts",
+      detail:
+        openRequests.length > 0
+          ? `${openRequests.length} open turn ${openRequests.length === 1 ? "request is" : "requests are"} visible from request to billing.`
+          : "New turn requests will appear here as soon as the property starts using the workflow.",
+    },
+    {
+      label: "Proof Ready",
+      title: "Photos, notes, estimates, invoices, and labor stay together",
+      detail:
+        unitHistory.length > 0
+          ? `${unitHistory.length} unit ${unitHistory.length === 1 ? "record is" : "records are"} building property memory for future calls.`
+          : "The dashboard is ready to build unit memory as jobs move through Trimax.",
+    },
+    {
+      label: "Fast Decisions",
+      title: "Pricing and scheduling gaps are obvious",
+      detail:
+        pendingEstimateCount > 0
+          ? `${pendingEstimateCount} ${pendingEstimateCount === 1 ? "request needs" : "requests need"} pricing before work can become billable.`
+          : "No pricing bottleneck is visible for this property right now.",
+    },
+  ];
+  const showcaseServices = [
+    "Apartment Turns",
+    "Interior Paint",
+    "Fence Work",
+    "Tree Work",
+    "Outlet Repairs",
+    "Proof Packets",
+  ];
 
   const overviewCards = [
     {
@@ -831,6 +865,53 @@ export default async function PropertySalesPage({
             ))}
           </div>
         </section>
+
+        <Card className="property-sales-client-command dark-surface border-cyan-500/20 bg-zinc-950">
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] xl:items-center">
+            <div>
+              <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.24em]">
+                Contract Winning View
+              </p>
+              <h2 className="mt-2 text-3xl font-black tracking-tight text-white">
+                Sell organization, not just labor
+              </h2>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-300">
+                Use this screen in a meeting to show how R&L turns any property
+                request into a visible process: request, estimate, schedule,
+                progress, proof, invoice, and payment follow-up.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {showcaseServices.map((service) => (
+                  <span
+                    key={service}
+                    className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-black text-zinc-100"
+                  >
+                    {service}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-3">
+              {salesConfidenceCards.map((card) => (
+                <div
+                  key={card.label}
+                  className="property-sales-confidence-card rounded-2xl border border-white/10 bg-black/25 p-4"
+                >
+                  <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.2em]">
+                    {card.label}
+                  </p>
+                  <h3 className="mt-3 text-lg font-black text-white">
+                    {card.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-zinc-300">
+                    {card.detail}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
 
         <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
           <Card className="dark-surface property-sales-selector border-sky-500/20 bg-zinc-950">
