@@ -154,6 +154,10 @@ function permissionForHref(href: string): NavPermissionKey {
     return "queue";
   }
 
+  if (href.startsWith("/technician")) {
+    return "technician";
+  }
+
   if (href.startsWith("/property-sales")) {
     return "property_sales";
   }
@@ -1205,7 +1209,7 @@ export default function QuickCommandCenter() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [recordCommands, setRecordCommands] = useState<CommandItem[]>([]);
   const [smartCommands, setSmartCommands] = useState<CommandItem[]>([]);
-  const [role, setRole] = useState<WorkspaceRole>("member");
+  const [role, setRole] = useState<WorkspaceRole>("technician");
   const [isResolvingRecords, setIsResolvingRecords] = useState(false);
   const [isResolvingSmartCommands, setIsResolvingSmartCommands] =
     useState(false);
@@ -1229,7 +1233,7 @@ export default function QuickCommandCenter() {
         return;
       }
 
-      setRole(normalizeWorkspaceRole(workspace?.role ?? "member"));
+      setRole(normalizeWorkspaceRole(workspace?.role ?? "technician"));
     }
 
     loadRole();
@@ -1262,6 +1266,23 @@ export default function QuickCommandCenter() {
           "pipeline",
           "turnover",
           "north creek",
+        ],
+        actionLabel: "Open",
+      },
+      {
+        title: "Technician Workbench",
+        detail:
+          "Open daily field work, active sessions, job notes, photos, and recent completed jobs.",
+        href: `/technician?business=${business}`,
+        tone: "queue",
+        keywords: [
+          "technician",
+          "field",
+          "job session",
+          "timer",
+          "labor",
+          "workbench",
+          "today",
         ],
         actionLabel: "Open",
       },

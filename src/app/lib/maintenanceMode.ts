@@ -82,7 +82,7 @@ export async function canBypassMaintenance(businessSlug?: string | null) {
   const matchingWorkspace = businessSlug
     ? access.find((workspace) => workspace.businessSlug === businessSlug)
     : access[0];
-  const role = normalizeWorkspaceRole(matchingWorkspace?.role ?? "member");
+  const role = normalizeWorkspaceRole(matchingWorkspace?.role ?? "technician");
 
   return role === "owner" || role === "admin";
 }

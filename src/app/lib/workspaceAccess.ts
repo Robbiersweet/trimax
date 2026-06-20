@@ -135,7 +135,7 @@ export async function loadWorkspaceAccess() {
         businessId: business.id,
         businessName: business.name,
         businessSlug: business.slug,
-        role: row.role ?? "member",
+        role: row.role ?? "technician",
       };
     })
     .filter(

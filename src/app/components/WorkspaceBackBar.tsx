@@ -48,6 +48,12 @@ const sectionContexts: Record<string, SectionContext> = {
     actionLabel: "Open Queue",
     actionHref: "/queue",
   },
+  technician: {
+    fallback: "/technician",
+    label: "Technician Workbench",
+    actionLabel: "Open Queue",
+    actionHref: "/queue",
+  },
   payments: {
     fallback: "/",
     label: "Payments",

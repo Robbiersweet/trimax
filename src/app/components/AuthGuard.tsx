@@ -16,6 +16,7 @@ import {
   canAccessPath,
   normalizeWorkspaceRole,
 } from "../lib/rolePermissions";
+import type { WorkspaceRole } from "../lib/rolePermissions";
 import {
   allowedPropertiesForBusiness,
   canAccessProperty,
@@ -64,6 +65,23 @@ function isPublicAuthPath(pathname: string) {
     pathname.startsWith("/forgot-password") ||
     pathname.startsWith("/reset-password")
   );
+}
+
+function landingPathForRole(
+  role: WorkspaceRole,
+  businessSlug: string
+) {
+  if (
+    role === "technician" ||
+    role === "vendor" ||
+    role === "subcontractor" ||
+    role === "cleaner" ||
+    role === "flooring_contractor"
+  ) {
+    return `/technician?business=${businessSlug}`;
+  }
+
+  return `/?business=${businessSlug}`;
 }
 
 function hasInviteMarker(searchParams: URLSearchParams) {
@@ -303,7 +321,7 @@ export default function AuthGuard({
         !canAccessPath(currentRole, pathname)
       ) {
         router.replace(
-          `/?business=${selectedBusiness}`
+          landingPathForRole(currentRole, selectedBusiness)
         );
         return;
       }

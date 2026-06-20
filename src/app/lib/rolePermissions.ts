@@ -1,15 +1,18 @@
-"use client";
-
 export type WorkspaceRole =
   | "owner"
   | "admin"
   | "accountant"
   | "property_manager"
-  | "member";
+  | "technician"
+  | "vendor"
+  | "subcontractor"
+  | "cleaner"
+  | "flooring_contractor";
 
 export type NavPermissionKey =
   | "dashboard"
   | "queue"
+  | "technician"
   | "property_sales"
   | "job_sessions"
   | "schedule"
@@ -32,17 +35,50 @@ export type DashboardActionKey =
   | "reports"
   | "print_documents";
 
+export type WorkPermissionKey =
+  | "view_assigned_jobs"
+  | "view_assigned_queue_items"
+  | "start_job_session"
+  | "pause_job_session"
+  | "stop_job_session"
+  | "add_work_notes"
+  | "upload_job_photos"
+  | "update_job_status"
+  | "view_own_sessions"
+  | "view_basic_property_info"
+  | "view_all_job_sessions";
+
+const fieldWorkPermissions: WorkPermissionKey[] = [
+  "view_assigned_jobs",
+  "view_assigned_queue_items",
+  "start_job_session",
+  "pause_job_session",
+  "stop_job_session",
+  "add_work_notes",
+  "upload_job_photos",
+  "update_job_status",
+  "view_own_sessions",
+  "view_basic_property_info",
+];
+
+const adminWorkPermissions: WorkPermissionKey[] = [
+  ...fieldWorkPermissions,
+  "view_all_job_sessions",
+];
+
 const rolePermissions: Record<
   WorkspaceRole,
   {
     nav: NavPermissionKey[];
     actions: DashboardActionKey[];
+    work: WorkPermissionKey[];
   }
 > = {
   owner: {
     nav: [
       "dashboard",
       "queue",
+      "technician",
       "property_sales",
       "job_sessions",
       "schedule",
@@ -65,11 +101,13 @@ const rolePermissions: Record<
       "reports",
       "print_documents",
     ],
+    work: adminWorkPermissions,
   },
   admin: {
     nav: [
       "dashboard",
       "queue",
+      "technician",
       "property_sales",
       "job_sessions",
       "schedule",
@@ -92,6 +130,7 @@ const rolePermissions: Record<
       "reports",
       "print_documents",
     ],
+    work: adminWorkPermissions,
   },
   accountant: {
     nav: [
@@ -112,16 +151,49 @@ const rolePermissions: Record<
       "reports",
       "print_documents",
     ],
+    work: [],
   },
   property_manager: {
     nav: ["dashboard", "queue", "property_sales", "schedule", "reports"],
     actions: ["new_queue", "review_queue", "reports"],
+    work: ["view_assigned_queue_items", "view_basic_property_info"],
   },
-  member: {
-    nav: ["dashboard"],
-    actions: [],
+  technician: {
+    nav: ["technician", "queue"],
+    actions: ["review_queue"],
+    work: fieldWorkPermissions,
+  },
+  vendor: {
+    nav: ["technician", "queue"],
+    actions: ["review_queue"],
+    work: fieldWorkPermissions,
+  },
+  subcontractor: {
+    nav: ["technician", "queue"],
+    actions: ["review_queue"],
+    work: fieldWorkPermissions,
+  },
+  cleaner: {
+    nav: ["technician", "queue"],
+    actions: ["review_queue"],
+    work: fieldWorkPermissions,
+  },
+  flooring_contractor: {
+    nav: ["technician", "queue"],
+    actions: ["review_queue"],
+    work: fieldWorkPermissions,
   },
 };
+
+export const fieldWorkerRoles: WorkspaceRole[] = [
+  "owner",
+  "admin",
+  "technician",
+  "vendor",
+  "subcontractor",
+  "cleaner",
+  "flooring_contractor",
+];
 
 export function normalizeWorkspaceRole(
   role: string | null | undefined
@@ -136,9 +208,17 @@ export function normalizeWorkspaceRole(
     normalized === "admin" ||
     normalized === "accountant" ||
     normalized === "property_manager" ||
-    normalized === "member"
+    normalized === "technician" ||
+    normalized === "vendor" ||
+    normalized === "subcontractor" ||
+    normalized === "cleaner" ||
+    normalized === "flooring_contractor"
   ) {
     return normalized;
+  }
+
+  if (normalized === "member" || normalized === "tech") {
+    return "technician";
   }
 
   if (
@@ -151,7 +231,7 @@ export function normalizeWorkspaceRole(
     return "property_manager";
   }
 
-  return "member";
+  return "technician";
 }
 
 export function canAccessNavItem(
@@ -172,11 +252,24 @@ export function canUseDashboardAction(
   ].actions.includes(key);
 }
 
+export function canUseWorkPermission(
+  role: string | null | undefined,
+  key: WorkPermissionKey
+) {
+  return rolePermissions[
+    normalizeWorkspaceRole(role)
+  ].work.includes(key);
+}
+
 export function navPermissionForPath(
   pathname: string
 ): NavPermissionKey {
   if (pathname.startsWith("/queue")) {
     return "queue";
+  }
+
+  if (pathname.startsWith("/technician")) {
+    return "technician";
   }
 
   if (pathname.startsWith("/job-sessions")) {

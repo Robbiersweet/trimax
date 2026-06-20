@@ -87,6 +87,13 @@ export default function Navigation() {
         icon: "queue",
       },
       {
+        key: "technician",
+        label: "Technician",
+        href: `/technician?business=${business}`,
+        active: pathname.startsWith("/technician"),
+        icon: "technician",
+      },
+      {
         key: "property_sales",
         label: "Property Sales",
         href: `/property-sales?business=${business}&property=north-creek-apartments`,
@@ -368,6 +375,7 @@ export default function Navigation() {
 type NavIconKey =
   | "dashboard"
   | "queue"
+  | "technician"
   | "property_sales"
   | "job_sessions"
   | "schedule"
@@ -422,6 +430,14 @@ function NavIcon({
             <circle cx="4" cy="6" r="1" />
             <circle cx="4" cy="12" r="1" />
             <circle cx="4" cy="18" r="1" />
+          </>
+        ) : null}
+        {icon === "technician" ? (
+          <>
+            <path d="M14.7 6.3a3.2 3.2 0 0 0-4.4 4.4L4 17v3h3l6.3-6.3a3.2 3.2 0 0 0 4.4-4.4" />
+            <path d="m14 7 3 3" />
+            <path d="M18 3v4" />
+            <path d="M16 5h4" />
           </>
         ) : null}
         {icon === "property_sales" ? (

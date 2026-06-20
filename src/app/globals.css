@@ -12433,3 +12433,58 @@ html.theme-light .property-sales-page .property-sales-metric {
   background: #ffffff !important;
   border-color: #cbd5e1 !important;
 }
+
+.technician-page {
+  --technician-line: rgba(125, 211, 252, 0.22);
+}
+
+.technician-hero,
+.technician-job-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.technician-hero::before,
+.technician-job-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(56, 189, 248, 0.18), transparent 34%),
+    linear-gradient(135deg, rgba(14, 165, 233, 0.12), transparent 42%, rgba(16, 185, 129, 0.08));
+  opacity: 0.85;
+}
+
+.technician-hero > *,
+.technician-job-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.technician-job-card {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 18px 38px rgba(0, 0, 0, 0.2);
+}
+
+html.theme-light .technician-page .technician-hero,
+html.theme-light .technician-page .technician-job-card,
+html.theme-light .technician-page .bg-zinc-900\/70 {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.theme-light .technician-page .text-white {
+  color: #0f172a !important;
+}
+
+html.theme-light .technician-page .text-zinc-300,
+html.theme-light .technician-page .text-zinc-400 {
+  color: #475569 !important;
+}
+
+html.theme-light .technician-page .dashboard-readable-label {
+  color: #075985 !important;
+}

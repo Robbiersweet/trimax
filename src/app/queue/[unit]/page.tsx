@@ -15,6 +15,7 @@ import {
   calendarFileName,
 } from "../../lib/calendar";
 import { supabase } from "../../lib/supabase";
+import { fieldWorkerRoles } from "../../lib/rolePermissions";
 import { getConfirmedNorthCreekUnit } from "../../utils/northCreekUnits";
 import {
   canonicalApartmentUnitLabel,
@@ -620,29 +621,39 @@ export default async function QueueDetailPage({
 
           <div className="flex flex-wrap gap-2">
             <StatusBadge status={item.status ?? "Pending Estimate"} />
-            {linkedInvoice ? (
-              <StatusBadge
-                status={
-                  invoiceWasSent
-                    ? "Invoice Sent"
-                    : linkedInvoice.status ?? "Invoiced"
-                }
-              />
-            ) : null}
+            <RoleVisible
+              businessSlug={businessSlug}
+              allow={["owner", "admin", "accountant", "property_manager"]}
+            >
+              {linkedInvoice ? (
+                <StatusBadge
+                  status={
+                    invoiceWasSent
+                      ? "Invoice Sent"
+                      : linkedInvoice.status ?? "Invoiced"
+                  }
+                />
+              ) : null}
+            </RoleVisible>
           </div>
         </div>
 
-        <QueueWorkflowIntelligence
-          linkedEstimate={linkedEstimate}
-          linkedInvoice={linkedInvoice}
-          invoiceWasSent={invoiceWasSent}
-          invoiceIsPaid={invoiceIsPaid}
-          invoiceBalance={linkedInvoiceBalance}
-          completedDate={item.completed_date}
-          nextAction={workflowNextAction}
-        />
+        <RoleVisible
+          businessSlug={businessSlug}
+          allow={["owner", "admin", "accountant", "property_manager"]}
+        >
+          <QueueWorkflowIntelligence
+            linkedEstimate={linkedEstimate}
+            linkedInvoice={linkedInvoice}
+            invoiceWasSent={invoiceWasSent}
+            invoiceIsPaid={invoiceIsPaid}
+            invoiceBalance={linkedInvoiceBalance}
+            completedDate={item.completed_date}
+            nextAction={workflowNextAction}
+          />
+        </RoleVisible>
 
-        <RoleVisible businessSlug={businessSlug} allow={["owner", "admin"]}>
+        <RoleVisible businessSlug={businessSlug} allow={fieldWorkerRoles}>
           <JobSessionPanel
             businessId={selectedBusiness.id}
             businessSlug={businessSlug}
@@ -704,113 +715,118 @@ export default async function QueueDetailPage({
           />
         </div>
 
-        {linkedEstimate && (
-          <Card className="border-purple-500/40">
-            <p className="text-sm uppercase tracking-[0.25em] text-purple-300">
-              Linked Estimate
-            </p>
+        <RoleVisible
+          businessSlug={businessSlug}
+          allow={["owner", "admin", "accountant", "property_manager"]}
+        >
+          {linkedEstimate && (
+            <Card className="border-purple-500/40">
+              <p className="text-sm uppercase tracking-[0.25em] text-purple-300">
+                Linked Estimate
+              </p>
 
-            <div className="mt-3 flex items-center justify-between gap-4">
-              <div>
-                <p className="text-lg font-semibold">
-                  {linkedEstimate.display_id ?? "Estimate"}
-                </p>
-
-                <p className="mt-1 text-sm text-zinc-400">
-                  {linkedEstimate.project_title ?? "No project title"}
-                </p>
-              </div>
-
-              <Link
-                href={`/estimates/${linkedEstimate.id}?business=${businessSlug}`}
-              >
-                <Button variant="secondary">Open Estimate</Button>
-              </Link>
-            </div>
-          </Card>
-        )}
-
-        {linkedInvoice && (
-          <Card className="border-emerald-500/40 bg-gradient-to-br from-emerald-500/10 via-zinc-950 to-sky-500/5">
-            <p className="text-sm uppercase tracking-[0.25em] text-emerald-300">
-              Linked Invoice
-            </p>
-
-            <div className="mt-3 grid gap-4 lg:grid-cols-[1fr_auto] lg:items-start">
-              <div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <p className="text-xl font-semibold">
-                    {linkedInvoice.display_id ?? "Invoice"}
+              <div className="mt-3 flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-lg font-semibold">
+                    {linkedEstimate.display_id ?? "Estimate"}
                   </p>
-                  <StatusBadge status={linkedInvoice.status ?? "Invoiced"} />
+
+                  <p className="mt-1 text-sm text-zinc-400">
+                    {linkedEstimate.project_title ?? "No project title"}
+                  </p>
                 </div>
 
-                <p className="mt-1 text-sm text-zinc-400">
-                  {linkedInvoice.project_title ?? "No project title"}
-                </p>
-
-                <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-2xl border border-emerald-500/20 bg-black/30 px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-                      Invoice Total
-                    </p>
-                    <p className="mt-1 text-lg font-black text-white">
-                      {formatMoney(linkedInvoice.invoice_amount)}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-emerald-500/20 bg-black/30 px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-                      Due Date
-                    </p>
-                    <p className="mt-1 text-lg font-black text-white">
-                      {formatHistoryDate(linkedInvoice.due_date)}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-emerald-500/20 bg-black/30 px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-                      Delivery
-                    </p>
-                    <p className="mt-1 text-lg font-black text-white">
-                      {invoiceWasSent ? "Sent" : "Not sent yet"}
-                    </p>
-                  </div>
-                </div>
-
-                {linkedInvoiceActivity ? (
-                  <div className="mt-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-50">
-                    <p className="font-black">
-                      Sent proof saved{" "}
-                      {formatEventDateTime(linkedInvoiceActivity.created_at)
-                        ? `on ${formatEventDateTime(
-                            linkedInvoiceActivity.created_at
-                          )}`
-                        : ""}
-                    </p>
-                    <p className="mt-1 text-emerald-100/80">
-                      {invoiceRecipient
-                        ? `To ${invoiceRecipient}`
-                        : "Recipient saved in the activity log"}
-                      {invoiceCc ? `, CC ${invoiceCc}` : ""}
-                      {invoicePdfAttached ? ". PDF attached." : "."}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="mt-4 rounded-2xl border border-sky-500/25 bg-sky-500/10 px-4 py-3 text-sm text-sky-100">
-                    {invoiceWasSent
-                      ? "Invoice is marked sent. No email activity proof was found yet, so the invoice page is the best place to confirm delivery details."
-                      : "Invoice created from this estimate. Send it from the invoice page when you are ready to notify the customer."}
-                  </div>
-                )}
+                <Link
+                  href={`/estimates/${linkedEstimate.id}?business=${businessSlug}`}
+                >
+                  <Button variant="secondary">Open Estimate</Button>
+                </Link>
               </div>
+            </Card>
+          )}
 
-              <Link href={`/invoices/${linkedInvoice.id}?business=${businessSlug}`}>
-                <Button variant={linkedInvoiceActivity ? "secondary" : "primary"}>
-                  Open Invoice
-                </Button>
-              </Link>
-            </div>
-          </Card>
-        )}
+          {linkedInvoice && (
+            <Card className="border-emerald-500/40 bg-gradient-to-br from-emerald-500/10 via-zinc-950 to-sky-500/5">
+              <p className="text-sm uppercase tracking-[0.25em] text-emerald-300">
+                Linked Invoice
+              </p>
+
+              <div className="mt-3 grid gap-4 lg:grid-cols-[1fr_auto] lg:items-start">
+                <div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <p className="text-xl font-semibold">
+                      {linkedInvoice.display_id ?? "Invoice"}
+                    </p>
+                    <StatusBadge status={linkedInvoice.status ?? "Invoiced"} />
+                  </div>
+
+                  <p className="mt-1 text-sm text-zinc-400">
+                    {linkedInvoice.project_title ?? "No project title"}
+                  </p>
+
+                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-2xl border border-emerald-500/20 bg-black/30 px-4 py-3">
+                      <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                        Invoice Total
+                      </p>
+                      <p className="mt-1 text-lg font-black text-white">
+                        {formatMoney(linkedInvoice.invoice_amount)}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-emerald-500/20 bg-black/30 px-4 py-3">
+                      <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                        Due Date
+                      </p>
+                      <p className="mt-1 text-lg font-black text-white">
+                        {formatHistoryDate(linkedInvoice.due_date)}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-emerald-500/20 bg-black/30 px-4 py-3">
+                      <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                        Delivery
+                      </p>
+                      <p className="mt-1 text-lg font-black text-white">
+                        {invoiceWasSent ? "Sent" : "Not sent yet"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {linkedInvoiceActivity ? (
+                    <div className="mt-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-50">
+                      <p className="font-black">
+                        Sent proof saved{" "}
+                        {formatEventDateTime(linkedInvoiceActivity.created_at)
+                          ? `on ${formatEventDateTime(
+                              linkedInvoiceActivity.created_at
+                            )}`
+                          : ""}
+                      </p>
+                      <p className="mt-1 text-emerald-100/80">
+                        {invoiceRecipient
+                          ? `To ${invoiceRecipient}`
+                          : "Recipient saved in the activity log"}
+                        {invoiceCc ? `, CC ${invoiceCc}` : ""}
+                        {invoicePdfAttached ? ". PDF attached." : "."}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="mt-4 rounded-2xl border border-sky-500/25 bg-sky-500/10 px-4 py-3 text-sm text-sky-100">
+                      {invoiceWasSent
+                        ? "Invoice is marked sent. No email activity proof was found yet, so the invoice page is the best place to confirm delivery details."
+                        : "Invoice created from this estimate. Send it from the invoice page when you are ready to notify the customer."}
+                    </div>
+                  )}
+                </div>
+
+                <Link href={`/invoices/${linkedInvoice.id}?business=${businessSlug}`}>
+                  <Button variant={linkedInvoiceActivity ? "secondary" : "primary"}>
+                    Open Invoice
+                  </Button>
+                </Link>
+              </div>
+            </Card>
+          )}
+        </RoleVisible>
 
         {isNorthCreekQueueItem ? (
           <Card className="unit-intelligence-card border-sky-500/30 bg-gradient-to-br from-sky-500/10 via-zinc-950 to-emerald-500/5">
@@ -1052,17 +1068,22 @@ export default async function QueueDetailPage({
         <div id="complete-work" className="flex scroll-mt-6 flex-wrap gap-4">
           <BackButton label="Back" fallbackHref={`/queue?business=${businessSlug}`} />
 
-          {!linkedEstimate && (
-            <Link
-              href={`/estimates/new?queueId=${item.id}&business=${businessSlug}`}
-            >
-              <Button>Create Estimate</Button>
-            </Link>
-          )}
+          <RoleVisible
+            businessSlug={businessSlug}
+            allow={["owner", "admin", "accountant", "property_manager"]}
+          >
+            {!linkedEstimate && (
+              <Link
+                href={`/estimates/new?queueId=${item.id}&business=${businessSlug}`}
+              >
+                <Button>Create Estimate</Button>
+              </Link>
+            )}
 
-          <Link href={`/queue/${item.id}/edit?business=${businessSlug}`}>
-            <Button variant="secondary">Edit Queue Item</Button>
-          </Link>
+            <Link href={`/queue/${item.id}/edit?business=${businessSlug}`}>
+              <Button variant="secondary">Edit Queue Item</Button>
+            </Link>
+          </RoleVisible>
 
           {calendarHref ? (
             <a
@@ -1085,10 +1106,12 @@ export default async function QueueDetailPage({
             returnToQueue
           />
 
-          <DeleteQueueItemButton
-            queueItemId={item.id}
-            returnHref={`/queue?business=${businessSlug}`}
-          />
+          <RoleVisible businessSlug={businessSlug} allow={["owner", "admin"]}>
+            <DeleteQueueItemButton
+              queueItemId={item.id}
+              returnHref={`/queue?business=${businessSlug}`}
+            />
+          </RoleVisible>
         </div>
       </div>
     </AppShell>

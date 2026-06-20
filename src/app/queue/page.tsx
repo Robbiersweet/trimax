@@ -550,9 +550,14 @@ export default async function QueuePage({
             </p>
           </div>
 
-          <Link href={`/new-request${businessQuery}`}>
-            <Button>+ New Queue Item</Button>
-          </Link>
+          <RoleVisible
+            businessSlug={businessSlug}
+            allow={["owner", "admin", "property_manager"]}
+          >
+            <Link href={`/new-request${businessQuery}`}>
+              <Button>+ New Queue Item</Button>
+            </Link>
+          </RoleVisible>
         </div>
 
         {queueLoadMessage ? (
@@ -730,9 +735,14 @@ export default async function QueuePage({
                   </p>
                 </div>
 
-                <Link href={`/new-request${businessQuery}`}>
-                  <Button>+ New Queue Item</Button>
-                </Link>
+                <RoleVisible
+                  businessSlug={businessSlug}
+                  allow={["owner", "admin", "property_manager"]}
+                >
+                  <Link href={`/new-request${businessQuery}`}>
+                    <Button>+ New Queue Item</Button>
+                  </Link>
+                </RoleVisible>
               </div>
             </Card>
           ) : filteredQueueItems.length === 0 ? (
@@ -946,19 +956,24 @@ export default async function QueuePage({
                         <Button>Open Queue Item</Button>
                       </Link>
 
-                      {linkedEstimate ? (
-                        <Link
-                          href={`/estimates/${linkedEstimate.id}${businessQuery}`}
-                        >
-                          <Button variant="secondary">Open Estimate</Button>
-                        </Link>
-                      ) : (
-                        <Link
-                          href={`/estimates/new?queueId=${item.id}&business=${businessSlug}`}
-                        >
-                          <Button variant="secondary">Create Estimate</Button>
-                        </Link>
-                      )}
+                      <RoleVisible
+                        businessSlug={businessSlug}
+                        allow={["owner", "admin", "accountant", "property_manager"]}
+                      >
+                        {linkedEstimate ? (
+                          <Link
+                            href={`/estimates/${linkedEstimate.id}${businessQuery}`}
+                          >
+                            <Button variant="secondary">Open Estimate</Button>
+                          </Link>
+                        ) : (
+                          <Link
+                            href={`/estimates/new?queueId=${item.id}&business=${businessSlug}`}
+                          >
+                            <Button variant="secondary">Create Estimate</Button>
+                          </Link>
+                        )}
+                      </RoleVisible>
                     </div>
                   </div>
                 </Card>

@@ -12,7 +12,10 @@ import {
   loadMaintenanceSettings,
   MaintenanceSettings,
 } from "../lib/maintenanceMode";
-import { normalizeWorkspaceRole } from "../lib/rolePermissions";
+import {
+  canUseWorkPermission,
+  normalizeWorkspaceRole,
+} from "../lib/rolePermissions";
 import { loadWorkspaceAccess } from "../lib/workspaceAccess";
 
 type AppShellProps = {
@@ -51,7 +54,7 @@ export default function AppShell({
       const workspace = selectedBusiness
         ? access.find((item) => item.businessSlug === selectedBusiness)
         : access[0];
-      const role = normalizeWorkspaceRole(workspace?.role ?? "member");
+      const role = normalizeWorkspaceRole(workspace?.role ?? "technician");
 
       if (!isActive) {
         return;
@@ -59,7 +62,7 @@ export default function AppShell({
 
       setMaintenance(settings);
       setCanManageMaintenance(role === "owner" || role === "admin");
-      setCanUseJobSessions(role === "owner" || role === "admin");
+      setCanUseJobSessions(canUseWorkPermission(role, "view_own_sessions"));
     }
 
     loadBannerState();

@@ -152,10 +152,34 @@ const roleOptions: {
       "Queue intake and property reporting access without internal financial tools.",
   },
   {
-    value: "member",
-    label: "Member",
+    value: "technician",
+    label: "Technician",
     description:
-      "Minimal access while a role is being decided.",
+      "Field access for assigned jobs, job sessions, notes, photos, and status updates without financial or admin tools.",
+  },
+  {
+    value: "vendor",
+    label: "Vendor",
+    description:
+      "Future-ready field access for outside vendors without company financials.",
+  },
+  {
+    value: "subcontractor",
+    label: "Subcontractor",
+    description:
+      "Future-ready work access for subcontracted labor and job documentation.",
+  },
+  {
+    value: "cleaner",
+    label: "Cleaner",
+    description:
+      "Future-ready cleaning access for assigned jobs, notes, and photos.",
+  },
+  {
+    value: "flooring_contractor",
+    label: "Flooring Contractor",
+    description:
+      "Future-ready flooring access for assigned unit work and documentation.",
   },
 ];
 
@@ -172,7 +196,7 @@ function formatCurrency(value: string) {
 function formatRole(value: string) {
   return roleOptions.find(
     (role) => role.value === normalizeWorkspaceRole(value)
-  )?.label ?? "Member";
+  )?.label ?? "Technician";
 }
 
 function formatDate(value: string | null) {
@@ -274,7 +298,7 @@ function BusinessSettingsPageContent() {
   const [currentEmail, setCurrentEmail] =
     useState<string | null>(null);
   const [currentRole, setCurrentRole] =
-    useState<WorkspaceRole>("member");
+    useState<WorkspaceRole>("technician");
   const [splitWarningAmount, setSplitWarningAmount] =
     useState("");
   const [maintenanceMode, setMaintenanceMode] = useState(false);
@@ -300,7 +324,7 @@ function BusinessSettingsPageContent() {
   const [inviteEmail, setInviteEmail] =
     useState("");
   const [inviteRole, setInviteRole] =
-    useState<WorkspaceRole>("member");
+    useState<WorkspaceRole>("technician");
   const [propertyInviteEmail, setPropertyInviteEmail] =
     useState("");
   const [propertyInviteName, setPropertyInviteName] =
@@ -490,11 +514,11 @@ function BusinessSettingsPageContent() {
 
     setCurrentRole(
       normalizeWorkspaceRole(
-        matchingAccess?.role ?? "member"
+        matchingAccess?.role ?? "technician"
       )
     );
     const normalizedRole = normalizeWorkspaceRole(
-      matchingAccess?.role ?? "member"
+      matchingAccess?.role ?? "technician"
     );
 
     if (normalizedRole === "owner" || normalizedRole === "admin") {
@@ -961,7 +985,7 @@ function BusinessSettingsPageContent() {
     }
 
     setInviteEmail("");
-    setInviteRole("member");
+    setInviteRole("technician");
 
     await loadSettings();
 
@@ -1021,7 +1045,7 @@ function BusinessSettingsPageContent() {
     }
 
     setInviteEmail(request.requester_email);
-    setInviteRole("member");
+    setInviteRole("technician");
 
     if (request.status === "new") {
       await handleAccessRequestStatus(
