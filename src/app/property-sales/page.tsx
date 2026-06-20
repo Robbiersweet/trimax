@@ -687,6 +687,12 @@ export default async function PropertySalesPage({
   const unitHistory = buildUnitHistory(queueItems, estimates, invoices, sessions);
   const propertyOptions = buildPropertyOptions(queueItems, propertyLabel);
   const propertySlug = propertyLabelToSlug(propertyLabel);
+  const hasBillingWithoutTurnPipeline =
+    !isDemo && pipelineCards.length === 0 && invoices.length > 0;
+  const hasNoTurnPipeline = pipelineCards.length === 0;
+  const noPipelineMessage = hasBillingWithoutTurnPipeline
+    ? "New queue requests will appear here as soon as management adds units for this property. Existing invoice totals still stay in the overview so sales and billing stay honest."
+    : "New queue requests will appear here as soon as management adds units for this property.";
 
   const overviewCards = [
     {
@@ -841,6 +847,19 @@ export default async function PropertySalesPage({
                 Evergreen demo
               </Link>
             </div>
+
+            {hasBillingWithoutTurnPipeline ? (
+              <div className="property-sales-scope-note mt-5 rounded-2xl border p-4">
+                <p className="text-sm font-black text-white">
+                  Billing is visible, but no active turn cards are linked yet.
+                </p>
+                <p className="mt-2 text-sm leading-6 text-zinc-300">
+                  Trimax found invoices for this property, while the turn pipeline
+                  is waiting for queue items tied to this same property. This keeps
+                  imported billing from being mistaken for active apartment turns.
+                </p>
+              </div>
+            ) : null}
           </Card>
 
           <Card className="dark-surface border-emerald-500/20 bg-emerald-500/5">
@@ -868,105 +887,131 @@ export default async function PropertySalesPage({
               </h2>
             </div>
             <p className="text-sm font-bold text-zinc-400">
-              {pipelineCards.length} scoped turn records
+              {pipelineCards.length} turn cards
             </p>
           </div>
 
-          <div className="property-sales-kanban mt-5 grid gap-3 xl:grid-cols-7">
-            {pipelineStatuses.map((status) => {
-              const cards = pipelineCards.filter(
-                (item) => item.pipelineStatus === status
-              );
+          {hasNoTurnPipeline ? (
+            <div className="property-sales-empty-board mt-5 rounded-3xl border p-5">
+              <div>
+                <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.22em]">
+                  Live Pipeline Status
+                </p>
+                <h3 className="mt-2 text-xl font-black text-white">
+                  No active turn records are linked to {propertyLabel} yet
+                </h3>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
+                  {noPipelineMessage}
+                </p>
+              </div>
+              <Link
+                href={`/queue?business=${businessSlug}`}
+                className="rounded-2xl border border-sky-300/40 bg-sky-400/15 px-4 py-3 text-sm font-black text-white transition hover:-translate-y-0.5"
+              >
+                Open Queue
+              </Link>
+            </div>
+          ) : null}
 
-              return (
-                <section
-                  key={status}
-                  className="property-sales-column rounded-2xl border border-white/10 bg-black/20 p-3"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <h3 className="text-xs font-black uppercase tracking-[0.18em] text-sky-100">
-                      {status}
-                    </h3>
-                    <span className="rounded-full border border-white/10 bg-white/10 px-2 py-1 text-xs font-black text-white">
-                      {cards.length}
-                    </span>
-                  </div>
+          {pipelineCards.length > 0 ? (
+            <div className="property-sales-kanban mt-5 grid grid-flow-col gap-3 overflow-x-auto pb-3">
+              {pipelineStatuses.map((status) => {
+                const cards = pipelineCards.filter(
+                  (item) => item.pipelineStatus === status
+                );
 
-                  <div className="mt-3 grid gap-3">
-                    {cards.length > 0 ? (
-                      cards.map((item) => (
-                        <Link
-                          key={item.id}
-                          href={`/queue/${item.id}?business=${businessSlug}`}
-                          className="property-sales-unit-card rounded-2xl border border-white/10 bg-zinc-950/80 p-3 transition hover:-translate-y-0.5 hover:border-sky-300/60"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="text-xs font-bold text-zinc-400">
-                                {item.property ?? propertyLabel}
-                              </p>
-                              <p className="mt-1 text-xl font-black text-white">
-                                Unit {item.unit ?? "-"}
-                              </p>
+                return (
+                  <section
+                    key={status}
+                    className="property-sales-column rounded-2xl border border-white/10 bg-black/20 p-3"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="text-xs font-black uppercase tracking-[0.18em] text-sky-100">
+                        {status}
+                      </h3>
+                      <span className="rounded-full border border-white/10 bg-white/10 px-2 py-1 text-xs font-black text-white">
+                        {cards.length}
+                      </span>
+                    </div>
+
+                    <div className="mt-3 grid gap-3">
+                      {cards.length > 0 ? (
+                        cards.map((item) => (
+                          <Link
+                            key={item.id}
+                            href={`/queue/${item.id}?business=${businessSlug}`}
+                            className="property-sales-unit-card rounded-2xl border border-white/10 bg-zinc-950/80 p-3 transition hover:-translate-y-0.5 hover:border-sky-300/60"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-xs font-bold text-zinc-400">
+                                  {item.property ?? propertyLabel}
+                                </p>
+                                <p className="mt-1 text-xl font-black text-white">
+                                  Unit {item.unit ?? "-"}
+                                </p>
+                              </div>
+                              {item.smoked_in || item.renovation_needed ? (
+                                <span className="rounded-full border border-orange-300/40 bg-orange-400/15 px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-orange-100">
+                                  Heavy prep
+                                </span>
+                              ) : null}
                             </div>
-                            {item.smoked_in || item.renovation_needed ? (
-                              <span className="rounded-full border border-orange-300/40 bg-orange-400/15 px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-orange-100">
-                                Heavy prep
+
+                            <dl className="mt-3 grid gap-2 text-xs text-zinc-300">
+                              <div>
+                                <dt className="font-black uppercase tracking-[0.14em] text-zinc-500">
+                                  Move-out
+                                </dt>
+                                <dd className="font-bold text-white">
+                                  {formatDate(item.move_out_date)}
+                                </dd>
+                              </div>
+                              <div>
+                                <dt className="font-black uppercase tracking-[0.14em] text-zinc-500">
+                                  Ready
+                                </dt>
+                                <dd className="font-bold text-white">
+                                  {formatDate(item.ready_date)}
+                                </dd>
+                              </div>
+                              <div>
+                                <dt className="font-black uppercase tracking-[0.14em] text-zinc-500">
+                                  Paint
+                                </dt>
+                                <dd>{item.paint_type ?? "-"}</dd>
+                              </div>
+                              <div>
+                                <dt className="font-black uppercase tracking-[0.14em] text-zinc-500">
+                                  Flooring
+                                </dt>
+                                <dd>{item.flooring ?? "-"}</dd>
+                              </div>
+                            </dl>
+
+                            <p className="mt-3 text-xs leading-5 text-zinc-400">
+                              {notesPreview(item.notes)}
+                            </p>
+
+                            <div className="mt-3 flex items-center justify-between gap-2 border-t border-white/10 pt-3 text-[0.7rem] font-black uppercase tracking-[0.12em] text-zinc-500">
+                              <span>{item.pipelineStatus}</span>
+                              <span>
+                                {formatDate(item.updated_at ?? item.created_at)}
                               </span>
-                            ) : null}
-                          </div>
-
-                          <dl className="mt-3 grid gap-2 text-xs text-zinc-300">
-                            <div>
-                              <dt className="font-black uppercase tracking-[0.14em] text-zinc-500">
-                                Move-out
-                              </dt>
-                              <dd className="font-bold text-white">
-                                {formatDate(item.move_out_date)}
-                              </dd>
                             </div>
-                            <div>
-                              <dt className="font-black uppercase tracking-[0.14em] text-zinc-500">
-                                Ready
-                              </dt>
-                              <dd className="font-bold text-white">
-                                {formatDate(item.ready_date)}
-                              </dd>
-                            </div>
-                            <div>
-                              <dt className="font-black uppercase tracking-[0.14em] text-zinc-500">
-                                Paint
-                              </dt>
-                              <dd>{item.paint_type ?? "-"}</dd>
-                            </div>
-                            <div>
-                              <dt className="font-black uppercase tracking-[0.14em] text-zinc-500">
-                                Flooring
-                              </dt>
-                              <dd>{item.flooring ?? "-"}</dd>
-                            </div>
-                          </dl>
-
-                          <p className="mt-3 text-xs leading-5 text-zinc-400">
-                            {notesPreview(item.notes)}
-                          </p>
-
-                          <div className="mt-3 flex items-center justify-between gap-2 border-t border-white/10 pt-3 text-[0.7rem] font-black uppercase tracking-[0.12em] text-zinc-500">
-                            <span>{item.pipelineStatus}</span>
-                            <span>{formatDate(item.updated_at ?? item.created_at)}</span>
-                          </div>
-                        </Link>
-                      ))
-                    ) : (
-                      <p className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-3 text-sm leading-6 text-zinc-500">
-                        Nothing here right now.
-                      </p>
-                    )}
-                  </div>
-                </section>
-              );
-            })}
-          </div>
+                          </Link>
+                        ))
+                      ) : (
+                        <p className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-3 text-sm leading-6 text-zinc-500">
+                          No {status.toLowerCase()} turns right now.
+                        </p>
+                      )}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+          ) : null}
         </Card>
 
         <section className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(22rem,0.8fr)]">
@@ -1078,20 +1123,21 @@ export default async function PropertySalesPage({
               Completion Photos
             </p>
             <h2 className="mt-2 text-2xl font-black text-white">
-              Photo proof placeholder
+              Proof photos managers can review
             </h2>
             <p className="mt-2 text-sm leading-6 text-zinc-300">
-              The sales dashboard reserves space for before-and-after photos, so
-              future property demos can show proof without redesigning this page.
+              Reserve the exact proof moments managers care about: before,
+              after, touch-up, and manager approval. Photo uploads can plug into
+              these slots without redesigning the sales dashboard later.
             </p>
 
             <div className="mt-5 grid grid-cols-2 gap-3">
               {["Before", "After", "Touch-up", "Manager OK"].map((label) => (
                 <div
                   key={label}
-                  className="grid aspect-[4/3] place-items-center rounded-2xl border border-dashed border-sky-300/30 bg-sky-400/5 text-center text-sm font-black text-sky-100"
+                  className="property-sales-photo-slot grid aspect-[4/3] place-items-center rounded-2xl border border-dashed border-sky-300/30 bg-sky-400/5 text-center text-sm font-black text-sky-100"
                 >
-                  {label} photo
+                  <span>{label} photo</span>
                 </div>
               ))}
             </div>
