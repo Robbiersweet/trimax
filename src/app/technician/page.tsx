@@ -97,6 +97,43 @@ function formatDate(value: string | null) {
   });
 }
 
+function daysUntil(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const target = new Date(`${value.slice(0, 10)}T00:00:00`).getTime();
+  const today = todayStart().getTime();
+
+  if (!Number.isFinite(target)) {
+    return null;
+  }
+
+  return Math.ceil((target - today) / 86400000);
+}
+
+function fieldPriorityText(item: QueueItem) {
+  const days = daysUntil(item.ready_date);
+
+  if (days === null) {
+    return "Ready date needed";
+  }
+
+  if (days < 0) {
+    return `${Math.abs(days)} days past ready`;
+  }
+
+  if (days === 0) {
+    return "Ready today";
+  }
+
+  if (days === 1) {
+    return "Ready tomorrow";
+  }
+
+  return `Ready in ${days} days`;
+}
+
 function isOpenFieldJob(item: QueueItem) {
   const status = (item.status ?? "").trim().toLowerCase();
 
@@ -235,6 +272,28 @@ export default function TechnicianDashboard() {
   const recentCompletedItems = useMemo(() => completedSessions.slice(0, 4), [
     completedSessions,
   ]);
+
+  const fieldJobs = useMemo(
+    () =>
+      [...queueItems].sort((left, right) => {
+        const leftDays = daysUntil(left.ready_date) ?? 999;
+        const rightDays = daysUntil(right.ready_date) ?? 999;
+
+        if (leftDays !== rightDays) {
+          return leftDays - rightDays;
+        }
+
+        const leftScheduled = left.scheduled_date ? 0 : 1;
+        const rightScheduled = right.scheduled_date ? 0 : 1;
+
+        if (leftScheduled !== rightScheduled) {
+          return leftScheduled - rightScheduled;
+        }
+
+        return jobTitle(left).localeCompare(jobTitle(right));
+      }),
+    [queueItems]
+  );
 
   async function startSession(item: QueueItem) {
     if (!business?.id || !userId || activeSession) {
@@ -399,7 +458,7 @@ export default function TechnicianDashboard() {
                 Daily work without the accounting clutter
               </h1>
               <p className="mt-3 max-w-3xl text-base leading-7 text-zinc-300">
-                Start from the job, track real labor time, save field notes, and keep proof moving without opening invoices or company settings.
+                Start from the job, track real labor time, save field notes, and keep proof moving. No invoices, revenue, settings, or admin tools live on this screen.
               </p>
             </div>
 
@@ -414,8 +473,24 @@ export default function TechnicianDashboard() {
           <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <TechnicianMetric label="Active session" value={activeSession ? "1" : "0"} detail="Running now" />
             <TechnicianMetric label="Today" value={formatMinutes(todayMinutes)} detail="Your labor time" />
-            <TechnicianMetric label="Field jobs" value={String(queueItems.length)} detail="Visible work" />
+            <TechnicianMetric label="Field jobs" value={String(fieldJobs.length)} detail="Ready to review" />
             <TechnicianMetric label="Finished" value={String(completedSessions.length)} detail="Your completed sessions" />
+          </div>
+        </section>
+
+        <section className="technician-field-safe-strip rounded-[1.5rem] border border-cyan-400/20 bg-zinc-900/70 p-4">
+          <div>
+            <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.2em] text-cyan-200">
+              Field-Safe Screen
+            </p>
+            <p className="mt-2 text-sm leading-6 text-zinc-300">
+              Technicians can work, pause, stop, add notes, and upload proof without touching accounting or workspace administration.
+            </p>
+          </div>
+          <div className="grid gap-2 text-xs font-black uppercase tracking-[0.14em] text-cyan-100 sm:grid-cols-3">
+            <span>Time</span>
+            <span>Notes</span>
+            <span>Photos</span>
           </div>
         </section>
 
@@ -491,8 +566,11 @@ export default function TechnicianDashboard() {
                 </div>
               </div>
             ) : (
-              <div className="mt-5 rounded-2xl border border-dashed border-white/15 bg-black/20 p-4 text-sm text-zinc-400">
-                Choose a job below and tap Start Session when work begins.
+              <div className="technician-empty-state mt-5 rounded-2xl border border-dashed p-4">
+                <p className="font-black text-white">Ready when the next unit is ready.</p>
+                <p className="mt-2 text-sm leading-6 text-zinc-400">
+                  Choose a field job below and tap Start Session when work begins.
+                </p>
               </div>
             )}
           </div>
@@ -534,17 +612,17 @@ export default function TechnicianDashboard() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.22em] text-cyan-200">
-                Assigned Jobs
+                Field Jobs
               </p>
               <h2 className="mt-2 text-2xl font-black text-white">
                 Start from the next unit
               </h2>
               <p className="mt-2 text-sm leading-6 text-zinc-400">
-                Showing field-visible open queue jobs. Dedicated per-technician assignment can be added on top of this workflow later.
+                Showing open field work in ready-date order. Financial details stay hidden so this remains a clean workbench for the field.
               </p>
             </div>
             <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-black text-zinc-200">
-              {queueItems.length} active
+              {fieldJobs.length} active
             </span>
           </div>
 
@@ -553,8 +631,8 @@ export default function TechnicianDashboard() {
               <div className="rounded-2xl border border-white/10 bg-black/20 p-5 text-sm font-bold text-zinc-300">
                 Loading today&apos;s field work...
               </div>
-            ) : queueItems.length > 0 ? (
-              queueItems.slice(0, 12).map((item) => (
+            ) : fieldJobs.length > 0 ? (
+              fieldJobs.slice(0, 12).map((item) => (
                 <article
                   key={item.id}
                   className="technician-job-card grid gap-4 rounded-3xl border border-white/10 bg-black/25 p-4 lg:grid-cols-[1fr_auto]"
@@ -566,6 +644,9 @@ export default function TechnicianDashboard() {
                       </p>
                       <span className="rounded-full bg-sky-400/15 px-3 py-1 text-xs font-black text-sky-100">
                         {item.status ?? "Open"}
+                      </span>
+                      <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-black text-cyan-100">
+                        {fieldPriorityText(item)}
                       </span>
                       {item.smoked_in || item.renovation_needed ? (
                         <span className="rounded-full bg-amber-400/15 px-3 py-1 text-xs font-black text-amber-100">
@@ -621,8 +702,27 @@ export default function TechnicianDashboard() {
                 </article>
               ))
             ) : (
-              <div className="rounded-2xl border border-dashed border-white/15 bg-black/20 p-5 text-sm text-zinc-400">
-                No open field jobs are visible right now.
+              <div className="technician-empty-state rounded-2xl border border-dashed p-5">
+                <p className="text-lg font-black text-white">
+                  No field jobs are ready on this workbench right now.
+                </p>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
+                  When a queue item is ready for field work, it will appear here with only the job details needed to perform the work.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Link
+                    href={`/queue?business=${businessSlug}`}
+                    className="rounded-2xl border border-sky-300/40 bg-sky-400/15 px-4 py-3 text-sm font-black text-white transition hover:-translate-y-0.5"
+                  >
+                    Open Queue
+                  </Link>
+                  <Link
+                    href={`/job-sessions?business=${businessSlug}`}
+                    className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-black text-white transition hover:border-cyan-300/50"
+                  >
+                    View Sessions
+                  </Link>
+                </div>
               </div>
             )}
           </div>

@@ -12618,6 +12618,51 @@ html.theme-light .property-sales-page .property-sales-photo-slot span {
     0 18px 38px rgba(0, 0, 0, 0.2);
 }
 
+.technician-field-safe-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(34, 211, 238, 0.12), transparent 34%),
+    linear-gradient(135deg, rgba(15, 23, 42, 0.88), rgba(2, 6, 23, 0.72));
+}
+
+.technician-field-safe-strip span {
+  display: inline-flex;
+  min-width: 5.75rem;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  background: rgba(14, 165, 233, 0.1);
+  padding: 0.55rem 0.8rem;
+}
+
+.technician-empty-state {
+  background:
+    linear-gradient(135deg, rgba(14, 165, 233, 0.08), rgba(16, 185, 129, 0.05)),
+    rgba(2, 6, 23, 0.38);
+  border-color: rgba(125, 211, 252, 0.2);
+}
+
+.technician-page .rounded-2xl,
+.technician-page .rounded-3xl,
+.technician-page .rounded-\[1\.5rem\],
+.technician-page .rounded-\[1\.75rem\] {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+
+.technician-job-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(125, 211, 252, 0.42);
+}
+
+@media (max-width: 760px) {
+  .technician-field-safe-strip {
+    grid-template-columns: 1fr;
+  }
+}
+
 html.theme-light .technician-page .technician-hero,
 html.theme-light .technician-page .technician-job-card,
 html.theme-light .technician-page .bg-zinc-900\/70 {
@@ -12637,4 +12682,10 @@ html.theme-light .technician-page .text-zinc-400 {
 
 html.theme-light .technician-page .dashboard-readable-label {
   color: #075985 !important;
+}
+
+html.theme-light .technician-page .technician-field-safe-strip,
+html.theme-light .technician-page .technician-empty-state {
+  background: linear-gradient(135deg, #eff6ff, #ecfdf5) !important;
+  border-color: #bae6fd !important;
 }
