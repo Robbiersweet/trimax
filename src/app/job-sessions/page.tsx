@@ -694,19 +694,19 @@ export default async function JobSessionsPage({
             />
           </div>
 
-          <div className="job-session-advantage-loop mt-5 rounded-2xl border border-white/10 bg-black/25 p-4">
+          <div className="job-session-advantage-loop job-session-step-rail mt-5 rounded-2xl border border-white/10 bg-black/25 p-4">
             <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.22em] text-sky-200">
-                  Labor Advantage Loop
+                  Field Time System
                 </p>
                 <h2 className="mt-1 text-2xl font-black">
-                  Field time turns into planning memory
+                  One start, one stop, useful history
                 </h2>
               </div>
 
               <span className="job-session-advantage-badge rounded-full border px-3 py-1 text-xs font-black">
-                Low friction by design
+                Same-day reconstruction
               </span>
             </div>
 
@@ -937,7 +937,7 @@ export default async function JobSessionsPage({
               {workTypeTotals.length === 0 ? (
                 <EmptyState
                   title="No labor categories yet"
-                  detail="Stop a session and save a breakdown to start seeing the mix."
+                  detail="Breakdown is optional. One saved split will show prep, paint, material run, and admin time here."
                 />
               ) : (
                 workTypeTotals.slice(0, 5).map((item) => {
@@ -1056,10 +1056,10 @@ export default async function JobSessionsPage({
 
             <div className="mt-5 space-y-3">
               {activeSessions.length === 0 ? (
-                <EmptyState
-                  title="No active job sessions right now"
-                  detail="Open a queue item and tap Start Job Session when work begins."
-                />
+                  <EmptyState
+                    title="No one is clocked into a job right now"
+                    detail="Open a queue item when work begins; each person keeps their own session."
+                  />
               ) : (
                 activeSessions.map((session) => (
                   <SessionRow
@@ -1130,10 +1130,10 @@ export default async function JobSessionsPage({
 
           <div className="mt-5 grid gap-3 lg:grid-cols-2">
             {unitLaborLedger.length === 0 ? (
-              <EmptyState
-                title="No completed unit labor yet"
-                detail="Completed sessions will build a searchable unit labor memory here."
-              />
+                  <EmptyState
+                    title="No completed unit labor yet"
+                    detail="Once a job session is stopped, each unit keeps its own labor memory here."
+                  />
             ) : (
               unitLaborLedger.slice(0, 6).map((item) => (
                 <Link
@@ -1197,10 +1197,10 @@ export default async function JobSessionsPage({
 
           <div className="mt-5 grid gap-3 lg:grid-cols-2">
             {sessions.length === 0 ? (
-              <EmptyState
-                title="No sessions have been recorded yet"
-                detail="The first saved session will appear here automatically."
-              />
+                <EmptyState
+                  title="No saved sessions yet"
+                  detail="Start from a queue item and the first saved session will appear here."
+                />
             ) : (
               sessions.slice(0, 8).map((session) => (
                 <SessionRow
@@ -1345,6 +1345,7 @@ function ReadyWorkRow({
   return (
     <Link
       href={queueItemHref(businessSlug, item.id)}
+      aria-label={`Open ${item.property || "job"} ${item.unit || "unit"} to start or review a job session`}
       className="job-session-ready-row rounded-2xl border border-white/10 bg-black/25 p-4 transition hover:-translate-y-0.5"
     >
       <div className="flex items-start justify-between gap-3">
@@ -1388,6 +1389,11 @@ function ReadyWorkRow({
             </span>
           ) : null}
         </div>
+      </div>
+
+      <div className="job-session-ready-row-cta mt-4 flex items-center justify-between gap-3 border-t border-white/10 pt-3">
+        <span>Open unit</span>
+        <strong>Session controls inside</strong>
       </div>
     </Link>
   );
