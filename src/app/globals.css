@@ -12514,7 +12514,8 @@ html.theme-light :is(a, button).dashboard-workflow-node:focus-visible {
 }
 
 .property-sales-meeting-strip,
-.property-sales-meeting-step {
+.property-sales-meeting-step,
+.property-sales-proof-point {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.07),
     0 18px 38px rgba(0, 0, 0, 0.18);
@@ -12649,7 +12650,8 @@ html.theme-light .property-sales-page .property-sales-unit-card,
 html.theme-light .property-sales-page .property-sales-metric,
 html.theme-light .property-sales-page .property-sales-confidence-card,
 html.theme-light .property-sales-page .property-sales-meeting-strip,
-html.theme-light .property-sales-page .property-sales-meeting-step {
+html.theme-light .property-sales-page .property-sales-meeting-step,
+html.theme-light .property-sales-page .property-sales-proof-point {
   background: #ffffff !important;
   border-color: #cbd5e1 !important;
 }

@@ -777,6 +777,45 @@ export default async function PropertySalesPage({
         "Show how Trimax keeps next steps visible: reminders, payment proof, missing records, and the exact work R&L owns next.",
     },
   ];
+  const managerProofPoints = [
+    {
+      label: "Status Proof",
+      value:
+        pipelineCards.length > 0
+          ? `${pipelineCards.length} tracked turns`
+          : invoices.length > 0
+            ? `${invoices.length} billing records`
+            : "Demo ready",
+      detail:
+        pipelineCards.length > 0
+          ? "Each unit is visible from request to invoice."
+          : invoices.length > 0
+            ? "Billing is visible even before new queue work arrives."
+            : "Use Evergreen mode to show a full sample pipeline.",
+    },
+    {
+      label: "Response Proof",
+      value:
+        pendingEstimateCount > 0
+          ? `${pendingEstimateCount} need pricing`
+          : "No pricing backlog",
+      detail:
+        pendingEstimateCount > 0
+          ? "Managers can see what needs a price before it can move."
+          : "Nothing obvious is waiting on an estimate right now.",
+    },
+    {
+      label: "Memory Proof",
+      value:
+        unitHistory.length > 0
+          ? `${unitHistory.length} unit memories`
+          : "Ready to remember",
+      detail:
+        unitHistory.length > 0
+          ? "Prior colors, notes, invoices, and labor can be recalled."
+          : "Unit history starts building as work moves through Trimax.",
+    },
+  ];
 
   const overviewCards = [
     {
@@ -1047,6 +1086,26 @@ export default async function PropertySalesPage({
               Every card answers the manager question: what is open, what is
               priced, what is scheduled, what is done, and what has been billed?
             </p>
+            <div className="mt-4 grid gap-3">
+              {managerProofPoints.map((point) => (
+                <div
+                  key={point.label}
+                  className="property-sales-proof-point rounded-2xl border border-white/10 bg-black/20 p-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.18em]">
+                      {point.label}
+                    </p>
+                    <span className="rounded-full border border-emerald-300/30 bg-emerald-400/10 px-3 py-1 text-xs font-black text-white">
+                      {point.value}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-zinc-300">
+                    {point.detail}
+                  </p>
+                </div>
+              ))}
+            </div>
           </Card>
         </section>
 
