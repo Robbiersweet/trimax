@@ -294,6 +294,14 @@ export default function TechnicianDashboard() {
       }),
     [queueItems]
   );
+  const nextFieldJob = fieldJobs[0] ?? null;
+  const dueSoonFieldJobs = fieldJobs.filter((item) => {
+    const days = daysUntil(item.ready_date);
+    return days !== null && days <= 7;
+  }).length;
+  const unscheduledFieldJobs = fieldJobs.filter(
+    (item) => !item.scheduled_date
+  ).length;
 
   async function startSession(item: QueueItem) {
     if (!business?.id || !userId || activeSession) {
@@ -458,7 +466,9 @@ export default function TechnicianDashboard() {
                 Daily work without the accounting clutter
               </h1>
               <p className="mt-3 max-w-3xl text-base leading-7 text-zinc-300">
-                Start from the job, track real labor time, save field notes, and keep proof moving. No invoices, revenue, settings, or admin tools live on this screen.
+                Start the next unit, track real labor time, save field notes,
+                and keep proof moving. No invoices, revenue, settings, or admin
+                tools live on this screen.
               </p>
             </div>
 
@@ -473,7 +483,7 @@ export default function TechnicianDashboard() {
           <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <TechnicianMetric label="Active session" value={activeSession ? "1" : "0"} detail="Running now" />
             <TechnicianMetric label="Today" value={formatMinutes(todayMinutes)} detail="Your labor time" />
-            <TechnicianMetric label="Field jobs" value={String(fieldJobs.length)} detail="Ready to review" />
+            <TechnicianMetric label="Field jobs" value={String(fieldJobs.length)} detail={`${dueSoonFieldJobs} due soon`} />
             <TechnicianMetric label="Finished" value={String(completedSessions.length)} detail="Your completed sessions" />
           </div>
         </section>
@@ -487,10 +497,11 @@ export default function TechnicianDashboard() {
               Technicians can work, pause, stop, add notes, and upload proof without touching accounting or workspace administration.
             </p>
           </div>
-          <div className="grid gap-2 text-xs font-black uppercase tracking-[0.14em] text-cyan-100 sm:grid-cols-3">
+          <div className="grid gap-2 text-xs font-black uppercase tracking-[0.14em] text-cyan-100 sm:grid-cols-4">
             <span>Time</span>
             <span>Notes</span>
             <span>Photos</span>
+            <span>Status</span>
           </div>
         </section>
 
@@ -567,10 +578,28 @@ export default function TechnicianDashboard() {
               </div>
             ) : (
               <div className="technician-empty-state mt-5 rounded-2xl border border-dashed p-4">
-                <p className="font-black text-white">Ready when the next unit is ready.</p>
-                <p className="mt-2 text-sm leading-6 text-zinc-400">
-                  Choose a field job below and tap Start Session when work begins.
-                </p>
+                {nextFieldJob ? (
+                  <>
+                    <p className="font-black text-white">Next field target</p>
+                    <p className="mt-2 text-lg font-black text-cyan-100">
+                      {jobTitle(nextFieldJob)}
+                    </p>
+                    <p className="mt-1 text-sm leading-6 text-zinc-400">
+                      {fieldPriorityText(nextFieldJob)}. Start the session from
+                      the job card below when work begins.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-black text-white">
+                      Ready when the next unit is ready.
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-zinc-400">
+                      Choose a field job below and tap Start Session when work
+                      begins.
+                    </p>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -618,7 +647,7 @@ export default function TechnicianDashboard() {
                 Start from the next unit
               </h2>
               <p className="mt-2 text-sm leading-6 text-zinc-400">
-                Showing open field work in ready-date order. Financial details stay hidden so this remains a clean workbench for the field.
+                Showing open field work in ready-date order. {unscheduledFieldJobs} still need a work date. Financial details stay hidden so this remains a clean workbench for the field.
               </p>
             </div>
             <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-black text-zinc-200">
@@ -742,7 +771,7 @@ function TechnicianMetric({
   detail: string;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+    <div className="technician-metric rounded-2xl border border-white/10 bg-black/30 p-4">
       <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-400">
         {label}
       </p>
