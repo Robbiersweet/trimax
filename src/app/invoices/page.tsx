@@ -1493,7 +1493,7 @@ export default async function InvoicesPage({
       ? `${statusFilter.charAt(0).toUpperCase()}${statusFilter.slice(1)} invoices`
       : view !== "all"
         ? `${view.charAt(0).toUpperCase()}${view.slice(1)} invoices`
-        : "Filtered invoices";
+        : "All invoices";
 
   return (
     <AppShell>
@@ -1538,11 +1538,10 @@ export default async function InvoicesPage({
           </Card>
         ) : null}
 
-        {hasFocusedInvoiceResultView ? (
-          <Card
-            id="invoice-results-list"
-            className="focused-invoice-results-card scroll-mt-6 border-emerald-500/30 bg-emerald-500/10"
-          >
+        <Card
+          id="invoice-results-list"
+          className="focused-invoice-results-card scroll-mt-6 border-emerald-500/30 bg-emerald-500/10"
+        >
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">
@@ -1555,20 +1554,26 @@ export default async function InvoicesPage({
 
                 <p className="mt-2 text-sm leading-6 text-zinc-300">
                   Showing {filteredInvoices.length} matching invoice
-                  {filteredInvoices.length === 1 ? "" : "s"}. These results
-                  are pinned near the top so filtered invoice views open
-                  directly where the work is.
+                  {filteredInvoices.length === 1 ? "" : "s"}. Invoice rows
+                  are pinned near the top so billing work opens directly where
+                  the action is.
                 </p>
               </div>
 
-              <InvoiceFilterLink
-                href={`/invoices${businessQuery}${invoiceResultsAnchor}`}
-                className="w-full sm:w-auto"
-              >
-                <Button variant="secondary" className="w-full sm:w-auto">
-                  Show All Invoices
-                </Button>
-              </InvoiceFilterLink>
+              {hasFocusedInvoiceResultView ? (
+                <InvoiceFilterLink
+                  href={`/invoices${businessQuery}${invoiceResultsAnchor}`}
+                  className="w-full sm:w-auto"
+                >
+                  <Button variant="secondary" className="w-full sm:w-auto">
+                    Show All Invoices
+                  </Button>
+                </InvoiceFilterLink>
+              ) : (
+                <Link href={`/invoices/new${businessQuery}`}>
+                  <Button className="w-full sm:w-auto">New Invoice</Button>
+                </Link>
+              )}
             </div>
 
             {filteredInvoices.length === 0 ? (
@@ -1670,7 +1675,6 @@ export default async function InvoicesPage({
               </p>
             ) : null}
           </Card>
-        ) : null}
 
         <Card className="invoice-snapshot-card border-blue-500/20 bg-blue-500/5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -2627,11 +2631,7 @@ export default async function InvoicesPage({
         ) : null}
 
         <div
-          id={
-            hasFocusedInvoiceResultView
-              ? "invoice-results-list-full"
-              : "invoice-results-list"
-          }
+          id="invoice-results-list-full"
           className="scroll-mt-6"
         >
           {invoicesWithSplitInfo.length === 0 ? (
