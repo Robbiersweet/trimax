@@ -1252,6 +1252,142 @@ function NewRequestPageContent() {
   const priorityNoteText = priorityLeadUnit
     ? `Priority check: ${requestedUnitLabel} may need to jump ahead of ${priorityLeadUnitLabel || "an existing queue item"} due ${formatShortDate(priorityLeadUnit.ready_date)}. Confirm with management before scheduling.`
     : "";
+  const requestCount = units.length;
+  const propertyReady = Boolean(property.trim());
+  const scopeReady = Boolean(paintType.trim());
+  const flooringReady = Boolean(flooring.trim());
+  const dueDateReady = Boolean(readyDate);
+  const hasUnitHistoryConfidence =
+    !collectUnitLayout ||
+    selectedUnitProfiles.length === 0 ||
+    selectedUnitProfiles.every((unitProfile) =>
+      Boolean(historyByUnitId[unitProfile.id]?.hasHistory)
+    );
+  const intakePreflightItems = [
+    {
+      label: isJustKleen ? "Client / site" : "Property",
+      complete: propertyReady,
+      detail: propertyReady
+        ? `${property} is selected.`
+        : isJustKleen
+          ? "Choose the customer or site before saving."
+          : "Choose the property before saving.",
+    },
+    {
+      label: isJustKleen ? "Jobs / locations" : "Units",
+      complete: requestCount > 0,
+      detail:
+        requestCount > 0
+          ? `${requestCount} ${isJustKleen ? "job" : "unit"}${
+              requestCount === 1 ? "" : "s"
+            } ready for intake.`
+          : isJustKleen
+            ? "Add at least one job or location."
+            : "Add at least one apartment unit.",
+    },
+    {
+      label: "Scope",
+      complete: scopeReady && flooringReady,
+      detail:
+        scopeReady && flooringReady
+          ? isJustKleen
+            ? "Service type and scope are set."
+            : "Paint type and flooring are set."
+          : isJustKleen
+            ? "Choose both service type and scope."
+            : "Choose both paint type and flooring.",
+    },
+    {
+      label: "Date",
+      complete: dueDateReady,
+      detail: dueDateReady
+        ? `Target date is ${formatShortDate(readyDate)}.`
+        : "Add the target date to support scheduling intelligence.",
+    },
+    {
+      label: "Unit memory",
+      complete: hasUnitHistoryConfidence,
+      detail: collectUnitLayout
+        ? hasUnitHistoryConfidence
+          ? "Selected unit history is available or no specific map match is required."
+          : "Some selected units do not have saved history yet."
+        : "Unit memory is not required for this request type.",
+    },
+    {
+      label: "Priority check",
+      complete: prioritySignals.length === 0 || plannedPrioritySwapIds.length > 0,
+      detail:
+        prioritySignals.length === 0
+          ? "No nearby due-date conflict is currently visible."
+          : plannedPrioritySwapIds.length > 0
+            ? `${plannedPrioritySwapIds.length} priority move${
+                plannedPrioritySwapIds.length === 1 ? "" : "s"
+              } planned.`
+            : "Review nearby queue conflicts before submitting.",
+    },
+  ];
+  const preflightReadyCount = intakePreflightItems.filter(
+    (item) => item.complete
+  ).length;
+  const preflightScore = Math.round(
+    (preflightReadyCount / intakePreflightItems.length) * 100
+  );
+  const draftStatus = draftSavedAt
+    ? `Saved ${formatDraftSavedAt(draftSavedAt)}`
+    : "Not started";
+  const requestReadinessCards = [
+    {
+      label: isJustKleen ? "Jobs" : "Units",
+      value: requestCount > 0 ? String(requestCount) : "0",
+      detail:
+        requestCount > 0
+          ? isJustKleen
+            ? "Job locations are ready for submission."
+            : "Unit list is ready for this queue request."
+          : isJustKleen
+            ? "Add one job or location to continue."
+            : "Add one unit or a batch of units to continue.",
+      tone: requestCount > 0 ? "emerald" : "amber",
+    },
+    {
+      label: "Scope",
+      value: scopeReady ? paintType : "Needed",
+      detail: scopeReady
+        ? isJustKleen
+          ? "Service type is set."
+          : "Paint type is set."
+        : isJustKleen
+          ? "Choose the service type before saving."
+          : "Choose the paint type before saving.",
+      tone: scopeReady ? "emerald" : "amber",
+    },
+    {
+      label: isJustKleen ? "Target Date" : "Paint Due",
+      value: dueDateReady ? formatShortDate(readyDate) : "Open",
+      detail: dueDateReady
+        ? "Date intelligence can guide scheduling."
+        : "Add the date to improve queue planning.",
+      tone: dueDateReady ? "emerald" : "zinc",
+    },
+    {
+      label: "Queue Check",
+      value: isCheckingPriority
+        ? "Checking"
+        : prioritySignals.length > 0
+          ? `${prioritySignals.length} flag${
+              prioritySignals.length === 1 ? "" : "s"
+            }`
+          : "Clear",
+      detail: isCheckingPriority
+        ? "Looking for nearby due-date conflicts."
+        : prioritySignals.length > 0
+          ? "Review priority before submitting."
+          : propertyReady && requestCount > 0
+            ? "No active conflict is currently visible."
+            : "Starts once property, units, and date are set.",
+      tone: prioritySignals.length > 0 ? "amber" : "zinc",
+    },
+  ];
 
   function addPriorityNote() {
     if (!priorityNoteText) {
@@ -1523,6 +1659,92 @@ function NewRequestPageContent() {
             </div>
           </Card>
         ) : null}
+
+        <div className="request-readiness-panel mt-6 rounded-3xl border border-zinc-800 bg-zinc-950/70 p-4 shadow-2xl shadow-black/20">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.28em] text-orange-300">
+                Intake Command
+              </p>
+              <h2 className="mt-2 text-2xl font-black text-white">
+                {propertyReady
+                  ? `${property} request readiness`
+                  : "Request readiness"}
+              </h2>
+            </div>
+
+            <p className="text-sm font-semibold text-zinc-400">
+              Draft: {draftStatus}
+            </p>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {requestReadinessCards.map((card) => (
+              <div
+                key={card.label}
+                className={`request-readiness-card request-readiness-${card.tone} rounded-2xl border px-4 py-3`}
+              >
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">
+                  {card.label}
+                </p>
+                <p className="mt-2 truncate text-lg font-black text-white">
+                  {card.value}
+                </p>
+                <p className="mt-1 text-sm leading-5 text-zinc-400">
+                  {card.detail}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="request-preflight-panel mt-6 rounded-3xl border border-zinc-800 bg-zinc-950/70 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.28em] text-sky-300">
+                Intake Preflight
+              </p>
+              <h2 className="mt-2 text-2xl font-black text-white">
+                Catch missing details before they hit the queue
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
+                Trimax checks the request for scope, dates, unit memory, and
+                priority conflicts before saving.
+              </p>
+            </div>
+
+            <div className="request-preflight-score rounded-2xl border border-white/10 bg-black/25 px-4 py-3">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">
+                Ready
+              </p>
+              <p className="mt-2 text-3xl font-black text-white">
+                {preflightScore}%
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {intakePreflightItems.map((item) => (
+              <div
+                key={item.label}
+                data-complete={item.complete ? "true" : "false"}
+                className="request-preflight-item rounded-2xl border border-white/10 bg-black/25 p-4"
+              >
+                <div className="flex items-start gap-3">
+                  <span className="request-preflight-dot mt-1" />
+                  <div>
+                    <p className="text-sm font-black text-white">
+                      {item.label}
+                    </p>
+                    <p className="mt-1 text-sm leading-5 text-zinc-400">
+                      {item.detail}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
 
         <Card className="mt-8">
           <div className="grid gap-5">

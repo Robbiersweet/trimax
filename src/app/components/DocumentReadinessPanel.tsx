@@ -24,7 +24,14 @@ export default function DocumentReadinessPanel({
   steps,
 }: DocumentReadinessPanelProps) {
   const readyCount = steps.filter((step) => step.status === "ready").length;
+  const attentionCount = steps.filter(
+    (step) => step.status === "attention"
+  ).length;
+  const waitingCount = steps.filter((step) => step.status === "waiting").length;
   const isReady = readyCount === steps.length;
+  const progressPercent = steps.length
+    ? Math.round((readyCount / steps.length) * 100)
+    : 0;
 
   return (
     <div className="document-readiness-panel rounded-3xl border border-sky-500/25 bg-gradient-to-br from-sky-500/10 via-zinc-950 to-emerald-500/10 p-4 sm:p-5">
@@ -43,6 +50,22 @@ export default function DocumentReadinessPanel({
               ? "Everything needed is in place. Review the totals, then create the document."
               : "Finish the highlighted items before creating the document."}
           </p>
+
+          <div className="document-readiness-meter mt-4">
+            <div className="flex items-center justify-between gap-3 text-xs font-black uppercase tracking-[0.18em] text-zinc-400">
+              <span>{progressPercent}% ready</span>
+              <span>
+                {readyCount}/{steps.length} complete
+              </span>
+            </div>
+
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-black/35">
+              <span
+                className="block h-full rounded-full"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          </div>
         </div>
 
         <div className="document-readiness-total rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
@@ -60,6 +83,12 @@ export default function DocumentReadinessPanel({
               </span>
             </p>
           ) : null}
+
+          <div className="document-readiness-counts mt-3 grid grid-cols-3 gap-2">
+            <span data-status="ready">{readyCount}</span>
+            <span data-status="attention">{attentionCount}</span>
+            <span data-status="waiting">{waitingCount}</span>
+          </div>
         </div>
       </div>
 

@@ -203,8 +203,19 @@ function isCollectibleInvoiceStatus(value: string | null) {
 function activityLabel(action: string) {
   const labels: Record<string, string> = {
     "queue_item.created": "Queue Created",
+    "queue_item.updated": "Queue Updated",
     "queue_item.scheduled": "Work Scheduled",
     "queue_item.completed": "Work Completed",
+    "job_session.started": "Job Session Started",
+    "job_session.resumed": "Job Session Resumed",
+    "job_session.stopped": "Job Session Stopped",
+    "job_session.breakdown_saved": "Job Time Breakdown Saved",
+    "job_session.breakdown_skipped": "Job Time Breakdown Skipped",
+    "technician.job_session_started": "Technician Session Started",
+    "technician.job_session_resumed": "Technician Session Resumed",
+    "technician.job_session_paused": "Technician Session Paused",
+    "technician.job_session_stopped": "Technician Session Stopped",
+    "technician.job_completed": "Technician Job Completed",
     "estimate.created": "Estimate Created",
     "estimate.updated": "Estimate Updated",
     "estimate.converted_to_invoice": "Estimate Converted",
@@ -284,12 +295,65 @@ function activityMoneyValue(
   return null;
 }
 
+function activityChangesSummary(details: ActivityLog["details"]) {
+  const changes = details?.changes;
+
+  if (!Array.isArray(changes)) {
+    return null;
+  }
+
+  const labels = changes
+    .filter((change) => Boolean(change) && typeof change === "object")
+    .map((change) => {
+      const entry = change as {
+        label?: unknown;
+        field?: unknown;
+        previousValue?: unknown;
+        newValue?: unknown;
+      };
+      const label =
+        typeof entry.label === "string"
+          ? entry.label
+          : typeof entry.field === "string"
+            ? entry.field.replace(/_/g, " ")
+            : "Field";
+      const previousValue =
+        entry.previousValue === null ||
+        entry.previousValue === undefined ||
+        entry.previousValue === ""
+          ? "Blank"
+          : String(entry.previousValue);
+      const newValue =
+        entry.newValue === null ||
+        entry.newValue === undefined ||
+        entry.newValue === ""
+          ? "Blank"
+          : String(entry.newValue);
+
+      return `${label}: ${previousValue} -> ${newValue}`;
+    })
+    .slice(0, 2);
+
+  if (labels.length === 0) {
+    return null;
+  }
+
+  return labels.join(" / ");
+}
+
 function activityProofDetail(log: ActivityLog) {
+  const changeSummary = activityChangesSummary(log.details);
   const recipient = activityDetailValue(log.details, "recipient_email");
   const ccEmail = activityDetailValue(log.details, "cc_email");
   const pdfAttached = log.details?.pdf_attached === true;
   const depositAmount = activityMoneyValue(log.details, "depositAmount");
   const paymentAmount = activityMoneyValue(log.details, "amountApplied");
+  const totalMinutes = log.details?.totalMinutes;
+  const jobType = activityDetailValue(log.details, "jobType");
+
+  if (changeSummary) {
+    return changeSummary;
+  }
 
   if (recipient) {
     const parts = [`To ${recipient}`];
@@ -311,6 +375,22 @@ function activityProofDetail(log: ActivityLog) {
 
   if (depositAmount) {
     return `${depositAmount} requested`;
+  }
+
+  if (
+    log.action.startsWith("job_session") ||
+    log.action.startsWith("technician.job_session")
+  ) {
+    const parts = [
+      jobType,
+      typeof totalMinutes === "number" ? `${totalMinutes} minutes` : null,
+    ].filter(Boolean);
+
+    return parts.length > 0
+      ? parts.join(" / ")
+      : log.actor_email
+        ? `Logged by ${log.actor_email}`
+        : "Labor activity logged";
   }
 
   return log.actor_email ? `Logged by ${log.actor_email}` : "Logged in Trimax";
@@ -2025,6 +2105,78 @@ export default async function DashboardPage({
       tone: totalRiskFlags === 0 ? "emerald" : "rose",
     },
   ];
+  const ownerBriefCards = [
+    {
+      label: "Command",
+      title: leadingPriorityMove?.label ?? "Workspace is steady",
+      value: leadingPriorityMove?.metric ?? `${operatingAltitudeScore}%`,
+      detail:
+        leadingPriorityMove?.reason ??
+        "No single issue is dominating the workspace right now.",
+      href:
+        leadingPriorityMove?.href ??
+        `/reports?business=${selectedBusinessSlug}`,
+      action: leadingPriorityMove?.action ?? "Open reports",
+      tone: leadingPriorityMove?.tone ?? "sky",
+    },
+    {
+      label: "Cash",
+      title:
+        pastDueInvoices.length > 0
+          ? "Past-due money needs attention"
+          : "Collection posture",
+      value:
+        pastDueInvoices.length > 0
+          ? formatMoney(pastDueTotal)
+          : `${collectionRate}%`,
+      detail:
+        pastDueInvoices.length > 0
+          ? `${pastDueInvoices.length} late invoice${
+              pastDueInvoices.length === 1 ? "" : "s"
+            } ready for reminder review.`
+          : `${formatMoney(outstandingRevenueTotal)} remains open across collectible invoices.`,
+      href:
+        pastDueInvoices.length > 0
+          ? `/invoices?business=${selectedBusinessSlug}&view=aging`
+          : `/payments?${priorityPaymentParams.toString()}`,
+      action:
+        pastDueInvoices.length > 0 ? "Review aging" : "Open payments",
+      tone: pastDueInvoices.length > 0 ? "rose" : "emerald",
+    },
+    {
+      label: "Queue",
+      title: queueFocusHeadline,
+      value:
+        readySoonUnscheduled.length > 0
+          ? String(readySoonUnscheduled.length)
+          : String(activeQueueItems.length),
+      detail: queueFocusDetail,
+      href:
+        readySoonUnscheduled.length > 0
+          ? `/queue?business=${selectedBusinessSlug}&view=ready-soon`
+          : `/queue?business=${selectedBusinessSlug}`,
+      action:
+        readySoonUnscheduled.length > 0 ? "Schedule work" : "Open queue",
+      tone:
+        readySoonUnscheduled.length > 0
+          ? "amber"
+          : activeQueueItems.length > 0
+            ? "sky"
+            : "emerald",
+    },
+    {
+      label: "Proof",
+      title: auditHealthLabel,
+      value:
+        totalRiskFlags > 0
+          ? String(totalRiskFlags)
+          : `${proofHealthScore}%`,
+      detail: auditHealthDetail,
+      href: `/activity?business=${selectedBusinessSlug}`,
+      action: totalRiskFlags > 0 ? "Review proof" : "Open activity",
+      tone: totalRiskFlags > 0 ? "rose" : "emerald",
+    },
+  ];
 
   return (
     <AppShell>
@@ -2060,6 +2212,142 @@ export default async function DashboardPage({
             </p>
           </Link>
         </div>
+
+        <RoleVisible
+          businessSlug={selectedBusinessSlug}
+          allow={[
+            "owner",
+            "admin",
+            "accountant",
+          ]}
+        >
+          <nav
+            aria-label="Dashboard sections"
+            className="dashboard-directory rounded-3xl border border-white/10 bg-zinc-950/70 p-4"
+          >
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.24em]">
+                  Dashboard Directory
+                </p>
+                <h2 className="mt-1 text-xl font-black text-white">
+                  Jump to the part of the business you need
+                </h2>
+              </div>
+
+              <p className="max-w-2xl text-sm leading-6 text-zinc-300">
+                The dashboard is organized into command, queue, accounting, and
+                proof sections so the page stays useful without making you hunt.
+              </p>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+              {[
+                {
+                  label: "Command",
+                  detail: "Next best moves",
+                  href: "#dashboard-accounting",
+                  tone: "sky",
+                },
+                {
+                  label: "Queue",
+                  detail: "Turn pressure",
+                  href: "#dashboard-queue",
+                  tone: "emerald",
+                },
+                {
+                  label: "Accounting",
+                  detail: "Invoice pulse",
+                  href: "#dashboard-workstream",
+                  tone: "amber",
+                },
+                {
+                  label: "Proof",
+                  detail: "Audit trail",
+                  href: `/activity?business=${selectedBusinessSlug}`,
+                  tone: "violet",
+                },
+                {
+                  label: "Reports",
+                  detail: "Deeper review",
+                  href: `/reports?business=${selectedBusinessSlug}`,
+                  tone: "slate",
+                },
+              ].map((item) => (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  data-tone={item.tone}
+                  className="dashboard-directory-link rounded-2xl border border-white/10 bg-white/[0.04] p-4 transition hover:-translate-y-0.5 hover:border-cyan-300/60"
+                >
+                  <span className="dashboard-directory-dot" aria-hidden="true" />
+                  <strong>{item.label}</strong>
+                  <em>{item.detail}</em>
+                </Link>
+              ))}
+            </div>
+          </nav>
+        </RoleVisible>
+
+        <RoleVisible
+          businessSlug={selectedBusinessSlug}
+          allow={[
+            "owner",
+            "admin",
+            "accountant",
+          ]}
+        >
+          <section className="dashboard-owner-brief rounded-3xl border border-white/10 bg-zinc-950/70 p-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.24em]">
+                  Owner Brief
+                </p>
+                <h2 className="mt-1 text-2xl font-black text-white">
+                  The business at a glance
+                </h2>
+              </div>
+
+              <p className="max-w-2xl text-sm leading-6 text-zinc-300">
+                Four signals summarize what Trimax would handle first: command,
+                cash, queue, and proof.
+              </p>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              {ownerBriefCards.map((item) => (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  data-tone={item.tone}
+                  className="dashboard-owner-brief-card rounded-2xl border border-white/10 bg-black/25 p-4 transition hover:-translate-y-0.5"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-xs font-black uppercase tracking-[0.2em]">
+                      {item.label}
+                    </p>
+                    <span className="dashboard-owner-brief-value rounded-full border px-3 py-1 text-sm font-black">
+                      {item.value}
+                    </span>
+                  </div>
+
+                  <h3 className="mt-4 text-lg font-black text-white">
+                    {item.title}
+                  </h3>
+
+                  <p className="mt-2 text-sm leading-6 text-zinc-400">
+                    {item.detail}
+                  </p>
+
+                  <p className="mt-4 text-sm font-black">
+                    {item.action}
+                    <span aria-hidden="true"> &gt;</span>
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </section>
+        </RoleVisible>
 
         <RoleVisible
           businessSlug={selectedBusinessSlug}

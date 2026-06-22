@@ -10,6 +10,7 @@ import AppShell from "../../../components/AppShell";
 import BackButton from "../../../components/BackButton";
 import Card from "../../../components/Card";
 import Button from "../../../components/Button";
+import DocumentReadinessPanel from "../../../components/DocumentReadinessPanel";
 import InputField from "../../../components/InputField";
 import TaxModeSelect from "../../../components/TaxModeSelect";
 import Toast from "../../../components/Toast";
@@ -69,6 +70,9 @@ type ServiceItem = {
   description: string | null;
   default_quantity: number | string | null;
   default_unit_price: number | string | null;
+  easy_unit_price?: number | string | null;
+  normal_unit_price?: number | string | null;
+  difficult_unit_price?: number | string | null;
   category: string | null;
 };
 
@@ -118,6 +122,27 @@ function toLineItem(item: SavedLineItem): LineItem {
     quantity: String(Number(item.quantity) || 1),
     unitPrice: String(Number(item.unit_price) || 0),
   };
+}
+
+function servicePricingTiers(serviceItem: ServiceItem | null) {
+  if (!serviceItem) {
+    return [];
+  }
+
+  return [
+    {
+      label: "Easy",
+      price: Number(serviceItem.easy_unit_price) || 0,
+    },
+    {
+      label: "Normal",
+      price: Number(serviceItem.normal_unit_price) || 0,
+    },
+    {
+      label: "Difficult",
+      price: Number(serviceItem.difficult_unit_price) || 0,
+    },
+  ].filter((tier) => tier.price > 0);
 }
 
 export default function EditEstimatePage() {
@@ -233,6 +258,79 @@ export default function EditEstimatePage() {
     getTaxSuggestionForAddress(serviceAddress);
   const showTaxSuggestionNote =
     Boolean(taxSuggestion) && !taxManuallyChanged;
+  const readyLineItems = lineItems.filter(
+    (item) =>
+      item.description.trim() &&
+      getLineTotal(item) > 0
+  );
+  const scopeHasUsefulDetail = notes.trim().length >= 24;
+  const termsHaveUsefulDetail = terms.trim().length >= 24;
+  const editReadinessSteps = [
+    {
+      label: "Client",
+      detail: customerName.trim()
+        ? customerName.trim()
+        : "Choose or enter a customer",
+      status: customerName.trim() ? "ready" : "attention",
+    },
+    {
+      label: "Scope",
+      detail: projectTitle.trim()
+        ? projectTitle.trim()
+        : "Add a project title",
+      status: projectTitle.trim() ? "ready" : "attention",
+    },
+    {
+      label: "Pricing",
+      detail:
+        readyLineItems.length > 0
+          ? `${readyLineItems.length} priced line ${
+              readyLineItems.length === 1 ? "item" : "items"
+            }`
+          : "Add at least one priced line",
+      status: readyLineItems.length > 0 ? "ready" : "attention",
+    },
+    {
+      label: "Tax",
+      detail:
+        taxMode === "taxable"
+          ? taxRate
+            ? `${taxRate}% ${taxLabel || "tax"}`
+            : "Taxable, rate needed"
+          : taxMode === "tax_exempt"
+            ? "Tax exempt"
+            : "No tax",
+      status: taxMode === "taxable" && !taxRate ? "attention" : "ready",
+    },
+    {
+      label: "Proof Text",
+      detail: scopeHasUsefulDetail
+        ? "Scope has useful detail"
+        : "Add clearer scope notes",
+      status: scopeHasUsefulDetail ? "ready" : "waiting",
+    },
+    {
+      label: "Terms",
+      detail: termsHaveUsefulDetail
+        ? "Customer terms are present"
+        : "Confirm customer terms",
+      status: termsHaveUsefulDetail ? "ready" : "waiting",
+    },
+  ] as const;
+  const editorWarnings = [
+    !serviceAddress.trim()
+      ? "No service address is saved, so tax and site context may be weaker."
+      : null,
+    readyLineItems.length !== lineItems.length
+      ? "One or more line items will not save until it has a description and price."
+      : null,
+    showSplitWarning
+      ? `Conversion will create ${automaticSplitPlan.length} split invoice drafts.`
+      : null,
+    showTaxSuggestionNote
+      ? "Tax was suggested from the service address and can still be overridden."
+      : null,
+  ].filter(Boolean) as string[];
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -511,6 +609,11 @@ export default function EditEstimatePage() {
       return;
     }
 
+    const tiers = servicePricingTiers(selectedService);
+    const normalTier = tiers.find((tier) => tier.label === "Normal");
+    const suggestedUnitPrice =
+      normalTier?.price || Number(selectedService.default_unit_price) || 0;
+
     setLineItems((currentItems) =>
       currentItems.map((item, itemIndex) =>
         itemIndex === index
@@ -525,15 +628,15 @@ export default function EditEstimatePage() {
                   selectedService.default_quantity
                 ) || 1
               ),
-              unitPrice: String(
-                Number(
-                  selectedService.default_unit_price
-                ) || 0
-              ),
+              unitPrice: String(suggestedUnitPrice),
             }
           : item
       )
     );
+  }
+
+  function applyServiceTier(index: number, price: number) {
+    updateLineItem(index, "unitPrice", String(price));
   }
 
   function addLineItem() {
@@ -811,6 +914,60 @@ export default function EditEstimatePage() {
           Edit Estimate
         </h1>
 
+        <div className="mt-6">
+          <DocumentReadinessPanel
+            eyebrow="Estimate Editor"
+            title="Ready to save and send"
+            totalLabel="Estimate Total"
+            totalValue={formatCurrency(estimateTotal)}
+            secondaryLabel="Priced lines"
+            secondaryValue={String(readyLineItems.length)}
+            steps={[...editReadinessSteps]}
+          />
+        </div>
+
+        <Card className="estimate-editor-coach mt-6 border-orange-500/25 bg-zinc-950/60">
+          <div className="grid gap-4 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.24em] text-orange-300">
+                Editor Intelligence
+              </p>
+
+              <h2 className="mt-2 text-2xl font-black text-white">
+                Clean proposal, cleaner approval
+              </h2>
+
+              <p className="mt-2 text-sm leading-6 text-zinc-400">
+                Trimax is checking the estimate before it leaves your hands:
+                pricing, tax, proof text, terms, and split-invoice behavior.
+              </p>
+            </div>
+
+            <div className="grid gap-3">
+              {editorWarnings.length > 0 ? (
+                editorWarnings.map((warning) => (
+                  <div
+                    key={warning}
+                    className="estimate-editor-signal"
+                    data-tone={
+                      warning.includes("will create") ||
+                      warning.includes("suggested")
+                        ? "info"
+                        : "warning"
+                    }
+                  >
+                    {warning}
+                  </div>
+                ))
+              ) : (
+                <div className="estimate-editor-signal" data-tone="success">
+                  This estimate is clean from the current editor checks.
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+
         <Card className="mt-8">
           <div className="grid gap-5">
             <div>
@@ -1017,6 +1174,37 @@ export default function EditEstimatePage() {
                           </option>
                         ))}
                       </select>
+
+                      {servicePricingTiers(
+                        serviceItems.find(
+                          (serviceItem) => serviceItem.id === item.serviceItemId
+                        ) ?? null
+                      ).length > 0 ? (
+                        <div className="mt-3 rounded-2xl border border-sky-400/20 bg-sky-400/10 p-3">
+                          <p className="text-xs font-black uppercase tracking-[0.18em] text-sky-100">
+                            Choose pricing tier
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {servicePricingTiers(
+                              serviceItems.find(
+                                (serviceItem) =>
+                                  serviceItem.id === item.serviceItemId
+                              ) ?? null
+                            ).map((tier) => (
+                              <button
+                                key={tier.label}
+                                type="button"
+                                onClick={() =>
+                                  applyServiceTier(index, tier.price)
+                                }
+                                className="rounded-full border border-white/10 bg-white/10 px-3 py-2 text-xs font-black text-white transition hover:border-sky-200 hover:bg-sky-300/20"
+                              >
+                                {tier.label} {formatCurrency(tier.price)}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
 
                     <div className="grid gap-3 md:grid-cols-[1fr_120px_140px_120px_auto]">

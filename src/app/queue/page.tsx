@@ -211,7 +211,7 @@ function queueHref(
     params.set("view", options.view);
   }
 
-  return `/queue?${params.toString()}`;
+  return `/queue?${params.toString()}#queue-results`;
 }
 
 function viewCopy(view: string) {
@@ -420,6 +420,80 @@ export default async function QueuePage({
   const activeWorkCount = propertyScopedQueueItems.filter(
     (item) => !isClosedQueueItem(item)
   ).length;
+  const propertyScopedQueueItemIds = new Set(
+    propertyScopedQueueItems.map((item) => item.id)
+  );
+  const unscheduledActiveCount = propertyScopedQueueItems.filter(
+    (item) => !isClosedQueueItem(item) && !item.scheduled_date
+  ).length;
+  const overdueUnscheduledCount = propertyScopedQueueItems.filter((item) => {
+    const dueDays = daysUntil(item.ready_date);
+
+    return (
+      !isClosedQueueItem(item) &&
+      !item.scheduled_date &&
+      dueDays !== null &&
+      dueDays < 0
+    );
+  }).length;
+  const activeSessionCount = jobSessions.filter(
+    (session) =>
+      !session.ended_at &&
+      typeof session.queue_item_id === "string" &&
+      propertyScopedQueueItemIds.has(session.queue_item_id)
+  ).length;
+  const missingBreakdownCount = jobSessions.filter(
+    (session) =>
+      Boolean(session.ended_at) &&
+      typeof session.queue_item_id === "string" &&
+      propertyScopedQueueItemIds.has(session.queue_item_id) &&
+      !breakdownSessionIds.has(session.id)
+  ).length;
+  const queueDispatchCards = [
+    {
+      label: "In Progress",
+      value: activeSessionCount,
+      detail:
+        activeSessionCount > 0
+          ? "Field sessions currently running."
+          : "No active labor sessions right now.",
+      tone: activeSessionCount > 0 ? "emerald" : "zinc",
+      href: queueHref(businessSlug, { property: propertyFilter }),
+    },
+    {
+      label: "Unscheduled",
+      value: unscheduledActiveCount,
+      detail:
+        unscheduledActiveCount > 0
+          ? "Open work still needs a date."
+          : "Open work has schedule coverage.",
+      tone: unscheduledActiveCount > 0 ? "amber" : "emerald",
+      href: queueHref(businessSlug, { property: propertyFilter }),
+    },
+    {
+      label: "Past Due",
+      value: overdueUnscheduledCount,
+      detail:
+        overdueUnscheduledCount > 0
+          ? "Due dates have passed without a scheduled date."
+          : "No unscheduled past-due work visible.",
+      tone: overdueUnscheduledCount > 0 ? "rose" : "emerald",
+      href: queueHref(businessSlug, {
+        property: propertyFilter,
+        view: "ready-soon",
+      }),
+    },
+    {
+      label: "Labor Proof",
+      value: missingBreakdownCount,
+      detail:
+        missingBreakdownCount > 0
+          ? "Completed sessions need time breakdowns."
+          : "Completed labor looks accounted for.",
+      tone: missingBreakdownCount > 0 ? "violet" : "zinc",
+      href: `/job-sessions?business=${businessSlug}`,
+    },
+  ];
 
   const filteredQueueItems = propertyScopedQueueItems.filter((item) => {
     if (
@@ -560,6 +634,136 @@ export default async function QueuePage({
           </RoleVisible>
         </div>
 
+        <Card className="queue-compass border-cyan-500/20 bg-zinc-950/70 p-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.22em]">
+                Queue Compass
+              </p>
+              <h2 className="mt-1 text-xl font-black text-white">
+                {activeView.title} for {activePropertyLabel}
+              </h2>
+              <p className="mt-1 max-w-3xl text-sm leading-6 text-zinc-300">
+                {activeView.detail}
+              </p>
+            </div>
+
+            <Link
+              href={queueHref(businessSlug, {
+                property: propertyFilter,
+                view: "ready-soon",
+              })}
+              className="queue-compass-action rounded-2xl border border-amber-300/30 bg-amber-400/10 px-4 py-3 text-sm font-black text-amber-100 transition hover:-translate-y-0.5 hover:border-amber-200"
+            >
+              Review due-soon work
+            </Link>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {[
+              {
+                label: "Active Work",
+                value: activeWorkCount,
+                detail: "Open queue items",
+                href: queueHref(businessSlug, { property: propertyFilter }),
+                tone: "sky",
+              },
+              {
+                label: "Needs Estimate",
+                value: needsEstimateCount,
+                detail: "Pricing blockers",
+                href: queueHref(businessSlug, {
+                  property: propertyFilter,
+                  view: "needs-estimate",
+                }),
+                tone: "violet",
+              },
+              {
+                label: "Ready Soon",
+                value: readySoonCount,
+                detail: "Needs schedule attention",
+                href: queueHref(businessSlug, {
+                  property: propertyFilter,
+                  view: "ready-soon",
+                }),
+                tone: "amber",
+              },
+              {
+                label: "Remediation",
+                value: remediationCount,
+                detail: "Smoke or special work",
+                href: queueHref(businessSlug, {
+                  property: propertyFilter,
+                  view: "remediation",
+                }),
+                tone: "rose",
+              },
+            ].map((item) => (
+              <Link
+                key={item.label}
+                href={item.href}
+                data-tone={item.tone}
+                className="queue-compass-card rounded-2xl border border-white/10 bg-white/[0.04] p-4 transition hover:-translate-y-0.5 hover:border-cyan-300/60"
+              >
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-zinc-400">
+                  {item.label}
+                </p>
+                <p className="mt-2 text-3xl font-black text-white">
+                  {item.value}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-zinc-300">
+                  {item.detail}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="queue-dispatch-radar border-emerald-500/20 bg-zinc-950/70 p-4">
+          <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.22em]">
+                Dispatch Radar
+              </p>
+              <h2 className="mt-1 text-xl font-black text-white">
+                Workload pressure at a glance
+              </h2>
+              <p className="mt-1 max-w-3xl text-sm leading-6 text-zinc-300">
+                Trimax is watching schedule gaps, overdue work, active field
+                sessions, and missing labor proof from the same queue data.
+              </p>
+            </div>
+
+            <Link
+              href={`/job-sessions?business=${businessSlug}`}
+              className="queue-dispatch-action rounded-2xl border border-emerald-300/30 bg-emerald-400/10 px-4 py-3 text-sm font-black text-emerald-100 transition hover:-translate-y-0.5 hover:border-emerald-200"
+            >
+              Review labor proof
+            </Link>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {queueDispatchCards.map((card) => (
+              <Link
+                key={card.label}
+                href={card.href}
+                data-tone={card.tone}
+                className="queue-dispatch-radar-card rounded-2xl border border-white/10 bg-white/[0.04] p-4 transition hover:-translate-y-0.5"
+              >
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-zinc-400">
+                  {card.label}
+                </p>
+                <p className="mt-2 text-3xl font-black text-white">
+                  {card.value}
+                </p>
+                <p className="mt-1 text-sm font-semibold leading-5 text-zinc-300">
+                  {card.detail}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </Card>
+
         {queueLoadMessage ? (
           <Card className="app-notice-card border-amber-500/40 bg-amber-500/10">
             <p className="text-sm font-semibold text-amber-200">
@@ -574,7 +778,7 @@ export default async function QueuePage({
 
         <Card>
           <form
-            action="/queue"
+            action="/queue#queue-results"
             className="grid gap-4 md:grid-cols-[1fr_auto]"
           >
             <input type="hidden" name="business" value={businessSlug} />
@@ -613,7 +817,7 @@ export default async function QueuePage({
               {(searchTerm ||
                 statusFilter !== "all" ||
                 viewFilter !== "all") && (
-                <Link href={`/queue${businessQuery}`}>
+                <Link href={`/queue${businessQuery}#queue-results`}>
                   <Button variant="secondary">Clear</Button>
                 </Link>
               )}
@@ -631,6 +835,7 @@ export default async function QueuePage({
                 status: statusFilter,
                 view: filter.value,
               })}
+              scroll={false}
               className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
                 viewFilter === filter.value
                   ? "bg-sky-600 text-white shadow-sm shadow-sky-900/10"
@@ -669,6 +874,7 @@ export default async function QueuePage({
                 status: filter.value,
                 view: viewFilter,
               })}
+              scroll={false}
               className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
                 statusFilter === filter.value
                   ? "bg-sky-600 text-white shadow-sm shadow-sky-900/10"
@@ -697,19 +903,19 @@ export default async function QueuePage({
           ))}
         </div>
 
-        <Card className="border-sky-200 bg-sky-50/70 p-5">
+        <Card className="queue-view-summary border-sky-500/20 bg-sky-500/10 p-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-sm uppercase tracking-[0.3em] text-sky-600">
+              <p className="text-sm uppercase tracking-[0.3em] text-sky-100">
                 Current Queue View
               </p>
               <h2 className="mt-2 text-2xl font-bold">
                 {activeView.title}
               </h2>
-              <p className="mt-2 text-slate-600">{activeView.detail}</p>
+              <p className="mt-2 text-zinc-300">{activeView.detail}</p>
             </div>
 
-            <p className="text-sm text-slate-500">
+            <p className="rounded-full border border-white/10 bg-black/20 px-3 py-2 text-sm font-semibold text-zinc-300">
               Showing {filteredQueueItems.length} of{" "}
               {propertyScopedQueueItems.length}{" "}
               queue items.
@@ -717,18 +923,18 @@ export default async function QueuePage({
           </div>
         </Card>
 
-        <div className="grid gap-6">
+        <div id="queue-results" className="grid scroll-mt-6 gap-6">
           {propertyScopedQueueItems.length === 0 ? (
-            <Card className="border-sky-200 bg-white">
+            <Card className="queue-empty-card border-sky-500/20 bg-sky-500/10">
               <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <p className="text-sm uppercase tracking-[0.3em] text-sky-600">
+                  <p className="text-sm uppercase tracking-[0.3em] text-sky-100">
                     Ready For Intake
                   </p>
                   <h2 className="mt-2 text-2xl font-bold">
                     Start this property queue
                   </h2>
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-300">
                     Add the first unit when a property manager sends a turn,
                     repair request, or scheduling note. Trimax will keep the
                     work tied to this workspace and property.
@@ -746,22 +952,22 @@ export default async function QueuePage({
               </div>
             </Card>
           ) : filteredQueueItems.length === 0 ? (
-            <Card className="border-sky-200 bg-white">
+            <Card className="queue-empty-card border-zinc-700 bg-zinc-950/70">
               <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <p className="text-sm uppercase tracking-[0.3em] text-sky-600">
+                  <p className="text-sm uppercase tracking-[0.3em] text-zinc-400">
                     Nothing In This View
                   </p>
                   <h2 className="mt-2 text-2xl font-bold">
                     No queue items match these filters
                   </h2>
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-300">
                     Try clearing the search or switching back to All Work to
                     see the full property queue.
                   </p>
                 </div>
 
-                <Link href={`/queue${businessQuery}`}>
+                <Link href={`/queue${businessQuery}#queue-results`}>
                   <Button variant="secondary">Clear Filters</Button>
                 </Link>
               </div>
@@ -1090,20 +1296,20 @@ function LifecyclePill({
     <div
       className={`queue-lifecycle-pill rounded-2xl border px-4 py-3 ${
         alert
-          ? "queue-lifecycle-pill-alert border-amber-200 bg-amber-50"
+          ? "queue-lifecycle-pill-alert border-amber-400/35 bg-amber-500/10"
           : value
-          ? "queue-lifecycle-pill-filled border-sky-200 bg-sky-50"
-          : "queue-lifecycle-pill-empty border-slate-200 bg-white"
+          ? "queue-lifecycle-pill-filled border-sky-500/25 bg-sky-500/10"
+          : "queue-lifecycle-pill-empty border-zinc-700 bg-zinc-950/55"
       }`}
     >
-      <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+      <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
         {label}
       </p>
-      <p className="mt-1 font-semibold text-slate-950">
+      <p className="mt-1 font-semibold text-zinc-100">
         {value || "-"}
       </p>
       {detail ? (
-        <p className="mt-1 text-xs font-semibold text-amber-700">
+        <p className="mt-1 text-xs font-semibold text-amber-200">
           {detail}
         </p>
       ) : null}

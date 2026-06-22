@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   NavPermissionKey,
@@ -28,7 +28,7 @@ type CommandItem = {
   href: string;
   tone: CommandTone;
   keywords: string[];
-  source?: "static" | "record" | "fallback" | "smart";
+  source?: "static" | "record" | "fallback" | "smart" | "context";
   actionLabel?: string;
 };
 
@@ -1203,6 +1203,7 @@ function buildIntentShortcutCommands(
 
 export default function QuickCommandCenter() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -1253,9 +1254,9 @@ export default function QuickCommandCenter() {
         keywords: ["home", "overview", "command", "today", "platinum"],
       },
       {
-        title: "Property Sales Dashboard",
+        title: "Live Property Sales Dashboard",
         detail:
-          "Open the manager-friendly property pipeline for North Creek turns, estimates, invoices, and unit memory.",
+          "Open the live property pipeline for active turns, estimates, invoices, and unit memory.",
         href: `/property-sales?business=${business}&property=north-creek-apartments`,
         tone: "report",
         keywords: [
@@ -1287,9 +1288,9 @@ export default function QuickCommandCenter() {
         actionLabel: "Open",
       },
       {
-        title: "Evergreen Demo Dashboard",
+        title: "Client-Safe Sales Demo",
         detail:
-          "Show a private sample property dashboard without exposing real client data.",
+          "Show the Evergreen sample property dashboard in meetings without exposing North Creek live data.",
         href: `/property-sales?business=${business}&demo=evergreen`,
         tone: "report",
         keywords: [
@@ -1669,6 +1670,58 @@ export default function QuickCommandCenter() {
       ),
     [commands, role]
   );
+  const pageContextCommands = useMemo<CommandItem[]>(() => {
+    const path = pathname ?? "/";
+    const pageSignals: Record<string, string[]> = {
+      "/activity": ["activity", "audit", "proof", "history", "changes"],
+      "/clients": ["client", "customer", "contact", "email"],
+      "/deposits": ["deposit", "payment", "check", "proof"],
+      "/estimates": ["estimate", "convert", "send", "proposal"],
+      "/invoices": ["invoice", "aging", "reminder", "send", "pdf"],
+      "/job-sessions": ["job session", "labor", "pause", "resume", "timer"],
+      "/payments": ["payment", "check", "deposit", "proof", "match"],
+      "/property-sales": ["property", "sales", "manager", "pipeline", "demo"],
+      "/queue": ["queue", "unit", "priority", "ready", "work"],
+      "/reports": ["report", "analytics", "volatility", "activity", "audit"],
+      "/schedule": ["schedule", "calendar", "ready", "today", "date"],
+      "/settings": ["settings", "email", "security", "setup", "domain"],
+      "/technician": ["technician", "field", "session", "photo", "workbench"],
+    };
+    const matchedSignals =
+      Object.entries(pageSignals)
+        .sort((first, second) => second[0].length - first[0].length)
+        .find(([segment]) =>
+          segment === "/" ? path === "/" : path.startsWith(segment)
+        )?.[1] ?? ["dashboard", "today", "command", "attention"];
+
+    return allowedCommands
+      .map((command) => {
+        const haystack = [
+          command.title,
+          command.detail,
+          command.href,
+          ...command.keywords,
+        ]
+          .join(" ")
+          .toLowerCase();
+        const score = matchedSignals.reduce(
+          (total, signal) => total + (haystack.includes(signal) ? 1 : 0),
+          0
+        );
+
+        return {
+          command: {
+            ...command,
+            source: "context" as const,
+          },
+          score,
+        };
+      })
+      .filter((result) => result.score > 0)
+      .sort((first, second) => second.score - first.score)
+      .map((result) => result.command)
+      .slice(0, 3);
+  }, [allowedCommands, pathname]);
   const recentCommands = recentCommandHrefs
     .map((href) =>
       allowedCommands.find((command) => command.href === href)
@@ -1811,12 +1864,22 @@ export default function QuickCommandCenter() {
         ]
       : [
           ...recentCommands,
-          ...allowedSmartCommands.filter(
+          ...pageContextCommands.filter(
             (command) => !recentCommandHrefs.includes(command.href)
+          ),
+          ...allowedSmartCommands.filter(
+            (command) =>
+              !recentCommandHrefs.includes(command.href) &&
+              !pageContextCommands.some(
+                (pageCommand) => pageCommand.href === command.href
+              )
           ),
           ...allowedCommands.filter(
             (command) =>
               !recentCommandHrefs.includes(command.href) &&
+              !pageContextCommands.some(
+                (pageCommand) => pageCommand.href === command.href
+              ) &&
               !allowedSmartCommands.some(
                 (smartCommand) => smartCommand.href === command.href
               )
@@ -1833,6 +1896,8 @@ export default function QuickCommandCenter() {
   const selectedCommandSourceLabel =
     selectedCommand?.source === "smart"
       ? "Smart suggestion"
+      : selectedCommand?.source === "context"
+        ? "This page"
       : selectedCommand?.source === "record"
         ? "Record match"
         : "Workflow";
@@ -2151,7 +2216,7 @@ export default function QuickCommandCenter() {
         <span aria-hidden="true">/</span>
         <span>Command</span>
         <span className="quick-command-shortcut" aria-hidden="true">
-          Ctrl K
+          Ctrl/⌘ K
         </span>
       </button>
 
@@ -2247,7 +2312,7 @@ export default function QuickCommandCenter() {
                 <kbd>Esc</kbd> closes
               </span>
               <span>
-                <kbd>/</kbd> or <kbd>Ctrl K</kbd>
+                <kbd>/</kbd> or <kbd>Ctrl/⌘ K</kbd>
               </span>
             </div>
 
@@ -2314,6 +2379,12 @@ export default function QuickCommandCenter() {
                 </p>
               ) : null}
 
+              {!normalizedQuery && pageContextCommands.length > 0 ? (
+                <p className="quick-command-section-label">
+                  This page suggestions
+                </p>
+              ) : null}
+
               {!normalizedQuery && smartCommands.length > 0 ? (
                 <p className="quick-command-section-label">
                   Smart suggestions from current work
@@ -2377,6 +2448,11 @@ export default function QuickCommandCenter() {
                         {command.source === "smart" ? (
                           <span className="quick-command-smart-pill">
                             Smart
+                          </span>
+                        ) : null}
+                        {command.source === "context" ? (
+                          <span className="quick-command-page-pill">
+                            Page
                           </span>
                         ) : null}
                         {command.actionLabel ? (

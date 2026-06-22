@@ -74,6 +74,12 @@ export default function MarkScheduledButton({
     try {
       await assertCanWriteDuringMaintenance(businessSlug);
 
+      const { data: currentItem } = await supabase
+        .from("queue_items")
+        .select("status, scheduled_date")
+        .eq("id", queueItemId)
+        .maybeSingle();
+
       const result = await supabase
         .from("queue_items")
         .update({
@@ -82,6 +88,36 @@ export default function MarkScheduledButton({
         })
         .eq("id", queueItemId);
       error = result.error;
+
+      if (!error) {
+        await logActivity({
+          businessId,
+          action: "queue_item.scheduled",
+          entityType: "queue_item",
+          entityId: queueItemId,
+          entityLabel: label,
+          details: {
+            scheduledDate,
+            previousScheduledDate: currentItem?.scheduled_date ?? null,
+            previousStatus: currentItem?.status ?? null,
+            newStatus: "Scheduled",
+            changes: [
+              {
+                field: "scheduled_date",
+                label: "Scheduled Date",
+                previousValue: currentItem?.scheduled_date ?? null,
+                newValue: scheduledDate,
+              },
+              {
+                field: "status",
+                label: "Status",
+                previousValue: currentItem?.status ?? null,
+                newValue: "Scheduled",
+              },
+            ].filter((change) => change.previousValue !== change.newValue),
+          },
+        });
+      }
     } catch (caughtError) {
       error = caughtError;
     }
@@ -98,17 +134,6 @@ export default function MarkScheduledButton({
 
       return;
     }
-
-    await logActivity({
-      businessId,
-      action: "queue_item.scheduled",
-      entityType: "queue_item",
-      entityId: queueItemId,
-      entityLabel: label,
-      details: {
-        scheduledDate,
-      },
-    });
 
     await appendUnitHistoryForQueueItem({
       queueItemId,

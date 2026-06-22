@@ -302,6 +302,87 @@ export default function TechnicianDashboard() {
   const unscheduledFieldJobs = fieldJobs.filter(
     (item) => !item.scheduled_date
   ).length;
+  const extraPrepFieldJobs = fieldJobs.filter(
+    (item) => item.smoked_in || item.renovation_needed
+  ).length;
+  const fieldBriefCards = [
+    {
+      label: "Current Focus",
+      value: activeSession
+        ? `${activeSession.property_name ?? "Property"}${
+            activeSession.unit_label ? ` / ${activeSession.unit_label}` : ""
+          }`
+        : nextFieldJob
+          ? jobTitle(nextFieldJob)
+          : "No field target",
+      detail: activeSession
+        ? `${activeSession.job_type ?? "Field Work"} running for ${formatMinutes(
+            minutesBetween(activeSession.started_at)
+          )}`
+        : nextFieldJob
+          ? fieldPriorityText(nextFieldJob)
+          : "Queue work will appear here when ready.",
+      tone: activeSession ? "emerald" : nextFieldJob ? "cyan" : "zinc",
+    },
+    {
+      label: "Due Soon",
+      value: String(dueSoonFieldJobs),
+      detail: "Open field jobs due within seven days.",
+      tone: dueSoonFieldJobs > 0 ? "amber" : "zinc",
+    },
+    {
+      label: "Need Dates",
+      value: String(unscheduledFieldJobs),
+      detail: "Field jobs that still need a scheduled date.",
+      tone: unscheduledFieldJobs > 0 ? "rose" : "zinc",
+    },
+    {
+      label: "Extra Prep",
+      value: String(extraPrepFieldJobs),
+      detail: "Smoke or renovation flags that may slow the crew.",
+      tone: extraPrepFieldJobs > 0 ? "amber" : "zinc",
+    },
+  ];
+  const launchChecklist = [
+    {
+      label: "Clock",
+      title: activeSession
+        ? "Timer is running"
+        : nextFieldJob
+          ? "Start on the next unit"
+          : "Waiting on field work",
+      detail: activeSession
+        ? `Running for ${formatMinutes(minutesBetween(activeSession.started_at))}.`
+        : nextFieldJob
+          ? `${jobTitle(nextFieldJob)} is first in line.`
+          : "Ready jobs will appear here automatically.",
+      action: activeSession ? "Stop or pause when done" : "Use Start Session",
+      tone: activeSession ? "emerald" : nextFieldJob ? "cyan" : "zinc",
+    },
+    {
+      label: "Proof",
+      title: activeSession ? "Capture notes and photos" : "Proof stays attached",
+      detail: activeSession?.queue_item_id
+        ? "Use Add Notes or Upload Photos while the work is fresh."
+        : nextFieldJob
+          ? "Open the unit card when photos or notes are needed."
+          : "Proof tools unlock from the next active job.",
+      action: "Notes / photos",
+      tone: activeSession || nextFieldJob ? "sky" : "zinc",
+    },
+    {
+      label: "Close",
+      title: completedSessions.length > 0 ? "History is building" : "Finish cleanly",
+      detail:
+        completedSessions.length > 0
+          ? `${completedSessions.length} completed session${
+              completedSessions.length === 1 ? "" : "s"
+            } saved for your account.`
+          : "Stop the timer and mark complete only when the work is done.",
+      action: "Stop / complete",
+      tone: completedSessions.length > 0 ? "emerald" : "amber",
+    },
+  ];
 
   async function startSession(item: QueueItem) {
     if (!business?.id || !userId || activeSession) {
@@ -312,6 +393,9 @@ export default function TechnicianDashboard() {
     setMessage(null);
 
     const now = new Date().toISOString();
+    const isResume = sessions.some(
+      (session) => session.queue_item_id === item.id && Boolean(session.ended_at)
+    );
     const { data, error } = await supabase
       .from("job_sessions")
       .insert({
@@ -345,13 +429,26 @@ export default function TechnicianDashboard() {
 
     await logActivity({
       businessId: business.id,
-      action: "technician.job_session_started",
+      action: isResume
+        ? "technician.job_session_resumed"
+        : "technician.job_session_started",
       entityType: "queue_item",
       entityId: item.id,
       entityLabel: jobTitle(item),
       details: {
         jobSessionId: (data as JobSession).id,
         jobType: item.paint_type,
+        resumedFromPriorSession: isResume,
+        previousStatus: item.status,
+        newStatus: "In Progress",
+        changes: [
+          {
+            field: "status",
+            label: "Status",
+            previousValue: item.status,
+            newValue: "In Progress",
+          },
+        ].filter((change) => change.previousValue !== change.newValue),
       },
     });
 
@@ -445,6 +542,23 @@ export default function TechnicianDashboard() {
       entityLabel: jobTitle(item),
       details: {
         completedDate: today,
+        previousCompletedDate: item.completed_date,
+        previousStatus: item.status,
+        newStatus: "Completed",
+        changes: [
+          {
+            field: "completed_date",
+            label: "Completed Date",
+            previousValue: item.completed_date,
+            newValue: today,
+          },
+          {
+            field: "status",
+            label: "Status",
+            previousValue: item.status,
+            newValue: "Completed",
+          },
+        ].filter((change) => change.previousValue !== change.newValue),
       },
     });
 
@@ -502,6 +616,100 @@ export default function TechnicianDashboard() {
             <span>Notes</span>
             <span>Photos</span>
             <span>Status</span>
+          </div>
+        </section>
+
+        <section className="technician-field-brief rounded-[1.5rem] border border-emerald-400/20 bg-zinc-900/70 p-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.2em] text-emerald-200">
+                Field Brief
+              </p>
+              <h2 className="mt-2 text-2xl font-black text-white">
+                What matters before the next tap
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
+                A compact readout for the field: current focus, schedule
+                pressure, missing dates, and prep risks.
+              </p>
+            </div>
+
+            <Link
+              href={`/job-sessions?business=${businessSlug}`}
+              className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-black text-white transition hover:border-emerald-300/50"
+            >
+              Open Job Sessions
+            </Link>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {fieldBriefCards.map((card) => (
+              <div
+                key={card.label}
+                data-tone={card.tone}
+                className="technician-brief-card rounded-2xl border border-white/10 bg-black/25 p-4"
+              >
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-400">
+                  {card.label}
+                </p>
+                <p className="mt-3 line-clamp-2 text-2xl font-black text-white">
+                  {card.value}
+                </p>
+                <p className="mt-2 text-sm leading-5 text-zinc-400">
+                  {card.detail}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="technician-launch-checklist rounded-[1.5rem] border border-sky-400/20 bg-zinc-900/70 p-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.2em] text-sky-200">
+                Today Launch Checklist
+              </p>
+              <h2 className="mt-2 text-2xl font-black text-white">
+                Clock, proof, close
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
+                The field workflow stays simple: start the timer, capture proof
+                while the details are fresh, then close the work cleanly.
+              </p>
+            </div>
+
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-black text-zinc-200">
+              Field-safe
+            </span>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {launchChecklist.map((item, index) => (
+              <div
+                key={item.label}
+                data-tone={item.tone}
+                className="technician-launch-card rounded-2xl border border-white/10 bg-black/25 p-4"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-400">
+                    {item.label}
+                  </p>
+                  <span className="technician-launch-index rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-black text-zinc-200">
+                    {index + 1}
+                  </span>
+                </div>
+
+                <h3 className="mt-3 text-lg font-black text-white">
+                  {item.title}
+                </h3>
+                <p className="mt-2 min-h-12 text-sm leading-6 text-zinc-400">
+                  {item.detail}
+                </p>
+                <p className="mt-3 text-sm font-black text-sky-200">
+                  {item.action}
+                </p>
+              </div>
+            ))}
           </div>
         </section>
 

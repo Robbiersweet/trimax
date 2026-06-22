@@ -12,6 +12,7 @@ import Card from "../../../components/Card";
 import Button from "../../../components/Button";
 import InputField from "../../../components/InputField";
 import Toast from "../../../components/Toast";
+import { logActivity } from "../../../lib/activityLog";
 import { assertCanWriteDuringMaintenance } from "../../../lib/maintenanceMode";
 import { supabase } from "../../../lib/supabase";
 import { canonicalApartmentUnitLabel } from "../../../utils/unitLabels";
@@ -75,6 +76,31 @@ const flooringOptions = [
   "Vinyl",
 ];
 
+type QueueEditSnapshot = {
+  property: string;
+  unit: string;
+  status: string;
+  priority: string;
+  ready_date: string | null;
+  scheduled_date: string | null;
+  completed_date: string | null;
+  move_out_date: string | null;
+};
+
+const trackedQueueEditFields: Array<{
+  key: keyof QueueEditSnapshot;
+  label: string;
+}> = [
+  { key: "property", label: "Property" },
+  { key: "unit", label: "Unit" },
+  { key: "status", label: "Status" },
+  { key: "priority", label: "Priority" },
+  { key: "ready_date", label: "Paint Due Date" },
+  { key: "scheduled_date", label: "Scheduled Date" },
+  { key: "completed_date", label: "Completed Date" },
+  { key: "move_out_date", label: "Move Out Date" },
+];
+
 function propertyKey(value: string) {
   return value
     .toLowerCase()
@@ -126,6 +152,8 @@ export default function EditQueueItemPage() {
   const [completedDate, setCompletedDate] =
     useState("");
   const [notes, setNotes] = useState("");
+  const [originalQueueItem, setOriginalQueueItem] =
+    useState<QueueEditSnapshot | null>(null);
 
   const [toast, setToast] = useState<{
     type: "success" | "error";
@@ -188,6 +216,16 @@ export default function EditQueueItemPage() {
       setScheduledDate(data.scheduled_date ?? "");
       setCompletedDate(data.completed_date ?? "");
       setNotes(data.notes ?? "");
+      setOriginalQueueItem({
+        property: data.property ?? "",
+        unit: data.unit ?? "",
+        status: data.status ?? "",
+        priority: data.priority ?? "",
+        ready_date: data.ready_date ?? null,
+        scheduled_date: data.scheduled_date ?? null,
+        completed_date: data.completed_date ?? null,
+        move_out_date: data.move_out_date ?? null,
+      });
     }
 
     loadQueueItem();
@@ -242,6 +280,16 @@ export default function EditQueueItemPage() {
       completed_date: completedDate || null,
       notes,
     };
+    const nextSnapshot: QueueEditSnapshot = {
+      property: updatePayload.property,
+      unit: updatePayload.unit,
+      status: updatePayload.status,
+      priority: updatePayload.priority,
+      ready_date: updatePayload.ready_date,
+      scheduled_date: updatePayload.scheduled_date,
+      completed_date: updatePayload.completed_date,
+      move_out_date: updatePayload.move_out_date,
+    };
 
     let { error } = await supabase
       .from("queue_items")
@@ -277,6 +325,42 @@ export default function EditQueueItemPage() {
         message: "Unable to update queue item.",
       });
       return;
+    }
+
+    if (originalQueueItem) {
+      const changes = trackedQueueEditFields
+        .map(({ key, label }) => {
+          const previousValue = originalQueueItem[key] ?? null;
+          const newValue = nextSnapshot[key] ?? null;
+
+          if (previousValue === newValue) {
+            return null;
+          }
+
+          return {
+            field: key,
+            label,
+            previousValue,
+            newValue,
+          };
+        })
+        .filter(Boolean);
+
+      if (changes.length > 0) {
+        await logActivity({
+          businessId,
+          action: "queue_item.updated",
+          entityType: "queue_item",
+          entityId: queueItemId,
+          entityLabel: `${nextSnapshot.property || "Property"} - Unit ${
+            nextSnapshot.unit || "-"
+          }`,
+          details: {
+            changedFields: changes.map((change) => change?.field),
+            changes,
+          },
+        });
+      }
     }
 
     setToast({

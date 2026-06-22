@@ -10,6 +10,7 @@ import AppShell from "../../../components/AppShell";
 import BackButton from "../../../components/BackButton";
 import Card from "../../../components/Card";
 import Button from "../../../components/Button";
+import DocumentReadinessPanel from "../../../components/DocumentReadinessPanel";
 import InputField from "../../../components/InputField";
 import TaxModeSelect from "../../../components/TaxModeSelect";
 import Toast from "../../../components/Toast";
@@ -239,6 +240,86 @@ export default function EditInvoicePage() {
     getTaxSuggestionForAddress(serviceAddress);
   const showTaxSuggestionNote =
     Boolean(taxSuggestion) && !taxManuallyChanged;
+  const readyLineItems = lineItems.filter(
+    (item) =>
+      item.description.trim() &&
+      getLineTotal(item) > 0
+  );
+  const invoiceEditReadinessSteps = [
+    {
+      label: "Client",
+      detail: customerName.trim()
+        ? customerName.trim()
+        : "Add customer",
+      status: customerName.trim() ? "ready" : "attention",
+    },
+    {
+      label: "Project",
+      detail: projectTitle.trim()
+        ? projectTitle.trim()
+        : "Add project title",
+      status: projectTitle.trim() ? "ready" : "attention",
+    },
+    {
+      label: "Line items",
+      detail:
+        readyLineItems.length > 0
+          ? `${readyLineItems.length} billable line ${
+              readyLineItems.length === 1 ? "item" : "items"
+            }`
+          : "Add at least one priced line",
+      status: readyLineItems.length > 0 ? "ready" : "attention",
+    },
+    {
+      label: "Dates",
+      detail: dueDate
+        ? dueDateManuallyChanged
+          ? "Manual due date"
+          : "Smart due date"
+        : "Choose due date",
+      status: dueDate ? "ready" : "attention",
+    },
+    {
+      label: "Tax",
+      detail:
+        taxMode === "taxable"
+          ? taxRate
+            ? `${taxRate}% ${taxLabel || "tax"}`
+            : "Taxable, rate needed"
+          : taxMode === "tax_exempt"
+            ? "Tax exempt"
+            : "No tax",
+      status: taxMode === "taxable" && !taxRate ? "attention" : "ready",
+    },
+    {
+      label: "Balance",
+      detail:
+        amountDue <= 0
+          ? "Paid or no balance"
+          : `${formatCurrency(amountDue)} still due`,
+      status: amountDue <= 0 ? "ready" : "waiting",
+    },
+  ] as const;
+  const invoiceEditorSignals = [
+    !serviceAddress.trim()
+      ? "No service address is saved, so job context and tax confidence are weaker."
+      : null,
+    readyLineItems.length !== lineItems.length
+      ? "One or more line items will not save until it has a description and price."
+      : null,
+    !dueDate
+      ? "No due date is set, which can weaken collection follow-up."
+      : null,
+    Number(amountPaid) > invoiceTotal
+      ? "Amount paid is greater than the invoice total. Check the payment entry."
+      : null,
+    showSplitWarning
+      ? `Saving can prepare ${automaticSplitPlan.length} split invoice draft${automaticSplitPlan.length === 1 ? "" : "s"}.`
+      : null,
+    showTaxSuggestionNote
+      ? "Tax was suggested from the service address and can still be overridden."
+      : null,
+  ].filter(Boolean) as string[];
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -845,6 +926,62 @@ export default function EditInvoicePage() {
         <h1 className="mt-3 text-5xl font-bold">
           Edit Invoice
         </h1>
+
+        <div className="mt-6">
+          <DocumentReadinessPanel
+            eyebrow="Invoice Editor"
+            title="Ready to bill and collect"
+            totalLabel="Amount Due"
+            totalValue={formatCurrency(amountDue)}
+            secondaryLabel="Invoice total"
+            secondaryValue={formatCurrency(invoiceTotal)}
+            steps={[...invoiceEditReadinessSteps]}
+          />
+        </div>
+
+        <Card className="invoice-editor-coach mt-6 border-emerald-500/25 bg-zinc-950/60">
+          <div className="grid gap-4 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.24em] text-emerald-300">
+                Collection Intelligence
+              </p>
+
+              <h2 className="mt-2 text-2xl font-black text-white">
+                Make this invoice easy to defend
+              </h2>
+
+              <p className="mt-2 text-sm leading-6 text-zinc-400">
+                Trimax is checking the details that matter for payment:
+                due date, balance, pricing, tax, site context, and split draft
+                behavior.
+              </p>
+            </div>
+
+            <div className="grid gap-3">
+              {invoiceEditorSignals.length > 0 ? (
+                invoiceEditorSignals.map((signal) => (
+                  <div
+                    key={signal}
+                    className="invoice-editor-signal"
+                    data-tone={
+                      signal.includes("greater") ||
+                      signal.includes("will not save") ||
+                      signal.includes("No due date")
+                        ? "warning"
+                        : "info"
+                    }
+                  >
+                    {signal}
+                  </div>
+                ))
+              ) : (
+                <div className="invoice-editor-signal" data-tone="success">
+                  This invoice is clean from the current editor checks.
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
 
         <Card className="mt-8">
           <div className="grid gap-5">

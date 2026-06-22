@@ -38,6 +38,12 @@ export default function MarkCompletedButton({
     try {
       await assertCanWriteDuringMaintenance(businessSlug);
 
+      const { data: currentItem } = await supabase
+        .from("queue_items")
+        .select("status, completed_date")
+        .eq("id", queueItemId)
+        .maybeSingle();
+
       const result = await supabase
         .from("queue_items")
         .update({
@@ -46,6 +52,36 @@ export default function MarkCompletedButton({
         })
         .eq("id", queueItemId);
       error = result.error;
+
+      if (!error) {
+        await logActivity({
+          businessId,
+          action: "queue_item.completed",
+          entityType: "queue_item",
+          entityId: queueItemId,
+          entityLabel: label,
+          details: {
+            completedDate: today,
+            previousCompletedDate: currentItem?.completed_date ?? null,
+            previousStatus: currentItem?.status ?? null,
+            newStatus: "Completed",
+            changes: [
+              {
+                field: "completed_date",
+                label: "Completed Date",
+                previousValue: currentItem?.completed_date ?? null,
+                newValue: today,
+              },
+              {
+                field: "status",
+                label: "Status",
+                previousValue: currentItem?.status ?? null,
+                newValue: "Completed",
+              },
+            ].filter((change) => change.previousValue !== change.newValue),
+          },
+        });
+      }
     } catch (caughtError) {
       error = caughtError;
     }
@@ -62,17 +98,6 @@ export default function MarkCompletedButton({
 
       return;
     }
-
-    await logActivity({
-      businessId,
-      action: "queue_item.completed",
-      entityType: "queue_item",
-      entityId: queueItemId,
-      entityLabel: label,
-      details: {
-        completedDate: today,
-      },
-    });
 
     await appendUnitHistoryForQueueItem({
       queueItemId,

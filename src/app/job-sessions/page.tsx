@@ -32,6 +32,17 @@ type JobSessionBreakdown = {
   minutes: number | null;
 };
 
+type ActivityLog = {
+  id: string;
+  action: string;
+  actor_email: string | null;
+  entity_type: string | null;
+  entity_id: string | null;
+  entity_label: string | null;
+  details: Record<string, unknown> | null;
+  created_at: string | null;
+};
+
 type QueueItem = {
   id: string;
   property: string | null;
@@ -177,6 +188,46 @@ function planningConfidence(sampleCount: number) {
   return "Learning";
 }
 
+function laborActivityLabel(action: string) {
+  const labels: Record<string, string> = {
+    "job_session.started": "Session Started",
+    "job_session.resumed": "Session Resumed",
+    "job_session.stopped": "Session Stopped",
+    "job_session.breakdown_saved": "Breakdown Saved",
+    "job_session.breakdown_skipped": "Breakdown Skipped",
+    "technician.job_session_started": "Technician Started",
+    "technician.job_session_resumed": "Technician Resumed",
+    "technician.job_session_paused": "Technician Paused",
+    "technician.job_session_stopped": "Technician Stopped",
+  };
+
+  return labels[action] ?? "Labor Activity";
+}
+
+function activityQueueHref(log: ActivityLog, businessSlug: string) {
+  const queueItemId =
+    log.entity_type === "queue_item" ? log.entity_id : log.details?.queueItemId;
+
+  return typeof queueItemId === "string" && queueItemId
+    ? `/queue/${queueItemId}?business=${businessSlug}`
+    : `/job-sessions?business=${businessSlug}`;
+}
+
+function activityMinutes(log: ActivityLog) {
+  const minutes = log.details?.totalMinutes ?? log.details?.assignedMinutes;
+
+  if (typeof minutes === "number") {
+    return minutes;
+  }
+
+  if (typeof minutes === "string") {
+    const parsed = Number(minutes);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  return 0;
+}
+
 export default async function JobSessionsPage({
   searchParams,
 }: {
@@ -196,6 +247,7 @@ export default async function JobSessionsPage({
   let sessions: JobSession[] = [];
   let breakdowns: JobSessionBreakdown[] = [];
   let queueItems: QueueItem[] = [];
+  let laborActivityLogs: ActivityLog[] = [];
   let setupMessage: string | null = null;
 
   if (businessError) {
@@ -205,7 +257,12 @@ export default async function JobSessionsPage({
   }
 
   if (selectedBusiness?.id) {
-    const [sessionResponse, breakdownResponse, queueResponse] = await Promise.all([
+    const [
+      sessionResponse,
+      breakdownResponse,
+      queueResponse,
+      activityResponse,
+    ] = await Promise.all([
       supabase
         .from("job_sessions")
         .select(
@@ -226,6 +283,25 @@ export default async function JobSessionsPage({
         .eq("business_id", selectedBusiness.id)
         .order("ready_date", { ascending: true, nullsFirst: false })
         .limit(40),
+      supabase
+        .from("activity_logs")
+        .select(
+          "id, action, actor_email, entity_type, entity_id, entity_label, details, created_at"
+        )
+        .eq("business_id", selectedBusiness.id)
+        .in("action", [
+          "job_session.started",
+          "job_session.resumed",
+          "job_session.stopped",
+          "job_session.breakdown_saved",
+          "job_session.breakdown_skipped",
+          "technician.job_session_started",
+          "technician.job_session_resumed",
+          "technician.job_session_paused",
+          "technician.job_session_stopped",
+        ])
+        .order("created_at", { ascending: false })
+        .limit(120),
     ]);
 
     if (sessionResponse.error) {
@@ -251,9 +327,17 @@ export default async function JobSessionsPage({
       );
     }
 
+    if (activityResponse.error) {
+      console.warn(
+        "Job Sessions activity could not be loaded:",
+        activityResponse.error.message
+      );
+    }
+
     sessions = (sessionResponse.data ?? []) as JobSession[];
     breakdowns = (breakdownResponse.data ?? []) as JobSessionBreakdown[];
     queueItems = (queueResponse.data ?? []) as QueueItem[];
+    laborActivityLogs = (activityResponse.data ?? []) as ActivityLog[];
   }
 
   const breakdownSessionIds = new Set(
@@ -643,6 +727,65 @@ export default async function JobSessionsPage({
       href: queueItemHref(businessSlug, item.id),
     };
   });
+  const laborPauseLogs = laborActivityLogs.filter(
+    (log) => log.action === "technician.job_session_paused"
+  );
+  const laborResumeLogs = laborActivityLogs.filter(
+    (log) =>
+      log.action === "job_session.resumed" ||
+      log.action === "technician.job_session_resumed"
+  );
+  const laborStopLogs = laborActivityLogs.filter(
+    (log) =>
+      log.action === "job_session.stopped" ||
+      log.action === "technician.job_session_stopped" ||
+      log.action === "technician.job_session_paused"
+  );
+  const skippedBreakdownLogs = laborActivityLogs.filter(
+    (log) => log.action === "job_session.breakdown_skipped"
+  );
+  const interruptionHotspots = Array.from(
+    [...laborPauseLogs, ...laborResumeLogs].reduce((map, log) => {
+      const label =
+        log.entity_label ||
+        (typeof log.details?.queueItemId === "string"
+          ? `Queue ${log.details.queueItemId}`
+          : "Unassigned session");
+      const current = map.get(label) ?? {
+        label,
+        count: 0,
+        lastActivityAt: "",
+        href: activityQueueHref(log, businessSlug),
+      };
+
+      map.set(label, {
+        ...current,
+        count: current.count + 1,
+        lastActivityAt:
+          (log.created_at ?? "") > current.lastActivityAt
+            ? (log.created_at ?? "")
+            : current.lastActivityAt,
+      });
+
+      return map;
+    }, new Map<string, { label: string; count: number; lastActivityAt: string; href: string }>())
+  )
+    .map(([, value]) => value)
+    .sort(
+      (first, second) =>
+        second.count - first.count ||
+        second.lastActivityAt.localeCompare(first.lastActivityAt)
+    )
+    .slice(0, 4);
+  const recentLaborActivity = laborActivityLogs.slice(0, 6);
+  const laborAuditReadiness =
+    laborActivityLogs.length === 0
+      ? "Waiting for first session event"
+      : laborPauseLogs.length > 0
+        ? "Interruptions visible"
+        : laborResumeLogs.length > 0
+          ? "Resumes visible"
+          : "Clean labor trail";
 
   return (
     <AppShell>
@@ -886,6 +1029,161 @@ export default async function JobSessionsPage({
             </div>
           </Card>
         ) : null}
+
+        <Card className="job-session-hub-card job-session-disruption-card border-amber-300/25 bg-gradient-to-br from-amber-500/10 via-zinc-950 to-cyan-500/10">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="section-kicker text-sm font-black uppercase tracking-[0.24em] text-amber-200">
+                Session Disruption Trail
+              </p>
+              <h2 className="mt-2 text-2xl font-black">
+                {laborAuditReadiness}
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+                Starts, pauses, resumes, stops, and breakdown choices come from
+                the existing activity log, so labor analytics stay tied to the
+                same audit history as the rest of Trimax.
+              </p>
+            </div>
+
+            <Link
+              href={`/activity?business=${businessSlug}&type=operations`}
+              className="text-sm font-black text-sky-200 transition hover:text-white"
+            >
+              Open activity trail
+            </Link>
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-4">
+            <HubMetric
+              label="Pauses"
+              value={laborPauseLogs.length}
+              detail="Mid-work interruptions"
+              urgent={laborPauseLogs.length > 0}
+            />
+            <HubMetric
+              label="Resumes"
+              value={laborResumeLogs.length}
+              detail="Restarted work blocks"
+              urgent={laborResumeLogs.length > 0}
+            />
+            <HubMetric
+              label="Stops"
+              value={laborStopLogs.length}
+              detail="Closed or paused sessions"
+            />
+            <HubMetric
+              label="Skipped Splits"
+              value={skippedBreakdownLogs.length}
+              detail="Breakdowns deferred"
+              urgent={skippedBreakdownLogs.length > 0}
+            />
+          </div>
+
+          <div className="mt-5 grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+            <div className="job-session-disruption-panel rounded-2xl border border-white/10 bg-black/25 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-400">
+                    Hotspots
+                  </p>
+                  <h3 className="mt-1 text-lg font-black text-white">
+                    Jobs with repeated stops or resumes
+                  </h3>
+                </div>
+                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-black text-zinc-300">
+                  {interruptionHotspots.length}
+                </span>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                {interruptionHotspots.length === 0 ? (
+                  <EmptyState
+                    title="No interruption hotspots yet"
+                    detail="Paused or resumed sessions will show which jobs keep getting broken up."
+                  />
+                ) : (
+                  interruptionHotspots.map((item) => (
+                    <Link
+                      key={item.label}
+                      href={item.href}
+                      className="job-session-disruption-row block rounded-2xl border border-white/10 bg-black/20 p-3 transition hover:-translate-y-0.5"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-black text-white">{item.label}</p>
+                          <p className="mt-1 text-sm text-zinc-400">
+                            Last activity {formatDateTime(item.lastActivityAt)}
+                          </p>
+                        </div>
+                        <span className="rounded-full border border-amber-300/35 bg-amber-300/10 px-3 py-1 text-sm font-black text-amber-200">
+                          {item.count}
+                        </span>
+                      </div>
+                    </Link>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="job-session-disruption-panel rounded-2xl border border-white/10 bg-black/25 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-400">
+                    Recent Trail
+                  </p>
+                  <h3 className="mt-1 text-lg font-black text-white">
+                    Latest labor events
+                  </h3>
+                </div>
+                <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-black text-zinc-300">
+                  {laborActivityLogs.length}
+                </span>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                {recentLaborActivity.length === 0 ? (
+                  <EmptyState
+                    title="No session activity yet"
+                    detail="The first start, stop, pause, or breakdown event will appear here."
+                  />
+                ) : (
+                  recentLaborActivity.map((log) => {
+                    const minutes = activityMinutes(log);
+
+                    return (
+                      <Link
+                        key={log.id}
+                        href={activityQueueHref(log, businessSlug)}
+                        className="job-session-disruption-row block rounded-2xl border border-white/10 bg-black/20 p-3 transition hover:-translate-y-0.5"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-200">
+                              {laborActivityLabel(log.action)}
+                            </p>
+                            <p className="mt-1 font-black text-white">
+                              {log.entity_label ?? "Job session"}
+                            </p>
+                            <p className="mt-1 text-sm text-zinc-400">
+                              {formatDateTime(log.created_at)}
+                              {log.actor_email ? ` by ${log.actor_email}` : ""}
+                            </p>
+                          </div>
+                          {minutes > 0 ? (
+                            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm font-black text-zinc-200">
+                              {formatDuration(minutes)}
+                            </span>
+                          ) : null}
+                        </div>
+                      </Link>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        </Card>
 
         <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
           <Card className="job-session-hub-card job-session-next-card border-sky-500/25 bg-gradient-to-br from-sky-500/10 via-zinc-950 to-emerald-500/10">
@@ -1231,12 +1529,14 @@ function HubMetric({
 }) {
   return (
     <div
+      data-urgent={urgent ? "true" : "false"}
       className={`job-session-hub-metric rounded-2xl border p-4 ${
         urgent
           ? "border-amber-300/35 bg-amber-300/10"
           : "border-white/10 bg-black/25"
       }`}
     >
+      <span className="job-session-hub-metric-accent" />
       <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-400">
         {label}
       </p>
@@ -1528,7 +1828,7 @@ function EmptyState({
   detail: string;
 }) {
   return (
-    <div className="rounded-2xl border border-dashed border-white/15 bg-black/20 p-4">
+    <div className="job-session-empty-state rounded-2xl border border-dashed border-white/15 bg-black/20 p-4">
       <p className="font-black text-white">{title}</p>
       <p className="mt-1 text-sm leading-6 text-zinc-400">{detail}</p>
     </div>

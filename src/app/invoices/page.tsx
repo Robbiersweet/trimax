@@ -3,6 +3,8 @@ import AppShell from "../components/AppShell";
 import Card from "../components/Card";
 import Button from "../components/Button";
 import InvoiceBulkPaymentActions from "../components/InvoiceBulkPaymentActions";
+import InvoiceFilterLink from "../components/InvoiceFilterLink";
+import InvoiceResultsScroller from "../components/InvoiceResultsScroller";
 import StatusBadge from "../components/StatusBadge";
 import { supabase } from "../lib/supabase";
 
@@ -43,6 +45,14 @@ type BaseInvoice = Omit<
 type InvoiceWithSplitInfo = Invoice & {
   split_children_count: number;
   split_parent_display_id: string | null;
+};
+
+type InvoiceActivityLog = {
+  id: string;
+  action: string;
+  entity_id: string | null;
+  details: Record<string, unknown> | null;
+  created_at: string | null;
 };
 
 type InvoiceFilterIconName =
@@ -316,6 +326,168 @@ function matchesStatusFilter({
   return invoiceStatusKey(invoiceStatus) === statusFilter;
 }
 
+function invoiceReadinessSignals(invoice: InvoiceWithSplitInfo) {
+  const signals: string[] = [];
+  const status = invoiceStatusKey(invoice.status);
+
+  if (!invoice.customer_name?.trim()) {
+    signals.push("Needs customer");
+  }
+
+  if (!invoice.project_title?.trim()) {
+    signals.push("Needs project");
+  }
+
+  if (!invoice.due_date && status !== "paid") {
+    signals.push("Needs due date");
+  }
+
+  if (parseMoney(invoice.invoice_amount) <= 0) {
+    signals.push("Needs amount");
+  }
+
+  if (hasActiveDepositRequest(invoice)) {
+    signals.push("Deposit requested");
+  }
+
+  if (invoice.split_parent_invoice_id) {
+    signals.push("Split child");
+  }
+
+  if (invoice.split_children_count > 0) {
+    signals.push("Split source");
+  }
+
+  return signals;
+}
+
+function invoiceCollectionStage({
+  amountDue,
+  daysLate,
+  invoice,
+}: {
+  amountDue: number;
+  daysLate: number | null;
+  invoice: InvoiceWithSplitInfo;
+}) {
+  const status = invoiceStatusKey(invoice.status);
+
+  if (invoice.split_children_count > 0) {
+    return {
+      label: "Split source",
+      detail: "Collect from the split invoices.",
+      tone: "amber",
+    };
+  }
+
+  if (status === "paid" || amountDue <= 0) {
+    return {
+      label: "Closed",
+      detail: "No balance due.",
+      tone: "emerald",
+    };
+  }
+
+  if (status === "draft") {
+    return {
+      label: "Draft",
+      detail: "Review and send before collection.",
+      tone: "amber",
+    };
+  }
+
+  if (daysLate !== null && daysLate >= 30) {
+    return {
+      label: "Urgent follow-up",
+      detail: `${daysLate} day${daysLate === 1 ? "" : "s"} late.`,
+      tone: "rose",
+    };
+  }
+
+  if (daysLate !== null && daysLate >= 0) {
+    return {
+      label: "Reminder ready",
+      detail: `${daysLate} day${daysLate === 1 ? "" : "s"} past due.`,
+      tone: "rose",
+    };
+  }
+
+  if (daysLate !== null && daysLate >= -7) {
+    return {
+      label: "Due soon",
+      detail: `Due in ${Math.abs(daysLate)} day${
+        Math.abs(daysLate) === 1 ? "" : "s"
+      }.`,
+      tone: "orange",
+    };
+  }
+
+  return {
+    label: "On track",
+    detail: "No immediate collection pressure.",
+    tone: "zinc",
+  };
+}
+
+function hasInvoicePdfProof(log: InvoiceActivityLog) {
+  return (
+    (log.action === "invoice.email_sent" ||
+      log.action === "invoice.payment_reminder_sent") &&
+    log.details?.pdf_attached === true
+  );
+}
+
+function hasInvoicePaymentProof(log: InvoiceActivityLog) {
+  return (
+    log.action.includes("payment") &&
+    (Boolean(log.details?.paymentAttachmentId) ||
+      Boolean(log.details?.paymentImagePath) ||
+      Boolean(log.details?.paymentImageFileName))
+  );
+}
+
+function invoiceCollectionPriorityScore({
+  amountDue,
+  daysLate,
+  invoice,
+  proofMissing,
+}: {
+  amountDue: number;
+  daysLate: number | null;
+  invoice: InvoiceWithSplitInfo;
+  proofMissing: boolean;
+}) {
+  let score = 0;
+
+  if (amountDue > 0) {
+    score += Math.min(35, Math.ceil(amountDue / 250));
+  }
+
+  if (daysLate !== null && daysLate >= 60) {
+    score += 35;
+  } else if (daysLate !== null && daysLate >= 30) {
+    score += 28;
+  } else if (daysLate !== null && daysLate >= 0) {
+    score += 20;
+  } else if (daysLate !== null && daysLate >= -7) {
+    score += 10;
+  }
+
+  if (hasActiveDepositRequest(invoice)) {
+    score += 12;
+  }
+
+  if (proofMissing && amountDue > 0) {
+    score += 10;
+  }
+
+  if (invoiceStatusKey(invoice.status) === "sent") {
+    score += 5;
+  }
+
+  return Math.min(score, 100);
+}
+
 export default async function InvoicesPage({
   searchParams,
 }: {
@@ -375,6 +547,7 @@ export default async function InvoicesPage({
 
   let invoices: Invoice[] = [];
   let invoicesWithSplitInfo: InvoiceWithSplitInfo[] = [];
+  let invoiceActivityLogs: InvoiceActivityLog[] = [];
   let invoiceLoadMessage: string | null = businessLoadMessage;
 
   if (selectedBusiness?.id) {
@@ -460,6 +633,20 @@ export default async function InvoicesPage({
 
         return true;
       });
+
+    const { data: activityData, error: activityError } = await supabase
+      .from("activity_logs")
+      .select("id, action, entity_id, details, created_at")
+      .eq("business_id", selectedBusiness.id)
+      .eq("entity_type", "invoice")
+      .order("created_at", { ascending: false })
+      .limit(750);
+
+    if (activityError) {
+      console.warn("Invoice proof activity load failed:", activityError.message);
+    } else {
+      invoiceActivityLogs = (activityData ?? []) as InvoiceActivityLog[];
+    }
   }
 
   const activeParams = new URLSearchParams({
@@ -485,6 +672,8 @@ export default async function InvoicesPage({
   if (statusFilter !== "all") {
     activeParams.set("status", statusFilter);
   }
+
+  const invoiceResultsAnchor = "#invoice-results-list";
 
   if (view !== "all") {
     activeParams.set("view", view);
@@ -651,6 +840,46 @@ export default async function InvoicesPage({
       invoice.daysLate < 0 &&
       invoice.daysLate >= -7
   );
+  const soonDueBalanceTotal = soonDueInvoices.reduce(
+    (total, invoice) => total + invoice.amountDue,
+    0
+  );
+  const largestOpenInvoice = [...currentYearOpenInvoicesWithAmounts].sort(
+    (first, second) => second.amountDue - first.amountDue
+  )[0];
+  const missingDueDateInvoices = billableInvoicesWithSplitInfo.filter(
+    (invoice) =>
+      invoiceStatusKey(invoice.status) !== "paid" &&
+      !invoice.due_date &&
+      parseMoney(invoice.invoice_amount) > parseMoney(invoice.amount_paid)
+  );
+  const missingCustomerInvoices = billableInvoicesWithSplitInfo.filter(
+    (invoice) => !invoice.customer_name?.trim()
+  );
+  const missingProjectInvoices = billableInvoicesWithSplitInfo.filter(
+    (invoice) => !invoice.project_title?.trim()
+  );
+  const invoiceReadinessIssueCount =
+    missingDueDateInvoices.length +
+    missingCustomerInvoices.length +
+    missingProjectInvoices.length;
+  const invoiceReadinessScore = billableInvoicesWithSplitInfo.length
+    ? Math.max(
+        0,
+        Math.min(
+          100,
+          Math.round(
+            100 -
+              missingDueDateInvoices.length * 8 -
+              missingCustomerInvoices.length * 10 -
+              missingProjectInvoices.length * 5
+          )
+        )
+      )
+    : 100;
+  const urgentFollowUpInvoices = overdueInvoices.filter(
+    (invoice) => (invoice.daysLate ?? 0) >= 30
+  );
   const draftBalanceTotal = billableInvoicesWithSplitInfo
     .filter(
       (invoice) => (invoice.status || "Draft").toLowerCase() === "draft"
@@ -736,6 +965,45 @@ export default async function InvoicesPage({
   const batchPaymentCustomerCount = customerBalanceRows.filter(
     (customer) => customer.invoiceCount > 1
   ).length;
+  const topCustomerBalance = customerBalanceRows[0] ?? null;
+  const customerRadarCards = [
+    {
+      label: "Top Balance",
+      value: topCustomerBalance
+        ? formatMoney(topCustomerBalance.amountDue)
+        : "$0.00",
+      detail: topCustomerBalance
+        ? `${topCustomerBalance.customerName} / ${topCustomerBalance.invoiceCount} open invoice${
+            topCustomerBalance.invoiceCount === 1 ? "" : "s"
+          }`
+        : "No customer balance pressure",
+      href: topCustomerBalance
+        ? `/payments?${new URLSearchParams({
+            business: businessSlug,
+            customer: topCustomerBalance.customerName,
+          }).toString()}#batch-payment-tool`
+        : `/payments${businessQuery}#batch-payment-tool`,
+      tone: topCustomerBalance ? "emerald" : "zinc",
+    },
+    {
+      label: "Multi-Invoice",
+      value: String(batchPaymentCustomerCount),
+      detail: "Customers where one check may cover several invoices",
+      href: "#customer-collection-radar",
+      tone: batchPaymentCustomerCount > 0 ? "sky" : "zinc",
+    },
+    {
+      label: "Late Customers",
+      value: String(
+        customerBalanceRows.filter(
+          (customer) => customer.oldestDaysLate !== null
+        ).length
+      ),
+      detail: "Customer groups with at least one past-due invoice",
+      href: `/invoices${businessQuery}&view=aging${invoiceResultsAnchor}`,
+      tone: overdueInvoices.length > 0 ? "rose" : "zinc",
+    },
+  ];
   const nextMoneyMoves = [
     {
       label: "Reminder Queue",
@@ -756,7 +1024,7 @@ export default async function InvoicesPage({
             : "No late invoice pressure right now.",
       href: oldestOverdueInvoice
         ? `/invoices/${oldestOverdueInvoice.id}${businessQuery}#late-payment-reminder`
-        : `/invoices${businessQuery}&view=aging`,
+        : `/invoices${businessQuery}&view=aging${invoiceResultsAnchor}`,
       action: overdueInvoices.length > 0 ? "Send Reminder" : "Review Aging",
       tone: "danger",
     },
@@ -773,7 +1041,7 @@ export default async function InvoicesPage({
               depositRequestInvoices.length === 1 ? "" : "s"
             } can be applied before final collection.`
           : "Deposit requests will appear here once created.",
-      href: `/payments${businessQuery}`,
+      href: `/payments${businessQuery}#batch-payment-tool`,
       action: "Open Payments",
       tone: "success",
     },
@@ -807,11 +1075,295 @@ export default async function InvoicesPage({
               batchPaymentCustomerCount === 1 ? "" : "s"
             } have multiple open invoices.`
           : "Use this when one check covers several invoices.",
-      href: `/payments${businessQuery}`,
+      href: `/payments${businessQuery}#batch-payment-tool`,
       action: "Record Check",
       tone: "info",
     },
   ];
+  const invoiceIntelligenceCards = [
+    {
+      label: "Readiness",
+      value: `${invoiceReadinessScore}%`,
+      detail:
+        invoiceReadinessIssueCount > 0
+          ? `${invoiceReadinessIssueCount} data signal${
+              invoiceReadinessIssueCount === 1 ? "" : "s"
+            } to tighten before reporting.`
+          : "Invoice records are clean enough for reporting.",
+      href: missingDueDateInvoices.length > 0
+        ? `/invoices${businessQuery}&collection=open${invoiceResultsAnchor}`
+        : `/invoices${businessQuery}${invoiceResultsAnchor}`,
+      tone: invoiceReadinessIssueCount > 0 ? "amber" : "emerald",
+    },
+    {
+      label: "Due This Week",
+      value: formatMoney(soonDueBalanceTotal),
+      detail: `${soonDueInvoices.length} invoice${
+        soonDueInvoices.length === 1 ? "" : "s"
+      } due in the next 7 days.`,
+      href: `/invoices${businessQuery}&collection=open${invoiceResultsAnchor}`,
+      tone: soonDueInvoices.length > 0 ? "orange" : "zinc",
+    },
+    {
+      label: "Urgent Late",
+      value: String(urgentFollowUpInvoices.length),
+      detail: "Past-due invoices aged 30+ days.",
+      href: `/invoices${businessQuery}&view=aging${invoiceResultsAnchor}`,
+      tone: urgentFollowUpInvoices.length > 0 ? "rose" : "zinc",
+    },
+    {
+      label: "Largest Open",
+      value: largestOpenInvoice ? formatMoney(largestOpenInvoice.amountDue) : "$0.00",
+      detail: largestOpenInvoice
+        ? `${largestOpenInvoice.display_id ?? "Invoice"} / ${
+            largestOpenInvoice.customer_name ?? "Unknown Customer"
+          }`
+        : "No open invoice balance.",
+      href: largestOpenInvoice
+        ? `/invoices/${largestOpenInvoice.id}${businessQuery}`
+        : `/invoices${businessQuery}${invoiceResultsAnchor}`,
+      tone: largestOpenInvoice ? "emerald" : "zinc",
+    },
+  ];
+  const invoiceCleanupSteps = [
+    {
+      label: "Missing due dates",
+      value: missingDueDateInvoices.length,
+      detail: "Unpaid invoices without a due date cannot age cleanly.",
+      href: `/invoices${businessQuery}&collection=open${invoiceResultsAnchor}`,
+      complete: missingDueDateInvoices.length === 0,
+    },
+    {
+      label: "Missing customers",
+      value: missingCustomerInvoices.length,
+      detail: "Customer names drive search, reminders, and batch payments.",
+      href: `/invoices${businessQuery}${invoiceResultsAnchor}`,
+      complete: missingCustomerInvoices.length === 0,
+    },
+    {
+      label: "Missing projects",
+      value: missingProjectInvoices.length,
+      detail: "Project titles make invoice lists easier to scan in meetings.",
+      href: `/invoices${businessQuery}${invoiceResultsAnchor}`,
+      complete: missingProjectInvoices.length === 0,
+    },
+  ];
+  const invoiceActivityById = invoiceActivityLogs.reduce((logsById, log) => {
+    if (!log.entity_id) {
+      return logsById;
+    }
+
+    const existing = logsById.get(log.entity_id) ?? [];
+    existing.push(log);
+    logsById.set(log.entity_id, existing);
+
+    return logsById;
+  }, new Map<string, InvoiceActivityLog[]>());
+  const invoiceProofById = new Map(
+    invoicesWithSplitInfo.map((invoice) => {
+      const logs = invoiceActivityById.get(invoice.id) ?? [];
+      const sentLog = logs.find((log) => log.action === "invoice.email_sent");
+      const reminderLog = logs.find(
+        (log) => log.action === "invoice.payment_reminder_sent"
+      );
+      const paymentProofLog = logs.find(hasInvoicePaymentProof);
+      const pdfProofLog = logs.find(hasInvoicePdfProof);
+
+      return [
+        invoice.id,
+        {
+          sent: Boolean(sentLog),
+          reminder: Boolean(reminderLog),
+          paymentProof: Boolean(paymentProofLog),
+          pdfProof: Boolean(pdfProofLog),
+          lastProofDate:
+            paymentProofLog?.created_at ??
+            reminderLog?.created_at ??
+            sentLog?.created_at ??
+            null,
+        },
+      ];
+    })
+  );
+  const invoiceEmailProofCount = Array.from(invoiceProofById.values()).filter(
+    (proof) => proof.sent
+  ).length;
+  const invoiceReminderProofCount = Array.from(invoiceProofById.values()).filter(
+    (proof) => proof.reminder
+  ).length;
+  const invoicePdfProofCount = Array.from(invoiceProofById.values()).filter(
+    (proof) => proof.pdfProof
+  ).length;
+  const invoicePaymentProofCount = Array.from(invoiceProofById.values()).filter(
+    (proof) => proof.paymentProof
+  ).length;
+  const openInvoicesMissingProof = currentYearOpenInvoicesWithAmounts.filter(
+    (invoice) => {
+      const proof = invoiceProofById.get(invoice.id);
+
+      return !proof?.sent && !proof?.reminder && !proof?.paymentProof;
+    }
+  );
+  const proofRadarCards = [
+    {
+      label: "Sent Proof",
+      value: String(invoiceEmailProofCount),
+      detail: "Invoices with email-send activity.",
+      href: `/activity?business=${businessSlug}&filter=invoice`,
+      tone: invoiceEmailProofCount > 0 ? "emerald" : "zinc",
+    },
+    {
+      label: "Reminder Proof",
+      value: String(invoiceReminderProofCount),
+      detail: "Late-payment reminders recorded in the audit trail.",
+      href: `/activity?business=${businessSlug}&filter=invoice`,
+      tone: invoiceReminderProofCount > 0 ? "orange" : "zinc",
+    },
+    {
+      label: "PDF Proof",
+      value: String(invoicePdfProofCount),
+      detail: "Sent invoice/reminder events with PDF attached.",
+      href: `/activity?business=${businessSlug}&filter=invoice`,
+      tone: invoicePdfProofCount > 0 ? "emerald" : "zinc",
+    },
+    {
+      label: "Payment Proof",
+      value: String(invoicePaymentProofCount),
+      detail: "Payment actions with check image or attachment evidence.",
+      href: `/activity?business=${businessSlug}&filter=payment`,
+      tone: invoicePaymentProofCount > 0 ? "emerald" : "zinc",
+    },
+    {
+      label: "Needs Proof",
+      value: String(openInvoicesMissingProof.length),
+      detail: "Open invoices without send, reminder, or payment proof yet.",
+      href: `/invoices${businessQuery}&collection=open${invoiceResultsAnchor}`,
+      tone: openInvoicesMissingProof.length > 0 ? "rose" : "emerald",
+    },
+  ];
+  const collectionPlaybookSteps = [
+    {
+      step: "01",
+      label: "Recover late money",
+      value: formatMoney(overdueBalanceTotal),
+      detail:
+        urgentFollowUpInvoices.length > 0
+          ? `${urgentFollowUpInvoices.length} invoice${
+              urgentFollowUpInvoices.length === 1 ? "" : "s"
+            } are 30+ days late.`
+          : overdueInvoices.length > 0
+            ? `${overdueInvoices.length} overdue invoice${
+                overdueInvoices.length === 1 ? "" : "s"
+              } ready for reminder.`
+            : "No overdue pressure right now.",
+      href: oldestOverdueInvoice
+        ? `/invoices/${oldestOverdueInvoice.id}${businessQuery}#late-payment-reminder`
+        : `/invoices${businessQuery}&view=aging`,
+      action: overdueInvoices.length > 0 ? "Open oldest" : "Review aging",
+      tone: overdueInvoices.length > 0 ? "rose" : "zinc",
+    },
+    {
+      step: "02",
+      label: "Collect deposits",
+      value: formatMoney(depositRequestTotal),
+      detail:
+        depositRequestInvoices.length > 0
+          ? `${depositRequestInvoices.length} active deposit request${
+              depositRequestInvoices.length === 1 ? "" : "s"
+            } waiting.`
+          : "Deposit requests will surface here.",
+      href: `/payments${businessQuery}#batch-payment-tool`,
+      action: "Open payments",
+      tone: depositRequestInvoices.length > 0 ? "emerald" : "zinc",
+    },
+    {
+      step: "03",
+      label: "Send ready drafts",
+      value: formatMoney(draftBalanceTotal),
+      detail:
+        draftsToSend.length > 0
+          ? `${draftsToSend.length} recurring draft${
+              draftsToSend.length === 1 ? "" : "s"
+            } need review.`
+          : "Draft balance stays separated from collections.",
+      href: `/recurring-invoices${businessQuery}`,
+      action: "Review drafts",
+      tone: draftsToSend.length > 0 ? "amber" : "zinc",
+    },
+    {
+      step: "04",
+      label: "Sweep due soon",
+      value: formatMoney(soonDueBalanceTotal),
+      detail:
+        soonDueInvoices.length > 0
+          ? `${soonDueInvoices.length} invoice${
+              soonDueInvoices.length === 1 ? "" : "s"
+            } due within 7 days.`
+          : "No near-term due-date pressure.",
+      href: `/invoices${businessQuery}&collection=open${invoiceResultsAnchor}`,
+      action: "Open open invoices",
+      tone: soonDueInvoices.length > 0 ? "orange" : "zinc",
+    },
+    {
+      step: "05",
+      label: "Close proof gaps",
+      value: String(openInvoicesMissingProof.length),
+      detail:
+        openInvoicesMissingProof.length > 0
+          ? "Open invoices missing send, reminder, or payment proof."
+          : "Open invoice proof trail is clean.",
+      href: `/activity?business=${businessSlug}&filter=invoice`,
+      action: "Open proof",
+      tone: openInvoicesMissingProof.length > 0 ? "rose" : "emerald",
+    },
+    {
+      step: "06",
+      label: "Batch checks",
+      value: String(batchPaymentCustomerCount),
+      detail:
+        batchPaymentCustomerCount > 0
+          ? "Customers with multiple open invoices can be handled together."
+          : "Batch payment workspace is ready when checks arrive.",
+      href: `/payments${businessQuery}#batch-payment-tool`,
+      action: "Record check",
+      tone: batchPaymentCustomerCount > 0 ? "sky" : "zinc",
+    },
+  ];
+  const priorityInvoiceQueue = currentYearOpenInvoicesWithAmounts
+    .map((invoice) => {
+      const proof = invoiceProofById.get(invoice.id);
+      const proofMissing =
+        !proof?.sent && !proof?.reminder && !proof?.paymentProof;
+      const score = invoiceCollectionPriorityScore({
+        amountDue: invoice.amountDue,
+        daysLate: invoice.daysLate,
+        invoice,
+        proofMissing,
+      });
+      const stage = invoiceCollectionStage({
+        amountDue: invoice.amountDue,
+        daysLate: invoice.daysLate,
+        invoice,
+      });
+
+      return {
+        ...invoice,
+        priorityScore: score,
+        priorityStage: stage,
+        proofMissing,
+      };
+    })
+    .sort((first, second) => {
+      const scoreDifference =
+        second.priorityScore - first.priorityScore;
+
+      if (scoreDifference !== 0) {
+        return scoreDifference;
+      }
+
+      return second.amountDue - first.amountDue;
+    })
+    .slice(0, 5);
 
   const viewCounts = {
     all: invoicesWithSplitInfo.length,
@@ -877,7 +1429,7 @@ export default async function InvoicesPage({
 
     return {
       ...filter,
-      href: `/invoices?${params.toString()}`,
+      href: `/invoices?${params.toString()}${invoiceResultsAnchor}`,
     };
   });
 
@@ -923,12 +1475,29 @@ export default async function InvoicesPage({
 
     return {
       ...filter,
-      href: `/invoices?${params.toString()}`,
+      href: `/invoices?${params.toString()}${invoiceResultsAnchor}`,
     };
   });
 
+  const hasFocusedInvoiceResultView = Boolean(
+    searchTerm ||
+      customerFilter ||
+      collectionFilter ||
+      yearFilter ||
+      statusFilter !== "all" ||
+      view !== "all"
+  );
+
+  const focusedInvoiceResultTitle =
+    statusFilter !== "all"
+      ? `${statusFilter.charAt(0).toUpperCase()}${statusFilter.slice(1)} invoices`
+      : view !== "all"
+        ? `${view.charAt(0).toUpperCase()}${view.slice(1)} invoices`
+        : "Filtered invoices";
+
   return (
     <AppShell>
+      <InvoiceResultsScroller />
       <div className="invoice-dashboard space-y-5 sm:space-y-6">
         <div className="invoice-page-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -966,6 +1535,140 @@ export default async function InvoicesPage({
             <p className="mt-2 text-sm leading-6 text-amber-100/90">
               {invoiceLoadMessage}
             </p>
+          </Card>
+        ) : null}
+
+        {hasFocusedInvoiceResultView ? (
+          <Card
+            id="invoice-results-list"
+            className="focused-invoice-results-card scroll-mt-6 border-emerald-500/30 bg-emerald-500/10"
+          >
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">
+                  Invoice Results
+                </p>
+
+                <h2 className="mt-2 text-2xl font-bold text-white">
+                  {focusedInvoiceResultTitle}
+                </h2>
+
+                <p className="mt-2 text-sm leading-6 text-zinc-300">
+                  Showing {filteredInvoices.length} matching invoice
+                  {filteredInvoices.length === 1 ? "" : "s"}. These results
+                  are pinned near the top so filtered invoice views open
+                  directly where the work is.
+                </p>
+              </div>
+
+              <InvoiceFilterLink
+                href={`/invoices${businessQuery}${invoiceResultsAnchor}`}
+                className="w-full sm:w-auto"
+              >
+                <Button variant="secondary" className="w-full sm:w-auto">
+                  Show All Invoices
+                </Button>
+              </InvoiceFilterLink>
+            </div>
+
+            {filteredInvoices.length === 0 ? (
+              <div className="mt-5 rounded-2xl border border-dashed border-zinc-700 bg-zinc-950/70 p-5">
+                <p className="text-lg font-black text-white">
+                  No invoices match this view
+                </p>
+                <p className="mt-2 text-sm leading-6 text-zinc-400">
+                  Clear the filters to return to the full invoice list, or
+                  create a new invoice when this is a fresh billing item.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-5 grid gap-3">
+                {filteredInvoices.slice(0, 12).map((invoice) => {
+                  const isBillableInvoice =
+                    invoice.split_children_count <= 0;
+                  const amountDue = isBillableInvoice
+                    ? invoiceCollectionAmountDue(invoice)
+                    : 0;
+                  const daysLate = isBillableInvoice
+                    ? invoiceDaysPastDue(invoice.due_date)
+                    : null;
+                  const isPastDue =
+                    amountDue > 0 && (daysLate ?? -1) >= 0;
+                  const paymentParams = new URLSearchParams({
+                    business: businessSlug,
+                    customer: invoice.customer_name ?? "",
+                  });
+
+                  return (
+                    <div
+                      key={invoice.id}
+                      className="focused-invoice-result-row rounded-2xl border border-white/10 bg-zinc-950/80 p-4"
+                    >
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-semibold text-orange-300">
+                              {invoice.display_id ?? "Invoice"}
+                            </p>
+                            <StatusBadge status={invoice.status || "Draft"} />
+                          </div>
+
+                          <h3 className="mt-2 text-xl font-black text-white">
+                            {invoice.project_title || "Untitled Invoice"}
+                          </h3>
+
+                          <p className="mt-1 text-sm text-zinc-400">
+                            {invoice.customer_name || "Unknown Customer"}
+                          </p>
+                        </div>
+
+                        <div className="sm:text-right">
+                          <p className="text-xl font-black text-emerald-200">
+                            {isBillableInvoice
+                              ? formatMoney(amountDue)
+                              : "Split Source"}
+                          </p>
+                          <p className="mt-1 text-xs uppercase tracking-[0.18em] text-zinc-500">
+                            {formatDate(invoice.due_date)}
+                          </p>
+                          {isPastDue ? (
+                            <p className="mt-2 text-sm font-semibold text-pink-200">
+                              {daysLate} day
+                              {daysLate === 1 ? "" : "s"} past due
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex flex-col gap-2 border-t border-white/10 pt-4 sm:flex-row sm:flex-wrap">
+                        <Link
+                          href={`/invoices/${invoice.id}${businessQuery}`}
+                          className="rounded-full bg-sky-600 px-4 py-2 text-center text-sm font-black text-white transition hover:bg-sky-700"
+                        >
+                          Open
+                        </Link>
+
+                        {amountDue > 0 ? (
+                          <Link
+                            href={`/payments?${paymentParams.toString()}#batch-payment-tool`}
+                            className="payment-action-button rounded-full border px-4 py-2 text-center text-sm font-semibold transition"
+                          >
+                            Record Payment
+                          </Link>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {filteredInvoices.length > 12 ? (
+              <p className="mt-4 text-sm text-zinc-400">
+                Showing the first 12 matches here. The complete filtered list is
+                still available farther down the page.
+              </p>
+            ) : null}
           </Card>
         ) : null}
 
@@ -1109,9 +1812,325 @@ export default async function InvoicesPage({
           </div>
         </Card>
 
+        <Card className="invoice-intelligence-card border-orange-500/20 bg-zinc-950">
+          <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr] xl:items-start">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.28em] text-orange-300">
+                Invoice Intelligence
+              </p>
+
+              <h2 className="mt-2 text-2xl font-black text-white">
+                Collection signals and data cleanup
+              </h2>
+
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+                Trimax is reading the invoice desk for money pressure,
+                due-date gaps, customer grouping, and reporting readiness.
+              </p>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {invoiceIntelligenceCards.map((card) => (
+                  <Link
+                    key={card.label}
+                    href={card.href}
+                    data-tone={card.tone}
+                    className="invoice-intelligence-tile rounded-2xl border border-white/10 bg-black/25 p-4 transition hover:-translate-y-0.5 hover:border-orange-300/60"
+                  >
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">
+                      {card.label}
+                    </p>
+                    <p className="mt-3 text-2xl font-black text-white">
+                      {card.value}
+                    </p>
+                    <p className="mt-2 text-sm leading-5 text-zinc-400">
+                      {card.detail}
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-white/10 bg-black/25 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.22em] text-zinc-500">
+                    Reporting Readiness
+                  </p>
+                  <h3 className="mt-1 text-lg font-black text-white">
+                    Clean data, cleaner collections
+                  </h3>
+                </div>
+
+                <span
+                  className={`rounded-full border px-3 py-1 text-xs font-black ${
+                    invoiceReadinessIssueCount > 0
+                      ? "border-amber-400/30 bg-amber-400/10 text-amber-100"
+                      : "border-emerald-400/30 bg-emerald-400/10 text-emerald-100"
+                  }`}
+                >
+                  {invoiceReadinessIssueCount > 0
+                    ? `${invoiceReadinessIssueCount} signal${
+                        invoiceReadinessIssueCount === 1 ? "" : "s"
+                      }`
+                    : "Clean"}
+                </span>
+              </div>
+
+              <div className="mt-4 grid gap-3">
+                {invoiceCleanupSteps.map((step) => (
+                  <Link
+                    key={step.label}
+                    href={step.href}
+                    className={`invoice-intelligence-step rounded-2xl border p-4 transition hover:-translate-y-0.5 ${
+                      step.complete
+                        ? "border-emerald-400/30 bg-emerald-400/10"
+                        : "border-amber-400/30 bg-amber-400/10"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-black text-white">
+                          {step.label}
+                        </p>
+                        <p className="mt-1 text-sm leading-5 text-zinc-400">
+                          {step.detail}
+                        </p>
+                      </div>
+
+                      <span className="text-2xl font-black text-white">
+                        {step.value}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="invoice-proof-radar border-emerald-500/20 bg-zinc-950">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.28em] text-emerald-300">
+                Proof Radar
+              </p>
+
+              <h2 className="mt-2 text-2xl font-black text-white">
+                Delivery, reminder, and payment evidence
+              </h2>
+
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+                Reuses Trimax activity logs so invoice proof stays in one
+                audit-friendly trail instead of creating duplicate tracking.
+              </p>
+            </div>
+
+            <Link href={`/activity?business=${businessSlug}&filter=invoice`}>
+              <Button variant="secondary" className="w-full sm:w-auto">
+                Open Activity Proof
+              </Button>
+            </Link>
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {proofRadarCards.map((card) => (
+              <Link
+                key={card.label}
+                href={card.href}
+                data-tone={card.tone}
+                className="invoice-proof-card rounded-2xl border border-white/10 bg-black/25 p-4 transition hover:-translate-y-0.5 hover:border-emerald-300/60"
+              >
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">
+                  {card.label}
+                </p>
+                <p className="mt-3 text-3xl font-black text-white">
+                  {card.value}
+                </p>
+                <p className="mt-2 text-sm leading-5 text-zinc-400">
+                  {card.detail}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="invoice-collection-playbook border-orange-500/20 bg-zinc-950">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.28em] text-orange-300">
+                Collection Playbook
+              </p>
+
+              <h2 className="mt-2 text-2xl font-black text-white">
+                Work the invoice desk in the right order
+              </h2>
+
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+                A guided sequence for collecting, proving, and cleaning invoice
+                work without bouncing between screens blindly.
+              </p>
+            </div>
+
+            <Link href={`/payments${businessQuery}`}>
+              <Button className="w-full sm:w-auto">
+                Start Collection Work
+              </Button>
+            </Link>
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {collectionPlaybookSteps.map((step) => (
+              <Link
+                key={step.step}
+                href={step.href}
+                data-tone={step.tone}
+                className="invoice-playbook-step rounded-2xl border border-white/10 bg-black/25 p-4 transition hover:-translate-y-0.5 hover:border-orange-300/60"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <span className="invoice-playbook-number rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-black text-orange-100">
+                    {step.step}
+                  </span>
+                  <span className="rounded-full border border-white/10 px-3 py-1 text-xs font-black text-zinc-300">
+                    {step.action}
+                  </span>
+                </div>
+
+                <p className="mt-4 text-sm font-black uppercase tracking-[0.18em] text-zinc-500">
+                  {step.label}
+                </p>
+
+                <p className="mt-2 text-2xl font-black text-white">
+                  {step.value}
+                </p>
+
+                <p className="mt-2 min-h-[2.5rem] text-sm leading-5 text-zinc-400">
+                  {step.detail}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </Card>
+
+        {priorityInvoiceQueue.length > 0 ? (
+          <Card className="invoice-priority-queue border-rose-500/20 bg-zinc-950">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-sm font-black uppercase tracking-[0.28em] text-rose-300">
+                  Priority Queue
+                </p>
+
+                <h2 className="mt-2 text-2xl font-black text-white">
+                  Highest-value invoice actions
+                </h2>
+
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+                  Ranked by balance, lateness, due-soon pressure, deposits, and
+                  proof gaps so collections start where they matter most.
+                </p>
+              </div>
+
+              <Link href={`/invoices${businessQuery}&collection=open`}>
+                <Button variant="secondary" className="w-full sm:w-auto">
+                  View Open Invoices
+                </Button>
+              </Link>
+            </div>
+
+            <div className="mt-5 grid gap-3 lg:grid-cols-5">
+              {priorityInvoiceQueue.map((invoice, index) => (
+                <Link
+                  key={invoice.id}
+                  href={`/invoices/${invoice.id}${businessQuery}`}
+                  data-tone={invoice.priorityStage.tone}
+                  className="invoice-priority-card rounded-2xl border border-white/10 bg-black/25 p-4 transition hover:-translate-y-0.5 hover:border-rose-300/60"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-black text-rose-100">
+                      #{index + 1}
+                    </span>
+                    <span className="invoice-priority-score rounded-full border border-white/10 px-3 py-1 text-xs font-black text-white">
+                      {invoice.priorityScore}
+                    </span>
+                  </div>
+
+                  <p className="mt-4 text-sm font-black text-white">
+                    {invoice.display_id ?? "Invoice"}
+                  </p>
+                  <p className="mt-1 line-clamp-2 text-sm leading-5 text-zinc-400">
+                    {invoice.customer_name ?? "Unknown Customer"}
+                  </p>
+
+                  <p className="mt-3 text-xl font-black text-orange-300">
+                    {formatMoney(invoice.amountDue)}
+                  </p>
+
+                  <p className="mt-2 text-xs font-black uppercase tracking-[0.18em] text-zinc-500">
+                    {invoice.priorityStage.label}
+                  </p>
+
+                  {invoice.proofMissing ? (
+                    <span className="mt-3 inline-flex rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-xs font-black text-amber-100">
+                      Proof gap
+                    </span>
+                  ) : null}
+                </Link>
+              ))}
+            </div>
+          </Card>
+        ) : null}
+
+        {customerBalanceRows.length > 0 ? (
+          <Card className="invoice-customer-radar border-emerald-500/20 bg-zinc-950">
+            <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-start">
+              <div>
+                <p className="text-sm uppercase tracking-[0.3em] text-emerald-300">
+                  Customer Collection Radar
+                </p>
+
+                <h2 className="mt-2 text-2xl font-bold text-white">
+                  Who to collect from first
+                </h2>
+
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
+                  Trimax groups open invoices by customer so batch checks,
+                  reminders, and payment matching start with the highest-value
+                  targets.
+                </p>
+              </div>
+
+              <a href="#customer-collection-radar">
+                <Button variant="secondary" className="w-full sm:w-auto">
+                  View Customer Balances
+                </Button>
+              </a>
+            </div>
+
+            <div className="mt-5 grid gap-3 md:grid-cols-3">
+              {customerRadarCards.map((card) => (
+                <Link
+                  key={card.label}
+                  href={card.href}
+                  data-tone={card.tone}
+                  className="invoice-customer-radar-card rounded-2xl border border-white/10 bg-black/30 p-4 transition hover:-translate-y-0.5"
+                >
+                  <p className="text-xs font-black uppercase tracking-[0.22em] text-zinc-400">
+                    {card.label}
+                  </p>
+                  <p className="mt-3 text-3xl font-black text-white">
+                    {card.value}
+                  </p>
+                  <p className="mt-2 text-sm leading-5 text-zinc-400">
+                    {card.detail}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </Card>
+        ) : null}
+
         <Card className="invoice-search-card">
           <form
-            action="/invoices"
+            action={`/invoices${invoiceResultsAnchor}`}
             className="grid gap-4 md:grid-cols-[1fr_auto]"
           >
             <input
@@ -1184,11 +2203,14 @@ export default async function InvoicesPage({
                 yearFilter ||
                 statusFilter !== "all" ||
                 view !== "all") && (
-                <Link href={`/invoices${businessQuery}`} className="w-full md:w-auto">
+                <InvoiceFilterLink
+                  href={`/invoices${businessQuery}${invoiceResultsAnchor}`}
+                  className="w-full md:w-auto"
+                >
                   <Button variant="secondary" className="w-full md:w-auto">
                     Clear
                   </Button>
-                </Link>
+                </InvoiceFilterLink>
               )}
             </div>
           </form>
@@ -1230,10 +2252,10 @@ export default async function InvoicesPage({
                 const isActive = view === filter.value;
 
                 return (
-                  <Link
+                  <InvoiceFilterLink
                     key={filter.value}
                     href={filter.href}
-                    aria-current={isActive ? "page" : undefined}
+                    ariaCurrent={isActive ? "page" : undefined}
                     className={`invoice-filter-pill inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
                       isActive
                         ? "bg-sky-600 text-white shadow-sm shadow-sky-900/10"
@@ -1250,7 +2272,7 @@ export default async function InvoicesPage({
                     </span>
                     <span className="filter-tab-label">{filter.label}</span>
                     <span className="filter-tab-count">{filter.count}</span>
-                  </Link>
+                  </InvoiceFilterLink>
                 );
               })}
             </div>
@@ -1274,10 +2296,10 @@ export default async function InvoicesPage({
                 const isActive = statusFilter === filter.value;
 
                 return (
-                  <Link
+                  <InvoiceFilterLink
                     key={filter.value}
                     href={filter.href}
-                    aria-current={isActive ? "page" : undefined}
+                    ariaCurrent={isActive ? "page" : undefined}
                     className={`invoice-filter-pill inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
                       isActive
                         ? "bg-sky-600 text-white shadow-sm shadow-sky-900/10"
@@ -1294,7 +2316,7 @@ export default async function InvoicesPage({
                     </span>
                     <span className="filter-tab-label">{filter.label}</span>
                     <span className="filter-tab-count">{filter.count}</span>
-                  </Link>
+                  </InvoiceFilterLink>
                 );
               })}
             </div>
@@ -1387,7 +2409,9 @@ export default async function InvoicesPage({
               </p>
             </div>
 
-            <Link href={`/invoices?business=${businessSlug}&view=aging`}>
+            <Link
+              href={`/invoices?business=${businessSlug}&view=aging${invoiceResultsAnchor}`}
+            >
               <Button variant="secondary" className="w-full sm:w-auto">
                 Open Aging View
               </Button>
@@ -1452,7 +2476,10 @@ export default async function InvoicesPage({
         </Card>
 
         {customerBalanceRows.length > 0 ? (
-          <Card>
+          <Card
+            id="customer-collection-radar"
+            className="invoice-customer-balance-panel"
+          >
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
@@ -1469,7 +2496,9 @@ export default async function InvoicesPage({
                 </p>
               </div>
 
-              <Link href={`/invoices?business=${businessSlug}&view=aging`}>
+              <Link
+                href={`/invoices?business=${businessSlug}&view=aging${invoiceResultsAnchor}`}
+              >
                 <Button variant="secondary">Review Aging</Button>
               </Link>
             </div>
@@ -1490,7 +2519,7 @@ export default async function InvoicesPage({
                 return (
                   <div
                     key={customer.customerName}
-                    className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
+                    className="invoice-customer-balance-card rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div>
@@ -1524,14 +2553,14 @@ export default async function InvoicesPage({
 
                     <div className="mt-4 flex flex-wrap gap-2">
                       <Link
-                        href={`/payments?${paymentParams.toString()}`}
+                        href={`/payments?${paymentParams.toString()}#batch-payment-tool`}
                         className="rounded-xl bg-green-500 px-3 py-2 text-sm font-semibold text-black transition hover:opacity-90"
                       >
                         Record Payment
                       </Link>
 
                       <Link
-                        href={`/invoices?${customerParams.toString()}`}
+                        href={`/invoices?${customerParams.toString()}${invoiceResultsAnchor}`}
                         className="rounded-xl bg-zinc-800 px-3 py-2 text-sm font-semibold text-zinc-100 transition hover:bg-zinc-700"
                       >
                         View Invoices
@@ -1544,6 +2573,7 @@ export default async function InvoicesPage({
           </Card>
         ) : null}
 
+        <div className="invoice-results-anchor">
         {recentlyUpdatedInvoices.length > 0 ? (
           <Card>
             <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
@@ -1596,8 +2626,16 @@ export default async function InvoicesPage({
           </Card>
         ) : null}
 
-        {invoicesWithSplitInfo.length === 0 ? (
-          <Card className="app-empty-state border-sky-200 bg-sky-50">
+        <div
+          id={
+            hasFocusedInvoiceResultView
+              ? "invoice-results-list-full"
+              : "invoice-results-list"
+          }
+          className="scroll-mt-6"
+        >
+          {invoicesWithSplitInfo.length === 0 ? (
+            <Card className="app-empty-state border-sky-200 bg-sky-50">
             <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.24em] text-sky-700">
@@ -1627,9 +2665,9 @@ export default async function InvoicesPage({
                 </Link>
               </div>
             </div>
-          </Card>
-        ) : filteredInvoices.length === 0 ? (
-          <Card className="app-empty-state border-dashed border-slate-300 bg-white">
+            </Card>
+          ) : filteredInvoices.length === 0 ? (
+            <Card className="app-empty-state border-dashed border-slate-300 bg-white">
             <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-500">
@@ -1647,7 +2685,7 @@ export default async function InvoicesPage({
               </div>
 
               <div className="flex flex-col gap-3 sm:flex-row">
-                <Link href={`/invoices${businessQuery}`}>
+                <Link href={`/invoices${businessQuery}${invoiceResultsAnchor}`}>
                   <Button variant="secondary" className="w-full sm:w-auto">
                     Show All Invoices
                   </Button>
@@ -1658,9 +2696,9 @@ export default async function InvoicesPage({
                 </Link>
               </div>
             </div>
-          </Card>
-        ) : (
-          <div className="invoice-list grid gap-4">
+            </Card>
+          ) : (
+            <div className="invoice-list grid gap-4">
             {filteredInvoices.map((invoice) => {
               const isSplitInvoice = Boolean(
                 invoice.split_parent_invoice_id
@@ -1677,6 +2715,36 @@ export default async function InvoicesPage({
                 displayAmountDue > 0 && (daysLate ?? -1) >= 0;
               const isDepositRequest = hasActiveDepositRequest(invoice);
               const reminderHref = `/invoices/${invoice.id}${businessQuery}#late-payment-reminder`;
+              const collectionStage = invoiceCollectionStage({
+                amountDue: displayAmountDue,
+                daysLate,
+                invoice,
+              });
+              const readinessSignals = invoiceReadinessSignals(invoice);
+              const proofSignals = invoiceProofById.get(invoice.id) ?? {
+                sent: false,
+                reminder: false,
+                paymentProof: false,
+                pdfProof: false,
+                lastProofDate: null,
+              };
+              const proofLabels = [
+                proofSignals.sent ? "Email proof" : "",
+                proofSignals.reminder ? "Reminder proof" : "",
+                proofSignals.pdfProof ? "PDF attached" : "",
+                proofSignals.paymentProof ? "Payment proof" : "",
+              ].filter(Boolean);
+              const proofMissing =
+                displayAmountDue > 0 &&
+                !proofSignals.sent &&
+                !proofSignals.reminder &&
+                !proofSignals.paymentProof;
+              const priorityScore = invoiceCollectionPriorityScore({
+                amountDue: displayAmountDue,
+                daysLate,
+                invoice,
+                proofMissing,
+              });
 
               const paymentParams = new URLSearchParams({
                 business: businessSlug,
@@ -1772,6 +2840,61 @@ export default async function InvoicesPage({
                       </div>
                     </div>
 
+                    <div className="invoice-card-intelligence mt-5 rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">
+                            Collection Cue
+                          </p>
+                          <p className="mt-1 text-base font-black text-white">
+                            {collectionStage.label}
+                          </p>
+                          <p className="mt-1 text-sm leading-5 text-zinc-400">
+                            {collectionStage.detail}
+                          </p>
+                        </div>
+
+                        <span
+                          data-tone={collectionStage.tone}
+                          className="invoice-stage-pill rounded-full border px-3 py-1 text-xs font-black"
+                        >
+                          Priority {priorityScore}
+                        </span>
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {(readinessSignals.length > 0
+                          ? readinessSignals
+                          : ["Clean invoice record"]
+                        ).map((signal) => (
+                          <span
+                            key={signal}
+                            className="invoice-signal-chip rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-black text-zinc-300"
+                          >
+                            {signal}
+                          </span>
+                        ))}
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {(proofLabels.length > 0
+                          ? proofLabels
+                          : ["No proof activity yet"]
+                        ).map((signal) => (
+                          <span
+                            key={signal}
+                            className={`invoice-proof-chip rounded-full border px-3 py-1 text-xs font-black ${
+                              proofLabels.length > 0
+                                ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-100"
+                                : "invoice-proof-chip-missing border-zinc-600 bg-zinc-900/70 text-zinc-400"
+                            }`}
+                          >
+                            {signal}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
                     <div className="invoice-list-actions mt-5 flex flex-col gap-3 border-t border-zinc-800 pt-4 sm:flex-row sm:flex-wrap">
                       <Link
                         href={`/invoices/${invoice.id}${businessQuery}`}
@@ -1789,7 +2912,7 @@ export default async function InvoicesPage({
 
                       {displayAmountDue > 0 ? (
                         <Link
-                          href={`/payments?${paymentParams.toString()}`}
+                          href={`/payments?${paymentParams.toString()}#batch-payment-tool`}
                           className="payment-action-button rounded-full border px-4 py-2 text-center text-sm font-semibold transition"
                         >
                           Record Payment
@@ -1808,8 +2931,10 @@ export default async function InvoicesPage({
                 </Card>
               );
             })}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
+        </div>
       </div>
     </AppShell>
   );

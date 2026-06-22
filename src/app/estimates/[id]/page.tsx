@@ -67,6 +67,13 @@ type ClientContact = {
   cc_email: string | null;
 };
 
+type ActivityLog = {
+  action: string;
+  actor_email: string | null;
+  created_at: string | null;
+  details: Record<string, unknown> | null;
+};
+
 function toNumber(value: number | string | null) {
   if (typeof value === "number") {
     return Number.isFinite(value) ? value : 0;
@@ -87,6 +94,76 @@ function parseCurrency(value: number | string | null) {
 function formatCurrency(amount: number) {
   const safeAmount = Number.isFinite(amount) ? amount : 0;
   return `$${safeAmount.toFixed(2)}`;
+}
+
+function formatActivityDate(value: string | null) {
+  if (!value) {
+    return "No date recorded";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "No date recorded";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function getDaysSince(value: string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  const timestamp = new Date(value).getTime();
+
+  if (!Number.isFinite(timestamp)) {
+    return null;
+  }
+
+  return Math.max(
+    0,
+    Math.floor((Date.now() - timestamp) / (1000 * 60 * 60 * 24))
+  );
+}
+
+function formatDaysSince(days: number | null) {
+  if (days === null) {
+    return "No recent proof";
+  }
+
+  if (days === 0) {
+    return "Today";
+  }
+
+  return `${days} day${days === 1 ? "" : "s"} ago`;
+}
+
+function getDetailString(
+  details: Record<string, unknown> | null | undefined,
+  key: string
+) {
+  const value = details?.[key];
+
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function getFriendlyAction(action: string) {
+  const labels: Record<string, string> = {
+    "estimate.created": "Created",
+    "estimate.updated": "Updated",
+    "estimate.email_sent": "Sent",
+    "estimate.converted_to_invoice": "Converted",
+    "estimate.deleted": "Deleted",
+  };
+
+  return labels[action] ?? action.replace("estimate.", "").replace(/_/g, " ");
 }
 
 export default async function EstimateDetailsPage({
@@ -222,6 +299,117 @@ export default async function EstimateDetailsPage({
     : { data: null };
   const clientContact = clientData as ClientContact | null;
 
+  const { data: activityData } = await supabase
+    .from("activity_logs")
+    .select("action, actor_email, created_at, details")
+    .eq("business_id", selectedBusiness.id)
+    .eq("entity_type", "estimate")
+    .eq("entity_id", estimate.id)
+    .order("created_at", { ascending: false })
+    .limit(8);
+
+  const activityLogs = (activityData ?? []) as ActivityLog[];
+  const sentLogs = activityLogs.filter(
+    (log) => log.action === "estimate.email_sent"
+  );
+  const lastSentLog = sentLogs[0] ?? null;
+  const convertedLog =
+    activityLogs.find((log) => log.action === "estimate.converted_to_invoice") ??
+    null;
+  const daysSinceSent = getDaysSince(lastSentLog?.created_at);
+  const hasLineItems = lineItems.length > 0 && subtotal > 0;
+  const hasCustomer = Boolean(estimate.customer_name?.trim());
+  const hasProjectTitle = Boolean(estimate.project_title?.trim());
+  const hasDeliveryEmail = Boolean(clientContact?.email?.trim());
+  const isConverted = Boolean(linkedInvoice || convertedLog);
+  const isApproved = (estimate.status ?? "").toLowerCase() === "approved";
+  const isSent = (estimate.status ?? "").toLowerCase() === "sent";
+  const closeAction = isConverted
+    ? "Keep proof attached to the invoice"
+    : isApproved
+      ? "Convert this approved estimate to an invoice"
+      : isSent
+        ? daysSinceSent !== null && daysSinceSent >= 3
+          ? "Follow up and capture the customer's answer"
+          : "Watch for the customer decision"
+        : "Send the estimate with PDF proof";
+  const readinessScore = [
+    hasCustomer,
+    hasProjectTitle,
+    hasLineItems,
+    hasDeliveryEmail,
+    Boolean(lastSentLog || isConverted),
+    Boolean(linkedInvoice || isApproved),
+  ].filter(Boolean).length;
+  const readinessPercent = Math.round((readinessScore / 6) * 100);
+  const detailProofCards = [
+    {
+      label: "Close Move",
+      value: closeAction,
+      detail: isConverted
+        ? "This proposal already has billing momentum."
+        : "This is the next action Trimax can defend with the current data.",
+      tone: isConverted || isApproved ? "success" : isSent ? "warning" : "info",
+    },
+    {
+      label: "Delivery Proof",
+      value:
+        lastSentLog && getDetailString(lastSentLog.details, "recipient_email")
+          ? getDetailString(lastSentLog.details, "recipient_email") ?? "Sent"
+          : lastSentLog
+            ? "Sent"
+            : "Not sent yet",
+      detail: lastSentLog
+        ? `Last sent ${formatDaysSince(daysSinceSent).toLowerCase()}`
+        : "Send from Trimax to capture recipient, sender, PDF, and timestamp.",
+      tone: lastSentLog ? "success" : "warning",
+    },
+    {
+      label: "Conversion Readiness",
+      value: `${readinessPercent}%`,
+      detail: `${readinessScore} of 6 proposal signals are in place.`,
+      tone: readinessPercent >= 80 ? "success" : readinessPercent >= 50 ? "info" : "warning",
+    },
+  ];
+  const closeChecklist = [
+    {
+      label: "Customer",
+      detail: hasCustomer ? estimate.customer_name ?? "Customer added" : "Add a customer",
+      status: hasCustomer ? "ready" : "attention",
+    },
+    {
+      label: "Scope",
+      detail: hasProjectTitle ? estimate.project_title ?? "Scope named" : "Add project title",
+      status: hasProjectTitle ? "ready" : "attention",
+    },
+    {
+      label: "Pricing",
+      detail: hasLineItems
+        ? `${lineItems.length} line ${lineItems.length === 1 ? "item" : "items"} priced`
+        : "Add priced line items",
+      status: hasLineItems ? "ready" : "attention",
+    },
+    {
+      label: "Delivery",
+      detail: hasDeliveryEmail ? clientContact?.email ?? "Email ready" : "No client email saved",
+      status: hasDeliveryEmail ? "ready" : "waiting",
+    },
+    {
+      label: "Proof",
+      detail: lastSentLog ? `${sentLogs.length} send record${sentLogs.length === 1 ? "" : "s"}` : "Send proof not logged",
+      status: lastSentLog ? "ready" : "waiting",
+    },
+    {
+      label: "Billing",
+      detail: linkedInvoice
+        ? linkedInvoice.display_id ?? "Invoice linked"
+        : isApproved
+          ? "Approved and ready"
+          : "Awaiting approval",
+      status: linkedInvoice || isApproved ? "ready" : "waiting",
+    },
+  ];
+
   return (
     <AppShell>
       <div className="space-y-6">
@@ -243,6 +431,127 @@ export default async function EstimateDetailsPage({
             {estimate.display_id ?? "Estimate"}
           </p>
         </div>
+
+        <Card className="estimate-detail-command overflow-hidden border-orange-500/25 bg-gradient-to-br from-zinc-950 via-zinc-900 to-slate-950">
+          <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.28em] text-orange-300">
+                Closing Intelligence
+              </p>
+
+              <h2 className="mt-2 text-3xl font-black text-white">
+                Make this proposal easy to approve
+              </h2>
+
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-300">
+                Trimax is reading the estimate, line items, email delivery
+                proof, and conversion history already captured in the activity
+                log. No duplicate tracking system needed.
+              </p>
+
+              <div className="mt-5 grid gap-3 lg:grid-cols-3">
+                {detailProofCards.map((card) => (
+                  <div
+                    key={card.label}
+                    className="estimate-detail-proof-card"
+                    data-tone={card.tone}
+                  >
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">
+                      {card.label}
+                    </p>
+
+                    <p className="mt-2 text-base font-black text-white">
+                      {card.value}
+                    </p>
+
+                    <p className="mt-2 text-sm leading-5 text-zinc-400">
+                      {card.detail}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="estimate-detail-timeline rounded-3xl border border-white/10 bg-black/30 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-300">
+                    Proof Trail
+                  </p>
+
+                  <p className="mt-1 text-sm text-zinc-400">
+                    Last activity Trimax can prove.
+                  </p>
+                </div>
+
+                <Link
+                  href={`/activity?business=${businessSlug}`}
+                  className="rounded-full border border-white/10 px-3 py-1 text-xs font-black text-zinc-300 transition hover:border-orange-300 hover:text-white"
+                >
+                  Activity
+                </Link>
+              </div>
+
+              <div className="mt-4 grid gap-3">
+                {activityLogs.length > 0 ? (
+                  activityLogs.slice(0, 4).map((log, index) => (
+                    <div
+                      key={`${log.action}-${log.created_at}-${index}`}
+                      className="estimate-detail-event"
+                    >
+                      <div>
+                        <p className="font-black text-white">
+                          {getFriendlyAction(log.action)}
+                        </p>
+
+                        <p className="mt-1 text-xs text-zinc-400">
+                          {formatActivityDate(log.created_at)}
+                        </p>
+                      </div>
+
+                      <p className="text-xs font-bold text-zinc-400">
+                        {getDetailString(log.details, "recipient_email") ||
+                          getDetailString(log.details, "amount") ||
+                          log.actor_email ||
+                          "Trimax"}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="estimate-detail-event">
+                    <div>
+                      <p className="font-black text-white">
+                        No proof events yet
+                      </p>
+
+                      <p className="mt-1 text-xs text-zinc-400">
+                        Create, send, edit, and convert actions will appear here.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="estimate-close-checklist mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+            {closeChecklist.map((item) => (
+              <div
+                key={item.label}
+                className="estimate-close-step"
+                data-status={item.status}
+              >
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+                  {item.label}
+                </p>
+
+                <p className="mt-2 text-sm font-black text-white">
+                  {item.detail}
+                </p>
+              </div>
+            ))}
+          </div>
+        </Card>
 
         {isOverSplitWarning && (
           <Card className="border-yellow-500/60 bg-yellow-500/10">

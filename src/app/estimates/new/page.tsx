@@ -54,6 +54,9 @@ type ServiceItem = {
   description: string | null;
   default_quantity: number | string | null;
   default_unit_price: number | string | null;
+  easy_unit_price?: number | string | null;
+  normal_unit_price?: number | string | null;
+  difficult_unit_price?: number | string | null;
   category: string | null;
 };
 
@@ -304,6 +307,27 @@ function serviceLineDescription(serviceItem: ServiceItem) {
   return stripApartmentUnitPrefix(
     serviceItem.description || serviceItem.name
   );
+}
+
+function servicePricingTiers(serviceItem: ServiceItem | null) {
+  if (!serviceItem) {
+    return [];
+  }
+
+  return [
+    {
+      label: "Easy",
+      price: Number(serviceItem.easy_unit_price) || 0,
+    },
+    {
+      label: "Normal",
+      price: Number(serviceItem.normal_unit_price) || 0,
+    },
+    {
+      label: "Difficult",
+      price: Number(serviceItem.difficult_unit_price) || 0,
+    },
+  ].filter((tier) => tier.price > 0);
 }
 
 function queueLineDescription(
@@ -904,6 +928,11 @@ function NewEstimatePageContent() {
       return;
     }
 
+    const tiers = servicePricingTiers(selectedService);
+    const normalTier = tiers.find((tier) => tier.label === "Normal");
+    const suggestedUnitPrice =
+      normalTier?.price || Number(selectedService.default_unit_price) || 0;
+
     setLineItems((currentItems) =>
       currentItems.map((item, itemIndex) =>
         itemIndex === index
@@ -916,15 +945,15 @@ function NewEstimatePageContent() {
                   selectedService.default_quantity
                 ) || 1
               ),
-              unitPrice: String(
-                Number(
-                  selectedService.default_unit_price
-                ) || 0
-              ),
+              unitPrice: String(suggestedUnitPrice),
             }
           : item
       )
     );
+  }
+
+  function applyServiceTier(index: number, price: number) {
+    updateLineItem(index, "unitPrice", String(price));
   }
 
   function addLineItem() {
@@ -1437,6 +1466,37 @@ function NewEstimatePageContent() {
                           </option>
                         ))}
                       </select>
+
+                      {servicePricingTiers(
+                        serviceItems.find(
+                          (serviceItem) => serviceItem.id === item.serviceItemId
+                        ) ?? null
+                      ).length > 0 ? (
+                        <div className="mt-3 rounded-2xl border border-sky-400/20 bg-sky-400/10 p-3">
+                          <p className="text-xs font-black uppercase tracking-[0.18em] text-sky-100">
+                            Choose pricing tier
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {servicePricingTiers(
+                              serviceItems.find(
+                                (serviceItem) =>
+                                  serviceItem.id === item.serviceItemId
+                              ) ?? null
+                            ).map((tier) => (
+                              <button
+                                key={tier.label}
+                                type="button"
+                                onClick={() =>
+                                  applyServiceTier(index, tier.price)
+                                }
+                                className="rounded-full border border-white/10 bg-white/10 px-3 py-2 text-xs font-black text-white transition hover:border-sky-200 hover:bg-sky-300/20"
+                              >
+                                {tier.label} {formatCurrency(tier.price)}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
 
                     <div className="grid gap-3 md:grid-cols-[1fr_120px_140px_120px_auto]">

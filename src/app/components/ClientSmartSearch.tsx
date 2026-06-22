@@ -71,6 +71,7 @@ export default function ClientSmartSearch({
 }) {
   const [query, setQuery] = useState(initialSearchTerm);
   const businessQuery = `?business=${businessSlug}`;
+  const clientResultsAnchor = "#client-results";
 
   const suggestions = useMemo(() => {
     const trimmedQuery = query.trim();
@@ -96,7 +97,10 @@ export default function ClientSmartSearch({
   }, [clients, query]);
 
   return (
-    <form action="/clients" className="grid gap-4 md:grid-cols-[1fr_auto]">
+    <form
+      action={`/clients${clientResultsAnchor}`}
+      className="grid gap-4 md:grid-cols-[1fr_auto]"
+    >
       <input type="hidden" name="business" value={businessSlug} />
 
       <div className="relative">
@@ -139,7 +143,7 @@ export default function ClientSmartSearch({
         <Button type="submit">Search</Button>
 
         {query.trim() ? (
-          <Link href={`/clients${businessQuery}`}>
+          <Link href={`/clients${businessQuery}${clientResultsAnchor}`}>
             <Button variant="secondary">Clear</Button>
           </Link>
         ) : null}

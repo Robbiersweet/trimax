@@ -2,6 +2,7 @@
 
 import { usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useState } from "react";
 import BackButton from "./BackButton";
 
 type SectionContext = {
@@ -145,22 +146,123 @@ function contextForPath(pathname: string, business: string) {
     ...context,
     actionHref: withBusiness(context.actionHref, business),
     detailLabel,
+    section: section || "dashboard",
   };
+}
+
+function readableParamName(value: string) {
+  return value
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function readableParamValue(value: string) {
+  return decodeURIComponent(value)
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function handoffParams(searchParams: URLSearchParams) {
+  return Array.from(searchParams.entries())
+    .filter(([key, value]) => key !== "business" && value.trim().length > 0)
+    .map(
+      ([key, value]) =>
+        `${readableParamName(key)}: ${readableParamValue(value)}`
+    );
+}
+
+async function writeClipboardText(value: string) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(value);
+    return;
+  }
+
+  const textArea = document.createElement("textarea");
+  textArea.value = value;
+  textArea.setAttribute("readonly", "true");
+  textArea.style.position = "fixed";
+  textArea.style.opacity = "0";
+  textArea.style.pointerEvents = "none";
+  document.body.appendChild(textArea);
+  textArea.select();
+
+  const copied = document.execCommand("copy");
+  document.body.removeChild(textArea);
+
+  if (!copied) {
+    throw new Error("Copy command was not available.");
+  }
 }
 
 export default function WorkspaceBackBar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">(
+    "idle"
+  );
   const business = searchParams.get("business") ?? "rnl-creations";
   const shouldHide = pathname === "/";
   const context = contextForPath(pathname, business);
+  const activeHandoffParams = handoffParams(new URLSearchParams(searchParams));
+  const handoffHint =
+    activeHandoffParams.length > 0
+      ? `${context.detailLabel} / Copy includes ${activeHandoffParams.length} active filter${
+          activeHandoffParams.length === 1 ? "" : "s"
+        }.`
+      : `${context.detailLabel} / Back returns to your previous Trimax screen.`;
+
+  async function copyHandoff() {
+    const url =
+      typeof window !== "undefined"
+        ? window.location.href
+        : `${pathname}?business=${business}`;
+    const anchor =
+      typeof window !== "undefined" && window.location.hash
+        ? readableParamValue(window.location.hash.replace(/^#/, ""))
+        : "";
+    const handoff = [
+      "Trimax Handoff",
+      `Workspace: ${context.label}`,
+      `View: ${context.detailLabel}`,
+      `Business: ${readableParamValue(business)}`,
+      activeHandoffParams.length > 0
+        ? `Filters: ${activeHandoffParams.join(" / ")}`
+        : null,
+      anchor ? `Section: ${anchor}` : null,
+      `Copied: ${new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      }).format(new Date())}`,
+      `Link: ${url}`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    try {
+      await writeClipboardText(handoff);
+      setCopyState("copied");
+      window.setTimeout(() => setCopyState("idle"), 2400);
+    } catch {
+      setCopyState("failed");
+      window.setTimeout(() => setCopyState("idle"), 3000);
+    }
+  }
 
   if (shouldHide) {
     return null;
   }
 
   return (
-    <div className="app-workspace-back-bar mb-4 flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-white/10 bg-black/20 px-3 py-3 backdrop-blur-xl">
+    <div
+      className="app-workspace-back-bar mb-4 flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-white/10 bg-black/20 px-3 py-3 backdrop-blur-xl"
+      data-workspace-section={context.section}
+    >
+      <span className="app-workspace-section-mark" aria-hidden="true">
+        <span />
+      </span>
       <BackButton
         label="Back"
         fallbackHref={fallbackForPath(pathname, business)}
@@ -173,15 +275,28 @@ export default function WorkspaceBackBar() {
             {context.label}
           </p>
           <p className="app-workspace-back-hint text-xs font-bold text-zinc-500">
-            {context.detailLabel} / Back returns to your previous Trimax screen.
+            {handoffHint}
           </p>
         </div>
-        <Link
-          href={context.actionHref}
-          className="app-workspace-back-action rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black text-sky-100 transition hover:-translate-y-0.5 hover:border-sky-300/50 hover:text-white"
-        >
-          {context.actionLabel}
-        </Link>
+        <div className="app-workspace-actions flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={copyHandoff}
+            className="app-workspace-copy-action rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black text-sky-100 transition hover:-translate-y-0.5 hover:border-sky-300/50 hover:text-white"
+          >
+            {copyState === "copied"
+              ? "Copied"
+              : copyState === "failed"
+                ? "Copy failed"
+                : "Copy Handoff"}
+          </button>
+          <Link
+            href={context.actionHref}
+            className="app-workspace-back-action rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black text-sky-100 transition hover:-translate-y-0.5 hover:border-sky-300/50 hover:text-white"
+          >
+            {context.actionLabel}
+          </Link>
+        </div>
       </div>
     </div>
   );

@@ -552,6 +552,176 @@ function ImportsPageContent() {
   const clientRowsWithAddress = clientPreviewRows.filter(
     (row) => row.billingAddress.trim() || row.serviceAddress.trim()
   ).length;
+  const clientRowsMissingContact = clientPreviewRows.filter(
+    (row) => !row.email.trim() && !row.phone.trim()
+  ).length;
+  const invoiceRowsMissingDueDate = invoicePreviewRows.filter(
+    (row) => !row.dueDate
+  ).length;
+  const ignoredRawRowCount = Math.max(rawRows.length - previewRows.length, 0);
+  const clientContactCoverage =
+    clientPreviewRows.length > 0
+      ? Math.round(
+          ((clientPreviewRows.length - clientRowsMissingContact) /
+            clientPreviewRows.length) *
+            100
+        )
+      : 0;
+  const invoiceDueDateCoverage =
+    invoicePreviewRows.length > 0
+      ? Math.round(
+          ((invoicePreviewRows.length - invoiceRowsMissingDueDate) /
+            invoicePreviewRows.length) *
+            100
+        )
+      : 0;
+  const importQualityScore =
+    previewRows.length === 0
+      ? 0
+      : importType === "clients"
+        ? Math.round(
+            (clientContactCoverage +
+              (clientPreviewRows.length > 0
+                ? Math.round(
+                    (clientRowsWithAddress / clientPreviewRows.length) * 100
+                  )
+                : 0)) /
+              2
+          )
+        : Math.round(
+            (invoiceDueDateCoverage +
+              (previewOpenInvoiceCount > 0 || previewInvoiceTotal > 0
+                ? 100
+                : 0)) /
+              2
+          );
+  const importChecklist =
+    importType === "clients"
+      ? [
+          {
+            label: "CSV parsed",
+            detail:
+              rawRows.length > 0
+                ? `${rawRows.length} raw row${rawRows.length === 1 ? "" : "s"} detected.`
+                : "Choose a CSV file to start the preview.",
+            complete: rawRows.length > 0,
+          },
+          {
+            label: "Client names found",
+            detail:
+              previewRows.length > 0
+                ? `${previewRows.length} client row${previewRows.length === 1 ? "" : "s"} can be imported.`
+                : "Trimax needs a readable client or customer name.",
+            complete: previewRows.length > 0,
+          },
+          {
+            label: "Contact path ready",
+            detail:
+              clientRowsMissingContact > 0
+                ? `${clientRowsMissingContact} row${clientRowsMissingContact === 1 ? "" : "s"} missing email and phone.`
+                : "Every previewed client has email or phone.",
+            complete: previewRows.length > 0 && clientRowsMissingContact === 0,
+          },
+          {
+            label: "Location context",
+            detail:
+              clientRowsWithAddress > 0
+                ? `${clientRowsWithAddress} row${clientRowsWithAddress === 1 ? "" : "s"} include billing or service address.`
+                : "Addresses are optional, but useful for invoices and jobs.",
+            complete: clientRowsWithAddress > 0,
+          },
+        ]
+      : [
+          {
+            label: "CSV parsed",
+            detail:
+              rawRows.length > 0
+                ? `${rawRows.length} raw line item row${rawRows.length === 1 ? "" : "s"} detected.`
+                : "Choose a CSV file to start the preview.",
+            complete: rawRows.length > 0,
+          },
+          {
+            label: "Invoices grouped",
+            detail:
+              previewRows.length > 0
+                ? `${previewRows.length} invoice${previewRows.length === 1 ? "" : "s"} ready from ${previewInvoiceLineCount} line item${previewInvoiceLineCount === 1 ? "" : "s"}.`
+                : "Trimax needs customer names and invoice amounts.",
+            complete: previewRows.length > 0,
+          },
+          {
+            label: "Dates readable",
+            detail:
+              invoiceRowsMissingDueDate > 0
+                ? `${invoiceRowsMissingDueDate} invoice${invoiceRowsMissingDueDate === 1 ? "" : "s"} missing due dates.`
+                : "Every previewed invoice has a due date.",
+            complete: previewRows.length > 0 && invoiceRowsMissingDueDate === 0,
+          },
+          {
+            label: "Split logic checked",
+            detail:
+              previewSplitReadyCount > 0
+                ? `${previewSplitReadyCount} apartment-paint invoice${previewSplitReadyCount === 1 ? "" : "s"} can create split drafts.`
+                : "No split candidates found in this preview.",
+            complete: splitTargetAmount > 0,
+          },
+        ];
+  const importGateCards =
+    importType === "clients"
+      ? [
+          {
+            label: "Contactable",
+            value: `${clientPreviewRows.length - clientRowsMissingContact}/${
+              clientPreviewRows.length
+            }`,
+            detail: "Rows with at least email or phone.",
+            tone: clientRowsMissingContact > 0 ? "amber" : "emerald",
+          },
+          {
+            label: "Address Ready",
+            value: `${clientRowsWithAddress}/${clientPreviewRows.length}`,
+            detail: "Rows with billing or service address.",
+            tone:
+              clientRowsWithAddress === clientPreviewRows.length
+                ? "emerald"
+                : "amber",
+          },
+          {
+            label: "Needs Review",
+            value: String(clientRowsMissingContact),
+            detail: "Rows missing both email and phone.",
+            tone: clientRowsMissingContact > 0 ? "rose" : "zinc",
+          },
+        ]
+      : [
+          {
+            label: "Open Balance",
+            value: formatMoney(
+              invoicePreviewRows.reduce(
+                (total, row) => total + Math.max(row.amount - row.amountPaid, 0),
+                0
+              )
+            ),
+            detail: "Potential collectible balance from this file.",
+            tone: "emerald",
+          },
+          {
+            label: "Split Candidates",
+            value: String(previewSplitReadyCount),
+            detail: "Apartment paint invoices over the split threshold.",
+            tone: previewSplitReadyCount > 0 ? "cyan" : "zinc",
+          },
+          {
+            label: "Needs Due Date",
+            value: String(invoiceRowsMissingDueDate),
+            detail: "Invoice rows without a readable due date.",
+            tone: invoiceRowsMissingDueDate > 0 ? "amber" : "zinc",
+          },
+        ];
+  const importGateReady =
+    previewRows.length > 0 &&
+    (importType === "clients"
+      ? clientRowsMissingContact === 0 || clientRowsWithAddress > 0
+      : invoiceRowsMissingDueDate === 0 || previewOpenInvoiceCount > 0);
 
   useEffect(() => {
     async function loadBusiness() {
@@ -1405,6 +1575,141 @@ function ImportsPageContent() {
                   </div>
                 </>
               )}
+            </div>
+          </div>
+        </Card>
+
+        <Card className="import-decision-gate border-emerald-500/20 bg-zinc-950/70 p-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.26em] text-emerald-200">
+                Import Decision Gate
+              </p>
+              <h2 className="mt-2 text-2xl font-black text-white">
+                {importGateReady
+                  ? "Preview looks ready for a controlled import"
+                  : "Preview needs a little more confidence"}
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
+                Review the data quality signals before writing anything into
+                Trimax. This keeps historical imports useful without creating
+                cleanup work later.
+              </p>
+            </div>
+
+            <Button
+              onClick={handleImport}
+              disabled={saving || previewRows.length === 0}
+            >
+              {saving ? "Importing..." : "Import Preview"}
+            </Button>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {importGateCards.map((card) => (
+              <div
+                key={card.label}
+                data-tone={card.tone}
+                className="import-decision-card rounded-2xl border border-white/10 bg-black/25 p-4"
+              >
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">
+                  {card.label}
+                </p>
+                <p className="mt-3 text-2xl font-black text-white">
+                  {card.value}
+                </p>
+                <p className="mt-2 text-sm leading-5 text-zinc-400">
+                  {card.detail}
+                </p>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="import-quality-panel border-orange-500/20 bg-zinc-950/70 p-4">
+          <div className="grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">
+            <div className="import-quality-score rounded-2xl border border-white/10 bg-black/25 p-5">
+              <p className="text-xs font-black uppercase tracking-[0.24em] text-orange-300">
+                Import Quality
+              </p>
+              <div className="mt-4 flex items-end gap-3">
+                <p className="text-5xl font-black text-white">
+                  {importQualityScore}
+                </p>
+                <p className="pb-2 text-sm font-black uppercase tracking-[0.16em] text-zinc-500">
+                  / 100
+                </p>
+              </div>
+              <p className="mt-3 text-sm leading-6 text-zinc-400">
+                {previewRows.length === 0
+                  ? "Upload a CSV and Trimax will score the file before anything is saved."
+                  : importQualityScore >= 85
+                    ? "This file is organized well enough for a confident import."
+                    : "This file can still import, but the checklist shows what deserves a second look."}
+              </p>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-3">
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">
+                    Ignored Rows
+                  </p>
+                  <p className="mt-2 text-2xl font-black text-white">
+                    {ignoredRawRowCount}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-3">
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">
+                    Mode
+                  </p>
+                  <p className="mt-2 text-2xl font-black text-white">
+                    {importType === "clients" ? "Clients" : "Invoices"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="import-checklist rounded-2xl border border-white/10 bg-black/25 p-5">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.24em] text-zinc-500">
+                    Pre-Import Checklist
+                  </p>
+                  <h2 className="mt-2 text-2xl font-black text-white">
+                    Catch cleanup work before it lands
+                  </h2>
+                </div>
+                <span
+                  className={`import-quality-badge ${
+                    importQualityScore >= 85
+                      ? "import-quality-badge-ready"
+                      : "import-quality-badge-review"
+                  }`}
+                >
+                  {importQualityScore >= 85 ? "Ready" : "Review"}
+                </span>
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                {importChecklist.map((item) => (
+                  <div
+                    key={item.label}
+                    className="import-checklist-item rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4"
+                    data-complete={item.complete ? "true" : "false"}
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="import-check-dot mt-1" />
+                      <div>
+                        <p className="text-sm font-black text-white">
+                          {item.label}
+                        </p>
+                        <p className="mt-1 text-sm leading-5 text-zinc-400">
+                          {item.detail}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </Card>

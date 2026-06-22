@@ -42,6 +42,15 @@ type ClientSummary = {
   linkedInvoices: number;
 };
 
+type RelationshipSignal = {
+  client: Client;
+  score: number;
+  label: string;
+  detail: string;
+  tone: "ready" | "collect" | "proposal" | "cleanup";
+  href: string;
+};
+
 function parseMoney(value: string | number | null) {
   if (typeof value === "number") {
     return Number.isFinite(value) ? value : 0;
@@ -57,6 +66,43 @@ function formatMoney(value: number) {
     style: "currency",
     currency: "USD",
   }).format(value);
+}
+
+function clientContactGaps(client: Client) {
+  const gaps: string[] = [];
+
+  if (!client.email?.trim().includes("@")) {
+    gaps.push("email");
+  }
+
+  if (!client.phone?.trim()) {
+    gaps.push("phone");
+  }
+
+  if (!client.service_address?.trim() && !client.billing_address?.trim()) {
+    gaps.push("address");
+  }
+
+  return gaps;
+}
+
+function relationshipScore(client: Client, summary: ClientSummary | undefined) {
+  const contactGaps = clientContactGaps(client).length;
+  const contactPoints = 3 - contactGaps;
+  const hasWorkHistory =
+    (summary?.linkedInvoices ?? 0) + (summary?.linkedEstimates ?? 0) > 0;
+
+  return Math.max(
+    0,
+    Math.min(
+      100,
+      contactPoints * 22 +
+        Math.min(summary?.linkedInvoices ?? 0, 4) * 5 +
+        Math.min(summary?.linkedEstimates ?? 0, 4) * 4 +
+        (hasWorkHistory ? 14 : 0) -
+        ((summary?.openBalance ?? 0) > 0 ? 8 : 0)
+    )
+  );
 }
 
 export default async function ClientsPage({
@@ -275,6 +321,93 @@ export default async function ClientsPage({
       );
     })
     .slice(0, 4);
+  const relationshipSignals: RelationshipSignal[] = clients
+    .map<RelationshipSignal>((client) => {
+      const summary = clientSummaries[client.id];
+      const gaps = clientContactGaps(client);
+      const score = relationshipScore(client, summary);
+      const hasOpenBalance = (summary?.openBalance ?? 0) > 0;
+      const hasActiveEstimates = (summary?.activeEstimates ?? 0) > 0;
+
+      if (hasOpenBalance) {
+        const params = new URLSearchParams({
+          business: businessSlug,
+          customer: client.name,
+        });
+
+        return {
+          client,
+          score,
+          label: "Collection ready",
+          detail: `${formatMoney(summary?.openBalance ?? 0)} open across ${
+            summary?.openInvoices ?? 0
+          } invoice${(summary?.openInvoices ?? 0) === 1 ? "" : "s"}.`,
+          tone: "collect",
+          href: `/payments?${params.toString()}#batch-payment-tool`,
+        };
+      }
+
+      if (hasActiveEstimates) {
+        return {
+          client,
+          score,
+          label: "Proposal follow-up",
+          detail: `${summary?.activeEstimates ?? 0} active estimate${
+            (summary?.activeEstimates ?? 0) === 1 ? "" : "s"
+          } still open.`,
+          tone: "proposal",
+          href: `/clients/${client.id}${businessQuery}`,
+        };
+      }
+
+      if (gaps.length > 0) {
+        return {
+          client,
+          score,
+          label: "Contact cleanup",
+          detail: `Missing ${gaps.join(", ")}.`,
+          tone: "cleanup",
+          href: `/clients/${client.id}/edit${businessQuery}`,
+        };
+      }
+
+      return {
+        client,
+        score,
+        label: "Ready account",
+        detail: "Contact details are complete and ready for future work.",
+        tone: "ready",
+        href: `/clients/${client.id}${businessQuery}`,
+      };
+    })
+    .sort((first, second) => {
+      const tonePriority = {
+        collect: 4,
+        proposal: 3,
+        cleanup: 2,
+        ready: 1,
+      };
+
+      if (tonePriority[second.tone] !== tonePriority[first.tone]) {
+        return tonePriority[second.tone] - tonePriority[first.tone];
+      }
+
+      return second.score - first.score;
+    });
+  const topRelationshipSignals = relationshipSignals.slice(0, 4);
+  const relationshipReadyCount = relationshipSignals.filter(
+    (signal) => signal.tone === "ready"
+  ).length;
+  const cleanupNeededCount = relationshipSignals.filter(
+    (signal) => signal.tone === "cleanup"
+  ).length;
+  const relationshipAverage =
+    relationshipSignals.length > 0
+      ? Math.round(
+          relationshipSignals.reduce((total, signal) => total + signal.score, 0) /
+            relationshipSignals.length
+        )
+      : 0;
   const clientHealthCards = [
     {
       label: "Contact Ready",
@@ -283,7 +416,7 @@ export default async function ClientsPage({
         clients.length > 0
           ? `${clientsWithEmail} email, ${clientsWithPhone} phone, ${clientsWithAddress} address.`
           : "Add clients to build a reusable customer book.",
-      href: `/clients${businessQuery}`,
+      href: `/clients${businessQuery}#client-results`,
       tone: "info",
     },
     {
@@ -295,7 +428,7 @@ export default async function ClientsPage({
               clientsWithOpenBalances === 1 ? "" : "s"
             } with open balances.`
           : "No client balances need collection right now.",
-      href: `/payments${businessQuery}`,
+      href: `/payments${businessQuery}#batch-payment-tool`,
       tone: clientsWithOpenBalances > 0 ? "warning" : "success",
     },
     {
@@ -305,7 +438,7 @@ export default async function ClientsPage({
         activeEstimateTotal > 0
           ? "Open proposals are ready for follow-up or conversion."
           : "No active estimate follow-up needed.",
-      href: `/estimates${businessQuery}`,
+      href: `/estimates${businessQuery}#estimate-results`,
       tone: activeEstimateTotal > 0 ? "success" : "info",
     },
     {
@@ -458,6 +591,80 @@ export default async function ClientsPage({
             </div>
           </div>
 
+          <div className="client-relationship-panel mt-6 rounded-3xl border border-white/10 bg-zinc-950/70 p-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="text-sm font-black uppercase tracking-[0.28em] text-emerald-200">
+                  Relationship Signal
+                </p>
+                <h2 className="mt-2 text-xl font-bold text-white">
+                  Account readiness and follow-up
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
+                  Trimax checks client contact completeness, open balances, and active proposals so the next account move is obvious.
+                </p>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[24rem]">
+                <div className="client-relationship-stat rounded-2xl border border-white/10 bg-black/25 p-3">
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">
+                    Avg Readiness
+                  </p>
+                  <p className="mt-2 text-2xl font-black text-white">
+                    {relationshipAverage}%
+                  </p>
+                </div>
+                <div className="client-relationship-stat rounded-2xl border border-white/10 bg-black/25 p-3">
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">
+                    Ready
+                  </p>
+                  <p className="mt-2 text-2xl font-black text-emerald-100">
+                    {relationshipReadyCount}
+                  </p>
+                </div>
+                <div className="client-relationship-stat rounded-2xl border border-white/10 bg-black/25 p-3">
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">
+                    Cleanup
+                  </p>
+                  <p className="mt-2 text-2xl font-black text-amber-100">
+                    {cleanupNeededCount}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {topRelationshipSignals.length > 0 ? (
+              <div className="mt-4 grid gap-3 lg:grid-cols-4">
+                {topRelationshipSignals.map((signal) => (
+                  <Link
+                    key={signal.client.id}
+                    href={signal.href}
+                    data-tone={signal.tone}
+                    className="client-relationship-card rounded-2xl border border-white/10 bg-black/25 p-4 transition hover:-translate-y-0.5 hover:border-emerald-300/60"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-black text-white">
+                          {signal.client.name}
+                        </p>
+                        <p className="mt-1 text-xs font-black uppercase tracking-[0.18em] text-zinc-500">
+                          {signal.label}
+                        </p>
+                      </div>
+                      <span className="client-relationship-score rounded-full border border-white/10 bg-white/10 px-2.5 py-1 text-xs font-black text-emerald-100">
+                        {signal.score}%
+                      </span>
+                    </div>
+
+                    <p className="mt-3 min-h-[2.75rem] text-sm leading-6 text-zinc-400">
+                      {signal.detail}
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
           {clientCommandQueue.length > 0 ? (
             <div className="mt-6">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -472,7 +679,7 @@ export default async function ClientsPage({
                 </div>
 
                 <Link
-                  href={`/payments${businessQuery}`}
+                  href={`/payments${businessQuery}#batch-payment-tool`}
                   className="text-sm font-semibold text-sky-300 transition hover:text-sky-100"
                 >
                   Open payment workspace
@@ -530,7 +737,7 @@ export default async function ClientsPage({
                       <div className="mt-4 flex flex-wrap gap-2">
                         {hasOpenBalance ? (
                           <Link
-                            href={`/payments?${paymentParams.toString()}`}
+                            href={`/payments?${paymentParams.toString()}#batch-payment-tool`}
                             className="rounded-full bg-sky-400 px-3 py-2 text-sm font-black text-slate-950 transition hover:bg-sky-300"
                           >
                             Record Payment
@@ -547,7 +754,7 @@ export default async function ClientsPage({
                         <Link
                           href={
                             hasOpenBalance
-                              ? `/invoices?${invoiceParams.toString()}`
+                              ? `/invoices?${invoiceParams.toString()}#invoice-results`
                               : `/clients/${client.id}${businessQuery}`
                           }
                           className="rounded-full border border-white/15 px-3 py-2 text-sm font-semibold text-white transition hover:border-sky-200 hover:bg-white/10"
@@ -632,6 +839,7 @@ export default async function ClientsPage({
           />
         </Card>
 
+        <div id="client-results" className="scroll-mt-6">
         {clients.length === 0 ? (
           <Card>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -688,6 +896,8 @@ export default async function ClientsPage({
                 customer: client.name,
               });
               const hasOpenBalance = (summary?.openBalance ?? 0) > 0;
+              const contactGaps = clientContactGaps(client);
+              const clientScore = relationshipScore(client, summary);
 
               return (
                 <Card
@@ -710,6 +920,21 @@ export default async function ClientsPage({
                           client.billing_address ||
                           "No address"}
                       </p>
+
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <span className="client-signal-chip rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-emerald-100">
+                          {clientScore}% ready
+                        </span>
+                        {contactGaps.length > 0 ? (
+                          <span className="client-signal-chip rounded-full border border-amber-300/20 bg-amber-400/10 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-amber-100">
+                            Missing {contactGaps.join(", ")}
+                          </span>
+                        ) : (
+                          <span className="client-signal-chip rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-emerald-100">
+                            Contact ready
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="text-right text-sm text-zinc-400">
@@ -808,7 +1033,7 @@ export default async function ClientsPage({
 
                     {hasOpenBalance ? (
                       <Link
-                        href={`/payments?${paymentParams.toString()}`}
+                        href={`/payments?${paymentParams.toString()}#batch-payment-tool`}
                         className="payment-action-button rounded-xl border px-4 py-2 text-sm font-bold transition"
                       >
                         Record Payment
@@ -831,6 +1056,7 @@ export default async function ClientsPage({
             })}
           </div>
         )}
+        </div>
       </div>
     </AppShell>
   );

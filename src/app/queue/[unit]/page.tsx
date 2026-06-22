@@ -81,6 +81,17 @@ type InvoiceActivityLog = {
   created_at: string | null;
 };
 
+type QueueActivityLog = InvoiceActivityLog & {
+  entity_label: string | null;
+};
+
+type QueueActivityChange = {
+  field: string;
+  label: string;
+  previousValue: unknown;
+  newValue: unknown;
+};
+
 type PropertyUnitProfile = {
   id: string | null;
   building_letter: string | null;
@@ -203,6 +214,81 @@ function detailValue(
   }
 
   return String(value);
+}
+
+function prettifyField(value: string) {
+  return value
+    .replace(/_/g, " ")
+    .replace(/^./, (letter) => letter.toUpperCase());
+}
+
+function formatChangeValue(value: unknown) {
+  if (value === null || value === undefined || value === "") {
+    return "Blank";
+  }
+
+  if (typeof value === "boolean") {
+    return value ? "Yes" : "No";
+  }
+
+  return String(value);
+}
+
+function queueActivityChanges(log: QueueActivityLog): QueueActivityChange[] {
+  const changes = log.details?.changes;
+
+  if (!Array.isArray(changes)) {
+    return [];
+  }
+
+  return changes
+    .filter(
+      (
+        change
+      ): change is {
+        field?: unknown;
+        label?: unknown;
+        previousValue?: unknown;
+        newValue?: unknown;
+      } => Boolean(change) && typeof change === "object"
+    )
+    .map((change) => {
+      const field = typeof change.field === "string" ? change.field : "";
+
+      return {
+        field,
+        label:
+          typeof change.label === "string"
+            ? change.label
+            : field
+              ? prettifyField(field)
+              : "Changed",
+        previousValue: change.previousValue ?? null,
+        newValue: change.newValue ?? null,
+      };
+    })
+    .filter((change) => change.field.length > 0);
+}
+
+function queueActivityLabel(action: string) {
+  const labels: Record<string, string> = {
+    "queue_item.created": "Created",
+    "queue_item.updated": "Updated",
+    "queue_item.scheduled": "Scheduled",
+    "queue_item.completed": "Completed",
+    "job_session.started": "Session Started",
+    "job_session.resumed": "Session Resumed",
+    "job_session.stopped": "Session Stopped",
+    "job_session.breakdown_saved": "Time Breakdown Saved",
+    "job_session.breakdown_skipped": "Time Breakdown Skipped",
+    "technician.job_session_started": "Technician Started",
+    "technician.job_session_resumed": "Technician Resumed",
+    "technician.job_session_paused": "Technician Paused",
+    "technician.job_session_stopped": "Technician Stopped",
+    "technician.job_completed": "Technician Completed",
+  };
+
+  return labels[action] ?? action;
 }
 
 function latestHistory(
@@ -364,6 +450,7 @@ export default async function QueueDetailPage({
   let linkedEstimate: LinkedEstimate | null = null;
   let linkedInvoice: LinkedInvoice | null = null;
   let linkedInvoiceActivity: InvoiceActivityLog | null = null;
+  let queueActivityLogs: QueueActivityLog[] = [];
   let propertyUnitProfile: PropertyUnitProfile | null = null;
   let northCreekPropertyId: string | null = null;
   let unitHistory: UnitHistoryEntry[] = [];
@@ -417,6 +504,17 @@ export default async function QueueDetailPage({
         ((activityData ?? []) as InvoiceActivityLog[])[0] ?? null;
     }
   }
+
+  const { data: queueActivityData } = await supabase
+    .from("activity_logs")
+    .select("id, action, entity_label, details, created_at")
+    .eq("business_id", selectedBusiness.id)
+    .eq("entity_type", "queue_item")
+    .eq("entity_id", item.id)
+    .order("created_at", { ascending: false })
+    .limit(8);
+
+  queueActivityLogs = (queueActivityData ?? []) as QueueActivityLog[];
 
   if (isNorthCreekQueueItem && normalizedUnitLabel) {
     const { data: propertyData } = await supabase
@@ -597,6 +695,13 @@ export default async function QueueDetailPage({
                 href: `/activity?business=${businessSlug}&type=queue`,
                 action: "View Proof",
               };
+  const queueChangeLogs = queueActivityLogs.filter(
+    (log) => queueActivityChanges(log).length > 0
+  );
+  const queueVolatilityScore = queueChangeLogs.reduce(
+    (total, log) => total + queueActivityChanges(log).length,
+    0
+  );
 
   return (
     <AppShell>
@@ -654,6 +759,11 @@ export default async function QueueDetailPage({
             invoiceBalance={linkedInvoiceBalance}
             completedDate={item.completed_date}
             nextAction={workflowNextAction}
+          />
+
+          <QueueChangeIntelligence
+            logs={queueActivityLogs}
+            changeCount={queueVolatilityScore}
           />
         </RoleVisible>
 
@@ -1259,6 +1369,110 @@ function QueueWorkflowIntelligence({
             </p>
           </div>
         ))}
+      </div>
+    </Card>
+  );
+}
+
+function QueueChangeIntelligence({
+  logs,
+  changeCount,
+}: {
+  logs: QueueActivityLog[];
+  changeCount: number;
+}) {
+  const latestLogs = logs.slice(0, 5);
+
+  return (
+    <Card className="queue-change-intelligence border-cyan-500/25 bg-gradient-to-br from-cyan-500/10 via-zinc-950 to-amber-500/10">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-sm uppercase tracking-[0.3em] text-cyan-200">
+            Change Intelligence
+          </p>
+
+          <h2 className="mt-2 text-2xl font-bold">
+            What changed on this job
+          </h2>
+
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+            Schedule, priority, status, and field-session updates stay attached
+            to this queue item so the history is easy to explain later.
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">
+            Volatility
+          </p>
+          <p className="mt-1 text-2xl font-black text-white">
+            {changeCount}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-5 space-y-3">
+        {latestLogs.length > 0 ? (
+          latestLogs.map((log) => {
+            const changes = queueActivityChanges(log);
+
+            return (
+              <div
+                key={log.id}
+                className="queue-change-row rounded-2xl border border-white/10 bg-black/25 p-4"
+              >
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="font-black text-white">
+                      {queueActivityLabel(log.action)}
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-400">
+                      {formatEventDateTime(log.created_at) || "Recent"}
+                    </p>
+                  </div>
+                  <span className="rounded-full border border-cyan-300/30 bg-cyan-400/10 px-3 py-1 text-xs font-black text-cyan-100">
+                    {changes.length > 0
+                      ? `${changes.length} change${
+                          changes.length === 1 ? "" : "s"
+                        }`
+                      : "Event"}
+                  </span>
+                </div>
+
+                {changes.length > 0 ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {changes.slice(0, 4).map((change) => (
+                      <span
+                        key={`${log.id}-${change.field}`}
+                        className="queue-change-chip rounded-2xl border border-white/10 bg-zinc-950/70 px-3 py-2 text-sm text-zinc-300"
+                      >
+                        <span className="text-zinc-500">
+                          {change.label}:{" "}
+                        </span>
+                        <span className="font-semibold text-white">
+                          {formatChangeValue(change.previousValue)} to{" "}
+                          {formatChangeValue(change.newValue)}
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm leading-6 text-zinc-400">
+                    {detailValue(log.details, "jobType") ||
+                      detailValue(log.details, "completedDate") ||
+                      detailValue(log.details, "scheduledDate") ||
+                      "Operational event saved to the activity trail."}
+                  </p>
+                )}
+              </div>
+            );
+          })
+        ) : (
+          <p className="rounded-2xl border border-dashed border-white/15 bg-black/20 p-4 text-sm text-zinc-400">
+            Changes will appear here after this queue item is scheduled,
+            edited, completed, or worked by a technician.
+          </p>
+        )}
       </div>
     </Card>
   );

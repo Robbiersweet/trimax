@@ -75,6 +75,23 @@ type JobSessionBreakdown = {
   job_session_id: string;
 };
 
+type ActivityLog = {
+  id: string;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  entity_label: string | null;
+  details: Record<string, unknown> | null;
+  created_at: string | null;
+};
+
+type ActivityChange = {
+  field: string;
+  label: string;
+  previousValue: unknown;
+  newValue: unknown;
+};
+
 type ReportRange = "week" | "month" | "all" | "custom";
 
 function parseMoney(value: string | number | null) {
@@ -128,6 +145,48 @@ function formatDate(value: string | null) {
     day: "numeric",
     year: "numeric",
   });
+}
+
+function prettifyField(value: string) {
+  return value
+    .replace(/_/g, " ")
+    .replace(/^./, (letter) => letter.toUpperCase());
+}
+
+function activityChanges(log: ActivityLog): ActivityChange[] {
+  const changes = log.details?.changes;
+
+  if (!Array.isArray(changes)) {
+    return [];
+  }
+
+  return changes
+    .filter(
+      (
+        change
+      ): change is {
+        field?: unknown;
+        label?: unknown;
+        previousValue?: unknown;
+        newValue?: unknown;
+      } => Boolean(change) && typeof change === "object"
+    )
+    .map((change) => {
+      const field = typeof change.field === "string" ? change.field : "";
+
+      return {
+        field,
+        label:
+          typeof change.label === "string"
+            ? change.label
+            : field
+              ? prettifyField(field)
+              : "Changed",
+        previousValue: change.previousValue ?? null,
+        newValue: change.newValue ?? null,
+      };
+    })
+    .filter((change) => change.field.length > 0);
 }
 
 function formatDateTime(value: string | null) {
@@ -432,6 +491,7 @@ export default async function ReportsPage({
   let invoices: Invoice[] = [];
   let jobSessions: JobSession[] = [];
   let jobSessionBreakdowns: JobSessionBreakdown[] = [];
+  let activityLogs: ActivityLog[] = [];
 
   if (selectedBusiness?.id) {
     const [
@@ -440,6 +500,7 @@ export default async function ReportsPage({
       invoiceResponse,
       jobSessionResponse,
       jobBreakdownResponse,
+      activityResponse,
     ] =
       await Promise.all([
         supabase
@@ -476,6 +537,13 @@ export default async function ReportsPage({
           .from("job_session_breakdowns")
           .select("id, job_session_id")
           .eq("business_id", selectedBusiness.id),
+
+        supabase
+          .from("activity_logs")
+          .select("id, action, entity_type, entity_id, entity_label, details, created_at")
+          .eq("business_id", selectedBusiness.id)
+          .order("created_at", { ascending: false })
+          .limit(500),
       ]);
 
     if (queueResponse.error) {
@@ -525,12 +593,23 @@ export default async function ReportsPage({
       );
     }
 
+    if (activityResponse.error) {
+      console.warn(
+        "Report activity data could not be loaded:",
+        activityResponse.error.message
+      );
+      reportLoadMessages.push(
+        "Operational activity history could not be loaded yet."
+      );
+    }
+
     queueItems = (queueResponse.data ?? []) as QueueItem[];
     estimates = (estimateResponse.data ?? []) as Estimate[];
     invoices = (invoiceResponse.data ?? []) as Invoice[];
     jobSessions = (jobSessionResponse.data ?? []) as JobSession[];
     jobSessionBreakdowns =
       (jobBreakdownResponse.data ?? []) as JobSessionBreakdown[];
+    activityLogs = (activityResponse.data ?? []) as ActivityLog[];
   }
 
   const properties = Array.from(
@@ -933,6 +1012,136 @@ export default async function ReportsPage({
   const sessionsNeedingBreakdown = completedJobSessions
     .filter((session) => !breakdownSessionIds.has(session.id))
     .slice(0, 3);
+  const operationalActivityLogs = activityLogs.filter(
+    (log) =>
+      log.action.startsWith("queue_item") ||
+      log.action.startsWith("job_session") ||
+      log.action.startsWith("technician") ||
+      log.entity_type === "queue_item" ||
+      log.entity_type === "job_session"
+  );
+  const filteredOperationalActivityLogs = operationalActivityLogs.filter(
+    (log) => {
+      const inRange = isInRange(
+        log.created_at,
+        range,
+        customStartDate,
+        customEndDate
+      );
+
+      if (!inRange) {
+        return false;
+      }
+
+      if (propertyFilter === "all") {
+        return true;
+      }
+
+      return (log.entity_label ?? "")
+        .toLowerCase()
+        .includes(propertyLabel.toLowerCase());
+    }
+  );
+  const activityChangeLogs = filteredOperationalActivityLogs.filter(
+    (log) => activityChanges(log).length > 0
+  );
+  const priorityChangeLogs = activityChangeLogs.filter((log) =>
+    activityChanges(log).some((change) => change.field === "priority")
+  );
+  const dateChangeLogs = activityChangeLogs.filter((log) =>
+    activityChanges(log).some((change) =>
+      ["scheduled_date", "ready_date", "completed_date", "move_out_date"].includes(
+        change.field
+      )
+    )
+  );
+  const statusChangeLogs = activityChangeLogs.filter((log) =>
+    activityChanges(log).some((change) => change.field === "status")
+  );
+  const interruptionLogs = filteredOperationalActivityLogs.filter(
+    (log) =>
+      log.action === "job_session.stopped" ||
+      log.action === "technician.job_session_stopped" ||
+      log.action === "technician.job_session_paused"
+  );
+  const resumeLogs = filteredOperationalActivityLogs.filter(
+    (log) =>
+      log.action === "job_session.resumed" ||
+      log.action === "technician.job_session_resumed"
+  );
+  const changesByQueueItem = activityChangeLogs.reduce((map, log) => {
+    const key = log.entity_id || log.entity_label || "Unknown item";
+    const current = map.get(key) ?? {
+      label: log.entity_label || "Unknown item",
+      count: 0,
+      latestAt: log.created_at,
+    };
+
+    current.count += activityChanges(log).length;
+
+    if (
+      log.created_at &&
+      (!current.latestAt ||
+        new Date(log.created_at).getTime() > new Date(current.latestAt).getTime())
+    ) {
+      current.latestAt = log.created_at;
+    }
+
+    map.set(key, current);
+
+    return map;
+  }, new Map<string, { label: string; count: number; latestAt: string | null }>());
+  const volatileQueueItems = Array.from(changesByQueueItem.values())
+    .sort((first, second) => second.count - first.count)
+    .slice(0, 3);
+  const priorityByProperty = countBy(priorityChangeLogs, (log) => {
+    const label = log.entity_label ?? "";
+
+    return label.includes(" - Unit ") ? label.split(" - Unit ")[0] : label;
+  }).slice(0, 3);
+  const scheduleChangeTotal =
+    priorityChangeLogs.length +
+    dateChangeLogs.length +
+    statusChangeLogs.length;
+  const reportCommandCards = [
+    {
+      label: "Money Story",
+      value: formatMoney(openReceivables),
+      detail:
+        openReceivables > 0
+          ? "Open receivables to follow before they get stale."
+          : "No open receivable gap in this view.",
+      href: "#financial-reports",
+      tone: openReceivables > 0 ? "amber" : "emerald",
+    },
+    {
+      label: "Schedule Story",
+      value: String(scheduleChangeTotal),
+      detail:
+        scheduleChangeTotal > 0
+          ? "Tracked priority, status, and date changes in this view."
+          : "No schedule volatility showing in this view.",
+      href: "#operations-volatility",
+      tone: scheduleChangeTotal > 0 ? "cyan" : "emerald",
+    },
+    {
+      label: "Field Proof",
+      value: formatHoursFromMinutes(laborMinutesThisMonth),
+      detail:
+        completedJobSessions.length > 0
+          ? "Completed labor time captured by job sessions."
+          : "Labor proof appears after technicians stop sessions.",
+      href: "#labor-intelligence",
+      tone: "emerald",
+    },
+    {
+      label: "Property Flow",
+      value: `${completedItems.length}/${filteredQueueItems.length}`,
+      detail: "Completed queue turns compared with all records in this view.",
+      href: "#queue-history",
+      tone: completedItems.length > 0 ? "rose" : "zinc",
+    },
+  ];
 
   return (
     <AppShell>
@@ -962,6 +1171,133 @@ export default async function ReportsPage({
             <Button variant="secondary">Open Queue</Button>
           </Link>
         </div>
+
+        <Card className="report-directory border-cyan-500/20 bg-zinc-950/70 p-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="report-directory-kicker text-xs font-black uppercase tracking-[0.28em] text-cyan-300">
+                Report Directory
+              </p>
+
+              <h2 className="mt-2 text-2xl font-black text-white">
+                {propertyLabel} reporting for {rangeLabel}
+              </h2>
+
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
+                Pick the lens that answers the meeting question: money,
+                workload movement, job mix, or queue history.
+              </p>
+            </div>
+
+            <Link
+              href={reportsHref(businessSlug, {
+                property: propertyFilter,
+                range: "month",
+              })}
+            >
+              <Button variant="secondary">This Month</Button>
+            </Link>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {[
+              {
+                label: "Financials",
+                detail: `${formatMoney(invoicedRevenue)} invoiced`,
+                href: "#financial-reports",
+                tone: "sky",
+              },
+              {
+                label: "Volatility",
+                detail: `${
+                  priorityChangeLogs.length +
+                  dateChangeLogs.length +
+                  statusChangeLogs.length
+                } tracked changes`,
+                href: "#operations-volatility",
+                tone: "amber",
+              },
+              {
+                label: "Job Mix",
+                detail: `${filteredQueueItems.length} queue records`,
+                href: "#job-mix-reports",
+                tone: "emerald",
+              },
+              {
+                label: "Queue History",
+                detail: `${completedItems.length} completed turns`,
+                href: "#queue-history",
+                tone: "rose",
+              },
+            ].map((item) => (
+              <Link
+                key={item.label}
+                href={item.href}
+                className="report-directory-link rounded-2xl border border-white/10 bg-black/25 p-4 transition hover:-translate-y-0.5 hover:border-cyan-300/60"
+                data-tone={item.tone}
+              >
+                <span className="report-directory-dot" aria-hidden="true" />
+
+                <span className="block text-sm font-black text-white">
+                  {item.label}
+                </span>
+
+                <span className="mt-2 block text-sm leading-5 text-zinc-400">
+                  {item.detail}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="report-command-brief border-orange-500/20 bg-zinc-950/75">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="report-command-kicker text-sm font-black uppercase tracking-[0.3em] text-orange-300">
+                Executive Readout
+              </p>
+
+              <h2 className="mt-2 text-2xl font-black text-white">
+                What this report view says first
+              </h2>
+
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
+                A fast, meeting-friendly summary built from the same invoices,
+                queue history, labor sessions, and activity trail already on
+                this page.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm font-black text-zinc-200">
+              {propertyLabel} / {rangeLabel}
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {reportCommandCards.map((card) => (
+              <Link
+                key={card.label}
+                href={card.href}
+                data-tone={card.tone}
+                className="report-command-card rounded-2xl border border-white/10 bg-black/25 p-4 transition hover:-translate-y-0.5"
+              >
+                <span className="report-command-rail" aria-hidden="true" />
+
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">
+                  {card.label}
+                </p>
+
+                <p className="mt-3 line-clamp-2 text-3xl font-black text-white">
+                  {card.value}
+                </p>
+
+                <p className="mt-2 min-h-12 text-sm leading-6 text-zinc-400">
+                  {card.detail}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </Card>
 
         {reportLoadMessages.length > 0 ? (
           <Card className="app-notice-card border-amber-500/40 bg-amber-500/10">
@@ -1152,6 +1488,153 @@ export default async function ReportsPage({
                   ) : (
                     <p className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-4 text-sm font-semibold text-emerald-100">
                       Labor records are caught up.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </Card>
+        </RoleVisible>
+
+        <RoleVisible businessSlug={businessSlug} allow={["owner", "admin"]}>
+          <Card
+            id="operations-volatility"
+            className="report-volatility-card border-cyan-500/25 bg-gradient-to-br from-cyan-500/10 via-zinc-950 to-amber-500/10"
+          >
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.3em] text-cyan-200">
+                  Volatility Intelligence
+                </p>
+
+                <h2 className="mt-2 text-2xl font-bold">
+                  Schedule, priority, and disruption history
+                </h2>
+
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+                  Built from the Activity Log, this shows whether queue work is
+                  staying stable or changing often enough to slow crews,
+                  billing, or property handoffs.
+                </p>
+              </div>
+
+              <Link
+                href={appHref(businessSlug, "/activity") + "&type=operations"}
+                className="app-button-secondary inline-flex rounded-2xl px-4 py-3 text-sm font-black"
+              >
+                Open Operations Trail
+              </Link>
+            </div>
+
+            <div className="mt-5 grid gap-3 md:grid-cols-5">
+              <VolatilityMetric
+                label="Priority Changes"
+                value={priorityChangeLogs.length}
+                detail="Before/after priority captured"
+                urgent={priorityChangeLogs.length > 0}
+              />
+              <VolatilityMetric
+                label="Date Changes"
+                value={dateChangeLogs.length}
+                detail="Schedule, ready, move-out, or completion date"
+                urgent={dateChangeLogs.length > 2}
+              />
+              <VolatilityMetric
+                label="Status Moves"
+                value={statusChangeLogs.length}
+                detail="Queue status changed in this view"
+              />
+              <VolatilityMetric
+                label="Interruptions"
+                value={interruptionLogs.length}
+                detail="Stopped or paused sessions"
+                urgent={interruptionLogs.length > 0}
+              />
+              <VolatilityMetric
+                label="Resumes"
+                value={resumeLogs.length}
+                detail="Interrupted work picked back up"
+              />
+            </div>
+
+            <div className="mt-5 grid gap-4 lg:grid-cols-2">
+              <div className="rounded-3xl border border-white/10 bg-black/25 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-200">
+                      Most Changed Work
+                    </p>
+                    <h3 className="mt-2 text-xl font-black">
+                      Queue items with the most churn
+                    </h3>
+                  </div>
+                  <span className="rounded-full border border-white/10 px-3 py-1 text-xs font-black text-zinc-300">
+                    {activityChangeLogs.length} events
+                  </span>
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  {volatileQueueItems.length > 0 ? (
+                    volatileQueueItems.map((item) => (
+                      <div
+                        key={`${item.label}-${item.latestAt}`}
+                        className="report-volatility-row rounded-2xl border border-white/10 bg-zinc-950/55 p-4"
+                      >
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <p className="font-black">{item.label}</p>
+                            <p className="mt-1 text-sm text-zinc-400">
+                              Latest change {formatDateTime(item.latestAt)}
+                            </p>
+                          </div>
+                          <span className="rounded-full bg-cyan-300 px-3 py-1 text-xs font-black text-cyan-950">
+                            {item.count} change{item.count === 1 ? "" : "s"}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="rounded-2xl border border-dashed border-white/15 p-4 text-sm text-zinc-400">
+                      Structured queue changes will appear here as schedules,
+                      priorities, and statuses are updated.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-3xl border border-amber-400/25 bg-amber-500/10 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-200">
+                      Priority Hotspots
+                    </p>
+                    <h3 className="mt-2 text-xl font-black">
+                      Properties with priority churn
+                    </h3>
+                  </div>
+                  <span className="rounded-full bg-amber-300 px-3 py-1 text-xs font-black text-amber-950">
+                    {priorityChangeLogs.length}
+                  </span>
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  {priorityByProperty.length > 0 ? (
+                    priorityByProperty.map((item) => (
+                      <div
+                        key={item.label}
+                        className="report-volatility-row rounded-2xl border border-amber-300/20 bg-black/25 p-4"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="font-black">{item.label}</p>
+                          <span className="rounded-full bg-amber-300 px-3 py-1 text-xs font-black text-amber-950">
+                            {item.count}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-4 text-sm font-semibold text-emerald-100">
+                      No priority churn is showing in this report view.
                     </p>
                   )}
                 </div>
@@ -1982,6 +2465,34 @@ function LaborMetric({
   );
 }
 
+function VolatilityMetric({
+  label,
+  value,
+  detail,
+  urgent = false,
+}: {
+  label: string;
+  value: string | number;
+  detail: string;
+  urgent?: boolean;
+}) {
+  return (
+    <div
+      className={`report-volatility-metric rounded-2xl border p-4 ${
+        urgent
+          ? "border-amber-400/35 bg-amber-500/10"
+          : "border-cyan-400/20 bg-black/25"
+      }`}
+    >
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
+        {label}
+      </p>
+      <p className="mt-3 text-3xl font-black leading-none">{value}</p>
+      <p className="mt-2 text-sm leading-5 text-zinc-400">{detail}</p>
+    </div>
+  );
+}
+
 function MetricCard({
   label,
   value,
@@ -1992,7 +2503,7 @@ function MetricCard({
   href?: string;
 }) {
   const content = (
-    <Card className="min-h-32 p-5">
+    <Card className="report-metric-tile min-h-32 p-5">
       <p className="text-sm text-zinc-400">{label}</p>
       <p className="mt-3 text-4xl font-bold leading-none">{value}</p>
       {href ? (

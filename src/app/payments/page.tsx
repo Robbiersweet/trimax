@@ -30,6 +30,7 @@ type InvoiceWithoutUpdatedAt = Omit<Invoice, "updated_at">;
 
 type ActivityLog = {
   id: string;
+  action: string;
   actor_email: string | null;
   entity_label: string | null;
   details: Record<string, unknown> | null;
@@ -120,11 +121,64 @@ function invoiceCollectionAmountDue(invoice: Invoice) {
 }
 
 function activityAmount(log: ActivityLog) {
-  const amount = log.details?.amountApplied;
+  const amount =
+    log.details?.amountApplied ??
+    log.details?.checkAmount ??
+    log.details?.depositAmount ??
+    log.details?.paymentAmount;
 
   return typeof amount === "string" || typeof amount === "number"
     ? parseMoney(amount)
     : 0;
+}
+
+function detailText(value: unknown) {
+  if (value === null || value === undefined || value === "") {
+    return "";
+  }
+
+  if (typeof value === "boolean") {
+    return value ? "Yes" : "No";
+  }
+
+  return String(value);
+}
+
+function paymentActivityLabel(action: string) {
+  const labels: Record<string, string> = {
+    "invoice.batch_payment_applied": "Batch Payment Applied",
+    "invoice.deposit_requested": "Deposit Requested",
+    "invoice.deposit_cleared": "Deposit Cleared",
+  };
+
+  return labels[action] ?? "Payment Activity";
+}
+
+function paymentProofChips(log: ActivityLog) {
+  const details = log.details ?? {};
+  const chips = [
+    { label: "Payment Date", value: formatDate(detailText(details.paymentDate)) },
+    { label: "Type", value: detailText(details.paymentType) },
+    { label: "Reference", value: detailText(details.paymentReference) },
+    { label: "Check Amount", value: formatMoney(details.checkAmount as string | number | null | undefined) },
+    { label: "Applied", value: formatMoney(details.amountApplied as string | number | null | undefined) },
+    { label: "Deposit", value: formatMoney(details.depositAmount as string | number | null | undefined) },
+    { label: "Batch", value: detailText(details.batchInvoiceCount) },
+    { label: "Stub Match", value: detailText(details.remittanceStubMatched) },
+    { label: "Image", value: detailText(details.paymentImageFileName) },
+    { label: "Note", value: detailText(details.internalNote ?? details.note) },
+  ];
+
+  return chips.filter((chip) => {
+    if (!chip.value || chip.value === "-") {
+      return false;
+    }
+
+    return (
+      !["Check Amount", "Applied", "Deposit"].includes(chip.label) ||
+      parseMoney(chip.value) > 0
+    );
+  });
 }
 
 function invoiceCountLabel(count: number) {
@@ -217,9 +271,13 @@ export default async function PaymentsPage({
 
     const { data: activityData, error: activityError } = await supabase
       .from("activity_logs")
-      .select("id, actor_email, entity_label, details, created_at")
+      .select("id, action, actor_email, entity_label, details, created_at")
       .eq("business_id", business.id)
-      .eq("action", "invoice.batch_payment_applied")
+      .in("action", [
+        "invoice.batch_payment_applied",
+        "invoice.deposit_requested",
+        "invoice.deposit_cleared",
+      ])
       .order("created_at", { ascending: false })
       .limit(8);
 
@@ -445,21 +503,21 @@ export default async function PaymentsPage({
         : "No urgent invoice target",
       href: bestCollectionTarget
         ? `/invoices/${bestCollectionTarget.id}${businessQuery}`
-        : `/invoices${businessQuery}`,
+        : `/invoices${businessQuery}#invoice-results`,
       tone: overdueInvoices.length > 0 ? "danger" : "info",
     },
     {
       label: "Overdue Exposure",
       value: formatMoney(overdueBalance),
       detail: `${invoiceCountLabel(overdueInvoices.length)} at or past due`,
-      href: `/invoices${businessQuery}&view=aging`,
+      href: `/invoices${businessQuery}&view=aging#invoice-results`,
       tone: overdueInvoices.length > 0 ? "danger" : "neutral",
     },
     {
       label: "Deposit Requests",
       value: formatMoney(depositRequestBalance),
       detail: `${invoiceCountLabel(depositRequestInvoices.length)} asking for partial payment`,
-      href: `/invoices${businessQuery}&collection=open`,
+      href: `/invoices${businessQuery}&collection=open#invoice-results`,
       tone: depositRequestInvoices.length > 0 ? "success" : "neutral",
     },
     {
@@ -468,6 +526,31 @@ export default async function PaymentsPage({
       detail: "Customers with multiple open invoices",
       href: "#customer-payment-queue",
       tone: batchCandidateGroups.length > 0 ? "success" : "info",
+    },
+  ];
+  const paymentProofCards = [
+    {
+      label: "Proof Logged",
+      value: formatMoney(recentPaymentTotal),
+      detail: `${paymentLogs.length} recent payment trail item${
+        paymentLogs.length === 1 ? "" : "s"
+      }`,
+      href: `/activity${businessQuery}&type=payment`,
+      tone: paymentLogs.length > 0 ? "emerald" : "zinc",
+    },
+    {
+      label: "Check Queue",
+      value: invoiceCountLabel(paymentRunInvoices.length),
+      detail: `${formatMoney(paymentRunBalance)} in the active payment run.`,
+      href: "#batch-payment-tool",
+      tone: paymentRunInvoices.length > 0 ? "sky" : "zinc",
+    },
+    {
+      label: "Batch Opportunity",
+      value: String(batchCandidateGroups.length),
+      detail: "Customers where one check may cover multiple invoices.",
+      href: "#customer-payment-queue",
+      tone: batchCandidateGroups.length > 0 ? "amber" : "zinc",
     },
   ];
 
@@ -490,15 +573,91 @@ export default async function PaymentsPage({
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <Link href={`/invoices${businessQuery}`}>
+            <Link href={`/invoices${businessQuery}#invoice-results`}>
               <Button variant="secondary">Open Invoices</Button>
             </Link>
 
-            <Link href={`/invoices${businessQuery}&view=aging`}>
+            <Link href={`/invoices${businessQuery}&view=aging#invoice-results`}>
               <Button variant="secondary">Aging View</Button>
             </Link>
           </div>
         </div>
+
+        <Card className="payment-compass border-emerald-500/20 bg-zinc-950/70 p-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="payment-compass-kicker text-xs font-black uppercase tracking-[0.28em] text-emerald-300">
+                Payment Compass
+              </p>
+
+              <h2 className="mt-2 text-2xl font-black text-white">
+                Collection control for {business?.name ?? "this workspace"}
+              </h2>
+
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
+                Start with the money that needs action, then jump straight into
+                invoice aging, deposit requests, or the batch tool without
+                hunting through the page.
+              </p>
+            </div>
+
+            <a href="#batch-payment-tool">
+              <Button>Open Batch Tool</Button>
+            </a>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {[
+              {
+                label: "Open Balance",
+                value: formatMoney(openBalance),
+                detail: `${invoiceCountLabel(payableInvoices.length)} collectible`,
+                href: "#customer-payment-queue",
+                tone: "sky",
+              },
+              {
+                label: "Overdue",
+                value: formatMoney(overdueBalance),
+                detail: `${invoiceCountLabel(overdueInvoices.length)} at or past due`,
+                href: `/invoices${businessQuery}&view=aging#invoice-results`,
+                tone: overdueInvoices.length > 0 ? "rose" : "zinc",
+              },
+              {
+                label: "Deposits",
+                value: formatMoney(depositRequestBalance),
+                detail: `${invoiceCountLabel(depositRequestInvoices.length)} requested`,
+                href: `/invoices${businessQuery}&collection=open#invoice-results`,
+                tone: "emerald",
+              },
+              {
+                label: "Batch Ready",
+                value: String(batchCandidateGroups.length),
+                detail: "Customers with multiple invoices",
+                href: "#customer-payment-queue",
+                tone: "amber",
+              },
+            ].map((item) => (
+              <Link
+                key={item.label}
+                href={item.href}
+                className="payment-compass-card rounded-2xl border border-white/10 bg-black/25 p-4 transition hover:-translate-y-0.5 hover:border-emerald-300/60"
+                data-tone={item.tone}
+              >
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-400">
+                  {item.label}
+                </p>
+
+                <p className="mt-3 text-2xl font-black text-white">
+                  {item.value}
+                </p>
+
+                <p className="mt-2 text-sm leading-5 text-zinc-400">
+                  {item.detail}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </Card>
 
         {loadIssues.length > 0 ? (
           <Card className="app-notice-card border-amber-500/40 bg-amber-500/10">
@@ -588,21 +747,21 @@ export default async function PaymentsPage({
                   </p>
 
                   <p className="mt-1 text-sm leading-6 text-zinc-300">
-                    {bestCollectionTarget.display_id ?? "Invoice"} ·{" "}
+                    {bestCollectionTarget.display_id ?? "Invoice"} /{" "}
                     {bestCollectionTarget.isDepositRequest
                       ? "deposit request"
                       : "open balance"}{" "}
-                    · {formatMoney(bestCollectionTarget.amountDue)}
+                    / {formatMoney(bestCollectionTarget.amountDue)}
                   </p>
 
                   <div className="mt-4 flex flex-wrap gap-3">
                     <Link
-                      href={`/payments?${new URLSearchParams({
+                        href={`/payments?${new URLSearchParams({
                         business: businessSlug,
                         customer:
                           bestCollectionTarget.customer_name ??
                           "Unknown Customer",
-                      }).toString()}`}
+                      }).toString()}#batch-payment-tool`}
                       className="rounded-xl bg-sky-500 px-4 py-2 text-sm font-black text-white transition hover:bg-sky-600"
                     >
                       Focus Payment
@@ -697,12 +856,62 @@ export default async function PaymentsPage({
                 <Button>Open Batch Tool</Button>
               </a>
 
-              <Link href={`/invoices${businessQuery}&view=aging`}>
+              <Link href={`/invoices${businessQuery}&view=aging#invoice-results`}>
                 <Button variant="secondary">Review Aging</Button>
               </Link>
             </div>
           </Card>
         ) : null}
+
+        <Card className="payment-proof-radar border-emerald-500/20 bg-zinc-950/75">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="payment-proof-kicker text-xs font-black uppercase tracking-[0.28em] text-emerald-300">
+                Payment Proof Radar
+              </p>
+
+              <h2 className="mt-2 text-2xl font-black text-white">
+                Keep every check easy to explain later
+              </h2>
+
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
+                This keeps the payment page tied to the audit trail: logged
+                checks, active payment runs, and customers likely to need batch
+                matching.
+              </p>
+            </div>
+
+            <Link
+              href={`/activity${businessQuery}&type=payment`}
+              className="rounded-2xl border border-emerald-300/30 bg-emerald-400/10 px-4 py-3 text-sm font-black text-emerald-100 transition hover:-translate-y-0.5 hover:border-emerald-200"
+            >
+              Open payment trail
+            </Link>
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            {paymentProofCards.map((card) => (
+              <Link
+                key={card.label}
+                href={card.href}
+                data-tone={card.tone}
+                className="payment-proof-card rounded-2xl border border-white/10 bg-black/25 p-4 transition hover:-translate-y-0.5 hover:border-emerald-300/60"
+              >
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">
+                  {card.label}
+                </p>
+
+                <p className="mt-3 line-clamp-2 text-2xl font-black text-white">
+                  {card.value}
+                </p>
+
+                <p className="mt-2 min-h-12 text-sm leading-6 text-zinc-400">
+                  {card.detail}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </Card>
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Card className="border-green-500/20 bg-green-500/5">
@@ -789,7 +998,7 @@ export default async function PaymentsPage({
                 </p>
               </div>
 
-              <Link href={`/invoices${businessQuery}&view=aging`}>
+              <Link href={`/invoices${businessQuery}&view=aging#invoice-results`}>
                 <Button variant="secondary">Open Aging View</Button>
               </Link>
             </div>
@@ -1003,11 +1212,11 @@ export default async function PaymentsPage({
                     </div>
 
                     <div className="mt-4 flex flex-wrap gap-3">
-                      <Link href={`/payments?${customerPaymentParams.toString()}`}>
+                      <Link href={`/payments?${customerPaymentParams.toString()}#batch-payment-tool`}>
                         <Button>Record Payment</Button>
                       </Link>
 
-                      <Link href={`/invoices?${customerInvoiceParams.toString()}`}>
+                      <Link href={`/invoices?${customerInvoiceParams.toString()}#invoice-results`}>
                         <Button variant="secondary">View Invoices</Button>
                       </Link>
                     </div>
@@ -1015,16 +1224,6 @@ export default async function PaymentsPage({
                 );
               })}
             </div>
-          </Card>
-        ) : null}
-
-        {payableInvoices.length === 0 ? (
-          <Card>
-            <p className="text-lg font-semibold">No open invoices to pay.</p>
-            <p className="mt-2 text-zinc-400">
-              When invoices have an unpaid balance, this page will show the
-              batch payment tool.
-            </p>
           </Card>
         ) : null}
 
@@ -1086,33 +1285,51 @@ export default async function PaymentsPage({
               </div>
             ) : (
               <div className="mt-5 space-y-3">
-                {paymentLogs.map((log) => (
-                  <div
-                    key={log.id}
-                    className="payment-log-card rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="font-semibold">
-                          {log.entity_label ?? "Invoice payment"}
-                        </p>
-                        <p className="mt-1 text-sm text-zinc-500">
-                          {formatDate(log.created_at)}
-                        </p>
+                {paymentLogs.map((log) => {
+                  const chips = paymentProofChips(log);
+                  const amount = activityAmount(log);
+
+                  return (
+                    <div
+                      key={log.id}
+                      className="payment-log-card rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-[0.2em] text-orange-300">
+                            {paymentActivityLabel(log.action)}
+                          </p>
+                          <p className="mt-1 font-semibold">
+                            {log.entity_label ?? "Invoice payment"}
+                          </p>
+                          <p className="mt-1 text-sm text-zinc-500">
+                            {formatDate(log.created_at)}
+                            {log.actor_email ? ` by ${log.actor_email}` : ""}
+                          </p>
+                        </div>
+
+                        {amount > 0 ? (
+                          <p className="font-black text-green-300">
+                            {formatMoney(amount)}
+                          </p>
+                        ) : null}
                       </div>
 
-                      <p className="font-black text-green-300">
-                        {formatMoney(activityAmount(log))}
-                      </p>
+                      {chips.length > 0 ? (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {chips.map((chip) => (
+                            <span
+                              key={`${log.id}-${chip.label}-${chip.value}`}
+                              className="payment-proof-chip rounded-full border border-zinc-700 bg-black/30 px-3 py-1 text-xs font-semibold text-zinc-200"
+                            >
+                              {chip.label}: {chip.value}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
-
-                    {log.details?.paymentReference ? (
-                      <p className="mt-2 text-sm text-zinc-400">
-                        Ref: {String(log.details.paymentReference)}
-                      </p>
-                    ) : null}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </Card>

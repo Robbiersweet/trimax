@@ -37,9 +37,31 @@ type AuditSignal = {
   status: "ready" | "watch" | "quiet";
 };
 
+type OperationalSignal = {
+  label: string;
+  value: string;
+  detail: string;
+  status: "ready" | "watch" | "quiet";
+};
+
+type ReportingReadinessItem = {
+  label: string;
+  value: string;
+  detail: string;
+  status: "ready" | "watch" | "quiet";
+};
+
+type ActivityChange = {
+  field: string;
+  label: string;
+  previousValue: unknown;
+  newValue: unknown;
+};
+
 type ActivityTypeFilter =
   | "all"
   | "queue"
+  | "operations"
   | "estimate"
   | "invoice"
   | "payment"
@@ -48,6 +70,7 @@ type ActivityTypeFilter =
 const activityFilters: Array<{ label: string; value: ActivityTypeFilter }> = [
   { label: "All", value: "all" },
   { label: "Queue", value: "queue" },
+  { label: "Operations", value: "operations" },
   { label: "Estimates", value: "estimate" },
   { label: "Invoices", value: "invoice" },
   { label: "Payments", value: "payment" },
@@ -130,6 +153,48 @@ function formatDetailValue(value: unknown) {
   return String(value);
 }
 
+function dateOnly(value: unknown) {
+  return typeof value === "string" && value.length >= 10
+    ? value.slice(0, 10)
+    : "";
+}
+
+function extractActivityChanges(log: ActivityLog): ActivityChange[] {
+  const changes = log.details?.changes;
+
+  if (!Array.isArray(changes)) {
+    return [];
+  }
+
+  return changes
+    .filter(
+      (
+        change
+      ): change is {
+        field?: unknown;
+        label?: unknown;
+        previousValue?: unknown;
+        newValue?: unknown;
+      } => Boolean(change) && typeof change === "object"
+    )
+    .map((change) => {
+      const field = typeof change.field === "string" ? change.field : "";
+
+      return {
+        field,
+        label:
+          typeof change.label === "string"
+            ? change.label
+            : field
+              ? prettifyKey(field)
+              : "Changed",
+        previousValue: change.previousValue ?? null,
+        newValue: change.newValue ?? null,
+      };
+    })
+    .filter((change) => change.field.length > 0);
+}
+
 function escapeCsv(value: unknown) {
   const stringValue = String(value ?? "");
 
@@ -166,10 +231,13 @@ function downloadCsv({
       "Payment Reference",
       "Check Amount",
       "Amount Applied",
+      "Changed Fields",
+      "Changes",
       "Details",
     ],
     ...logs.map((log) => {
       const details = log.details ?? {};
+      const changes = extractActivityChanges(log);
 
       return [
         formatDateTime(log.created_at),
@@ -184,6 +252,17 @@ function downloadCsv({
         formatDetailValue(details.paymentReference),
         formatMoney(details.checkAmount),
         formatMoney(details.amountApplied),
+        changes.map((change) => change.field).join("; "),
+        changes
+          .map(
+            (change) =>
+              `${change.label}: ${formatDetailValue(
+                change.previousValue
+              ) || "Blank"} -> ${
+                formatDetailValue(change.newValue) || "Blank"
+              }`
+          )
+          .join("; "),
         JSON.stringify(details),
       ];
     }),
@@ -213,6 +292,7 @@ function prettifyKey(key: string) {
 function actionLabel(action: string) {
   const labels: Record<string, string> = {
     "queue_item.created": "Queue Item Created",
+    "queue_item.updated": "Queue Item Updated",
     "queue_item.scheduled": "Queue Item Scheduled",
     "queue_item.completed": "Queue Item Completed",
     "estimate.created": "Estimate Created",
@@ -228,9 +308,15 @@ function actionLabel(action: string) {
     "invoice.recurring_draft_created": "Recurring Draft Created",
     "invoice.split_created": "Split Invoices Created",
     "job_session.started": "Job Session Started",
+    "job_session.resumed": "Job Session Resumed",
     "job_session.stopped": "Job Session Stopped",
     "job_session.breakdown_saved": "Job Time Breakdown Saved",
     "job_session.breakdown_skipped": "Job Time Breakdown Skipped",
+    "technician.job_session_started": "Technician Session Started",
+    "technician.job_session_resumed": "Technician Session Resumed",
+    "technician.job_session_paused": "Technician Session Paused",
+    "technician.job_session_stopped": "Technician Session Stopped",
+    "technician.job_completed": "Technician Job Completed",
     "access_request.created": "Access Request Created",
     "import.clients_csv_completed": "Client CSV Import",
     "import.invoices_csv_completed": "Invoice CSV Import",
@@ -252,7 +338,7 @@ function actionTone(action: string) {
     return "text-sky-300 border-sky-500/30 bg-sky-500/10";
   }
 
-  if (action.startsWith("job_session")) {
+  if (action.startsWith("job_session") || action.startsWith("technician")) {
     return "text-teal-200 border-teal-400/30 bg-teal-400/10";
   }
 
@@ -288,7 +374,7 @@ function actionAccent(action: string) {
     return "bg-sky-300 shadow-[0_0_24px_rgba(125,211,252,0.5)]";
   }
 
-  if (action.startsWith("job_session")) {
+  if (action.startsWith("job_session") || action.startsWith("technician")) {
     return "bg-teal-300 shadow-[0_0_24px_rgba(94,234,212,0.5)]";
   }
 
@@ -305,6 +391,49 @@ function actionAccent(action: string) {
 
 function detailChips(log: ActivityLog): DetailChip[] {
   const details = log.details ?? {};
+  const changes = Array.isArray(details.changes)
+    ? details.changes
+        .filter(
+          (
+            change
+          ): change is {
+            label?: unknown;
+            field?: unknown;
+            previousValue?: unknown;
+            newValue?: unknown;
+          } => Boolean(change) && typeof change === "object"
+        )
+        .slice(0, 4)
+    : [];
+
+  if (changes.length > 0) {
+    return changes
+      .map((change) => {
+        const label =
+          typeof change.label === "string"
+            ? change.label
+            : typeof change.field === "string"
+              ? prettifyKey(change.field)
+              : "Changed";
+        const isDateField =
+          typeof change.field === "string" &&
+          change.field.toLowerCase().includes("date");
+        const previousValue =
+          isDateField && typeof change.previousValue === "string"
+            ? formatDate(change.previousValue)
+            : formatDetailValue(change.previousValue);
+        const newValue =
+          isDateField && typeof change.newValue === "string"
+            ? formatDate(change.newValue)
+            : formatDetailValue(change.newValue);
+
+        return {
+          label,
+          value: `${previousValue || "Blank"} -> ${newValue || "Blank"}`,
+        };
+      })
+      .filter((chip) => chip.value.length > 0);
+  }
 
   if (
     log.action === "invoice.email_sent" ||
@@ -387,12 +516,20 @@ function detailChips(log: ActivityLog): DetailChip[] {
     ].filter((chip) => chip.value.length > 0);
   }
 
-  if (log.action.startsWith("job_session")) {
+  if (
+    log.action.startsWith("job_session") ||
+    log.action.startsWith("technician.job_session")
+  ) {
     return [
       { label: "Job Type", value: formatDetailValue(details.jobType) },
       { label: "Started", value: formatDateTime(details.startedAt) },
       { label: "Ended", value: formatDateTime(details.endedAt) },
       { label: "Minutes", value: formatDetailValue(details.totalMinutes) },
+      { label: "Queue Item", value: formatDetailValue(details.queueItemId) },
+      {
+        label: "Resumed",
+        value: formatDetailValue(details.resumedFromPriorSession),
+      },
       { label: "Assigned", value: formatDetailValue(details.assignedMinutes) },
       { label: "Work Types", value: formatDetailValue(details.workTypes) },
       { label: "Note", value: formatDetailValue(details.notes) },
@@ -446,6 +583,7 @@ function entityHref(log: ActivityLog, businessSlug: string) {
 function normalizeActivityFilter(value: string | undefined): ActivityTypeFilter {
   if (
     value === "queue" ||
+    value === "operations" ||
     value === "estimate" ||
     value === "invoice" ||
     value === "payment" ||
@@ -472,6 +610,16 @@ function activityMatchesType(log: ActivityLog, filter: ActivityTypeFilter) {
 
   if (filter === "queue") {
     return log.action.startsWith("queue_item") || log.entity_type === "queue_item";
+  }
+
+  if (filter === "operations") {
+    return (
+      log.action.startsWith("queue_item") ||
+      log.action.startsWith("job_session") ||
+      log.action.startsWith("technician") ||
+      log.entity_type === "queue_item" ||
+      log.entity_type === "job_session"
+    );
   }
 
   return log.action.startsWith(filter) || log.entity_type === filter;
@@ -550,6 +698,202 @@ function buildAuditSignals(logs: ActivityLog[]): AuditSignal[] {
       detail: "Stored check or remittance images linked to payment actions",
       status:
         paymentAttachmentCount > 0 ? "ready" : paymentCount > 0 ? "watch" : "quiet",
+    },
+  ];
+}
+
+function buildOperationalSignals(logs: ActivityLog[]): OperationalSignal[] {
+  const queueLogs = logs.filter(
+    (log) => log.action.startsWith("queue_item") || log.entity_type === "queue_item"
+  );
+  const changeLogs = queueLogs.filter((log) => extractActivityChanges(log).length > 0);
+  const priorityChangeLogs = changeLogs.filter((log) =>
+    extractActivityChanges(log).some((change) => change.field === "priority")
+  );
+  const scheduleChangeLogs = changeLogs.filter((log) =>
+    extractActivityChanges(log).some((change) =>
+      ["scheduled_date", "ready_date", "completed_date", "move_out_date"].includes(
+        change.field
+      )
+    )
+  );
+  const statusChangeLogs = changeLogs.filter((log) =>
+    extractActivityChanges(log).some((change) => change.field === "status")
+  );
+  const latestActivityDay = dateOnly(
+    logs.reduce<string | null>((latest, log) => {
+      if (!log.created_at) {
+        return latest;
+      }
+
+      if (!latest) {
+        return log.created_at;
+      }
+
+      return new Date(log.created_at).getTime() > new Date(latest).getTime()
+        ? log.created_at
+        : latest;
+    }, null)
+  );
+  const sameDayPriorityChanges = priorityChangeLogs.filter((log) => {
+    const createdDate = dateOnly(log.created_at);
+
+    return Boolean(createdDate && latestActivityDay && createdDate === latestActivityDay);
+  }).length;
+  const interruptionLogs = logs.filter(
+    (log) =>
+      log.action.includes("job_session_paused") ||
+      log.action === "job_session.stopped" ||
+      log.action === "technician.job_session_stopped" ||
+      log.action === "technician.job_session_paused"
+  );
+  const resumeLogs = logs.filter(
+    (log) =>
+      log.action === "job_session.resumed" ||
+      log.action === "technician.job_session_resumed"
+  );
+  const changesByEntity = new Map<string, number>();
+
+  changeLogs.forEach((log) => {
+    const entityKey =
+      log.entity_id || `${log.entity_type}:${log.entity_label || "unknown"}`;
+    changesByEntity.set(entityKey, (changesByEntity.get(entityKey) ?? 0) + 1);
+  });
+
+  const mostVolatileCount = Math.max(0, ...Array.from(changesByEntity.values()));
+
+  return [
+    {
+      label: "Priority Changes",
+      value: String(priorityChangeLogs.length),
+      detail: "Tracked with previous and new priority values",
+      status: priorityChangeLogs.length > 0 ? "ready" : "quiet",
+    },
+    {
+      label: "Date Changes",
+      value: String(scheduleChangeLogs.length),
+      detail: "Scheduled, ready, move-out, and completion date changes",
+      status: scheduleChangeLogs.length > 0 ? "ready" : "quiet",
+    },
+    {
+      label: "Status Moves",
+      value: String(statusChangeLogs.length),
+      detail: "Queue status movement across edit, schedule, and technician flows",
+      status: statusChangeLogs.length > 0 ? "ready" : "quiet",
+    },
+    {
+      label: "Session Interruptions",
+      value: String(interruptionLogs.length),
+      detail: "Stopped or paused job sessions that can explain disruption",
+      status: interruptionLogs.length > 0 ? "watch" : "quiet",
+    },
+    {
+      label: "Session Resumes",
+      value: String(resumeLogs.length),
+      detail: "Interrupted work that was picked back up",
+      status: resumeLogs.length > 0 ? "ready" : "quiet",
+    },
+    {
+      label: "Same-Day Priority",
+      value: String(sameDayPriorityChanges),
+      detail: "Priority changes on the latest activity day in this view",
+      status: sameDayPriorityChanges > 0 ? "watch" : "quiet",
+    },
+    {
+      label: "Most Changed Job",
+      value: mostVolatileCount > 0 ? String(mostVolatileCount) : "-",
+      detail: "Highest number of captured change events on one queue item",
+      status: mostVolatileCount > 1 ? "watch" : mostVolatileCount > 0 ? "ready" : "quiet",
+    },
+  ];
+}
+
+function buildReportingReadiness(logs: ActivityLog[]): ReportingReadinessItem[] {
+  const changeLogs = logs.filter((log) => extractActivityChanges(log).length > 0);
+  const queueChangeLogs = changeLogs.filter(
+    (log) => log.action.startsWith("queue_item") || log.entity_type === "queue_item"
+  );
+  const priorityChanges = queueChangeLogs.filter((log) =>
+    extractActivityChanges(log).some((change) => change.field === "priority")
+  );
+  const dateChanges = queueChangeLogs.filter((log) =>
+    extractActivityChanges(log).some((change) =>
+      [
+        "scheduled_date",
+        "ready_date",
+        "move_out_date",
+        "completed_date",
+        "property_deadline",
+        "deadline",
+      ].includes(change.field)
+    )
+  );
+  const assignmentChanges = queueChangeLogs.filter((log) =>
+    extractActivityChanges(log).some((change) =>
+      ["property", "unit", "assigned_to_user_id", "assigned_to"].includes(
+        change.field
+      )
+    )
+  );
+  const interruptionLogs = logs.filter(
+    (log) =>
+      log.action.includes("job_session_paused") ||
+      log.action === "job_session.stopped" ||
+      log.action === "technician.job_session_stopped" ||
+      log.action === "technician.job_session_paused"
+  );
+  const actorCount = new Set(
+    logs.map((log) => log.actor_email).filter((email): email is string => Boolean(email))
+  ).size;
+  const proofLogs = logs.filter(
+    (log) =>
+      log.details?.pdf_attached === true ||
+      Boolean(log.details?.paymentAttachmentId) ||
+      Boolean(log.details?.paymentImagePath)
+  );
+
+  return [
+    {
+      label: "Priority Analytics",
+      value: String(priorityChanges.length),
+      detail:
+        "Supports priority changes by property, unit, user, and same-day follow-up when queue metadata is present.",
+      status: priorityChanges.length > 0 ? "ready" : "quiet",
+    },
+    {
+      label: "Schedule Volatility",
+      value: String(dateChanges.length),
+      detail:
+        "Supports date change frequency, schedule volatility, and average changes before completion.",
+      status: dateChanges.length > 0 ? "ready" : "quiet",
+    },
+    {
+      label: "Reassignment Trail",
+      value: String(assignmentChanges.length),
+      detail:
+        "Supports property, unit, and assignment movement reports without a second tracking table.",
+      status: assignmentChanges.length > 0 ? "ready" : "quiet",
+    },
+    {
+      label: "Interruptions",
+      value: String(interruptionLogs.length),
+      detail:
+        "Supports mid-project interruption review using pause and stop activity.",
+      status: interruptionLogs.length > 0 ? "watch" : "quiet",
+    },
+    {
+      label: "User History",
+      value: String(actorCount),
+      detail:
+        "Supports user activity history and accountability across the filtered activity view.",
+      status: actorCount > 0 ? "ready" : "quiet",
+    },
+    {
+      label: "Proof Reporting",
+      value: String(proofLogs.length),
+      detail:
+        "Supports PDF, send, payment image, and audit packet reporting from the same trail.",
+      status: proofLogs.length > 0 ? "ready" : "watch",
     },
   ];
 }
@@ -699,6 +1043,14 @@ function ActivityPageContent() {
     ];
   }, [businessSlug, logs]);
   const auditSignals = useMemo(() => buildAuditSignals(filteredLogs), [filteredLogs]);
+  const operationalSignals = useMemo(
+    () => buildOperationalSignals(filteredLogs),
+    [filteredLogs]
+  );
+  const reportingReadiness = useMemo(
+    () => buildReportingReadiness(filteredLogs),
+    [filteredLogs]
+  );
   const exportFileName = useMemo(() => {
     const parts = [
       "trimax-audit-trail",
@@ -774,6 +1126,109 @@ function ActivityPageContent() {
                   {item.detail}
                 </p>
               </Link>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="activity-operations-card border-cyan-500/20 bg-gradient-to-br from-zinc-950 via-slate-950 to-zinc-900">
+          <div>
+            <p className="text-sm uppercase tracking-[0.3em] text-cyan-200">
+              Operations Intelligence
+            </p>
+
+            <h2 className="mt-2 text-2xl font-black text-white">
+              Schedule and workload signals
+            </h2>
+
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
+              These counts come from the same activity trail. They show whether
+              Trimax is already collecting enough history for priority,
+              schedule, interruption, and bottleneck reports.
+            </p>
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {operationalSignals.map((signal) => {
+              const tone =
+                signal.status === "ready"
+                  ? "border-cyan-400/30 bg-cyan-400/10 text-cyan-100"
+                  : signal.status === "watch"
+                    ? "border-amber-400/30 bg-amber-400/10 text-amber-100"
+                    : "border-zinc-700 bg-black/20 text-zinc-300";
+
+              return (
+                <div
+                  key={signal.label}
+                  className={`activity-operations-signal rounded-2xl border p-4 ${tone}`}
+                >
+                  <p className="text-xs font-black uppercase tracking-[0.22em] opacity-80">
+                    {signal.label}
+                  </p>
+
+                  <p className="mt-3 text-3xl font-black">{signal.value}</p>
+
+                  <p className="mt-2 text-sm leading-5 opacity-80">
+                    {signal.detail}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+
+        <Card className="activity-reporting-card border-orange-500/20 bg-gradient-to-br from-zinc-950 via-zinc-900 to-slate-950">
+          <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-start">
+            <div>
+              <p className="text-sm uppercase tracking-[0.3em] text-orange-300">
+                Reporting Readiness
+              </p>
+
+              <h2 className="mt-2 text-2xl font-black text-white">
+                Analytics this trail can already support
+              </h2>
+
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
+                Trimax uses the existing activity log as the source of truth.
+                This matrix shows which future reports can be generated without
+                creating duplicate tracking systems.
+              </p>
+            </div>
+
+            <div className="activity-reporting-score rounded-2xl border border-white/10 bg-black/25 px-4 py-3">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">
+                Ready Signals
+              </p>
+              <p className="mt-2 text-3xl font-black text-white">
+                {
+                  reportingReadiness.filter(
+                    (item) => item.status === "ready"
+                  ).length
+                }
+                /{reportingReadiness.length}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {reportingReadiness.map((item) => (
+              <div
+                key={item.label}
+                data-status={item.status}
+                className="activity-reporting-item rounded-2xl border border-white/10 bg-black/25 p-4"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">
+                    {item.label}
+                  </p>
+                  <span className="activity-reporting-value rounded-full border border-white/10 bg-white/10 px-3 py-1 text-sm font-black text-white">
+                    {item.value}
+                  </span>
+                </div>
+
+                <p className="mt-3 text-sm leading-6 text-zinc-400">
+                  {item.detail}
+                </p>
+              </div>
             ))}
           </div>
         </Card>

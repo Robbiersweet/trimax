@@ -32,6 +32,7 @@ type QueueScheduleItem = {
 };
 
 type ScheduleView = "scheduled" | "today" | "week" | "ready";
+type ScheduleStateTone = "set" | "today" | "soon" | "needs" | "overdue";
 
 function dateValue(value: string | null) {
   if (!value) {
@@ -78,6 +79,36 @@ function daysFromToday(value: string | null) {
   return Math.round((date.getTime() - today.getTime()) / 86400000);
 }
 
+function scheduleState(item: QueueScheduleItem): {
+  label: string;
+  tone: ScheduleStateTone;
+} {
+  const scheduledDays = daysFromToday(item.scheduled_date);
+  const readyDays = daysFromToday(item.ready_date);
+
+  if (scheduledDays !== null) {
+    if (scheduledDays < 0) {
+      return { label: "Overdue scheduled job", tone: "overdue" };
+    }
+
+    if (scheduledDays === 0) {
+      return { label: "Today", tone: "today" };
+    }
+
+    if (scheduledDays <= 7) {
+      return { label: `${scheduledDays} days out`, tone: "soon" };
+    }
+
+    return { label: "Calendar set", tone: "set" };
+  }
+
+  if (readyDays !== null && readyDays <= 7) {
+    return { label: "Needs a date", tone: "needs" };
+  }
+
+  return { label: "Needs review", tone: "needs" };
+}
+
 function jobTitle(item: QueueScheduleItem) {
   const property = item.property || "Property";
   const displayUnit = maybeCanonicalApartmentUnitLabel(item.unit);
@@ -113,7 +144,7 @@ function scheduleHref(
     params.set("property", property);
   }
 
-  return `/schedule?${params.toString()}`;
+  return `/schedule?${params.toString()}#schedule-results`;
 }
 
 export default async function SchedulePage({
@@ -204,6 +235,14 @@ export default async function SchedulePage({
 
     return ready && ready <= weekEnd && !item.scheduled_date && !item.completed_date;
   });
+  const needsDateItems = propertyScopedItems.filter(
+    (item) => !item.scheduled_date && !item.completed_date
+  );
+  const overdueScheduledItems = scheduledItems.filter((item) => {
+    const scheduled = dateValue(item.scheduled_date);
+
+    return scheduled && scheduled < today;
+  });
 
   const visibleItems =
     activeView === "today"
@@ -219,36 +258,41 @@ export default async function SchedulePage({
     label: string;
     count: number;
     detail: string;
+    cue: string;
   }[] = [
     {
       view: "scheduled",
       label: "Scheduled",
       count: scheduledItems.length,
       detail: "All open jobs with a work date.",
+      cue: "Calendar set",
     },
     {
       view: "today",
       label: "Today",
       count: todayItems.length,
       detail: "Jobs planned for today.",
+      cue: "Dispatch focus",
     },
     {
       view: "week",
       label: "Next 7 Days",
       count: weekItems.length,
       detail: "Upcoming work for this week.",
+      cue: "Near-term plan",
     },
     {
       view: "ready",
       label: "Ready, Not Scheduled",
       count: readyUnscheduledItems.length,
       detail: "Units needing a work date.",
+      cue: "Needs date",
     },
   ];
 
   return (
     <AppShell>
-      <div className="space-y-6">
+      <div className="schedule-page space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
@@ -265,6 +309,80 @@ export default async function SchedulePage({
           </Link>
         </div>
 
+        <Card className="schedule-planning-strip border-cyan-500/20 bg-zinc-950/70 p-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.22em]">
+                Schedule Compass
+              </p>
+              <h2 className="mt-1 text-xl font-black text-white">
+                Dispatch view for {selectedBusiness?.name ?? "this workspace"}
+              </h2>
+              <p className="mt-1 max-w-3xl text-sm leading-6 text-zinc-300">
+                See what is set, what is due today, what is coming up, and what
+                still needs a date without digging through the queue.
+              </p>
+            </div>
+
+            <Link
+              href={scheduleHref(businessSlug, "ready", propertyFilter)}
+              className="schedule-planning-action rounded-2xl border border-amber-300/30 bg-amber-400/10 px-4 py-3 text-sm font-black text-amber-100 transition hover:-translate-y-0.5 hover:border-amber-200"
+            >
+              Review unscheduled work
+            </Link>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {[
+              {
+                label: "Today",
+                value: todayItems.length,
+                detail: "Jobs planned now",
+                href: scheduleHref(businessSlug, "today", propertyFilter),
+                tone: "sky",
+              },
+              {
+                label: "Next 7 Days",
+                value: weekItems.length,
+                detail: "Near-term work",
+                href: scheduleHref(businessSlug, "week", propertyFilter),
+                tone: "emerald",
+              },
+              {
+                label: "Needs Date",
+                value: needsDateItems.length,
+                detail: "Open unscheduled",
+                href: scheduleHref(businessSlug, "ready", propertyFilter),
+                tone: "amber",
+              },
+              {
+                label: "Overdue",
+                value: overdueScheduledItems.length,
+                detail: "Schedule review",
+                href: scheduleHref(businessSlug, "scheduled", propertyFilter),
+                tone: "rose",
+              },
+            ].map((item) => (
+              <Link
+                key={item.label}
+                href={item.href}
+                data-tone={item.tone}
+                className="schedule-planning-card rounded-2xl border border-white/10 bg-white/[0.04] p-4 transition hover:-translate-y-0.5 hover:border-cyan-300/60"
+              >
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-zinc-400">
+                  {item.label}
+                </p>
+                <p className="mt-2 text-3xl font-black text-white">
+                  {item.value}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-zinc-300">
+                  {item.detail}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </Card>
+
         {scheduleLoadMessage ? (
           <Card className="app-notice-card border-amber-500/40 bg-amber-500/10">
             <p className="font-semibold">Schedule notice</p>
@@ -273,7 +391,7 @@ export default async function SchedulePage({
         ) : null}
 
         <Card className="schedule-hero-card border-sky-500/20 bg-gradient-to-br from-sky-500/10 via-zinc-900 to-orange-500/5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(20rem,0.6fr)] xl:items-end">
             <div>
               <p className="text-sm uppercase tracking-[0.3em] text-sky-300">
                 Work Calendar
@@ -294,8 +412,26 @@ export default async function SchedulePage({
               </p>
             </div>
 
-            <div className="schedule-hero-count rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-300">
-              {scheduledItems.length} open scheduled jobs
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+              <ScheduleMetric
+                label="Calendar Set"
+                value={scheduledItems.length}
+                detail="Open jobs with scheduled work dates"
+              />
+              <ScheduleMetric
+                label="Needs A Date"
+                value={needsDateItems.length}
+                detail="Open queue items missing a scheduled date"
+              />
+              <ScheduleMetric
+                label="Schedule Health"
+                value={
+                  overdueScheduledItems.length > 0
+                    ? `${overdueScheduledItems.length} late`
+                    : "Clear"
+                }
+                detail="Overdue scheduled jobs needing review"
+              />
             </div>
           </div>
         </Card>
@@ -305,17 +441,23 @@ export default async function SchedulePage({
             <Link
               key={card.view}
               href={scheduleHref(businessSlug, card.view, propertyFilter)}
-              className={`rounded-3xl border p-5 transition hover:-translate-y-0.5 ${
+              scroll={false}
+              className={`schedule-view-card rounded-2xl border p-5 transition hover:-translate-y-0.5 ${
                 activeView === card.view
-                  ? "border-sky-600 bg-sky-600 text-white shadow-lg shadow-sky-900/15"
-                  : "border-slate-200 bg-white text-slate-950 hover:border-sky-300 hover:bg-sky-50"
+                  ? "schedule-view-card-active border-sky-500/55 bg-sky-500/15 text-white shadow-lg shadow-sky-950/20"
+                  : "border-zinc-800 bg-zinc-900/80 text-zinc-100 hover:border-sky-500/45 hover:bg-zinc-900"
               }`}
             >
-              <p className="text-sm font-semibold">{card.label}</p>
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-sm font-semibold">{card.label}</p>
+                <span className="schedule-view-cue rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[0.68rem] font-black uppercase tracking-[0.16em] text-zinc-300">
+                  {card.cue}
+                </span>
+              </div>
               <p className="mt-3 text-4xl font-black">{card.count}</p>
               <p
                 className={`mt-2 text-sm ${
-                  activeView === card.view ? "text-white/80" : "text-slate-500"
+                  activeView === card.view ? "text-white/80" : "text-zinc-400"
                 }`}
               >
                 {card.detail}
@@ -325,14 +467,15 @@ export default async function SchedulePage({
         </div>
 
         {propertyOptions.length > 1 ? (
-          <Card className="p-4">
+          <Card className="schedule-property-filter p-4">
             <div className="flex flex-wrap gap-2">
               <Link
                 href={scheduleHref(businessSlug, activeView, "all")}
+                scroll={false}
                 className={`rounded-full px-4 py-2 text-sm font-semibold ${
                   propertyFilter === "all"
                     ? "bg-sky-600 text-white"
-                    : "border border-slate-200 bg-white text-slate-700 hover:border-sky-300 hover:bg-sky-50"
+                    : "border border-zinc-700 bg-zinc-950/50 text-zinc-300 hover:border-sky-500/45 hover:bg-zinc-900"
                 }`}
               >
                 All Properties
@@ -341,10 +484,11 @@ export default async function SchedulePage({
                 <Link
                   key={property}
                   href={scheduleHref(businessSlug, activeView, property)}
+                  scroll={false}
                   className={`rounded-full px-4 py-2 text-sm font-semibold ${
                     propertyFilter === property
                       ? "bg-sky-600 text-white"
-                      : "border border-slate-200 bg-white text-slate-700 hover:border-sky-300 hover:bg-sky-50"
+                      : "border border-zinc-700 bg-zinc-950/50 text-zinc-300 hover:border-sky-500/45 hover:bg-zinc-900"
                   }`}
                 >
                   {property}
@@ -354,7 +498,7 @@ export default async function SchedulePage({
           </Card>
         ) : null}
 
-        <div className="grid gap-4">
+        <div id="schedule-results" className="grid scroll-mt-6 gap-4">
           {visibleItems.length === 0 ? (
             <Card>
               <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
@@ -388,21 +532,23 @@ export default async function SchedulePage({
                 description: jobDescription(item),
               });
               const daysAway = daysFromToday(eventDate);
+              const state = scheduleState(item);
 
               return (
-                <Card key={item.id}>
+                <Card key={item.id} className="schedule-job-card">
                   <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
                     <div>
                       <div className="flex flex-wrap items-center gap-3">
                         <h2 className="text-2xl font-bold">{title}</h2>
                         <StatusBadge status={item.status ?? "Pending Estimate"} />
+                        <ScheduleStatePill state={state} />
                         {item.priority ? (
                           <span className="rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-sm font-semibold text-orange-300">
                             {item.priority} Priority
                           </span>
                         ) : null}
                         {item.unit_layout ? (
-                          <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-sm font-semibold text-sky-300">
+                          <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-sm font-semibold text-sky-100">
                             Layout {item.unit_layout}
                           </span>
                         ) : null}
@@ -476,9 +622,9 @@ function ScheduleFact({
   tone: "green" | "orange" | "zinc";
 }) {
   const toneClasses = {
-    green: "border-emerald-200 bg-emerald-50 text-emerald-800",
-    orange: "border-amber-200 bg-amber-50 text-amber-800",
-    zinc: "border-slate-200 bg-white text-slate-700",
+    green: "schedule-fact-card schedule-fact-green border-emerald-500/30 bg-emerald-500/10 text-emerald-100",
+    orange: "schedule-fact-card schedule-fact-orange border-amber-500/30 bg-amber-500/10 text-amber-100",
+    zinc: "schedule-fact-card schedule-fact-zinc border-zinc-700 bg-zinc-950/50 text-zinc-200",
   };
 
   return (
@@ -486,5 +632,47 @@ function ScheduleFact({
       <p className="text-xs uppercase tracking-[0.25em] opacity-75">{label}</p>
       <p className="mt-2 text-lg font-bold">{value}</p>
     </div>
+  );
+}
+
+function ScheduleMetric({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: number | string;
+  detail: string;
+}) {
+  return (
+    <div className="schedule-hero-count rounded-2xl border border-zinc-800 bg-zinc-950/80 px-4 py-3 text-sm text-zinc-300">
+      <p className="text-xs font-black uppercase tracking-[0.22em] text-zinc-500">
+        {label}
+      </p>
+      <p className="mt-2 text-3xl font-black text-white">{value}</p>
+      <p className="mt-1 leading-5">{detail}</p>
+    </div>
+  );
+}
+
+function ScheduleStatePill({
+  state,
+}: {
+  state: { label: string; tone: ScheduleStateTone };
+}) {
+  const toneClasses = {
+    set: "border-sky-500/30 bg-sky-500/10 text-sky-100",
+    today: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
+    soon: "border-cyan-500/30 bg-cyan-500/10 text-cyan-100",
+    needs: "border-amber-500/35 bg-amber-500/10 text-amber-200",
+    overdue: "border-rose-500/35 bg-rose-500/10 text-rose-200",
+  };
+
+  return (
+    <span
+      className={`schedule-state-pill rounded-full border px-3 py-1 text-sm font-semibold ${toneClasses[state.tone]}`}
+    >
+      {state.label}
+    </span>
   );
 }

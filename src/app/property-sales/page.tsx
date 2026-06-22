@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { type CSSProperties } from "react";
 import AppShell from "../components/AppShell";
 import Card from "../components/Card";
 import CopyManagerBriefButton from "../components/CopyManagerBriefButton";
+import PresentationCueDeck from "../components/PresentationCueDeck";
 import { supabase } from "../lib/supabase";
 
 type Business = {
@@ -710,6 +712,45 @@ export default async function PropertySalesPage({
   const unitHistory = buildUnitHistory(queueItems, estimates, invoices, sessions);
   const propertyOptions = buildPropertyOptions(queueItems, propertyLabel);
   const propertySlug = propertyLabelToSlug(propertyLabel);
+  const showcaseHref = `/property-sales?business=${businessSlug}&demo=evergreen`;
+  const livePropertyHref = `/property-sales?business=${businessSlug}&property=${
+    isDemo ? "north-creek-apartments" : propertySlug
+  }`;
+  const demoSafetySignals = isDemo
+    ? [
+        {
+          label: "Private Sample",
+          value: "No live property data",
+          detail: "Evergreen mode uses seeded demo turns, invoices, estimates, and labor.",
+        },
+        {
+          label: "Meeting Safe",
+          value: "Client-ready",
+          detail: "Apartment names, unit labels, and totals are fictional for presentation.",
+        },
+        {
+          label: "Sales Focus",
+          value: "Show the system",
+          detail: "Demonstrate pipeline, proof, history, billing, and follow-up without exposing North Creek.",
+        },
+      ]
+    : [
+        {
+          label: "Live Workspace",
+          value: propertyLabel,
+          detail: "This view may include real operational records for the selected property.",
+        },
+        {
+          label: "Switch to Demo",
+          value: "Evergreen",
+          detail: "Use private sample data before sharing Trimax with prospects.",
+        },
+        {
+          label: "Client Safety",
+          value: "Protect live work",
+          detail: "North Creek and other live apartment data should stay out of sales meetings.",
+        },
+      ];
   const hasBillingWithoutTurnPipeline =
     !isDemo && pipelineCards.length === 0 && invoices.length > 0;
   const hasNoTurnPipeline = pipelineCards.length === 0;
@@ -833,6 +874,126 @@ export default async function PropertySalesPage({
         "Show how Trimax keeps next steps visible: reminders, payment proof, missing records, and the exact work R&L owns next.",
     },
   ];
+  const meetingCloseLines = [
+    "You will not need to chase me for status updates.",
+    "Every unit has a visible path from request to invoice.",
+    "Photos, notes, pricing, scheduling, and billing stay attached to the job.",
+    "This is the operating system I use to protect your turnover schedule.",
+  ];
+  const bidRoomScenarios = [
+    {
+      label: "Apartment Paint",
+      promise: "Turns stay visible from move-out to invoice.",
+      proof: "Paint color, unit layout, schedule date, completion photos, and invoice history stay attached.",
+    },
+    {
+      label: "Fence Work",
+      promise: "Exterior repairs get scoped, priced, scheduled, and proven.",
+      proof: "Before photos, material notes, approved estimate, job status, and final proof live in one record.",
+    },
+    {
+      label: "Tree Work",
+      promise: "Risky outdoor work becomes documented instead of verbal.",
+      proof: "Location notes, urgency, access details, crew time, and completion photos create a record.",
+    },
+    {
+      label: "Outlet Repairs",
+      promise: "Small maintenance calls stop falling through the cracks.",
+      proof: "Unit, issue, priority, technician notes, status updates, and billing trail are easy to show.",
+    },
+  ];
+  const managerObjectionAnswers = [
+    {
+      objection: "How do I know what is happening?",
+      answer: "Every request has a visible status, next step, and history instead of scattered texts.",
+    },
+    {
+      objection: "How do I know the work was done?",
+      answer: "Trimax keeps photos, notes, labor, invoices, and completion proof attached to the job.",
+    },
+    {
+      objection: "Can you handle more than paint?",
+      answer: "The same workflow supports turns, fences, tree work, outlet repairs, and maintenance requests.",
+    },
+    {
+      objection: "Will billing be clean?",
+      answer: "Estimates, deposits, invoices, payments, reminders, PDFs, and audit history stay connected.",
+    },
+  ];
+  const advantageMapNodes = [
+    {
+      label: "Request",
+      detail: "Manager sends the job",
+      tone: "request",
+    },
+    {
+      label: "Scope",
+      detail: "Photos, notes, trade, unit, and priority",
+      tone: "scope",
+    },
+    {
+      label: "Price",
+      detail: "Estimate, approval, deposit, and terms",
+      tone: "price",
+    },
+    {
+      label: "Schedule",
+      detail: "Dates, readiness, tech handoff, and status",
+      tone: "schedule",
+    },
+    {
+      label: "Proof",
+      detail: "Photos, labor, notes, completion, and audit trail",
+      tone: "proof",
+    },
+    {
+      label: "Collect",
+      detail: "Invoice, reminder, payment, check image, and history",
+      tone: "collect",
+    },
+  ];
+  const presentationCues = [
+    {
+      kicker: "Open",
+      title: "I am not just bidding labor. I am showing you the system behind the work.",
+      detail:
+        "Trimax gives the manager one place to see requests, pricing, schedules, proof, billing, and history.",
+      proof:
+        "Start with the pipeline and show that every job has a visible status.",
+    },
+    {
+      kicker: "Control",
+      title: "Every job has a next step, even when the work type changes.",
+      detail:
+        "Painting, fence work, tree work, outlet repairs, and maintenance calls all move through the same organized path.",
+      proof:
+        "Point to the Bid Room scenarios and explain that the workflow adapts to the job.",
+    },
+    {
+      kicker: "Trust",
+      title: "You will not need to chase me for proof.",
+      detail:
+        "Photos, notes, labor, estimates, invoices, reminders, and payment records stay attached to the job.",
+      proof:
+        "Show the unit memory and proof placeholders so they see the audit trail.",
+    },
+    {
+      kicker: "Speed",
+      title: "Bottlenecks are visible before they become emergencies.",
+      detail:
+        "Trimax calls out work waiting on pricing, schedule, completion, proof, or billing follow-up.",
+      proof:
+        "Use the overview cards and manager proof section to show what needs action.",
+    },
+    {
+      kicker: "Close",
+      title: "Hiring R&L means hiring an organized operating system.",
+      detail:
+        "The client gets better communication, cleaner records, faster follow-up, and less uncertainty.",
+      proof:
+        "Copy the sales pitch after the meeting and send a clean follow-up immediately.",
+    },
+  ];
   const managerProofPoints = [
     {
       label: "Status Proof",
@@ -893,6 +1054,129 @@ export default async function PropertySalesPage({
     "- A clear pipeline from request to invoice.",
     "- Unit history with paint, notes, invoices, labor, and proof placeholders.",
     "- Faster follow-up because pricing, schedule, proof, and billing gaps stay visible.",
+  ].join("\n");
+  const bidRoomPitchSummary = [
+    "Trimax / R&L Creations client-safe showcase",
+    "",
+    "What you are hiring:",
+    "A contractor backed by an operating system for property work, not just labor and a phone number.",
+    "",
+    "What Trimax helps manage:",
+    ...bidRoomScenarios.map(
+      (scenario) =>
+        `- ${scenario.label}: ${scenario.promise} ${scenario.proof}`
+    ),
+    "",
+    "Common property-manager concerns Trimax answers:",
+    ...managerObjectionAnswers.map(
+      (item) => `- ${item.objection} ${item.answer}`
+    ),
+    "",
+    "Meeting close:",
+    ...meetingCloseLines.map((line) => `- ${line}`),
+  ].join("\n");
+  const followUpPacketItems = [
+    {
+      label: "Scope Summary",
+      detail: "What was discussed, what trade is involved, and what needs pricing.",
+      proof: "Keeps the bid from becoming a vague verbal promise.",
+    },
+    {
+      label: "Proof Plan",
+      detail: "Which photos, notes, approvals, and completion records will be captured.",
+      proof: "Shows the manager how work will be documented before it starts.",
+    },
+    {
+      label: "Schedule Promise",
+      detail: "How ready dates, scheduled dates, and priority changes stay visible.",
+      proof: "Reduces status-check texts and last-minute confusion.",
+    },
+    {
+      label: "Billing Trail",
+      detail: "How estimate, deposit, invoice, payment, and reminder history stays attached.",
+      proof: "Makes accounting easier for both R&L and the client office.",
+    },
+  ];
+  const followUpPacketSummary = [
+    "R&L Creations / Trimax follow-up packet",
+    "",
+    "Thank you for meeting with me. What separates R&L is not only the work itself, but the operating system behind the work.",
+    "",
+    "What I will provide:",
+    ...followUpPacketItems.map(
+      (item) => `- ${item.label}: ${item.detail} ${item.proof}`
+    ),
+    "",
+    "Trimax helps keep requests, pricing, scheduling, proof, invoicing, payment follow-up, and property history connected in one workflow.",
+  ].join("\n");
+  const confidenceScorecardItems = [
+    {
+      label: "Communication",
+      score: "Clear",
+      contractorRisk: "Scattered calls, texts, and verbal updates.",
+      trimaxEdge: "One visible workflow from request through payment follow-up.",
+    },
+    {
+      label: "Schedule Control",
+      score: "Visible",
+      contractorRisk: "Managers have to ask what is next or what slipped.",
+      trimaxEdge: "Ready dates, scheduled dates, and priority changes stay surfaced.",
+    },
+    {
+      label: "Proof",
+      score: "Attached",
+      contractorRisk: "Photos and notes disappear into phone galleries.",
+      trimaxEdge: "Work proof, notes, labor, documents, and unit history stay connected.",
+    },
+    {
+      label: "Billing",
+      score: "Traceable",
+      contractorRisk: "Invoices, deposits, reminders, and payments become separate chores.",
+      trimaxEdge: "Estimate, invoice, reminder, payment, and check proof history stays together.",
+    },
+  ];
+  const confidenceSummary = [
+    "Trimax contract confidence scorecard",
+    "",
+    "Why R&L is the safer contractor choice:",
+    ...confidenceScorecardItems.map(
+      (item) =>
+        `- ${item.label}: ${item.contractorRisk} Trimax edge: ${item.trimaxEdge}`
+    ),
+    "",
+    "Bottom line: R&L brings the work and the operating system that keeps the work visible.",
+  ].join("\n");
+  const decisionDeskItems = [
+    {
+      cue: "Decision Maker",
+      question: "Who signs off when the work, proof, and invoice are ready?",
+      reason: "Find the approval path before the first job starts.",
+    },
+    {
+      cue: "First Win",
+      question: "Which job would make your team feel the difference fastest?",
+      reason: "Start with a visible request that lets Trimax prove itself quickly.",
+    },
+    {
+      cue: "Communication",
+      question: "Where do updates get lost today?",
+      reason: "Tie the pain directly to Trimax status, proof, and history.",
+    },
+    {
+      cue: "Close",
+      question: "If I send the scope, proof plan, and schedule promise today, what else would you need?",
+      reason: "Turn interest into a concrete next step.",
+    },
+  ];
+  const decisionDeskSummary = [
+    "R&L / Trimax decision desk",
+    "",
+    "Questions to align before the first job:",
+    ...decisionDeskItems.map(
+      (item) => `- ${item.cue}: ${item.question} ${item.reason}`
+    ),
+    "",
+    "Suggested close: I can start with one controlled job, keep every step visible in Trimax, and let the results speak for the bigger relationship.",
   ].join("\n");
 
   const overviewCards = [
@@ -965,7 +1249,7 @@ export default async function PropertySalesPage({
 
             <div className="grid gap-3 sm:grid-cols-2 lg:min-w-72 lg:grid-cols-1">
               <Link
-                href={`/property-sales?business=${businessSlug}&property=${propertySlug}`}
+                href={livePropertyHref}
                 className={`rounded-2xl border px-4 py-3 text-sm font-black transition hover:-translate-y-0.5 ${
                   isDemo
                     ? "border-white/10 bg-white/5 text-sky-100 hover:border-sky-300/60"
@@ -975,7 +1259,7 @@ export default async function PropertySalesPage({
                 Live {propertyLabel === "Evergreen Apartments" ? "Property" : propertyLabel}
               </Link>
               <Link
-                href={`/property-sales?business=${businessSlug}&demo=evergreen`}
+                href={showcaseHref}
                 className={`rounded-2xl border px-4 py-3 text-sm font-black transition hover:-translate-y-0.5 ${
                   isDemo
                     ? "border-emerald-300/60 bg-emerald-400/15 text-white"
@@ -984,6 +1268,59 @@ export default async function PropertySalesPage({
               >
                 Demo Mode: Evergreen
               </Link>
+            </div>
+          </div>
+
+          <div
+            className="property-sales-demo-safety mt-5 rounded-3xl border p-4"
+            data-mode={isDemo ? "demo" : "live"}
+          >
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.24em]">
+                  {isDemo ? "Client-Safe Showcase" : "Live Data Warning"}
+                </p>
+                <h2 className="mt-2 text-2xl font-black text-white">
+                  {isDemo
+                    ? "Evergreen mode is safe for sales meetings"
+                    : "Switch to Evergreen before showing prospects"}
+                </h2>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
+                  {isDemo
+                    ? "Use this mode when bidding against other contractors. It shows the Trimax operating advantage without revealing North Creek or any live apartment records."
+                    : "This page can show real property data. Use the private Evergreen demo when presenting Trimax to apartment managers, commercial clients, or prospects."}
+                </p>
+              </div>
+
+              <Link
+                href={isDemo ? livePropertyHref : showcaseHref}
+                className={`inline-flex items-center justify-center rounded-2xl border px-4 py-3 text-sm font-black transition hover:-translate-y-0.5 ${
+                  isDemo
+                    ? "border-white/10 bg-white/5 text-zinc-100 hover:border-sky-300/60"
+                    : "border-emerald-300/50 bg-emerald-400/15 text-white hover:border-emerald-200"
+                }`}
+              >
+                {isDemo ? "Back to live property" : "Open safe demo"}
+              </Link>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              {demoSafetySignals.map((signal) => (
+                <div
+                  key={signal.label}
+                  className="property-sales-demo-signal rounded-2xl border border-white/10 bg-black/20 p-4"
+                >
+                  <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.18em]">
+                    {signal.label}
+                  </p>
+                  <p className="mt-2 text-lg font-black text-white">
+                    {signal.value}
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-zinc-300">
+                    {signal.detail}
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -1065,7 +1402,7 @@ export default async function PropertySalesPage({
                 </p>
               </div>
               <Link
-                href={`/property-sales?business=${businessSlug}&demo=evergreen`}
+                href={showcaseHref}
                 className="inline-flex items-center justify-center rounded-2xl border border-cyan-300/40 bg-cyan-400/10 px-4 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:border-cyan-200"
               >
                 Open Private Demo
@@ -1091,7 +1428,349 @@ export default async function PropertySalesPage({
               ))}
             </div>
           </div>
+
+          {isDemo ? (
+            <div className="property-sales-close-card mt-5 rounded-3xl border border-emerald-300/20 bg-emerald-400/10 p-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.22em]">
+                    Bid Meeting Close
+                  </p>
+                  <h3 className="mt-2 text-2xl font-black text-white">
+                    What Trimax lets you promise
+                  </h3>
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
+                    These are the client-facing takeaways that separate R&L from
+                    contractors who only provide a price and a phone number.
+                  </p>
+                </div>
+                <span className="rounded-full border border-emerald-300/30 bg-emerald-400/10 px-4 py-2 text-sm font-black text-white">
+                  Demo-safe talking points
+                </span>
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                {meetingCloseLines.map((line) => (
+                  <div
+                    key={line}
+                    className="property-sales-close-line rounded-2xl border border-white/10 bg-black/20 p-4"
+                  >
+                    <p className="text-sm font-black leading-6 text-white">
+                      {line}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </Card>
+
+        {isDemo ? (
+          <Card className="property-sales-advantage-map dark-surface border-cyan-500/20 bg-zinc-950">
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)] xl:items-center">
+              <div>
+                <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.24em]">
+                  Visual Advantage Map
+                </p>
+                <h2 className="mt-2 text-3xl font-black tracking-tight text-white">
+                  The contractor operating system
+                </h2>
+                <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-300">
+                  This is the picture to show when a prospect asks why R&L is
+                  different. Trimax connects the entire job lifecycle so the
+                  manager can see how work moves, where proof lives, and how
+                  billing stays clean.
+                </p>
+              </div>
+
+              <div
+                className="property-sales-advantage-graphic"
+                aria-label="Trimax request to payment workflow graphic"
+              >
+                <div className="property-sales-advantage-core">
+                  <span>TRIMAX</span>
+                  <strong>Control Center</strong>
+                </div>
+
+                <div className="property-sales-advantage-ring">
+                  {advantageMapNodes.map((node, index) => (
+                    <div
+                      key={node.label}
+                      className="property-sales-advantage-node"
+                      data-tone={node.tone}
+                      style={
+                        {
+                          "--node-index": index,
+                        } as CSSProperties
+                      }
+                    >
+                      <span>{String(index + 1).padStart(2, "0")}</span>
+                      <strong>{node.label}</strong>
+                      <small>{node.detail}</small>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </Card>
+        ) : null}
+
+        {isDemo ? (
+          <Card className="property-sales-confidence-scorecard dark-surface border-emerald-500/20 bg-zinc-950">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+              <div>
+                <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.24em]">
+                  Contract Confidence Scorecard
+                </p>
+                <h2 className="mt-2 text-3xl font-black tracking-tight text-white">
+                  Make the safer choice obvious
+                </h2>
+                <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-300">
+                  Use this in a bid meeting to translate Trimax into the things
+                  property managers actually care about: fewer status checks,
+                  cleaner proof, less billing friction, and a contractor they
+                  can trust with repeat work.
+                </p>
+              </div>
+
+              <CopyManagerBriefButton
+                brief={confidenceSummary}
+                label="Copy Confidence Summary"
+                copiedLabel="Confidence copied"
+              />
+            </div>
+
+            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              {confidenceScorecardItems.map((item) => (
+                <div
+                  key={item.label}
+                  className="property-sales-confidence-score rounded-2xl border border-white/10 bg-black/25 p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.18em]">
+                      {item.label}
+                    </p>
+                    <span className="property-sales-confidence-pill">
+                      {item.score}
+                    </span>
+                  </div>
+                  <div className="mt-4 grid gap-3">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.16em] text-rose-100">
+                        Typical Risk
+                      </p>
+                      <p className="mt-1 text-sm leading-6 text-zinc-300">
+                        {item.contractorRisk}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-100">
+                        Trimax Edge
+                      </p>
+                      <p className="mt-1 text-sm leading-6 text-white">
+                        {item.trimaxEdge}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        ) : null}
+
+        {isDemo ? (
+          <Card className="property-sales-decision-desk dark-surface border-amber-500/20 bg-zinc-950">
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,0.76fr)_minmax(0,1.24fr)] xl:items-start">
+              <div>
+                <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.24em]">
+                  Decision Desk
+                </p>
+                <h2 className="mt-2 text-3xl font-black tracking-tight text-white">
+                  Guide the room toward yes
+                </h2>
+                <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-300">
+                  When the demo is working, the next move is a clean first job.
+                  These questions help uncover who approves the work, what pain
+                  matters most, and what needs to happen before R&L gets the
+                  first opportunity.
+                </p>
+                <div className="mt-4">
+                  <CopyManagerBriefButton
+                    brief={decisionDeskSummary}
+                    label="Copy Decision Desk"
+                    copiedLabel="Decision desk copied"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                {decisionDeskItems.map((item, index) => (
+                  <div
+                    key={item.cue}
+                    className="property-sales-decision-card rounded-2xl border border-white/10 bg-black/25 p-4"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.18em]">
+                          {item.cue}
+                        </p>
+                        <h3 className="mt-2 text-lg font-black leading-6 text-white">
+                          {item.question}
+                        </h3>
+                      </div>
+                      <span className="property-sales-decision-number">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                    </div>
+                    <p className="mt-3 text-sm leading-6 text-zinc-300">
+                      {item.reason}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+        ) : null}
+
+        {isDemo ? (
+          <Card className="property-sales-bid-room dark-surface border-emerald-500/20 bg-zinc-950">
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] xl:items-start">
+                <div>
+                  <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.24em]">
+                    Bid Room
+                </p>
+                <h2 className="mt-2 text-3xl font-black tracking-tight text-white">
+                  Win the contract by showing the operating system
+                </h2>
+                <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-300">
+                  The pitch is bigger than a single trade. Trimax shows the
+                  client that R&L can organize intake, scheduling, proof,
+                  billing, and history for almost any property-service request.
+                </p>
+                <div className="mt-4 rounded-3xl border border-white/10 bg-black/20 p-4">
+                  <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.2em]">
+                    Close the room with this
+                  </p>
+                  <p className="mt-2 text-lg font-black leading-7 text-white">
+                    &quot;You are not just hiring me to do the work. You are hiring
+                    a system that keeps the work visible, documented, and easy
+                    for your office to trust.&quot;
+                  </p>
+                  <div className="mt-4">
+                    <div className="flex flex-wrap gap-3">
+                      <PresentationCueDeck cues={presentationCues} />
+                      <CopyManagerBriefButton
+                        brief={bidRoomPitchSummary}
+                        label="Copy Sales Pitch"
+                        copiedLabel="Sales pitch copied"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                {bidRoomScenarios.map((scenario) => (
+                  <div
+                    key={scenario.label}
+                    className="property-sales-bid-scenario rounded-2xl border border-white/10 bg-black/25 p-4"
+                  >
+                    <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.2em]">
+                      {scenario.label}
+                    </p>
+                    <h3 className="mt-2 text-lg font-black text-white">
+                      {scenario.promise}
+                    </h3>
+                    <p className="mt-2 text-sm leading-6 text-zinc-300">
+                      {scenario.proof}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-3xl border border-cyan-300/20 bg-cyan-400/10 p-4">
+              <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.22em]">
+                    Objection Handler
+                  </p>
+                  <h3 className="mt-2 text-2xl font-black text-white">
+                    Answer the manager before they ask
+                  </h3>
+                </div>
+                <span className="rounded-full border border-cyan-300/30 bg-cyan-400/10 px-4 py-2 text-sm font-black text-white">
+                  Built for sales meetings
+                </span>
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                {managerObjectionAnswers.map((item) => (
+                  <div
+                    key={item.objection}
+                    className="property-sales-objection-card rounded-2xl border border-white/10 bg-black/25 p-4"
+                  >
+                    <p className="text-sm font-black text-white">
+                      {item.objection}
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-zinc-300">
+                      {item.answer}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+        ) : null}
+
+        {isDemo ? (
+          <Card className="property-sales-followup-packet dark-surface border-cyan-500/20 bg-zinc-950">
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] xl:items-start">
+              <div>
+                <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.24em]">
+                  Prospect Follow-Up Packet
+                </p>
+                <h2 className="mt-2 text-3xl font-black tracking-tight text-white">
+                  Leave the room with a polished next step
+                </h2>
+                <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-300">
+                  After the demo, send a clean summary that reminds the prospect
+                  why R&L is different: scoped work, visible schedule, proof,
+                  billing history, and less management friction.
+                </p>
+                <div className="mt-4">
+                  <CopyManagerBriefButton
+                    brief={followUpPacketSummary}
+                    label="Copy Follow-Up Packet"
+                    copiedLabel="Follow-up copied"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                {followUpPacketItems.map((item, index) => (
+                  <div
+                    key={item.label}
+                    className="property-sales-followup-card rounded-2xl border border-white/10 bg-black/25 p-4"
+                  >
+                    <span className="property-sales-followup-number">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <p className="mt-3 text-lg font-black text-white">
+                      {item.label}
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-zinc-300">
+                      {item.detail}
+                    </p>
+                    <p className="mt-3 text-xs font-black uppercase tracking-[0.16em] text-emerald-100">
+                      {item.proof}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+        ) : null}
 
         <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
           <Card className="dark-surface property-sales-selector border-sky-500/20 bg-zinc-950">
@@ -1132,7 +1811,7 @@ export default async function PropertySalesPage({
                 </Link>
               ))}
               <Link
-                href={`/property-sales?business=${businessSlug}&demo=evergreen`}
+                href={showcaseHref}
                 className="rounded-full border border-emerald-300/30 bg-emerald-400/10 px-3 py-2 text-xs font-black text-emerald-100"
               >
                 Evergreen demo

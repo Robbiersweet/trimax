@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useMemo, useState } from "react";
+import { type FormEvent, Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import AppShell from "../components/AppShell";
 import Button from "../components/Button";
@@ -53,7 +53,8 @@ function RequestAccessPageContent() {
     message: string;
   } | null>(null);
 
-  async function handleSubmit() {
+  async function handleSubmit(event?: FormEvent<HTMLFormElement>) {
+    event?.preventDefault();
     setToast(null);
 
     if (!requesterName.trim()) {
@@ -125,22 +126,53 @@ function RequestAccessPageContent() {
         />
       ) : null}
 
-      <div className="mx-auto max-w-2xl">
-        <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
-          Trimax
-        </p>
+      <div className="auth-page mx-auto grid max-w-5xl gap-6 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
+        <div className="auth-hero-panel rounded-3xl border border-white/10 bg-zinc-950/70 p-6">
+          <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
+            Trimax
+          </p>
 
-        <h1 className="mt-3 text-5xl font-bold">
-          Request Access
-        </h1>
+          <h1 className="mt-3 text-5xl font-bold">
+            Request Access
+          </h1>
 
-        <p className="mt-3 text-zinc-400">
-          Send a request for a Trimax workspace.
-          Access is reviewed before any account is
-          created.
-        </p>
+          <p className="mt-3 text-zinc-400">
+            Send a request for a Trimax workspace.
+            Access is reviewed before any account is
+            created.
+          </p>
 
-        <Card className="mt-8">
+          <div className="mt-6 grid gap-3">
+            {[
+              {
+                label: "Reviewed first",
+                detail: "Requests are checked before a user account is created.",
+              },
+              {
+                label: "Scoped roles",
+                detail: "Access can be limited by workspace, role, and operational need.",
+              },
+              {
+                label: "Private operations",
+                detail: "Client, invoice, payment, and job data stay behind approval.",
+              },
+            ].map((item) => (
+              <div
+                key={item.label}
+                className="auth-signal-row rounded-2xl border border-white/10 bg-black/25 p-4"
+              >
+                <p className="font-black text-white">
+                  {item.label}
+                </p>
+                <p className="mt-1 text-sm leading-6 text-zinc-400">
+                  {item.detail}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <Card className="auth-card">
           {submitted ? (
             <div className="grid gap-5">
               <div className="rounded-2xl border border-green-500/30 bg-green-500/10 p-5">
@@ -164,7 +196,16 @@ function RequestAccessPageContent() {
               </Link>
             </div>
           ) : (
-            <div className="grid gap-5">
+            <form className="grid gap-5" onSubmit={handleSubmit}>
+              <div>
+                <p className="text-sm font-black uppercase tracking-[0.22em] text-sky-300">
+                  Approval Request
+                </p>
+                <h2 className="mt-2 text-2xl font-black text-white">
+                  Tell us who needs access
+                </h2>
+              </div>
+
               <div>
                 <label className="mb-2 block text-sm text-zinc-400">
                   Workspace
@@ -175,7 +216,7 @@ function RequestAccessPageContent() {
                   onChange={(event) =>
                     setBusinessSlug(event.target.value)
                   }
-                  className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+                  className="app-form-input w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
                 >
                   {workspaceOptions.map((workspace) => (
                     <option
@@ -222,7 +263,7 @@ function RequestAccessPageContent() {
                   }
                   rows={5}
                   placeholder="Tell us what access you need."
-                  className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition placeholder:text-zinc-500 focus:border-orange-500"
+                  className="app-form-input w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition placeholder:text-zinc-500 focus:border-orange-500"
                 />
               </div>
 
@@ -239,7 +280,7 @@ function RequestAccessPageContent() {
               />
 
               <Button
-                onClick={handleSubmit}
+                type="submit"
                 disabled={saving}
               >
                 {saving
@@ -253,7 +294,7 @@ function RequestAccessPageContent() {
               >
                 Back to login
               </Link>
-            </div>
+            </form>
           )}
         </Card>
       </div>

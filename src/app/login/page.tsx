@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useState } from "react";
+import { type FormEvent, Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import AppShell from "../components/AppShell";
 import Card from "../components/Card";
@@ -35,8 +35,18 @@ function LoginPageContent() {
     message: string;
   } | null>(null);
 
-  async function handleLogin() {
+  async function handleLogin(event?: FormEvent<HTMLFormElement>) {
+    event?.preventDefault();
     setToast(null);
+
+    if (!email.trim() || !password) {
+      setToast({
+        type: "error",
+        message: "Enter your email and password.",
+      });
+      return;
+    }
+
     setLoading(true);
 
     const { data, error } =
@@ -78,28 +88,68 @@ function LoginPageContent() {
         />
       )}
 
-      <div className="mx-auto max-w-md">
-        <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
-          Trimax
-        </p>
+      <div className="auth-page mx-auto grid max-w-5xl gap-6 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
+        <div className="auth-hero-panel rounded-3xl border border-white/10 bg-zinc-950/70 p-6">
+          <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
+            Trimax
+          </p>
 
-        <h1 className="mt-3 text-5xl font-bold">
-          Login
-        </h1>
+          <h1 className="mt-3 text-5xl font-bold">
+            Login
+          </h1>
 
-        <p className="mt-3 text-zinc-400">
-          Sign in to your Trimax workspace.
-          Access is by invitation only.
-        </p>
+          <p className="mt-3 text-zinc-400">
+            Sign in to your Trimax workspace.
+            Access is by invitation only.
+          </p>
 
-        {securityMessage && (
-          <div className="mt-5 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-900">
-            {securityMessage}
+          <div className="mt-6 grid gap-3">
+            {[
+              {
+                label: "Workspace gated",
+                detail: "Only approved users can open operational records.",
+              },
+              {
+                label: "Secure session",
+                detail: "Trimax starts a protected browser session after sign-in.",
+              },
+              {
+                label: "Role-aware app",
+                detail: "Technician, manager, accounting, and owner access stay separated.",
+              },
+            ].map((item) => (
+              <div
+                key={item.label}
+                className="auth-signal-row rounded-2xl border border-white/10 bg-black/25 p-4"
+              >
+                <p className="font-black text-white">
+                  {item.label}
+                </p>
+                <p className="mt-1 text-sm leading-6 text-zinc-400">
+                  {item.detail}
+                </p>
+              </div>
+            ))}
           </div>
-        )}
+        </div>
 
-        <Card className="mt-8">
-          <div className="grid gap-5">
+        <Card className="auth-card">
+          <form className="grid gap-5" onSubmit={handleLogin}>
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.22em] text-sky-300">
+                Secure Access
+              </p>
+              <h2 className="mt-2 text-2xl font-black text-white">
+                Open workspace
+              </h2>
+            </div>
+
+            {securityMessage && (
+              <div className="auth-security-message rounded-2xl border px-4 py-3 text-sm font-semibold">
+                {securityMessage}
+              </div>
+            )}
+
             <InputField
               label="Email"
               placeholder="you@example.com"
@@ -124,7 +174,7 @@ function LoginPageContent() {
               </Link>
             </div>
 
-            <Button onClick={handleLogin}>
+            <Button type="submit" disabled={loading}>
               {loading
                 ? "Opening workspace..."
                 : "Login"}
@@ -143,7 +193,7 @@ function LoginPageContent() {
                 Request access
               </Link>
             </div>
-          </div>
+          </form>
         </Card>
       </div>
     </AppShell>

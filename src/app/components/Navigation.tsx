@@ -15,6 +15,20 @@ import {
 import { loadWorkspaceAccess } from "../lib/workspaceAccess";
 import UserMenu from "./UserMenu";
 
+type NavLink = {
+  key: NavPermissionKey;
+  label: string;
+  href: string;
+  active: boolean;
+  icon: NavIconKey;
+};
+
+type NavSubLink = {
+  label: string;
+  description: string;
+  href: string;
+};
+
 export default function Navigation() {
   const pathname = usePathname();
   const router = useRouter();
@@ -62,15 +76,7 @@ export default function Navigation() {
     };
   }, [business]);
 
-  const navLinks = useMemo<
-    {
-      key: NavPermissionKey;
-      label: string;
-      href: string;
-      active: boolean;
-      icon: NavIconKey;
-    }[]
-  >(
+  const navLinks = useMemo<NavLink[]>(
     () => [
       {
         key: "dashboard",
@@ -96,7 +102,7 @@ export default function Navigation() {
       {
         key: "property_sales",
         label: "Property Sales",
-        href: `/property-sales?business=${business}&property=north-creek-apartments`,
+        href: `/property-sales?business=${business}&demo=evergreen`,
         active: pathname.startsWith("/property-sales"),
         icon: "property_sales",
       },
@@ -153,7 +159,9 @@ export default function Navigation() {
         key: "services",
         label: "Services",
         href: `/services?business=${business}`,
-        active: pathname.startsWith("/services"),
+        active:
+          pathname.startsWith("/services") ||
+          pathname.startsWith("/service-analytics"),
         icon: "services",
       },
       {
@@ -191,26 +199,212 @@ export default function Navigation() {
     [isLoadingRole, navLinks, role]
   );
   const activeLink = visibleNavLinks.find((link) => link.active);
-  const settingsSubLinks = useMemo(
-    () => [
-      {
-        label: "Phone App + Alerts",
-        description: "Install setup",
-        href: `/settings?business=${business}#phone-app-notifications`,
-      },
-      {
-        label: "Email Launch",
-        description: "Sender setup",
-        href: `/settings?business=${business}#outlook-integration`,
-      },
-      {
-        label: "User Role Integration",
-        description: "Portal access",
-        href: `/settings?business=${business}#user-role-integration`,
-      },
-    ],
+  const sectionSubLinks = useMemo<Record<NavPermissionKey, NavSubLink[]>>(
+    () => ({
+      dashboard: [
+        {
+          label: "Command Center",
+          description: "Next best moves",
+          href: `/?business=${business}#dashboard-accounting`,
+        },
+        {
+          label: "Queue Command",
+          description: "Turn visibility",
+          href: `/?business=${business}#dashboard-queue`,
+        },
+        {
+          label: "Accounting Pulse",
+          description: "Cash focus",
+          href: `/?business=${business}#dashboard-workstream`,
+        },
+      ],
+      queue: [
+        {
+          label: "All Requests",
+          description: "Work pipeline",
+          href: `/queue?business=${business}`,
+        },
+        {
+          label: "New Request",
+          description: "Add work",
+          href: `/new-request?business=${business}`,
+        },
+      ],
+      technician: [
+        {
+          label: "Assigned Work",
+          description: "Field view",
+          href: `/technician?business=${business}`,
+        },
+        {
+          label: "Job Sessions",
+          description: "Labor time",
+          href: `/job-sessions?business=${business}`,
+        },
+      ],
+      property_sales: [
+        {
+          label: "Evergreen Demo",
+          description: "Client safe",
+          href: `/property-sales?business=${business}&demo=evergreen`,
+        },
+        {
+          label: "Live Property",
+          description: "Internal only",
+          href: `/property-sales?business=${business}&property=north-creek-apartments`,
+        },
+      ],
+      job_sessions: [
+        {
+          label: "Session Hub",
+          description: "Labor history",
+          href: `/job-sessions?business=${business}`,
+        },
+        {
+          label: "Technician View",
+          description: "Start work",
+          href: `/technician?business=${business}`,
+        },
+      ],
+      schedule: [
+        {
+          label: "Scheduled",
+          description: "Calendar set",
+          href: `/schedule?business=${business}&view=scheduled`,
+        },
+        {
+          label: "Needs Date",
+          description: "Plan next",
+          href: `/schedule?business=${business}&view=ready`,
+        },
+      ],
+      estimates: [
+        {
+          label: "Estimate List",
+          description: "Pricing queue",
+          href: `/estimates?business=${business}`,
+        },
+        {
+          label: "New Estimate",
+          description: "Price work",
+          href: `/estimates/new?business=${business}`,
+        },
+      ],
+      invoices: [
+        {
+          label: "Invoice List",
+          description: "Billing queue",
+          href: `/invoices?business=${business}`,
+        },
+        {
+          label: "Aging View",
+          description: "Collections",
+          href: `/invoices?business=${business}&view=aging`,
+        },
+        {
+          label: "New Invoice",
+          description: "Bill work",
+          href: `/invoices/new?business=${business}`,
+        },
+      ],
+      payments: [
+        {
+          label: "Payment Queue",
+          description: "Open balances",
+          href: `/payments?business=${business}#customer-payment-queue`,
+        },
+        {
+          label: "Check Capture",
+          description: "Proof matching",
+          href: `/payments?business=${business}#check-capture`,
+        },
+        {
+          label: "Batch Tool",
+          description: "Apply payments",
+          href: `/payments?business=${business}#batch-payment-tool`,
+        },
+      ],
+      clients: [
+        {
+          label: "Client List",
+          description: "Accounts",
+          href: `/clients?business=${business}`,
+        },
+        {
+          label: "New Client",
+          description: "Add account",
+          href: `/clients/new?business=${business}`,
+        },
+      ],
+      imports: [
+        {
+          label: "Import Center",
+          description: "CSV tools",
+          href: `/imports?business=${business}`,
+        },
+      ],
+      services: [
+        {
+          label: "Price Book",
+          description: "Services",
+          href: `/services?business=${business}`,
+        },
+        {
+          label: "Analytics",
+          description: "Pricing memory",
+          href: `/service-analytics?business=${business}`,
+        },
+      ],
+      reports: [
+        {
+          label: "Reports Hub",
+          description: "Analytics",
+          href: `/reports?business=${business}`,
+        },
+        {
+          label: "Activity Trail",
+          description: "Proof history",
+          href: `/activity?business=${business}`,
+        },
+      ],
+      activity: [
+        {
+          label: "All Activity",
+          description: "Audit trail",
+          href: `/activity?business=${business}`,
+        },
+        {
+          label: "Invoice Proof",
+          description: "Sends + PDFs",
+          href: `/activity?business=${business}&type=invoice`,
+        },
+        {
+          label: "Payment Proof",
+          description: "Checks + deposits",
+          href: `/activity?business=${business}&type=payment`,
+        },
+      ],
+      settings: [
+        {
+          label: "Phone App + Alerts",
+          description: "Install setup",
+          href: `/settings?business=${business}#phone-app-notifications`,
+        },
+        {
+          label: "Email Launch",
+          description: "Sender setup",
+          href: `/settings?business=${business}#outlook-integration`,
+        },
+        {
+          label: "User Role Integration",
+          description: "Portal access",
+          href: `/settings?business=${business}#user-role-integration`,
+        },
+      ],
+    }),
     [business]
   );
+  const activeSubLinks = activeLink ? sectionSubLinks[activeLink.key] : [];
 
   useEffect(() => {
     if (isLoadingRole) {
@@ -219,7 +413,9 @@ export default function Navigation() {
 
     const prefetchHrefs = [
       ...visibleNavLinks.map((link) => link.href),
-      ...settingsSubLinks.map((link) => link.href),
+      ...Object.values(sectionSubLinks).flatMap((links) =>
+        links.map((link) => link.href)
+      ),
       `/payments?business=${business}#check-capture`,
       `/invoices?business=${business}&view=aging`,
       `/settings?business=${business}#outlook-integration`,
@@ -234,14 +430,14 @@ export default function Navigation() {
     }, 300);
 
     return () => window.clearTimeout(timer);
-  }, [business, isLoadingRole, router, settingsSubLinks, visibleNavLinks]);
+  }, [business, isLoadingRole, router, sectionSubLinks, visibleNavLinks]);
 
   return (
     <nav className="app-sidebar mb-8 rounded-2xl border border-zinc-800 bg-zinc-900/80 px-4 py-4 shadow-lg sm:px-5 lg:sticky lg:top-5 lg:mb-0 lg:flex lg:h-[calc(100vh-2.5rem)] lg:w-72 lg:shrink-0 lg:flex-col lg:overflow-hidden lg:px-4 lg:py-5">
       <div className="flex items-center justify-between gap-3 lg:block">
         <Link
           href={`/?business=${business}`}
-          className="flex min-w-0 items-center gap-3 lg:flex-col lg:items-start"
+          className="app-sidebar-brand flex min-w-0 items-center gap-3 lg:flex-col lg:items-start"
         >
           {isRnl ? (
             <Image
@@ -249,11 +445,11 @@ export default function Navigation() {
               alt={businessName}
               width={48}
               height={48}
-              className="h-12 w-12 rounded-full object-cover lg:h-14 lg:w-14"
+              className="app-sidebar-logo h-12 w-12 rounded-full object-cover lg:h-14 lg:w-14"
               priority
             />
           ) : (
-            <div className="flex h-12 w-12 items-center justify-center rounded-full border border-cyan-400/60 bg-cyan-400/10 text-sm font-black text-cyan-200 lg:h-14 lg:w-14">
+            <div className="app-sidebar-logo flex h-12 w-12 items-center justify-center rounded-full border border-cyan-400/60 bg-cyan-400/10 text-sm font-black text-cyan-200 lg:h-14 lg:w-14">
               JK
             </div>
           )}
@@ -276,6 +472,7 @@ export default function Navigation() {
           aria-expanded={isMobileMenuOpen}
           aria-controls="mobile-workspace-menu"
         >
+          <span className="app-sidebar-menu-glyph" aria-hidden="true" />
           {isMobileMenuOpen ? "Close" : "Menu"}
         </button>
       </div>
@@ -300,12 +497,15 @@ export default function Navigation() {
       </div>
 
       <div
-        className={`mt-4 grid grid-cols-2 gap-2 text-sm font-medium text-zinc-300 sm:grid-cols-4 lg:flex lg:flex-1 lg:flex-col lg:overflow-y-auto lg:pt-3 ${
+        className={`app-sidebar-nav-list mt-4 grid grid-cols-2 gap-2 text-sm font-medium text-zinc-300 sm:grid-cols-4 lg:flex lg:flex-1 lg:flex-col lg:overflow-x-hidden lg:overflow-y-auto lg:pt-3 ${
           isMobileMenuOpen ? "grid" : "hidden lg:flex"
         }`}
       >
         {visibleNavLinks.map((link) => (
-          <div key={link.href} className="grid gap-2">
+          <div
+            key={link.href}
+            className={`grid gap-2 ${link.active ? "app-sidebar-nav-group-active" : ""}`}
+          >
             <Link
               href={link.href}
               onClick={() => setIsMobileMenuOpen(false)}
@@ -337,13 +537,13 @@ export default function Navigation() {
               ) : null}
             </Link>
 
-            {link.key === "settings" && link.active ? (
+            {link.active && activeSubLinks.length > 0 ? (
               <div className="app-sidebar-settings grid gap-2 rounded-2xl border border-zinc-800 bg-zinc-950 p-2 lg:ml-2">
                 <p className="px-3 pt-1 text-[11px] font-bold uppercase tracking-[0.2em] text-zinc-500">
-                  Workspace setup
+                  {link.key === "settings" ? "Workspace setup" : `${link.label} focus`}
                 </p>
 
-                {settingsSubLinks.map((subLink) => (
+                {activeSubLinks.map((subLink) => (
                   <Link
                     key={subLink.href}
                     href={subLink.href}

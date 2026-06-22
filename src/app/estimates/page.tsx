@@ -15,12 +15,35 @@ type Business = {
 type Estimate = {
   id: string;
   business_id: string | null;
+  client_id: string | null;
+  queue_item_id: string | null;
   display_id: string | null;
   customer_name: string | null;
   project_title: string | null;
+  project_address: string | null;
+  service_address: string | null;
+  reference: string | null;
   estimate_amount: string | number | null;
   status: string | null;
+  notes: string | null;
+  terms: string | null;
+  created_at: string | null;
+  updated_at: string | null;
   hasLinkedInvoice?: boolean;
+  sentCount?: number;
+  lastSentAt?: string | null;
+  lastSentRecipient?: string | null;
+  convertedAt?: string | null;
+  activityCount?: number;
+  lastActivityAt?: string | null;
+};
+
+type ActivityLog = {
+  action: string;
+  entity_id: string | null;
+  actor_email: string | null;
+  created_at: string | null;
+  details: Record<string, unknown> | null;
 };
 
 function parseEstimateAmount(value: string | number | null) {
@@ -46,6 +69,54 @@ function getStatusKey(status: string | null) {
   return (status || "Draft").toLowerCase();
 }
 
+function getPipelineStatusKey(estimate: Estimate) {
+  const statusKey = getStatusKey(estimate.status);
+
+  if (statusKey === "converted" || estimate.hasLinkedInvoice) {
+    return "converted";
+  }
+
+  return statusKey;
+}
+
+function getDaysSince(value: string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  const timestamp = new Date(value).getTime();
+
+  if (!Number.isFinite(timestamp)) {
+    return null;
+  }
+
+  return Math.max(
+    0,
+    Math.floor((Date.now() - timestamp) / (1000 * 60 * 60 * 24))
+  );
+}
+
+function getDetailString(
+  details: Record<string, unknown> | null | undefined,
+  key: string
+) {
+  const value = details?.[key];
+
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function formatDaysLabel(days: number | null) {
+  if (days === null) {
+    return "No date recorded";
+  }
+
+  if (days === 0) {
+    return "Today";
+  }
+
+  return `${days} day${days === 1 ? "" : "s"} ago`;
+}
+
 export default async function EstimatesPage({
   searchParams,
 }: {
@@ -60,11 +131,13 @@ export default async function EstimatesPage({
   const searchTerm = resolvedSearchParams.q?.trim() ?? "";
   const statusFilter =
     resolvedSearchParams.status === "draft" ||
+    resolvedSearchParams.status === "sent" ||
     resolvedSearchParams.status === "approved" ||
     resolvedSearchParams.status === "converted"
       ? resolvedSearchParams.status
       : "all";
   const businessQuery = `?business=${businessSlug}`;
+  const estimateResultsAnchor = "#estimate-results";
 
   const { data: businessData, error: businessError } = await supabase
     .from("businesses")
@@ -89,7 +162,7 @@ export default async function EstimatesPage({
     const { data, error } = await supabase
       .from("estimates")
       .select(
-        "id, business_id, display_id, customer_name, project_title, estimate_amount, status"
+        "id, business_id, client_id, queue_item_id, display_id, customer_name, project_title, project_address, service_address, reference, estimate_amount, status, notes, terms, created_at, updated_at"
       )
       .eq("business_id", selectedBusiness.id)
       .order("created_at", { ascending: false });
@@ -125,13 +198,62 @@ export default async function EstimatesPage({
           hasLinkedInvoice: linkedEstimateIds.has(estimate.id),
         }));
       }
+
+      const { data: activityData, error: activityError } = await supabase
+        .from("activity_logs")
+        .select("action, entity_id, actor_email, created_at, details")
+        .eq("business_id", selectedBusiness.id)
+        .eq("entity_type", "estimate")
+        .in("entity_id", estimateIds)
+        .order("created_at", { ascending: false });
+
+      if (activityError) {
+        console.warn(
+          "Estimate activity logs could not be loaded:",
+          activityError.message
+        );
+      } else {
+        const logsByEstimateId = new Map<string, ActivityLog[]>();
+
+        ((activityData ?? []) as ActivityLog[]).forEach((log) => {
+          if (!log.entity_id) {
+            return;
+          }
+
+          const existingLogs = logsByEstimateId.get(log.entity_id) ?? [];
+          existingLogs.push(log);
+          logsByEstimateId.set(log.entity_id, existingLogs);
+        });
+
+        estimates = estimates.map((estimate) => {
+          const logs = logsByEstimateId.get(estimate.id) ?? [];
+          const sentLogs = logs.filter(
+            (log) => log.action === "estimate.email_sent"
+          );
+          const convertedLog = logs.find(
+            (log) => log.action === "estimate.converted_to_invoice"
+          );
+          const lastSentLog = sentLogs[0];
+
+          return {
+            ...estimate,
+            sentCount: sentLogs.length,
+            lastSentAt: lastSentLog?.created_at ?? null,
+            lastSentRecipient:
+              getDetailString(lastSentLog?.details, "recipient_email") ?? null,
+            convertedAt: convertedLog?.created_at ?? null,
+            activityCount: logs.length,
+            lastActivityAt: logs[0]?.created_at ?? null,
+          };
+        });
+      }
     }
   }
 
   const filteredEstimates = estimates.filter((estimate) => {
     if (
       statusFilter !== "all" &&
-      (estimate.status || "Draft").toLowerCase() !== statusFilter
+      getPipelineStatusKey(estimate) !== statusFilter
     ) {
       return false;
     }
@@ -153,14 +275,16 @@ export default async function EstimatesPage({
   });
 
   const draftEstimates = estimates.filter(
-    (estimate) => getStatusKey(estimate.status) === "draft"
+    (estimate) => getPipelineStatusKey(estimate) === "draft"
+  );
+  const sentEstimates = estimates.filter(
+    (estimate) => getPipelineStatusKey(estimate) === "sent"
   );
   const approvedEstimates = estimates.filter(
-    (estimate) => getStatusKey(estimate.status) === "approved"
+    (estimate) => getPipelineStatusKey(estimate) === "approved"
   );
   const convertedEstimates = estimates.filter(
-    (estimate) =>
-      getStatusKey(estimate.status) === "converted" || estimate.hasLinkedInvoice
+    (estimate) => getPipelineStatusKey(estimate) === "converted"
   );
   const approvedReadyForInvoice = approvedEstimates.filter(
     (estimate) => !estimate.hasLinkedInvoice
@@ -189,13 +313,32 @@ export default async function EstimatesPage({
   const conversionRate = estimates.length
     ? Math.round((convertedEstimates.length / estimates.length) * 100)
     : 0;
+  const sentProofCount = estimates.filter(
+    (estimate) => (estimate.sentCount ?? 0) > 0
+  ).length;
+  const proofCoverageRate = estimates.length
+    ? Math.round((sentProofCount / estimates.length) * 100)
+    : 0;
+  const staleDraftEstimates = draftEstimates.filter((estimate) => {
+    const age = getDaysSince(estimate.updated_at ?? estimate.created_at);
+
+    return age !== null && age >= 7;
+  });
+  const sentFollowUpEstimates = sentEstimates.filter((estimate) => {
+    const age = getDaysSince(estimate.lastSentAt ?? estimate.updated_at);
+
+    return age !== null && age >= 3;
+  });
+  const queueLinkedEstimates = estimates.filter(
+    (estimate) => Boolean(estimate.queue_item_id)
+  );
   const estimateHealthCards = [
     {
       label: "Proposal Pipeline",
       value: formatMoney(totalEstimateValue),
       detail: `${estimates.length} total estimate${estimates.length === 1 ? "" : "s"}`,
       tone: "info",
-      href: `/estimates${businessQuery}`,
+      href: `/estimates${businessQuery}${estimateResultsAnchor}`,
     },
     {
       label: "Ready to Invoice",
@@ -205,44 +348,167 @@ export default async function EstimatesPage({
       href:
         approvedReadyForInvoice[0]?.id
           ? `/estimates/${approvedReadyForInvoice[0].id}${businessQuery}`
-          : `/estimates${businessQuery}&status=approved`,
+          : `/estimates${businessQuery}&status=approved${estimateResultsAnchor}`,
     },
     {
       label: "Draft Follow-up",
       value: String(draftEstimates.length),
       detail: "Proposals still being prepared",
       tone: draftEstimates.length > 0 ? "warning" : "neutral",
-      href: `/estimates${businessQuery}&status=draft`,
+      href: `/estimates${businessQuery}&status=draft${estimateResultsAnchor}`,
+    },
+    {
+      label: "Sent Follow-up",
+      value: String(sentFollowUpEstimates.length),
+      detail: `${sentEstimates.length} sent proposal${sentEstimates.length === 1 ? "" : "s"} in motion`,
+      tone: sentFollowUpEstimates.length > 0 ? "warning" : "info",
+      href: `/estimates${businessQuery}&status=sent${estimateResultsAnchor}`,
     },
     {
       label: "Conversion Health",
       value: `${conversionRate}%`,
       detail: `${convertedEstimates.length} converted or linked`,
       tone: conversionRate >= 60 ? "success" : "info",
-      href: `/estimates${businessQuery}&status=converted`,
+      href: `/estimates${businessQuery}&status=converted${estimateResultsAnchor}`,
     },
   ];
+  const openEstimateValue = openEstimates.reduce(
+    (total, estimate) => total + parseEstimateAmount(estimate.estimate_amount),
+    0
+  );
+  const proposalReadinessCards = [
+    {
+      label: "Win Pipeline",
+      value: formatMoney(openEstimateValue),
+      detail: "Open proposal value that can still become work.",
+      href: `/estimates${businessQuery}${estimateResultsAnchor}`,
+      tone: "sky",
+    },
+    {
+      label: "Conversion Queue",
+      value: String(approvedReadyForInvoice.length),
+      detail: "Approved estimates waiting to become invoices.",
+      href: `/estimates${businessQuery}&status=approved${estimateResultsAnchor}`,
+      tone: approvedReadyForInvoice.length > 0 ? "emerald" : "zinc",
+    },
+    {
+      label: "Sent Proof",
+      value: `${proofCoverageRate}%`,
+      detail: `${sentProofCount} estimate${sentProofCount === 1 ? "" : "s"} have email proof in the activity log.`,
+      href: `/activity${businessQuery}`,
+      tone: proofCoverageRate >= 70 ? "emerald" : "amber",
+    },
+    {
+      label: "Draft Cleanup",
+      value: String(staleDraftEstimates.length),
+      detail: `${draftEstimates.length} total draft${draftEstimates.length === 1 ? "" : "s"}; stale ones need a decision.`,
+      href: `/estimates${businessQuery}&status=draft${estimateResultsAnchor}`,
+      tone: draftEstimates.length > 0 ? "amber" : "zinc",
+    },
+  ];
+
+  const estimateAttentionList = openEstimates
+    .map((estimate) => {
+      const statusKey = getPipelineStatusKey(estimate);
+      const amount = parseEstimateAmount(estimate.estimate_amount);
+      const daysSinceUpdate = getDaysSince(
+        estimate.lastActivityAt ?? estimate.updated_at ?? estimate.created_at
+      );
+      const daysSinceSent = getDaysSince(estimate.lastSentAt);
+      const reasons: string[] = [];
+      let score = Math.min(24, Math.floor(amount / 500));
+      let action = "Review proposal";
+      let tone = "info";
+
+      if (statusKey === "approved" && !estimate.hasLinkedInvoice) {
+        score += 60;
+        action = "Convert to invoice";
+        tone = "success";
+        reasons.push("approved and waiting on billing");
+      }
+
+      if (statusKey === "sent") {
+        score += 34;
+        action = daysSinceSent !== null && daysSinceSent >= 3
+          ? "Follow up with customer"
+          : "Watch for decision";
+        tone = daysSinceSent !== null && daysSinceSent >= 3 ? "warning" : "info";
+        reasons.push(
+          daysSinceSent !== null
+            ? `sent ${formatDaysLabel(daysSinceSent).toLowerCase()}`
+            : "sent status needs proof check"
+        );
+      }
+
+      if (statusKey === "draft") {
+        score += 18;
+        action = "Finish and send";
+        tone = "warning";
+        reasons.push("still in draft");
+      }
+
+      if ((estimate.sentCount ?? 0) === 0 && statusKey !== "draft") {
+        score += 14;
+        reasons.push("no sent proof logged");
+      }
+
+      if (daysSinceUpdate !== null && daysSinceUpdate >= 7) {
+        score += 12;
+        reasons.push(`quiet for ${daysSinceUpdate} days`);
+      }
+
+      if (estimate.queue_item_id) {
+        score += 6;
+        reasons.push("queue-linked scope");
+      }
+
+      if (reasons.length === 0) {
+        reasons.push("healthy pipeline item");
+      }
+
+      return {
+        id: estimate.id,
+        displayId: estimate.display_id ?? "Estimate",
+        title:
+          estimate.project_title ||
+          estimate.customer_name ||
+          "Untitled estimate",
+        customer: estimate.customer_name ?? "Unknown customer",
+        amount,
+        action,
+        tone,
+        reasons: reasons.slice(0, 3),
+        score,
+      };
+    })
+    .sort((left, right) => right.score - left.score)
+    .slice(0, 4);
 
   const filterLinks = [
     {
       label: "All",
       value: "all",
-      href: `/estimates${businessQuery}${searchTerm ? `&q=${encodeURIComponent(searchTerm)}` : ""}`,
+      href: `/estimates${businessQuery}${searchTerm ? `&q=${encodeURIComponent(searchTerm)}` : ""}${estimateResultsAnchor}`,
     },
     {
       label: "Draft",
       value: "draft",
-      href: `/estimates${businessQuery}&status=draft${searchTerm ? `&q=${encodeURIComponent(searchTerm)}` : ""}`,
+      href: `/estimates${businessQuery}&status=draft${searchTerm ? `&q=${encodeURIComponent(searchTerm)}` : ""}${estimateResultsAnchor}`,
+    },
+    {
+      label: "Sent",
+      value: "sent",
+      href: `/estimates${businessQuery}&status=sent${searchTerm ? `&q=${encodeURIComponent(searchTerm)}` : ""}${estimateResultsAnchor}`,
     },
     {
       label: "Approved",
       value: "approved",
-      href: `/estimates${businessQuery}&status=approved${searchTerm ? `&q=${encodeURIComponent(searchTerm)}` : ""}`,
+      href: `/estimates${businessQuery}&status=approved${searchTerm ? `&q=${encodeURIComponent(searchTerm)}` : ""}${estimateResultsAnchor}`,
     },
     {
       label: "Converted",
       value: "converted",
-      href: `/estimates${businessQuery}&status=converted${searchTerm ? `&q=${encodeURIComponent(searchTerm)}` : ""}`,
+      href: `/estimates${businessQuery}&status=converted${searchTerm ? `&q=${encodeURIComponent(searchTerm)}` : ""}${estimateResultsAnchor}`,
     },
   ];
 
@@ -309,7 +575,7 @@ export default async function EstimatesPage({
             </div>
           </div>
 
-          <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
             {estimateHealthCards.map((metric) => (
               <Link
                 key={metric.label}
@@ -359,11 +625,155 @@ export default async function EstimatesPage({
               </Link>
             </div>
           ) : null}
+
+          <div className="estimate-proposal-radar mt-5 rounded-3xl border border-white/10 bg-black/25 p-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-orange-300">
+                  Proposal Readiness
+                </p>
+
+                <h3 className="mt-2 text-xl font-black text-white">
+                  What needs attention before the next bid meeting
+                </h3>
+              </div>
+
+              <span className="rounded-full border border-white/10 px-3 py-1 text-xs font-black text-zinc-300">
+                {filteredEstimates.length} in current view
+              </span>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              {proposalReadinessCards.map((card) => (
+                <Link
+                  key={card.label}
+                  href={card.href}
+                  data-tone={card.tone}
+                  className="estimate-proposal-card rounded-2xl border border-white/10 bg-zinc-950/60 p-4 transition hover:-translate-y-0.5 hover:border-orange-300/60"
+                >
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">
+                    {card.label}
+                  </p>
+
+                  <p className="mt-3 line-clamp-2 text-2xl font-black text-white">
+                    {card.value}
+                  </p>
+
+                  <p className="mt-2 min-h-12 text-sm leading-6 text-zinc-400">
+                    {card.detail}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          <div className="estimate-bid-intelligence mt-5 grid gap-4 lg:grid-cols-[1.1fr_1.6fr]">
+            <div className="rounded-3xl border border-white/10 bg-black/30 p-4">
+              <p className="text-xs font-black uppercase tracking-[0.24em] text-orange-300">
+                Bid Proof
+              </p>
+
+              <h3 className="mt-2 text-xl font-black text-white">
+                Evidence already captured
+              </h3>
+
+              <div className="mt-4 grid gap-3">
+                <div className="estimate-proof-stat">
+                  <span>Email proof</span>
+                  <strong>{sentProofCount}</strong>
+                </div>
+
+                <div className="estimate-proof-stat">
+                  <span>Queue-linked scopes</span>
+                  <strong>{queueLinkedEstimates.length}</strong>
+                </div>
+
+                <div className="estimate-proof-stat">
+                  <span>Ready to bill</span>
+                  <strong>{approvedReadyForInvoice.length}</strong>
+                </div>
+              </div>
+
+              <p className="mt-4 text-sm leading-6 text-zinc-400">
+                Estimate sends and invoice conversions come from the existing
+                activity history, so future sales reporting can build on the
+                same audit trail.
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-white/10 bg-black/30 p-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.24em] text-orange-300">
+                    Follow-up Queue
+                  </p>
+
+                  <h3 className="mt-2 text-xl font-black text-white">
+                    Proposals most likely to need a move
+                  </h3>
+                </div>
+
+                <Link
+                  href={`/activity${businessQuery}`}
+                  className="rounded-full border border-white/10 px-3 py-1 text-xs font-black text-zinc-300 transition hover:border-orange-300 hover:text-white"
+                >
+                  View Activity
+                </Link>
+              </div>
+
+              <div className="mt-4 grid gap-3">
+                {estimateAttentionList.length > 0 ? (
+                  estimateAttentionList.map((item) => (
+                    <Link
+                      key={item.id}
+                      href={`/estimates/${item.id}${businessQuery}`}
+                      className="estimate-attention-row"
+                      data-tone={item.tone}
+                    >
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">
+                          {item.displayId}
+                        </p>
+
+                        <p className="mt-1 font-black text-white">
+                          {item.title}
+                        </p>
+
+                        <p className="mt-1 text-sm text-zinc-400">
+                          {item.customer} - {formatMoney(item.amount)}
+                        </p>
+                      </div>
+
+                      <div className="text-left sm:text-right">
+                        <p className="text-sm font-black text-white">
+                          {item.action}
+                        </p>
+
+                        <p className="mt-1 text-xs leading-5 text-zinc-400">
+                          {item.reasons.join(" / ")}
+                        </p>
+                      </div>
+                    </Link>
+                  ))
+                ) : (
+                  <div className="estimate-attention-empty rounded-2xl border border-emerald-400/25 bg-emerald-400/10 p-4">
+                    <p className="text-sm font-black text-emerald-100">
+                      No open estimate needs urgent attention.
+                    </p>
+
+                    <p className="mt-1 text-sm text-emerald-100/75">
+                      The proposal board is clean from the current data.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </Card>
 
         <Card>
           <form
-            action="/estimates"
+            action={`/estimates${estimateResultsAnchor}`}
             className="grid gap-4 md:grid-cols-[1fr_auto]"
           >
             <input
@@ -397,7 +807,7 @@ export default async function EstimatesPage({
               <Button type="submit">Search</Button>
 
               {(searchTerm || statusFilter !== "all") && (
-                <Link href={`/estimates${businessQuery}`}>
+                <Link href={`/estimates${businessQuery}${estimateResultsAnchor}`}>
                   <Button variant="secondary">
                     Clear
                   </Button>
@@ -412,6 +822,7 @@ export default async function EstimatesPage({
             <Link
               key={filter.value}
               href={filter.href}
+              scroll={false}
               className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
                 statusFilter === filter.value
                   ? "app-chip-active bg-orange-500 text-black"
@@ -423,6 +834,10 @@ export default async function EstimatesPage({
           ))}
         </div>
 
+        <div
+          id="estimate-results"
+          className="estimate-results-anchor scroll-mt-6"
+        >
         {estimates.length > 0 ? (
           <div className="estimate-filter-summary flex flex-col gap-2 rounded-2xl border border-zinc-800 bg-zinc-900/60 px-4 py-3 text-sm text-zinc-300 sm:flex-row sm:items-center sm:justify-between">
             <span>
@@ -486,7 +901,7 @@ export default async function EstimatesPage({
               </div>
 
               <div className="flex flex-col gap-3 sm:flex-row">
-                <Link href={`/estimates${businessQuery}`}>
+                <Link href={`/estimates${businessQuery}${estimateResultsAnchor}`}>
                   <Button variant="secondary" className="w-full sm:w-auto">
                     Show All Estimates
                   </Button>
@@ -501,10 +916,14 @@ export default async function EstimatesPage({
         ) : (
           <div className="grid gap-4">
             {filteredEstimates.map((estimate) => {
-              const statusKey = getStatusKey(estimate.status);
+              const statusKey = getPipelineStatusKey(estimate);
               const isConverted = statusKey === "converted";
               const isLinkedToInvoice = Boolean(estimate.hasLinkedInvoice);
               const readyToInvoice = statusKey === "approved" && !isLinkedToInvoice;
+              const daysSinceSent = getDaysSince(estimate.lastSentAt);
+              const daysSinceUpdate = getDaysSince(
+                estimate.lastActivityAt ?? estimate.updated_at ?? estimate.created_at
+              );
               const nextAction =
                 isConverted || isLinkedToInvoice
                   ? {
@@ -520,6 +939,21 @@ export default async function EstimatesPage({
                           "Approved work is waiting. Open it and convert the proposal into an invoice.",
                         tone: "success",
                       }
+                    : statusKey === "sent"
+                      ? {
+                          label:
+                            daysSinceSent !== null && daysSinceSent >= 3
+                              ? "Follow up now"
+                              : "Waiting for decision",
+                          detail:
+                            daysSinceSent !== null
+                              ? `Last sent ${formatDaysLabel(daysSinceSent).toLowerCase()}. Keep the proposal warm and capture the next client response.`
+                              : "This estimate is marked sent, but no send proof was found in activity history.",
+                          tone:
+                            daysSinceSent !== null && daysSinceSent >= 3
+                              ? "warning"
+                              : "info",
+                        }
                     : statusKey === "draft"
                       ? {
                           label: "Finish proposal",
@@ -589,6 +1023,46 @@ export default async function EstimatesPage({
                     </p>
                   </div>
 
+                  <div className="estimate-proof-strip mt-4 grid gap-2 md:grid-cols-4">
+                    <span
+                      data-tone={
+                        (estimate.sentCount ?? 0) > 0 ? "success" : "warning"
+                      }
+                    >
+                      {(estimate.sentCount ?? 0) > 0
+                        ? `${estimate.sentCount} send proof${
+                            estimate.sentCount === 1 ? "" : "s"
+                          }`
+                        : "No send proof"}
+                    </span>
+
+                    <span data-tone={estimate.queue_item_id ? "info" : "neutral"}>
+                      {estimate.queue_item_id ? "Queue-linked" : "No queue link"}
+                    </span>
+
+                    <span
+                      data-tone={
+                        daysSinceUpdate !== null && daysSinceUpdate >= 7
+                          ? "warning"
+                          : "neutral"
+                      }
+                    >
+                      {daysSinceUpdate !== null
+                        ? `Touched ${formatDaysLabel(daysSinceUpdate).toLowerCase()}`
+                        : "No activity date"}
+                    </span>
+
+                    <span
+                      data-tone={readyToInvoice || isConverted ? "success" : "neutral"}
+                    >
+                      {isConverted || isLinkedToInvoice
+                        ? "Invoice connected"
+                        : readyToInvoice
+                          ? "Ready to invoice"
+                          : "Pipeline open"}
+                    </span>
+                  </div>
+
                   <div className="mt-5 flex flex-wrap gap-3 border-t border-zinc-800 pt-4">
                     <Link
                       href={`/estimates/${estimate.id}${businessQuery}`}
@@ -641,6 +1115,7 @@ export default async function EstimatesPage({
             })}
           </div>
         )}
+        </div>
       </div>
     </AppShell>
   );

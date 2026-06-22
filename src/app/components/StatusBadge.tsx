@@ -132,6 +132,7 @@ export default function StatusBadge({ status }: StatusBadgeProps) {
   return (
     <span
       className={`status-badge status-badge-${style.tone} inline-flex rounded-full border border-transparent px-3 py-1 text-sm font-semibold ${style.className}`}
+      data-status-tone={style.tone}
     >
       {displayLabel}
     </span>

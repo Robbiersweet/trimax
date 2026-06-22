@@ -274,6 +274,119 @@ function RecurringInvoicesPageContent() {
         (daysUntilDate(first.next_run_date) ?? 9999) -
         (daysUntilDate(second.next_run_date) ?? 9999)
     )[0];
+  const recurringMonthlyTotal = activeTemplates.reduce(
+    (total, template) =>
+      total +
+      (template.line_items ?? []).reduce(
+        (subtotal, item) => subtotal + lineTotal(item),
+        0
+      ),
+    0
+  );
+  const dueDraftTotal = dueTemplates.reduce(
+    (total, template) =>
+      total +
+      (template.line_items ?? []).reduce(
+        (subtotal, item) => subtotal + lineTotal(item),
+        0
+      ),
+    0
+  );
+  const templatesWithErrors = activeTemplates.filter((template) =>
+    Boolean(template.last_error)
+  );
+  const pausedMonthlyTotal = pausedTemplates.reduce(
+    (total, template) =>
+      total +
+      (template.line_items ?? []).reduce(
+        (subtotal, item) => subtotal + lineTotal(item),
+        0
+      ),
+    0
+  );
+  const templatesMissingRunDate = autoCreateTemplates.filter(
+    (template) => !template.next_run_date
+  );
+  const templatesNeedingReview = activeTemplates.filter(
+    (template) =>
+      Boolean(template.last_error) ||
+      !template.next_run_date ||
+      (template.line_items ?? []).length === 0 ||
+      (template.line_items ?? []).every((item) => lineTotal(item) <= 0)
+  );
+  const autopilotCoverage =
+    activeTemplates.length > 0
+      ? Math.round((autoCreateTemplates.length / activeTemplates.length) * 100)
+      : 0;
+  const nextSevenDayTemplates = autoCreateTemplates
+    .filter((template) => {
+      const days = daysUntilDate(template.next_run_date);
+      return days !== null && days >= 0 && days <= 7;
+    })
+    .sort(
+      (first, second) =>
+        (daysUntilDate(first.next_run_date) ?? 9999) -
+        (daysUntilDate(second.next_run_date) ?? 9999)
+    )
+    .slice(0, 4);
+  const recurringAutopilotSignals = [
+    {
+      label: "Autopilot Coverage",
+      value: `${autopilotCoverage}%`,
+      detail:
+        activeTemplates.length > 0
+          ? `${autoCreateTemplates.length} of ${activeTemplates.length} active templates prepare drafts automatically.`
+          : "Create a template to start monthly draft coverage.",
+      tone: autopilotCoverage >= 80 ? "emerald" : "amber",
+    },
+    {
+      label: "Paused Revenue",
+      value: formatCurrency(pausedMonthlyTotal),
+      detail:
+        pausedTemplates.length > 0
+          ? `${pausedTemplates.length} active template${pausedTemplates.length === 1 ? "" : "s"} set to manual review.`
+          : "No recurring value is paused right now.",
+      tone: pausedTemplates.length > 0 ? "amber" : "emerald",
+    },
+    {
+      label: "Schedule Gaps",
+      value: String(templatesMissingRunDate.length),
+      detail:
+        templatesMissingRunDate.length > 0
+          ? "Templates need a next draft date before they can run predictably."
+          : "Every auto-draft template has a next run date.",
+      tone: templatesMissingRunDate.length > 0 ? "rose" : "emerald",
+    },
+  ];
+  const recurringHealthCards = [
+    {
+      label: "Monthly Base",
+      value: formatCurrency(recurringMonthlyTotal),
+      detail: "Active recurring template value.",
+      tone: "emerald",
+    },
+    {
+      label: "Due Drafts",
+      value: String(dueTemplates.length),
+      detail:
+        dueTemplates.length > 0
+          ? `${formatCurrency(dueDraftTotal)} ready to create.`
+          : "No drafts need creation today.",
+      tone: dueTemplates.length > 0 ? "amber" : "zinc",
+    },
+    {
+      label: "Paused",
+      value: String(pausedTemplates.length),
+      detail: "Active templates set to manual only.",
+      tone: pausedTemplates.length > 0 ? "cyan" : "zinc",
+    },
+    {
+      label: "Needs Attention",
+      value: String(templatesWithErrors.length),
+      detail: "Templates with a saved generation error.",
+      tone: templatesWithErrors.length > 0 ? "rose" : "zinc",
+    },
+  ];
 
   useEffect(() => {
     async function loadPageData() {
@@ -854,6 +967,144 @@ function RecurringInvoicesPageContent() {
             </div>
           </Card>
         ) : null}
+
+        <Card className="recurring-health-strip border-emerald-500/20 bg-zinc-950/70 p-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.26em] text-emerald-200">
+                Recurring Health
+              </p>
+              <h2 className="mt-2 text-2xl font-black text-white">
+                Keep repeat billing predictable
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
+                See the monthly base, drafts due now, paused templates, and
+                any template errors before creating customer-facing invoices.
+              </p>
+            </div>
+
+            <Link href={`/activity${businessQuery}&type=invoice`}>
+              <Button variant="secondary">Open Invoice Trail</Button>
+            </Link>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {recurringHealthCards.map((card) => (
+              <div
+                key={card.label}
+                data-tone={card.tone}
+                className="recurring-health-card rounded-2xl border border-white/10 bg-black/25 p-4"
+              >
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">
+                  {card.label}
+                </p>
+                <p className="mt-3 text-2xl font-black text-white">
+                  {card.value}
+                </p>
+                <p className="mt-2 text-sm leading-5 text-zinc-400">
+                  {card.detail}
+                </p>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="recurring-autopilot-panel border-orange-500/20 bg-zinc-950/70 p-4">
+          <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.26em] text-orange-300">
+                Billing Autopilot
+              </p>
+              <h2 className="mt-2 text-2xl font-black text-white">
+                Recurring revenue, guarded before it slips
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
+                Trimax now surfaces automation coverage, paused revenue, and
+                schedule gaps in one place so repeat invoices stay predictable.
+              </p>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                {recurringAutopilotSignals.map((signal) => (
+                  <div
+                    key={signal.label}
+                    data-tone={signal.tone}
+                    className="recurring-autopilot-signal rounded-2xl border border-white/10 bg-black/25 p-4"
+                  >
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">
+                      {signal.label}
+                    </p>
+                    <p className="mt-3 text-2xl font-black text-white">
+                      {signal.value}
+                    </p>
+                    <p className="mt-2 text-sm leading-5 text-zinc-400">
+                      {signal.detail}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="recurring-next-window rounded-2xl border border-white/10 bg-black/25 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">
+                    Next 7 Days
+                  </p>
+                  <h3 className="mt-2 text-lg font-black text-white">
+                    Draft window
+                  </h3>
+                </div>
+                <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-emerald-200">
+                  {nextSevenDayTemplates.length} queued
+                </span>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                {nextSevenDayTemplates.length > 0 ? (
+                  nextSevenDayTemplates.map((template) => (
+                    <div
+                      key={template.id}
+                      className="recurring-window-item rounded-2xl border border-zinc-800 bg-zinc-950/80 p-3"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-black text-white">
+                            {template.name}
+                          </p>
+                          <p className="mt-1 text-xs text-zinc-400">
+                            {template.customer_name}
+                          </p>
+                        </div>
+                        <span className="text-right text-xs font-black uppercase tracking-[0.14em] text-orange-200">
+                          {formatDate(template.next_run_date)}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4 text-sm leading-6 text-zinc-400">
+                    No automatic drafts are scheduled in the next seven days.
+                    The next template will appear here when it enters the work
+                    window.
+                  </p>
+                )}
+              </div>
+
+              {templatesNeedingReview.length > 0 ? (
+                <p className="mt-4 rounded-2xl border border-rose-400/25 bg-rose-500/10 p-3 text-sm leading-6 text-rose-100">
+                  {templatesNeedingReview.length} template
+                  {templatesNeedingReview.length === 1 ? "" : "s"} should be
+                  reviewed before the next billing cycle.
+                </p>
+              ) : (
+                <p className="mt-4 rounded-2xl border border-emerald-400/25 bg-emerald-400/10 p-3 text-sm leading-6 text-emerald-100">
+                  No recurring templates are showing errors, missing dates, or
+                  empty invoice value.
+                </p>
+              )}
+            </div>
+          </div>
+        </Card>
 
         <Card>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">

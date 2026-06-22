@@ -371,6 +371,8 @@ export default function JobSessionPanel({
     setIsBusy(true);
     setMessage(null);
 
+    const isResume = sessions.some((session) => Boolean(session.ended_at));
+
     const { data, error } = await supabase
       .from("job_sessions")
       .insert({
@@ -405,7 +407,7 @@ export default function JobSessionPanel({
     setActiveSession(data as JobSession);
     await logActivity({
       businessId,
-      action: "job_session.started",
+      action: isResume ? "job_session.resumed" : "job_session.started",
       entityType: "queue_item",
       entityId: queueItemId,
       entityLabel: `${propertyName || "Property"}${
@@ -416,6 +418,7 @@ export default function JobSessionPanel({
         jobType: (data as JobSession).job_type,
         startedAt: (data as JobSession).started_at,
         notes: (data as JobSession).notes,
+        resumedFromPriorSession: isResume,
       },
     });
     await loadSessions(userId);

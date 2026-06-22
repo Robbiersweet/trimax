@@ -3,6 +3,8 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import ActiveJobSessionDock from "./ActiveJobSessionDock";
+import FilteredResultsScroller from "./FilteredResultsScroller";
+import HashScrollRestorer from "./HashScrollRestorer";
 import Navigation from "./Navigation";
 import NavigationHistoryTracker from "./NavigationHistoryTracker";
 import QuickCommandCenter from "./QuickCommandCenter";
@@ -36,6 +38,8 @@ export default function AppShell({
     pathname.startsWith("/request-access") ||
     pathname.startsWith("/forgot-password") ||
     pathname.startsWith("/reset-password");
+  const workspaceSection =
+    pathname.split("/").filter(Boolean)[0] || "dashboard";
 
   useEffect(() => {
     let isActive = true;
@@ -73,16 +77,24 @@ export default function AppShell({
   }, [isAuthPage]);
 
   return (
-    <main className="app-shell-root min-h-screen bg-zinc-950 text-white">
+    <main
+      className="app-shell-root min-h-screen bg-zinc-950 text-white"
+      data-workspace-section={isAuthPage ? "auth" : workspaceSection}
+    >
       {!isAuthPage ? (
         <a className="app-skip-link" href="#trimax-main-content">
           Skip to main content
         </a>
       ) : null}
       {!isAuthPage ? (
-        <div className="app-platinum-horizon" aria-hidden="true" />
+        <>
+          <div className="app-platinum-horizon" aria-hidden="true" />
+          <div className="app-shell-visual-field" aria-hidden="true" />
+        </>
       ) : null}
       <NavigationHistoryTracker />
+      <HashScrollRestorer />
+      <FilteredResultsScroller />
       {isAuthPage ? (
         <div className="mx-auto max-w-6xl px-4 py-5">
           {children}

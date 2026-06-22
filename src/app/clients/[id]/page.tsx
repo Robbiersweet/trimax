@@ -82,6 +82,16 @@ function formatDate(value: string | null) {
   }).format(date);
 }
 
+function activityDateValue(value: string | null) {
+  if (!value) {
+    return 0;
+  }
+
+  const date = new Date(value.includes("T") ? value : `${value}T00:00:00`);
+
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+}
+
 export default async function ClientDetailsPage({
   params,
   searchParams,
@@ -211,6 +221,66 @@ export default async function ClientDetailsPage({
           : "attention",
     },
   ];
+  const requiredContactGaps = contactReadiness
+    .filter((item) => item.status === "attention")
+    .map((item) => item.label.toLowerCase());
+  const profileReadinessScore = Math.round(
+    ((contactReadiness.length - requiredContactGaps.length) /
+      contactReadiness.length) *
+      100
+  );
+  const activeEstimates = estimates.filter((estimate) => {
+    const status = (estimate.status || "Draft").toLowerCase();
+
+    return status !== "converted" && status !== "declined";
+  });
+  const todayTime = activityDateValue(new Date().toISOString());
+  const overdueInvoices = openInvoices.filter((invoice) => {
+    if (!invoice.due_date) {
+      return false;
+    }
+
+    const dueDate = new Date(`${invoice.due_date}T00:00:00`);
+
+    if (Number.isNaN(dueDate.getTime())) {
+      return false;
+    }
+
+    return dueDate.getTime() < todayTime;
+  });
+  const accountMomentum = [
+    ...estimates.map((estimate) => ({
+      id: estimate.id,
+      title: estimate.display_id || "Estimate",
+      detail: estimate.project_title || client.name,
+      amount: formatMoney(estimate.estimate_amount),
+      dateLabel: `Created ${formatDate(estimate.created_at)}`,
+      dateValue: activityDateValue(estimate.created_at),
+      href: `/estimates/${estimate.id}${businessQuery}`,
+      tone: "estimate" as const,
+      status: estimate.status || "Draft",
+    })),
+    ...invoices.map((invoice) => {
+      const amountDue = Math.max(
+        parseMoney(invoice.invoice_amount) - parseMoney(invoice.amount_paid),
+        0
+      );
+
+      return {
+        id: invoice.id,
+        title: invoice.display_id || "Invoice",
+        detail: invoice.project_title || client.name,
+        amount: formatMoney(amountDue),
+        dateLabel: `Due ${formatDate(invoice.due_date)}`,
+        dateValue: activityDateValue(invoice.due_date ?? invoice.created_at),
+        href: `/invoices/${invoice.id}${businessQuery}`,
+        tone: "invoice" as const,
+        status: invoice.status || "Draft",
+      };
+    }),
+  ]
+    .sort((first, second) => second.dateValue - first.dateValue)
+    .slice(0, 5);
   const actionHref =
     openBalance > 0
       ? `/payments?${new URLSearchParams({
@@ -369,6 +439,118 @@ export default async function ClientDetailsPage({
                   </p>
                 </div>
               ))}
+            </div>
+          </div>
+        </Card>
+
+        <Card className="client-momentum-card border-emerald-500/25 bg-emerald-500/10">
+          <div className="grid gap-5 xl:grid-cols-[0.85fr_1.15fr] xl:items-start">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.3em] text-emerald-200">
+                Account Momentum
+              </p>
+              <h2 className="mt-2 text-2xl font-black">
+                Relationship, work, and money in one view
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
+                This keeps the client page from becoming a static address card:
+                Trimax shows whether the account is clean, collectable, or ready
+                for the next proposal.
+              </p>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                <div className="client-momentum-stat rounded-2xl border border-white/10 bg-black/25 p-4">
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">
+                    Profile
+                  </p>
+                  <p className="mt-2 text-2xl font-black text-white">
+                    {profileReadinessScore}%
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-zinc-400">
+                    {requiredContactGaps.length > 0
+                      ? `Missing ${requiredContactGaps.join(", ")}`
+                      : "Contact ready"}
+                  </p>
+                </div>
+
+                <div className="client-momentum-stat rounded-2xl border border-white/10 bg-black/25 p-4">
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">
+                    Proposals
+                  </p>
+                  <p className="mt-2 text-2xl font-black text-emerald-100">
+                    {activeEstimates.length}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-zinc-400">
+                    Active estimate{activeEstimates.length === 1 ? "" : "s"}
+                  </p>
+                </div>
+
+                <div className="client-momentum-stat rounded-2xl border border-white/10 bg-black/25 p-4">
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">
+                    Pressure
+                  </p>
+                  <p className="mt-2 text-2xl font-black text-amber-100">
+                    {overdueInvoices.length}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-zinc-400">
+                    Overdue open invoice{overdueInvoices.length === 1 ? "" : "s"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="client-momentum-trail rounded-3xl border border-white/10 bg-black/25 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-zinc-500">
+                  Recent Account Trail
+                </p>
+                <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-black text-emerald-100">
+                  {accountMomentum.length} signal{accountMomentum.length === 1 ? "" : "s"}
+                </span>
+              </div>
+
+              <div className="mt-3 grid gap-2">
+                {accountMomentum.length > 0 ? (
+                  accountMomentum.map((item) => (
+                    <Link
+                      key={`${item.tone}-${item.id}`}
+                      href={item.href}
+                      data-tone={item.tone}
+                      className="client-momentum-row rounded-2xl border border-white/10 bg-zinc-950/60 p-3 transition hover:-translate-y-0.5 hover:border-emerald-300/50"
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                          <p className="font-black text-white">
+                            {item.title}
+                          </p>
+                          <p className="mt-1 truncate text-sm text-zinc-400">
+                            {item.detail}
+                          </p>
+                          <p className="mt-1 text-xs text-zinc-500">
+                            {item.dateLabel}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-3 sm:justify-end">
+                          <StatusBadge status={item.status} />
+                          <p className="font-black text-orange-300">
+                            {item.amount}
+                          </p>
+                        </div>
+                      </div>
+                    </Link>
+                  ))
+                ) : (
+                  <div className="client-momentum-row rounded-2xl border border-dashed border-white/10 bg-zinc-950/60 p-4">
+                    <p className="font-black text-white">
+                      No account trail yet
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-zinc-400">
+                      Estimates and invoices will appear here once this account starts moving.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </Card>
