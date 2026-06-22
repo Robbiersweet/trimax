@@ -5,6 +5,7 @@ import {
   emailSettingsKey,
   formatSenderAddress,
   normalizeInvoiceEmailSettings,
+  resolveWorkspaceSenderEmail,
   renderEmailTemplate,
 } from "../../../lib/invoiceEmailSettings";
 import {
@@ -338,8 +339,11 @@ export async function POST(request: Request) {
         businessName: business.name ?? "Trimax",
       })
     );
-    const senderEmail =
-      settings.senderEmail.trim() || process.env.TRIMAX_EMAIL_FROM || "";
+    const senderEmail = resolveWorkspaceSenderEmail({
+      senderEmail: settings.senderEmail,
+      businessSlug: business.slug,
+      environmentSenderEmail: process.env.TRIMAX_EMAIL_FROM,
+    });
     const fallbackCcEmail = settings.ccEmail.trim().toLowerCase();
     const bccEmail = settings.bccEmail.trim().toLowerCase();
 

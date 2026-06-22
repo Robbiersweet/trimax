@@ -18,6 +18,7 @@ import {
   defaultInvoiceEmailSettings,
   emailSettingsKey,
   normalizeInvoiceEmailSettings,
+  resolveWorkspaceSenderEmail,
 } from "../lib/invoiceEmailSettings";
 import { supabase } from "../lib/supabase";
 import {
@@ -1290,16 +1291,18 @@ function BusinessSettingsPageContent() {
     });
   }
 
+  const resolvedSenderEmail = resolveWorkspaceSenderEmail({
+    senderEmail,
+    businessSlug,
+  });
+  const senderProfileLabel = resolvedSenderEmail
+    ? `${senderName.trim() || business?.name || "Trimax"} <${resolvedSenderEmail}>`
+    : "No sender configured";
   const emailReadinessItems = [
     {
       label: "Sender",
-      value: senderEmail.trim()
-        ? `${senderName.trim() || business?.name || "Trimax"} <${senderEmail.trim()}>`
-        : "Use platform default",
-      status:
-        senderEmail.trim().includes("@") || !senderEmail.trim()
-          ? "ready"
-          : "attention",
+      value: senderProfileLabel,
+      status: resolvedSenderEmail.includes("@") ? "ready" : "attention",
     },
     {
       label: "Reply-to",
@@ -1358,10 +1361,10 @@ function BusinessSettingsPageContent() {
   const emailLaunchSteps = [
     {
       label: "Sender profile",
-      detail: senderEmail.trim()
-        ? `${senderName.trim() || business?.name || "Trimax"} is the visible sender.`
+      detail: resolvedSenderEmail
+        ? `${senderName.trim() || business?.name || "Trimax"} sends through ${resolvedSenderEmail}.`
         : "Add the email address customers will see.",
-      ready: senderEmail.trim().includes("@"),
+      ready: resolvedSenderEmail.includes("@"),
     },
     {
       label: "Reply path",

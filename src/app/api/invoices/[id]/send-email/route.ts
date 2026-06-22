@@ -5,6 +5,7 @@ import {
   emailSettingsKey,
   formatSenderAddress,
   normalizeInvoiceEmailSettings,
+  resolveWorkspaceSenderEmail,
 } from "../../../../lib/invoiceEmailSettings";
 import {
   createPdfAttachment,
@@ -379,8 +380,11 @@ export async function POST(request: Request, { params }: RouteParams) {
       currentEmail: access.email,
     })
   );
-  const senderEmail =
-    emailSettings.senderEmail.trim() || process.env.TRIMAX_EMAIL_FROM || "";
+  const senderEmail = resolveWorkspaceSenderEmail({
+    senderEmail: emailSettings.senderEmail,
+    businessSlug: business.slug,
+    environmentSenderEmail: process.env.TRIMAX_EMAIL_FROM,
+  });
   const { data: clientEmailRoute } = invoice.client_id
     ? await supabase
         .from("clients")

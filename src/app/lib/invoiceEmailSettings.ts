@@ -11,6 +11,8 @@ export type InvoiceEmailSettings = {
   paymentReminderBodyTemplate: string;
 };
 
+export const trimaxDefaultSenderEmail = "robbie@rnlcreations.com";
+
 type DefaultSettingsInput = {
   businessSlug: string;
   businessName: string;
@@ -46,7 +48,8 @@ export function defaultInvoiceEmailSettings({
 
   return {
     senderName: businessName,
-    senderEmail: "",
+    senderEmail:
+      businessSlug === "just-kleen" ? trimaxDefaultSenderEmail : "",
     replyToEmail: currentEmail ?? "",
     ccEmail: "",
     bccEmail: "",
@@ -130,6 +133,30 @@ export function formatSenderAddress({
   }
 
   return `${name.replace(/[<>"]/g, "")} <${email}>`;
+}
+
+export function resolveWorkspaceSenderEmail({
+  senderEmail,
+  businessSlug,
+  environmentSenderEmail,
+}: {
+  senderEmail: string;
+  businessSlug: string;
+  environmentSenderEmail?: string;
+}) {
+  const savedSenderEmail = senderEmail.trim().toLowerCase();
+
+  if (savedSenderEmail) {
+    return savedSenderEmail;
+  }
+
+  const envSenderEmail = environmentSenderEmail?.trim().toLowerCase() ?? "";
+
+  if (envSenderEmail) {
+    return envSenderEmail;
+  }
+
+  return businessSlug === "just-kleen" ? trimaxDefaultSenderEmail : "";
 }
 
 export function renderEmailTemplate(
