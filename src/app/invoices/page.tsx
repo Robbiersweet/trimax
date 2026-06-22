@@ -165,9 +165,9 @@ function formatMoney(value: string | number | null) {
   }).format(parsed);
 }
 
-function formatDate(value: string | null) {
+function formatInvoiceDueDate(value: string | null) {
   if (!value) {
-    return "No Due Date";
+    return "No due date";
   }
 
   const date = new Date(`${value}T00:00:00`);
@@ -177,9 +177,9 @@ function formatDate(value: string | null) {
   }
 
   return new Intl.DateTimeFormat("en-US", {
-    month: "2-digit",
-    day: "2-digit",
-    year: "2-digit",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
   }).format(date);
 }
 
@@ -200,6 +200,34 @@ function invoiceDaysPastDue(value: string | null) {
   return Math.floor(
     (today.getTime() - dueDate.getTime()) / 86_400_000
   );
+}
+
+function invoiceDueLabel(value: string | null) {
+  const days = invoiceDaysPastDue(value);
+
+  if (days === null) {
+    return "No due date";
+  }
+
+  if (days === 0) {
+    return "Due today";
+  }
+
+  if (days === 1) {
+    return `Due ${formatInvoiceDueDate(value)} (due yesterday / 1 day late)`;
+  }
+
+  if (days > 1) {
+    return `Due ${formatInvoiceDueDate(value)} (${days} days late)`;
+  }
+
+  const daysUntilDue = Math.abs(days);
+
+  if (daysUntilDue === 1) {
+    return `Due ${formatInvoiceDueDate(value)} (due tomorrow)`;
+  }
+
+  return `Due ${formatInvoiceDueDate(value)} (due in ${daysUntilDue} days)`;
 }
 
 function invoiceCollectionAmountDue(invoice: Invoice) {
@@ -1633,8 +1661,8 @@ export default async function InvoicesPage({
                               ? formatMoney(amountDue)
                               : "Split Source"}
                           </p>
-                          <p className="mt-1 text-xs uppercase tracking-[0.18em] text-zinc-500">
-                            {formatDate(invoice.due_date)}
+                          <p className="invoice-due-chip mt-2 text-sm font-black text-zinc-300">
+                            {invoiceDueLabel(invoice.due_date)}
                           </p>
                           {isPastDue ? (
                             <p className="mt-2 text-sm font-semibold text-pink-200">
@@ -2828,8 +2856,8 @@ export default async function InvoicesPage({
                           <StatusBadge status={invoice.status || "Draft"} />
                         </div>
 
-                        <p className="mt-2 text-sm text-zinc-400">
-                          {formatDate(invoice.due_date)}
+                        <p className="invoice-due-chip mt-2 text-sm font-black text-zinc-300">
+                          {invoiceDueLabel(invoice.due_date)}
                         </p>
 
                         {isPastDue ? (

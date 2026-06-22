@@ -1142,6 +1142,7 @@ export default async function DashboardPage({
   const communicationProofLogs = activityLogs
     .filter((log) => proofActions.has(log.action))
     .slice(0, 3);
+  const ownerRecentActivityLogs = activityLogs.slice(0, 4);
   const reminderInvoiceIds = new Set(
     activityLogs
       .filter((log) => log.action === "invoice.payment_reminder_sent")
@@ -3113,17 +3114,17 @@ export default async function DashboardPage({
             <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
               <div>
                 <p className="dashboard-section-label text-sm uppercase tracking-[0.3em]">
-                  Today&apos;s Focus
+                  Action Center
                 </p>
 
                 <h2 className="mt-1 text-2xl font-black tracking-tight">
-                  Three moves worth your attention
+                  What needs attention now
                 </h2>
               </div>
 
               <p className="max-w-xl text-sm leading-6 text-zinc-400">
-                Trimax keeps the dashboard centered on the work that moves
-                money, schedules, and customer follow-up forward.
+                Trimax keeps the owner view centered on work that moves money,
+                schedules, and customer follow-up forward.
               </p>
             </div>
 
@@ -3286,6 +3287,57 @@ export default async function DashboardPage({
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+
+            <div className="dashboard-action-recent mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.22em]">
+                    Recent Activity
+                  </p>
+                  <h3 className="mt-1 text-lg font-black">
+                    Latest important updates
+                  </h3>
+                </div>
+                <Link
+                  href={`/activity?business=${selectedBusinessSlug}`}
+                  className="dashboard-readable-link text-sm font-black transition"
+                >
+                  Open activity
+                </Link>
+              </div>
+
+              <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                {ownerRecentActivityLogs.length > 0 ? (
+                  ownerRecentActivityLogs.map((log) => (
+                    <Link
+                      key={log.id}
+                      href={activityHref(log, selectedBusinessSlug)}
+                      className="dashboard-action-recent-item rounded-2xl border border-white/10 bg-white/[0.04] p-3 transition hover:-translate-y-0.5 hover:border-sky-300/50"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-xs font-black uppercase tracking-[0.16em] text-zinc-400">
+                          {activityLabel(log.action)}
+                        </p>
+                        <span className="shrink-0 text-xs font-black text-zinc-500">
+                          {relativeTime(log.created_at)}
+                        </span>
+                      </div>
+                      <p className="mt-2 line-clamp-1 font-black">
+                        {log.entity_label ?? "Workspace activity"}
+                      </p>
+                      <p className="mt-1 line-clamp-2 text-sm leading-5 text-zinc-400">
+                        {activityProofDetail(log)}
+                      </p>
+                    </Link>
+                  ))
+                ) : (
+                  <p className="rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-3 text-sm leading-6 text-zinc-400 md:col-span-2 xl:col-span-4">
+                    Activity will appear here as queue items, estimates,
+                    invoices, and payments are updated.
+                  </p>
+                )}
               </div>
             </div>
           </section>

@@ -18907,3 +18907,178 @@ html.theme-light .queue-empty-card::after {
   background:
     linear-gradient(90deg, transparent, rgb(var(--trimax-section-primary) / 0.18), rgb(var(--trimax-section-secondary) / 0.12), transparent);
 }
+/* Mobile usability repair pass: keep Trimax's existing flow, but prevent
+   narrow columns, over-tall chrome, and hard-to-scan cards on phone screens. */
+@media (max-width: 640px) {
+  .app-shell-content {
+    gap: 0.75rem !important;
+    padding: 0.75rem !important;
+  }
+
+  .app-workspace-panel {
+    filter: none;
+  }
+
+  .app-workspace-back-bar {
+    align-items: stretch !important;
+    border-radius: 1rem !important;
+    gap: 0.5rem !important;
+    margin-bottom: 0.75rem !important;
+    padding: 0.5rem !important;
+  }
+
+  .app-workspace-section-mark,
+  .app-workspace-back-hint {
+    display: none !important;
+  }
+
+  .app-workspace-context {
+    flex: 1 1 100% !important;
+    justify-content: stretch !important;
+    min-width: 0 !important;
+  }
+
+  .app-workspace-context-copy {
+    display: none !important;
+  }
+
+  .app-workspace-actions {
+    display: grid !important;
+    flex: 1 1 100% !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .app-shell-back-button,
+  .app-workspace-copy-action,
+  .app-workspace-back-action {
+    min-width: 0 !important;
+    overflow-wrap: normal !important;
+    padding: 0.7rem 0.75rem !important;
+    text-align: center;
+    white-space: normal !important;
+    word-break: normal !important;
+  }
+
+  .app-card,
+  .invoice-snapshot-card,
+  .invoice-next-moves-card,
+  .focused-invoice-results-card,
+  .focused-invoice-result-row,
+  .dashboard-focus-strip,
+  .dashboard-priority-stack,
+  .dashboard-action-recent,
+  .auth-hero-panel,
+  .auth-card {
+    border-radius: 1rem !important;
+    padding: 1rem !important;
+  }
+
+  .invoice-dashboard,
+  .dashboard-page,
+  .queue-page,
+  .services-page,
+  .estimates-page,
+  .auth-page {
+    gap: 0.9rem !important;
+  }
+
+  .invoice-page-header,
+  .dashboard-masthead {
+    border-radius: 1rem !important;
+    padding: 0.95rem !important;
+  }
+
+  .invoice-page-header h1,
+  .dashboard-masthead h1,
+  .auth-page h1 {
+    font-size: 2rem !important;
+    line-height: 1.08 !important;
+  }
+
+  .dashboard-directory {
+    display: none !important;
+  }
+
+  .dashboard-focus-card,
+  .dashboard-priority-stack-item,
+  .dashboard-action-recent-item,
+  .dashboard-mobile-priority-card,
+  .invoice-filter-pill,
+  .focused-invoice-result-row,
+  .invoice-list-card,
+  .service-card,
+  .estimate-card {
+    min-width: 0 !important;
+    overflow-wrap: normal !important;
+    white-space: normal !important;
+    word-break: normal !important;
+  }
+
+  .dashboard-priority-stack-item {
+    grid-template-columns: auto minmax(0, 1fr) !important;
+  }
+
+  .dashboard-priority-stack-item > span:last-child {
+    grid-column: 2;
+    text-align: left;
+  }
+
+  .dashboard-section-label,
+  .dashboard-readable-label,
+  .dashboard-command-label,
+  .section-kicker,
+  .invoice-filter-group p,
+  .invoice-filter-pill,
+  .filter-tab-label,
+  .filter-tab-count,
+  .app-workspace-copy-action,
+  .app-workspace-back-action {
+    letter-spacing: 0.08em !important;
+    line-height: 1.25 !important;
+    overflow-wrap: normal !important;
+    white-space: normal !important;
+    word-break: normal !important;
+  }
+
+  .invoice-filter-bar {
+    align-items: stretch;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .invoice-filter-pill {
+    justify-content: center;
+    padding-inline: 0.65rem !important;
+  }
+
+  .focused-invoice-results-card {
+    margin-top: 0.25rem;
+  }
+
+  .focused-invoice-result-row h3,
+  .invoice-list-card h2 {
+    font-size: 1.05rem !important;
+    line-height: 1.25 !important;
+  }
+
+  .invoice-due-chip {
+    display: inline-flex;
+    max-width: 100%;
+    overflow-wrap: normal;
+    white-space: normal;
+    word-break: normal;
+  }
+
+  .auth-page-simple {
+    max-width: 100% !important;
+  }
+
+  .auth-page .auth-hero-panel {
+    padding-bottom: 0.85rem !important;
+  }
+
+  .auth-card form {
+    gap: 1rem !important;
+  }
+}
