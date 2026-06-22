@@ -30,9 +30,7 @@ type InvoiceEmailSendPanelProps = {
 };
 
 function businessLogoSrc(businessSlug: string) {
-  return businessSlug === "just-kleen"
-    ? "/Brand/rnl-multi-colors.png"
-    : "/Brand/rnl-multi-colors.png";
+  return businessSlug === "just-kleen" ? null : "/Brand/rnl-multi-colors.png";
 }
 
 function defaultSubject(
@@ -111,8 +109,9 @@ export default function InvoiceEmailSendPanel({
         ? "Payment reminder"
       : requestType === "estimate"
         ? "Estimate"
-        : "Invoice";
+      : "Invoice";
   const documentLabelLower = documentLabel.toLowerCase();
+  const logoSrc = businessLogoSrc(businessSlug);
   const [recipient, setRecipient] = useState(recipientEmail ?? "");
   const visibleClientCc = clientCcEmail?.trim() ?? "";
   const [subject, setSubject] = useState(
@@ -658,13 +657,19 @@ export default function InvoiceEmailSendPanel({
 
           <div className="px-4 py-5 text-slate-700 sm:px-5 sm:py-6">
             <div className="flex justify-center border-b border-slate-200 pb-5">
-              <Image
-                src={businessLogoSrc(businessSlug)}
-                alt={businessName}
-                width={80}
-                height={80}
-                className="h-16 w-16 rounded-xl object-contain sm:h-20 sm:w-20"
-              />
+              {logoSrc ? (
+                <Image
+                  src={logoSrc}
+                  alt={businessName}
+                  width={80}
+                  height={80}
+                  className="h-16 w-16 rounded-xl object-contain sm:h-20 sm:w-20"
+                />
+              ) : (
+                <div className="flex h-16 w-32 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-4 text-center text-sm font-black uppercase tracking-[0.22em] text-emerald-900 sm:h-20 sm:w-40">
+                  Just Kleen
+                </div>
+              )}
             </div>
 
             <p className="mt-6 whitespace-pre-line text-base leading-7 sm:text-lg sm:leading-8">

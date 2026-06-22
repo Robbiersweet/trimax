@@ -172,6 +172,8 @@ export default async function EstimatePrintPage({
 
   const companyName =
     business?.name || "R&L Creations";
+  const isJustKleen =
+    business?.slug === "just-kleen";
 
   const billedToName =
     client?.name || estimate.customer_name || "Customer";
@@ -202,14 +204,20 @@ export default async function EstimatePrintPage({
       <div className="mx-auto max-w-5xl bg-white print:max-w-none print:px-6 print:py-4">
         <section className="grid grid-cols-2 gap-8">
           <div>
-            <Image
-              src="/Brand/rnl-multi-colors.png"
-              alt={companyName}
-              width={128}
-              height={128}
-              className="h-32 w-32 object-contain print:h-28 print:w-28"
-              priority
-            />
+            {isJustKleen ? (
+              <div className="flex h-32 w-48 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-4 text-center text-lg font-black uppercase tracking-[0.22em] text-emerald-900 print:h-28 print:w-40 print:text-sm">
+                Just Kleen
+              </div>
+            ) : (
+              <Image
+                src="/Brand/rnl-multi-colors.png"
+                alt={companyName}
+                width={128}
+                height={128}
+                className="h-32 w-32 object-contain print:h-28 print:w-28"
+                priority
+              />
+            )}
           </div>
 
           <div className="text-right text-base leading-6">

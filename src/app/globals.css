@@ -19082,3 +19082,270 @@ html.theme-light .queue-empty-card::after {
     gap: 1rem !important;
   }
 }
+
+/* Mobile invoice repair: installed phone views need stronger overrides than
+   the general responsive pass above because the invoice header, back rail, and
+   send panel are dense operational surfaces. */
+@media (max-width: 640px) {
+  .app-shell-root {
+    min-height: 100dvh;
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .app-shell-content {
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)) !important;
+    padding-inline: max(0.75rem, env(safe-area-inset-left)) max(0.75rem, env(safe-area-inset-right)) !important;
+  }
+
+  .app-workspace-panel {
+    padding-bottom: 5rem;
+  }
+
+  .app-sidebar {
+    margin-bottom: 0.75rem !important;
+    padding: 0.75rem !important;
+  }
+
+  .app-sidebar-current {
+    display: none !important;
+  }
+
+  .app-sidebar-brand {
+    align-items: center !important;
+  }
+
+  .app-sidebar-menu-button {
+    min-height: 3rem;
+    white-space: nowrap !important;
+  }
+
+  .app-workspace-back-bar {
+    align-items: center !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(8.5rem, auto);
+    min-height: auto !important;
+  }
+
+  .app-workspace-back-bar::before {
+    inset-inline: 0.75rem !important;
+  }
+
+  .app-workspace-back-bar .app-shell-back-button {
+    width: 100% !important;
+  }
+
+  .app-workspace-back-bar .app-back-button {
+    justify-content: flex-start !important;
+    min-height: 3rem !important;
+    padding: 0.65rem 0.75rem !important;
+    width: 100% !important;
+  }
+
+  .app-workspace-context {
+    display: block !important;
+    flex-basis: auto !important;
+    width: auto !important;
+  }
+
+  .app-workspace-actions {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .app-workspace-copy-action,
+  .app-workspace-context-copy,
+  .app-workspace-section-mark,
+  .app-workspace-back-hint {
+    display: none !important;
+  }
+
+  .app-workspace-back-action {
+    align-items: center !important;
+    display: inline-flex !important;
+    justify-content: center !important;
+    min-height: 3rem !important;
+    overflow: hidden !important;
+    padding: 0.65rem 0.85rem !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    width: 100% !important;
+  }
+
+  [data-workspace-section="invoices"] .app-workspace-panel > main {
+    padding-top: 0.25rem !important;
+  }
+
+  [data-workspace-section="invoices"] .app-workspace-panel > main > .mb-8,
+  [data-workspace-section="invoices"] .app-workspace-panel > main > .mb-10 {
+    margin-bottom: 1rem !important;
+  }
+
+  [data-workspace-section="invoices"] .app-workspace-panel > main > .mb-8 > .mt-6,
+  [data-workspace-section="invoices"] .app-workspace-panel > main > .mb-10 > .mt-6 {
+    margin-top: 1rem !important;
+  }
+
+  [data-workspace-section="invoices"] main h1 {
+    font-size: 2.25rem !important;
+    line-height: 1.05 !important;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+  }
+
+  .invoice-intelligence-card {
+    padding: 1rem !important;
+  }
+
+  .invoice-intelligence-card h2,
+  .invoice-line-items-card h2,
+  #proof-vault h2,
+  .invoice-email-panel h2 {
+    font-size: 1.85rem !important;
+    line-height: 1.12 !important;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+  }
+
+  .invoice-intelligence-card p,
+  .invoice-intelligence-step,
+  .invoice-email-panel p,
+  .invoice-email-panel label,
+  .invoice-email-panel input,
+  .invoice-email-panel textarea,
+  .invoice-email-panel button,
+  .invoice-email-panel a,
+  .invoice-customer-preview,
+  .invoice-summary-card,
+  .invoice-line-items-card,
+  #proof-vault,
+  [data-workspace-section="invoices"] .app-card {
+    max-width: 100%;
+    overflow-wrap: normal !important;
+    white-space: normal !important;
+    word-break: normal !important;
+  }
+
+  .invoice-intelligence-card .tracking-\[0\.35em\],
+  .invoice-email-panel .tracking-\[0\.18em\],
+  .invoice-email-panel .tracking-\[0\.35em\],
+  #proof-vault .tracking-\[0\.35em\] {
+    letter-spacing: 0.12em !important;
+  }
+
+  .invoice-intelligence-card .grid,
+  .invoice-email-panel .grid {
+    min-width: 0 !important;
+  }
+
+  .invoice-email-panel {
+    background:
+      radial-gradient(circle at 88% 0%, rgba(14, 165, 233, 0.14), transparent 34%),
+      linear-gradient(135deg, rgba(24, 24, 27, 0.98), rgba(9, 9, 11, 0.98)) !important;
+    border-color: rgba(125, 211, 252, 0.22) !important;
+    box-shadow:
+      0 18px 46px rgba(2, 6, 23, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+    color: #f8fafc !important;
+  }
+
+  .invoice-email-header,
+  .invoice-email-footer {
+    background: rgba(2, 6, 23, 0.36) !important;
+    border-color: rgba(148, 163, 184, 0.18) !important;
+  }
+
+  .invoice-email-header {
+    padding: 1rem !important;
+  }
+
+  .invoice-email-panel > .grid {
+    gap: 1rem !important;
+    padding: 1rem !important;
+  }
+
+  .invoice-delivery-brief,
+  .invoice-email-readiness {
+    grid-template-columns: 1fr !important;
+  }
+
+  .invoice-delivery-brief > div,
+  .invoice-email-ready-card,
+  .invoice-email-option {
+    background: rgba(15, 23, 42, 0.72) !important;
+    border-color: rgba(148, 163, 184, 0.2) !important;
+    color: #e5e7eb !important;
+  }
+
+  .invoice-email-ready-card[data-status="ready"] {
+    background: rgba(6, 78, 59, 0.5) !important;
+    border-color: rgba(52, 211, 153, 0.35) !important;
+  }
+
+  .invoice-email-ready-card[data-status="attention"] {
+    background: rgba(120, 53, 15, 0.45) !important;
+    border-color: rgba(251, 191, 36, 0.38) !important;
+  }
+
+  .invoice-email-ready-card[data-status="waiting"] {
+    background: rgba(12, 74, 110, 0.42) !important;
+    border-color: rgba(56, 189, 248, 0.35) !important;
+  }
+
+  .invoice-email-panel .text-slate-950,
+  .invoice-email-panel .text-slate-700,
+  .invoice-email-panel .text-slate-600,
+  .invoice-email-panel .text-slate-500 {
+    color: #e5e7eb !important;
+  }
+
+  .invoice-email-panel .text-slate-400 {
+    color: #94a3b8 !important;
+  }
+
+  .invoice-email-input {
+    background: #ffffff !important;
+    color: #020617 !important;
+    min-height: 3.25rem;
+  }
+
+  .invoice-email-tone-row {
+    gap: 0.5rem !important;
+  }
+
+  .invoice-email-tone-row button {
+    min-height: 2.5rem;
+    padding-inline: 0.9rem !important;
+  }
+
+  .invoice-email-option {
+    align-items: flex-start !important;
+    line-height: 1.55 !important;
+  }
+
+  .invoice-customer-preview {
+    border-color: rgba(148, 163, 184, 0.22) !important;
+  }
+
+  .invoice-email-footer {
+    padding: 1rem !important;
+  }
+
+  .invoice-email-footer > div:last-child,
+  #invoice-actions {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    width: 100%;
+  }
+
+  .invoice-email-footer a,
+  .invoice-email-footer button,
+  #invoice-actions a,
+  #invoice-actions button {
+    width: 100% !important;
+  }
+
+  .invoice-line-items-card .ml-auto {
+    margin-left: 0 !important;
+    max-width: none !important;
+  }
+}

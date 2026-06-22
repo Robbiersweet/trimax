@@ -264,6 +264,8 @@ export default async function InvoicePrintPage({
 
   const companyName =
     business?.name || "R&L Creations";
+  const isJustKleen =
+    business?.slug === "just-kleen";
 
   const billedToName =
     client?.name || invoice.customer_name || "Customer";
@@ -340,14 +342,20 @@ export default async function InvoicePrintPage({
       <div className="standard-invoice-print mx-auto max-w-5xl bg-white print:max-w-none print:px-4 print:py-3">
         <section className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-8 print:grid-cols-2 print:gap-4">
           <div>
-            <Image
-              src="/Brand/rnl-multi-colors.png"
-              alt={companyName}
-              width={128}
-              height={128}
-              className="h-32 w-32 object-contain print:h-20 print:w-20"
-              priority
-            />
+            {isJustKleen ? (
+              <div className="flex h-32 w-48 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-4 text-center text-lg font-black uppercase tracking-[0.22em] text-emerald-900 print:h-20 print:w-36 print:text-sm">
+                Just Kleen
+              </div>
+            ) : (
+              <Image
+                src="/Brand/rnl-multi-colors.png"
+                alt={companyName}
+                width={128}
+                height={128}
+                className="h-32 w-32 object-contain print:h-20 print:w-20"
+                priority
+              />
+            )}
           </div>
 
           <div className="overflow-wrap-anywhere text-left text-base leading-6 sm:text-right print:text-right print:text-sm print:leading-5">
