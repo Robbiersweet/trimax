@@ -2,8 +2,13 @@
 
 import { usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import BackButton from "./BackButton";
+import {
+  WorkspaceRole,
+  normalizeWorkspaceRole,
+} from "../lib/rolePermissions";
+import { loadWorkspaceAccess } from "../lib/workspaceAccess";
 
 type SectionContext = {
   fallback: string;
@@ -201,18 +206,45 @@ export default function WorkspaceBackBar() {
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">(
     "idle"
   );
+  const [role, setRole] = useState<WorkspaceRole | null>(null);
   const business = searchParams.get("business") ?? "rnl-creations";
   const shouldHide = pathname === "/";
   const context = contextForPath(pathname, business);
   const activeHandoffParams = handoffParams(new URLSearchParams(searchParams));
+  const canCopyPageContext = role === "owner" || role === "admin";
   const handoffHint =
-    activeHandoffParams.length > 0
+    canCopyPageContext && activeHandoffParams.length > 0
       ? `${context.detailLabel} / Copy includes ${activeHandoffParams.length} active filter${
           activeHandoffParams.length === 1 ? "" : "s"
         }.`
       : `${context.detailLabel} / Back returns to your previous Trimax screen.`;
 
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadRole() {
+      const access = await loadWorkspaceAccess();
+      const workspace = access.find((item) => item.businessSlug === business);
+
+      if (!isMounted) {
+        return;
+      }
+
+      setRole(normalizeWorkspaceRole(workspace?.role ?? "technician"));
+    }
+
+    loadRole();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [business]);
+
   async function copyHandoff() {
+    if (!canCopyPageContext) {
+      return;
+    }
+
     const url =
       typeof window !== "undefined"
         ? window.location.href
@@ -222,7 +254,7 @@ export default function WorkspaceBackBar() {
         ? readableParamValue(window.location.hash.replace(/^#/, ""))
         : "";
     const handoff = [
-      "Trimax Handoff",
+      "Trimax Page Context",
       `Workspace: ${context.label}`,
       `View: ${context.detailLabel}`,
       `Business: ${readableParamValue(business)}`,
@@ -279,17 +311,19 @@ export default function WorkspaceBackBar() {
           </p>
         </div>
         <div className="app-workspace-actions flex shrink-0 items-center gap-2">
-          <button
-            type="button"
-            onClick={copyHandoff}
-            className="app-workspace-copy-action rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black text-sky-100 transition hover:-translate-y-0.5 hover:border-sky-300/50 hover:text-white"
-          >
-            {copyState === "copied"
-              ? "Copied"
-              : copyState === "failed"
-                ? "Copy failed"
-                : "Copy Handoff"}
-          </button>
+          {canCopyPageContext ? (
+            <button
+              type="button"
+              onClick={copyHandoff}
+              className="app-workspace-copy-action rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black text-sky-100 transition hover:-translate-y-0.5 hover:border-sky-300/50 hover:text-white"
+            >
+              {copyState === "copied"
+                ? "Copied"
+                : copyState === "failed"
+                  ? "Copy failed"
+                  : "Copy Page Context"}
+            </button>
+          ) : null}
           <Link
             href={context.actionHref}
             className="app-workspace-back-action rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black text-sky-100 transition hover:-translate-y-0.5 hover:border-sky-300/50 hover:text-white"
