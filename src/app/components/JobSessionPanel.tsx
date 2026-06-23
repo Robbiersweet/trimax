@@ -7,8 +7,16 @@ import { supabase } from "../lib/supabase";
 
 const WORK_TYPES = [
   "Prep",
+  "Sprayer Repair",
+  "Primer",
+  "Cabinet Primer",
+  "Door / Trim Primer",
+  "Wall Spot Primer",
+  "Baseboard Heater Primer",
   "Paint",
   "Cabinets",
+  "Cabinet Paint",
+  "Door / Trim Paint",
   "Cleaning",
   "Material Run",
   "Inspection",
@@ -47,6 +55,7 @@ type JobSessionBreakdown = {
 type BreakdownDraft = {
   workType: string;
   minutes: string;
+  timeUnit: "minutes" | "hours";
   percentage: string;
   notes: string;
 };
@@ -108,9 +117,46 @@ function blankBreakdown(): BreakdownDraft {
   return {
     workType: "Prep",
     minutes: "",
+    timeUnit: "minutes",
     percentage: "",
     notes: "",
   };
+}
+
+function breakdownDraft(
+  workType: string,
+  percentage: string,
+  notes = "",
+  minutes = "",
+  timeUnit: "minutes" | "hours" = "minutes"
+): BreakdownDraft {
+  return {
+    workType,
+    minutes,
+    timeUnit,
+    percentage,
+    notes,
+  };
+}
+
+function numberInputValue(value: number) {
+  if (!Number.isFinite(value) || value <= 0) {
+    return "";
+  }
+
+  return Number.isInteger(value) ? String(value) : String(Math.round(value * 100) / 100);
+}
+
+function draftMinutesValue(draft: BreakdownDraft) {
+  const enteredValue = Number(draft.minutes);
+
+  if (!Number.isFinite(enteredValue) || enteredValue <= 0) {
+    return 0;
+  }
+
+  return draft.timeUnit === "hours"
+    ? Math.round(enteredValue * 60)
+    : Math.round(enteredValue);
 }
 
 function defaultBreakdownDrafts(jobType?: string | null): BreakdownDraft[] {
@@ -118,29 +164,38 @@ function defaultBreakdownDrafts(jobType?: string | null): BreakdownDraft[] {
 
   if (normalized.includes("cabinet")) {
     return [
-      { workType: "Prep", minutes: "", percentage: "20", notes: "" },
-      { workType: "Cabinets", minutes: "", percentage: "70", notes: "" },
-      { workType: "Touch Ups", minutes: "", percentage: "10", notes: "" },
+      breakdownDraft("Prep", "20"),
+      breakdownDraft("Cabinets", "70"),
+      breakdownDraft("Touch Ups", "10"),
+    ];
+  }
+
+  if (normalized.includes("reno")) {
+    return [
+      breakdownDraft("Prep", "15"),
+      breakdownDraft("Sprayer Repair", "15"),
+      breakdownDraft("Cabinet Primer", "35", "Kitchen and bathroom cabinet sets"),
+      breakdownDraft("Door / Trim Primer", "20"),
+      breakdownDraft("Wall Spot Primer", "10"),
+      breakdownDraft("Baseboard Heater Primer", "5"),
     ];
   }
 
   if (normalized.includes("clean")) {
     return [
-      { workType: "Cleaning", minutes: "", percentage: "80", notes: "" },
-      { workType: "Inspection", minutes: "", percentage: "20", notes: "" },
+      breakdownDraft("Cleaning", "80"),
+      breakdownDraft("Inspection", "20"),
     ];
   }
 
   if (normalized.includes("admin") || normalized.includes("estimate")) {
-    return [
-      { workType: "Admin", minutes: "", percentage: "100", notes: "" },
-    ];
+    return [breakdownDraft("Admin", "100")];
   }
 
   return [
-    { workType: "Prep", minutes: "", percentage: "15", notes: "" },
-    { workType: "Paint", minutes: "", percentage: "75", notes: "" },
-    { workType: "Touch Ups", minutes: "", percentage: "10", notes: "" },
+    breakdownDraft("Prep", "15"),
+    breakdownDraft("Paint", "75"),
+    breakdownDraft("Touch Ups", "10"),
   ];
 }
 
@@ -326,10 +381,10 @@ export default function JobSessionPanel({
   const breakdownTotals = useMemo(() => {
     const total = stoppedSession?.total_minutes ?? 0;
     const effectiveMinutes = breakdownDrafts.reduce((sum, draft) => {
-      const minutes = Number(draft.minutes);
       const percentage = Number(draft.percentage);
+      const minutes = draftMinutesValue(draft);
 
-      if (Number.isFinite(minutes) && minutes > 0) {
+      if (minutes > 0) {
         return sum + minutes;
       }
 
@@ -509,11 +564,11 @@ export default function JobSessionPanel({
     const total = stoppedSession.total_minutes ?? 0;
     const rows = breakdownDrafts
       .map((draft) => {
-        const minutes = Number(draft.minutes);
         const percentage = Number(draft.percentage);
+        const minutes = draftMinutesValue(draft);
         const effectiveMinutes =
-          Number.isFinite(minutes) && minutes > 0
-            ? Math.round(minutes)
+          minutes > 0
+            ? minutes
             : Number.isFinite(percentage) && percentage > 0 && total > 0
               ? Math.round((percentage / 100) * total)
               : 0;
@@ -576,43 +631,80 @@ export default function JobSessionPanel({
   }
 
   function applyBreakdownPreset(
-    preset: "paint" | "cabinet" | "material" | "admin"
+    preset: "paint" | "reno" | "cabinet" | "material" | "admin"
   ) {
     if (preset === "paint") {
       setBreakdownDrafts([
-        { workType: "Prep", minutes: "", percentage: "15", notes: "" },
-        { workType: "Paint", minutes: "", percentage: "75", notes: "" },
-        { workType: "Touch Ups", minutes: "", percentage: "10", notes: "" },
+        breakdownDraft("Prep", "15"),
+        breakdownDraft("Paint", "75"),
+        breakdownDraft("Touch Ups", "10"),
+      ]);
+      return;
+    }
+
+    if (preset === "reno") {
+      setBreakdownDrafts([
+        breakdownDraft("Prep", "15"),
+        breakdownDraft("Sprayer Repair", "15"),
+        breakdownDraft("Cabinet Primer", "35", "Kitchen and bathroom cabinet sets"),
+        breakdownDraft("Door / Trim Primer", "20"),
+        breakdownDraft("Wall Spot Primer", "10"),
+        breakdownDraft("Baseboard Heater Primer", "5"),
       ]);
       return;
     }
 
     if (preset === "cabinet") {
       setBreakdownDrafts([
-        { workType: "Prep", minutes: "", percentage: "20", notes: "" },
-        { workType: "Cabinets", minutes: "", percentage: "70", notes: "" },
-        { workType: "Touch Ups", minutes: "", percentage: "10", notes: "" },
+        breakdownDraft("Prep", "20"),
+        breakdownDraft("Cabinets", "70"),
+        breakdownDraft("Touch Ups", "10"),
       ]);
       return;
     }
 
     if (preset === "material") {
-      setBreakdownDrafts([
-        { workType: "Material Run", minutes: "", percentage: "100", notes: "" },
-      ]);
+      setBreakdownDrafts([breakdownDraft("Material Run", "100")]);
       return;
     }
 
-    setBreakdownDrafts([
-      { workType: "Admin", minutes: "", percentage: "100", notes: "" },
-    ]);
+    setBreakdownDrafts([breakdownDraft("Admin", "100")]);
   }
 
-  function updateBreakdown(index: number, field: keyof BreakdownDraft, value: string) {
+  function updateBreakdown(
+    index: number,
+    field: keyof BreakdownDraft,
+    value: string
+  ) {
     setBreakdownDrafts((current) =>
       current.map((draft, draftIndex) =>
         draftIndex === index ? { ...draft, [field]: value } : draft
       )
+    );
+  }
+
+  function updateBreakdownTimeUnit(
+    index: number,
+    nextUnit: "minutes" | "hours"
+  ) {
+    setBreakdownDrafts((current) =>
+      current.map((draft, draftIndex) => {
+        if (draftIndex !== index || draft.timeUnit === nextUnit) {
+          return draft;
+        }
+
+        const currentMinutes = draftMinutesValue(draft);
+        const nextValue =
+          nextUnit === "hours"
+            ? numberInputValue(currentMinutes / 60)
+            : numberInputValue(currentMinutes);
+
+        return {
+          ...draft,
+          timeUnit: nextUnit,
+          minutes: nextValue,
+        };
+      })
     );
   }
 
@@ -979,6 +1071,7 @@ export default function JobSessionPanel({
                 onChange={(event) => setJobTypeDraft(event.target.value)}
               >
                 <option>Paint</option>
+                <option>Reno Paint</option>
                 <option>Cabinets</option>
                 <option>Cleaning</option>
                 <option>Inspection</option>
@@ -1049,13 +1142,20 @@ export default function JobSessionPanel({
             </div>
           </div>
 
-          <div className="mt-4 grid gap-2 sm:grid-cols-4">
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
             <button
               className="job-session-preset rounded-2xl border border-white/10 bg-black/25 px-3 py-3 text-sm font-black transition hover:border-sky-300/50"
               onClick={() => applyBreakdownPreset("paint")}
               type="button"
             >
               Paint Day
+            </button>
+            <button
+              className="job-session-preset rounded-2xl border border-white/10 bg-black/25 px-3 py-3 text-sm font-black transition hover:border-sky-300/50"
+              onClick={() => applyBreakdownPreset("reno")}
+              type="button"
+            >
+              Reno Primer
             </button>
             <button
               className="job-session-preset rounded-2xl border border-white/10 bg-black/25 px-3 py-3 text-sm font-black transition hover:border-sky-300/50"
@@ -1084,7 +1184,7 @@ export default function JobSessionPanel({
             {breakdownDrafts.map((draft, index) => (
               <div
                 key={`${draft.workType}-${index}`}
-                className="grid gap-3 rounded-2xl border border-white/10 bg-black/25 p-3 md:grid-cols-[1.1fr_0.7fr_0.7fr_1.4fr]"
+                className="grid gap-3 rounded-2xl border border-white/10 bg-black/25 p-3 md:grid-cols-[1.1fr_0.55fr_0.65fr_0.6fr_1.35fr]"
               >
                 <select
                   className="app-form-input rounded-2xl border px-3 py-3"
@@ -1097,10 +1197,23 @@ export default function JobSessionPanel({
                     <option key={type}>{type}</option>
                   ))}
                 </select>
+                <select
+                  className="app-form-input rounded-2xl border px-3 py-3"
+                  value={draft.timeUnit}
+                  onChange={(event) =>
+                    updateBreakdownTimeUnit(
+                      index,
+                      event.target.value === "hours" ? "hours" : "minutes"
+                    )
+                  }
+                >
+                  <option value="minutes">Minutes</option>
+                  <option value="hours">Hours</option>
+                </select>
                 <input
                   className="app-form-input rounded-2xl border px-3 py-3"
-                  inputMode="numeric"
-                  placeholder="Minutes"
+                  inputMode="decimal"
+                  placeholder={draft.timeUnit === "hours" ? "Hours" : "Minutes"}
                   value={draft.minutes}
                   onChange={(event) =>
                     updateBreakdown(index, "minutes", event.target.value)
@@ -1128,8 +1241,9 @@ export default function JobSessionPanel({
           </div>
 
           <p className="mt-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm font-semibold text-violet-100/80">
-            Use either minutes or percentages. Trimax accepts a close match, so
-            this can stay quick at the end of the day.
+            Use minutes, hours, or percentages. Trimax converts hours into
+            minutes before saving and accepts a close match, so this can stay
+            quick at the end of the day.
           </p>
 
           <div className="mt-4 flex flex-col gap-3 sm:flex-row">
