@@ -105,6 +105,15 @@ type ActivityLog = {
   created_at: string | null;
 };
 
+type ProofTimelineEvent = {
+  id: string;
+  date: string | null;
+  title: string;
+  actor: string;
+  fields: { label: string; value: string }[];
+  tone?: "default" | "emerald" | "orange" | "rose" | "zinc";
+};
+
 function money(value: number) {
   const safeValue = Number.isFinite(value) ? value : 0;
 
@@ -151,6 +160,37 @@ function formatDateTime(value: string | null) {
     year: "numeric",
     hour: "numeric",
     minute: "2-digit",
+  }).format(date);
+}
+
+function formatLifecycleDate(value: string | null) {
+  if (!value) return "-";
+
+  const normalizedValue = String(value).trim();
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(normalizedValue)
+    ? new Date(`${normalizedValue}T00:00:00`)
+    : new Date(normalizedValue);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
+
+function formatTimelineDay(value: string | null) {
+  if (!value) return "-";
+
+  const normalizedValue = String(value).trim();
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(normalizedValue)
+    ? new Date(`${normalizedValue}T00:00:00`)
+    : new Date(normalizedValue);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
   }).format(date);
 }
 
@@ -366,40 +406,38 @@ function SummaryRow({
   );
 }
 
-function buildProofSummary(logs: ActivityLog[], invoiceLabel: string) {
-  if (logs.length === 0) {
+function buildProofSummary(events: ProofTimelineEvent[], invoiceLabel: string) {
+  if (events.length === 0) {
     return "";
   }
 
-  const entries = logs.map((log) => {
-    const fields = evidenceFields(log);
-    const fieldLines = fields.map(
+  const entries = events.map((event) => {
+    const fieldLines = event.fields.map(
       (field) => `  - ${field.label}: ${field.value}`
     );
-    const actor = log.actor_email ? ` by ${log.actor_email}` : " by Trimax";
 
     return [
-      `${formatDateTime(log.created_at)} - ${activityLabel(log.action)}${actor}`,
+      `${formatDateTime(event.date)} - ${event.title} by ${event.actor}`,
       ...fieldLines,
     ].join("\n");
   });
 
   return [
     `Trimax proof summary for ${invoiceLabel}`,
-    `${logs.length} saved event${logs.length === 1 ? "" : "s"}`,
+    `${events.length} timeline event${events.length === 1 ? "" : "s"}`,
     "",
     ...entries,
   ].join("\n\n");
 }
 
 function EvidenceTrail({
+  events,
   invoiceLabel,
-  logs,
 }: {
+  events: ProofTimelineEvent[];
   invoiceLabel: string;
-  logs: ActivityLog[];
 }) {
-  const proofSummary = buildProofSummary(logs, invoiceLabel);
+  const proofSummary = buildProofSummary(events, invoiceLabel);
 
   return (
     <Card>
@@ -418,47 +456,45 @@ function EvidenceTrail({
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:items-end">
-          <div className="rounded-2xl border border-sky-400/20 bg-sky-400/10 px-4 py-3 text-sm text-sky-100">
-            {logs.length} saved event{logs.length === 1 ? "" : "s"}
+          <div className="rounded-2xl border border-emerald-400/25 bg-emerald-400/10 px-4 py-3 text-sm font-semibold text-emerald-100">
+            {events.length} timeline event{events.length === 1 ? "" : "s"}
           </div>
           <CopyProofSummaryButton
-            disabled={logs.length === 0}
+            disabled={events.length === 0}
             summary={proofSummary}
           />
         </div>
       </div>
 
-      {logs.length > 0 ? (
-        <div className="mt-6 space-y-4">
-          {logs.map((log) => {
-            const fields = evidenceFields(log);
-
-            return (
-              <div
-                key={log.id}
-                className="rounded-2xl border border-zinc-800 bg-black/30 p-4"
-              >
+      {events.length > 0 ? (
+        <div className="invoice-proof-timeline mt-6 space-y-4">
+          {events.map((event) => (
+            <div
+              key={event.id}
+              data-tone={event.tone ?? "default"}
+              className="invoice-proof-event grid gap-4 rounded-2xl border border-zinc-800 bg-black/30 p-4 sm:grid-cols-[92px_1fr]"
+            >
+              <div className="proof-event-date rounded-2xl border border-white/10 bg-zinc-950/80 px-3 py-2 text-sm font-black text-zinc-200">
+                {formatTimelineDay(event.date)}
+              </div>
+              <div className="min-w-0">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <p className="font-black text-white">
-                      {activityLabel(log.action)}
-                    </p>
+                    <p className="font-black text-white">{event.title}</p>
                     <p className="mt-1 text-sm text-zinc-500">
-                      {log.actor_email
-                        ? `Recorded by ${log.actor_email}`
-                        : "Recorded by Trimax"}
+                      Recorded by {event.actor}
                     </p>
                   </div>
                   <p className="text-sm font-semibold text-zinc-400">
-                    {formatDateTime(log.created_at)}
+                    {formatDateTime(event.date)}
                   </p>
                 </div>
 
-                {fields.length > 0 ? (
+                {event.fields.length > 0 ? (
                   <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {fields.map((field) => (
+                    {event.fields.map((field) => (
                       <div
-                        key={`${log.id}-${field.label}`}
+                        key={`${event.id}-${field.label}`}
                         className="rounded-xl border border-zinc-800 bg-zinc-950/70 px-3 py-2"
                       >
                         <p className="text-[0.72rem] font-bold uppercase tracking-[0.18em] text-zinc-500">
@@ -472,8 +508,8 @@ function EvidenceTrail({
                   </div>
                 ) : null}
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       ) : (
         <div className="mt-6 rounded-2xl border border-dashed border-zinc-800 bg-black/20 p-5 text-sm leading-6 text-zinc-400">
@@ -495,50 +531,72 @@ type InvoiceIntelligenceAction = {
 
 function InvoiceIntelligence({
   amountDueLabel,
+  amountPaid,
   balanceDue,
+  collectedPercent,
+  depositStatusLabel,
   hasDepositRequest,
   hasPaymentProof,
   hasPdfProof,
   hasReminderProof,
   hasSendProof,
+  isFullyPaid,
+  isPartiallyPaid,
   isPaymentLate,
+  latestPaymentDate,
   nextAction,
 }: {
   amountDueLabel: string;
+  amountPaid: number;
   balanceDue: number;
+  collectedPercent: number;
+  depositStatusLabel: string;
   hasDepositRequest: boolean;
   hasPaymentProof: boolean;
   hasPdfProof: boolean;
   hasReminderProof: boolean;
   hasSendProof: boolean;
+  isFullyPaid: boolean;
+  isPartiallyPaid: boolean;
   isPaymentLate: boolean;
+  latestPaymentDate: string | null;
   nextAction: InvoiceIntelligenceAction;
 }) {
   const steps = [
     {
       label: "Send Proof",
-      value: hasSendProof ? "Saved" : "Needed",
+      value: hasSendProof ? "Delivered" : "Not Sent Yet",
       done: hasSendProof,
     },
     {
       label: "PDF Copy",
-      value: hasPdfProof ? "Attached" : "Missing",
+      value: hasPdfProof ? "Stored" : hasSendProof ? "Not Attached" : "Pending",
       done: hasPdfProof,
     },
     {
       label: "Payment",
-      value: balanceDue <= 0 ? "Clear" : money(balanceDue),
-      done: balanceDue <= 0 || hasPaymentProof,
+      value: isFullyPaid
+        ? "Paid in Full"
+        : isPartiallyPaid
+          ? `${collectedPercent}% Collected`
+          : money(balanceDue),
+      done: isFullyPaid || hasPaymentProof,
     },
     {
       label: "Reminder",
-      value: isPaymentLate ? (hasReminderProof ? "Sent" : "Due") : "Quiet",
+      value: isPaymentLate
+        ? hasReminderProof
+          ? "Sent"
+          : "Due Now"
+        : isFullyPaid
+          ? "Not Required"
+          : "Current",
       done: !isPaymentLate || hasReminderProof,
     },
     {
       label: "Deposit",
-      value: hasDepositRequest ? "Active" : "None",
-      done: !hasDepositRequest,
+      value: depositStatusLabel,
+      done: depositStatusLabel === "Collected" || !hasDepositRequest,
     },
   ];
 
@@ -561,10 +619,17 @@ function InvoiceIntelligence({
               <Button>{nextAction.label}</Button>
             </Link>
             <div className="rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm">
-              <p className="text-zinc-400">{amountDueLabel}</p>
-              <p className="mt-1 text-lg font-black text-white">
-                {money(balanceDue)}
+              <p className="text-zinc-400">
+                {isFullyPaid ? "Collected" : amountDueLabel}
               </p>
+              <p className="mt-1 text-lg font-black text-white">
+                {isFullyPaid ? money(amountPaid) : money(balanceDue)}
+              </p>
+              {isFullyPaid && latestPaymentDate ? (
+                <p className="mt-1 text-xs font-semibold text-emerald-200">
+                  Paid {formatLifecycleDate(latestPaymentDate)}
+                </p>
+              ) : null}
             </div>
           </div>
         </div>
@@ -591,6 +656,94 @@ function InvoiceIntelligence({
               </p>
             </div>
           ))}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function PaymentProgressCard({
+  amountDue,
+  amountPaid,
+  invoiceTotal,
+  isFullyPaid,
+  isPartiallyPaid,
+  latestPaymentDate,
+}: {
+  amountDue: number;
+  amountPaid: number;
+  invoiceTotal: number;
+  isFullyPaid: boolean;
+  isPartiallyPaid: boolean;
+  latestPaymentDate: string | null;
+}) {
+  const collectedPercent =
+    invoiceTotal > 0
+      ? Math.min(100, Math.round((amountPaid / invoiceTotal) * 100))
+      : 0;
+  const heading = isFullyPaid
+    ? "Paid in full"
+    : isPartiallyPaid
+      ? `${collectedPercent}% collected`
+      : "Balance ready to collect";
+  const detail = isFullyPaid
+    ? latestPaymentDate
+      ? `Collected ${formatLifecycleDate(latestPaymentDate)}`
+      : "Collection is complete."
+    : isPartiallyPaid
+      ? `${money(amountPaid)} of ${money(invoiceTotal)} has been collected.`
+      : `${money(amountDue)} remains open.`;
+
+  return (
+    <Card className="invoice-payment-progress-card border-emerald-500/25 bg-gradient-to-br from-zinc-950 via-zinc-950 to-emerald-500/10">
+      <div className="grid gap-5 lg:grid-cols-[1fr_0.75fr] lg:items-center">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.35em] text-emerald-300">
+            Payment Progress
+          </p>
+          <h2 className="mt-3 text-3xl font-black text-white">{heading}</h2>
+          <p className="mt-2 text-sm leading-6 text-zinc-300">{detail}</p>
+          <div className="mt-5 h-3 overflow-hidden rounded-full bg-zinc-800">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-sky-400 to-indigo-500"
+              style={{ width: `${collectedPercent}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-zinc-500">
+              Invoice Total
+            </p>
+            <p className="mt-2 text-xl font-black text-white">
+              {money(invoiceTotal)}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-emerald-400/25 bg-emerald-400/10 p-4">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-200">
+              Collected
+            </p>
+            <p className="mt-2 text-xl font-black text-emerald-100">
+              {money(amountPaid)}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-orange-400/25 bg-orange-400/10 p-4">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-orange-200">
+              Remaining
+            </p>
+            <p className="mt-2 text-xl font-black text-orange-100">
+              {money(amountDue)}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-sky-400/25 bg-sky-400/10 p-4">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-sky-200">
+              Collection
+            </p>
+            <p className="mt-2 text-xl font-black text-sky-100">
+              {collectedPercent}%
+            </p>
+          </div>
         </div>
       </div>
     </Card>
@@ -822,19 +975,34 @@ export default async function InvoiceDetailPage({
   const invoiceTotal = subtotal + taxAmount;
   const amountPaid = numberValue(invoice.amount_paid);
   const amountDue = Math.max(invoiceTotal - amountPaid, 0);
+  const status = invoice.status || "Draft";
+  const normalizedStatus = status.toLowerCase();
+  const isFullyPaid = normalizedStatus === "paid" || amountDue <= 0;
+  const isPartiallyPaid = amountPaid > 0 && amountDue > 0;
+  const collectedPercent =
+    invoiceTotal > 0
+      ? Math.min(100, Math.round((amountPaid / invoiceTotal) * 100))
+      : 0;
   const depositRequestedAmount = numberValue(
     invoice.deposit_requested_amount
   );
   const depositStatus = String(invoice.deposit_status ?? "none").toLowerCase();
   const hasDepositRequest =
     depositStatus === "requested" && depositRequestedAmount > 0;
+  const hasInferredDepositCollection = isPartiallyPaid && amountPaid > 0;
   const depositDueNow = hasDepositRequest
     ? Math.max(depositRequestedAmount - amountPaid, 0)
     : 0;
   const customerFacingAmountDue = hasDepositRequest
     ? depositDueNow
     : amountDue;
-  const amountDueLabel = hasDepositRequest ? "Deposit Due" : "Amount Due";
+  const amountDueLabel = isFullyPaid
+    ? "Balance"
+    : hasDepositRequest
+      ? "Deposit Due"
+      : isPartiallyPaid
+        ? "Remaining Balance"
+        : "Amount Due";
   const balanceAfterDepositRequest = Math.max(
     invoiceTotal - depositRequestedAmount,
     0
@@ -865,8 +1033,6 @@ export default async function InvoiceDetailPage({
     invoice.issue_date ?? smartInvoiceDates.issueDate;
   const displayDueDate =
     invoice.due_date ?? smartInvoiceDates.dueDate;
-  const status = invoice.status || "Draft";
-  const normalizedStatus = status.toLowerCase();
   const daysLate = daysPastDue(displayDueDate);
   const isPaymentLate =
     customerFacingAmountDue > 0 &&
@@ -898,6 +1064,13 @@ export default async function InvoiceDetailPage({
   const latestPaymentLog = invoiceActivityLogs.find(
     (log) => log.action === "invoice.batch_payment_applied"
   );
+  const latestDepositRequestLog = invoiceActivityLogs.find(
+    (log) => log.action === "invoice.deposit_requested"
+  );
+  const latestPaymentDate =
+    detailText(latestPaymentLog?.details, "paymentDate") ??
+    latestPaymentLog?.created_at ??
+    null;
   const hasSendProof = Boolean(latestSendLog);
   const hasReminderProof = Boolean(latestReminderLog);
   const hasPaymentProof = Boolean(latestPaymentLog);
@@ -907,6 +1080,103 @@ export default async function InvoiceDetailPage({
       log.action === "invoice.payment_reminder_sent";
 
     return isEmailProof && detailText(log.details, "pdf_attached") === "true";
+  });
+  const depositStatusLabel = isPartiallyPaid
+    ? "Collected"
+    : isFullyPaid && amountPaid > 0
+      ? "N/A"
+      : hasDepositRequest
+        ? depositDueNow > 0
+          ? "Requested"
+          : "Collected"
+        : "Not Requested";
+  const depositCardTitle = hasInferredDepositCollection
+    ? "Deposit collected"
+    : hasDepositRequest
+      ? depositDueNow > 0
+        ? `${money(depositRequestedAmount)} requested`
+        : "Deposit collected"
+      : "No deposit requested yet";
+  const depositCardDetail = hasInferredDepositCollection
+    ? `${money(amountPaid)} has already been collected against this invoice, leaving ${money(
+        amountDue
+      )} open. Trimax is treating this as deposit activity even without a saved deposit request.`
+    : hasDepositRequest
+      ? `Trimax will show ${money(
+          customerFacingAmountDue
+        )} as the deposit due now while keeping the full invoice total at ${money(
+          invoiceTotal
+        )}.`
+      : "Use this when you want the customer to pay part of the invoice now without marking it as paid.";
+  const depositCardShouldShow =
+    !isFullyPaid || hasDepositRequest || hasInferredDepositCollection;
+  const proofTimelineEvents: ProofTimelineEvent[] = [
+    {
+      id: "invoice-created",
+      date: invoice.created_at,
+      title: "Invoice created",
+      actor: "Trimax",
+      tone: "zinc",
+      fields: [
+        { label: "Document", value: invoice.display_id || "Invoice" },
+        { label: "Invoice total", value: money(invoiceTotal) },
+      ],
+    },
+    ...invoiceActivityLogs.map((log) => {
+      const tone: ProofTimelineEvent["tone"] =
+        log.action === "invoice.batch_payment_applied"
+          ? "emerald"
+          : log.action === "invoice.payment_reminder_sent"
+            ? "orange"
+            : log.action === "invoice.email_sent"
+              ? "default"
+              : log.action === "invoice.deposit_requested"
+                ? "emerald"
+                : "zinc";
+
+      return {
+        id: log.id,
+        date: log.created_at,
+        title: activityLabel(log.action),
+        actor: log.actor_email || "Trimax",
+        tone,
+        fields: evidenceFields(log).flatMap((field) =>
+          field.value ? [{ label: field.label, value: field.value }] : []
+        ),
+      };
+    }),
+  ];
+  if (hasInferredDepositCollection && !latestDepositRequestLog) {
+    proofTimelineEvents.push({
+      id: "deposit-inferred-from-payment",
+      date: latestPaymentDate,
+      title: "Deposit received",
+      actor: "Trimax",
+      tone: "emerald",
+      fields: [
+        { label: "Deposit amount", value: money(amountPaid) },
+        { label: "Remaining balance", value: money(amountDue) },
+      ],
+    });
+  }
+  if (isFullyPaid && amountPaid > 0) {
+    proofTimelineEvents.push({
+      id: "invoice-paid-state",
+      date: latestPaymentDate ?? invoice.created_at,
+      title: "Invoice paid",
+      actor: "Trimax",
+      tone: "emerald",
+      fields: [
+        { label: "Collected", value: money(amountPaid || invoiceTotal) },
+        { label: "Balance", value: money(0) },
+      ],
+    });
+  }
+  proofTimelineEvents.sort((first, second) => {
+    const firstTime = first.date ? new Date(first.date).getTime() : 0;
+    const secondTime = second.date ? new Date(second.date).getTime() : 0;
+
+    return firstTime - secondTime;
   });
   const paymentHref = `/payments${businessQuery}${
     businessQuery ? "&" : "?"
@@ -920,6 +1190,15 @@ export default async function InvoiceDetailPage({
           detail:
             "This invoice is still in draft. Send it from Trimax so the email, PDF attachment, recipient, and sender proof are saved together.",
         }
+      : isPartiallyPaid
+        ? {
+            href: paymentHref,
+            label: "Record Payment",
+            title: "Deposit received",
+            detail: `${money(amountPaid)} has been collected. ${money(
+              amountDue
+            )} remains open on this invoice.`,
+          }
       : hasDepositRequest && depositDueNow > 0
         ? {
             href: paymentHref,
@@ -939,7 +1218,7 @@ export default async function InvoiceDetailPage({
           : customerFacingAmountDue > 0
             ? {
                 href: paymentHref,
-                label: "Collect Balance",
+                label: "Record Payment",
                 title: "Balance is ready to collect",
                 detail: `${money(customerFacingAmountDue)} remains open. Use Payments when a check, batch payment, or deposit arrives so the audit trail stays attached.`,
               }
@@ -954,9 +1233,12 @@ export default async function InvoiceDetailPage({
               : {
                   href: "#proof-vault",
                   label: "Open Proof Vault",
-                  title: "Proof looks current",
-                  detail:
-                    "This invoice is paid. The proof vault below keeps the send, reminder, payment, and attachment history together for future lookup.",
+                  title: "Paid in full",
+                  detail: latestPaymentDate
+                    ? `Collected ${money(amountPaid)} on ${formatLifecycleDate(
+                        latestPaymentDate
+                      )}. The proof vault keeps the send, reminder, payment, and attachment history together.`
+                    : "This invoice is paid. The proof vault keeps the send, reminder, payment, and attachment history together.",
                 };
 
   return (
@@ -985,14 +1267,29 @@ export default async function InvoiceDetailPage({
         <div className="space-y-6">
           <InvoiceIntelligence
             amountDueLabel={amountDueLabel}
+            amountPaid={amountPaid}
             balanceDue={customerFacingAmountDue}
+            collectedPercent={collectedPercent}
+            depositStatusLabel={depositStatusLabel}
             hasDepositRequest={hasDepositRequest}
             hasPaymentProof={hasPaymentProof}
             hasPdfProof={hasPdfProof}
             hasReminderProof={hasReminderProof}
             hasSendProof={hasSendProof}
+            isFullyPaid={isFullyPaid}
+            isPartiallyPaid={isPartiallyPaid}
             isPaymentLate={isPaymentLate}
+            latestPaymentDate={latestPaymentDate}
             nextAction={invoiceIntelligenceAction}
+          />
+
+          <PaymentProgressCard
+            amountDue={amountDue}
+            amountPaid={amountPaid}
+            invoiceTotal={invoiceTotal}
+            isFullyPaid={isFullyPaid}
+            isPartiallyPaid={isPartiallyPaid}
+            latestPaymentDate={latestPaymentDate}
           />
 
           {showSplitWarning ? (
@@ -1218,91 +1515,119 @@ export default async function InvoiceDetailPage({
             </section>
           ) : null}
 
-          <Card className={hasDepositRequest ? "deposit-request-card" : ""}>
-            <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-start">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.35em] text-emerald-600">
-                  Deposit Request
-                </p>
-                <h2
-                  className={`mt-3 text-2xl font-black ${
-                    hasDepositRequest ? "text-slate-950" : "text-white"
-                  }`}
-                >
-                  {hasDepositRequest
-                    ? `${money(depositRequestedAmount)} requested`
-                    : "No deposit requested yet"}
-                </h2>
-                <p
-                  className={`mt-3 max-w-3xl text-sm leading-6 ${
-                    hasDepositRequest ? "text-slate-600" : "text-zinc-400"
-                  }`}
-                >
-                  {hasDepositRequest
-                    ? `Trimax will show ${money(
-                        customerFacingAmountDue
-                      )} as the deposit due now while keeping the full invoice total at ${money(
-                        invoiceTotal
-                      )}.`
-                    : "Use this when you want the customer to pay part of the invoice now without marking it as paid."}
-                </p>
-
-                {hasDepositRequest ? (
-                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-2xl border border-emerald-200 bg-white p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                        Deposit Due
-                      </p>
-                      <p className="mt-2 text-xl font-black text-emerald-700">
-                        {money(customerFacingAmountDue)}
-                      </p>
-                    </div>
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                        Remaining Later
-                      </p>
-                      <p className="mt-2 text-xl font-black text-slate-950">
-                        {money(balanceAfterDepositRequest)}
-                      </p>
-                    </div>
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                        Requested
-                      </p>
-                      <p className="mt-2 text-base font-black text-slate-950">
-                        {formatDate(invoice.deposit_requested_at ?? null)}
-                      </p>
-                    </div>
-                  </div>
-                ) : null}
-
-                {hasDepositRequest && invoice.deposit_note ? (
-                  <p className="mt-4 rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm text-slate-700">
-                    {invoice.deposit_note}
+          {depositCardShouldShow ? (
+            <Card
+              className={
+                hasDepositRequest || hasInferredDepositCollection
+                  ? "deposit-request-card"
+                  : ""
+              }
+            >
+              <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-start">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.35em] text-emerald-600">
+                    Deposit Status
                   </p>
+                  <h2
+                    className={`mt-3 text-2xl font-black ${
+                      hasDepositRequest || hasInferredDepositCollection
+                        ? "text-slate-950"
+                        : "text-white"
+                    }`}
+                  >
+                    {depositCardTitle}
+                  </h2>
+                  <p
+                    className={`mt-3 max-w-3xl text-sm leading-6 ${
+                      hasDepositRequest || hasInferredDepositCollection
+                        ? "text-slate-600"
+                        : "text-zinc-400"
+                    }`}
+                  >
+                    {depositCardDetail}
+                  </p>
+
+                  {hasDepositRequest || hasInferredDepositCollection ? (
+                    <div className="mt-4 grid gap-3 sm:grid-cols-4">
+                      <div className="rounded-2xl border border-emerald-200 bg-white p-4">
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                          Deposit Status
+                        </p>
+                        <p className="mt-2 text-xl font-black text-emerald-700">
+                          {depositStatusLabel}
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                          Deposit Amount
+                        </p>
+                        <p className="mt-2 text-xl font-black text-slate-950">
+                          {money(
+                            hasInferredDepositCollection
+                              ? amountPaid
+                              : depositRequestedAmount
+                          )}
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                          Remaining Balance
+                        </p>
+                        <p className="mt-2 text-xl font-black text-slate-950">
+                          {money(amountDue)}
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                          Collected Date
+                        </p>
+                        <p className="mt-2 text-base font-black text-slate-950">
+                          {formatLifecycleDate(
+                            latestPaymentDate ??
+                              invoice.deposit_requested_at ??
+                              null
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {hasDepositRequest && invoice.deposit_note ? (
+                    <p className="mt-4 rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm text-slate-700">
+                      {invoice.deposit_note}
+                    </p>
+                  ) : null}
+                </div>
+
+                {!isFullyPaid ? (
+                  <RequestDepositButton
+                    invoiceId={invoice.id}
+                    businessId={invoice.business_id}
+                    invoiceLabel={invoice.display_id || projectTitle}
+                    invoiceTotal={invoiceTotal}
+                    currentDepositAmount={depositRequestedAmount}
+                    currentDepositStatus={invoice.deposit_status}
+                    currentDepositNote={invoice.deposit_note}
+                  />
                 ) : null}
               </div>
-
-              <RequestDepositButton
-                invoiceId={invoice.id}
-                businessId={invoice.business_id}
-                invoiceLabel={invoice.display_id || projectTitle}
-                invoiceTotal={invoiceTotal}
-                currentDepositAmount={depositRequestedAmount}
-                currentDepositStatus={invoice.deposit_status}
-                currentDepositNote={invoice.deposit_note}
-              />
-            </div>
-          </Card>
+            </Card>
+          ) : null}
 
           <Card className="invoice-summary-card">
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
               <Info label="Customer" value={customerName} />
               <Info
-                label={amountDueLabel}
-                value={money(customerFacingAmountDue)}
+                label={isFullyPaid ? "Collected" : amountDueLabel}
+                value={isFullyPaid ? money(amountPaid) : money(customerFacingAmountDue)}
                 strong
               />
+              {isFullyPaid ? (
+                <Info
+                  label="Paid Date"
+                  value={formatLifecycleDate(latestPaymentDate)}
+                />
+              ) : null}
               <Info
                 label="Split Target"
                 value={
@@ -1329,7 +1654,7 @@ export default async function InvoiceDetailPage({
             <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-2xl font-bold text-white">Line Items</h2>
               <p className="text-2xl font-black text-orange-400 sm:text-right">
-                {money(amountDue)}
+                {isFullyPaid ? money(amountPaid) : money(amountDue)}
               </p>
             </div>
 
@@ -1394,15 +1719,31 @@ export default async function InvoiceDetailPage({
                 value={money(taxAmount)}
               />
               <SummaryRow label="Total" value={money(invoiceTotal)} />
-              {hasDepositRequest ? (
+              {hasDepositRequest || hasInferredDepositCollection ? (
                 <>
                   <SummaryRow
-                    label="Deposit Requested"
-                    value={money(depositRequestedAmount)}
+                    label={
+                      hasInferredDepositCollection
+                        ? "Deposit Collected"
+                        : "Deposit Requested"
+                    }
+                    value={money(
+                      hasInferredDepositCollection
+                        ? amountPaid
+                        : depositRequestedAmount
+                    )}
                   />
                   <SummaryRow
-                    label="Remaining After Deposit"
-                    value={money(balanceAfterDepositRequest)}
+                    label={
+                      hasInferredDepositCollection
+                        ? "Remaining Balance"
+                        : "Remaining After Deposit"
+                    }
+                    value={money(
+                      hasInferredDepositCollection
+                        ? amountDue
+                        : balanceAfterDepositRequest
+                    )}
                   />
                 </>
               ) : null}
@@ -1410,8 +1751,8 @@ export default async function InvoiceDetailPage({
 
               <div className="border-t border-zinc-700 pt-4">
                 <SummaryRow
-                  label={amountDueLabel}
-                  value={money(customerFacingAmountDue)}
+                  label={isFullyPaid ? "Balance" : amountDueLabel}
+                  value={money(isFullyPaid ? 0 : customerFacingAmountDue)}
                   strong
                 />
               </div>
@@ -1420,8 +1761,8 @@ export default async function InvoiceDetailPage({
 
           <div id="proof-vault" className="scroll-mt-6">
             <EvidenceTrail
+              events={proofTimelineEvents}
               invoiceLabel={invoice.display_id || projectTitle || "Invoice"}
-              logs={invoiceActivityLogs}
             />
           </div>
 
@@ -1456,7 +1797,13 @@ export default async function InvoiceDetailPage({
               />
             ) : null}
 
-            {normalizedStatus !== "paid" ? (
+            {!isFullyPaid && isPartiallyPaid ? (
+              <Link href={paymentHref}>
+                <Button>Record Payment</Button>
+              </Link>
+            ) : null}
+
+            {!isFullyPaid && !isPartiallyPaid ? (
               <UpdateInvoiceStatusButton
                 invoiceId={invoice.id}
                 newStatus="paid"

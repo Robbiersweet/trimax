@@ -2734,14 +2734,47 @@ export default async function InvoicesPage({
               const hasSplitChildren =
                 invoice.split_children_count > 0;
               const isBillableInvoice = !hasSplitChildren;
+              const invoiceTotal = parseMoney(invoice.invoice_amount);
+              const amountPaid = parseMoney(invoice.amount_paid);
               const amountDue = invoiceCollectionAmountDue(invoice);
               const displayAmountDue = isBillableInvoice ? amountDue : 0;
+              const isPaidInvoice =
+                isBillableInvoice &&
+                (invoiceStatusKey(invoice.status) === "paid" ||
+                  displayAmountDue <= 0);
+              const isPartiallyPaidInvoice =
+                isBillableInvoice && amountPaid > 0 && displayAmountDue > 0;
+              const collectedPercent =
+                invoiceTotal > 0
+                  ? Math.min(
+                      100,
+                      Math.round((amountPaid / invoiceTotal) * 100)
+                    )
+                  : 0;
+              const collectionDisplayValue = isBillableInvoice
+                ? isPaidInvoice
+                  ? `Paid ${formatMoney(amountPaid || invoiceTotal)}`
+                  : isPartiallyPaidInvoice
+                    ? `${collectedPercent}% collected`
+                    : formatMoney(displayAmountDue)
+                : "Split Source";
               const daysLate = isBillableInvoice
                 ? invoiceDaysPastDue(invoice.due_date)
                 : null;
               const isPastDue =
                 displayAmountDue > 0 && (daysLate ?? -1) >= 0;
               const isDepositRequest = hasActiveDepositRequest(invoice);
+              const collectionDisplayLabel = isBillableInvoice
+                ? isPaidInvoice
+                  ? "Collected"
+                  : isPartiallyPaidInvoice
+                    ? `${formatMoney(amountPaid)} of ${formatMoney(
+                        invoiceTotal
+                      )}`
+                    : isDepositRequest
+                      ? "Deposit Due"
+                      : "Collection Due"
+                : "Use split invoices";
               const reminderHref = `/invoices/${invoice.id}${businessQuery}#late-payment-reminder`;
               const collectionStage = invoiceCollectionStage({
                 amountDue: displayAmountDue,
@@ -2839,17 +2872,11 @@ export default async function InvoicesPage({
 
                       <div className="sm:text-right">
                         <p className="text-xl font-bold text-orange-400">
-                          {isBillableInvoice
-                            ? formatMoney(displayAmountDue)
-                            : "Split Source"}
+                          {collectionDisplayValue}
                         </p>
 
                         <p className="mt-1 text-xs uppercase tracking-[0.2em] text-zinc-500">
-                          {isBillableInvoice
-                            ? isDepositRequest
-                              ? "Deposit Due"
-                              : "Collection Due"
-                            : "Use split invoices"}
+                          {collectionDisplayLabel}
                         </p>
 
                         <div className="mt-2">
