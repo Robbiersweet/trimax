@@ -2894,6 +2894,55 @@ html.theme-light .payment-proof-chip {
   color: #1e293b !important;
 }
 
+.service-confidence-pill {
+  background: rgba(148, 163, 184, 0.12);
+  border-color: rgba(203, 213, 225, 0.22);
+  color: #e2e8f0;
+  display: inline-flex;
+}
+
+.service-confidence-pill[data-tone="emerald"] {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(52, 211, 153, 0.32);
+  color: #a7f3d0;
+}
+
+.service-confidence-pill[data-tone="amber"] {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(251, 191, 36, 0.34);
+  color: #fde68a;
+}
+
+.service-confidence-pill[data-tone="rose"] {
+  background: rgba(244, 63, 94, 0.12);
+  border-color: rgba(251, 113, 133, 0.34);
+  color: #fecdd3;
+}
+
+html.theme-light .service-confidence-pill {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+html.theme-light .service-confidence-pill[data-tone="emerald"] {
+  background: #ecfdf5 !important;
+  border-color: #86efac !important;
+  color: #047857 !important;
+}
+
+html.theme-light .service-confidence-pill[data-tone="amber"] {
+  background: #fffbeb !important;
+  border-color: #fcd34d !important;
+  color: #92400e !important;
+}
+
+html.theme-light .service-confidence-pill[data-tone="rose"] {
+  background: #fff1f2 !important;
+  border-color: #fda4af !important;
+  color: #be123c !important;
+}
+
 /* Shared UI polish. These named classes keep light mode intentional instead of
    relying on broad Tailwind overrides. */
 .app-card {
