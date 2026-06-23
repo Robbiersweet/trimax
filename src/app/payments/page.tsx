@@ -497,7 +497,7 @@ export default async function PaymentsPage({
         ? formatMoney(bestCollectionTarget.amountDue)
         : "$0.00",
       detail: bestCollectionTarget
-        ? `${bestCollectionTarget.customer_name ?? "Unknown Customer"} · ${
+        ? `${bestCollectionTarget.customer_name ?? "Unknown Customer"} - ${
             bestCollectionTarget.display_id ?? "Invoice"
           }`
         : "No urgent invoice target",

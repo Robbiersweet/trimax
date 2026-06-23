@@ -241,6 +241,51 @@ function invoiceCollectionAmountDue(invoice: Invoice) {
     : fullAmountDue;
 }
 
+function invoiceCollectedAmount(invoice: Invoice, amountDue?: number) {
+  const invoiceTotal = parseMoney(invoice.invoice_amount);
+  const amountPaid = parseMoney(invoice.amount_paid);
+  const calculatedDue = amountDue ?? invoiceCollectionAmountDue(invoice);
+  const isPaid =
+    invoiceStatusKey(invoice.status) === "paid" || calculatedDue <= 0;
+
+  return isPaid && amountPaid <= 0 ? invoiceTotal : amountPaid;
+}
+
+function invoiceCollectionDisplay(invoice: Invoice) {
+  const invoiceTotal = parseMoney(invoice.invoice_amount);
+  const amountDue = invoiceCollectionAmountDue(invoice);
+  const amountPaid = parseMoney(invoice.amount_paid);
+  const collectedAmount = invoiceCollectedAmount(invoice, amountDue);
+  const isPaid = invoiceStatusKey(invoice.status) === "paid" || amountDue <= 0;
+  const isPartial = amountPaid > 0 && amountDue > 0;
+  const percent =
+    invoiceTotal > 0
+      ? Math.min(100, Math.round((collectedAmount / invoiceTotal) * 100))
+      : 0;
+
+  if (isPaid) {
+    return {
+      amount: `Paid ${formatMoney(collectedAmount)}`,
+      label: "Collected",
+      statusLine: "Paid in full",
+    };
+  }
+
+  if (isPartial) {
+    return {
+      amount: `${percent}% collected`,
+      label: `${formatMoney(amountPaid)} of ${formatMoney(invoiceTotal)}`,
+      statusLine: `${formatMoney(amountDue)} remaining`,
+    };
+  }
+
+  return {
+    amount: formatMoney(amountDue),
+    label: hasActiveDepositRequest(invoice) ? "Deposit Due" : "Collection Due",
+    statusLine: invoiceDueLabel(invoice.due_date),
+  };
+}
+
 function hasActiveDepositRequest(invoice: Invoice) {
   return (
     String(invoice.deposit_status ?? "none").toLowerCase() === "requested" &&
@@ -2618,7 +2663,7 @@ export default async function InvoicesPage({
 
             <div className="mt-4 grid gap-3 md:grid-cols-5">
               {recentlyUpdatedInvoices.map((invoice) => {
-                const amountDue = invoiceCollectionAmountDue(invoice);
+                const collectionDisplay = invoiceCollectionDisplay(invoice);
                 const isDepositRequest = hasActiveDepositRequest(invoice);
 
                 return (
@@ -2636,15 +2681,19 @@ export default async function InvoicesPage({
                     </p>
 
                     <p className="mt-3 border-t border-zinc-800 pt-3 text-xs uppercase tracking-[0.2em] text-zinc-500">
-                      {isDepositRequest ? "Deposit Due" : "Collection Due"}
+                      {collectionDisplay.label}
                     </p>
 
                     <p className="mt-1 font-bold">
-                      {formatMoney(amountDue)}
+                      {collectionDisplay.amount}
                     </p>
 
                     <div className="mt-2 flex flex-wrap gap-2 text-sm text-zinc-400">
-                      <span>{invoice.status ?? "Draft"}</span>
+                      <span>
+                        {collectionDisplay.statusLine ||
+                          invoice.status ||
+                          "Draft"}
+                      </span>
                       {isDepositRequest ? (
                         <span className="rounded-full border border-emerald-500/35 bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-200">
                           Deposit request
@@ -2734,34 +2783,15 @@ export default async function InvoicesPage({
               const hasSplitChildren =
                 invoice.split_children_count > 0;
               const isBillableInvoice = !hasSplitChildren;
-              const invoiceTotal = parseMoney(invoice.invoice_amount);
-              const amountPaid = parseMoney(invoice.amount_paid);
               const amountDue = invoiceCollectionAmountDue(invoice);
               const displayAmountDue = isBillableInvoice ? amountDue : 0;
               const isPaidInvoice =
                 isBillableInvoice &&
                 (invoiceStatusKey(invoice.status) === "paid" ||
                   displayAmountDue <= 0);
-              const isPartiallyPaidInvoice =
-                isBillableInvoice && amountPaid > 0 && displayAmountDue > 0;
-              const collectedAmount = isPaidInvoice
-                ? amountPaid > 0
-                  ? amountPaid
-                  : invoiceTotal
-                : amountPaid;
-              const collectedPercent =
-                invoiceTotal > 0
-                  ? Math.min(
-                      100,
-                      Math.round((collectedAmount / invoiceTotal) * 100)
-                    )
-                  : 0;
+              const collectionDisplay = invoiceCollectionDisplay(invoice);
               const collectionDisplayValue = isBillableInvoice
-                ? isPaidInvoice
-                  ? `Paid ${formatMoney(collectedAmount)}`
-                  : isPartiallyPaidInvoice
-                    ? `${collectedPercent}% collected`
-                    : formatMoney(displayAmountDue)
+                ? collectionDisplay.amount
                 : "Split Source";
               const daysLate = isBillableInvoice
                 ? invoiceDaysPastDue(invoice.due_date)
@@ -2770,15 +2800,7 @@ export default async function InvoicesPage({
                 displayAmountDue > 0 && (daysLate ?? -1) >= 0;
               const isDepositRequest = hasActiveDepositRequest(invoice);
               const collectionDisplayLabel = isBillableInvoice
-                ? isPaidInvoice
-                  ? "Collected"
-                  : isPartiallyPaidInvoice
-                    ? `${formatMoney(amountPaid)} of ${formatMoney(
-                        invoiceTotal
-                      )}`
-                    : isDepositRequest
-                      ? "Deposit Due"
-                      : "Collection Due"
+                ? collectionDisplay.label
                 : "Use split invoices";
               const reminderHref = `/invoices/${invoice.id}${businessQuery}#late-payment-reminder`;
               const collectionStage = invoiceCollectionStage({
