@@ -117,6 +117,74 @@ function formatDaysLabel(days: number | null) {
   return `${days} day${days === 1 ? "" : "s"} ago`;
 }
 
+function getEstimateReadiness(estimate: Estimate) {
+  const missing: string[] = [];
+  const amount = parseEstimateAmount(estimate.estimate_amount);
+
+  if (!estimate.customer_name?.trim()) {
+    missing.push("customer");
+  }
+
+  if (!estimate.project_title?.trim() && !estimate.reference?.trim()) {
+    missing.push("scope title");
+  }
+
+  if (!estimate.project_address?.trim() && !estimate.service_address?.trim()) {
+    missing.push("service address");
+  }
+
+  if (amount <= 0) {
+    missing.push("price");
+  }
+
+  if (!estimate.terms?.trim()) {
+    missing.push("terms");
+  }
+
+  const score = Math.max(0, Math.round(((5 - missing.length) / 5) * 100));
+  const statusKey = getPipelineStatusKey(estimate);
+
+  if (statusKey === "converted" || estimate.hasLinkedInvoice) {
+    return {
+      label: "Closed cleanly",
+      detail: "This proposal is already connected to billing.",
+      missing,
+      score: 100,
+      tone: "success",
+    };
+  }
+
+  if (missing.length === 0) {
+    return {
+      label: "Client-ready",
+      detail: "Customer, scope, address, price, and terms are all present.",
+      missing,
+      score,
+      tone: "success",
+    };
+  }
+
+  if (missing.length <= 2) {
+    return {
+      label: "Nearly ready",
+      detail: `Add ${missing.join(" and ")} before sending.`,
+      missing,
+      score,
+      tone: "warning",
+    };
+  }
+
+  return {
+    label: "Needs polish",
+    detail: `Missing ${missing.slice(0, 3).join(", ")}${
+      missing.length > 3 ? ", and more" : ""
+    }.`,
+    missing,
+    score,
+    tone: "warning",
+  };
+}
+
 export default async function EstimatesPage({
   searchParams,
 }: {
@@ -411,6 +479,7 @@ export default async function EstimatesPage({
     .map((estimate) => {
       const statusKey = getPipelineStatusKey(estimate);
       const amount = parseEstimateAmount(estimate.estimate_amount);
+      const readiness = getEstimateReadiness(estimate);
       const daysSinceUpdate = getDaysSince(
         estimate.lastActivityAt ?? estimate.updated_at ?? estimate.created_at
       );
@@ -460,6 +529,11 @@ export default async function EstimatesPage({
       if (estimate.queue_item_id) {
         score += 6;
         reasons.push("queue-linked scope");
+      }
+
+      if (readiness.missing.length > 0) {
+        score += 10;
+        reasons.push(`${readiness.score}% client-ready`);
       }
 
       if (reasons.length === 0) {
@@ -612,7 +686,7 @@ export default async function EstimatesPage({
                 </p>
 
                 <p className="mt-1 text-sm text-zinc-300">
-                  {topOpenEstimate.customer_name || "Unknown customer"} ·{" "}
+                  {topOpenEstimate.customer_name || "Unknown customer"} /{" "}
                   {formatMoney(topOpenEstimate.estimate_amount)}
                 </p>
               </div>
@@ -924,6 +998,7 @@ export default async function EstimatesPage({
               const daysSinceUpdate = getDaysSince(
                 estimate.lastActivityAt ?? estimate.updated_at ?? estimate.created_at
               );
+              const readiness = getEstimateReadiness(estimate);
               const nextAction =
                 isConverted || isLinkedToInvoice
                   ? {
@@ -1021,6 +1096,52 @@ export default async function EstimatesPage({
                     <p className="mt-1 text-sm leading-5 text-zinc-400">
                       {nextAction.detail}
                     </p>
+                  </div>
+
+                  <div
+                    className="estimate-readiness-panel mt-4 rounded-2xl border border-zinc-800 bg-black/30 p-4"
+                    data-tone={readiness.tone}
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-300">
+                          Proposal Readiness
+                        </p>
+
+                        <p className="mt-2 text-base font-black text-white">
+                          {readiness.label}
+                        </p>
+
+                        <p className="mt-1 text-sm leading-5 text-zinc-400">
+                          {readiness.detail}
+                        </p>
+                      </div>
+
+                      <div className="min-w-28 text-left sm:text-right">
+                        <p className="text-2xl font-black text-white">
+                          {readiness.score}%
+                        </p>
+
+                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-500">
+                          Ready
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-zinc-800">
+                      <span
+                        className="block h-full rounded-full"
+                        style={{ width: `${readiness.score}%` }}
+                      />
+                    </div>
+
+                    {readiness.missing.length > 0 ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {readiness.missing.map((item) => (
+                          <span key={item}>{item}</span>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
 
                   <div className="estimate-proof-strip mt-4 grid gap-2 md:grid-cols-4">

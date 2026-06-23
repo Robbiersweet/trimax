@@ -5636,6 +5636,7 @@ html.theme-light .estimate-list-card .text-orange-400 {
 .invoice-editor-coach,
 .invoice-editor-signal,
 .estimate-next-action,
+.estimate-readiness-panel,
 .estimate-filter-summary {
   box-shadow:
     0 18px 44px rgba(2, 6, 23, 0.16),
@@ -5888,23 +5889,60 @@ html.theme-light .estimate-list-card .text-orange-400 {
 }
 
 .estimate-health-card[data-tone="success"],
-.estimate-next-action[data-tone="success"] {
+.estimate-next-action[data-tone="success"],
+.estimate-readiness-panel[data-tone="success"] {
   border-color: rgba(52, 211, 153, 0.34);
 }
 
 .estimate-health-card[data-tone="warning"],
-.estimate-next-action[data-tone="warning"] {
+.estimate-next-action[data-tone="warning"],
+.estimate-readiness-panel[data-tone="warning"] {
   border-color: rgba(251, 191, 36, 0.38);
 }
 
 .estimate-health-card[data-tone="info"],
-.estimate-next-action[data-tone="info"] {
+.estimate-next-action[data-tone="info"],
+.estimate-readiness-panel[data-tone="info"] {
   border-color: rgba(56, 189, 248, 0.34);
 }
 
 .estimate-health-card[data-tone="neutral"],
-.estimate-next-action[data-tone="neutral"] {
+.estimate-next-action[data-tone="neutral"],
+.estimate-readiness-panel[data-tone="neutral"] {
   border-color: rgba(148, 163, 184, 0.28);
+}
+
+.estimate-readiness-panel {
+  position: relative;
+}
+
+.estimate-readiness-panel > div,
+.estimate-readiness-panel > p {
+  position: relative;
+  z-index: 1;
+}
+
+.estimate-readiness-panel > .h-2 span {
+  background: linear-gradient(90deg, #fb923c, #38bdf8);
+}
+
+.estimate-readiness-panel[data-tone="success"] > .h-2 span {
+  background: linear-gradient(90deg, #10b981, #34d399);
+}
+
+.estimate-readiness-panel[data-tone="warning"] > .h-2 span {
+  background: linear-gradient(90deg, #f59e0b, #fb923c);
+}
+
+.estimate-readiness-panel span:not(.block) {
+  background: rgba(251, 146, 60, 0.12);
+  border: 1px solid rgba(251, 146, 60, 0.28);
+  border-radius: 999px;
+  color: #fed7aa;
+  font-size: 0.75rem;
+  font-weight: 900;
+  padding: 0.35rem 0.65rem;
+  text-transform: capitalize;
 }
 
 html.theme-light .estimate-command-center {
@@ -5930,6 +5968,7 @@ html.theme-light .estimate-close-step .text-white,
 html.theme-light .estimate-editor-coach .text-white,
 html.theme-light .invoice-editor-coach .text-white,
 html.theme-light .estimate-next-action .text-white,
+html.theme-light .estimate-readiness-panel .text-white,
 html.theme-light .estimate-filter-summary .text-white {
   color: #0f172a !important;
 }
@@ -5960,6 +5999,8 @@ html.theme-light .estimate-editor-coach .text-zinc-400,
 html.theme-light .invoice-editor-coach .text-zinc-400,
 html.theme-light .estimate-next-action .text-zinc-300,
 html.theme-light .estimate-next-action .text-zinc-400,
+html.theme-light .estimate-readiness-panel .text-zinc-400,
+html.theme-light .estimate-readiness-panel .text-zinc-500,
 html.theme-light .estimate-filter-summary {
   color: #475569 !important;
 }
@@ -5968,6 +6009,7 @@ html.theme-light .estimate-command-center .text-sky-200,
 html.theme-light .estimate-command-center .text-sky-300,
 html.theme-light .estimate-health-card .text-sky-300,
 html.theme-light .estimate-next-action .text-sky-300,
+html.theme-light .estimate-readiness-panel .text-orange-300,
 html.theme-light .estimate-filter-summary .text-sky-300 {
   color: #0369a1 !important;
 }
@@ -5986,6 +6028,7 @@ html.theme-light .estimate-close-step,
 html.theme-light .estimate-editor-coach,
 html.theme-light .invoice-editor-coach,
 html.theme-light .estimate-next-action,
+html.theme-light .estimate-readiness-panel,
 html.theme-light .estimate-filter-summary {
   background: #ffffff !important;
   border-color: #d7dde8 !important;
@@ -6103,21 +6146,34 @@ html.theme-light .invoice-editor-signal[data-tone="info"] {
 }
 
 html.theme-light .estimate-health-card[data-tone="success"],
-html.theme-light .estimate-next-action[data-tone="success"] {
+html.theme-light .estimate-next-action[data-tone="success"],
+html.theme-light .estimate-readiness-panel[data-tone="success"] {
   background: #ecfdf5 !important;
   border-color: #86efac !important;
 }
 
 html.theme-light .estimate-health-card[data-tone="warning"],
-html.theme-light .estimate-next-action[data-tone="warning"] {
+html.theme-light .estimate-next-action[data-tone="warning"],
+html.theme-light .estimate-readiness-panel[data-tone="warning"] {
   background: #fffbeb !important;
   border-color: #fde68a !important;
 }
 
 html.theme-light .estimate-health-card[data-tone="info"],
-html.theme-light .estimate-next-action[data-tone="info"] {
+html.theme-light .estimate-next-action[data-tone="info"],
+html.theme-light .estimate-readiness-panel[data-tone="info"] {
   background: #eff6ff !important;
   border-color: #93c5fd !important;
+}
+
+html.theme-light .estimate-readiness-panel > .h-2 {
+  background: #e2e8f0 !important;
+}
+
+html.theme-light .estimate-readiness-panel span:not(.block) {
+  background: #fff7ed !important;
+  border-color: #fdba74 !important;
+  color: #9a3412 !important;
 }
 
 html.theme-light .estimate-top-open {
