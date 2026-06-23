@@ -1101,10 +1101,10 @@ export default async function PaymentsPage({
                       <p className="font-semibold text-white">
                         {invoice.display_id ?? "Invoice"}
                       </p>
-                      <p className="mt-1 text-sm text-zinc-400">
+                      <p className="mt-1 text-sm font-medium text-zinc-200">
                         {invoice.customer_name ?? "Unknown Customer"}
                       </p>
-                      <p className="mt-1 text-sm text-zinc-500">
+                      <p className="mt-1 text-sm text-zinc-300">
                         {invoice.project_title ?? "Untitled Invoice"}
                       </p>
                       {invoice.isDepositRequest ? (
@@ -1115,15 +1115,15 @@ export default async function PaymentsPage({
                     </div>
 
                     <div className="md:text-right">
-                      <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+                      <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">
                         Due
                       </p>
-                      <p className="mt-1 font-semibold">
+                      <p className="mt-1 font-semibold text-white">
                         {formatDate(invoice.due_date)}
                       </p>
                       <p
                         className={`mt-1 text-sm ${
-                          isLate ? "text-pink-200" : "text-zinc-500"
+                          isLate ? "text-rose-200" : "text-zinc-300"
                         }`}
                       >
                         {isLate
@@ -1133,7 +1133,7 @@ export default async function PaymentsPage({
                     </div>
 
                     <div className="md:text-right">
-                      <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+                      <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">
                         {invoice.isDepositRequest ? "Deposit Due" : "Balance"}
                       </p>
                       <p className="mt-1 text-xl font-black text-orange-300">
@@ -1191,7 +1191,7 @@ export default async function PaymentsPage({
                         <p className="font-semibold text-white">
                           {group.customerName}
                         </p>
-                        <p className="mt-1 text-sm text-zinc-500">
+                        <p className="mt-1 text-sm text-zinc-300">
                           {invoiceCountLabel(group.count)} open
                         </p>
                       </div>
@@ -1202,11 +1202,11 @@ export default async function PaymentsPage({
                     </div>
 
                     <div className="mt-4 flex items-center justify-between gap-3 border-t border-zinc-800 pt-3">
-                      <p className="text-sm text-zinc-400">
+                      <p className="text-sm font-medium text-zinc-200">
                         Oldest due date: {formatDate(group.oldestDue)}
                       </p>
 
-                      <span className="rounded-full bg-green-500/15 px-3 py-1 text-xs font-bold text-green-200">
+                      <span className="rounded-full bg-green-500/15 px-3 py-1 text-xs font-bold text-green-100">
                         {group.count > 1 ? "Batch candidate" : "Single invoice"}
                       </span>
                     </div>

@@ -284,7 +284,7 @@ function activityLabel(action: string) {
     "invoice.payment_reminder_sent": "Payment reminder sent",
     "invoice.deposit_requested": "Deposit requested",
     "invoice.deposit_cleared": "Deposit cleared",
-    "invoice.batch_payment_applied": "Payment recorded",
+    "invoice.batch_payment_applied": "Payment applied",
     "invoice.status_updated": "Status changed",
     "invoice.split_created": "Split invoice created",
     "invoice.recurring_draft_created": "Recurring draft created",
@@ -978,10 +978,15 @@ export default async function InvoiceDetailPage({
   const status = invoice.status || "Draft";
   const normalizedStatus = status.toLowerCase();
   const isFullyPaid = normalizedStatus === "paid" || amountDue <= 0;
+  const collectedAmount = isFullyPaid
+    ? amountPaid > 0
+      ? amountPaid
+      : invoiceTotal
+    : amountPaid;
   const isPartiallyPaid = amountPaid > 0 && amountDue > 0;
   const collectedPercent =
     invoiceTotal > 0
-      ? Math.min(100, Math.round((amountPaid / invoiceTotal) * 100))
+      ? Math.min(100, Math.round((collectedAmount / invoiceTotal) * 100))
       : 0;
   const depositRequestedAmount = numberValue(
     invoice.deposit_requested_amount
@@ -1071,6 +1076,10 @@ export default async function InvoiceDetailPage({
     detailText(latestPaymentLog?.details, "paymentDate") ??
     latestPaymentLog?.created_at ??
     null;
+  const latestPaymentImageName =
+    detailText(latestPaymentLog?.details, "paymentImageFileName") ??
+    detailText(latestPaymentLog?.details, "paymentImagePath") ??
+    null;
   const hasSendProof = Boolean(latestSendLog);
   const hasReminderProof = Boolean(latestReminderLog);
   const hasPaymentProof = Boolean(latestPaymentLog);
@@ -1083,7 +1092,7 @@ export default async function InvoiceDetailPage({
   });
   const depositStatusLabel = isPartiallyPaid
     ? "Collected"
-    : isFullyPaid && amountPaid > 0
+    : isFullyPaid && collectedAmount > 0
       ? "N/A"
       : hasDepositRequest
         ? depositDueNow > 0
@@ -1146,6 +1155,23 @@ export default async function InvoiceDetailPage({
       };
     }),
   ];
+  if (latestPaymentLog && latestPaymentImageName) {
+    proofTimelineEvents.push({
+      id: "check-uploaded-from-payment",
+      date: latestPaymentLog.created_at,
+      title: "Check uploaded",
+      actor: latestPaymentLog.actor_email || "Trimax",
+      tone: "emerald",
+      fields: [
+        { label: "Check image", value: latestPaymentImageName },
+        {
+          label: "Reference",
+          value:
+            detailText(latestPaymentLog.details, "paymentReference") ?? "-",
+        },
+      ],
+    });
+  }
   if (hasInferredDepositCollection && !latestDepositRequestLog) {
     proofTimelineEvents.push({
       id: "deposit-inferred-from-payment",
@@ -1159,7 +1185,7 @@ export default async function InvoiceDetailPage({
       ],
     });
   }
-  if (isFullyPaid && amountPaid > 0) {
+  if (isFullyPaid && collectedAmount > 0) {
     proofTimelineEvents.push({
       id: "invoice-paid-state",
       date: latestPaymentDate ?? invoice.created_at,
@@ -1167,7 +1193,7 @@ export default async function InvoiceDetailPage({
       actor: "Trimax",
       tone: "emerald",
       fields: [
-        { label: "Collected", value: money(amountPaid || invoiceTotal) },
+        { label: "Collected", value: money(collectedAmount) },
         { label: "Balance", value: money(0) },
       ],
     });
@@ -1235,7 +1261,7 @@ export default async function InvoiceDetailPage({
                   label: "Open Proof Vault",
                   title: "Paid in full",
                   detail: latestPaymentDate
-                    ? `Collected ${money(amountPaid)} on ${formatLifecycleDate(
+                    ? `Collected ${money(collectedAmount)} on ${formatLifecycleDate(
                         latestPaymentDate
                       )}. The proof vault keeps the send, reminder, payment, and attachment history together.`
                     : "This invoice is paid. The proof vault keeps the send, reminder, payment, and attachment history together.",
@@ -1267,7 +1293,7 @@ export default async function InvoiceDetailPage({
         <div className="space-y-6">
           <InvoiceIntelligence
             amountDueLabel={amountDueLabel}
-            amountPaid={amountPaid}
+            amountPaid={collectedAmount}
             balanceDue={customerFacingAmountDue}
             collectedPercent={collectedPercent}
             depositStatusLabel={depositStatusLabel}
@@ -1285,7 +1311,7 @@ export default async function InvoiceDetailPage({
 
           <PaymentProgressCard
             amountDue={amountDue}
-            amountPaid={amountPaid}
+            amountPaid={collectedAmount}
             invoiceTotal={invoiceTotal}
             isFullyPaid={isFullyPaid}
             isPartiallyPaid={isPartiallyPaid}
@@ -1619,7 +1645,7 @@ export default async function InvoiceDetailPage({
               <Info label="Customer" value={customerName} />
               <Info
                 label={isFullyPaid ? "Collected" : amountDueLabel}
-                value={isFullyPaid ? money(amountPaid) : money(customerFacingAmountDue)}
+                value={isFullyPaid ? money(collectedAmount) : money(customerFacingAmountDue)}
                 strong
               />
               {isFullyPaid ? (
@@ -1654,7 +1680,7 @@ export default async function InvoiceDetailPage({
             <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-2xl font-bold text-white">Line Items</h2>
               <p className="text-2xl font-black text-orange-400 sm:text-right">
-                {isFullyPaid ? money(amountPaid) : money(amountDue)}
+                {isFullyPaid ? money(collectedAmount) : money(amountDue)}
               </p>
             </div>
 
@@ -1747,7 +1773,10 @@ export default async function InvoiceDetailPage({
                   />
                 </>
               ) : null}
-              <SummaryRow label="Amount Paid" value={money(amountPaid)} />
+              <SummaryRow
+                label={isFullyPaid ? "Collected" : "Amount Paid"}
+                value={money(isFullyPaid ? collectedAmount : amountPaid)}
+              />
 
               <div className="border-t border-zinc-700 pt-4">
                 <SummaryRow

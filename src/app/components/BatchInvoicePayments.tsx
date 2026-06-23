@@ -1441,24 +1441,24 @@ export default function BatchInvoicePayments({
                 key={group.customerName}
                 type="button"
                 onClick={() => selectCustomerGroup(group.customerName)}
-                className="app-action-card rounded-2xl border border-green-200 bg-white p-4 text-left shadow-sm transition hover:border-green-400 hover:bg-green-50"
+                className="app-action-card rounded-2xl border border-emerald-400/25 bg-zinc-950 p-4 text-left shadow-sm transition hover:border-emerald-300 hover:bg-emerald-500/10"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="font-semibold text-slate-950">
+                    <p className="font-semibold text-white">
                       {group.customerName}
                     </p>
-                    <p className="mt-1 text-sm text-zinc-500">
+                    <p className="mt-1 text-sm text-zinc-300">
                       {group.count} open invoices
                     </p>
                   </div>
 
-                  <span className="rounded-full bg-green-500/15 px-3 py-1 text-xs font-bold text-green-200">
+                  <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-bold text-emerald-100">
                     Load
                   </span>
                 </div>
 
-                <p className="mt-4 text-2xl font-black text-green-300">
+                <p className="mt-4 text-2xl font-black text-emerald-200">
                   {formatMoney(group.total)}
                 </p>
               </button>
@@ -2320,8 +2320,8 @@ export default function BatchInvoicePayments({
         </div>
       </div>
 
-      <div className="app-data-table mt-4 overflow-hidden rounded-2xl border border-zinc-800">
-        <div className="app-data-table-head grid grid-cols-[56px_1fr_150px_140px] items-center gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 max-md:grid-cols-[42px_1fr_auto]">
+      <div className="app-data-table mt-4 overflow-hidden rounded-2xl border border-zinc-700">
+        <div className="app-data-table-head grid grid-cols-[56px_1fr_150px_140px] items-center gap-3 border-b border-zinc-700 bg-zinc-900 px-4 py-3 text-sm font-semibold text-zinc-100 max-md:grid-cols-[42px_1fr_auto]">
           <input
             type="checkbox"
             checked={allVisibleSelected}
@@ -2343,8 +2343,8 @@ export default function BatchInvoicePayments({
                 key={invoice.id}
                 className={`grid cursor-pointer grid-cols-[56px_1fr_150px_140px] items-center gap-3 border-b border-zinc-800 px-4 py-4 transition last:border-b-0 max-md:grid-cols-[42px_1fr_auto] ${
                   selectedIds.includes(invoice.id)
-                    ? "bg-green-500/10"
-                    : "app-data-table-row bg-white hover:bg-slate-50"
+                    ? "bg-emerald-500/15"
+                    : "app-data-table-row bg-zinc-950 hover:bg-zinc-900"
                 }`}
               >
                 <input
@@ -2355,35 +2355,35 @@ export default function BatchInvoicePayments({
                 />
 
                 <span>
-                  <span className="block font-semibold text-slate-950">
+                  <span className="block font-semibold text-white">
                     {invoice.displayId} - {invoice.projectTitle}
                   </span>
-                  <span className="mt-1 block text-sm text-zinc-400">
+                  <span className="mt-1 block text-sm font-medium text-zinc-200">
                     {invoice.customerName} / {invoice.status}
                   </span>
                   {invoice.isDepositRequest ? (
-                    <span className="mt-2 inline-flex rounded-full border border-emerald-500/35 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-200">
+                    <span className="mt-2 inline-flex rounded-full border border-emerald-400/35 bg-emerald-400/10 px-2.5 py-1 text-xs font-semibold text-emerald-100">
                       Deposit request
                     </span>
                   ) : null}
-                  <span className="mt-2 hidden text-xs text-zinc-500 max-md:block">
+                  <span className="mt-2 hidden text-xs font-semibold text-zinc-300 max-md:block">
                     Due {formatDate(invoice.dueDate)}
                   </span>
                 </span>
 
                 <span className="max-md:hidden">
-                  <span className="block text-sm text-zinc-300">
+                  <span className="block text-sm font-semibold text-zinc-100">
                     {formatDate(invoice.dueDate)}
                   </span>
                   {isLate ? (
-                    <span className="mt-1 block text-xs font-semibold text-pink-200">
+                    <span className="mt-1 block text-xs font-semibold text-rose-200">
                       {invoice.daysLate} day
                       {invoice.daysLate === 1 ? "" : "s"} late
                     </span>
                   ) : null}
                 </span>
 
-                <span className="text-right font-bold text-green-300">
+                <span className="text-right font-bold text-emerald-200">
                   {formatMoney(invoice.amountDue)}
                 </span>
               </label>

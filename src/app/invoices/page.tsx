@@ -2744,16 +2744,21 @@ export default async function InvoicesPage({
                   displayAmountDue <= 0);
               const isPartiallyPaidInvoice =
                 isBillableInvoice && amountPaid > 0 && displayAmountDue > 0;
+              const collectedAmount = isPaidInvoice
+                ? amountPaid > 0
+                  ? amountPaid
+                  : invoiceTotal
+                : amountPaid;
               const collectedPercent =
                 invoiceTotal > 0
                   ? Math.min(
                       100,
-                      Math.round((amountPaid / invoiceTotal) * 100)
+                      Math.round((collectedAmount / invoiceTotal) * 100)
                     )
                   : 0;
               const collectionDisplayValue = isBillableInvoice
                 ? isPaidInvoice
-                  ? `Paid ${formatMoney(amountPaid || invoiceTotal)}`
+                  ? `Paid ${formatMoney(collectedAmount)}`
                   : isPartiallyPaidInvoice
                     ? `${collectedPercent}% collected`
                     : formatMoney(displayAmountDue)
@@ -2884,7 +2889,15 @@ export default async function InvoicesPage({
                         </div>
 
                         <p className="invoice-due-chip mt-2 text-sm font-black text-zinc-300">
-                          {invoiceDueLabel(invoice.due_date)}
+                          {isPaidInvoice
+                            ? `Paid in full${
+                                proofSignals.lastProofDate
+                                  ? ` ${formatInvoiceDueDate(
+                                      proofSignals.lastProofDate.slice(0, 10)
+                                    )}`
+                                  : ""
+                              }`
+                            : invoiceDueLabel(invoice.due_date)}
                         </p>
 
                         {isPastDue ? (
