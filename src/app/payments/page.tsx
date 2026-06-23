@@ -91,6 +91,30 @@ function daysPastDue(value: string | null) {
   return Math.floor((today.getTime() - dueDate.getTime()) / 86_400_000);
 }
 
+function dueDateAgeLabel(value: string | null) {
+  const days = daysPastDue(value);
+
+  if (days === null) {
+    return "No due date in this run";
+  }
+
+  if (days > 1) {
+    return `${days} days late`;
+  }
+
+  if (days === 1) {
+    return "1 day late";
+  }
+
+  if (days === 0) {
+    return "Due today";
+  }
+
+  const daysUntilDue = Math.abs(days);
+
+  return `Due in ${daysUntilDue} day${daysUntilDue === 1 ? "" : "s"}`;
+}
+
 function invoiceStatusKey(value: string | null | undefined) {
   return (value || "Draft").trim().toLowerCase();
 }
@@ -861,6 +885,18 @@ export default async function PaymentsPage({
                   {paymentRunDescription} Review the total, compare it to the
                   check, then use the batch payment tool below.
                 </p>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <span className="rounded-full border border-green-300/30 bg-green-400/10 px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-green-100">
+                    {invoiceCountLabel(paymentRunInvoices.length)} selected
+                  </span>
+                  <span className="rounded-full border border-orange-300/30 bg-orange-400/10 px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-orange-100">
+                    {dueDateAgeLabel(paymentRunOldestDue)}
+                  </span>
+                  <span className="rounded-full border border-sky-300/30 bg-sky-400/10 px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-sky-100">
+                    {formatMoney(paymentRunBalance)} run total
+                  </span>
+                </div>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
@@ -888,6 +924,9 @@ export default async function PaymentsPage({
                   </p>
                   <p className="mt-2 text-2xl font-black">
                     {formatDate(paymentRunOldestDue)}
+                  </p>
+                  <p className="mt-1 text-sm font-bold text-zinc-300">
+                    {dueDateAgeLabel(paymentRunOldestDue)}
                   </p>
                 </div>
               </div>
