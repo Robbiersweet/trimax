@@ -146,12 +146,54 @@ function detailText(value: unknown) {
 
 function paymentActivityLabel(action: string) {
   const labels: Record<string, string> = {
-    "invoice.batch_payment_applied": "Batch Payment Applied",
+    "invoice.batch_payment_applied": "Payment Applied",
     "invoice.deposit_requested": "Deposit Requested",
     "invoice.deposit_cleared": "Deposit Cleared",
   };
 
   return labels[action] ?? "Payment Activity";
+}
+
+function paymentOutcomeLabel(log: ActivityLog) {
+  const outcome = detailText(log.details?.paymentOutcome).toLowerCase();
+
+  if (outcome === "paid") {
+    return "Paid in full";
+  }
+
+  if (outcome === "partial") {
+    return "Partial payment";
+  }
+
+  if (log.action === "invoice.deposit_requested") {
+    return "Deposit requested";
+  }
+
+  if (log.action === "invoice.deposit_cleared") {
+    return "Deposit cleared";
+  }
+
+  return "Proof saved";
+}
+
+function paymentReferenceLabel(log: ActivityLog) {
+  const reference = detailText(log.details?.paymentReference);
+  const type = detailText(log.details?.paymentType);
+  const image = detailText(log.details?.paymentImageFileName);
+
+  if (reference && type) {
+    return `${type} ${reference}`;
+  }
+
+  if (reference) {
+    return `Reference ${reference}`;
+  }
+
+  if (image) {
+    return `Image ${image}`;
+  }
+
+  return "";
 }
 
 function paymentProofChips(log: ActivityLog) {
@@ -1288,6 +1330,8 @@ export default async function PaymentsPage({
                 {paymentLogs.map((log) => {
                   const chips = paymentProofChips(log);
                   const amount = activityAmount(log);
+                  const outcome = paymentOutcomeLabel(log);
+                  const reference = paymentReferenceLabel(log);
 
                   return (
                     <div
@@ -1299,20 +1343,30 @@ export default async function PaymentsPage({
                           <p className="text-xs font-black uppercase tracking-[0.2em] text-orange-300">
                             {paymentActivityLabel(log.action)}
                           </p>
-                          <p className="mt-1 font-semibold">
+                          <p className="mt-1 font-semibold text-white">
                             {log.entity_label ?? "Invoice payment"}
                           </p>
-                          <p className="mt-1 text-sm text-zinc-500">
+                          <p className="mt-1 text-sm text-zinc-300">
                             {formatDate(log.created_at)}
                             {log.actor_email ? ` by ${log.actor_email}` : ""}
                           </p>
+                          {reference ? (
+                            <p className="mt-1 text-sm font-semibold text-zinc-200">
+                              {reference}
+                            </p>
+                          ) : null}
                         </div>
 
-                        {amount > 0 ? (
-                          <p className="font-black text-green-300">
-                            {formatMoney(amount)}
+                        <div className="text-right">
+                          {amount > 0 ? (
+                            <p className="font-black text-green-300">
+                              {formatMoney(amount)}
+                            </p>
+                          ) : null}
+                          <p className="mt-1 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-3 py-1 text-xs font-black text-emerald-100">
+                            {outcome}
                           </p>
-                        ) : null}
+                        </div>
                       </div>
 
                       {chips.length > 0 ? (
