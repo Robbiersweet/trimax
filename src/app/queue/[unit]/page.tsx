@@ -634,6 +634,11 @@ export default async function QueueDetailPage({
   const invoiceWasSent =
     Boolean(linkedInvoiceActivity) ||
     linkedInvoice?.status?.trim().toLowerCase() === "sent";
+  const invoiceDeliveryLabel = linkedInvoiceActivity
+    ? "Proof logged"
+    : invoiceWasSent
+      ? "Marked sent"
+      : "Ready to send";
   const linkedInvoiceBalance = linkedInvoice
     ? Math.max(
         moneyNumber(linkedInvoice.invoice_amount) -
@@ -755,6 +760,7 @@ export default async function QueueDetailPage({
             linkedEstimate={linkedEstimate}
             linkedInvoice={linkedInvoice}
             invoiceWasSent={invoiceWasSent}
+            invoiceDeliveryLabel={invoiceDeliveryLabel}
             invoiceIsPaid={invoiceIsPaid}
             invoiceBalance={linkedInvoiceBalance}
             completedDate={item.completed_date}
@@ -900,7 +906,7 @@ export default async function QueueDetailPage({
                         Delivery
                       </p>
                       <p className="mt-1 text-lg font-black text-white">
-                        {invoiceWasSent ? "Sent" : "Not sent yet"}
+                        {invoiceDeliveryLabel}
                       </p>
                     </div>
                   </div>
@@ -1277,6 +1283,7 @@ function QueueWorkflowIntelligence({
   linkedEstimate,
   linkedInvoice,
   invoiceWasSent,
+  invoiceDeliveryLabel,
   invoiceIsPaid,
   invoiceBalance,
   completedDate,
@@ -1285,6 +1292,7 @@ function QueueWorkflowIntelligence({
   linkedEstimate: LinkedEstimate | null;
   linkedInvoice: LinkedInvoice | null;
   invoiceWasSent: boolean;
+  invoiceDeliveryLabel: string;
   invoiceIsPaid: boolean;
   invoiceBalance: number | null;
   completedDate: string | null;
@@ -1298,7 +1306,7 @@ function QueueWorkflowIntelligence({
   const steps = [
     {
       label: "Estimate",
-      value: linkedEstimate?.display_id ?? "Needed",
+      value: linkedEstimate?.display_id ?? "Start estimate",
       done: Boolean(linkedEstimate),
     },
     {
@@ -1307,22 +1315,22 @@ function QueueWorkflowIntelligence({
       done: Boolean(linkedInvoice),
     },
     {
-      label: "Sent Proof",
-      value: invoiceWasSent ? "Saved" : "Missing",
+      label: "Delivery Proof",
+      value: invoiceDeliveryLabel,
       done: invoiceWasSent,
     },
     {
       label: "Payment",
       value: invoiceIsPaid
-        ? "Paid"
+        ? "Paid in full"
         : invoiceBalance !== null
           ? `${formatMoney(invoiceBalance)} open`
-          : "Pending",
+          : "Awaiting invoice",
       done: invoiceIsPaid,
     },
     {
       label: "Completion",
-      value: completedDate ? formatHistoryDate(completedDate) : "Open",
+      value: completedDate ? formatHistoryDate(completedDate) : "In progress",
       done: Boolean(completedDate),
     },
   ];
