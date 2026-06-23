@@ -108,6 +108,12 @@ function formatDuration(minutes: number) {
   return `${hours}h ${remainingMinutes}m`;
 }
 
+function workTypeIncludes(label: string, terms: string[]) {
+  const normalized = label.toLowerCase();
+
+  return terms.some((term) => normalized.includes(term));
+}
+
 function queueItemHref(businessSlug: string, queueItemId: string | null) {
   return queueItemId
     ? `/queue/${queueItemId}?business=${businessSlug}`
@@ -452,6 +458,21 @@ export default async function JobSessionsPage({
     0
   );
   const topWorkType = workTypeTotals[0] ?? null;
+  const primerBreakdownMinutes = workTypeTotals
+    .filter((item) => workTypeIncludes(item.label, ["primer"]))
+    .reduce((total, item) => total + item.minutes, 0);
+  const cabinetBreakdownMinutes = workTypeTotals
+    .filter((item) => workTypeIncludes(item.label, ["cabinet"]))
+    .reduce((total, item) => total + item.minutes, 0);
+  const equipmentBreakdownMinutes = workTypeTotals
+    .filter((item) => workTypeIncludes(item.label, ["sprayer", "equipment"]))
+    .reduce((total, item) => total + item.minutes, 0);
+  const renoBreakdownMinutes =
+    primerBreakdownMinutes + cabinetBreakdownMinutes + equipmentBreakdownMinutes;
+  const renoBreakdownShare =
+    totalBreakdownMinutes > 0
+      ? Math.round((renoBreakdownMinutes / totalBreakdownMinutes) * 100)
+      : 0;
   const sessionQueueItemIds = new Set(
     sessions
       .map((session) => session.queue_item_id)
@@ -1235,7 +1256,7 @@ export default async function JobSessionsPage({
               {workTypeTotals.length === 0 ? (
                 <EmptyState
                   title="No labor categories yet"
-                  detail="Breakdown is optional. One saved split will show prep, paint, material run, and admin time here."
+                  detail="Breakdown is optional. One saved split will show prep, primer, paint, material run, and admin time here."
                 />
               ) : (
                 workTypeTotals.slice(0, 5).map((item) => {
@@ -1263,6 +1284,45 @@ export default async function JobSessionsPage({
                 })
               )}
             </div>
+
+            {renoBreakdownMinutes > 0 ? (
+              <div className="mt-4 rounded-2xl border border-violet-300/25 bg-black/20 p-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-200">
+                      Reno Labor Signal
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-zinc-300">
+                      Primer, cabinet, and equipment time are now visible in the
+                      labor mix.
+                    </p>
+                  </div>
+                  <span className="rounded-full border border-violet-300/30 bg-violet-300/10 px-3 py-1 text-sm font-black text-violet-100">
+                    {renoBreakdownShare}% reno-specific
+                  </span>
+                </div>
+
+                <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                  {[
+                    ["Primer", primerBreakdownMinutes],
+                    ["Cabinets", cabinetBreakdownMinutes],
+                    ["Equipment", equipmentBreakdownMinutes],
+                  ].map(([label, minutes]) => (
+                    <div
+                      key={label}
+                      className="rounded-2xl border border-white/10 bg-black/25 px-3 py-3"
+                    >
+                      <p className="text-xs font-black uppercase tracking-[0.14em] text-zinc-500">
+                        {label}
+                      </p>
+                      <p className="mt-2 text-lg font-black text-white">
+                        {formatDuration(Number(minutes))}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </Card>
         </div>
 
