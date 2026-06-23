@@ -8,7 +8,6 @@ import {
   resolveWorkspaceSenderEmail,
 } from "../../../../lib/invoiceEmailSettings";
 import {
-  createPdfAttachment,
   type EmailAttachment,
 } from "../../../../lib/pdfAttachments";
 import { createPrintPagePdfAttachment } from "../../../../lib/printPagePdf";
@@ -29,7 +28,6 @@ type Database = {
       businesses: GenericTable;
       clients: GenericTable;
       estimates: GenericTable;
-      estimate_line_items: GenericTable;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -59,13 +57,6 @@ type EstimateRow = {
   estimate_amount: string | number | null;
   reference: string | null;
   status: string | null;
-};
-
-type EstimateLineItemRow = {
-  description: string | null;
-  quantity: string | number | null;
-  unit_price: string | number | null;
-  line_total: string | number | null;
 };
 
 type BusinessRow = {
@@ -117,23 +108,6 @@ function plainTextToHtml(value: string) {
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-}
-
-function parseMoney(value: string | number | null) {
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? value : 0;
-  }
-
-  const parsed = Number(String(value ?? "0").replace(/[^0-9.-]/g, ""));
-
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function formatMoney(value: number) {
-  return value.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-  });
 }
 
 async function requireWorkspaceAccess({
@@ -232,22 +206,29 @@ async function sendWithResend({
     }),
   });
 
+  const payload = (await response.json().catch(() => null)) as
+    | { id?: string; message?: string; error?: string; name?: string }
+    | null;
+
   if (!response.ok) {
-    const errorPayload = (await response.json().catch(() => null)) as
-      | { message?: string; error?: string }
-      | null;
 
     return {
       ok: false,
       status: response.status,
       error:
-        errorPayload?.message ??
-        errorPayload?.error ??
+        payload?.message ??
+        payload?.error ??
         "The email provider rejected this message.",
+      providerResponse: payload,
     };
   }
 
-  return { ok: true, status: response.status, error: null };
+  return {
+    ok: true,
+    status: response.status,
+    error: null,
+    providerResponse: payload,
+  };
 }
 
 export async function POST(request: Request, { params }: RouteParams) {
@@ -403,56 +384,9 @@ export async function POST(request: Request, { params }: RouteParams) {
     senderName: emailSettings.senderName || business.name || "Trimax",
     senderEmail,
   });
-  const { data: lineItems } = await supabase
-    .from("estimate_line_items")
-    .select("description, quantity, unit_price, line_total")
-    .eq("estimate_id", estimate.id)
-    .order("sort_order", { ascending: true })
-    .returns<EstimateLineItemRow[]>();
-  const total = parseMoney(estimate.estimate_amount);
-  const fallbackPdfAttachment = includePdfNote
-    ? createPdfAttachment({
-        filename: estimate.display_id ?? "estimate",
-        title: estimate.display_id ?? "Estimate",
-        subtitle: business.name ?? "Trimax",
-        sections: [
-          {
-            title: "Customer",
-            lines: [
-              estimate.customer_name ?? "Customer",
-              estimate.project_title ? `Project: ${estimate.project_title}` : "",
-              estimate.service_address || estimate.project_address
-                ? `Service address: ${
-                    estimate.service_address || estimate.project_address
-                  }`
-                : "",
-              estimate.reference ? `Reference: ${estimate.reference}` : "",
-            ].filter(Boolean),
-          },
-          {
-            title: "Line Items",
-            lines:
-              lineItems && lineItems.length > 0
-                ? lineItems.map(
-                    (item) =>
-                      `${item.description ?? "Line item"} - Rate ${formatMoney(
-                        parseMoney(item.unit_price)
-                      )} - Qty ${
-                        item.quantity ?? 1
-                      } - Total ${formatMoney(parseMoney(item.line_total))}`
-                  )
-                : ["Line items are available in Trimax."],
-          },
-          {
-            title: "Total",
-            lines: [`Estimate total: ${formatMoney(total)}`],
-          },
-        ],
-      })
-    : null;
-  let pdfAttachment = fallbackPdfAttachment;
-  let pdfAttachmentSource: "print-page" | "fallback" | "none" =
-    fallbackPdfAttachment ? "fallback" : "none";
+  let pdfAttachment: EmailAttachment | null = null;
+  let pdfAttachmentSource: "print-page" | "none" =
+    "none";
 
   if (includePdfNote) {
     try {
@@ -465,7 +399,14 @@ export async function POST(request: Request, { params }: RouteParams) {
       });
       pdfAttachmentSource = "print-page";
     } catch (error) {
-      console.warn("Print-page PDF render failed. Using fallback PDF.", error);
+      console.error("Official estimate PDF render failed.", error);
+      return NextResponse.json(
+        {
+          error:
+            "Trimax could not create the official customer estimate PDF, so the email was not sent. Please try Preview Estimate, then send again.",
+        },
+        { status: 502 }
+      );
     }
   }
 
@@ -484,9 +425,6 @@ export async function POST(request: Request, { params }: RouteParams) {
             : ""
         }
       </div>
-      <div style="padding: 18px 0; text-align: center; background: #eef2f6; color: #8a9aab; font-size: 13px;">
-        Powered by Trimax
-      </div>
     </div>
   `;
 
@@ -503,6 +441,32 @@ export async function POST(request: Request, { params }: RouteParams) {
   });
 
   if (!sendResult.ok) {
+    await supabase.from("activity_logs").insert({
+      business_id: estimate.business_id,
+      actor_user_id: access.userId,
+      actor_email: access.email,
+      action: "estimate.email_failed",
+      entity_type: "estimate",
+      entity_id: estimate.id,
+      entity_label: estimate.display_id ?? estimate.project_title ?? "Estimate",
+      details: {
+        business_profile: business.slug,
+        document_number: estimate.display_id ?? "Estimate",
+        recipient_email: recipientEmail,
+        subject,
+        sender_email: senderEmail,
+        cc_email: ccEmail || null,
+        cc_source: ccSource,
+        bcc_email: bccEmail && isValidEmail(bccEmail) ? bccEmail : null,
+        pdf_attached: Boolean(pdfAttachment),
+        pdf_attachment_source: pdfAttachmentSource,
+        provider: "resend",
+        provider_status: sendResult.status,
+        provider_response: sendResult.providerResponse ?? null,
+        failure_message: sendResult.error,
+      },
+    });
+
     return NextResponse.json(
       { error: sendResult.error },
       { status: sendResult.status }
@@ -526,6 +490,8 @@ export async function POST(request: Request, { params }: RouteParams) {
     entity_label: estimate.display_id ?? estimate.project_title ?? "Estimate",
     details: {
       recipient_email: recipientEmail,
+      business_profile: business.slug,
+      document_number: estimate.display_id ?? "Estimate",
       subject,
       sender_email: senderEmail,
       cc_email: ccEmail || null,
@@ -533,6 +499,10 @@ export async function POST(request: Request, { params }: RouteParams) {
       bcc_email: bccEmail && isValidEmail(bccEmail) ? bccEmail : null,
       pdf_attached: Boolean(pdfAttachment),
       pdf_attachment_source: pdfAttachmentSource,
+      provider: "resend",
+      provider_status: sendResult.status,
+      provider_response: sendResult.providerResponse ?? null,
+      delivery_status: "sent",
     },
   });
 

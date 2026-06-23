@@ -201,7 +201,7 @@ export default async function EstimatePrintPage({
         suggestedFileName={suggestedFileName}
       />
 
-      <div className="mx-auto max-w-5xl bg-white print:max-w-none print:px-6 print:py-4">
+      <div className="standard-estimate-print mx-auto max-w-5xl bg-white print:max-w-none print:px-4 print:py-3">
         <section className="grid grid-cols-2 gap-8">
           <div>
             {isJustKleen ? (

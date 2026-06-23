@@ -70,13 +70,16 @@ body {
     margin: 0.35in;
   }
 
-  .standard-invoice-print {
+  .standard-invoice-print,
+  .standard-estimate-print {
     font-size: 9.5pt;
     line-height: 1.18;
   }
 
   .standard-invoice-print,
-  .standard-invoice-print * {
+  .standard-invoice-print *,
+  .standard-estimate-print,
+  .standard-estimate-print * {
     box-sizing: border-box;
     max-width: 100%;
     overflow-wrap: anywhere;
@@ -84,7 +87,9 @@ body {
   }
 
   .standard-invoice-print section,
-  .standard-invoice-print .print-keep-together {
+  .standard-invoice-print .print-keep-together,
+  .standard-estimate-print section,
+  .standard-estimate-print .print-keep-together {
     break-inside: avoid;
     page-break-inside: avoid;
   }
@@ -113,6 +118,42 @@ body {
 
   .standard-print-table tbody tr:first-child td {
     padding-top: 0.08in;
+  }
+
+  .standard-estimate-print section {
+    margin-top: 0.16in !important;
+  }
+
+  .standard-estimate-print h1 {
+    font-size: 20pt !important;
+    line-height: 1.12 !important;
+  }
+
+  .standard-estimate-print .text-5xl {
+    font-size: 24pt !important;
+  }
+
+  .standard-estimate-print .text-4xl {
+    font-size: 20pt !important;
+  }
+
+  .standard-estimate-print .gap-8 {
+    gap: 0.18in !important;
+  }
+
+  .standard-estimate-print .mt-10,
+  .standard-estimate-print .mt-12 {
+    margin-top: 0.22in !important;
+  }
+
+  .standard-estimate-print .mt-8 {
+    margin-top: 0.16in !important;
+  }
+
+  .standard-estimate-print .py-6,
+  .standard-estimate-print .py-5 {
+    padding-bottom: 0.12in !important;
+    padding-top: 0.12in !important;
   }
 }
 
@@ -6574,21 +6615,32 @@ html.theme-light .settings-danger-button:hover {
 .invoice-email-input {
   color: #020617 !important;
   caret-color: #0f172a;
+  -webkit-text-fill-color: #020617;
 }
 
 .invoice-email-input::placeholder {
-  color: #94a3b8 !important;
+  color: #64748b !important;
+  -webkit-text-fill-color: #64748b;
 }
 
 .invoice-email-option,
+.invoice-email-cc-card,
+.invoice-pdf-attachment-card,
 .invoice-customer-preview {
   background: #ffffff !important;
   border-color: #d7dde8 !important;
-  color: #334155 !important;
+  color: #0f172a !important;
 }
 
 .invoice-customer-preview p {
   overflow-wrap: anywhere;
+}
+
+.invoice-email-cc-card p,
+.invoice-pdf-attachment-card p,
+.invoice-customer-preview p,
+.invoice-email-tone-row button {
+  color: #0f172a !important;
 }
 
 .invoice-email-ready-card {
@@ -19276,6 +19328,14 @@ html.theme-light .queue-empty-card::after {
     color: #e5e7eb !important;
   }
 
+  .invoice-email-cc-card,
+  .invoice-pdf-attachment-card,
+  .invoice-customer-preview {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+  }
+
   .invoice-email-ready-card[data-status="ready"] {
     background: rgba(6, 78, 59, 0.5) !important;
     border-color: rgba(52, 211, 153, 0.35) !important;
@@ -19305,7 +19365,13 @@ html.theme-light .queue-empty-card::after {
   .invoice-email-input {
     background: #ffffff !important;
     color: #020617 !important;
+    -webkit-text-fill-color: #020617 !important;
     min-height: 3.25rem;
+  }
+
+  .invoice-email-input::placeholder {
+    color: #64748b !important;
+    -webkit-text-fill-color: #64748b !important;
   }
 
   .invoice-email-tone-row {
@@ -19313,6 +19379,9 @@ html.theme-light .queue-empty-card::after {
   }
 
   .invoice-email-tone-row button {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
     min-height: 2.5rem;
     padding-inline: 0.9rem !important;
   }
@@ -19324,6 +19393,29 @@ html.theme-light .queue-empty-card::after {
 
   .invoice-customer-preview {
     border-color: rgba(148, 163, 184, 0.22) !important;
+  }
+
+  .invoice-email-cc-card p,
+  .invoice-email-cc-card .text-slate-950,
+  .invoice-email-cc-card .text-slate-700,
+  .invoice-email-cc-card .text-slate-600,
+  .invoice-email-cc-card .text-slate-500,
+  .invoice-pdf-attachment-card p,
+  .invoice-pdf-attachment-card .text-slate-950,
+  .invoice-pdf-attachment-card .text-slate-700,
+  .invoice-pdf-attachment-card .text-slate-600,
+  .invoice-pdf-attachment-card .text-slate-500,
+  .invoice-customer-preview p,
+  .invoice-customer-preview .text-slate-950,
+  .invoice-customer-preview .text-slate-700,
+  .invoice-customer-preview .text-slate-600,
+  .invoice-customer-preview .text-slate-500 {
+    color: #0f172a !important;
+  }
+
+  .invoice-email-cc-card .bg-slate-200 {
+    background: #dcfce7 !important;
+    color: #166534 !important;
   }
 
   .invoice-email-footer {

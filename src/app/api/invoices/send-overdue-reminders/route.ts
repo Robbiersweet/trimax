@@ -8,10 +8,7 @@ import {
   resolveWorkspaceSenderEmail,
   renderEmailTemplate,
 } from "../../../lib/invoiceEmailSettings";
-import {
-  createPdfAttachment,
-  type EmailAttachment,
-} from "../../../lib/pdfAttachments";
+import type { EmailAttachment } from "../../../lib/pdfAttachments";
 import { createPrintPagePdfAttachment } from "../../../lib/printPagePdf";
 
 type GenericTable = {
@@ -430,39 +427,10 @@ export async function POST(request: Request) {
           <div style="padding: 34px 0;">
             <p style="font-size: 16px;">${plainTextToHtml(message)}</p>
           </div>
-          <div style="padding: 18px 0; text-align: center; background: #eef2f6; color: #8a9aab; font-size: 13px;">
-            Powered by Trimax
-          </div>
         </div>
       `;
-      const fallbackPdfAttachment = createPdfAttachment({
-        filename: invoiceLabel,
-        title: invoiceLabel,
-        subtitle: business.name ?? "Trimax",
-        sections: [
-          {
-            title: "Customer",
-            lines: [
-              invoice.customer_name ?? "Customer",
-              invoice.project_title ? `Project: ${invoice.project_title}` : "",
-            ].filter(Boolean),
-          },
-          {
-            title: "Payment Reminder",
-            lines: [
-              `Amount due: ${formatMoney(amountDue)}`,
-              `Due date: ${dueDate}`,
-              "This invoice is past due.",
-            ],
-          },
-          {
-            title: "Message",
-            lines: message.split("\n").filter(Boolean),
-          },
-        ],
-      });
-      let pdfAttachment = fallbackPdfAttachment;
-      let pdfAttachmentSource: "print-page" | "fallback" = "fallback";
+      let pdfAttachment: EmailAttachment;
+      const pdfAttachmentSource = "print-page";
 
       try {
         pdfAttachment = await createPrintPagePdfAttachment({
@@ -472,9 +440,14 @@ export async function POST(request: Request) {
           ).toString(),
           filename: invoiceLabel,
         });
-        pdfAttachmentSource = "print-page";
       } catch (error) {
-        console.warn("Print-page PDF render failed. Using fallback PDF.", error);
+        console.error("Official reminder invoice PDF render failed.", error);
+        failed.push({
+          invoice: invoiceLabel,
+          error:
+            "Trimax could not create the official customer invoice PDF for this reminder.",
+        });
+        continue;
       }
 
       const result = await sendWithResend({

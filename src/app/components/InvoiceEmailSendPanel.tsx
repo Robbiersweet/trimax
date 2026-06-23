@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import Button from "./Button";
 import Card from "./Card";
@@ -28,10 +27,6 @@ type InvoiceEmailSendPanelProps = {
   printHref: string;
   requestType?: "invoice" | "deposit" | "estimate" | "reminder";
 };
-
-function businessLogoSrc(businessSlug: string) {
-  return businessSlug === "just-kleen" ? null : "/Brand/rnl-multi-colors.png";
-}
 
 function defaultSubject(
   businessName: string,
@@ -111,7 +106,6 @@ export default function InvoiceEmailSendPanel({
         ? "Estimate"
       : "Invoice";
   const documentLabelLower = documentLabel.toLowerCase();
-  const logoSrc = businessLogoSrc(businessSlug);
   const [recipient, setRecipient] = useState(recipientEmail ?? "");
   const visibleClientCc = clientCcEmail?.trim() ?? "";
   const [subject, setSubject] = useState(
@@ -320,8 +314,8 @@ export default function InvoiceEmailSendPanel({
       status: message.trim() ? "ready" : "attention",
     },
     {
-      label: "PDF note",
-      detail: includePdfNote ? "PDF will attach" : "No attachment",
+      label: "PDF attachment",
+      detail: includePdfNote ? "Official document will attach" : "No attachment",
       status: includePdfNote ? "ready" : "waiting",
     },
   ];
@@ -566,7 +560,7 @@ export default function InvoiceEmailSendPanel({
             </p>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="invoice-email-cc-card rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <p className="text-sm font-semibold text-slate-600">
@@ -636,9 +630,26 @@ export default function InvoiceEmailSendPanel({
               className="mt-1 h-4 w-4"
             />
             <span>
-              Attach a PDF copy of this {documentLabelLower} to the email.
+              Attach the official customer {documentLabelLower} PDF to the email.
             </span>
           </label>
+
+          <div className="invoice-pdf-attachment-card rounded-2xl border border-slate-200 bg-white p-4">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+              PDF Attachment
+            </p>
+            <p className="mt-2 text-sm font-semibold text-slate-950">
+              {includePdfNote
+                ? `The attached PDF uses the official full-page customer ${documentLabelLower} layout.`
+                : "No PDF will be attached to this email."}
+            </p>
+            <a
+              href={printHref}
+              className="mt-4 inline-flex w-full items-center justify-center rounded-xl border border-slate-200 bg-slate-950 px-4 py-3 text-center text-sm font-black text-white transition hover:bg-slate-800"
+            >
+              Preview Official PDF
+            </a>
+          </div>
 
           {!recipient.trim().includes("@") ? (
             <div className="invoice-email-warning rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
@@ -651,28 +662,12 @@ export default function InvoiceEmailSendPanel({
         <div className="invoice-customer-preview overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-5 py-3">
             <p className="text-sm font-semibold text-slate-500">
-              Customer Preview
+              Email Preview
             </p>
           </div>
 
           <div className="px-4 py-5 text-slate-700 sm:px-5 sm:py-6">
-            <div className="flex justify-center border-b border-slate-200 pb-5">
-              {logoSrc ? (
-                <Image
-                  src={logoSrc}
-                  alt={businessName}
-                  width={80}
-                  height={80}
-                  className="h-16 w-16 rounded-xl object-contain sm:h-20 sm:w-20"
-                />
-              ) : (
-                <div className="flex h-16 w-32 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-4 text-center text-sm font-black uppercase tracking-[0.22em] text-emerald-900 sm:h-20 sm:w-40">
-                  Just Kleen
-                </div>
-              )}
-            </div>
-
-            <p className="mt-6 whitespace-pre-line text-base leading-7 sm:text-lg sm:leading-8">
+            <p className="whitespace-pre-line text-base leading-7 sm:text-lg sm:leading-8">
               {message}
             </p>
 
@@ -682,27 +677,9 @@ export default function InvoiceEmailSendPanel({
               </p>
             ) : null}
 
-            <div className="mt-7">
-              <p className="break-words font-semibold text-slate-950">
-                {customerName}
-              </p>
-              <p className="mt-1 text-sm text-slate-500">
-                {documentLabel} {documentNumber} - {amountDue}
-              </p>
-            </div>
-
-            <div className="mt-7 flex justify-center">
-              <a
-                href={printHref}
-                className="inline-flex w-full items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-center text-sm font-black text-white sm:w-auto"
-              >
-                Internal {requestType === "estimate" ? "Estimate" : "Invoice"} Preview
-              </a>
-            </div>
-          </div>
-
-          <div className="border-t border-slate-200 bg-slate-100 px-5 py-4 text-center text-sm font-semibold text-slate-400">
-            Powered by Trimax
+            <p className="mt-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600">
+              This preview is the email message only. The customer PDF is attached separately.
+            </p>
           </div>
         </div>
       </div>
@@ -718,7 +695,7 @@ export default function InvoiceEmailSendPanel({
             Direct sending uses a verified email provider so messages do not
             look like random mail.
             {templateLoaded
-              ? " This preview is using your saved email settings."
+              ? " The PDF attachment uses the official customer document."
               : " Loading saved email settings..."}
           </p>
         </div>
