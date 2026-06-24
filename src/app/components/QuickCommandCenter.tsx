@@ -499,6 +499,16 @@ function typedCommandTitle(kind: TypedCommandPreview["kind"]) {
   }
 }
 
+function isActiveQueueItem(item: QueueSearchRecord) {
+  const status = item.status?.toLowerCase() ?? "";
+
+  return (
+    !status.includes("complete") &&
+    !status.includes("cancel") &&
+    !status.includes("closed")
+  );
+}
+
 function parseDateCommandValue(value: string) {
   const trimmed = value.trim().replace(/[.。]+$/, "");
 
@@ -591,6 +601,8 @@ function normalizeProgressCommandValue(value: string) {
   };
 }
 
+// Manual QA: create invoice for unit D01, create invoice for D1, and make invoice for D01
+// should show a typed queue preview; show/open invoice 190 should stay invoice record search.
 function parseTypedCommand(value: string) {
   const normalized = value.trim().replace(/\s+/g, " ");
 
@@ -634,7 +646,7 @@ function parseTypedCommand(value: string) {
   }
 
   const estimateMatch = normalized.match(
-    /^(?:create|make|new|add)\s+estimate\s+(?:for\s+)?([a-z]\s*0?\d{1,2})$/i
+    /^(?:create|make|new|add)\s+estimate\s+(?:for\s+)?(?:unit\s+)?([a-z]\s*0?\d{1,2})$/i
   );
 
   if (estimateMatch) {
@@ -645,7 +657,7 @@ function parseTypedCommand(value: string) {
   }
 
   const invoiceMatch = normalized.match(
-    /^(?:create|make|new|add)\s+invoice\s+(?:for\s+)?([a-z]\s*0?\d{1,2})$/i
+    /^(?:(?:create|make|new|add)\s+invoice\s+(?:for\s+)?(?:unit\s+)?|invoice\s+)([a-z]\s*0?\d{1,2})$/i
   );
 
   if (invoiceMatch) {
@@ -656,7 +668,7 @@ function parseTypedCommand(value: string) {
   }
 
   const sendInvoiceMatch = normalized.match(
-    /^(?:send|email|mail)\s+invoice\s+(?:for\s+)?([a-z]\s*0?\d{1,2})(?:\s+to\s+(.+))?$/i
+    /^(?:send|email|mail)\s+invoice\s+(?:for\s+)?(?:unit\s+)?([a-z]\s*0?\d{1,2})(?:\s+to\s+(.+))?$/i
   );
 
   if (sendInvoiceMatch) {
@@ -1917,6 +1929,11 @@ export default function QuickCommandCenter() {
 
   const normalizedQuery = query.trim().toLowerCase();
   const recordLookupQuery = query.trim();
+  const parsedTypedQuery = useMemo(
+    () => parseTypedCommand(recordLookupQuery),
+    [recordLookupQuery]
+  );
+  const typedCommandTakesPriority = Boolean(parsedTypedQuery);
   const intentShortcutCommands = useMemo(
     () =>
       buildIntentShortcutCommands(recordLookupQuery, business).filter(
@@ -1989,6 +2006,10 @@ export default function QuickCommandCenter() {
     )
     .filter((command): command is CommandItem => Boolean(command));
   const fallbackRecordCommands = useMemo<CommandItem[]>(() => {
+    if (typedCommandTakesPriority) {
+      return [];
+    }
+
     const intent = commandIntent(recordLookupQuery);
     const lookup = intent.lookup;
     const cleanValue = normalizeLookupValue(lookup.value);
@@ -2080,7 +2101,7 @@ export default function QuickCommandCenter() {
         actionLabel: "Search",
       },
     ];
-  }, [business, recordLookupQuery]);
+  }, [business, recordLookupQuery, typedCommandTakesPriority]);
   const allowedFallbackRecordCommands = useMemo(
     () =>
       fallbackRecordCommands.filter((command) =>
@@ -2098,15 +2119,18 @@ export default function QuickCommandCenter() {
   const visibleCommands = (
     normalizedQuery
       ? [
-          ...intentShortcutCommands,
-          ...(canResolveRecords
+          ...(typedCommandTakesPriority ? [] : intentShortcutCommands),
+          ...(canResolveRecords && !typedCommandTakesPriority
             ? recordCommands.filter((command) =>
                 commandAllowedForRole(command, role)
               )
             : []),
           ...allowedFallbackRecordCommands.filter(
             (fallback) =>
-              !(canResolveRecords ? recordCommands : []).some(
+              !(canResolveRecords && !typedCommandTakesPriority
+                ? recordCommands
+                : []
+              ).some(
                 (record) => record.href === fallback.href
               )
           ),
@@ -2481,14 +2505,17 @@ export default function QuickCommandCenter() {
       }
 
       const unitNeedles = queueUnitNeedles(parsedTypedCommand.unit);
-      const queueNeedle = safeIlikeNeedle(unitNeedles[0] ?? parsedTypedCommand.unit);
+      const queueNeedleClauses = unitNeedles
+        .map((needle) => safeIlikeNeedle(needle))
+        .filter(Boolean)
+        .map((needle) => `unit.ilike.%${needle}%`);
       const { data, error } = await supabase
         .from("queue_items")
         .select(
           "id, property, unit, status, priority, ready_date, projected_completion_date, progress_stage, percent_complete, completed_date, linked_estimate_id"
         )
         .eq("business_id", businessData.id)
-        .or(`unit.ilike.%${queueNeedle}%`)
+        .or(queueNeedleClauses.join(","))
         .order("created_at", { ascending: false })
         .limit(8);
 
@@ -2513,9 +2540,13 @@ export default function QuickCommandCenter() {
         const itemNeedles = queueUnitNeedles(item.unit ?? "");
         return itemNeedles.some((needle) => unitNeedles.includes(needle));
       });
+      const resolvedMatches =
+        parsedTypedCommand.kind === "create_invoice"
+          ? matches.filter(isActiveQueueItem)
+          : matches;
 
-      if (matches.length === 1) {
-        const item = matches[0];
+      if (resolvedMatches.length === 1) {
+        const item = resolvedMatches[0];
         const queueHref = `/queue/${item.id}?business=${business}`;
 
         if (parsedTypedCommand.kind === "open_queue") {
@@ -2523,7 +2554,7 @@ export default function QuickCommandCenter() {
             kind: parsedTypedCommand.kind,
             state: "ready",
             unit: parsedTypedCommand.unit,
-            matches,
+            matches: resolvedMatches,
             targetHref: queueHref,
             confirmLabel: "Open",
             message: `Open ${item.property || "property"} Unit ${
@@ -2541,7 +2572,7 @@ export default function QuickCommandCenter() {
             progressStage: parsedTypedCommand.progressStage,
             percentComplete: parsedTypedCommand.percentComplete,
             markComplete: parsedTypedCommand.markComplete,
-            matches,
+            matches: resolvedMatches,
             confirmLabel: "Confirm",
             message: `Change ${item.property || "property"} Unit ${
               item.unit || parsedTypedCommand.unit
@@ -2583,7 +2614,7 @@ export default function QuickCommandCenter() {
             kind: parsedTypedCommand.kind,
             state: "ready",
             unit: parsedTypedCommand.unit,
-            matches,
+            matches: resolvedMatches,
             estimate: linkedEstimate,
             targetHref: linkedEstimate
               ? `/estimates/${linkedEstimate.id}?business=${business}`
@@ -2652,7 +2683,7 @@ export default function QuickCommandCenter() {
                 kind: parsedTypedCommand.kind,
                 state: "ready",
                 unit: parsedTypedCommand.unit,
-                matches,
+                matches: resolvedMatches,
                 estimate: linkedEstimate,
                 invoice: linkedInvoice,
                 targetHref: `/invoices/${linkedInvoice.id}?business=${business}`,
@@ -2669,7 +2700,7 @@ export default function QuickCommandCenter() {
                 kind: parsedTypedCommand.kind,
                 state: "ready",
                 unit: parsedTypedCommand.unit,
-                matches,
+                matches: resolvedMatches,
                 estimate: linkedEstimate,
                 targetHref: `/estimates/${linkedEstimate.id}?business=${business}`,
                 confirmLabel: "Open Estimate",
@@ -2684,7 +2715,7 @@ export default function QuickCommandCenter() {
               kind: parsedTypedCommand.kind,
               state: "blocked",
               unit: parsedTypedCommand.unit,
-              matches,
+              matches: resolvedMatches,
               message: `Unit ${
                 item.unit || parsedTypedCommand.unit
               } does not have an estimate yet. Create the estimate first, then convert it to an invoice.`,
@@ -2697,7 +2728,7 @@ export default function QuickCommandCenter() {
               kind: parsedTypedCommand.kind,
               state: "blocked",
               unit: parsedTypedCommand.unit,
-              matches,
+              matches: resolvedMatches,
               message: linkedEstimate
                 ? `No invoice exists yet for Unit ${
                     item.unit || parsedTypedCommand.unit
@@ -2731,7 +2762,7 @@ export default function QuickCommandCenter() {
               kind: parsedTypedCommand.kind,
               state: "blocked",
               unit: parsedTypedCommand.unit,
-              matches,
+              matches: resolvedMatches,
               invoice: linkedInvoice,
               message: `${linkedInvoice.display_id || "This invoice"} is missing a saved customer email. Open the invoice and add/confirm the recipient before sending.`,
             });
@@ -2742,7 +2773,7 @@ export default function QuickCommandCenter() {
             kind: parsedTypedCommand.kind,
             state: "ready",
             unit: parsedTypedCommand.unit,
-            matches,
+            matches: resolvedMatches,
             estimate: linkedEstimate,
             invoice: linkedInvoice,
             recipientEmail,
@@ -2764,7 +2795,7 @@ export default function QuickCommandCenter() {
           state: "ready",
           unit: parsedTypedCommand.unit,
           etaDate: parsedTypedCommand.etaDate,
-          matches,
+          matches: resolvedMatches,
           message: `Set Robbie ETA for ${item.property || "property"} Unit ${
             item.unit || parsedTypedCommand.unit
           } to ${parsedTypedCommand.etaDate}?`,
@@ -2774,14 +2805,16 @@ export default function QuickCommandCenter() {
 
       setTypedCommandPreview({
         kind: parsedTypedCommand.kind,
-        state: matches.length > 1 ? "ambiguous" : "blocked",
+        state: resolvedMatches.length > 1 ? "ambiguous" : "blocked",
         unit: parsedTypedCommand.unit,
         etaDate: "etaDate" in parsedTypedCommand ? parsedTypedCommand.etaDate : undefined,
-        matches,
+        matches: resolvedMatches,
         message:
-          matches.length > 1
-            ? `I found ${matches.length} matching units. Open the exact queue item first or include more context.`
-            : `I could not find Unit ${parsedTypedCommand.unit} in this workspace.`,
+          resolvedMatches.length > 1
+            ? `I found ${resolvedMatches.length} matching units. Open the exact queue item first or include more context.`
+            : parsedTypedCommand.kind === "create_invoice"
+              ? `No active queue item found for ${parsedTypedCommand.unit}.`
+              : `I could not find Unit ${parsedTypedCommand.unit} in this workspace.`,
       });
     }, 220);
 
@@ -2878,6 +2911,15 @@ export default function QuickCommandCenter() {
   useEffect(() => {
     if (!isOpen || recordLookupQuery.trim().length < 2) {
       return;
+    }
+
+    if (parsedTypedQuery) {
+      const timer = window.setTimeout(() => {
+        setRecordCommands([]);
+        setIsResolvingRecords(false);
+      }, 0);
+
+      return () => window.clearTimeout(timer);
     }
 
     let isActive = true;
@@ -3022,7 +3064,7 @@ export default function QuickCommandCenter() {
       isActive = false;
       window.clearTimeout(timer);
     };
-  }, [business, isOpen, recordLookupQuery, role]);
+  }, [business, isOpen, parsedTypedQuery, recordLookupQuery, role]);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
