@@ -11,6 +11,7 @@ import {
 } from "../lib/rolePermissions";
 import { logActivity } from "../lib/activityLog";
 import { supabase } from "../lib/supabase";
+import { appendUnitHistoryForQueueItem } from "../lib/unitHistory";
 import { loadWorkspaceAccess } from "../lib/workspaceAccess";
 
 type CommandTone =
@@ -74,15 +75,50 @@ type QueueSearchRecord = {
   priority: string | null;
   ready_date: string | null;
   projected_completion_date?: string | null;
+  progress_stage?: string | null;
+  percent_complete?: number | null;
+  completed_date?: string | null;
+  linked_estimate_id?: string | null;
+};
+
+type TypedEstimateRecord = {
+  id: string;
+  display_id: string | null;
+  status: string | null;
+};
+
+type TypedInvoiceRecord = {
+  id: string;
+  display_id: string | null;
+  customer_name: string | null;
+  project_title: string | null;
+  status: string | null;
+  invoice_amount: string | number | null;
+  amount_paid: string | number | null;
+  client_id: string | null;
 };
 
 type TypedCommandPreview = {
-  kind: "set_eta";
+  kind:
+    | "open_queue"
+    | "set_eta"
+    | "set_progress"
+    | "create_estimate"
+    | "create_invoice"
+    | "send_invoice";
   state: "ready" | "ambiguous" | "blocked" | "saving" | "done" | "error";
   unit: string;
-  etaDate: string;
+  etaDate?: string;
+  progressStage?: string;
+  percentComplete?: number | null;
+  markComplete?: boolean;
   matches: QueueSearchRecord[];
   message: string;
+  confirmLabel?: string;
+  targetHref?: string;
+  estimate?: TypedEstimateRecord | null;
+  invoice?: TypedInvoiceRecord | null;
+  recipientEmail?: string | null;
 };
 
 type ClientSearchRecord = {
@@ -444,6 +480,25 @@ function canUseTypedCommands(role: WorkspaceRole) {
   return role === "owner" || role === "admin";
 }
 
+function typedCommandTitle(kind: TypedCommandPreview["kind"]) {
+  switch (kind) {
+    case "open_queue":
+      return "Open Queue Item";
+    case "set_eta":
+      return "Set Robbie ETA";
+    case "set_progress":
+      return "Update Progress";
+    case "create_estimate":
+      return "Create Estimate";
+    case "create_invoice":
+      return "Create Invoice";
+    case "send_invoice":
+      return "Send Invoice";
+    default:
+      return "Command";
+  }
+}
+
 function parseDateCommandValue(value: string) {
   const trimmed = value.trim().replace(/[.。]+$/, "");
 
@@ -480,33 +535,157 @@ function parseDateCommandValue(value: string) {
   return parsed.toISOString().slice(0, 10);
 }
 
+const QUEUE_PROGRESS_OPTIONS = [
+  { aliases: ["not started", "not-started"], label: "Not Started", percent: 0 },
+  {
+    aliases: ["walked", "reviewed", "walked reviewed", "walked / reviewed"],
+    label: "Walked / Reviewed",
+    percent: 0,
+  },
+  { aliases: ["prep started", "prepping", "prep"], label: "Prep Started", percent: 25 },
+  { aliases: ["prep complete", "prep completed"], label: "Prep Complete", percent: 25 },
+  {
+    aliases: ["painting started", "paint started", "started painting"],
+    label: "Painting Started",
+    percent: 50,
+  },
+  {
+    aliases: ["first coat complete", "first coat completed"],
+    label: "First Coat Complete",
+    percent: 75,
+  },
+  {
+    aliases: ["final coat complete", "final coat completed"],
+    label: "Final Coat Complete",
+    percent: 90,
+  },
+  { aliases: ["touchups", "touch ups", "touch-up", "touchup"], label: "Touchups", percent: 90 },
+  { aliases: ["complete", "completed", "done", "finished"], label: "Complete", percent: 100 },
+  {
+    aliases: ["blocked", "waiting", "blocked waiting", "blocked / waiting"],
+    label: "Blocked / Waiting",
+    percent: null,
+  },
+];
+
+function normalizeProgressCommandValue(value: string) {
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/^progress\s+(?:to\s+)?/, "")
+    .replace(/^(?:to|as)\s+/, "")
+    .replace(/[.]+$/, "")
+    .replace(/\s+/g, " ");
+  const match = QUEUE_PROGRESS_OPTIONS.find((option) =>
+    option.aliases.includes(normalized)
+  );
+
+  if (!match) {
+    return null;
+  }
+
+  return {
+    progressStage: match.label,
+    percentComplete: match.percent,
+    markComplete: match.label === "Complete",
+  };
+}
+
 function parseTypedCommand(value: string) {
   const normalized = value.trim().replace(/\s+/g, " ");
+
+  if (!normalized) {
+    return null;
+  }
+
   const etaMatch = normalized.match(
     /^(?:set|update|change)\s+(?:robbie\s+)?(?:eta|projected\s+completion(?:\s+date)?)\s+(?:for\s+)?([a-z]\s*0?\d{1,2})\s+(?:to|as|on)\s+(.+)$/i
   );
 
-  if (!etaMatch) {
-    return null;
-  }
+  if (etaMatch) {
+    const unit = queueUnitNeedles(etaMatch[1])[0] ?? etaMatch[1].toUpperCase();
+    const etaDate = parseDateCommandValue(etaMatch[2]);
 
-  const unit = queueUnitNeedles(etaMatch[1])[0] ?? etaMatch[1].toUpperCase();
-  const etaDate = parseDateCommandValue(etaMatch[2]);
+    if (!etaDate) {
+      return {
+        kind: "set_eta" as const,
+        unit,
+        etaDate: "",
+        error: "I could not read that date. Try something like July 7 or 2026-07-07.",
+      };
+    }
 
-  if (!etaDate) {
     return {
       kind: "set_eta" as const,
       unit,
-      etaDate: "",
-      error: "I could not read that date. Try something like July 7 or 2026-07-07.",
+      etaDate,
     };
   }
 
-  return {
-    kind: "set_eta" as const,
-    unit,
-    etaDate,
-  };
+  const openMatch = normalized.match(
+    /^(?:show|open|view|find)(?:\s+unit)?\s+([a-z]\s*0?\d{1,2})$/i
+  );
+
+  if (openMatch) {
+    return {
+      kind: "open_queue" as const,
+      unit: queueUnitNeedles(openMatch[1])[0] ?? openMatch[1].toUpperCase(),
+    };
+  }
+
+  const estimateMatch = normalized.match(
+    /^(?:create|make|new|add)\s+estimate\s+(?:for\s+)?([a-z]\s*0?\d{1,2})$/i
+  );
+
+  if (estimateMatch) {
+    return {
+      kind: "create_estimate" as const,
+      unit: queueUnitNeedles(estimateMatch[1])[0] ?? estimateMatch[1].toUpperCase(),
+    };
+  }
+
+  const invoiceMatch = normalized.match(
+    /^(?:create|make|new|add)\s+invoice\s+(?:for\s+)?([a-z]\s*0?\d{1,2})$/i
+  );
+
+  if (invoiceMatch) {
+    return {
+      kind: "create_invoice" as const,
+      unit: queueUnitNeedles(invoiceMatch[1])[0] ?? invoiceMatch[1].toUpperCase(),
+    };
+  }
+
+  const sendInvoiceMatch = normalized.match(
+    /^(?:send|email|mail)\s+invoice\s+(?:for\s+)?([a-z]\s*0?\d{1,2})(?:\s+to\s+(.+))?$/i
+  );
+
+  if (sendInvoiceMatch) {
+    return {
+      kind: "send_invoice" as const,
+      unit: queueUnitNeedles(sendInvoiceMatch[1])[0] ?? sendInvoiceMatch[1].toUpperCase(),
+      recipientHint: sendInvoiceMatch[2]?.trim() ?? null,
+    };
+  }
+
+  const progressMatch = normalized.match(
+    /^(?:mark|set|update|change)\s+([a-z]\s*0?\d{1,2})\s+(.+)$/i
+  );
+
+  if (progressMatch) {
+    const progress = normalizeProgressCommandValue(progressMatch[2]);
+
+    if (!progress) {
+      return null;
+    }
+
+    return {
+      kind: "set_progress" as const,
+      unit: queueUnitNeedles(progressMatch[1])[0] ?? progressMatch[1].toUpperCase(),
+      ...progress,
+    };
+  }
+
+  return null;
 }
 
 function invoiceActionCommand(
@@ -2023,9 +2202,21 @@ export default function QuickCommandCenter() {
   async function confirmTypedCommand() {
     if (
       !typedCommandPreview ||
-      typedCommandPreview.kind !== "set_eta" ||
       typedCommandPreview.state !== "ready" ||
       typedCommandPreview.matches.length !== 1
+    ) {
+      return;
+    }
+
+    if (typedCommandPreview.targetHref) {
+      closeCommandCenter();
+      router.push(typedCommandPreview.targetHref);
+      return;
+    }
+
+    if (
+      typedCommandPreview.kind !== "set_eta" &&
+      typedCommandPreview.kind !== "set_progress"
     ) {
       return;
     }
@@ -2034,7 +2225,10 @@ export default function QuickCommandCenter() {
     setTypedCommandPreview({
       ...typedCommandPreview,
       state: "saving",
-      message: "Saving Robbie ETA...",
+      message:
+        typedCommandPreview.kind === "set_eta"
+          ? "Saving Robbie ETA..."
+          : "Saving progress...",
     });
 
     const { data: businessData } = await supabase
@@ -2053,11 +2247,29 @@ export default function QuickCommandCenter() {
       return;
     }
 
+    const today = new Date().toISOString().slice(0, 10);
+    const updatePayload =
+      typedCommandPreview.kind === "set_eta"
+        ? {
+            projected_completion_date: typedCommandPreview.etaDate ?? null,
+          }
+        : {
+            progress_stage: typedCommandPreview.progressStage ?? null,
+            percent_complete:
+              typedCommandPreview.percentComplete === undefined
+                ? item.percent_complete ?? null
+                : typedCommandPreview.percentComplete,
+            ...(typedCommandPreview.markComplete
+              ? {
+                  status: "Completed",
+                  completed_date: today,
+                }
+              : {}),
+          };
+
     const { error } = await supabase
       .from("queue_items")
-      .update({
-        projected_completion_date: typedCommandPreview.etaDate,
-      })
+      .update(updatePayload)
       .eq("id", item.id)
       .eq("business_id", businessData.id);
 
@@ -2066,49 +2278,117 @@ export default function QuickCommandCenter() {
         ...typedCommandPreview,
         state: "error",
         message:
-          "Robbie ETA could not be saved. The progress/ETA SQL may still need to be applied.",
+          typedCommandPreview.kind === "set_eta"
+            ? "Robbie ETA could not be saved. The progress/ETA SQL may still need to be applied."
+            : "Progress could not be saved. The progress/ETA SQL may still need to be applied.",
       });
       return;
     }
 
+    const progressChanges =
+      typedCommandPreview.kind === "set_progress"
+        ? [
+            {
+              field: "progress_stage",
+              label: "Progress",
+              previousValue: item.progress_stage ?? null,
+              newValue: typedCommandPreview.progressStage ?? null,
+            },
+            {
+              field: "percent_complete",
+              label: "Percent Complete",
+              previousValue: item.percent_complete ?? null,
+              newValue:
+                typedCommandPreview.percentComplete === undefined
+                  ? item.percent_complete ?? null
+                  : typedCommandPreview.percentComplete,
+            },
+            ...(typedCommandPreview.markComplete
+              ? [
+                  {
+                    field: "status",
+                    label: "Status",
+                    previousValue: item.status ?? null,
+                    newValue: "Completed",
+                  },
+                  {
+                    field: "completed_date",
+                    label: "Completed Date",
+                    previousValue: item.completed_date ?? null,
+                    newValue: today,
+                  },
+                ]
+              : []),
+          ].filter((change) => change.previousValue !== change.newValue)
+        : [];
+
     await logActivity({
       businessId: businessData.id,
-      action: "queue_item.robbie_eta_changed",
+      action:
+        typedCommandPreview.kind === "set_eta"
+          ? "queue_item.robbie_eta_changed"
+          : typedCommandPreview.markComplete
+            ? "queue_item.completed"
+            : "queue_item.progress_changed",
       entityType: "queue_item",
       entityId: item.id,
       entityLabel: `${item.property || "Property"} - Unit ${item.unit || "-"}`,
-      details: {
-        field: "projected_completion_date",
-        label: "Robbie ETA",
-        previousValue: item.projected_completion_date ?? null,
-        newValue: typedCommandPreview.etaDate,
-        source: "quick_command_center",
-        rawCommand: query,
-        changes: [
-          {
-            field: "projected_completion_date",
-            label: "Robbie ETA",
-            previousValue: item.projected_completion_date ?? null,
-            newValue: typedCommandPreview.etaDate,
-          },
-        ],
-      },
+      details:
+        typedCommandPreview.kind === "set_eta"
+          ? {
+              field: "projected_completion_date",
+              label: "Robbie ETA",
+              previousValue: item.projected_completion_date ?? null,
+              newValue: typedCommandPreview.etaDate,
+              source: "quick_command_center",
+              rawCommand: query,
+              changes: [
+                {
+                  field: "projected_completion_date",
+                  label: "Robbie ETA",
+                  previousValue: item.projected_completion_date ?? null,
+                  newValue: typedCommandPreview.etaDate,
+                },
+              ],
+            }
+          : {
+              source: "quick_command_center",
+              rawCommand: query,
+              changes: progressChanges,
+            },
     });
+
+    if (typedCommandPreview.markComplete) {
+      await appendUnitHistoryForQueueItem({
+        queueItemId: item.id,
+        businessId: businessData.id,
+        eventType: "general_turn",
+        eventDate: today,
+      });
+    }
 
     setTypedCommandPreview({
       ...typedCommandPreview,
       state: "done",
-      message: `Robbie ETA saved for ${item.unit || typedCommandPreview.unit}.`,
+      message:
+        typedCommandPreview.kind === "set_eta"
+          ? `Robbie ETA saved for ${item.unit || typedCommandPreview.unit}.`
+          : `Progress saved for ${item.unit || typedCommandPreview.unit}.`,
     });
     setRecordCommands((currentCommands) =>
-      currentCommands.map((command) =>
-        command.href === `/queue/${item.id}?business=${business}`
-          ? {
-              ...command,
-              detail: `${command.detail} / Robbie ETA ${typedCommandPreview.etaDate}`,
-            }
-          : command
-      )
+      currentCommands.map((command) => {
+        if (command.href !== `/queue/${item.id}?business=${business}`) {
+          return command;
+        }
+
+        return {
+          ...command,
+          detail:
+            typedCommandPreview.kind === "set_eta"
+              ? `${command.detail} / Robbie ETA ${typedCommandPreview.etaDate}`
+              : `${command.detail} / Progress ${typedCommandPreview.progressStage}`,
+        };
+      })
     );
   }
 
@@ -2127,12 +2407,16 @@ export default function QuickCommandCenter() {
     const timer = window.setTimeout(async () => {
       if (!canUseTypedCommands(role)) {
         setTypedCommandPreview({
-          kind: "set_eta",
+          kind: parsedTypedCommand.kind,
           state: "blocked",
           unit: parsedTypedCommand.unit,
-          etaDate: parsedTypedCommand.etaDate,
+          etaDate: "etaDate" in parsedTypedCommand ? parsedTypedCommand.etaDate : undefined,
+          progressStage:
+            "progressStage" in parsedTypedCommand
+              ? parsedTypedCommand.progressStage
+              : undefined,
           matches: [],
-          message: "Typed queue update commands are owner/admin only.",
+          message: "Typed queue, estimate, and invoice commands are owner/admin only.",
         });
         return;
       }
@@ -2142,10 +2426,10 @@ export default function QuickCommandCenter() {
         typeof parsedTypedCommand.error === "string"
       ) {
         setTypedCommandPreview({
-          kind: "set_eta",
+          kind: parsedTypedCommand.kind,
           state: "blocked",
           unit: parsedTypedCommand.unit,
-          etaDate: "",
+          etaDate: "etaDate" in parsedTypedCommand ? "" : undefined,
           matches: [],
           message: parsedTypedCommand.error,
         });
@@ -2153,10 +2437,22 @@ export default function QuickCommandCenter() {
       }
 
       setTypedCommandPreview({
-        kind: "set_eta",
+        kind: parsedTypedCommand.kind,
         state: "blocked",
         unit: parsedTypedCommand.unit,
-        etaDate: parsedTypedCommand.etaDate,
+        etaDate: "etaDate" in parsedTypedCommand ? parsedTypedCommand.etaDate : undefined,
+        progressStage:
+          "progressStage" in parsedTypedCommand
+            ? parsedTypedCommand.progressStage
+            : undefined,
+        percentComplete:
+          "percentComplete" in parsedTypedCommand
+            ? parsedTypedCommand.percentComplete
+            : undefined,
+        markComplete:
+          "markComplete" in parsedTypedCommand
+            ? parsedTypedCommand.markComplete
+            : undefined,
         matches: [],
         message: "Checking queue item...",
       });
@@ -2174,10 +2470,10 @@ export default function QuickCommandCenter() {
 
       if (!businessData?.id) {
         setTypedCommandPreview({
-          kind: "set_eta",
+          kind: parsedTypedCommand.kind,
           state: "error",
           unit: parsedTypedCommand.unit,
-          etaDate: parsedTypedCommand.etaDate,
+          etaDate: "etaDate" in parsedTypedCommand ? parsedTypedCommand.etaDate : undefined,
           matches: [],
           message: "I could not load this workspace.",
         });
@@ -2189,7 +2485,7 @@ export default function QuickCommandCenter() {
       const { data, error } = await supabase
         .from("queue_items")
         .select(
-          "id, property, unit, status, priority, ready_date, projected_completion_date"
+          "id, property, unit, status, priority, ready_date, projected_completion_date, progress_stage, percent_complete, completed_date, linked_estimate_id"
         )
         .eq("business_id", businessData.id)
         .or(`unit.ilike.%${queueNeedle}%`)
@@ -2202,10 +2498,10 @@ export default function QuickCommandCenter() {
 
       if (error) {
         setTypedCommandPreview({
-          kind: "set_eta",
+          kind: parsedTypedCommand.kind,
           state: "error",
           unit: parsedTypedCommand.unit,
-          etaDate: parsedTypedCommand.etaDate,
+          etaDate: "etaDate" in parsedTypedCommand ? parsedTypedCommand.etaDate : undefined,
           matches: [],
           message:
             "I could not check queue items. The progress/ETA SQL may still need to be applied.",
@@ -2220,6 +2516,249 @@ export default function QuickCommandCenter() {
 
       if (matches.length === 1) {
         const item = matches[0];
+        const queueHref = `/queue/${item.id}?business=${business}`;
+
+        if (parsedTypedCommand.kind === "open_queue") {
+          setTypedCommandPreview({
+            kind: parsedTypedCommand.kind,
+            state: "ready",
+            unit: parsedTypedCommand.unit,
+            matches,
+            targetHref: queueHref,
+            confirmLabel: "Open",
+            message: `Open ${item.property || "property"} Unit ${
+              item.unit || parsedTypedCommand.unit
+            }?`,
+          });
+          return;
+        }
+
+        if (parsedTypedCommand.kind === "set_progress") {
+          setTypedCommandPreview({
+            kind: parsedTypedCommand.kind,
+            state: "ready",
+            unit: parsedTypedCommand.unit,
+            progressStage: parsedTypedCommand.progressStage,
+            percentComplete: parsedTypedCommand.percentComplete,
+            markComplete: parsedTypedCommand.markComplete,
+            matches,
+            confirmLabel: "Confirm",
+            message: `Change ${item.property || "property"} Unit ${
+              item.unit || parsedTypedCommand.unit
+            } from ${item.progress_stage || "Not Started"} to ${
+              parsedTypedCommand.progressStage
+            }?`,
+          });
+          return;
+        }
+
+        if (parsedTypedCommand.kind === "create_estimate") {
+          let linkedEstimate: TypedEstimateRecord | null = null;
+
+          if (item.linked_estimate_id) {
+            const { data: estimateData } = await supabase
+              .from("estimates")
+              .select("id, display_id, status")
+              .eq("id", item.linked_estimate_id)
+              .eq("business_id", businessData.id)
+              .maybeSingle();
+            linkedEstimate = estimateData as TypedEstimateRecord | null;
+          } else {
+            const { data: estimateData } = await supabase
+              .from("estimates")
+              .select("id, display_id, status")
+              .eq("business_id", businessData.id)
+              .eq("queue_item_id", item.id)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            linkedEstimate = estimateData as TypedEstimateRecord | null;
+          }
+
+          if (!isActive) {
+            return;
+          }
+
+          setTypedCommandPreview({
+            kind: parsedTypedCommand.kind,
+            state: "ready",
+            unit: parsedTypedCommand.unit,
+            matches,
+            estimate: linkedEstimate,
+            targetHref: linkedEstimate
+              ? `/estimates/${linkedEstimate.id}?business=${business}`
+              : `/estimates/new?queueId=${item.id}&business=${business}`,
+            confirmLabel: linkedEstimate ? "Open Estimate" : "Create Estimate",
+            message: linkedEstimate
+              ? `An estimate already exists for Unit ${
+                  item.unit || parsedTypedCommand.unit
+                }. Open ${linkedEstimate.display_id || "the estimate"} instead?`
+              : `Create an estimate from ${item.property || "property"} Unit ${
+                  item.unit || parsedTypedCommand.unit
+                }?`,
+          });
+          return;
+        }
+
+        if (
+          parsedTypedCommand.kind === "create_invoice" ||
+          parsedTypedCommand.kind === "send_invoice"
+        ) {
+          let linkedEstimate: TypedEstimateRecord | null = null;
+
+          if (item.linked_estimate_id) {
+            const { data: estimateData } = await supabase
+              .from("estimates")
+              .select("id, display_id, status")
+              .eq("id", item.linked_estimate_id)
+              .eq("business_id", businessData.id)
+              .maybeSingle();
+            linkedEstimate = estimateData as TypedEstimateRecord | null;
+          } else {
+            const { data: estimateData } = await supabase
+              .from("estimates")
+              .select("id, display_id, status")
+              .eq("business_id", businessData.id)
+              .eq("queue_item_id", item.id)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            linkedEstimate = estimateData as TypedEstimateRecord | null;
+          }
+
+          let linkedInvoice: TypedInvoiceRecord | null = null;
+
+          if (linkedEstimate?.id) {
+            const { data: invoiceData } = await supabase
+              .from("invoices")
+              .select(
+                "id, display_id, customer_name, project_title, status, invoice_amount, amount_paid, client_id"
+              )
+              .eq("business_id", businessData.id)
+              .eq("estimate_id", linkedEstimate.id)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            linkedInvoice = invoiceData as TypedInvoiceRecord | null;
+          }
+
+          if (!isActive) {
+            return;
+          }
+
+          if (parsedTypedCommand.kind === "create_invoice") {
+            if (linkedInvoice) {
+              setTypedCommandPreview({
+                kind: parsedTypedCommand.kind,
+                state: "ready",
+                unit: parsedTypedCommand.unit,
+                matches,
+                estimate: linkedEstimate,
+                invoice: linkedInvoice,
+                targetHref: `/invoices/${linkedInvoice.id}?business=${business}`,
+                confirmLabel: "Open Invoice",
+                message: `An invoice already exists for Unit ${
+                  item.unit || parsedTypedCommand.unit
+                }. Open ${linkedInvoice.display_id || "the invoice"} instead?`,
+              });
+              return;
+            }
+
+            if (linkedEstimate) {
+              setTypedCommandPreview({
+                kind: parsedTypedCommand.kind,
+                state: "ready",
+                unit: parsedTypedCommand.unit,
+                matches,
+                estimate: linkedEstimate,
+                targetHref: `/estimates/${linkedEstimate.id}?business=${business}`,
+                confirmLabel: "Open Estimate",
+                message: `Open ${
+                  linkedEstimate.display_id || "the linked estimate"
+                } so Trimax can convert it to an invoice?`,
+              });
+              return;
+            }
+
+            setTypedCommandPreview({
+              kind: parsedTypedCommand.kind,
+              state: "blocked",
+              unit: parsedTypedCommand.unit,
+              matches,
+              message: `Unit ${
+                item.unit || parsedTypedCommand.unit
+              } does not have an estimate yet. Create the estimate first, then convert it to an invoice.`,
+            });
+            return;
+          }
+
+          if (!linkedInvoice) {
+            setTypedCommandPreview({
+              kind: parsedTypedCommand.kind,
+              state: "blocked",
+              unit: parsedTypedCommand.unit,
+              matches,
+              message: linkedEstimate
+                ? `No invoice exists yet for Unit ${
+                    item.unit || parsedTypedCommand.unit
+                  }. Convert the estimate to an invoice before sending.`
+                : `Unit ${
+                    item.unit || parsedTypedCommand.unit
+                  } does not have an invoice yet.`,
+            });
+            return;
+          }
+
+          let recipientEmail: string | null = null;
+
+          if (linkedInvoice.client_id) {
+            const { data: clientData } = await supabase
+              .from("clients")
+              .select("email")
+              .eq("id", linkedInvoice.client_id)
+              .eq("business_id", businessData.id)
+              .maybeSingle();
+            recipientEmail =
+              typeof clientData?.email === "string" ? clientData.email : null;
+          }
+
+          if (!isActive) {
+            return;
+          }
+
+          if (!recipientEmail) {
+            setTypedCommandPreview({
+              kind: parsedTypedCommand.kind,
+              state: "blocked",
+              unit: parsedTypedCommand.unit,
+              matches,
+              invoice: linkedInvoice,
+              message: `${linkedInvoice.display_id || "This invoice"} is missing a saved customer email. Open the invoice and add/confirm the recipient before sending.`,
+            });
+            return;
+          }
+
+          setTypedCommandPreview({
+            kind: parsedTypedCommand.kind,
+            state: "ready",
+            unit: parsedTypedCommand.unit,
+            matches,
+            estimate: linkedEstimate,
+            invoice: linkedInvoice,
+            recipientEmail,
+            targetHref: `/invoices/${linkedInvoice.id}?business=${business}#send-invoice`,
+            confirmLabel: "Review Send",
+            message: `Review sending ${
+              linkedInvoice.display_id || "invoice"
+            } for ${item.property || "property"} Unit ${
+              item.unit || parsedTypedCommand.unit
+            } to ${recipientEmail}. Amount ${formatMoney(
+              linkedInvoice.invoice_amount
+            )}.`,
+          });
+          return;
+        }
+
         setTypedCommandPreview({
           kind: "set_eta",
           state: "ready",
@@ -2234,10 +2773,10 @@ export default function QuickCommandCenter() {
       }
 
       setTypedCommandPreview({
-        kind: "set_eta",
+        kind: parsedTypedCommand.kind,
         state: matches.length > 1 ? "ambiguous" : "blocked",
         unit: parsedTypedCommand.unit,
-        etaDate: parsedTypedCommand.etaDate,
+        etaDate: "etaDate" in parsedTypedCommand ? parsedTypedCommand.etaDate : undefined,
         matches,
         message:
           matches.length > 1
@@ -2686,12 +3225,29 @@ export default function QuickCommandCenter() {
                     <p className="quick-command-route-kicker">
                       Typed command preview
                     </p>
-                    <strong>
-                      {typedCommandPreview.kind === "set_eta"
-                        ? "Set Robbie ETA"
-                        : "Command"}
-                    </strong>
+                    <strong>{typedCommandTitle(typedCommandPreview.kind)}</strong>
                     <span>{typedCommandPreview.message}</span>
+                    {typedCommandPreview.invoice ? (
+                      <span>
+                        {[
+                          typedCommandPreview.invoice.display_id,
+                          typedCommandPreview.invoice.status,
+                          formatMoney(typedCommandPreview.invoice.invoice_amount),
+                        ]
+                          .filter(Boolean)
+                          .join(" / ")}
+                      </span>
+                    ) : null}
+                    {typedCommandPreview.estimate ? (
+                      <span>
+                        {[
+                          typedCommandPreview.estimate.display_id,
+                          typedCommandPreview.estimate.status,
+                        ]
+                          .filter(Boolean)
+                          .join(" / ")}
+                      </span>
+                    ) : null}
                     {typedCommandPreview.matches.length > 1 ? (
                       <span>
                         {typedCommandPreview.matches
@@ -2714,7 +3270,7 @@ export default function QuickCommandCenter() {
                         onClick={confirmTypedCommand}
                         className="rounded-full border border-emerald-300/40 bg-emerald-400/15 px-3 py-1 text-xs font-black text-emerald-50"
                       >
-                        Confirm
+                        {typedCommandPreview.confirmLabel ?? "Confirm"}
                       </button>
                     ) : null}
                     {typedCommandPreview.state !== "saving" ? (
