@@ -105,13 +105,15 @@ type TypedCommandPreview = {
     | "set_progress"
     | "create_estimate"
     | "create_invoice"
-    | "send_invoice";
+    | "send_invoice"
+    | "show_queue_group";
   state: "ready" | "ambiguous" | "blocked" | "saving" | "done" | "error";
   unit: string;
   etaDate?: string;
   progressStage?: string;
   percentComplete?: number | null;
   markComplete?: boolean;
+  group?: "overdue" | "at_risk" | "blocked";
   matches: QueueSearchRecord[];
   message: string;
   confirmLabel?: string;
@@ -494,6 +496,8 @@ function typedCommandTitle(kind: TypedCommandPreview["kind"]) {
       return "Create Invoice";
     case "send_invoice":
       return "Send Invoice";
+    case "show_queue_group":
+      return "Show Queue Items";
     default:
       return "Command";
   }
@@ -506,6 +510,32 @@ function isActiveQueueItem(item: QueueSearchRecord) {
     !status.includes("complete") &&
     !status.includes("cancel") &&
     !status.includes("closed")
+  );
+}
+
+function queueItemIsOverdue(item: QueueSearchRecord) {
+  return isActiveQueueItem(item) && daysFromToday(item.ready_date) !== null
+    ? (daysFromToday(item.ready_date) ?? 0) < 0
+    : false;
+}
+
+function queueItemIsAtRisk(item: QueueSearchRecord) {
+  if (!isActiveQueueItem(item) || !item.ready_date || !item.projected_completion_date) {
+    return false;
+  }
+
+  const deadlineDays = daysFromToday(item.ready_date);
+  const etaDays = daysFromToday(item.projected_completion_date);
+
+  return deadlineDays !== null && etaDays !== null && etaDays > deadlineDays;
+}
+
+function queueItemIsBlocked(item: QueueSearchRecord) {
+  return (
+    isActiveQueueItem(item) &&
+    (item.progress_stage?.toLowerCase().includes("blocked") ||
+      item.status?.toLowerCase().includes("blocked") ||
+      item.status?.toLowerCase().includes("waiting"))
   );
 }
 
@@ -608,6 +638,30 @@ function parseTypedCommand(value: string) {
 
   if (!normalized) {
     return null;
+  }
+
+  if (/^(?:show|open|view|find)\s+(?:overdue|past\s+due)\s+(?:units|queue|jobs|work)$/i.test(normalized)) {
+    return {
+      kind: "show_queue_group" as const,
+      unit: "overdue",
+      group: "overdue" as const,
+    };
+  }
+
+  if (/^(?:show|open|view|find)\s+(?:at\s+risk|at-risk)\s+(?:units|queue|jobs|work)$/i.test(normalized)) {
+    return {
+      kind: "show_queue_group" as const,
+      unit: "at risk",
+      group: "at_risk" as const,
+    };
+  }
+
+  if (/^(?:show|open|view|find)\s+(?:blocked|waiting)\s+(?:units|queue|jobs|work)$/i.test(normalized)) {
+    return {
+      kind: "show_queue_group" as const,
+      unit: "blocked",
+      group: "blocked" as const,
+    };
   }
 
   const etaMatch = normalized.match(
@@ -2226,8 +2280,7 @@ export default function QuickCommandCenter() {
   async function confirmTypedCommand() {
     if (
       !typedCommandPreview ||
-      typedCommandPreview.state !== "ready" ||
-      typedCommandPreview.matches.length !== 1
+      typedCommandPreview.state !== "ready"
     ) {
       return;
     }
@@ -2242,6 +2295,10 @@ export default function QuickCommandCenter() {
       typedCommandPreview.kind !== "set_eta" &&
       typedCommandPreview.kind !== "set_progress"
     ) {
+      return;
+    }
+
+    if (typedCommandPreview.matches.length !== 1) {
       return;
     }
 
@@ -2500,6 +2557,65 @@ export default function QuickCommandCenter() {
           etaDate: "etaDate" in parsedTypedCommand ? parsedTypedCommand.etaDate : undefined,
           matches: [],
           message: "I could not load this workspace.",
+        });
+        return;
+      }
+
+      if (parsedTypedCommand.kind === "show_queue_group") {
+        const { data, error } = await supabase
+          .from("queue_items")
+          .select(
+            "id, property, unit, status, priority, ready_date, projected_completion_date, progress_stage, percent_complete, completed_date, linked_estimate_id"
+          )
+          .eq("business_id", businessData.id)
+          .order("ready_date", { ascending: true, nullsFirst: false })
+          .order("created_at", { ascending: false })
+          .limit(60);
+
+        if (!isActive) {
+          return;
+        }
+
+        if (error) {
+          setTypedCommandPreview({
+            kind: parsedTypedCommand.kind,
+            state: "error",
+            unit: parsedTypedCommand.unit,
+            group: parsedTypedCommand.group,
+            matches: [],
+            message: "I could not check the queue right now.",
+          });
+          return;
+        }
+
+        const queueItems = (data ?? []) as QueueSearchRecord[];
+        const matches =
+          parsedTypedCommand.group === "overdue"
+            ? queueItems.filter(queueItemIsOverdue)
+            : parsedTypedCommand.group === "at_risk"
+              ? queueItems.filter(queueItemIsAtRisk)
+              : queueItems.filter(queueItemIsBlocked);
+        const label =
+          parsedTypedCommand.group === "overdue"
+            ? "overdue"
+            : parsedTypedCommand.group === "at_risk"
+              ? "at-risk"
+              : "blocked/waiting";
+
+        setTypedCommandPreview({
+          kind: parsedTypedCommand.kind,
+          state: "ready",
+          unit: parsedTypedCommand.unit,
+          group: parsedTypedCommand.group,
+          matches: matches.slice(0, 8),
+          targetHref: `/queue?business=${business}&sort=deadline`,
+          confirmLabel: "Open Queue",
+          message:
+            matches.length > 0
+              ? `Found ${matches.length} ${label} queue item${
+                  matches.length === 1 ? "" : "s"
+                }. Open Queue sorted by deadline?`
+              : `No ${label} queue items found right now. Open Queue anyway?`,
         });
         return;
       }
