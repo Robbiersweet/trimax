@@ -61,7 +61,12 @@ function isMissingQueueColumnError(error: unknown) {
     message.includes("priority_updated_at") ||
     message.includes("priority_updated_by") ||
     message.includes("deadline_updated_at") ||
-    message.includes("deadline_updated_by")
+    message.includes("deadline_updated_by") ||
+    message.includes("projected_completion_date") ||
+    message.includes("progress_stage") ||
+    message.includes("percent_complete") ||
+    message.includes("delay_reason") ||
+    message.includes("manager_update")
   );
 }
 
@@ -103,6 +108,13 @@ export async function createQueueItem(input: CreateQueueItemInput) {
     deadline_updated_by: neededByDate ? user?.id ?? null : null,
     scheduled_date: normalizeDate(input.scheduledDate),
     completed_date: normalizeDate(input.completedDate),
+    projected_completion_date: null,
+    progress_stage: "Not Started",
+    percent_complete: 0,
+    delay_reason: null,
+    manager_update: null,
+    manager_update_at: null,
+    manager_update_by: null,
     status: "Pending Estimate",
     notes: input.notes,
   };
@@ -125,6 +137,13 @@ export async function createQueueItem(input: CreateQueueItemInput) {
     delete legacyQueueItemInsert.priority_updated_by;
     delete legacyQueueItemInsert.deadline_updated_at;
     delete legacyQueueItemInsert.deadline_updated_by;
+    delete legacyQueueItemInsert.projected_completion_date;
+    delete legacyQueueItemInsert.progress_stage;
+    delete legacyQueueItemInsert.percent_complete;
+    delete legacyQueueItemInsert.delay_reason;
+    delete legacyQueueItemInsert.manager_update;
+    delete legacyQueueItemInsert.manager_update_at;
+    delete legacyQueueItemInsert.manager_update_by;
 
     const retry = await supabase
       .from("queue_items")

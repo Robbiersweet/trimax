@@ -4,6 +4,10 @@ import Card from "../components/Card";
 import Button from "../components/Button";
 import StatusBadge from "../components/StatusBadge";
 import RoleVisible from "../components/RoleVisible";
+import {
+  queueTimingBadge,
+  queueTimingTone,
+} from "../lib/queueTiming";
 import { supabase } from "../lib/supabase";
 import { maybeCanonicalApartmentUnitLabel } from "../utils/unitLabels";
 
@@ -28,6 +32,13 @@ type QueueItemWithEstimate = {
   ready_date: string | null;
   scheduled_date: string | null;
   completed_date: string | null;
+  projected_completion_date: string | null;
+  progress_stage: string | null;
+  percent_complete: number | null;
+  delay_reason: string | null;
+  manager_update: string | null;
+  manager_update_at: string | null;
+  updated_at?: string | null;
   smoked_in: boolean | null;
   prior_renovation: boolean | null;
   prior_renovation_details: string | null;
@@ -246,6 +257,25 @@ function formatSessionMinutes(minutes: number) {
   return remainder > 0 ? `${hours}h ${remainder}m` : `${hours}h`;
 }
 
+function formatQueueDateTime(value: string | null) {
+  if (!value) {
+    return "not recorded";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "not recorded";
+  }
+
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 function queueHref(
   businessSlug: string,
   options?: {
@@ -387,7 +417,7 @@ export default async function QueuePage({
         supabase
           .from("queue_items")
           .select(
-            "id, property, unit, status, priority, priority_order, paint_type, unit_layout, wall_paint_color, flooring, move_out_date, ready_date, scheduled_date, completed_date, smoked_in, prior_renovation, prior_renovation_details, renovation_needed, renovation_needed_details, notes, linked_estimate_id"
+            "id, property, unit, status, priority, priority_order, paint_type, unit_layout, wall_paint_color, flooring, move_out_date, ready_date, scheduled_date, completed_date, projected_completion_date, progress_stage, percent_complete, delay_reason, manager_update, manager_update_at, updated_at, smoked_in, prior_renovation, prior_renovation_details, renovation_needed, renovation_needed_details, notes, linked_estimate_id"
           )
           .eq("business_id", selectedBusiness.id)
           .order("created_at", { ascending: false }),
@@ -403,7 +433,15 @@ export default async function QueuePage({
     let queueData = initialQueueResponse.data;
     let queueError = initialQueueResponse.error;
 
-    if (queueError?.message?.includes("priority_order")) {
+    if (
+      queueError?.message?.includes("priority_order") ||
+      queueError?.message?.includes("projected_completion_date") ||
+      queueError?.message?.includes("progress_stage") ||
+      queueError?.message?.includes("percent_complete") ||
+      queueError?.message?.includes("delay_reason") ||
+      queueError?.message?.includes("manager_update") ||
+      queueError?.message?.includes("updated_at")
+    ) {
       const retry = await supabase
         .from("queue_items")
         .select(
@@ -1123,6 +1161,8 @@ export default async function QueuePage({
               const remediation = isRemediationItem(item);
               const estimateNeeded = needsEstimate(item);
               const readyDays = daysUntil(item.ready_date);
+              const timingBadge = queueTimingBadge(item);
+              const timingTone = queueTimingTone(timingBadge);
               const itemJobSessions = sessionsByQueueItemId.get(item.id) ?? [];
               const activeJobSessionCount = itemJobSessions.filter(
                 (session) => !session.ended_at
@@ -1212,6 +1252,13 @@ export default async function QueuePage({
                               </span>
                             ) : null}
 
+                            <span
+                              data-tone={timingTone}
+                              className="queue-priority-pill rounded-full border border-white/10 bg-black/30 px-3 py-1 text-sm font-semibold text-zinc-100"
+                            >
+                              {timingBadge}
+                            </span>
+
                             {item.renovation_needed ? (
                               <span className="queue-current-renovation-pill rounded-full bg-orange-500/20 px-3 py-1 text-sm font-semibold text-orange-200">
                                 Current Renovation
@@ -1270,6 +1317,42 @@ export default async function QueuePage({
                           label="Scheduled"
                           value={item.scheduled_date}
                         />
+                        <LifecyclePill
+                          label="Progress"
+                          value={item.progress_stage || "Not Started"}
+                          detail={
+                            item.percent_complete !== null &&
+                            item.percent_complete !== undefined
+                              ? `${item.percent_complete}% complete`
+                              : undefined
+                          }
+                        />
+                        <LifecyclePill
+                          label="Robbie ETA"
+                          value={item.projected_completion_date}
+                          emptyValue="No ETA set"
+                        />
+                        <LifecyclePill
+                          label="Delay"
+                          value={item.delay_reason}
+                          emptyValue="No delay reason"
+                        />
+                      </div>
+
+                      <div className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3">
+                        <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-200">
+                          Manager Update
+                        </p>
+                        <p className="mt-2 text-sm leading-6 text-zinc-100">
+                          {item.manager_update ||
+                            "No manager-visible update yet."}
+                        </p>
+                        <p className="mt-2 text-xs font-semibold text-zinc-400">
+                          Last updated{" "}
+                          {formatQueueDateTime(
+                            item.manager_update_at ?? item.updated_at ?? null
+                          )}
+                        </p>
                       </div>
 
                       <div className="mt-5 grid gap-4 text-sm text-zinc-300 md:grid-cols-2">

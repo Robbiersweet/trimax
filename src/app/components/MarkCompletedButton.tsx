@@ -40,18 +40,38 @@ export default function MarkCompletedButton({
 
       const { data: currentItem } = await supabase
         .from("queue_items")
-        .select("status, completed_date")
+        .select("status, completed_date, progress_stage, percent_complete")
         .eq("id", queueItemId)
         .maybeSingle();
 
-      const result = await supabase
+      let result = await supabase
         .from("queue_items")
         .update({
           status: "Completed",
           completed_date: today,
+          progress_stage: "Complete",
+          percent_complete: 100,
         })
         .eq("id", queueItemId);
       error = result.error;
+
+      if (
+        error &&
+        typeof error === "object" &&
+        "message" in error &&
+        typeof error.message === "string" &&
+        (error.message.includes("progress_stage") ||
+          error.message.includes("percent_complete"))
+      ) {
+        result = await supabase
+          .from("queue_items")
+          .update({
+            status: "Completed",
+            completed_date: today,
+          })
+          .eq("id", queueItemId);
+        error = result.error;
+      }
 
       if (!error) {
         await logActivity({
@@ -77,6 +97,18 @@ export default function MarkCompletedButton({
                 label: "Status",
                 previousValue: currentItem?.status ?? null,
                 newValue: "Completed",
+              },
+              {
+                field: "progress_stage",
+                label: "Progress",
+                previousValue: currentItem?.progress_stage ?? null,
+                newValue: "Complete",
+              },
+              {
+                field: "percent_complete",
+                label: "Percent Complete",
+                previousValue: currentItem?.percent_complete ?? null,
+                newValue: 100,
               },
             ].filter((change) => change.previousValue !== change.newValue),
           },

@@ -15,6 +15,10 @@ import {
   calendarDataUri,
   calendarFileName,
 } from "../../lib/calendar";
+import {
+  queueTimingBadge,
+  queueTimingTone,
+} from "../../lib/queueTiming";
 import { supabase } from "../../lib/supabase";
 import { fieldWorkerRoles } from "../../lib/rolePermissions";
 import { getConfirmedNorthCreekUnit } from "../../utils/northCreekUnits";
@@ -40,6 +44,12 @@ type SupabaseQueueItem = {
   ready_date: string | null;
   scheduled_date: string | null;
   completed_date: string | null;
+  projected_completion_date: string | null;
+  progress_stage: string | null;
+  percent_complete: number | null;
+  delay_reason: string | null;
+  manager_update: string | null;
+  manager_update_at: string | null;
   smoked_in: boolean | null;
   primer_requested: boolean | null;
   prior_renovation: boolean | null;
@@ -195,6 +205,12 @@ function formatEventDateTime(value: string | null | undefined) {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function formatManagerUpdateTime(value: string | null | undefined) {
+  const formatted = formatEventDateTime(value);
+
+  return formatted || "Not recorded";
 }
 
 function detailValue(
@@ -574,6 +590,8 @@ export default async function QueueDetailPage({
     Boolean(displayUnitProfile) && !propertyUnitProfile;
 
   const readiness = readyStatus(item);
+  const timingBadge = queueTimingBadge(item);
+  const timingTone = queueTimingTone(timingBadge);
   const turnaroundDays = daysBetween(
     item.move_out_date,
     item.completed_date
@@ -797,6 +815,17 @@ export default async function QueueDetailPage({
           />
 
           <AttentionCard
+            tone={timingTone}
+            label="Timing"
+            value={timingBadge}
+            detail={
+              item.projected_completion_date
+                ? `Robbie ETA: ${item.projected_completion_date}`
+                : "No Robbie ETA set."
+            }
+          />
+
+          <AttentionCard
             tone={turnaroundDays === null ? "zinc" : "green"}
             label="Turnaround"
             value={
@@ -836,6 +865,55 @@ export default async function QueueDetailPage({
             }
           />
         </div>
+
+        <Card className="border-emerald-500/25 bg-emerald-500/10">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-sm uppercase tracking-[0.3em] text-emerald-300">
+                Manager Update
+              </p>
+              <h2 className="mt-2 text-2xl font-bold text-white">
+                {item.manager_update || "No manager-visible update yet."}
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-zinc-300">
+                Last updated {formatManagerUpdateTime(item.manager_update_at)}.
+                Private internal notes stay hidden from managers.
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[26rem]">
+              <AttentionCard
+                tone={timingTone}
+                label="Timing Badge"
+                value={timingBadge}
+                detail="Calculated from Needed By, Robbie ETA, progress, and completion."
+              />
+              <AttentionCard
+                tone={item.progress_stage === "Blocked / Waiting" ? "violet" : "zinc"}
+                label="Progress"
+                value={item.progress_stage || "Not Started"}
+                detail={
+                  item.percent_complete !== null &&
+                  item.percent_complete !== undefined
+                    ? `${item.percent_complete}% complete`
+                    : "No percent saved."
+                }
+              />
+              <AttentionCard
+                tone="zinc"
+                label="Robbie ETA"
+                value={item.projected_completion_date || "No ETA set"}
+                detail="Separate from the property Needed By date."
+              />
+              <AttentionCard
+                tone={item.delay_reason ? "amber" : "zinc"}
+                label="Delay Reason"
+                value={item.delay_reason || "No delay reason"}
+                detail="Used only when the work needs explanation."
+              />
+            </div>
+          </div>
+        </Card>
 
         <RoleVisible
           businessSlug={businessSlug}
@@ -1177,6 +1255,30 @@ export default async function QueueDetailPage({
             <Info label="Scheduled Date" value={item.scheduled_date ?? ""} />
             <Info label="Completed Date" value={item.completed_date ?? ""} />
             <Info
+              label="Progress"
+              value={item.progress_stage || "Not Started"}
+            />
+            <Info
+              label="Percent Complete"
+              value={
+                item.percent_complete !== null &&
+                item.percent_complete !== undefined
+                  ? `${item.percent_complete}%`
+                  : ""
+              }
+              emptyValue="Not recorded"
+            />
+            <Info
+              label="Robbie ETA"
+              value={item.projected_completion_date ?? ""}
+              emptyValue="No ETA set"
+            />
+            <Info
+              label="Delay Reason"
+              value={item.delay_reason ?? ""}
+              emptyValue="No delay reason"
+            />
+            <Info
               label="Full Primer Requested"
               value={
                 item.smoked_in
@@ -1214,12 +1316,17 @@ export default async function QueueDetailPage({
           </div>
         </Card>
 
-        <InternalNotes
-          businessId={item.business_id}
-          entityType="queue_item"
-          entityId={item.id}
-          title="Queue Item Conversation"
-        />
+        <RoleVisible
+          businessSlug={businessSlug}
+          allow={["owner", "admin", "accountant", "technician"]}
+        >
+          <InternalNotes
+            businessId={item.business_id}
+            entityType="queue_item"
+            entityId={item.id}
+            title="Queue Item Conversation"
+          />
+        </RoleVisible>
 
         <div id="complete-work" className="flex scroll-mt-6 flex-wrap gap-4">
           <BackButton label="Back" fallbackHref={`/queue?business=${businessSlug}`} />
@@ -1290,6 +1397,13 @@ function AttentionCard({
     orange: "attention-card attention-card-orange border-orange-500/40 bg-orange-500/10",
     red: "attention-card attention-card-red border-red-500/40 bg-red-500/10",
     yellow: "attention-card attention-card-yellow border-yellow-500/40 bg-yellow-500/10",
+    emerald:
+      "attention-card attention-card-green border-emerald-500/40 bg-emerald-500/10",
+    amber:
+      "attention-card attention-card-yellow border-amber-500/40 bg-amber-500/10",
+    rose: "attention-card attention-card-red border-rose-500/40 bg-rose-500/10",
+    violet:
+      "attention-card attention-card-violet border-violet-500/40 bg-violet-500/10",
     zinc: "attention-card attention-card-zinc border-zinc-800 bg-zinc-900",
   };
 

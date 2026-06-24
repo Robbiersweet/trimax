@@ -4,6 +4,10 @@ import Card from "./components/Card";
 import Button from "./components/Button";
 import StatusBadge from "./components/StatusBadge";
 import RoleVisible from "./components/RoleVisible";
+import {
+  queueTimingBadge,
+  queueTimingTone,
+} from "./lib/queueTiming";
 import { supabase } from "./lib/supabase";
 import { maybeCanonicalApartmentUnitLabel } from "./utils/unitLabels";
 
@@ -21,10 +25,17 @@ type QueueItem = {
   paint_type: string | null;
   flooring: string | null;
   status: string | null;
+  priority_order: number | null;
   move_out_date: string | null;
   ready_date: string | null;
   scheduled_date: string | null;
   completed_date: string | null;
+  projected_completion_date: string | null;
+  progress_stage: string | null;
+  percent_complete: number | null;
+  delay_reason: string | null;
+  manager_update: string | null;
+  manager_update_at: string | null;
   smoked_in: boolean | null;
   notes: string | null;
   linked_estimate_id: string | null;
@@ -474,14 +485,14 @@ export default async function DashboardPage({
 
   if (selectedBusiness) {
     const [
-      queueResponse,
+      initialQueueResponse,
       invoiceResponse,
       activityResponse,
     ] = await Promise.all([
       supabase
         .from("queue_items")
         .select(
-          "id, property, unit, unit_layout, paint_type, flooring, status, move_out_date, ready_date, scheduled_date, completed_date, smoked_in, notes, linked_estimate_id, created_at"
+          "id, property, unit, unit_layout, paint_type, flooring, status, priority_order, move_out_date, ready_date, scheduled_date, completed_date, projected_completion_date, progress_stage, percent_complete, delay_reason, manager_update, manager_update_at, smoked_in, notes, linked_estimate_id, created_at"
         )
         .eq("business_id", selectedBusiness.id)
         .order("created_at", { ascending: false }),
@@ -504,8 +515,36 @@ export default async function DashboardPage({
         .limit(DASHBOARD_ACTIVITY_SNAPSHOT_LIMIT),
     ]);
 
+    let queueData = initialQueueResponse.data;
+    let queueError = initialQueueResponse.error;
+
+    if (
+      queueError?.message?.includes("priority_order") ||
+      queueError?.message?.includes("projected_completion_date") ||
+      queueError?.message?.includes("progress_stage") ||
+      queueError?.message?.includes("percent_complete") ||
+      queueError?.message?.includes("delay_reason") ||
+      queueError?.message?.includes("manager_update") ||
+      queueError?.message?.includes("updated_at")
+    ) {
+      const retry = await supabase
+        .from("queue_items")
+        .select(
+          "id, property, unit, unit_layout, paint_type, flooring, status, move_out_date, ready_date, scheduled_date, completed_date, smoked_in, notes, linked_estimate_id, created_at"
+        )
+        .eq("business_id", selectedBusiness.id)
+        .order("created_at", { ascending: false });
+
+      queueData = retry.data as typeof queueData;
+      queueError = retry.error;
+    }
+
+    if (queueError) {
+      console.warn("Dashboard queue load skipped:", queueError.message);
+    }
+
     queueItems =
-      (queueResponse.data ?? []) as QueueItem[];
+      (queueData ?? []) as QueueItem[];
     invoices =
       (invoiceResponse.data ?? []) as Invoice[];
     activityLogs =
@@ -1006,7 +1045,7 @@ export default async function DashboardPage({
             : "Open";
       const detail = needsSchedule
         ? readySoon
-          ? `Paint due ${formatShortDate(item.ready_date)}`
+          ? `Needed by ${formatShortDate(item.ready_date)}`
           : "Needs a work date"
         : needsEstimate
           ? "Estimate not linked yet"
@@ -2565,12 +2604,45 @@ export default async function DashboardPage({
 
                       <div className="mt-4 grid grid-cols-2 gap-2 text-xs font-semibold text-zinc-300">
                         <span className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
-                          Ready {formatShortDate(item.ready_date)}
+                          Status {item.status || "Pending"}
                         </span>
                         <span className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
-                          Scheduled {formatShortDate(item.scheduled_date)}
+                          Needed By{" "}
+                          {item.ready_date
+                            ? formatShortDate(item.ready_date)
+                            : "No deadline"}
+                        </span>
+                        <span className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                          Priority{" "}
+                          {item.priority_order
+                            ? item.priority_order
+                            : "Not set"}
+                        </span>
+                        <span className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                          {item.progress_stage || "Not Started"}
+                          {item.percent_complete !== null &&
+                          item.percent_complete !== undefined
+                            ? ` / ${item.percent_complete}%`
+                            : ""}
+                        </span>
+                        <span className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                          ETA{" "}
+                          {item.projected_completion_date
+                            ? formatShortDate(item.projected_completion_date)
+                            : "Not set"}
+                        </span>
+                        <span
+                          data-tone={queueTimingTone(queueTimingBadge(item))}
+                          className="rounded-xl border border-white/10 bg-black/20 px-3 py-2"
+                        >
+                          {queueTimingBadge(item)}
                         </span>
                       </div>
+
+                      <p className="mt-3 rounded-xl border border-emerald-300/20 bg-emerald-400/10 px-3 py-2 text-xs leading-5 text-emerald-50">
+                        {item.manager_update ||
+                          "No manager-visible update yet."}
+                      </p>
                     </Link>
                   ))
                 ) : (

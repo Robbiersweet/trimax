@@ -14,6 +14,11 @@ import InputField from "../../../components/InputField";
 import Toast from "../../../components/Toast";
 import { logActivity } from "../../../lib/activityLog";
 import { assertCanWriteDuringMaintenance } from "../../../lib/maintenanceMode";
+import {
+  queueDelayReasons,
+  queuePercentOptions,
+  queueProgressStages,
+} from "../../../lib/queueTiming";
 import { supabase } from "../../../lib/supabase";
 import { canonicalApartmentUnitLabel } from "../../../utils/unitLabels";
 
@@ -82,6 +87,11 @@ type QueueEditSnapshot = {
   status: string;
   priority: string;
   priority_order: number | null;
+  projected_completion_date: string | null;
+  progress_stage: string | null;
+  percent_complete: number | null;
+  delay_reason: string | null;
+  manager_update: string | null;
   ready_date: string | null;
   scheduled_date: string | null;
   completed_date: string | null;
@@ -97,6 +107,11 @@ const trackedQueueEditFields: Array<{
   { key: "status", label: "Status" },
   { key: "priority", label: "Priority" },
   { key: "priority_order", label: "Manager Priority Order" },
+  { key: "progress_stage", label: "Progress" },
+  { key: "percent_complete", label: "Percent Complete" },
+  { key: "projected_completion_date", label: "Robbie ETA" },
+  { key: "delay_reason", label: "Delay Reason" },
+  { key: "manager_update", label: "Manager-visible Update" },
   { key: "ready_date", label: "Needed By Date" },
   { key: "scheduled_date", label: "Scheduled Date" },
   { key: "completed_date", label: "Completed Date" },
@@ -134,6 +149,16 @@ function normalizePriorityOrderInput(value: string) {
   return parsed;
 }
 
+function normalizePercentComplete(value: string) {
+  if (!value.trim()) {
+    return null;
+  }
+
+  const parsed = Number(value);
+
+  return [0, 25, 50, 75, 90, 100].includes(parsed) ? parsed : "invalid";
+}
+
 export default function EditQueueItemPage() {
   const params = useParams();
   const router = useRouter();
@@ -152,6 +177,13 @@ export default function EditQueueItemPage() {
   const [status, setStatus] = useState("");
   const [priority, setPriority] = useState("");
   const [priorityOrder, setPriorityOrder] = useState("");
+  const [progressStage, setProgressStage] = useState("Not Started");
+  const [percentComplete, setPercentComplete] = useState("0");
+  const [projectedCompletionDate, setProjectedCompletionDate] =
+    useState("");
+  const [delayReason, setDelayReason] = useState("");
+  const [managerUpdate, setManagerUpdate] = useState("");
+  const [privateInternalNote, setPrivateInternalNote] = useState("");
   const [paintType, setPaintType] = useState("");
   const [unitLayout, setUnitLayout] = useState("");
   const [wallPaintColor, setWallPaintColor] = useState("");
@@ -221,6 +253,15 @@ export default function EditQueueItemPage() {
       setPriorityOrder(
         data.priority_order ? String(data.priority_order) : ""
       );
+      setProgressStage(data.progress_stage ?? "Not Started");
+      setPercentComplete(
+        data.percent_complete === null || data.percent_complete === undefined
+          ? ""
+          : String(data.percent_complete)
+      );
+      setProjectedCompletionDate(data.projected_completion_date ?? "");
+      setDelayReason(data.delay_reason ?? "");
+      setManagerUpdate(data.manager_update ?? "");
       setPaintType(data.paint_type ?? "");
       setUnitLayout(data.unit_layout ?? "");
       setWallPaintColor(data.wall_paint_color ?? "");
@@ -244,6 +285,11 @@ export default function EditQueueItemPage() {
         status: data.status ?? "",
         priority: data.priority ?? "",
         priority_order: data.priority_order ?? null,
+        projected_completion_date: data.projected_completion_date ?? null,
+        progress_stage: data.progress_stage ?? null,
+        percent_complete: data.percent_complete ?? null,
+        delay_reason: data.delay_reason ?? null,
+        manager_update: data.manager_update ?? null,
         ready_date: data.ready_date ?? null,
         scheduled_date: data.scheduled_date ?? null,
         completed_date: data.completed_date ?? null,
@@ -299,6 +345,21 @@ export default function EditQueueItemPage() {
     const priorityOrderChanged =
       Boolean(originalQueueItem) &&
       (originalQueueItem?.priority_order ?? null) !== normalizedPriorityOrder;
+    const normalizedPercentComplete =
+      normalizePercentComplete(percentComplete);
+
+    if (normalizedPercentComplete === "invalid") {
+      setToast({
+        type: "error",
+        message: "Percent Complete must be 0, 25, 50, 75, 90, or 100.",
+      });
+      return;
+    }
+
+    const managerUpdateChanged =
+      Boolean(originalQueueItem) &&
+      (originalQueueItem?.manager_update ?? null) !==
+        (managerUpdate.trim() || null);
     const updatePayload = {
       property,
       unit: shouldCanonicalizeUnit(property, businessSlug)
@@ -327,6 +388,13 @@ export default function EditQueueItemPage() {
       deadline_updated_by: deadlineChanged ? user?.id ?? null : undefined,
       scheduled_date: scheduledDate || null,
       completed_date: completedDate || null,
+      projected_completion_date: projectedCompletionDate || null,
+      progress_stage: progressStage || null,
+      percent_complete: normalizedPercentComplete,
+      delay_reason: delayReason || null,
+      manager_update: managerUpdate.trim() || null,
+      manager_update_at: managerUpdateChanged ? now : undefined,
+      manager_update_by: managerUpdateChanged ? user?.id ?? null : undefined,
       notes,
     };
     const nextSnapshot: QueueEditSnapshot = {
@@ -335,6 +403,11 @@ export default function EditQueueItemPage() {
       status: updatePayload.status,
       priority: updatePayload.priority,
       priority_order: updatePayload.priority_order,
+      projected_completion_date: updatePayload.projected_completion_date,
+      progress_stage: updatePayload.progress_stage,
+      percent_complete: updatePayload.percent_complete,
+      delay_reason: updatePayload.delay_reason,
+      manager_update: updatePayload.manager_update,
       ready_date: updatePayload.ready_date,
       scheduled_date: updatePayload.scheduled_date,
       completed_date: updatePayload.completed_date,
@@ -355,7 +428,12 @@ export default function EditQueueItemPage() {
       error?.message?.includes("priority_updated_at") ||
       error?.message?.includes("priority_updated_by") ||
       error?.message?.includes("deadline_updated_at") ||
-      error?.message?.includes("deadline_updated_by")
+      error?.message?.includes("deadline_updated_by") ||
+      error?.message?.includes("projected_completion_date") ||
+      error?.message?.includes("progress_stage") ||
+      error?.message?.includes("percent_complete") ||
+      error?.message?.includes("delay_reason") ||
+      error?.message?.includes("manager_update")
     ) {
       const legacyUpdatePayload: Record<string, unknown> = {
         ...updatePayload,
@@ -368,6 +446,13 @@ export default function EditQueueItemPage() {
       delete legacyUpdatePayload.priority_updated_by;
       delete legacyUpdatePayload.deadline_updated_at;
       delete legacyUpdatePayload.deadline_updated_by;
+      delete legacyUpdatePayload.projected_completion_date;
+      delete legacyUpdatePayload.progress_stage;
+      delete legacyUpdatePayload.percent_complete;
+      delete legacyUpdatePayload.delay_reason;
+      delete legacyUpdatePayload.manager_update;
+      delete legacyUpdatePayload.manager_update_at;
+      delete legacyUpdatePayload.manager_update_by;
 
       const retry = await supabase
         .from("queue_items")
@@ -458,6 +543,34 @@ export default function EditQueueItemPage() {
             updatedBy: user?.id ?? null,
           },
         });
+      }
+
+      if (privateInternalNote.trim()) {
+        const { error: noteError } = await supabase
+          .from("internal_notes")
+          .insert({
+            business_id: businessId,
+            entity_type: "queue_item",
+            entity_id: queueItemId,
+            body: privateInternalNote.trim(),
+            author_user_id: user?.id ?? null,
+            author_email: user?.email ?? null,
+          });
+
+        if (!noteError) {
+          await logActivity({
+            businessId,
+            action: "queue_item.internal_note_added",
+            entityType: "queue_item",
+            entityId: queueItemId,
+            entityLabel: `${nextSnapshot.property || "Property"} - Unit ${
+              nextSnapshot.unit || "-"
+            }`,
+            details: {
+              internalNote: privateInternalNote.trim(),
+            },
+          });
+        }
       }
     }
 
@@ -724,6 +837,83 @@ export default function EditQueueItemPage() {
                 Needed By = property deadline. Priority = manager&apos;s requested
                 order. Schedule = internal work plan.
               </p>
+            </div>
+
+            <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 p-4">
+              <p className="text-sm uppercase tracking-[0.25em] text-emerald-300">
+                Progress and ETA
+              </p>
+              <p className="mt-2 text-sm leading-6 text-zinc-300">
+                Robbie ETA is separate from the property deadline. Use this
+                when the expected finish date changes without rewriting the
+                manager&apos;s Needed By date.
+              </p>
+
+              <div className="mt-4 grid gap-5 md:grid-cols-2">
+                <InputField
+                  label="Progress"
+                  value={progressStage}
+                  onChange={setProgressStage}
+                  options={queueProgressStages}
+                />
+
+                <InputField
+                  label="Percent Complete"
+                  value={percentComplete}
+                  onChange={setPercentComplete}
+                  options={queuePercentOptions}
+                  type="number"
+                />
+
+                <InputField
+                  label="Projected Completion Date / Robbie ETA"
+                  value={projectedCompletionDate}
+                  onChange={setProjectedCompletionDate}
+                  type="date"
+                  helperText="Robbie's current expected finish date. This does not change the property deadline."
+                />
+
+                <InputField
+                  label="Delay Reason"
+                  value={delayReason}
+                  onChange={setDelayReason}
+                  options={queueDelayReasons}
+                />
+              </div>
+
+              <div className="mt-5 grid gap-5">
+                <div>
+                  <label className="app-form-label mb-2 block text-sm text-zinc-400">
+                    Manager-visible Update
+                  </label>
+                  <textarea
+                    value={managerUpdate}
+                    onChange={(event) => setManagerUpdate(event.target.value)}
+                    placeholder="Example: Extra wall repair added time. Projected completion moved to July 7."
+                    className="app-form-input min-h-28 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition placeholder:text-zinc-500 focus:border-orange-500"
+                  />
+                  <p className="app-helper-text mt-2 text-xs leading-5 text-zinc-500">
+                    Property managers can see this update.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="app-form-label mb-2 block text-sm text-zinc-400">
+                    Private Internal Note
+                  </label>
+                  <textarea
+                    value={privateInternalNote}
+                    onChange={(event) =>
+                      setPrivateInternalNote(event.target.value)
+                    }
+                    placeholder="Optional private note for Robbie/admin only."
+                    className="app-form-input min-h-28 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition placeholder:text-zinc-500 focus:border-orange-500"
+                  />
+                  <p className="app-helper-text mt-2 text-xs leading-5 text-zinc-500">
+                    Managers do not see private internal notes.
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="grid gap-5 md:grid-cols-2">
