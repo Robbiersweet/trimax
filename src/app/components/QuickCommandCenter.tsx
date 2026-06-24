@@ -9,6 +9,7 @@ import {
   canAccessNavItem,
   normalizeWorkspaceRole,
 } from "../lib/rolePermissions";
+import { logActivity } from "../lib/activityLog";
 import { supabase } from "../lib/supabase";
 import { loadWorkspaceAccess } from "../lib/workspaceAccess";
 
@@ -72,6 +73,16 @@ type QueueSearchRecord = {
   status: string | null;
   priority: string | null;
   ready_date: string | null;
+  projected_completion_date?: string | null;
+};
+
+type TypedCommandPreview = {
+  kind: "set_eta";
+  state: "ready" | "ambiguous" | "blocked" | "saving" | "done" | "error";
+  unit: string;
+  etaDate: string;
+  matches: QueueSearchRecord[];
+  message: string;
 };
 
 type ClientSearchRecord = {
@@ -427,6 +438,75 @@ function shortDate(value: string | null | undefined) {
     month: "short",
     day: "numeric",
   });
+}
+
+function canUseTypedCommands(role: WorkspaceRole) {
+  return role === "owner" || role === "admin";
+}
+
+function parseDateCommandValue(value: string) {
+  const trimmed = value.trim().replace(/[.。]+$/, "");
+
+  if (!trimmed) {
+    return null;
+  }
+
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+
+  if (isoMatch) {
+    const [, year, month, day] = isoMatch;
+    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+  }
+
+  const slashMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);
+
+  if (slashMatch) {
+    const [, month, day, rawYear] = slashMatch;
+    const year = rawYear
+      ? rawYear.length === 2
+        ? `20${rawYear}`
+        : rawYear
+      : String(new Date().getFullYear());
+
+    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+  }
+
+  const parsed = new Date(`${trimmed} ${new Date().getFullYear()}`);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed.toISOString().slice(0, 10);
+}
+
+function parseTypedCommand(value: string) {
+  const normalized = value.trim().replace(/\s+/g, " ");
+  const etaMatch = normalized.match(
+    /^(?:set|update|change)\s+(?:robbie\s+)?(?:eta|projected\s+completion(?:\s+date)?)\s+(?:for\s+)?([a-z]\s*0?\d{1,2})\s+(?:to|as|on)\s+(.+)$/i
+  );
+
+  if (!etaMatch) {
+    return null;
+  }
+
+  const unit = queueUnitNeedles(etaMatch[1])[0] ?? etaMatch[1].toUpperCase();
+  const etaDate = parseDateCommandValue(etaMatch[2]);
+
+  if (!etaDate) {
+    return {
+      kind: "set_eta" as const,
+      unit,
+      etaDate: "",
+      error: "I could not read that date. Try something like July 7 or 2026-07-07.",
+    };
+  }
+
+  return {
+    kind: "set_eta" as const,
+    unit,
+    etaDate,
+  };
 }
 
 function invoiceActionCommand(
@@ -1214,6 +1294,8 @@ export default function QuickCommandCenter() {
   const [isResolvingRecords, setIsResolvingRecords] = useState(false);
   const [isResolvingSmartCommands, setIsResolvingSmartCommands] =
     useState(false);
+  const [typedCommandPreview, setTypedCommandPreview] =
+    useState<TypedCommandPreview | null>(null);
   const [recentCommandHrefs, setRecentCommandHrefs] = useState(
     loadRecentCommandHrefs
   );
@@ -1912,6 +1994,7 @@ export default function QuickCommandCenter() {
     setQuery("");
     setSelectedIndex(0);
     setRecordCommands([]);
+    setTypedCommandPreview(null);
     setIsResolvingRecords(false);
     setIsResolvingSmartCommands(false);
   }
@@ -1932,9 +2015,242 @@ export default function QuickCommandCenter() {
     setQuery(example);
     setSelectedIndex(0);
     setRecordCommands([]);
+    setTypedCommandPreview(null);
     setIsResolvingRecords(false);
     window.setTimeout(() => searchInputRef.current?.focus(), 0);
   }
+
+  async function confirmTypedCommand() {
+    if (
+      !typedCommandPreview ||
+      typedCommandPreview.kind !== "set_eta" ||
+      typedCommandPreview.state !== "ready" ||
+      typedCommandPreview.matches.length !== 1
+    ) {
+      return;
+    }
+
+    const item = typedCommandPreview.matches[0];
+    setTypedCommandPreview({
+      ...typedCommandPreview,
+      state: "saving",
+      message: "Saving Robbie ETA...",
+    });
+
+    const { data: businessData } = await supabase
+      .from("businesses")
+      .select("id")
+      .eq("slug", business)
+      .limit(1)
+      .maybeSingle();
+
+    if (!businessData?.id) {
+      setTypedCommandPreview({
+        ...typedCommandPreview,
+        state: "error",
+        message: "I could not load this workspace. Try opening the queue item instead.",
+      });
+      return;
+    }
+
+    const { error } = await supabase
+      .from("queue_items")
+      .update({
+        projected_completion_date: typedCommandPreview.etaDate,
+      })
+      .eq("id", item.id)
+      .eq("business_id", businessData.id);
+
+    if (error) {
+      setTypedCommandPreview({
+        ...typedCommandPreview,
+        state: "error",
+        message:
+          "Robbie ETA could not be saved. The progress/ETA SQL may still need to be applied.",
+      });
+      return;
+    }
+
+    await logActivity({
+      businessId: businessData.id,
+      action: "queue_item.robbie_eta_changed",
+      entityType: "queue_item",
+      entityId: item.id,
+      entityLabel: `${item.property || "Property"} - Unit ${item.unit || "-"}`,
+      details: {
+        field: "projected_completion_date",
+        label: "Robbie ETA",
+        previousValue: item.projected_completion_date ?? null,
+        newValue: typedCommandPreview.etaDate,
+        source: "quick_command_center",
+        rawCommand: query,
+        changes: [
+          {
+            field: "projected_completion_date",
+            label: "Robbie ETA",
+            previousValue: item.projected_completion_date ?? null,
+            newValue: typedCommandPreview.etaDate,
+          },
+        ],
+      },
+    });
+
+    setTypedCommandPreview({
+      ...typedCommandPreview,
+      state: "done",
+      message: `Robbie ETA saved for ${item.unit || typedCommandPreview.unit}.`,
+    });
+    setRecordCommands((currentCommands) =>
+      currentCommands.map((command) =>
+        command.href === `/queue/${item.id}?business=${business}`
+          ? {
+              ...command,
+              detail: `${command.detail} / Robbie ETA ${typedCommandPreview.etaDate}`,
+            }
+          : command
+      )
+    );
+  }
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const parsedTypedCommand = parseTypedCommand(query);
+
+    if (!parsedTypedCommand) {
+      return;
+    }
+
+    let isActive = true;
+    const timer = window.setTimeout(async () => {
+      if (!canUseTypedCommands(role)) {
+        setTypedCommandPreview({
+          kind: "set_eta",
+          state: "blocked",
+          unit: parsedTypedCommand.unit,
+          etaDate: parsedTypedCommand.etaDate,
+          matches: [],
+          message: "Typed queue update commands are owner/admin only.",
+        });
+        return;
+      }
+
+      if (
+        "error" in parsedTypedCommand &&
+        typeof parsedTypedCommand.error === "string"
+      ) {
+        setTypedCommandPreview({
+          kind: "set_eta",
+          state: "blocked",
+          unit: parsedTypedCommand.unit,
+          etaDate: "",
+          matches: [],
+          message: parsedTypedCommand.error,
+        });
+        return;
+      }
+
+      setTypedCommandPreview({
+        kind: "set_eta",
+        state: "blocked",
+        unit: parsedTypedCommand.unit,
+        etaDate: parsedTypedCommand.etaDate,
+        matches: [],
+        message: "Checking queue item...",
+      });
+
+      const { data: businessData } = await supabase
+        .from("businesses")
+        .select("id")
+        .eq("slug", business)
+        .limit(1)
+        .maybeSingle();
+
+      if (!isActive) {
+        return;
+      }
+
+      if (!businessData?.id) {
+        setTypedCommandPreview({
+          kind: "set_eta",
+          state: "error",
+          unit: parsedTypedCommand.unit,
+          etaDate: parsedTypedCommand.etaDate,
+          matches: [],
+          message: "I could not load this workspace.",
+        });
+        return;
+      }
+
+      const unitNeedles = queueUnitNeedles(parsedTypedCommand.unit);
+      const queueNeedle = safeIlikeNeedle(unitNeedles[0] ?? parsedTypedCommand.unit);
+      const { data, error } = await supabase
+        .from("queue_items")
+        .select(
+          "id, property, unit, status, priority, ready_date, projected_completion_date"
+        )
+        .eq("business_id", businessData.id)
+        .or(`unit.ilike.%${queueNeedle}%`)
+        .order("created_at", { ascending: false })
+        .limit(8);
+
+      if (!isActive) {
+        return;
+      }
+
+      if (error) {
+        setTypedCommandPreview({
+          kind: "set_eta",
+          state: "error",
+          unit: parsedTypedCommand.unit,
+          etaDate: parsedTypedCommand.etaDate,
+          matches: [],
+          message:
+            "I could not check queue items. The progress/ETA SQL may still need to be applied.",
+        });
+        return;
+      }
+
+      const matches = ((data ?? []) as QueueSearchRecord[]).filter((item) => {
+        const itemNeedles = queueUnitNeedles(item.unit ?? "");
+        return itemNeedles.some((needle) => unitNeedles.includes(needle));
+      });
+
+      if (matches.length === 1) {
+        const item = matches[0];
+        setTypedCommandPreview({
+          kind: "set_eta",
+          state: "ready",
+          unit: parsedTypedCommand.unit,
+          etaDate: parsedTypedCommand.etaDate,
+          matches,
+          message: `Set Robbie ETA for ${item.property || "property"} Unit ${
+            item.unit || parsedTypedCommand.unit
+          } to ${parsedTypedCommand.etaDate}?`,
+        });
+        return;
+      }
+
+      setTypedCommandPreview({
+        kind: "set_eta",
+        state: matches.length > 1 ? "ambiguous" : "blocked",
+        unit: parsedTypedCommand.unit,
+        etaDate: parsedTypedCommand.etaDate,
+        matches,
+        message:
+          matches.length > 1
+            ? `I found ${matches.length} matching units. Open the exact queue item first or include more context.`
+            : `I could not find Unit ${parsedTypedCommand.unit} in this workspace.`,
+      });
+    }, 220);
+
+    return () => {
+      isActive = false;
+      window.clearTimeout(timer);
+    };
+  }, [business, isOpen, query, role]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -2257,6 +2573,7 @@ export default function QuickCommandCenter() {
                   const nextQuery = event.target.value;
                   setQuery(nextQuery);
                   setSelectedIndex(0);
+                  setTypedCommandPreview(null);
 
                   if (nextQuery.trim().length < 2) {
                     setRecordCommands([]);
@@ -2352,6 +2669,66 @@ export default function QuickCommandCenter() {
                     : `${visibleCommands.length} ready`}
                 </span>
               </div>
+
+              {typedCommandPreview ? (
+                <div
+                  className="quick-command-route"
+                  data-tone={
+                    typedCommandPreview.state === "ready" ||
+                    typedCommandPreview.state === "done"
+                      ? "queue"
+                      : typedCommandPreview.state === "ambiguous"
+                        ? "setup"
+                        : "system"
+                  }
+                >
+                  <div className="quick-command-route-main">
+                    <p className="quick-command-route-kicker">
+                      Typed command preview
+                    </p>
+                    <strong>
+                      {typedCommandPreview.kind === "set_eta"
+                        ? "Set Robbie ETA"
+                        : "Command"}
+                    </strong>
+                    <span>{typedCommandPreview.message}</span>
+                    {typedCommandPreview.matches.length > 1 ? (
+                      <span>
+                        {typedCommandPreview.matches
+                          .map(
+                            (item) =>
+                              `${item.property || "Property"} Unit ${
+                                item.unit || "-"
+                              }`
+                          )
+                          .join(" / ")}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="quick-command-route-meta">
+                    <span>Owner/Admin only</span>
+                    <span>Preview required</span>
+                    {typedCommandPreview.state === "ready" ? (
+                      <button
+                        type="button"
+                        onClick={confirmTypedCommand}
+                        className="rounded-full border border-emerald-300/40 bg-emerald-400/15 px-3 py-1 text-xs font-black text-emerald-50"
+                      >
+                        Confirm
+                      </button>
+                    ) : null}
+                    {typedCommandPreview.state !== "saving" ? (
+                      <button
+                        type="button"
+                        onClick={() => setTypedCommandPreview(null)}
+                        className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-black text-zinc-100"
+                      >
+                        Cancel
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
 
               {selectedCommand ? (
                 <div
