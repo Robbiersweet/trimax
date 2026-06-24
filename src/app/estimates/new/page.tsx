@@ -78,6 +78,7 @@ type QueueItem = {
   flooring: string | null;
   move_out_date: string | null;
   ready_date: string | null;
+  priority_order: number | null;
   notes: string | null;
   smoked_in: boolean | null;
   primer_requested: boolean | null;
@@ -1244,6 +1245,35 @@ function NewEstimatePageContent() {
               for renovation also add Renovation and Cabinet Paint for pricing
               review. Adjust any details before saving.
             </p>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-purple-300/20 bg-black/20 px-4 py-3">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-purple-200">
+                  Needed By
+                </p>
+                <p className="mt-1 font-semibold text-white">
+                  {queueItem.ready_date || "No deadline provided"}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-purple-300/20 bg-black/20 px-4 py-3">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-purple-200">
+                  Manager Priority
+                </p>
+                <p className="mt-1 font-semibold text-white">
+                  {queueItem.priority_order
+                    ? `Priority ${queueItem.priority_order}`
+                    : "No priority order"}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-purple-300/20 bg-black/20 px-4 py-3">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-purple-200">
+                  Schedule
+                </p>
+                <p className="mt-1 font-semibold text-white">
+                  Internal work plan
+                </p>
+              </div>
+            </div>
           </Card>
         ) : null}
 

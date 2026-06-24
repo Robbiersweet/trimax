@@ -77,6 +77,7 @@ type ActiveQueueItem = {
   unit: string | null;
   status: string | null;
   priority: string | null;
+  priority_order?: number | null;
   ready_date: string | null;
   scheduled_date: string | null;
   created_at: string | null;
@@ -101,6 +102,7 @@ type QueueRequestDraft = {
   wallPaintColor: string;
   flooring: string;
   priority: string;
+  priorityOrderStart: string;
   smokedIn: boolean;
   primerRequested: boolean;
   priorRenovation: boolean;
@@ -226,6 +228,22 @@ function unitListFromText(value: string) {
     .split(/[\n,]+/g)
     .map((unit) => unit.trim())
     .filter(Boolean);
+}
+
+function normalizePriorityOrderStart(value: string) {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  const parsed = Number(trimmed);
+
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return "invalid";
+  }
+
+  return parsed;
 }
 
 function normalizeUnitLabel(value: string) {
@@ -586,6 +604,7 @@ function hasDraftContent(draft: QueueRequestDraft) {
       draft.renovationNeededDetails ||
       draft.moveOutDate ||
       draft.readyDate ||
+      draft.priorityOrderStart ||
       draft.notes
   );
 }
@@ -650,6 +669,7 @@ function NewRequestPageContent() {
   const [wallPaintColor, setWallPaintColor] = useState("");
   const [flooring, setFlooring] = useState("");
   const [priority, setPriority] = useState("Normal");
+  const [priorityOrderStart, setPriorityOrderStart] = useState("");
   const [smokedIn, setSmokedIn] = useState(false);
   const [primerRequested, setPrimerRequested] = useState(true);
   const [priorRenovation, setPriorRenovation] = useState(false);
@@ -701,6 +721,7 @@ function NewRequestPageContent() {
       wallPaintColor,
       flooring,
       priority,
+      priorityOrderStart,
       smokedIn,
       primerRequested,
       priorRenovation,
@@ -720,6 +741,7 @@ function NewRequestPageContent() {
       wallPaintColor,
       flooring,
       priority,
+      priorityOrderStart,
       smokedIn,
       primerRequested,
       priorRenovation,
@@ -795,6 +817,7 @@ function NewRequestPageContent() {
         setWallPaintColor(draft.wallPaintColor ?? "");
         setFlooring(draft.flooring ?? "");
         setPriority(draft.priority ?? "Normal");
+        setPriorityOrderStart(draft.priorityOrderStart ?? "");
         setSmokedIn(Boolean(draft.smokedIn));
         setPrimerRequested(draft.primerRequested === false ? false : true);
         setPriorRenovation(Boolean(draft.priorRenovation));
@@ -991,7 +1014,7 @@ function NewRequestPageContent() {
       const { data, error } = await supabase
         .from("queue_items")
         .select(
-          "id, unit, status, priority, ready_date, scheduled_date, created_at, notes"
+          "id, unit, status, priority, priority_order, ready_date, scheduled_date, created_at, notes"
         )
         .eq("business_id", business.id)
         .eq("property", property)
@@ -1318,7 +1341,7 @@ function NewRequestPageContent() {
       complete: prioritySignals.length === 0 || plannedPrioritySwapIds.length > 0,
       detail:
         prioritySignals.length === 0
-          ? "No nearby due-date conflict is currently visible."
+          ? "No nearby deadline conflict is currently visible."
           : plannedPrioritySwapIds.length > 0
             ? `${plannedPrioritySwapIds.length} priority move${
                 plannedPrioritySwapIds.length === 1 ? "" : "s"
@@ -1362,11 +1385,11 @@ function NewRequestPageContent() {
       tone: scopeReady ? "emerald" : "amber",
     },
     {
-      label: isJustKleen ? "Target Date" : "Paint Due",
+      label: isJustKleen ? "Target Date" : "Needed By",
       value: dueDateReady ? formatShortDate(readyDate) : "Open",
       detail: dueDateReady
-        ? "Date intelligence can guide scheduling."
-        : "Add the date to improve queue planning.",
+        ? "Property deadline is saved."
+        : "No deadline provided.",
       tone: dueDateReady ? "emerald" : "zinc",
     },
     {
@@ -1379,7 +1402,7 @@ function NewRequestPageContent() {
             }`
           : "Clear",
       detail: isCheckingPriority
-        ? "Looking for nearby due-date conflicts."
+        ? "Looking for nearby deadline conflicts."
         : prioritySignals.length > 0
           ? "Review priority before submitting."
           : propertyReady && requestCount > 0
@@ -1446,6 +1469,18 @@ function NewRequestPageContent() {
 
     try {
       setIsSaving(true);
+      const normalizedPriorityOrderStart =
+        normalizePriorityOrderStart(priorityOrderStart);
+
+      if (normalizedPriorityOrderStart === "invalid") {
+        setToast({
+          type: "error",
+          message: "Priority Order must be a positive whole number.",
+        });
+        setIsSaving(false);
+        return;
+      }
+
       const plannedPrioritySwaps = prioritySignals.filter((item) =>
         plannedPrioritySwapIds.includes(item.id)
       );
@@ -1461,10 +1496,14 @@ function NewRequestPageContent() {
         .join("\n\n");
 
       const createdItems = await Promise.all(
-        units.map((unit) => {
+        units.map((unit, index) => {
           const savedUnit = collectUnitLayout
             ? normalizeUnitLabel(unit)
             : unit;
+          const priorityOrder =
+            typeof normalizedPriorityOrderStart === "number"
+              ? normalizedPriorityOrderStart + index
+              : null;
 
           return createQueueItem({
             property,
@@ -1474,6 +1513,7 @@ function NewRequestPageContent() {
             wallPaintColor: isJustKleen ? "" : wallPaintColor,
             flooring,
             priority: submittedPriority,
+            priorityOrder,
             smokedIn,
             primerRequested: smokedIn && primerRequested,
             priorRenovation,
@@ -1522,7 +1562,7 @@ function NewRequestPageContent() {
               entityLabel: `${property || "Property"} - Unit ${
                 targetUnit || "-"
               }`,
-              details: {
+          details: {
                 movedBehind: requestedUnitLabel,
                 previousPriority: item.priority,
                 newPriority: priorityBehindNewRequest(item.priority),
@@ -2199,13 +2239,35 @@ function NewRequestPageContent() {
             />
 
             <InputField
-              label="Paint Due Date"
+              label="Needed By Date"
               placeholder="Example: 2026-07-03"
               value={readyDate}
               onChange={setReadyDate}
               type="date"
-              helperText="Use the date the property wants painting finished by so urgent units can be prioritized."
+              helperText="Use this only for the date the unit needs to be completed by. Do not estimate Robbie's work time here."
             />
+
+            <InputField
+              label="Priority Order Start"
+              placeholder="Example: 1"
+              value={priorityOrderStart}
+              onChange={setPriorityOrderStart}
+              type="number"
+              helperText="Use this to tell Robbie which units should be handled first. For a batch, units are numbered in the order typed."
+            />
+
+            {!isJustKleen && units.length > 1 ? (
+              <div className="rounded-2xl border border-sky-500/25 bg-sky-500/10 px-4 py-3 text-sm leading-6 text-sky-100">
+                <p className="font-black uppercase tracking-[0.18em] text-sky-200">
+                  Batch order preview
+                </p>
+                <p className="mt-2">
+                  {priorityOrderStart.trim()
+                    ? `Trimax will save ${units.length} units starting at Priority ${priorityOrderStart.trim()} in the order you typed them.`
+                    : "Add a Priority Order Start if this batch needs a manager order."}
+                </p>
+              </div>
+            ) : null}
 
             {!isJustKleen && readyDate && units.length > 0 ? (
               <div
@@ -2232,13 +2294,13 @@ function NewRequestPageContent() {
                         ? "Checking active queue..."
                         : prioritySignals.length > 0
                           ? "Possible queue order conflict"
-                          : "No active due-date conflict found"}
+                          : "No active deadline conflict found"}
                     </h2>
 
                     <p className="mt-2 text-sm leading-6 text-zinc-300">
                       {prioritySignals.length > 0
                         ? `Trimax found active ${property} work already due on or near ${formatShortDate(readyDate)}. Review whether ${requestedUnitLabel} should jump ahead before submitting.`
-                        : "Trimax did not find another active unit that appears to conflict with this paint due date."}
+                        : "Trimax did not find another active unit that appears to conflict with this needed-by date."}
                     </p>
                   </div>
 
@@ -2269,7 +2331,7 @@ function NewRequestPageContent() {
                       );
                       const dueCopy =
                         dayGap === 0
-                          ? "same paint due date"
+                          ? "same needed-by date"
                           : dayGap && dayGap > 0
                             ? `due ${dayGap} day${dayGap === 1 ? "" : "s"} before this request`
                             : `within ${Math.abs(dayGap ?? 0)} day${

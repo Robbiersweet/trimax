@@ -31,6 +31,7 @@ type SupabaseQueueItem = {
   unit: string | null;
   status: string | null;
   priority: string | null;
+  priority_order: number | null;
   paint_type: string | null;
   unit_layout: string | null;
   wall_paint_color: string | null;
@@ -342,8 +343,8 @@ function readyStatus(item: SupabaseQueueItem) {
   if (!readyDate) {
     return {
       tone: "zinc",
-      label: "Paint due date not set",
-      detail: "Add the date the property wants painting finished by to make prioritizing easier.",
+      label: "No deadline provided",
+      detail: "Add the property deadline only when the manager knows when this unit must be completed.",
     };
   }
 
@@ -365,8 +366,8 @@ function readyStatus(item: SupabaseQueueItem) {
   if (daysUntilReady < 0) {
     return {
       tone: "red",
-      label: "Past paint due date",
-      detail: "The requested paint finish date has passed and this unit is not scheduled.",
+      label: "Past needed-by date",
+      detail: "The property deadline has passed and this unit is not scheduled.",
     };
   }
 
@@ -376,14 +377,14 @@ function readyStatus(item: SupabaseQueueItem) {
       label: "Due soon",
       detail: `${daysUntilReady} day${
         daysUntilReady === 1 ? "" : "s"
-      } until the requested paint finish date, not scheduled yet.`,
+      } until the property deadline, not scheduled yet.`,
     };
   }
 
   return {
     tone: "zinc",
     label: "Upcoming",
-    detail: `${daysUntilReady} days until the requested paint finish date.`,
+    detail: `${daysUntilReady} days until the property deadline.`,
   };
 }
 
@@ -590,7 +591,8 @@ export default async function QueueDetailPage({
       item.wall_paint_color ? `Wall color: ${item.wall_paint_color}` : null,
       item.flooring ? `Flooring: ${item.flooring}` : null,
       item.priority ? `Priority: ${item.priority}` : null,
-      item.ready_date ? `Paint due date: ${item.ready_date}` : null,
+      item.priority_order ? `Manager priority order: ${item.priority_order}` : null,
+      item.ready_date ? `Needed by date: ${item.ready_date}` : null,
       item.prior_renovation_details
         ? `Prior renovation: ${item.prior_renovation_details}`
         : null,
@@ -1132,6 +1134,13 @@ export default async function QueueDetailPage({
           <div className="grid gap-6 md:grid-cols-2">
             <Info label="Property" value={item.property ?? ""} />
             <Info label="Priority" value={item.priority ?? ""} />
+            <Info
+              label="Manager Priority Order"
+              value={
+                item.priority_order ? `Priority ${item.priority_order}` : ""
+              }
+              emptyValue="No priority order"
+            />
             <Info label="Unit Layout" value={item.unit_layout ?? ""} />
             <Info label="Paint Type" value={item.paint_type ?? ""} />
             <Info
@@ -1160,7 +1169,11 @@ export default async function QueueDetailPage({
               value={item.renovation_needed_details ?? ""}
             />
             <Info label="Move Out Date" value={item.move_out_date ?? ""} />
-            <Info label="Paint Due Date" value={item.ready_date ?? ""} />
+            <Info
+              label="Needed By Date"
+              value={item.ready_date ?? ""}
+              emptyValue="No deadline provided"
+            />
             <Info label="Scheduled Date" value={item.scheduled_date ?? ""} />
             <Info label="Completed Date" value={item.completed_date ?? ""} />
             <Info
@@ -1173,6 +1186,16 @@ export default async function QueueDetailPage({
                   : "No"
               }
             />
+          </div>
+
+          <div className="mt-6 rounded-2xl border border-sky-500/25 bg-sky-500/10 px-4 py-3 text-sm leading-6 text-sky-100">
+            <p className="font-black uppercase tracking-[0.18em] text-sky-200">
+              Internal scheduling note
+            </p>
+            <p className="mt-2">
+              Needed By = property deadline. Priority = manager&apos;s requested
+              order. Schedule = internal work plan.
+            </p>
           </div>
 
           {item.smoked_in && (
@@ -1486,11 +1509,19 @@ function QueueChangeIntelligence({
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
+function Info({
+  label,
+  value,
+  emptyValue = "-",
+}: {
+  label: string;
+  value: string;
+  emptyValue?: string;
+}) {
   return (
     <div>
       <p className="text-sm text-zinc-500">{label}</p>
-      <p className="mt-1 text-lg font-medium">{value || "-"}</p>
+      <p className="mt-1 text-lg font-medium">{value || emptyValue}</p>
     </div>
   );
 }

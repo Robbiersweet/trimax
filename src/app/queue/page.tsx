@@ -19,6 +19,7 @@ type QueueItemWithEstimate = {
   unit: string | null;
   status: string | null;
   priority: string | null;
+  priority_order: number | null;
   paint_type: string | null;
   unit_layout: string | null;
   wall_paint_color: string | null;
@@ -128,6 +129,69 @@ function needsEstimate(item: QueueItemWithEstimate) {
   );
 }
 
+function priorityOrderValue(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? value
+    : Number.POSITIVE_INFINITY;
+}
+
+function deadlineSortValue(value: string | null) {
+  const date = dateValue(value);
+
+  return date ? date.getTime() : Number.POSITIVE_INFINITY;
+}
+
+function statusSortValue(value: string | null) {
+  const status = normalizeStatus(value);
+  const order: Record<string, number> = {
+    "pending estimate": 1,
+    "estimate created": 2,
+    scheduled: 3,
+    "on hold": 4,
+    completed: 5,
+    invoiced: 6,
+    paid: 7,
+  };
+
+  return order[status] ?? 50;
+}
+
+function compareQueueItems(
+  first: QueueItemWithEstimate,
+  second: QueueItemWithEstimate,
+  sortMode: string
+) {
+  const fallback = first.id.localeCompare(second.id);
+
+  if (sortMode === "priority") {
+    return (
+      (first.property || "").localeCompare(second.property || "") ||
+      priorityOrderValue(first.priority_order) -
+        priorityOrderValue(second.priority_order) ||
+      deadlineSortValue(first.ready_date) - deadlineSortValue(second.ready_date) ||
+      fallback
+    );
+  }
+
+  if (sortMode === "status") {
+    return (
+      statusSortValue(first.status) - statusSortValue(second.status) ||
+      deadlineSortValue(first.ready_date) - deadlineSortValue(second.ready_date) ||
+      priorityOrderValue(first.priority_order) -
+        priorityOrderValue(second.priority_order) ||
+      fallback
+    );
+  }
+
+  return (
+    deadlineSortValue(first.ready_date) - deadlineSortValue(second.ready_date) ||
+    priorityOrderValue(first.priority_order) -
+      priorityOrderValue(second.priority_order) ||
+    statusSortValue(first.status) - statusSortValue(second.status) ||
+    fallback
+  );
+}
+
 function isClosedQueueItem(item: QueueItemWithEstimate) {
   const status = normalizeStatus(item.status);
 
@@ -189,6 +253,7 @@ function queueHref(
     q?: string;
     status?: string;
     view?: string;
+    sort?: string;
   }
 ) {
   const params = new URLSearchParams({
@@ -211,6 +276,10 @@ function queueHref(
     params.set("view", options.view);
   }
 
+  if (options?.sort && options.sort !== "deadline") {
+    params.set("sort", options.sort);
+  }
+
   return `/queue?${params.toString()}#queue-results`;
 }
 
@@ -219,7 +288,7 @@ function viewCopy(view: string) {
     return {
       title: "R&L Start Soon",
       detail:
-        "Unscheduled units with a paint due date in the next 7 days.",
+        "Unscheduled units with a property deadline in the next 7 days.",
     };
   }
 
@@ -263,6 +332,7 @@ export default async function QueuePage({
     q?: string;
     status?: string;
     view?: string;
+    sort?: string;
   }>;
 }) {
   const resolvedSearchParams = searchParams ? await searchParams : {};
@@ -274,6 +344,13 @@ export default async function QueuePage({
     resolvedSearchParams.status?.trim().toLowerCase() ?? "all";
   const viewFilter =
     resolvedSearchParams.view?.trim().toLowerCase() ?? "all";
+  const requestedSortMode =
+    resolvedSearchParams.sort?.trim().toLowerCase() ?? "deadline";
+  const sortMode = ["deadline", "priority", "status"].includes(
+    requestedSortMode
+  )
+    ? requestedSortMode
+    : "deadline";
   const businessQuery =
     propertyFilter === "all"
       ? `?business=${businessSlug}`
@@ -302,12 +379,15 @@ export default async function QueuePage({
   let jobSessionBreakdowns: QueueJobSessionBreakdown[] = [];
 
   if (selectedBusiness?.id) {
-    const [queueResponse, jobSessionResponse, jobBreakdownResponse] =
-      await Promise.all([
+    const [
+      initialQueueResponse,
+      jobSessionResponse,
+      jobBreakdownResponse,
+    ] = await Promise.all([
         supabase
           .from("queue_items")
           .select(
-            "id, property, unit, status, priority, paint_type, unit_layout, wall_paint_color, flooring, move_out_date, ready_date, scheduled_date, completed_date, smoked_in, prior_renovation, prior_renovation_details, renovation_needed, renovation_needed_details, notes, linked_estimate_id"
+            "id, property, unit, status, priority, priority_order, paint_type, unit_layout, wall_paint_color, flooring, move_out_date, ready_date, scheduled_date, completed_date, smoked_in, prior_renovation, prior_renovation_details, renovation_needed, renovation_needed_details, notes, linked_estimate_id"
           )
           .eq("business_id", selectedBusiness.id)
           .order("created_at", { ascending: false }),
@@ -320,9 +400,24 @@ export default async function QueuePage({
           .select("id, job_session_id")
           .eq("business_id", selectedBusiness.id),
       ]);
+    let queueData = initialQueueResponse.data;
+    let queueError = initialQueueResponse.error;
 
-    if (queueResponse.error) {
-      console.warn("Queue items could not be loaded:", queueResponse.error.message);
+    if (queueError?.message?.includes("priority_order")) {
+      const retry = await supabase
+        .from("queue_items")
+        .select(
+          "id, property, unit, status, priority, paint_type, unit_layout, wall_paint_color, flooring, move_out_date, ready_date, scheduled_date, completed_date, smoked_in, prior_renovation, prior_renovation_details, renovation_needed, renovation_needed_details, notes, linked_estimate_id"
+        )
+        .eq("business_id", selectedBusiness.id)
+        .order("created_at", { ascending: false });
+
+      queueData = retry.data as typeof queueData;
+      queueError = retry.error;
+    }
+
+    if (queueError) {
+      console.warn("Queue items could not be loaded:", queueError.message);
       queueLoadMessage =
         "Queue items could not be loaded. Try signing in again; if this stays here, the queue access settings need attention.";
     }
@@ -341,7 +436,7 @@ export default async function QueuePage({
       );
     }
 
-    queueItems = (queueResponse.data ?? []) as QueueItemWithEstimate[];
+    queueItems = (queueData ?? []) as QueueItemWithEstimate[];
     jobSessions = (jobSessionResponse.data ?? []) as QueueJobSession[];
     jobSessionBreakdowns =
       (jobBreakdownResponse.data ?? []) as QueueJobSessionBreakdown[];
@@ -552,6 +647,14 @@ export default async function QueuePage({
 
     return searchableText.includes(searchTerm.toLowerCase());
   });
+  const displayQueueItems = [...filteredQueueItems].sort((first, second) =>
+    compareQueueItems(first, second, sortMode)
+  );
+  const sortLinks = [
+    { label: "Sort by Deadline", value: "deadline" },
+    { label: "Sort by Manager Priority", value: "priority" },
+    { label: "Sort by Status", value: "status" },
+  ];
 
   const statusLinks = [
     {
@@ -797,6 +900,9 @@ export default async function QueuePage({
             {viewFilter !== "all" ? (
               <input type="hidden" name="view" value={viewFilter} />
             ) : null}
+            {sortMode !== "deadline" ? (
+              <input type="hidden" name="sort" value={sortMode} />
+            ) : null}
 
             <div>
               <label className="mb-2 block text-sm text-zinc-400">
@@ -834,6 +940,7 @@ export default async function QueuePage({
                 property: propertyFilter,
                 status: statusFilter,
                 view: filter.value,
+                sort: sortMode,
               })}
               scroll={false}
               className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
@@ -873,6 +980,7 @@ export default async function QueuePage({
                 property: propertyFilter,
                 status: filter.value,
                 view: viewFilter,
+                sort: sortMode,
               })}
               scroll={false}
               className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
@@ -903,6 +1011,39 @@ export default async function QueuePage({
           ))}
         </div>
 
+        <div className="queue-filter-bar flex flex-wrap gap-3 rounded-2xl border border-zinc-800 p-2">
+          {sortLinks.map((filter) => (
+            <Link
+              key={filter.value}
+              href={queueHref(businessSlug, {
+                q: searchTerm,
+                property: propertyFilter,
+                status: statusFilter,
+                view: viewFilter,
+                sort: filter.value,
+              })}
+              scroll={false}
+              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                sortMode === filter.value
+                  ? "bg-sky-600 text-white shadow-sm shadow-sky-900/10"
+                  : "queue-filter-link-inactive text-zinc-300 hover:bg-zinc-800 hover:text-white"
+              }`}
+            >
+              {filter.label}
+            </Link>
+          ))}
+        </div>
+
+        <Card className="border-sky-500/25 bg-sky-500/10 p-4">
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-sky-200">
+            Queue field guide
+          </p>
+          <p className="mt-2 text-sm leading-6 text-sky-100">
+            Needed By = property deadline. Priority = manager&apos;s requested
+            order. Schedule = internal work plan.
+          </p>
+        </Card>
+
         <Card className="queue-view-summary border-sky-500/20 bg-sky-500/10 p-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -916,7 +1057,7 @@ export default async function QueuePage({
             </div>
 
             <p className="rounded-full border border-white/10 bg-black/20 px-3 py-2 text-sm font-semibold text-zinc-300">
-              Showing {filteredQueueItems.length} of{" "}
+              Showing {displayQueueItems.length} of{" "}
               {propertyScopedQueueItems.length}{" "}
               queue items.
             </p>
@@ -951,7 +1092,7 @@ export default async function QueuePage({
                 </RoleVisible>
               </div>
             </Card>
-          ) : filteredQueueItems.length === 0 ? (
+          ) : displayQueueItems.length === 0 ? (
             <Card className="queue-empty-card border-zinc-700 bg-zinc-950/70">
               <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
                 <div>
@@ -973,7 +1114,7 @@ export default async function QueuePage({
               </div>
             </Card>
           ) : (
-            filteredQueueItems.map((item) => {
+            displayQueueItems.map((item) => {
               const displayUnit = maybeCanonicalApartmentUnitLabel(item.unit);
               const linkedEstimate = item.linked_estimate_id
                 ? estimateById.get(item.linked_estimate_id)
@@ -1041,6 +1182,12 @@ export default async function QueuePage({
                               </span>
                             ) : null}
 
+                            {item.priority_order ? (
+                              <span className="queue-priority-pill rounded-full bg-sky-500/15 px-3 py-1 text-sm font-semibold text-sky-100">
+                                Priority {item.priority_order}
+                              </span>
+                            ) : null}
+
                             {item.smoked_in ? (
                               <span className="queue-remediation-pill rounded-full bg-red-500/20 px-3 py-1 text-sm font-semibold text-red-300">
                                 Remediation
@@ -1098,7 +1245,7 @@ export default async function QueuePage({
                           value={item.move_out_date}
                         />
                         <LifecyclePill
-                          label="Paint Due"
+                          label="Needed By"
                           value={item.ready_date}
                           detail={
                             readySoon && readyDays !== null
@@ -1108,6 +1255,16 @@ export default async function QueuePage({
                               : undefined
                           }
                           alert={readySoon}
+                          emptyValue="No deadline provided"
+                        />
+                        <LifecyclePill
+                          label="Manager Priority"
+                          value={
+                            item.priority_order
+                              ? `Priority ${item.priority_order}`
+                              : null
+                          }
+                          emptyValue="No priority order"
                         />
                         <LifecyclePill
                           label="Scheduled"
@@ -1285,11 +1442,13 @@ function LifecyclePill({
   label,
   value,
   detail,
+  emptyValue = "-",
   alert = false,
 }: {
   label: string;
   value: string | null;
   detail?: string;
+  emptyValue?: string;
   alert?: boolean;
 }) {
   return (
@@ -1306,7 +1465,7 @@ function LifecyclePill({
         {label}
       </p>
       <p className="mt-1 font-semibold text-zinc-100">
-        {value || "-"}
+        {value || emptyValue}
       </p>
       {detail ? (
         <p className="mt-1 text-xs font-semibold text-amber-200">

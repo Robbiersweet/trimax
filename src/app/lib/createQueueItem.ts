@@ -10,6 +10,7 @@ type CreateQueueItemInput = {
   wallPaintColor: string;
   flooring: string;
   priority: string;
+  priorityOrder?: string | number | null;
   smokedIn: boolean;
   primerRequested: boolean;
   priorRenovation: boolean;
@@ -29,6 +30,19 @@ function normalizeDate(value: string) {
   return value.trim() || null;
 }
 
+function normalizePriorityOrder(value: string | number | null | undefined) {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : Number(String(value ?? "").trim());
+
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return null;
+  }
+
+  return parsed;
+}
+
 function isMissingQueueColumnError(error: unknown) {
   if (!error || typeof error !== "object") {
     return false;
@@ -42,7 +56,12 @@ function isMissingQueueColumnError(error: unknown) {
   return (
     message.includes("primer_requested") ||
     message.includes("unit_layout") ||
-    message.includes("wall_paint_color")
+    message.includes("wall_paint_color") ||
+    message.includes("priority_order") ||
+    message.includes("priority_updated_at") ||
+    message.includes("priority_updated_by") ||
+    message.includes("deadline_updated_at") ||
+    message.includes("deadline_updated_by")
   );
 }
 
@@ -50,6 +69,12 @@ export async function createQueueItem(input: CreateQueueItemInput) {
   await assertCanWriteDuringMaintenance(input.businessSlug);
 
   const id = crypto.randomUUID();
+  const priorityOrder = normalizePriorityOrder(input.priorityOrder);
+  const neededByDate = normalizeDate(input.readyDate);
+  const now = new Date().toISOString();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const queueItemInsert = {
     id,
@@ -61,6 +86,9 @@ export async function createQueueItem(input: CreateQueueItemInput) {
     wall_paint_color: input.wallPaintColor.trim() || null,
     flooring: input.flooring,
     priority: input.priority,
+    priority_order: priorityOrder,
+    priority_updated_at: priorityOrder ? now : null,
+    priority_updated_by: priorityOrder ? user?.id ?? null : null,
     smoked_in: input.smokedIn,
     primer_requested: input.primerRequested,
     prior_renovation: input.priorRenovation,
@@ -70,7 +98,9 @@ export async function createQueueItem(input: CreateQueueItemInput) {
     renovation_needed_details:
       input.renovationNeededDetails.trim() || null,
     move_out_date: normalizeDate(input.moveOutDate),
-    ready_date: normalizeDate(input.readyDate),
+    ready_date: neededByDate,
+    deadline_updated_at: neededByDate ? now : null,
+    deadline_updated_by: neededByDate ? user?.id ?? null : null,
     scheduled_date: normalizeDate(input.scheduledDate),
     completed_date: normalizeDate(input.completedDate),
     status: "Pending Estimate",
@@ -90,6 +120,11 @@ export async function createQueueItem(input: CreateQueueItemInput) {
     delete legacyQueueItemInsert.primer_requested;
     delete legacyQueueItemInsert.unit_layout;
     delete legacyQueueItemInsert.wall_paint_color;
+    delete legacyQueueItemInsert.priority_order;
+    delete legacyQueueItemInsert.priority_updated_at;
+    delete legacyQueueItemInsert.priority_updated_by;
+    delete legacyQueueItemInsert.deadline_updated_at;
+    delete legacyQueueItemInsert.deadline_updated_by;
 
     const retry = await supabase
       .from("queue_items")
@@ -127,7 +162,9 @@ export async function createQueueItem(input: CreateQueueItemInput) {
       priorRenovationDetails: input.priorRenovationDetails,
       renovationNeeded: input.renovationNeeded,
       renovationNeededDetails: input.renovationNeededDetails,
+      neededByDate: input.readyDate || null,
       readyDate: input.readyDate,
+      priorityOrder,
     },
   });
 

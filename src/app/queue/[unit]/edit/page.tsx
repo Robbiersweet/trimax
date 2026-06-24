@@ -81,6 +81,7 @@ type QueueEditSnapshot = {
   unit: string;
   status: string;
   priority: string;
+  priority_order: number | null;
   ready_date: string | null;
   scheduled_date: string | null;
   completed_date: string | null;
@@ -95,7 +96,8 @@ const trackedQueueEditFields: Array<{
   { key: "unit", label: "Unit" },
   { key: "status", label: "Status" },
   { key: "priority", label: "Priority" },
-  { key: "ready_date", label: "Paint Due Date" },
+  { key: "priority_order", label: "Manager Priority Order" },
+  { key: "ready_date", label: "Needed By Date" },
   { key: "scheduled_date", label: "Scheduled Date" },
   { key: "completed_date", label: "Completed Date" },
   { key: "move_out_date", label: "Move Out Date" },
@@ -116,6 +118,22 @@ function shouldCanonicalizeUnit(property: string, businessSlug: string) {
   );
 }
 
+function normalizePriorityOrderInput(value: string) {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  const parsed = Number(trimmed);
+
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return "invalid";
+  }
+
+  return parsed;
+}
+
 export default function EditQueueItemPage() {
   const params = useParams();
   const router = useRouter();
@@ -133,6 +151,7 @@ export default function EditQueueItemPage() {
   const [unit, setUnit] = useState("");
   const [status, setStatus] = useState("");
   const [priority, setPriority] = useState("");
+  const [priorityOrder, setPriorityOrder] = useState("");
   const [paintType, setPaintType] = useState("");
   const [unitLayout, setUnitLayout] = useState("");
   const [wallPaintColor, setWallPaintColor] = useState("");
@@ -199,6 +218,9 @@ export default function EditQueueItemPage() {
       setUnit(data.unit ?? "");
       setStatus(data.status ?? "");
       setPriority(data.priority ?? "");
+      setPriorityOrder(
+        data.priority_order ? String(data.priority_order) : ""
+      );
       setPaintType(data.paint_type ?? "");
       setUnitLayout(data.unit_layout ?? "");
       setWallPaintColor(data.wall_paint_color ?? "");
@@ -221,6 +243,7 @@ export default function EditQueueItemPage() {
         unit: data.unit ?? "",
         status: data.status ?? "",
         priority: data.priority ?? "",
+        priority_order: data.priority_order ?? null,
         ready_date: data.ready_date ?? null,
         scheduled_date: data.scheduled_date ?? null,
         completed_date: data.completed_date ?? null,
@@ -255,6 +278,27 @@ export default function EditQueueItemPage() {
       return;
     }
 
+    const normalizedPriorityOrder =
+      normalizePriorityOrderInput(priorityOrder);
+
+    if (normalizedPriorityOrder === "invalid") {
+      setToast({
+        type: "error",
+        message: "Priority Order must be a positive whole number.",
+      });
+      return;
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const now = new Date().toISOString();
+    const deadlineChanged =
+      Boolean(originalQueueItem) &&
+      (originalQueueItem?.ready_date ?? null) !== (readyDate || null);
+    const priorityOrderChanged =
+      Boolean(originalQueueItem) &&
+      (originalQueueItem?.priority_order ?? null) !== normalizedPriorityOrder;
     const updatePayload = {
       property,
       unit: shouldCanonicalizeUnit(property, businessSlug)
@@ -262,6 +306,9 @@ export default function EditQueueItemPage() {
         : unit,
       status,
       priority,
+      priority_order: normalizedPriorityOrder,
+      priority_updated_at: priorityOrderChanged ? now : undefined,
+      priority_updated_by: priorityOrderChanged ? user?.id ?? null : undefined,
       paint_type: paintType,
       unit_layout: unitLayout.trim() || null,
       wall_paint_color: wallPaintColor.trim() || null,
@@ -276,6 +323,8 @@ export default function EditQueueItemPage() {
         renovationNeededDetails.trim() || null,
       move_out_date: moveOutDate || null,
       ready_date: readyDate || null,
+      deadline_updated_at: deadlineChanged ? now : undefined,
+      deadline_updated_by: deadlineChanged ? user?.id ?? null : undefined,
       scheduled_date: scheduledDate || null,
       completed_date: completedDate || null,
       notes,
@@ -285,6 +334,7 @@ export default function EditQueueItemPage() {
       unit: updatePayload.unit,
       status: updatePayload.status,
       priority: updatePayload.priority,
+      priority_order: updatePayload.priority_order,
       ready_date: updatePayload.ready_date,
       scheduled_date: updatePayload.scheduled_date,
       completed_date: updatePayload.completed_date,
@@ -300,7 +350,12 @@ export default function EditQueueItemPage() {
     if (
       error?.message?.includes("primer_requested") ||
       error?.message?.includes("unit_layout") ||
-      error?.message?.includes("wall_paint_color")
+      error?.message?.includes("wall_paint_color") ||
+      error?.message?.includes("priority_order") ||
+      error?.message?.includes("priority_updated_at") ||
+      error?.message?.includes("priority_updated_by") ||
+      error?.message?.includes("deadline_updated_at") ||
+      error?.message?.includes("deadline_updated_by")
     ) {
       const legacyUpdatePayload: Record<string, unknown> = {
         ...updatePayload,
@@ -308,6 +363,11 @@ export default function EditQueueItemPage() {
       delete legacyUpdatePayload.primer_requested;
       delete legacyUpdatePayload.unit_layout;
       delete legacyUpdatePayload.wall_paint_color;
+      delete legacyUpdatePayload.priority_order;
+      delete legacyUpdatePayload.priority_updated_at;
+      delete legacyUpdatePayload.priority_updated_by;
+      delete legacyUpdatePayload.deadline_updated_at;
+      delete legacyUpdatePayload.deadline_updated_by;
 
       const retry = await supabase
         .from("queue_items")
@@ -358,6 +418,44 @@ export default function EditQueueItemPage() {
           details: {
             changedFields: changes.map((change) => change?.field),
             changes,
+          },
+        });
+      }
+
+      if (deadlineChanged) {
+        await logActivity({
+          businessId,
+          action: "queue_item.needed_by_date_changed",
+          entityType: "queue_item",
+          entityId: queueItemId,
+          entityLabel: `${nextSnapshot.property || "Property"} - Unit ${
+            nextSnapshot.unit || "-"
+          }`,
+          details: {
+            field: "ready_date",
+            label: "Needed By Date",
+            previousValue: originalQueueItem.ready_date,
+            newValue: nextSnapshot.ready_date,
+            updatedBy: user?.id ?? null,
+          },
+        });
+      }
+
+      if (priorityOrderChanged) {
+        await logActivity({
+          businessId,
+          action: "queue_item.priority_order_changed",
+          entityType: "queue_item",
+          entityId: queueItemId,
+          entityLabel: `${nextSnapshot.property || "Property"} - Unit ${
+            nextSnapshot.unit || "-"
+          }`,
+          details: {
+            field: "priority_order",
+            label: "Manager Priority Order",
+            previousValue: originalQueueItem.priority_order,
+            newValue: nextSnapshot.priority_order,
+            updatedBy: user?.id ?? null,
           },
         });
       }
@@ -440,6 +538,14 @@ export default function EditQueueItemPage() {
                 value={priority}
                 onChange={setPriority}
                 options={priorityOptions}
+              />
+
+              <InputField
+                label="Priority Order"
+                value={priorityOrder}
+                onChange={setPriorityOrder}
+                type="number"
+                helperText="Use this to tell Robbie which units should be handled first."
               />
             </div>
 
@@ -602,12 +708,22 @@ export default function EditQueueItemPage() {
               />
 
               <InputField
-                label="Paint Due Date"
+                label="Needed By Date"
                 value={readyDate}
                 onChange={setReadyDate}
                 type="date"
-                helperText="Use the date the property wants painting finished by so urgent units can be prioritized."
+                helperText="Use this only for the date the unit needs to be completed by. Do not estimate Robbie's work time here."
               />
+            </div>
+
+            <div className="rounded-2xl border border-sky-500/25 bg-sky-500/10 px-4 py-3 text-sm leading-6 text-sky-100">
+              <p className="font-black uppercase tracking-[0.18em] text-sky-200">
+                Internal scheduling note
+              </p>
+              <p className="mt-2">
+                Needed By = property deadline. Priority = manager&apos;s requested
+                order. Schedule = internal work plan.
+              </p>
             </div>
 
             <div className="grid gap-5 md:grid-cols-2">
