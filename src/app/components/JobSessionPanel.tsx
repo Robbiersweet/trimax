@@ -113,6 +113,32 @@ function formatTime(value: string | null | undefined) {
   });
 }
 
+function toLocalDateInputValue(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+    date.getDate()
+  ).padStart(2, "0")}`;
+}
+
+function toLocalTimeInputValue(date = new Date()) {
+  return `${String(date.getHours()).padStart(2, "0")}:${String(
+    date.getMinutes()
+  ).padStart(2, "0")}`;
+}
+
+function combineLocalDateTime(dateValue: string, timeValue: string) {
+  if (!dateValue || !timeValue) {
+    return null;
+  }
+
+  const date = new Date(`${dateValue}T${timeValue}`);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date;
+}
+
 function blankBreakdown(): BreakdownDraft {
   return {
     workType: "Prep",
@@ -218,8 +244,22 @@ export default function JobSessionPanel({
   const [breakdowns, setBreakdowns] = useState<JobSessionBreakdown[]>([]);
   const [elapsedMinutes, setElapsedMinutes] = useState(0);
   const [showStartModal, setShowStartModal] = useState(false);
+  const [showManualModal, setShowManualModal] = useState(false);
   const [jobTypeDraft, setJobTypeDraft] = useState(jobType || "Paint");
   const [notesDraft, setNotesDraft] = useState("");
+  const [manualJobTypeDraft, setManualJobTypeDraft] = useState(
+    jobType || "Paint"
+  );
+  const [manualDateDraft, setManualDateDraft] = useState(toLocalDateInputValue);
+  const [manualStartTimeDraft, setManualStartTimeDraft] = useState("08:00");
+  const [manualEndTimeDraft, setManualEndTimeDraft] = useState(
+    toLocalTimeInputValue
+  );
+  const [manualDurationDraft, setManualDurationDraft] = useState("");
+  const [manualDurationUnit, setManualDurationUnit] = useState<
+    "minutes" | "hours"
+  >("hours");
+  const [manualNotesDraft, setManualNotesDraft] = useState("");
   const [stoppedSession, setStoppedSession] = useState<JobSession | null>(null);
   const [breakdownDrafts, setBreakdownDrafts] = useState<BreakdownDraft[]>([
     blankBreakdown(),
@@ -526,6 +566,102 @@ export default function JobSessionPanel({
       },
     });
     await loadSessions(userId);
+  }
+
+  async function saveManualSession() {
+    if (!userId) {
+      setMessage("Sign in again before adding missed time.");
+      return;
+    }
+
+    const startedAt = combineLocalDateTime(
+      manualDateDraft,
+      manualStartTimeDraft
+    );
+    const enteredDuration = Number(manualDurationDraft);
+    const enteredMinutes =
+      Number.isFinite(enteredDuration) && enteredDuration > 0
+        ? manualDurationUnit === "hours"
+          ? Math.round(enteredDuration * 60)
+          : Math.round(enteredDuration)
+        : 0;
+    const endedAt =
+      startedAt && enteredMinutes > 0
+        ? new Date(startedAt.getTime() + enteredMinutes * 60_000)
+        : combineLocalDateTime(manualDateDraft, manualEndTimeDraft);
+
+    if (!startedAt || !endedAt || endedAt <= startedAt) {
+      setMessage(
+        "Add a valid work date with either an end time or a positive duration."
+      );
+      return;
+    }
+
+    setIsBusy(true);
+    setMessage(null);
+
+    const noteParts = [
+      "Manual entry - forgot to punch in",
+      manualNotesDraft.trim(),
+    ].filter(Boolean);
+
+    const { data, error } = await supabase
+      .from("job_sessions")
+      .insert({
+        business_id: businessId,
+        user_id: userId,
+        property_name: propertyName,
+        unit_label: unitLabel,
+        queue_item_id: queueItemId,
+        estimate_id: estimateId ?? null,
+        invoice_id: invoiceId ?? null,
+        job_type: manualJobTypeDraft || "General",
+        started_at: startedAt.toISOString(),
+        ended_at: endedAt.toISOString(),
+        notes: noteParts.join(": "),
+      })
+      .select()
+      .single();
+
+    setIsBusy(false);
+
+    if (error) {
+      console.warn("Manual job session could not be saved:", error.message);
+      setMessage("Missed time could not be saved yet.");
+      return;
+    }
+
+    const manualSession = data as JobSession;
+    setShowManualModal(false);
+    setStoppedSession(manualSession);
+    setBreakdownDrafts(defaultBreakdownDrafts(manualSession.job_type));
+    setManualNotesDraft("");
+    setManualDurationDraft("");
+    await logActivity({
+      businessId,
+      action: "job_session.manual_added",
+      entityType: "queue_item",
+      entityId: queueItemId,
+      entityLabel: `${propertyName || "Property"}${
+        unitLabel ? ` / Unit ${unitLabel}` : ""
+      }`,
+      details: {
+        jobSessionId: manualSession.id,
+        jobType: manualSession.job_type,
+        startedAt: manualSession.started_at,
+        endedAt: manualSession.ended_at,
+        totalMinutes: manualSession.total_minutes,
+        notes: manualSession.notes,
+        source: "manual_missed_time_entry",
+      },
+    });
+    setMessage(
+      `Missed time added: ${formatDuration(
+        manualSession.total_minutes ??
+          minutesBetween(manualSession.started_at, manualSession.ended_at)
+      )}. Add a breakdown now or skip it.`
+    );
+    await loadSessions(userId, { preserveMessage: true });
   }
 
   async function saveBreakdown(skip = false) {
@@ -836,7 +972,7 @@ export default function JobSessionPanel({
         </div>
 
         {!activeSession ? (
-          <div className="job-session-start-actions grid gap-2 sm:grid-cols-2 lg:min-w-[22rem]">
+          <div className="job-session-start-actions grid gap-2 sm:grid-cols-3 lg:min-w-[30rem]">
             <button
               className="app-button-primary rounded-2xl px-5 py-4 text-base font-black"
               disabled={setupMissing || isBusy || Boolean(otherActiveSession)}
@@ -852,6 +988,14 @@ export default function JobSessionPanel({
               type="button"
             >
               Options
+            </button>
+            <button
+              className="rounded-2xl border border-amber-300/35 bg-amber-300/15 px-5 py-4 text-base font-black text-amber-100 transition hover:-translate-y-0.5 hover:bg-amber-300/25 disabled:opacity-60"
+              disabled={setupMissing || isBusy}
+              onClick={() => setShowManualModal(true)}
+              type="button"
+            >
+              Add Missed Time
             </button>
           </div>
         ) : null}
@@ -1106,6 +1250,158 @@ export default function JobSessionPanel({
               className="app-button-secondary rounded-2xl px-5 py-4 text-base font-black"
               disabled={isBusy}
               onClick={() => setShowStartModal(false)}
+              type="button"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {showManualModal ? (
+        <div className="job-session-manual mt-5 rounded-3xl border border-amber-300/30 bg-amber-300/10 p-4">
+          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-200">
+                Add Missed Time
+              </p>
+              <h3 className="mt-2 text-2xl font-black">
+                Manual job session
+              </h3>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-amber-50/80">
+                Use this when you forgot to punch in. Trimax saves it as normal
+                labor time and marks the activity as manually added.
+              </p>
+            </div>
+            <span className="rounded-full border border-amber-200/30 bg-black/25 px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-amber-100">
+              Audit logged
+            </span>
+          </div>
+
+          <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <label className="block">
+              <span className="text-sm font-bold text-amber-50/85">
+                Work Date
+              </span>
+              <input
+                className="app-form-input mt-2 w-full rounded-2xl border px-4 py-3"
+                type="date"
+                value={manualDateDraft}
+                onChange={(event) => setManualDateDraft(event.target.value)}
+              />
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-bold text-amber-50/85">
+                Start Time
+              </span>
+              <input
+                className="app-form-input mt-2 w-full rounded-2xl border px-4 py-3"
+                type="time"
+                value={manualStartTimeDraft}
+                onChange={(event) =>
+                  setManualStartTimeDraft(event.target.value)
+                }
+              />
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-bold text-amber-50/85">
+                End Time
+              </span>
+              <input
+                className="app-form-input mt-2 w-full rounded-2xl border px-4 py-3"
+                type="time"
+                value={manualEndTimeDraft}
+                onChange={(event) => setManualEndTimeDraft(event.target.value)}
+              />
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-bold text-amber-50/85">
+                Job Type
+              </span>
+              <select
+                className="app-form-input mt-2 w-full rounded-2xl border px-4 py-3"
+                value={manualJobTypeDraft}
+                onChange={(event) => setManualJobTypeDraft(event.target.value)}
+              >
+                <option>Paint</option>
+                <option>Reno Paint</option>
+                <option>Cabinets</option>
+                <option>Cleaning</option>
+                <option>Inspection</option>
+                <option>Admin</option>
+                <option>Other</option>
+              </select>
+            </label>
+          </div>
+
+          <div className="mt-4 grid gap-4 md:grid-cols-[0.8fr_0.6fr_1.6fr]">
+            <label className="block">
+              <span className="text-sm font-bold text-amber-50/85">
+                Duration Override
+              </span>
+              <input
+                className="app-form-input mt-2 w-full rounded-2xl border px-4 py-3"
+                inputMode="decimal"
+                placeholder="Optional"
+                value={manualDurationDraft}
+                onChange={(event) =>
+                  setManualDurationDraft(event.target.value)
+                }
+              />
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-bold text-amber-50/85">
+                Unit
+              </span>
+              <select
+                className="app-form-input mt-2 w-full rounded-2xl border px-4 py-3"
+                value={manualDurationUnit}
+                onChange={(event) =>
+                  setManualDurationUnit(
+                    event.target.value === "minutes" ? "minutes" : "hours"
+                  )
+                }
+              >
+                <option value="hours">Hours</option>
+                <option value="minutes">Minutes</option>
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-bold text-amber-50/85">
+                Note
+              </span>
+              <input
+                className="app-form-input mt-2 w-full rounded-2xl border px-4 py-3"
+                placeholder="Example: Forgot to punch in after arriving"
+                value={manualNotesDraft}
+                onChange={(event) => setManualNotesDraft(event.target.value)}
+              />
+            </label>
+          </div>
+
+          <p className="mt-3 rounded-2xl border border-amber-200/20 bg-black/25 px-4 py-3 text-sm font-semibold text-amber-50/80">
+            Leave duration blank to use start and end time. If you enter a
+            duration, Trimax calculates the end time from the start time.
+          </p>
+
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+            <button
+              className="app-button-primary rounded-2xl px-5 py-3 font-black"
+              disabled={isBusy}
+              onClick={saveManualSession}
+              type="button"
+            >
+              Save Missed Time
+            </button>
+            <button
+              className="app-button-secondary rounded-2xl px-5 py-3 font-black"
+              disabled={isBusy}
+              onClick={() => setShowManualModal(false)}
               type="button"
             >
               Cancel
