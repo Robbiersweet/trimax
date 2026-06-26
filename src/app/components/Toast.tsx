@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 type ToastProps = {
   type: "success" | "error";
@@ -70,7 +71,7 @@ export default function Toast({ type, message, durationMs }: ToastProps) {
     setPausedKey((currentKey) => (currentKey === toastKey ? null : currentKey));
   };
 
-  if (dismissedKey === toastKey) {
+  if (typeof document === "undefined" || dismissedKey === toastKey) {
     return null;
   }
 
@@ -82,7 +83,7 @@ export default function Toast({ type, message, durationMs }: ToastProps) {
   };
   const title = type === "success" ? "Done" : "Needs attention";
 
-  return (
+  return createPortal(
     <div
       aria-live={type === "error" ? "assertive" : "polite"}
       className={`app-toast fixed z-50 flex max-w-[calc(100vw-2rem)] items-start gap-3 overflow-y-auto overflow-x-hidden rounded-2xl border px-5 py-4 text-sm leading-6 shadow-2xl sm:max-w-md ${styles[type]}`}
@@ -124,6 +125,7 @@ export default function Toast({ type, message, durationMs }: ToastProps) {
           }}
         />
       ) : null}
-    </div>
+    </div>,
+    document.body,
   );
 }

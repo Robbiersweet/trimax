@@ -799,6 +799,9 @@ html.theme-light .app-toast {
 }
 
 .app-toast {
+  position: fixed;
+  z-index: 70;
+  box-sizing: border-box;
   bottom: calc(6.75rem + env(safe-area-inset-bottom, 0px));
   right: max(1rem, env(safe-area-inset-right, 0px));
   backdrop-filter: blur(18px);
@@ -19716,12 +19719,14 @@ html.theme-light .queue-empty-card::after {
   .app-toast {
     left: max(0.75rem, env(safe-area-inset-left, 0px)) !important;
     right: max(0.75rem, env(safe-area-inset-right, 0px)) !important;
-    top: calc(max(0.75rem, env(safe-area-inset-top, 0px)) + 0.5rem);
+    top: max(4.25rem, calc(env(safe-area-inset-top, 0px) + 1rem));
     bottom: auto !important;
     width: auto;
     max-width: none;
-    max-height: calc(100svh - max(0.75rem, env(safe-area-inset-top, 0px)) - max(0.75rem, env(safe-area-inset-bottom, 0px)) - 1.5rem);
+    max-height: calc(100svh - max(4.25rem, calc(env(safe-area-inset-top, 0px) + 1rem)) - max(0.75rem, env(safe-area-inset-bottom, 0px)) - 0.75rem);
     padding: 0.9rem 1rem;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   .quick-command-backdrop {
