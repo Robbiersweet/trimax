@@ -192,7 +192,7 @@ export default async function EstimatePrintPage({
     "Estimate";
 
   return (
-    <main className="min-h-screen bg-white px-8 py-8 text-black print:p-0">
+    <main className="print-preview-page min-h-screen bg-white px-8 py-8 text-black print:p-0">
       <PrintToolbar
         backHref={`/estimates/${estimate.id}?business=${businessSlug}`}
         backLabel="Back to Estimate"
@@ -311,7 +311,7 @@ export default async function EstimatePrintPage({
 
         <section className="mt-10 print:mt-8">
           <div className="border-t-4 border-[#e8bd3f] pt-4">
-            <div className="grid grid-cols-[1fr_160px_90px_150px] gap-6 text-[#d9aa2f]">
+            <div className="standard-print-line-header grid grid-cols-[1fr_160px_90px_150px] gap-6 text-[#d9aa2f]">
               <p>Description</p>
               <p className="text-right">Rate</p>
               <p className="text-right">Qty</p>
@@ -321,8 +321,8 @@ export default async function EstimatePrintPage({
 
           <div className="mt-5 border-b border-gray-300 pb-5">
             {lineItems.length === 0 ? (
-              <div className="grid grid-cols-[1fr_160px_90px_150px] gap-6">
-                <p>{documentTitle}</p>
+              <div className="standard-print-line-grid grid grid-cols-[1fr_160px_90px_150px] gap-6">
+                <p className="standard-print-line-description">{documentTitle}</p>
                 <p className="text-right">
                   {formatCurrency(subtotal)}
                 </p>
@@ -336,9 +336,9 @@ export default async function EstimatePrintPage({
                 {lineItems.map((item) => (
                   <div
                     key={item.id}
-                    className="grid grid-cols-[1fr_160px_90px_150px] gap-6"
+                    className="standard-print-line-grid grid grid-cols-[1fr_160px_90px_150px] gap-6"
                   >
-                    <p className="whitespace-pre-line leading-7">
+                    <p className="standard-print-line-description whitespace-pre-line leading-7">
                       {item.description || "Line item"}
                     </p>
 

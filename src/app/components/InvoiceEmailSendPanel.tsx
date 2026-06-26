@@ -575,14 +575,23 @@ export default function InvoiceEmailSendPanel({
         failedCount?: number;
         failures?: Array<{ documentNumber?: string; error?: string }>;
         statusUpdateError?: string | null;
+        pipelineStageLabel?: string;
+        traceId?: string;
       };
 
       if (!response.ok) {
+        const traceText = result.traceId ? ` Trace ID: ${result.traceId}.` : "";
+        const stageText = result.pipelineStageLabel
+          ? `${result.pipelineStageLabel}: `
+          : "";
+
         setToast({
           type: "error",
           message:
-            result.error ??
-            `Trimax could not send this ${documentLabelLower} email yet.`,
+            `${stageText}${
+              result.error ??
+              `Trimax could not send this ${documentLabelLower} email yet.`
+            }${traceText}`,
         });
         return;
       }
@@ -599,11 +608,13 @@ export default function InvoiceEmailSendPanel({
             ? `Split invoice group sent.`
             : `${documentLabel} email sent.`),
       });
-    } catch {
+    } catch (error) {
       setToast({
         type: "error",
         message:
-          "Trimax could not reach the email sender. Please try again.",
+          error instanceof Error
+            ? `Browser request failed before Trimax could reach the send server: ${error.message}`
+            : "Browser request failed before Trimax could reach the send server.",
       });
     } finally {
       setSending(false);
@@ -764,7 +775,7 @@ export default function InvoiceEmailSendPanel({
           </div>
 
           {sendSplitGroup && splitGroupCount > 1 ? (
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
+            <div className="invoice-split-attachment-list rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
               <p className="font-black text-slate-950">Included invoices</p>
               <div className="mt-3 space-y-2">
                 {splitGroupItems.map((item) => (

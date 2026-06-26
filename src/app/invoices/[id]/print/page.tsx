@@ -320,7 +320,7 @@ export default async function InvoicePrintPage({
   }
 
   return (
-    <main className="min-h-screen bg-white px-8 py-8 text-black print:p-0">
+    <main className="print-preview-page min-h-screen bg-white px-8 py-8 text-black print:p-0">
       <PrintToolbar
         backHref={`/invoices/${invoice.id}?business=${businessSlug}`}
         backLabel="Back to Invoice"
@@ -645,16 +645,28 @@ function PrintLineItemRow({
 }) {
   return (
     <tr className="border-b border-gray-200 align-top">
-      <td className="overflow-wrap-anywhere whitespace-pre-line py-2.5 pr-4 leading-6 print:py-1.5 print:leading-4">
+      <td
+        data-label="Description"
+        className="standard-print-line-description overflow-wrap-anywhere whitespace-pre-line py-2.5 pr-4 leading-6 print:py-1.5 print:leading-4"
+      >
         {description}
       </td>
-      <td className="overflow-wrap-anywhere px-3 py-2.5 text-right print:py-1.5">
+      <td
+        data-label="Rate"
+        className="overflow-wrap-anywhere px-3 py-2.5 text-right print:py-1.5"
+      >
         {rate}
       </td>
-      <td className="overflow-wrap-anywhere px-3 py-2.5 text-right print:py-1.5">
+      <td
+        data-label="Qty"
+        className="overflow-wrap-anywhere px-3 py-2.5 text-right print:py-1.5"
+      >
         {quantity}
       </td>
-      <td className="overflow-wrap-anywhere py-2.5 pl-3 text-right print:py-1.5">
+      <td
+        data-label="Line Total"
+        className="overflow-wrap-anywhere py-2.5 pl-3 text-right print:py-1.5"
+      >
         {total}
       </td>
     </tr>
@@ -725,7 +737,7 @@ function FiveStarsBoaPrintPage({
   const blankRowCount = Math.max(10, 16 - rows.length);
 
   return (
-    <main className="min-h-screen bg-white px-4 py-6 text-black print:p-0">
+    <main className="print-preview-page min-h-screen bg-white px-4 py-6 text-black print:p-0">
       <PrintToolbar
         backHref={backHref}
         backLabel="Back to Invoice"

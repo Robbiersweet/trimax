@@ -85,7 +85,7 @@ export default function Toast({ type, message, durationMs }: ToastProps) {
   return (
     <div
       aria-live={type === "error" ? "assertive" : "polite"}
-      className={`app-toast fixed z-50 flex max-w-[calc(100vw-2rem)] items-start gap-3 overflow-hidden rounded-2xl border px-5 py-4 text-sm leading-6 shadow-2xl sm:max-w-md ${styles[type]}`}
+      className={`app-toast fixed z-50 flex max-w-[calc(100vw-2rem)] items-start gap-3 overflow-y-auto overflow-x-hidden rounded-2xl border px-5 py-4 text-sm leading-6 shadow-2xl sm:max-w-md ${styles[type]}`}
       onBlur={resumeToast}
       onFocus={pauseToast}
       onMouseEnter={pauseToast}
@@ -102,7 +102,9 @@ export default function Toast({ type, message, durationMs }: ToastProps) {
         <span className="app-toast-title block text-xs font-black uppercase tracking-[0.16em]">
           {title}
         </span>
-        <span className="block font-semibold">{message}</span>
+        <span className="block whitespace-pre-wrap break-words font-semibold">
+          {message}
+        </span>
       </span>
       <button
         aria-label="Dismiss notification"

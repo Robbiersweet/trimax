@@ -35,7 +35,7 @@ export default function PrintToolbar({
   }
 
   return (
-    <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/92 px-4 py-3 text-slate-950 shadow-[0_12px_34px_rgba(15,23,42,0.08)] backdrop-blur-xl print:hidden">
+    <div className="print-preview-toolbar sticky top-0 z-10 border-b border-slate-200 bg-white/92 px-4 py-3 text-slate-950 shadow-[0_12px_34px_rgba(15,23,42,0.08)] backdrop-blur-xl print:hidden">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <BackButton

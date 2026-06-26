@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./print.css";
 
 :root {
   --background: #0a0a0a;
@@ -62,99 +63,6 @@ body {
 #trimax-main-content:focus-visible {
   outline: 2px solid rgba(56, 189, 248, 0.7);
   outline-offset: 0.35rem;
-}
-
-@media print {
-  @page {
-    size: letter;
-    margin: 0.35in;
-  }
-
-  .standard-invoice-print,
-  .standard-estimate-print {
-    font-size: 9.5pt;
-    line-height: 1.18;
-  }
-
-  .standard-invoice-print,
-  .standard-invoice-print *,
-  .standard-estimate-print,
-  .standard-estimate-print * {
-    box-sizing: border-box;
-    max-width: 100%;
-    overflow-wrap: anywhere;
-    word-break: normal;
-  }
-
-  .standard-invoice-print section,
-  .standard-invoice-print .print-keep-together,
-  .standard-estimate-print section,
-  .standard-estimate-print .print-keep-together {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-
-  .standard-invoice-print .print-break-auto {
-    break-inside: auto;
-    page-break-inside: auto;
-  }
-
-  .standard-print-table {
-    page-break-inside: auto;
-  }
-
-  .standard-print-table thead {
-    display: table-header-group;
-  }
-
-  .standard-print-table tfoot {
-    display: table-footer-group;
-  }
-
-  .standard-print-table tr {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-
-  .standard-print-table tbody tr:first-child td {
-    padding-top: 0.08in;
-  }
-
-  .standard-estimate-print section {
-    margin-top: 0.16in !important;
-  }
-
-  .standard-estimate-print h1 {
-    font-size: 20pt !important;
-    line-height: 1.12 !important;
-  }
-
-  .standard-estimate-print .text-5xl {
-    font-size: 24pt !important;
-  }
-
-  .standard-estimate-print .text-4xl {
-    font-size: 20pt !important;
-  }
-
-  .standard-estimate-print .gap-8 {
-    gap: 0.18in !important;
-  }
-
-  .standard-estimate-print .mt-10,
-  .standard-estimate-print .mt-12 {
-    margin-top: 0.22in !important;
-  }
-
-  .standard-estimate-print .mt-8 {
-    margin-top: 0.16in !important;
-  }
-
-  .standard-estimate-print .py-6,
-  .standard-estimate-print .py-5 {
-    padding-bottom: 0.12in !important;
-    padding-top: 0.12in !important;
-  }
 }
 
 @media (max-width: 640px) {
@@ -895,6 +803,9 @@ html.theme-light .app-toast {
   right: max(1rem, env(safe-area-inset-right, 0px));
   backdrop-filter: blur(18px);
   min-width: min(24rem, calc(100vw - 2rem));
+  max-height: min(70vh, 34rem);
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .app-toast-icon {
@@ -923,6 +834,8 @@ html.theme-light .app-toast {
   .app-toast {
     left: max(1rem, env(safe-area-inset-left, 0px));
     right: max(1rem, env(safe-area-inset-right, 0px));
+    bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));
+    max-height: min(68vh, 30rem);
   }
 }
 
@@ -19523,6 +19436,15 @@ html.theme-light .queue-empty-card::after {
     color: #166534 !important;
   }
 
+  .invoice-split-attachment-list,
+  .invoice-split-attachment-list *,
+  .invoice-split-attachment-list .text-slate-950,
+  .invoice-split-attachment-list .text-slate-700,
+  .invoice-split-attachment-list .text-slate-600,
+  .invoice-split-attachment-list .text-slate-500 {
+    color: #0f172a !important;
+  }
+
   .invoice-email-footer {
     padding: 1rem !important;
   }
@@ -19544,5 +19466,284 @@ html.theme-light .queue-empty-card::after {
   .invoice-line-items-card .ml-auto {
     margin-left: 0 !important;
     max-width: none !important;
+  }
+}
+
+/* Trimax mobile stabilization guardrails.
+   Screen-only on purpose: customer PDFs/print views must keep dedicated print sizing. */
+@media screen {
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  .app-shell-root,
+  .app-shell-content,
+  .app-workspace-panel,
+  .app-workspace-panel > main,
+  .app-card,
+  .app-soft-panel,
+  .payment-hero-card,
+  .invoice-email-panel,
+  .invoice-customer-preview,
+  .quick-command-panel,
+  .quick-command-results,
+  .quick-command-route,
+  .quick-command-result {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+  }
+
+  .app-shell-root,
+  .app-shell-content,
+  .app-workspace-panel {
+    width: 100%;
+    overflow-x: clip;
+  }
+
+  .app-workspace-panel :where(h1, h2, h3, h4, h5, h6, p, li, dd, dt, span, label, button, a, input, textarea, select),
+  .app-card :where(h1, h2, h3, h4, h5, h6, p, li, dd, dt, span, label, button, a, input, textarea, select),
+  .app-soft-panel :where(h1, h2, h3, h4, h5, h6, p, li, dd, dt, span, label, button, a, input, textarea, select) {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .app-workspace-panel :where(.breakable-text, .overflow-wrap-anywhere, .app-toast, .quick-command-route, .quick-command-result, .app-workspace-context-copy),
+  .app-toast,
+  .app-toast *,
+  .quick-command-panel,
+  .quick-command-panel *,
+  .app-workspace-back-bar,
+  .app-workspace-back-bar *,
+  .app-sidebar,
+  .app-sidebar * {
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
+
+  .app-workspace-panel :where(pre, code),
+  .app-card :where(pre, code),
+  .app-soft-panel :where(pre, code) {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .app-workspace-panel :where(img, svg, canvas, video, iframe),
+  .app-card :where(img, svg, canvas, video, iframe),
+  .app-soft-panel :where(img, svg, canvas, video, iframe) {
+    max-width: 100%;
+  }
+
+  .app-workspace-panel :where(input, textarea, select),
+  .app-card :where(input, textarea, select),
+  .app-soft-panel :where(input, textarea, select) {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .app-toast {
+    width: min(28rem, calc(100vw - 2rem));
+    min-width: 0;
+    max-width: calc(100vw - 2rem);
+    overflow-x: hidden;
+    overflow-y: auto;
+    white-space: normal;
+  }
+
+  .app-toast > span {
+    min-width: 0;
+  }
+
+  .app-toast-progress {
+    pointer-events: none;
+  }
+
+  .quick-command-backdrop,
+  [role="dialog"] {
+    max-width: 100vw;
+  }
+
+  [role="dialog"] {
+    overflow-x: hidden;
+  }
+
+  .quick-command-backdrop {
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .quick-command-panel {
+    max-height: min(48rem, calc(100svh - 2rem));
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .quick-command-panel :where(*) {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+@media screen and (max-width: 640px) {
+  .app-shell-content {
+    padding-left: max(0.75rem, env(safe-area-inset-left, 0px)) !important;
+    padding-right: max(0.75rem, env(safe-area-inset-right, 0px)) !important;
+  }
+
+  .app-workspace-panel {
+    padding-inline: 0 !important;
+  }
+
+  .app-card,
+  .app-soft-panel,
+  .payment-hero-card,
+  .invoice-email-panel {
+    overflow-x: hidden;
+  }
+
+  .app-card:has(> :only-child),
+  .app-soft-panel:has(> :only-child),
+  .invoice-email-panel,
+  .job-session-modal,
+  .quick-command-panel,
+  [role="dialog"] {
+    max-height: calc(100svh - 1.5rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .app-sidebar {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .app-sidebar-brand,
+  .app-sidebar-current,
+  .app-sidebar-nav-link,
+  .app-sidebar-sub-link,
+  .app-sidebar-footer {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .app-sidebar-nav-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .app-sidebar-nav-link,
+  .app-sidebar-sub-link {
+    white-space: normal !important;
+  }
+
+  .app-sidebar-current p,
+  .app-sidebar-nav-link span,
+  .app-sidebar-sub-link span {
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+  }
+
+  .app-workspace-back-bar {
+    align-items: stretch !important;
+    overflow: hidden;
+  }
+
+  .app-workspace-context {
+    flex-basis: 100%;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+  }
+
+  .app-workspace-context-copy {
+    width: 100%;
+    text-align: left !important;
+  }
+
+  .app-workspace-context-label,
+  .app-workspace-back-hint {
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+  }
+
+  .app-workspace-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .app-workspace-back-action,
+  .app-workspace-copy-action,
+  .app-shell-back-button {
+    min-width: 0 !important;
+    max-width: 100%;
+    flex: 1 1 min(100%, 11rem);
+    white-space: normal !important;
+  }
+
+  .app-toast {
+    left: max(0.75rem, env(safe-area-inset-left, 0px)) !important;
+    right: max(0.75rem, env(safe-area-inset-right, 0px)) !important;
+    bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px));
+    width: auto;
+    max-width: none;
+    max-height: min(70svh, calc(100svh - 1.5rem));
+    padding: 0.9rem 1rem;
+  }
+
+  .quick-command-backdrop {
+    align-items: flex-start;
+    padding: max(0.75rem, env(safe-area-inset-top, 0px)) max(0.75rem, env(safe-area-inset-right, 0px)) max(0.75rem, env(safe-area-inset-bottom, 0px)) max(0.75rem, env(safe-area-inset-left, 0px));
+  }
+
+  .quick-command-panel {
+    width: 100%;
+    max-height: calc(100svh - 1.5rem);
+    border-radius: 1.25rem;
+  }
+
+  .quick-command-search-row {
+    grid-template-columns: auto minmax(0, 1fr) !important;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .quick-command-input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .quick-command-close {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .quick-command-hints,
+  .quick-command-examples,
+  .quick-command-route-meta,
+  .quick-command-title-row {
+    flex-wrap: wrap;
+  }
+
+  .quick-command-route,
+  .quick-command-result,
+  .quick-command-brief {
+    overflow: hidden;
+  }
+
+  .quick-command-results,
+  .quick-command-route-main,
+  .quick-command-route-meta,
+  .quick-command-title-row,
+  .quick-command-result > span {
+    min-width: 0;
+    max-width: 100%;
   }
 }

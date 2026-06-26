@@ -136,6 +136,120 @@ function formatCurrency(value: number) {
   }).format(Number.isFinite(value) ? value : 0);
 }
 
+type SendPipelineStage =
+  | "request_received"
+  | "request_validation"
+  | "authentication"
+  | "invoice_lookup"
+  | "business_lookup"
+  | "workspace_access"
+  | "email_settings"
+  | "split_group_lookup"
+  | "pdf_generation"
+  | "attachment_creation"
+  | "email_payload"
+  | "resend_api_call"
+  | "resend_response"
+  | "proof_logging"
+  | "invoice_status_update";
+
+type SendPipelineStep = {
+  stage: SendPipelineStage;
+  ok: boolean;
+  at: string;
+  detail?: Record<string, unknown>;
+};
+
+const sendStageLabels: Record<SendPipelineStage, string> = {
+  request_received: "Request received",
+  request_validation: "Request validation",
+  authentication: "Authentication",
+  invoice_lookup: "Invoice lookup",
+  business_lookup: "Business lookup",
+  workspace_access: "Workspace access",
+  email_settings: "Email settings",
+  split_group_lookup: "Split group lookup",
+  pdf_generation: "PDF generation",
+  attachment_creation: "Attachment creation",
+  email_payload: "Email payload",
+  resend_api_call: "Resend API call",
+  resend_response: "Resend response",
+  proof_logging: "Proof logging",
+  invoice_status_update: "Invoice status update",
+};
+
+function createTraceId() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return `send-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function publicErrorMessage(stage: SendPipelineStage, message: string) {
+  return `${sendStageLabels[stage]} failed: ${message}`;
+}
+
+function logSendStep({
+  traceId,
+  steps,
+  stage,
+  ok,
+  detail,
+}: {
+  traceId: string;
+  steps: SendPipelineStep[];
+  stage: SendPipelineStage;
+  ok: boolean;
+  detail?: Record<string, unknown>;
+}) {
+  const step = {
+    stage,
+    ok,
+    at: new Date().toISOString(),
+    ...(detail ? { detail } : {}),
+  };
+
+  steps.push(step);
+  const logPayload = { traceId, ...step };
+
+  if (ok) {
+    console.info("[Trimax invoice send]", logPayload);
+  } else {
+    console.error("[Trimax invoice send]", logPayload);
+  }
+}
+
+function sendFailureResponse({
+  traceId,
+  steps,
+  stage,
+  message,
+  status,
+  detail,
+}: {
+  traceId: string;
+  steps: SendPipelineStep[];
+  stage: SendPipelineStage;
+  message: string;
+  status: number;
+  detail?: Record<string, unknown>;
+}) {
+  logSendStep({ traceId, steps, stage, ok: false, detail });
+
+  return NextResponse.json(
+    {
+      error: publicErrorMessage(stage, message),
+      pipelineStage: stage,
+      pipelineStageLabel: sendStageLabels[stage],
+      traceId,
+      steps,
+      detail,
+    },
+    { status }
+  );
+}
+
 function splitInvoiceAmount(invoice: InvoiceRow) {
   return numberValue(invoice.invoice_amount);
 }
@@ -260,28 +374,49 @@ async function sendWithResend({
     };
   }
 
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from,
-      to: [to],
-      ...(replyTo ? { reply_to: replyTo } : {}),
-      ...(cc ? { cc: [cc] } : {}),
-      ...(bcc ? { bcc: [bcc] } : {}),
-      ...(attachments?.length ? { attachments } : {}),
-      subject,
-      html,
-      text,
-    }),
-  });
+  let response: Response;
 
-  const payload = (await response.json().catch(() => null)) as
-    | { id?: string; message?: string; error?: string; name?: string }
-    | null;
+  try {
+    response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to: [to],
+        ...(replyTo ? { reply_to: replyTo } : {}),
+        ...(cc ? { cc: [cc] } : {}),
+        ...(bcc ? { bcc: [bcc] } : {}),
+        ...(attachments?.length ? { attachments } : {}),
+        subject,
+        html,
+        text,
+      }),
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      status: 502,
+      error:
+        error instanceof Error
+          ? `Trimax could not reach Resend: ${error.message}`
+          : "Trimax could not reach Resend.",
+      providerResponse: null,
+    };
+  }
+
+  const responseText = await response.text();
+  const payload = (() => {
+    try {
+      return JSON.parse(responseText) as
+        | { id?: string; message?: string; error?: string; name?: string }
+        | null;
+    } catch {
+      return null;
+    }
+  })();
 
   if (!response.ok) {
 
@@ -291,8 +426,8 @@ async function sendWithResend({
       error:
         payload?.message ??
         payload?.error ??
-        "The email provider rejected this message.",
-      providerResponse: payload,
+        (responseText || "The email provider rejected this message."),
+      providerResponse: payload ?? { raw: responseText },
     };
   }
 
@@ -300,22 +435,36 @@ async function sendWithResend({
     ok: true,
     status: response.status,
     error: null,
-    providerResponse: payload,
+    providerResponse: payload ?? { raw: responseText },
   };
 }
 
 export async function POST(request: Request, { params }: RouteParams) {
   const { id } = await params;
+  const traceId = createTraceId();
+  const steps: SendPipelineStep[] = [];
   const supabase = getAdminClient();
 
+  logSendStep({
+    traceId,
+    steps,
+    stage: "request_received",
+    ok: true,
+    detail: {
+      invoice_id: id,
+      request_url: request.url,
+    },
+  });
+
   if (!supabase) {
-    return NextResponse.json(
-      {
-        error:
-          "Trimax is missing Supabase service configuration for secure sending.",
-      },
-      { status: 500 }
-    );
+    return sendFailureResponse({
+      traceId,
+      steps,
+      stage: "authentication",
+      message:
+        "Trimax is missing Supabase service configuration for secure sending.",
+      status: 500,
+    });
   }
 
   const authorization = request.headers.get("authorization");
@@ -337,25 +486,52 @@ export async function POST(request: Request, { params }: RouteParams) {
   const emailPurpose =
     cleanText(body.emailPurpose, 40) === "reminder" ? "reminder" : "send";
 
+  logSendStep({
+    traceId,
+    steps,
+    stage: "request_validation",
+    ok: true,
+    detail: {
+      recipient_present: Boolean(recipientEmail),
+      subject_present: Boolean(subject),
+      reply_to_present: Boolean(replyToEmail),
+      business_slug: businessSlug,
+      send_split_group: sendSplitGroup,
+      email_purpose: emailPurpose,
+    },
+  });
+
   if (!isValidEmail(recipientEmail)) {
-    return NextResponse.json(
-      { error: "Enter a valid customer email address." },
-      { status: 400 }
-    );
+    return sendFailureResponse({
+      traceId,
+      steps,
+      stage: "request_validation",
+      message: "Enter a valid customer email address.",
+      status: 400,
+      detail: { recipientEmail },
+    });
   }
 
   if (!subject || !message) {
-    return NextResponse.json(
-      { error: "Subject and message are required." },
-      { status: 400 }
-    );
+    return sendFailureResponse({
+      traceId,
+      steps,
+      stage: "request_validation",
+      message: "Subject and message are required.",
+      status: 400,
+      detail: { subject_present: Boolean(subject), message_present: Boolean(message) },
+    });
   }
 
   if (replyToEmail && !isValidEmail(replyToEmail)) {
-    return NextResponse.json(
-      { error: "Enter a valid reply-to email address." },
-      { status: 400 }
-    );
+    return sendFailureResponse({
+      traceId,
+      steps,
+      stage: "request_validation",
+      message: "Enter a valid reply-to email address.",
+      status: 400,
+      detail: { replyToEmail },
+    });
   }
 
   const { data: invoice, error: invoiceError } = await supabase
@@ -368,11 +544,29 @@ export async function POST(request: Request, { params }: RouteParams) {
     .maybeSingle<InvoiceRow>();
 
   if (invoiceError || !invoice) {
-    return NextResponse.json(
-      { error: "Trimax could not find this invoice." },
-      { status: 404 }
-    );
+    return sendFailureResponse({
+      traceId,
+      steps,
+      stage: "invoice_lookup",
+      message: invoiceError?.message ?? "Trimax could not find this invoice.",
+      status: 404,
+      detail: { invoice_id: id },
+    });
   }
+
+  logSendStep({
+    traceId,
+    steps,
+    stage: "invoice_lookup",
+    ok: true,
+    detail: {
+      invoice_id: invoice.id,
+      document_number: invoice.display_id,
+      split_parent_invoice_id: invoice.split_parent_invoice_id,
+      split_sequence: invoice.split_sequence,
+      split_count: invoice.split_count,
+    },
+  });
 
   const { data: business, error: businessError } = await supabase
     .from("businesses")
@@ -386,11 +580,32 @@ export async function POST(request: Request, { params }: RouteParams) {
     !business ||
     (businessSlug && business.slug !== businessSlug)
   ) {
-    return NextResponse.json(
-      { error: "This invoice does not match the selected workspace." },
-      { status: 403 }
-    );
+    return sendFailureResponse({
+      traceId,
+      steps,
+      stage: "business_lookup",
+      message:
+        businessError?.message ??
+        "This invoice does not match the selected workspace.",
+      status: 403,
+      detail: {
+        invoice_business_id: invoice.business_id,
+        requested_business_slug: businessSlug,
+        found_business_slug: business?.slug ?? null,
+      },
+    });
   }
+
+  logSendStep({
+    traceId,
+    steps,
+    stage: "business_lookup",
+    ok: true,
+    detail: {
+      business_id: business.id,
+      business_slug: business.slug,
+    },
+  });
 
   const access = await requireWorkspaceAccess({
     supabase,
@@ -399,8 +614,29 @@ export async function POST(request: Request, { params }: RouteParams) {
   });
 
   if (!access.ok) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return sendFailureResponse({
+      traceId,
+      steps,
+      stage: "workspace_access",
+      message: "Unauthorized.",
+      status: 401,
+      detail: {
+        has_token: Boolean(token),
+        user_email: access.email,
+      },
+    });
   }
+
+  logSendStep({
+    traceId,
+    steps,
+    stage: "workspace_access",
+    ok: true,
+    detail: {
+      user_id: access.userId,
+      user_email: access.email,
+    },
+  });
 
   const { data: emailSettingsRow } = await supabase
     .from("app_settings")
@@ -447,14 +683,32 @@ export async function POST(request: Request, { params }: RouteParams) {
   const bccEmail = emailSettings.bccEmail.trim().toLowerCase();
 
   if (!senderEmail || !isValidEmail(senderEmail)) {
-    return NextResponse.json(
-      {
-        error:
-          "No sender address is connected for this workspace yet. Open Settings > Customer Email and add the address customers should see.",
+    return sendFailureResponse({
+      traceId,
+      steps,
+      stage: "email_settings",
+      message:
+        "No sender address is connected for this workspace yet. Open Settings > Customer Email and add the address customers should see.",
+      status: 503,
+      detail: {
+        business_slug: business.slug,
+        sender_email: senderEmail || null,
       },
-      { status: 503 }
-    );
+    });
   }
+
+  logSendStep({
+    traceId,
+    steps,
+    stage: "email_settings",
+    ok: true,
+    detail: {
+      sender_email: senderEmail,
+      cc_email: ccEmail || null,
+      cc_source: ccSource,
+      bcc_enabled: Boolean(bccEmail && isValidEmail(bccEmail)),
+    },
+  });
 
   const from = formatSenderAddress({
     senderName: emailSettings.senderName || business.name || "Trimax",
@@ -475,16 +729,37 @@ export async function POST(request: Request, { params }: RouteParams) {
       .returns<InvoiceRow[]>();
 
     if (splitInvoicesError) {
-      return NextResponse.json(
-        { error: "Trimax could not load the split invoice group." },
-        { status: 500 }
-      );
+      return sendFailureResponse({
+        traceId,
+        steps,
+        stage: "split_group_lookup",
+        message:
+          splitInvoicesError.message ??
+          "Trimax could not load the split invoice group.",
+        status: 500,
+        detail: { split_group_root_id: splitGroupRootId },
+      });
     }
 
     if (splitInvoices && splitInvoices.length > 0) {
       targetInvoices = splitInvoices;
     }
   }
+
+  logSendStep({
+    traceId,
+    steps,
+    stage: "split_group_lookup",
+    ok: true,
+    detail: {
+      requested: sendSplitGroup,
+      split_group_root_id: splitGroupRootId,
+      target_invoice_count: targetInvoices.length,
+      target_invoice_numbers: targetInvoices.map(
+        (item) => item.display_id ?? "Invoice"
+      ),
+    },
+  });
 
   const isSplitGroupSend =
     sendSplitGroup && emailPurpose !== "reminder" && targetInvoices.length > 1;
@@ -519,6 +794,16 @@ export async function POST(request: Request, { params }: RouteParams) {
       const targetDocumentNumber = targetInvoice.display_id ?? "Invoice";
 
       try {
+        logSendStep({
+          traceId,
+          steps,
+          stage: "pdf_generation",
+          ok: true,
+          detail: {
+            document_number: targetDocumentNumber,
+            invoice_id: targetInvoice.id,
+          },
+        });
         const attachment = await createPrintPagePdfAttachment({
           url: new URL(
             `/invoices/${targetInvoice.id}/print?business=${business.slug}`,
@@ -529,6 +814,17 @@ export async function POST(request: Request, { params }: RouteParams) {
 
         pdfAttachments.push(attachment);
         pdfAttachmentSource = "print-page";
+        logSendStep({
+          traceId,
+          steps,
+          stage: "attachment_creation",
+          ok: true,
+          detail: {
+            document_number: targetDocumentNumber,
+            attachment_filename: attachment.filename,
+            attachment_content_bytes: attachment.content.length,
+          },
+        });
       } catch (error) {
         const failureMessage =
           error instanceof Error ? error.message : "Unknown PDF render failure.";
@@ -569,16 +865,19 @@ export async function POST(request: Request, { params }: RouteParams) {
           },
         });
 
-        return NextResponse.json(
-          {
-            error: isSplitGroupSend
-              ? `Trimax could not generate the PDF for ${targetDocumentNumber}, so the split group email was not sent. No invoice statuses were changed.`
-              : "Trimax could not generate the official invoice PDF, so nothing was sent. Refresh the invoice and try Send Invoice again. If this keeps happening, check that the invoice print view opens correctly.",
+        return sendFailureResponse({
+          traceId,
+          steps,
+          stage: "pdf_generation",
+          message: isSplitGroupSend
+            ? `Could not generate the PDF for ${targetDocumentNumber}. No email was sent and no invoice statuses were changed. ${failureMessage}`
+            : `Could not generate the official invoice PDF. No email was sent. ${failureMessage}`,
+          status: 502,
+          detail: {
             failedInvoiceId: targetInvoice.id,
             failedInvoiceNumber: targetDocumentNumber,
           },
-          { status: 502 }
-        );
+        });
       }
     }
   }
@@ -605,6 +904,36 @@ export async function POST(request: Request, { params }: RouteParams) {
     </div>
   `;
 
+  logSendStep({
+    traceId,
+    steps,
+    stage: "email_payload",
+    ok: true,
+    detail: {
+      from,
+      to: recipientEmail,
+      cc: ccEmail || null,
+      bcc_enabled: Boolean(bccEmail && isValidEmail(bccEmail)),
+      subject: effectiveSubject,
+      attachment_count: pdfAttachments.length,
+      attachment_filenames: pdfAttachments.map((item) => item.filename),
+      split_group_send: isSplitGroupSend,
+    },
+  });
+
+  logSendStep({
+    traceId,
+    steps,
+    stage: "resend_api_call",
+    ok: true,
+    detail: {
+      endpoint: "https://api.resend.com/emails",
+      attachment_count: pdfAttachments.length,
+      to: recipientEmail,
+      from,
+    },
+  });
+
   const sendResult = await sendWithResend({
     from,
     to: recipientEmail,
@@ -615,6 +944,19 @@ export async function POST(request: Request, { params }: RouteParams) {
     html,
     text: effectiveMessage,
     attachments: pdfAttachments.length > 0 ? pdfAttachments : undefined,
+  });
+
+  logSendStep({
+    traceId,
+    steps,
+    stage: "resend_response",
+    ok: sendResult.ok,
+    detail: {
+      provider: "resend",
+      status: sendResult.status,
+      response: sendResult.providerResponse ?? null,
+      error: sendResult.error,
+    },
   });
 
   if (!sendResult.ok) {
@@ -638,7 +980,10 @@ export async function POST(request: Request, { params }: RouteParams) {
       provider_status: sendResult.status,
       provider_response: sendResult.providerResponse ?? null,
       failure_stage: "email_delivery",
+      failure_pipeline_stage: "resend_response",
       failure_message: sendResult.error,
+      trace_id: traceId,
+      pipeline_steps: steps,
     };
 
     await supabase.from("activity_logs").insert({
@@ -657,14 +1002,24 @@ export async function POST(request: Request, { params }: RouteParams) {
       details: failureDetails,
     });
 
-    return NextResponse.json(
-      {
-        error: isSplitGroupSend
-          ? `Trimax could not send the split group email, so no invoice statuses were changed. ${sendResult.error}`
-          : sendResult.error,
+    return sendFailureResponse({
+      traceId,
+      steps,
+      stage: "resend_response",
+      message: isSplitGroupSend
+        ? `Resend rejected the split group email. No invoice statuses were changed. ${sendResult.error}`
+        : sendResult.error ?? "Resend rejected this invoice email.",
+      status: sendResult.status,
+      detail: {
+        provider: "resend",
+        provider_status: sendResult.status,
+        provider_response: sendResult.providerResponse ?? null,
+        from,
+        to: recipientEmail,
+        cc: ccEmail || null,
+        attachment_count: pdfAttachments.length,
       },
-      { status: sendResult.status }
-    );
+    });
   }
 
   let statusUpdateErrorMessage: string | null = null;
@@ -683,7 +1038,27 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     if (statusUpdateError) {
       statusUpdateErrorMessage = statusUpdateError.message;
+      logSendStep({
+        traceId,
+        steps,
+        stage: "invoice_status_update",
+        ok: false,
+        detail: {
+          message: statusUpdateError.message,
+          target_invoice_ids: targetInvoices.map((targetInvoice) => targetInvoice.id),
+        },
+      });
       console.error("Invoice status update failed after send.", statusUpdateError);
+    } else {
+      logSendStep({
+        traceId,
+        steps,
+        stage: "invoice_status_update",
+        ok: true,
+        detail: {
+          target_invoice_ids: targetInvoices.map((targetInvoice) => targetInvoice.id),
+        },
+      });
     }
   }
 
@@ -726,6 +1101,8 @@ export async function POST(request: Request, { params }: RouteParams) {
         provider_response: sendResult.providerResponse ?? null,
         delivery_status: "sent",
         status_update_error: statusUpdateErrorMessage,
+        trace_id: traceId,
+        pipeline_steps: steps,
       },
     });
   }
@@ -771,9 +1148,22 @@ export async function POST(request: Request, { params }: RouteParams) {
         provider_response: sendResult.providerResponse ?? null,
         delivery_status: "sent",
         status_update_error: statusUpdateErrorMessage,
+        trace_id: traceId,
+        pipeline_steps: steps,
       },
     });
   }
+
+  logSendStep({
+    traceId,
+    steps,
+    stage: "proof_logging",
+    ok: true,
+    detail: {
+      logged_invoice_count: targetInvoices.length,
+      split_group_send: isSplitGroupSend,
+    },
+  });
 
   const successMessage = isSplitGroupSend
     ? statusUpdateErrorMessage
@@ -804,6 +1194,11 @@ export async function POST(request: Request, { params }: RouteParams) {
         amount: splitInvoiceAmount(targetInvoice),
       })),
       statusUpdateError: statusUpdateErrorMessage,
+      traceId,
+      pipelineStage: statusUpdateErrorMessage
+        ? "invoice_status_update"
+        : "proof_logging",
+      steps,
     },
     { status: statusUpdateErrorMessage ? 207 : 200 }
   );

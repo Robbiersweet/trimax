@@ -50,7 +50,6 @@ export async function createPrintPagePdfAttachment({
 
   try {
     const page = await browser.newPage();
-    await page.setJavaScriptEnabled(false);
 
     const response = await page.goto(url, {
       waitUntil: "networkidle0",
@@ -63,8 +62,13 @@ export async function createPrintPagePdfAttachment({
       );
     }
 
+    await page.waitForSelector(
+      ".standard-invoice-print, .standard-estimate-print",
+      {
+        timeout: 20_000,
+      }
+    );
     await page.emulateMediaType("print");
-    await page.setJavaScriptEnabled(true);
     const pageText = await page.evaluate(() => document.body.innerText);
 
     if (
