@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import AuthGuard from "./components/AuthGuard";
 import PwaRegistration from "./components/PwaRegistration";
 import "./globals.css";
@@ -31,11 +32,26 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({
+function isPrintDocumentPath(pathname: string | null) {
+  if (!pathname) {
+    return false;
+  }
+
+  return (
+    /^\/invoices\/[^/]+\/print(?:\/)?$/.test(pathname) ||
+    /^\/estimates\/[^/]+\/print(?:\/)?$/.test(pathname)
+  );
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const requestHeaders = await headers();
+  const pathname = requestHeaders.get("x-trimax-pathname");
+  const isPrintDocument = isPrintDocumentPath(pathname);
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -54,18 +70,24 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <PwaRegistration />
-        <Suspense
-          fallback={
-            <main className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-950">
-              <p className="text-slate-600">
-                Opening workspace...
-              </p>
-            </main>
-          }
-        >
-          <AuthGuard>{children}</AuthGuard>
-        </Suspense>
+        {isPrintDocument ? (
+          children
+        ) : (
+          <>
+            <PwaRegistration />
+            <Suspense
+              fallback={
+                <main className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-950">
+                  <p className="text-slate-600">
+                    Opening workspace...
+                  </p>
+                </main>
+              }
+            >
+              <AuthGuard>{children}</AuthGuard>
+            </Suspense>
+          </>
+        )}
       </body>
     </html>
   );
