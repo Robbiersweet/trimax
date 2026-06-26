@@ -19617,14 +19617,29 @@ html.theme-light .queue-empty-card::after {
     overscroll-behavior: contain;
   }
 
-  .queue-list-card,
-  .queue-list-card:has(> :only-child),
-  .queue-dispatch-card,
-  .queue-dispatch-card:has(> :only-child) {
+  [data-workspace-section="queue"] .app-card,
+  [data-workspace-section="queue"] .app-card:has(> :only-child),
+  [data-workspace-section="queue"] .app-soft-panel,
+  [data-workspace-section="queue"] .app-soft-panel:has(> :only-child),
+  [data-workspace-section="queue"] .queue-list-card,
+  [data-workspace-section="queue"] .queue-list-card:has(> :only-child),
+  [data-workspace-section="queue"] .queue-dispatch-card,
+  [data-workspace-section="queue"] .queue-dispatch-card:has(> :only-child) {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    overflow-y: visible !important;
+    overscroll-behavior: auto !important;
+    touch-action: pan-y !important;
+    -webkit-overflow-scrolling: auto !important;
+  }
+
+  [data-workspace-section="queue"] #queue-results,
+  [data-workspace-section="queue"] #queue-results > * {
+    height: auto !important;
     max-height: none !important;
     overflow: visible !important;
     overscroll-behavior: auto !important;
-    touch-action: pan-y;
   }
 
   .app-sidebar {
