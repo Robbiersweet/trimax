@@ -54,7 +54,31 @@ function defaultSubject(
     return `${businessName} sent you estimate ${documentNumber}`;
   }
 
-  return `${businessName} sent you invoice ${documentNumber}`;
+  return `Invoice ${documentNumber} from ${businessName}`;
+}
+
+function documentContext({
+  customerName,
+  projectTitle,
+}: {
+  customerName?: string | null;
+  projectTitle?: string | null;
+}) {
+  return projectTitle?.trim() || customerName?.trim() || "this work";
+}
+
+function documentListLabel(documents: string[]) {
+  if (documents.length <= 1) {
+    return documents[0] ?? "the attached invoice";
+  }
+
+  if (documents.length === 2) {
+    return `${documents[0]} and ${documents[1]}`;
+  }
+
+  return `${documents.slice(0, -1).join(", ")}, and ${
+    documents[documents.length - 1]
+  }`;
 }
 
 function defaultMessage({
@@ -63,12 +87,16 @@ function defaultMessage({
   amountDue,
   dueDate,
   requestType,
+  customerName,
+  projectTitle,
 }: {
   businessName: string;
   documentNumber: string;
   amountDue: string;
   dueDate: string;
   requestType: "invoice" | "deposit" | "estimate" | "reminder";
+  customerName?: string | null;
+  projectTitle?: string | null;
 }) {
   if (requestType === "reminder") {
     return `This is a friendly reminder that invoice ${documentNumber} for ${amountDue}${
@@ -86,9 +114,10 @@ function defaultMessage({
     return `${businessName} sent you estimate ${documentNumber} for ${amountDue}.`;
   }
 
-  return `${businessName} sent you invoice ${documentNumber} for ${amountDue}${
-    dueDate && dueDate !== "-" ? ` that's due on ${dueDate}` : ""
-  }.`;
+  return `Attached is invoice ${documentNumber} for ${documentContext({
+    customerName,
+    projectTitle,
+  })}.${dueDate && dueDate !== "-" ? ` Due date: ${dueDate}.` : ""}`;
 }
 
 function defaultSplitGroupSubject(splitGroupLabel: string) {
@@ -96,14 +125,10 @@ function defaultSplitGroupSubject(splitGroupLabel: string) {
 }
 
 function defaultSplitGroupMessage({
-  businessName,
-  splitGroupCount,
   projectTitle,
   splitGroupItems,
   splitGroupCombinedTotal,
 }: {
-  businessName: string;
-  splitGroupCount: number;
   projectTitle?: string | null;
   splitGroupItems?: {
     documentNumber: string;
@@ -115,6 +140,8 @@ function defaultSplitGroupMessage({
   const projectText = projectTitle?.trim()
     ? ` for ${projectTitle.trim()}`
     : "";
+  const documentNumbers =
+    splitGroupItems?.map((item) => item.documentNumber).filter(Boolean) ?? [];
   const invoiceLines =
     splitGroupItems && splitGroupItems.length > 0
       ? [
@@ -134,7 +161,11 @@ function defaultSplitGroupMessage({
           .join("\n")
       : "";
 
-  return `${businessName} sent ${splitGroupCount} split invoices${projectText}. The invoice was split because of the billing limit, and each official invoice PDF is attached to this one email.${invoiceLines}`;
+  return `Attached are invoices ${documentListLabel(documentNumbers)}${projectText}. The invoice was split because of the billing limit, and each official invoice PDF is attached to this one email.${invoiceLines}`;
+}
+
+function normalizeInvoiceBodyCopy(message: string, fallback: string) {
+  return /\bsent\s+(you\s+)?invoice\b/i.test(message) ? fallback : message;
 }
 
 export default function InvoiceEmailSendPanel({
@@ -179,8 +210,6 @@ export default function InvoiceEmailSendPanel({
   const [message, setMessage] = useState(
     sendSplitGroup && splitGroupCount > 1 && requestType === "invoice"
       ? defaultSplitGroupMessage({
-          businessName,
-          splitGroupCount,
           projectTitle,
           splitGroupItems,
           splitGroupCombinedTotal,
@@ -191,6 +220,8 @@ export default function InvoiceEmailSendPanel({
           amountDue,
           dueDate,
           requestType,
+          customerName,
+          projectTitle,
         })
   );
   const [signature, setSignature] = useState(
@@ -224,7 +255,7 @@ export default function InvoiceEmailSendPanel({
       dueDate,
       dueDateSentence,
       customerName,
-      projectTitle: projectTitle ?? "",
+      projectTitle: documentContext({ customerName, projectTitle }),
     }),
     [
       amountDue,
@@ -260,8 +291,6 @@ export default function InvoiceEmailSendPanel({
         {
           label: "Standard",
           text: defaultSplitGroupMessage({
-            businessName,
-            splitGroupCount,
             projectTitle,
             splitGroupItems,
             splitGroupCombinedTotal,
@@ -269,7 +298,9 @@ export default function InvoiceEmailSendPanel({
         },
         {
           label: "Brief",
-          text: `${businessName} sent ${splitGroupCount} split invoices${friendlyProject}. The invoice was split because of the billing limit, and each invoice PDF is attached to this one email.`,
+          text: `Attached are invoices ${documentListLabel(
+            splitGroupItems.map((item) => item.documentNumber)
+          )}${friendlyProject}. Each invoice PDF is attached to this one email.`,
         },
         {
           label: "Clear",
@@ -336,9 +367,10 @@ export default function InvoiceEmailSendPanel({
     return [
       {
         label: "Standard",
-        text: `${businessName} sent you invoice ${documentNumber} for ${amountDue}${
-          dueText ? `, which ${dueText}` : ""
-        }.`,
+        text: `Attached is invoice ${documentNumber} for ${documentContext({
+          customerName,
+          projectTitle,
+        })}.${dueText ? ` It ${dueText}.` : ""}`,
       },
       {
         label: "Brief",
@@ -348,9 +380,7 @@ export default function InvoiceEmailSendPanel({
       },
       {
         label: "Warm",
-        text: `Hi ${customerName}, ${businessName} sent invoice ${documentNumber} for ${amountDue}${friendlyProject}${
-          dueText ? `. It ${dueText}` : ""
-        }. Thank you for your business.`,
+        text: `Hi ${customerName}, attached is invoice ${documentNumber}${friendlyProject}.${dueText ? ` It ${dueText}.` : ""} Thank you for your business.`,
       },
     ];
   }, [
@@ -473,8 +503,6 @@ export default function InvoiceEmailSendPanel({
       setMessage(
         sendSplitGroup && splitGroupCount > 1 && requestType === "invoice"
           ? defaultSplitGroupMessage({
-              businessName,
-              splitGroupCount,
               projectTitle,
               splitGroupItems,
               splitGroupCombinedTotal,
@@ -486,6 +514,8 @@ export default function InvoiceEmailSendPanel({
               amountDue,
               dueDate,
               requestType,
+              customerName,
+              projectTitle,
             })
           : requestType === "reminder"
             ? renderEmailTemplate(
@@ -499,8 +529,21 @@ export default function InvoiceEmailSendPanel({
                 amountDue,
                 dueDate,
                 requestType,
+                customerName,
+                projectTitle,
               })
-          : renderEmailTemplate(settings.invoiceBodyTemplate, templateVariables)
+          : normalizeInvoiceBodyCopy(
+              renderEmailTemplate(settings.invoiceBodyTemplate, templateVariables),
+              defaultMessage({
+                businessName,
+                documentNumber,
+                amountDue,
+                dueDate,
+                requestType,
+                customerName,
+                projectTitle,
+              })
+            )
       );
       setSignature(settings.signature);
       setReplyToEmail(settings.replyToEmail);
@@ -516,6 +559,7 @@ export default function InvoiceEmailSendPanel({
     amountDue,
     businessName,
     businessSlug,
+    customerName,
     documentNumber,
     dueDate,
     projectTitle,

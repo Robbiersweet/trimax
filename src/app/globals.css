@@ -19617,6 +19617,16 @@ html.theme-light .queue-empty-card::after {
     overscroll-behavior: contain;
   }
 
+  .queue-list-card,
+  .queue-list-card:has(> :only-child),
+  .queue-dispatch-card,
+  .queue-dispatch-card:has(> :only-child) {
+    max-height: none !important;
+    overflow: visible !important;
+    overscroll-behavior: auto !important;
+    touch-action: pan-y;
+  }
+
   .app-sidebar {
     width: 100%;
     max-width: 100%;
@@ -19691,10 +19701,11 @@ html.theme-light .queue-empty-card::after {
   .app-toast {
     left: max(0.75rem, env(safe-area-inset-left, 0px)) !important;
     right: max(0.75rem, env(safe-area-inset-right, 0px)) !important;
-    bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px));
+    top: calc(max(0.75rem, env(safe-area-inset-top, 0px)) + 0.5rem);
+    bottom: auto !important;
     width: auto;
     max-width: none;
-    max-height: min(70svh, calc(100svh - 1.5rem));
+    max-height: calc(100svh - max(0.75rem, env(safe-area-inset-top, 0px)) - max(0.75rem, env(safe-area-inset-bottom, 0px)) - 1.5rem);
     padding: 0.9rem 1rem;
   }
 

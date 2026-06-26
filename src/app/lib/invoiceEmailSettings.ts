@@ -54,9 +54,9 @@ export function defaultInvoiceEmailSettings({
     ccEmail: "",
     bccEmail: "",
     signature,
-    invoiceSubjectTemplate: `${businessName} sent you invoice {invoiceNumber}`,
+    invoiceSubjectTemplate: `Invoice {invoiceNumber} from ${businessName}`,
     invoiceBodyTemplate:
-      "{businessName} sent you invoice {invoiceNumber} for {amountDue}{dueDateSentence}.",
+      "Attached is invoice {invoiceNumber} for {projectTitle}.",
     paymentReminderSubjectTemplate:
       "Reminder: Invoice {invoiceNumber} from {businessName} is past due",
     paymentReminderBodyTemplate:

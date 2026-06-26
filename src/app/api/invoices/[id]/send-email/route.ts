@@ -297,6 +297,28 @@ function buildSplitGroupSummary(invoices: InvoiceRow[]) {
   return { lines, combinedTotal };
 }
 
+function documentListLabel(documents: string[]) {
+  if (documents.length <= 1) {
+    return documents[0] ?? "the attached invoice";
+  }
+
+  if (documents.length === 2) {
+    return `${documents[0]} and ${documents[1]}`;
+  }
+
+  return `${documents.slice(0, -1).join(", ")}, and ${
+    documents[documents.length - 1]
+  }`;
+}
+
+function includesSplitSummary(message: string) {
+  return (
+    /attached invoices:/i.test(message) ||
+    /combined total/i.test(message) ||
+    /attached are invoices/i.test(message)
+  );
+}
+
 async function requireWorkspaceAccess({
   supabase,
   token,
@@ -771,8 +793,11 @@ export async function POST(request: Request, { params }: RouteParams) {
     : subject;
   const splitSummaryText = isSplitGroupSend
     ? [
+        `Attached are invoices ${documentListLabel(
+          splitSummaryLines.map((item) => item.documentNumber)
+        )} for ${groupLabel}.`,
         "",
-        "This invoice was split because of the billing limit. Each official invoice PDF is attached to this one email.",
+        "The invoice was split because of the billing limit, and each official invoice PDF is attached to this one email.",
         "Attached invoices:",
         ...splitSummaryLines.map(
           (item) =>
@@ -784,7 +809,9 @@ export async function POST(request: Request, { params }: RouteParams) {
       ].join("\n")
     : "";
   const effectiveMessage = isSplitGroupSend
-    ? `${message}\n${splitSummaryText}`
+    ? includesSplitSummary(message)
+      ? message
+      : [message.trim(), splitSummaryText].filter(Boolean).join("\n\n")
     : message;
   const pdfAttachments: EmailAttachment[] = [];
   let pdfAttachmentSource: "print-page" | "none" = "none";

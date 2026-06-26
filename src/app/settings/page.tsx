@@ -2107,7 +2107,7 @@ function BusinessSettingsPageContent() {
                         label="Subject"
                         value={invoiceSubjectTemplate}
                         onChange={setInvoiceSubjectTemplate}
-                        placeholder="{businessName} sent you invoice {invoiceNumber}"
+                        placeholder="Invoice {invoiceNumber} from {businessName}"
                       />
 
                       <label className="grid gap-2 text-sm font-semibold text-slate-700">
@@ -2119,7 +2119,7 @@ function BusinessSettingsPageContent() {
                           }
                           rows={5}
                           className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base font-medium text-slate-950 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                          placeholder="{businessName} sent you invoice {invoiceNumber} for {amountDue}."
+                          placeholder="Attached is invoice {invoiceNumber} for {projectTitle}."
                         />
                       </label>
                     </div>
