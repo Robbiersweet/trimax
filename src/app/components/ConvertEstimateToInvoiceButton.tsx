@@ -6,6 +6,10 @@ import Button from "./Button";
 import { getNextDocumentDisplayId } from "../lib/documentNumbers";
 import { logActivity } from "../lib/activityLog";
 import { assertCanWriteDuringMaintenance } from "../lib/maintenanceMode";
+import {
+  DEFAULT_INVOICE_TERMS,
+  resolveInvoiceTerms,
+} from "../lib/documentTerms";
 import { createSplitInvoices } from "../lib/splitInvoices";
 import { supabase } from "../lib/supabase";
 import { getSmartInvoiceDates } from "../utils/invoiceDates";
@@ -183,6 +187,7 @@ export default function ConvertEstimateToInvoiceButton({
       fallbackSubtotal * (taxRate / 100);
     const invoiceTotal =
       fallbackSubtotal + taxAmount;
+    const invoiceTerms = resolveInvoiceTerms(estimate.terms);
     const smartInvoiceDates = getSmartInvoiceDates({
       customerName: estimate.customer_name ?? customerName,
       projectTitle: estimate.project_title ?? projectTitle,
@@ -190,9 +195,7 @@ export default function ConvertEstimateToInvoiceButton({
         estimate.service_address ?? estimate.project_address ?? "",
       reference: maybeCanonicalApartmentUnitLabel(estimate.reference),
       notes: estimate.notes ?? notes,
-      terms:
-        estimate.terms ??
-        "Payment due upon invoice. Thank you for your business.",
+      terms: invoiceTerms,
       lineItems: estimateLineItems.map((item) => ({
         description: item.description ?? "",
       })),
@@ -267,9 +270,7 @@ export default function ConvertEstimateToInvoiceButton({
           Boolean(estimate.split_warning_enabled),
         split_target_amount:
           estimate.split_target_amount ?? null,
-        terms:
-          estimate.terms ??
-          "Payment due upon invoice. Thank you for your business.",
+        terms: invoiceTerms,
         notes: estimate.notes ?? notes,
         status: "Draft",
       })
@@ -366,9 +367,7 @@ export default function ConvertEstimateToInvoiceButton({
               estimate.service_address ??
               estimate.project_address ??
               "",
-            terms:
-              estimate.terms ??
-              "Payment due upon invoice. Thank you for your business.",
+            terms: invoiceTerms || DEFAULT_INVOICE_TERMS,
             notes: estimate.notes ?? notes,
           },
           subtotalAmount: fallbackSubtotal,

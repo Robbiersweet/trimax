@@ -15,6 +15,10 @@ import InputField from "../../../components/InputField";
 import TaxModeSelect from "../../../components/TaxModeSelect";
 import Toast from "../../../components/Toast";
 import { captureServicesFromLineItems } from "../../../lib/captureServicesFromLineItems";
+import {
+  DEFAULT_INVOICE_TERMS,
+  resolveInvoiceTerms,
+} from "../../../lib/documentTerms";
 import { logActivity } from "../../../lib/activityLog";
 import { assertCanWriteDuringMaintenance } from "../../../lib/maintenanceMode";
 import {
@@ -168,9 +172,7 @@ export default function EditInvoicePage() {
     splitWarningManuallyChanged,
     setSplitWarningManuallyChanged,
   ] = useState(false);
-  const [terms, setTerms] = useState(
-    "Payment due upon invoice. Thank you for your business."
-  );
+  const [terms, setTerms] = useState(DEFAULT_INVOICE_TERMS);
   const [notes, setNotes] = useState("");
 
   const [lineItems, setLineItems] =
@@ -434,10 +436,8 @@ export default function EditInvoicePage() {
       setSavedSplitWarningEnabled(
         Boolean(invoice.split_warning_enabled)
       );
-      setTerms(
-        invoice.terms ??
-          "Payment due upon invoice. Thank you for your business."
-      );
+      const invoiceTerms = resolveInvoiceTerms(invoice.terms);
+      setTerms(invoiceTerms);
       setNotes(invoice.notes ?? "");
 
       const { data: serviceData } =
@@ -480,9 +480,7 @@ export default function EditInvoicePage() {
             serviceAddress: invoice.service_address ?? "",
             reference: invoice.reference ?? "",
             notes: invoice.notes ?? "",
-            terms:
-              invoice.terms ??
-              "Payment due upon invoice. Thank you for your business.",
+            terms: invoiceTerms,
             lineItems: loadedLineItems,
             issueDate: invoice.issue_date,
           });
@@ -517,9 +515,7 @@ export default function EditInvoicePage() {
             serviceAddress: invoice.service_address ?? "",
             reference: invoice.reference ?? "",
             notes: invoice.notes ?? "",
-            terms:
-              invoice.terms ??
-              "Payment due upon invoice. Thank you for your business.",
+            terms: invoiceTerms,
             lineItems: fallbackLineItems,
             issueDate: invoice.issue_date,
           });

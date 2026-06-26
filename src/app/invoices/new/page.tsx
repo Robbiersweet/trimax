@@ -17,6 +17,7 @@ import TaxModeSelect from "../../components/TaxModeSelect";
 import Card from "../../components/Card";
 import Toast from "../../components/Toast";
 import { captureServicesFromLineItems } from "../../lib/captureServicesFromLineItems";
+import { DEFAULT_INVOICE_TERMS } from "../../lib/documentTerms";
 import { getNextDocumentDisplayId } from "../../lib/documentNumbers";
 import { logActivity } from "../../lib/activityLog";
 import { assertCanWriteDuringMaintenance } from "../../lib/maintenanceMode";
@@ -145,8 +146,7 @@ function NewInvoicePageContent() {
         serviceAddress: "",
         reference: "",
         notes: "",
-        terms:
-          "Payment due upon invoice. Thank you for your business.",
+        terms: DEFAULT_INVOICE_TERMS,
         lineItems: [],
       }).issueDate
   );
@@ -158,8 +158,7 @@ function NewInvoicePageContent() {
         serviceAddress: "",
         reference: "",
         notes: "",
-        terms:
-          "Payment due upon invoice. Thank you for your business.",
+        terms: DEFAULT_INVOICE_TERMS,
         lineItems: [],
       }).dueDate
   );
@@ -181,9 +180,7 @@ function NewInvoicePageContent() {
     splitWarningManuallyChanged,
     setSplitWarningManuallyChanged,
   ] = useState(false);
-  const [terms, setTerms] = useState(
-    "Payment due upon invoice. Thank you for your business."
-  );
+  const [terms, setTerms] = useState(DEFAULT_INVOICE_TERMS);
   const [notes, setNotes] = useState("");
 
   const [lineItems, setLineItems] =
@@ -492,8 +489,7 @@ function NewInvoicePageContent() {
       serviceAddress: "",
       reference: "",
       notes: "",
-      terms:
-        "Payment due upon invoice. Thank you for your business.",
+      terms: DEFAULT_INVOICE_TERMS,
       lineItems: [],
     });
 
@@ -514,9 +510,7 @@ function NewInvoicePageContent() {
     setSplitWarningEnabled(false);
     setSplitTargetAmount("");
     setSplitWarningManuallyChanged(false);
-    setTerms(
-      "Payment due upon invoice. Thank you for your business."
-    );
+    setTerms(DEFAULT_INVOICE_TERMS);
     setNotes("");
     setLineItems([
       {

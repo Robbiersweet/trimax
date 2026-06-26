@@ -8,6 +8,7 @@ import {
   getEffectiveTaxRate,
 } from "../../../utils/tax";
 import { getSmartInvoiceDates } from "../../../utils/invoiceDates";
+import { resolveInvoiceTerms } from "../../../lib/documentTerms";
 import { maybeCanonicalApartmentUnitLabel } from "../../../utils/unitLabels";
 
 type Invoice = {
@@ -243,15 +244,14 @@ export default async function InvoicePrintPage({
     0
   );
   const displayReference = maybeCanonicalApartmentUnitLabel(invoice.reference);
+  const invoiceTerms = resolveInvoiceTerms(invoice.terms);
   const smartInvoiceDates = getSmartInvoiceDates({
     customerName: invoice.customer_name ?? client?.name ?? "",
     projectTitle: invoice.project_title ?? "",
     serviceAddress: invoice.service_address ?? "",
     reference: displayReference,
     notes: invoice.notes ?? "",
-    terms:
-      invoice.terms ??
-      "Payment due upon invoice. Thank you for your business.",
+    terms: invoiceTerms,
     lineItems: lineItems.map((item) => ({
       description: item.description ?? "",
     })),
@@ -578,8 +578,7 @@ export default async function InvoicePrintPage({
           <PrintLabel>Terms</PrintLabel>
 
           <p className="mt-3 max-w-4xl overflow-wrap-anywhere text-base leading-6 print:mt-1 print:text-sm print:leading-5">
-            {invoice.terms ||
-              "Payment due upon invoice. Thank you for your business."}
+            {invoiceTerms}
           </p>
         </section>
 

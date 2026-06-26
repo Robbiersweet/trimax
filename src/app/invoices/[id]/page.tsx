@@ -12,6 +12,7 @@ import RequestDepositButton from "../../components/RequestDepositButton";
 import SplitInvoicePlanner from "../../components/SplitInvoicePlanner";
 import UpdateInvoiceStatusButton from "../../components/UpdateInvoiceStatusButton";
 import { buildSplitInvoicePlan } from "../../lib/splitInvoices";
+import { resolveInvoiceTerms } from "../../lib/documentTerms";
 import { supabase } from "../../lib/supabase";
 import { getSmartInvoiceDates } from "../../utils/invoiceDates";
 import {
@@ -1028,15 +1029,14 @@ export default async function InvoiceDetailPage({
   const recipientEmail = clientContact?.email ?? null;
   const invoiceNumber = invoice.display_id || "Invoice";
   const displayReference = maybeCanonicalApartmentUnitLabel(invoice.reference);
+  const invoiceTerms = resolveInvoiceTerms(invoice.terms);
   const smartInvoiceDates = getSmartInvoiceDates({
     customerName,
     projectTitle,
     serviceAddress: invoice.service_address ?? "",
     reference: displayReference,
     notes: invoice.notes ?? "",
-    terms:
-      invoice.terms ??
-      "Payment due upon invoice. Thank you for your business.",
+    terms: invoiceTerms,
     lineItems: items.map((item) => ({
       description: item.description ?? "",
     })),
@@ -1985,11 +1985,9 @@ export default async function InvoiceDetailPage({
             title="Invoice Conversation"
           />
 
-          {invoice.terms ? (
-            <Card>
-              <Info label="Terms" value={invoice.terms} />
-            </Card>
-          ) : null}
+          <Card>
+            <Info label="Terms" value={invoiceTerms} />
+          </Card>
 
           <div id="invoice-actions" className="scroll-mt-6">
             {splitSendInvoiceCount > 1 ? (
