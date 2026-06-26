@@ -37,9 +37,13 @@ function isPrintDocumentPath(pathname: string | null) {
     return false;
   }
 
+  const normalizedPathname = pathname.split("?")[0] ?? pathname;
+
   return (
-    /^\/invoices\/[^/]+\/print(?:\/)?$/.test(pathname) ||
-    /^\/estimates\/[^/]+\/print(?:\/)?$/.test(pathname)
+    /^\/invoices\/[^/]+\/print(?:\/)?$/.test(normalizedPathname) ||
+    /^\/estimates\/[^/]+\/print(?:\/)?$/.test(normalizedPathname) ||
+    normalizedPathname === "/invoices/[id]/print" ||
+    normalizedPathname === "/estimates/[id]/print"
   );
 }
 
@@ -49,8 +53,13 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const requestHeaders = await headers();
-  const pathname = requestHeaders.get("x-trimax-pathname");
-  const isPrintDocument = isPrintDocumentPath(pathname);
+  const isPrintDocument = [
+    requestHeaders.get("x-trimax-pathname"),
+    requestHeaders.get("x-matched-path"),
+    requestHeaders.get("x-invoke-path"),
+    requestHeaders.get("next-url"),
+    requestHeaders.get("x-next-url"),
+  ].some(isPrintDocumentPath);
 
   return (
     <html lang="en" suppressHydrationWarning>
