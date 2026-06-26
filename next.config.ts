@@ -1,6 +1,18 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["@sparticuz/chromium"],
+  outputFileTracingIncludes: {
+    "/api/invoices/[id]/send-email": [
+      "./node_modules/@sparticuz/chromium/bin/**/*",
+    ],
+    "/api/estimates/[id]/send-email": [
+      "./node_modules/@sparticuz/chromium/bin/**/*",
+    ],
+    "/api/invoices/send-overdue-reminders": [
+      "./node_modules/@sparticuz/chromium/bin/**/*",
+    ],
+  },
   async headers() {
     return [
       {
