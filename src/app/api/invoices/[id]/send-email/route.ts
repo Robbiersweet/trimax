@@ -59,6 +59,9 @@ type InvoiceRow = {
   reference: string | null;
   service_address: string | null;
   status: string | null;
+  split_parent_invoice_id: string | null;
+  split_sequence: number | null;
+  split_count: number | null;
 };
 
 type BusinessRow = {
@@ -110,6 +113,74 @@ function plainTextToHtml(value: string) {
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function numberValue(value: string | number | null | undefined) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number.parseFloat(value.replace(/[$,]/g, ""));
+
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  return 0;
+}
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    currency: "USD",
+    style: "currency",
+  }).format(Number.isFinite(value) ? value : 0);
+}
+
+function splitInvoiceAmount(invoice: InvoiceRow) {
+  return numberValue(invoice.invoice_amount);
+}
+
+function baseSplitProjectTitle(value: string | null | undefined) {
+  return String(value ?? "")
+    .trim()
+    .replace(/\s+-\s+Split\s+\d+\s+of\s+\d+$/i, "");
+}
+
+function splitGroupLabel(invoices: InvoiceRow[]) {
+  const projectTitle = invoices
+    .find((item) => item.project_title)
+    ?.project_title?.trim();
+  const baseProjectTitle = baseSplitProjectTitle(projectTitle);
+
+  if (baseProjectTitle) {
+    return baseProjectTitle;
+  }
+
+  const reference = invoices.find((item) => item.reference)?.reference?.trim();
+
+  if (reference) {
+    return `Unit ${reference}`;
+  }
+
+  return "Split invoice group";
+}
+
+function buildSplitGroupSummary(invoices: InvoiceRow[]) {
+  const sortedInvoices = [...invoices].sort(
+    (first, second) =>
+      (first.split_sequence ?? 0) - (second.split_sequence ?? 0)
+  );
+  const lines = sortedInvoices.map((item) => ({
+    documentNumber: item.display_id ?? "Invoice",
+    amount: splitInvoiceAmount(item),
+    splitLabel:
+      item.split_sequence && item.split_count
+        ? `Split ${item.split_sequence} of ${item.split_count}`
+        : null,
+  }));
+  const combinedTotal = lines.reduce((sum, item) => sum + item.amount, 0);
+
+  return { lines, combinedTotal };
 }
 
 async function requireWorkspaceAccess({
@@ -261,7 +332,8 @@ export async function POST(request: Request, { params }: RouteParams) {
   const message = cleanText(body.message, 5000);
   const replyToEmail = cleanText(body.replyToEmail, 200).toLowerCase();
   const businessSlug = cleanText(body.businessSlug, 80);
-  const includePdfNote = Boolean(body.includePdfNote);
+  const sendSplitGroup = Boolean(body.sendSplitGroup);
+  const attachOfficialPdf = true;
   const emailPurpose =
     cleanText(body.emailPurpose, 40) === "reminder" ? "reminder" : "send";
 
@@ -289,7 +361,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   const { data: invoice, error: invoiceError } = await supabase
     .from("invoices")
     .select(
-      "id, business_id, client_id, display_id, customer_name, project_title, invoice_amount, amount_paid, due_date, issue_date, reference, service_address, status"
+      "id, business_id, client_id, display_id, customer_name, project_title, invoice_amount, amount_paid, due_date, issue_date, reference, service_address, status, split_parent_invoice_id, split_sequence, split_count"
     )
     .eq("id", id)
     .limit(1)
@@ -388,29 +460,126 @@ export async function POST(request: Request, { params }: RouteParams) {
     senderName: emailSettings.senderName || business.name || "Trimax",
     senderEmail,
   });
-  let pdfAttachment: EmailAttachment | null = null;
-  let pdfAttachmentSource: "print-page" | "none" =
-    "none";
+  let targetInvoices = [invoice];
+  const splitGroupRootId = invoice.split_parent_invoice_id ?? invoice.id;
 
-  if (includePdfNote) {
-    try {
-      pdfAttachment = await createPrintPagePdfAttachment({
-        url: new URL(
-          `/invoices/${invoice.id}/print?business=${business.slug}`,
-          request.url
-        ).toString(),
-        filename: invoice.display_id ?? "invoice",
-      });
-      pdfAttachmentSource = "print-page";
-    } catch (error) {
-      console.error("Official invoice PDF render failed.", error);
+  if (sendSplitGroup && emailPurpose !== "reminder") {
+    const { data: splitInvoices, error: splitInvoicesError } = await supabase
+      .from("invoices")
+      .select(
+        "id, business_id, client_id, display_id, customer_name, project_title, invoice_amount, amount_paid, due_date, issue_date, reference, service_address, status, split_parent_invoice_id, split_sequence, split_count"
+      )
+      .eq("business_id", invoice.business_id)
+      .eq("split_parent_invoice_id", splitGroupRootId)
+      .order("split_sequence", { ascending: true })
+      .returns<InvoiceRow[]>();
+
+    if (splitInvoicesError) {
       return NextResponse.json(
-        {
-          error:
-            "Trimax could not create the official customer invoice PDF, so the email was not sent. Please try Preview Invoice, then send again.",
-        },
-        { status: 502 }
+        { error: "Trimax could not load the split invoice group." },
+        { status: 500 }
       );
+    }
+
+    if (splitInvoices && splitInvoices.length > 0) {
+      targetInvoices = splitInvoices;
+    }
+  }
+
+  const isSplitGroupSend =
+    sendSplitGroup && emailPurpose !== "reminder" && targetInvoices.length > 1;
+  const { lines: splitSummaryLines, combinedTotal } =
+    buildSplitGroupSummary(targetInvoices);
+  const groupLabel = splitGroupLabel(targetInvoices);
+  const effectiveSubject = isSplitGroupSend
+    ? `${groupLabel} - Split invoices`
+    : subject;
+  const splitSummaryText = isSplitGroupSend
+    ? [
+        "",
+        "This invoice was split because of the billing limit. Each official invoice PDF is attached to this one email.",
+        "Attached invoices:",
+        ...splitSummaryLines.map(
+          (item) =>
+            `- ${item.documentNumber} - ${formatCurrency(item.amount)}${
+              item.splitLabel ? ` (${item.splitLabel})` : ""
+            }`
+        ),
+        `Combined Total - ${formatCurrency(combinedTotal)}`,
+      ].join("\n")
+    : "";
+  const effectiveMessage = isSplitGroupSend
+    ? `${message}\n${splitSummaryText}`
+    : message;
+  const pdfAttachments: EmailAttachment[] = [];
+  let pdfAttachmentSource: "print-page" | "none" = "none";
+
+  if (attachOfficialPdf) {
+    for (const targetInvoice of targetInvoices) {
+      const targetDocumentNumber = targetInvoice.display_id ?? "Invoice";
+
+      try {
+        const attachment = await createPrintPagePdfAttachment({
+          url: new URL(
+            `/invoices/${targetInvoice.id}/print?business=${business.slug}`,
+            request.url
+          ).toString(),
+          filename: targetDocumentNumber,
+        });
+
+        pdfAttachments.push(attachment);
+        pdfAttachmentSource = "print-page";
+      } catch (error) {
+        const failureMessage =
+          error instanceof Error ? error.message : "Unknown PDF render failure.";
+
+        console.error("Official invoice PDF render failed.", error);
+        await supabase.from("activity_logs").insert({
+          business_id: targetInvoice.business_id,
+          actor_user_id: access.userId,
+          actor_email: access.email,
+          action: isSplitGroupSend
+            ? "invoice.split_group_email_failed"
+            : "invoice.email_failed",
+          entity_type: "invoice",
+          entity_id: targetInvoice.id,
+          entity_label:
+            targetInvoice.display_id ?? targetInvoice.project_title ?? "Invoice",
+          details: {
+            business_profile: business.slug,
+            document_number: targetDocumentNumber,
+            included_invoice_ids: targetInvoices.map((item) => item.id),
+            included_invoice_numbers: targetInvoices.map(
+              (item) => item.display_id ?? "Invoice"
+            ),
+            recipient_email: recipientEmail,
+            subject: effectiveSubject,
+            sender_email: senderEmail,
+            cc_email: ccEmail || null,
+            cc_source: ccSource,
+            bcc_email: bccEmail && isValidEmail(bccEmail) ? bccEmail : null,
+            pdf_attached: false,
+            pdf_attachment_source: "print-page",
+            split_group_send: isSplitGroupSend,
+            split_group_root_id: splitGroupRootId,
+            failure_stage: "pdf_generation",
+            failure_invoice_id: targetInvoice.id,
+            failure_invoice_number: targetDocumentNumber,
+            failure_message: failureMessage,
+          },
+        });
+
+        return NextResponse.json(
+          {
+            error: isSplitGroupSend
+              ? `Trimax could not generate the PDF for ${targetDocumentNumber}, so the split group email was not sent. No invoice statuses were changed.`
+              : "Trimax could not generate the official invoice PDF, so nothing was sent. Refresh the invoice and try Send Invoice again. If this keeps happening, check that the invoice print view opens correctly.",
+            failedInvoiceId: targetInvoice.id,
+            failedInvoiceNumber: targetDocumentNumber,
+          },
+          { status: 502 }
+        );
+      }
     }
   }
 
@@ -422,10 +591,14 @@ export async function POST(request: Request, { params }: RouteParams) {
         )}</div>
       </div>
       <div style="padding: 34px 0;">
-        <p style="font-size: 16px;">${plainTextToHtml(message)}</p>
+        <p style="font-size: 16px;">${plainTextToHtml(effectiveMessage)}</p>
         ${
-          includePdfNote
-            ? `<p style="font-size: 14px; color: #52677c;">A PDF copy is attached.</p>`
+          attachOfficialPdf
+            ? `<p style="font-size: 14px; color: #52677c;">${
+                isSplitGroupSend
+                  ? `${pdfAttachments.length} official invoice PDFs are attached.`
+                  : "A PDF copy is attached."
+              }</p>`
             : ""
         }
       </div>
@@ -438,13 +611,36 @@ export async function POST(request: Request, { params }: RouteParams) {
     replyTo: replyToEmail || access.email,
     cc: ccEmail || null,
     bcc: bccEmail && isValidEmail(bccEmail) ? bccEmail : null,
-    subject,
+    subject: effectiveSubject,
     html,
-    text: message,
-    attachments: pdfAttachment ? [pdfAttachment] : undefined,
+    text: effectiveMessage,
+    attachments: pdfAttachments.length > 0 ? pdfAttachments : undefined,
   });
 
   if (!sendResult.ok) {
+    const failureDetails = {
+      business_profile: business.slug,
+      included_invoice_ids: targetInvoices.map((item) => item.id),
+      included_invoice_numbers: targetInvoices.map(
+        (item) => item.display_id ?? "Invoice"
+      ),
+      recipient_email: recipientEmail,
+      subject: effectiveSubject,
+      sender_email: senderEmail,
+      cc_email: ccEmail || null,
+      cc_source: ccSource,
+      bcc_email: bccEmail && isValidEmail(bccEmail) ? bccEmail : null,
+      pdf_attached: pdfAttachments.length > 0,
+      pdf_attachment_source: pdfAttachmentSource,
+      split_group_send: isSplitGroupSend,
+      split_group_root_id: splitGroupRootId,
+      provider: "resend",
+      provider_status: sendResult.status,
+      provider_response: sendResult.providerResponse ?? null,
+      failure_stage: "email_delivery",
+      failure_message: sendResult.error,
+    };
+
     await supabase.from("activity_logs").insert({
       business_id: invoice.business_id,
       actor_user_id: access.userId,
@@ -452,85 +648,163 @@ export async function POST(request: Request, { params }: RouteParams) {
       action:
         emailPurpose === "reminder"
           ? "invoice.payment_reminder_failed"
-          : "invoice.email_failed",
+          : isSplitGroupSend
+            ? "invoice.split_group_email_failed"
+            : "invoice.email_failed",
       entity_type: "invoice",
       entity_id: invoice.id,
       entity_label: invoice.display_id ?? invoice.project_title ?? "Invoice",
-      details: {
-        business_profile: business.slug,
-        document_number: invoice.display_id ?? "Invoice",
-        recipient_email: recipientEmail,
-        subject,
-        sender_email: senderEmail,
-        cc_email: ccEmail || null,
-        cc_source: ccSource,
-        bcc_email: bccEmail && isValidEmail(bccEmail) ? bccEmail : null,
-        pdf_attached: Boolean(pdfAttachment),
-        pdf_attachment_source: pdfAttachmentSource,
-        provider: "resend",
-        provider_status: sendResult.status,
-        provider_response: sendResult.providerResponse ?? null,
-        failure_message: sendResult.error,
-      },
+      details: failureDetails,
     });
 
     return NextResponse.json(
-      { error: sendResult.error },
+      {
+        error: isSplitGroupSend
+          ? `Trimax could not send the split group email, so no invoice statuses were changed. ${sendResult.error}`
+          : sendResult.error,
+      },
       { status: sendResult.status }
     );
   }
 
+  let statusUpdateErrorMessage: string | null = null;
+
   if (emailPurpose !== "reminder") {
-    await supabase
+    const { error: statusUpdateError } = await supabase
       .from("invoices")
       .update({
         status: "sent",
         updated_at: new Date().toISOString(),
       })
-      .eq("id", invoice.id);
+      .in(
+        "id",
+        targetInvoices.map((targetInvoice) => targetInvoice.id)
+      );
+
+    if (statusUpdateError) {
+      statusUpdateErrorMessage = statusUpdateError.message;
+      console.error("Invoice status update failed after send.", statusUpdateError);
+    }
   }
 
-  await supabase.from("activity_logs").insert({
-    business_id: invoice.business_id,
-    actor_user_id: access.userId,
-    actor_email: access.email,
-    action:
-      emailPurpose === "reminder"
-        ? "invoice.payment_reminder_sent"
-        : "invoice.email_sent",
-    entity_type: "invoice",
-    entity_id: invoice.id,
-    entity_label: invoice.display_id ?? invoice.project_title ?? "Invoice",
-    details: {
-      recipient_email: recipientEmail,
-      business_profile: business.slug,
-      document_number: invoice.display_id ?? "Invoice",
-      subject,
-      sender_email: senderEmail,
-      cc_email: ccEmail || null,
-      cc_source: ccSource,
-      bcc_email: bccEmail && isValidEmail(bccEmail) ? bccEmail : null,
-      pdf_attached: Boolean(pdfAttachment),
-      pdf_attachment_source: pdfAttachmentSource,
-      provider: "resend",
-      provider_status: sendResult.status,
-      provider_response: sendResult.providerResponse ?? null,
-      delivery_status: "sent",
-    },
-  });
+  if (isSplitGroupSend) {
+    await supabase.from("activity_logs").insert({
+      business_id: invoice.business_id,
+      actor_user_id: access.userId,
+      actor_email: access.email,
+      action: "invoice.split_group_email_sent",
+      entity_type: "invoice",
+      entity_id: splitGroupRootId,
+      entity_label: groupLabel,
+      details: {
+        recipient_email: recipientEmail,
+        business_profile: business.slug,
+        included_invoice_ids: targetInvoices.map((item) => item.id),
+        included_invoice_numbers: splitSummaryLines.map(
+          (item) => item.documentNumber
+        ),
+        included_invoice_totals: splitSummaryLines.map((item) => ({
+          document_number: item.documentNumber,
+          amount: item.amount,
+          amount_label: formatCurrency(item.amount),
+          split_label: item.splitLabel,
+        })),
+        combined_total: combinedTotal,
+        combined_total_label: formatCurrency(combinedTotal),
+        subject: effectiveSubject,
+        sender_email: senderEmail,
+        cc_email: ccEmail || null,
+        cc_source: ccSource,
+        bcc_email: bccEmail && isValidEmail(bccEmail) ? bccEmail : null,
+        pdf_attached: pdfAttachments.length > 0,
+        pdf_attachment_count: pdfAttachments.length,
+        pdf_attachment_source: pdfAttachmentSource,
+        split_group_send: true,
+        split_group_root_id: splitGroupRootId,
+        provider: "resend",
+        provider_status: sendResult.status,
+        provider_response: sendResult.providerResponse ?? null,
+        delivery_status: "sent",
+        status_update_error: statusUpdateErrorMessage,
+      },
+    });
+  }
 
-  return NextResponse.json({
-    message:
-      emailPurpose === "reminder"
-        ? `Payment reminder for ${
-            invoice.display_id ?? "Invoice"
-          } was sent to ${recipientEmail}${ccEmail ? " and CC'd." : ""}${
-            bccEmail && isValidEmail(bccEmail) ? " It was privately copied." : "."
-          }${pdfAttachment ? " PDF attached." : ""}`
+  for (const targetInvoice of targetInvoices) {
+    const targetDocumentNumber = targetInvoice.display_id ?? "Invoice";
+
+    await supabase.from("activity_logs").insert({
+      business_id: targetInvoice.business_id,
+      actor_user_id: access.userId,
+      actor_email: access.email,
+      action:
+        emailPurpose === "reminder"
+          ? "invoice.payment_reminder_sent"
+          : "invoice.email_sent",
+      entity_type: "invoice",
+      entity_id: targetInvoice.id,
+      entity_label:
+        targetInvoice.display_id ?? targetInvoice.project_title ?? "Invoice",
+      details: {
+        recipient_email: recipientEmail,
+        business_profile: business.slug,
+        document_number: targetDocumentNumber,
+        subject: effectiveSubject,
+        sender_email: senderEmail,
+        cc_email: ccEmail || null,
+        cc_source: ccSource,
+        bcc_email: bccEmail && isValidEmail(bccEmail) ? bccEmail : null,
+        pdf_attached: pdfAttachments.length > 0,
+        pdf_attachment_source: pdfAttachmentSource,
+        split_group_send: isSplitGroupSend,
+        split_group_root_id: splitGroupRootId,
+        ...(isSplitGroupSend
+          ? {
+              included_invoice_ids: targetInvoices.map((item) => item.id),
+              included_invoice_numbers: targetInvoices.map(
+                (item) => item.display_id ?? "Invoice"
+              ),
+            }
+          : {}),
+        provider: "resend",
+        provider_status: sendResult.status,
+        provider_response: sendResult.providerResponse ?? null,
+        delivery_status: "sent",
+        status_update_error: statusUpdateErrorMessage,
+      },
+    });
+  }
+
+  const successMessage = isSplitGroupSend
+    ? statusUpdateErrorMessage
+      ? `Split group email was sent to ${recipientEmail} with ${pdfAttachments.length} PDFs attached, but Trimax could not update the invoice sent statuses automatically. Proof was saved; refresh and review the split invoices.`
+      : `Split group sent to ${recipientEmail} with ${pdfAttachments.length} PDFs attached. ${targetInvoices.length} invoices were marked sent.`
+    : emailPurpose === "reminder"
+      ? `Payment reminder for ${
+          invoice.display_id ?? "Invoice"
+        } was sent to ${recipientEmail}${ccEmail ? " and CC'd." : ""}${
+          bccEmail && isValidEmail(bccEmail) ? " It was privately copied." : "."
+        } PDF attached.`
+      : statusUpdateErrorMessage
+        ? `${invoice.display_id ?? "Invoice"} was sent to ${recipientEmail}, but Trimax could not update the invoice sent status automatically. Proof was saved; refresh and review the invoice.`
         : `${invoice.display_id ?? "Invoice"} was sent to ${recipientEmail}${
             ccEmail ? " and CC'd" : ""
           }${
             bccEmail && isValidEmail(bccEmail) ? " and privately copied." : "."
-          }${pdfAttachment ? " PDF attached." : ""}`,
-  });
+          } PDF attached.`;
+
+  return NextResponse.json(
+    {
+      message: successMessage,
+      sentCount: targetInvoices.length,
+      attachmentCount: pdfAttachments.length,
+      includedInvoices: targetInvoices.map((targetInvoice) => ({
+        id: targetInvoice.id,
+        documentNumber: targetInvoice.display_id ?? "Invoice",
+        amount: splitInvoiceAmount(targetInvoice),
+      })),
+      statusUpdateError: statusUpdateErrorMessage,
+    },
+    { status: statusUpdateErrorMessage ? 207 : 200 }
+  );
 }

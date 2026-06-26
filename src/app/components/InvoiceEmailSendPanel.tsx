@@ -26,6 +26,15 @@ type InvoiceEmailSendPanelProps = {
   projectTitle?: string | null;
   printHref: string;
   requestType?: "invoice" | "deposit" | "estimate" | "reminder";
+  sendSplitGroup?: boolean;
+  splitGroupCount?: number;
+  splitGroupLabel?: string;
+  splitGroupItems?: {
+    documentNumber: string;
+    amountLabel: string;
+    splitLabel?: string | null;
+  }[];
+  splitGroupCombinedTotal?: string;
 };
 
 function defaultSubject(
@@ -82,6 +91,52 @@ function defaultMessage({
   }.`;
 }
 
+function defaultSplitGroupSubject(splitGroupLabel: string) {
+  return `${splitGroupLabel} - Split invoices`;
+}
+
+function defaultSplitGroupMessage({
+  businessName,
+  splitGroupCount,
+  projectTitle,
+  splitGroupItems,
+  splitGroupCombinedTotal,
+}: {
+  businessName: string;
+  splitGroupCount: number;
+  projectTitle?: string | null;
+  splitGroupItems?: {
+    documentNumber: string;
+    amountLabel: string;
+    splitLabel?: string | null;
+  }[];
+  splitGroupCombinedTotal?: string;
+}) {
+  const projectText = projectTitle?.trim()
+    ? ` for ${projectTitle.trim()}`
+    : "";
+  const invoiceLines =
+    splitGroupItems && splitGroupItems.length > 0
+      ? [
+          "",
+          "Attached invoices:",
+          ...splitGroupItems.map(
+            (item) =>
+              `- ${item.documentNumber} - ${item.amountLabel}${
+                item.splitLabel ? ` (${item.splitLabel})` : ""
+              }`
+          ),
+          splitGroupCombinedTotal
+            ? `Combined Total - ${splitGroupCombinedTotal}`
+            : "",
+        ]
+          .filter(Boolean)
+          .join("\n")
+      : "";
+
+  return `${businessName} sent ${splitGroupCount} split invoices${projectText}. The invoice was split because of the billing limit, and each official invoice PDF is attached to this one email.${invoiceLines}`;
+}
+
 export default function InvoiceEmailSendPanel({
   documentId,
   documentKind = "invoice",
@@ -96,7 +151,15 @@ export default function InvoiceEmailSendPanel({
   projectTitle,
   printHref,
   requestType = "invoice",
+  sendSplitGroup = false,
+  splitGroupCount = 0,
+  splitGroupLabel,
+  splitGroupItems = [],
+  splitGroupCombinedTotal,
 }: InvoiceEmailSendPanelProps) {
+  const effectiveSplitGroupLabel =
+    splitGroupLabel?.trim() ||
+    (projectTitle?.trim() ? `Invoice ${projectTitle.trim()}` : documentNumber);
   const documentLabel =
     requestType === "deposit"
       ? "Deposit request"
@@ -109,16 +172,26 @@ export default function InvoiceEmailSendPanel({
   const [recipient, setRecipient] = useState(recipientEmail ?? "");
   const visibleClientCc = clientCcEmail?.trim() ?? "";
   const [subject, setSubject] = useState(
-    defaultSubject(businessName, documentNumber, requestType)
+    sendSplitGroup && splitGroupCount > 1 && requestType === "invoice"
+      ? defaultSplitGroupSubject(effectiveSplitGroupLabel)
+      : defaultSubject(businessName, documentNumber, requestType)
   );
   const [message, setMessage] = useState(
-    defaultMessage({
-      businessName,
-      documentNumber,
-      amountDue,
-      dueDate,
-      requestType,
-    })
+    sendSplitGroup && splitGroupCount > 1 && requestType === "invoice"
+      ? defaultSplitGroupMessage({
+          businessName,
+          splitGroupCount,
+          projectTitle,
+          splitGroupItems,
+          splitGroupCombinedTotal,
+        })
+      : defaultMessage({
+          businessName,
+          documentNumber,
+          amountDue,
+          dueDate,
+          requestType,
+        })
   );
   const [signature, setSignature] = useState(
     defaultInvoiceEmailSettings({
@@ -128,7 +201,6 @@ export default function InvoiceEmailSendPanel({
   );
   const [replyToEmail, setReplyToEmail] = useState("");
   const [templateLoaded, setTemplateLoaded] = useState(false);
-  const [includePdfNote, setIncludePdfNote] = useState(true);
   const [sending, setSending] = useState(false);
   const [toast, setToast] = useState<{
     type: "success" | "error";
@@ -182,6 +254,29 @@ export default function InvoiceEmailSendPanel({
     const friendlyProject = projectTitle?.trim()
       ? ` for ${projectTitle.trim()}`
       : "";
+
+    if (sendSplitGroup && splitGroupCount > 1 && requestType === "invoice") {
+      return [
+        {
+          label: "Standard",
+          text: defaultSplitGroupMessage({
+            businessName,
+            splitGroupCount,
+            projectTitle,
+            splitGroupItems,
+            splitGroupCombinedTotal,
+          }),
+        },
+        {
+          label: "Brief",
+          text: `${businessName} sent ${splitGroupCount} split invoices${friendlyProject}. The invoice was split because of the billing limit, and each invoice PDF is attached to this one email.`,
+        },
+        {
+          label: "Clear",
+          text: `Please review the attached split invoice PDFs${friendlyProject}. They are being sent together in one email for easier review.`,
+        },
+      ];
+    }
 
     if (requestType === "reminder") {
       return [
@@ -266,6 +361,10 @@ export default function InvoiceEmailSendPanel({
     dueDate,
     projectTitle,
     requestType,
+    sendSplitGroup,
+    splitGroupCombinedTotal,
+    splitGroupCount,
+    splitGroupItems,
   ]);
   const deliveryBrief = [
     {
@@ -274,7 +373,10 @@ export default function InvoiceEmailSendPanel({
     },
     {
       label: "Document",
-      value: `${documentLabel} ${documentNumber}`,
+      value:
+        sendSplitGroup && splitGroupCount > 1
+          ? `${splitGroupCount} attached invoices`
+          : `${documentLabel} ${documentNumber}`,
     },
     {
       label: requestType === "reminder" ? "Past-due amount" : "Amount",
@@ -315,8 +417,11 @@ export default function InvoiceEmailSendPanel({
     },
     {
       label: "PDF attachment",
-      detail: includePdfNote ? "Official document will attach" : "No attachment",
-      status: includePdfNote ? "ready" : "waiting",
+      detail:
+        sendSplitGroup && splitGroupCount > 1
+          ? `${splitGroupCount} official PDFs attach automatically`
+          : "Official document attaches automatically",
+      status: "ready",
     },
   ];
 
@@ -349,7 +454,9 @@ export default function InvoiceEmailSendPanel({
       const settings = normalizeInvoiceEmailSettings(data?.value, fallback);
 
       setSubject(
-        requestType === "deposit"
+        sendSplitGroup && splitGroupCount > 1 && requestType === "invoice"
+          ? defaultSplitGroupSubject(effectiveSplitGroupLabel)
+          : requestType === "deposit"
           ? defaultSubject(businessName, documentNumber, requestType)
           : requestType === "reminder"
             ? renderEmailTemplate(
@@ -364,7 +471,15 @@ export default function InvoiceEmailSendPanel({
             )
       );
       setMessage(
-        requestType === "deposit"
+        sendSplitGroup && splitGroupCount > 1 && requestType === "invoice"
+          ? defaultSplitGroupMessage({
+              businessName,
+              splitGroupCount,
+              projectTitle,
+              splitGroupItems,
+              splitGroupCombinedTotal,
+            })
+          : requestType === "deposit"
           ? defaultMessage({
               businessName,
               documentNumber,
@@ -403,11 +518,17 @@ export default function InvoiceEmailSendPanel({
     businessSlug,
     documentNumber,
     dueDate,
+    projectTitle,
     requestType,
+    sendSplitGroup,
+    effectiveSplitGroupLabel,
+    splitGroupCombinedTotal,
+    splitGroupCount,
+    splitGroupItems,
     templateVariables,
   ]);
 
-  async function handleSend() {
+  async function handleSend(sendAsSplitGroup = sendSplitGroup) {
     setToast(null);
 
     if (!canSend) {
@@ -441,7 +562,8 @@ export default function InvoiceEmailSendPanel({
           subject: subject.trim(),
           message: emailBody,
           replyToEmail,
-          includePdfNote,
+          attachOfficialPdf: true,
+          sendSplitGroup: sendAsSplitGroup,
           emailPurpose: requestType === "reminder" ? "reminder" : "send",
         }),
         }
@@ -450,6 +572,9 @@ export default function InvoiceEmailSendPanel({
       const result = (await response.json().catch(() => ({}))) as {
         error?: string;
         message?: string;
+        failedCount?: number;
+        failures?: Array<{ documentNumber?: string; error?: string }>;
+        statusUpdateError?: string | null;
       };
 
       if (!response.ok) {
@@ -463,8 +588,16 @@ export default function InvoiceEmailSendPanel({
       }
 
       setToast({
-        type: "success",
-        message: result.message ?? `${documentLabel} email sent.`,
+        type:
+          result.statusUpdateError ||
+          (result.failedCount && result.failedCount > 0)
+            ? "error"
+            : "success",
+        message:
+          result.message ??
+          (sendSplitGroup && splitGroupCount > 1
+            ? `Split invoice group sent.`
+            : `${documentLabel} email sent.`),
       });
     } catch {
       setToast({
@@ -501,6 +634,8 @@ export default function InvoiceEmailSendPanel({
               ? `Send Payment Reminder`
             : requestType === "estimate"
               ? `Send ${documentNumber}`
+            : sendSplitGroup && splitGroupCount > 1
+              ? "Send Split Group"
             : `Send ${documentNumber}`}
         </h2>
         <div className="invoice-delivery-brief mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -622,26 +757,47 @@ export default function InvoiceEmailSendPanel({
             />
           </div>
 
-          <label className="invoice-email-option flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-700">
-            <input
-              type="checkbox"
-              checked={includePdfNote}
-              onChange={(event) => setIncludePdfNote(event.target.checked)}
-              className="mt-1 h-4 w-4"
-            />
-            <span>
-              Attach the official customer {documentLabelLower} PDF to the email.
-            </span>
-          </label>
+          <div className="invoice-email-option rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm leading-6 text-emerald-950">
+            {sendSplitGroup && splitGroupCount > 1
+              ? `${splitGroupCount} official customer invoice PDFs are generated fresh and attached to one email when you send.`
+              : `The official customer ${documentLabelLower} PDF is generated fresh and attached automatically when you send.`}
+          </div>
+
+          {sendSplitGroup && splitGroupCount > 1 ? (
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
+              <p className="font-black text-slate-950">Included invoices</p>
+              <div className="mt-3 space-y-2">
+                {splitGroupItems.map((item) => (
+                  <div
+                    key={item.documentNumber}
+                    className="flex items-start justify-between gap-3 border-b border-slate-100 pb-2 last:border-b-0 last:pb-0"
+                  >
+                    <span>
+                      {item.documentNumber}
+                      {item.splitLabel ? ` (${item.splitLabel})` : ""}
+                    </span>
+                    <span className="font-bold text-slate-950">
+                      {item.amountLabel}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              {splitGroupCombinedTotal ? (
+                <p className="mt-3 border-t border-slate-200 pt-3 font-black text-slate-950">
+                  Combined total: {splitGroupCombinedTotal}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="invoice-pdf-attachment-card rounded-2xl border border-slate-200 bg-white p-4">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
               PDF Attachment
             </p>
             <p className="mt-2 text-sm font-semibold text-slate-950">
-              {includePdfNote
-                ? `The attached PDF uses the official full-page customer ${documentLabelLower} layout.`
-                : "No PDF will be attached to this email."}
+              {sendSplitGroup && splitGroupCount > 1
+                ? `All split invoice PDFs attach to this one customer email.`
+                : `The attached PDF uses the official full-page customer ${documentLabelLower} layout.`}
             </p>
             <a
               href={printHref}
@@ -688,7 +844,9 @@ export default function InvoiceEmailSendPanel({
         <div className="max-w-2xl">
           <p className="text-sm font-semibold text-slate-700">
             {canSend
-              ? `${documentLabel} is ready to send`
+              ? sendSplitGroup && splitGroupCount > 1
+                ? `Split invoice group is ready to send`
+                : `${documentLabel} is ready to send`
               : `Finish the ${documentLabelLower} email setup`}
           </p>
           <p className="mt-1 text-sm leading-6 text-slate-500">
@@ -708,7 +866,7 @@ export default function InvoiceEmailSendPanel({
           </a>
           <button
             type="button"
-            onClick={handleSend}
+            onClick={() => handleSend(sendSplitGroup)}
             disabled={!canSend || sending}
             className="inline-flex w-full items-center justify-center rounded-2xl border border-emerald-700 bg-emerald-600 px-5 py-3 text-center font-semibold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none sm:w-auto"
           >
@@ -720,8 +878,20 @@ export default function InvoiceEmailSendPanel({
                   ? "Send Reminder"
                 : requestType === "estimate"
                   ? "Send Estimate"
-                : "Send Invoice"}
+                : sendSplitGroup && splitGroupCount > 1
+                  ? "Send Split Group"
+                  : "Send Invoice"}
           </button>
+          {sendSplitGroup && splitGroupCount > 1 ? (
+            <button
+              type="button"
+              onClick={() => handleSend(false)}
+              disabled={!canSend || sending}
+              className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-3 text-center font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 sm:w-auto"
+            >
+              Send This Invoice Only
+            </button>
+          ) : null}
         </div>
       </div>
     </Card>

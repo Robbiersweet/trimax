@@ -77,6 +77,8 @@ type SplitRelatedInvoice = {
   id: string;
   display_id: string | null;
   project_title: string | null;
+  invoice_amount: number | string | null;
+  reference: string | null;
   status: string | null;
   split_sequence: number | null;
   split_count: number | null;
@@ -130,6 +132,12 @@ function numberValue(value: number | string | null | undefined) {
 
   const parsed = Number(String(value ?? 0).replace(/[^0-9.-]/g, ""));
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function splitGroupTitle(value: string | null | undefined) {
+  const cleaned = String(value ?? "").trim();
+
+  return cleaned.replace(/\s+-\s+Split\s+\d+\s+of\s+\d+$/i, "");
 }
 
 function formatDate(value: string | null) {
@@ -908,7 +916,7 @@ export default async function InvoiceDetailPage({
     const { data: parentData, error: parentError } = await supabase
       .from("invoices")
       .select(
-        "id, display_id, project_title, status, split_sequence, split_count"
+        "id, display_id, project_title, invoice_amount, reference, status, split_sequence, split_count"
       )
       .eq("id", invoice.split_parent_invoice_id)
       .eq("business_id", business.id)
@@ -924,7 +932,7 @@ export default async function InvoiceDetailPage({
     const { data: siblingData, error: siblingError } = await supabase
       .from("invoices")
       .select(
-        "id, display_id, project_title, status, split_sequence, split_count"
+        "id, display_id, project_title, invoice_amount, reference, status, split_sequence, split_count"
       )
       .eq("split_parent_invoice_id", invoice.split_parent_invoice_id)
       .eq("business_id", business.id)
@@ -940,7 +948,7 @@ export default async function InvoiceDetailPage({
     const { data: childData, error: childError } = await supabase
       .from("invoices")
       .select(
-        "id, display_id, project_title, status, split_sequence, split_count"
+        "id, display_id, project_title, invoice_amount, reference, status, split_sequence, split_count"
       )
       .eq("split_parent_invoice_id", invoice.id)
       .eq("business_id", business.id)
@@ -1060,6 +1068,43 @@ export default async function InvoiceDetailPage({
     splitPlan.length > 0;
   const canCreateSplitInvoices =
     showSplitWarning && splitRelatedInvoices.length === 0;
+  const hasSplitInvoiceGroup = splitRelatedInvoices.length > 1;
+  const splitSendInvoiceCount =
+    hasSplitInvoiceGroup
+      ? splitRelatedInvoices.length
+      : 0;
+  const splitGroupCombinedTotal = splitRelatedInvoices.reduce(
+    (sum, relatedInvoice) => sum + numberValue(relatedInvoice.invoice_amount),
+    0
+  );
+  const splitGroupSentCount = splitRelatedInvoices.filter(
+    (relatedInvoice) => relatedInvoice.status?.toLowerCase() === "sent"
+  ).length;
+  const splitGroupPaidCount = splitRelatedInvoices.filter(
+    (relatedInvoice) => relatedInvoice.status?.toLowerCase() === "paid"
+  ).length;
+  const splitGroupStatus =
+    splitRelatedInvoices.length === 0
+      ? "Not split"
+      : splitGroupPaidCount === splitRelatedInvoices.length
+        ? "Paid"
+        : splitGroupSentCount === splitRelatedInvoices.length
+          ? "Sent"
+          : splitGroupSentCount > 0
+            ? `${splitGroupSentCount} of ${splitRelatedInvoices.length} sent`
+            : "Draft";
+  const splitGroupItems = splitRelatedInvoices.map((relatedInvoice) => ({
+    documentNumber: relatedInvoice.display_id || "Invoice",
+    amountLabel: money(numberValue(relatedInvoice.invoice_amount)),
+    splitLabel:
+      relatedInvoice.split_sequence && relatedInvoice.split_count
+        ? `Split ${relatedInvoice.split_sequence} of ${relatedInvoice.split_count}`
+        : null,
+  }));
+  const splitGroupLabel =
+    splitGroupTitle(splitParentInvoice?.project_title) ||
+    splitGroupTitle(projectTitle) ||
+    (displayReference ? `Unit ${displayReference}` : "Split invoice group");
   const latestSendLog = invoiceActivityLogs.find(
     (log) => log.action === "invoice.email_sent"
   );
@@ -1208,7 +1253,15 @@ export default async function InvoiceDetailPage({
     businessQuery ? "&" : "?"
   }customer=${encodeURIComponent(customerName)}`;
   const invoiceIntelligenceAction: InvoiceIntelligenceAction =
-    normalizedStatus === "draft"
+    hasSplitInvoiceGroup && normalizedStatus === "draft"
+      ? {
+          href: "#send-invoice",
+          label: "Send Split Group",
+          title: "Send the split group next",
+          detail:
+            "This is one customer transaction represented by multiple accounting invoices. Send one email with every split invoice PDF attached.",
+        }
+      : normalizedStatus === "draft"
       ? {
           href: "#send-invoice",
           label: "Send Invoice",
@@ -1360,31 +1413,73 @@ export default async function InvoiceDetailPage({
           ) : null}
 
           {splitParentInvoice || splitRelatedInvoices.length > 0 ? (
-            <Card className="border-green-500/40 bg-green-500/10">
+            <Card className="overflow-visible border-green-500/40 bg-green-500/10">
               <div className="flex flex-col gap-6">
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.35em] text-green-300">
-                    Split Invoice Group
-                  </p>
+                <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr] lg:items-start">
+                  <div>
+                    <p className="text-sm font-semibold uppercase tracking-[0.35em] text-green-300">
+                      Split Invoice Group
+                    </p>
 
-                  <p className="mt-3 text-lg font-bold text-green-100">
-                    {invoice.split_parent_invoice_id
-                      ? `Split ${
-                          invoice.split_sequence ?? "-"
-                        } of ${invoice.split_count ?? "-"} from ${
-                          splitParentInvoice?.display_id ||
-                          "the original invoice"
-                        }`
-                      : `This invoice has ${splitRelatedInvoices.length} split invoice${
-                          splitRelatedInvoices.length === 1 ? "" : "s"
-                        }.`}
-                  </p>
+                    <p className="mt-3 text-lg font-bold text-green-100">
+                      {invoice.split_parent_invoice_id
+                        ? `Split ${
+                            invoice.split_sequence ?? "-"
+                          } of ${invoice.split_count ?? "-"} from ${
+                            splitParentInvoice?.display_id ||
+                            "the original invoice"
+                          }`
+                        : `This invoice has ${splitRelatedInvoices.length} split invoice${
+                            splitRelatedInvoices.length === 1 ? "" : "s"
+                          }.`}
+                    </p>
 
-                  <p className="mt-2 text-sm leading-6 text-green-100/70">
-                    {invoice.split_parent_invoice_id
-                      ? "This invoice is one part of a larger invoice split."
-                      : "These invoices were created from this original invoice."}
-                  </p>
+                    <p className="mt-2 text-sm leading-6 text-green-100/75">
+                      A split invoice group is one customer transaction
+                      represented by multiple accounting invoices. The default
+                      customer workflow sends one email with every child invoice
+                      PDF attached.
+                    </p>
+                  </div>
+
+                  {splitRelatedInvoices.length > 1 ? (
+                    <div className="rounded-2xl border border-green-400/30 bg-black/25 p-4">
+                      <p className="text-xs font-black uppercase tracking-[0.22em] text-green-200/70">
+                        Group Status
+                      </p>
+                      <p className="mt-2 text-2xl font-black text-white">
+                        {splitGroupStatus}
+                      </p>
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.2em] text-green-100/55">
+                            Included
+                          </p>
+                          <p className="mt-1 text-lg font-black text-green-50">
+                            {splitRelatedInvoices.length} invoices
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.2em] text-green-100/55">
+                            Combined total
+                          </p>
+                          <p className="mt-1 text-lg font-black text-green-50">
+                            {money(splitGroupCombinedTotal)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-4 flex flex-col gap-3">
+                        <Link href="#send-invoice">
+                          <Button>Send Split Group</Button>
+                        </Link>
+                        <Link href={`/invoices/${invoice.id}/print${businessQuery}`}>
+                          <Button variant="secondary">
+                            Preview Current PDF
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
 
                 {splitParentInvoice ? (
@@ -1410,50 +1505,132 @@ export default async function InvoiceDetailPage({
                       >
                         <Button variant="secondary">Open Original</Button>
                       </Link>
+
+                      {hasSplitInvoiceGroup ? (
+                        <Link href="#send-invoice">
+                          <Button>Send Split Group</Button>
+                        </Link>
+                      ) : null}
                     </div>
                   </div>
                 ) : null}
 
                 {splitRelatedInvoices.length > 0 ? (
-                  <div className="overflow-hidden rounded-2xl border border-green-500/30">
-                    <div className="grid grid-cols-[1fr_120px_150px] gap-4 bg-black/30 px-5 py-3 text-sm font-bold text-green-100/80">
-                      <span>Related Invoice</span>
-                      <span>Status</span>
-                      <span className="text-right">Action</span>
+                  <div className="rounded-2xl border border-green-500/30 bg-black/15 p-4">
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-[0.22em] text-green-200/70">
+                          Included invoices
+                        </p>
+                        <p className="mt-1 text-sm text-green-100/70">
+                          Each child keeps its own invoice number for
+                          accounting, but the customer normally receives one
+                          group email.
+                        </p>
+                      </div>
                     </div>
 
-                    {splitRelatedInvoices.map((relatedInvoice) => (
-                      <div
-                        key={relatedInvoice.id}
-                        className="grid grid-cols-[1fr_120px_150px] gap-4 border-t border-green-500/20 px-5 py-4 text-green-50"
-                      >
-                        <div>
-                          <p className="font-semibold">
-                            {relatedInvoice.display_id || "Invoice"}
-                          </p>
-
-                          <p className="mt-1 text-sm text-green-100/70">
-                            {relatedInvoice.project_title ||
-                              "Untitled invoice"}
-                          </p>
-                        </div>
-
-                        <span className="text-sm text-green-100/80">
-                          {relatedInvoice.status || "Draft"}
-                        </span>
-
-                        <Link
-                          href={`/invoices/${relatedInvoice.id}${businessQuery}`}
-                          className="text-right text-sm font-semibold text-orange-300 hover:text-orange-200"
+                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                      {splitRelatedInvoices.map((relatedInvoice) => (
+                        <div
+                          key={relatedInvoice.id}
+                          className="rounded-2xl border border-green-500/25 bg-black/25 p-4 text-green-50"
                         >
-                          Open
-                        </Link>
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0">
+                              <p className="overflow-wrap-anywhere text-lg font-black">
+                                {relatedInvoice.display_id || "Invoice"}
+                              </p>
+                              <p className="mt-1 text-sm text-green-100/70">
+                                {relatedInvoice.split_sequence &&
+                                relatedInvoice.split_count
+                                  ? `Split ${relatedInvoice.split_sequence} of ${relatedInvoice.split_count}`
+                                  : "Split invoice"}
+                              </p>
+                            </div>
+
+                            <span className="w-fit rounded-full border border-green-400/30 bg-green-400/10 px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-green-100">
+                              {relatedInvoice.status || "Draft"}
+                            </span>
+                          </div>
+
+                          <p className="mt-3 overflow-wrap-anywhere text-sm leading-6 text-green-100/75">
+                            {relatedInvoice.project_title || "Untitled invoice"}
+                          </p>
+
+                          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                            <div>
+                              <p className="text-xs uppercase tracking-[0.2em] text-green-100/50">
+                                Amount
+                              </p>
+                              <p className="mt-1 text-base font-black text-white">
+                                {money(numberValue(relatedInvoice.invoice_amount))}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs uppercase tracking-[0.2em] text-green-100/50">
+                                Action
+                              </p>
+                              <Link
+                                href={`/invoices/${relatedInvoice.id}${businessQuery}`}
+                                className="mt-1 inline-flex text-sm font-semibold text-orange-300 hover:text-orange-200"
+                              >
+                                Open individual invoice
+                              </Link>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-4 rounded-2xl border border-green-500/25 bg-black/20 p-4">
+                      <p className="text-xs font-black uppercase tracking-[0.22em] text-green-200/70">
+                        Secondary actions
+                      </p>
+                      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                        {splitParentInvoice ? (
+                          <Link
+                            href={`/invoices/${splitParentInvoice.id}${businessQuery}`}
+                          >
+                            <Button variant="secondary">Open Original</Button>
+                          </Link>
+                        ) : null}
+                        <a href="#invoice-actions">
+                          <Button variant="secondary">
+                            Manage Individual Invoices
+                          </Button>
+                        </a>
                       </div>
-                    ))}
+                    </div>
                   </div>
                 ) : null}
+
               </div>
             </Card>
+          ) : null}
+
+          {hasSplitInvoiceGroup ? (
+            <div id="send-invoice" className="scroll-mt-6">
+              <InvoiceEmailSendPanel
+                documentId={invoice.id}
+                businessSlug={businessSlug}
+                businessName={businessName}
+                customerName={customerName}
+                recipientEmail={recipientEmail}
+                clientCcEmail={clientContact?.cc_email ?? null}
+                documentNumber={invoiceNumber}
+                amountDue={money(customerFacingAmountDue)}
+                dueDate={displayDueDate ? formatDate(displayDueDate) : "-"}
+                projectTitle={projectTitle}
+                printHref={`/invoices/${invoice.id}/print${businessQuery}`}
+                requestType="invoice"
+                sendSplitGroup
+                splitGroupCount={splitSendInvoiceCount}
+                splitGroupLabel={splitGroupLabel}
+                splitGroupItems={splitGroupItems}
+                splitGroupCombinedTotal={money(splitGroupCombinedTotal)}
+              />
+            </div>
           ) : null}
 
           {linkedEstimate ? (
@@ -1478,22 +1655,24 @@ export default async function InvoiceDetailPage({
             </Card>
           ) : null}
 
-          <div id="send-invoice" className="scroll-mt-6">
-            <InvoiceEmailSendPanel
-              documentId={invoice.id}
-              businessSlug={businessSlug}
-              businessName={businessName}
-              customerName={customerName}
-              recipientEmail={recipientEmail}
-              clientCcEmail={clientContact?.cc_email ?? null}
-              documentNumber={invoiceNumber}
-              amountDue={money(customerFacingAmountDue)}
-              dueDate={displayDueDate ? formatDate(displayDueDate) : "-"}
-              projectTitle={projectTitle}
-              printHref={`/invoices/${invoice.id}/print${businessQuery}`}
-              requestType={hasDepositRequest ? "deposit" : "invoice"}
-            />
-          </div>
+          {!hasSplitInvoiceGroup ? (
+            <div id="send-invoice" className="scroll-mt-6">
+              <InvoiceEmailSendPanel
+                documentId={invoice.id}
+                businessSlug={businessSlug}
+                businessName={businessName}
+                customerName={customerName}
+                recipientEmail={recipientEmail}
+                clientCcEmail={clientContact?.cc_email ?? null}
+                documentNumber={invoiceNumber}
+                amountDue={money(customerFacingAmountDue)}
+                dueDate={displayDueDate ? formatDate(displayDueDate) : "-"}
+                projectTitle={projectTitle}
+                printHref={`/invoices/${invoice.id}/print${businessQuery}`}
+                requestType={hasDepositRequest ? "deposit" : "invoice"}
+              />
+            </div>
+          ) : null}
 
           {isPaymentLate ? (
             <section
@@ -1812,7 +1991,21 @@ export default async function InvoiceDetailPage({
             </Card>
           ) : null}
 
-          <div id="invoice-actions" className="flex scroll-mt-6 flex-wrap gap-4">
+          <div id="invoice-actions" className="scroll-mt-6">
+            {splitSendInvoiceCount > 1 ? (
+              <div className="mb-4 rounded-2xl border border-zinc-800 bg-black/25 p-4">
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-zinc-500">
+                  Individual invoice actions
+                </p>
+                <p className="mt-2 text-sm leading-6 text-zinc-300">
+                  These controls affect only {invoice.display_id || "this invoice"}.
+                  Use Send Split Group above for the normal customer-facing
+                  split invoice email.
+                </p>
+              </div>
+            ) : null}
+
+            <div className="flex flex-wrap gap-4">
             {normalizedStatus === "draft" ? (
               <UpdateInvoiceStatusButton
                 invoiceId={invoice.id}
@@ -1883,6 +2076,7 @@ export default async function InvoiceDetailPage({
               invoiceId={invoice.id}
               returnHref={`/invoices${businessQuery}`}
             />
+            </div>
           </div>
         </div>
       </main>
