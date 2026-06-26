@@ -1,4 +1,6 @@
 import Image from "next/image";
+import { headers } from "next/headers";
+import { createClient } from "@supabase/supabase-js";
 import BackButton from "../../../components/BackButton";
 import PrintToolbar from "../../../components/PrintToolbar";
 import { supabase } from "../../../lib/supabase";
@@ -7,6 +9,26 @@ import {
   getEffectiveTaxRate,
 } from "../../../utils/tax";
 import { maybeCanonicalApartmentUnitLabel } from "../../../utils/unitLabels";
+
+function createPrintSupabase(accessToken: string | null) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!accessToken || !supabaseUrl || !supabaseAnonKey) {
+    return supabase;
+  }
+
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: false,
+    },
+    global: {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  });
+}
 
 type Estimate = {
   id: string;
@@ -91,8 +113,14 @@ export default async function EstimatePrintPage({
     : {};
   const requestedBusinessSlug =
     resolvedSearchParams.business ?? "rnl-creations";
+  const requestHeaders = await headers();
+  const authorization = requestHeaders.get("authorization");
+  const accessToken = authorization?.startsWith("Bearer ")
+    ? authorization.slice("Bearer ".length)
+    : null;
+  const printSupabase = createPrintSupabase(accessToken);
 
-  const { data: selectedBusinessData } = await supabase
+  const { data: selectedBusinessData } = await printSupabase
     .from("businesses")
     .select("id, name, slug")
     .eq("slug", requestedBusinessSlug)
@@ -109,7 +137,7 @@ export default async function EstimatePrintPage({
     );
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await printSupabase
     .from("estimates")
     .select("*")
     .eq("id", id)
@@ -131,7 +159,7 @@ export default async function EstimatePrintPage({
   const suggestedFileName = estimate.display_id || "Estimate";
 
   const { data: clientData } = estimate.client_id
-    ? await supabase
+    ? await printSupabase
         .from("clients")
         .select("*")
         .eq("id", estimate.client_id)
@@ -141,7 +169,7 @@ export default async function EstimatePrintPage({
 
   const client = clientData as Client | null;
 
-  const { data: lineItemData } = await supabase
+  const { data: lineItemData } = await printSupabase
     .from("estimate_line_items")
     .select("*")
     .eq("estimate_id", estimate.id)

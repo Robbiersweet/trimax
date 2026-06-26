@@ -810,6 +810,7 @@ export async function POST(request: Request, { params }: RouteParams) {
             request.url
           ).toString(),
           filename: targetDocumentNumber,
+          accessToken: token,
         });
 
         pdfAttachments.push(attachment);

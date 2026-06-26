@@ -27,9 +27,11 @@ function localChromePath() {
 export async function createPrintPagePdfAttachment({
   url,
   filename,
+  accessToken,
 }: {
   url: string;
   filename: string;
+  accessToken?: string | null;
 }): Promise<EmailAttachment> {
   const isProduction = process.env.NODE_ENV === "production";
   const executablePath = isProduction
@@ -51,6 +53,12 @@ export async function createPrintPagePdfAttachment({
   try {
     const page = await browser.newPage();
 
+    if (accessToken) {
+      await page.setExtraHTTPHeaders({
+        Authorization: `Bearer ${accessToken}`,
+      });
+    }
+
     const response = await page.goto(url, {
       waitUntil: "networkidle0",
       timeout: 45_000,
@@ -62,13 +70,6 @@ export async function createPrintPagePdfAttachment({
       );
     }
 
-    await page.waitForSelector(
-      ".standard-invoice-print, .standard-estimate-print",
-      {
-        timeout: 20_000,
-      }
-    );
-    await page.emulateMediaType("print");
     const pageText = await page.evaluate(() => document.body.innerText);
 
     if (
@@ -79,6 +80,14 @@ export async function createPrintPagePdfAttachment({
     ) {
       throw new Error("Print page did not render the customer document.");
     }
+
+    await page.waitForSelector(
+      ".standard-invoice-print, .standard-estimate-print",
+      {
+        timeout: 20_000,
+      }
+    );
+    await page.emulateMediaType("print");
 
     const pdf = await page.pdf({
       format: "letter",
