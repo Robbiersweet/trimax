@@ -1191,7 +1191,7 @@ function NewEstimatePageContent() {
     });
 
     router.push(
-      `/estimates/${data.id}?business=${business.slug}`
+      `/estimates/${data.id}?business=${business.slug}&created=1`
     );
   }
 

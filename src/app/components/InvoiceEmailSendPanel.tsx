@@ -642,17 +642,20 @@ export default function InvoiceEmailSendPanel({
         return;
       }
 
+      const hasSendWarning =
+        Boolean(result.statusUpdateError) ||
+        Boolean(result.failedCount && result.failedCount > 0);
+
       setToast({
-        type:
-          result.statusUpdateError ||
-          (result.failedCount && result.failedCount > 0)
-            ? "error"
-            : "success",
-        message:
-          result.message ??
-          (sendSplitGroup && splitGroupCount > 1
-            ? `Split invoice group sent.`
-            : `${documentLabel} email sent.`),
+        type: hasSendWarning ? "error" : "success",
+        message: hasSendWarning
+          ? result.message ??
+            `Trimax sent this ${documentLabelLower}, but one follow-up step needs review.`
+          : sendSplitGroup && splitGroupCount > 1 && requestType === "invoice"
+            ? "Split invoices sent. Next step: mark the work complete if the job is finished."
+            : requestType === "invoice"
+              ? `Invoice ${documentNumber} sent. Next step: mark the work complete if the job is finished.`
+              : result.message ?? `${documentLabel} email sent.`,
       });
     } catch (error) {
       setToast({

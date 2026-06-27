@@ -10,6 +10,7 @@ import CopyProofSummaryButton from "../../components/CopyProofSummaryButton";
 import InvoiceEmailSendPanel from "../../components/InvoiceEmailSendPanel";
 import RequestDepositButton from "../../components/RequestDepositButton";
 import SplitInvoicePlanner from "../../components/SplitInvoicePlanner";
+import Toast from "../../components/Toast";
 import UpdateInvoiceStatusButton from "../../components/UpdateInvoiceStatusButton";
 import { buildSplitInvoicePlan } from "../../lib/splitInvoices";
 import { resolveInvoiceTerms } from "../../lib/documentTerms";
@@ -23,7 +24,7 @@ import { maybeCanonicalApartmentUnitLabel } from "../../utils/unitLabels";
 
 type PageProps = {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ business?: string }>;
+  searchParams?: Promise<{ business?: string; created?: string }>;
 };
 
 type Invoice = {
@@ -792,6 +793,7 @@ export default async function InvoiceDetailPage({
   const { id } = await params;
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const businessSlug = resolvedSearchParams.business ?? "rnl-creations";
+  const showCreatedToast = resolvedSearchParams.created === "1";
   const businessQuery = `?business=${businessSlug}`;
 
   const { data: business, error: businessError } = await supabase
@@ -1322,6 +1324,12 @@ export default async function InvoiceDetailPage({
 
   return (
     <AppShell>
+      {showCreatedToast ? (
+        <Toast
+          type="success"
+          message={`Invoice ${invoice.display_id ?? "Invoice"} created. Next step: send the invoice.`}
+        />
+      ) : null}
       <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
         <div className="mb-8 sm:mb-10">
           <BackButton label="Back" fallbackHref={`/invoices${businessQuery}`} />

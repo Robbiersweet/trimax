@@ -8,6 +8,7 @@ import DeleteEstimateButton from "../../components/DeleteEstimateButton";
 import InvoiceEmailSendPanel from "../../components/InvoiceEmailSendPanel";
 import OutlookDraftPrepCard from "../../components/OutlookDraftPrepCard";
 import SplitInvoicePlanner from "../../components/SplitInvoicePlanner";
+import Toast from "../../components/Toast";
 import { buildOutlookDraftPreview } from "../../lib/outlookDrafts";
 import { buildSplitInvoicePlan } from "../../lib/splitInvoices";
 import { supabase } from "../../lib/supabase";
@@ -171,7 +172,7 @@ export default async function EstimateDetailsPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ business?: string }>;
+  searchParams?: Promise<{ business?: string; created?: string }>;
 }) {
   const { id } = await params;
   const resolvedSearchParams = searchParams
@@ -179,6 +180,7 @@ export default async function EstimateDetailsPage({
     : {};
   const requestedBusinessSlug =
     resolvedSearchParams.business ?? "rnl-creations";
+  const showCreatedToast = resolvedSearchParams.created === "1";
 
   const { data: selectedBusinessData } = await supabase
     .from("businesses")
@@ -412,6 +414,12 @@ export default async function EstimateDetailsPage({
 
   return (
     <AppShell>
+      {showCreatedToast ? (
+        <Toast
+          type="success"
+          message={`Estimate ${estimate.display_id ?? "Estimate"} created. Next step: send the estimate or convert it to an invoice when ready.`}
+        />
+      ) : null}
       <div className="space-y-6">
         <BackButton
           label="Back"

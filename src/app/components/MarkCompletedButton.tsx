@@ -141,7 +141,9 @@ export default function MarkCompletedButton({
     setIsSaving(false);
 
     if (returnToQueue) {
-      router.push(`/queue?business=${businessSlug ?? "rnl-creations"}`);
+      router.push(
+        `/queue?business=${businessSlug ?? "rnl-creations"}&completed=1`
+      );
       return;
     }
 

@@ -11,6 +11,7 @@ import MarkCompletedButton from "../../components/MarkCompletedButton";
 import MarkScheduledButton from "../../components/MarkScheduledButton";
 import RoleVisible from "../../components/RoleVisible";
 import SyncUnitProfileButton from "../../components/SyncUnitProfileButton";
+import Toast from "../../components/Toast";
 import {
   calendarDataUri,
   calendarFileName,
@@ -409,7 +410,7 @@ export default async function QueueDetailPage({
   searchParams,
 }: {
   params: Promise<{ unit: string }>;
-  searchParams?: Promise<{ business?: string }>;
+  searchParams?: Promise<{ business?: string; completed?: string }>;
 }) {
   const { unit } = await params;
   const resolvedSearchParams = searchParams
@@ -417,6 +418,7 @@ export default async function QueueDetailPage({
     : {};
   const requestedBusinessSlug =
     resolvedSearchParams.business ?? "rnl-creations";
+  const showCompletedToast = resolvedSearchParams.completed === "1";
 
   const { data: selectedBusinessData } = await supabase
     .from("businesses")
@@ -730,6 +732,12 @@ export default async function QueueDetailPage({
 
   return (
     <AppShell>
+      {showCompletedToast ? (
+        <Toast
+          type="success"
+          message="Work marked complete. If the invoice has been sent, this item is ready to leave the Active Queue."
+        />
+      ) : null}
       <div className="space-y-6">
         <BackButton label="Back" fallbackHref={`/queue?business=${businessSlug}`} />
 

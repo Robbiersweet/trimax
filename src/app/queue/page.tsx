@@ -4,6 +4,7 @@ import Card from "../components/Card";
 import Button from "../components/Button";
 import StatusBadge from "../components/StatusBadge";
 import RoleVisible from "../components/RoleVisible";
+import Toast from "../components/Toast";
 import {
   queueTimingBadge,
   queueTimingTone,
@@ -401,10 +402,12 @@ export default async function QueuePage({
     status?: string;
     view?: string;
     sort?: string;
+    completed?: string;
   }>;
 }) {
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const businessSlug = resolvedSearchParams.business ?? "rnl-creations";
+  const showCompletedToast = resolvedSearchParams.completed === "1";
   const propertyFilter =
     resolvedSearchParams.property?.trim().toLowerCase() ?? "all";
   const searchTerm = resolvedSearchParams.q?.trim() ?? "";
@@ -836,6 +839,12 @@ export default async function QueuePage({
 
   return (
     <AppShell>
+      {showCompletedToast ? (
+        <Toast
+          type="success"
+          message="Work marked complete. If the invoice has been sent, this item is ready to leave the Active Queue."
+        />
+      ) : null}
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>

@@ -405,7 +405,7 @@ export default function ConvertEstimateToInvoiceButton({
     });
 
     router.push(
-      `/invoices/${data.id}?business=${businessSlug}`
+      `/invoices/${data.id}?business=${businessSlug}&created=1`
     );
   }
 

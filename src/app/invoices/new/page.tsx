@@ -866,7 +866,7 @@ function NewInvoicePageContent() {
     });
 
     router.push(
-      `/invoices/${data.id}?business=${business.slug}`
+      `/invoices/${data.id}?business=${business.slug}&created=1`
     );
   }
 

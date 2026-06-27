@@ -574,13 +574,27 @@ export default function EditQueueItemPage() {
       }
     }
 
+    const workWasMarkedComplete =
+      originalQueueItem &&
+      !["completed", "invoiced", "paid"].includes(
+        originalQueueItem.status.trim().toLowerCase()
+      ) &&
+      (["completed", "invoiced", "paid"].includes(
+        nextSnapshot.status.trim().toLowerCase()
+      ) ||
+        Boolean(nextSnapshot.completed_date));
+
     setToast({
       type: "success",
-      message: "Queue item updated successfully.",
+      message: workWasMarkedComplete
+        ? "Work marked complete. If the invoice has been sent, this item is ready to leave the Active Queue."
+        : "Queue item updated successfully.",
     });
 
     router.push(
-      `/queue/${queueItemId}?business=${businessSlug}`
+      `/queue/${queueItemId}?business=${businessSlug}${
+        workWasMarkedComplete ? "&completed=1" : ""
+      }`
     );
     router.refresh();
   };
