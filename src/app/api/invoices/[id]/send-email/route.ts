@@ -311,14 +311,6 @@ function documentListLabel(documents: string[]) {
   }`;
 }
 
-function includesSplitSummary(message: string) {
-  return (
-    /attached invoices:/i.test(message) ||
-    /combined total/i.test(message) ||
-    /attached are invoices/i.test(message)
-  );
-}
-
 async function requireWorkspaceAccess({
   supabase,
   token,
@@ -797,7 +789,8 @@ export async function POST(request: Request, { params }: RouteParams) {
           splitSummaryLines.map((item) => item.documentNumber)
         )} for ${groupLabel}.`,
         "",
-        "The invoice was split because of the billing limit, and each official invoice PDF is attached to this one email.",
+        "This invoice was split because of the billing limit. Both official invoice PDFs are attached to this email.",
+        "",
         "Attached invoices:",
         ...splitSummaryLines.map(
           (item) =>
@@ -805,14 +798,11 @@ export async function POST(request: Request, { params }: RouteParams) {
               item.splitLabel ? ` (${item.splitLabel})` : ""
             }`
         ),
-        `Combined Total - ${formatCurrency(combinedTotal)}`,
+        "",
+        `Combined total: ${formatCurrency(combinedTotal)}`,
       ].join("\n")
     : "";
-  const effectiveMessage = isSplitGroupSend
-    ? includesSplitSummary(message)
-      ? message
-      : [message.trim(), splitSummaryText].filter(Boolean).join("\n\n")
-    : message;
+  const effectiveMessage = isSplitGroupSend ? splitSummaryText : message;
   const pdfAttachments: EmailAttachment[] = [];
   let pdfAttachmentSource: "print-page" | "none" = "none";
 
@@ -920,11 +910,9 @@ export async function POST(request: Request, { params }: RouteParams) {
       <div style="padding: 34px 0;">
         <p style="font-size: 16px;">${plainTextToHtml(effectiveMessage)}</p>
         ${
-          attachOfficialPdf
+          attachOfficialPdf && !isSplitGroupSend
             ? `<p style="font-size: 14px; color: #52677c;">${
-                isSplitGroupSend
-                  ? `${pdfAttachments.length} official invoice PDFs are attached.`
-                  : "A PDF copy is attached."
+                "A PDF copy is attached."
               }</p>`
             : ""
         }

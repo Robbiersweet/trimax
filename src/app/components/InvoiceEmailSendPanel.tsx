@@ -117,7 +117,7 @@ function defaultMessage({
   return `Attached is invoice ${documentNumber} for ${documentContext({
     customerName,
     projectTitle,
-  })}.${dueDate && dueDate !== "-" ? ` Due date: ${dueDate}.` : ""}`;
+  })}.`;
 }
 
 function defaultSplitGroupSubject(splitGroupLabel: string) {
@@ -154,14 +154,16 @@ function defaultSplitGroupMessage({
               }`
           ),
           splitGroupCombinedTotal
-            ? `Combined Total - ${splitGroupCombinedTotal}`
+            ? `Combined total: ${splitGroupCombinedTotal}`
             : "",
         ]
           .filter(Boolean)
           .join("\n")
       : "";
 
-  return `Attached are invoices ${documentListLabel(documentNumbers)}${projectText}. The invoice was split because of the billing limit, and each official invoice PDF is attached to this one email.${invoiceLines}`;
+  return `Attached are invoices ${documentListLabel(documentNumbers)}${projectText}.
+
+This invoice was split because of the billing limit. Both official invoice PDFs are attached to this email.${invoiceLines}`;
 }
 
 function normalizeInvoiceBodyCopy(message: string, fallback: string) {
