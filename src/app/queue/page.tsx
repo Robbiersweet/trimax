@@ -53,6 +53,19 @@ type LinkedEstimate = {
   display_id: string | null;
 };
 
+type LinkedInvoice = {
+  id: string;
+  estimate_id: string | null;
+  display_id: string | null;
+  status: string | null;
+  amount_paid: string | number | null;
+  invoice_amount: string | number | null;
+};
+
+type InvoiceSendProof = {
+  entity_id: string | null;
+};
+
 type QueueJobSession = {
   id: string;
   queue_item_id: string | null;
@@ -276,6 +289,31 @@ function formatQueueDateTime(value: string | null) {
   });
 }
 
+function moneyNumber(value: string | number | null | undefined) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  if (!value) {
+    return 0;
+  }
+
+  const parsed = Number.parseFloat(String(value).replace(/[^0-9.-]+/g, ""));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function isInvoicePaid(invoice: LinkedInvoice | null | undefined) {
+  if (!invoice) {
+    return false;
+  }
+
+  const status = normalizeStatus(invoice.status);
+  const invoiceAmount = moneyNumber(invoice.invoice_amount);
+  const amountPaid = moneyNumber(invoice.amount_paid);
+
+  return status === "paid" || (invoiceAmount > 0 && amountPaid >= invoiceAmount);
+}
+
 function queueHref(
   businessSlug: string,
   options?: {
@@ -485,6 +523,8 @@ export default async function QueuePage({
     .filter((id): id is string => Boolean(id));
 
   let linkedEstimates: LinkedEstimate[] = [];
+  let linkedInvoices: LinkedInvoice[] = [];
+  let invoiceSendProofs: InvoiceSendProof[] = [];
 
   if (linkedEstimateIds.length > 0) {
     const { data } = await supabase
@@ -493,10 +533,59 @@ export default async function QueuePage({
       .in("id", linkedEstimateIds);
 
     linkedEstimates = data ?? [];
+
+    const { data: invoiceData, error: invoiceError } = await supabase
+      .from("invoices")
+      .select("id, estimate_id, display_id, status, amount_paid, invoice_amount")
+      .in("estimate_id", linkedEstimateIds)
+      .order("created_at", { ascending: false });
+
+    if (invoiceError) {
+      console.warn("Queue linked invoices could not be loaded:", invoiceError.message);
+    }
+
+    linkedInvoices = (invoiceData ?? []) as LinkedInvoice[];
+
+    const linkedInvoiceIds = linkedInvoices.map((invoice) => invoice.id);
+
+    if (linkedInvoiceIds.length > 0) {
+      const { data: sendProofData, error: sendProofError } = await supabase
+        .from("activity_logs")
+        .select("entity_id")
+        .eq("business_id", selectedBusiness?.id)
+        .eq("entity_type", "invoice")
+        .in("entity_id", linkedInvoiceIds)
+        .in("action", [
+          "invoice.email_sent",
+          "invoice.split_group_email_sent",
+        ]);
+
+      if (sendProofError) {
+        console.warn(
+          "Queue invoice send proof could not be loaded:",
+          sendProofError.message
+        );
+      }
+
+      invoiceSendProofs = (sendProofData ?? []) as InvoiceSendProof[];
+    }
   }
 
   const estimateById = new Map(
     linkedEstimates.map((estimate) => [estimate.id, estimate])
+  );
+  const invoiceByEstimateId = new Map<string, LinkedInvoice>();
+
+  linkedInvoices.forEach((invoice) => {
+    if (invoice.estimate_id && !invoiceByEstimateId.has(invoice.estimate_id)) {
+      invoiceByEstimateId.set(invoice.estimate_id, invoice);
+    }
+  });
+
+  const invoiceIdsWithSendProof = new Set(
+    invoiceSendProofs
+      .map((proof) => proof.entity_id)
+      .filter((id): id is string => Boolean(id))
   );
   const breakdownSessionIds = new Set(
     jobSessionBreakdowns.map((breakdown) => breakdown.job_session_id)
@@ -1157,6 +1246,14 @@ export default async function QueuePage({
               const linkedEstimate = item.linked_estimate_id
                 ? estimateById.get(item.linked_estimate_id)
                 : null;
+              const linkedInvoice = linkedEstimate?.id
+                ? invoiceByEstimateId.get(linkedEstimate.id) ?? null
+                : null;
+              const invoiceWasSent = linkedInvoice
+                ? invoiceIdsWithSendProof.has(linkedInvoice.id) ||
+                  ["sent", "paid"].includes(normalizeStatus(linkedInvoice.status))
+                : false;
+              const invoiceIsPaid = isInvoicePaid(linkedInvoice);
               const readySoon = isReadySoonUnscheduled(item);
               const remediation = isRemediationItem(item);
               const estimateNeeded = needsEstimate(item);
@@ -1283,6 +1380,15 @@ export default async function QueuePage({
                             <span className="queue-next-move-dot" aria-hidden="true" />
                             {nextMove}
                           </div>
+
+                          <QueueLifecycleStrip
+                            workDone={isClosedQueueItem(item)}
+                            estimate={linkedEstimate}
+                            invoice={linkedInvoice}
+                            invoiceWasSent={invoiceWasSent}
+                            invoiceIsPaid={invoiceIsPaid}
+                            businessQuery={businessQuery}
+                          />
                         </div>
                       </div>
 
@@ -1387,6 +1493,10 @@ export default async function QueuePage({
                           label="Linked Estimate"
                           value={linkedEstimate?.display_id ?? null}
                         />
+                        <Info
+                          label="Linked Invoice"
+                          value={linkedInvoice?.display_id ?? null}
+                        />
                       </div>
 
                       <p className="mt-5 max-w-2xl text-zinc-400">
@@ -1486,6 +1596,92 @@ function LaborCue({
           {missingBreakdownCount} need breakdown
         </span>
       ) : null}
+    </div>
+  );
+}
+
+function QueueLifecycleStrip({
+  workDone,
+  estimate,
+  invoice,
+  invoiceWasSent,
+  invoiceIsPaid,
+  businessQuery,
+}: {
+  workDone: boolean;
+  estimate: LinkedEstimate | null | undefined;
+  invoice: LinkedInvoice | null | undefined;
+  invoiceWasSent: boolean;
+  invoiceIsPaid: boolean;
+  businessQuery: string;
+}) {
+  const stages = [
+    {
+      label: "Work",
+      complete: workDone,
+      href: null,
+    },
+    {
+      label: "Estimate",
+      complete: Boolean(estimate),
+      href: estimate?.id ? `/estimates/${estimate.id}${businessQuery}` : null,
+    },
+    {
+      label: "Invoice",
+      complete: Boolean(invoice),
+      href: invoice?.id ? `/invoices/${invoice.id}${businessQuery}` : null,
+    },
+    {
+      label: "Sent",
+      complete: invoiceWasSent,
+      href: invoice?.id ? `/invoices/${invoice.id}${businessQuery}#send-invoice` : null,
+    },
+    {
+      label: "Paid",
+      complete: invoiceIsPaid,
+      href: invoice?.id ? `/invoices/${invoice.id}${businessQuery}` : null,
+    },
+  ];
+
+  return (
+    <div
+      aria-label="Queue lifecycle status"
+      className="mt-3 flex flex-wrap items-center gap-1.5 text-xs font-black"
+    >
+      {stages.map((stage, index) => {
+        const content = (
+          <span
+            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 transition ${
+              stage.complete
+                ? "border-emerald-300/35 bg-emerald-400/12 text-emerald-100"
+                : "border-white/10 bg-black/25 text-zinc-400"
+            }`}
+          >
+            <span aria-hidden="true">{stage.complete ? "✓" : "○"}</span>
+            <span>{stage.label}</span>
+          </span>
+        );
+
+        return (
+          <span key={stage.label} className="inline-flex items-center gap-1.5">
+            {stage.href && stage.complete ? (
+              <Link
+                href={stage.href}
+                className="rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-300/60"
+              >
+                {content}
+              </Link>
+            ) : (
+              content
+            )}
+            {index < stages.length - 1 ? (
+              <span aria-hidden="true" className="text-zinc-600">
+                |
+              </span>
+            ) : null}
+          </span>
+        );
+      })}
     </div>
   );
 }
