@@ -73,6 +73,8 @@ type RecurringTemplate = {
   } | null;
 };
 
+const BUSINESS_TIME_ZONE = "America/Los_Angeles";
+
 function getAdminClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -88,8 +90,50 @@ function getAdminClient() {
   });
 }
 
+function parseDateInput(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const [year, month, day] = value.split("-").map(Number);
+
+  if (!year || !month || !day) {
+    return null;
+  }
+
+  const date = new Date(Date.UTC(year, month - 1, day, 12));
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date;
+}
+
 function toDateInputValue(date: Date) {
-  return date.toISOString().slice(0, 10);
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function getDateInputForTimeZone(date: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+
+  if (!year || !month || !day) {
+    return toDateInputValue(date);
+  }
+
+  return `${year}-${month}-${day}`;
 }
 
 function addDays(date: Date, days: number) {
@@ -99,9 +143,9 @@ function addDays(date: Date, days: number) {
 }
 
 function addMonthsToDateInput(value: string | null) {
-  const sourceDate = value ? new Date(`${value}T00:00:00`) : new Date();
+  const sourceDate = value ? parseDateInput(value) : new Date();
 
-  if (Number.isNaN(sourceDate.getTime())) {
+  if (!sourceDate) {
     return toDateInputValue(new Date());
   }
 
@@ -113,15 +157,12 @@ function addMonthsToDateInput(value: string | null) {
 
 function isRecurringEndMet(template: RecurringTemplate) {
   if (template.end_type === "until_date" && template.end_date) {
-    const nextRun = template.next_run_date
-      ? new Date(`${template.next_run_date}T00:00:00`)
-      : null;
-    const endDate = new Date(`${template.end_date}T00:00:00`);
+    const nextRun = parseDateInput(template.next_run_date);
+    const endDate = parseDateInput(template.end_date);
 
     if (
       nextRun &&
-      !Number.isNaN(nextRun.getTime()) &&
-      !Number.isNaN(endDate.getTime()) &&
+      endDate &&
       nextRun.getTime() > endDate.getTime()
     ) {
       return true;
@@ -145,13 +186,13 @@ function shouldPauseAfterRun(
   nextOccurrences: number
 ) {
   if (template.end_type === "until_date" && template.end_date) {
-    const nextRun = new Date(`${nextRunDate}T00:00:00`);
-    const endDate = new Date(`${template.end_date}T00:00:00`);
+    const nextRun = parseDateInput(nextRunDate);
+    const endDate = parseDateInput(template.end_date);
 
     return (
-      !Number.isNaN(nextRun.getTime()) &&
-      !Number.isNaN(endDate.getTime()) &&
-      nextRun.getTime() > endDate.getTime()
+      Boolean(nextRun) &&
+      Boolean(endDate) &&
+      nextRun!.getTime() > endDate!.getTime()
     );
   }
 
@@ -489,7 +530,7 @@ export async function GET(request: Request) {
     );
   }
 
-  const today = toDateInputValue(new Date());
+  const today = getDateInputForTimeZone(new Date(), BUSINESS_TIME_ZONE);
   const { data, error } = await supabase
     .from("recurring_invoice_templates")
     .select("*, businesses(name, slug), clients(email)")

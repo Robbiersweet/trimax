@@ -85,6 +85,34 @@ const emptyLineItem: RecurringLineItem = {
   unitPrice: "",
 };
 
+function parseDateInput(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const [year, month, day] = value.split("-").map(Number);
+
+  if (!year || !month || !day) {
+    return null;
+  }
+
+  const date = new Date(year, month - 1, day);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date;
+}
+
+function toLocalDateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -99,9 +127,11 @@ function formatDate(value: string | null) {
     return "Not generated yet";
   }
 
-  const date = new Date(value);
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(value)
+    ? parseDateInput(value)
+    : new Date(value);
 
-  if (Number.isNaN(date.getTime())) {
+  if (!date || Number.isNaN(date.getTime())) {
     return "Not generated yet";
   }
 
@@ -119,13 +149,13 @@ function addDays(date: Date, days: number) {
 }
 
 function toDateInputValue(date: Date) {
-  return date.toISOString().slice(0, 10);
+  return toLocalDateInputValue(date);
 }
 
 function addMonthsToDateInput(value: string | null) {
-  const sourceDate = value ? new Date(`${value}T00:00:00`) : new Date();
+  const sourceDate = value ? parseDateInput(value) : new Date();
 
-  if (Number.isNaN(sourceDate.getTime())) {
+  if (!sourceDate) {
     return toDateInputValue(new Date());
   }
 
@@ -140,9 +170,9 @@ function daysUntilDate(value: string | null) {
     return null;
   }
 
-  const target = new Date(`${value}T00:00:00`);
+  const target = parseDateInput(value);
 
-  if (Number.isNaN(target.getTime())) {
+  if (!target) {
     return null;
   }
 
@@ -194,15 +224,12 @@ function scheduleStatusLabel(template: RecurringTemplate) {
 
 function isRecurringEndMet(template: RecurringTemplate) {
   if (template.end_type === "until_date" && template.end_date) {
-    const nextRun = template.next_run_date
-      ? new Date(`${template.next_run_date}T00:00:00`)
-      : null;
-    const endDate = new Date(`${template.end_date}T00:00:00`);
+    const nextRun = parseDateInput(template.next_run_date);
+    const endDate = parseDateInput(template.end_date);
 
     if (
       nextRun &&
-      !Number.isNaN(nextRun.getTime()) &&
-      !Number.isNaN(endDate.getTime()) &&
+      endDate &&
       nextRun.getTime() > endDate.getTime()
     ) {
       return true;
@@ -248,13 +275,13 @@ function shouldPauseAfterRun(
   nextOccurrences: number
 ) {
   if (template.end_type === "until_date" && template.end_date) {
-    const nextRun = new Date(`${nextRunDate}T00:00:00`);
-    const endDate = new Date(`${template.end_date}T00:00:00`);
+    const nextRun = parseDateInput(nextRunDate);
+    const endDate = parseDateInput(template.end_date);
 
     return (
-      !Number.isNaN(nextRun.getTime()) &&
-      !Number.isNaN(endDate.getTime()) &&
-      nextRun.getTime() > endDate.getTime()
+      Boolean(nextRun) &&
+      Boolean(endDate) &&
+      nextRun!.getTime() > endDate!.getTime()
     );
   }
 
