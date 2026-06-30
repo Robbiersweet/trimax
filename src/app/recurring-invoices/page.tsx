@@ -79,6 +79,8 @@ type ToastState = {
   message: string;
 };
 
+type RecurringSaveMode = "schedule_only" | "send_now";
+
 const emptyLineItem: RecurringLineItem = {
   description: "",
   quantity: "1",
@@ -265,6 +267,21 @@ function recurringEndLabel(template: RecurringTemplate) {
   return "Forever";
 }
 
+function recurringStartSummary(template: RecurringTemplate) {
+  if (
+    template.last_sent_at &&
+    template.last_generated_for_date &&
+    template.next_run_date &&
+    template.last_generated_for_date !== template.next_run_date
+  ) {
+    return `First invoice sent today. Future recurring invoices start ${formatDate(
+      template.next_run_date
+    )}.`;
+  }
+
+  return `First scheduled invoice: ${formatDate(template.next_run_date)}.`;
+}
+
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
@@ -344,6 +361,7 @@ function RecurringInvoicesPageContent() {
   const [isSaving, setIsSaving] = useState(false);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [isStartModalOpen, setIsStartModalOpen] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [setupMessage, setSetupMessage] = useState<string | null>(null);
   const [generatedInvoice, setGeneratedInvoice] = useState<{
@@ -366,10 +384,6 @@ function RecurringInvoicesPageContent() {
   );
   const [autoCreateDrafts, setAutoCreateDrafts] = useState(true);
   const [autoSendEnabled, setAutoSendEnabled] = useState(false);
-  const [sendFirstInvoiceNow, setSendFirstInvoiceNow] = useState(false);
-  const [futureRecurringStartDate, setFutureRecurringStartDate] = useState(
-    addMonthsToDateInput(toDateInputValue(new Date()))
-  );
   const [recipientEmail, setRecipientEmail] = useState("");
   const [ccEmail, setCcEmail] = useState("");
   const [bccEmail, setBccEmail] = useState("");
@@ -638,8 +652,7 @@ function RecurringInvoicesPageContent() {
     setDeliveryFormat("standard");
     setAutoCreateDrafts(true);
     setAutoSendEnabled(false);
-    setSendFirstInvoiceNow(false);
-    setFutureRecurringStartDate(addMonthsToDateInput(toDateInputValue(new Date())));
+    setIsStartModalOpen(false);
     setRecipientEmail("");
     setCcEmail("");
     setBccEmail("");
@@ -669,8 +682,7 @@ function RecurringInvoicesPageContent() {
     setDeliveryFormat(template.delivery_format ?? "standard");
     setAutoCreateDrafts(Boolean(template.auto_create_drafts));
     setAutoSendEnabled(Boolean(template.auto_send_enabled));
-    setSendFirstInvoiceNow(false);
-    setFutureRecurringStartDate(template.next_run_date ?? toDateInputValue(new Date()));
+    setIsStartModalOpen(false);
     setRecipientEmail(template.recipient_email ?? "");
     setCcEmail(template.cc_email ?? "");
     setBccEmail(template.bcc_email ?? "");
@@ -744,7 +756,7 @@ function RecurringInvoicesPageContent() {
     return payload;
   }
 
-  async function saveTemplate() {
+  async function saveTemplate(mode: RecurringSaveMode = "schedule_only") {
     if (!business) {
       return;
     }
@@ -777,18 +789,14 @@ function RecurringInvoicesPageContent() {
       return;
     }
 
-    if (sendFirstInvoiceNow && !isValidEmail(recipientEmail.trim())) {
+    if (
+      mode === "send_now" &&
+      (!autoSendEnabled || !isValidEmail(recipientEmail.trim()))
+    ) {
       setToast({
         type: "error",
-        message: "Send first invoice now needs a valid recipient email.",
-      });
-      return;
-    }
-
-    if (sendFirstInvoiceNow && !futureRecurringStartDate) {
-      setToast({
-        type: "error",
-        message: "Choose when future recurring invoices should start.",
+        message:
+          "Save and send now requires Auto Send mode and a valid recipient email.",
       });
       return;
     }
@@ -830,9 +838,7 @@ function RecurringInvoicesPageContent() {
 
     setIsSaving(true);
     const firstInvoiceDate = toDateInputValue(new Date());
-    const futureStartDate = sendFirstInvoiceNow
-      ? futureRecurringStartDate
-      : nextRunDate;
+    const futureStartDate = nextRunDate;
 
     const templatePayload = {
       business_id: business.id,
@@ -909,7 +915,7 @@ function RecurringInvoicesPageContent() {
         }
       | null = null;
 
-    if (sendFirstInvoiceNow) {
+    if (mode === "send_now") {
       try {
         immediateInvoice = await sendImmediateFirstInvoice({
           templateId: savedTemplate.id,
@@ -960,7 +966,7 @@ function RecurringInvoicesPageContent() {
     );
     setToast({
       type: "success",
-      message: sendFirstInvoiceNow
+      message: mode === "send_now"
         ? `${
             immediateInvoice?.displayId ?? "First invoice"
           } sent. Future recurring invoices start ${formatDate(futureStartDate)}.`
@@ -1781,16 +1787,11 @@ function RecurringInvoicesPageContent() {
             </div>
 
             <InputField
-              label="Next Run Date"
+              label="First scheduled recurring invoice"
               type="date"
               value={nextRunDate}
-              onChange={(value) => {
-                setNextRunDate(value);
-                if (sendFirstInvoiceNow || !futureRecurringStartDate) {
-                  setFutureRecurringStartDate(value);
-                }
-              }}
-              helperText="Trimax will run this template on this date, then move it ahead one month after the invoice is created or the auto-send succeeds."
+              onChange={setNextRunDate}
+              helperText="This is the first future recurring invoice date. Sending one invoice now will not consume or advance this schedule."
             />
 
             <InputField
@@ -1800,69 +1801,6 @@ function RecurringInvoicesPageContent() {
               onChange={setDayOfMonth}
               helperText="Use the same day as the next run date. This keeps the schedule clear."
             />
-
-            <div className="lg:col-span-2">
-              <div className="rounded-2xl border border-orange-500/20 bg-orange-500/5 p-4">
-                <label className="flex cursor-pointer items-start gap-3">
-                  <input
-                    type="checkbox"
-                    checked={sendFirstInvoiceNow}
-                    onChange={(event) => {
-                      const checked = event.target.checked;
-                      setSendFirstInvoiceNow(checked);
-                      if (checked) {
-                        setAutoCreateDrafts(true);
-                        if (!futureRecurringStartDate) {
-                          setFutureRecurringStartDate(
-                            nextRunDate || addMonthsToDateInput(toDateInputValue(new Date()))
-                          );
-                        }
-                      }
-                    }}
-                    className="mt-1 h-5 w-5 accent-orange-500"
-                  />
-                  <span>
-                    <span className="block text-sm font-semibold text-white">
-                      Send first invoice now
-                    </span>
-                    <span className="mt-1 block text-sm leading-5 text-zinc-400">
-                      Trimax will save this recurring invoice, send one invoice
-                      immediately, then leave the future monthly schedule alone.
-                    </span>
-                  </span>
-                </label>
-
-                {sendFirstInvoiceNow ? (
-                  <div className="mt-4 grid gap-4 lg:grid-cols-[280px_1fr]">
-                    <InputField
-                      label="Future recurring invoices start"
-                      type="date"
-                      value={futureRecurringStartDate}
-                      onChange={(value) => {
-                        setFutureRecurringStartDate(value);
-                        setNextRunDate(value);
-                        const date = parseDateInput(value);
-                        if (date) {
-                          setDayOfMonth(String(date.getDate()));
-                        }
-                      }}
-                      helperText="The immediate invoice does not consume or advance this date."
-                    />
-                    <div className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4 text-sm leading-6 text-zinc-300">
-                      <p className="font-semibold text-white">
-                        Send invoice now. Then repeat monthly starting{" "}
-                        {formatDate(futureRecurringStartDate)}.
-                      </p>
-                      <p className="mt-2 text-zinc-400">
-                        The first invoice is a one-time customer invoice from
-                        this template. Future recurring invoices still follow
-                        the saved Next Run Date and Day of Month.
-                      </p>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            </div>
 
             <div className="lg:col-span-2">
               <div className="rounded-2xl border border-sky-500/20 bg-sky-500/5 p-4">
@@ -2026,7 +1964,11 @@ function RecurringInvoicesPageContent() {
           <div className="mt-6">
             <div className="flex flex-wrap gap-3">
               <Button
-                onClick={saveTemplate}
+                onClick={() =>
+                  editingTemplateId
+                    ? saveTemplate("schedule_only")
+                    : setIsStartModalOpen(true)
+                }
                 disabled={isSaving || Boolean(setupMessage)}
               >
                 {isSaving
@@ -2222,6 +2164,9 @@ function RecurringInvoicesPageContent() {
                             Repeat: {recurringEndLabel(template)}
                           </span>
                         </div>
+                        <p className="mt-3 text-sm font-semibold text-zinc-200">
+                          {recurringStartSummary(template)}
+                        </p>
                       </div>
 
                       <div className="text-left lg:text-right">
@@ -2321,6 +2266,97 @@ function RecurringInvoicesPageContent() {
             </div>
           )}
         </Card>
+
+        {isStartModalOpen ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
+            <div className="max-h-[calc(100vh-3rem)] w-full max-w-2xl overflow-y-auto rounded-3xl border border-zinc-700 bg-zinc-950 p-5 shadow-2xl">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.24em] text-orange-300">
+                    Start recurring invoice
+                  </p>
+                  <h2 className="mt-2 text-2xl font-black text-white">
+                    Choose how this recurring invoice starts
+                  </h2>
+                  <p className="mt-2 text-sm leading-6 text-zinc-400">
+                    The recurring template controls the future schedule. Sending
+                    one invoice now is a one-time action and will not advance the
+                    future run date.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsStartModalOpen(false)}
+                  className="rounded-full border border-zinc-700 px-3 py-1 text-sm font-black text-zinc-300"
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="mt-5 grid gap-4">
+                <div className="rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4">
+                  <h3 className="text-lg font-black text-white">
+                    Save schedule only
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-zinc-300">
+                    First invoice will be sent on {formatDate(nextRunDate)}.
+                  </p>
+                  <Button
+                    className="mt-4"
+                    variant="secondary"
+                    disabled={isSaving}
+                    onClick={async () => {
+                      await saveTemplate("schedule_only");
+                      setIsStartModalOpen(false);
+                    }}
+                  >
+                    Save schedule only
+                  </Button>
+                </div>
+
+                <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                  <h3 className="text-lg font-black text-white">
+                    Save and send first invoice now
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-zinc-300">
+                    Trimax will send one invoice immediately. Future recurring
+                    invoices will begin on {formatDate(nextRunDate)}.
+                  </p>
+                  {!autoSendEnabled || !isValidEmail(recipientEmail.trim()) ? (
+                    <p className="mt-3 rounded-2xl border border-amber-400/25 bg-amber-400/10 p-3 text-sm leading-6 text-amber-100">
+                      Turn on Auto Send mode and enter a valid recipient before
+                      sending the first invoice now.
+                    </p>
+                  ) : null}
+                  <Button
+                    className="mt-4"
+                    disabled={
+                      isSaving ||
+                      !autoSendEnabled ||
+                      !isValidEmail(recipientEmail.trim())
+                    }
+                    onClick={async () => {
+                      await saveTemplate("send_now");
+                      setIsStartModalOpen(false);
+                    }}
+                  >
+                    Save and send now
+                  </Button>
+                </div>
+              </div>
+
+              <div className="mt-5 flex flex-wrap gap-3">
+                <Button
+                  variant="secondary"
+                  disabled={isSaving}
+                  onClick={() => setIsStartModalOpen(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     </AppShell>
   );
