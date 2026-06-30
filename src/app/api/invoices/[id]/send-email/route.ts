@@ -315,11 +315,19 @@ async function requireWorkspaceAccess({
   supabase,
   token,
   businessId,
+  cronSecret,
 }: {
   supabase: AdminClient;
   token: string | null;
   businessId: string;
+  cronSecret?: string | null;
 }) {
+  const configuredCronSecret = process.env.CRON_SECRET;
+
+  if (cronSecret && configuredCronSecret && cronSecret === configuredCronSecret) {
+    return { ok: true, email: null, userId: null };
+  }
+
   if (!token) {
     return { ok: false, email: null, userId: null };
   }
@@ -485,6 +493,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   const token = authorization?.startsWith("Bearer ")
     ? authorization.slice("Bearer ".length)
     : null;
+  const cronSecret = request.headers.get("x-trimax-cron-secret");
 
   const body = (await request.json().catch(() => ({}))) as Record<
     string,
@@ -625,6 +634,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     supabase,
     token,
     businessId: invoice.business_id,
+    cronSecret,
   });
 
   if (!access.ok) {
@@ -828,6 +838,7 @@ export async function POST(request: Request, { params }: RouteParams) {
           ).toString(),
           filename: targetDocumentNumber,
           accessToken: token,
+          cronSecret,
         });
 
         pdfAttachments.push(attachment);

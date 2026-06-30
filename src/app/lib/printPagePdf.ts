@@ -28,10 +28,12 @@ export async function createPrintPagePdfAttachment({
   url,
   filename,
   accessToken,
+  cronSecret,
 }: {
   url: string;
   filename: string;
   accessToken?: string | null;
+  cronSecret?: string | null;
 }): Promise<EmailAttachment> {
   const isProduction = process.env.NODE_ENV === "production";
   const executablePath = isProduction
@@ -56,6 +58,10 @@ export async function createPrintPagePdfAttachment({
     if (accessToken) {
       await page.setExtraHTTPHeaders({
         Authorization: `Bearer ${accessToken}`,
+      });
+    } else if (cronSecret) {
+      await page.setExtraHTTPHeaders({
+        "x-trimax-cron-secret": cronSecret,
       });
     }
 

@@ -53,8 +53,16 @@ type RecurringTemplate = {
   line_items: RecurringLineItem[] | null;
   next_run_date: string | null;
   last_generated_for_date: string | null;
+  auto_send_enabled: boolean | null;
+  recipient_email: string | null;
+  last_generated_invoice_id: string | null;
+  last_send_error: string | null;
   businesses: {
     name: string | null;
+    slug: string | null;
+  } | null;
+  clients: {
+    email: string | null;
   } | null;
 };
 
@@ -147,6 +155,38 @@ function defaultEmailSubject(displayId: string, customerName: string) {
   return `Invoice ${displayId} - ${customerName}`;
 }
 
+function defaultEmailBody({
+  businessName,
+  customerName,
+  displayId,
+  projectTitle,
+  amountDue,
+  dueDate,
+}: {
+  businessName: string;
+  customerName: string;
+  displayId: string;
+  projectTitle: string;
+  amountDue: string;
+  dueDate: string;
+}) {
+  return `Hi ${customerName},
+
+Attached is invoice ${displayId} for ${projectTitle}.
+
+Amount due: ${amountDue}
+Due date: ${dueDate}
+
+Please let us know if you have any questions.
+
+Thank you,
+${businessName}`;
+}
+
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
 async function createInvoiceFromTemplate(
   supabase: AdminClient,
   template: RecurringTemplate
@@ -154,15 +194,6 @@ async function createInvoiceFromTemplate(
   const issueDateInput = template.next_run_date ?? toDateInputValue(new Date());
 
   if (template.last_generated_for_date === issueDateInput) {
-    await supabase
-      .from("recurring_invoice_templates")
-      .update({
-        next_run_date: addMonthsToDateInput(template.next_run_date),
-        last_error: null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", template.id);
-
     return null;
   }
 
@@ -187,6 +218,16 @@ async function createInvoiceFromTemplate(
   const subject =
     template.email_subject?.trim() ||
     defaultEmailSubject(displayId, template.customer_name);
+  const message =
+    template.email_body?.trim() ||
+    defaultEmailBody({
+      businessName: template.businesses?.name ?? "Trimax",
+      customerName: template.customer_name,
+      displayId,
+      projectTitle: template.project_title,
+      amountDue: amount,
+      dueDate: toDateInputValue(dueDate),
+    });
 
   const { data: invoice, error: invoiceError } = await supabase
     .from("invoices")
@@ -210,7 +251,9 @@ async function createInvoiceFromTemplate(
       terms: template.terms,
       notes: [
         template.notes,
-        "Recurring draft prepared by Trimax. Review and send manually from Outlook.",
+        template.auto_send_enabled
+          ? "Recurring invoice prepared by Trimax auto-send."
+          : "Recurring draft prepared by Trimax. Review and send manually.",
       ]
         .filter(Boolean)
         .join("\n\n"),
@@ -267,19 +310,85 @@ async function createInvoiceFromTemplate(
     },
   });
 
-  await supabase
-    .from("recurring_invoice_templates")
-    .update({
-      last_generated_invoice_id: invoice.id,
-      last_generated_at: new Date().toISOString(),
-      last_generated_for_date: issueDateInput,
-      next_run_date: addMonthsToDateInput(template.next_run_date),
-      last_error: null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", template.id);
+  await supabase.from("recurring_invoice_templates").update({
+    last_generated_invoice_id: invoice.id,
+    last_generated_at: new Date().toISOString(),
+    last_generated_for_date: issueDateInput,
+    last_error: null,
+    last_send_error: null,
+    updated_at: new Date().toISOString(),
+  }).eq("id", template.id);
 
-  return displayId;
+  return {
+    invoiceId: invoice.id as string,
+    displayId,
+    issueDateInput,
+    nextRunDate: addMonthsToDateInput(template.next_run_date),
+    recipientEmail:
+      template.recipient_email?.trim().toLowerCase() ||
+      template.clients?.email?.trim().toLowerCase() ||
+      "",
+    subject,
+    message,
+  };
+}
+
+async function sendRecurringInvoice({
+  request,
+  invoiceId,
+  businessSlug,
+  recipientEmail,
+  subject,
+  message,
+}: {
+  request: Request;
+  invoiceId: string;
+  businessSlug: string;
+  recipientEmail: string;
+  subject: string;
+  message: string;
+}) {
+  const cronSecret = process.env.CRON_SECRET;
+
+  if (!cronSecret) {
+    throw new Error("Recurring invoice auto-send is missing CRON_SECRET.");
+  }
+
+  if (!isValidEmail(recipientEmail)) {
+    throw new Error("Recurring invoice auto-send needs a valid recipient email.");
+  }
+
+  const response = await fetch(
+    new URL(`/api/invoices/${invoiceId}/send-email`, request.url).toString(),
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-trimax-cron-secret": cronSecret,
+      },
+      body: JSON.stringify({
+        recipientEmail,
+        subject,
+        message,
+        businessSlug,
+        emailPurpose: "send",
+      }),
+    }
+  );
+
+  const payload = await response.json().catch(() => null) as
+    | { message?: string; error?: string; traceId?: string }
+    | null;
+
+  if (!response.ok) {
+    throw new Error(
+      payload?.error ||
+        payload?.message ||
+        `Recurring invoice auto-send failed with status ${response.status}.`
+    );
+  }
+
+  return payload;
 }
 
 export async function GET(request: Request) {
@@ -313,7 +422,7 @@ export async function GET(request: Request) {
   const today = toDateInputValue(new Date());
   const { data, error } = await supabase
     .from("recurring_invoice_templates")
-    .select("*, businesses(name)")
+    .select("*, businesses(name, slug), clients(email)")
     .eq("is_active", true)
     .eq("auto_create_drafts", true)
     .not("next_run_date", "is", null)
@@ -325,13 +434,48 @@ export async function GET(request: Request) {
 
   const templates = (data ?? []) as RecurringTemplate[];
   const created: string[] = [];
+  const sent: string[] = [];
   const failed: { template: string; error: string }[] = [];
 
   for (const template of templates) {
     try {
-      const displayId = await createInvoiceFromTemplate(supabase, template);
-      if (displayId) {
-        created.push(displayId);
+      const result = await createInvoiceFromTemplate(supabase, template);
+      if (result) {
+        created.push(result.displayId);
+
+        if (template.auto_send_enabled) {
+          const businessSlug = template.businesses?.slug;
+
+          if (!businessSlug) {
+            throw new Error("Recurring invoice auto-send could not resolve the business workspace.");
+          }
+
+          await sendRecurringInvoice({
+            request,
+            invoiceId: result.invoiceId,
+            businessSlug,
+            recipientEmail: result.recipientEmail,
+            subject: result.subject,
+            message: result.message,
+          });
+
+          sent.push(result.displayId);
+
+          await supabase.from("recurring_invoice_templates").update({
+            last_sent_invoice_id: result.invoiceId,
+            last_sent_at: new Date().toISOString(),
+            last_send_error: null,
+            next_run_date: result.nextRunDate,
+            last_error: null,
+            updated_at: new Date().toISOString(),
+          }).eq("id", template.id);
+        } else {
+          await supabase.from("recurring_invoice_templates").update({
+            next_run_date: result.nextRunDate,
+            last_error: null,
+            updated_at: new Date().toISOString(),
+          }).eq("id", template.id);
+        }
       }
     } catch (error) {
       const message =
@@ -343,6 +487,7 @@ export async function GET(request: Request) {
         .from("recurring_invoice_templates")
         .update({
           last_error: message,
+          last_send_error: template.auto_send_enabled ? message : null,
           updated_at: new Date().toISOString(),
         })
         .eq("id", template.id);
@@ -353,6 +498,7 @@ export async function GET(request: Request) {
     ok: true,
     checked: templates.length,
     created,
+    sent,
     failed,
   });
 }

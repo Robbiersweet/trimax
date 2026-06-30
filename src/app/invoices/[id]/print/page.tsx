@@ -13,9 +13,25 @@ import { getSmartInvoiceDates } from "../../../utils/invoiceDates";
 import { resolveInvoiceTerms } from "../../../lib/documentTerms";
 import { maybeCanonicalApartmentUnitLabel } from "../../../utils/unitLabels";
 
-function createPrintSupabase(accessToken: string | null) {
+function createPrintSupabase(accessToken: string | null, cronSecret: string | null) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const configuredCronSecret = process.env.CRON_SECRET;
+
+  if (
+    cronSecret &&
+    configuredCronSecret &&
+    cronSecret === configuredCronSecret &&
+    supabaseUrl &&
+    serviceRoleKey
+  ) {
+    return createClient(supabaseUrl, serviceRoleKey, {
+      auth: {
+        persistSession: false,
+      },
+    });
+  }
 
   if (!accessToken || !supabaseUrl || !supabaseAnonKey) {
     return supabase;
@@ -173,7 +189,8 @@ export default async function InvoicePrintPage({
   const accessToken = authorization?.startsWith("Bearer ")
     ? authorization.slice("Bearer ".length)
     : null;
-  const printSupabase = createPrintSupabase(accessToken);
+  const cronSecret = requestHeaders.get("x-trimax-cron-secret");
+  const printSupabase = createPrintSupabase(accessToken, cronSecret);
 
   const { data: selectedBusinessData } = await printSupabase
     .from("businesses")

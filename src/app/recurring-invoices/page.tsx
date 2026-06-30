@@ -49,6 +49,8 @@ type RecurringTemplate = {
   due_days: number;
   next_run_date: string | null;
   auto_create_drafts: boolean;
+  auto_send_enabled: boolean;
+  recipient_email: string | null;
   tax_label: string | null;
   tax_rate: number | string | null;
   terms: string | null;
@@ -61,6 +63,9 @@ type RecurringTemplate = {
   last_generated_at: string | null;
   last_generated_for_date: string | null;
   last_error: string | null;
+  last_sent_invoice_id: string | null;
+  last_sent_at: string | null;
+  last_send_error: string | null;
 };
 
 type ToastState = {
@@ -157,6 +162,14 @@ function scheduleStatusLabel(template: RecurringTemplate) {
     return "Needs date";
   }
 
+  if (template.auto_send_enabled && days >= 0) {
+    if (days === 0) {
+      return "Sends today";
+    }
+
+    return `Auto sends in ${days} day${days === 1 ? "" : "s"}`;
+  }
+
   if (days < 0) {
     const overdueDays = Math.abs(days);
     return `${overdueDays} day${overdueDays === 1 ? "" : "s"} overdue`;
@@ -237,6 +250,8 @@ function RecurringInvoicesPageContent() {
     "standard"
   );
   const [autoCreateDrafts, setAutoCreateDrafts] = useState(true);
+  const [autoSendEnabled, setAutoSendEnabled] = useState(false);
+  const [recipientEmail, setRecipientEmail] = useState("");
   const [nextRunDate, setNextRunDate] = useState(toDateInputValue(new Date()));
   const [dayOfMonth, setDayOfMonth] = useState("1");
   const [dueDays, setDueDays] = useState("30");
@@ -259,6 +274,9 @@ function RecurringInvoicesPageContent() {
   const activeTemplates = templates.filter((template) => template.is_active);
   const autoCreateTemplates = activeTemplates.filter(
     (template) => template.auto_create_drafts
+  );
+  const autoSendTemplates = autoCreateTemplates.filter(
+    (template) => template.auto_send_enabled
   );
   const pausedTemplates = activeTemplates.filter(
     (template) => !template.auto_create_drafts
@@ -452,6 +470,7 @@ function RecurringInvoicesPageContent() {
     }
 
     setCustomerName(client.name);
+    setRecipientEmail(client.email ?? "");
     setServiceAddress(client.service_address ?? client.billing_address ?? "");
   }
 
@@ -520,6 +539,8 @@ function RecurringInvoicesPageContent() {
         frequency: "monthly",
         next_run_date: nextRunDate || toDateInputValue(new Date()),
         auto_create_drafts: autoCreateDrafts,
+        auto_send_enabled: autoSendEnabled,
+        recipient_email: recipientEmail.trim() || null,
         day_of_month: Math.min(Math.max(Number(dayOfMonth) || 1, 1), 28),
         due_days: Math.min(Math.max(Number(dueDays) || 0, 0), 120),
         tax_label: taxLabel.trim() || null,
@@ -562,6 +583,8 @@ function RecurringInvoicesPageContent() {
     setReference("");
     setDeliveryFormat("standard");
     setAutoCreateDrafts(true);
+    setAutoSendEnabled(false);
+    setRecipientEmail("");
     setNextRunDate(toDateInputValue(new Date()));
     setDayOfMonth("1");
     setDueDays("30");
@@ -803,6 +826,7 @@ function RecurringInvoicesPageContent() {
       .from("recurring_invoice_templates")
       .update({
         auto_create_drafts: nextValue,
+        auto_send_enabled: nextValue ? template.auto_send_enabled : false,
         last_error: null,
         updated_at: new Date().toISOString(),
       })
@@ -820,11 +844,12 @@ function RecurringInvoicesPageContent() {
     setTemplates((current) =>
       current.map((item) =>
         item.id === template.id
-          ? {
-              ...item,
-              auto_create_drafts: nextValue,
-              last_error: null,
-            }
+            ? {
+                ...item,
+                auto_create_drafts: nextValue,
+                auto_send_enabled: nextValue ? item.auto_send_enabled : false,
+                last_error: null,
+              }
           : item
       )
     );
@@ -833,6 +858,70 @@ function RecurringInvoicesPageContent() {
       message: nextValue
         ? `${template.name} will auto-create monthly drafts.`
         : `${template.name} is paused. You can still create drafts manually.`,
+    });
+  }
+
+  async function toggleAutoSendMode(template: RecurringTemplate) {
+    if (!business) {
+      return;
+    }
+
+    const nextValue = !template.auto_send_enabled;
+    const fallbackRecipient =
+      template.recipient_email ||
+      clients.find((client) => client.id === template.client_id)?.email ||
+      "";
+
+    if (nextValue && !fallbackRecipient.trim().includes("@")) {
+      setToast({
+        type: "error",
+        message:
+          "Add a client email or create a new template with an Auto Send recipient before enabling Auto Send.",
+      });
+      return;
+    }
+
+    const { error } = await supabase
+      .from("recurring_invoice_templates")
+      .update({
+        auto_create_drafts: true,
+        auto_send_enabled: nextValue,
+        recipient_email: fallbackRecipient.trim() || null,
+        last_error: null,
+        last_send_error: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", template.id)
+      .eq("business_id", business.id);
+
+    if (error) {
+      setToast({
+        type: "error",
+        message: "Recurring invoice mode could not be updated.",
+      });
+      return;
+    }
+
+    setTemplates((current) =>
+      current.map((item) =>
+        item.id === template.id
+          ? {
+              ...item,
+              auto_create_drafts: true,
+              auto_send_enabled: nextValue,
+              recipient_email: fallbackRecipient.trim() || null,
+              last_error: null,
+              last_send_error: null,
+            }
+          : item
+      )
+    );
+
+    setToast({
+      type: "success",
+      message: nextValue
+        ? `${template.name} is in Auto Send mode.`
+        : `${template.name} is in Manual / Draft mode.`,
     });
   }
 
@@ -867,8 +956,8 @@ function RecurringInvoicesPageContent() {
             <h1 className="mt-2 text-4xl font-bold">Recurring Invoice Drafts</h1>
 
             <p className="mt-2 max-w-3xl text-zinc-400">
-              Save repeat invoice packages for Just Kleen, create the draft when
-              it is time, then review and send from Outlook yourself.
+              Save repeat invoice packages for Just Kleen, then choose Manual /
+              Draft mode or Auto Send mode for each recurring invoice.
             </p>
           </div>
 
@@ -898,7 +987,7 @@ function RecurringInvoicesPageContent() {
             </h2>
             <p className="mt-2 text-sm leading-6 text-zinc-400">
               Open the invoice, confirm the customer-facing PDF/export, then send
-              it manually from Outlook with your usual signature.
+              it from Trimax when ready.
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
               <Link href={`/invoices/${generatedInvoice.id}${businessQuery}`}>
@@ -1204,21 +1293,53 @@ function RecurringInvoicesPageContent() {
               />
               <span>
                 <span className="block text-sm font-semibold text-white">
-                  Auto-create monthly drafts
+                  Run monthly
                 </span>
                 <span className="mt-1 block text-sm leading-5 text-zinc-400">
-                  Trimax will prepare the draft on the schedule. Leave this off
-                  if you only want to create drafts manually.
+                  Trimax will run this template on the schedule. Pause this when
+                  you do not want drafts or auto-sends created.
+                </span>
+              </span>
+            </label>
+
+            <label className="app-soft-panel flex min-h-[82px] cursor-pointer items-start gap-3 rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3">
+              <input
+                type="checkbox"
+                checked={autoSendEnabled}
+                onChange={(event) => {
+                  setAutoSendEnabled(event.target.checked);
+                  if (event.target.checked) {
+                    setAutoCreateDrafts(true);
+                  }
+                }}
+                className="mt-1 h-5 w-5 accent-emerald-500"
+              />
+              <span>
+                <span className="block text-sm font-semibold text-white">
+                  Auto Send mode
+                </span>
+                <span className="mt-1 block text-sm leading-5 text-zinc-400">
+                  Create and send the invoice automatically with the official
+                  customer PDF attached. Leave off for Manual / Draft mode.
                 </span>
               </span>
             </label>
 
             <InputField
-              label="Next Draft Date"
+              label="Auto Send Recipient"
+              type="email"
+              placeholder="customer@example.com"
+              value={recipientEmail}
+              onChange={setRecipientEmail}
+              helperText="Required only for Auto Send mode. Choosing a client fills this when an email is saved."
+            />
+
+            <InputField
+              label="Next Run Date"
               type="date"
               value={nextRunDate}
               onChange={setNextRunDate}
-              helperText="Trimax will create the draft on this date, then move the template ahead one month."
+              helperText="Trimax will run this template on this date, then move it ahead one month after the draft is created or the auto-send succeeds."
             />
 
             <InputField
@@ -1354,11 +1475,11 @@ function RecurringInvoicesPageContent() {
                 Recurring Workflow
               </p>
               <h2 className="mt-2 text-2xl font-bold">
-                Draft schedule command center
+                Recurring schedule command center
               </h2>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
-                FreshBooks-style recurring invoices, with a safer Trimax
-                default: create drafts first, review them, then send when ready.
+                FreshBooks-style recurring invoices with two modes: Manual /
+                Draft for review, or Auto Send for scheduled customer delivery.
               </p>
             </div>
 
@@ -1367,7 +1488,7 @@ function RecurringInvoicesPageContent() {
             </Link>
           </div>
 
-          <div className="mt-5 grid gap-3 md:grid-cols-4">
+          <div className="mt-5 grid gap-3 md:grid-cols-5">
             <div className="recurring-metric-card rounded-2xl border p-4">
               <p className="text-xs font-black uppercase tracking-[0.2em]">
                 Active
@@ -1386,6 +1507,16 @@ function RecurringInvoicesPageContent() {
                 {autoCreateTemplates.length}
               </p>
               <p className="mt-1 text-sm">Scheduled monthly</p>
+            </div>
+
+            <div className="recurring-metric-card rounded-2xl border p-4">
+              <p className="text-xs font-black uppercase tracking-[0.2em]">
+                Auto Send
+              </p>
+              <p className="mt-2 text-3xl font-black">
+                {autoSendTemplates.length}
+              </p>
+              <p className="mt-1 text-sm">Send without prompting</p>
             </div>
 
             <div className="recurring-metric-card rounded-2xl border p-4">
@@ -1412,7 +1543,7 @@ function RecurringInvoicesPageContent() {
           <div className="mt-4 rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-sm leading-6 text-zinc-300">
             {nextScheduledTemplate ? (
               <>
-                Next automatic draft:{" "}
+                Next recurring run:{" "}
                 <span className="font-black text-white">
                   {nextScheduledTemplate.name}
                 </span>{" "}
@@ -1423,7 +1554,7 @@ function RecurringInvoicesPageContent() {
                 .
               </>
             ) : (
-              "No automatic recurring drafts are currently scheduled. Turn on auto-create for a template when you want Trimax to prepare it monthly."
+              "No recurring runs are currently scheduled. Turn on monthly runs for a template when you want Trimax to prepare it monthly."
             )}
           </div>
         </Card>
@@ -1502,6 +1633,11 @@ function RecurringInvoicesPageContent() {
                               ? "BOA / 5 Star 5 format"
                               : "Normal PDF"}
                           </span>
+                          <span className="app-chip rounded-full border border-emerald-500/40 px-3 py-1 text-emerald-200">
+                            {template.auto_send_enabled
+                              ? "Auto Send"
+                              : "Manual / Draft"}
+                          </span>
                         </div>
                       </div>
 
@@ -1513,9 +1649,19 @@ function RecurringInvoicesPageContent() {
                         <p className="mt-2 text-xs text-zinc-500">
                           Last created: {formatDate(template.last_generated_at)}
                         </p>
+                        {template.auto_send_enabled ? (
+                          <p className="mt-1 text-xs text-zinc-500">
+                            Last sent: {formatDate(template.last_sent_at)}
+                          </p>
+                        ) : null}
                         {template.last_error ? (
                           <p className="mt-2 max-w-md text-xs text-red-200">
                             Last error: {template.last_error}
+                          </p>
+                        ) : null}
+                        {template.last_send_error ? (
+                          <p className="mt-2 max-w-md text-xs text-red-200">
+                            Last send error: {template.last_send_error}
                           </p>
                         ) : null}
                       </div>
@@ -1528,7 +1674,9 @@ function RecurringInvoicesPageContent() {
                       >
                         {generatingId === template.id
                           ? "Creating..."
-                          : "Create Next Draft Now"}
+                          : template.auto_send_enabled
+                            ? "Create Draft Now"
+                            : "Create Next Draft Now"}
                       </Button>
                       {template.last_generated_invoice_id ? (
                         <Link
@@ -1545,6 +1693,16 @@ function RecurringInvoicesPageContent() {
                           {template.auto_create_drafts
                             ? "Pause Auto Drafts"
                             : "Resume Auto Drafts"}
+                        </Button>
+                      ) : null}
+                      {template.is_active ? (
+                        <Button
+                          variant="secondary"
+                          onClick={() => toggleAutoSendMode(template)}
+                        >
+                          {template.auto_send_enabled
+                            ? "Use Manual / Draft"
+                            : "Enable Auto Send"}
                         </Button>
                       ) : null}
                       {template.is_active ? (
