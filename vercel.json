@@ -3,6 +3,10 @@
     {
       "path": "/api/recurring-invoices/run",
       "schedule": "15 14 * * *"
+    },
+    {
+      "path": "/api/queue/send-tbd-reminders",
+      "schedule": "30 15 * * *"
     }
   ]
 }

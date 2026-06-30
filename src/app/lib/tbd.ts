@@ -41,7 +41,7 @@ export function queueTbdDecisions(item: {
 
   if (isTbdValue(item.wall_paint_color)) {
     decisions.push({
-      field: "Paint Color",
+      field: "Wall Paint Color",
       value: TBD_VALUE,
     });
   }
