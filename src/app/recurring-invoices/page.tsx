@@ -1787,7 +1787,7 @@ function RecurringInvoicesPageContent() {
             </div>
 
             <InputField
-              label="First scheduled recurring invoice"
+              label="Recurring invoices start"
               type="date"
               value={nextRunDate}
               onChange={setNextRunDate}
@@ -2273,10 +2273,10 @@ function RecurringInvoicesPageContent() {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.24em] text-orange-300">
-                    Start recurring invoice
+                    Recurring invoice saved
                   </p>
                   <h2 className="mt-2 text-2xl font-black text-white">
-                    Choose how this recurring invoice starts
+                    How would you like to begin?
                   </h2>
                   <p className="mt-2 text-sm leading-6 text-zinc-400">
                     The recurring template controls the future schedule. Sending
@@ -2296,10 +2296,11 @@ function RecurringInvoicesPageContent() {
               <div className="mt-5 grid gap-4">
                 <div className="rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4">
                   <h3 className="text-lg font-black text-white">
-                    Save schedule only
+                    Start on schedule
                   </h3>
                   <p className="mt-2 text-sm leading-6 text-zinc-300">
-                    First invoice will be sent on {formatDate(nextRunDate)}.
+                    No invoice is sent today. The first recurring invoice will
+                    be sent on {formatDate(nextRunDate)}.
                   </p>
                   <Button
                     className="mt-4"
@@ -2310,16 +2311,16 @@ function RecurringInvoicesPageContent() {
                       setIsStartModalOpen(false);
                     }}
                   >
-                    Save schedule only
+                    Start on schedule
                   </Button>
                 </div>
 
                 <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
                   <h3 className="text-lg font-black text-white">
-                    Save and send first invoice now
+                    Send first invoice now
                   </h3>
                   <p className="mt-2 text-sm leading-6 text-zinc-300">
-                    Trimax will send one invoice immediately. Future recurring
+                    Create and email one invoice immediately. Future recurring
                     invoices will begin on {formatDate(nextRunDate)}.
                   </p>
                   {!autoSendEnabled || !isValidEmail(recipientEmail.trim()) ? (
@@ -2340,7 +2341,7 @@ function RecurringInvoicesPageContent() {
                       setIsStartModalOpen(false);
                     }}
                   >
-                    Save and send now
+                    Send first invoice now
                   </Button>
                 </div>
               </div>
