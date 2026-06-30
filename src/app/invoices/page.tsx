@@ -1589,7 +1589,7 @@ export default async function InvoicesPage({
           <div className="invoice-page-actions flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <Link href={`/recurring-invoices${businessQuery}`}>
               <Button variant="secondary" className="w-full sm:w-auto">
-                Recurring Drafts
+                Recurring Invoices
               </Button>
             </Link>
 
@@ -2733,7 +2733,7 @@ export default async function InvoicesPage({
               <div className="flex flex-col gap-3 sm:flex-row">
                 <Link href={`/recurring-invoices${businessQuery}`}>
                   <Button variant="secondary" className="w-full sm:w-auto">
-                    Recurring Drafts
+                    Recurring Invoices
                   </Button>
                 </Link>
 
