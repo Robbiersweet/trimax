@@ -500,6 +500,8 @@ export async function POST(request: Request, { params }: RouteParams) {
     unknown
   >;
   const recipientEmail = cleanText(body.recipientEmail, 200).toLowerCase();
+  const requestedCcEmail = cleanText(body.ccEmail, 200).toLowerCase();
+  const requestedBccEmail = cleanText(body.bccEmail, 200).toLowerCase();
   const subject = cleanText(body.subject, 240);
   const message = cleanText(body.message, 5000);
   const replyToEmail = cleanText(body.replyToEmail, 200).toLowerCase();
@@ -689,22 +691,35 @@ export async function POST(request: Request, { params }: RouteParams) {
         .limit(1)
         .maybeSingle<ClientEmailRouteRow>()
     : { data: null };
+  const isTrustedAutomationRequest =
+    Boolean(cronSecret) && cronSecret === process.env.CRON_SECRET;
+  const automationCcEmail =
+    isTrustedAutomationRequest && isValidEmail(requestedCcEmail)
+      ? requestedCcEmail
+      : "";
   const clientCcEmail = cleanText(
     clientEmailRoute?.cc_email,
     200
   ).toLowerCase();
   const fallbackCcEmail = emailSettings.ccEmail.trim().toLowerCase();
-  const ccEmail = isValidEmail(clientCcEmail)
+  const ccEmail = automationCcEmail
+    ? automationCcEmail
+    : isValidEmail(clientCcEmail)
     ? clientCcEmail
     : isValidEmail(fallbackCcEmail)
       ? fallbackCcEmail
       : "";
   const ccSource = ccEmail
-    ? ccEmail === clientCcEmail
+    ? ccEmail === automationCcEmail
+      ? "automation"
+      : ccEmail === clientCcEmail
       ? "client"
       : "workspace"
     : null;
-  const bccEmail = emailSettings.bccEmail.trim().toLowerCase();
+  const bccEmail =
+    isTrustedAutomationRequest && isValidEmail(requestedBccEmail)
+      ? requestedBccEmail
+      : emailSettings.bccEmail.trim().toLowerCase();
 
   if (!senderEmail || !isValidEmail(senderEmail)) {
     return sendFailureResponse({

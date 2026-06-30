@@ -53,8 +53,15 @@ type RecurringTemplate = {
   line_items: RecurringLineItem[] | null;
   next_run_date: string | null;
   last_generated_for_date: string | null;
+  auto_create_drafts: boolean | null;
   auto_send_enabled: boolean | null;
   recipient_email: string | null;
+  cc_email: string | null;
+  bcc_email: string | null;
+  end_type: "forever" | "until_date" | "after_occurrences" | null;
+  end_date: string | null;
+  max_occurrences: number | null;
+  occurrences_sent: number | null;
   last_generated_invoice_id: string | null;
   last_send_error: string | null;
   businesses: {
@@ -102,6 +109,61 @@ function addMonthsToDateInput(value: string | null) {
   nextDate.setMonth(nextDate.getMonth() + 1);
 
   return toDateInputValue(nextDate);
+}
+
+function isRecurringEndMet(template: RecurringTemplate) {
+  if (template.end_type === "until_date" && template.end_date) {
+    const nextRun = template.next_run_date
+      ? new Date(`${template.next_run_date}T00:00:00`)
+      : null;
+    const endDate = new Date(`${template.end_date}T00:00:00`);
+
+    if (
+      nextRun &&
+      !Number.isNaN(nextRun.getTime()) &&
+      !Number.isNaN(endDate.getTime()) &&
+      nextRun.getTime() > endDate.getTime()
+    ) {
+      return true;
+    }
+  }
+
+  if (
+    template.end_type === "after_occurrences" &&
+    template.max_occurrences !== null &&
+    template.max_occurrences > 0
+  ) {
+    return (template.occurrences_sent ?? 0) >= template.max_occurrences;
+  }
+
+  return false;
+}
+
+function shouldPauseAfterRun(
+  template: RecurringTemplate,
+  nextRunDate: string,
+  nextOccurrences: number
+) {
+  if (template.end_type === "until_date" && template.end_date) {
+    const nextRun = new Date(`${nextRunDate}T00:00:00`);
+    const endDate = new Date(`${template.end_date}T00:00:00`);
+
+    return (
+      !Number.isNaN(nextRun.getTime()) &&
+      !Number.isNaN(endDate.getTime()) &&
+      nextRun.getTime() > endDate.getTime()
+    );
+  }
+
+  if (
+    template.end_type === "after_occurrences" &&
+    template.max_occurrences !== null &&
+    template.max_occurrences > 0
+  ) {
+    return nextOccurrences >= template.max_occurrences;
+  }
+
+  return false;
 }
 
 function lineTotal(item: RecurringLineItem) {
@@ -328,6 +390,8 @@ async function createInvoiceFromTemplate(
       template.recipient_email?.trim().toLowerCase() ||
       template.clients?.email?.trim().toLowerCase() ||
       "",
+    ccEmail: template.cc_email?.trim().toLowerCase() || "",
+    bccEmail: template.bcc_email?.trim().toLowerCase() || "",
     subject,
     message,
   };
@@ -338,6 +402,8 @@ async function sendRecurringInvoice({
   invoiceId,
   businessSlug,
   recipientEmail,
+  ccEmail,
+  bccEmail,
   subject,
   message,
 }: {
@@ -345,6 +411,8 @@ async function sendRecurringInvoice({
   invoiceId: string;
   businessSlug: string;
   recipientEmail: string;
+  ccEmail: string;
+  bccEmail: string;
   subject: string;
   message: string;
 }) {
@@ -368,6 +436,8 @@ async function sendRecurringInvoice({
       },
       body: JSON.stringify({
         recipientEmail,
+        ccEmail,
+        bccEmail,
         subject,
         message,
         businessSlug,
@@ -439,9 +509,25 @@ export async function GET(request: Request) {
 
   for (const template of templates) {
     try {
+      if (isRecurringEndMet(template)) {
+        await supabase.from("recurring_invoice_templates").update({
+          auto_create_drafts: false,
+          auto_send_enabled: false,
+          last_error: null,
+          updated_at: new Date().toISOString(),
+        }).eq("id", template.id);
+        continue;
+      }
+
       const result = await createInvoiceFromTemplate(supabase, template);
       if (result) {
         created.push(result.displayId);
+        const nextOccurrences = (template.occurrences_sent ?? 0) + 1;
+        const shouldPause = shouldPauseAfterRun(
+          template,
+          result.nextRunDate,
+          nextOccurrences
+        );
 
         if (template.auto_send_enabled) {
           const businessSlug = template.businesses?.slug;
@@ -455,6 +541,8 @@ export async function GET(request: Request) {
             invoiceId: result.invoiceId,
             businessSlug,
             recipientEmail: result.recipientEmail,
+            ccEmail: result.ccEmail,
+            bccEmail: result.bccEmail,
             subject: result.subject,
             message: result.message,
           });
@@ -466,12 +554,18 @@ export async function GET(request: Request) {
             last_sent_at: new Date().toISOString(),
             last_send_error: null,
             next_run_date: result.nextRunDate,
+            occurrences_sent: nextOccurrences,
+            auto_create_drafts: shouldPause ? false : template.auto_create_drafts,
+            auto_send_enabled: shouldPause ? false : template.auto_send_enabled,
             last_error: null,
             updated_at: new Date().toISOString(),
           }).eq("id", template.id);
         } else {
           await supabase.from("recurring_invoice_templates").update({
             next_run_date: result.nextRunDate,
+            occurrences_sent: nextOccurrences,
+            auto_create_drafts: shouldPause ? false : template.auto_create_drafts,
+            auto_send_enabled: shouldPause ? false : template.auto_send_enabled,
             last_error: null,
             updated_at: new Date().toISOString(),
           }).eq("id", template.id);
