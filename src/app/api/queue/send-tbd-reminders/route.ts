@@ -105,6 +105,20 @@ function dateValue(value: string | null) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function formatDate(value: string | null) {
+  const date = dateValue(value);
+
+  if (!date) {
+    return "Not provided";
+  }
+
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 function daysSinceMoveOut(moveOutDate: string | null, today: Date) {
   const moveOut = dateValue(moveOutDate);
 
@@ -233,7 +247,17 @@ async function sendWithResend({
   return { ok: true, status: response.status, error: null };
 }
 
-function reminderBody(unitLabel: string, decisions: ReturnType<typeof queueTbdDecisions>) {
+function reminderBody({
+  unitLabel,
+  moveOutDate,
+  queueItemUrl,
+  decisions,
+}: {
+  unitLabel: string;
+  moveOutDate: string | null;
+  queueItemUrl: string;
+  decisions: ReturnType<typeof queueTbdDecisions>;
+}) {
   const decisionLines = decisions.map(
     (decision) => `- ${decision.field}: ${decision.value}`
   );
@@ -243,7 +267,11 @@ function reminderBody(unitLabel: string, decisions: ReturnType<typeof queueTbdDe
     "",
     ...decisionLines,
     "",
+    `Move-out date: ${formatDate(moveOutDate)}`,
+    "",
     "Please inspect the unit and update the queue item when available.",
+    "",
+    `Open Queue Item: ${queueItemUrl}`,
   ].join("\n");
 }
 
@@ -453,8 +481,17 @@ async function runTbdReminderCheck(
         continue;
       }
 
-      const subject = `Trimax Follow-up Needed – Unit ${unitLabel}`;
-      const message = reminderBody(unitLabel, candidate.decisions);
+      const queueItemUrl = new URL(
+        `/queue/${item.id}?business=${business.slug}`,
+        request.url
+      ).toString();
+      const subject = `Trimax Follow-up Needed - Unit ${unitLabel}`;
+      const message = reminderBody({
+        unitLabel,
+        moveOutDate: item.move_out_date,
+        queueItemUrl,
+        decisions: candidate.decisions,
+      });
 
       if (body.dryRun) {
         skipped.push(`${queueLabel}: dry run`);
@@ -470,6 +507,11 @@ async function runTbdReminderCheck(
           </div>
           <div style="padding: 34px 0;">
             <p style="font-size: 16px;">${plainTextToHtml(message)}</p>
+            <p style="margin-top: 24px;">
+              <a href="${escapeHtml(
+                queueItemUrl
+              )}" style="display: inline-block; background: #0ea5e9; color: #ffffff; text-decoration: none; font-weight: 800; padding: 12px 18px; border-radius: 12px;">Open Queue Item</a>
+            </p>
           </div>
         </div>
       `;
@@ -499,6 +541,7 @@ async function runTbdReminderCheck(
             sender_email: senderEmail,
             cadence_key: cadence,
             move_out_date: item.move_out_date,
+            queue_item_url: queueItemUrl,
             unresolved_decisions: candidate.decisions,
             provider: "resend",
             provider_status: result.status,
@@ -528,6 +571,7 @@ async function runTbdReminderCheck(
           bcc_email: bccEmail && isValidEmail(bccEmail) ? bccEmail : null,
           cadence_key: cadence,
           move_out_date: item.move_out_date,
+          queue_item_url: queueItemUrl,
           unresolved_decisions: candidate.decisions,
           provider: "resend",
           provider_status: result.status,
