@@ -8,11 +8,13 @@ import Button from "./Button";
 type DeleteQueueItemButtonProps = {
   queueItemId: string;
   returnHref: string;
+  disabledReason?: string | null;
 };
 
 export default function DeleteQueueItemButton({
   queueItemId,
   returnHref,
+  disabledReason = null,
 }: DeleteQueueItemButtonProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -21,6 +23,11 @@ export default function DeleteQueueItemButton({
 
   const handleDelete = async () => {
     setErrorMessage("");
+
+    if (disabledReason) {
+      setErrorMessage(disabledReason);
+      return;
+    }
 
     if (!isConfirming) {
       setIsConfirming(true);
@@ -58,7 +65,7 @@ export default function DeleteQueueItemButton({
       <Button
         onClick={handleDelete}
         variant="secondary"
-        disabled={isDeleting}
+        disabled={isDeleting || Boolean(disabledReason)}
       >
         {isDeleting
           ? "Deleting..."
@@ -80,6 +87,12 @@ export default function DeleteQueueItemButton({
       {errorMessage ? (
         <p className="text-sm font-semibold text-red-300">
           {errorMessage}
+        </p>
+      ) : null}
+
+      {disabledReason && !errorMessage ? (
+        <p className="text-sm font-semibold text-amber-200">
+          {disabledReason}
         </p>
       ) : null}
     </div>

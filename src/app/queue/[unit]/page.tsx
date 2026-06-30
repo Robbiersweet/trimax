@@ -473,6 +473,9 @@ export default async function QueueDetailPage({
   let propertyUnitProfile: PropertyUnitProfile | null = null;
   let northCreekPropertyId: string | null = null;
   let unitHistory: UnitHistoryEntry[] = [];
+  let queueLinkedEstimateCount = 0;
+  let queueJobSessionCount = 0;
+  let queueProofActivityCount = 0;
   const isNorthCreekQueueItem =
     propertyKey(item.property) === "north-creek-apartments";
   const normalizedUnitLabel = normalizeUnitLabel(item.unit);
@@ -523,6 +526,48 @@ export default async function QueueDetailPage({
         ((activityData ?? []) as InvoiceActivityLog[])[0] ?? null;
     }
   }
+
+  const { count: estimateSafetyCount } = await supabase
+    .from("estimates")
+    .select("id", { count: "exact", head: true })
+    .eq("business_id", selectedBusiness.id)
+    .eq("queue_item_id", item.id);
+
+  queueLinkedEstimateCount = estimateSafetyCount ?? 0;
+
+  const { count: jobSessionSafetyCount } = await supabase
+    .from("job_sessions")
+    .select("id", { count: "exact", head: true })
+    .eq("business_id", selectedBusiness.id)
+    .eq("queue_item_id", item.id);
+
+  queueJobSessionCount = jobSessionSafetyCount ?? 0;
+
+  const { count: proofActivitySafetyCount } = await supabase
+    .from("activity_logs")
+    .select("id", { count: "exact", head: true })
+    .eq("business_id", selectedBusiness.id)
+    .eq("entity_type", "queue_item")
+    .eq("entity_id", item.id)
+    .in("action", [
+      "invoice.email_sent",
+      "invoice.payment_reminder_sent",
+      "invoice.batch_payment_applied",
+      "invoice.paid",
+      "invoice.check_uploaded",
+      "queue_item.completed",
+      "job_session.started",
+      "job_session.resumed",
+      "job_session.stopped",
+      "job_session.breakdown_saved",
+      "technician.job_session_started",
+      "technician.job_session_resumed",
+      "technician.job_session_paused",
+      "technician.job_session_stopped",
+      "technician.job_completed",
+    ]);
+
+  queueProofActivityCount = proofActivitySafetyCount ?? 0;
 
   const { data: queueActivityData } = await supabase
     .from("activity_logs")
@@ -721,7 +766,19 @@ export default async function QueueDetailPage({
                   "Estimate, invoice, payment, and completion are all accounted for.",
                 href: `/activity?business=${businessSlug}&type=queue`,
                 action: "View Proof",
-              };
+            };
+  const deleteBlockReasons = [
+    item.linked_estimate_id || queueLinkedEstimateCount > 0
+      ? "estimate"
+      : null,
+    linkedInvoice ? "invoice" : null,
+    queueJobSessionCount > 0 ? "job session" : null,
+    queueProofActivityCount > 0 ? "work history" : null,
+  ].filter(Boolean);
+  const deleteDisabledReason =
+    deleteBlockReasons.length > 0
+      ? "This queue item already has work history and cannot be deleted."
+      : null;
   const queueChangeLogs = queueActivityLogs.filter(
     (log) => queueActivityChanges(log).length > 0
   );
@@ -1367,20 +1424,26 @@ export default async function QueueDetailPage({
             </a>
           ) : null}
 
-          <MarkCompletedButton
-            queueItemId={item.id}
-            businessId={item.business_id}
-            businessSlug={businessSlug}
-            label={`${item.property || "Property"} - Unit ${
-              displayUnit || "-"
-            }`}
-            returnToQueue
-          />
-
           <RoleVisible businessSlug={businessSlug} allow={["owner", "admin"]}>
+            <MarkCompletedButton
+              queueItemId={item.id}
+              businessId={item.business_id}
+              businessSlug={businessSlug}
+              label={`${item.property || "Property"} - Unit ${
+                displayUnit || "-"
+              }`}
+              returnToQueue
+            />
+          </RoleVisible>
+
+          <RoleVisible
+            businessSlug={businessSlug}
+            allow={["owner", "admin", "property_manager"]}
+          >
             <DeleteQueueItemButton
               queueItemId={item.id}
               returnHref={`/queue?business=${businessSlug}`}
+              disabledReason={deleteDisabledReason}
             />
           </RoleVisible>
         </div>
