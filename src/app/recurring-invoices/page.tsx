@@ -567,7 +567,7 @@ function RecurringInvoicesPageContent() {
       return;
     }
 
-    setCustomerName(client.name);
+    setCustomerName(client.name.trim());
     setRecipientEmail(client.email ?? "");
     setServiceAddress(client.service_address ?? client.billing_address ?? "");
   }
@@ -1477,13 +1477,29 @@ function RecurringInvoicesPageContent() {
                 onChange={(event) => chooseClient(event.target.value)}
                 className="app-form-input w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
               >
-                <option value="">Choose a client or type the customer below</option>
+                <option value="" className="bg-white text-slate-950">
+                  {isLoading
+                    ? "Loading clients..."
+                    : clients.length > 0
+                      ? "Choose a client or type the customer below"
+                      : "No clients found for this business"}
+                </option>
                 {clients.map((client) => (
-                  <option key={client.id} value={client.id}>
-                    {client.name}
+                  <option
+                    key={client.id}
+                    value={client.id}
+                    className="bg-white text-slate-950"
+                  >
+                    {client.name.trim() || "Unnamed client"}
                   </option>
                 ))}
               </select>
+              {clients.length === 0 && !isLoading ? (
+                <p className="app-helper-text mt-2 text-xs leading-5 text-zinc-500">
+                  No clients are saved for this business yet. You can still type
+                  the customer manually.
+                </p>
+              ) : null}
             </div>
 
             <InputField
