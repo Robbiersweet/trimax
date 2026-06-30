@@ -21,6 +21,10 @@ import {
   queueTimingTone,
 } from "../../lib/queueTiming";
 import { supabase } from "../../lib/supabase";
+import {
+  queueTbdDecisions,
+  tbdDisplay,
+} from "../../lib/tbd";
 import { fieldWorkerRoles } from "../../lib/rolePermissions";
 import { getConfirmedNorthCreekUnit } from "../../utils/northCreekUnits";
 import {
@@ -779,6 +783,7 @@ export default async function QueueDetailPage({
     deleteBlockReasons.length > 0
       ? "This queue item already has work history and cannot be deleted."
       : null;
+  const tbdDecisions = queueTbdDecisions(item);
   const queueChangeLogs = queueActivityLogs.filter(
     (log) => queueActivityChanges(log).length > 0
   );
@@ -857,6 +862,36 @@ export default async function QueueDetailPage({
             changeCount={queueVolatilityScore}
           />
         </RoleVisible>
+
+        {tbdDecisions.length > 0 ? (
+          <Card className="border-amber-400/30 bg-amber-500/10">
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.3em] text-amber-200">
+                  Outstanding Decisions
+                </p>
+                <h2 className="mt-2 text-2xl font-bold text-white">
+                  {tbdDecisions.length} TBD
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-amber-100/80">
+                  This queue item can stay active, but these details still need
+                  a real decision after inspection.
+                </p>
+              </div>
+
+              <div className="grid gap-2 text-sm font-semibold text-amber-50 md:min-w-72">
+                {tbdDecisions.map((decision) => (
+                  <p
+                    key={decision.field}
+                    className="rounded-2xl border border-amber-300/25 bg-black/25 px-4 py-3"
+                  >
+                    {decision.field}: {decision.value}
+                  </p>
+                ))}
+              </div>
+            </div>
+          </Card>
+        ) : null}
 
         <RoleVisible businessSlug={businessSlug} allow={fieldWorkerRoles}>
           <JobSessionPanel
@@ -1288,9 +1323,9 @@ export default async function QueueDetailPage({
             <Info label="Paint Type" value={item.paint_type ?? ""} />
             <Info
               label="Wall Paint Color"
-              value={item.wall_paint_color ?? ""}
+              value={tbdDisplay(item.wall_paint_color)}
             />
-            <Info label="Flooring" value={item.flooring ?? ""} />
+            <Info label="Flooring" value={tbdDisplay(item.flooring)} />
             <Info
               label="Prior Renovation"
               value={

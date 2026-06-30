@@ -1,6 +1,7 @@
 import { supabase } from "./supabase";
 import { logActivity } from "./activityLog";
 import { assertCanWriteDuringMaintenance } from "./maintenanceMode";
+import { normalizeTbdValue } from "./tbd";
 
 type CreateQueueItemInput = {
   property: string;
@@ -88,8 +89,8 @@ export async function createQueueItem(input: CreateQueueItemInput) {
     unit: input.unit,
     paint_type: input.paintType,
     unit_layout: input.unitLayout.trim() || null,
-    wall_paint_color: input.wallPaintColor.trim() || null,
-    flooring: input.flooring,
+    wall_paint_color: normalizeTbdValue(input.wallPaintColor).trim() || null,
+    flooring: normalizeTbdValue(input.flooring),
     priority: input.priority,
     priority_order: priorityOrder,
     priority_updated_at: priorityOrder ? now : null,

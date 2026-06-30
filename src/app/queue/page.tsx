@@ -10,6 +10,10 @@ import {
   queueTimingTone,
 } from "../lib/queueTiming";
 import { supabase } from "../lib/supabase";
+import {
+  queueTbdDecisions,
+  tbdDisplay,
+} from "../lib/tbd";
 import { maybeCanonicalApartmentUnitLabel } from "../utils/unitLabels";
 
 type Business = {
@@ -1269,6 +1273,7 @@ export default async function QueuePage({
               const readyDays = daysUntil(item.ready_date);
               const timingBadge = queueTimingBadge(item);
               const timingTone = queueTimingTone(timingBadge);
+              const tbdDecisions = queueTbdDecisions(item);
               const itemJobSessions = sessionsByQueueItemId.get(item.id) ?? [];
               const activeJobSessionCount = itemJobSessions.filter(
                 (session) => !session.ended_at
@@ -1452,6 +1457,16 @@ export default async function QueuePage({
                           value={item.delay_reason}
                           emptyValue="No delay reason"
                         />
+                        {tbdDecisions.length > 0 ? (
+                          <LifecyclePill
+                            label="Outstanding Decisions"
+                            value={`${tbdDecisions.length} TBD`}
+                            detail={tbdDecisions
+                              .map((decision) => decision.field)
+                              .join(", ")}
+                            alert
+                          />
+                        ) : null}
                       </div>
 
                       <div className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3">
@@ -1478,9 +1493,12 @@ export default async function QueuePage({
                         />
                         <Info
                           label="Wall Color"
-                          value={item.wall_paint_color}
+                          value={tbdDisplay(item.wall_paint_color)}
                         />
-                        <Info label="Flooring" value={item.flooring} />
+                        <Info
+                          label="Flooring"
+                          value={tbdDisplay(item.flooring)}
+                        />
                         <Info
                           label="Renovation"
                           value={

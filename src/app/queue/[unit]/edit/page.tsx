@@ -20,6 +20,10 @@ import {
   queueProgressStages,
 } from "../../../lib/queueTiming";
 import { supabase } from "../../../lib/supabase";
+import {
+  TBD_VALUE,
+  normalizeTbdValue,
+} from "../../../lib/tbd";
 import { canonicalApartmentUnitLabel } from "../../../utils/unitLabels";
 
 const statusOptions = [
@@ -57,6 +61,7 @@ const paintTypeOptions = [
 ];
 
 const wallPaintColorOptions = [
+  TBD_VALUE,
   "Sherwin-Williams Roman Column (SW 7562)",
   "Sherwin-Williams Nebulous White (SW 7063)",
   "Confirm with manager",
@@ -69,6 +74,7 @@ const northCreekUnitLayoutOptions = [
 ];
 
 const flooringOptions = [
+  TBD_VALUE,
   "Keep Carpet & Keep Vinyl",
   "Keep Vinyl & Replace Carpet",
   "Keep Carpet & Replace Vinyl",
@@ -372,8 +378,8 @@ export default function EditQueueItemPage() {
       priority_updated_by: priorityOrderChanged ? user?.id ?? null : undefined,
       paint_type: paintType,
       unit_layout: unitLayout.trim() || null,
-      wall_paint_color: wallPaintColor.trim() || null,
-      flooring,
+      wall_paint_color: normalizeTbdValue(wallPaintColor).trim() || null,
+      flooring: normalizeTbdValue(flooring),
       smoked_in: smokedIn,
       primer_requested: smokedIn && primerRequested,
       prior_renovation: priorRenovation,

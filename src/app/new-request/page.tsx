@@ -13,6 +13,11 @@ import { createQueueItem } from "../lib/createQueueItem";
 import { logActivity } from "../lib/activityLog";
 import { supabase } from "../lib/supabase";
 import {
+  TBD_VALUE,
+  isTbdValue,
+  normalizeTbdValue,
+} from "../lib/tbd";
+import {
   canonicalApartmentUnitLabel,
   displayUnitLayout,
 } from "../utils/unitLabels";
@@ -140,6 +145,7 @@ const rnlPaintTypeOptions = [
 ];
 
 const rnlWallPaintColorOptions = [
+  TBD_VALUE,
   "Sherwin-Williams Roman Column (SW 7562)",
   "Sherwin-Williams Nebulous White (SW 7063)",
   "Confirm with manager",
@@ -161,6 +167,7 @@ const justKleenServiceOptions = [
 ];
 
 const rnlFlooringOptions = [
+  TBD_VALUE,
   "Keep Carpet & Keep Vinyl",
   "Keep Vinyl & Replace Carpet",
   "Keep Carpet & Replace Vinyl",
@@ -1279,6 +1286,12 @@ function NewRequestPageContent() {
   const propertyReady = Boolean(property.trim());
   const scopeReady = Boolean(paintType.trim());
   const flooringReady = Boolean(flooring.trim());
+  const flooringIsTbd = isTbdValue(flooring);
+  const wallPaintColorIsTbd = isTbdValue(wallPaintColor);
+  const outstandingDecisionFields = [
+    flooringIsTbd ? "Flooring" : null,
+    wallPaintColorIsTbd ? "Paint Color" : null,
+  ].filter(Boolean);
   const dueDateReady = Boolean(readyDate);
   const hasUnitHistoryConfidence =
     !collectUnitLayout ||
@@ -1315,11 +1328,24 @@ function NewRequestPageContent() {
         scopeReady && flooringReady
           ? isJustKleen
             ? "Service type and scope are set."
-            : "Paint type and flooring are set."
+            : flooringIsTbd
+              ? "Paint type is set. Flooring is awaiting a decision."
+              : "Paint type and flooring are set."
           : isJustKleen
             ? "Choose both service type and scope."
             : "Choose both paint type and flooring.",
     },
+    ...(!isJustKleen && outstandingDecisionFields.length > 0
+      ? [
+          {
+            label: "Outstanding Decisions",
+            complete: false,
+            detail: `${outstandingDecisionFields.length} TBD: ${outstandingDecisionFields.join(
+              ", "
+            )}.`,
+          },
+        ]
+      : []),
     {
       label: "Date",
       complete: dueDateReady,
@@ -1510,8 +1536,8 @@ function NewRequestPageContent() {
             unit: savedUnit,
             paintType,
             unitLayout: collectUnitLayout ? unitLayout : "",
-            wallPaintColor: isJustKleen ? "" : wallPaintColor,
-            flooring,
+            wallPaintColor: isJustKleen ? "" : normalizeTbdValue(wallPaintColor),
+            flooring: normalizeTbdValue(flooring),
             priority: submittedPriority,
             priorityOrder,
             smokedIn,
