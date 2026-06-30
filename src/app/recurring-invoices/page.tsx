@@ -366,6 +366,10 @@ function RecurringInvoicesPageContent() {
   );
   const [autoCreateDrafts, setAutoCreateDrafts] = useState(true);
   const [autoSendEnabled, setAutoSendEnabled] = useState(false);
+  const [sendFirstInvoiceNow, setSendFirstInvoiceNow] = useState(false);
+  const [futureRecurringStartDate, setFutureRecurringStartDate] = useState(
+    addMonthsToDateInput(toDateInputValue(new Date()))
+  );
   const [recipientEmail, setRecipientEmail] = useState("");
   const [ccEmail, setCcEmail] = useState("");
   const [bccEmail, setBccEmail] = useState("");
@@ -634,6 +638,8 @@ function RecurringInvoicesPageContent() {
     setDeliveryFormat("standard");
     setAutoCreateDrafts(true);
     setAutoSendEnabled(false);
+    setSendFirstInvoiceNow(false);
+    setFutureRecurringStartDate(addMonthsToDateInput(toDateInputValue(new Date())));
     setRecipientEmail("");
     setCcEmail("");
     setBccEmail("");
@@ -663,6 +669,8 @@ function RecurringInvoicesPageContent() {
     setDeliveryFormat(template.delivery_format ?? "standard");
     setAutoCreateDrafts(Boolean(template.auto_create_drafts));
     setAutoSendEnabled(Boolean(template.auto_send_enabled));
+    setSendFirstInvoiceNow(false);
+    setFutureRecurringStartDate(template.next_run_date ?? toDateInputValue(new Date()));
     setRecipientEmail(template.recipient_email ?? "");
     setCcEmail(template.cc_email ?? "");
     setBccEmail(template.bcc_email ?? "");
@@ -686,6 +694,54 @@ function RecurringInvoicesPageContent() {
         : [{ ...emptyLineItem }]
     );
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function sendImmediateFirstInvoice({
+    templateId,
+    firstInvoiceDate,
+    futureStartDate,
+  }: {
+    templateId: string;
+    firstInvoiceDate: string;
+    futureStartDate: string;
+  }) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    const response = await fetch("/api/recurring-invoices/run", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(session?.access_token
+          ? { Authorization: `Bearer ${session.access_token}` }
+          : {}),
+      },
+      body: JSON.stringify({
+        templateId,
+        businessSlug,
+        issueDateInput: firstInvoiceDate,
+        futureNextRunDate: futureStartDate,
+      }),
+    });
+    const payload = (await response.json().catch(() => null)) as
+      | {
+          ok?: boolean;
+          error?: string;
+          invoiceId?: string;
+          displayId?: string;
+          nextRunDate?: string;
+          sentAt?: string;
+        }
+      | null;
+
+    if (!response.ok || !payload?.ok) {
+      throw new Error(
+        payload?.error ?? "The first invoice could not be sent right now."
+      );
+    }
+
+    return payload;
   }
 
   async function saveTemplate() {
@@ -717,6 +773,22 @@ function RecurringInvoicesPageContent() {
       setToast({
         type: "error",
         message: "Auto Send mode needs a valid recipient email.",
+      });
+      return;
+    }
+
+    if (sendFirstInvoiceNow && !isValidEmail(recipientEmail.trim())) {
+      setToast({
+        type: "error",
+        message: "Send first invoice now needs a valid recipient email.",
+      });
+      return;
+    }
+
+    if (sendFirstInvoiceNow && !futureRecurringStartDate) {
+      setToast({
+        type: "error",
+        message: "Choose when future recurring invoices should start.",
       });
       return;
     }
@@ -757,6 +829,10 @@ function RecurringInvoicesPageContent() {
     }
 
     setIsSaving(true);
+    const firstInvoiceDate = toDateInputValue(new Date());
+    const futureStartDate = sendFirstInvoiceNow
+      ? futureRecurringStartDate
+      : nextRunDate;
 
     const templatePayload = {
       business_id: business.id,
@@ -768,7 +844,7 @@ function RecurringInvoicesPageContent() {
       reference: reference.trim() || null,
       delivery_format: deliveryFormat,
       frequency: "monthly",
-      next_run_date: nextRunDate || toDateInputValue(new Date()),
+      next_run_date: futureStartDate || toDateInputValue(new Date()),
       auto_create_drafts: autoCreateDrafts,
       auto_send_enabled: autoSendEnabled,
       recipient_email: recipientEmail.trim() || null,
@@ -813,9 +889,8 @@ function RecurringInvoicesPageContent() {
 
     const { data, error } = await query;
 
-    setIsSaving(false);
-
     if (error || !data) {
+      setIsSaving(false);
       setToast({
         type: "error",
         message:
@@ -824,18 +899,74 @@ function RecurringInvoicesPageContent() {
       return;
     }
 
+    let savedTemplate = data as RecurringTemplate;
+    let immediateInvoice:
+      | {
+          invoiceId?: string;
+          displayId?: string;
+          nextRunDate?: string;
+          sentAt?: string;
+        }
+      | null = null;
+
+    if (sendFirstInvoiceNow) {
+      try {
+        immediateInvoice = await sendImmediateFirstInvoice({
+          templateId: savedTemplate.id,
+          firstInvoiceDate,
+          futureStartDate,
+        });
+        savedTemplate = {
+          ...savedTemplate,
+          last_generated_invoice_id:
+            immediateInvoice.invoiceId ?? savedTemplate.last_generated_invoice_id,
+          last_generated_at:
+            immediateInvoice.sentAt ?? savedTemplate.last_generated_at,
+          last_generated_for_date: firstInvoiceDate,
+          last_sent_invoice_id:
+            immediateInvoice.invoiceId ?? savedTemplate.last_sent_invoice_id,
+          last_sent_at: immediateInvoice.sentAt ?? savedTemplate.last_sent_at,
+          last_error: null,
+          last_send_error: null,
+          next_run_date: futureStartDate,
+        };
+      } catch (error) {
+        setIsSaving(false);
+        setTemplates((current) =>
+          editingTemplateId
+            ? current.map((item) =>
+                item.id === savedTemplate.id ? savedTemplate : item
+              )
+            : [savedTemplate, ...current]
+        );
+        setToast({
+          type: "error",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Recurring invoice saved, but the first invoice could not be sent.",
+        });
+        return;
+      }
+    }
+
+    setIsSaving(false);
     setTemplates((current) =>
       editingTemplateId
         ? current.map((item) =>
-            item.id === editingTemplateId ? (data as RecurringTemplate) : item
+            item.id === editingTemplateId ? savedTemplate : item
           )
-        : [data as RecurringTemplate, ...current]
+        : [savedTemplate, ...current]
     );
     setToast({
       type: "success",
-      message: editingTemplateId
-        ? "Recurring invoice updated."
-        : "Recurring invoice saved.",
+      message: sendFirstInvoiceNow
+        ? `${
+            immediateInvoice?.displayId ?? "First invoice"
+          } sent. Future recurring invoices start ${formatDate(futureStartDate)}.`
+        : editingTemplateId
+          ? "Recurring invoice updated."
+          : "Recurring invoice saved.",
     });
 
     resetTemplateForm();
@@ -1653,7 +1784,12 @@ function RecurringInvoicesPageContent() {
               label="Next Run Date"
               type="date"
               value={nextRunDate}
-              onChange={setNextRunDate}
+              onChange={(value) => {
+                setNextRunDate(value);
+                if (sendFirstInvoiceNow || !futureRecurringStartDate) {
+                  setFutureRecurringStartDate(value);
+                }
+              }}
               helperText="Trimax will run this template on this date, then move it ahead one month after the invoice is created or the auto-send succeeds."
             />
 
@@ -1664,6 +1800,69 @@ function RecurringInvoicesPageContent() {
               onChange={setDayOfMonth}
               helperText="Use the same day as the next run date. This keeps the schedule clear."
             />
+
+            <div className="lg:col-span-2">
+              <div className="rounded-2xl border border-orange-500/20 bg-orange-500/5 p-4">
+                <label className="flex cursor-pointer items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={sendFirstInvoiceNow}
+                    onChange={(event) => {
+                      const checked = event.target.checked;
+                      setSendFirstInvoiceNow(checked);
+                      if (checked) {
+                        setAutoCreateDrafts(true);
+                        if (!futureRecurringStartDate) {
+                          setFutureRecurringStartDate(
+                            nextRunDate || addMonthsToDateInput(toDateInputValue(new Date()))
+                          );
+                        }
+                      }
+                    }}
+                    className="mt-1 h-5 w-5 accent-orange-500"
+                  />
+                  <span>
+                    <span className="block text-sm font-semibold text-white">
+                      Send first invoice now
+                    </span>
+                    <span className="mt-1 block text-sm leading-5 text-zinc-400">
+                      Trimax will save this recurring invoice, send one invoice
+                      immediately, then leave the future monthly schedule alone.
+                    </span>
+                  </span>
+                </label>
+
+                {sendFirstInvoiceNow ? (
+                  <div className="mt-4 grid gap-4 lg:grid-cols-[280px_1fr]">
+                    <InputField
+                      label="Future recurring invoices start"
+                      type="date"
+                      value={futureRecurringStartDate}
+                      onChange={(value) => {
+                        setFutureRecurringStartDate(value);
+                        setNextRunDate(value);
+                        const date = parseDateInput(value);
+                        if (date) {
+                          setDayOfMonth(String(date.getDate()));
+                        }
+                      }}
+                      helperText="The immediate invoice does not consume or advance this date."
+                    />
+                    <div className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4 text-sm leading-6 text-zinc-300">
+                      <p className="font-semibold text-white">
+                        Send invoice now. Then repeat monthly starting{" "}
+                        {formatDate(futureRecurringStartDate)}.
+                      </p>
+                      <p className="mt-2 text-zinc-400">
+                        The first invoice is a one-time customer invoice from
+                        this template. Future recurring invoices still follow
+                        the saved Next Run Date and Day of Month.
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </div>
 
             <div className="lg:col-span-2">
               <div className="rounded-2xl border border-sky-500/20 bg-sky-500/5 p-4">

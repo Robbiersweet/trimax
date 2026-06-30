@@ -12,6 +12,7 @@ type Database = {
   public: {
     Tables: {
       activity_logs: GenericTable;
+      business_users: GenericTable;
       businesses: GenericTable;
       document_send_logs: GenericTable;
       invoice_line_items: GenericTable;
@@ -71,6 +72,11 @@ type RecurringTemplate = {
   clients: {
     email: string | null;
   } | null;
+};
+
+type BusinessUserRow = {
+  id: string;
+  role: string | null;
 };
 
 const BUSINESS_TIME_ZONE = "America/Los_Angeles";
@@ -292,9 +298,13 @@ function isValidEmail(value: string) {
 
 async function createInvoiceFromTemplate(
   supabase: AdminClient,
-  template: RecurringTemplate
+  template: RecurringTemplate,
+  options: {
+    issueDateInput?: string;
+  } = {}
 ) {
-  const issueDateInput = template.next_run_date ?? toDateInputValue(new Date());
+  const issueDateInput =
+    options.issueDateInput ?? template.next_run_date ?? toDateInputValue(new Date());
 
   if (template.last_generated_for_date === issueDateInput) {
     return null;
@@ -447,6 +457,7 @@ async function sendRecurringInvoice({
   bccEmail,
   subject,
   message,
+  authorizationToken,
 }: {
   request: Request;
   invoiceId: string;
@@ -456,10 +467,11 @@ async function sendRecurringInvoice({
   bccEmail: string;
   subject: string;
   message: string;
+  authorizationToken?: string | null;
 }) {
   const cronSecret = process.env.CRON_SECRET;
 
-  if (!cronSecret) {
+  if (!authorizationToken && !cronSecret) {
     throw new Error("Recurring invoice auto-send is missing CRON_SECRET.");
   }
 
@@ -473,7 +485,9 @@ async function sendRecurringInvoice({
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-trimax-cron-secret": cronSecret,
+        ...(authorizationToken
+          ? { Authorization: `Bearer ${authorizationToken}` }
+          : { "x-trimax-cron-secret": cronSecret as string }),
       },
       body: JSON.stringify({
         recipientEmail,
@@ -500,6 +514,230 @@ async function sendRecurringInvoice({
   }
 
   return payload;
+}
+
+async function requireWorkspaceAccess({
+  supabase,
+  token,
+  businessId,
+}: {
+  supabase: AdminClient;
+  token: string | null;
+  businessId: string;
+}) {
+  if (!token) {
+    return { ok: false, email: null, userId: null };
+  }
+
+  const { data: userData, error: userError } =
+    await supabase.auth.getUser(token);
+
+  if (userError || !userData.user) {
+    return { ok: false, email: null, userId: null };
+  }
+
+  const userEmail = userData.user.email?.toLowerCase() ?? "";
+  const { data, error } = await supabase
+    .from("business_users")
+    .select("id, role")
+    .eq("business_id", businessId)
+    .or(`user_id.eq.${userData.user.id},email.ilike.${userEmail}`)
+    .limit(1)
+    .maybeSingle<BusinessUserRow>();
+
+  if (error || !data) {
+    return {
+      ok: false,
+      email: userData.user.email ?? null,
+      userId: userData.user.id,
+    };
+  }
+
+  return {
+    ok: true,
+    email: userData.user.email ?? null,
+    userId: userData.user.id,
+  };
+}
+
+export async function POST(request: Request) {
+  const supabase = getAdminClient();
+
+  if (!supabase) {
+    return NextResponse.json(
+      { error: "Missing Supabase service configuration." },
+      { status: 500 }
+    );
+  }
+
+  const authorization = request.headers.get("authorization");
+  const token = authorization?.startsWith("Bearer ")
+    ? authorization.slice("Bearer ".length)
+    : null;
+  const body = (await request.json().catch(() => ({}))) as Record<
+    string,
+    unknown
+  >;
+  const templateId = String(body.templateId ?? "").trim();
+  const businessSlug = String(body.businessSlug ?? "").trim();
+  const issueDateInput = String(body.issueDateInput ?? "").trim();
+  const futureNextRunDate = String(body.futureNextRunDate ?? "").trim();
+
+  if (!templateId || !issueDateInput || !futureNextRunDate) {
+    return NextResponse.json(
+      {
+        error:
+          "Template, first invoice date, and future recurring start date are required.",
+      },
+      { status: 400 }
+    );
+  }
+
+  if (!parseDateInput(issueDateInput) || !parseDateInput(futureNextRunDate)) {
+    return NextResponse.json(
+      { error: "Use valid dates for the first invoice and future schedule." },
+      { status: 400 }
+    );
+  }
+
+  const { data: template, error } = await supabase
+    .from("recurring_invoice_templates")
+    .select("*, businesses(name, slug), clients(email)")
+    .eq("id", templateId)
+    .limit(1)
+    .maybeSingle<RecurringTemplate>();
+
+  if (error || !template) {
+    return NextResponse.json(
+      { error: error?.message ?? "Recurring invoice template was not found." },
+      { status: 404 }
+    );
+  }
+
+  if (businessSlug && template.businesses?.slug !== businessSlug) {
+    return NextResponse.json(
+      { error: "This template does not match the selected workspace." },
+      { status: 403 }
+    );
+  }
+
+  const access = await requireWorkspaceAccess({
+    supabase,
+    token,
+    businessId: template.business_id,
+  });
+
+  if (!access.ok) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
+  if (isRecurringEndMet(template)) {
+    return NextResponse.json(
+      {
+        error:
+          "This recurring invoice has reached its end condition. Edit it before sending the first invoice now.",
+      },
+      { status: 400 }
+    );
+  }
+
+  const recipientEmail =
+    template.recipient_email?.trim().toLowerCase() ||
+    template.clients?.email?.trim().toLowerCase() ||
+    "";
+
+  if (!isValidEmail(recipientEmail)) {
+    return NextResponse.json(
+      { error: "Send first invoice now needs a valid recipient email." },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const result = await createInvoiceFromTemplate(supabase, template, {
+      issueDateInput,
+    });
+
+    if (!result) {
+      return NextResponse.json(
+        {
+          error:
+            "The first invoice was already generated for this date. Open the generated invoice instead.",
+        },
+        { status: 409 }
+      );
+    }
+
+    const resolvedBusinessSlug = template.businesses?.slug;
+
+    if (!resolvedBusinessSlug) {
+      throw new Error("Trimax could not resolve the business workspace.");
+    }
+
+    await sendRecurringInvoice({
+      request,
+      invoiceId: result.invoiceId,
+      businessSlug: resolvedBusinessSlug,
+      recipientEmail: result.recipientEmail,
+      ccEmail: result.ccEmail,
+      bccEmail: result.bccEmail,
+      subject: result.subject,
+      message: result.message,
+      authorizationToken: token,
+    });
+
+    await supabase
+      .from("recurring_invoice_templates")
+      .update({
+        last_sent_invoice_id: result.invoiceId,
+        last_sent_at: new Date().toISOString(),
+        last_send_error: null,
+        next_run_date: futureNextRunDate,
+        last_error: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", template.id);
+
+    await supabase.from("activity_logs").insert({
+      business_id: template.business_id,
+      actor_user_id: access.userId,
+      actor_email: access.email,
+      action: "invoice.recurring_first_invoice_sent",
+      entity_type: "invoice",
+      entity_id: result.invoiceId,
+      entity_label: result.displayId,
+      details: {
+        templateName: template.name,
+        customerName: template.customer_name,
+        projectTitle: template.project_title,
+        firstInvoiceDate: issueDateInput,
+        futureNextRunDate,
+      },
+    });
+
+    return NextResponse.json({
+      ok: true,
+      invoiceId: result.invoiceId,
+      displayId: result.displayId,
+      nextRunDate: futureNextRunDate,
+      sentAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "First recurring invoice failed.";
+
+    await supabase
+      .from("recurring_invoice_templates")
+      .update({
+        last_error: message,
+        last_send_error: message,
+        next_run_date: futureNextRunDate,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", template.id);
+
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
 
 export async function GET(request: Request) {
