@@ -24,6 +24,7 @@ type Business = {
 
 type QueueItemWithEstimate = {
   id: string;
+  created_at: string | null;
   property: string | null;
   unit: string | null;
   status: string | null;
@@ -170,6 +171,18 @@ function deadlineSortValue(value: string | null) {
   return date ? date.getTime() : Number.POSITIVE_INFINITY;
 }
 
+function createdAtSortValue(value: string | null | undefined) {
+  if (!value) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime())
+    ? Number.POSITIVE_INFINITY
+    : date.getTime();
+}
+
 function statusSortValue(value: string | null) {
   const status = normalizeStatus(value);
   const order: Record<string, number> = {
@@ -194,10 +207,10 @@ function compareQueueItems(
 
   if (sortMode === "priority") {
     return (
-      (first.property || "").localeCompare(second.property || "") ||
       priorityOrderValue(first.priority_order) -
         priorityOrderValue(second.priority_order) ||
       deadlineSortValue(first.ready_date) - deadlineSortValue(second.ready_date) ||
+      createdAtSortValue(first.created_at) - createdAtSortValue(second.created_at) ||
       fallback
     );
   }
@@ -208,14 +221,16 @@ function compareQueueItems(
       deadlineSortValue(first.ready_date) - deadlineSortValue(second.ready_date) ||
       priorityOrderValue(first.priority_order) -
         priorityOrderValue(second.priority_order) ||
+      createdAtSortValue(first.created_at) - createdAtSortValue(second.created_at) ||
       fallback
     );
   }
 
   return (
-    deadlineSortValue(first.ready_date) - deadlineSortValue(second.ready_date) ||
     priorityOrderValue(first.priority_order) -
       priorityOrderValue(second.priority_order) ||
+    deadlineSortValue(first.ready_date) - deadlineSortValue(second.ready_date) ||
+    createdAtSortValue(first.created_at) - createdAtSortValue(second.created_at) ||
     statusSortValue(first.status) - statusSortValue(second.status) ||
     fallback
   );
@@ -420,7 +435,7 @@ export default async function QueuePage({
   const viewFilter =
     resolvedSearchParams.view?.trim().toLowerCase() ?? "all";
   const requestedSortMode =
-    resolvedSearchParams.sort?.trim().toLowerCase() ?? "deadline";
+    resolvedSearchParams.sort?.trim().toLowerCase() ?? "priority";
   const sortMode = ["deadline", "priority", "status"].includes(
     requestedSortMode
   )
@@ -462,7 +477,7 @@ export default async function QueuePage({
         supabase
           .from("queue_items")
           .select(
-            "id, property, unit, status, priority, priority_order, paint_type, unit_layout, wall_paint_color, flooring, move_out_date, ready_date, scheduled_date, completed_date, projected_completion_date, progress_stage, percent_complete, delay_reason, manager_update, manager_update_at, updated_at, smoked_in, prior_renovation, prior_renovation_details, renovation_needed, renovation_needed_details, notes, linked_estimate_id"
+            "id, created_at, property, unit, status, priority, priority_order, paint_type, unit_layout, wall_paint_color, flooring, move_out_date, ready_date, scheduled_date, completed_date, projected_completion_date, progress_stage, percent_complete, delay_reason, manager_update, manager_update_at, updated_at, smoked_in, prior_renovation, prior_renovation_details, renovation_needed, renovation_needed_details, notes, linked_estimate_id"
           )
           .eq("business_id", selectedBusiness.id)
           .order("created_at", { ascending: false }),
@@ -490,7 +505,7 @@ export default async function QueuePage({
       const retry = await supabase
         .from("queue_items")
         .select(
-          "id, property, unit, status, priority, paint_type, unit_layout, wall_paint_color, flooring, move_out_date, ready_date, scheduled_date, completed_date, smoked_in, prior_renovation, prior_renovation_details, renovation_needed, renovation_needed_details, notes, linked_estimate_id"
+          "id, created_at, property, unit, status, priority, paint_type, unit_layout, wall_paint_color, flooring, move_out_date, ready_date, scheduled_date, completed_date, smoked_in, prior_renovation, prior_renovation_details, renovation_needed, renovation_needed_details, notes, linked_estimate_id"
         )
         .eq("business_id", selectedBusiness.id)
         .order("created_at", { ascending: false });
@@ -785,8 +800,8 @@ export default async function QueuePage({
     compareQueueItems(first, second, sortMode)
   );
   const sortLinks = [
+    { label: "Sort by Requested Priority", value: "priority" },
     { label: "Sort by Deadline", value: "deadline" },
-    { label: "Sort by Manager Priority", value: "priority" },
     { label: "Sort by Status", value: "status" },
   ];
 
@@ -1180,7 +1195,7 @@ export default async function QueuePage({
           </p>
           <p className="mt-2 text-sm leading-6 text-sky-100">
             Needed By = property deadline. Priority = manager&apos;s requested
-            order. Schedule = internal work plan.
+            order. Work Scheduled Date = internal Robbie schedule.
           </p>
         </Card>
 
@@ -1335,7 +1350,7 @@ export default async function QueuePage({
 
                             {item.priority_order ? (
                               <span className="queue-priority-pill rounded-full bg-sky-500/15 px-3 py-1 text-sm font-semibold text-sky-100">
-                                Priority {item.priority_order}
+                                Requested Priority #{item.priority_order}
                               </span>
                             ) : null}
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import {
   useParams,
   useRouter,
@@ -136,6 +136,32 @@ function shouldCanonicalizeUnit(property: string, businessSlug: string) {
   return (
     businessSlug === "rnl-creations" &&
     propertyKey(property) === "north-creek-apartments"
+  );
+}
+
+function FormSection({
+  eyebrow,
+  title,
+  detail,
+  children,
+}: {
+  eyebrow: string;
+  title: string;
+  detail: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-2xl border border-white/10 bg-black/20 p-4">
+      <div className="mb-5">
+        <p className="text-xs font-black uppercase tracking-[0.22em] text-sky-200">
+          {eyebrow}
+        </p>
+        <h2 className="mt-2 text-2xl font-bold text-zinc-50">{title}</h2>
+        <p className="mt-2 text-sm leading-6 text-zinc-300">{detail}</p>
+      </div>
+
+      <div className="grid gap-5">{children}</div>
+    </section>
   );
 }
 
@@ -631,245 +657,153 @@ export default function EditQueueItemPage() {
         </div>
 
         <Card>
-          <div className="grid gap-5">
-            <InputField
-              label="Property"
-              value={property}
-              onChange={setProperty}
-              options={propertyOptions}
-            />
+          <div className="grid gap-6">
+            <FormSection
+              eyebrow="Manager Intake"
+              title="What the property is asking for"
+              detail="Managers should enter the unit facts, tenant move-out timing, the property deadline, and their requested order. Robbie's schedule stays separate."
+            >
+              <div className="grid gap-5 md:grid-cols-2">
+                <InputField
+                  label="Property"
+                  value={property}
+                  onChange={setProperty}
+                  options={propertyOptions}
+                />
 
-            <InputField
-              label="Unit"
-              value={unit}
-              onChange={setUnit}
-            />
+                <InputField
+                  label="Unit"
+                  value={unit}
+                  onChange={setUnit}
+                />
 
-            {businessSlug === "rnl-creations" &&
-            (propertyKey(property) === "north-creek-apartments" ||
-              unitLayout) ? (
-              <InputField
-                label="Unit Layout"
-                placeholder="Optional: 2x2 or 2x1"
-                value={unitLayout}
-                onChange={setUnitLayout}
-                options={northCreekUnitLayoutOptions}
-                helperText="Optional. This helps the schedule show which North Creek layout is being painted."
-              />
-            ) : null}
+                <InputField
+                  label="Move Out Date"
+                  value={moveOutDate}
+                  onChange={setMoveOutDate}
+                  type="date"
+                  helperText="When does the tenant leave?"
+                />
 
-            <div className="grid gap-5 md:grid-cols-2">
-              <InputField
-                label="Status"
-                value={status}
-                onChange={setStatus}
-                options={statusOptions}
-              />
+                <InputField
+                  label="Needed By Date / Property Deadline"
+                  value={readyDate}
+                  onChange={setReadyDate}
+                  type="date"
+                  helperText="When does the property need this completed?"
+                />
 
-              <InputField
-                label="Priority"
-                value={priority}
-                onChange={setPriority}
-                options={priorityOptions}
-              />
+                <InputField
+                  label="Requested Priority"
+                  value={priorityOrder}
+                  onChange={setPriorityOrder}
+                  type="number"
+                  helperText="Which unit should Robbie complete first? Use 1, 2, 3 when submitting multiple units."
+                />
 
-              <InputField
-                label="Priority Order"
-                value={priorityOrder}
-                onChange={setPriorityOrder}
-                type="number"
-                helperText="Use this to tell Robbie which units should be handled first."
-              />
-            </div>
+                <InputField
+                  label="Priority"
+                  value={priority}
+                  onChange={setPriority}
+                  options={priorityOptions}
+                />
 
-            <InputField
-              label="Paint Type"
-              value={paintType}
-              onChange={setPaintType}
-              options={paintTypeOptions}
-            />
+                <InputField
+                  label="Paint Type"
+                  value={paintType}
+                  onChange={setPaintType}
+                  options={paintTypeOptions}
+                />
 
-            <InputField
-              label="Wall Paint Color"
-              value={wallPaintColor}
-              onChange={setWallPaintColor}
-              options={wallPaintColorOptions}
-              helperText="Use this for North Creek's current color transition."
-            />
+                <InputField
+                  label="Flooring"
+                  value={flooring}
+                  onChange={setFlooring}
+                  options={flooringOptions}
+                />
 
-            <InputField
-              label="Flooring"
-              value={flooring}
-              onChange={setFlooring}
-              options={flooringOptions}
-            />
-
-            <div className="renovation-panel rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
-              <p className="text-sm uppercase tracking-[0.25em] text-emerald-300">
-                Renovation History
-              </p>
-
-              <p className="mt-2 text-sm leading-6 text-zinc-300">
-                Prior renovation is the unit history already known. Current
-                renovation is the work happening now, and it can become the
-                remembered history for the next queue entry.
-              </p>
-
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <label className="app-soft-panel flex items-start gap-3 rounded-2xl border border-zinc-700 bg-zinc-950/70 p-4">
-                  <input
-                    type="checkbox"
-                    checked={priorRenovation}
-                    onChange={(event) => {
-                      setPriorRenovation(event.target.checked);
-
-                      if (!event.target.checked) {
-                        setPriorRenovationDetails("");
-                      }
-                    }}
-                    className="mt-1 h-5 w-5 accent-orange-500"
-                  />
-
-                  <span>
-                    <span className="block font-semibold text-zinc-100">
-                      Prior renovation
-                    </span>
-                    <span className="mt-1 block text-sm leading-6 text-zinc-400">
-                      Keep the past renovation style tied to this unit.
-                    </span>
-                  </span>
-                </label>
-
-                <label className="app-soft-panel flex items-start gap-3 rounded-2xl border border-zinc-700 bg-zinc-950/70 p-4">
-                  <input
-                    type="checkbox"
-                    checked={renovationNeeded}
-                    onChange={(event) => {
-                      setRenovationNeeded(event.target.checked);
-
-                      if (!event.target.checked) {
-                        setRenovationNeededDetails("");
-                      }
-                    }}
-                    className="mt-1 h-5 w-5 accent-orange-500"
-                  />
-
-                  <span>
-                    <span className="block font-semibold text-zinc-100">
-                      Current renovation
-                    </span>
-                    <span className="mt-1 block text-sm leading-6 text-zinc-400">
-                      Queue-to-estimate can add this renovation work.
-                    </span>
-                  </span>
-                </label>
+                <InputField
+                  label="Wall Color"
+                  value={wallPaintColor}
+                  onChange={setWallPaintColor}
+                  options={wallPaintColorOptions}
+                  helperText="Use To Be Determined when the manager has not inspected the unit yet."
+                />
               </div>
 
-              {priorRenovation ? (
-                <div className="mt-4">
-                  <InputField
-                    label="Prior Renovation Details"
-                    placeholder="Example: Previous PrideRock Reno"
-                    value={priorRenovationDetails}
-                    onChange={setPriorRenovationDetails}
-                  />
-                </div>
-              ) : null}
-
-              {renovationNeeded ? (
-                <div className="mt-4">
-                  <InputField
-                    label="Current Renovation Style / Scope"
-                    placeholder="Example: PrideRock Reno, Cabinet paint, bath vanity refresh"
-                    value={renovationNeededDetails}
-                    onChange={setRenovationNeededDetails}
-                  />
-                </div>
-              ) : null}
-            </div>
-
-            <label className="app-soft-panel flex items-center gap-4 rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3">
-              <input
-                type="checkbox"
-                checked={smokedIn}
-                onChange={(event) => {
-                  setSmokedIn(event.target.checked);
-                  setPrimerRequested(event.target.checked);
-                }}
-                className="h-5 w-5 accent-orange-500"
-              />
-
-              <span>
-                <span className="block font-semibold">
-                  Smoker / remediation unit
-                </span>
-                <span className="text-sm text-zinc-400">
-                  Include this queue item in remediation reporting.
-                </span>
-              </span>
-            </label>
-
-            {smokedIn ? (
-              <label className="flex items-center gap-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+              <label className="app-soft-panel flex items-center gap-4 rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3">
                 <input
                   type="checkbox"
-                  checked={primerRequested}
-                  onChange={(event) =>
-                    setPrimerRequested(event.target.checked)
-                  }
+                  checked={smokedIn}
+                  onChange={(event) => {
+                    setSmokedIn(event.target.checked);
+                    setPrimerRequested(event.target.checked);
+                  }}
                   className="h-5 w-5 accent-orange-500"
                 />
 
                 <span>
-                  <span className="block font-semibold text-amber-900">
-                    Add full primer to estimate
+                  <span className="block font-semibold">
+                    Smoker / remediation unit
                   </span>
-                  <span className="text-sm leading-6 text-amber-900">
-                    Turn this off when smoke should be tracked but full primer
-                    should not be added automatically.
+                  <span className="text-sm text-zinc-400">
+                    Include this queue item in remediation reporting.
                   </span>
                 </span>
               </label>
-            ) : null}
 
-            <div className="grid gap-5 md:grid-cols-2">
-              <InputField
-                label="Move Out Date"
-                value={moveOutDate}
-                onChange={setMoveOutDate}
-                type="date"
-              />
+              <div>
+                <label className="app-form-label mb-2 block text-sm text-zinc-400">
+                  Notes
+                </label>
 
-              <InputField
-                label="Needed By Date"
-                value={readyDate}
-                onChange={setReadyDate}
-                type="date"
-                helperText="Use this only for the date the unit needs to be completed by. Do not estimate Robbie's work time here."
-              />
-            </div>
+                <textarea
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  className="app-form-input min-h-36 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+                />
+              </div>
+            </FormSection>
 
-            <div className="rounded-2xl border border-sky-500/25 bg-sky-500/10 px-4 py-3 text-sm leading-6 text-sky-100">
-              <p className="font-black uppercase tracking-[0.18em] text-sky-200">
-                Internal scheduling note
-              </p>
-              <p className="mt-2">
-                Needed By = property deadline. Priority = manager&apos;s requested
-                order. Schedule = internal work plan.
-              </p>
-            </div>
+            <FormSection
+              eyebrow="Operations"
+              title="Robbie's internal work plan"
+              detail="Work Scheduled Date is the internal Robbie schedule, not the manager's Needed By Date."
+            >
+              <div className="rounded-2xl border border-sky-500/25 bg-sky-500/10 px-4 py-3 text-sm leading-6 text-sky-100">
+                <p className="font-black uppercase tracking-[0.18em] text-sky-200">
+                  Field guide
+                </p>
+                <p className="mt-2">
+                  Move Out Date = tenant leaves. Needed By = property
+                  deadline. Work Scheduled Date = internal Robbie schedule.
+                </p>
+              </div>
 
-            <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 p-4">
-              <p className="text-sm uppercase tracking-[0.25em] text-emerald-300">
-                Progress and ETA
-              </p>
-              <p className="mt-2 text-sm leading-6 text-zinc-300">
-                Robbie ETA is separate from the property deadline. Use this
-                when the expected finish date changes without rewriting the
-                manager&apos;s Needed By date.
-              </p>
+              <div className="grid gap-5 md:grid-cols-2">
+                <InputField
+                  label="Status"
+                  value={status}
+                  onChange={setStatus}
+                  options={statusOptions}
+                />
 
-              <div className="mt-4 grid gap-5 md:grid-cols-2">
+                <InputField
+                  label="Work Scheduled Date"
+                  value={scheduledDate}
+                  onChange={setScheduledDate}
+                  type="date"
+                  helperText="Use this only when the work is on Robbie's calendar."
+                />
+
+                <InputField
+                  label="Robbie ETA / Projected Completion Date"
+                  value={projectedCompletionDate}
+                  onChange={setProjectedCompletionDate}
+                  type="date"
+                  helperText="Robbie's current expected finish date. This does not change the property deadline."
+                />
+
                 <InputField
                   label="Progress"
                   value={progressStage}
@@ -886,22 +820,21 @@ export default function EditQueueItemPage() {
                 />
 
                 <InputField
-                  label="Projected Completion Date / Robbie ETA"
-                  value={projectedCompletionDate}
-                  onChange={setProjectedCompletionDate}
-                  type="date"
-                  helperText="Robbie's current expected finish date. This does not change the property deadline."
-                />
-
-                <InputField
                   label="Delay Reason"
                   value={delayReason}
                   onChange={setDelayReason}
                   options={queueDelayReasons}
                 />
+
+                <InputField
+                  label="Completion Date"
+                  value={completedDate}
+                  onChange={setCompletedDate}
+                  type="date"
+                />
               </div>
 
-              <div className="mt-5 grid gap-5">
+              <div className="grid gap-5">
                 <div>
                   <label className="app-form-label mb-2 block text-sm text-zinc-400">
                     Manager-visible Update
@@ -934,43 +867,133 @@ export default function EditQueueItemPage() {
                   </p>
                 </div>
               </div>
-            </div>
+            </FormSection>
 
-            <div className="grid gap-5 md:grid-cols-2">
-              <InputField
-                label="Work Scheduled Date"
-                value={scheduledDate}
-                onChange={setScheduledDate}
-                type="date"
-                helperText="Optional. Use this only when the work is already on the calendar."
-              />
+            <details className="rounded-2xl border border-zinc-800 bg-zinc-950/45 p-4">
+              <summary className="cursor-pointer text-sm font-black uppercase tracking-[0.2em] text-zinc-200">
+                Advanced
+              </summary>
 
-              <InputField
-                label="Completed Date"
-                value={completedDate}
-                onChange={setCompletedDate}
-                type="date"
-              />
-            </div>
+              <div className="mt-5 grid gap-5">
+                {businessSlug === "rnl-creations" &&
+                (propertyKey(property) === "north-creek-apartments" ||
+                  unitLayout) ? (
+                  <InputField
+                    label="Unit Layout"
+                    placeholder="Optional: 2x2 or 2x1"
+                    value={unitLayout}
+                    onChange={setUnitLayout}
+                    options={northCreekUnitLayoutOptions}
+                    helperText="Optional. This helps the schedule show which North Creek layout is being painted."
+                  />
+                ) : null}
 
-            <div>
-              <label className="app-form-label mb-2 block text-sm text-zinc-400">
-                Notes
-              </label>
+                <div className="renovation-panel rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                  <p className="text-sm uppercase tracking-[0.25em] text-emerald-300">
+                    Renovation Details
+                  </p>
 
-              <textarea
-                value={notes}
-                onChange={(event) =>
-                  setNotes(event.target.value)
-                }
-                className="app-form-input min-h-40 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
-              />
-            </div>
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <label className="app-soft-panel flex items-start gap-3 rounded-2xl border border-zinc-700 bg-zinc-950/70 p-4">
+                      <input
+                        type="checkbox"
+                        checked={priorRenovation}
+                        onChange={(event) => {
+                          setPriorRenovation(event.target.checked);
+
+                          if (!event.target.checked) {
+                            setPriorRenovationDetails("");
+                          }
+                        }}
+                        className="mt-1 h-5 w-5 accent-orange-500"
+                      />
+
+                      <span>
+                        <span className="block font-semibold text-zinc-100">
+                          Prior renovation
+                        </span>
+                        <span className="mt-1 block text-sm leading-6 text-zinc-400">
+                          Keep the past renovation style tied to this unit.
+                        </span>
+                      </span>
+                    </label>
+
+                    <label className="app-soft-panel flex items-start gap-3 rounded-2xl border border-zinc-700 bg-zinc-950/70 p-4">
+                      <input
+                        type="checkbox"
+                        checked={renovationNeeded}
+                        onChange={(event) => {
+                          setRenovationNeeded(event.target.checked);
+
+                          if (!event.target.checked) {
+                            setRenovationNeededDetails("");
+                          }
+                        }}
+                        className="mt-1 h-5 w-5 accent-orange-500"
+                      />
+
+                      <span>
+                        <span className="block font-semibold text-zinc-100">
+                          Current renovation
+                        </span>
+                        <span className="mt-1 block text-sm leading-6 text-zinc-400">
+                          Queue-to-estimate can add this renovation work.
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+
+                  {priorRenovation ? (
+                    <div className="mt-4">
+                      <InputField
+                        label="Prior Renovation Details"
+                        placeholder="Example: Previous PrideRock Reno"
+                        value={priorRenovationDetails}
+                        onChange={setPriorRenovationDetails}
+                      />
+                    </div>
+                  ) : null}
+
+                  {renovationNeeded ? (
+                    <div className="mt-4">
+                      <InputField
+                        label="Renovation Needed Details"
+                        placeholder="Example: PrideRock Reno, cabinet paint, bath vanity refresh"
+                        value={renovationNeededDetails}
+                        onChange={setRenovationNeededDetails}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+
+                {smokedIn ? (
+                  <label className="flex items-center gap-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={primerRequested}
+                      onChange={(event) =>
+                        setPrimerRequested(event.target.checked)
+                      }
+                      className="h-5 w-5 accent-orange-500"
+                    />
+
+                    <span>
+                      <span className="block font-semibold text-amber-100">
+                        Primer requested
+                      </span>
+                      <span className="text-sm leading-6 text-amber-100">
+                        Use this when smoke should be tracked but full primer
+                        should not be added automatically.
+                      </span>
+                    </span>
+                  </label>
+                ) : null}
+              </div>
+            </details>
 
             <Button onClick={handleSave}>
               Save Changes
             </Button>
-
           </div>
         </Card>
       </div>
