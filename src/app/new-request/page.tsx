@@ -102,6 +102,8 @@ type UnitHistorySummary = {
 type QueueRequestDraft = {
   property: string;
   unitsText: string;
+  bulkMode?: boolean;
+  bulkRows?: BulkQueueRow[];
   paintType: string;
   unitLayout: string;
   wallPaintColor: string;
@@ -118,6 +120,17 @@ type QueueRequestDraft = {
   readyDate: string;
   notes: string;
   savedAt: string;
+};
+
+type BulkQueueRow = {
+  id: string;
+  unit: string;
+  moveOutDate: string;
+  readyDate: string;
+  priorityOrder: string;
+  paintType: string;
+  flooring: string;
+  notes: string;
 };
 
 const QUEUE_DRAFT_VERSION = "v1";
@@ -633,6 +646,21 @@ function formatDraftSavedAt(value: string) {
   });
 }
 
+function createBulkQueueRow(
+  defaults?: Partial<Omit<BulkQueueRow, "id">>
+): BulkQueueRow {
+  return {
+    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    unit: defaults?.unit ?? "",
+    moveOutDate: defaults?.moveOutDate ?? "",
+    readyDate: defaults?.readyDate ?? "",
+    priorityOrder: defaults?.priorityOrder ?? "",
+    paintType: defaults?.paintType ?? "",
+    flooring: defaults?.flooring ?? "",
+    notes: defaults?.notes ?? "",
+  };
+}
+
 function NewRequestPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -671,6 +699,10 @@ function NewRequestPageContent() {
     propertyFromParam(propertyParam, propertyOptions)
   );
   const [unitsText, setUnitsText] = useState("");
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkRows, setBulkRows] = useState<BulkQueueRow[]>([
+    createBulkQueueRow(),
+  ]);
   const [paintType, setPaintType] = useState("");
   const [unitLayout, setUnitLayout] = useState("");
   const [wallPaintColor, setWallPaintColor] = useState("");
@@ -723,6 +755,8 @@ function NewRequestPageContent() {
     () => ({
       property,
       unitsText,
+      bulkMode,
+      bulkRows,
       paintType,
       unitLayout,
       wallPaintColor,
@@ -743,6 +777,8 @@ function NewRequestPageContent() {
     [
       property,
       unitsText,
+      bulkMode,
+      bulkRows,
       paintType,
       unitLayout,
       wallPaintColor,
@@ -818,6 +854,22 @@ function NewRequestPageContent() {
 
         setProperty(draft.property ?? "");
         setUnitsText(draft.unitsText ?? "");
+        setBulkMode(Boolean(draft.bulkMode));
+        setBulkRows(
+          draft.bulkRows && draft.bulkRows.length > 0
+            ? draft.bulkRows.map((row) =>
+                createBulkQueueRow({
+                  unit: row.unit,
+                  moveOutDate: row.moveOutDate,
+                  readyDate: row.readyDate,
+                  priorityOrder: row.priorityOrder,
+                  paintType: row.paintType,
+                  flooring: row.flooring,
+                  notes: row.notes,
+                })
+              )
+            : [createBulkQueueRow()]
+        );
         setPaintType(draft.paintType ?? "");
         setUnitLayout(draft.unitLayout ?? "");
         setUnitLayoutTouched(Boolean(draft.unitLayout));
@@ -897,6 +949,80 @@ function NewRequestPageContent() {
     businessSlug,
     property
   );
+  const units = useMemo(
+    () =>
+      bulkMode
+        ? bulkRows
+            .map((row) => row.unit.trim())
+            .filter((unit) => unit.length > 0)
+        : unitListFromText(unitsText),
+    [bulkMode, bulkRows, unitsText]
+  );
+  const normalizedUnits = useMemo(
+    () => units.map(normalizeUnitLabel),
+    [units]
+  );
+
+  function updateBulkRow(
+    rowId: string,
+    field: keyof Omit<BulkQueueRow, "id">,
+    value: string
+  ) {
+    setBulkRows((currentRows) =>
+      currentRows.map((row) =>
+        row.id === rowId ? { ...row, [field]: value } : row
+      )
+    );
+  }
+
+  function addBulkRow() {
+    setBulkRows((currentRows) => [
+      ...currentRows,
+        createBulkQueueRow({
+          moveOutDate,
+          readyDate,
+          priorityOrder:
+          priorityOrderStart.trim() &&
+          Number.isInteger(Number(priorityOrderStart)) &&
+          currentRows.length > 0
+            ? String(Number(priorityOrderStart) + currentRows.length)
+            : "",
+        paintType,
+        flooring,
+      }),
+    ]);
+  }
+
+  function duplicatePreviousBulkRow() {
+    setBulkRows((currentRows) => {
+      const previousRow = currentRows.at(-1);
+
+      return [
+        ...currentRows,
+        createBulkQueueRow({
+          unit: "",
+          moveOutDate: previousRow?.moveOutDate || moveOutDate,
+          readyDate: previousRow?.readyDate || readyDate,
+          priorityOrder:
+            previousRow?.priorityOrder &&
+            Number.isInteger(Number(previousRow.priorityOrder))
+              ? String(Number(previousRow.priorityOrder) + 1)
+              : previousRow?.priorityOrder || "",
+          paintType: previousRow?.paintType || paintType,
+          flooring: previousRow?.flooring || flooring,
+          notes: previousRow?.notes || "",
+        }),
+      ];
+    });
+  }
+
+  function removeBulkRow(rowId: string) {
+    setBulkRows((currentRows) =>
+      currentRows.length === 1
+        ? [createBulkQueueRow()]
+        : currentRows.filter((row) => row.id !== rowId)
+    );
+  }
 
   useEffect(() => {
     async function loadRenovationMemory() {
@@ -906,11 +1032,11 @@ function NewRequestPageContent() {
         return;
       }
 
-      const units = unitListFromText(unitsText).map((unit) =>
+      const memoryUnits = units.map((unit) =>
         collectUnitLayout ? normalizeUnitLabel(unit) : unit
       );
 
-      if (units.length !== 1) {
+      if (memoryUnits.length !== 1) {
         setRenovationMemoryMessage("");
         setPaintMemoryMessage("");
         return;
@@ -923,7 +1049,7 @@ function NewRequestPageContent() {
         )
         .eq("business_id", business.id)
         .eq("property", property)
-        .eq("unit", units[0])
+        .eq("unit", memoryUnits[0])
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -960,7 +1086,7 @@ function NewRequestPageContent() {
         .select("completed_date, paint_type")
         .eq("business_id", business.id)
         .eq("property", property)
-        .eq("unit", units[0])
+        .eq("unit", memoryUnits[0])
         .not("completed_date", "is", null)
         .order("completed_date", { ascending: false })
         .limit(1)
@@ -980,13 +1106,7 @@ function NewRequestPageContent() {
     }
 
     loadRenovationMemory();
-  }, [business, collectUnitLayout, isJustKleen, property, unitsText]);
-
-  const units = useMemo(() => unitListFromText(unitsText), [unitsText]);
-  const normalizedUnits = useMemo(
-    () => units.map(normalizeUnitLabel),
-    [units]
-  );
+  }, [business, collectUnitLayout, isJustKleen, property, units]);
   const normalizedUnitsKey = normalizedUnits.join("|");
   const unitOptions = collectUnitLayout
     ? propertyUnits.map((unitProfile) => unitProfile.unit_label || "")
@@ -1284,15 +1404,42 @@ function NewRequestPageContent() {
     : "";
   const requestCount = units.length;
   const propertyReady = Boolean(property.trim());
-  const scopeReady = Boolean(paintType.trim());
-  const flooringReady = Boolean(flooring.trim());
-  const flooringIsTbd = isTbdValue(flooring);
+  const bulkRowsWithContent = bulkRows.filter(
+    (row) =>
+      row.unit.trim() ||
+      row.moveOutDate ||
+      row.readyDate ||
+      row.priorityOrder.trim() ||
+      row.paintType.trim() ||
+      row.flooring.trim() ||
+      row.notes.trim()
+  );
+  const bulkCompleteRows = bulkRowsWithContent.filter(
+    (row) =>
+      row.unit.trim() &&
+      row.paintType.trim() &&
+      row.flooring.trim() &&
+      normalizePriorityOrderStart(row.priorityOrder) !== "invalid"
+  );
+  const scopeReady = bulkMode
+    ? bulkCompleteRows.length > 0 &&
+      bulkCompleteRows.length === bulkRowsWithContent.length
+    : Boolean(paintType.trim());
+  const flooringReady = bulkMode
+    ? bulkCompleteRows.length > 0 &&
+      bulkCompleteRows.length === bulkRowsWithContent.length
+    : Boolean(flooring.trim());
+  const flooringIsTbd = bulkMode
+    ? bulkRows.some((row) => isTbdValue(row.flooring))
+    : isTbdValue(flooring);
   const wallPaintColorIsTbd = isTbdValue(wallPaintColor);
   const outstandingDecisionFields = [
     flooringIsTbd ? "Flooring" : null,
     wallPaintColorIsTbd ? "Paint Color" : null,
   ].filter(Boolean);
-  const dueDateReady = Boolean(readyDate);
+  const dueDateReady = bulkMode
+    ? bulkRows.some((row) => Boolean(row.readyDate))
+    : Boolean(readyDate);
   const hasUnitHistoryConfidence =
     !collectUnitLayout ||
     selectedUnitProfiles.length === 0 ||
@@ -1400,11 +1547,21 @@ function NewRequestPageContent() {
     },
     {
       label: "Scope",
-      value: scopeReady ? paintType : "Needed",
+      value: bulkMode
+        ? scopeReady
+          ? `${bulkCompleteRows.length} row${
+              bulkCompleteRows.length === 1 ? "" : "s"
+            }`
+          : "Needed"
+        : scopeReady
+          ? paintType
+          : "Needed",
       detail: scopeReady
-        ? isJustKleen
-          ? "Service type is set."
-          : "Paint type is set."
+        ? bulkMode
+          ? "Bulk row scope is ready."
+          : isJustKleen
+            ? "Service type is set."
+            : "Paint type is set."
         : isJustKleen
           ? "Choose the service type before saving."
           : "Choose the paint type before saving.",
@@ -1412,7 +1569,11 @@ function NewRequestPageContent() {
     },
     {
       label: isJustKleen ? "Target Date" : "Needed By",
-      value: dueDateReady ? formatShortDate(readyDate) : "Open",
+      value: dueDateReady
+        ? bulkMode
+          ? "Set per row"
+          : formatShortDate(readyDate)
+        : "Open",
       detail: dueDateReady
         ? "Property deadline is saved."
         : "No deadline provided.",
@@ -1480,14 +1641,41 @@ function NewRequestPageContent() {
       return;
     }
 
-    const units = unitListFromText(unitsText);
+    const validBulkRows = bulkMode
+      ? bulkRows.filter(
+          (row) =>
+            row.unit.trim() &&
+            row.paintType.trim() &&
+            row.flooring.trim() &&
+            normalizePriorityOrderStart(row.priorityOrder) !== "invalid"
+        )
+      : [];
+    const invalidBulkRows = bulkMode
+      ? bulkRows.filter(
+          (row) =>
+            row.unit.trim() ||
+            row.moveOutDate ||
+            row.readyDate ||
+            row.priorityOrder.trim() ||
+            row.paintType.trim() ||
+            row.flooring.trim() ||
+            row.notes.trim()
+        ).length - validBulkRows.length
+      : 0;
 
-    if (!property || units.length === 0 || !paintType || !flooring) {
+    if (
+      !property ||
+      (bulkMode
+        ? validBulkRows.length === 0
+        : units.length === 0 || !paintType || !flooring)
+    ) {
       setToast({
         type: "error",
-        message: isJustKleen
-          ? "Please fill out client, at least one job/location, service type, and scope."
-          : "Please fill out property, at least one unit, paint type, and flooring.",
+        message: bulkMode
+          ? "Add at least one complete row with unit, paint type, and flooring."
+          : isJustKleen
+            ? "Please fill out client, at least one job/location, service type, and scope."
+            : "Please fill out property, at least one unit, paint type, and flooring.",
       });
 
       return;
@@ -1498,7 +1686,7 @@ function NewRequestPageContent() {
       const normalizedPriorityOrderStart =
         normalizePriorityOrderStart(priorityOrderStart);
 
-      if (normalizedPriorityOrderStart === "invalid") {
+      if (!bulkMode && normalizedPriorityOrderStart === "invalid") {
         setToast({
           type: "error",
           message: "Priority Order must be a positive whole number.",
@@ -1507,50 +1695,70 @@ function NewRequestPageContent() {
         return;
       }
 
-      const plannedPrioritySwaps = prioritySignals.filter((item) =>
+      const plannedPrioritySwaps = bulkMode
+        ? []
+        : prioritySignals.filter((item) =>
         plannedPrioritySwapIds.includes(item.id)
-      );
+          );
       const submittedPriority =
         plannedPrioritySwaps.length > 0 ? "Urgent" : priority;
-      const submittedNotes = [
-        notes.trim(),
-        plannedPrioritySwaps.length > 0 && priorityNoteText
-          ? `${priorityNoteText} Trimax will keep the selected existing unit behind this new request.`
-          : "",
-      ]
-        .filter(Boolean)
-        .join("\n\n");
+      const queueRows = bulkMode
+        ? validBulkRows.map((row) => ({
+            unit: row.unit.trim(),
+            paintType: row.paintType,
+            flooring: row.flooring,
+            moveOutDate: row.moveOutDate,
+            readyDate: row.readyDate,
+            priorityOrder: normalizePriorityOrderStart(row.priorityOrder),
+            notes: row.notes.trim(),
+          }))
+        : units.map((unit, index) => ({
+            unit,
+            paintType,
+            flooring,
+            moveOutDate,
+            readyDate,
+            priorityOrder:
+              typeof normalizedPriorityOrderStart === "number"
+                ? normalizedPriorityOrderStart + index
+                : null,
+            notes: [
+              notes.trim(),
+              plannedPrioritySwaps.length > 0 && priorityNoteText
+                ? `${priorityNoteText} Trimax will keep the selected existing unit behind this new request.`
+                : "",
+            ]
+              .filter(Boolean)
+              .join("\n\n"),
+          }));
 
       const createdItems = await Promise.all(
-        units.map((unit, index) => {
+        queueRows.map((row) => {
           const savedUnit = collectUnitLayout
-            ? normalizeUnitLabel(unit)
-            : unit;
-          const priorityOrder =
-            typeof normalizedPriorityOrderStart === "number"
-              ? normalizedPriorityOrderStart + index
-              : null;
+            ? normalizeUnitLabel(row.unit)
+            : row.unit;
 
           return createQueueItem({
             property,
             unit: savedUnit,
-            paintType,
+            paintType: row.paintType,
             unitLayout: collectUnitLayout ? unitLayout : "",
             wallPaintColor: isJustKleen ? "" : normalizeTbdValue(wallPaintColor),
-            flooring: normalizeTbdValue(flooring),
+            flooring: normalizeTbdValue(row.flooring),
             priority: submittedPriority,
-            priorityOrder,
+            priorityOrder:
+              typeof row.priorityOrder === "number" ? row.priorityOrder : null,
             smokedIn,
             primerRequested: smokedIn && primerRequested,
             priorRenovation,
             priorRenovationDetails,
             renovationNeeded,
             renovationNeededDetails,
-            moveOutDate,
-            readyDate,
+            moveOutDate: row.moveOutDate,
+            readyDate: row.readyDate,
             scheduledDate: "",
             completedDate: "",
-            notes: submittedNotes,
+            notes: row.notes,
             businessId: business.id,
             businessSlug,
           });
@@ -1632,13 +1840,25 @@ function NewRequestPageContent() {
       setToast({
         type: "success",
         message:
-          units.length === 1
+              units.length === 1
             ? isJustKleen
               ? "Work request created successfully."
               : "Queue item created successfully."
             : isJustKleen
-              ? `${units.length} work requests created successfully.`
-              : `${units.length} queue items created successfully.`,
+              ? `${createdItems.length} work requests created successfully${
+                  invalidBulkRows > 0
+                    ? `; ${invalidBulkRows} row${
+                        invalidBulkRows === 1 ? "" : "s"
+                      } still need attention.`
+                    : "."
+                }`
+              : `${createdItems.length} queue items created successfully${
+                  invalidBulkRows > 0
+                    ? `; ${invalidBulkRows} row${
+                        invalidBulkRows === 1 ? "" : "s"
+                      } still need attention.`
+                    : "."
+                }`,
       });
 
       const queueParams = new URLSearchParams({
@@ -1839,24 +2059,234 @@ function NewRequestPageContent() {
               options={propertyOptions}
             />
 
-            <InputField
-              label={isJustKleen ? "Jobs / Locations" : "Units"}
-              placeholder={
-                isJustKleen
-                  ? "Example: Main office, Lobby, Suite 200 or one job per line"
-                  : "Example: B12, B210, C04 or one unit per line"
-              }
-              value={unitsText}
-              onChange={setUnitsText}
-              options={unitOptions}
-              maxVisibleOptions={collectUnitLayout ? 10 : undefined}
-              emptyOptionsMessage={
-                collectUnitLayout
-                  ? "No matching North Creek units."
-                  : "No matching options."
-              }
-              optionAliases={collectUnitLayout ? unitOptionAliases : undefined}
-            />
+            <div className="flex flex-col gap-3 rounded-2xl border border-sky-500/25 bg-sky-500/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-semibold text-sky-100">
+                  {bulkMode
+                    ? "Bulk Queue Intake is on"
+                    : "Entering several apartments?"}
+                </p>
+                <p className="mt-1 text-sm leading-6 text-sky-100/75">
+                  Add multiple units as rows so dates, flooring, and requested
+                  priority stay clear.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setBulkMode((current) => {
+                    const next = !current;
+
+                    if (next && bulkRows.length === 1 && !bulkRows[0].unit) {
+                      setBulkRows([
+                        createBulkQueueRow({
+                          moveOutDate,
+                          readyDate,
+                          priorityOrder: priorityOrderStart,
+                          paintType,
+                          flooring,
+                          notes,
+                        }),
+                      ]);
+                    }
+
+                    return next;
+                  });
+                }}
+                className="app-button-secondary inline-flex min-h-11 items-center justify-center rounded-2xl px-4 py-2 text-sm font-black"
+              >
+                {bulkMode ? "Use Single Entry" : "Add Multiple Units"}
+              </button>
+            </div>
+
+            {bulkMode ? (
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="text-sm font-black uppercase tracking-[0.22em] text-orange-300">
+                      Bulk Queue Intake
+                    </p>
+                    <h2 className="mt-2 text-2xl font-bold">
+                      What apartments need work?
+                    </h2>
+                    <p className="mt-2 text-sm leading-6 text-zinc-400">
+                      Property stays selected once. Each row becomes its own
+                      normal queue item.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={addBulkRow}
+                      className="app-button-secondary inline-flex min-h-11 items-center justify-center rounded-2xl px-4 py-2 text-sm font-black"
+                    >
+                      + Add Row
+                    </button>
+                    <button
+                      type="button"
+                      onClick={duplicatePreviousBulkRow}
+                      className="app-button-secondary inline-flex min-h-11 items-center justify-center rounded-2xl px-4 py-2 text-sm font-black"
+                    >
+                      Duplicate Previous Row
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-5 grid gap-4">
+                  {bulkRows.map((row, index) => {
+                    const priorityIsInvalid =
+                      normalizePriorityOrderStart(row.priorityOrder) ===
+                      "invalid";
+                    const rowHasContent = Boolean(
+                      row.unit.trim() ||
+                        row.moveOutDate ||
+                        row.readyDate ||
+                        row.priorityOrder.trim() ||
+                        row.paintType.trim() ||
+                        row.flooring.trim() ||
+                        row.notes.trim()
+                    );
+                    const rowIsInvalid =
+                      rowHasContent &&
+                      (!row.unit.trim() ||
+                        !row.paintType.trim() ||
+                        !row.flooring.trim() ||
+                        priorityIsInvalid);
+
+                    return (
+                      <div
+                        key={row.id}
+                        className={`rounded-2xl border p-4 ${
+                          rowIsInvalid
+                            ? "border-red-400/50 bg-red-500/10"
+                            : "border-zinc-800 bg-black/25"
+                        }`}
+                      >
+                        <div className="mb-4 flex items-center justify-between gap-3">
+                          <p className="font-black text-zinc-100">
+                            Row {index + 1}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => removeBulkRow(row.id)}
+                            className="rounded-xl border border-zinc-700 px-3 py-2 text-sm font-bold text-zinc-200"
+                          >
+                            Remove
+                          </button>
+                        </div>
+
+                        <div className="grid gap-4 lg:grid-cols-2">
+                          <InputField
+                            label="Unit"
+                            value={row.unit}
+                            onChange={(value) =>
+                              updateBulkRow(row.id, "unit", value)
+                            }
+                            options={unitOptions}
+                            maxVisibleOptions={
+                              collectUnitLayout ? 10 : undefined
+                            }
+                            emptyOptionsMessage={
+                              collectUnitLayout
+                                ? "No matching North Creek units."
+                                : "No matching options."
+                            }
+                            optionAliases={
+                              collectUnitLayout ? unitOptionAliases : undefined
+                            }
+                          />
+                          <InputField
+                            label="Move Out Date"
+                            value={row.moveOutDate}
+                            onChange={(value) =>
+                              updateBulkRow(row.id, "moveOutDate", value)
+                            }
+                            type="date"
+                            helperText="When does the tenant leave?"
+                          />
+                          <InputField
+                            label="Needed By Date"
+                            value={row.readyDate}
+                            onChange={(value) =>
+                              updateBulkRow(row.id, "readyDate", value)
+                            }
+                            type="date"
+                            helperText="When does the property need this completed?"
+                          />
+                          <InputField
+                            label="Manager Requested Priority"
+                            value={row.priorityOrder}
+                            onChange={(value) =>
+                              updateBulkRow(row.id, "priorityOrder", value)
+                            }
+                            type="number"
+                            helperText="Use 1, 2, 3 to tell Robbie the requested order."
+                          />
+                          <InputField
+                            label={isJustKleen ? "Service Type" : "Paint Type"}
+                            value={row.paintType}
+                            onChange={(value) =>
+                              updateBulkRow(row.id, "paintType", value)
+                            }
+                            options={paintTypeOptions}
+                          />
+                          <InputField
+                            label={isJustKleen ? "Scope / Area" : "Flooring"}
+                            value={row.flooring}
+                            onChange={(value) =>
+                              updateBulkRow(row.id, "flooring", value)
+                            }
+                            options={flooringOptions}
+                          />
+                        </div>
+
+                        <div className="mt-4">
+                          <label className="app-form-label mb-2 block text-sm text-zinc-400">
+                            Notes
+                          </label>
+                          <textarea
+                            value={row.notes}
+                            onChange={(event) =>
+                              updateBulkRow(row.id, "notes", event.target.value)
+                            }
+                            placeholder="Optional row-specific notes..."
+                            className="app-form-input min-h-24 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition placeholder:text-zinc-500 focus:border-orange-500"
+                          />
+                        </div>
+
+                        {rowIsInvalid ? (
+                          <p className="mt-3 text-sm font-semibold text-red-100">
+                            This row needs unit, paint type, flooring, and a
+                            positive priority number if priority is provided.
+                          </p>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <InputField
+                label={isJustKleen ? "Jobs / Locations" : "Units"}
+                placeholder={
+                  isJustKleen
+                    ? "Example: Main office, Lobby, Suite 200 or one job per line"
+                    : "Example: B12, B210, C04 or one unit per line"
+                }
+                value={unitsText}
+                onChange={setUnitsText}
+                options={unitOptions}
+                maxVisibleOptions={collectUnitLayout ? 10 : undefined}
+                emptyOptionsMessage={
+                  collectUnitLayout
+                    ? "No matching North Creek units."
+                    : "No matching options."
+                }
+                optionAliases={collectUnitLayout ? unitOptionAliases : undefined}
+              />
+            )}
 
             {collectUnitLayout ? (
               <>
@@ -2028,6 +2458,8 @@ function NewRequestPageContent() {
               </div>
             ) : null}
 
+            {!bulkMode ? (
+              <>
             <div className="rounded-2xl border border-blue-500/30 bg-blue-500/10 px-4 py-3">
               <p className="font-semibold text-blue-100">
                 {isJustKleen
@@ -2477,6 +2909,8 @@ function NewRequestPageContent() {
                 className="app-form-input min-h-40 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
               />
             </div>
+              </>
+            ) : null}
 
             <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
               <Button onClick={handleSubmit} disabled={isSaving}>
