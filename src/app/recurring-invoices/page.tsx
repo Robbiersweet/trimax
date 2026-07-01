@@ -1975,7 +1975,7 @@ function RecurringInvoicesPageContent() {
                   ? "Saving..."
                   : editingTemplateId
                     ? "Save Changes"
-                    : "Save Recurring Invoice"}
+                    : "Continue"}
               </Button>
               {editingTemplateId ? (
                 <Button variant="secondary" onClick={resetTemplateForm}>
