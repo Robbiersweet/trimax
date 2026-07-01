@@ -260,6 +260,52 @@ function daysUntil(value: string | null) {
   return Math.round((date.getTime() - today.getTime()) / 86400000);
 }
 
+function localDateKey(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function dateMatchesOffset(value: string | null, offsetDays: number) {
+  const date = dateValue(value);
+
+  if (!date) {
+    return false;
+  }
+
+  const target = new Date();
+  target.setHours(0, 0, 0, 0);
+  target.setDate(target.getDate() + offsetDays);
+
+  return localDateKey(date) === localDateKey(target);
+}
+
+function isOverdueQueueItem(item: QueueItemWithEstimate) {
+  const dueDays = daysUntil(item.ready_date);
+
+  return !isClosedQueueItem(item) && dueDays !== null && dueDays < 0;
+}
+
+function isDueTodayQueueItem(item: QueueItemWithEstimate) {
+  return !isClosedQueueItem(item) && dateMatchesOffset(item.ready_date, 0);
+}
+
+function isDueTomorrowQueueItem(item: QueueItemWithEstimate) {
+  return !isClosedQueueItem(item) && dateMatchesOffset(item.ready_date, 1);
+}
+
+function isScheduledTodayQueueItem(item: QueueItemWithEstimate) {
+  return !isClosedQueueItem(item) && dateMatchesOffset(item.scheduled_date, 0);
+}
+
+function queueItemLabel(item: QueueItemWithEstimate) {
+  const unit = maybeCanonicalApartmentUnitLabel(item.unit);
+
+  return [unit, item.property].filter(Boolean).join(" / ") || "Queue item";
+}
+
 function minutesBetween(startedAt: string | null, endedAt: string | null) {
   if (!startedAt) {
     return 0;
@@ -680,6 +726,30 @@ export default async function QueuePage({
       dueDays < 0
     );
   }).length;
+  const overdueItems = propertyScopedQueueItems.filter(isOverdueQueueItem);
+  const dueTodayItems = propertyScopedQueueItems.filter(isDueTodayQueueItem);
+  const dueTomorrowItems =
+    propertyScopedQueueItems.filter(isDueTomorrowQueueItem);
+  const managerPriorityItems = propertyScopedQueueItems
+    .filter(
+      (item) =>
+        !isClosedQueueItem(item) &&
+        typeof item.priority_order === "number" &&
+        Number.isFinite(item.priority_order)
+    )
+    .sort((first, second) => compareQueueItems(first, second, "priority"));
+  const scheduledTodayItems = propertyScopedQueueItems.filter(
+    isScheduledTodayQueueItem
+  );
+  const waitingEtaItems = propertyScopedQueueItems.filter(
+    (item) => !isClosedQueueItem(item) && !item.projected_completion_date
+  );
+  const delayedItems = propertyScopedQueueItems.filter(
+    (item) => !isClosedQueueItem(item) && Boolean(item.delay_reason)
+  );
+  const scheduledWithoutEtaItems = scheduledTodayItems.filter(
+    (item) => !item.projected_completion_date
+  );
   const activeSessionCount = jobSessions.filter(
     (session) =>
       !session.ended_at &&
@@ -738,6 +808,97 @@ export default async function QueuePage({
       href: `/job-sessions?business=${businessSlug}`,
     },
   ];
+  const waitingInvoiceCount = propertyScopedQueueItems.filter((item) => {
+    if (!item.linked_estimate_id || isClosedQueueItem(item)) {
+      return false;
+    }
+
+    return !invoiceByEstimateId.has(item.linked_estimate_id);
+  }).length;
+  const completedTodayCount = propertyScopedQueueItems.filter((item) =>
+    dateMatchesOffset(item.completed_date, 0)
+  ).length;
+  const inProgressQueueItemCount = propertyScopedQueueItems.filter((item) => {
+    const progress = (item.progress_stage || "").trim().toLowerCase();
+
+    return (
+      !isClosedQueueItem(item) &&
+      progress &&
+      !["not started", "complete", "completed"].includes(progress)
+    );
+  }).length;
+  const workloadMetrics = [
+    {
+      label: "Pending",
+      value: statusCounts.get("pending estimate") ?? 0,
+    },
+    {
+      label: "Scheduled",
+      value: statusCounts.get("scheduled") ?? 0,
+    },
+    {
+      label: "In Progress",
+      value: Math.max(activeSessionCount, inProgressQueueItemCount),
+    },
+    {
+      label: "Waiting Estimate",
+      value: needsEstimateCount,
+    },
+    {
+      label: "Waiting Invoice",
+      value: waitingInvoiceCount,
+    },
+    {
+      label: "Completed Today",
+      value: completedTodayCount,
+    },
+  ];
+  const renoGroups = propertyScopedQueueItems.reduce((groups, item) => {
+    if (
+      isClosedQueueItem(item) ||
+      !(item.paint_type || "").toLowerCase().includes("reno")
+    ) {
+      return groups;
+    }
+
+    const key = item.property || "Unknown property";
+    groups.set(key, (groups.get(key) ?? 0) + 1);
+    return groups;
+  }, new Map<string, number>());
+  const groupedRenoCount = Array.from(renoGroups.values()).filter(
+    (count) => count >= 2
+  ).length;
+  const completedNeedsEstimateCount = propertyScopedQueueItems.filter(
+    (item) => Boolean(item.completed_date) && !item.linked_estimate_id
+  ).length;
+  const managerPrioritiesDueTomorrow = managerPriorityItems.filter(
+    isDueTomorrowQueueItem
+  ).length;
+  const smartSuggestions = [
+    overdueItems.length > 0
+      ? `${overdueItems.length} unit${
+          overdueItems.length === 1 ? " is" : "s are"
+        } overdue.`
+      : null,
+    managerPrioritiesDueTomorrow > 0
+      ? `${managerPrioritiesDueTomorrow} manager priority unit${
+          managerPrioritiesDueTomorrow === 1 ? " is" : "s are"
+        } due tomorrow.`
+      : null,
+    scheduledWithoutEtaItems.length > 0
+      ? `${scheduledWithoutEtaItems.length} scheduled unit${
+          scheduledWithoutEtaItems.length === 1 ? " has" : "s have"
+        } no ETA.`
+      : null,
+    groupedRenoCount > 0
+      ? "Several Reno units could be grouped by property."
+      : null,
+    completedNeedsEstimateCount > 0
+      ? `Estimate has not been created for ${completedNeedsEstimateCount} completed queue item${
+          completedNeedsEstimateCount === 1 ? "" : "s"
+        }.`
+      : null,
+  ].filter((suggestion): suggestion is string => Boolean(suggestion));
 
   const filteredQueueItems = propertyScopedQueueItems.filter((item) => {
     if (
@@ -1019,6 +1180,157 @@ export default async function QueuePage({
                 </p>
               </Link>
             ))}
+          </div>
+        </Card>
+
+        <Card className="queue-operations-summary border-cyan-500/20 bg-cyan-500/10 p-5">
+          <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.22em]">
+                Operations Summary
+              </p>
+              <h2 className="mt-1 text-xl font-black text-white">
+                What deserves attention right now
+              </h2>
+              <p className="mt-1 max-w-3xl text-sm leading-6 text-zinc-300">
+                Trimax is reading deadlines, requested priority, schedule,
+                progress, and lifecycle status from the current queue.
+              </p>
+            </div>
+
+            <p className="rounded-full border border-white/10 bg-black/25 px-3 py-2 text-sm font-bold text-cyan-100">
+              {activePropertyLabel}
+            </p>
+          </div>
+
+          <div className="mt-5 grid gap-4 xl:grid-cols-[1.05fr_1.1fr_0.85fr]">
+            <div className="grid gap-3">
+              <OperationsMetricCard
+                label="Needs Attention"
+                items={[
+                  {
+                    label: "Overdue units",
+                    value: overdueItems.length,
+                    tone: overdueItems.length > 0 ? "rose" : "emerald",
+                  },
+                  {
+                    label: "Due today",
+                    value: dueTodayItems.length,
+                    tone: dueTodayItems.length > 0 ? "amber" : "zinc",
+                  },
+                  {
+                    label: "Due tomorrow",
+                    value: dueTomorrowItems.length,
+                    tone: dueTomorrowItems.length > 0 ? "sky" : "zinc",
+                  },
+                ]}
+              />
+
+              <OperationsMetricCard
+                label="Operations"
+                items={[
+                  {
+                    label: "Scheduled today",
+                    value: scheduledTodayItems.length,
+                    tone: scheduledTodayItems.length > 0 ? "emerald" : "zinc",
+                  },
+                  {
+                    label: "Waiting for ETA",
+                    value: waitingEtaItems.length,
+                    tone: waitingEtaItems.length > 0 ? "amber" : "zinc",
+                  },
+                  {
+                    label: "Delayed units",
+                    value: delayedItems.length,
+                    tone: delayedItems.length > 0 ? "rose" : "zinc",
+                  },
+                ]}
+              />
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-400">
+                  Manager Priorities
+                </p>
+                <span className="rounded-full border border-sky-400/25 bg-sky-400/10 px-2.5 py-1 text-xs font-black text-sky-100">
+                  {managerPriorityItems.length} active
+                </span>
+              </div>
+
+              <div className="mt-4 grid gap-2">
+                {managerPriorityItems.length === 0 ? (
+                  <p className="rounded-2xl border border-white/10 bg-black/20 px-3 py-3 text-sm font-semibold text-zinc-400">
+                    No manager requested priority order is set.
+                  </p>
+                ) : (
+                  managerPriorityItems.slice(0, 5).map((item) => (
+                    <Link
+                      key={item.id}
+                      href={`/queue/${item.id}${businessQuery}`}
+                      className="rounded-2xl border border-sky-400/15 bg-sky-400/10 px-3 py-3 transition hover:border-sky-300/50"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="min-w-0 truncate text-sm font-black text-white">
+                          #{item.priority_order} {queueItemLabel(item)}
+                        </p>
+                        <span className="shrink-0 text-xs font-bold text-sky-100">
+                          {item.ready_date || "No deadline"}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs font-semibold text-zinc-400">
+                        {item.progress_stage || item.status || "Pending"}
+                      </p>
+                    </Link>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="grid gap-3">
+              <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-400">
+                  Workload
+                </p>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  {workloadMetrics.map((metric) => (
+                    <div
+                      key={metric.label}
+                      className="rounded-2xl border border-white/10 bg-black/20 px-3 py-3"
+                    >
+                      <p className="text-2xl font-black text-white">
+                        {metric.value}
+                      </p>
+                      <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em] text-zinc-400">
+                        {metric.label}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-amber-300/20 bg-amber-300/10 p-4">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-100">
+                  Smart Suggestions
+                </p>
+                <div className="mt-3 grid gap-2">
+                  {smartSuggestions.length === 0 ? (
+                    <p className="text-sm font-semibold leading-6 text-zinc-300">
+                      No urgent queue suggestions right now.
+                    </p>
+                  ) : (
+                    smartSuggestions.map((suggestion) => (
+                      <p
+                        key={suggestion}
+                        className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-sm font-semibold leading-5 text-amber-50"
+                      >
+                        {suggestion}
+                      </p>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </Card>
 
@@ -1354,6 +1666,18 @@ export default async function QueuePage({
                               </span>
                             ) : null}
 
+                            <span className="queue-priority-pill rounded-full border border-white/10 bg-black/25 px-3 py-1 text-sm font-semibold text-zinc-200">
+                              Needed By {item.ready_date || "Not set"}
+                            </span>
+
+                            <span className="queue-priority-pill rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-sm font-semibold text-emerald-100">
+                              Progress {item.progress_stage || "Not Started"}
+                            </span>
+
+                            <span className="queue-priority-pill rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1 text-sm font-semibold text-cyan-100">
+                              ETA {item.projected_completion_date || "Missing"}
+                            </span>
+
                             {item.smoked_in ? (
                               <span className="queue-remediation-pill rounded-full bg-red-500/20 px-3 py-1 text-sm font-semibold text-red-300">
                                 Remediation
@@ -1638,6 +1962,47 @@ function LaborCue({
           {missingBreakdownCount} need breakdown
         </span>
       ) : null}
+    </div>
+  );
+}
+
+function OperationsMetricCard({
+  label,
+  items,
+}: {
+  label: string;
+  items: Array<{
+    label: string;
+    value: number;
+    tone: "rose" | "amber" | "emerald" | "sky" | "zinc";
+  }>;
+}) {
+  const toneClasses = {
+    rose: "border-rose-400/30 bg-rose-500/10 text-rose-100",
+    amber: "border-amber-300/30 bg-amber-300/10 text-amber-100",
+    emerald: "border-emerald-300/25 bg-emerald-400/10 text-emerald-100",
+    sky: "border-sky-300/25 bg-sky-400/10 text-sky-100",
+    zinc: "border-white/10 bg-black/20 text-zinc-200",
+  };
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-400">
+        {label}
+      </p>
+      <div className="mt-3 grid gap-2">
+        {items.map((item) => (
+          <div
+            key={item.label}
+            className={`flex items-center justify-between gap-3 rounded-2xl border px-3 py-3 ${
+              toneClasses[item.tone]
+            }`}
+          >
+            <span className="text-sm font-bold">{item.label}</span>
+            <span className="text-2xl font-black">{item.value}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
