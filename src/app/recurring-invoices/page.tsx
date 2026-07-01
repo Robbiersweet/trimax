@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { createPortal } from "react-dom";
 import AppShell from "../components/AppShell";
 import BackButton from "../components/BackButton";
 import Button from "../components/Button";
@@ -548,6 +549,19 @@ function RecurringInvoicesPageContent() {
       tone: templatesWithErrors.length > 0 ? "rose" : "zinc",
     },
   ];
+
+  useEffect(() => {
+    if (!isStartModalOpen) {
+      return;
+    }
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isStartModalOpen]);
 
   useEffect(() => {
     async function loadPageData() {
@@ -2267,8 +2281,9 @@ function RecurringInvoicesPageContent() {
           )}
         </Card>
 
-        {isStartModalOpen ? (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
+        {isStartModalOpen && typeof document !== "undefined"
+          ? createPortal(
+          <div className="fixed inset-0 z-[9999] flex h-dvh items-center justify-center bg-black/70 px-4 py-6">
             <div className="max-h-[calc(100vh-3rem)] w-full max-w-2xl overflow-y-auto rounded-3xl border border-zinc-700 bg-zinc-950 p-5 shadow-2xl">
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -2356,8 +2371,10 @@ function RecurringInvoicesPageContent() {
                 </Button>
               </div>
             </div>
-          </div>
-        ) : null}
+          </div>,
+          document.body
+            )
+          : null}
       </div>
     </AppShell>
   );
