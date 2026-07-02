@@ -8,10 +8,6 @@ import PriorityPlanner, {
 import StatusBadge from "../components/StatusBadge";
 import RoleVisible from "../components/RoleVisible";
 import Toast from "../components/Toast";
-import {
-  queueTimingBadge,
-  queueTimingTone,
-} from "../lib/queueTiming";
 import { supabase } from "../lib/supabase";
 import {
   queueTbdDecisions,
@@ -311,55 +307,6 @@ function queueItemLabel(item: QueueItemWithEstimate) {
   const unit = maybeCanonicalApartmentUnitLabel(item.unit);
 
   return [unit, item.property].filter(Boolean).join(" / ") || "Queue item";
-}
-
-function minutesBetween(startedAt: string | null, endedAt: string | null) {
-  if (!startedAt) {
-    return 0;
-  }
-
-  const start = new Date(startedAt).getTime();
-  const end = endedAt ? new Date(endedAt).getTime() : Date.now();
-
-  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) {
-    return 0;
-  }
-
-  return Math.round((end - start) / 60000);
-}
-
-function formatSessionMinutes(minutes: number) {
-  if (minutes <= 0) {
-    return "0m";
-  }
-
-  const hours = Math.floor(minutes / 60);
-  const remainder = minutes % 60;
-
-  if (hours <= 0) {
-    return `${remainder}m`;
-  }
-
-  return remainder > 0 ? `${hours}h ${remainder}m` : `${hours}h`;
-}
-
-function formatQueueDateTime(value: string | null) {
-  if (!value) {
-    return "not recorded";
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "not recorded";
-  }
-
-  return date.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
 }
 
 function moneyNumber(value: string | number | null | undefined) {
@@ -733,18 +680,6 @@ export default async function QueuePage({
   const breakdownSessionIds = new Set(
     jobSessionBreakdowns.map((breakdown) => breakdown.job_session_id)
   );
-  const sessionsByQueueItemId = jobSessions.reduce((map, session) => {
-    if (!session.queue_item_id) {
-      return map;
-    }
-
-    const current = map.get(session.queue_item_id) ?? [];
-    current.push(session);
-    map.set(session.queue_item_id, current);
-
-    return map;
-  }, new Map<string, QueueJobSession[]>());
-
   const propertyScopedQueueItems = queueItemsWithLifecycle.filter((item) => {
     if (propertyFilter === "all") {
       return true;
@@ -1762,333 +1697,90 @@ export default async function QueuePage({
                   ["sent", "paid"].includes(normalizeStatus(linkedInvoice.status))
                 : false;
               const invoiceIsPaid = isInvoicePaid(linkedInvoice);
-              const readySoon = isReadySoonUnscheduled(item);
-              const remediation = isRemediationItem(item);
-              const estimateNeeded = needsEstimate(item);
-              const readyDays = daysUntil(item.ready_date);
-              const timingBadge = queueTimingBadge(item);
-              const timingTone = queueTimingTone(timingBadge);
               const tbdDecisions = queueTbdDecisions(item);
-              const itemJobSessions = sessionsByQueueItemId.get(item.id) ?? [];
-              const activeJobSessionCount = itemJobSessions.filter(
-                (session) => !session.ended_at
-              ).length;
-              const completedJobSessionCount = itemJobSessions.filter(
-                (session) => session.ended_at
-              ).length;
-              const missingBreakdownCount = itemJobSessions.filter(
-                (session) =>
-                  Boolean(session.ended_at) &&
-                  !breakdownSessionIds.has(session.id)
-              ).length;
-              const jobSessionMinutes = itemJobSessions.reduce(
-                (total, session) =>
-                  total +
-                  (session.total_minutes ??
-                    minutesBetween(session.started_at, session.ended_at)),
-                0
-              );
-              const nextMove = activeJobSessionCount
-                ? "Work in progress"
-                : estimateNeeded
-                  ? "Estimate needed"
-                  : !item.scheduled_date && readySoon
-                    ? "Schedule this unit"
-                    : !item.scheduled_date
-                      ? "Pick a work date"
-                      : linkedEstimate
-                        ? "Ready to manage"
-                        : "Queue active";
+              const lifecycleStatus = invoiceIsPaid
+                ? "Paid"
+                : invoiceWasSent
+                  ? "Invoice Sent"
+                  : linkedInvoice
+                    ? "Invoice Created"
+                    : linkedEstimate
+                      ? "Estimate Created"
+                      : item.status || "Pending Estimate";
 
               return (
-                <Card key={item.id} className="queue-list-card queue-dispatch-card">
-                  <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_12rem] xl:items-start">
+                <Card key={item.id} className="queue-list-card queue-dispatch-card p-4">
+                  <div className="grid gap-3 lg:grid-cols-[5.5rem_minmax(10rem,1.2fr)_repeat(6,minmax(7rem,0.85fr))_auto] lg:items-center">
                     <div className="min-w-0">
-                      <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
-                        <div className="queue-unit-plate queue-unit-plate-v2">
-                          <span className="queue-unit-plate-label">Unit</span>
-                          <span className="queue-unit-plate-value">
-                            {displayUnit || "-"}
-                          </span>
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-3">
-                            <h2 className="text-2xl font-semibold">
-                              {item.property || "Unknown Property"}
-                            </h2>
-
-                            <StatusBadge
-                              status={item.status ?? "Pending Estimate"}
-                            />
-
-                            {item.priority ? (
-                              <span className="queue-priority-pill rounded-full bg-zinc-950 px-3 py-1 text-sm font-semibold text-zinc-300">
-                                {item.priority} Priority
-                              </span>
-                            ) : null}
-
-                            {item.priority_order ? (
-                              <span className="queue-priority-pill rounded-full bg-sky-500/15 px-3 py-1 text-sm font-semibold text-sky-100">
-                                Requested Priority #{item.priority_order}
-                              </span>
-                            ) : null}
-
-                            <span className="queue-priority-pill rounded-full border border-white/10 bg-black/25 px-3 py-1 text-sm font-semibold text-zinc-200">
-                              Needed By {item.ready_date || "Not set"}
-                            </span>
-
-                            <span className="queue-priority-pill rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-sm font-semibold text-emerald-100">
-                              Progress {item.progress_stage || "Not Started"}
-                            </span>
-
-                            <span className="queue-priority-pill rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1 text-sm font-semibold text-cyan-100">
-                              ETA {item.projected_completion_date || "Missing"}
-                            </span>
-
-                            {item.smoked_in ? (
-                              <span className="queue-remediation-pill rounded-full bg-red-500/20 px-3 py-1 text-sm font-semibold text-red-300">
-                                Remediation
-                              </span>
-                            ) : null}
-
-                            {!item.smoked_in && remediation ? (
-                              <span className="queue-remediation-pill rounded-full bg-red-500/20 px-3 py-1 text-sm font-semibold text-red-300">
-                                Smoke Note
-                              </span>
-                            ) : null}
-
-                            {readySoon ? (
-                              <span className="queue-ready-soon-pill rounded-full bg-yellow-500/20 px-3 py-1 text-sm font-semibold text-yellow-200">
-                                Due Soon
-                              </span>
-                            ) : null}
-
-                            {estimateNeeded ? (
-                              <span className="queue-estimate-needed-pill rounded-full bg-purple-500/20 px-3 py-1 text-sm font-semibold text-purple-200">
-                                Needs Estimate
-                              </span>
-                            ) : null}
-
-                            <span
-                              data-tone={timingTone}
-                              className="queue-priority-pill rounded-full border border-white/10 bg-black/30 px-3 py-1 text-sm font-semibold text-zinc-100"
-                            >
-                              {timingBadge}
-                            </span>
-
-                            {item.renovation_needed ? (
-                              <span className="queue-current-renovation-pill rounded-full bg-orange-500/20 px-3 py-1 text-sm font-semibold text-orange-200">
-                                Current Renovation
-                              </span>
-                            ) : null}
-
-                            {item.prior_renovation ||
-                            item.prior_renovation_details ? (
-                              <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-sm font-semibold text-emerald-200">
-                                Prior Renovation
-                              </span>
-                            ) : null}
-                          </div>
-
-                          {item.unit_layout ? (
-                            <p className="mt-2 text-zinc-400">
-                              Layout {item.unit_layout}
-                            </p>
-                          ) : null}
-
-                          <div className="mt-3 flex flex-wrap gap-2 text-sm font-bold">
-                            <span className="max-w-full rounded-full border border-violet-300/20 bg-violet-400/10 px-3 py-1.5 text-violet-100">
-                              Paint: {item.paint_type || "Not set"}
-                            </span>
-                            <span className="max-w-full rounded-full border border-lime-300/20 bg-lime-400/10 px-3 py-1.5 text-lime-100">
-                              Flooring: {tbdDisplay(item.flooring)}
-                            </span>
-                          </div>
-
-                          <div className="queue-next-move mt-4 inline-flex items-center gap-2 rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1.5 text-sm font-bold text-sky-100">
-                            <span className="queue-next-move-dot" aria-hidden="true" />
-                            {nextMove}
-                          </div>
-
-                          <QueueLifecycleStrip
-                            workDone={isClosedQueueItem(item)}
-                            estimate={linkedEstimate}
-                            invoice={linkedInvoice}
-                            invoiceWasSent={invoiceWasSent}
-                            invoiceIsPaid={invoiceIsPaid}
-                            businessQuery={businessQuery}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                        <LifecyclePill
-                          label="Move Out"
-                          value={item.move_out_date}
-                        />
-                        <LifecyclePill
-                          label="Needed By"
-                          value={item.ready_date}
-                          detail={
-                            readySoon && readyDays !== null
-                              ? `${readyDays} day${
-                                  readyDays === 1 ? "" : "s"
-                                } out`
-                              : undefined
-                          }
-                          alert={readySoon}
-                          emptyValue="No deadline provided"
-                        />
-                        <LifecyclePill
-                          label="Manager Priority"
-                          value={
-                            item.priority_order
-                              ? `Priority ${item.priority_order}`
-                              : null
-                          }
-                          emptyValue="No priority order"
-                        />
-                        <LifecyclePill
-                          label="Scheduled"
-                          value={item.scheduled_date}
-                        />
-                        <LifecyclePill
-                          label="Progress"
-                          value={item.progress_stage || "Not Started"}
-                          detail={
-                            item.percent_complete !== null &&
-                            item.percent_complete !== undefined
-                              ? `${item.percent_complete}% complete`
-                              : undefined
-                          }
-                        />
-                        <LifecyclePill
-                          label="Robbie ETA"
-                          value={item.projected_completion_date}
-                          emptyValue="No ETA set"
-                        />
-                        <LifecyclePill
-                          label="Delay"
-                          value={item.delay_reason}
-                          emptyValue="No delay reason"
-                        />
-                        {tbdDecisions.length > 0 ? (
-                          <LifecyclePill
-                            label="Outstanding Decisions"
-                            value={`${tbdDecisions.length} TBD`}
-                            detail={tbdDecisions
-                              .map((decision) => decision.field)
-                              .join(", ")}
-                            alert
-                          />
-                        ) : null}
-                      </div>
-
-                      <div className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3">
-                        <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-200">
-                          Manager Update
-                        </p>
-                        <p className="mt-2 text-sm leading-6 text-zinc-100">
-                          {item.manager_update ||
-                            "No manager-visible update yet."}
-                        </p>
-                        <p className="mt-2 text-xs font-semibold text-zinc-400">
-                          Last updated{" "}
-                          {formatQueueDateTime(
-                            item.manager_update_at ?? item.updated_at ?? null
-                          )}
-                        </p>
-                      </div>
-
-                      <div className="mt-5 grid gap-4 text-sm text-zinc-300 md:grid-cols-2">
-                        <Info label="Paint Type" value={item.paint_type} />
-                        <Info
-                          label="Unit Layout"
-                          value={item.unit_layout}
-                        />
-                        <Info
-                          label="Wall Color"
-                          value={tbdDisplay(item.wall_paint_color)}
-                        />
-                        <Info
-                          label="Flooring"
-                          value={tbdDisplay(item.flooring)}
-                        />
-                        <Info
-                          label="Renovation"
-                          value={
-                            item.renovation_needed
-                              ? item.renovation_needed_details ||
-                                "Needed"
-                              : item.prior_renovation_details
-                                ? item.prior_renovation_details
-                                : item.prior_renovation
-                                  ? "Prior renovation"
-                                  : null
-                          }
-                        />
-                        <Info
-                          label="Completed Date"
-                          value={item.completed_date}
-                        />
-                        <Info
-                          label="Linked Estimate"
-                          value={linkedEstimate?.display_id ?? null}
-                        />
-                        <Info
-                          label="Linked Invoice"
-                          value={linkedInvoice?.display_id ?? null}
-                        />
-                      </div>
-
-                      <p className="mt-5 max-w-2xl text-zinc-400">
-                        {item.notes || "No notes added."}
+                      <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-zinc-500">
+                        Unit
                       </p>
-
-                      {linkedEstimate ? (
-                        <p className="mt-4 text-sm text-purple-300">
-                          Linked Estimate:{" "}
-                          {linkedEstimate.display_id ?? "Estimate"}
-                        </p>
-                      ) : null}
-
-                      <RoleVisible
-                        businessSlug={businessSlug}
-                        allow={["owner", "admin"]}
-                      >
-                        <LaborCue
-                          activeCount={activeJobSessionCount}
-                          completedCount={completedJobSessionCount}
-                          missingBreakdownCount={missingBreakdownCount}
-                          totalMinutes={jobSessionMinutes}
-                        />
-                      </RoleVisible>
+                      <p className="mt-1 text-2xl font-black text-white">
+                        {displayUnit || "-"}
+                      </p>
                     </div>
 
-                    <div className="queue-card-action-rail flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/20 p-3 sm:flex-row xl:flex-col">
-                      <Link href={`/queue/${item.id}${businessQuery}`}>
-                        <Button>Open Queue Item</Button>
-                      </Link>
+                    <div className="min-w-0">
+                      <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-zinc-500">
+                        Property
+                      </p>
+                      <p className="mt-1 truncate text-sm font-bold text-zinc-100">
+                        {item.property || "Unknown Property"}
+                      </p>
+                    </div>
 
-                      <RoleVisible
-                        businessSlug={businessSlug}
-                        allow={["owner", "admin", "accountant", "property_manager"]}
-                      >
-                        {linkedEstimate ? (
-                          <Link
-                            href={`/estimates/${linkedEstimate.id}${businessQuery}`}
-                          >
-                            <Button variant="secondary">Open Estimate</Button>
-                          </Link>
-                        ) : (
-                          <Link
-                            href={`/estimates/new?queueId=${item.id}&business=${businessSlug}`}
-                          >
-                            <Button variant="secondary">Create Estimate</Button>
-                          </Link>
-                        )}
-                      </RoleVisible>
+                    <CompactQueueField
+                      label="Priority"
+                      value={
+                        item.priority_order
+                          ? `#${item.priority_order}`
+                          : item.priority || "None"
+                      }
+                    />
+                    <CompactQueueField
+                      label="Needed By"
+                      value={item.ready_date || "No deadline"}
+                    />
+                    <CompactQueueField
+                      label="Move Out"
+                      value={item.move_out_date || "Not set"}
+                    />
+                    <div className="min-w-0">
+                      <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-zinc-500">
+                        Status
+                      </p>
+                      <div className="mt-1">
+                        <StatusBadge status={lifecycleStatus} />
+                      </div>
+                    </div>
+                    <CompactQueueField
+                      label="Paint"
+                      value={item.paint_type || "Not set"}
+                    />
+                    <CompactQueueField
+                      label="Flooring"
+                      value={tbdDisplay(item.flooring)}
+                    />
+
+                    <div className="flex min-w-0 flex-wrap items-center gap-2 lg:justify-end">
+                      {item.progress_stage ? (
+                        <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-xs font-black text-emerald-100">
+                          {item.progress_stage}
+                        </span>
+                      ) : null}
+                      {item.projected_completion_date ? (
+                        <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1 text-xs font-black text-cyan-100">
+                          ETA {item.projected_completion_date}
+                        </span>
+                      ) : null}
+                      {tbdDecisions.length > 0 ? (
+                        <span className="rounded-full border border-amber-300/25 bg-amber-300/10 px-3 py-1 text-xs font-black text-amber-100">
+                          {tbdDecisions.length} TBD
+                        </span>
+                      ) : null}
+                      <Link href={`/queue/${item.id}${businessQuery}`}>
+                        <Button variant="secondary">Open</Button>
+                      </Link>
                     </div>
                   </div>
                 </Card>
@@ -2100,48 +1792,6 @@ export default async function QueuePage({
         )}
       </div>
     </AppShell>
-  );
-}
-
-function LaborCue({
-  activeCount,
-  completedCount,
-  missingBreakdownCount,
-  totalMinutes,
-}: {
-  activeCount: number;
-  completedCount: number;
-  missingBreakdownCount: number;
-  totalMinutes: number;
-}) {
-  if (activeCount === 0 && completedCount === 0) {
-    return (
-      <div className="queue-labor-cue mt-4 inline-flex flex-wrap items-center gap-2 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-sm font-bold text-sky-100">
-        <span className="queue-labor-dot" aria-hidden="true" />
-        Open this item to start a job session
-      </div>
-    );
-  }
-
-  return (
-    <div className="queue-labor-cue mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-emerald-400/25 bg-emerald-400/10 px-3 py-2 text-sm font-bold text-emerald-100">
-      <span className="queue-labor-dot queue-labor-dot-active" aria-hidden="true" />
-      <span>
-        {activeCount > 0
-          ? `${activeCount} session running`
-          : `${formatSessionMinutes(totalMinutes)} recorded`}
-      </span>
-      {completedCount > 0 ? (
-        <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-xs">
-          {completedCount} stopped
-        </span>
-      ) : null}
-      {missingBreakdownCount > 0 ? (
-        <span className="rounded-full border border-amber-300/30 bg-amber-300/15 px-2 py-0.5 text-xs text-amber-100">
-          {missingBreakdownCount} need breakdown
-        </span>
-      ) : null}
-    </div>
   );
 }
 
@@ -2186,93 +1836,7 @@ function OperationsMetricCard({
   );
 }
 
-function QueueLifecycleStrip({
-  workDone,
-  estimate,
-  invoice,
-  invoiceWasSent,
-  invoiceIsPaid,
-  businessQuery,
-}: {
-  workDone: boolean;
-  estimate: LinkedEstimate | null | undefined;
-  invoice: LinkedInvoice | null | undefined;
-  invoiceWasSent: boolean;
-  invoiceIsPaid: boolean;
-  businessQuery: string;
-}) {
-  const stages = [
-    {
-      label: "Work",
-      complete: workDone,
-      href: null,
-    },
-    {
-      label: "Estimate",
-      complete: Boolean(estimate),
-      href: estimate?.id ? `/estimates/${estimate.id}${businessQuery}` : null,
-    },
-    {
-      label: "Invoice",
-      complete: Boolean(invoice),
-      href: invoice?.id ? `/invoices/${invoice.id}${businessQuery}` : null,
-    },
-    {
-      label: "Sent",
-      complete: invoiceWasSent,
-      href: invoice?.id ? `/invoices/${invoice.id}${businessQuery}#send-invoice` : null,
-    },
-    {
-      label: "Paid",
-      complete: invoiceIsPaid,
-      href: invoice?.id ? `/invoices/${invoice.id}${businessQuery}` : null,
-    },
-  ];
-
-  return (
-    <div
-      aria-label="Queue lifecycle status"
-      className="mt-3 flex flex-wrap items-center gap-1.5 text-xs font-black"
-    >
-      {stages.map((stage, index) => {
-        const content = (
-          <span
-            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 transition ${
-              stage.complete
-                ? "border-emerald-300/35 bg-emerald-400/12 text-emerald-100"
-                : "border-white/10 bg-black/25 text-zinc-400"
-            }`}
-          >
-            <span aria-hidden="true">{stage.complete ? "✓" : "○"}</span>
-            <span>{stage.label}</span>
-          </span>
-        );
-
-        return (
-          <span key={stage.label} className="inline-flex items-center gap-1.5">
-            {stage.href && stage.complete ? (
-              <Link
-                href={stage.href}
-                className="rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-300/60"
-              >
-                {content}
-              </Link>
-            ) : (
-              content
-            )}
-            {index < stages.length - 1 ? (
-              <span aria-hidden="true" className="text-zinc-600">
-                |
-              </span>
-            ) : null}
-          </span>
-        );
-      })}
-    </div>
-  );
-}
-
-function Info({
+function CompactQueueField({
   label,
   value,
 }: {
@@ -2280,9 +1844,13 @@ function Info({
   value: string | null;
 }) {
   return (
-    <div>
-      <p className="text-zinc-500">{label}</p>
-      <p>{value || "-"}</p>
+    <div className="min-w-0">
+      <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-zinc-500">
+        {label}
+      </p>
+      <p className="mt-1 break-words text-sm font-bold leading-5 text-zinc-100">
+        {value || "-"}
+      </p>
     </div>
   );
 }
@@ -2301,42 +1869,4 @@ function queueFilterIcon(label: string) {
   if (normalized.includes("active")) return "W";
 
   return label.slice(0, 1).toUpperCase();
-}
-
-function LifecyclePill({
-  label,
-  value,
-  detail,
-  emptyValue = "-",
-  alert = false,
-}: {
-  label: string;
-  value: string | null;
-  detail?: string;
-  emptyValue?: string;
-  alert?: boolean;
-}) {
-  return (
-    <div
-      className={`queue-lifecycle-pill rounded-2xl border px-4 py-3 ${
-        alert
-          ? "queue-lifecycle-pill-alert border-amber-400/35 bg-amber-500/10"
-          : value
-          ? "queue-lifecycle-pill-filled border-sky-500/25 bg-sky-500/10"
-          : "queue-lifecycle-pill-empty border-zinc-700 bg-zinc-950/55"
-      }`}
-    >
-      <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
-        {label}
-      </p>
-      <p className="mt-1 font-semibold text-zinc-100">
-        {value || emptyValue}
-      </p>
-      {detail ? (
-        <p className="mt-1 text-xs font-semibold text-amber-200">
-          {detail}
-        </p>
-      ) : null}
-    </div>
-  );
 }
