@@ -194,8 +194,10 @@ function statusSortValue(value: string | null) {
     scheduled: 3,
     "on hold": 4,
     completed: 5,
+    "invoice created": 6,
     invoiced: 6,
-    paid: 7,
+    "invoice sent": 7,
+    paid: 8,
   };
 
   return order[status] ?? 50;
@@ -244,6 +246,8 @@ function isClosedQueueItem(item: QueueItemWithEstimate) {
 
   return (
     status === "completed" ||
+    status === "invoice created" ||
+    status === "invoice sent" ||
     status === "invoiced" ||
     status === "paid" ||
     Boolean(item.completed_date)
@@ -381,6 +385,30 @@ function isInvoicePaid(invoice: LinkedInvoice | null | undefined) {
   const amountPaid = moneyNumber(invoice.amount_paid);
 
   return status === "paid" || (invoiceAmount > 0 && amountPaid >= invoiceAmount);
+}
+
+function derivedQueueStatusFromInvoice({
+  invoice,
+  invoiceWasSent,
+  invoiceIsPaid,
+}: {
+  invoice: LinkedInvoice | null | undefined;
+  invoiceWasSent: boolean;
+  invoiceIsPaid: boolean;
+}) {
+  if (!invoice) {
+    return null;
+  }
+
+  if (invoiceIsPaid) {
+    return "Paid";
+  }
+
+  if (invoiceWasSent) {
+    return "Invoice Sent";
+  }
+
+  return "Invoice Created";
 }
 
 function queueHref(
@@ -680,6 +708,28 @@ export default async function QueuePage({
       .map((proof) => proof.entity_id)
       .filter((id): id is string => Boolean(id))
   );
+  const queueItemsWithLifecycle = queueItems.map((item) => {
+    const linkedInvoice = item.linked_estimate_id
+      ? invoiceByEstimateId.get(item.linked_estimate_id) ?? null
+      : null;
+    const invoiceWasSent = linkedInvoice
+      ? invoiceIdsWithSendProof.has(linkedInvoice.id) ||
+        ["sent", "paid"].includes(normalizeStatus(linkedInvoice.status))
+      : false;
+    const invoiceIsPaid = isInvoicePaid(linkedInvoice);
+    const derivedStatus = derivedQueueStatusFromInvoice({
+      invoice: linkedInvoice,
+      invoiceWasSent,
+      invoiceIsPaid,
+    });
+
+    return derivedStatus
+      ? {
+          ...item,
+          status: derivedStatus,
+        }
+      : item;
+  });
   const breakdownSessionIds = new Set(
     jobSessionBreakdowns.map((breakdown) => breakdown.job_session_id)
   );
@@ -695,7 +745,7 @@ export default async function QueuePage({
     return map;
   }, new Map<string, QueueJobSession[]>());
 
-  const propertyScopedQueueItems = queueItems.filter((item) => {
+  const propertyScopedQueueItems = queueItemsWithLifecycle.filter((item) => {
     if (propertyFilter === "all") {
       return true;
     }
@@ -708,22 +758,26 @@ export default async function QueuePage({
       : propertyScopedQueueItems[0]?.property ?? "selected property";
   const propertyPlannerOptions = Array.from(
     new Map(
-      queueItems
+      queueItemsWithLifecycle
         .map((item) => item.property?.trim())
         .filter((property): property is string => Boolean(property))
         .map((property) => [propertyKey(property), property])
     ).entries()
   ).sort((first, second) => first[1].localeCompare(second[1]));
 
+  const statusCountSource =
+    viewFilter === "history"
+      ? propertyScopedQueueItems
+      : propertyScopedQueueItems.filter((item) => !isClosedQueueItem(item));
   const statuses = Array.from(
     new Set(
-      propertyScopedQueueItems.map((item) =>
+      statusCountSource.map((item) =>
         normalizeStatus(item.status)
       )
     )
   ).sort((first, second) => first.localeCompare(second));
 
-  const statusCounts = propertyScopedQueueItems.reduce(
+  const statusCounts = statusCountSource.reduce(
     (counts, item) => {
       const status = normalizeStatus(item.status);
       counts.set(status, (counts.get(status) ?? 0) + 1);
@@ -951,11 +1005,7 @@ export default async function QueuePage({
   ].filter((suggestion): suggestion is string => Boolean(suggestion));
 
   const filteredQueueItems = propertyScopedQueueItems.filter((item) => {
-    if (
-      viewFilter !== "history" &&
-      statusFilter === "all" &&
-      isClosedQueueItem(item)
-    ) {
+    if (viewFilter !== "history" && isClosedQueueItem(item)) {
       return false;
     }
 
