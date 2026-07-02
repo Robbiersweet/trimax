@@ -2,6 +2,9 @@ import Link from "next/link";
 import AppShell from "../components/AppShell";
 import Card from "../components/Card";
 import Button from "../components/Button";
+import PriorityPlanner, {
+  type PriorityPlannerItem,
+} from "../components/PriorityPlanner";
 import StatusBadge from "../components/StatusBadge";
 import RoleVisible from "../components/RoleVisible";
 import Toast from "../components/Toast";
@@ -450,6 +453,14 @@ function viewCopy(view: string) {
     };
   }
 
+  if (view === "priority-planner") {
+    return {
+      title: "Priority Planner",
+      detail:
+        "Reorder active queue items for the selected property using manager requested priority.",
+    };
+  }
+
   return {
     title: "Active Work",
     detail:
@@ -681,6 +692,14 @@ export default async function QueuePage({
     propertyFilter === "all"
       ? "all properties"
       : propertyScopedQueueItems[0]?.property ?? "selected property";
+  const propertyPlannerOptions = Array.from(
+    new Map(
+      queueItems
+        .map((item) => item.property?.trim())
+        .filter((property): property is string => Boolean(property))
+        .map((property) => [propertyKey(property), property])
+    ).entries()
+  ).sort((first, second) => first[1].localeCompare(second[1]));
 
   const statuses = Array.from(
     new Set(
@@ -738,6 +757,23 @@ export default async function QueuePage({
         Number.isFinite(item.priority_order)
     )
     .sort((first, second) => compareQueueItems(first, second, "priority"));
+  const priorityPlannerItems = propertyScopedQueueItems
+    .filter((item) => !isClosedQueueItem(item))
+    .sort((first, second) => compareQueueItems(first, second, "priority"))
+    .map(
+      (item): PriorityPlannerItem => ({
+        id: item.id,
+        property: item.property,
+        unit: item.unit,
+        priority_order: item.priority_order,
+        ready_date: item.ready_date,
+        move_out_date: item.move_out_date,
+        status: item.status,
+        paint_type: item.paint_type,
+        notes: item.notes,
+        created_at: item.created_at,
+      })
+    );
   const scheduledTodayItems = propertyScopedQueueItems.filter(
     isScheduledTodayQueueItem
   );
@@ -1008,6 +1044,12 @@ export default async function QueuePage({
       value: "remediation",
       icon: "R",
       count: remediationCount,
+    },
+    {
+      label: "Priority Planner",
+      value: "priority-planner",
+      icon: "P",
+      count: priorityPlannerItems.length,
     },
     {
       label: "All History",
@@ -1510,6 +1552,51 @@ export default async function QueuePage({
             order. Work Scheduled Date = internal Robbie schedule.
           </p>
         </Card>
+
+        {viewFilter === "priority-planner" ? (
+          propertyFilter === "all" ? (
+            <Card className="border-sky-500/25 bg-sky-500/10 p-5">
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-sky-200">
+                Priority Planner
+              </p>
+              <h2 className="mt-2 text-2xl font-black text-white">
+                Choose a property first
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-zinc-300">
+                Manager requested priority is property-scoped. Pick one
+                property so priorities do not mix across different queues.
+              </p>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                {propertyPlannerOptions.length === 0 ? (
+                  <p className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm font-semibold text-zinc-300">
+                    No properties are available yet.
+                  </p>
+                ) : (
+                  propertyPlannerOptions.map(([key, label]) => (
+                    <Link
+                      key={key}
+                      href={queueHref(businessSlug, {
+                        property: key,
+                        view: "priority-planner",
+                        sort: "priority",
+                      })}
+                      className="rounded-2xl border border-sky-300/25 bg-sky-400/10 px-4 py-3 text-sm font-black text-sky-100 transition hover:border-sky-200"
+                    >
+                      {label}
+                    </Link>
+                  ))
+                )}
+              </div>
+            </Card>
+          ) : selectedBusiness?.id ? (
+            <PriorityPlanner
+              businessId={selectedBusiness.id}
+              propertyName={activePropertyLabel}
+              items={priorityPlannerItems}
+            />
+          ) : null
+        ) : null}
 
         <Card className="queue-view-summary border-sky-500/20 bg-sky-500/10 p-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
