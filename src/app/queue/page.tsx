@@ -242,9 +242,7 @@ function isClosedQueueItem(item: QueueItemWithEstimate) {
 
   return (
     status === "completed" ||
-    status === "invoice created" ||
     status === "invoice sent" ||
-    status === "invoiced" ||
     status === "paid" ||
     Boolean(item.completed_date)
   );
