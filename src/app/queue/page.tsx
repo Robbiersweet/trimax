@@ -384,6 +384,12 @@ function derivedQueueStatusFromInvoicePackage({
   return "Invoice Created";
 }
 
+function queueLifecycleDisplayStatus(status: string) {
+  return normalizeStatus(status) === "invoice created"
+    ? "Invoice Ready to Send"
+    : status;
+}
+
 function queueHref(
   businessSlug: string,
   options?: {
@@ -1809,7 +1815,9 @@ export default async function QueuePage({
                         Status
                       </p>
                       <div className="mt-1">
-                        <StatusBadge status={lifecycleStatus} />
+                        <StatusBadge
+                          status={queueLifecycleDisplayStatus(lifecycleStatus)}
+                        />
                       </div>
                     </div>
                     <CompactQueueField

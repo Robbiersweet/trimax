@@ -142,54 +142,90 @@ function findMatchingService(
   serviceItems: ServiceItem[],
   queueItem: QueueItem
 ) {
-  const searchText = normalizeMatchText(
-    [
-      queueItem.paint_type,
-      queueItem.flooring,
-      queueItem.notes,
-    ]
-      .filter(Boolean)
-      .join(" ")
+  const paintTypeText = normalizeMatchText(queueItem.paint_type);
+  const explicitColorChangeText = normalizeMatchText(
+    [queueItem.paint_type, queueItem.notes].filter(Boolean).join(" ")
   );
+  const explicitlyRequestsColorChange =
+    explicitColorChangeText.includes("color change") ||
+    explicitColorChangeText.includes("colour change");
+  const serviceTextFor = (serviceItem: ServiceItem) =>
+    normalizeMatchText(
+      [
+        serviceItem.category,
+        serviceItem.name,
+        serviceItem.description,
+      ]
+        .filter(Boolean)
+        .join(" ")
+    );
+  const serviceIsColorChange = (serviceText: string) =>
+    serviceText.includes("color change") ||
+    serviceText.includes("colour change");
+  const serviceMatches = serviceItems.map((serviceItem) => ({
+    serviceItem,
+    serviceText: serviceTextFor(serviceItem),
+  }));
+  const findNonColorChangeService = (
+    predicate: (serviceText: string) => boolean
+  ) =>
+    serviceMatches.find(
+      ({ serviceText }) =>
+        predicate(serviceText) && !serviceIsColorChange(serviceText)
+    )?.serviceItem ?? null;
 
-  if (!searchText) {
+  if (!paintTypeText && !explicitlyRequestsColorChange) {
     return null;
   }
 
+  if (explicitlyRequestsColorChange) {
+    const colorChangeService = serviceMatches.find(({ serviceText }) =>
+      serviceIsColorChange(serviceText)
+    )?.serviceItem;
+
+    if (colorChangeService) {
+      return colorChangeService;
+    }
+  }
+
+  if (paintTypeText.includes("classic")) {
+    const classicService = findNonColorChangeService((serviceText) =>
+      serviceText.includes("classic")
+    );
+
+    if (classicService) {
+      return classicService;
+    }
+  }
+
+  if (
+    paintTypeText.includes("full repaint") ||
+    (paintTypeText.includes("full") && paintTypeText.includes("repaint"))
+  ) {
+    const fullRepaintService = findNonColorChangeService(
+      (serviceText) =>
+        serviceText.includes("full repaint") ||
+        (serviceText.includes("full") && serviceText.includes("repaint"))
+    );
+
+    if (fullRepaintService) {
+      return fullRepaintService;
+    }
+  }
+
   return (
-    serviceItems.find((serviceItem) => {
-      const serviceText = normalizeMatchText(
-        [
-          serviceItem.category,
-          serviceItem.name,
-          serviceItem.description,
-        ]
-          .filter(Boolean)
-          .join(" ")
-      );
-
-      return (
-        serviceText.includes(searchText) ||
-        searchText.includes(serviceText)
-      );
-    }) ??
-    serviceItems.find((serviceItem) => {
-      const serviceText = normalizeMatchText(
-        [
-          serviceItem.category,
-          serviceItem.name,
-          serviceItem.description,
-        ]
-          .filter(Boolean)
-          .join(" ")
-      );
-
-      return (
-        Boolean(queueItem.paint_type) &&
-        serviceText.includes(normalizeMatchText(queueItem.paint_type))
-      );
-    }) ??
-    null
+    findNonColorChangeService((serviceText) =>
+      serviceText.includes(paintTypeText)
+    ) ??
+    (explicitlyRequestsColorChange
+      ? null
+      : serviceMatches.find(
+          ({ serviceText }) =>
+            Boolean(paintTypeText) &&
+            (serviceText.includes(paintTypeText) ||
+              paintTypeText.includes(serviceText)) &&
+            !serviceIsColorChange(serviceText)
+        )?.serviceItem ?? null)
   );
 }
 

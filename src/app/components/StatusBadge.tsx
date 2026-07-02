@@ -79,6 +79,14 @@ export default function StatusBadge({ status }: StatusBadgeProps) {
       className: "bg-emerald-500/20 text-emerald-300",
       tone: "invoice-sent",
     },
+    "invoice ready to send": {
+      className: "border-amber-300/40 bg-amber-400/20 text-amber-100 shadow-[0_0_22px_rgba(251,191,36,0.18)]",
+      tone: "invoice-ready-to-send",
+    },
+    "send invoice": {
+      className: "border-amber-300/40 bg-amber-400/20 text-amber-100 shadow-[0_0_22px_rgba(251,191,36,0.18)]",
+      tone: "invoice-ready-to-send",
+    },
     paid: {
       className: "bg-emerald-500/20 text-emerald-300",
       tone: "paid",
