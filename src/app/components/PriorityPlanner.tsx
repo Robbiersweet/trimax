@@ -110,6 +110,7 @@ export default function PriorityPlanner({
     text: string;
   } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [draggingRowId, setDraggingRowId] = useState<string | null>(null);
 
   const sortedRows = useMemo(() => [...rows].sort(sortPlannerRows), [rows]);
   const hasInvalidRows = rows.some(
@@ -128,15 +129,39 @@ export default function PriorityPlanner({
     );
   }
 
-  function normalizeVisiblePriorities() {
-    setRows((currentRows) => {
-      const orderedIds = [...currentRows].sort(sortPlannerRows).map((row) => row.id);
-
-      return currentRows.map((row) => ({
+  function renumberRowsByOrder(orderedIds: string[]) {
+    setRows((currentRows) =>
+      currentRows.map((row) => ({
         ...row,
         priorityInput: String(orderedIds.indexOf(row.id) + 1),
-      }));
+      }))
+    );
+  }
+
+  function moveRow(draggedId: string, targetId: string) {
+    if (draggedId === targetId) {
+      return;
+    }
+
+    const orderedIds = sortedRows.map((row) => row.id);
+    const fromIndex = orderedIds.indexOf(draggedId);
+    const toIndex = orderedIds.indexOf(targetId);
+
+    if (fromIndex < 0 || toIndex < 0) {
+      return;
+    }
+
+    const [movedId] = orderedIds.splice(fromIndex, 1);
+    orderedIds.splice(toIndex, 0, movedId);
+    renumberRowsByOrder(orderedIds);
+    setMessage({
+      type: "success",
+      text: "Priority order updated in the planner. Save to update the queue.",
     });
+  }
+
+  function normalizeVisiblePriorities() {
+    renumberRowsByOrder(sortedRows.map((row) => row.id));
     setMessage({
       type: "success",
       text: "Priorities normalized in the planner. Save to update the queue.",
@@ -240,8 +265,8 @@ export default function PriorityPlanner({
             Manager requested order for {propertyName}
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
-            Edit priority numbers directly. This updates the existing Manager
-            Requested Priority field on normal queue items.
+            Drag rows into order or edit priority numbers directly. Save when
+            the visible order is right.
           </p>
         </div>
 
@@ -281,8 +306,9 @@ export default function PriorityPlanner({
         </p>
       ) : (
         <div className="mt-5 grid gap-3">
-          <div className="hidden grid-cols-[6rem_8rem_8rem_8rem_9rem_10rem_minmax(0,1fr)] gap-3 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-zinc-400 xl:grid">
+          <div className="hidden grid-cols-[6rem_4rem_8rem_8rem_8rem_9rem_10rem_minmax(0,1fr)] gap-3 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-zinc-400 xl:grid">
             <span>Priority #</span>
+            <span>Drag</span>
             <span>Unit</span>
             <span>Needed By</span>
             <span>Move Out</span>
@@ -298,10 +324,38 @@ export default function PriorityPlanner({
             return (
               <div
                 key={row.id}
-                className={`grid gap-3 rounded-2xl border px-4 py-4 xl:grid-cols-[6rem_8rem_8rem_8rem_9rem_10rem_minmax(0,1fr)] xl:items-center ${
+                draggable
+                onDragStart={(event) => {
+                  setDraggingRowId(row.id);
+                  event.dataTransfer.effectAllowed = "move";
+                  event.dataTransfer.setData("text/plain", row.id);
+                }}
+                onDragEnd={() => setDraggingRowId(null)}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  event.dataTransfer.dropEffect = "move";
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  const draggedId =
+                    event.dataTransfer.getData("text/plain") || draggingRowId;
+
+                  if (draggedId) {
+                    moveRow(draggedId, row.id);
+                  }
+
+                  setDraggingRowId(null);
+                }}
+                className={`grid cursor-grab gap-3 rounded-2xl border px-4 py-4 active:cursor-grabbing xl:grid-cols-[6rem_4rem_8rem_8rem_8rem_9rem_10rem_minmax(0,1fr)] xl:items-center ${
+                  draggingRowId === row.id
+                    ? "border-sky-300/60 bg-sky-400/15 opacity-70"
+                    : invalid
+                      ? "border-red-400/50 bg-red-500/10"
+                      : "border-white/10 bg-black/20"
+                } ${
                   invalid
-                    ? "border-red-400/50 bg-red-500/10"
-                    : "border-white/10 bg-black/20"
+                    ? ""
+                    : "hover:border-sky-300/35"
                 }`}
               >
                 <label className="grid gap-1">
@@ -318,6 +372,25 @@ export default function PriorityPlanner({
                     aria-label={`Priority for ${row.unit || "queue item"}`}
                   />
                 </label>
+                <div className="flex items-center gap-2 text-zinc-400">
+                  <span className="text-xs font-bold uppercase tracking-[0.12em] text-zinc-500 xl:hidden">
+                    Drag
+                  </span>
+                  <button
+                    type="button"
+                    draggable
+                    onDragStart={(event) => {
+                      setDraggingRowId(row.id);
+                      event.dataTransfer.effectAllowed = "move";
+                      event.dataTransfer.setData("text/plain", row.id);
+                    }}
+                    className="inline-flex h-10 w-10 touch-none items-center justify-center rounded-xl border border-white/10 bg-zinc-950 text-lg font-black text-zinc-300"
+                    aria-label={`Drag ${row.unit || "queue item"}`}
+                    title="Drag to reorder"
+                  >
+                    ::
+                  </button>
+                </div>
                 <PlannerCell label="Unit" value={row.unit || "-"} strong />
                 <PlannerCell label="Needed By" value={row.ready_date || "-"} />
                 <PlannerCell label="Move Out" value={row.move_out_date || "-"} />
