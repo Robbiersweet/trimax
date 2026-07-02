@@ -2,6 +2,7 @@ import Link from "next/link";
 import AppShell from "../components/AppShell";
 import Card from "../components/Card";
 import Button from "../components/Button";
+import InvoiceBatchSendActions from "../components/InvoiceBatchSendActions";
 import InvoiceBulkPaymentActions from "../components/InvoiceBulkPaymentActions";
 import InvoiceFilterLink from "../components/InvoiceFilterLink";
 import InvoiceResultsScroller from "../components/InvoiceResultsScroller";
@@ -16,6 +17,7 @@ type Business = {
 
 type Invoice = {
   id: string;
+  client_id: string | null;
   display_id: string | null;
   customer_name: string | null;
   project_title: string | null;
@@ -53,6 +55,11 @@ type InvoiceActivityLog = {
   entity_id: string | null;
   details: Record<string, unknown> | null;
   created_at: string | null;
+};
+
+type ClientEmailContact = {
+  id: string;
+  email: string | null;
 };
 
 type InvoiceFilterIconName =
@@ -621,13 +628,14 @@ export default async function InvoicesPage({
   let invoices: Invoice[] = [];
   let invoicesWithSplitInfo: InvoiceWithSplitInfo[] = [];
   let invoiceActivityLogs: InvoiceActivityLog[] = [];
+  let clientEmailContacts: ClientEmailContact[] = [];
   let invoiceLoadMessage: string | null = businessLoadMessage;
 
   if (selectedBusiness?.id) {
     const { data, error } = await supabase
       .from("invoices")
       .select(
-        "id, display_id, customer_name, project_title, invoice_amount, amount_paid, deposit_requested_amount, deposit_status, status, issue_date, due_date, notes, updated_at, created_at, split_parent_invoice_id, split_sequence, split_count"
+        "id, client_id, display_id, customer_name, project_title, invoice_amount, amount_paid, deposit_requested_amount, deposit_status, status, issue_date, due_date, notes, updated_at, created_at, split_parent_invoice_id, split_sequence, split_count"
       )
       .eq("business_id", selectedBusiness.id)
       .order("issue_date", { ascending: false, nullsFirst: false })
@@ -639,7 +647,7 @@ export default async function InvoicesPage({
       const { data: fallbackData, error: fallbackError } = await supabase
         .from("invoices")
         .select(
-          "id, display_id, customer_name, project_title, invoice_amount, amount_paid, status, issue_date, due_date, notes, created_at"
+          "id, client_id, display_id, customer_name, project_title, invoice_amount, amount_paid, status, issue_date, due_date, notes, created_at"
         )
         .eq("business_id", selectedBusiness.id)
         .order("issue_date", { ascending: false, nullsFirst: false })
@@ -656,6 +664,7 @@ export default async function InvoicesPage({
           (invoice) => ({
             ...invoice,
             updated_at: null,
+            client_id: invoice.client_id ?? null,
             split_parent_invoice_id: null,
             split_sequence: null,
             split_count: null,
@@ -719,6 +728,28 @@ export default async function InvoicesPage({
       console.warn("Invoice proof activity load failed:", activityError.message);
     } else {
       invoiceActivityLogs = (activityData ?? []) as InvoiceActivityLog[];
+    }
+
+    const clientIds = Array.from(
+      new Set(
+        invoices
+          .map((invoice) => invoice.client_id)
+          .filter((id): id is string => Boolean(id))
+      )
+    );
+
+    if (clientIds.length > 0) {
+      const { data: clientData, error: clientError } = await supabase
+        .from("clients")
+        .select("id, email")
+        .eq("business_id", selectedBusiness.id)
+        .in("id", clientIds);
+
+      if (clientError) {
+        console.warn("Invoice client email lookup failed:", clientError.message);
+      } else {
+        clientEmailContacts = (clientData ?? []) as ClientEmailContact[];
+      }
     }
   }
 
@@ -1270,6 +1301,9 @@ export default async function InvoicesPage({
   const invoicePaymentProofCount = Array.from(invoiceProofById.values()).filter(
     (proof) => proof.paymentProof
   ).length;
+  const clientEmailById = new Map(
+    clientEmailContacts.map((client) => [client.id, client.email])
+  );
   const openInvoicesMissingProof = currentYearOpenInvoicesWithAmounts.filter(
     (invoice) => {
       const proof = invoiceProofById.get(invoice.id);
@@ -2412,6 +2446,27 @@ export default async function InvoicesPage({
             collectionAmountDue: invoice.amountDue,
             status: invoice.status ?? "Draft",
             dueDate: invoice.due_date,
+          }))}
+        />
+
+        <InvoiceBatchSendActions
+          businessSlug={businessSlug}
+          businessName={selectedBusiness?.name ?? "Trimax"}
+          invoices={filteredInvoices.map((invoice) => ({
+            id: invoice.id,
+            displayId: invoice.display_id ?? "Invoice",
+            customerName: invoice.customer_name ?? "Unknown Customer",
+            projectTitle: invoice.project_title ?? "Untitled Invoice",
+            invoiceAmount: parseMoney(invoice.invoice_amount),
+            status: invoice.status ?? "Draft",
+            recipientEmail: invoice.client_id
+              ? clientEmailById.get(invoice.client_id) ?? null
+              : null,
+            splitParentInvoiceId: invoice.split_parent_invoice_id,
+            splitChildrenCount: invoice.split_children_count,
+            splitParentDisplayId: invoice.split_parent_display_id,
+            splitSequence: invoice.split_sequence,
+            splitCount: invoice.split_count,
           }))}
         />
 
