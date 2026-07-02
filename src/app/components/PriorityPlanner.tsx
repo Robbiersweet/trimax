@@ -78,14 +78,6 @@ function normalizePriorityInput(value: string) {
   return parsed;
 }
 
-function notesPreview(value: string | null) {
-  if (!value?.trim()) {
-    return "-";
-  }
-
-  return value.trim().length > 90 ? `${value.trim().slice(0, 90)}...` : value.trim();
-}
-
 export default function PriorityPlanner({
   businessId,
   propertyName,
@@ -262,11 +254,12 @@ export default function PriorityPlanner({
             Priority Planner
           </p>
           <h2 className="mt-2 text-2xl font-black text-white">
-            Manager requested order for {propertyName}
+            Priority Planner
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
-            Drag rows into order or edit priority numbers directly. Save when
-            the visible order is right.
+            Arrange the order work should be completed. {propertyName} is
+            selected. Drag rows or edit priority numbers directly, then save
+            when the visible order is right.
           </p>
         </div>
 
@@ -306,15 +299,15 @@ export default function PriorityPlanner({
         </p>
       ) : (
         <div className="mt-5 grid gap-3">
-          <div className="hidden grid-cols-[6rem_4rem_8rem_8rem_8rem_9rem_10rem_minmax(0,1fr)] gap-3 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-zinc-400 xl:grid">
-            <span>Priority #</span>
+          <div className="hidden grid-cols-[4rem_6rem_8rem_8rem_8rem_9rem_10rem_10rem] gap-3 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-zinc-400 xl:grid">
             <span>Drag</span>
+            <span>Priority #</span>
             <span>Unit</span>
             <span>Needed By</span>
             <span>Move Out</span>
             <span>Status</span>
             <span>Paint Type</span>
-            <span>Notes Preview</span>
+            <span>Current Request</span>
           </div>
 
           {sortedRows.map((row) => {
@@ -346,7 +339,7 @@ export default function PriorityPlanner({
 
                   setDraggingRowId(null);
                 }}
-                className={`grid cursor-grab gap-3 rounded-2xl border px-4 py-4 active:cursor-grabbing xl:grid-cols-[6rem_4rem_8rem_8rem_8rem_9rem_10rem_minmax(0,1fr)] xl:items-center ${
+                className={`grid cursor-grab gap-3 rounded-2xl border px-4 py-4 active:cursor-grabbing xl:grid-cols-[4rem_6rem_8rem_8rem_8rem_9rem_10rem_10rem] xl:items-center ${
                   draggingRowId === row.id
                     ? "border-sky-300/60 bg-sky-400/15 opacity-70"
                     : invalid
@@ -358,20 +351,6 @@ export default function PriorityPlanner({
                     : "hover:border-sky-300/35"
                 }`}
               >
-                <label className="grid gap-1">
-                  <span className="text-xs font-bold uppercase tracking-[0.12em] text-zinc-500 xl:hidden">
-                    Priority #
-                  </span>
-                  <input
-                    value={row.priorityInput}
-                    onChange={(event) =>
-                      updatePriority(row.id, event.target.value)
-                    }
-                    inputMode="numeric"
-                    className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 font-black text-white outline-none focus:border-sky-400"
-                    aria-label={`Priority for ${row.unit || "queue item"}`}
-                  />
-                </label>
                 <div className="flex items-center gap-2 text-zinc-400">
                   <span className="text-xs font-bold uppercase tracking-[0.12em] text-zinc-500 xl:hidden">
                     Drag
@@ -391,12 +370,33 @@ export default function PriorityPlanner({
                     ::
                   </button>
                 </div>
+                <label className="grid gap-1">
+                  <span className="text-xs font-bold uppercase tracking-[0.12em] text-zinc-500 xl:hidden">
+                    Priority #
+                  </span>
+                  <input
+                    value={row.priorityInput}
+                    onChange={(event) =>
+                      updatePriority(row.id, event.target.value)
+                    }
+                    inputMode="numeric"
+                    className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 font-black text-white outline-none focus:border-sky-400"
+                    aria-label={`Priority for ${row.unit || "queue item"}`}
+                  />
+                </label>
                 <PlannerCell label="Unit" value={row.unit || "-"} strong />
                 <PlannerCell label="Needed By" value={row.ready_date || "-"} />
                 <PlannerCell label="Move Out" value={row.move_out_date || "-"} />
                 <PlannerCell label="Status" value={row.status || "-"} />
                 <PlannerCell label="Paint Type" value={row.paint_type || "-"} />
-                <PlannerCell label="Notes Preview" value={notesPreview(row.notes)} />
+                <PlannerCell
+                  label="Current Request"
+                  value={
+                    row.priority_order
+                      ? `Priority #${row.priority_order}`
+                      : "No priority"
+                  }
+                />
               </div>
             );
           })}

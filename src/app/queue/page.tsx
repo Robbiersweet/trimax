@@ -420,6 +420,20 @@ function queueHref(
   return `/queue?${params.toString()}#queue-results`;
 }
 
+function priorityPlannerHref(businessSlug: string, property?: string) {
+  const params = new URLSearchParams({
+    business: businessSlug,
+    view: "priority-planner",
+    sort: "priority",
+  });
+
+  if (property && property !== "all") {
+    params.set("property", property);
+  }
+
+  return `/queue?${params.toString()}`;
+}
+
 function viewCopy(view: string) {
   if (view === "ready-soon") {
     return {
@@ -1046,18 +1060,13 @@ export default async function QueuePage({
       count: remediationCount,
     },
     {
-      label: "Priority Planner",
-      value: "priority-planner",
-      icon: "P",
-      count: priorityPlannerItems.length,
-    },
-    {
       label: "All History",
       value: "history",
       icon: "H",
       count: propertyScopedQueueItems.length,
     },
   ];
+  const isPriorityPlannerView = viewFilter === "priority-planner";
 
   return (
     <AppShell>
@@ -1089,12 +1098,79 @@ export default async function QueuePage({
             businessSlug={businessSlug}
             allow={["owner", "admin", "property_manager"]}
           >
-            <Link href={`/new-request${businessQuery}`}>
-              <Button>+ New Queue Item</Button>
-            </Link>
+            <div className="flex flex-wrap gap-3">
+              <Link href={`/new-request${businessQuery}`}>
+                <Button>+ New Queue Item</Button>
+              </Link>
+              {isPriorityPlannerView ? (
+                <Link href={`/queue${businessQuery}`}>
+                  <Button variant="secondary">Back to Queue</Button>
+                </Link>
+              ) : (
+                <Link href={priorityPlannerHref(businessSlug, propertyFilter)}>
+                  <Button variant="secondary">Priority Planner</Button>
+                </Link>
+              )}
+            </div>
           </RoleVisible>
         </div>
 
+        {isPriorityPlannerView ? (
+          <>
+            {queueLoadMessage ? (
+              <Card className="app-notice-card border-amber-500/40 bg-amber-500/10">
+                <p className="text-sm font-semibold text-amber-200">
+                  Queue notice
+                </p>
+
+                <p className="mt-2 text-sm leading-6 text-amber-100/90">
+                  {queueLoadMessage}
+                </p>
+              </Card>
+            ) : null}
+
+            {propertyFilter === "all" ? (
+              <Card className="border-sky-500/25 bg-sky-500/10 p-5">
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-sky-200">
+                  Priority Planner
+                </p>
+                <h2 className="mt-2 text-2xl font-black text-white">
+                  Choose a property first
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-zinc-300">
+                  Arrange the order work should be completed. Manager requested
+                  priority is property-scoped, so pick one property before
+                  planning.
+                </p>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {propertyPlannerOptions.length === 0 ? (
+                    <p className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm font-semibold text-zinc-300">
+                      No properties are available yet.
+                    </p>
+                  ) : (
+                    propertyPlannerOptions.map(([key, label]) => (
+                      <Link
+                        key={key}
+                        href={priorityPlannerHref(businessSlug, key)}
+                        className="rounded-2xl border border-sky-300/25 bg-sky-400/10 px-4 py-3 text-sm font-black text-sky-100 transition hover:border-sky-200"
+                      >
+                        {label}
+                      </Link>
+                    ))
+                  )}
+                </div>
+              </Card>
+            ) : selectedBusiness?.id ? (
+              <PriorityPlanner
+                businessId={selectedBusiness.id}
+                propertyName={activePropertyLabel}
+                items={priorityPlannerItems}
+              />
+            ) : null}
+          </>
+        ) : (
+          <>
         <Card className="queue-compass border-cyan-500/20 bg-zinc-950/70 p-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
@@ -1553,51 +1629,6 @@ export default async function QueuePage({
           </p>
         </Card>
 
-        {viewFilter === "priority-planner" ? (
-          propertyFilter === "all" ? (
-            <Card className="border-sky-500/25 bg-sky-500/10 p-5">
-              <p className="text-xs font-black uppercase tracking-[0.22em] text-sky-200">
-                Priority Planner
-              </p>
-              <h2 className="mt-2 text-2xl font-black text-white">
-                Choose a property first
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-zinc-300">
-                Manager requested priority is property-scoped. Pick one
-                property so priorities do not mix across different queues.
-              </p>
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                {propertyPlannerOptions.length === 0 ? (
-                  <p className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm font-semibold text-zinc-300">
-                    No properties are available yet.
-                  </p>
-                ) : (
-                  propertyPlannerOptions.map(([key, label]) => (
-                    <Link
-                      key={key}
-                      href={queueHref(businessSlug, {
-                        property: key,
-                        view: "priority-planner",
-                        sort: "priority",
-                      })}
-                      className="rounded-2xl border border-sky-300/25 bg-sky-400/10 px-4 py-3 text-sm font-black text-sky-100 transition hover:border-sky-200"
-                    >
-                      {label}
-                    </Link>
-                  ))
-                )}
-              </div>
-            </Card>
-          ) : selectedBusiness?.id ? (
-            <PriorityPlanner
-              businessId={selectedBusiness.id}
-              propertyName={activePropertyLabel}
-              items={priorityPlannerItems}
-            />
-          ) : null
-        ) : null}
-
         <Card className="queue-view-summary border-sky-500/20 bg-sky-500/10 p-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -2006,6 +2037,8 @@ export default async function QueuePage({
             })
           )}
         </div>
+          </>
+        )}
       </div>
     </AppShell>
   );
