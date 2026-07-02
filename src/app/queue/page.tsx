@@ -65,6 +65,9 @@ type LinkedInvoice = {
   status: string | null;
   amount_paid: string | number | null;
   invoice_amount: string | number | null;
+  split_parent_invoice_id: string | null;
+  split_sequence: number | null;
+  split_count: number | null;
 };
 
 type InvoiceSendProof = {
@@ -332,24 +335,49 @@ function isInvoicePaid(invoice: LinkedInvoice | null | undefined) {
   return status === "paid" || (invoiceAmount > 0 && amountPaid >= invoiceAmount);
 }
 
-function derivedQueueStatusFromInvoice({
+function invoiceWasSent(
+  invoice: LinkedInvoice | null | undefined,
+  invoiceIdsWithSendProof: Set<string>
+) {
+  if (!invoice) {
+    return false;
+  }
+
+  return (
+    invoiceIdsWithSendProof.has(invoice.id) ||
+    ["sent", "paid"].includes(normalizeStatus(invoice.status))
+  );
+}
+
+function derivedQueueStatusFromInvoicePackage({
   invoice,
-  invoiceWasSent,
-  invoiceIsPaid,
+  splitChildren,
+  invoiceIdsWithSendProof,
 }: {
   invoice: LinkedInvoice | null | undefined;
-  invoiceWasSent: boolean;
-  invoiceIsPaid: boolean;
+  splitChildren: LinkedInvoice[];
+  invoiceIdsWithSendProof: Set<string>;
 }) {
   if (!invoice) {
     return null;
   }
 
-  if (invoiceIsPaid) {
+  const hasSplitChildren = splitChildren.length > 0;
+  const invoicePackageWasSent =
+    invoiceWasSent(invoice, invoiceIdsWithSendProof) ||
+    (hasSplitChildren &&
+      splitChildren.every((child) =>
+        invoiceWasSent(child, invoiceIdsWithSendProof)
+      ));
+  const invoicePackageIsPaid =
+    isInvoicePaid(invoice) ||
+    (hasSplitChildren && splitChildren.every((child) => isInvoicePaid(child)));
+
+  if (invoicePackageIsPaid) {
     return "Paid";
   }
 
-  if (invoiceWasSent) {
+  if (invoicePackageWasSent) {
     return "Invoice Sent";
   }
 
@@ -590,6 +618,7 @@ export default async function QueuePage({
 
   let linkedEstimates: LinkedEstimate[] = [];
   let linkedInvoices: LinkedInvoice[] = [];
+  let linkedSplitChildInvoices: LinkedInvoice[] = [];
   let invoiceSendProofs: InvoiceSendProof[] = [];
 
   if (linkedEstimateIds.length > 0) {
@@ -602,7 +631,7 @@ export default async function QueuePage({
 
     const { data: invoiceData, error: invoiceError } = await supabase
       .from("invoices")
-      .select("id, estimate_id, display_id, status, amount_paid, invoice_amount")
+      .select("id, estimate_id, display_id, status, amount_paid, invoice_amount, split_parent_invoice_id, split_sequence, split_count")
       .in("estimate_id", linkedEstimateIds)
       .order("created_at", { ascending: false });
 
@@ -615,12 +644,36 @@ export default async function QueuePage({
     const linkedInvoiceIds = linkedInvoices.map((invoice) => invoice.id);
 
     if (linkedInvoiceIds.length > 0) {
+      const { data: splitChildData, error: splitChildError } = await supabase
+        .from("invoices")
+        .select("id, estimate_id, display_id, status, amount_paid, invoice_amount, split_parent_invoice_id, split_sequence, split_count")
+        .in("split_parent_invoice_id", linkedInvoiceIds)
+        .order("split_sequence", { ascending: true });
+
+      if (splitChildError) {
+        console.warn(
+          "Queue split child invoices could not be loaded:",
+          splitChildError.message
+        );
+      } else {
+        linkedSplitChildInvoices = (splitChildData ?? []) as LinkedInvoice[];
+      }
+    }
+
+    const proofInvoiceIds = Array.from(
+      new Set([
+        ...linkedInvoiceIds,
+        ...linkedSplitChildInvoices.map((invoice) => invoice.id),
+      ])
+    );
+
+    if (proofInvoiceIds.length > 0) {
       const { data: sendProofData, error: sendProofError } = await supabase
         .from("activity_logs")
         .select("entity_id")
         .eq("business_id", selectedBusiness?.id)
         .eq("entity_type", "invoice")
-        .in("entity_id", linkedInvoiceIds)
+        .in("entity_id", proofInvoiceIds)
         .in("action", [
           "invoice.email_sent",
           "invoice.split_group_email_sent",
@@ -641,11 +694,23 @@ export default async function QueuePage({
     linkedEstimates.map((estimate) => [estimate.id, estimate])
   );
   const invoiceByEstimateId = new Map<string, LinkedInvoice>();
+  const splitChildrenByParentInvoiceId = new Map<string, LinkedInvoice[]>();
 
   linkedInvoices.forEach((invoice) => {
     if (invoice.estimate_id && !invoiceByEstimateId.has(invoice.estimate_id)) {
       invoiceByEstimateId.set(invoice.estimate_id, invoice);
     }
+  });
+
+  linkedSplitChildInvoices.forEach((invoice) => {
+    if (!invoice.split_parent_invoice_id) {
+      return;
+    }
+
+    const children =
+      splitChildrenByParentInvoiceId.get(invoice.split_parent_invoice_id) ?? [];
+    children.push(invoice);
+    splitChildrenByParentInvoiceId.set(invoice.split_parent_invoice_id, children);
   });
 
   const invoiceIdsWithSendProof = new Set(
@@ -657,15 +722,13 @@ export default async function QueuePage({
     const linkedInvoice = item.linked_estimate_id
       ? invoiceByEstimateId.get(item.linked_estimate_id) ?? null
       : null;
-    const invoiceWasSent = linkedInvoice
-      ? invoiceIdsWithSendProof.has(linkedInvoice.id) ||
-        ["sent", "paid"].includes(normalizeStatus(linkedInvoice.status))
-      : false;
-    const invoiceIsPaid = isInvoicePaid(linkedInvoice);
-    const derivedStatus = derivedQueueStatusFromInvoice({
+    const splitChildren = linkedInvoice
+      ? splitChildrenByParentInvoiceId.get(linkedInvoice.id) ?? []
+      : [];
+    const derivedStatus = derivedQueueStatusFromInvoicePackage({
       invoice: linkedInvoice,
-      invoiceWasSent,
-      invoiceIsPaid,
+      splitChildren,
+      invoiceIdsWithSendProof,
     });
 
     return derivedStatus
@@ -1690,21 +1753,19 @@ export default async function QueuePage({
               const linkedInvoice = linkedEstimate?.id
                 ? invoiceByEstimateId.get(linkedEstimate.id) ?? null
                 : null;
-              const invoiceWasSent = linkedInvoice
-                ? invoiceIdsWithSendProof.has(linkedInvoice.id) ||
-                  ["sent", "paid"].includes(normalizeStatus(linkedInvoice.status))
-                : false;
-              const invoiceIsPaid = isInvoicePaid(linkedInvoice);
               const tbdDecisions = queueTbdDecisions(item);
-              const lifecycleStatus = invoiceIsPaid
-                ? "Paid"
-                : invoiceWasSent
-                  ? "Invoice Sent"
-                  : linkedInvoice
-                    ? "Invoice Created"
-                    : linkedEstimate
-                      ? "Estimate Created"
-                      : item.status || "Pending Estimate";
+              const splitChildren = linkedInvoice
+                ? splitChildrenByParentInvoiceId.get(linkedInvoice.id) ?? []
+                : [];
+              const lifecycleStatus =
+                derivedQueueStatusFromInvoicePackage({
+                  invoice: linkedInvoice,
+                  splitChildren,
+                  invoiceIdsWithSendProof,
+                }) ??
+                (linkedEstimate
+                  ? "Estimate Created"
+                  : item.status || "Pending Estimate");
 
               return (
                 <Card key={item.id} className="queue-list-card queue-dispatch-card p-4">
