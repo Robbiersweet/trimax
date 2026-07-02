@@ -386,7 +386,7 @@ function derivedQueueStatusFromInvoicePackage({
 
 function queueLifecycleDisplayStatus(status: string) {
   return normalizeStatus(status) === "invoice created"
-    ? "Invoice Ready to Send"
+    ? "Ready to Send"
     : status;
 }
 

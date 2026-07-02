@@ -80,11 +80,15 @@ export default function StatusBadge({ status }: StatusBadgeProps) {
       tone: "invoice-sent",
     },
     "invoice ready to send": {
-      className: "border-amber-300/40 bg-amber-400/20 text-amber-100 shadow-[0_0_22px_rgba(251,191,36,0.18)]",
+      className: "border-orange-300/55 bg-orange-500/25 text-orange-100 shadow-[0_0_24px_rgba(249,115,22,0.24)]",
       tone: "invoice-ready-to-send",
     },
     "send invoice": {
-      className: "border-amber-300/40 bg-amber-400/20 text-amber-100 shadow-[0_0_22px_rgba(251,191,36,0.18)]",
+      className: "border-orange-300/55 bg-orange-500/25 text-orange-100 shadow-[0_0_24px_rgba(249,115,22,0.24)]",
+      tone: "invoice-ready-to-send",
+    },
+    "ready to send": {
+      className: "border-orange-300/55 bg-orange-500/25 text-orange-100 shadow-[0_0_24px_rgba(249,115,22,0.24)]",
       tone: "invoice-ready-to-send",
     },
     paid: {
