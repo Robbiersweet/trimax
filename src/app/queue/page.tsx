@@ -1897,6 +1897,15 @@ export default async function QueuePage({
                             </p>
                           ) : null}
 
+                          <div className="mt-3 flex flex-wrap gap-2 text-sm font-bold">
+                            <span className="max-w-full rounded-full border border-violet-300/20 bg-violet-400/10 px-3 py-1.5 text-violet-100">
+                              Paint: {item.paint_type || "Not set"}
+                            </span>
+                            <span className="max-w-full rounded-full border border-lime-300/20 bg-lime-400/10 px-3 py-1.5 text-lime-100">
+                              Flooring: {tbdDisplay(item.flooring)}
+                            </span>
+                          </div>
+
                           <div className="queue-next-move mt-4 inline-flex items-center gap-2 rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1.5 text-sm font-bold text-sky-100">
                             <span className="queue-next-move-dot" aria-hidden="true" />
                             {nextMove}
