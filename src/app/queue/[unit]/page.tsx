@@ -218,6 +218,47 @@ function formatManagerUpdateTime(value: string | null | undefined) {
   return formatted || "Not recorded";
 }
 
+function queueLifecycleDisplayStatus(status: string | null | undefined) {
+  const normalized = (status || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, " ");
+
+  if (normalized === "invoice created" || normalized === "invoiced") {
+    return "Ready to Send";
+  }
+
+  if (!normalized) {
+    return "Pending Estimate";
+  }
+
+  return status || "Pending Estimate";
+}
+
+function linkedInvoiceLifecycleStatus({
+  linkedInvoice,
+  invoiceWasSent,
+  invoiceIsPaid,
+}: {
+  linkedInvoice: LinkedInvoice | null;
+  invoiceWasSent: boolean;
+  invoiceIsPaid: boolean;
+}) {
+  if (invoiceIsPaid) {
+    return "Paid";
+  }
+
+  if (invoiceWasSent) {
+    return "Invoice Sent";
+  }
+
+  if (linkedInvoice) {
+    return "Ready to Send";
+  }
+
+  return null;
+}
+
 function detailValue(
   details: Record<string, unknown> | null | undefined,
   key: string
@@ -773,13 +814,20 @@ export default async function QueueDetailPage({
             };
   const managerLifecycleStatus = item.completed_date
     ? "Completed"
+    : invoiceIsPaid
+      ? "Paid"
     : invoiceWasSent
       ? "Invoice Sent"
       : linkedInvoice
-        ? "Invoice Created"
+        ? "Ready to Send"
         : linkedEstimate
           ? "Estimate Created"
-          : item.status || "Pending Estimate";
+          : queueLifecycleDisplayStatus(item.status);
+  const linkedInvoiceStatus = linkedInvoiceLifecycleStatus({
+    linkedInvoice,
+    invoiceWasSent,
+    invoiceIsPaid,
+  });
   const deleteBlockReasons = [
     item.linked_estimate_id || queueLinkedEstimateCount > 0
       ? "estimate"
@@ -833,19 +881,13 @@ export default async function QueueDetailPage({
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <StatusBadge status={item.status ?? "Pending Estimate"} />
+            <StatusBadge status={queueLifecycleDisplayStatus(item.status)} />
             <RoleVisible
               businessSlug={businessSlug}
               allow={["owner", "admin", "accountant", "property_manager"]}
             >
-              {linkedInvoice ? (
-                <StatusBadge
-                  status={
-                    invoiceWasSent
-                      ? "Invoice Sent"
-                      : linkedInvoice.status ?? "Invoiced"
-                  }
-                />
+              {linkedInvoiceStatus ? (
+                <StatusBadge status={linkedInvoiceStatus} />
               ) : null}
             </RoleVisible>
           </div>
@@ -1098,7 +1140,9 @@ export default async function QueueDetailPage({
                     <p className="text-xl font-semibold">
                       {linkedInvoice.display_id ?? "Invoice"}
                     </p>
-                    <StatusBadge status={linkedInvoice.status ?? "Invoiced"} />
+                    <StatusBadge
+                      status={linkedInvoiceStatus ?? "Ready to Send"}
+                    />
                   </div>
 
                   <p className="mt-1 text-sm text-zinc-400">

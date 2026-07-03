@@ -101,6 +101,12 @@ function propertyKey(value: string | null | undefined) {
 }
 
 function statusLabel(value: string) {
+  const normalized = normalizeStatus(value);
+
+  if (normalized === "invoice created" || normalized === "invoiced") {
+    return "Ready to Send";
+  }
+
   return value
     .split(" ")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
@@ -194,6 +200,7 @@ function statusSortValue(value: string | null) {
     "on hold": 4,
     completed: 5,
     "invoice created": 6,
+    "ready to send": 6,
     invoiced: 6,
     "invoice sent": 7,
     paid: 8,

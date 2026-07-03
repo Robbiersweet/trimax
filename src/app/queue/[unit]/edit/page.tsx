@@ -34,11 +34,10 @@ import { canonicalApartmentUnitLabel } from "../../../utils/unitLabels";
 const statusOptions = [
   "Pending Estimate",
   "Estimate Created",
-  "Scheduled",
-  "Completed",
-  "Invoiced",
+  "Ready to Send",
+  "Invoice Sent",
   "Paid",
-  "On Hold",
+  "Completed",
 ];
 
 const priorityOptions = ["Low", "Normal", "High", "Urgent"];
