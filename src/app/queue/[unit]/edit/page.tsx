@@ -19,11 +19,16 @@ import {
   queuePercentOptions,
   queueProgressStages,
 } from "../../../lib/queueTiming";
+import {
+  normalizeWorkspaceRole,
+  type WorkspaceRole,
+} from "../../../lib/rolePermissions";
 import { supabase } from "../../../lib/supabase";
 import {
   TBD_VALUE,
   normalizeTbdValue,
 } from "../../../lib/tbd";
+import { loadWorkspaceAccess } from "../../../lib/workspaceAccess";
 import { canonicalApartmentUnitLabel } from "../../../utils/unitLabels";
 
 const statusOptions = [
@@ -237,6 +242,8 @@ export default function EditQueueItemPage() {
   const [notes, setNotes] = useState("");
   const [originalQueueItem, setOriginalQueueItem] =
     useState<QueueEditSnapshot | null>(null);
+  const [workspaceRole, setWorkspaceRole] =
+    useState<WorkspaceRole | null>(null);
 
   const [toast, setToast] = useState<{
     type: "success" | "error";
@@ -245,6 +252,14 @@ export default function EditQueueItemPage() {
 
   useEffect(() => {
     async function loadQueueItem() {
+      const access = await loadWorkspaceAccess();
+      const workspace = access.find(
+        (item) => item.businessSlug === businessSlug
+      );
+      setWorkspaceRole(
+        normalizeWorkspaceRole(workspace?.role ?? "owner")
+      );
+
       const { data: businessData, error: businessError } = await supabase
         .from("businesses")
         .select("id")
@@ -332,6 +347,11 @@ export default function EditQueueItemPage() {
     loadQueueItem();
   }, [businessSlug, queueItemId]);
 
+  const canEditOwnerFields =
+    workspaceRole === "owner" || workspaceRole === "admin";
+  const canEditManagerFields =
+    canEditOwnerFields || workspaceRole === "property_manager";
+
   const handleSave = async () => {
     setToast(null);
 
@@ -352,6 +372,22 @@ export default function EditQueueItemPage() {
       setToast({
         type: "error",
         message: "Workspace is still loading. Try again in a moment.",
+      });
+      return;
+    }
+
+    if (!workspaceRole) {
+      setToast({
+        type: "error",
+        message: "Your workspace role is still loading. Try again in a moment.",
+      });
+      return;
+    }
+
+    if (!canEditManagerFields) {
+      setToast({
+        type: "error",
+        message: "Your role can view this queue item but cannot edit it.",
       });
       return;
     }
@@ -378,7 +414,9 @@ export default function EditQueueItemPage() {
       Boolean(originalQueueItem) &&
       (originalQueueItem?.priority_order ?? null) !== normalizedPriorityOrder;
     const normalizedPercentComplete =
-      normalizePercentComplete(percentComplete);
+      canEditOwnerFields
+        ? normalizePercentComplete(percentComplete)
+        : originalQueueItem?.percent_complete ?? null;
 
     if (normalizedPercentComplete === "invalid") {
       setToast({
@@ -392,13 +430,34 @@ export default function EditQueueItemPage() {
       Boolean(originalQueueItem) &&
       (originalQueueItem?.manager_update ?? null) !==
         (managerUpdate.trim() || null);
+    const savedStatus = canEditOwnerFields
+      ? status
+      : originalQueueItem?.status ?? status;
+    const savedPriority = canEditOwnerFields
+      ? priority
+      : originalQueueItem?.priority ?? priority;
+    const savedScheduledDate = canEditOwnerFields
+      ? scheduledDate || null
+      : originalQueueItem?.scheduled_date ?? null;
+    const savedCompletedDate = canEditOwnerFields
+      ? completedDate || null
+      : originalQueueItem?.completed_date ?? null;
+    const savedProjectedCompletionDate = canEditOwnerFields
+      ? projectedCompletionDate || null
+      : originalQueueItem?.projected_completion_date ?? null;
+    const savedProgressStage = canEditOwnerFields
+      ? progressStage || null
+      : originalQueueItem?.progress_stage ?? null;
+    const savedDelayReason = canEditOwnerFields
+      ? delayReason || null
+      : originalQueueItem?.delay_reason ?? null;
     const updatePayload = {
       property,
       unit: shouldCanonicalizeUnit(property, businessSlug)
         ? canonicalApartmentUnitLabel(unit)
         : unit,
-      status,
-      priority,
+      status: savedStatus,
+      priority: savedPriority,
       priority_order: normalizedPriorityOrder,
       priority_updated_at: priorityOrderChanged ? now : undefined,
       priority_updated_by: priorityOrderChanged ? user?.id ?? null : undefined,
@@ -418,12 +477,12 @@ export default function EditQueueItemPage() {
       ready_date: readyDate || null,
       deadline_updated_at: deadlineChanged ? now : undefined,
       deadline_updated_by: deadlineChanged ? user?.id ?? null : undefined,
-      scheduled_date: scheduledDate || null,
-      completed_date: completedDate || null,
-      projected_completion_date: projectedCompletionDate || null,
-      progress_stage: progressStage || null,
+      scheduled_date: savedScheduledDate,
+      completed_date: savedCompletedDate,
+      projected_completion_date: savedProjectedCompletionDate,
+      progress_stage: savedProgressStage,
       percent_complete: normalizedPercentComplete,
-      delay_reason: delayReason || null,
+      delay_reason: savedDelayReason,
       manager_update: managerUpdate.trim() || null,
       manager_update_at: managerUpdateChanged ? now : undefined,
       manager_update_by: managerUpdateChanged ? user?.id ?? null : undefined,
@@ -577,7 +636,7 @@ export default function EditQueueItemPage() {
         });
       }
 
-      if (privateInternalNote.trim()) {
+      if (canEditOwnerFields && privateInternalNote.trim()) {
         const { error: noteError } = await supabase
           .from("internal_notes")
           .insert({
@@ -701,12 +760,14 @@ export default function EditQueueItemPage() {
                   helperText="Which unit should Robbie complete first? Use 1, 2, 3 when submitting multiple units."
                 />
 
-                <InputField
-                  label="Priority"
-                  value={priority}
-                  onChange={setPriority}
-                  options={priorityOptions}
-                />
+                {canEditOwnerFields ? (
+                  <InputField
+                    label="Priority"
+                    value={priority}
+                    onChange={setPriority}
+                    options={priorityOptions}
+                  />
+                ) : null}
 
                 <InputField
                   label="Paint Type"
@@ -763,91 +824,91 @@ export default function EditQueueItemPage() {
                   className="app-form-input min-h-36 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
                 />
               </div>
+
+              <div>
+                <label className="app-form-label mb-2 block text-sm text-zinc-400">
+                  Property / Manager Update
+                </label>
+                <textarea
+                  value={managerUpdate}
+                  onChange={(event) => setManagerUpdate(event.target.value)}
+                  placeholder="Optional update visible to the property team."
+                  className="app-form-input min-h-28 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition placeholder:text-zinc-500 focus:border-orange-500"
+                />
+                <p className="app-helper-text mt-2 text-xs leading-5 text-zinc-500">
+                  Managers can use this for property-facing updates. Owner/admin can also update it.
+                </p>
+              </div>
             </FormSection>
 
-            <FormSection
-              eyebrow="Operations"
-              title="Robbie's internal work plan"
-              detail="Work Scheduled Date is the internal Robbie schedule, not the manager's Needed By Date."
-            >
-              <div className="rounded-2xl border border-sky-500/25 bg-sky-500/10 px-4 py-3 text-sm leading-6 text-sky-100">
-                <p className="font-black uppercase tracking-[0.18em] text-sky-200">
-                  Field guide
-                </p>
-                <p className="mt-2">
-                  Move Out Date = tenant leaves. Needed By = property
-                  deadline. Work Scheduled Date = internal Robbie schedule.
-                </p>
-              </div>
-
-              <div className="grid gap-5 md:grid-cols-2">
-                <InputField
-                  label="Status"
-                  value={status}
-                  onChange={setStatus}
-                  options={statusOptions}
-                />
-
-                <InputField
-                  label="Work Scheduled Date"
-                  value={scheduledDate}
-                  onChange={setScheduledDate}
-                  type="date"
-                  helperText="Use this only when the work is on Robbie's calendar."
-                />
-
-                <InputField
-                  label="Robbie ETA / Projected Completion Date"
-                  value={projectedCompletionDate}
-                  onChange={setProjectedCompletionDate}
-                  type="date"
-                  helperText="Robbie's current expected finish date. This does not change the property deadline."
-                />
-
-                <InputField
-                  label="Progress"
-                  value={progressStage}
-                  onChange={setProgressStage}
-                  options={queueProgressStages}
-                />
-
-                <InputField
-                  label="Percent Complete"
-                  value={percentComplete}
-                  onChange={setPercentComplete}
-                  options={queuePercentOptions}
-                  type="number"
-                />
-
-                <InputField
-                  label="Delay Reason"
-                  value={delayReason}
-                  onChange={setDelayReason}
-                  options={queueDelayReasons}
-                />
-
-                <InputField
-                  label="Completion Date"
-                  value={completedDate}
-                  onChange={setCompletedDate}
-                  type="date"
-                />
-              </div>
-
-              <div className="grid gap-5">
-                <div>
-                  <label className="app-form-label mb-2 block text-sm text-zinc-400">
-                    Manager-visible Update
-                  </label>
-                  <textarea
-                    value={managerUpdate}
-                    onChange={(event) => setManagerUpdate(event.target.value)}
-                    placeholder="Example: Extra wall repair added time. Projected completion moved to July 7."
-                    className="app-form-input min-h-28 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition placeholder:text-zinc-500 focus:border-orange-500"
-                  />
-                  <p className="app-helper-text mt-2 text-xs leading-5 text-zinc-500">
-                    Property managers can see this update.
+            {canEditOwnerFields ? (
+              <FormSection
+                eyebrow="Operations"
+                title="Robbie's internal work plan"
+                detail="Work Scheduled Date is the internal Robbie schedule, not the manager's Needed By Date."
+              >
+                <div className="rounded-2xl border border-sky-500/25 bg-sky-500/10 px-4 py-3 text-sm leading-6 text-sky-100">
+                  <p className="font-black uppercase tracking-[0.18em] text-sky-200">
+                    Field guide
                   </p>
+                  <p className="mt-2">
+                    Move Out Date = tenant leaves. Needed By = property
+                    deadline. Work Scheduled Date = internal Robbie schedule.
+                  </p>
+                </div>
+
+                <div className="grid gap-5 md:grid-cols-2">
+                  <InputField
+                    label="Status"
+                    value={status}
+                    onChange={setStatus}
+                    options={statusOptions}
+                  />
+
+                  <InputField
+                    label="Work Scheduled Date"
+                    value={scheduledDate}
+                    onChange={setScheduledDate}
+                    type="date"
+                    helperText="Use this only when the work is on Robbie's calendar."
+                  />
+
+                  <InputField
+                    label="Robbie ETA / Projected Completion Date"
+                    value={projectedCompletionDate}
+                    onChange={setProjectedCompletionDate}
+                    type="date"
+                    helperText="Robbie's current expected finish date. This does not change the property deadline."
+                  />
+
+                  <InputField
+                    label="Progress"
+                    value={progressStage}
+                    onChange={setProgressStage}
+                    options={queueProgressStages}
+                  />
+
+                  <InputField
+                    label="Percent Complete"
+                    value={percentComplete}
+                    onChange={setPercentComplete}
+                    options={queuePercentOptions}
+                    type="number"
+                  />
+
+                  <InputField
+                    label="Delay Reason"
+                    value={delayReason}
+                    onChange={setDelayReason}
+                    options={queueDelayReasons}
+                  />
+
+                  <InputField
+                    label="Completion Date"
+                    value={completedDate}
+                    onChange={setCompletedDate}
+                    type="date"
+                  />
                 </div>
 
                 <div>
@@ -866,10 +927,11 @@ export default function EditQueueItemPage() {
                     Managers do not see private internal notes.
                   </p>
                 </div>
-              </div>
-            </FormSection>
+              </FormSection>
+            ) : null}
 
-            <details className="rounded-2xl border border-zinc-800 bg-zinc-950/45 p-4">
+            {canEditOwnerFields ? (
+              <details className="rounded-2xl border border-zinc-800 bg-zinc-950/45 p-4">
               <summary className="cursor-pointer text-sm font-black uppercase tracking-[0.2em] text-zinc-200">
                 Advanced
               </summary>
@@ -989,7 +1051,8 @@ export default function EditQueueItemPage() {
                   </label>
                 ) : null}
               </div>
-            </details>
+              </details>
+            ) : null}
 
             <Button onClick={handleSave}>
               Save Changes

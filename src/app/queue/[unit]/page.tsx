@@ -771,6 +771,15 @@ export default async function QueueDetailPage({
                 href: `/activity?business=${businessSlug}&type=queue`,
                 action: "View Proof",
             };
+  const managerLifecycleStatus = item.completed_date
+    ? "Completed"
+    : invoiceWasSent
+      ? "Invoice Sent"
+      : linkedInvoice
+        ? "Invoice Created"
+        : linkedEstimate
+          ? "Estimate Created"
+          : item.status || "Pending Estimate";
   const deleteBlockReasons = [
     item.linked_estimate_id || queueLinkedEstimateCount > 0
       ? "estimate"
@@ -844,7 +853,7 @@ export default async function QueueDetailPage({
 
         <RoleVisible
           businessSlug={businessSlug}
-          allow={["owner", "admin", "accountant", "property_manager"]}
+          allow={["owner", "admin", "accountant"]}
         >
           <QueueWorkflowIntelligence
             linkedEstimate={linkedEstimate}
@@ -861,6 +870,28 @@ export default async function QueueDetailPage({
             logs={queueActivityLogs}
             changeCount={queueVolatilityScore}
           />
+        </RoleVisible>
+
+        <RoleVisible businessSlug={businessSlug} allow={["property_manager"]}>
+          <Card className="border-sky-500/25 bg-sky-500/10">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.3em] text-sky-200">
+                  Queue Status
+                </p>
+                <div className="mt-3">
+                  <StatusBadge status={managerLifecycleStatus} />
+                </div>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-sky-50/80">
+                  This shows where the request is in the workflow without
+                  exposing internal planning or financial controls.
+                </p>
+              </div>
+              <Link href={`/queue/${item.id}/edit?business=${businessSlug}`}>
+                <Button variant="secondary">Edit Queue Item</Button>
+              </Link>
+            </div>
+          </Card>
         </RoleVisible>
 
         {tbdDecisions.length > 0 ? (
@@ -906,65 +937,70 @@ export default async function QueueDetailPage({
           />
         </RoleVisible>
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <AttentionCard
-            tone={readiness.tone}
-            label="Readiness"
-            value={readiness.label}
-            detail={readiness.detail}
-          />
+        <RoleVisible
+          businessSlug={businessSlug}
+          allow={["owner", "admin", "accountant", "technician"]}
+        >
+          <div className="grid gap-4 md:grid-cols-3">
+            <AttentionCard
+              tone={readiness.tone}
+              label="Readiness"
+              value={readiness.label}
+              detail={readiness.detail}
+            />
 
-          <AttentionCard
-            tone={timingTone}
-            label="Timing"
-            value={timingBadge}
-            detail={
-              item.projected_completion_date
-                ? `Robbie ETA: ${item.projected_completion_date}`
-                : "No Robbie ETA set."
-            }
-          />
+            <AttentionCard
+              tone={timingTone}
+              label="Timing"
+              value={timingBadge}
+              detail={
+                item.projected_completion_date
+                  ? `Robbie ETA: ${item.projected_completion_date}`
+                  : "No Robbie ETA set."
+              }
+            />
 
-          <AttentionCard
-            tone={turnaroundDays === null ? "zinc" : "green"}
-            label="Turnaround"
-            value={
-              turnaroundDays === null
-                ? "-"
-                : `${turnaroundDays} day${
-                    turnaroundDays === 1 ? "" : "s"
-                  }`
-            }
-            detail="Move out to completed date."
-          />
+            <AttentionCard
+              tone={turnaroundDays === null ? "zinc" : "green"}
+              label="Turnaround"
+              value={
+                turnaroundDays === null
+                  ? "-"
+                  : `${turnaroundDays} day${
+                      turnaroundDays === 1 ? "" : "s"
+                    }`
+              }
+              detail="Move out to completed date."
+            />
 
-          <AttentionCard
-            tone={item.smoked_in ? "red" : "zinc"}
-            label="Remediation"
-            value={item.smoked_in ? "Yes" : "No"}
-            detail={
-              item.smoked_in
-                ? item.primer_requested === false
-                  ? "Smoke is tracked, but full primer is not requested for estimate creation."
-                  : "This is counted in smoker/remediation reporting and can add primer to estimates."
-                : "No remediation flag is set."
-            }
-          />
+            <AttentionCard
+              tone={item.smoked_in ? "red" : "zinc"}
+              label="Remediation"
+              value={item.smoked_in ? "Yes" : "No"}
+              detail={
+                item.smoked_in
+                  ? item.primer_requested === false
+                    ? "Smoke is tracked, but full primer is not requested for estimate creation."
+                    : "This is counted in smoker/remediation reporting and can add primer to estimates."
+                  : "No remediation flag is set."
+              }
+            />
 
-          <AttentionCard
-            tone={item.renovation_needed ? "orange" : "zinc"}
-            label="Renovation"
-            value={item.renovation_needed ? "Needed" : "Not Flagged"}
-            detail={
-              item.renovation_needed
-                ? item.renovation_needed_details ||
-                  "Estimate creation will include renovation and cabinet paint."
-                : item.prior_renovation || item.prior_renovation_details
-                  ? "Prior renovation history is saved for this unit."
-                  : "No renovation flag is set."
-            }
-          />
-        </div>
+            <AttentionCard
+              tone={item.renovation_needed ? "orange" : "zinc"}
+              label="Renovation"
+              value={item.renovation_needed ? "Needed" : "Not Flagged"}
+              detail={
+                item.renovation_needed
+                  ? item.renovation_needed_details ||
+                    "Estimate creation will include renovation and cabinet paint."
+                  : item.prior_renovation || item.prior_renovation_details
+                    ? "Prior renovation history is saved for this unit."
+                    : "No renovation flag is set."
+              }
+            />
+          </div>
+        </RoleVisible>
 
         <Card className="border-emerald-500/25 bg-emerald-500/10">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -981,43 +1017,48 @@ export default async function QueueDetailPage({
               </p>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[26rem]">
-              <AttentionCard
-                tone={timingTone}
-                label="Timing Badge"
-                value={timingBadge}
-                detail="Calculated from Needed By, Robbie ETA, progress, and completion."
-              />
-              <AttentionCard
-                tone={item.progress_stage === "Blocked / Waiting" ? "violet" : "zinc"}
-                label="Progress"
-                value={item.progress_stage || "Not Started"}
-                detail={
-                  item.percent_complete !== null &&
-                  item.percent_complete !== undefined
-                    ? `${item.percent_complete}% complete`
-                    : "No percent saved."
-                }
-              />
-              <AttentionCard
-                tone="zinc"
-                label="Robbie ETA"
-                value={item.projected_completion_date || "No ETA set"}
-                detail="Separate from the property Needed By date."
-              />
-              <AttentionCard
-                tone={item.delay_reason ? "amber" : "zinc"}
-                label="Delay Reason"
-                value={item.delay_reason || "No delay reason"}
-                detail="Used only when the work needs explanation."
-              />
-            </div>
+            <RoleVisible
+              businessSlug={businessSlug}
+              allow={["owner", "admin", "accountant", "technician"]}
+            >
+              <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[26rem]">
+                <AttentionCard
+                  tone={timingTone}
+                  label="Timing Badge"
+                  value={timingBadge}
+                  detail="Calculated from Needed By, Robbie ETA, progress, and completion."
+                />
+                <AttentionCard
+                  tone={item.progress_stage === "Blocked / Waiting" ? "violet" : "zinc"}
+                  label="Progress"
+                  value={item.progress_stage || "Not Started"}
+                  detail={
+                    item.percent_complete !== null &&
+                    item.percent_complete !== undefined
+                      ? `${item.percent_complete}% complete`
+                      : "No percent saved."
+                  }
+                />
+                <AttentionCard
+                  tone="zinc"
+                  label="Robbie ETA"
+                  value={item.projected_completion_date || "No ETA set"}
+                  detail="Separate from the property Needed By date."
+                />
+                <AttentionCard
+                  tone={item.delay_reason ? "amber" : "zinc"}
+                  label="Delay Reason"
+                  value={item.delay_reason || "No delay reason"}
+                  detail="Used only when the work needs explanation."
+                />
+              </div>
+            </RoleVisible>
           </div>
         </Card>
 
         <RoleVisible
           businessSlug={businessSlug}
-          allow={["owner", "admin", "accountant", "property_manager"]}
+          allow={["owner", "admin", "accountant"]}
         >
           {linkedEstimate && (
             <Card className="border-purple-500/40">
@@ -1269,45 +1310,55 @@ export default async function QueueDetailPage({
               value={item.move_out_date}
               active={Boolean(item.move_out_date)}
             />
-            <LifecycleStep
-              label="Scheduled"
-              value={item.scheduled_date}
-              active={Boolean(item.scheduled_date)}
-            />
-            <LifecycleStep
-              label="Completed"
-              value={item.completed_date}
-              active={Boolean(item.completed_date)}
-            />
-          </div>
-
-          <div
-            id="schedule-work"
-            className="queue-detail-notice mb-6 min-w-0 scroll-mt-6 overflow-hidden rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4"
-          >
-            <p className="text-sm uppercase tracking-[0.25em] text-orange-300">
-              Schedule Work
-            </p>
-
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-orange-100/80">
-              Pick the date you plan to perform the work, then click Schedule.
-              The submitted date is saved automatically when the queue item is
-              created.
-            </p>
-
-            <div className="mt-4">
-              <MarkScheduledButton
-                queueItemId={item.id}
-                businessId={item.business_id}
-                businessSlug={businessSlug}
-                initialScheduledDate={item.scheduled_date}
-                readyDate={item.ready_date}
-                label={`${item.property || "Property"} - Unit ${
-                  displayUnit || "-"
-                }`}
+            <RoleVisible
+              businessSlug={businessSlug}
+              allow={["owner", "admin", "accountant", "technician"]}
+            >
+              <LifecycleStep
+                label="Scheduled"
+                value={item.scheduled_date}
+                active={Boolean(item.scheduled_date)}
               />
-            </div>
+              <LifecycleStep
+                label="Completed"
+                value={item.completed_date}
+                active={Boolean(item.completed_date)}
+              />
+            </RoleVisible>
           </div>
+
+          <RoleVisible
+            businessSlug={businessSlug}
+            allow={["owner", "admin"]}
+          >
+            <div
+              id="schedule-work"
+              className="queue-detail-notice mb-6 min-w-0 scroll-mt-6 overflow-hidden rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4"
+            >
+              <p className="text-sm uppercase tracking-[0.25em] text-orange-300">
+                Schedule Work
+              </p>
+
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-orange-100/80">
+                Pick the date you plan to perform the work, then click Schedule.
+                The submitted date is saved automatically when the queue item is
+                created.
+              </p>
+
+              <div className="mt-4">
+                <MarkScheduledButton
+                  queueItemId={item.id}
+                  businessId={item.business_id}
+                  businessSlug={businessSlug}
+                  initialScheduledDate={item.scheduled_date}
+                  readyDate={item.ready_date}
+                  label={`${item.property || "Property"} - Unit ${
+                    displayUnit || "-"
+                  }`}
+                />
+              </div>
+            </div>
+          </RoleVisible>
 
           <div className="grid gap-6 md:grid-cols-2">
             <Info label="Property" value={item.property ?? ""} />
@@ -1352,32 +1403,37 @@ export default async function QueueDetailPage({
               value={item.ready_date ?? ""}
               emptyValue="No deadline provided"
             />
-            <Info label="Scheduled Date" value={item.scheduled_date ?? ""} />
-            <Info label="Completed Date" value={item.completed_date ?? ""} />
-            <Info
-              label="Progress"
-              value={item.progress_stage || "Not Started"}
-            />
-            <Info
-              label="Percent Complete"
-              value={
-                item.percent_complete !== null &&
-                item.percent_complete !== undefined
-                  ? `${item.percent_complete}%`
-                  : ""
-              }
-              emptyValue="Not recorded"
-            />
-            <Info
-              label="Robbie ETA"
-              value={item.projected_completion_date ?? ""}
-              emptyValue="No ETA set"
-            />
-            <Info
-              label="Delay Reason"
-              value={item.delay_reason ?? ""}
-              emptyValue="No delay reason"
-            />
+            <RoleVisible
+              businessSlug={businessSlug}
+              allow={["owner", "admin", "accountant", "technician"]}
+            >
+              <Info label="Scheduled Date" value={item.scheduled_date ?? ""} />
+              <Info label="Completed Date" value={item.completed_date ?? ""} />
+              <Info
+                label="Progress"
+                value={item.progress_stage || "Not Started"}
+              />
+              <Info
+                label="Percent Complete"
+                value={
+                  item.percent_complete !== null &&
+                  item.percent_complete !== undefined
+                    ? `${item.percent_complete}%`
+                    : ""
+                }
+                emptyValue="Not recorded"
+              />
+              <Info
+                label="Robbie ETA"
+                value={item.projected_completion_date ?? ""}
+                emptyValue="No ETA set"
+              />
+              <Info
+                label="Delay Reason"
+                value={item.delay_reason ?? ""}
+                emptyValue="No delay reason"
+              />
+            </RoleVisible>
             <Info
               label="Full Primer Requested"
               value={
@@ -1390,15 +1446,20 @@ export default async function QueueDetailPage({
             />
           </div>
 
-          <div className="mt-6 rounded-2xl border border-sky-500/25 bg-sky-500/10 px-4 py-3 text-sm leading-6 text-sky-100">
-            <p className="font-black uppercase tracking-[0.18em] text-sky-200">
-              Internal scheduling note
-            </p>
-            <p className="mt-2">
-              Needed By = property deadline. Priority = manager&apos;s requested
-              order. Schedule = internal work plan.
-            </p>
-          </div>
+          <RoleVisible
+            businessSlug={businessSlug}
+            allow={["owner", "admin", "accountant", "technician"]}
+          >
+            <div className="mt-6 rounded-2xl border border-sky-500/25 bg-sky-500/10 px-4 py-3 text-sm leading-6 text-sky-100">
+              <p className="font-black uppercase tracking-[0.18em] text-sky-200">
+                Internal scheduling note
+              </p>
+              <p className="mt-2">
+                Needed By = property deadline. Priority = manager&apos;s requested
+                order. Schedule = internal work plan.
+              </p>
+            </div>
+          </RoleVisible>
 
           {item.smoked_in && (
             <div className="mt-6 inline-flex rounded-full bg-red-500/20 px-3 py-1 text-sm text-red-300">
@@ -1433,7 +1494,7 @@ export default async function QueueDetailPage({
 
           <RoleVisible
             businessSlug={businessSlug}
-            allow={["owner", "admin", "accountant", "property_manager"]}
+            allow={["owner", "admin", "accountant"]}
           >
             {!linkedEstimate && (
               <Link
@@ -1443,6 +1504,12 @@ export default async function QueueDetailPage({
               </Link>
             )}
 
+            <Link href={`/queue/${item.id}/edit?business=${businessSlug}`}>
+              <Button variant="secondary">Edit Queue Item</Button>
+            </Link>
+          </RoleVisible>
+
+          <RoleVisible businessSlug={businessSlug} allow={["property_manager"]}>
             <Link href={`/queue/${item.id}/edit?business=${businessSlug}`}>
               <Button variant="secondary">Edit Queue Item</Button>
             </Link>
