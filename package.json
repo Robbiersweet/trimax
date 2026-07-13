@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "check": "npm run lint && npm run build"
+    "test": "node scripts/pdf-readiness-regression.mjs",
+    "check": "npm run lint && npm run test && npm run build"
   },
   "dependencies": {
     "@sparticuz/chromium": "^149.0.0",

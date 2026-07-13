@@ -854,6 +854,12 @@ export async function POST(request: Request, { params }: RouteParams) {
           filename: targetDocumentNumber,
           accessToken: token,
           cronSecret,
+          diagnostics: {
+            traceId,
+            documentId: targetInvoice.id,
+            businessId: targetInvoice.business_id,
+            userId: access.userId,
+          },
         });
 
         pdfAttachments.push(attachment);

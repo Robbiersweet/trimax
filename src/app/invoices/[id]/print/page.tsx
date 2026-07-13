@@ -384,7 +384,10 @@ export default async function InvoicePrintPage({
         suggestedFileName={suggestedFileName}
       />
 
-      <div className="standard-invoice-print mx-auto max-w-5xl bg-white print:max-w-none print:px-4 print:py-3">
+      <div
+        className="standard-invoice-print mx-auto max-w-5xl bg-white print:max-w-none print:px-4 print:py-3"
+        data-pdf-ready="true"
+      >
         <section className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-8 print:grid-cols-2 print:gap-4">
           <div>
             {isJustKleen ? (
@@ -795,7 +798,10 @@ function FiveStarsBoaPrintPage({
         suggestedFileName={suggestedFileName}
       />
 
-      <div className="mx-auto w-[760px] bg-white print:mx-0 print:w-[7.4in] print:p-0">
+      <div
+        className="mx-auto w-[760px] bg-white print:mx-0 print:w-[7.4in] print:p-0"
+        data-pdf-ready="true"
+      >
         <div className="mb-3 rounded border border-purple-300 bg-purple-50 px-3 py-2 text-xs text-purple-950 print:hidden">
           This is the special Just Kleen / 5Stars Bank of America invoice
           format. Other invoices can still use the standard print format.

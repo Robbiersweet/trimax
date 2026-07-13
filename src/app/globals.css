@@ -826,6 +826,14 @@ html.theme-light .app-toast {
   align-self: flex-start;
 }
 
+.app-toast-details {
+  overflow-wrap: anywhere;
+}
+
+.app-toast-details summary {
+  list-style-position: inside;
+}
+
 @media (min-width: 900px) {
   .app-toast {
     bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px));
@@ -865,6 +873,11 @@ html.theme-light .app-toast-icon {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.92),
     0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+html.theme-light .app-toast-details {
+  background: rgba(255, 255, 255, 0.62) !important;
+  border-color: rgba(15, 23, 42, 0.12) !important;
 }
 
 .app-toast-progress {

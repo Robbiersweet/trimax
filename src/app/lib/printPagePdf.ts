@@ -1,6 +1,16 @@
 import chromium from "@sparticuz/chromium";
 import puppeteer from "puppeteer-core";
+import type { Page } from "puppeteer-core";
 import type { EmailAttachment } from "./pdfAttachments";
+
+const PDF_READY_SELECTOR = '[data-pdf-ready="true"]';
+
+type PrintPagePdfDiagnostics = {
+  traceId?: string | null;
+  documentId?: string | null;
+  businessId?: string | null;
+  userId?: string | null;
+};
 
 function safeFileName(value: string) {
   const safeValue = value
@@ -29,11 +39,13 @@ export async function createPrintPagePdfAttachment({
   filename,
   accessToken,
   cronSecret,
+  diagnostics,
 }: {
   url: string;
   filename: string;
   accessToken?: string | null;
   cronSecret?: string | null;
+  diagnostics?: PrintPagePdfDiagnostics;
 }): Promise<EmailAttachment> {
   const isProduction = process.env.NODE_ENV === "production";
   const executablePath = isProduction
@@ -54,6 +66,29 @@ export async function createPrintPagePdfAttachment({
 
   try {
     const page = await browser.newPage();
+    const consoleErrors: string[] = [];
+    const failedRequests: string[] = [];
+
+    page.on("console", (message) => {
+      if (message.type() === "error") {
+        consoleErrors.push(message.text().slice(0, 500));
+      }
+    });
+    page.on("pageerror", (error) => {
+      consoleErrors.push(
+        error instanceof Error
+          ? error.message.slice(0, 500)
+          : String(error).slice(0, 500)
+      );
+    });
+    page.on("requestfailed", (request) => {
+      failedRequests.push(
+        `${request.failure()?.errorText ?? "failed"} ${request.url()}`.slice(
+          0,
+          500
+        )
+      );
+    });
 
     if (accessToken) {
       await page.setExtraHTTPHeaders({
@@ -69,8 +104,19 @@ export async function createPrintPagePdfAttachment({
       waitUntil: "networkidle0",
       timeout: 45_000,
     });
+    const finalUrl = page.url();
 
     if (!response?.ok()) {
+      await logPrintPageDiagnostics({
+        page,
+        requestedUrl: url,
+        finalUrl,
+        status: response?.status() ?? null,
+        diagnostics,
+        consoleErrors,
+        failedRequests,
+        reason: "non_ok_response",
+      });
       throw new Error(
         `Print page returned ${response?.status() ?? "no response"}.`
       );
@@ -84,15 +130,40 @@ export async function createPrintPagePdfAttachment({
       pageText.includes("Invoice not found") ||
       pageText.includes("Estimate not found")
     ) {
+      await logPrintPageDiagnostics({
+        page,
+        requestedUrl: url,
+        finalUrl,
+        status: response.status(),
+        diagnostics,
+        consoleErrors,
+        failedRequests,
+        reason: "customer_document_not_rendered",
+      });
       throw new Error("Print page did not render the customer document.");
     }
 
-    await page.waitForSelector(
-      ".standard-invoice-print, .standard-estimate-print",
-      {
+    try {
+      await page.waitForSelector(PDF_READY_SELECTOR, {
         timeout: 20_000,
-      }
-    );
+      });
+    } catch (error) {
+      await logPrintPageDiagnostics({
+        page,
+        requestedUrl: url,
+        finalUrl,
+        status: response.status(),
+        diagnostics,
+        consoleErrors,
+        failedRequests,
+        reason: "pdf_ready_selector_missing",
+      });
+      throw new Error(
+        `Print page did not expose the PDF-ready marker (${PDF_READY_SELECTOR}). ${
+          error instanceof Error ? error.message : ""
+        }`.trim()
+      );
+    }
     await page.emulateMediaType("print");
 
     const pdf = await page.pdf({
@@ -109,4 +180,105 @@ export async function createPrintPagePdfAttachment({
   } finally {
     await browser.close();
   }
+}
+
+async function logPrintPageDiagnostics({
+  page,
+  requestedUrl,
+  finalUrl,
+  status,
+  diagnostics,
+  consoleErrors,
+  failedRequests,
+  reason,
+}: {
+  page: Page;
+  requestedUrl: string;
+  finalUrl: string;
+  status: number | null;
+  diagnostics?: PrintPagePdfDiagnostics;
+  consoleErrors: string[];
+  failedRequests: string[];
+  reason: string;
+}) {
+  const snapshot = await page
+    .evaluate(() => {
+      const bodyText = document.body?.innerText ?? "";
+      const bodyHtml = document.body?.innerHTML ?? "";
+      const hasPdfReady = Boolean(
+        document.querySelector('[data-pdf-ready="true"]')
+      );
+      const hasStandardInvoice = Boolean(
+        document.querySelector(".standard-invoice-print")
+      );
+      const hasStandardEstimate = Boolean(
+        document.querySelector(".standard-estimate-print")
+      );
+      const detectedPageType = (() => {
+        const text = bodyText.toLowerCase();
+
+        if (hasPdfReady) {
+          return "pdf-ready-document";
+        }
+
+        if (text.includes("login") || text.includes("sign in")) {
+          return "login";
+        }
+
+        if (text.includes("unauthorized") || text.includes("forbidden")) {
+          return "unauthorized";
+        }
+
+        if (text.includes("not found")) {
+          return "not-found";
+        }
+
+        if (text.includes("opening workspace")) {
+          return "workspace-loading";
+        }
+
+        if (!bodyText.trim() && !bodyHtml.trim()) {
+          return "blank";
+        }
+
+        return "unknown";
+      })();
+
+      return {
+        title: document.title,
+        detectedPageType,
+        hasPdfReady,
+        hasStandardInvoice,
+        hasStandardEstimate,
+        bodyPreview: bodyText.replace(/\s+/g, " ").trim().slice(0, 700),
+      };
+    })
+    .catch((error) => ({
+      title: "",
+      detectedPageType: "diagnostic-evaluation-failed",
+      hasPdfReady: false,
+      hasStandardInvoice: false,
+      hasStandardEstimate: false,
+      bodyPreview:
+        error instanceof Error ? error.message.slice(0, 700) : "Unknown error",
+    }));
+
+  console.error("[Trimax PDF render diagnostics]", {
+    reason,
+    traceId: diagnostics?.traceId ?? null,
+    documentId: diagnostics?.documentId ?? null,
+    businessId: diagnostics?.businessId ?? null,
+    initiatingUserId: diagnostics?.userId ?? null,
+    requestedUrl,
+    finalUrl,
+    status,
+    pageTitle: snapshot.title,
+    detectedPageType: snapshot.detectedPageType,
+    hasPdfReady: snapshot.hasPdfReady,
+    hasStandardInvoice: snapshot.hasStandardInvoice,
+    hasStandardEstimate: snapshot.hasStandardEstimate,
+    consoleErrors: consoleErrors.slice(-10),
+    failedRequests: failedRequests.slice(-10),
+    bodyPreview: snapshot.bodyPreview,
+  });
 }

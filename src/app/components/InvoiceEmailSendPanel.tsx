@@ -238,6 +238,7 @@ export default function InvoiceEmailSendPanel({
   const [toast, setToast] = useState<{
     type: "success" | "error";
     message: string;
+    technicalDetails?: string;
   } | null>(null);
 
   const canSend = recipient.trim().includes("@") && subject.trim();
@@ -621,23 +622,35 @@ export default function InvoiceEmailSendPanel({
         failedCount?: number;
         failures?: Array<{ documentNumber?: string; error?: string }>;
         statusUpdateError?: string | null;
+        pipelineStage?: string;
         pipelineStageLabel?: string;
         traceId?: string;
       };
 
       if (!response.ok) {
         const traceText = result.traceId ? ` Trace ID: ${result.traceId}.` : "";
-        const stageText = result.pipelineStageLabel
-          ? `${result.pipelineStageLabel}: `
-          : "";
+        const supportTraceText = result.traceId
+          ? ` with Trace ID: ${result.traceId}.`
+          : ".";
+        const fallbackError =
+          result.error ??
+          `Trimax could not send this ${documentLabelLower} email yet.`;
+        const isPdfFailure = result.pipelineStage === "pdf_generation";
+        const friendlyMessage = isPdfFailure
+          ? `Invoice PDF could not be created, so no email was sent. Please try again. If the problem continues, provide support${supportTraceText}`
+          : `${fallbackError}${traceText}`;
+        const technicalDetails = [
+          result.pipelineStageLabel ? `Stage: ${result.pipelineStageLabel}` : "",
+          result.traceId ? `Trace ID: ${result.traceId}` : "",
+          fallbackError ? `Error: ${fallbackError}` : "",
+        ]
+          .filter(Boolean)
+          .join("\n");
 
         setToast({
           type: "error",
-          message:
-            `${stageText}${
-              result.error ??
-              `Trimax could not send this ${documentLabelLower} email yet.`
-            }${traceText}`,
+          message: friendlyMessage,
+          technicalDetails: technicalDetails || undefined,
         });
         return;
       }
@@ -681,7 +694,13 @@ export default function InvoiceEmailSendPanel({
       }
       className="invoice-email-panel scroll-mt-6 overflow-hidden border-sky-200 bg-white p-0"
     >
-      {toast ? <Toast type={toast.type} message={toast.message} /> : null}
+      {toast ? (
+        <Toast
+          type={toast.type}
+          message={toast.message}
+          technicalDetails={toast.technicalDetails}
+        />
+      ) : null}
 
       <div className="invoice-email-header border-b border-slate-200 bg-slate-100 px-5 py-4">
         <p className="text-sm font-semibold text-slate-600">

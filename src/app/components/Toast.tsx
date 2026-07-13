@@ -6,11 +6,17 @@ import { createPortal } from "react-dom";
 type ToastProps = {
   type: "success" | "error";
   message: string;
+  technicalDetails?: string;
   durationMs?: number;
 };
 
-export default function Toast({ type, message, durationMs }: ToastProps) {
-  const toastKey = `${type}:${message}`;
+export default function Toast({
+  type,
+  message,
+  technicalDetails,
+  durationMs,
+}: ToastProps) {
+  const toastKey = `${type}:${message}:${technicalDetails ?? ""}`;
   const [dismissedKey, setDismissedKey] = useState<string | null>(null);
   const [pausedKey, setPausedKey] = useState<string | null>(null);
   const timeoutMs = durationMs ?? (type === "success" ? 20_000 : 30_000);
@@ -106,6 +112,16 @@ export default function Toast({ type, message, durationMs }: ToastProps) {
         <span className="block whitespace-pre-wrap break-words font-semibold">
           {message}
         </span>
+        {technicalDetails ? (
+          <details className="app-toast-details mt-3 rounded-xl border border-white/15 bg-black/10 px-3 py-2 text-xs leading-5">
+            <summary className="cursor-pointer font-black">
+              Technical Details
+            </summary>
+            <span className="mt-2 block whitespace-pre-wrap break-words font-mono">
+              {technicalDetails}
+            </span>
+          </details>
+        ) : null}
       </span>
       <button
         aria-label="Dismiss notification"
