@@ -4,6 +4,11 @@ import type { Page } from "puppeteer-core";
 import type { EmailAttachment } from "./pdfAttachments";
 
 const PDF_READY_SELECTOR = '[data-pdf-ready="true"]';
+const PRINT_READY_SELECTOR = [
+  PDF_READY_SELECTOR,
+  ".standard-invoice-print",
+  ".standard-estimate-print",
+].join(", ");
 
 type PrintPagePdfDiagnostics = {
   traceId?: string | null;
@@ -144,9 +149,22 @@ export async function createPrintPagePdfAttachment({
     }
 
     try {
-      await page.waitForSelector(PDF_READY_SELECTOR, {
+      await page.waitForSelector(PRINT_READY_SELECTOR, {
         timeout: 20_000,
       });
+      const hasCanonicalReadyMarker = await page.evaluate((selector) => {
+        return Boolean(document.querySelector(selector));
+      }, PDF_READY_SELECTOR);
+
+      if (!hasCanonicalReadyMarker) {
+        console.warn("[Trimax PDF render compatibility selector used]", {
+          traceId: diagnostics?.traceId ?? null,
+          documentId: diagnostics?.documentId ?? null,
+          businessId: diagnostics?.businessId ?? null,
+          requestedUrl: url,
+          finalUrl,
+        });
+      }
     } catch (error) {
       await logPrintPageDiagnostics({
         page,
@@ -159,7 +177,7 @@ export async function createPrintPagePdfAttachment({
         reason: "pdf_ready_selector_missing",
       });
       throw new Error(
-        `Print page did not expose the PDF-ready marker (${PDF_READY_SELECTOR}). ${
+        `Print page did not expose a print-ready marker (${PDF_READY_SELECTOR}). ${
           error instanceof Error ? error.message : ""
         }`.trim()
       );

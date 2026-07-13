@@ -25,8 +25,14 @@ assert(
   "PDF helper must wait for the canonical data-pdf-ready marker."
 );
 assert(
-  !pdfHelper.includes('waitForSelector(\n      ".standard-invoice-print, .standard-estimate-print"'),
-  "PDF helper must not depend on legacy invoice/estimate CSS container selectors."
+  pdfHelper.includes("PRINT_READY_SELECTOR") &&
+    pdfHelper.includes(".standard-invoice-print") &&
+    pdfHelper.includes(".standard-estimate-print"),
+  "PDF helper must temporarily accept legacy print containers during marker migration."
+);
+assert(
+  pdfHelper.includes("Trimax PDF render compatibility selector used"),
+  "PDF helper must log when it falls back to legacy print readiness selectors."
 );
 assert(
   (invoicePrint.match(/data-pdf-ready="true"/g) ?? []).length >= 2,
