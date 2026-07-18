@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node scripts/pdf-readiness-regression.mjs && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/remittance-matching-regression.ts && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/account-management-regression.ts && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/job-session-crew-regression.ts",
+    "test": "node scripts/pdf-readiness-regression.mjs && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/remittance-matching-regression.ts && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/account-management-regression.ts && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/job-session-crew-regression.ts && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/job-session-integrity-regression.ts",
     "check": "npm run lint && npm run test && npm run build"
   },
   "dependencies": {

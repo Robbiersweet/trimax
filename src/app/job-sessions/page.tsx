@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import AppShell from "../components/AppShell";
 import Card from "../components/Card";
 import { supabase } from "../lib/supabase";
@@ -57,6 +61,21 @@ type QueueItem = {
   scheduled_date: string | null;
   completed_date: string | null;
 };
+
+const JOB_SESSION_SELECT =
+  "id, user_id, property_name, unit_label, queue_item_id, estimate_id, invoice_id, job_type, started_at, ended_at, total_minutes, crew_count, crew_confirmed, labor_minutes, notes, created_at";
+const LEGACY_JOB_SESSION_SELECT =
+  "id, user_id, property_name, unit_label, queue_item_id, estimate_id, invoice_id, job_type, started_at, ended_at, total_minutes, notes, created_at";
+
+function isMissingCrewSchemaError(error: { message?: string } | null) {
+  const message = error?.message?.toLowerCase() ?? "";
+
+  return (
+    message.includes("crew_count") ||
+    message.includes("crew_confirmed") ||
+    message.includes("labor_minutes")
+  );
+}
 
 function formatDateTime(value: string | null) {
   if (!value) {
@@ -249,125 +268,187 @@ function activityMinutes(log: ActivityLog) {
   return 0;
 }
 
-export default async function JobSessionsPage({
-  searchParams,
-}: {
-  searchParams?: Promise<{ business?: string }>;
-}) {
-  const resolvedSearchParams = searchParams ? await searchParams : {};
-  const businessSlug = resolvedSearchParams.business ?? "rnl-creations";
+export default function JobSessionsPage() {
+  const searchParams = useSearchParams();
+  const businessSlug = searchParams.get("business") ?? "rnl-creations";
+  const [sessions, setSessions] = useState<JobSession[]>([]);
+  const [breakdowns, setBreakdowns] = useState<JobSessionBreakdown[]>([]);
+  const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
+  const [laborActivityLogs, setLaborActivityLogs] = useState<ActivityLog[]>([]);
+  const [setupMessage, setSetupMessage] = useState<string | null>(null);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(true);
 
-  const { data: businessData, error: businessError } = await supabase
-    .from("businesses")
-    .select("id, name, slug")
-    .eq("slug", businessSlug)
-    .limit(1)
-    .maybeSingle();
+  useEffect(() => {
+    let isActive = true;
 
-  const selectedBusiness = businessData as Business | null;
-  let sessions: JobSession[] = [];
-  let breakdowns: JobSessionBreakdown[] = [];
-  let queueItems: QueueItem[] = [];
-  let laborActivityLogs: ActivityLog[] = [];
-  let setupMessage: string | null = null;
+    async function loadJobSessionHub() {
+      setIsLoadingSessions(true);
+      setSetupMessage(null);
 
-  if (businessError) {
-    console.warn("Job Sessions workspace lookup failed:", businessError.message);
-    setupMessage =
-      "Workspace details could not be loaded. Try signing in again, then reopen Job Sessions.";
-  }
+      const { data: userData } = await supabase.auth.getUser();
 
-  if (selectedBusiness?.id) {
-    const [
-      sessionResponse,
-      breakdownResponse,
-      queueResponse,
-      activityResponse,
-    ] = await Promise.all([
-      supabase
-        .from("job_sessions")
-        .select(
-          "id, user_id, property_name, unit_label, queue_item_id, estimate_id, invoice_id, job_type, started_at, ended_at, total_minutes, crew_count, crew_confirmed, labor_minutes, notes, created_at"
-        )
-        .eq("business_id", selectedBusiness.id)
-        .order("started_at", { ascending: false })
-        .limit(80),
-      supabase
-        .from("job_session_breakdowns")
-        .select("id, job_session_id, work_type, minutes")
-        .eq("business_id", selectedBusiness.id),
-      supabase
-        .from("queue_items")
-        .select(
-          "id, property, unit, status, paint_type, unit_layout, ready_date, scheduled_date, completed_date"
-        )
-        .eq("business_id", selectedBusiness.id)
-        .order("ready_date", { ascending: true, nullsFirst: false })
-        .limit(40),
-      supabase
-        .from("activity_logs")
-        .select(
-          "id, action, actor_email, entity_type, entity_id, entity_label, details, created_at"
-        )
-        .eq("business_id", selectedBusiness.id)
-        .in("action", [
-          "job_session.started",
-          "job_session.resumed",
-          "job_session.stopped",
-          "job_session.breakdown_saved",
-          "job_session.breakdown_skipped",
-          "job_session.corrected",
-          "technician.job_session_started",
-          "technician.job_session_resumed",
-          "technician.job_session_paused",
-          "technician.job_session_stopped",
-        ])
-        .order("created_at", { ascending: false })
-        .limit(120),
-    ]);
+      if (!isActive) {
+        return;
+      }
 
-    if (sessionResponse.error) {
-      console.warn(
-        "Job Sessions could not be loaded:",
-        sessionResponse.error.message
-      );
-      setupMessage =
-        "Job Sessions are ready in the app, but the Supabase tables are not live yet. Run the Job Sessions SQL file in Supabase to unlock this workspace.";
+      if (!userData.user) {
+        setSessions([]);
+        setBreakdowns([]);
+        setQueueItems([]);
+        setLaborActivityLogs([]);
+        setSetupMessage(
+          "Sign in again so Job Sessions can read the same saved labor records used by the queue."
+        );
+        setIsLoadingSessions(false);
+        return;
+      }
+
+      const { data: businessData, error: businessError } = await supabase
+        .from("businesses")
+        .select("id, name, slug")
+        .eq("slug", businessSlug)
+        .limit(1)
+        .maybeSingle();
+
+      if (!isActive) {
+        return;
+      }
+
+      if (businessError || !businessData?.id) {
+        console.warn(
+          "Job Sessions workspace lookup failed:",
+          businessError?.message
+        );
+        setSessions([]);
+        setBreakdowns([]);
+        setQueueItems([]);
+        setLaborActivityLogs([]);
+        setSetupMessage(
+          "Workspace details could not be loaded. Try signing in again, then reopen Job Sessions."
+        );
+        setIsLoadingSessions(false);
+        return;
+      }
+
+      const selectedBusiness = businessData as Business;
+      const [
+        initialSessionResponse,
+        breakdownResponse,
+        queueResponse,
+        activityResponse,
+      ] = await Promise.all([
+        supabase
+          .from("job_sessions")
+          .select(JOB_SESSION_SELECT)
+          .eq("business_id", selectedBusiness.id)
+          .order("started_at", { ascending: false })
+          .limit(80),
+        supabase
+          .from("job_session_breakdowns")
+          .select("id, job_session_id, work_type, minutes")
+          .eq("business_id", selectedBusiness.id),
+        supabase
+          .from("queue_items")
+          .select(
+            "id, property, unit, status, paint_type, unit_layout, ready_date, scheduled_date, completed_date"
+          )
+          .eq("business_id", selectedBusiness.id)
+          .order("ready_date", { ascending: true, nullsFirst: false })
+          .limit(40),
+        supabase
+          .from("activity_logs")
+          .select(
+            "id, action, actor_email, entity_type, entity_id, entity_label, details, created_at"
+          )
+          .eq("business_id", selectedBusiness.id)
+          .in("action", [
+            "job_session.started",
+            "job_session.resumed",
+            "job_session.stopped",
+            "job_session.breakdown_saved",
+            "job_session.breakdown_skipped",
+            "job_session.corrected",
+            "job_session.manual_added",
+            "technician.job_session_started",
+            "technician.job_session_resumed",
+            "technician.job_session_paused",
+            "technician.job_session_stopped",
+          ])
+          .order("created_at", { ascending: false })
+          .limit(120),
+      ]);
+      let sessionResponse: {
+        data: unknown;
+        error: { message?: string } | null;
+      } = initialSessionResponse;
+
+      if (isMissingCrewSchemaError(sessionResponse.error)) {
+        sessionResponse = await supabase
+          .from("job_sessions")
+          .select(LEGACY_JOB_SESSION_SELECT)
+          .eq("business_id", selectedBusiness.id)
+          .order("started_at", { ascending: false })
+          .limit(80);
+      }
+
+      if (!isActive) {
+        return;
+      }
+
+      let nextSetupMessage: string | null = null;
+
+      if (sessionResponse.error) {
+        console.warn(
+          "Job Sessions could not be loaded:",
+          sessionResponse.error.message
+        );
+        nextSetupMessage =
+          "Job Sessions could not read saved labor records. Try signing in again; if this stays here, the Supabase job-session SQL needs attention.";
+      }
+
+      if (breakdownResponse.error) {
+        console.warn(
+          "Job Session breakdowns could not be loaded:",
+          breakdownResponse.error.message
+        );
+      }
+
+      if (queueResponse.error) {
+        console.warn(
+          "Job Sessions ready work could not be loaded:",
+          queueResponse.error.message
+        );
+      }
+
+      if (activityResponse.error) {
+        console.warn(
+          "Job Sessions activity could not be loaded:",
+          activityResponse.error.message
+        );
+      }
+
+      setSessions((sessionResponse.data ?? []) as JobSession[]);
+      setBreakdowns((breakdownResponse.data ?? []) as JobSessionBreakdown[]);
+      setQueueItems((queueResponse.data ?? []) as QueueItem[]);
+      setLaborActivityLogs((activityResponse.data ?? []) as ActivityLog[]);
+      setSetupMessage(nextSetupMessage);
+      setIsLoadingSessions(false);
     }
 
-    if (breakdownResponse.error) {
-      console.warn(
-        "Job Session breakdowns could not be loaded:",
-        breakdownResponse.error.message
-      );
-    }
+    loadJobSessionHub();
 
-    if (queueResponse.error) {
-      console.warn(
-        "Job Sessions ready work could not be loaded:",
-        queueResponse.error.message
-      );
-    }
-
-    if (activityResponse.error) {
-      console.warn(
-        "Job Sessions activity could not be loaded:",
-        activityResponse.error.message
-      );
-    }
-
-    sessions = (sessionResponse.data ?? []) as JobSession[];
-    breakdowns = (breakdownResponse.data ?? []) as JobSessionBreakdown[];
-    queueItems = (queueResponse.data ?? []) as QueueItem[];
-    laborActivityLogs = (activityResponse.data ?? []) as ActivityLog[];
-  }
+    return () => {
+      isActive = false;
+    };
+  }, [businessSlug]);
 
   const breakdownSessionIds = new Set(
     breakdowns.map((breakdown) => breakdown.job_session_id)
   );
   const activeSessions = sessions.filter((session) => !session.ended_at);
   const completedSessions = sessions.filter((session) => session.ended_at);
-  const hasNoSessionData = sessions.length === 0 && !setupMessage;
+  const hasNoSessionData =
+    sessions.length === 0 && !setupMessage && !isLoadingSessions;
   const missingBreakdownSessions = completedSessions.filter(
     (session) => !breakdownSessionIds.has(session.id)
   );
@@ -666,18 +747,25 @@ export default async function JobSessionsPage({
     },
     {
       label: "Learn",
-      title:
-        completedSessions.length > 0
+      title: isLoadingSessions
+        ? "Loading sessions"
+        : completedSessions.length > 0
           ? "Memory building"
           : "First session pending",
       detail:
-        completedSessions.length > 0
+        isLoadingSessions
+          ? "Reading saved labor records from the same source as the queue."
+          : completedSessions.length > 0
           ? `${completedSessions.length} completed session${
               completedSessions.length === 1 ? "" : "s"
             } can guide future planning.`
           : "The first completed session starts Trimax labor memory.",
       value: completedSessions.length,
-      tone: completedSessions.length > 0 ? "violet" : "amber",
+      tone: isLoadingSessions
+        ? "sky"
+        : completedSessions.length > 0
+          ? "violet"
+          : "amber",
     },
   ];
   const unitLaborLedger = Array.from(
@@ -862,28 +950,54 @@ export default async function JobSessionsPage({
           <div className="mt-5 grid gap-3 md:grid-cols-4">
             <HubMetric
               label="Active Now"
-              value={activeSessions.length}
-              detail="Running sessions"
+              value={isLoadingSessions ? "..." : activeSessions.length}
+              detail={
+                isLoadingSessions ? "Reading saved sessions" : "Running sessions"
+              }
             />
             <HubMetric
               label="Elapsed Time"
-              value={formatDuration(monthMinutes)}
-              detail="Clock time this month"
+              value={isLoadingSessions ? "..." : formatDuration(monthMinutes)}
+              detail={
+                isLoadingSessions
+                  ? "Reading saved sessions"
+                  : "Clock time this month"
+              }
             />
             <HubMetric
               label="Total Labor Hours"
-              value={formatDuration(monthLaborMinutes)}
-              detail="Person-hours this month"
+              value={
+                isLoadingSessions ? "..." : formatDuration(monthLaborMinutes)
+              }
+              detail={
+                isLoadingSessions
+                  ? "Reading saved sessions"
+                  : "Person-hours this month"
+              }
             />
             <HubMetric
               label="Avg Session"
-              value={formatDuration(averageCompletedMinutes)}
-              detail="Completed sessions"
+              value={
+                isLoadingSessions
+                  ? "..."
+                  : formatDuration(averageCompletedMinutes)
+              }
+              detail={
+                isLoadingSessions
+                  ? "Reading saved sessions"
+                  : "Completed sessions"
+              }
             />
             <HubMetric
               label="Need Breakdown"
-              value={missingBreakdownSessions.length}
-              detail="Review when convenient"
+              value={
+                isLoadingSessions ? "..." : missingBreakdownSessions.length
+              }
+              detail={
+                isLoadingSessions
+                  ? "Reading saved sessions"
+                  : "Review when convenient"
+              }
               urgent={missingBreakdownSessions.length > 0}
             />
           </div>

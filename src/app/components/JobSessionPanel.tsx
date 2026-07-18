@@ -36,6 +36,8 @@ const WORK_TYPES = [
 
 const JOB_SESSION_SELECT =
   "id, business_id, user_id, property_name, unit_label, queue_item_id, estimate_id, invoice_id, job_type, started_at, ended_at, total_minutes, crew_mode, crew_count, crew_confirmed, crew_details, labor_minutes, notes, created_at";
+const LEGACY_JOB_SESSION_SELECT =
+  "id, business_id, user_id, property_name, unit_label, queue_item_id, estimate_id, invoice_id, job_type, started_at, ended_at, total_minutes, notes, created_at";
 
 type JobSession = {
   id: string;
@@ -197,6 +199,18 @@ function numberInputValue(value: number) {
   return Number.isInteger(value) ? String(value) : String(Math.round(value * 100) / 100);
 }
 
+function isMissingCrewSchemaError(error: { message?: string } | null) {
+  const message = error?.message?.toLowerCase() ?? "";
+
+  return (
+    message.includes("crew_mode") ||
+    message.includes("crew_count") ||
+    message.includes("crew_confirmed") ||
+    message.includes("crew_details") ||
+    message.includes("labor_minutes")
+  );
+}
+
 function laborMinutesForSession(session: JobSession) {
   const elapsed =
     session.total_minutes ?? minutesBetween(session.started_at, session.ended_at);
@@ -350,6 +364,7 @@ export default function JobSessionPanel({
   const [isBusy, setIsBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [setupMissing, setSetupMissing] = useState(false);
+  const [crewSchemaAvailable, setCrewSchemaAvailable] = useState(true);
   const [currentRole, setCurrentRole] = useState("technician");
 
   const displayJobType = jobTypeDraft || jobType || "Paint";
@@ -363,30 +378,61 @@ export default function JobSessionPanel({
     }
 
     let activeAnywhere: JobSession | null = null;
+    let usedLegacyJobSessionSelect = false;
 
     if (currentUserId) {
-      const { data: activeData, error: activeError } = await supabase
+      let activeResponse: {
+        data: unknown;
+        error: { message?: string } | null;
+      } = await supabase
         .from("job_sessions")
         .select(JOB_SESSION_SELECT)
         .eq("business_id", businessId)
         .eq("user_id", currentUserId)
         .is("ended_at", null)
         .order("started_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+          .limit(1)
+          .maybeSingle();
+      if (isMissingCrewSchemaError(activeResponse.error)) {
+        usedLegacyJobSessionSelect = true;
+        activeResponse = await supabase
+          .from("job_sessions")
+          .select(LEGACY_JOB_SESSION_SELECT)
+          .eq("business_id", businessId)
+          .eq("user_id", currentUserId)
+          .is("ended_at", null)
+          .order("started_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+      }
+      const { data: activeData, error: activeError } = activeResponse;
 
       if (!activeError) {
         activeAnywhere = activeData as JobSession | null;
       }
     }
 
-    const { data: sessionData, error: sessionError } = await supabase
+    let sessionResponse: {
+      data: unknown;
+      error: { message?: string } | null;
+    } = await supabase
       .from("job_sessions")
       .select(JOB_SESSION_SELECT)
       .eq("business_id", businessId)
       .eq("queue_item_id", queueItemId)
       .order("started_at", { ascending: false })
       .limit(20);
+    if (isMissingCrewSchemaError(sessionResponse.error)) {
+      sessionResponse = await supabase
+        .from("job_sessions")
+        .select(LEGACY_JOB_SESSION_SELECT)
+        .eq("business_id", businessId)
+        .eq("queue_item_id", queueItemId)
+        .order("started_at", { ascending: false })
+        .limit(20);
+    }
+    const { data: sessionData, error: sessionError } = sessionResponse;
+    setCrewSchemaAvailable(!usedLegacyJobSessionSelect);
 
     if (sessionError) {
       console.warn("Job sessions could not be loaded:", sessionError.message);
@@ -421,14 +467,29 @@ export default function JobSessionPanel({
           : 0
     );
 
-    const { data: businessSessionData, error: businessSessionError } =
-      await supabase
+    let businessSessionResponse: {
+      data: unknown;
+      error: { message?: string } | null;
+    } = await supabase
         .from("job_sessions")
         .select(JOB_SESSION_SELECT)
         .eq("business_id", businessId)
         .not("ended_at", "is", null)
         .order("started_at", { ascending: false })
         .limit(100);
+    if (isMissingCrewSchemaError(businessSessionResponse.error)) {
+      usedLegacyJobSessionSelect = true;
+      businessSessionResponse = await supabase
+        .from("job_sessions")
+        .select(LEGACY_JOB_SESSION_SELECT)
+        .eq("business_id", businessId)
+        .not("ended_at", "is", null)
+        .order("started_at", { ascending: false })
+        .limit(100);
+    }
+    setCrewSchemaAvailable(!usedLegacyJobSessionSelect);
+    const { data: businessSessionData, error: businessSessionError } =
+      businessSessionResponse;
 
     if (!businessSessionError) {
       setBusinessSessions((businessSessionData ?? []) as JobSession[]);
@@ -1972,6 +2033,7 @@ export default function JobSessionPanel({
               const sessionCrewCount = crewCountForSession(session);
               const sessionLaborMinutes = laborMinutesForSession(session);
               const canEditSession =
+                crewSchemaAvailable &&
                 Boolean(session.ended_at) &&
                 (currentRole === "owner" ||
                   currentRole === "admin" ||
