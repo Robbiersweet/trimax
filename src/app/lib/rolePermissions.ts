@@ -331,6 +331,10 @@ export function canAccessPath(
   role: string | null | undefined,
   pathname: string
 ) {
+  if (pathname.startsWith("/profile")) {
+    return true;
+  }
+
   return canAccessNavItem(
     role,
     navPermissionForPath(pathname)

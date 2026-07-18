@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "../lib/supabase";
 import { loadWorkspaceAccess } from "../lib/workspaceAccess";
@@ -100,6 +101,15 @@ export default function UserMenu({
       <SecureSessionBadge
         className={isSidebar ? "w-full" : ""}
       />
+
+      <Link
+        href={`/profile?business=${businessSlug}`}
+        className={`app-button-secondary inline-flex items-center justify-center rounded-2xl px-5 py-3 text-center font-semibold transition hover:opacity-90 ${
+          isSidebar ? "w-full" : ""
+        }`}
+      >
+        Profile
+      </Link>
 
       <LockSessionButton
         className={isSidebar ? "w-full" : ""}
