@@ -760,9 +760,9 @@ export default async function PaymentsPage({
             </h2>
 
             <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
-              Trimax will preselect matching open invoices below when possible.
-              Review the invoice list, enter the check details, then apply the
-              payment to the selected invoices together.
+              Review the invoice list, enter the check details, and use the
+              remittance stub when it identifies exact invoice numbers. If the
+              stub is incomplete, select invoices manually.
             </p>
           </Card>
         ) : null}
@@ -1131,15 +1131,15 @@ export default async function PaymentsPage({
             businessSlug={businessSlug}
             initialCustomer={focusedCustomer}
             initialInvoiceIds={initialInvoiceIds}
-            invoices={payableInvoices.map((invoice) => ({
+            invoices={invoices.map((invoice) => ({
+              invoiceAmount: parseMoney(invoice.invoice_amount),
+              amountPaid: parseMoney(invoice.amount_paid),
+              collectionAmountDue: invoiceCollectionAmountDue(invoice),
+              isDepositRequest: hasActiveDepositRequest(invoice),
               id: invoice.id,
               displayId: invoice.display_id ?? "Invoice",
               customerName: invoice.customer_name ?? "Unknown Customer",
               projectTitle: invoice.project_title ?? "Untitled Invoice",
-              invoiceAmount: invoice.invoiceAmount,
-              amountPaid: invoice.amountPaid,
-              collectionAmountDue: invoice.amountDue,
-              isDepositRequest: invoice.isDepositRequest,
               status: invoice.status ?? "Draft",
               dueDate: invoice.due_date,
             }))}
@@ -1319,7 +1319,7 @@ export default async function PaymentsPage({
               {[
                 "Select the customer or leave the list on all open invoices.",
                 "Capture a check photo or enter the check details.",
-                "Let Trimax suggest invoices that match the check amount.",
+                "Use the remittance stub only when it prints exact invoice numbers.",
                 "Enter the check amount and reference number.",
                 "Trimax verifies the total before applying the payment.",
               ].map((step, index) => (

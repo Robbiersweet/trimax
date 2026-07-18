@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 type CheckStubLine = {
   property?: string;
   account?: string;
+  invoiceNumber?: string;
+  unitCode?: string;
   invoiceDate?: string;
   description?: string;
   amount?: number;
@@ -58,6 +60,12 @@ function normalizeExtraction(value: unknown): CheckStubExtraction {
             property:
               typeof row.property === "string" ? row.property.trim() : "",
             account: typeof row.account === "string" ? row.account.trim() : "",
+            invoiceNumber:
+              typeof row.invoiceNumber === "string"
+                ? row.invoiceNumber.trim()
+                : "",
+            unitCode:
+              typeof row.unitCode === "string" ? row.unitCode.trim() : "",
             invoiceDate:
               typeof row.invoiceDate === "string"
                 ? row.invoiceDate.trim()
@@ -105,6 +113,8 @@ function extractionToStubText(extraction: CheckStubExtraction) {
       [
         line.property,
         line.account,
+        line.invoiceNumber,
+        line.unitCode,
         line.invoiceDate,
         line.description,
         typeof line.amount === "number" ? `$${line.amount.toFixed(2)}` : "",
@@ -171,7 +181,7 @@ export async function POST(request: Request) {
             {
               type: "input_text",
               text:
-                "Read this check remittance stub for apartment maintenance accounting. Return JSON only with keys rawText, payor, checkNumber, checkDate, totalAmount, and lines. Each line should include property, account, invoiceDate, description, and amount. Preserve unit codes like J08A or J08B exactly when visible. If a field is unclear, use an empty string or null.",
+                "Read and transcribe this check image and remittance stub for apartment maintenance accounting. Do not infer or guess invoice matches. Return JSON only with keys rawText, payor, checkNumber, checkDate, totalAmount, and lines. Each line must include property, account, invoiceNumber, unitCode, invoiceDate, description, and amount. Preserve printed invoice numbers exactly when visible, including formats like INV 0504, INV-0504, 0504, or invoice 504. Preserve unit codes like J08A or J08B exactly when visible. If a field is unclear, use an empty string or null.",
             },
             {
               type: "input_image",

@@ -46,8 +46,17 @@ type CheckStubOcrResponse = {
   stubText?: string;
   payor?: string;
   checkNumber?: string;
+  checkDate?: string;
   totalAmount?: number;
   error?: string;
+};
+
+type RemittanceLine = {
+  text: string;
+  amount: number;
+  invoiceNumbers: string[];
+  unitCodes: string[];
+  serviceDescription: string;
 };
 
 type FiledPaymentImage = {
@@ -71,10 +80,6 @@ function parseMoney(value: string) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function moneyCents(value: number) {
-  return Math.round(value * 100);
-}
-
 function customerMatchesPayor(customerName: string, payor: string) {
   const normalizedPayor = payor.trim().toLowerCase();
 
@@ -88,19 +93,6 @@ function customerMatchesPayor(customerName: string, payor: string) {
     normalizedCustomer.includes(normalizedPayor) ||
     normalizedPayor.includes(normalizedCustomer)
   );
-}
-
-function invoiceSearchText(invoice: PayableInvoice) {
-  return [
-    invoice.displayId,
-    invoice.customerName,
-    invoice.projectTitle,
-    invoice.status,
-    invoice.dueDate,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
 }
 
 function extractMoneyValues(text: string) {
@@ -125,6 +117,50 @@ function extractCheckNumber(text: string) {
   return match?.[1] ?? "";
 }
 
+function normalizeInvoiceNumber(value: string) {
+  const digits = value.replace(/\D/g, "");
+
+  if (!digits) {
+    return "";
+  }
+
+  return `INV-${digits.padStart(4, "0")}`;
+}
+
+function extractInvoiceNumbers(text: string) {
+  const matches = new Set<string>();
+  const invoicePattern =
+    /\b(?:inv(?:oice)?\.?\s*[-#: ]?\s*)?0*(\d{3,6})\b/gi;
+
+  for (const match of text.matchAll(invoicePattern)) {
+    const raw = match[0];
+    const digits = match[1] ?? "";
+
+    if (!digits) {
+      continue;
+    }
+
+    const before = text.slice(Math.max(0, match.index - 16), match.index);
+    const after = text.slice(match.index + raw.length, match.index + raw.length + 16);
+    const hasInvoiceContext = /\binv(?:oice)?\.?\s*[-#: ]?\s*$/i.test(before);
+    const hasNearbyAmount = /^\s*(?:\.\d{2}|,\d{3}|\d|\$)/.test(after);
+    const hasDateContext =
+      /[-/]\s*$/.test(before) || /^\s*[-/]\s*\d{1,4}/.test(after);
+    const hasCheckContext = /\b(?:ck|check)\s*#?\s*:?\s*$/i.test(before);
+    const isBareInvoiceNumber =
+      !hasNearbyAmount &&
+      !hasDateContext &&
+      !hasCheckContext &&
+      digits.length >= 3;
+
+    if (hasInvoiceContext || isBareInvoiceNumber) {
+      matches.add(normalizeInvoiceNumber(digits));
+    }
+  }
+
+  return Array.from(matches);
+}
+
 function extractTotalAmount(text: string) {
   const explicitTotal = text.match(/\bTOTAL\s*:?\s*\$?\s*([\d,]+\.\d{2})/i);
 
@@ -146,7 +182,56 @@ function extractLikelyPayor(text: string) {
   return propertyLine ?? "";
 }
 
-function parseRemittanceLines(text: string) {
+function parseCheckDate(value: string) {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return "";
+  }
+
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+
+  if (isoMatch) {
+    return `${isoMatch[1]}-${isoMatch[2].padStart(2, "0")}-${isoMatch[3].padStart(2, "0")}`;
+  }
+
+  const slashMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);
+
+  if (!slashMatch) {
+    return "";
+  }
+
+  const currentYear = new Date().getFullYear();
+  const rawYear = slashMatch[3] ?? String(currentYear);
+  const year =
+    rawYear.length === 2
+      ? Number(`20${rawYear}`)
+      : Number(rawYear);
+  const month = Number(slashMatch[1]);
+  const day = Number(slashMatch[2]);
+
+  if (
+    !Number.isFinite(year) ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31
+  ) {
+    return "";
+  }
+
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function extractCheckDate(text: string) {
+  const match = text.match(
+    /\b(?:date|check\s*date)\s*:?\s*(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?|\d{4}-\d{1,2}-\d{1,2})\b/i
+  );
+
+  return match?.[1] ? parseCheckDate(match[1]) : "";
+}
+
+function parseRemittanceLines(text: string): RemittanceLine[] {
   return text
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -157,146 +242,130 @@ function parseRemittanceLines(text: string) {
       return {
         text: line,
         amount: amounts.at(-1) ?? 0,
+        invoiceNumbers: extractInvoiceNumbers(line),
         unitCodes: extractUnitCodes(line),
+        serviceDescription: line
+          .replace(/\b(?:inv(?:oice)?\.?\s*[-#: ]?\s*)?0*\d{3,6}\b/gi, "")
+          .replace(/\$?\s*\d{1,3}(?:,\d{3})*(?:\.\d{2})\b|\b\d+\.\d{2}\b/g, "")
+          .replace(/\b[A-Z]\d{2}[A-Z]?\b/gi, "")
+          .replace(/\s+/g, " ")
+          .trim(),
       };
     })
-    .filter((line) => line.amount > 0 && !/\bTOTAL\b/i.test(line.text));
+    .filter((line) => !/\bTOTAL\b/i.test(line.text));
 }
 
-function findMatchingInvoices(
+function findRemittanceMatches(
   invoices: PayableInvoice[],
-  amount: number,
-  payor: string
+  stubText: string,
+  payorOverride = ""
 ) {
-  const target = moneyCents(amount);
-
-  if (target <= 0) {
-    return [];
-  }
-
-  const payorMatches = invoices.filter((invoice) =>
-    customerMatchesPayor(invoice.customerName, payor)
-  );
-  const candidates = (payorMatches.length > 0 ? payorMatches : invoices)
-    .filter((invoice) => invoice.amountDue > 0)
-    .sort((first, second) => {
-      if (first.customerName !== second.customerName) {
-        return first.customerName.localeCompare(second.customerName);
-      }
-
-      return (first.dueDate ?? "9999-12-31").localeCompare(
-        second.dueDate ?? "9999-12-31"
-      );
-    })
-    .slice(0, 18);
-
-  const sums = new Map<number, PayableInvoice[]>();
-  sums.set(0, []);
-
-  for (const invoice of candidates) {
-    const invoiceCents = moneyCents(invoice.amountDue);
-    const currentSums = Array.from(sums.entries());
-
-    for (const [sum, invoiceList] of currentSums) {
-      const nextSum = sum + invoiceCents;
-
-      if (nextSum > target || sums.has(nextSum)) {
-        continue;
-      }
-
-      const nextInvoiceList = [...invoiceList, invoice];
-      sums.set(nextSum, nextInvoiceList);
-
-      if (nextSum === target) {
-        return nextInvoiceList;
-      }
-    }
-  }
-
-  const exactSingle = candidates.find(
-    (invoice) => Math.abs(invoice.amountDue - amount) < 0.01
-  );
-
-  if (exactSingle) {
-    return [exactSingle];
-  }
-
-  return [...candidates]
-    .sort((first, second) => second.amountDue - first.amountDue)
-    .reduce<PayableInvoice[]>((matches, invoice) => {
-      const currentTotal = matches.reduce(
-        (total, item) => total + item.amountDue,
-        0
-      );
-
-      return currentTotal + invoice.amountDue <= amount + 0.01
-        ? [...matches, invoice]
-        : matches;
-  }, []);
-}
-
-function findRemittanceMatches(invoices: PayableInvoice[], stubText: string) {
   const totalAmount = extractTotalAmount(stubText);
   const lineItems = parseRemittanceLines(stubText);
-  const totalMatches = invoices.filter(
-    (invoice) => Math.abs(invoice.amountDue - totalAmount) < 0.01
+  const allReferencedInvoiceNumbers = lineItems.flatMap(
+    (line) => line.invoiceNumbers
   );
-
-  if (totalMatches.length === 1) {
-    return {
-      matches: totalMatches,
-      totalAmount,
-      lineItems,
-      confidence: "exact-total" as const,
-    };
-  }
-
-  const lineMatches = lineItems
-    .map((line) => {
-      const candidates = invoices
-        .filter((invoice) => Math.abs(invoice.amountDue - line.amount) < 0.01)
-        .map((invoice) => {
-          const searchText = invoiceSearchText(invoice);
-          const unitScore = line.unitCodes.some((unit) =>
-            searchText.includes(unit.toLowerCase())
-          )
-            ? 4
-            : 0;
-          const words = line.text
-            .toLowerCase()
-            .split(/[^a-z0-9]+/)
-            .filter((word) => word.length >= 3);
-          const wordScore = words.filter((word) => searchText.includes(word))
-            .length;
-
-          return {
-            invoice,
-            score: unitScore + wordScore,
-          };
-        })
-        .sort((first, second) => second.score - first.score);
-
-      return candidates[0]?.invoice ?? null;
-    })
+  const referencedInvoiceNumbers = Array.from(
+    new Set(allReferencedInvoiceNumbers)
+  );
+  const invoiceNumberRecords = invoices
+    .map((invoice) => ({
+      invoiceNumber: normalizeInvoiceNumber(invoice.displayId),
+      invoice,
+    }))
+    .filter((record) => record.invoiceNumber);
+  const duplicateTrimaxInvoiceNumbers = Array.from(
+    new Set(
+      invoiceNumberRecords
+        .map((record) => record.invoiceNumber)
+        .filter(
+          (invoiceNumber, index, allNumbers) =>
+            allNumbers.indexOf(invoiceNumber) !== index
+        )
+    )
+  );
+  const invoicesByNumber = new Map(
+    invoiceNumberRecords.map((record) => [
+      record.invoiceNumber,
+      record.invoice,
+    ])
+  );
+  const missingInvoiceNumbers = referencedInvoiceNumbers.filter(
+    (invoiceNumber) => !invoicesByNumber.has(invoiceNumber)
+  );
+  const matches = referencedInvoiceNumbers
+    .map((invoiceNumber) => invoicesByNumber.get(invoiceNumber) ?? null)
     .filter((invoice): invoice is PayableInvoice => Boolean(invoice));
-  const uniqueMatches = Array.from(
-    new Map(lineMatches.map((invoice) => [invoice.id, invoice])).values()
+  const duplicatedInvoiceNumbers = allReferencedInvoiceNumbers.filter(
+    (invoiceNumber, index) => allReferencedInvoiceNumbers.indexOf(invoiceNumber) !== index
   );
-  const matchedTotal = uniqueMatches.reduce(
+  const matchedTotal = matches.reduce(
     (total, invoice) => total + invoice.amountDue,
     0
   );
+  const lineTotal = lineItems.reduce((total, line) => total + line.amount, 0);
+  const referencedLineTotal = lineItems
+    .filter((line) => line.invoiceNumbers.length > 0)
+    .reduce((total, line) => total + line.amount, 0);
+  const payor = payorOverride.trim() || extractLikelyPayor(stubText);
+  const customerNames = Array.from(new Set(matches.map((invoice) => invoice.customerName)));
+  const customerMismatch =
+    Boolean(payor.trim()) &&
+    matches.some((invoice) => !customerMatchesPayor(invoice.customerName, payor));
+  const hasReadableStub = stubText.trim().length > 0;
+  const issues = [
+    !hasReadableStub ? "Remittance text is missing or unreadable." : "",
+    referencedInvoiceNumbers.length === 0
+      ? "No exact invoice numbers were read from the remittance stub."
+      : "",
+    missingInvoiceNumbers.length > 0
+      ? `Invoice number not found or not open in Trimax: ${missingInvoiceNumbers.join(", ")}.`
+      : "",
+    duplicatedInvoiceNumbers.length > 0
+      ? `Duplicate invoice number on stub: ${Array.from(new Set(duplicatedInvoiceNumbers)).join(", ")}.`
+      : "",
+    duplicateTrimaxInvoiceNumbers.some((invoiceNumber) =>
+      referencedInvoiceNumbers.includes(invoiceNumber)
+    )
+      ? `Invoice number is duplicated in Trimax: ${duplicateTrimaxInvoiceNumbers
+          .filter((invoiceNumber) =>
+            referencedInvoiceNumbers.includes(invoiceNumber)
+          )
+          .join(", ")}.`
+      : "",
+    matches.some(
+      (invoice) =>
+        invoice.amountDue <= 0 || invoice.status.toLowerCase() === "paid"
+    )
+      ? "One or more referenced invoices has no unpaid balance."
+      : "",
+    payor.trim().length === 0
+      ? "Payor/customer could not be confidently read from the stub."
+      : "",
+    customerNames.length > 1
+      ? "Referenced invoices belong to more than one customer."
+      : "",
+    customerMismatch
+      ? "Referenced invoice customer does not match the payor read from the stub."
+      : "",
+    totalAmount > 0 &&
+    Math.abs(matchedTotal - totalAmount) >= 0.01 &&
+    Math.abs(referencedLineTotal - totalAmount) >= 0.01
+      ? "Referenced invoice balances and remittance line amounts do not reconcile to the check total."
+      : "",
+    totalAmount <= 0 ? "Check total could not be confidently read from the stub." : "",
+  ].filter(Boolean);
 
   return {
-    matches: uniqueMatches,
+    matches: issues.length === 0 ? matches : [],
     totalAmount,
     lineItems,
-    confidence:
-      uniqueMatches.length > 0 && Math.abs(matchedTotal - totalAmount) < 0.01
-        ? ("line-total" as const)
-        : uniqueMatches.length > 0
-          ? ("line-review" as const)
-          : ("none" as const),
+    referencedInvoiceNumbers,
+    missingInvoiceNumbers,
+    matchedTotal,
+    lineTotal,
+    issues,
+    confidence: issues.length === 0 ? ("verified" as const) : ("review" as const),
   };
 }
 
@@ -507,7 +576,7 @@ export default function BatchInvoicePayments({
   const [isSaving, setIsSaving] = useState(false);
   const [toast, setToast] = useState<ToastState>(null);
 
-  const payableInvoices = useMemo<PayableInvoice[]>(
+  const invoiceRecords = useMemo<PayableInvoice[]>(
     () =>
       invoices
         .map((invoice) => ({
@@ -517,13 +586,17 @@ export default function BatchInvoicePayments({
               ? Math.max(invoice.collectionAmountDue, 0)
               : Math.max(invoice.invoiceAmount - invoice.amountPaid, 0),
           daysLate: daysPastDue(invoice.dueDate),
-        }))
-        .filter(
-          (invoice) =>
-            invoice.status.toLowerCase() !== "paid" &&
-            invoice.amountDue > 0
-        ),
+        })),
     [invoices]
+  );
+  const payableInvoices = useMemo(
+    () =>
+      invoiceRecords.filter(
+        (invoice) =>
+          invoice.status.toLowerCase() !== "paid" &&
+          invoice.amountDue > 0
+      ),
+    [invoiceRecords]
   );
 
   const customerGroups = useMemo(() => {
@@ -630,22 +703,9 @@ export default function BatchInvoicePayments({
   const capturedAmountValue = capturedCheckAmount.trim()
     ? parseMoney(capturedCheckAmount)
     : 0;
-  const suggestedCheckMatches = useMemo(
-    () =>
-      findMatchingInvoices(
-        payableInvoices,
-        capturedAmountValue,
-        checkPayor
-      ),
-    [capturedAmountValue, checkPayor, payableInvoices]
-  );
-  const suggestedCheckTotal = suggestedCheckMatches.reduce(
-    (total, invoice) => total + invoice.amountDue,
-    0
-  );
   const remittanceMatch = useMemo(
-    () => findRemittanceMatches(payableInvoices, remittanceStubText),
-    [payableInvoices, remittanceStubText]
+    () => findRemittanceMatches(invoiceRecords, remittanceStubText, checkPayor),
+    [checkPayor, invoiceRecords, remittanceStubText]
   );
   const remittanceSuggestedTotal = remittanceMatch.matches.reduce(
     (total, invoice) => total + invoice.amountDue,
@@ -654,94 +714,25 @@ export default function BatchInvoicePayments({
   const hasRemittanceStub = remittanceStubText.trim().length > 0;
   const hasRemittanceMatch = remittanceMatch.matches.length > 0;
   const remittanceConfidence =
-    remittanceMatch.confidence === "exact-total"
+    remittanceMatch.confidence === "verified"
       ? {
-          label: "Invoice total match",
-          detail: "The stub total matches one open invoice.",
+          label: "Verified Remittance Match",
+          detail:
+            "Invoice numbers were read from the stub, found in Trimax, and reconcile to the check total.",
           tone: "exact",
         }
-      : remittanceMatch.confidence === "line-total"
-        ? {
-            label: "Line total match",
-            detail: "The stub line amounts match open invoices.",
-            tone: "exact",
-          }
-        : remittanceMatch.confidence === "line-review"
-          ? {
-              label: "Review lines",
-              detail:
-                "Trimax found invoice clues, but the selected total does not equal the stub total yet.",
-              tone: "review",
-            }
-          : hasRemittanceStub
-            ? {
-                label: "No stub match",
-                detail:
-                  "Try adding the unit, invoice date, description, and line amount from the stub.",
-                tone: "none",
-              }
-            : {
-                label: "Waiting",
-                detail:
-                  "Paste the stub text or OCR result to match by unit, date, description, and amount.",
-                tone: "waiting",
-              };
-  const hasExactCheckMatch =
-    capturedAmountValue > 0 &&
-    suggestedCheckMatches.length > 0 &&
-    Math.abs(suggestedCheckTotal - capturedAmountValue) < 0.01;
-  const checkMatchConfidence =
-    capturedAmountValue <= 0
-      ? {
-          label: "Waiting",
-          detail: "Enter the check amount to let Trimax search open invoices.",
-          tone: "waiting",
-        }
-      : hasExactCheckMatch
-        ? {
-            label: "Exact match",
-            detail: "The selected invoices equal the photographed check.",
-            tone: "exact",
-          }
-        : suggestedCheckMatches.length > 0
-          ? {
-              label: "Review match",
-              detail: `${formatMoney(
-                Math.abs(capturedAmountValue - suggestedCheckTotal)
-              )} difference from the closest invoice group.`,
-              tone: "review",
-            }
-          : {
-              label: "No match",
-              detail: "Try the customer name, check amount, or select invoices manually.",
-              tone: "none",
-            };
+      : {
+          label: "Owner Review Required",
+          detail:
+            remittanceMatch.issues[0] ??
+            "Remittance information is unreadable, missing, ambiguous, or conflicting.",
+          tone: "review",
+        };
   const checkCaptureSteps = [
     checkImagePreview ? "Photo ready" : "Capture check",
     capturedAmountValue > 0 ? formatMoney(capturedAmountValue) : "Enter amount",
-    suggestedCheckMatches.length > 0
-      ? checkMatchConfidence.label
-      : hasRemittanceMatch
-        ? remittanceConfidence.label
-        : "Match invoices",
+    remittanceConfidence.label,
   ];
-  const suggestedPaymentMatches = useMemo(
-    () =>
-      findMatchingInvoices(
-        payableInvoices,
-        enteredCheckAmount ?? 0,
-        customerFilter === "all" ? "" : customerFilter
-      ),
-    [customerFilter, enteredCheckAmount, payableInvoices]
-  );
-  const suggestedPaymentTotal = suggestedPaymentMatches.reduce(
-    (total, invoice) => total + invoice.amountDue,
-    0
-  );
-  const hasSuggestedPaymentMatch =
-    enteredCheckAmount !== null &&
-    !checkAmountMatches &&
-    suggestedPaymentMatches.length > 0;
   const paymentCanApply =
     !isSaving && selectedInvoices.length > 0 && checkAmountMatches;
   const paymentGuideSteps = [
@@ -786,17 +777,13 @@ export default function BatchInvoicePayments({
         ? "Enter check amount"
         : checkAmountMatches
           ? "Ready to apply"
-          : hasSuggestedPaymentMatch
-            ? "Better match available"
-            : "Needs review";
+          : "Needs owner review";
   const reconciliationTone =
     selectedInvoices.length === 0 || enteredCheckAmount === null
       ? "waiting"
       : checkAmountMatches
         ? "ready"
-        : hasSuggestedPaymentMatch
-          ? "review"
-          : "attention";
+        : "attention";
   const reconciliationSummary = [
     {
       label: "Selected",
@@ -830,17 +817,12 @@ export default function BatchInvoicePayments({
             : checkDifferenceLabel,
     },
     {
-      label: "Suggested",
-      value:
-        suggestedPaymentMatches.length > 0
-          ? formatMoney(suggestedPaymentTotal)
-          : "No match",
+      label: "Remittance",
+      value: remittanceConfidence.label,
       detail:
-        suggestedPaymentMatches.length > 0
-          ? `${suggestedPaymentMatches.length} invoice${
-              suggestedPaymentMatches.length === 1 ? "" : "s"
-            }`
-          : "Enter amount to match",
+        remittanceMatch.referencedInvoiceNumbers.length > 0
+          ? remittanceMatch.referencedInvoiceNumbers.join(", ")
+          : "No invoice numbers read",
     },
   ];
 
@@ -903,23 +885,6 @@ export default function BatchInvoicePayments({
 
     setCustomerFilter("all");
     selectInvoicesAndAmount(overdueInvoices, "Overdue invoice batch payment");
-  }
-
-  function selectOldestInvoices() {
-    const oldestInvoices = [...payableInvoices]
-      .sort((first, second) => {
-        const firstDate = first.dueDate ?? "9999-12-31";
-        const secondDate = second.dueDate ?? "9999-12-31";
-
-        return firstDate.localeCompare(secondDate);
-      })
-      .slice(0, 10);
-
-    setCustomerFilter("all");
-    selectInvoicesAndAmount(
-      oldestInvoices,
-      "Oldest open invoice batch payment"
-    );
   }
 
   function selectCustomerGroup(customerName: string) {
@@ -1064,13 +1029,27 @@ export default function BatchInvoicePayments({
         setCapturedCheckReference(data.checkNumber.trim());
       }
 
+      if (data.checkDate?.trim()) {
+        const parsedDate = parseCheckDate(data.checkDate);
+
+        if (parsedDate) {
+          setPaymentDate(parsedDate);
+        }
+      } else {
+        const parsedDate = extractCheckDate(data.stubText);
+
+        if (parsedDate) {
+          setPaymentDate(parsedDate);
+        }
+      }
+
       if (data.payor?.trim() && !checkPayor.trim()) {
         setCheckPayor(data.payor.trim());
       }
 
       setCheckOcrStatus("ready");
       setCheckOcrMessage(
-        "Stub text extracted. Review the suggested invoice match before applying."
+        "Stub text extracted. Trimax will verify invoice numbers read from the remittance only."
       );
     } catch (error) {
       setCheckOcrStatus("error");
@@ -1103,45 +1082,6 @@ export default function BatchInvoicePayments({
     });
   }
 
-  function applyCheckCaptureMatch() {
-    if (capturedAmountValue <= 0) {
-      setToast({
-        type: "error",
-        message: "Enter the check amount before matching invoices.",
-      });
-      return;
-    }
-
-    if (suggestedCheckMatches.length === 0) {
-      setToast({
-        type: "error",
-        message:
-          "Trimax could not find invoice matches for that check amount yet.",
-      });
-      return;
-    }
-
-    setPaymentType("Check");
-    setPaymentReference(capturedCheckReference.trim());
-    setCheckAmount(formatMoney(capturedAmountValue));
-    setSelectedIds(suggestedCheckMatches.map((invoice) => invoice.id));
-    const matchedCustomers = Array.from(
-      new Set(suggestedCheckMatches.map((invoice) => invoice.customerName))
-    );
-    setCustomerFilter(matchedCustomers.length === 1 ? matchedCustomers[0] : "all");
-    setInternalNote(
-      `Check capture match${
-        checkImageName ? ` from ${checkImageName}` : ""
-      }`
-    );
-    setToast({
-      type: "success",
-      message: hasExactCheckMatch
-        ? "Trimax matched the check to open invoices."
-        : "Trimax selected the closest open invoices. Review before applying.",
-    });
-  }
-
   function applyRemittanceStubMatch() {
     if (!hasRemittanceStub) {
       setToast({
@@ -1155,7 +1095,8 @@ export default function BatchInvoicePayments({
       setToast({
         type: "error",
         message:
-          "Trimax could not match that stub to open invoices yet. Add the unit, line amount, or check total.",
+          remittanceMatch.issues[0] ??
+          "Owner Review Required. Trimax could not verify invoice numbers from that remittance stub.",
       });
       return;
     }
@@ -1197,45 +1138,7 @@ export default function BatchInvoicePayments({
     );
     setToast({
       type: "success",
-      message:
-        remittanceMatch.confidence === "exact-total" ||
-        remittanceMatch.confidence === "line-total"
-          ? "Trimax matched the stub to open invoices."
-          : "Trimax selected the best stub clues. Review before applying.",
-    });
-  }
-
-  function applyEnteredAmountMatch() {
-    if (enteredCheckAmount === null || enteredCheckAmount <= 0) {
-      setToast({
-        type: "error",
-        message: "Enter a check amount before asking Trimax to match it.",
-      });
-      return;
-    }
-
-    if (suggestedPaymentMatches.length === 0) {
-      setToast({
-        type: "error",
-        message: "Trimax could not find a better invoice match for that check.",
-      });
-      return;
-    }
-
-    setSelectedIds(suggestedPaymentMatches.map((invoice) => invoice.id));
-    const matchedCustomers = Array.from(
-      new Set(suggestedPaymentMatches.map((invoice) => invoice.customerName))
-    );
-    setCustomerFilter(matchedCustomers.length === 1 ? matchedCustomers[0] : "all");
-    setInternalNote(
-      `Check amount match for ${formatMoney(enteredCheckAmount)}`
-    );
-    setToast({
-      type: "success",
-      message:
-        Math.abs(suggestedPaymentTotal - enteredCheckAmount) < 0.01
-          ? "Trimax found an exact invoice selection for that check amount."
-          : "Trimax selected the closest invoice group. Review before applying.",
+      message: "Verified remittance match loaded from invoice numbers on the stub.",
     });
   }
 
@@ -1495,8 +1398,8 @@ export default function BatchInvoicePayments({
       {focusedCustomer ? (
         <div className="mt-6 rounded-2xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm leading-6 text-green-50">
           Payment workspace opened for{" "}
-          <span className="font-semibold">{focusedCustomer}</span>. Trimax
-          selected matching open invoices when it found them.
+          <span className="font-semibold">{focusedCustomer}</span>. Review
+          the remittance stub or manually select the invoices to apply.
         </div>
       ) : null}
 
@@ -1570,9 +1473,7 @@ export default function BatchInvoicePayments({
           <div className="payment-reconciliation-status rounded-2xl border px-4 py-3 text-sm font-black">
             {paymentCanApply
               ? "Balanced"
-              : hasSuggestedPaymentMatch
-                ? "Use best match"
-                : "In progress"}
+              : "In progress"}
           </div>
         </div>
 
@@ -1615,16 +1516,6 @@ export default function BatchInvoicePayments({
               className="rounded-2xl bg-sky-500 px-4 py-3 text-sm font-black text-white transition hover:bg-sky-600"
             >
               Use Captured Details
-            </button>
-          ) : null}
-
-          {hasSuggestedPaymentMatch ? (
-            <button
-              type="button"
-              onClick={applyEnteredAmountMatch}
-              className="rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-black text-black transition hover:bg-emerald-400"
-            >
-              Select Best Match
             </button>
           ) : null}
 
@@ -1850,9 +1741,9 @@ export default function BatchInvoicePayments({
                     Remittance stub reader
                   </p>
                   <p className="mt-1 text-sm leading-6 text-zinc-400">
-                    Paste the stub text from the photo. Trimax looks for unit
-                    codes like J08, service descriptions, line amounts, check
-                    number, and total.
+                    Paste the stub text from the photo. Trimax verifies only
+                    invoice numbers printed on the remittance stub. Unit codes,
+                    service descriptions, and amounts are shown as review clues.
                   </p>
                 </div>
 
@@ -1906,9 +1797,20 @@ export default function BatchInvoicePayments({
                   disabled={!hasRemittanceMatch}
                   className="check-match-button rounded-2xl bg-emerald-500 px-5 py-3 font-black text-black transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-600"
                 >
-                  Use Stub Match
+                  Use Verified Remittance
                 </button>
               </div>
+
+              {remittanceMatch.issues.length > 0 ? (
+                <div className="mt-4 rounded-2xl border border-amber-300/35 bg-amber-300/10 px-4 py-3 text-sm leading-6 text-amber-50">
+                  <p className="font-black">Owner Review Required</p>
+                  <ul className="mt-2 grid gap-1">
+                    {remittanceMatch.issues.slice(0, 5).map((issue) => (
+                      <li key={issue}>{issue}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
 
               {remittanceMatch.lineItems.length > 0 ? (
                 <div className="mt-4 grid gap-2">
@@ -1920,12 +1822,14 @@ export default function BatchInvoicePayments({
                       <div className="flex items-start justify-between gap-3">
                         <span className="min-w-0">
                           <span className="block truncate font-semibold text-white">
-                            {line.unitCodes.length > 0
-                              ? line.unitCodes.join(", ")
-                              : "Stub line"}
+                            {line.invoiceNumbers.length > 0
+                              ? line.invoiceNumbers.join(", ")
+                              : "No invoice number read"}
                           </span>
                           <span className="mt-0.5 block truncate text-zinc-400">
-                            {line.text}
+                            {[line.unitCodes.join(", "), line.serviceDescription]
+                              .filter(Boolean)
+                              .join(" / ") || line.text}
                           </span>
                         </span>
                         <span className="font-black text-emerald-300">
@@ -1959,91 +1863,6 @@ export default function BatchInvoicePayments({
                   ))}
                 </div>
               ) : null}
-            </div>
-
-            <div
-              data-match-tone={checkMatchConfidence.tone}
-              className="check-match-card rounded-2xl border border-white/10 bg-black/35 p-4"
-            >
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-zinc-200">
-                    Suggested match
-                  </p>
-                  <p className="mt-1 text-sm leading-6 text-zinc-400">
-                    {checkMatchConfidence.detail}
-                  </p>
-                </div>
-
-                <span
-                  className="check-match-pill rounded-full px-3 py-1 text-xs font-black"
-                >
-                  {checkMatchConfidence.label}
-                </span>
-              </div>
-
-              {suggestedCheckMatches.length > 0 ? (
-                <div className="mt-4 grid gap-2">
-                  {suggestedCheckMatches.slice(0, 4).map((invoice) => (
-                    <div
-                      key={invoice.id}
-                      className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm"
-                    >
-                      <span className="min-w-0">
-                        <span className="block truncate font-semibold text-white">
-                          {invoice.displayId}
-                        </span>
-                        <span className="mt-0.5 block truncate text-zinc-400">
-                          {invoice.customerName}
-                        </span>
-                      </span>
-                      <span className="font-black text-emerald-300">
-                        {formatMoney(invoice.amountDue)}
-                      </span>
-                    </div>
-                  ))}
-
-                  <div className="flex items-center justify-between gap-3 border-t border-white/10 pt-3 text-sm">
-                    <span className="text-zinc-400">
-                      Suggested total
-                    </span>
-                    <span className="font-black text-white">
-                      {formatMoney(suggestedCheckTotal)}
-                    </span>
-                  </div>
-
-                  {capturedAmountValue > 0 ? (
-                    <div className="flex items-center justify-between gap-3 text-sm">
-                      <span className="text-zinc-400">
-                        Check difference
-                      </span>
-                      <span
-                        className={`font-black ${
-                          hasExactCheckMatch
-                            ? "text-emerald-300"
-                            : "text-amber-200"
-                        }`}
-                      >
-                        {formatMoney(
-                          Math.abs(capturedAmountValue - suggestedCheckTotal)
-                        )}
-                      </span>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-
-              <button
-                type="button"
-                onClick={applyCheckCaptureMatch}
-                disabled={
-                  capturedAmountValue <= 0 ||
-                  suggestedCheckMatches.length === 0
-                }
-                className="check-match-button mt-4 w-full rounded-2xl bg-sky-500 px-5 py-3 font-black text-white transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-600"
-              >
-                {hasExactCheckMatch ? "Use Exact Match" : "Use Check Match"}
-              </button>
             </div>
           </div>
         </div>
@@ -2173,22 +1992,12 @@ export default function BatchInvoicePayments({
                   ) : (
                     <>
                       {formatMoney(Math.abs(checkDifference))} is{" "}
-                      {checkDifferenceLabel}. Adjust the selection, update the
-                      check amount, or let Trimax search for a better match.
+                      {checkDifferenceLabel}. Adjust the selection or update
+                      the check amount after owner review.
                     </>
                   )}
                 </p>
               </div>
-
-              {hasSuggestedPaymentMatch ? (
-                <button
-                  type="button"
-                  onClick={applyEnteredAmountMatch}
-                  className="rounded-2xl bg-sky-500 px-4 py-3 font-black text-white transition hover:bg-sky-600"
-                >
-                  Use Best Match
-                </button>
-              ) : null}
             </div>
 
             <div className="mt-4 grid gap-2 sm:grid-cols-3">
@@ -2222,13 +2031,6 @@ export default function BatchInvoicePayments({
               </div>
             </div>
 
-            {hasSuggestedPaymentMatch ? (
-              <p className="mt-3 text-xs leading-5 opacity-80">
-                Best match: {suggestedPaymentMatches.length} invoice
-                {suggestedPaymentMatches.length === 1 ? "" : "s"} totaling{" "}
-                {formatMoney(suggestedPaymentTotal)}.
-              </p>
-            ) : null}
           </div>
         ) : null}
 
@@ -2289,15 +2091,6 @@ export default function BatchInvoicePayments({
             className="rounded-full border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-800 transition hover:border-rose-400 hover:bg-rose-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
           >
             Select Overdue
-          </button>
-
-          <button
-            type="button"
-            onClick={selectOldestInvoices}
-            disabled={payableInvoices.length === 0}
-            className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-sky-300 hover:bg-sky-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
-          >
-            Select Oldest 10
           </button>
 
           <button
