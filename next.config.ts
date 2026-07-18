@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["@sparticuz/chromium"],
+  serverExternalPackages: ["@sparticuz/chromium", "sharp", "tesseract.js"],
   outputFileTracingIncludes: {
     "/api/invoices/[id]/send-email": [
       "./node_modules/@sparticuz/chromium/bin/**/*",
