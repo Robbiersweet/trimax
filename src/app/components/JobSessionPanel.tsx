@@ -3,7 +3,16 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { logActivity } from "../lib/activityLog";
+import {
+  calculateDetailedLaborMinutes,
+  calculateSimpleLaborMinutes,
+  normalizeCrewCount,
+  type CrewDetail,
+  type CrewMode,
+} from "../lib/jobSessionLabor";
+import { normalizeWorkspaceRole } from "../lib/rolePermissions";
 import { supabase } from "../lib/supabase";
+import { loadWorkspaceAccess } from "../lib/workspaceAccess";
 
 const WORK_TYPES = [
   "Prep",
@@ -25,6 +34,9 @@ const WORK_TYPES = [
   "Other",
 ] as const;
 
+const JOB_SESSION_SELECT =
+  "id, business_id, user_id, property_name, unit_label, queue_item_id, estimate_id, invoice_id, job_type, started_at, ended_at, total_minutes, crew_mode, crew_count, crew_confirmed, crew_details, labor_minutes, notes, created_at";
+
 type JobSession = {
   id: string;
   business_id: string;
@@ -38,6 +50,11 @@ type JobSession = {
   started_at: string;
   ended_at: string | null;
   total_minutes: number | null;
+  crew_mode?: CrewMode | null;
+  crew_count?: number | null;
+  crew_confirmed?: boolean | null;
+  crew_details?: CrewDetail[] | null;
+  labor_minutes?: number | null;
   notes: string | null;
   created_at: string | null;
 };
@@ -57,6 +74,13 @@ type BreakdownDraft = {
   minutes: string;
   timeUnit: "minutes" | "hours";
   percentage: string;
+  notes: string;
+};
+
+type HelperDraft = {
+  label: string;
+  startTime: string;
+  endTime: string;
   notes: string;
 };
 
@@ -173,6 +197,54 @@ function numberInputValue(value: number) {
   return Number.isInteger(value) ? String(value) : String(Math.round(value * 100) / 100);
 }
 
+function laborMinutesForSession(session: JobSession) {
+  const elapsed =
+    session.total_minutes ?? minutesBetween(session.started_at, session.ended_at);
+
+  return session.labor_minutes ?? calculateSimpleLaborMinutes(
+    elapsed,
+    normalizeCrewCount(session.crew_count)
+  );
+}
+
+function crewCountForSession(session: JobSession) {
+  if (session.crew_mode === "detailed" && Array.isArray(session.crew_details)) {
+    return Math.max(session.crew_details.length, 1);
+  }
+
+  return normalizeCrewCount(session.crew_count);
+}
+
+function helperDraftFromCrewDetail(detail: CrewDetail): HelperDraft {
+  return {
+    label: detail.label || "Crew member",
+    startTime: detail.startTime ?? "",
+    endTime: detail.endTime ?? "",
+    notes: detail.notes ?? "",
+  };
+}
+
+function blankHelperDraft(index: number): HelperDraft {
+  return {
+    label: `Helper ${index + 1}`,
+    startTime: "",
+    endTime: "",
+    notes: "",
+  };
+}
+
+function breakdownDraftFromSaved(
+  breakdown: JobSessionBreakdown
+): BreakdownDraft {
+  return breakdownDraft(
+    breakdown.work_type || "Other",
+    breakdown.percentage ? numberInputValue(breakdown.percentage) : "",
+    breakdown.notes ?? "",
+    numberInputValue(breakdown.minutes),
+    "minutes"
+  );
+}
+
 function draftMinutesValue(draft: BreakdownDraft) {
   const enteredValue = Number(draft.minutes);
 
@@ -264,9 +336,21 @@ export default function JobSessionPanel({
   const [breakdownDrafts, setBreakdownDrafts] = useState<BreakdownDraft[]>([
     blankBreakdown(),
   ]);
+  const [editingSession, setEditingSession] = useState<JobSession | null>(null);
+  const [editDateDraft, setEditDateDraft] = useState("");
+  const [editStartTimeDraft, setEditStartTimeDraft] = useState("");
+  const [editEndTimeDraft, setEditEndTimeDraft] = useState("");
+  const [editJobTypeDraft, setEditJobTypeDraft] = useState("Paint");
+  const [editNotesDraft, setEditNotesDraft] = useState("");
+  const [editCrewMode, setEditCrewMode] = useState<CrewMode>("simple");
+  const [editCrewCountDraft, setEditCrewCountDraft] = useState("1");
+  const [editHelpers, setEditHelpers] = useState<HelperDraft[]>([]);
+  const [editBreakdownDrafts, setEditBreakdownDrafts] = useState<BreakdownDraft[]>([]);
+  const [editLongDurationConfirmed, setEditLongDurationConfirmed] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [setupMissing, setSetupMissing] = useState(false);
+  const [currentRole, setCurrentRole] = useState("technician");
 
   const displayJobType = jobTypeDraft || jobType || "Paint";
 
@@ -283,9 +367,7 @@ export default function JobSessionPanel({
     if (currentUserId) {
       const { data: activeData, error: activeError } = await supabase
         .from("job_sessions")
-        .select(
-          "id, business_id, user_id, property_name, unit_label, queue_item_id, estimate_id, invoice_id, job_type, started_at, ended_at, total_minutes, notes, created_at"
-        )
+        .select(JOB_SESSION_SELECT)
         .eq("business_id", businessId)
         .eq("user_id", currentUserId)
         .is("ended_at", null)
@@ -300,9 +382,7 @@ export default function JobSessionPanel({
 
     const { data: sessionData, error: sessionError } = await supabase
       .from("job_sessions")
-      .select(
-        "id, business_id, user_id, property_name, unit_label, queue_item_id, estimate_id, invoice_id, job_type, started_at, ended_at, total_minutes, notes, created_at"
-      )
+      .select(JOB_SESSION_SELECT)
       .eq("business_id", businessId)
       .eq("queue_item_id", queueItemId)
       .order("started_at", { ascending: false })
@@ -344,9 +424,7 @@ export default function JobSessionPanel({
     const { data: businessSessionData, error: businessSessionError } =
       await supabase
         .from("job_sessions")
-        .select(
-          "id, business_id, user_id, property_name, unit_label, queue_item_id, estimate_id, invoice_id, job_type, started_at, ended_at, total_minutes, notes, created_at"
-        )
+        .select(JOB_SESSION_SELECT)
         .eq("business_id", businessId)
         .not("ended_at", "is", null)
         .order("started_at", { ascending: false })
@@ -387,12 +465,17 @@ export default function JobSessionPanel({
     async function load() {
       const { data } = await supabase.auth.getUser();
       const currentUserId = data.user?.id ?? null;
+      const access = await loadWorkspaceAccess();
+      const workspace = access.find(
+        (item) => item.businessId === businessId
+      );
 
       if (!isActive) {
         return;
       }
 
       setUserId(currentUserId);
+      setCurrentRole(normalizeWorkspaceRole(workspace?.role ?? "technician"));
       await loadSessions(currentUserId);
     }
 
@@ -850,21 +933,303 @@ export default function JobSessionPanel({
     setBreakdownDrafts(defaultBreakdownDrafts(session.job_type));
   }
 
-  const breakdownBySession = useMemo(() => {
-    const map = new Map<string, JobSessionBreakdown[]>();
+  function openEditSession(session: JobSession) {
+    const savedBreakdowns = breakdownBySession.get(session.id) ?? [];
+    const crewDetails = Array.isArray(session.crew_details)
+      ? session.crew_details
+      : [];
 
-    breakdowns.forEach((breakdown) => {
-      const current = map.get(breakdown.job_session_id) ?? [];
-      current.push(breakdown);
-      map.set(breakdown.job_session_id, current);
+    setMessage(null);
+    setEditingSession(session);
+    setEditDateDraft(toLocalDateInputValue(new Date(session.started_at)));
+    setEditStartTimeDraft(toLocalTimeInputValue(new Date(session.started_at)));
+    setEditEndTimeDraft(
+      session.ended_at ? toLocalTimeInputValue(new Date(session.ended_at)) : ""
+    );
+    setEditJobTypeDraft(session.job_type || "Paint");
+    setEditNotesDraft(session.notes ?? "");
+    setEditCrewMode(session.crew_mode === "detailed" ? "detailed" : "simple");
+    setEditCrewCountDraft(String(crewCountForSession(session)));
+    setEditHelpers(
+      crewDetails.filter((detail) => detail.temporary).map(helperDraftFromCrewDetail)
+    );
+    setEditBreakdownDrafts(
+      savedBreakdowns.length > 0
+        ? savedBreakdowns.map(breakdownDraftFromSaved)
+        : defaultBreakdownDrafts(session.job_type)
+    );
+    setEditLongDurationConfirmed(false);
+  }
+
+  function updateEditHelper(
+    index: number,
+    field: keyof HelperDraft,
+    value: string
+  ) {
+    setEditHelpers((current) =>
+      current.map((helper, helperIndex) =>
+        helperIndex === index ? { ...helper, [field]: value } : helper
+      )
+    );
+  }
+
+  function updateEditBreakdown(
+    index: number,
+    field: keyof BreakdownDraft,
+    value: string
+  ) {
+    setEditBreakdownDrafts((current) =>
+      current.map((draft, draftIndex) =>
+        draftIndex === index ? { ...draft, [field]: value } : draft
+      )
+    );
+  }
+
+  function updateEditBreakdownTimeUnit(
+    index: number,
+    nextUnit: "minutes" | "hours"
+  ) {
+    setEditBreakdownDrafts((current) =>
+      current.map((draft, draftIndex) => {
+        if (draftIndex !== index || draft.timeUnit === nextUnit) {
+          return draft;
+        }
+
+        const currentMinutes = draftMinutesValue(draft);
+
+        return {
+          ...draft,
+          timeUnit: nextUnit,
+          minutes:
+            nextUnit === "hours"
+              ? numberInputValue(currentMinutes / 60)
+              : numberInputValue(currentMinutes),
+        };
+      })
+    );
+  }
+
+  const editStartedAt = combineLocalDateTime(editDateDraft, editStartTimeDraft);
+  const editEndedAt = combineLocalDateTime(editDateDraft, editEndTimeDraft);
+  const editElapsedMinutes =
+    editStartedAt && editEndedAt && editEndedAt > editStartedAt
+      ? Math.round((editEndedAt.getTime() - editStartedAt.getTime()) / 60000)
+      : 0;
+  const editCrewCount = normalizeCrewCount(Number(editCrewCountDraft));
+  const editCrewDetails: CrewDetail[] =
+    editCrewMode === "detailed"
+      ? [
+          {
+            label: "Session Worker",
+            linkedUserId: editingSession?.user_id ?? userId,
+            temporary: false,
+            startTime: editStartTimeDraft,
+            endTime: editEndTimeDraft,
+          },
+          ...editHelpers.map((helper, index) => ({
+            label: helper.label.trim() || `Helper ${index + 1}`,
+            temporary: true,
+            startTime: helper.startTime || editStartTimeDraft,
+            endTime: helper.endTime || editEndTimeDraft,
+            notes: helper.notes.trim() || undefined,
+          })),
+        ]
+      : [];
+  const editLaborMinutes =
+    editCrewMode === "detailed"
+      ? calculateDetailedLaborMinutes(
+          editDateDraft,
+          editStartTimeDraft,
+          editEndTimeDraft,
+          editCrewDetails
+        )
+      : calculateSimpleLaborMinutes(editElapsedMinutes, editCrewCount);
+  const editBreakdownMinutes = editBreakdownDrafts.reduce((total, draft) => {
+    const percentage = Number(draft.percentage);
+    const minutes = draftMinutesValue(draft);
+
+    if (minutes > 0) {
+      return total + minutes;
+    }
+
+    if (Number.isFinite(percentage) && percentage > 0 && editElapsedMinutes > 0) {
+      return total + Math.round((percentage / 100) * editElapsedMinutes);
+    }
+
+    return total;
+  }, 0);
+  const editBreakdownClose =
+    editElapsedMinutes === 0 ||
+    Math.abs(editBreakdownMinutes - editElapsedMinutes) <=
+      Math.max(5, Math.round(editElapsedMinutes * 0.05));
+
+  async function saveEditedSession() {
+    if (!editingSession || !editStartedAt || !editEndedAt) {
+      setMessage("Add a valid session date, start time, and end time.");
+      return;
+    }
+
+    if (editEndedAt <= editStartedAt || editElapsedMinutes <= 0) {
+      setMessage("End time must be after start time.");
+      return;
+    }
+
+    if (editElapsedMinutes > 16 * 60 && !editLongDurationConfirmed) {
+      setMessage("Confirm the long session before saving this correction.");
+      return;
+    }
+
+    if (!editBreakdownClose) {
+      setMessage("Breakdown should roughly match elapsed session time.");
+      return;
+    }
+
+    const canEdit =
+      currentRole === "owner" ||
+      currentRole === "admin" ||
+      editingSession.user_id === userId;
+
+    if (!canEdit) {
+      setMessage("Your role can view this session but cannot edit it.");
+      return;
+    }
+
+    setIsBusy(true);
+    setMessage(null);
+
+    const previous = {
+      startedAt: editingSession.started_at,
+      endedAt: editingSession.ended_at,
+      totalMinutes: editingSession.total_minutes,
+      crewCount: crewCountForSession(editingSession),
+      laborMinutes: laborMinutesForSession(editingSession),
+      jobType: editingSession.job_type,
+      notes: editingSession.notes,
+    };
+    const nextCrewCount =
+      editCrewMode === "detailed" ? editCrewDetails.length : editCrewCount;
+    const { data, error } = await supabase
+      .from("job_sessions")
+      .update({
+        started_at: editStartedAt.toISOString(),
+        ended_at: editEndedAt.toISOString(),
+        job_type: editJobTypeDraft.trim() || "General",
+        notes: editNotesDraft.trim() || null,
+        crew_mode: editCrewMode,
+        crew_count: nextCrewCount,
+        crew_confirmed: true,
+        crew_details: editCrewDetails,
+        labor_minutes: editLaborMinutes,
+      })
+      .eq("id", editingSession.id)
+      .eq("business_id", businessId)
+      .select()
+      .single();
+
+    if (error) {
+      setIsBusy(false);
+      console.warn("Job session edit could not be saved:", error.message);
+      setMessage("Session correction could not be saved yet.");
+      return;
+    }
+
+    const rows = editBreakdownDrafts
+      .map((draft) => {
+        const percentage = Number(draft.percentage);
+        const minutes = draftMinutesValue(draft);
+        const effectiveMinutes =
+          minutes > 0
+            ? minutes
+            : Number.isFinite(percentage) && percentage > 0 && editElapsedMinutes > 0
+              ? Math.round((percentage / 100) * editElapsedMinutes)
+              : 0;
+
+        return {
+          business_id: businessId,
+          job_session_id: editingSession.id,
+          work_type: draft.workType,
+          minutes: effectiveMinutes,
+          percentage:
+            Number.isFinite(percentage) && percentage > 0
+              ? percentage
+              : editElapsedMinutes > 0 && effectiveMinutes > 0
+                ? Math.round((effectiveMinutes / editElapsedMinutes) * 1000) / 10
+                : null,
+          notes: draft.notes.trim() || null,
+        };
+      })
+      .filter((row) => row.minutes > 0 || row.notes);
+
+    const { error: deleteError } = await supabase
+      .from("job_session_breakdowns")
+      .delete()
+      .eq("business_id", businessId)
+      .eq("job_session_id", editingSession.id);
+
+    if (deleteError) {
+      setIsBusy(false);
+      console.warn("Job session breakdown edit could not clear:", deleteError.message);
+      setMessage("Session saved, but breakdown corrections could not be replaced.");
+      return;
+    }
+
+    if (rows.length > 0) {
+      const { error: insertError } = await supabase
+        .from("job_session_breakdowns")
+        .insert(rows);
+
+      if (insertError) {
+        setIsBusy(false);
+        console.warn("Job session breakdown edit could not save:", insertError.message);
+        setMessage("Session saved, but breakdown corrections could not be saved.");
+        return;
+      }
+    }
+
+    const savedSession = data as JobSession;
+    await logActivity({
+      businessId,
+      action: "job_session.corrected",
+      entityType: "queue_item",
+      entityId: queueItemId,
+      entityLabel: `${propertyName || "Property"}${
+        unitLabel ? ` / Unit ${unitLabel}` : ""
+      }`,
+      details: {
+        jobSessionId: editingSession.id,
+        previous,
+        next: {
+          startedAt: savedSession.started_at,
+          endedAt: savedSession.ended_at,
+          totalMinutes: editElapsedMinutes,
+          crewCount: nextCrewCount,
+          crewMode: editCrewMode,
+          temporaryHelpers: editCrewMode === "detailed" ? editHelpers.length : 0,
+          laborMinutes: editLaborMinutes,
+          jobType: savedSession.job_type,
+          breakdownMinutes: editBreakdownMinutes,
+          breakdownBasis: "elapsed_session_time",
+        },
+      },
     });
 
-    return map;
-  }, [breakdowns]);
+    setIsBusy(false);
+    setEditingSession(null);
+    setMessage("Session correction saved.");
+    await loadSessions(userId, { preserveMessage: true });
+  }
 
-  const sessionSummary = useMemo(() => {
-    const completedSessions = sessions.filter((session) => session.ended_at);
-    const completedMinutes = completedSessions.reduce(
+  const breakdownBySession = new Map<string, JobSessionBreakdown[]>();
+
+  breakdowns.forEach((breakdown) => {
+    const current = breakdownBySession.get(breakdown.job_session_id) ?? [];
+    current.push(breakdown);
+    breakdownBySession.set(breakdown.job_session_id, current);
+  });
+
+  const completedPanelSessions = sessions.filter((session) => session.ended_at);
+  const sessionSummary = {
+    completedMinutes: completedPanelSessions.reduce(
       (total, session) =>
         total +
         Math.max(
@@ -873,20 +1238,21 @@ export default function JobSessionPanel({
           0
         ),
       0
-    );
-    const missingBreakdownCount = completedSessions.filter(
+    ),
+    completedLaborMinutes: completedPanelSessions.reduce(
+      (total, session) => total + laborMinutesForSession(session),
+      0
+    ),
+    missingBreakdownCount: completedPanelSessions.filter(
       (session) => (breakdownBySession.get(session.id) ?? []).length === 0
-    ).length;
-    const workerCount = new Set(sessions.map((session) => session.user_id)).size;
-    const latestSession = sessions[0] ?? null;
-
-    return {
-      completedMinutes,
-      missingBreakdownCount,
-      workerCount,
-      latestSession,
-    };
-  }, [breakdownBySession, sessions]);
+    ).length,
+    workerCount: completedPanelSessions.reduce(
+      (largest, session) => Math.max(largest, crewCountForSession(session)),
+      0
+    ),
+    latestSession: sessions[0] ?? null,
+  };
+  const completedPanelMinutes = sessionSummary.completedMinutes;
 
   const laborGuide = useMemo(() => {
     const normalizedJobType = displayJobType.trim().toLowerCase();
@@ -917,11 +1283,11 @@ export default function JobSessionPanel({
         : 0;
     const remainingMinutes =
       averageMinutes > 0
-        ? Math.max(averageMinutes - sessionSummary.completedMinutes, 0)
+        ? Math.max(averageMinutes - completedPanelMinutes, 0)
         : 0;
     const overMinutes =
       averageMinutes > 0
-        ? Math.max(sessionSummary.completedMinutes - averageMinutes, 0)
+        ? Math.max(completedPanelMinutes - averageMinutes, 0)
         : 0;
     const paceLabel =
       averageMinutes <= 0
@@ -934,7 +1300,7 @@ export default function JobSessionPanel({
     const progressPercent =
       averageMinutes > 0
         ? Math.min(
-            Math.round((sessionSummary.completedMinutes / averageMinutes) * 100),
+            Math.round((completedPanelMinutes / averageMinutes) * 100),
             140
           )
         : 0;
@@ -948,7 +1314,7 @@ export default function JobSessionPanel({
       sampleCount: sourceSessions.length,
       matchedJobType: matchingSessions.length > 0,
     };
-  }, [businessSessions, displayJobType, sessionSummary.completedMinutes]);
+  }, [businessSessions, completedPanelMinutes, displayJobType]);
 
   const activeElsewhereHref = otherActiveSession?.queue_item_id
     ? `/queue/${otherActiveSession.queue_item_id}?business=${
@@ -1010,12 +1376,12 @@ export default function JobSessionPanel({
       <div className="job-session-snapshot mt-5 grid gap-3 md:grid-cols-4">
         <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
           <p className="text-xs font-black uppercase tracking-[0.18em] text-sky-200">
-            Job Labor
+            Elapsed Time
           </p>
           <p className="mt-3 text-2xl font-black">
             {formatDuration(sessionSummary.completedMinutes)}
           </p>
-          <p className="mt-1 text-sm text-zinc-400">Completed time</p>
+          <p className="mt-1 text-sm text-zinc-400">Clock time</p>
         </div>
 
         <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
@@ -1025,7 +1391,17 @@ export default function JobSessionPanel({
           <p className="mt-3 text-2xl font-black">
             {sessionSummary.workerCount || "-"}
           </p>
-          <p className="mt-1 text-sm text-zinc-400">People with sessions</p>
+          <p className="mt-1 text-sm text-zinc-400">Largest completed crew</p>
+        </div>
+
+        <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-sky-200">
+            Total Labor Hours
+          </p>
+          <p className="mt-3 text-2xl font-black">
+            {formatDuration(sessionSummary.completedLaborMinutes)}
+          </p>
+          <p className="mt-1 text-sm text-zinc-400">Person-hours</p>
         </div>
 
         <div
@@ -1036,7 +1412,7 @@ export default function JobSessionPanel({
           }`}
         >
           <p className="text-xs font-black uppercase tracking-[0.18em] text-sky-200">
-            Breakdown
+            Breakdown Remaining
           </p>
           <p className="mt-3 text-2xl font-black">
             {sessionSummary.missingBreakdownCount}
@@ -1044,7 +1420,7 @@ export default function JobSessionPanel({
           <p className="mt-1 text-sm text-zinc-400">Sessions to finish</p>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+        <div className="rounded-2xl border border-white/10 bg-black/25 p-4 md:col-span-4">
           <p className="text-xs font-black uppercase tracking-[0.18em] text-sky-200">
             Latest
           </p>
@@ -1061,6 +1437,11 @@ export default function JobSessionPanel({
           </p>
         </div>
       </div>
+
+      <p className="mt-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm font-semibold text-zinc-300">
+        Elapsed time is the length of the job session. Labor hours include every
+        person who worked. Breakdown rows allocate elapsed session time.
+      </p>
 
       <div className="job-session-labor-guide mt-5 rounded-3xl border border-sky-300/20 bg-black/25 p-4">
         <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
@@ -1588,6 +1969,13 @@ export default function JobSessionPanel({
               const sessionBreakdowns = breakdownBySession.get(session.id) ?? [];
               const totalMinutes =
                 session.total_minutes ?? minutesBetween(session.started_at, session.ended_at);
+              const sessionCrewCount = crewCountForSession(session);
+              const sessionLaborMinutes = laborMinutesForSession(session);
+              const canEditSession =
+                Boolean(session.ended_at) &&
+                (currentRole === "owner" ||
+                  currentRole === "admin" ||
+                  session.user_id === userId);
 
               return (
                 <div
@@ -1597,11 +1985,18 @@ export default function JobSessionPanel({
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <p className="font-black">
-                        {session.job_type || "Job"} / {formatDuration(totalMinutes)}
+                        {session.job_type || "Job"} / Elapsed {formatDuration(totalMinutes)}
                       </p>
                       <p className="mt-1 text-sm text-zinc-400">
                         {formatTime(session.started_at)}{" "}
                         {session.ended_at ? `to ${formatTime(session.ended_at)}` : "active now"}
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-zinc-300">
+                        Crew {sessionCrewCount} / Total Labor Hours{" "}
+                        {formatDuration(sessionLaborMinutes)}
+                        {!session.crew_confirmed && session.ended_at
+                          ? " / defaulted to one worker"
+                          : ""}
                       </p>
                       {session.notes ? (
                         <p className="mt-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-zinc-300">
@@ -1609,22 +2004,434 @@ export default function JobSessionPanel({
                         </p>
                       ) : null}
                     </div>
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-black ${
-                        sessionBreakdowns.length > 0
-                          ? "bg-emerald-400 text-emerald-950"
+                    <div className="flex flex-wrap gap-2 sm:justify-end">
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-black ${
+                          sessionBreakdowns.length > 0
+                            ? "bg-emerald-400 text-emerald-950"
+                            : session.ended_at
+                              ? "bg-amber-300 text-amber-950"
+                              : "bg-sky-400 text-sky-950"
+                        }`}
+                      >
+                        {sessionBreakdowns.length > 0
+                          ? "Breakdown saved"
                           : session.ended_at
-                            ? "bg-amber-300 text-amber-950"
-                            : "bg-sky-400 text-sky-950"
-                      }`}
-                    >
-                      {sessionBreakdowns.length > 0
-                        ? "Breakdown saved"
-                        : session.ended_at
-                          ? "Needs breakdown"
-                        : "Active"}
-                    </span>
+                            ? "Needs breakdown"
+                            : "Active"}
+                      </span>
+                      {canEditSession ? (
+                        <button
+                          className="rounded-full border border-sky-300/40 bg-sky-300/10 px-3 py-1 text-xs font-black text-sky-100 transition hover:border-sky-200 hover:bg-sky-300/20"
+                          onClick={() => openEditSession(session)}
+                          type="button"
+                        >
+                          Edit Session
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
+
+                  {editingSession?.id === session.id ? (
+                    <div className="mt-4 rounded-3xl border border-sky-300/25 bg-sky-300/10 p-4">
+                      <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-start">
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-[0.2em] text-sky-200">
+                            Edit Session
+                          </p>
+                          <h3 className="mt-2 text-2xl font-black">
+                            Correct time, crew, and breakdown
+                          </h3>
+                          <p className="mt-2 text-sm leading-6 text-zinc-300">
+                            Elapsed time is the clock time. Labor hours include
+                            every person who worked. Breakdown rows allocate
+                            elapsed session time.
+                          </p>
+                        </div>
+                        <div className="rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm font-black text-sky-100">
+                          <p>Elapsed: {formatDuration(editElapsedMinutes)}</p>
+                          <p className="mt-1">
+                            Labor: {formatDuration(editLaborMinutes)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        <label className="block">
+                          <span className="text-sm font-bold text-zinc-300">
+                            Session Date
+                          </span>
+                          <input
+                            className="app-form-input mt-2 w-full rounded-2xl border px-4 py-3"
+                            type="date"
+                            value={editDateDraft}
+                            onChange={(event) => setEditDateDraft(event.target.value)}
+                          />
+                        </label>
+                        <label className="block">
+                          <span className="text-sm font-bold text-zinc-300">
+                            Start Time
+                          </span>
+                          <input
+                            className="app-form-input mt-2 w-full rounded-2xl border px-4 py-3"
+                            type="time"
+                            value={editStartTimeDraft}
+                            onChange={(event) =>
+                              setEditStartTimeDraft(event.target.value)
+                            }
+                          />
+                        </label>
+                        <label className="block">
+                          <span className="text-sm font-bold text-zinc-300">
+                            End Time
+                          </span>
+                          <input
+                            className="app-form-input mt-2 w-full rounded-2xl border px-4 py-3"
+                            type="time"
+                            value={editEndTimeDraft}
+                            onChange={(event) => setEditEndTimeDraft(event.target.value)}
+                          />
+                        </label>
+                        <label className="block">
+                          <span className="text-sm font-bold text-zinc-300">
+                            Job Type
+                          </span>
+                          <select
+                            className="app-form-input mt-2 w-full rounded-2xl border px-4 py-3"
+                            value={editJobTypeDraft}
+                            onChange={(event) => setEditJobTypeDraft(event.target.value)}
+                          >
+                            <option>Paint</option>
+                            <option>Reno Paint</option>
+                            <option>Cabinets</option>
+                            <option>Cleaning</option>
+                            <option>Inspection</option>
+                            <option>Admin</option>
+                            <option>Other</option>
+                          </select>
+                        </label>
+                      </div>
+
+                      <label className="mt-4 block">
+                        <span className="text-sm font-bold text-zinc-300">
+                          Quick Note
+                        </span>
+                        <input
+                          className="app-form-input mt-2 w-full rounded-2xl border px-4 py-3"
+                          placeholder="Optional"
+                          value={editNotesDraft}
+                          onChange={(event) => setEditNotesDraft(event.target.value)}
+                        />
+                      </label>
+
+                      {editElapsedMinutes > 16 * 60 ? (
+                        <label className="mt-4 flex items-start gap-3 rounded-2xl border border-amber-300/35 bg-amber-300/10 px-4 py-3 text-sm font-semibold text-amber-50">
+                          <input
+                            className="mt-1 h-4 w-4 accent-amber-400"
+                            type="checkbox"
+                            checked={editLongDurationConfirmed}
+                            onChange={(event) =>
+                              setEditLongDurationConfirmed(event.target.checked)
+                            }
+                          />
+                          <span>
+                            This session is longer than 16 hours. I reviewed the
+                            start and end time and want to save it.
+                          </span>
+                        </label>
+                      ) : null}
+
+                      <div className="mt-4 rounded-3xl border border-white/10 bg-black/20 p-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <p className="text-sm font-black text-white">Crew</p>
+                            <p className="mt-1 text-sm text-zinc-400">
+                              Temporary helpers stay on this session only.
+                            </p>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              className={`rounded-2xl border px-4 py-2 text-sm font-black ${
+                                editCrewMode === "simple"
+                                  ? "border-emerald-300 bg-emerald-300 text-emerald-950"
+                                  : "border-white/10 bg-black/25 text-zinc-200"
+                              }`}
+                              onClick={() => setEditCrewMode("simple")}
+                              type="button"
+                            >
+                              Simple
+                            </button>
+                            <button
+                              className={`rounded-2xl border px-4 py-2 text-sm font-black ${
+                                editCrewMode === "detailed"
+                                  ? "border-emerald-300 bg-emerald-300 text-emerald-950"
+                                  : "border-white/10 bg-black/25 text-zinc-200"
+                              }`}
+                              onClick={() => setEditCrewMode("detailed")}
+                              type="button"
+                            >
+                              Detailed
+                            </button>
+                          </div>
+                        </div>
+
+                        {editCrewMode === "simple" ? (
+                          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+                            <label className="block max-w-xs">
+                              <span className="text-sm font-bold text-zinc-300">
+                                Crew Count
+                              </span>
+                              <input
+                                className="app-form-input mt-2 w-full rounded-2xl border px-4 py-3"
+                                inputMode="numeric"
+                                value={editCrewCountDraft}
+                                onChange={(event) =>
+                                  setEditCrewCountDraft(event.target.value)
+                                }
+                              />
+                            </label>
+                            <button
+                              className="app-button-secondary rounded-2xl px-5 py-3 text-sm font-black"
+                              onClick={() => setEditCrewCountDraft("1")}
+                              type="button"
+                            >
+                              I Worked Alone
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="mt-4 space-y-3">
+                            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-zinc-300">
+                              The session worker uses the full corrected session
+                              time unless helper rows use their own start and end
+                              times.
+                            </div>
+                            {editHelpers.map((helper, helperIndex) => (
+                              <div
+                                key={`${helper.label}-${helperIndex}`}
+                                className="grid gap-3 rounded-2xl border border-white/10 bg-black/25 p-3 md:grid-cols-[1fr_0.7fr_0.7fr_1fr_auto]"
+                              >
+                                <input
+                                  className="app-form-input rounded-2xl border px-3 py-3"
+                                  placeholder={`Helper ${helperIndex + 1}`}
+                                  value={helper.label}
+                                  onChange={(event) =>
+                                    updateEditHelper(
+                                      helperIndex,
+                                      "label",
+                                      event.target.value
+                                    )
+                                  }
+                                />
+                                <input
+                                  className="app-form-input rounded-2xl border px-3 py-3"
+                                  type="time"
+                                  value={helper.startTime}
+                                  onChange={(event) =>
+                                    updateEditHelper(
+                                      helperIndex,
+                                      "startTime",
+                                      event.target.value
+                                    )
+                                  }
+                                />
+                                <input
+                                  className="app-form-input rounded-2xl border px-3 py-3"
+                                  type="time"
+                                  value={helper.endTime}
+                                  onChange={(event) =>
+                                    updateEditHelper(
+                                      helperIndex,
+                                      "endTime",
+                                      event.target.value
+                                    )
+                                  }
+                                />
+                                <input
+                                  className="app-form-input rounded-2xl border px-3 py-3"
+                                  placeholder="Notes"
+                                  value={helper.notes}
+                                  onChange={(event) =>
+                                    updateEditHelper(
+                                      helperIndex,
+                                      "notes",
+                                      event.target.value
+                                    )
+                                  }
+                                />
+                                <button
+                                  className="rounded-2xl border border-rose-300/30 px-4 py-3 text-sm font-black text-rose-100"
+                                  onClick={() =>
+                                    setEditHelpers((current) =>
+                                      current.filter((_, index) => index !== helperIndex)
+                                    )
+                                  }
+                                  type="button"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            ))}
+                            <button
+                              className="app-button-secondary rounded-2xl px-5 py-3 text-sm font-black"
+                              onClick={() =>
+                                setEditHelpers((current) => [
+                                  ...current,
+                                  blankHelperDraft(current.length),
+                                ])
+                              }
+                              type="button"
+                            >
+                              Add Temporary Helper
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-4 rounded-3xl border border-violet-300/25 bg-violet-300/10 p-4">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <p className="text-sm font-black text-white">
+                              Time Breakdown
+                            </p>
+                            <p className="mt-1 text-sm text-violet-100/80">
+                              Basis: elapsed session time, not person-hours.
+                            </p>
+                          </div>
+                          <p
+                            className={`rounded-2xl px-4 py-2 text-sm font-black ${
+                              editBreakdownClose
+                                ? "bg-emerald-300 text-emerald-950"
+                                : "bg-amber-300 text-amber-950"
+                            }`}
+                          >
+                            {formatDuration(editBreakdownMinutes)} assigned
+                          </p>
+                        </div>
+
+                        <div className="mt-4 space-y-3">
+                          {editBreakdownDrafts.map((draft, draftIndex) => (
+                            <div
+                              key={`${draft.workType}-${draftIndex}`}
+                              className="grid gap-3 rounded-2xl border border-white/10 bg-black/25 p-3 md:grid-cols-[1fr_0.55fr_0.65fr_0.6fr_1fr_auto]"
+                            >
+                              <select
+                                className="app-form-input rounded-2xl border px-3 py-3"
+                                value={draft.workType}
+                                onChange={(event) =>
+                                  updateEditBreakdown(
+                                    draftIndex,
+                                    "workType",
+                                    event.target.value
+                                  )
+                                }
+                              >
+                                {WORK_TYPES.map((type) => (
+                                  <option key={type}>{type}</option>
+                                ))}
+                              </select>
+                              <select
+                                className="app-form-input rounded-2xl border px-3 py-3"
+                                value={draft.timeUnit}
+                                onChange={(event) =>
+                                  updateEditBreakdownTimeUnit(
+                                    draftIndex,
+                                    event.target.value === "hours"
+                                      ? "hours"
+                                      : "minutes"
+                                  )
+                                }
+                              >
+                                <option value="minutes">Minutes</option>
+                                <option value="hours">Hours</option>
+                              </select>
+                              <input
+                                className="app-form-input rounded-2xl border px-3 py-3"
+                                inputMode="decimal"
+                                placeholder={
+                                  draft.timeUnit === "hours" ? "Hours" : "Minutes"
+                                }
+                                value={draft.minutes}
+                                onChange={(event) =>
+                                  updateEditBreakdown(
+                                    draftIndex,
+                                    "minutes",
+                                    event.target.value
+                                  )
+                                }
+                              />
+                              <input
+                                className="app-form-input rounded-2xl border px-3 py-3"
+                                inputMode="decimal"
+                                placeholder="%"
+                                value={draft.percentage}
+                                onChange={(event) =>
+                                  updateEditBreakdown(
+                                    draftIndex,
+                                    "percentage",
+                                    event.target.value
+                                  )
+                                }
+                              />
+                              <input
+                                className="app-form-input rounded-2xl border px-3 py-3"
+                                placeholder="Notes"
+                                value={draft.notes}
+                                onChange={(event) =>
+                                  updateEditBreakdown(
+                                    draftIndex,
+                                    "notes",
+                                    event.target.value
+                                  )
+                                }
+                              />
+                              <button
+                                className="rounded-2xl border border-rose-300/30 px-4 py-3 text-sm font-black text-rose-100"
+                                onClick={() =>
+                                  setEditBreakdownDrafts((current) =>
+                                    current.filter((_, index) => index !== draftIndex)
+                                  )
+                                }
+                                type="button"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                        <button
+                          className="app-button-secondary mt-3 rounded-2xl px-5 py-3 text-sm font-black"
+                          onClick={() =>
+                            setEditBreakdownDrafts((current) => [
+                              ...current,
+                              blankBreakdown(),
+                            ])
+                          }
+                          type="button"
+                        >
+                          Add Row
+                        </button>
+                      </div>
+
+                      <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                        <button
+                          className="app-button-primary rounded-2xl px-5 py-3 font-black"
+                          disabled={isBusy}
+                          onClick={saveEditedSession}
+                          type="button"
+                        >
+                          {isBusy ? "Saving..." : "Save Correction"}
+                        </button>
+                        <button
+                          className="app-button-secondary rounded-2xl px-5 py-3 font-black"
+                          disabled={isBusy}
+                          onClick={() => setEditingSession(null)}
+                          type="button"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
 
                   {session.ended_at && sessionBreakdowns.length === 0 ? (
                     <div className="mt-3 flex justify-start">

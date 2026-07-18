@@ -21,6 +21,9 @@ type JobSession = {
   started_at: string | null;
   ended_at: string | null;
   total_minutes: number | null;
+  crew_count?: number | null;
+  crew_confirmed?: boolean | null;
+  labor_minutes?: number | null;
   notes: string | null;
   created_at: string | null;
 };
@@ -106,6 +109,17 @@ function formatDuration(minutes: number) {
   }
 
   return `${hours}h ${remainingMinutes}m`;
+}
+
+function laborMinutesForSession(session: JobSession) {
+  const elapsed =
+    session.total_minutes ?? minutesBetween(session.started_at, session.ended_at);
+  const crewCount =
+    typeof session.crew_count === "number" && session.crew_count > 0
+      ? session.crew_count
+      : 1;
+
+  return session.labor_minutes ?? elapsed * crewCount;
 }
 
 function workTypeIncludes(label: string, terms: string[]) {
@@ -201,6 +215,7 @@ function laborActivityLabel(action: string) {
     "job_session.stopped": "Session Stopped",
     "job_session.breakdown_saved": "Breakdown Saved",
     "job_session.breakdown_skipped": "Breakdown Skipped",
+    "job_session.corrected": "Session Corrected",
     "technician.job_session_started": "Technician Started",
     "technician.job_session_resumed": "Technician Resumed",
     "technician.job_session_paused": "Technician Paused",
@@ -272,7 +287,7 @@ export default async function JobSessionsPage({
       supabase
         .from("job_sessions")
         .select(
-          "id, user_id, property_name, unit_label, queue_item_id, estimate_id, invoice_id, job_type, started_at, ended_at, total_minutes, notes, created_at"
+          "id, user_id, property_name, unit_label, queue_item_id, estimate_id, invoice_id, job_type, started_at, ended_at, total_minutes, crew_count, crew_confirmed, labor_minutes, notes, created_at"
         )
         .eq("business_id", selectedBusiness.id)
         .order("started_at", { ascending: false })
@@ -301,6 +316,7 @@ export default async function JobSessionsPage({
           "job_session.stopped",
           "job_session.breakdown_saved",
           "job_session.breakdown_skipped",
+          "job_session.corrected",
           "technician.job_session_started",
           "technician.job_session_resumed",
           "technician.job_session_paused",
@@ -364,6 +380,15 @@ export default async function JobSessionsPage({
     }
 
     return total + (session.total_minutes ?? minutesBetween(session.started_at, session.ended_at));
+  }, 0);
+  const monthLaborMinutes = completedSessions.reduce((total, session) => {
+    const endedAt = session.ended_at ? new Date(session.ended_at) : null;
+
+    if (!endedAt || Number.isNaN(endedAt.getTime()) || monthKey(endedAt) !== currentMonth) {
+      return total;
+    }
+
+    return total + laborMinutesForSession(session);
   }, 0);
   const averageCompletedMinutes =
     completedSessions.length > 0
@@ -841,9 +866,14 @@ export default async function JobSessionsPage({
               detail="Running sessions"
             />
             <HubMetric
-              label="This Month"
+              label="Elapsed Time"
               value={formatDuration(monthMinutes)}
-              detail="Completed labor"
+              detail="Clock time this month"
+            />
+            <HubMetric
+              label="Total Labor Hours"
+              value={formatDuration(monthLaborMinutes)}
+              detail="Person-hours this month"
             />
             <HubMetric
               label="Avg Session"
@@ -1835,6 +1865,11 @@ function SessionRow({
 }) {
   const minutes =
     session.total_minutes ?? minutesBetween(session.started_at, session.ended_at);
+  const laborMinutes = laborMinutesForSession(session);
+  const crewCount =
+    typeof session.crew_count === "number" && session.crew_count > 0
+      ? session.crew_count
+      : 1;
   const isActive = !session.ended_at;
 
   return (
@@ -1872,7 +1907,13 @@ function SessionRow({
             {isActive ? "Running" : hasBreakdown ? "Broken Down" : "Needs Split"}
           </span>
           <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm font-black">
-            {formatDuration(minutes)}
+            Elapsed {formatDuration(minutes)}
+          </span>
+          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm font-black">
+            Crew {crewCount}
+          </span>
+          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm font-black">
+            Labor {formatDuration(laborMinutes)}
           </span>
         </div>
       </div>
