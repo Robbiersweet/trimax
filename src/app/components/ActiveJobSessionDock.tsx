@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { logActivity } from "../lib/activityLog";
 import { supabase } from "../lib/supabase";
+import { TRIMAX_REFRESH_EVENT } from "./TrimaxRefreshControl";
 
 type ActiveJobSession = {
   id: string;
@@ -102,10 +103,12 @@ export default function ActiveJobSessionDock() {
 
     loadActiveSession();
     const refreshInterval = window.setInterval(loadActiveSession, 60000);
+    window.addEventListener(TRIMAX_REFRESH_EVENT, loadActiveSession);
 
     return () => {
       isActive = false;
       window.clearInterval(refreshInterval);
+      window.removeEventListener(TRIMAX_REFRESH_EVENT, loadActiveSession);
     };
   }, [businessSlug]);
 

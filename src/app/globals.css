@@ -14958,6 +14958,152 @@ html.theme-light .app-workspace-panel::before {
   animation: trimaxPanelIn 170ms ease-out;
 }
 
+.app-toolbar {
+  position: relative;
+  z-index: 65;
+}
+
+.trimax-refresh-control {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  justify-content: flex-end;
+  position: relative;
+}
+
+.trimax-refresh-primary,
+.trimax-refresh-menu-button {
+  align-items: center;
+  background: rgba(15, 23, 42, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e0f2fe;
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 900;
+  justify-content: center;
+  min-height: 2.5rem;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.trimax-refresh-primary {
+  border-radius: 1rem;
+  gap: 0.5rem;
+  padding: 0.55rem 0.85rem;
+}
+
+.trimax-refresh-menu-button {
+  border-radius: 0.9rem;
+  min-width: 2.5rem;
+  padding: 0.55rem;
+}
+
+.trimax-refresh-primary:hover,
+.trimax-refresh-menu-button:hover {
+  background: rgba(14, 165, 233, 0.14);
+  border-color: rgba(125, 211, 252, 0.55);
+  transform: translateY(-1px);
+}
+
+.trimax-refresh-primary:disabled {
+  cursor: wait;
+  opacity: 0.8;
+}
+
+.trimax-refresh-spinner {
+  border: 2px solid rgba(224, 242, 254, 0.32);
+  border-radius: 999px;
+  border-top-color: #67e8f9;
+  height: 0.85rem;
+  opacity: 0;
+  width: 0.85rem;
+}
+
+.trimax-refresh-spinner[data-active="true"] {
+  animation: trimaxRefreshSpin 750ms linear infinite;
+  opacity: 1;
+}
+
+.trimax-refresh-updated {
+  color: #94a3b8;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.trimax-refresh-menu {
+  background: rgba(9, 9, 11, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 1rem;
+  box-shadow: 0 20px 46px rgba(2, 6, 23, 0.34);
+  display: grid;
+  gap: 0.25rem;
+  min-width: 12rem;
+  padding: 0.35rem;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.45rem);
+  z-index: 80;
+}
+
+.trimax-refresh-menu button {
+  border-radius: 0.75rem;
+  color: #e5e7eb;
+  font-size: 0.8rem;
+  font-weight: 850;
+  padding: 0.65rem 0.75rem;
+  text-align: left;
+}
+
+.trimax-refresh-menu button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+@keyframes trimaxRefreshSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+html.theme-light .trimax-refresh-primary,
+html.theme-light .trimax-refresh-menu-button {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+html.theme-light .trimax-refresh-primary:hover,
+html.theme-light .trimax-refresh-menu-button:hover {
+  background: #f0f9ff;
+  border-color: #0284c7;
+}
+
+html.theme-light .trimax-refresh-spinner {
+  border-color: rgba(15, 23, 42, 0.18);
+  border-top-color: #0369a1;
+}
+
+html.theme-light .trimax-refresh-updated {
+  color: #475569;
+}
+
+html.theme-light .trimax-refresh-menu {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.14);
+}
+
+html.theme-light .trimax-refresh-menu button {
+  color: #0f172a;
+}
+
+html.theme-light .trimax-refresh-menu button:hover {
+  background: #f1f5f9;
+}
 .job-session-active {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.12),

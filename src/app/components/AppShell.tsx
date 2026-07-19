@@ -8,6 +8,7 @@ import HashScrollRestorer from "./HashScrollRestorer";
 import Navigation from "./Navigation";
 import NavigationHistoryTracker from "./NavigationHistoryTracker";
 import QuickCommandCenter from "./QuickCommandCenter";
+import TrimaxRefreshControl from "./TrimaxRefreshControl";
 import WorkspaceBackBar from "./WorkspaceBackBar";
 import {
   defaultMaintenanceSettings,
@@ -111,6 +112,9 @@ export default function AppShell({
             id="trimax-main-content"
             tabIndex={-1}
           >
+            <div className="app-toolbar mb-4 flex justify-end">
+              <TrimaxRefreshControl />
+            </div>
             {maintenance.enabled && canManageMaintenance ? (
               <div className="mb-4 rounded-2xl border border-orange-500/40 bg-orange-500/15 px-4 py-3 text-sm font-semibold text-orange-100">
                 Maintenance Mode is ON. Normal users are temporarily paused.
