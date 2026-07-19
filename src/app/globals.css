@@ -19791,3 +19791,35 @@ html.theme-light .queue-empty-card::after {
     max-width: 100%;
   }
 }
+
+.active-job-session-dock.active-job-session-dock {
+  position: fixed;
+  z-index: 70;
+}
+
+@media (min-width: 1024px) {
+  .app-shell-content {
+    align-items: start;
+    display: grid !important;
+    grid-template-columns: 18rem minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .app-sidebar {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .active-job-session-dock.active-job-session-dock {
+    grid-column: 2;
+    grid-row: 1;
+    position: sticky;
+    top: 1.25rem;
+  }
+
+  .app-workspace-panel {
+    grid-column: 2;
+    grid-row: 2;
+    z-index: 1;
+  }
+}
