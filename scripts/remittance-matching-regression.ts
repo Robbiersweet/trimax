@@ -134,6 +134,68 @@ assert.equal(normalizeInvoiceNumber("INV-0500"), "INV-0500");
 assert.equal(normalizeInvoiceNumber("0500"), "INV-0500");
 assert.equal(normalizeInvoiceNumber("500"), "INV-0500");
 
+const productionStub2721WithHeaders = [
+  "CK# 2721 Date 07/07/2026 Total $2,198.00",
+  "Property Account Invoice - Date Description Amount",
+  "North Creek Apartments 52723 INV0500 07/07/2026 Unit H04 $1,099.00",
+  "North Creek Apartments 52723 INV0501 07/07/2026 Unit E07 $1,099.00",
+].join("\n");
+const parsed2721WithHeaders = parseCheckStubText(productionStub2721WithHeaders);
+const match2721WithHeaders = findRemittanceMatches(
+  invoices,
+  parsed2721WithHeaders.stubText,
+  parsed2721WithHeaders.payor
+);
+
+assert.equal(parsed2721WithHeaders.checkNumber, "2721");
+assert.equal(parsed2721WithHeaders.totalAmount, 2198);
+assert.equal(parsed2721WithHeaders.payor, "North Creek Apartments");
+assert.equal(parsed2721WithHeaders.checkDate, "2026-07-07");
+assert.deepEqual(match2721WithHeaders.referencedInvoiceNumbers, [
+  "INV-0500",
+  "INV-0501",
+]);
+assert.deepEqual(
+  match2721WithHeaders.matches.map((invoice) => invoice.id),
+  ["inv-500", "inv-501"],
+  "Column headers must not block INV0500 and INV0501 matching."
+);
+
+const productionStub2721OcrLike = [
+  "CK# 2721 07/07/2026",
+  "Property Account Invoice - Date Description Amount",
+  "North Creek Apartments 52723 INVO500 07/07/2026 turn $1,099.00",
+  "North Creek Apartments 52723 1NV0501 07/07/2026 turn $1,099.00",
+  "Total $2,198.00",
+].join("\n");
+const parsed2721OcrLike = parseCheckStubText(productionStub2721OcrLike);
+const match2721OcrLike = findRemittanceMatches(
+  invoices,
+  parsed2721OcrLike.stubText,
+  parsed2721OcrLike.payor
+);
+
+assert.equal(parsed2721OcrLike.checkNumber, "2721");
+assert.equal(parsed2721OcrLike.payor, "North Creek Apartments");
+assert.equal(parsed2721OcrLike.totalAmount, 2198);
+assert.equal(parsed2721OcrLike.checkDate, "2026-07-07");
+assert.deepEqual(match2721OcrLike.referencedInvoiceNumbers, [
+  "INV-0500",
+  "INV-0501",
+]);
+assert(
+  !match2721OcrLike.referencedInvoiceNumbers.includes("INV-52723"),
+  "Account number 52723 must not be interpreted as an invoice number."
+);
+assert.deepEqual(
+  match2721OcrLike.lineItems
+    .filter((line) => line.invoiceNumbers.length > 0)
+    .map((line) => line.amount),
+  [1099, 1099],
+  "OCR-like remittance rows must preserve the two $1,099.00 line amounts."
+);
+assert.equal(match2721OcrLike.confidence, "verified");
+
 assert.notEqual(
   parsed2743.checkNumber,
   parsed2734.checkNumber,

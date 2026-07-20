@@ -55,7 +55,19 @@ type ToastState = {
 } | null;
 
 type CheckOcrStatus = "idle" | "reading" | "ready" | "manual" | "error";
-type PaymentEntryMode = "choice" | "photo" | "manual" | "complete";
+type PaymentEntryMode = "choice" | "crop" | "photo" | "manual" | "complete";
+
+type CropBox = {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+};
+
+type CropSuggestion = {
+  cropBox: CropBox;
+  isTightlyFramed: boolean;
+};
 
 type CheckStubOcrResponse = {
   stubText?: string;
@@ -179,33 +191,164 @@ function canvasToJpegDataUrl(canvas: HTMLCanvasElement) {
   });
 }
 
-async function normalizePhotoForOcr(file: File) {
+async function detectDefaultCropBox(file: File): Promise<CropSuggestion> {
+  const fullImageCrop = {
+    left: 0,
+    top: 0,
+    right: 100,
+    bottom: 100,
+  };
+
   try {
     const image = await imageElementFromFile(file);
-    const maxEdge = 2400;
-    const scale = Math.min(
-      1,
-      maxEdge / Math.max(image.naturalWidth || image.width, image.naturalHeight || image.height)
-    );
-    const width = Math.max(1, Math.round((image.naturalWidth || image.width) * scale));
-    const height = Math.max(1, Math.round((image.naturalHeight || image.height) * scale));
+    const naturalWidth = image.naturalWidth || image.width;
+    const naturalHeight = image.naturalHeight || image.height;
+    const scanWidth = 420;
+    const scale = Math.min(1, scanWidth / Math.max(naturalWidth, naturalHeight));
+    const width = Math.max(1, Math.round(naturalWidth * scale));
+    const height = Math.max(1, Math.round(naturalHeight * scale));
     const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d");
+    const context = canvas.getContext("2d", { willReadFrequently: true });
 
     if (!context) {
-      throw new Error("The remittance image could not be prepared.");
+      throw new Error("Unable to inspect the remittance photo.");
     }
 
     canvas.width = width;
     canvas.height = height;
-    context.fillStyle = "#ffffff";
-    context.fillRect(0, 0, width, height);
     context.drawImage(image, 0, 0, width, height);
 
-    return canvasToJpegDataUrl(canvas);
+    const pixels = context.getImageData(0, 0, width, height).data;
+    let minX = width;
+    let minY = height;
+    let maxX = 0;
+    let maxY = 0;
+    let hits = 0;
+
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const offset = (y * width + x) * 4;
+        const red = pixels[offset] ?? 0;
+        const green = pixels[offset + 1] ?? red;
+        const blue = pixels[offset + 2] ?? red;
+        const brightness = (red + green + blue) / 3;
+        const chroma = Math.max(red, green, blue) - Math.min(red, green, blue);
+        const looksLikePaper =
+          (brightness > 142 && chroma < 70) || brightness > 190;
+
+        if (looksLikePaper) {
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x);
+          maxY = Math.max(maxY, y);
+          hits += 1;
+        }
+      }
+    }
+
+    const paperPixelRatio = hits / (width * height);
+
+    if (hits < 500 || paperPixelRatio < 0.06) {
+      throw new Error("Use the center crop fallback.");
+    }
+
+    const boundsAreaRatio =
+      ((maxX - minX + 1) * (maxY - minY + 1)) / (width * height);
+    const touchesEdges =
+      minX <= width * 0.04 &&
+      minY <= height * 0.04 &&
+      maxX >= width * 0.96 &&
+      maxY >= height * 0.96;
+    const isTightlyFramed =
+      paperPixelRatio > 0.72 || boundsAreaRatio > 0.78 || touchesEdges;
+
+    if (isTightlyFramed) {
+      return {
+        cropBox: fullImageCrop,
+        isTightlyFramed: true,
+      };
+    }
+
+    const padX = Math.round((maxX - minX) * 0.06);
+    const padY = Math.round((maxY - minY) * 0.06);
+
+    return {
+      cropBox: {
+        left: Math.max(0, Math.round(((minX - padX) / width) * 100)),
+        top: Math.max(0, Math.round(((minY - padY) / height) * 100)),
+        right: Math.min(100, Math.round(((maxX + padX) / width) * 100)),
+        bottom: Math.min(100, Math.round(((maxY + padY) / height) * 100)),
+      },
+      isTightlyFramed: false,
+    };
   } catch {
-    return fileToDataUrl(file);
+    return {
+      cropBox: {
+        left: 8,
+        top: 8,
+        right: 92,
+        bottom: 92,
+      },
+      isTightlyFramed: false,
+    };
   }
+}
+
+async function cropPhotoForOcr(file: File, cropBox: CropBox, rotation: number) {
+  const image = await imageElementFromFile(file);
+  const naturalWidth = image.naturalWidth || image.width;
+  const naturalHeight = image.naturalHeight || image.height;
+  const sourceX = Math.round((cropBox.left / 100) * naturalWidth);
+  const sourceY = Math.round((cropBox.top / 100) * naturalHeight);
+  const sourceWidth = Math.max(
+    1,
+    Math.round(((cropBox.right - cropBox.left) / 100) * naturalWidth)
+  );
+  const sourceHeight = Math.max(
+    1,
+    Math.round(((cropBox.bottom - cropBox.top) / 100) * naturalHeight)
+  );
+  const normalizedRotation = ((rotation % 360) + 360) % 360;
+  const rotatedSideways = normalizedRotation === 90 || normalizedRotation === 270;
+  const maxEdge = 2600;
+  const scale = Math.min(
+    1,
+    maxEdge / Math.max(sourceWidth, sourceHeight)
+  );
+  const outputWidth = Math.max(
+    1,
+    Math.round((rotatedSideways ? sourceHeight : sourceWidth) * scale)
+  );
+  const outputHeight = Math.max(
+    1,
+    Math.round((rotatedSideways ? sourceWidth : sourceHeight) * scale)
+  );
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    throw new Error("The remittance crop could not be prepared.");
+  }
+
+  canvas.width = outputWidth;
+  canvas.height = outputHeight;
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, outputWidth, outputHeight);
+  context.translate(outputWidth / 2, outputHeight / 2);
+  context.rotate((normalizedRotation * Math.PI) / 180);
+  context.drawImage(
+    image,
+    sourceX,
+    sourceY,
+    sourceWidth,
+    sourceHeight,
+    -(sourceWidth * scale) / 2,
+    -(sourceHeight * scale) / 2,
+    sourceWidth * scale,
+    sourceHeight * scale
+  );
+
+  return canvasToJpegDataUrl(canvas);
 }
 
 function safeStorageFileName(fileName: string) {
@@ -328,6 +471,17 @@ export default function BatchInvoicePayments({
   const [checkImagePreview, setCheckImagePreview] = useState("");
   const [checkImageName, setCheckImageName] = useState("");
   const [checkImageFile, setCheckImageFile] = useState<File | null>(null);
+  const [cropBox, setCropBox] = useState<CropBox>({
+    left: 8,
+    top: 8,
+    right: 92,
+    bottom: 92,
+  });
+  const [cropRotation, setCropRotation] = useState(0);
+  const [cropPreviewAspectRatio, setCropPreviewAspectRatio] = useState(4 / 3);
+  const [isTightlyFramedRemittance, setIsTightlyFramedRemittance] =
+    useState(false);
+  const [isPreparingCrop, setIsPreparingCrop] = useState(false);
   const [filedPaymentImage, setFiledPaymentImage] =
     useState<FiledPaymentImage>(null);
   const [checkPayor, setCheckPayor] = useState("");
@@ -487,48 +641,6 @@ export default function BatchInvoicePayments({
       }
     };
   }, [checkImagePreview]);
-
-  useEffect(() => {
-    if (checkOcrStatus !== "ready") {
-      return;
-    }
-
-    console.info("Trimax remittance review state", {
-      totalAmount: enteredCheckAmount,
-      extractedPaymentAmount,
-      checkAmount,
-      capturedCheckAmount,
-      checkNumber: paymentReference,
-      capturedCheckReference,
-      payor: checkPayor,
-      paymentDate,
-      matchedInvoices: reviewMatchedInvoices.map((invoice) => ({
-        id: invoice.id,
-        displayId: invoice.displayId,
-        amountDue: invoice.amountDue,
-        remittanceAmount: invoice.remittanceAmount,
-      })),
-      selectedIds,
-      selectedTotal,
-      strictReferencedInvoices: remittanceMatch.referencedInvoiceNumbers,
-      strictMatchCount: remittanceMatch.matches.length,
-      strictMatchIssues: remittanceMatch.issues,
-    });
-  }, [
-    capturedCheckAmount,
-    capturedCheckReference,
-    checkAmount,
-    checkOcrStatus,
-    checkPayor,
-    enteredCheckAmount,
-    extractedPaymentAmount,
-    paymentDate,
-    paymentReference,
-    remittanceMatch,
-    reviewMatchedInvoices,
-    selectedIds,
-    selectedTotal,
-  ]);
 
   function toggleInvoice(invoiceId: string) {
     setSelectedIds((current) =>
@@ -788,27 +900,6 @@ export default function BatchInvoicePayments({
         : "Remittance stub review"
     );
 
-    console.info("Trimax remittance extraction handoff", {
-      totalAmount: data.totalAmount,
-      extractedPaymentAmount: paymentAmount,
-      parsedTotalFromResponse,
-      parsedTotalFromStub,
-      parsedTotalFromLines,
-      paymentAmountText,
-      checkAmount: paymentAmountText,
-      checkNumber: extractedCheckNumber,
-      payor: extractedPayor,
-      paymentDate: extractedDate,
-      matchedInvoices: reviewMatches.map((invoice) => ({
-        id: invoice.id,
-        displayId: invoice.displayId,
-        amountDue: invoice.amountDue,
-        remittanceAmount: invoice.remittanceAmount,
-      })),
-      strictMatchConfidence: match.confidence,
-      strictMatchIssues: match.issues,
-    });
-
     return { match, reviewMatches };
   }
 
@@ -879,11 +970,11 @@ export default function BatchInvoicePayments({
     return filedImage;
   }
 
-  async function extractCheckStubFromPhoto(file: File) {
-    if (file.size > 8_000_000) {
+  async function extractCheckStubFromPhoto(imageDataUrl: string) {
+    if (imageDataUrl.length > 11_500_000) {
       setCheckOcrStatus("manual");
       setCheckOcrMessage(
-        "That image is large. Enter the payment manually or upload a closer remittance photo."
+        "That crop is large. Adjust crop tighter or enter the payment manually."
       );
       return;
     }
@@ -892,7 +983,6 @@ export default function BatchInvoicePayments({
     setCheckOcrMessage("Reading the remittance stub from the image...");
 
     try {
-      const imageDataUrl = await normalizePhotoForOcr(file);
       const response = await fetch("/api/payments/extract-check-stub", {
         method: "POST",
         headers: {
@@ -901,8 +991,6 @@ export default function BatchInvoicePayments({
         body: JSON.stringify({ imageDataUrl }),
       });
       const data = (await response.json().catch(() => ({}))) as CheckStubOcrResponse;
-
-      console.info("Trimax remittance extraction response", data);
 
       if (!response.ok) {
         setCheckOcrStatus(response.status === 503 ? "manual" : "error");
@@ -917,7 +1005,7 @@ export default function BatchInvoicePayments({
         setCheckOcrStatus("manual");
         setCheckOcrMessage(
           data.error ??
-            "Trimax did not find readable remittance text. Enter the payment manually."
+            "Could not read this remittance. Adjust crop or enter manually."
         );
         return;
       }
@@ -935,14 +1023,47 @@ export default function BatchInvoicePayments({
       setCheckOcrMessage(
         error instanceof Error
           ? error.message
-          : "Trimax could not read that remittance. Enter the payment manually."
+          : "Could not read this remittance. Adjust crop or enter manually."
       );
+    }
+  }
+
+  async function readCroppedRemittance() {
+    if (!checkImageFile) {
+      return;
+    }
+
+    setIsPreparingCrop(true);
+
+    try {
+      const imageDataUrl = await cropPhotoForOcr(
+        checkImageFile,
+        cropBox,
+        cropRotation
+      );
+
+      setPaymentEntryMode("photo");
+      void extractCheckStubFromPhoto(imageDataUrl);
+    } catch (error) {
+      setCheckOcrStatus("error");
+      setCheckOcrMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not read this remittance. Adjust crop or enter manually."
+      );
+    } finally {
+      setIsPreparingCrop(false);
     }
   }
 
   function resetCheckCaptureState() {
     setCheckImageFile(null);
     setCheckImageName("");
+    setCropBox({ left: 8, top: 8, right: 92, bottom: 92 });
+    setCropRotation(0);
+    setCropPreviewAspectRatio(4 / 3);
+    setIsTightlyFramedRemittance(false);
+    setIsPreparingCrop(false);
     setFiledPaymentImage(null);
     setRemittanceStubText("");
     setSelectedIds([]);
@@ -958,6 +1079,19 @@ export default function BatchInvoicePayments({
     setPaymentEntryMode("choice");
   }
 
+  function updateCropEdge(edge: keyof CropBox, value: number) {
+    setCropBox((current) => {
+      const next = { ...current, [edge]: value };
+
+      return {
+        left: Math.min(next.left, next.right - 5),
+        top: Math.min(next.top, next.bottom - 5),
+        right: Math.max(next.right, next.left + 5),
+        bottom: Math.max(next.bottom, next.top + 5),
+      };
+    });
+  }
+
   function captureCheckImage(file: File | undefined) {
     if (!file) {
       return;
@@ -970,7 +1104,9 @@ export default function BatchInvoicePayments({
     setCheckImagePreview(URL.createObjectURL(file));
     setCheckImageName(file.name);
     setCheckImageFile(file);
-    setPaymentEntryMode("photo");
+    setPaymentEntryMode("crop");
+    setCheckOcrStatus("idle");
+    setCheckOcrMessage("Crop to the remittance, then read it.");
     setFiledPaymentImage(null);
     setRemittanceStubText("");
     setSelectedIds([]);
@@ -981,10 +1117,26 @@ export default function BatchInvoicePayments({
     setCheckPayor("");
     setCapturedCheckAmount("");
     setCapturedCheckReference("");
-    void extractCheckStubFromPhoto(file);
+    setCropRotation(0);
+    setIsTightlyFramedRemittance(false);
+    void imageElementFromFile(file).then((image) => {
+      const width = image.naturalWidth || image.width || 4;
+      const height = image.naturalHeight || image.height || 3;
+
+      setCropPreviewAspectRatio(width / height);
+    });
+    void detectDefaultCropBox(file).then((suggestion) => {
+      setCropBox(suggestion.cropBox);
+      setIsTightlyFramedRemittance(suggestion.isTightlyFramed);
+      setCheckOcrMessage(
+        suggestion.isTightlyFramed
+          ? "This looks tightly cropped. Use it as-is or adjust before reading."
+          : "Crop to the remittance, then read it."
+      );
+    });
     setToast({
       type: "success",
-      message: "Remittance image added. Trimax is reading it now.",
+      message: "Remittance image added. Adjust the crop, then read it.",
     });
   }
 
@@ -1180,21 +1332,35 @@ export default function BatchInvoicePayments({
                     +
                   </span>
                   <span className="mt-2 block font-semibold text-white">
-                    Upload Remittance
+                    Add Remittance
                   </span>
                 </span>
               )}
               <div className="mt-4 flex flex-wrap justify-center gap-2">
                 <label className="check-camera-action inline-flex cursor-pointer rounded-full bg-sky-500 px-4 py-2 text-sm font-black text-white transition hover:bg-sky-600">
-                  Upload Remittance
+                  Take Photo
                   <input
                     type="file"
                     accept="image/*,.heic,.heif"
                     capture="environment"
                     className="sr-only"
-                    onChange={(event) =>
-                      captureCheckImage(event.target.files?.[0])
-                    }
+                    onChange={(event) => {
+                      captureCheckImage(event.target.files?.[0]);
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                </label>
+
+                <label className="inline-flex cursor-pointer rounded-full border border-sky-300/50 px-4 py-2 text-sm font-black text-sky-100 transition hover:border-sky-200 hover:bg-sky-500/10">
+                  Choose Existing Photo
+                  <input
+                    type="file"
+                    accept="image/*,.heic,.heif"
+                    className="sr-only"
+                    onChange={(event) => {
+                      captureCheckImage(event.target.files?.[0]);
+                      event.currentTarget.value = "";
+                    }}
                   />
                 </label>
 
@@ -1262,6 +1428,156 @@ export default function BatchInvoicePayments({
               </div>
             ) : null}
 
+            {paymentEntryMode === "crop" ? (
+              <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="font-black text-white">
+                    {isTightlyFramedRemittance
+                      ? "Use Remittance Image"
+                      : "Crop Remittance"}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCropRotation((current) => current - 90)
+                      }
+                      className="rounded-full border border-slate-400/40 px-3 py-1.5 text-xs font-semibold text-zinc-100 transition hover:bg-white/10"
+                    >
+                      Rotate Left
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCropRotation((current) => current + 90)
+                      }
+                      className="rounded-full border border-slate-400/40 px-3 py-1.5 text-xs font-semibold text-zinc-100 transition hover:bg-white/10"
+                    >
+                      Rotate Right
+                    </button>
+                  </div>
+                </div>
+
+                {checkImagePreview ? (
+                  <div className="mt-4 overflow-hidden rounded-2xl border border-sky-400/30 bg-black">
+                    <div
+                      className="relative mx-auto max-h-[52vh] w-full overflow-hidden"
+                      style={{ aspectRatio: cropPreviewAspectRatio }}
+                    >
+                      <div
+                        role="img"
+                        aria-label="Selected remittance crop"
+                        className="h-full w-full bg-contain bg-center bg-no-repeat"
+                        style={{
+                          backgroundImage: `url(${checkImagePreview})`,
+                          transform: `rotate(${cropRotation}deg)`,
+                        }}
+                      />
+                      <div
+                        className="pointer-events-none absolute border-2 border-emerald-300 bg-emerald-300/10 shadow-[0_0_0_9999px_rgba(0,0,0,0.42)]"
+                        style={{
+                          left: `${cropBox.left}%`,
+                          top: `${cropBox.top}%`,
+                          width: `${cropBox.right - cropBox.left}%`,
+                          height: `${cropBox.bottom - cropBox.top}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ) : null}
+
+                <p className="mt-3 text-sm font-semibold text-sky-100">
+                  {checkOcrMessage}
+                </p>
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {([
+                    ["left", "Left edge"],
+                    ["right", "Right edge"],
+                    ["top", "Top edge"],
+                    ["bottom", "Bottom edge"],
+                  ] as const).map(([edge, label]) => (
+                    <label key={edge} className="text-xs font-semibold text-zinc-200">
+                      <span className="mb-1 block">{label}</span>
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        value={cropBox[edge]}
+                        onChange={(event) =>
+                          updateCropEdge(edge, Number(event.target.value))
+                        }
+                        className="w-full accent-emerald-400"
+                      />
+                    </label>
+                  ))}
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={readCroppedRemittance}
+                    disabled={isPreparingCrop}
+                    className="rounded-full bg-emerald-500 px-4 py-2 text-sm font-black text-black transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-300"
+                  >
+                    {isPreparingCrop
+                      ? "Preparing..."
+                      : isTightlyFramedRemittance
+                        ? "Use Image As-Is"
+                        : "Use Cropped Image"}
+                  </button>
+                  {isTightlyFramedRemittance ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsTightlyFramedRemittance(false);
+                        setCheckOcrMessage("Adjust the crop, then read it.");
+                      }}
+                      className="rounded-full border border-slate-400/40 px-4 py-2 text-sm font-semibold text-zinc-100 transition hover:bg-white/10"
+                    >
+                      Adjust Crop
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCropBox({ left: 8, top: 8, right: 92, bottom: 92 });
+                      setIsTightlyFramedRemittance(false);
+                      setCheckOcrMessage("Adjust the crop, then read it.");
+                    }}
+                    className="rounded-full border border-slate-400/40 px-4 py-2 text-sm font-semibold text-zinc-100 transition hover:bg-white/10"
+                  >
+                    Reset Crop
+                  </button>
+                  <label className="inline-flex cursor-pointer rounded-full border border-slate-400/40 px-4 py-2 text-sm font-semibold text-zinc-100 transition hover:bg-white/10">
+                    Retake
+                    <input
+                      type="file"
+                      accept="image/*,.heic,.heif"
+                      capture="environment"
+                      className="sr-only"
+                      onChange={(event) => {
+                        captureCheckImage(event.target.files?.[0]);
+                        event.currentTarget.value = "";
+                      }}
+                    />
+                  </label>
+                  <label className="inline-flex cursor-pointer rounded-full border border-slate-400/40 px-4 py-2 text-sm font-semibold text-zinc-100 transition hover:bg-white/10">
+                    Choose Another
+                    <input
+                      type="file"
+                      accept="image/*,.heic,.heif"
+                      className="sr-only"
+                      onChange={(event) => {
+                        captureCheckImage(event.target.files?.[0]);
+                        event.currentTarget.value = "";
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+            ) : null}
+
             {paymentEntryMode === "photo" ? (
               <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -1283,7 +1599,43 @@ export default function BatchInvoicePayments({
 
                 {checkOcrStatus === "error" || checkOcrStatus === "manual" ? (
                   <div className="mt-3 rounded-xl border border-amber-300/35 bg-amber-300/10 px-3 py-2 text-sm text-amber-50">
-                    {checkOcrMessage}
+                    <p>{checkOcrMessage}</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPaymentEntryMode("crop");
+                          setCheckOcrStatus("idle");
+                          setCheckOcrMessage("Adjust the crop, then read it again.");
+                        }}
+                        className="rounded-full border border-amber-100/50 px-3 py-1.5 text-xs font-semibold text-amber-50 transition hover:bg-white/10"
+                      >
+                        Adjust Crop
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPaymentEntryMode("crop");
+                          setCropRotation((current) => current + 90);
+                          setCheckOcrStatus("idle");
+                          setCheckOcrMessage("Rotate the crop, then read it again.");
+                        }}
+                        className="rounded-full border border-amber-100/50 px-3 py-1.5 text-xs font-semibold text-amber-50 transition hover:bg-white/10"
+                      >
+                        Rotate
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPaymentEntryMode("manual");
+                          setCheckOcrStatus("manual");
+                          setCheckOcrMessage("Enter the amount, choose invoices, and apply the payment.");
+                        }}
+                        className="rounded-full border border-amber-100/50 px-3 py-1.5 text-xs font-semibold text-amber-50 transition hover:bg-white/10"
+                      >
+                        Enter Manually
+                      </button>
+                    </div>
                   </div>
                 ) : null}
 
@@ -1343,7 +1695,13 @@ export default function BatchInvoicePayments({
       {showPaymentReview ? (
         <>
       <div className="app-soft-panel mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[150px_130px_170px_180px_1fr_auto]">
+        <div
+          className={`grid gap-4 md:grid-cols-2 ${
+            isRemittanceReview
+              ? "xl:grid-cols-[150px_170px_180px_1fr_auto]"
+              : "xl:grid-cols-[150px_130px_170px_180px_1fr_auto]"
+          }`}
+        >
           <DateInputField
             label="Payment Date"
             value={paymentDate}
@@ -1351,6 +1709,7 @@ export default function BatchInvoicePayments({
             inputClassName="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 pr-28 text-slate-950 outline-none transition focus:border-sky-500"
           />
 
+          {!isRemittanceReview ? (
           <div>
             <label className="mb-2 block text-sm text-zinc-400">
               Payment Type
@@ -1367,6 +1726,7 @@ export default function BatchInvoicePayments({
               <option>Other</option>
             </select>
           </div>
+          ) : null}
 
           <div>
             <div className="mb-2 flex items-center justify-between gap-3">
@@ -1431,6 +1791,7 @@ export default function BatchInvoicePayments({
             />
           </div>
 
+          {!isRemittanceReview ? (
           <div className="md:col-span-2 xl:col-span-1">
             <label className="mb-2 block text-sm text-zinc-400">
               Internal Note
@@ -1442,6 +1803,7 @@ export default function BatchInvoicePayments({
               className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-sky-500"
             />
           </div>
+          ) : null}
 
           <div className="flex items-end">
             <button
@@ -1457,7 +1819,7 @@ export default function BatchInvoicePayments({
           </div>
         </div>
 
-        {selectedInvoices.length > 0 ? (
+        {selectedInvoices.length > 0 && !isRemittanceReview ? (
           <div
             className={`payment-balance-check mt-4 rounded-2xl border p-4 text-sm ${
               checkAmountMatches
