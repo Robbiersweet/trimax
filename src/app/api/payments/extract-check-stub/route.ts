@@ -12,7 +12,7 @@ const OCR_TIMEOUT_MS = 45_000;
 function isSafeDataUrl(value: unknown) {
   return (
     typeof value === "string" &&
-    /^data:image\/(png|jpeg|jpg|webp);base64,[a-z0-9+/=\s]+$/i.test(value) &&
+    /^data:image\/(png|jpeg|jpg|webp|heic|heif);base64,[a-z0-9+/=\s]+$/i.test(value) &&
     value.length < MAX_IMAGE_DATA_URL_LENGTH
   );
 }
@@ -28,7 +28,7 @@ function dataUrlToBuffer(imageDataUrl: string) {
 }
 
 async function preprocessForOcr(input: Buffer) {
-  return sharp(input, { limitInputPixels: 48_000_000 })
+  const normalized = sharp(input, { limitInputPixels: 48_000_000 })
     .rotate()
     .resize({
       width: 2400,
@@ -36,11 +36,15 @@ async function preprocessForOcr(input: Buffer) {
       fit: "inside",
       withoutEnlargement: false,
     })
+    .flatten({ background: "#ffffff" })
     .grayscale()
     .normalize()
-    .sharpen({ sigma: 1.1 })
+    .linear(1.25, -16)
+    .sharpen({ sigma: 1.2 })
     .png({ compressionLevel: 6 })
     .toBuffer();
+
+  return normalized;
 }
 
 async function recognizeText(image: Buffer) {
@@ -93,7 +97,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "Upload a clear PNG, JPG, or WebP image under the current size limit.",
+          "Upload a clear check photo under the current size limit.",
       },
       { status: 400 }
     );
@@ -121,6 +125,10 @@ export async function POST(request: Request) {
       ...extraction,
     });
   } catch (error) {
+    console.error("Check stub OCR failed", {
+      message: error instanceof Error ? error.message : String(error),
+    });
+
     return NextResponse.json(
       {
         error:

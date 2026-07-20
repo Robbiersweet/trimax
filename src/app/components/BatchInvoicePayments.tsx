@@ -49,6 +49,7 @@ type ToastState = {
 } | null;
 
 type CheckOcrStatus = "idle" | "reading" | "ready" | "manual" | "error";
+type PaymentEntryMode = "choice" | "photo" | "manual";
 
 type CheckStubOcrResponse = {
   stubText?: string;
@@ -122,7 +123,7 @@ function todayInputValue() {
   return `${year}-${month}-${day}`;
 }
 
-function fileToDataUrl(file: File) {
+function fileToDataUrl(file: Blob) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
 
@@ -136,6 +137,69 @@ function fileToDataUrl(file: File) {
     reader.onerror = () => reject(new Error("The check photo could not be read."));
     reader.readAsDataURL(file);
   });
+}
+
+async function imageElementFromFile(file: File) {
+  const imageUrl = URL.createObjectURL(file);
+  const image = new Image();
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error("That photo format could not be previewed."));
+      image.src = imageUrl;
+    });
+
+    return image;
+  } finally {
+    URL.revokeObjectURL(imageUrl);
+  }
+}
+
+function canvasToJpegDataUrl(canvas: HTMLCanvasElement) {
+  return new Promise<string>((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error("The check photo could not be prepared."));
+          return;
+        }
+
+        void fileToDataUrl(blob).then(resolve, reject);
+      },
+      "image/jpeg",
+      0.92
+    );
+  });
+}
+
+async function normalizePhotoForOcr(file: File) {
+  try {
+    const image = await imageElementFromFile(file);
+    const maxEdge = 2400;
+    const scale = Math.min(
+      1,
+      maxEdge / Math.max(image.naturalWidth || image.width, image.naturalHeight || image.height)
+    );
+    const width = Math.max(1, Math.round((image.naturalWidth || image.width) * scale));
+    const height = Math.max(1, Math.round((image.naturalHeight || image.height) * scale));
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+
+    if (!context) {
+      throw new Error("The check photo could not be prepared.");
+    }
+
+    canvas.width = width;
+    canvas.height = height;
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, width, height);
+    context.drawImage(image, 0, 0, width, height);
+
+    return canvasToJpegDataUrl(canvas);
+  } catch {
+    return fileToDataUrl(file);
+  }
 }
 
 function safeStorageFileName(fileName: string) {
@@ -267,8 +331,10 @@ export default function BatchInvoicePayments({
   const [capturedCheckReference, setCapturedCheckReference] = useState("");
   const [remittanceStubText, setRemittanceStubText] = useState("");
   const [checkOcrStatus, setCheckOcrStatus] = useState<CheckOcrStatus>("idle");
+  const [paymentEntryMode, setPaymentEntryMode] =
+    useState<PaymentEntryMode>("choice");
   const [checkOcrMessage, setCheckOcrMessage] = useState(
-    "Photo reader is ready. Trimax reads printed text locally and never guesses invoice matches."
+    "Choose a photo or enter the payment manually."
   );
   const [internalNote, setInternalNote] = useState(
     startedFromInvoiceSelection
@@ -305,32 +371,6 @@ export default function BatchInvoicePayments({
       ),
     [invoiceRecords]
   );
-
-  const customerGroups = useMemo(() => {
-    const groups = new Map<
-      string,
-      { customerName: string; count: number; total: number }
-    >();
-
-    payableInvoices.forEach((invoice) => {
-      const customerName = invoice.customerName || "Unknown Customer";
-      const current = groups.get(customerName) ?? {
-        customerName,
-        count: 0,
-        total: 0,
-      };
-
-      groups.set(customerName, {
-        ...current,
-        count: current.count + 1,
-        total: current.total + invoice.amountDue,
-      });
-    });
-
-    return Array.from(groups.values()).sort((first, second) =>
-      first.customerName.localeCompare(second.customerName)
-    );
-  }, [payableInvoices]);
 
   const visibleInvoices =
     customerFilter === "all"
@@ -396,17 +436,10 @@ export default function BatchInvoicePayments({
   const checkDifferenceLabel =
     checkDifference > 0 ? "unassigned" : "over-selected";
   const selectedRemainingBalance = Math.max(openBalance - selectedTotal, 0);
-
   const allVisibleSelected =
     visibleInvoices.length > 0 &&
     visibleInvoices.every((invoice) => selectedIds.includes(invoice.id));
 
-  const paymentReadyGroups = [...customerGroups]
-    .filter((group) => group.count > 1)
-    .sort((first, second) => second.total - first.total)
-    .slice(0, 4);
-
-  const focusedCustomer = initialCustomer?.trim() ?? "";
   const capturedAmountValue = capturedCheckAmount.trim()
     ? parseMoney(capturedCheckAmount)
     : 0;
@@ -420,118 +453,11 @@ export default function BatchInvoicePayments({
   );
   const hasRemittanceStub = remittanceStubText.trim().length > 0;
   const hasRemittanceMatch = remittanceMatch.matches.length > 0;
-  const remittanceConfidence =
-    remittanceMatch.confidence === "verified"
-      ? {
-          label: "Verified Remittance Match",
-          detail:
-            "Invoice numbers were read from the stub, found in Trimax, and reconcile to the check total.",
-          tone: "exact",
-        }
-      : {
-          label: "Owner Review Required",
-          detail:
-            remittanceMatch.issues[0] ??
-            "Remittance information is unreadable, missing, ambiguous, or conflicting.",
-          tone: "review",
-        };
-  const checkCaptureSteps = [
-    checkImagePreview ? "Photo ready" : "Capture check",
-    capturedAmountValue > 0 ? formatMoney(capturedAmountValue) : "Enter amount",
-    remittanceConfidence.label,
-  ];
   const paymentCanApply =
-    !isSaving && selectedInvoices.length > 0 && checkAmountMatches;
-  const paymentGuideSteps = [
-    {
-      label: "1",
-      title: "Find the invoices",
-      detail:
-        selectedInvoices.length > 0
-          ? `${selectedInvoices.length} selected`
-          : "Capture a check or select invoices below",
-      status: selectedInvoices.length > 0 ? "complete" : "active",
-    },
-    {
-      label: "2",
-      title: "Verify the total",
-      detail:
-        enteredCheckAmount === null
-          ? "Enter the check amount"
-          : checkAmountMatches
-            ? "Amount matches"
-            : `${formatMoney(Math.abs(checkDifference))} ${checkDifferenceLabel}`,
-      status:
-        selectedInvoices.length === 0
-          ? "waiting"
-          : checkAmountMatches
-            ? "complete"
-            : "attention",
-    },
-    {
-      label: "3",
-      title: "Apply payment",
-      detail: paymentCanApply
-        ? "Ready to post"
-        : "Locked until the batch checks out",
-      status: paymentCanApply ? "active" : "waiting",
-    },
-  ];
-  const reconciliationStatus =
-    selectedInvoices.length === 0
-      ? "Select invoices"
-      : enteredCheckAmount === null
-        ? "Enter check amount"
-        : checkAmountMatches
-          ? "Ready to apply"
-          : "Needs owner review";
-  const reconciliationTone =
-    selectedInvoices.length === 0 || enteredCheckAmount === null
-      ? "waiting"
-      : checkAmountMatches
-        ? "ready"
-        : "attention";
-  const reconciliationSummary = [
-    {
-      label: "Selected",
-      value: formatMoney(selectedTotal),
-      detail: `${selectedInvoices.length} invoice${
-        selectedInvoices.length === 1 ? "" : "s"
-      }`,
-    },
-    {
-      label: "Check",
-      value:
-        enteredCheckAmount === null
-          ? "Not entered"
-          : formatMoney(enteredCheckAmount),
-      detail:
-        capturedAmountValue > 0
-          ? `Captured ${formatMoney(capturedAmountValue)}`
-          : "Manual entry",
-    },
-    {
-      label: "Difference",
-      value:
-        enteredCheckAmount === null
-          ? "-"
-          : formatMoney(Math.abs(checkDifference)),
-      detail:
-        enteredCheckAmount === null
-          ? "Waiting"
-          : checkAmountMatches
-            ? "Balanced"
-            : checkDifferenceLabel,
-    },
-    {
-      label: "Remittance",
-      value: remittanceConfidence.label,
-      detail:
-        remittanceMatch.referencedInvoiceNumbers.length > 0
-          ? remittanceMatch.referencedInvoiceNumbers.join(", ")
-          : "No invoice numbers read",
-    },
-  ];
+    !isSaving &&
+    selectedInvoices.length > 0 &&
+    enteredCheckAmount !== null &&
+    checkAmountMatches;
 
   useEffect(() => {
     return () => {
@@ -592,22 +518,6 @@ export default function BatchInvoicePayments({
 
     setCustomerFilter("all");
     selectInvoicesAndAmount(overdueInvoices, "Overdue invoice batch payment");
-  }
-
-  function selectCustomerGroup(customerName: string) {
-    const customerInvoiceIds = payableInvoices
-      .filter((invoice) => invoice.customerName === customerName)
-      .map((invoice) => invoice.id);
-
-    setCustomerFilter(customerName);
-    setSelectedIds(customerInvoiceIds);
-    setCheckAmount(
-      formatMoney(
-        payableInvoices
-          .filter((invoice) => invoice.customerName === customerName)
-          .reduce((total, invoice) => total + invoice.amountDue, 0)
-      )
-    );
   }
 
   function fillSelectedTotal() {
@@ -699,7 +609,7 @@ export default function BatchInvoicePayments({
     setCheckOcrMessage("Reading the check stub from the photo...");
 
     try {
-      const imageDataUrl = await fileToDataUrl(file);
+      const imageDataUrl = await normalizePhotoForOcr(file);
       const response = await fetch("/api/payments/extract-check-stub", {
         method: "POST",
         headers: {
@@ -721,7 +631,8 @@ export default function BatchInvoicePayments({
       if (!data.stubText?.trim()) {
         setCheckOcrStatus("manual");
         setCheckOcrMessage(
-          "Trimax did not find readable stub text. Paste the line details manually."
+          data.error ??
+            "Trimax did not find readable text. Enter the payment manually."
         );
         return;
       }
@@ -756,7 +667,7 @@ export default function BatchInvoicePayments({
 
       setCheckOcrStatus("ready");
       setCheckOcrMessage(
-        "Stub text extracted. Trimax will verify invoice numbers read from the remittance only."
+        "Check read. Review the suggested invoice matches before applying."
       );
     } catch (error) {
       setCheckOcrStatus("error");
@@ -779,8 +690,9 @@ export default function BatchInvoicePayments({
     setCheckPayor("");
     setCheckOcrStatus("idle");
     setCheckOcrMessage(
-      "Photo reader is ready. Trimax reads printed text locally and never guesses invoice matches."
+      "Choose a photo or enter the payment manually."
     );
+    setPaymentEntryMode("choice");
   }
 
   function captureCheckImage(file: File | undefined) {
@@ -795,6 +707,7 @@ export default function BatchInvoicePayments({
     setCheckImagePreview(URL.createObjectURL(file));
     setCheckImageName(file.name);
     setCheckImageFile(file);
+    setPaymentEntryMode("photo");
     setFiledPaymentImage(null);
     setRemittanceStubText("");
     setSelectedIds([]);
@@ -803,8 +716,7 @@ export default function BatchInvoicePayments({
     void extractCheckStubFromPhoto(file);
     setToast({
       type: "success",
-      message:
-        "Check photo added. Trimax will try to read the stub automatically.",
+      message: "Check photo added. Trimax is reading it now.",
     });
   }
 
@@ -1003,289 +915,18 @@ export default function BatchInvoicePayments({
     <Card className="batch-payments-card border-green-500/30 bg-green-500/5">
       {toast ? <Toast type={toast.type} message={toast.message} /> : null}
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.35em] text-green-300">
-            Batch Payments
-          </p>
-
-          <h2 className="mt-2 text-2xl font-bold">
-            One check can pay many invoices
-          </h2>
-
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
-            Select the invoices covered by the same check, add the payment
-            details, then apply the whole batch together.
-          </p>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[520px]">
-          <div className="app-metric-card rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
-            <p className="text-sm text-zinc-400">Open Balance</p>
-            <p className="mt-1 text-2xl font-black text-slate-950">
-              {formatMoney(openBalance)}
-            </p>
-          </div>
-
-          <div className="app-metric-card rounded-2xl border border-green-200 bg-green-50 px-5 py-4 shadow-sm">
-            <p className="text-sm text-zinc-400">Selected</p>
-            <p className="mt-1 text-2xl font-black text-green-700">
-              {selectedInvoices.length}
-            </p>
-          </div>
-
-          <div className="app-metric-card rounded-2xl border border-green-200 bg-green-50 px-5 py-4 shadow-sm">
-            <p className="text-sm text-zinc-400">Selected Total</p>
-            <p className="mt-1 text-2xl font-black text-green-700">
-              {formatMoney(selectedTotal)}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {paymentReadyGroups.length > 0 ? (
-        <div className="mt-6">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-green-300">
-                Payment Ready
-              </p>
-              <p className="mt-1 text-sm text-zinc-400">
-                Customers with several open invoices are good batch payment
-                candidates.
-              </p>
-            </div>
-
-            <p className="text-sm text-zinc-500">
-              Pick one to load its invoices.
-            </p>
-          </div>
-
-          <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            {paymentReadyGroups.map((group) => (
-              <button
-                key={group.customerName}
-                type="button"
-                onClick={() => selectCustomerGroup(group.customerName)}
-                className="app-action-card rounded-2xl border border-emerald-400/25 bg-zinc-950 p-4 text-left shadow-sm transition hover:border-emerald-300 hover:bg-emerald-500/10"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-semibold text-white">
-                      {group.customerName}
-                    </p>
-                    <p className="mt-1 text-sm text-zinc-300">
-                      {group.count} open invoices
-                    </p>
-                  </div>
-
-                  <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-bold text-emerald-100">
-                    Load
-                  </span>
-                </div>
-
-                <p className="mt-4 text-2xl font-black text-emerald-200">
-                  {formatMoney(group.total)}
-                </p>
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      <div className="payment-guide mt-6 grid gap-3 md:grid-cols-3">
-        {paymentGuideSteps.map((step) => (
-          <div
-            key={step.label}
-            data-status={step.status}
-            className="payment-guide-step rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
-          >
-            <div className="flex items-start gap-3">
-              <span className="payment-guide-marker grid h-9 w-9 shrink-0 place-items-center rounded-full border text-sm font-black">
-                {step.label}
-              </span>
-
-              <span>
-                <span className="block font-black text-white">
-                  {step.title}
-                </span>
-                <span className="mt-1 block text-sm leading-5 text-zinc-400">
-                  {step.detail}
-                </span>
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {focusedCustomer ? (
-        <div className="mt-6 rounded-2xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm leading-6 text-green-50">
-          Payment workspace opened for{" "}
-          <span className="font-semibold">{focusedCustomer}</span>. Review
-          the remittance stub or manually select the invoices to apply.
-        </div>
-      ) : null}
-
-      {startedFromInvoiceSelection ? (
-        <div className="mt-6 rounded-2xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm leading-6 text-green-50">
-          Trimax loaded{" "}
-          <span className="font-semibold">
-            {startingFocus?.invoiceIds.length ?? 0} selected invoice
-            {(startingFocus?.invoiceIds.length ?? 0) === 1 ? "" : "s"}
-          </span>{" "}
-          from the invoice list. Review the check amount and payment details
-          before applying.
-        </div>
-      ) : null}
-
-      {customerGroups.length > 1 ? (
-        <div className="mt-6">
-          <p className="mb-2 text-sm text-zinc-400">
-            Filter by customer
-          </p>
-
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setCustomerFilter("all")}
-              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                customerFilter === "all"
-                  ? "bg-green-500 text-black"
-                  : "border border-slate-200 bg-white text-slate-700 hover:border-green-300 hover:bg-green-50"
-              }`}
-            >
-              All open invoices
-            </button>
-
-            {customerGroups.map((group) => (
-              <button
-                key={group.customerName}
-                type="button"
-                onClick={() => setCustomerFilter(group.customerName)}
-                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                  customerFilter === group.customerName
-                    ? "bg-green-500 text-black"
-                    : "border border-slate-200 bg-white text-slate-700 hover:border-green-300 hover:bg-green-50"
-                }`}
-              >
-                {group.customerName} ({group.count})
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      <div
-        data-status={reconciliationTone}
-        className="payment-reconciliation-panel mt-6 rounded-3xl border border-white/10 bg-zinc-950 p-4 sm:p-5"
-      >
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-emerald-300">
-              Reconciliation Check
-            </p>
-            <h3 className="mt-2 text-2xl font-black text-white">
-              {reconciliationStatus}
-            </h3>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
-              Trimax compares the selected invoice total against the check
-              amount before it will post the payment.
-            </p>
-          </div>
-
-          <div className="payment-reconciliation-status rounded-2xl border px-4 py-3 text-sm font-black">
-            {paymentCanApply
-              ? "Balanced"
-              : "In progress"}
-          </div>
-        </div>
-
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {reconciliationSummary.map((item) => (
-            <div
-              key={item.label}
-              className="payment-reconciliation-metric rounded-2xl border border-white/10 bg-black/30 p-4"
-            >
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">
-                {item.label}
-              </p>
-              <p className="mt-2 text-2xl font-black text-white">
-                {item.value}
-              </p>
-              <p className="mt-1 text-sm text-zinc-400">
-                {item.detail}
-              </p>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-5 flex flex-wrap gap-3">
-          {capturedAmountValue > 0 ? (
-            <button
-              type="button"
-              onClick={() => {
-                setPaymentType("Check");
-                setCheckAmount(formatMoney(capturedAmountValue));
-                setPaymentReference(capturedCheckReference.trim());
-                const matchingCustomer = customerGroups.find(
-                  (group) =>
-                    group.customerName.toLowerCase() ===
-                    checkPayor.trim().toLowerCase()
-                );
-                if (matchingCustomer) {
-                  setCustomerFilter(matchingCustomer.customerName);
-                }
-              }}
-              className="rounded-2xl bg-sky-500 px-4 py-3 text-sm font-black text-white transition hover:bg-sky-600"
-            >
-              Use Captured Details
-            </button>
-          ) : null}
-
-          {selectedInvoices.length > 0 ? (
-            <button
-              type="button"
-              onClick={fillSelectedTotal}
-              className="rounded-2xl border border-white/15 px-4 py-3 text-sm font-black text-white transition hover:border-white/30 hover:bg-white/10"
-            >
-              Use Selected Total
-            </button>
-          ) : null}
-        </div>
-      </div>
-
       <div
         id="check-capture"
-        className="check-capture-panel scroll-mt-6 mt-6 overflow-hidden rounded-3xl border border-sky-500/30 bg-gradient-to-br from-sky-500/10 via-zinc-950 to-emerald-500/10"
+        className="check-capture-panel scroll-mt-6 overflow-hidden rounded-3xl border border-sky-500/30 bg-gradient-to-br from-sky-500/10 via-zinc-950 to-emerald-500/10"
       >
-        <div className="grid gap-5 p-4 md:grid-cols-[0.8fr_1.2fr] md:p-5">
+        <div className="grid gap-5 p-4 lg:grid-cols-[0.82fr_1.18fr] lg:p-5">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-sky-300">
               Check Capture
             </p>
             <h3 className="mt-2 text-2xl font-black">
-              Photograph a check, then match it
+              Record one payment
             </h3>
-            <p className="mt-2 text-sm leading-6 text-zinc-300">
-              Use your phone camera, confirm the check amount and payor, and
-              Trimax will suggest the invoices that fit that check.
-            </p>
-
-            <div className="check-capture-steps mt-4 grid gap-2 sm:grid-cols-3">
-              {checkCaptureSteps.map((step, index) => (
-                <div
-                  key={`${step}-${index}`}
-                  className="check-capture-step rounded-2xl border border-white/10 bg-black/25 px-3 py-2"
-                >
-                  <span className="text-[0.68rem] font-black uppercase tracking-[0.22em] text-sky-300">
-                    Step {index + 1}
-                  </span>
-                  <span className="mt-1 block text-sm font-black text-white">
-                    {step}
-                  </span>
-                </div>
-              ))}
-            </div>
 
             <div className="check-photo-dropzone mt-4 flex min-h-44 flex-col items-center justify-center rounded-2xl border border-dashed border-sky-400/50 bg-black/30 p-4 text-center">
               {checkImagePreview ? (
@@ -1308,32 +949,17 @@ export default function BatchInvoicePayments({
                     +
                   </span>
                   <span className="mt-2 block font-semibold text-white">
-                    Start with the check photo
-                  </span>
-                  <span className="mt-1 block text-xs text-zinc-400">
-                    Camera opens directly on phones that support it
+                    Take Photo
                   </span>
                 </span>
               )}
               <div className="mt-4 flex flex-wrap justify-center gap-2">
                 <label className="check-camera-action inline-flex cursor-pointer rounded-full bg-sky-500 px-4 py-2 text-sm font-black text-white transition hover:bg-sky-600">
-                  Capture with Camera
+                  Take Photo
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/*,.heic,.heif"
                     capture="environment"
-                    className="sr-only"
-                    onChange={(event) =>
-                      captureCheckImage(event.target.files?.[0])
-                    }
-                  />
-                </label>
-
-                <label className="check-gallery-action inline-flex cursor-pointer rounded-full border border-sky-300/50 px-4 py-2 text-sm font-semibold text-sky-100 transition hover:border-sky-200 hover:bg-sky-500/10">
-                  Choose Existing Photo
-                  <input
-                    type="file"
-                    accept="image/*"
                     className="sr-only"
                     onChange={(event) =>
                       captureCheckImage(event.target.files?.[0])
@@ -1356,239 +982,183 @@ export default function BatchInvoicePayments({
                 ) : null}
               </div>
 
+              <button
+                type="button"
+                onClick={() => {
+                  if (checkImagePreview) {
+                    URL.revokeObjectURL(checkImagePreview);
+                    setCheckImagePreview("");
+                  }
+                  setCheckImageFile(null);
+                  setCheckImageName("");
+                  setFiledPaymentImage(null);
+                  setRemittanceStubText("");
+                  setCapturedCheckAmount("");
+                  setCapturedCheckReference("");
+                  setCheckPayor("");
+                  setPaymentEntryMode("manual");
+                  setCheckOcrStatus("manual");
+                  setCheckOcrMessage("Enter the amount, choose invoices, and apply the payment.");
+                }}
+                className="mt-3 rounded-full border border-emerald-300/50 px-4 py-2 text-sm font-semibold text-emerald-100 transition hover:border-emerald-200 hover:bg-emerald-500/10"
+              >
+                Enter Check Manually
+              </button>
+
               {checkImageFile ? (
-                <div className="payment-image-filing-status mt-4 rounded-2xl border border-white/10 bg-zinc-950 px-4 py-3 text-left text-sm leading-6">
-                  <p className="font-black text-white">
-                    {filedPaymentImage
-                      ? "Image filed"
-                      : "Image will be filed with this payment"}
-                  </p>
-                  <p className="mt-1 text-zinc-400">
-                    {filedPaymentImage
-                      ? `${filedPaymentImage.fileName} is linked to the payment trail.`
-                      : "When you apply the selected payment, Trimax will save this photo and link it to the matched invoices."}
-                  </p>
-                </div>
+                <p className="mt-3 text-xs font-semibold text-sky-200">
+                  {filedPaymentImage
+                    ? "Photo filed with payment."
+                    : "Photo will be saved when the payment is applied."}
+                </p>
               ) : null}
             </div>
           </div>
 
           <div className="grid gap-4">
-            <div className="grid gap-3 sm:grid-cols-3">
-              <label>
-                <span className="text-sm font-semibold text-zinc-300">
-                  Check Amount
-                </span>
-                <input
-                  inputMode="decimal"
-                  value={capturedCheckAmount}
-                  onChange={(event) =>
-                    setCapturedCheckAmount(event.target.value)
-                  }
-                  placeholder="$0.00"
-                  className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-sky-500"
-                />
-              </label>
-
-              <label>
-                <span className="text-sm font-semibold text-zinc-300">
-                  Payor
-                </span>
-                <input
-                  value={checkPayor}
-                  onChange={(event) => setCheckPayor(event.target.value)}
-                  placeholder="Customer name"
-                  className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-sky-500"
-                />
-              </label>
-
-              <label>
-                <span className="text-sm font-semibold text-zinc-300">
-                  Check #
-                </span>
-                <input
-                  value={capturedCheckReference}
-                  onChange={(event) =>
-                    setCapturedCheckReference(event.target.value)
-                  }
-                  placeholder="1042"
-                  className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-sky-500"
-                />
-              </label>
-            </div>
-
-            <div
-              data-match-tone={remittanceConfidence.tone}
-              className="remittance-stub-card rounded-2xl border border-white/10 bg-black/30 p-4"
-            >
-              <div
-                data-status={checkOcrStatus}
-                className="check-ocr-status mb-4 rounded-2xl border border-white/10 bg-zinc-950 px-4 py-3 text-sm leading-6"
-              >
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <span className="font-black text-white">
-                    {checkOcrStatus === "reading"
-                      ? "Reading photo"
-                      : checkOcrStatus === "ready"
-                        ? "Photo text ready"
-                        : checkOcrStatus === "manual"
-                          ? "Manual review"
-                          : checkOcrStatus === "error"
-                            ? "Photo reader needs help"
-                            : "Photo reader ready"}
-                  </span>
-
-                  <span className="rounded-full border border-white/10 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-sky-200">
-                    {checkOcrStatus === "reading"
-                      ? "Working"
-                      : checkOcrStatus === "ready"
-                        ? "OCR"
-                        : checkOcrStatus === "manual"
-                          ? "Paste text"
-                          : checkOcrStatus === "error"
-                            ? "Retry"
-                            : "Ready"}
-                  </span>
-                </div>
-
-                <p className="mt-2 text-zinc-400">
-                  {checkOcrMessage}
+            {paymentEntryMode === "choice" ? (
+              <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                <p className="text-lg font-black text-white">
+                  Take Photo or Enter Check Manually
+                </p>
+                <p className="mt-2 text-sm leading-6 text-zinc-300">
+                  Pick one path to start. Trimax keeps the current invoice list ready below.
                 </p>
               </div>
+            ) : null}
 
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-zinc-200">
-                    Remittance stub reader
+            {paymentEntryMode === "photo" ? (
+              <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="font-black text-white">
+                    {checkOcrStatus === "reading"
+                      ? "Reading check"
+                      : hasRemittanceMatch
+                        ? "Show Matches"
+                        : "Review payment"}
                   </p>
-                  <p className="mt-1 text-sm leading-6 text-zinc-400">
-                    Paste the stub text from the photo. Trimax verifies only
-                    invoice numbers printed on the remittance stub. Unit codes,
-                    service descriptions, and amounts are shown as review clues.
-                  </p>
+
+                  {checkOcrStatus === "reading" ? (
+                    <span className="inline-flex items-center gap-2 text-sm font-semibold text-sky-200">
+                      <span className="h-3 w-3 animate-spin rounded-full border-2 border-sky-200 border-t-transparent" />
+                      Reading
+                    </span>
+                  ) : null}
                 </div>
 
-                <span className="check-match-pill rounded-full px-3 py-1 text-xs font-black">
-                  {remittanceConfidence.label}
-                </span>
-              </div>
-
-              <textarea
-                value={remittanceStubText}
-                onChange={(event) => setRemittanceStubText(event.target.value)}
-                placeholder={`Example:\nDATE: 06/03/2026 CK#: 2697 TOTAL: $1,373.75\nNorth Creek Apartment Paint Service 400 - 05/06/2026 J08A full primer 1,099.00\nNorth Creek Apartment Paint Service 401 - 05/07/2026 J08B additional primer 274.75`}
-                className="mt-4 min-h-32 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm leading-6 text-slate-950 outline-none transition focus:border-sky-500"
-              />
-
-              <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_auto] lg:items-start">
-                <div className="grid gap-2 sm:grid-cols-3">
-                  <div className="rounded-xl border border-white/10 bg-zinc-950 px-3 py-2">
-                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-                      Stub Total
-                    </p>
-                    <p className="mt-1 font-black text-white">
-                      {remittanceMatch.totalAmount > 0
-                        ? formatMoney(remittanceMatch.totalAmount)
-                        : "-"}
-                    </p>
+                {checkOcrStatus === "error" || checkOcrStatus === "manual" ? (
+                  <div className="mt-3 rounded-xl border border-amber-300/35 bg-amber-300/10 px-3 py-2 text-sm text-amber-50">
+                    {checkOcrMessage}
                   </div>
+                ) : null}
 
-                  <div className="rounded-xl border border-white/10 bg-zinc-950 px-3 py-2">
-                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-                      Lines Read
-                    </p>
-                    <p className="mt-1 font-black text-white">
-                      {remittanceMatch.lineItems.length}
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl border border-white/10 bg-zinc-950 px-3 py-2">
-                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-                      Matched
-                    </p>
-                    <p className="mt-1 font-black text-white">
-                      {remittanceMatch.matches.length}
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={applyRemittanceStubMatch}
-                  disabled={!hasRemittanceMatch}
-                  className="check-match-button rounded-2xl bg-emerald-500 px-5 py-3 font-black text-black transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-600"
-                >
-                  Use Verified Remittance
-                </button>
-              </div>
-
-              {remittanceMatch.issues.length > 0 ? (
-                <div className="mt-4 rounded-2xl border border-amber-300/35 bg-amber-300/10 px-4 py-3 text-sm leading-6 text-amber-50">
-                  <p className="font-black">Owner Review Required</p>
-                  <ul className="mt-2 grid gap-1">
-                    {remittanceMatch.issues.slice(0, 5).map((issue) => (
-                      <li key={issue}>{issue}</li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-
-              {remittanceMatch.lineItems.length > 0 ? (
-                <div className="mt-4 grid gap-2">
-                  {remittanceMatch.lineItems.slice(0, 4).map((line, index) => (
-                    <div
-                      key={`${line.text}-${index}`}
-                      className="rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm"
-                    >
-                      <div className="flex items-start justify-between gap-3">
+                {hasRemittanceMatch ? (
+                  <div className="mt-4 grid gap-2">
+                    {remittanceMatch.matches.map((invoice) => (
+                      <div
+                        key={invoice.id}
+                        className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm"
+                      >
                         <span className="min-w-0">
                           <span className="block truncate font-semibold text-white">
-                            {line.invoiceNumbers.length > 0
-                              ? line.invoiceNumbers.join(", ")
-                              : "No invoice number read"}
+                            {invoice.displayId} - {invoice.projectTitle}
                           </span>
                           <span className="mt-0.5 block truncate text-zinc-400">
-                            {[line.unitCodes.join(", "), line.serviceDescription]
-                              .filter(Boolean)
-                              .join(" / ") || line.text}
+                            {invoice.customerName}
                           </span>
                         </span>
                         <span className="font-black text-emerald-300">
-                          {formatMoney(line.amount)}
+                          {formatMoney(invoice.amountDue)}
                         </span>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
+                    ))}
+                  </div>
+                ) : null}
 
-              {remittanceMatch.matches.length > 0 ? (
-                <div className="mt-4 grid gap-2">
-                  {remittanceMatch.matches.slice(0, 4).map((invoice) => (
-                    <div
-                      key={invoice.id}
-                      className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm"
-                    >
-                      <span className="min-w-0">
-                        <span className="block truncate font-semibold text-white">
-                          {invoice.displayId} - {invoice.projectTitle}
-                        </span>
-                        <span className="mt-0.5 block truncate text-zinc-400">
-                          {invoice.customerName}
-                        </span>
-                      </span>
-                      <span className="font-black text-emerald-300">
-                        {formatMoney(invoice.amountDue)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-            </div>
+                {hasRemittanceMatch ? (
+                  <button
+                    type="button"
+                    onClick={applyRemittanceStubMatch}
+                    className="mt-4 rounded-2xl bg-emerald-500 px-5 py-3 font-black text-black transition hover:bg-emerald-400"
+                  >
+                    Use Suggested Matches
+                  </button>
+                ) : null}
+
+                {checkOcrStatus === "error" || checkOcrStatus === "manual" ? (
+                  <textarea
+                    value={remittanceStubText}
+                    onChange={(event) => setRemittanceStubText(event.target.value)}
+                    placeholder="Paste readable stub text here if the photo did not read cleanly."
+                    className="mt-4 min-h-24 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm leading-6 text-slate-950 outline-none transition focus:border-sky-500"
+                  />
+                ) : null}
+              </div>
+            ) : null}
+
+            {paymentEntryMode !== "choice" ? (
+              <div className="grid gap-3 sm:grid-cols-3">
+                <label>
+                  <span className="text-sm font-semibold text-zinc-300">
+                    Check Amount
+                  </span>
+                  <input
+                    inputMode="decimal"
+                    value={capturedCheckAmount}
+                    onChange={(event) => {
+                      setCapturedCheckAmount(event.target.value);
+
+                      if (paymentEntryMode === "manual") {
+                        setCheckAmount(event.target.value);
+                      }
+                    }}
+                    onBlur={() => {
+                      if (!checkAmount.trim() && capturedCheckAmount.trim()) {
+                        setCheckAmount(capturedCheckAmount);
+                      }
+                    }}
+                    placeholder="$0.00"
+                    className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-sky-500"
+                  />
+                </label>
+
+                <label>
+                  <span className="text-sm font-semibold text-zinc-300">
+                    Payor
+                  </span>
+                  <input
+                    value={checkPayor}
+                    onChange={(event) => setCheckPayor(event.target.value)}
+                    placeholder="Customer name"
+                    className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-sky-500"
+                  />
+                </label>
+
+                <label>
+                  <span className="text-sm font-semibold text-zinc-300">
+                    Check #
+                  </span>
+                  <input
+                    value={capturedCheckReference}
+                    onChange={(event) => {
+                      setCapturedCheckReference(event.target.value);
+
+                      if (paymentEntryMode === "manual") {
+                        setPaymentReference(event.target.value);
+                      }
+                    }}
+                    placeholder="1042"
+                    className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-sky-500"
+                  />
+                </label>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
 
+      {paymentEntryMode !== "choice" ? (
+        <>
       <div className="app-soft-panel mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[150px_150px_170px_1fr_auto]">
           <DateInputField
@@ -1905,6 +1475,8 @@ export default function BatchInvoicePayments({
           })}
         </div>
       </div>
+        </>
+      ) : null}
     </Card>
   );
 }
