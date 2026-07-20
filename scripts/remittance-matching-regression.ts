@@ -146,6 +146,13 @@ assert.deepEqual(
 );
 assert.equal(matchProduction2734.matchedTotal, 2198);
 assert.equal(matchProduction2734.confidence, "verified");
+assert.deepEqual(
+  parsedProduction2734.lines
+    .filter((line) => line.invoiceNumbers.length > 0)
+    .map((line) => line.amount),
+  [1099, 1099],
+  "The 2734 parser must treat $2,198.00 as the document total, not a third invoice amount."
+);
 assert.equal(normalizeInvoiceNumber("INV0502"), "INV-0502");
 assert.equal(normalizeInvoiceNumber("INV-0502"), "INV-0502");
 assert.equal(normalizeInvoiceNumber("1NV0502"), "INV-0502");
@@ -153,6 +160,63 @@ assert.equal(normalizeInvoiceNumber("INVO502"), "INV-0502");
 assert.equal(normalizeInvoiceNumber("INVOS02"), "INV-0502");
 assert.equal(normalizeInvoiceNumber("INV0S02"), "INV-0502");
 assert.equal(normalizeInvoiceNumber("INV050Z"), "INV-0502");
+
+const productionStub2734WithSummaryRow = [
+  "DATE: 07/10/2026 CK#: 2734",
+  "Property Account Invoice - Date Description Amount",
+  "North Creek Apartments Paint Serv INV0502 - 06/08/2026 V01 full interior paint $1,099.00",
+  "North Creek Apartments Paint Serv INV0503 - 06/10/2026 K08 full interior paint $1,099.00",
+  "----------------------------",
+  "GRAND TOTAL $2,198.00",
+].join("\n");
+const parsedProduction2734WithSummaryRow = parseCheckStubText(
+  productionStub2734WithSummaryRow
+);
+const matchProduction2734WithSummaryRow = findRemittanceMatches(
+  invoices,
+  parsedProduction2734WithSummaryRow.stubText,
+  "North Creek Apartments"
+);
+
+assert.equal(parsedProduction2734WithSummaryRow.totalAmount, 2198);
+assert.deepEqual(
+  parsedProduction2734WithSummaryRow.lines.map((line) => line.amount),
+  [1099, 1099],
+  "A summary total row must never be appended to the invoice line list."
+);
+assert.deepEqual(matchProduction2734WithSummaryRow.referencedInvoiceNumbers, [
+  "INV-0502",
+  "INV-0503",
+]);
+assert.equal(matchProduction2734WithSummaryRow.matchedTotal, 2198);
+assert.equal(matchProduction2734WithSummaryRow.lineTotal, 2198);
+assert.equal(matchProduction2734WithSummaryRow.totalAmount, 2198);
+assert.equal(matchProduction2734WithSummaryRow.confidence, "verified");
+
+const productionStub2734WithGluedSummary = [
+  "DATE: 07/10/2026 CK#: 2734",
+  "Property Account Invoice - Date Description Amount",
+  "North Creek Apartments Paint Serv INV0502 - 06/08/2026 V01 full interior paint $1,099.00",
+  "North Creek Apartments Paint Serv INV0503 - 06/10/2026 K08 full interior paint $1,099.00 TOTAL $2,198.00",
+].join("\n");
+const parsedProduction2734WithGluedSummary = parseCheckStubText(
+  productionStub2734WithGluedSummary
+);
+
+assert.equal(parsedProduction2734WithGluedSummary.totalAmount, 2198);
+assert.deepEqual(
+  parsedProduction2734WithGluedSummary.lines.map((line) => line.amount),
+  [1099, 1099],
+  "A total glued to an invoice row must not replace the invoice's line amount."
+);
+assert.notEqual(
+  parsedProduction2734WithGluedSummary.lines.reduce(
+    (total, line) => total + line.amount,
+    0
+  ),
+  4396,
+  "The 2734 remittance must never reconcile by double-counting the grand total."
+);
 
 const partialProductionStub2734 = [
   "DATE: 07/10/2026 CK#: 2734 TOTAL: $2,198.00",

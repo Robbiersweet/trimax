@@ -58,6 +58,24 @@ export function extractMoneyValues(text: string) {
     .filter((value) => value > 0);
 }
 
+function summaryTotalKeywordPattern() {
+  return /\b(?:GRAND\s+TOTAL|CHECK\s+TOTAL|PAYMENT\s+TOTAL|PAYMENT\s+AMOUNT|AMOUNT\s+ENCLOSED|AMOUNT\s+PAID|CHECK\s+AMOUNT|TOTAL)\b\s*:?\s*/i;
+}
+
+function isSummaryTotalLine(text: string) {
+  return summaryTotalKeywordPattern().test(text);
+}
+
+function lineItemTextWithoutSummaryTotal(text: string) {
+  const summaryMatch = text.match(summaryTotalKeywordPattern());
+
+  if (!summaryMatch?.index) {
+    return summaryMatch?.index === 0 ? "" : text;
+  }
+
+  return text.slice(0, summaryMatch.index).trim();
+}
+
 export function extractUnitCodes(text: string) {
   return Array.from(new Set(text.match(/\b[A-Z]\d{2}[A-Z]?\b/gi) ?? [])).map(
     (code) => code.toUpperCase()
@@ -175,7 +193,7 @@ export function extractInvoiceNumbers(text: string) {
 
 export function extractTotalAmount(text: string) {
   const explicitTotal = text.match(
-    /\b(?:TOTAL|CHECK\s*TOTAL|CHECK\s*AMOUNT|PAYMENT\s*AMOUNT|AMOUNT\s*PAID)\s*:?\s*\$?\s*([\d,]+\.\d{2})/i
+    /\b(?:GRAND\s+TOTAL|CHECK\s*TOTAL|PAYMENT\s*TOTAL|PAYMENT\s*AMOUNT|AMOUNT\s*ENCLOSED|AMOUNT\s*PAID|CHECK\s*AMOUNT|TOTAL)\s*:?\s*\$?\s*([\d,]+\.\d{2})/i
   );
 
   if (explicitTotal?.[1]) {
@@ -406,15 +424,22 @@ export function parseRemittanceLines(text: string): RemittanceLine[] {
 
   return combineSplitRemittanceRows(sourceLines)
     .filter((line) => !isRemittanceHeaderText(line))
+    .filter((line) => {
+      const invoiceNumbers = extractInvoiceNumbers(line);
+
+      return invoiceNumbers.length > 0 || !isSummaryTotalLine(line);
+    })
     .map((line) => {
-      const amounts = extractMoneyValues(line);
+      const lineItemText = lineItemTextWithoutSummaryTotal(line);
+      const invoiceNumbers = extractInvoiceNumbers(lineItemText || line);
+      const amounts = extractMoneyValues(lineItemText || line);
 
       return {
         text: line,
         amount: amounts.at(-1) ?? 0,
-        invoiceNumbers: extractInvoiceNumbers(line),
-        unitCodes: extractUnitCodes(line),
-        serviceDescription: line
+        invoiceNumbers,
+        unitCodes: extractUnitCodes(lineItemText || line),
+        serviceDescription: (lineItemText || line)
           .replace(/\b(?:inv(?:oice)?\.?\s*[-#: ]?\s*)?0*\d{3,6}\b/gi, "")
           .replace(/\$?\s*\d{1,3}(?:,\d{3})*(?:\.\d{2})\b|\b\d+\.\d{2}\b/g, "")
           .replace(/\b[A-Z]\d{2}[A-Z]?\b/gi, "")
@@ -422,7 +447,7 @@ export function parseRemittanceLines(text: string): RemittanceLine[] {
           .trim(),
       };
     })
-    .filter((line) => !/\b(?:TOTAL|CHECK\s*AMOUNT|PAYMENT\s*AMOUNT|AMOUNT\s*PAID)\b/i.test(line.text));
+    .filter((line) => line.invoiceNumbers.length > 0 || line.amount > 0);
 }
 
 export function parseCheckStubText(rawText: string): ParsedCheckStub {
