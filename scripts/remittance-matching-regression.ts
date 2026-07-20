@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import assert from "node:assert/strict";
 import {
   findRemittanceMatches,
+  normalizeInvoiceNumber,
   parseCheckStubText,
 } from "../src/app/lib/remittanceMatching.ts";
 
@@ -128,6 +129,10 @@ assert.deepEqual(
   "Remittance-only production stub must match INV0500 and INV0501."
 );
 assert.equal(match2721.confidence, "verified");
+assert.equal(normalizeInvoiceNumber("INV0500"), "INV-0500");
+assert.equal(normalizeInvoiceNumber("INV-0500"), "INV-0500");
+assert.equal(normalizeInvoiceNumber("0500"), "INV-0500");
+assert.equal(normalizeInvoiceNumber("500"), "INV-0500");
 
 assert.notEqual(
   parsed2743.checkNumber,
@@ -189,9 +194,16 @@ assert(
 );
 assert(
   paymentScreen.includes("parsedTotalFromResponse") &&
+    paymentScreen.includes("extractedPaymentAmount") &&
     paymentScreen.includes("setCheckAmount(paymentAmountText)") &&
     paymentScreen.includes("setCapturedCheckAmount(paymentAmountText)"),
   "Payments screen must load the extracted $2,198.00 total into the visible review amount."
+);
+assert(
+  paymentScreen.includes("function invoiceLookupKeys") &&
+    paymentScreen.includes("extractInvoiceNumbers(candidate)") &&
+    paymentScreen.includes("candidate.matchAll"),
+  "Payments screen must normalize real invoice records before matching OCR invoice numbers."
 );
 assert(
   paymentScreen.includes('paymentEntryMode === "complete"') &&

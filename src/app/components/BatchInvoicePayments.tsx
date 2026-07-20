@@ -335,6 +335,9 @@ export default function BatchInvoicePayments({
     startingFocus ? formatMoney(startingFocus.total) : ""
   );
   const [capturedCheckReference, setCapturedCheckReference] = useState("");
+  const [extractedPaymentAmount, setExtractedPaymentAmount] = useState<
+    number | null
+  >(null);
   const [reviewMatchedInvoices, setReviewMatchedInvoices] = useState<
     ReviewMatchedInvoice[]
   >([]);
@@ -433,8 +436,12 @@ export default function BatchInvoicePayments({
     0
   );
 
+  const isRemittanceReview =
+    paymentEntryMode === "photo" && checkOcrStatus === "ready";
   const visibleCheckAmount =
-    parseMoney(checkAmount) > 0 || !capturedCheckAmount.trim()
+    isRemittanceReview && extractedPaymentAmount && extractedPaymentAmount > 0
+      ? formatMoney(extractedPaymentAmount)
+      : parseMoney(checkAmount) > 0 || !capturedCheckAmount.trim()
       ? checkAmount
       : capturedCheckAmount;
   const enteredCheckAmount = visibleCheckAmount.trim()
@@ -461,8 +468,6 @@ export default function BatchInvoicePayments({
     [checkPayor, invoiceRecords, remittanceStubText]
   );
   const hasRemittanceStub = remittanceStubText.trim().length > 0;
-  const isRemittanceReview =
-    paymentEntryMode === "photo" && checkOcrStatus === "ready";
   const showPaymentReview =
     paymentEntryMode === "manual" ||
     (paymentEntryMode === "photo" &&
@@ -490,6 +495,7 @@ export default function BatchInvoicePayments({
 
     console.info("Trimax remittance review state", {
       totalAmount: enteredCheckAmount,
+      extractedPaymentAmount,
       checkAmount,
       capturedCheckAmount,
       checkNumber: paymentReference,
@@ -515,6 +521,7 @@ export default function BatchInvoicePayments({
     checkOcrStatus,
     checkPayor,
     enteredCheckAmount,
+    extractedPaymentAmount,
     paymentDate,
     paymentReference,
     remittanceMatch,
@@ -585,6 +592,37 @@ export default function BatchInvoicePayments({
     setCheckAmount("");
   }
 
+  function invoiceLookupKeys(invoice: PayableInvoice) {
+    const keys = new Set<string>();
+    const candidates = [
+      invoice.displayId,
+      invoice.projectTitle,
+      invoice.customerName,
+    ];
+
+    candidates.forEach((candidate) => {
+      const normalized = normalizeInvoiceNumber(candidate);
+
+      if (normalized) {
+        keys.add(normalized);
+      }
+
+      extractInvoiceNumbers(candidate).forEach((invoiceNumber) =>
+        keys.add(invoiceNumber)
+      );
+
+      for (const match of candidate.matchAll(/\b0*(\d{3,6})\b/g)) {
+        const normalizedDigits = normalizeInvoiceNumber(match[1] ?? "");
+
+        if (normalizedDigits) {
+          keys.add(normalizedDigits);
+        }
+      }
+    });
+
+    return Array.from(keys);
+  }
+
   function extractedInvoiceNumbersFromResponse(
     data: CheckStubOcrResponse,
     stubText: string
@@ -650,8 +688,11 @@ export default function BatchInvoicePayments({
     const amountsByInvoice = extractedLineAmountsByInvoice(data);
     const invoicesByNumber = new Map(
       payableInvoices
-        .map((invoice) => [normalizeInvoiceNumber(invoice.displayId), invoice] as const)
-        .filter(([invoiceNumber]) => invoiceNumber)
+        .flatMap((invoice) =>
+          invoiceLookupKeys(invoice).map(
+            (invoiceNumber) => [invoiceNumber, invoice] as const
+          )
+        )
     );
 
     return extractedInvoiceNumbersFromResponse(data, stubText)
@@ -727,6 +768,7 @@ export default function BatchInvoicePayments({
     setPaymentType("Check");
     setReviewMatchedInvoices(reviewMatches);
     setSelectedIds(reviewMatches.map((invoice) => invoice.id));
+    setExtractedPaymentAmount(paymentAmount > 0 ? paymentAmount : null);
     setCheckAmount(paymentAmountText);
     setCapturedCheckAmount(paymentAmountText);
     setPaymentReference(extractedCheckNumber);
@@ -748,6 +790,7 @@ export default function BatchInvoicePayments({
 
     console.info("Trimax remittance extraction handoff", {
       totalAmount: data.totalAmount,
+      extractedPaymentAmount: paymentAmount,
       parsedTotalFromResponse,
       parsedTotalFromStub,
       parsedTotalFromLines,
@@ -903,6 +946,7 @@ export default function BatchInvoicePayments({
     setFiledPaymentImage(null);
     setRemittanceStubText("");
     setSelectedIds([]);
+    setExtractedPaymentAmount(null);
     setReviewMatchedInvoices([]);
     setCapturedCheckAmount("");
     setCapturedCheckReference("");
@@ -931,6 +975,7 @@ export default function BatchInvoicePayments({
     setRemittanceStubText("");
     setSelectedIds([]);
     setReviewMatchedInvoices([]);
+    setExtractedPaymentAmount(null);
     setCheckAmount("");
     setPaymentReference("");
     setCheckPayor("");
@@ -1180,6 +1225,7 @@ export default function BatchInvoicePayments({
                   setFiledPaymentImage(null);
                   setRemittanceStubText("");
                   setReviewMatchedInvoices([]);
+                  setExtractedPaymentAmount(null);
                   setCapturedCheckAmount("");
                   setCapturedCheckReference("");
                   setCheckPayor("");
@@ -1344,6 +1390,12 @@ export default function BatchInvoicePayments({
               inputMode="decimal"
               value={visibleCheckAmount}
               onChange={(event) => {
+                const nextAmount = parseMoney(event.target.value);
+
+                if (isRemittanceReview) {
+                  setExtractedPaymentAmount(nextAmount > 0 ? nextAmount : null);
+                }
+
                 setCheckAmount(event.target.value);
                 setCapturedCheckAmount(event.target.value);
               }}
