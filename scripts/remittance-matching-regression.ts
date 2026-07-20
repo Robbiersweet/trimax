@@ -38,6 +38,24 @@ const invoices = [
     status: "sent",
   },
   {
+    id: "inv-502",
+    displayId: "INV-0502",
+    customerName: "North Creek Apartments",
+    projectTitle: "North Creek Apartments - Unit V01 full interior paint",
+    invoiceAmount: 1099,
+    amountPaid: 0,
+    status: "sent",
+  },
+  {
+    id: "inv-503",
+    displayId: "INV-0503",
+    customerName: "North Creek Apartments",
+    projectTitle: "North Creek Apartments - Unit K08 full interior paint",
+    invoiceAmount: 1099,
+    amountPaid: 0,
+    status: "sent",
+  },
+  {
     id: "inv-510",
     displayId: "INV-0510",
     customerName: "North Creek Apartments",
@@ -99,6 +117,81 @@ assert.deepEqual(match2734.referencedInvoiceNumbers, [
 ]);
 assert.equal(match2734.totalAmount, 2198);
 assert.equal(match2734.confidence, "verified");
+
+const productionStub2734 = [
+  "DATE: 07/10/2026 CK#: 2734 TOTAL: $2,198.00",
+  "PAYEE: R&L Creations",
+  "Property Account Invoice - Date Description Amount",
+  "North Creek Apartments Paint Serv 1NV0502 - 06/08/2026 V01 full interior paint 1,099.00",
+  "North Creek Apartment Paint Serv INV0503 - 06/10/2026 K08 full interior paint 1,099.00",
+].join("\n");
+const parsedProduction2734 = parseCheckStubText(productionStub2734);
+const matchProduction2734 = findRemittanceMatches(
+  invoices,
+  parsedProduction2734.stubText,
+  "North Creek Apartments"
+);
+
+assert.equal(parsedProduction2734.checkNumber, "2734");
+assert.equal(parsedProduction2734.totalAmount, 2198);
+assert.equal(parsedProduction2734.checkDate, "2026-07-10");
+assert.deepEqual(matchProduction2734.referencedInvoiceNumbers, [
+  "INV-0502",
+  "INV-0503",
+]);
+assert.deepEqual(
+  matchProduction2734.matches.map((invoice) => invoice.id),
+  ["inv-502", "inv-503"],
+  "The two-line 2734 remittance must not stop after matching only INV-0503."
+);
+assert.equal(matchProduction2734.matchedTotal, 2198);
+assert.equal(matchProduction2734.confidence, "verified");
+assert.equal(normalizeInvoiceNumber("INV0502"), "INV-0502");
+assert.equal(normalizeInvoiceNumber("INV-0502"), "INV-0502");
+assert.equal(normalizeInvoiceNumber("1NV0502"), "INV-0502");
+assert.equal(normalizeInvoiceNumber("INVO502"), "INV-0502");
+assert.equal(normalizeInvoiceNumber("INVOS02"), "INV-0502");
+assert.equal(normalizeInvoiceNumber("INV0S02"), "INV-0502");
+assert.equal(normalizeInvoiceNumber("INV050Z"), "INV-0502");
+
+const partialProductionStub2734 = [
+  "DATE: 07/10/2026 CK#: 2734 TOTAL: $2,198.00",
+  "North Creek Apartments Paint Serv INV0503 - 06/10/2026 K08 full interior paint 1,099.00",
+].join("\n");
+const partialMatchProduction2734 = findRemittanceMatches(
+  invoices,
+  partialProductionStub2734,
+  "North Creek Apartments"
+);
+
+assert.equal(partialMatchProduction2734.confidence, "review");
+assert.equal(
+  partialMatchProduction2734.matches.length,
+  0,
+  "A one-invoice partial match must not be accepted against a $2,198.00 remittance."
+);
+assert(
+  partialMatchProduction2734.issues.includes(
+    "Referenced invoice balances and remittance line amounts do not reconcile to the check total."
+  )
+);
+
+const contextRecoveredStub2734 = [
+  "DATE: 07/10/2026 CK#: 2734 TOTAL: $2,198.00",
+  "North Creek Apartments Paint Serv V01 full interior paint 1,099.00",
+  "North Creek Apartments Paint Serv INV0503 - 06/10/2026 K08 full interior paint 1,099.00",
+].join("\n");
+const contextRecoveredMatch2734 = findRemittanceMatches(
+  invoices,
+  contextRecoveredStub2734,
+  "North Creek Apartments"
+);
+
+assert.equal(contextRecoveredMatch2734.confidence, "verified");
+assert.deepEqual(contextRecoveredMatch2734.referencedInvoiceNumbers, [
+  "INV-0503",
+  "INV-0502",
+]);
 
 const productionStub2721 = [
   "North Creek Apartments",
@@ -242,8 +335,9 @@ assert(
   route.includes("const ROTATIONS = [0, 90, 180, 270] as const") &&
     route.includes("scoreOcrText") &&
     route.includes("recognizeBestText") &&
-    route.includes("shouldAcceptFirstPass"),
-  "OCR route must score 0/90/180/270 rotations before parsing sideways remittance photos."
+    route.includes("shouldAcceptFirstPass") &&
+    route.includes("referencedLineTotal"),
+  "OCR route must score 0/90/180/270 rotations and reject partial first-pass remittance reads."
 );
 
 const paymentScreen = readFileSync(
@@ -313,8 +407,9 @@ assert(
 assert(
   paymentScreen.includes("function reconcileReviewMatches") &&
     paymentScreen.includes("invoiceTotalMatchesCheck") &&
-    paymentScreen.includes("Line amount reviewed against Trimax invoice balances"),
-  "Payments screen must reconcile OCR line amounts against real invoice balances."
+    paymentScreen.includes("Remittance total does not match selected invoices.") &&
+    paymentScreen.includes("Select Missing Invoice Manually"),
+  "Payments screen must reconcile OCR line amounts against real invoice balances and reject partial matches."
 );
 
 console.log("Remittance matching regression checks passed.");

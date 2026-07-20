@@ -656,7 +656,12 @@ export default function BatchInvoicePayments({
     !isSaving &&
     selectedInvoices.length > 0 &&
     enteredCheckAmount !== null &&
-    checkAmountMatches;
+    checkAmountMatches &&
+    (!isRemittanceReview ||
+      (extractedPaymentAmount !== null &&
+        extractedPaymentAmount > 0 &&
+        Math.abs(selectedTotal - extractedPaymentAmount) < 0.01 &&
+        reviewMatchedInvoices.length === selectedInvoices.length));
 
   useEffect(() => {
     return () => {
@@ -861,7 +866,9 @@ export default function BatchInvoicePayments({
         .toFixed(2)
     );
     const invoiceTotalMatchesCheck =
-      extractedTotal > 0 && Math.abs(invoiceTotal - extractedTotal) < 0.01;
+      extractedTotal > 0 &&
+      matches.length > 0 &&
+      Math.abs(invoiceTotal - extractedTotal) < 0.01;
     const ocrTotalMismatchesCheck =
       extractedTotal > 0 && Math.abs(ocrLineTotal - extractedTotal) >= 0.01;
     const corrected = matches.map((invoice) => {
@@ -883,19 +890,21 @@ export default function BatchInvoicePayments({
         matches[index]?.remittanceAmount !== null &&
         matches[index]?.remittanceAmount !== invoice.remittanceAmount
     );
+    const isComplete = invoiceTotalMatchesCheck;
     const notice =
       correctedAny && ocrTotalMismatchesCheck
         ? "Line amount reviewed against Trimax invoice balances and the remittance total."
         : extractedTotal > 0 &&
             matches.length > 0 &&
             Math.abs(invoiceTotal - extractedTotal) >= 0.01
-          ? "Review required: matched invoice balances do not equal the remittance total."
+          ? "Remittance total does not match selected invoices."
           : "";
 
     return {
-      matches: corrected,
+      matches: isComplete ? corrected : [],
       notice,
       invoiceTotal,
+      isComplete,
     };
   }
 
@@ -935,7 +944,24 @@ export default function BatchInvoicePayments({
       stubText,
       extractedPayor
     );
-    const rawReviewMatches = matchInvoicesFromExtraction(data, stubText);
+    const rawReviewMatchesFromParser = match.matches
+      .map((matchedInvoice): ReviewMatchedInvoice | null => {
+        const invoice = payableInvoices.find(
+          (payableInvoice) => payableInvoice.id === matchedInvoice.id
+        );
+
+        return invoice
+          ? {
+              ...invoice,
+              remittanceAmount: matchedInvoice.amountDue,
+            }
+          : null;
+      })
+      .filter((invoice): invoice is ReviewMatchedInvoice => Boolean(invoice));
+    const rawReviewMatches =
+      rawReviewMatchesFromParser.length > 0
+        ? rawReviewMatchesFromParser
+        : matchInvoicesFromExtraction(data, stubText);
     const reconciledReview = reconcileReviewMatches(
       rawReviewMatches,
       extractedTotal
@@ -984,7 +1010,7 @@ export default function BatchInvoicePayments({
         : "Remittance stub review"
     );
 
-    return { match, reviewMatches };
+    return { match, reviewMatches, reconciledReview };
   }
 
   async function filePaymentImage() {
@@ -1094,7 +1120,7 @@ export default function BatchInvoicePayments({
         return;
       }
 
-      const { reviewMatches } = loadExtractedRemittance(data);
+      const { reviewMatches, reconciledReview } = loadExtractedRemittance(data);
       const responseTotal =
         typeof data.totalAmount === "number" && data.totalAmount > 0
           ? data.totalAmount
@@ -1105,14 +1131,14 @@ export default function BatchInvoicePayments({
       );
       const hasConfidentReview =
         reviewMatches.length > 0 &&
-        (responseTotal <= 0 ||
-          Math.abs(matchedInvoiceTotal - responseTotal) < 0.01);
+        reconciledReview.isComplete &&
+        (responseTotal <= 0 || Math.abs(matchedInvoiceTotal - responseTotal) < 0.01);
 
       setCheckOcrStatus(hasConfidentReview ? "ready" : "manual");
       setCheckOcrMessage(
         hasConfidentReview
           ? "Remittance read. Review the payment before applying."
-          : "Could not confidently match this remittance. Adjust crop or enter manually."
+          : "Remittance total does not match selected invoices."
       );
     } catch (error) {
       setCheckOcrStatus("error");
@@ -1819,6 +1845,22 @@ export default function BatchInvoicePayments({
                       <button
                         type="button"
                         onClick={() => {
+                          if (checkImageFile) {
+                            void readPreparedRemittanceFromFile(
+                              checkImageFile,
+                              cropBox,
+                              cropRotation
+                            );
+                          }
+                        }}
+                        disabled={!checkImageFile}
+                        className="rounded-full border border-amber-100/50 px-3 py-1.5 text-xs font-semibold text-amber-50 transition hover:bg-white/10 disabled:opacity-50"
+                      >
+                        Retry Reading
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
                           setPaymentEntryMode("crop");
                           setCheckOcrStatus("idle");
                           setCheckOcrMessage("Adjust the crop, then read it again.");
@@ -1844,11 +1886,11 @@ export default function BatchInvoicePayments({
                         onClick={() => {
                           setPaymentEntryMode("manual");
                           setCheckOcrStatus("manual");
-                          setCheckOcrMessage("Enter the amount, choose invoices, and apply the payment.");
+                          setCheckOcrMessage("Select the missing invoice, verify the total, and apply the payment.");
                         }}
                         className="rounded-full border border-amber-100/50 px-3 py-1.5 text-xs font-semibold text-amber-50 transition hover:bg-white/10"
                       >
-                        Enter Manually
+                        Select Missing Invoice Manually
                       </button>
                     </div>
                   </div>

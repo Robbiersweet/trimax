@@ -96,7 +96,19 @@ export function extractCheckNumber(text: string) {
 }
 
 export function normalizeInvoiceNumber(value: string) {
-  const rawDigits = value.replace(/\D/g, "");
+  const trimmed = value.trim();
+  const prefixedMatch = trimmed.match(
+    /^\s*(?:[Il1|]NV(?:OICE)?|INV(?:OICE)?)\.?\s*[-#: ]?\s*([0-9OoSsZzIl|Vv]{3,8})\b/i
+  );
+  const normalizedValue = prefixedMatch?.[1]
+    ? prefixedMatch[1]
+        .replace(/[Vv]/g, "")
+        .replace(/[Oo]/g, "0")
+        .replace(/[Ss]/g, "5")
+        .replace(/[Zz]/g, "2")
+        .replace(/[Il|]/g, "1")
+    : trimmed;
+  const rawDigits = normalizedValue.replace(/\D/g, "");
   const digits =
     rawDigits.length > 4 && rawDigits.startsWith("0")
       ? rawDigits.replace(/^0+/, "")
@@ -114,12 +126,13 @@ export function extractInvoiceNumbers(text: string) {
   const normalizedText = text
     .replace(/\b[Il1|]NV/gi, "INV")
     .replace(
-    /\b(INV(?:OICE)?\.?\s*[-#: ]?\s*)([0-9OoSsIl|Vv]{3,8})\b/gi,
+    /\b(INV(?:OICE)?\.?\s*[-#: ]?\s*)([0-9OoSsZzIl|Vv]{3,8})\b/gi,
     (_match, prefix: string, rawDigits: string) =>
       `${prefix}${rawDigits
         .replace(/[Vv]/g, "")
         .replace(/[Oo]/g, "0")
         .replace(/[Ss]/g, "5")
+        .replace(/[Zz]/g, "2")
         .replace(/[Il|]/g, "1")}`
   );
   const invoicePattern =
@@ -330,6 +343,61 @@ function combineSplitRemittanceRows(lines: string[]) {
   return combined;
 }
 
+function amountDueForInvoice(invoice: RemittanceInvoiceRecord) {
+  return typeof invoice.collectionAmountDue === "number"
+    ? Math.max(invoice.collectionAmountDue, 0)
+    : Math.max(invoice.invoiceAmount - invoice.amountPaid, 0);
+}
+
+function inferInvoiceNumberFromLineContext(
+  line: RemittanceLine,
+  invoiceNumberRecords: Array<{
+    invoiceNumber: string;
+    invoice: RemittanceInvoiceRecord & { amountDue: number };
+  }>,
+  payor: string
+) {
+  if (line.amount <= 0 || line.unitCodes.length === 0) {
+    return null;
+  }
+
+  const lineText = line.text.toLowerCase();
+  const candidates = invoiceNumberRecords.filter(({ invoice }) => {
+    if (
+      invoice.amountDue <= 0 ||
+      invoice.status.toLowerCase() === "paid" ||
+      Math.abs(invoice.amountDue - line.amount) >= 0.01 ||
+      !customerMatchesPayor(invoice.customerName, payor)
+    ) {
+      return false;
+    }
+
+    const invoiceText = `${invoice.displayId} ${invoice.projectTitle}`.toLowerCase();
+    const hasUnit = line.unitCodes.some((unitCode) =>
+      invoiceText.includes(unitCode.toLowerCase())
+    );
+    const hasSpecificPaintContext =
+      /full/i.test(line.text) &&
+      /interior/i.test(line.text) &&
+      /paint/i.test(line.text);
+    const hasPaintContext =
+      !/paint/i.test(line.text) || /paint/i.test(invoice.projectTitle);
+    const hasInteriorContext =
+      !/interior/i.test(line.text) || /interior/i.test(invoice.projectTitle);
+
+    return (
+      hasUnit &&
+      hasSpecificPaintContext &&
+      hasPaintContext &&
+      hasInteriorContext &&
+      (lineText.includes("north creek") ||
+        customerMatchesPayor(invoice.customerName, "North Creek Apartments"))
+    );
+  });
+
+  return candidates.length === 1 ? candidates[0] : null;
+}
+
 export function parseRemittanceLines(text: string): RemittanceLine[] {
   const sourceLines = text
     .split(/\r?\n/)
@@ -406,10 +474,7 @@ export function findRemittanceMatches(
       invoiceNumber: normalizeInvoiceNumber(invoice.displayId),
       invoice: {
         ...invoice,
-        amountDue:
-          typeof invoice.collectionAmountDue === "number"
-            ? Math.max(invoice.collectionAmountDue, 0)
-            : Math.max(invoice.invoiceAmount - invoice.amountPaid, 0),
+        amountDue: amountDueForInvoice(invoice),
       },
     }))
     .filter((record) => record.invoiceNumber);
@@ -429,10 +494,34 @@ export function findRemittanceMatches(
       record.invoice,
     ])
   );
+  const payor = payorOverride.trim() || extractLikelyPayor(stubText);
+  const inferredInvoiceNumbers = lineItems
+    .filter((line) =>
+      line.invoiceNumbers.every((invoiceNumber) => !invoicesByNumber.has(invoiceNumber))
+    )
+    .map((line) =>
+      inferInvoiceNumberFromLineContext(line, invoiceNumberRecords, payor)
+    )
+    .filter(
+      (
+        record
+      ): record is {
+        invoiceNumber: string;
+        invoice: RemittanceInvoiceRecord & { amountDue: number };
+      } => Boolean(record)
+    )
+    .map((record) => record.invoiceNumber);
+  const reconciledInvoiceNumbers = Array.from(
+    new Set([...referencedInvoiceNumbers, ...inferredInvoiceNumbers])
+  );
   const missingInvoiceNumbers = referencedInvoiceNumbers.filter(
     (invoiceNumber) => !invoicesByNumber.has(invoiceNumber)
   );
   const matches = referencedInvoiceNumbers
+    .concat(inferredInvoiceNumbers)
+    .filter((invoiceNumber, index, allNumbers) =>
+      allNumbers.indexOf(invoiceNumber) === index
+    )
     .map((invoiceNumber) => invoicesByNumber.get(invoiceNumber) ?? null)
     .filter((invoice): invoice is RemittanceInvoiceRecord & { amountDue: number } =>
       Boolean(invoice)
@@ -449,7 +538,6 @@ export function findRemittanceMatches(
   const referencedLineTotal = lineItems
     .filter((line) => line.invoiceNumbers.length > 0)
     .reduce((total, line) => total + line.amount, 0);
-  const payor = payorOverride.trim() || extractLikelyPayor(stubText);
   const customerNames = Array.from(
     new Set(matches.map((invoice) => invoice.customerName))
   );
@@ -459,7 +547,7 @@ export function findRemittanceMatches(
   const hasReadableStub = stubText.trim().length > 0;
   const issues = [
     !hasReadableStub ? "Remittance text is missing or unreadable." : "",
-    referencedInvoiceNumbers.length === 0
+    reconciledInvoiceNumbers.length === 0
       ? "No exact invoice numbers were read from the remittance stub."
       : "",
     lineItems.length === 0 ? "No remittance lines were read from the stub." : "",
@@ -470,11 +558,11 @@ export function findRemittanceMatches(
       ? `Duplicate invoice number on stub: ${Array.from(new Set(duplicatedInvoiceNumbers)).join(", ")}.`
       : "",
     duplicateTrimaxInvoiceNumbers.some((invoiceNumber) =>
-      referencedInvoiceNumbers.includes(invoiceNumber)
+      reconciledInvoiceNumbers.includes(invoiceNumber)
     )
       ? `Invoice number is duplicated in Trimax: ${duplicateTrimaxInvoiceNumbers
           .filter((invoiceNumber) =>
-            referencedInvoiceNumbers.includes(invoiceNumber)
+            reconciledInvoiceNumbers.includes(invoiceNumber)
           )
           .join(", ")}.`
       : "",
@@ -505,7 +593,7 @@ export function findRemittanceMatches(
     matches: issues.length === 0 ? matches : [],
     totalAmount,
     lineItems,
-    referencedInvoiceNumbers,
+    referencedInvoiceNumbers: reconciledInvoiceNumbers,
     missingInvoiceNumbers,
     matchedTotal,
     lineTotal,

@@ -288,11 +288,19 @@ function scoreOcrText(text: string, confidence: number) {
 function shouldAcceptFirstPass(attempt: OcrAttempt) {
   const parsed = parseCheckStubText(attempt.text);
   const hasInvoice = parsed.lines.some((line) => line.invoiceNumbers.length > 0);
+  const referencedLineTotal = parsed.lines
+    .filter((line) => line.invoiceNumbers.length > 0)
+    .reduce((total, line) => total + line.amount, 0);
+  const invoiceLinesReconcile =
+    parsed.totalAmount <= 0 ||
+    referencedLineTotal <= 0 ||
+    Math.abs(referencedLineTotal - parsed.totalAmount) < 0.01;
 
   return (
     attempt.score >= GOOD_OCR_SCORE &&
     parsed.totalAmount > 0 &&
-    (hasInvoice || parsed.checkNumber || parsed.payor)
+    (hasInvoice || parsed.checkNumber || parsed.payor) &&
+    invoiceLinesReconcile
   );
 }
 
