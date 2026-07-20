@@ -188,6 +188,24 @@ assert(
   "Payments screen must hand extracted remittance data into the review form."
 );
 assert(
+  paymentScreen.includes("parsedTotalFromResponse") &&
+    paymentScreen.includes("setCheckAmount(paymentAmountText)") &&
+    paymentScreen.includes("setCapturedCheckAmount(paymentAmountText)"),
+  "Payments screen must load the extracted $2,198.00 total into the visible review amount."
+);
+assert(
+  paymentScreen.includes('paymentEntryMode === "complete"') &&
+    paymentScreen.includes("Payment Applied") &&
+    paymentScreen.includes("Process Another Payment"),
+  "Payments screen must show a focused complete state after applying payment."
+);
+assert(
+  paymentScreen.includes("showManualInvoiceBrowser") &&
+    paymentScreen.includes('paymentEntryMode === "manual"') &&
+    paymentScreen.includes("{showManualInvoiceBrowser ?"),
+  "Payments screen must hide the full invoice browser during remittance review."
+);
+assert(
   !paymentScreen.includes("Use Suggested Matches"),
   "Payments screen must not require a second suggested-match handoff."
 );

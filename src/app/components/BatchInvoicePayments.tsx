@@ -49,7 +49,7 @@ type ToastState = {
 } | null;
 
 type CheckOcrStatus = "idle" | "reading" | "ready" | "manual" | "error";
-type PaymentEntryMode = "choice" | "photo" | "manual";
+type PaymentEntryMode = "choice" | "photo" | "manual" | "complete";
 
 type CheckStubOcrResponse = {
   stubText?: string;
@@ -58,7 +58,7 @@ type CheckStubOcrResponse = {
   checkNumber?: string;
   checkDate?: string;
   totalAmount?: number;
-  lines?: unknown[];
+  lines?: { amount?: unknown; invoiceNumbers?: unknown }[];
   error?: string;
 };
 
@@ -449,6 +449,14 @@ export default function BatchInvoicePayments({
   );
   const hasRemittanceStub = remittanceStubText.trim().length > 0;
   const hasRemittanceMatch = remittanceMatch.matches.length > 0;
+  const isRemittanceReview =
+    paymentEntryMode === "photo" && checkOcrStatus === "ready";
+  const showPaymentReview =
+    paymentEntryMode === "manual" ||
+    (paymentEntryMode === "photo" &&
+      checkOcrStatus !== "reading" &&
+      checkOcrStatus !== "idle");
+  const showManualInvoiceBrowser = paymentEntryMode === "manual";
   const paymentCanApply =
     !isSaving &&
     selectedInvoices.length > 0 &&
@@ -531,11 +539,28 @@ export default function BatchInvoicePayments({
       data.payor?.trim() || extractLikelyPayor(stubText);
     const extractedCheckNumber =
       data.checkNumber?.trim() || extractCheckNumber(stubText);
-    const extractedTotal =
+    const parsedTotalFromResponse =
       typeof data.totalAmount === "number" && data.totalAmount > 0
         ? data.totalAmount
-        : findRemittanceMatches(invoiceRecords, stubText, extractedPayor)
-            .totalAmount;
+        : 0;
+    const parsedTotalFromStub = findRemittanceMatches(
+      invoiceRecords,
+      stubText,
+      extractedPayor
+    ).totalAmount;
+    const parsedTotalFromLines =
+      data.lines?.reduce((total, line) => {
+        const amount =
+          typeof line.amount === "number"
+            ? line.amount
+            : typeof line.amount === "string"
+              ? parseMoney(line.amount)
+              : 0;
+
+        return total + amount;
+      }, 0) ?? 0;
+    const extractedTotal =
+      parsedTotalFromResponse || parsedTotalFromStub || parsedTotalFromLines;
     const extractedDate = data.checkDate?.trim()
       ? parseCheckDate(data.checkDate)
       : extractCheckDate(stubText);
@@ -855,11 +880,9 @@ export default function BatchInvoicePayments({
           selectedInvoices.length === 1 ? "" : "s"
         }.`,
       });
-      setSelectedIds([]);
-      setPaymentReference("");
-      setCheckAmount("");
-      setInternalNote("");
-      resetCheckCaptureState();
+      setPaymentEntryMode("complete");
+      setCheckOcrStatus("idle");
+      setCheckOcrMessage("Payment applied.");
       if (checkImagePreview) {
         URL.revokeObjectURL(checkImagePreview);
         setCheckImagePreview("");
@@ -886,6 +909,30 @@ export default function BatchInvoicePayments({
     <Card className="batch-payments-card border-green-500/30 bg-green-500/5">
       {toast ? <Toast type={toast.type} message={toast.message} /> : null}
 
+      {paymentEntryMode === "complete" ? (
+        <div className="rounded-3xl border border-emerald-300/40 bg-emerald-500/10 p-5">
+          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-emerald-200">
+            Complete
+          </p>
+          <h3 className="mt-2 text-2xl font-black text-white">
+            Payment Applied
+          </h3>
+          <button
+            type="button"
+            onClick={() => {
+              setPaymentReference("");
+              setCheckAmount("");
+              setInternalNote("");
+              resetCheckCaptureState();
+            }}
+            className="mt-5 rounded-2xl bg-emerald-500 px-5 py-3 font-black text-black transition hover:bg-emerald-400"
+          >
+            Process Another Payment
+          </button>
+        </div>
+      ) : null}
+
+      {paymentEntryMode !== "complete" ? (
       <div
         id="check-capture"
         className="check-capture-panel scroll-mt-6 overflow-hidden rounded-3xl border border-sky-500/30 bg-gradient-to-br from-sky-500/10 via-zinc-950 to-emerald-500/10"
@@ -1070,8 +1117,9 @@ export default function BatchInvoicePayments({
           </div>
         </div>
       </div>
+      ) : null}
 
-      {paymentEntryMode !== "choice" ? (
+      {showPaymentReview ? (
         <>
       <div className="app-soft-panel mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[150px_130px_170px_180px_1fr_auto]">
@@ -1109,7 +1157,9 @@ export default function BatchInvoicePayments({
                 <button
                   type="button"
                   onClick={fillSelectedTotal}
-                  className="text-xs font-semibold text-green-300 transition hover:text-green-100"
+                  className={`text-xs font-semibold text-green-700 transition hover:text-green-900 ${
+                    isRemittanceReview ? "hidden" : ""
+                  }`}
                 >
                   Use selected total
                 </button>
@@ -1255,7 +1305,7 @@ export default function BatchInvoicePayments({
           </div>
         ) : null}
 
-        {selectedCustomerBreakdown.length > 0 ? (
+        {selectedCustomerBreakdown.length > 0 && showManualInvoiceBrowser ? (
           <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm font-semibold text-slate-950">
@@ -1285,6 +1335,8 @@ export default function BatchInvoicePayments({
         ) : null}
       </div>
 
+      {showManualInvoiceBrowser ? (
+      <>
       <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-zinc-400">
           Showing {visibleInvoices.length} invoice
@@ -1405,6 +1457,8 @@ export default function BatchInvoicePayments({
           })}
         </div>
       </div>
+      </>
+      ) : null}
         </>
       ) : null}
     </Card>
