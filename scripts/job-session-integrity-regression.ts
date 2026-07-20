@@ -99,8 +99,13 @@ function fixtureHubMetrics(
 
 const root = process.cwd();
 const hub = readFileSync(resolve(root, "src/app/job-sessions/page.tsx"), "utf8");
+const queue = readFileSync(resolve(root, "src/app/queue/page.tsx"), "utf8");
 const panel = readFileSync(
   resolve(root, "src/app/components/JobSessionPanel.tsx"),
+  "utf8"
+);
+const dock = readFileSync(
+  resolve(root, "src/app/components/ActiveJobSessionDock.tsx"),
   "utf8"
 );
 
@@ -200,6 +205,38 @@ assert(
     panel.includes("isMissingCrewSchemaError") &&
     panel.includes("crewSchemaAvailable"),
   "Queue detail session rendering must remain correct before and after the crew migration."
+);
+assert(
+  queue.includes("function isClosedForOperations") &&
+    queue.includes("!activeQueueItemIds.has(item.id) && isClosedQueueItem(item)") &&
+    !queue.match(/status === "invoice sent"/),
+  "Queue removal must not hide invoice-sent work while a job session is still active."
+);
+assert(
+  queue.includes("activeSessionByQueueItemId") &&
+    queue.includes("Running") &&
+    queue.includes("Resume Job") &&
+    queue.includes("primaryQueueAction"),
+  "Queue rows must surface active job sessions with one clear primary action."
+);
+assert(
+  queue.includes("compareQueueItems(first, second, sortMode)") &&
+    queue.includes("priority_order"),
+  "Queue display order must continue honoring the saved priority order."
+);
+assert(
+  panel.includes('id="job-session"') &&
+    panel.includes("Boolean(otherActiveSession)") &&
+    panel.includes("Stop that session before starting another."),
+  "Queue detail must keep active sessions addressable and prevent duplicate sessions."
+);
+assert(
+  dock.includes("Job Session Running") &&
+    dock.includes("Resume") &&
+    dock.includes("Manage") &&
+    dock.includes("Complete") &&
+    dock.includes("crew_count"),
+  "The active session dock must remain visible with resume, manage, complete, crew, and elapsed context."
 );
 
 console.log("Job session integrity regression checks passed.");

@@ -10,10 +10,7 @@ import StatusBadge from "../components/StatusBadge";
 import RoleVisible from "../components/RoleVisible";
 import Toast from "../components/Toast";
 import { supabase } from "../lib/supabase";
-import {
-  queueTbdDecisions,
-  tbdDisplay,
-} from "../lib/tbd";
+import { tbdDisplay } from "../lib/tbd";
 import { maybeCanonicalApartmentUnitLabel } from "../utils/unitLabels";
 
 type Business = {
@@ -81,6 +78,7 @@ type QueueJobSession = {
   started_at: string | null;
   ended_at: string | null;
   total_minutes: number | null;
+  job_type?: string | null;
 };
 
 type QueueJobSessionBreakdown = {
@@ -253,10 +251,16 @@ function isClosedQueueItem(item: QueueItemWithEstimate) {
 
   return (
     status === "completed" ||
-    status === "invoice sent" ||
     status === "paid" ||
     Boolean(item.completed_date)
   );
+}
+
+function isClosedForOperations(
+  item: QueueItemWithEstimate,
+  activeQueueItemIds: Set<string>
+) {
+  return !activeQueueItemIds.has(item.id) && isClosedQueueItem(item);
 }
 
 function daysUntil(value: string | null) {
@@ -396,6 +400,72 @@ function queueLifecycleDisplayStatus(status: string) {
   return normalizeStatus(status) === "invoice created"
     ? "Ready to Send"
     : status;
+}
+
+function serviceTypeForQueueItem(item: QueueItemWithEstimate) {
+  return (
+    item.paint_type ||
+    tbdDisplay(item.flooring) ||
+    item.renovation_needed_details ||
+    item.notes ||
+    "Turn"
+  );
+}
+
+function primaryQueueAction({
+  item,
+  linkedEstimate,
+  linkedInvoice,
+  lifecycleStatus,
+  activeSession,
+  businessSlug,
+}: {
+  item: QueueItemWithEstimate;
+  linkedEstimate: LinkedEstimate | null;
+  linkedInvoice: LinkedInvoice | null;
+  lifecycleStatus: string;
+  activeSession: QueueJobSession | null;
+  businessSlug: string;
+}) {
+  if (activeSession) {
+    return {
+      label: "Resume Job",
+      href: `/queue/${item.id}?business=${businessSlug}#job-session`,
+    };
+  }
+
+  if (!linkedEstimate) {
+    return {
+      label: "Create Estimate",
+      href: `/estimates/new?queueId=${item.id}&business=${businessSlug}`,
+    };
+  }
+
+  if (!linkedInvoice) {
+    return {
+      label: "Create Invoice",
+      href: `/estimates/${linkedEstimate.id}?business=${businessSlug}`,
+    };
+  }
+
+  if (["invoice created", "invoiced", "ready to send"].includes(normalizeStatus(lifecycleStatus))) {
+    return {
+      label: "Send Invoice",
+      href: `/invoices/${linkedInvoice.id}?business=${businessSlug}#send-invoice`,
+    };
+  }
+
+  if (!isClosedQueueItem(item)) {
+    return {
+      label: "Start Job",
+      href: `/queue/${item.id}?business=${businessSlug}#job-session`,
+    };
+  }
+
+  return {
+    label: "View Details",
+    href: `/queue/${item.id}?business=${businessSlug}`,
+  };
 }
 
 function queueHref(
@@ -569,7 +639,7 @@ export default async function QueuePage({
           .order("created_at", { ascending: false }),
         supabase
           .from("job_sessions")
-          .select("id, queue_item_id, started_at, ended_at, total_minutes")
+          .select("id, queue_item_id, started_at, ended_at, total_minutes, job_type")
           .eq("business_id", selectedBusiness.id),
         supabase
           .from("job_session_breakdowns")
@@ -755,6 +825,15 @@ export default async function QueuePage({
   const breakdownSessionIds = new Set(
     jobSessionBreakdowns.map((breakdown) => breakdown.job_session_id)
   );
+  const activeSessionByQueueItemId = new Map(
+    jobSessions
+      .filter(
+        (session) =>
+          !session.ended_at && typeof session.queue_item_id === "string"
+      )
+      .map((session) => [session.queue_item_id as string, session])
+  );
+  const activeQueueItemIds = new Set(activeSessionByQueueItemId.keys());
   const propertyScopedQueueItems = queueItemsWithLifecycle.filter((item) => {
     if (propertyFilter === "all") {
       return true;
@@ -778,7 +857,9 @@ export default async function QueuePage({
   const statusCountSource =
     viewFilter === "history"
       ? propertyScopedQueueItems
-      : propertyScopedQueueItems.filter((item) => !isClosedQueueItem(item));
+      : propertyScopedQueueItems.filter(
+          (item) => !isClosedForOperations(item, activeQueueItemIds)
+        );
   const statuses = Array.from(
     new Set(
       statusCountSource.map((item) =>
@@ -800,24 +881,27 @@ export default async function QueuePage({
     isReadySoonUnscheduled
   ).length;
   const remediationCount = propertyScopedQueueItems.filter(
-    (item) => !isClosedQueueItem(item) && isRemediationItem(item)
+    (item) =>
+      !isClosedForOperations(item, activeQueueItemIds) &&
+      isRemediationItem(item)
   ).length;
   const needsEstimateCount =
     propertyScopedQueueItems.filter(needsEstimate).length;
   const activeWorkCount = propertyScopedQueueItems.filter(
-    (item) => !isClosedQueueItem(item)
+    (item) => !isClosedForOperations(item, activeQueueItemIds)
   ).length;
   const propertyScopedQueueItemIds = new Set(
     propertyScopedQueueItems.map((item) => item.id)
   );
   const unscheduledActiveCount = propertyScopedQueueItems.filter(
-    (item) => !isClosedQueueItem(item) && !item.scheduled_date
+    (item) =>
+      !isClosedForOperations(item, activeQueueItemIds) && !item.scheduled_date
   ).length;
   const overdueUnscheduledCount = propertyScopedQueueItems.filter((item) => {
     const dueDays = daysUntil(item.ready_date);
 
     return (
-      !isClosedQueueItem(item) &&
+      !isClosedForOperations(item, activeQueueItemIds) &&
       !item.scheduled_date &&
       dueDays !== null &&
       dueDays < 0
@@ -830,13 +914,13 @@ export default async function QueuePage({
   const managerPriorityItems = propertyScopedQueueItems
     .filter(
       (item) =>
-        !isClosedQueueItem(item) &&
+        !isClosedForOperations(item, activeQueueItemIds) &&
         typeof item.priority_order === "number" &&
         Number.isFinite(item.priority_order)
     )
     .sort((first, second) => compareQueueItems(first, second, "priority"));
   const priorityPlannerItems = propertyScopedQueueItems
-    .filter((item) => !isClosedQueueItem(item))
+    .filter((item) => !isClosedForOperations(item, activeQueueItemIds))
     .sort((first, second) => compareQueueItems(first, second, "priority"))
     .map(
       (item): PriorityPlannerItem => ({
@@ -856,10 +940,14 @@ export default async function QueuePage({
     isScheduledTodayQueueItem
   );
   const waitingEtaItems = propertyScopedQueueItems.filter(
-    (item) => !isClosedQueueItem(item) && !item.projected_completion_date
+    (item) =>
+      !isClosedForOperations(item, activeQueueItemIds) &&
+      !item.projected_completion_date
   );
   const delayedItems = propertyScopedQueueItems.filter(
-    (item) => !isClosedQueueItem(item) && Boolean(item.delay_reason)
+    (item) =>
+      !isClosedForOperations(item, activeQueueItemIds) &&
+      Boolean(item.delay_reason)
   );
   const scheduledWithoutEtaItems = scheduledTodayItems.filter(
     (item) => !item.projected_completion_date
@@ -923,7 +1011,10 @@ export default async function QueuePage({
     },
   ];
   const waitingInvoiceCount = propertyScopedQueueItems.filter((item) => {
-    if (!item.linked_estimate_id || isClosedQueueItem(item)) {
+    if (
+      !item.linked_estimate_id ||
+      isClosedForOperations(item, activeQueueItemIds)
+    ) {
       return false;
     }
 
@@ -936,7 +1027,7 @@ export default async function QueuePage({
     const progress = (item.progress_stage || "").trim().toLowerCase();
 
     return (
-      !isClosedQueueItem(item) &&
+      !isClosedForOperations(item, activeQueueItemIds) &&
       progress &&
       !["not started", "complete", "completed"].includes(progress)
     );
@@ -969,7 +1060,7 @@ export default async function QueuePage({
   ];
   const renoGroups = propertyScopedQueueItems.reduce((groups, item) => {
     if (
-      isClosedQueueItem(item) ||
+      isClosedForOperations(item, activeQueueItemIds) ||
       !(item.paint_type || "").toLowerCase().includes("reno")
     ) {
       return groups;
@@ -1015,7 +1106,7 @@ export default async function QueuePage({
   ].filter((suggestion): suggestion is string => Boolean(suggestion));
 
   const filteredQueueItems = propertyScopedQueueItems.filter((item) => {
-    if (viewFilter !== "history" && isClosedQueueItem(item)) {
+    if (viewFilter !== "history" && isClosedForOperations(item, activeQueueItemIds)) {
       return false;
     }
 
@@ -1627,15 +1718,16 @@ export default async function QueuePage({
             displayQueueItems.map((item) => {
               const displayUnit = maybeCanonicalApartmentUnitLabel(item.unit);
               const linkedEstimate = item.linked_estimate_id
-                ? estimateById.get(item.linked_estimate_id)
+                ? estimateById.get(item.linked_estimate_id) ?? null
                 : null;
               const linkedInvoice = linkedEstimate?.id
                 ? invoiceByEstimateId.get(linkedEstimate.id) ?? null
                 : null;
-              const tbdDecisions = queueTbdDecisions(item);
               const splitChildren = linkedInvoice
                 ? splitChildrenByParentInvoiceId.get(linkedInvoice.id) ?? []
                 : [];
+              const activeSession =
+                activeSessionByQueueItemId.get(item.id) ?? null;
               const lifecycleStatus =
                 derivedQueueStatusFromInvoicePackage({
                   invoice: linkedInvoice,
@@ -1645,84 +1737,111 @@ export default async function QueuePage({
                 (linkedEstimate
                   ? "Estimate Created"
                   : item.status || "Pending Estimate");
+              const primaryAction = primaryQueueAction({
+                item,
+                linkedEstimate,
+                linkedInvoice,
+                lifecycleStatus,
+                activeSession,
+                businessSlug,
+              });
+              const serviceType = serviceTypeForQueueItem(item);
+              const dueDate = item.ready_date || item.scheduled_date || "No date";
 
               return (
-                <Card key={item.id} className="queue-list-card queue-dispatch-card p-3">
-                  <div className="grid gap-2 lg:grid-cols-[4.5rem_minmax(10rem,1.2fr)_repeat(6,minmax(6.5rem,0.85fr))_auto] lg:items-center">
-                    <div className="min-w-0">
-                      <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-zinc-500">
-                        Unit
-                      </p>
-                      <p className="mt-1 text-xl font-black text-white">
-                        {displayUnit || "-"}
-                      </p>
-                    </div>
-
-                    <div className="min-w-0">
-                      <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-zinc-500">
-                        Property
-                      </p>
-                      <p className="mt-1 truncate text-sm font-bold text-zinc-100">
-                        {item.property || "Unknown Property"}
-                      </p>
-                    </div>
-
+                <Card
+                  key={item.id}
+                  className="queue-list-card queue-dispatch-card p-2.5 sm:p-3"
+                >
+                  <div className="grid min-w-0 gap-2 md:grid-cols-[4.25rem_minmax(4.5rem,0.6fr)_minmax(7rem,1.15fr)_minmax(6rem,0.75fr)_minmax(7rem,0.9fr)_auto] md:items-center">
                     <CompactQueueField
                       label="Priority"
                       value={
                         item.priority_order
                           ? `#${item.priority_order}`
-                          : item.priority || "None"
+                          : item.priority || "-"
                       }
                     />
-                    <CompactQueueField
-                      label="Needed By"
-                      value={item.ready_date || "No deadline"}
-                    />
-                    <CompactQueueField
-                      label="Move Out"
-                      value={item.move_out_date || "Not set"}
-                    />
+                    <div className="min-w-0">
+                      <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-zinc-500">
+                        Unit
+                      </p>
+                      <p className="mt-0.5 break-words text-lg font-black leading-6 text-white">
+                        {displayUnit || "-"}
+                      </p>
+                    </div>
+                    <CompactQueueField label="Work" value={serviceType} />
+                    <CompactQueueField label="Needed" value={dueDate} />
                     <div className="min-w-0">
                       <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-zinc-500">
                         Status
                       </p>
-                      <div className="mt-1">
+                      <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
+                        {activeSession ? (
+                          <span className="rounded-full border border-emerald-300/35 bg-emerald-400/15 px-2 py-1 text-xs font-black text-emerald-100">
+                            Running
+                          </span>
+                        ) : null}
                         <StatusBadge
                           status={queueLifecycleDisplayStatus(lifecycleStatus)}
                         />
                       </div>
                     </div>
-                    <CompactQueueField
-                      label="Paint"
-                      value={item.paint_type || "Not set"}
-                    />
-                    <CompactQueueField
-                      label="Flooring"
-                      value={tbdDisplay(item.flooring)}
-                    />
-
-                    <div className="flex min-w-0 flex-wrap items-center gap-2 lg:justify-end">
-                      {item.progress_stage ? (
-                        <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-xs font-black text-emerald-100">
-                          {item.progress_stage}
-                        </span>
-                      ) : null}
-                      {item.projected_completion_date ? (
-                        <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1 text-xs font-black text-cyan-100">
-                          ETA {item.projected_completion_date}
-                        </span>
-                      ) : null}
-                      {tbdDecisions.length > 0 ? (
-                        <span className="rounded-full border border-amber-300/25 bg-amber-300/10 px-3 py-1 text-xs font-black text-amber-100">
-                          {tbdDecisions.length} TBD
-                        </span>
-                      ) : null}
-                      <Link href={`/queue/${item.id}${businessQuery}`}>
-                        <Button variant="secondary">Open</Button>
-                      </Link>
-                    </div>
+                    <Link
+                      href={primaryAction.href}
+                      className="rounded-2xl bg-sky-500 px-4 py-3 text-center text-sm font-black text-white transition hover:bg-sky-400 md:justify-self-end"
+                    >
+                      {primaryAction.label}
+                    </Link>
                   </div>
+
+                  <details className="mt-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                    <summary className="cursor-pointer list-none text-xs font-black uppercase tracking-[0.16em] text-zinc-400">
+                      More
+                    </summary>
+                    <div className="mt-2 grid min-w-0 gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                      <CompactQueueField
+                        label="Property"
+                        value={item.property || "Unknown Property"}
+                      />
+                      <CompactQueueField
+                        label="Move Out"
+                        value={item.move_out_date || "Not set"}
+                      />
+                      <CompactQueueField
+                        label="Flooring"
+                        value={tbdDisplay(item.flooring)}
+                      />
+                      <CompactQueueField
+                        label="ETA"
+                        value={item.projected_completion_date || "Not set"}
+                      />
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Link
+                        href={`/queue/${item.id}${businessQuery}`}
+                        className="rounded-xl border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-100 transition hover:border-sky-300"
+                      >
+                        View Details
+                      </Link>
+                      {linkedEstimate ? (
+                        <Link
+                          href={`/estimates/${linkedEstimate.id}?business=${businessSlug}`}
+                          className="rounded-xl border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-100 transition hover:border-sky-300"
+                        >
+                          Estimate
+                        </Link>
+                      ) : null}
+                      {linkedInvoice ? (
+                        <Link
+                          href={`/invoices/${linkedInvoice.id}?business=${businessSlug}`}
+                          className="rounded-xl border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-100 transition hover:border-sky-300"
+                        >
+                          Invoice
+                        </Link>
+                      ) : null}
+                    </div>
+                  </details>
                 </Card>
               );
             })

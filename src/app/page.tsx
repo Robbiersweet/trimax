@@ -443,7 +443,7 @@ function relativeTime(value: string | null) {
 }
 
 function isClosedQueueStatus(value: string | null) {
-  return ["completed", "invoiced", "paid"].includes(normalizeStatus(value));
+  return ["completed", "paid"].includes(normalizeStatus(value));
 }
 
 export default async function DashboardPage({

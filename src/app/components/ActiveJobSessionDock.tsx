@@ -15,7 +15,10 @@ type ActiveJobSession = {
   queue_item_id: string | null;
   job_type: string | null;
   started_at: string;
+  crew_count?: number | null;
 };
+
+const LONG_RUNNING_SESSION_WARNING_MINUTES = 12 * 60;
 
 function formatDuration(minutes: number) {
   const safeMinutes = Math.max(Math.round(minutes), 0);
@@ -76,7 +79,7 @@ export default function ActiveJobSessionDock() {
       const { data, error } = await supabase
         .from("job_sessions")
         .select(
-          "id, business_id, property_name, unit_label, queue_item_id, job_type, started_at"
+          "id, business_id, property_name, unit_label, queue_item_id, job_type, started_at, crew_count"
         )
         .eq("business_id", businessData.id)
         .eq("user_id", userId)
@@ -196,27 +199,44 @@ export default function ActiveJobSessionDock() {
     ? `/queue/${activeSession.queue_item_id}?business=${businessSlug}`
     : stoppedNotice?.queueItemId
       ? `/queue/${stoppedNotice.queueItemId}?business=${businessSlug}`
-    : `/queue?business=${businessSlug}`;
+      : `/queue?business=${businessSlug}`;
+  const hasLongRunningWarning =
+    activeSession &&
+    elapsedMinutes >= LONG_RUNNING_SESSION_WARNING_MINUTES;
 
   return (
-    <div className="active-job-session-dock fixed inset-x-4 bottom-24 z-40 mx-auto max-w-xl rounded-3xl border border-emerald-400/35 bg-zinc-950/92 p-3 text-white shadow-2xl shadow-emerald-950/40 backdrop-blur-xl sm:bottom-5 sm:left-6 sm:right-auto sm:mx-0 lg:left-[23rem]">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="active-job-session-dock dark-surface fixed inset-x-4 bottom-24 z-40 mx-auto max-w-xl rounded-3xl border border-emerald-400/35 bg-zinc-950/92 p-3 text-white shadow-2xl shadow-emerald-950/40 backdrop-blur-xl sm:bottom-5 sm:left-6 sm:right-auto sm:mx-0 lg:sticky lg:inset-auto lg:top-5 lg:mb-4 lg:max-w-none lg:rounded-2xl">
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
         <div className="min-w-0">
           <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-200">
             {activeSession ? "Job Session Running" : "Job Session Stopped"}
           </p>
           {activeSession ? (
             <>
-              <p className="mt-1 truncate text-sm font-black">
-                {activeSession.property_name || "Property"}
-                {activeSession.unit_label
-                  ? ` / Unit ${activeSession.unit_label}`
-                  : ""}
-              </p>
-              <p className="mt-1 text-xs text-zinc-400">
-                {activeSession.job_type || "Job"} /{" "}
-                {formatDuration(elapsedMinutes)}
-              </p>
+              <div className="mt-1 grid min-w-0 gap-1 text-sm lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.7fr)_minmax(0,0.8fr)_minmax(0,0.55fr)_auto] lg:items-center lg:gap-3">
+                <p className="min-w-0 truncate font-black">
+                  {activeSession.property_name || "Property"}
+                </p>
+                <p className="min-w-0 truncate font-bold text-zinc-200">
+                  {activeSession.unit_label
+                    ? `Unit ${activeSession.unit_label}`
+                    : "Unit not set"}
+                </p>
+                <p className="min-w-0 truncate text-zinc-300">
+                  {activeSession.job_type || "Job"}
+                </p>
+                <p className="min-w-0 truncate text-zinc-300">
+                  Crew {activeSession.crew_count ?? 1}
+                </p>
+                <p className="font-black text-emerald-100">
+                  {formatDuration(elapsedMinutes)}
+                </p>
+              </div>
+              {hasLongRunningWarning ? (
+                <p className="mt-2 rounded-xl border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-xs font-bold leading-5 text-amber-100">
+                  This session has been running for 12+ hours. Review the time before finishing.
+                </p>
+              ) : null}
             </>
           ) : (
             <p className="mt-1 text-sm font-bold text-zinc-200">
@@ -228,19 +248,27 @@ export default function ActiveJobSessionDock() {
         <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
           {activeSession ? (
             <button
-              className="rounded-2xl border border-rose-300/30 bg-rose-500/15 px-4 py-3 text-sm font-black text-rose-100 transition hover:-translate-y-0.5 hover:bg-rose-500/25 disabled:opacity-60"
+              className="rounded-2xl border border-rose-300/30 bg-rose-500/15 px-4 py-3 text-sm font-black text-rose-100 transition hover:-translate-y-0.5 hover:bg-rose-500/25 disabled:opacity-60 lg:whitespace-nowrap"
               disabled={isStopping}
               onClick={stopActiveSession}
               type="button"
             >
-              Stop
+              Complete
             </button>
+          ) : null}
+          {activeSession ? (
+            <Link
+              href={href}
+              className="rounded-2xl border border-emerald-300/35 px-4 py-3 text-center text-sm font-black text-emerald-100 transition hover:-translate-y-0.5 hover:bg-emerald-500/10 lg:whitespace-nowrap"
+            >
+              Resume
+            </Link>
           ) : null}
           <Link
             href={href}
-            className="rounded-2xl bg-emerald-400 px-4 py-3 text-center text-sm font-black text-emerald-950 transition hover:-translate-y-0.5 hover:bg-emerald-300"
+            className="rounded-2xl bg-emerald-400 px-4 py-3 text-center text-sm font-black text-emerald-950 transition hover:-translate-y-0.5 hover:bg-emerald-300 lg:whitespace-nowrap"
           >
-            {activeSession ? "Open" : "Break Down"}
+            {activeSession ? "Manage" : "Break Down"}
           </Link>
         </div>
       </div>

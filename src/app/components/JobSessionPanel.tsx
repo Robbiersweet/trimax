@@ -211,6 +211,25 @@ function isMissingCrewSchemaError(error: { message?: string } | null) {
   );
 }
 
+function CompactSessionField({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-emerald-100/70">
+        {label}
+      </p>
+      <p className="mt-1 break-words text-sm font-black text-white">
+        {value}
+      </p>
+    </div>
+  );
+}
+
 function laborMinutesForSession(session: JobSession) {
   const elapsed =
     session.total_minutes ?? minutesBetween(session.started_at, session.ended_at);
@@ -346,6 +365,8 @@ export default function JobSessionPanel({
     "minutes" | "hours"
   >("hours");
   const [manualNotesDraft, setManualNotesDraft] = useState("");
+  const [showStopConfirmation, setShowStopConfirmation] = useState(false);
+  const [completionNoteDraft, setCompletionNoteDraft] = useState("");
   const [stoppedSession, setStoppedSession] = useState<JobSession | null>(null);
   const [breakdownDrafts, setBreakdownDrafts] = useState<BreakdownDraft[]>([
     blankBreakdown(),
@@ -670,11 +691,16 @@ export default function JobSessionPanel({
 
     setIsBusy(true);
     setMessage(null);
+    const completionNote = completionNoteDraft.trim();
+    const savedNotes = [activeSession.notes, completionNote]
+      .filter(Boolean)
+      .join("\n");
 
     const { data, error } = await supabase
       .from("job_sessions")
       .update({
         ended_at: new Date().toISOString(),
+        notes: savedNotes || null,
       })
       .eq("id", activeSession.id)
       .eq("business_id", businessId)
@@ -691,6 +717,8 @@ export default function JobSessionPanel({
 
     const stopped = data as JobSession;
     setActiveSession(null);
+    setShowStopConfirmation(false);
+    setCompletionNoteDraft("");
     setStoppedSession(stopped);
     setBreakdownDrafts(defaultBreakdownDrafts(stopped.job_type));
     await logActivity({
@@ -1384,7 +1412,10 @@ export default function JobSessionPanel({
     : `/queue?business=${businessSlug ?? "rnl-creations"}`;
 
   return (
-    <section className="job-session-panel rounded-3xl border border-sky-500/25 bg-gradient-to-br from-sky-500/10 via-zinc-950 to-emerald-500/10 p-4 shadow-2xl shadow-sky-950/20 sm:p-5">
+    <section
+      id="job-session"
+      className="job-session-panel rounded-3xl border border-sky-500/25 bg-gradient-to-br from-sky-500/10 via-zinc-950 to-emerald-500/10 p-4 shadow-2xl shadow-sky-950/20 sm:p-5"
+    >
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.22em] text-sky-200">
@@ -1637,12 +1668,69 @@ export default function JobSessionPanel({
             <button
               className="rounded-2xl bg-white px-5 py-4 text-base font-black text-emerald-950 shadow-xl shadow-emerald-950/20 transition hover:-translate-y-0.5 disabled:opacity-60"
               disabled={isBusy}
-              onClick={stopSession}
+              onClick={() => setShowStopConfirmation(true)}
               type="button"
             >
-              Stop Session
+              Complete Session
             </button>
           </div>
+
+          {showStopConfirmation ? (
+            <div className="mt-4 rounded-2xl border border-emerald-300/25 bg-black/25 p-3">
+              <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                <CompactSessionField
+                  label="Unit"
+                  value={unitLabel ? `Unit ${unitLabel}` : "Unit not set"}
+                />
+                <CompactSessionField
+                  label="Elapsed"
+                  value={formatDuration(elapsedMinutes)}
+                />
+                <CompactSessionField
+                  label="Crew"
+                  value={`Crew ${crewCountForSession(activeSession)}`}
+                />
+                <CompactSessionField
+                  label="Work"
+                  value={activeSession.job_type || displayJobType}
+                />
+              </div>
+              <label className="mt-3 block">
+                <span className="text-sm font-bold text-emerald-50/85">
+                  Note
+                </span>
+                <input
+                  className="app-form-input mt-2 w-full rounded-2xl border px-4 py-3"
+                  placeholder="Optional"
+                  value={completionNoteDraft}
+                  onChange={(event) =>
+                    setCompletionNoteDraft(event.target.value)
+                  }
+                />
+              </label>
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <button
+                  className="rounded-2xl bg-emerald-300 px-5 py-4 text-base font-black text-emerald-950 transition hover:bg-emerald-200 disabled:opacity-60"
+                  disabled={isBusy}
+                  onClick={stopSession}
+                  type="button"
+                >
+                  Complete Session
+                </button>
+                <button
+                  className="rounded-2xl border border-white/15 px-5 py-4 text-base font-black text-emerald-50 transition hover:border-white/35 disabled:opacity-60"
+                  disabled={isBusy}
+                  onClick={() => {
+                    setShowStopConfirmation(false);
+                    setCompletionNoteDraft("");
+                  }}
+                  type="button"
+                >
+                  Keep Working
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
