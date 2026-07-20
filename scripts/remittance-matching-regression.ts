@@ -214,7 +214,7 @@ assert(
   "Payments screen must keep owner confirmation before applying payment."
 );
 assert(
-  paymentScreen.includes("Matched invoices"),
+  paymentScreen.includes("Matched Invoices"),
   "Payments screen must show extracted invoice matches during review."
 );
 

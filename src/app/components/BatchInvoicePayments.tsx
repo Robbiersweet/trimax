@@ -11,8 +11,10 @@ import { logActivity } from "../lib/activityLog";
 import {
   extractCheckDate,
   extractCheckNumber,
+  extractInvoiceNumbers,
   extractLikelyPayor,
   findRemittanceMatches,
+  normalizeInvoiceNumber,
   parseCheckDate,
   parseMoney,
 } from "../lib/remittanceMatching";
@@ -41,6 +43,10 @@ type BatchInvoicePaymentsProps = {
 type PayableInvoice = BatchInvoice & {
   amountDue: number;
   daysLate: number | null;
+};
+
+type ReviewMatchedInvoice = PayableInvoice & {
+  remittanceAmount: number | null;
 };
 
 type ToastState = {
@@ -329,6 +335,9 @@ export default function BatchInvoicePayments({
     startingFocus ? formatMoney(startingFocus.total) : ""
   );
   const [capturedCheckReference, setCapturedCheckReference] = useState("");
+  const [reviewMatchedInvoices, setReviewMatchedInvoices] = useState<
+    ReviewMatchedInvoice[]
+  >([]);
   const [remittanceStubText, setRemittanceStubText] = useState("");
   const [checkOcrStatus, setCheckOcrStatus] = useState<CheckOcrStatus>("idle");
   const [paymentEntryMode, setPaymentEntryMode] =
@@ -424,8 +433,12 @@ export default function BatchInvoicePayments({
     0
   );
 
-  const enteredCheckAmount = checkAmount.trim()
-    ? parseMoney(checkAmount)
+  const visibleCheckAmount =
+    parseMoney(checkAmount) > 0 || !capturedCheckAmount.trim()
+      ? checkAmount
+      : capturedCheckAmount;
+  const enteredCheckAmount = visibleCheckAmount.trim()
+    ? parseMoney(visibleCheckAmount)
     : null;
   const checkDifference =
     enteredCheckAmount === null
@@ -448,7 +461,6 @@ export default function BatchInvoicePayments({
     [checkPayor, invoiceRecords, remittanceStubText]
   );
   const hasRemittanceStub = remittanceStubText.trim().length > 0;
-  const hasRemittanceMatch = remittanceMatch.matches.length > 0;
   const isRemittanceReview =
     paymentEntryMode === "photo" && checkOcrStatus === "ready";
   const showPaymentReview =
@@ -470,6 +482,46 @@ export default function BatchInvoicePayments({
       }
     };
   }, [checkImagePreview]);
+
+  useEffect(() => {
+    if (checkOcrStatus !== "ready") {
+      return;
+    }
+
+    console.info("Trimax remittance review state", {
+      totalAmount: enteredCheckAmount,
+      checkAmount,
+      capturedCheckAmount,
+      checkNumber: paymentReference,
+      capturedCheckReference,
+      payor: checkPayor,
+      paymentDate,
+      matchedInvoices: reviewMatchedInvoices.map((invoice) => ({
+        id: invoice.id,
+        displayId: invoice.displayId,
+        amountDue: invoice.amountDue,
+        remittanceAmount: invoice.remittanceAmount,
+      })),
+      selectedIds,
+      selectedTotal,
+      strictReferencedInvoices: remittanceMatch.referencedInvoiceNumbers,
+      strictMatchCount: remittanceMatch.matches.length,
+      strictMatchIssues: remittanceMatch.issues,
+    });
+  }, [
+    capturedCheckAmount,
+    capturedCheckReference,
+    checkAmount,
+    checkOcrStatus,
+    checkPayor,
+    enteredCheckAmount,
+    paymentDate,
+    paymentReference,
+    remittanceMatch,
+    reviewMatchedInvoices,
+    selectedIds,
+    selectedTotal,
+  ]);
 
   function toggleInvoice(invoiceId: string) {
     setSelectedIds((current) =>
@@ -533,6 +585,89 @@ export default function BatchInvoicePayments({
     setCheckAmount("");
   }
 
+  function extractedInvoiceNumbersFromResponse(
+    data: CheckStubOcrResponse,
+    stubText: string
+  ) {
+    const invoiceNumbers = new Set<string>(extractInvoiceNumbers(stubText));
+
+    data.lines?.forEach((line) => {
+      if (!Array.isArray(line.invoiceNumbers)) {
+        return;
+      }
+
+      line.invoiceNumbers.forEach((invoiceNumber) => {
+        if (typeof invoiceNumber !== "string") {
+          return;
+        }
+
+        const normalized = normalizeInvoiceNumber(invoiceNumber);
+
+        if (normalized) {
+          invoiceNumbers.add(normalized);
+        }
+      });
+    });
+
+    return Array.from(invoiceNumbers);
+  }
+
+  function extractedLineAmountsByInvoice(data: CheckStubOcrResponse) {
+    const amountsByInvoice = new Map<string, number>();
+
+    data.lines?.forEach((line) => {
+      if (!Array.isArray(line.invoiceNumbers)) {
+        return;
+      }
+
+      const amount =
+        typeof line.amount === "number"
+          ? line.amount
+          : typeof line.amount === "string"
+            ? parseMoney(line.amount)
+            : 0;
+
+      line.invoiceNumbers.forEach((invoiceNumber) => {
+        if (typeof invoiceNumber !== "string") {
+          return;
+        }
+
+        const normalized = normalizeInvoiceNumber(invoiceNumber);
+
+        if (normalized && amount > 0) {
+          amountsByInvoice.set(normalized, amount);
+        }
+      });
+    });
+
+    return amountsByInvoice;
+  }
+
+  function matchInvoicesFromExtraction(
+    data: CheckStubOcrResponse,
+    stubText: string
+  ): ReviewMatchedInvoice[] {
+    const amountsByInvoice = extractedLineAmountsByInvoice(data);
+    const invoicesByNumber = new Map(
+      payableInvoices
+        .map((invoice) => [normalizeInvoiceNumber(invoice.displayId), invoice] as const)
+        .filter(([invoiceNumber]) => invoiceNumber)
+    );
+
+    return extractedInvoiceNumbersFromResponse(data, stubText)
+      .map((invoiceNumber) => {
+        const invoice = invoicesByNumber.get(invoiceNumber);
+
+        return invoice
+          ? {
+              ...invoice,
+              remittanceAmount: amountsByInvoice.get(invoiceNumber) ?? null,
+            }
+          : null;
+      })
+      .filter((invoice): invoice is ReviewMatchedInvoice => Boolean(invoice));
+  }
+
   function loadExtractedRemittance(data: CheckStubOcrResponse) {
     const stubText = data.stubText?.trim() ?? "";
     const extractedPayor =
@@ -569,21 +704,29 @@ export default function BatchInvoicePayments({
       stubText,
       extractedPayor
     );
+    const reviewMatches = matchInvoicesFromExtraction(data, stubText);
     const matchedCustomers = Array.from(
-      new Set(match.matches.map((invoice) => invoice.customerName))
+      new Set(reviewMatches.map((invoice) => invoice.customerName))
     );
     const selectedTotalFromMatch = match.matches.reduce(
       (total, invoice) => total + invoice.amountDue,
       0
     );
+    const selectedTotalFromReviewMatches = reviewMatches.reduce(
+      (total, invoice) => total + (invoice.remittanceAmount ?? invoice.amountDue),
+      0
+    );
     const paymentAmount =
-      extractedTotal > 0 ? extractedTotal : selectedTotalFromMatch;
+      extractedTotal > 0
+        ? extractedTotal
+        : selectedTotalFromReviewMatches || selectedTotalFromMatch;
     const paymentAmountText =
       paymentAmount > 0 ? formatMoney(paymentAmount) : "";
 
     setRemittanceStubText(stubText);
     setPaymentType("Check");
-    setSelectedIds(match.matches.map((invoice) => invoice.id));
+    setReviewMatchedInvoices(reviewMatches);
+    setSelectedIds(reviewMatches.map((invoice) => invoice.id));
     setCheckAmount(paymentAmountText);
     setCapturedCheckAmount(paymentAmountText);
     setPaymentReference(extractedCheckNumber);
@@ -596,14 +739,34 @@ export default function BatchInvoicePayments({
 
     setCustomerFilter(matchedCustomers.length === 1 ? matchedCustomers[0] : "all");
     setInternalNote(
-      match.matches.length > 0
+      reviewMatches.length > 0
         ? `Remittance stub match${
             checkImageName ? ` from ${checkImageName}` : ""
           }`
         : "Remittance stub review"
     );
 
-    return match;
+    console.info("Trimax remittance extraction handoff", {
+      totalAmount: data.totalAmount,
+      parsedTotalFromResponse,
+      parsedTotalFromStub,
+      parsedTotalFromLines,
+      paymentAmountText,
+      checkAmount: paymentAmountText,
+      checkNumber: extractedCheckNumber,
+      payor: extractedPayor,
+      paymentDate: extractedDate,
+      matchedInvoices: reviewMatches.map((invoice) => ({
+        id: invoice.id,
+        displayId: invoice.displayId,
+        amountDue: invoice.amountDue,
+        remittanceAmount: invoice.remittanceAmount,
+      })),
+      strictMatchConfidence: match.confidence,
+      strictMatchIssues: match.issues,
+    });
+
+    return { match, reviewMatches };
   }
 
   async function filePaymentImage() {
@@ -696,6 +859,8 @@ export default function BatchInvoicePayments({
       });
       const data = (await response.json().catch(() => ({}))) as CheckStubOcrResponse;
 
+      console.info("Trimax remittance extraction response", data);
+
       if (!response.ok) {
         setCheckOcrStatus(response.status === 503 ? "manual" : "error");
         setCheckOcrMessage(
@@ -714,11 +879,11 @@ export default function BatchInvoicePayments({
         return;
       }
 
-      const match = loadExtractedRemittance(data);
+      const { reviewMatches } = loadExtractedRemittance(data);
 
       setCheckOcrStatus("ready");
       setCheckOcrMessage(
-        match.matches.length > 0
+        reviewMatches.length > 0
           ? "Remittance read. Review the payment before applying."
           : "Remittance read. Select the invoices before applying."
       );
@@ -738,6 +903,7 @@ export default function BatchInvoicePayments({
     setFiledPaymentImage(null);
     setRemittanceStubText("");
     setSelectedIds([]);
+    setReviewMatchedInvoices([]);
     setCapturedCheckAmount("");
     setCapturedCheckReference("");
     setCheckPayor("");
@@ -764,6 +930,7 @@ export default function BatchInvoicePayments({
     setFiledPaymentImage(null);
     setRemittanceStubText("");
     setSelectedIds([]);
+    setReviewMatchedInvoices([]);
     setCheckAmount("");
     setPaymentReference("");
     setCheckPayor("");
@@ -857,7 +1024,8 @@ export default function BatchInvoicePayments({
             paymentOutcome: isFullyPaid ? "paid" : "partial",
             depositPayment: Boolean(invoice.isDepositRequest),
             batchInvoiceCount: selectedInvoices.length,
-            remittanceStubMatched: hasRemittanceStub && hasRemittanceMatch,
+            remittanceStubMatched:
+              hasRemittanceStub && reviewMatchedInvoices.length > 0,
             remittanceStubTotal: hasRemittanceStub
               ? remittanceMatch.totalAmount
               : null,
@@ -1011,6 +1179,7 @@ export default function BatchInvoicePayments({
                   setCheckImageName("");
                   setFiledPaymentImage(null);
                   setRemittanceStubText("");
+                  setReviewMatchedInvoices([]);
                   setCapturedCheckAmount("");
                   setCapturedCheckReference("");
                   setCheckPayor("");
@@ -1078,12 +1247,12 @@ export default function BatchInvoicePayments({
                   </div>
                 ) : null}
 
-                {hasRemittanceMatch ? (
+                {isRemittanceReview && reviewMatchedInvoices.length > 0 ? (
                   <div className="mt-4 grid gap-2">
                     <p className="text-sm font-black text-white">
-                      Matched invoices
+                      Matched Invoices
                     </p>
-                    {remittanceMatch.matches.map((invoice) => (
+                    {reviewMatchedInvoices.map((invoice) => (
                       <div
                         key={invoice.id}
                         className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm"
@@ -1097,10 +1266,16 @@ export default function BatchInvoicePayments({
                           </span>
                         </span>
                         <span className="font-black text-emerald-300">
-                          {formatMoney(invoice.amountDue)}
+                          {formatMoney(invoice.remittanceAmount ?? invoice.amountDue)}
                         </span>
                       </div>
                     ))}
+                  </div>
+                ) : null}
+
+                {isRemittanceReview && reviewMatchedInvoices.length === 0 ? (
+                  <div className="mt-4 rounded-xl border border-amber-300/35 bg-amber-300/10 px-3 py-2 text-sm text-amber-50">
+                    No invoice matches were found from the extracted invoice numbers.
                   </div>
                 ) : null}
 
@@ -1167,7 +1342,7 @@ export default function BatchInvoicePayments({
             </div>
             <input
               inputMode="decimal"
-              value={checkAmount}
+              value={visibleCheckAmount}
               onChange={(event) => {
                 setCheckAmount(event.target.value);
                 setCapturedCheckAmount(event.target.value);
