@@ -547,6 +547,7 @@ export default async function QueueDetailPage({
   let unitHistory: UnitHistoryEntry[] = [];
   let queueLinkedEstimateCount = 0;
   let queueJobSessionCount = 0;
+  let activeJobSessionCount = 0;
   let queueProofActivityCount = 0;
   const isNorthCreekQueueItem =
     propertyKey(item.property) === "north-creek-apartments";
@@ -614,6 +615,15 @@ export default async function QueueDetailPage({
     .eq("queue_item_id", item.id);
 
   queueJobSessionCount = jobSessionSafetyCount ?? 0;
+
+  const { count: activeJobSessionSafetyCount } = await supabase
+    .from("job_sessions")
+    .select("id", { count: "exact", head: true })
+    .eq("business_id", selectedBusiness.id)
+    .eq("queue_item_id", item.id)
+    .is("ended_at", null);
+
+  activeJobSessionCount = activeJobSessionSafetyCount ?? 0;
 
   const { count: proofActivitySafetyCount } = await supabase
     .from("activity_logs")
@@ -972,6 +982,25 @@ export default async function QueueDetailPage({
               <Link href={workflowNextAction.href}>
                 <Button>{workflowNextAction.action}</Button>
               </Link>
+              <RoleVisible
+                businessSlug={businessSlug}
+                allow={["owner", "admin", "accountant"]}
+              >
+                <MarkCompletedButton
+                  queueItemId={item.id}
+                  businessId={item.business_id}
+                  businessSlug={businessSlug}
+                  label={`${item.property || "Property"} - Unit ${
+                    displayUnit || "-"
+                  }`}
+                  unit={displayUnit || item.unit}
+                  property={item.property}
+                  currentStatus={managerLifecycleStatus}
+                  hasActiveSession={activeJobSessionCount > 0}
+                  activeSessionHref="#job-session"
+                  returnToQueue
+                />
+              </RoleVisible>
               {importantFlags.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5">
                   {importantFlags.map((flag) => (
@@ -1068,18 +1097,20 @@ export default async function QueueDetailPage({
           </Card>
         ) : null}
 
-        <RoleVisible businessSlug={businessSlug} allow={fieldWorkerRoles}>
-          <JobSessionPanel
-            businessId={selectedBusiness.id}
-            businessSlug={businessSlug}
-            propertyName={item.property}
-            unitLabel={displayUnit || item.unit}
-            queueItemId={item.id}
-            estimateId={linkedEstimate?.id ?? item.linked_estimate_id}
-            invoiceId={linkedInvoice?.id ?? null}
-            jobType={item.paint_type || item.renovation_needed_details || "Paint"}
-          />
-        </RoleVisible>
+        <div id="job-session" className="scroll-mt-24">
+          <RoleVisible businessSlug={businessSlug} allow={fieldWorkerRoles}>
+            <JobSessionPanel
+              businessId={selectedBusiness.id}
+              businessSlug={businessSlug}
+              propertyName={item.property}
+              unitLabel={displayUnit || item.unit}
+              queueItemId={item.id}
+              estimateId={linkedEstimate?.id ?? item.linked_estimate_id}
+              invoiceId={linkedInvoice?.id ?? null}
+              jobType={item.paint_type || item.renovation_needed_details || "Paint"}
+            />
+          </RoleVisible>
+        </div>
 
         <RoleVisible
           businessSlug={businessSlug}
@@ -1667,10 +1698,10 @@ export default async function QueueDetailPage({
           </PersistentDetails>
         </RoleVisible>
 
-        <PersistentDetails
-          storageKey={`queue-detail-more-actions-${item.id}`}
-          title="More Actions"
-          subtitle="Edit, complete, calendar, or delete"
+          <PersistentDetails
+            storageKey={`queue-detail-more-actions-${item.id}`}
+            title="More Actions"
+            subtitle="Edit, calendar, or delete"
           className="rounded-2xl border border-white/10 bg-black/20 p-3"
         >
         <div id="complete-work" className="flex scroll-mt-6 flex-wrap gap-4">
@@ -1699,18 +1730,6 @@ export default async function QueueDetailPage({
               Add To Calendar
             </a>
           ) : null}
-
-          <RoleVisible businessSlug={businessSlug} allow={["owner", "admin"]}>
-            <MarkCompletedButton
-              queueItemId={item.id}
-              businessId={item.business_id}
-              businessSlug={businessSlug}
-              label={`${item.property || "Property"} - Unit ${
-                displayUnit || "-"
-              }`}
-              returnToQueue
-            />
-          </RoleVisible>
 
           <RoleVisible
             businessSlug={businessSlug}

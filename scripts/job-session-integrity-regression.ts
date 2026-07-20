@@ -122,6 +122,14 @@ const workspaceBackBar = readFileSync(
   resolve(root, "src/app/components/WorkspaceBackBar.tsx"),
   "utf8"
 );
+const queueClickableCard = readFileSync(
+  resolve(root, "src/app/components/QueueClickableCard.tsx"),
+  "utf8"
+);
+const markCompletedButton = readFileSync(
+  resolve(root, "src/app/components/MarkCompletedButton.tsx"),
+  "utf8"
+);
 
 const q08Session: FixtureSession = {
   id: "session-q08",
@@ -289,6 +297,19 @@ assert(
   "Queue rows must surface active job sessions with one clear primary action."
 );
 assert(
+  queue.includes("QueueClickableCard") &&
+    queue.includes("data-queue-row-control") &&
+    !queue.includes(">View Details<") &&
+    queueClickableCard.includes('role="link"') &&
+    queueClickableCard.includes("tabIndex={0}") &&
+    queueClickableCard.includes('event.key === "Enter"') &&
+    queueClickableCard.includes('event.key === " "') &&
+    queueClickableCard.includes("router.push(href)") &&
+    queueClickableCard.includes("isInteractiveTarget") &&
+    queueClickableCard.includes("closest("),
+  "Queue rows must open item detail by click or keyboard while child controls keep their own actions."
+);
+assert(
   queue.includes("compareQueueItems(first, second, sortMode)") &&
     queue.includes("priority_order"),
   "Queue display order must continue honoring the saved priority order."
@@ -325,6 +346,7 @@ assert(
 );
 assert(
   appShell.includes("<WorkspaceBackBar />") &&
+    appShell.indexOf("<WorkspaceBackBar />") < appShell.indexOf("<section") &&
     appShell.includes("pb-32") &&
     workspaceBackBar.includes("app-floating-back-control") &&
     workspaceBackBar.includes('data-floating-back-control="true"') &&
@@ -372,6 +394,25 @@ assert(
     dock.includes("Complete") &&
     dock.includes("crew_count"),
   "The active session dock must remain visible with resume, manage, complete, crew, and elapsed context."
+);
+assert(
+  queueDetail.match(/<MarkCompletedButton/g)?.length === 1 &&
+    queueDetail.includes('label={`${item.property || "Property"} - Unit ${') &&
+    queueDetail.includes("currentStatus={managerLifecycleStatus}") &&
+    queueDetail.includes("hasActiveSession={activeJobSessionCount > 0}") &&
+    queueDetail.includes('activeSessionHref="#job-session"') &&
+    queueDetail.includes('id="job-session"') &&
+    !queueDetail.includes("Mark Completed"),
+  "Queue detail must expose one authoritative Mark Job Complete control in the operational workflow."
+);
+assert(
+  markCompletedButton.includes("Mark Job Complete") &&
+    markCompletedButton.includes("setIsConfirming(true)") &&
+    markCompletedButton.includes("hasActiveSession") &&
+    markCompletedButton.includes("Finish Session First") &&
+    markCompletedButton.includes("active Work Queue") &&
+    markCompletedButton.includes("notes, sessions, estimates, invoices, and payments stay saved"),
+  "Mark Job Complete must confirm completion, preserve linked records, and block active-session completion."
 );
 
 console.log("Job session integrity regression checks passed.");

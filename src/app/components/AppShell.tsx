@@ -104,6 +104,7 @@ export default function AppShell({
         <div className="app-shell-content mx-auto flex w-full max-w-[112rem] flex-col px-4 py-5 lg:flex-row lg:gap-6 lg:px-6">
           <Navigation />
           <QuickCommandCenter />
+          <WorkspaceBackBar />
           {canUseJobSessions ? <ActiveJobSessionDock /> : null}
 
           <section
@@ -120,7 +121,6 @@ export default function AppShell({
                 Maintenance Mode is ON. Normal users are temporarily paused.
               </div>
             ) : null}
-            <WorkspaceBackBar />
             {children}
           </section>
         </div>

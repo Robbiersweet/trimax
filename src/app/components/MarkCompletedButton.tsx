@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 import { logActivity } from "../lib/activityLog";
@@ -14,6 +15,11 @@ type MarkCompletedButtonProps = {
   businessSlug?: string | null;
   label?: string | null;
   returnToQueue?: boolean;
+  unit?: string | null;
+  property?: string | null;
+  currentStatus?: string | null;
+  hasActiveSession?: boolean;
+  activeSessionHref?: string | null;
 };
 
 export default function MarkCompletedButton({
@@ -22,13 +28,26 @@ export default function MarkCompletedButton({
   businessSlug,
   label,
   returnToQueue = false,
+  unit,
+  property,
+  currentStatus,
+  hasActiveSession = false,
+  activeSessionHref,
 }: MarkCompletedButtonProps) {
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [isConfirming, setIsConfirming] = useState(false);
 
   const handleMarkCompleted = async () => {
     setErrorMessage("");
+
+    if (hasActiveSession) {
+      setIsConfirming(true);
+      setErrorMessage("Finish the active Job Session before marking this job complete.");
+      return;
+    }
+
     setIsSaving(true);
 
     const today = new Date().toISOString().slice(0, 10);
@@ -139,6 +158,7 @@ export default function MarkCompletedButton({
     });
 
     setIsSaving(false);
+    setIsConfirming(false);
 
     if (returnToQueue) {
       router.push(
@@ -151,13 +171,62 @@ export default function MarkCompletedButton({
   };
 
   return (
-    <div className="grid gap-2">
+    <div className="grid gap-2" data-job-completion-control="true">
       <Button
-        onClick={handleMarkCompleted}
+        onClick={() => setIsConfirming(true)}
         disabled={isSaving}
+        className="w-full"
       >
-        {isSaving ? "Saving..." : "Mark Completed"}
+        {isSaving ? "Saving..." : "Mark Job Complete"}
       </Button>
+
+      {isConfirming ? (
+        <div
+          className="grid gap-3 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-3 text-sm text-emerald-50"
+          role="dialog"
+          aria-label="Confirm job completion"
+        >
+          <div className="grid gap-1">
+            <p className="font-black text-white">Confirm job completion</p>
+            <p>
+              Unit {unit || "-"} / {property || "Property"} /{" "}
+              {currentStatus || "Current status"}
+            </p>
+            <p>
+              This will remove the item from the active Work Queue. History,
+              notes, sessions, estimates, invoices, and payments stay saved.
+            </p>
+            {hasActiveSession ? (
+              <p className="font-semibold text-amber-100">
+                A Job Session is still running. Finish that session before
+                marking the job complete.
+              </p>
+            ) : null}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setIsConfirming(false);
+                setErrorMessage("");
+              }}
+              disabled={isSaving}
+            >
+              Cancel
+            </Button>
+            {hasActiveSession ? (
+              <Link href={activeSessionHref || "#job-session"}>
+                <Button variant="secondary">Finish Session First</Button>
+              </Link>
+            ) : (
+              <Button onClick={handleMarkCompleted} disabled={isSaving}>
+                {isSaving ? "Saving..." : "Mark Job Complete"}
+              </Button>
+            )}
+          </div>
+        </div>
+      ) : null}
 
       {errorMessage ? (
         <p className="text-sm font-semibold text-red-300">

@@ -2,6 +2,7 @@ import Link from "next/link";
 import AppShell from "../components/AppShell";
 import Card from "../components/Card";
 import Button from "../components/Button";
+import QueueClickableCard from "../components/QueueClickableCard";
 import PriorityPlanner, {
   type PriorityPlannerItem,
 } from "../components/PriorityPlanner";
@@ -461,7 +462,7 @@ function primaryQueueAction({
   }
 
   return {
-    label: "View Details",
+    label: "Open Item",
     href: `/queue/${item.id}?business=${businessSlug}`,
   };
 }
@@ -1747,8 +1748,10 @@ export default async function QueuePage({
               const dueDate = item.ready_date || item.scheduled_date || "No date";
 
               return (
-                <Card
+                <QueueClickableCard
                   key={item.id}
+                  href={`/queue/${item.id}${businessQuery}`}
+                  label={`Open queue item ${displayUnit || item.unit || item.id}`}
                   className="queue-list-card queue-dispatch-card p-2.5 sm:p-3"
                 >
                   <div className="grid min-w-0 gap-2 md:grid-cols-[4.25rem_minmax(4.5rem,0.6fr)_minmax(7rem,1.15fr)_minmax(6rem,0.75fr)_minmax(7rem,0.9fr)_auto] md:items-center">
@@ -1793,7 +1796,10 @@ export default async function QueuePage({
                     </Link>
                   </div>
 
-                  <details className="mt-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                  <details
+                    className="mt-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2"
+                    data-queue-row-control="true"
+                  >
                     <summary className="cursor-pointer list-none text-xs font-black uppercase tracking-[0.16em] text-zinc-400">
                       More
                     </summary>
@@ -1816,12 +1822,6 @@ export default async function QueuePage({
                       />
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <Link
-                        href={`/queue/${item.id}${businessQuery}`}
-                        className="rounded-xl border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-100 transition hover:border-sky-300"
-                      >
-                        View Details
-                      </Link>
                       {linkedEstimate ? (
                         <Link
                           href={`/estimates/${linkedEstimate.id}?business=${businessSlug}`}
@@ -1840,7 +1840,7 @@ export default async function QueuePage({
                       ) : null}
                     </div>
                   </details>
-                </Card>
+                </QueueClickableCard>
               );
             })
           )}
