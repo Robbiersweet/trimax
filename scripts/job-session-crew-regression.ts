@@ -69,11 +69,14 @@ assert(
 assert(
   panel.includes("Edit Session") &&
     panel.includes("Save Correction") &&
-    panel.includes("setEditingSession"),
-  "Completed session history must expose an edit flow."
+    panel.includes("setEditingSession") &&
+    panel.includes("Manage Session") &&
+    panel.includes("Session Statistics"),
+  "Completed session history and the default panel must expose Manage Session and Edit Session without analytics crowding the workflow."
 );
 assert(
   panel.includes("I Worked Alone") &&
+    panel.includes("Add Existing Worker") &&
     panel.includes("Add Temporary Helper") &&
     panel.includes("temporary: true") &&
     panel.includes("detail.temporary") &&
@@ -84,20 +87,27 @@ assert(
 assert(
   panel.includes("End time must be after start time.") &&
     panel.includes("Confirm the long session before saving this correction.") &&
+    panel.includes("Effective Hours") &&
+    panel.includes("editEndDateDraft") &&
     panel.includes("disabled={isBusy}"),
-  "Edit flow must reject impossible ranges, guard long sessions, and prevent duplicate submits."
+  "Edit flow must reject impossible ranges, support overnight/effective elapsed corrections, guard long sessions, and prevent duplicate submits."
 );
 assert(
   panel.includes('action: "job_session.corrected"') &&
     panel.includes("previous") &&
-    panel.includes("next"),
-  "Session corrections must be activity logged with safe before/after values."
+    panel.includes("next") &&
+    panel.includes("correctedBy") &&
+    panel.includes("correctedAt") &&
+    panel.includes("correctionNote"),
+  "Session corrections must be activity logged with safe before/after values and editor metadata."
 );
 assert(
   panel.includes('breakdownBasis: "elapsed_session_time"') &&
+    panel.includes("manualPayload") &&
+    panel.includes('source: "manual_missed_time_entry"') &&
     hub.includes("Total Labor Hours") &&
     hub.includes("Elapsed Time"),
-  "UI must distinguish elapsed time from person-hours and breakdown basis."
+  "UI must distinguish elapsed time from person-hours and manual missed time must update crew/labor totals."
 );
 
 console.log("Job session crew regression checks passed.");

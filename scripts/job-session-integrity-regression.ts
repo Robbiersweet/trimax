@@ -122,6 +122,7 @@ const workspaceBackBar = readFileSync(
   resolve(root, "src/app/components/WorkspaceBackBar.tsx"),
   "utf8"
 );
+const globalsCss = readFileSync(resolve(root, "src/app/globals.css"), "utf8");
 const queueClickableCard = readFileSync(
   resolve(root, "src/app/components/QueueClickableCard.tsx"),
   "utf8"
@@ -346,6 +347,9 @@ assert(
 );
 assert(
   appShell.includes("<WorkspaceBackBar />") &&
+    appShell.includes("<QuickCommandCenter />") &&
+    appShell.includes("app-floating-control-group") &&
+    appShell.indexOf("<WorkspaceBackBar />") < appShell.indexOf("<QuickCommandCenter />") &&
     appShell.indexOf("<WorkspaceBackBar />") < appShell.indexOf("<section") &&
     appShell.includes("pb-32") &&
     workspaceBackBar.includes("app-floating-back-control") &&
@@ -354,7 +358,7 @@ assert(
     workspaceBackBar.includes("preferFallback={shouldPreferParentRoute") &&
     workspaceBackBar.includes("shouldHideFloatingBack") &&
     workspaceBackBar.includes("primaryWorkspaceSections"),
-  "The app shell must provide one shared floating Back control, reserve bottom space, and hide it on primary workspace screens."
+  "The app shell must provide one shared floating Back/Command group, reserve bottom space, and hide Back on primary workspace screens."
 );
 assert(
   workspaceBackBar.includes('queue: { fallback: "/queue" }') &&
@@ -362,9 +366,19 @@ assert(
     workspaceBackBar.includes('estimates: { fallback: "/estimates" }') &&
     workspaceBackBar.includes('payments: { fallback: "/payments" }') &&
     workspaceBackBar.includes('pathname === "/payments" && hash.length > 0') &&
-    workspaceBackBar.includes("5.6rem") &&
-    workspaceBackBar.includes("env(safe-area-inset-bottom"),
-  "Floating Back must keep safe fallback routes and sit above the Command launcher without covering it."
+    !workspaceBackBar.includes("5.6rem") &&
+    !workspaceBackBar.includes("fixed z-[70]"),
+  "Floating Back must keep safe fallback routes and rely on the shared AppShell group for side-by-side placement."
+);
+assert(
+  globalsCss.includes(".app-floating-control-group") &&
+    globalsCss.includes("display: flex") &&
+    globalsCss.includes("justify-content: flex-end") &&
+    globalsCss.includes("white-space: nowrap") &&
+    globalsCss.includes(".app-floating-control-group .quick-command-launcher") &&
+    globalsCss.includes("position: relative") &&
+    globalsCss.includes("max-width: calc(100vw"),
+  "Back and Command must be positioned side-by-side in one fixed safe-area group without wrapping or overlap."
 );
 assert(
   backButton.includes('variant = "inline"') &&

@@ -12938,6 +12938,56 @@ html.theme-light .dashboard-mobile-priority-card[data-tone="checks"] {
   }
 }
 
+.app-floating-control-group {
+  position: fixed;
+  right: max(1rem, env(safe-area-inset-right, 0px));
+  bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+  z-index: 70;
+  display: flex;
+  max-width: calc(100vw - max(2rem, env(safe-area-inset-left, 0px)) - max(2rem, env(safe-area-inset-right, 0px)));
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.app-floating-control-group > * {
+  pointer-events: auto;
+  flex: 0 0 auto;
+}
+
+.app-floating-control-group .quick-command-launcher {
+  position: relative;
+  right: auto;
+  bottom: auto;
+  z-index: auto;
+}
+
+.app-floating-control-group .app-floating-back-button {
+  min-height: 2.65rem;
+  max-width: 7rem;
+  padding-inline: 0.8rem;
+}
+
+@media (max-width: 420px) {
+  .app-floating-control-group {
+    right: max(0.6rem, env(safe-area-inset-right, 0px));
+    bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+    gap: 0.4rem;
+    max-width: calc(100vw - max(1.2rem, env(safe-area-inset-left, 0px)) - max(1.2rem, env(safe-area-inset-right, 0px)));
+  }
+
+  .app-floating-control-group .app-floating-back-button {
+    max-width: 5.35rem;
+    padding-inline: 0.65rem;
+  }
+
+  .app-floating-control-group .quick-command-launcher {
+    padding-inline: 0.72rem;
+  }
+}
+
 .quick-command-backdrop {
   position: fixed;
   inset: 0;

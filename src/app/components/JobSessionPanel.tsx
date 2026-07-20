@@ -364,6 +364,9 @@ export default function JobSessionPanel({
   const [manualDurationUnit, setManualDurationUnit] = useState<
     "minutes" | "hours"
   >("hours");
+  const [manualCrewMode, setManualCrewMode] = useState<CrewMode>("simple");
+  const [manualCrewCountDraft, setManualCrewCountDraft] = useState("1");
+  const [manualHelpers, setManualHelpers] = useState<HelperDraft[]>([]);
   const [manualNotesDraft, setManualNotesDraft] = useState("");
   const [showStopConfirmation, setShowStopConfirmation] = useState(false);
   const [completionNoteDraft, setCompletionNoteDraft] = useState("");
@@ -373,6 +376,7 @@ export default function JobSessionPanel({
   ]);
   const [editingSession, setEditingSession] = useState<JobSession | null>(null);
   const [editDateDraft, setEditDateDraft] = useState("");
+  const [editEndDateDraft, setEditEndDateDraft] = useState("");
   const [editStartTimeDraft, setEditStartTimeDraft] = useState("");
   const [editEndTimeDraft, setEditEndTimeDraft] = useState("");
   const [editJobTypeDraft, setEditJobTypeDraft] = useState("Paint");
@@ -776,22 +780,67 @@ export default function JobSessionPanel({
       "Manual entry - forgot to punch in",
       manualNotesDraft.trim(),
     ].filter(Boolean);
+    const elapsedManualMinutes = Math.round(
+      (endedAt.getTime() - startedAt.getTime()) / 60000
+    );
+    const manualCrewCount = normalizeCrewCount(Number(manualCrewCountDraft));
+    const manualCrewDetails: CrewDetail[] =
+      manualCrewMode === "detailed"
+        ? [
+            {
+              label: "Session Worker",
+              linkedUserId: userId,
+              temporary: false,
+              startTime: manualStartTimeDraft,
+              endTime: manualEndTimeDraft,
+            },
+            ...manualHelpers.map((helper, index) => ({
+              label: helper.label.trim() || `Temporary Helper ${index + 1}`,
+              temporary: true,
+              startTime: helper.startTime || manualStartTimeDraft,
+              endTime: helper.endTime || manualEndTimeDraft,
+              notes: helper.notes.trim() || undefined,
+            })),
+          ]
+        : [];
+    const manualLaborMinutes =
+      manualCrewMode === "detailed"
+        ? calculateDetailedLaborMinutes(
+            manualDateDraft,
+            manualStartTimeDraft,
+            manualEndTimeDraft,
+            manualCrewDetails
+          )
+        : calculateSimpleLaborMinutes(elapsedManualMinutes, manualCrewCount);
+    const manualPayload = {
+      business_id: businessId,
+      user_id: userId,
+      property_name: propertyName,
+      unit_label: unitLabel,
+      queue_item_id: queueItemId,
+      estimate_id: estimateId ?? null,
+      invoice_id: invoiceId ?? null,
+      job_type: manualJobTypeDraft || "General",
+      started_at: startedAt.toISOString(),
+      ended_at: endedAt.toISOString(),
+      notes: noteParts.join(": "),
+      ...(crewSchemaAvailable
+        ? {
+            crew_mode: manualCrewMode,
+            crew_count:
+              manualCrewMode === "detailed"
+                ? manualCrewDetails.length
+                : manualCrewCount,
+            crew_confirmed: true,
+            crew_details: manualCrewDetails,
+            labor_minutes: manualLaborMinutes,
+          }
+        : {}),
+    };
 
     const { data, error } = await supabase
       .from("job_sessions")
-      .insert({
-        business_id: businessId,
-        user_id: userId,
-        property_name: propertyName,
-        unit_label: unitLabel,
-        queue_item_id: queueItemId,
-        estimate_id: estimateId ?? null,
-        invoice_id: invoiceId ?? null,
-        job_type: manualJobTypeDraft || "General",
-        started_at: startedAt.toISOString(),
-        ended_at: endedAt.toISOString(),
-        notes: noteParts.join(": "),
-      })
+      .insert(manualPayload)
       .select()
       .single();
 
@@ -809,6 +858,9 @@ export default function JobSessionPanel({
     setBreakdownDrafts(defaultBreakdownDrafts(manualSession.job_type));
     setManualNotesDraft("");
     setManualDurationDraft("");
+    setManualCrewMode("simple");
+    setManualCrewCountDraft("1");
+    setManualHelpers([]);
     await logActivity({
       businessId,
       action: "job_session.manual_added",
@@ -823,6 +875,16 @@ export default function JobSessionPanel({
         startedAt: manualSession.started_at,
         endedAt: manualSession.ended_at,
         totalMinutes: manualSession.total_minutes,
+        crewMode: manualCrewMode,
+        crewCount:
+          manualCrewMode === "detailed"
+            ? manualCrewDetails.length
+            : manualCrewCount,
+        temporaryHelpers:
+          manualCrewMode === "detailed"
+            ? manualCrewDetails.filter((detail) => detail.temporary).length
+            : 0,
+        laborMinutes: manualLaborMinutes,
         notes: manualSession.notes,
         source: "manual_missed_time_entry",
       },
@@ -1022,6 +1084,41 @@ export default function JobSessionPanel({
     setBreakdownDrafts(defaultBreakdownDrafts(session.job_type));
   }
 
+  function latestEditableSession() {
+    return (
+      sessions.find(
+        (session) =>
+          Boolean(session.ended_at) &&
+          crewSchemaAvailable &&
+          (currentRole === "owner" ||
+            currentRole === "admin" ||
+            session.user_id === userId)
+      ) ?? null
+    );
+  }
+
+  function openManageSession() {
+    setMessage(
+      "Manage Session is open. Choose a job type, add missed time, or edit a saved session."
+    );
+    setShowStartModal(true);
+  }
+
+  function openActiveSessionEditor() {
+    if (!activeSession) {
+      return;
+    }
+
+    const now = new Date().toISOString();
+    openEditSession({
+      ...activeSession,
+      ended_at: now,
+      total_minutes: minutesBetween(activeSession.started_at, now),
+    });
+    setShowStopConfirmation(false);
+    setMessage("Review the time and crew, then save the corrected session.");
+  }
+
   function openEditSession(session: JobSession) {
     const savedBreakdowns = breakdownBySession.get(session.id) ?? [];
     const crewDetails = Array.isArray(session.crew_details)
@@ -1031,6 +1128,11 @@ export default function JobSessionPanel({
     setMessage(null);
     setEditingSession(session);
     setEditDateDraft(toLocalDateInputValue(new Date(session.started_at)));
+    setEditEndDateDraft(
+      toLocalDateInputValue(
+        session.ended_at ? new Date(session.ended_at) : new Date()
+      )
+    );
     setEditStartTimeDraft(toLocalTimeInputValue(new Date(session.started_at)));
     setEditEndTimeDraft(
       session.ended_at ? toLocalTimeInputValue(new Date(session.ended_at)) : ""
@@ -1056,6 +1158,18 @@ export default function JobSessionPanel({
     value: string
   ) {
     setEditHelpers((current) =>
+      current.map((helper, helperIndex) =>
+        helperIndex === index ? { ...helper, [field]: value } : helper
+      )
+    );
+  }
+
+  function updateManualHelper(
+    index: number,
+    field: keyof HelperDraft,
+    value: string
+  ) {
+    setManualHelpers((current) =>
       current.map((helper, helperIndex) =>
         helperIndex === index ? { ...helper, [field]: value } : helper
       )
@@ -1098,8 +1212,20 @@ export default function JobSessionPanel({
     );
   }
 
+  function updateEffectiveElapsedHours(value: string) {
+    const hours = Number(value);
+
+    if (!editStartedAt || !Number.isFinite(hours) || hours <= 0) {
+      return;
+    }
+
+    const nextEnd = new Date(editStartedAt.getTime() + Math.round(hours * 60) * 60_000);
+    setEditEndDateDraft(toLocalDateInputValue(nextEnd));
+    setEditEndTimeDraft(toLocalTimeInputValue(nextEnd));
+  }
+
   const editStartedAt = combineLocalDateTime(editDateDraft, editStartTimeDraft);
-  const editEndedAt = combineLocalDateTime(editDateDraft, editEndTimeDraft);
+  const editEndedAt = combineLocalDateTime(editEndDateDraft, editEndTimeDraft);
   const editElapsedMinutes =
     editStartedAt && editEndedAt && editEndedAt > editStartedAt
       ? Math.round((editEndedAt.getTime() - editStartedAt.getTime()) / 60000)
@@ -1191,6 +1317,8 @@ export default function JobSessionPanel({
       endedAt: editingSession.ended_at,
       totalMinutes: editingSession.total_minutes,
       crewCount: crewCountForSession(editingSession),
+      crewMode: editingSession.crew_mode ?? "simple",
+      crewDetails: editingSession.crew_details ?? [],
       laborMinutes: laborMinutesForSession(editingSession),
       jobType: editingSession.job_type,
       notes: editingSession.notes,
@@ -1299,6 +1427,9 @@ export default function JobSessionPanel({
           breakdownMinutes: editBreakdownMinutes,
           breakdownBasis: "elapsed_session_time",
         },
+        correctedBy: userId,
+        correctedAt: new Date().toISOString(),
+        correctionNote: editNotesDraft.trim() || null,
       },
     });
 
@@ -1411,6 +1542,24 @@ export default function JobSessionPanel({
         businessSlug ?? "rnl-creations"
       }`
     : `/queue?business=${businessSlug ?? "rnl-creations"}`;
+  const latestSessionForEditing = latestEditableSession();
+  const activeCrewDetails = Array.isArray(activeSession?.crew_details)
+    ? activeSession.crew_details
+    : [];
+  const activeReviewCrew: CrewDetail[] =
+    activeCrewDetails.length > 0
+      ? activeCrewDetails
+      : activeSession
+        ? [
+            {
+              label: "Session Worker",
+              linkedUserId: activeSession.user_id,
+              temporary: false,
+              startTime: toLocalTimeInputValue(new Date(activeSession.started_at)),
+              endTime: toLocalTimeInputValue(),
+            },
+          ]
+        : [];
 
   return (
     <section
@@ -1423,11 +1572,6 @@ export default function JobSessionPanel({
             Job Sessions
           </p>
           <h2 className="mt-2 text-2xl font-black">Track real labor time</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-300">
-            Start once when work begins, stop when finished, then optionally
-            split the time into rough categories. No GPS, no surveillance, no
-            constant switching.
-          </p>
         </div>
 
         {!activeSession ? (
@@ -1443,10 +1587,10 @@ export default function JobSessionPanel({
             <button
               className="app-button-secondary rounded-2xl px-5 py-4 text-base font-black"
               disabled={setupMissing || isBusy || Boolean(otherActiveSession)}
-              onClick={() => setShowStartModal(true)}
+              onClick={openManageSession}
               type="button"
             >
-              Options
+              Manage Session
             </button>
             <button
               className="rounded-2xl border border-amber-300/35 bg-amber-300/15 px-5 py-4 text-base font-black text-amber-100 transition hover:-translate-y-0.5 hover:bg-amber-300/25 disabled:opacity-60"
@@ -1456,6 +1600,16 @@ export default function JobSessionPanel({
             >
               Add Missed Time
             </button>
+            {latestSessionForEditing ? (
+              <button
+                className="rounded-2xl border border-sky-300/35 bg-sky-300/10 px-5 py-4 text-base font-black text-sky-100 transition hover:-translate-y-0.5 hover:bg-sky-300/20 disabled:opacity-60"
+                disabled={isBusy}
+                onClick={() => openEditSession(latestSessionForEditing)}
+                type="button"
+              >
+                Edit Session
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -1467,7 +1621,16 @@ export default function JobSessionPanel({
       ) : null}
 
       {hasSessionHistory ? (
-      <div className="job-session-snapshot mt-5 grid gap-3 md:grid-cols-4">
+      <details className="job-session-statistics mt-5 rounded-2xl border border-white/10 bg-black/20 p-3">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+          <span className="text-sm font-black uppercase tracking-[0.18em] text-zinc-400">
+            Session Statistics
+          </span>
+          <span className="text-sm font-semibold text-zinc-400">
+            Elapsed, crew, labor, and pace
+          </span>
+        </summary>
+      <div className="job-session-snapshot mt-3 grid gap-3 md:grid-cols-4">
         <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
           <p className="text-xs font-black uppercase tracking-[0.18em] text-sky-200">
             Elapsed Time
@@ -1531,14 +1694,11 @@ export default function JobSessionPanel({
           </p>
         </div>
       </div>
-      ) : null}
 
-      {hasSessionHistory ? (
       <p className="mt-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm font-semibold text-zinc-300">
         Elapsed time is the length of the job session. Labor hours include every
         person who worked. Breakdown rows allocate elapsed session time.
       </p>
-      ) : null}
 
       {hasSessionHistory && laborGuide.sampleCount > 0 ? (
       <div className="job-session-labor-guide mt-5 rounded-3xl border border-sky-300/20 bg-black/25 p-4">
@@ -1611,6 +1771,8 @@ export default function JobSessionPanel({
           </div>
         ) : null}
       </div>
+      ) : null}
+      </details>
       ) : null}
 
       {otherActiveSession ? (
@@ -1702,6 +1864,37 @@ export default function JobSessionPanel({
                   value={activeSession.job_type || displayJobType}
                 />
               </div>
+              <div className="mt-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-100/70">
+                  Worker Hours
+                </p>
+                <div className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
+                  {activeReviewCrew.map((worker, index) => (
+                    <p
+                      key={`${worker.label}-${index}`}
+                      className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 font-semibold text-emerald-50"
+                    >
+                      {worker.label || `Worker ${index + 1}`} /{" "}
+                      {formatDuration(
+                        calculateDetailedLaborMinutes(
+                          toLocalDateInputValue(new Date(activeSession.started_at)),
+                          worker.startTime ||
+                            toLocalTimeInputValue(new Date(activeSession.started_at)),
+                          worker.endTime || toLocalTimeInputValue(),
+                          [worker]
+                        )
+                      )}
+                      {worker.temporary ? " / temporary" : ""}
+                    </p>
+                  ))}
+                </div>
+              </div>
+              {elapsedMinutes > 16 * 60 ? (
+                <p className="mt-3 rounded-2xl border border-amber-300/35 bg-amber-300/10 px-4 py-3 text-sm font-semibold text-amber-50">
+                  This session lasted {formatDuration(elapsedMinutes)}. Verify
+                  the time before saving.
+                </p>
+              ) : null}
               <label className="mt-3 block">
                 <span className="text-sm font-bold text-emerald-50/85">
                   Note
@@ -1716,6 +1909,22 @@ export default function JobSessionPanel({
                 />
               </label>
               <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <button
+                  className="app-button-secondary rounded-2xl px-5 py-4 text-base font-black"
+                  disabled={isBusy}
+                  onClick={openActiveSessionEditor}
+                  type="button"
+                >
+                  Edit Time
+                </button>
+                <button
+                  className="app-button-secondary rounded-2xl px-5 py-4 text-base font-black"
+                  disabled={isBusy}
+                  onClick={openActiveSessionEditor}
+                  type="button"
+                >
+                  Edit Crew & Hours
+                </button>
                 <button
                   className="rounded-2xl bg-emerald-300 px-5 py-4 text-base font-black text-emerald-950 transition hover:bg-emerald-200 disabled:opacity-60"
                   disabled={isBusy}
@@ -1743,6 +1952,26 @@ export default function JobSessionPanel({
 
       {showStartModal ? (
         <div className="job-session-modal mt-5 rounded-3xl border border-white/10 bg-black/35 p-4">
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-sky-200">
+                Manage Session
+              </p>
+              <h3 className="mt-2 text-2xl font-black">
+                Start, add missed time, or correct a saved session
+              </h3>
+            </div>
+            {latestSessionForEditing ? (
+              <button
+                className="app-button-secondary rounded-2xl px-5 py-3 text-sm font-black"
+                disabled={isBusy}
+                onClick={() => openEditSession(latestSessionForEditing)}
+                type="button"
+              >
+                Edit Session
+              </button>
+            ) : null}
+          </div>
           <div className="grid gap-4 md:grid-cols-2">
             <label className="block">
               <span className="text-sm font-bold text-zinc-300">Job Type</span>
@@ -1782,6 +2011,14 @@ export default function JobSessionPanel({
               type="button"
             >
               Start Now
+            </button>
+            <button
+              className="rounded-2xl border border-amber-300/35 bg-amber-300/15 px-5 py-4 text-base font-black text-amber-100 transition hover:-translate-y-0.5 hover:bg-amber-300/25 disabled:opacity-60"
+              disabled={isBusy}
+              onClick={() => setShowManualModal(true)}
+              type="button"
+            >
+              Add Missed Time
             </button>
             <button
               className="app-button-secondary rounded-2xl px-5 py-4 text-base font-black"
@@ -1925,6 +2162,150 @@ export default function JobSessionPanel({
             Leave duration blank to use start and end time. If you enter a
             duration, Trimax calculates the end time from the start time.
           </p>
+
+          <div className="mt-4 rounded-3xl border border-amber-200/20 bg-black/20 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-black text-white">Workers</p>
+                <p className="mt-1 text-sm text-amber-50/75">
+                  Elapsed time stays separate from total labor/person-hours.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  className={`rounded-2xl border px-4 py-2 text-sm font-black ${
+                    manualCrewMode === "simple"
+                      ? "border-amber-200 bg-amber-200 text-amber-950"
+                      : "border-white/10 bg-black/25 text-zinc-200"
+                  }`}
+                  onClick={() => setManualCrewMode("simple")}
+                  type="button"
+                >
+                  Simple
+                </button>
+                <button
+                  className={`rounded-2xl border px-4 py-2 text-sm font-black ${
+                    manualCrewMode === "detailed"
+                      ? "border-amber-200 bg-amber-200 text-amber-950"
+                      : "border-white/10 bg-black/25 text-zinc-200"
+                  }`}
+                  onClick={() => setManualCrewMode("detailed")}
+                  type="button"
+                >
+                  Detailed
+                </button>
+              </div>
+            </div>
+
+            {manualCrewMode === "simple" ? (
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+                <label className="block max-w-xs">
+                  <span className="text-sm font-bold text-amber-50/85">
+                    Crew Count
+                  </span>
+                  <input
+                    className="app-form-input mt-2 w-full rounded-2xl border px-4 py-3"
+                    inputMode="numeric"
+                    value={manualCrewCountDraft}
+                    onChange={(event) =>
+                      setManualCrewCountDraft(event.target.value)
+                    }
+                  />
+                </label>
+                <button
+                  className="app-button-secondary rounded-2xl px-5 py-3 text-sm font-black"
+                  onClick={() => setManualCrewCountDraft("1")}
+                  type="button"
+                >
+                  I Worked Alone
+                </button>
+              </div>
+            ) : (
+              <div className="mt-4 space-y-3">
+                <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-zinc-300">
+                  Add Existing Worker uses the signed-in Trimax worker. Add
+                  Temporary Helper records a name without creating login access.
+                </div>
+                <button
+                  className="app-button-secondary rounded-2xl px-5 py-3 text-sm font-black"
+                  onClick={() =>
+                    setMessage(
+                      "The signed-in Trimax worker is already included. Add temporary helpers below for people without accounts."
+                    )
+                  }
+                  type="button"
+                >
+                  Add Existing Worker
+                </button>
+                {manualHelpers.map((helper, helperIndex) => (
+                  <div
+                    key={`${helper.label}-${helperIndex}`}
+                    className="grid gap-3 rounded-2xl border border-white/10 bg-black/25 p-3 md:grid-cols-[1fr_0.7fr_0.7fr_1fr_auto]"
+                  >
+                    <input
+                      className="app-form-input rounded-2xl border px-3 py-3"
+                      placeholder={`Temporary Helper ${helperIndex + 1}`}
+                      value={helper.label}
+                      onChange={(event) =>
+                        updateManualHelper(helperIndex, "label", event.target.value)
+                      }
+                    />
+                    <input
+                      className="app-form-input rounded-2xl border px-3 py-3"
+                      type="time"
+                      value={helper.startTime}
+                      onChange={(event) =>
+                        updateManualHelper(
+                          helperIndex,
+                          "startTime",
+                          event.target.value
+                        )
+                      }
+                    />
+                    <input
+                      className="app-form-input rounded-2xl border px-3 py-3"
+                      type="time"
+                      value={helper.endTime}
+                      onChange={(event) =>
+                        updateManualHelper(helperIndex, "endTime", event.target.value)
+                      }
+                    />
+                    <input
+                      className="app-form-input rounded-2xl border px-3 py-3"
+                      placeholder="Role or note"
+                      value={helper.notes}
+                      onChange={(event) =>
+                        updateManualHelper(helperIndex, "notes", event.target.value)
+                      }
+                    />
+                    <button
+                      className="rounded-2xl border border-rose-300/30 px-4 py-3 text-sm font-black text-rose-100"
+                      onClick={() =>
+                        setManualHelpers((current) =>
+                          current.filter((_, index) => index !== helperIndex)
+                        )
+                      }
+                      type="button"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+                <button
+                  className="app-button-secondary rounded-2xl px-5 py-3 text-sm font-black"
+                  onClick={() =>
+                    setManualHelpers((current) => [
+                      ...current,
+                      blankHelperDraft(current.length),
+                    ])
+                  }
+                  type="button"
+                >
+                  Add Temporary Helper
+                </button>
+              </div>
+            )}
+          </div>
 
           <div className="mt-4 flex flex-col gap-3 sm:flex-row">
             <button
@@ -2213,16 +2594,27 @@ export default function JobSessionPanel({
                         </div>
                       </div>
 
-                      <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                      <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
                         <label className="block">
                           <span className="text-sm font-bold text-zinc-300">
-                            Session Date
+                            Start Date
                           </span>
                           <input
                             className="app-form-input mt-2 w-full rounded-2xl border px-4 py-3"
                             type="date"
                             value={editDateDraft}
                             onChange={(event) => setEditDateDraft(event.target.value)}
+                          />
+                        </label>
+                        <label className="block">
+                          <span className="text-sm font-bold text-zinc-300">
+                            End Date
+                          </span>
+                          <input
+                            className="app-form-input mt-2 w-full rounded-2xl border px-4 py-3"
+                            type="date"
+                            value={editEndDateDraft}
+                            onChange={(event) => setEditEndDateDraft(event.target.value)}
                           />
                         </label>
                         <label className="block">
@@ -2247,6 +2639,19 @@ export default function JobSessionPanel({
                             type="time"
                             value={editEndTimeDraft}
                             onChange={(event) => setEditEndTimeDraft(event.target.value)}
+                          />
+                        </label>
+                        <label className="block">
+                          <span className="text-sm font-bold text-zinc-300">
+                            Effective Hours
+                          </span>
+                          <input
+                            className="app-form-input mt-2 w-full rounded-2xl border px-4 py-3"
+                            inputMode="decimal"
+                            value={numberInputValue(editElapsedMinutes / 60)}
+                            onChange={(event) =>
+                              updateEffectiveElapsedHours(event.target.value)
+                            }
                           />
                         </label>
                         <label className="block">

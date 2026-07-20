@@ -111,12 +111,8 @@ export default function WorkspaceBackBar() {
 
   return (
     <div
-      className="app-floating-back-control pointer-events-auto fixed z-[70]"
+      className="app-floating-back-control pointer-events-auto"
       data-floating-back-control="true"
-      style={{
-        right: "max(1rem, env(safe-area-inset-right, 0px))",
-        bottom: "calc(5.6rem + env(safe-area-inset-bottom, 0px))",
-      }}
     >
       <BackButton
         label="Back"
