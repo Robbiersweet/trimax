@@ -183,5 +183,21 @@ assert(
     paymentScreen.includes("resetCheckCaptureState();"),
   "Clearing or replacing a photo must clear OCR text and invoice selection state."
 );
+assert(
+  paymentScreen.includes("function loadExtractedRemittance"),
+  "Payments screen must hand extracted remittance data into the review form."
+);
+assert(
+  !paymentScreen.includes("Use Suggested Matches"),
+  "Payments screen must not require a second suggested-match handoff."
+);
+assert(
+  paymentScreen.includes("Confirm and Apply Payment"),
+  "Payments screen must keep owner confirmation before applying payment."
+);
+assert(
+  paymentScreen.includes("Matched invoices"),
+  "Payments screen must show extracted invoice matches during review."
+);
 
 console.log("Remittance matching regression checks passed.");

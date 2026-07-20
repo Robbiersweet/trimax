@@ -447,10 +447,6 @@ export default function BatchInvoicePayments({
     () => findRemittanceMatches(invoiceRecords, remittanceStubText, checkPayor),
     [checkPayor, invoiceRecords, remittanceStubText]
   );
-  const remittanceSuggestedTotal = remittanceMatch.matches.reduce(
-    (total, invoice) => total + invoice.amountDue,
-    0
-  );
   const hasRemittanceStub = remittanceStubText.trim().length > 0;
   const hasRemittanceMatch = remittanceMatch.matches.length > 0;
   const paymentCanApply =
@@ -527,6 +523,62 @@ export default function BatchInvoicePayments({
   function clearSelection() {
     setSelectedIds([]);
     setCheckAmount("");
+  }
+
+  function loadExtractedRemittance(data: CheckStubOcrResponse) {
+    const stubText = data.stubText?.trim() ?? "";
+    const extractedPayor =
+      data.payor?.trim() || extractLikelyPayor(stubText);
+    const extractedCheckNumber =
+      data.checkNumber?.trim() || extractCheckNumber(stubText);
+    const extractedTotal =
+      typeof data.totalAmount === "number" && data.totalAmount > 0
+        ? data.totalAmount
+        : findRemittanceMatches(invoiceRecords, stubText, extractedPayor)
+            .totalAmount;
+    const extractedDate = data.checkDate?.trim()
+      ? parseCheckDate(data.checkDate)
+      : extractCheckDate(stubText);
+    const match = findRemittanceMatches(
+      invoiceRecords,
+      stubText,
+      extractedPayor
+    );
+    const matchedCustomers = Array.from(
+      new Set(match.matches.map((invoice) => invoice.customerName))
+    );
+    const selectedTotalFromMatch = match.matches.reduce(
+      (total, invoice) => total + invoice.amountDue,
+      0
+    );
+    const paymentAmount =
+      extractedTotal > 0 ? extractedTotal : selectedTotalFromMatch;
+    const paymentAmountText =
+      paymentAmount > 0 ? formatMoney(paymentAmount) : "";
+
+    setRemittanceStubText(stubText);
+    setPaymentType("Check");
+    setSelectedIds(match.matches.map((invoice) => invoice.id));
+    setCheckAmount(paymentAmountText);
+    setCapturedCheckAmount(paymentAmountText);
+    setPaymentReference(extractedCheckNumber);
+    setCapturedCheckReference(extractedCheckNumber);
+    setCheckPayor(extractedPayor);
+
+    if (extractedDate) {
+      setPaymentDate(extractedDate);
+    }
+
+    setCustomerFilter(matchedCustomers.length === 1 ? matchedCustomers[0] : "all");
+    setInternalNote(
+      match.matches.length > 0
+        ? `Remittance stub match${
+            checkImageName ? ` from ${checkImageName}` : ""
+          }`
+        : "Remittance stub review"
+    );
+
+    return match;
   }
 
   async function filePaymentImage() {
@@ -637,37 +689,13 @@ export default function BatchInvoicePayments({
         return;
       }
 
-      setRemittanceStubText(data.stubText);
-
-      if (typeof data.totalAmount === "number" && data.totalAmount > 0) {
-        setCapturedCheckAmount(formatMoney(data.totalAmount));
-      }
-
-      if (data.checkNumber?.trim()) {
-        setCapturedCheckReference(data.checkNumber.trim());
-      }
-
-      if (data.checkDate?.trim()) {
-        const parsedDate = parseCheckDate(data.checkDate);
-
-        if (parsedDate) {
-          setPaymentDate(parsedDate);
-        }
-      } else {
-        const parsedDate = extractCheckDate(data.stubText);
-
-        if (parsedDate) {
-          setPaymentDate(parsedDate);
-        }
-      }
-
-      if (data.payor?.trim() && !checkPayor.trim()) {
-        setCheckPayor(data.payor.trim());
-      }
+      const match = loadExtractedRemittance(data);
 
       setCheckOcrStatus("ready");
       setCheckOcrMessage(
-        "Remittance read. Review the suggested invoice matches before applying."
+        match.matches.length > 0
+          ? "Remittance read. Review the payment before applying."
+          : "Remittance read. Select the invoices before applying."
       );
     } catch (error) {
       setCheckOcrStatus("error");
@@ -711,72 +739,15 @@ export default function BatchInvoicePayments({
     setFiledPaymentImage(null);
     setRemittanceStubText("");
     setSelectedIds([]);
+    setCheckAmount("");
+    setPaymentReference("");
+    setCheckPayor("");
     setCapturedCheckAmount("");
     setCapturedCheckReference("");
     void extractCheckStubFromPhoto(file);
     setToast({
       type: "success",
       message: "Remittance image added. Trimax is reading it now.",
-    });
-  }
-
-  function applyRemittanceStubMatch() {
-    if (!hasRemittanceStub) {
-      setToast({
-        type: "error",
-        message: "Paste the remittance stub text before matching invoices.",
-      });
-      return;
-    }
-
-    if (!hasRemittanceMatch) {
-      setToast({
-        type: "error",
-        message:
-          remittanceMatch.issues[0] ??
-          "Owner Review Required. Trimax could not verify invoice numbers from that remittance stub.",
-      });
-      return;
-    }
-
-    const parsedCheckNumber = extractCheckNumber(remittanceStubText);
-    const parsedTotal = remittanceMatch.totalAmount;
-    const parsedPayor = extractLikelyPayor(remittanceStubText);
-    const matchedCustomers = Array.from(
-      new Set(remittanceMatch.matches.map((invoice) => invoice.customerName))
-    );
-
-    setPaymentType("Check");
-    setSelectedIds(remittanceMatch.matches.map((invoice) => invoice.id));
-    setCheckAmount(
-      parsedTotal > 0
-        ? formatMoney(parsedTotal)
-        : formatMoney(remittanceSuggestedTotal)
-    );
-    setCapturedCheckAmount(
-      parsedTotal > 0
-        ? formatMoney(parsedTotal)
-        : formatMoney(remittanceSuggestedTotal)
-    );
-
-    if (parsedCheckNumber) {
-      setCapturedCheckReference(parsedCheckNumber);
-      setPaymentReference(parsedCheckNumber);
-    }
-
-    if (parsedPayor && !checkPayor.trim()) {
-      setCheckPayor(parsedPayor);
-    }
-
-    setCustomerFilter(matchedCustomers.length === 1 ? matchedCustomers[0] : "all");
-    setInternalNote(
-      `Remittance stub match${
-        checkImageName ? ` from ${checkImageName}` : ""
-      }`
-    );
-    setToast({
-      type: "success",
-      message: "Verified remittance match loaded from invoice numbers on the stub.",
     });
   }
 
@@ -996,6 +967,8 @@ export default function BatchInvoicePayments({
                   setCapturedCheckAmount("");
                   setCapturedCheckReference("");
                   setCheckPayor("");
+                  setCheckAmount("");
+                  setPaymentReference("");
                   setPaymentEntryMode("manual");
                   setCheckOcrStatus("manual");
                   setCheckOcrMessage("Enter the amount, choose invoices, and apply the payment.");
@@ -1033,8 +1006,8 @@ export default function BatchInvoicePayments({
                   <p className="font-black text-white">
                     {checkOcrStatus === "reading"
                       ? "Reading remittance"
-                      : hasRemittanceMatch
-                        ? "Show Matches"
+                      : checkOcrStatus === "ready"
+                        ? "Review Payment"
                         : "Review payment"}
                   </p>
 
@@ -1052,8 +1025,17 @@ export default function BatchInvoicePayments({
                   </div>
                 ) : null}
 
+                {checkOcrStatus === "ready" ? (
+                  <div className="mt-3 rounded-xl border border-emerald-300/35 bg-emerald-300/10 px-3 py-2 text-sm font-semibold text-emerald-50">
+                    {checkOcrMessage}
+                  </div>
+                ) : null}
+
                 {hasRemittanceMatch ? (
                   <div className="mt-4 grid gap-2">
+                    <p className="text-sm font-black text-white">
+                      Matched invoices
+                    </p>
                     {remittanceMatch.matches.map((invoice) => (
                       <div
                         key={invoice.id}
@@ -1075,16 +1057,6 @@ export default function BatchInvoicePayments({
                   </div>
                 ) : null}
 
-                {hasRemittanceMatch ? (
-                  <button
-                    type="button"
-                    onClick={applyRemittanceStubMatch}
-                    className="mt-4 rounded-2xl bg-emerald-500 px-5 py-3 font-black text-black transition hover:bg-emerald-400"
-                  >
-                    Use Suggested Matches
-                  </button>
-                ) : null}
-
                 {checkOcrStatus === "error" || checkOcrStatus === "manual" ? (
                   <textarea
                     value={remittanceStubText}
@@ -1095,64 +1067,6 @@ export default function BatchInvoicePayments({
                 ) : null}
               </div>
             ) : null}
-
-            {paymentEntryMode !== "choice" ? (
-              <div className="grid gap-3 sm:grid-cols-3">
-                <label>
-                  <span className="text-sm font-semibold text-zinc-300">
-                    Check Amount
-                  </span>
-                  <input
-                    inputMode="decimal"
-                    value={capturedCheckAmount}
-                    onChange={(event) => {
-                      setCapturedCheckAmount(event.target.value);
-
-                      if (paymentEntryMode === "manual") {
-                        setCheckAmount(event.target.value);
-                      }
-                    }}
-                    onBlur={() => {
-                      if (!checkAmount.trim() && capturedCheckAmount.trim()) {
-                        setCheckAmount(capturedCheckAmount);
-                      }
-                    }}
-                    placeholder="$0.00"
-                    className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-sky-500"
-                  />
-                </label>
-
-                <label>
-                  <span className="text-sm font-semibold text-zinc-300">
-                    Payor
-                  </span>
-                  <input
-                    value={checkPayor}
-                    onChange={(event) => setCheckPayor(event.target.value)}
-                    placeholder="Customer name"
-                    className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-sky-500"
-                  />
-                </label>
-
-                <label>
-                  <span className="text-sm font-semibold text-zinc-300">
-                    Check #
-                  </span>
-                  <input
-                    value={capturedCheckReference}
-                    onChange={(event) => {
-                      setCapturedCheckReference(event.target.value);
-
-                      if (paymentEntryMode === "manual") {
-                        setPaymentReference(event.target.value);
-                      }
-                    }}
-                    placeholder="1042"
-                    className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-sky-500"
-                  />
-                </label>
-              </div>
-            ) : null}
           </div>
         </div>
       </div>
@@ -1160,7 +1074,7 @@ export default function BatchInvoicePayments({
       {paymentEntryMode !== "choice" ? (
         <>
       <div className="app-soft-panel mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[150px_150px_170px_1fr_auto]">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[150px_130px_170px_180px_1fr_auto]">
           <DateInputField
             label="Payment Date"
             value={paymentDate}
@@ -1204,7 +1118,10 @@ export default function BatchInvoicePayments({
             <input
               inputMode="decimal"
               value={checkAmount}
-              onChange={(event) => setCheckAmount(event.target.value)}
+              onChange={(event) => {
+                setCheckAmount(event.target.value);
+                setCapturedCheckAmount(event.target.value);
+              }}
               placeholder={formatMoney(selectedTotal)}
               className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-sky-500"
             />
@@ -1212,14 +1129,27 @@ export default function BatchInvoicePayments({
 
           <div>
             <label className="mb-2 block text-sm text-zinc-400">
-              Reference / Check #
+              Check #
             </label>
             <input
               value={paymentReference}
-              onChange={(event) =>
-                setPaymentReference(event.target.value)
-              }
-              placeholder="Example: Check #1042"
+              onChange={(event) => {
+                setPaymentReference(event.target.value);
+                setCapturedCheckReference(event.target.value);
+              }}
+              placeholder="2721"
+              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-sky-500"
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm text-zinc-400">
+              Payor
+            </label>
+            <input
+              value={checkPayor}
+              onChange={(event) => setCheckPayor(event.target.value)}
+              placeholder="North Creek Apartments"
               className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-sky-500"
             />
           </div>
@@ -1245,7 +1175,7 @@ export default function BatchInvoicePayments({
               }
               className="w-full rounded-2xl bg-green-500 px-5 py-3 font-semibold text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
             >
-              {isSaving ? "Applying..." : "Apply Selected Payment"}
+              {isSaving ? "Applying..." : "Confirm and Apply Payment"}
             </button>
           </div>
         </div>
