@@ -9,6 +9,7 @@ import InternalNotes from "../../components/InternalNotes";
 import JobSessionPanel from "../../components/JobSessionPanel";
 import MarkCompletedButton from "../../components/MarkCompletedButton";
 import MarkScheduledButton from "../../components/MarkScheduledButton";
+import PersistentDetails from "../../components/PersistentDetails";
 import RoleVisible from "../../components/RoleVisible";
 import SyncUnitProfileButton from "../../components/SyncUnitProfileButton";
 import Toast from "../../components/Toast";
@@ -216,6 +217,33 @@ function formatManagerUpdateTime(value: string | null | undefined) {
   const formatted = formatEventDateTime(value);
 
   return formatted || "Not recorded";
+}
+
+function usefulValue(value: string | number | boolean | null | undefined) {
+  if (value === null || value === undefined || value === "") {
+    return "";
+  }
+
+  if (typeof value === "boolean") {
+    return value ? "Yes" : "No";
+  }
+
+  return String(value);
+}
+
+function paintCode(value: string | null | undefined) {
+  const match = value?.match(/\bSW\s*[-#:]?\s*(\d{3,5})\b/i);
+
+  return match?.[1] ? `SW ${match[1]}` : "";
+}
+
+function paintName(value: string | null | undefined) {
+  return (value || "")
+    .replace(/\bSherwin(?:-|\s+)Williams\b/gi, "")
+    .replace(/\(\s*SW\s*[-#:]?\s*\d{3,5}\s*\)/gi, "")
+    .replace(/\bSW\s*[-#:]?\s*\d{3,5}\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function queueLifecycleDisplayStatus(status: string | null | undefined) {
@@ -736,6 +764,20 @@ export default async function QueueDetailPage({
       Boolean(entry.prior_renovation) ||
       Boolean(entry.queue_item_is_renovation)
   );
+  const wallPaintSource =
+    item.wall_paint_color || latestPaintHistory?.wall_paint_color || "";
+  const wallPaintName = paintName(wallPaintSource);
+  const wallPaintCode = paintCode(wallPaintSource);
+  const importantFlags = [
+    item.smoked_in
+      ? item.primer_requested === false
+        ? "Smoker / no full primer"
+        : "Smoker / full primer"
+      : "",
+    item.renovation_needed ? "Renovation" : "",
+    tbdDisplay(item.flooring).toLowerCase() === "tbd" ? "Flooring TBD" : "",
+    item.delay_reason ? "Delayed" : "",
+  ].filter(Boolean);
   const invoiceRecipient = detailValue(
     linkedInvoiceActivity?.details,
     "recipient_email"
@@ -893,10 +935,72 @@ export default async function QueueDetailPage({
           </div>
         </div>
 
+        <Card className="queue-detail-operational-header border-sky-500/25 bg-zinc-950 p-3 sm:p-4">
+          <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-start">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <CompactDetail label="Unit" value={displayUnit || item.unit || ""} />
+              <CompactDetail label="Property" value={item.property || ""} />
+              <CompactDetail label="Status" value={managerLifecycleStatus} />
+              <CompactDetail
+                label="Manager Priority"
+                value={
+                  item.priority_order
+                    ? `#${item.priority_order}`
+                    : item.priority || ""
+                }
+              />
+              <CompactDetail label="Needed By" value={item.ready_date || ""} />
+              <CompactDetail
+                label="Scheduled"
+                value={item.scheduled_date || ""}
+              />
+              <CompactDetail
+                label="Paint Scope"
+                value={item.paint_type || item.renovation_needed_details || ""}
+              />
+              <CompactDetail
+                label="Wall Paint"
+                value={[
+                  wallPaintName || wallPaintSource,
+                  wallPaintCode,
+                ].filter(Boolean).join(" / ")}
+              />
+              <CompactDetail
+                label="Flooring"
+                value={tbdDisplay(item.flooring)}
+              />
+            </div>
+
+            <div className="flex flex-col gap-2 lg:min-w-52">
+              <Link href={workflowNextAction.href}>
+                <Button>{workflowNextAction.action}</Button>
+              </Link>
+              {importantFlags.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {importantFlags.map((flag) => (
+                    <span
+                      key={flag}
+                      className="rounded-full border border-amber-300/30 bg-amber-300/10 px-2.5 py-1 text-xs font-black text-amber-100"
+                    >
+                      {flag}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </Card>
+
         <RoleVisible
           businessSlug={businessSlug}
           allow={["owner", "admin", "accountant"]}
         >
+          <PersistentDetails
+            storageKey={`queue-detail-insights-${item.id}`}
+            title="Activity & Insights"
+            subtitle={`${queueVolatilityScore} change${queueVolatilityScore === 1 ? "" : "s"} saved`}
+            className="rounded-2xl border border-cyan-500/25 bg-black/20 p-3"
+          >
           <QueueWorkflowIntelligence
             linkedEstimate={linkedEstimate}
             linkedInvoice={linkedInvoice}
@@ -912,6 +1016,7 @@ export default async function QueueDetailPage({
             logs={queueActivityLogs}
             changeCount={queueVolatilityScore}
           />
+          </PersistentDetails>
         </RoleVisible>
 
         <RoleVisible businessSlug={businessSlug} allow={["property_manager"]}>
@@ -983,6 +1088,12 @@ export default async function QueueDetailPage({
           businessSlug={businessSlug}
           allow={["owner", "admin", "accountant", "technician"]}
         >
+          <PersistentDetails
+            storageKey={`queue-detail-operational-insights-${item.id}`}
+            title="Activity & Insights"
+            subtitle={[readiness.label, timingBadge].filter(Boolean).join(" / ")}
+            className="rounded-2xl border border-white/10 bg-black/20 p-3"
+          >
           <div className="grid gap-4 md:grid-cols-3">
             <AttentionCard
               tone={readiness.tone}
@@ -1042,9 +1153,16 @@ export default async function QueueDetailPage({
               }
             />
           </div>
+          </PersistentDetails>
         </RoleVisible>
 
-        <Card className="border-emerald-500/25 bg-emerald-500/10">
+        <PersistentDetails
+          storageKey={`queue-detail-manager-update-${item.id}`}
+          title="Manager Update"
+          subtitle={item.manager_update || "Manager update and timing details"}
+          className="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 p-3"
+        >
+        <div>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.3em] text-emerald-300">
@@ -1096,7 +1214,8 @@ export default async function QueueDetailPage({
               </div>
             </RoleVisible>
           </div>
-        </Card>
+        </div>
+        </PersistentDetails>
 
         <RoleVisible
           businessSlug={businessSlug}
@@ -1214,6 +1333,18 @@ export default async function QueueDetailPage({
         </RoleVisible>
 
         {isNorthCreekQueueItem ? (
+          <PersistentDetails
+            storageKey={`queue-detail-unit-profile-${item.id}`}
+            title="Unit Profile"
+            subtitle={[
+              displayUnitProfile?.building_letter
+                ? `Building ${displayUnitProfile.building_letter}`
+                : "",
+              displayUnitProfile?.floor ? formatFloor(displayUnitProfile.floor) : "",
+              displayUnitLayout(displayUnitProfile?.floorplan),
+            ].filter(Boolean).join(" / ")}
+            className="rounded-2xl border border-sky-500/30 bg-sky-500/5 p-3"
+          >
           <Card className="unit-intelligence-card border-sky-500/30 bg-gradient-to-br from-sky-500/10 via-zinc-950 to-emerald-500/5">
             <p className="text-sm uppercase tracking-[0.3em] text-sky-300">
               Unit Intelligence
@@ -1250,11 +1381,7 @@ export default async function QueueDetailPage({
               <div className="unit-intelligence-map-confirmed mt-4 rounded-2xl border px-4 py-3 text-sm">
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
-                    <p className="font-black text-sky-50">Map confirmed</p>
-                    <p className="mt-1 leading-6 text-sky-100/85">
-                      Trimax recognizes this unit from the confirmed North Creek
-                      map and is using that trusted fallback for the profile.
-                    </p>
+                    <p className="font-black text-sky-50">Verified in unit map</p>
                   </div>
                   {northCreekPropertyId && confirmedNorthCreekUnit ? (
                     <SyncUnitProfileButton
@@ -1345,8 +1472,21 @@ export default async function QueueDetailPage({
               </div>
             ) : null}
           </Card>
+          </PersistentDetails>
         ) : null}
 
+        <PersistentDetails
+          storageKey={`queue-detail-job-details-${item.id}`}
+          title="Job Details"
+          subtitle={[
+            item.move_out_date ? `Move out ${item.move_out_date}` : "",
+            item.projected_completion_date
+              ? `ETA ${item.projected_completion_date}`
+              : "",
+            item.progress_stage || "",
+          ].filter(Boolean).join(" / ")}
+          className="rounded-2xl border border-white/10 bg-black/20 p-3"
+        >
         <Card className="min-w-0 overflow-hidden">
           <div className="mb-6 grid min-w-0 gap-4 md:grid-cols-3">
             <LifecycleStep
@@ -1375,20 +1515,16 @@ export default async function QueueDetailPage({
             businessSlug={businessSlug}
             allow={["owner", "admin"]}
           >
-            <div
-              id="schedule-work"
+            <PersistentDetails
+              storageKey={`queue-detail-schedule-${item.id}`}
+              title="Schedule Work"
+              subtitle={item.scheduled_date ? `Scheduled ${item.scheduled_date}` : "Set work date"}
               className="queue-detail-notice mb-6 min-w-0 scroll-mt-6 overflow-hidden rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4"
             >
-              <p className="text-sm uppercase tracking-[0.25em] text-orange-300">
-                Schedule Work
-              </p>
-
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-orange-100/80">
-                Pick the date you plan to perform the work, then click Schedule.
-                The submitted date is saved automatically when the queue item is
-                created.
-              </p>
-
+            <div
+              id="schedule-work"
+              className="min-w-0 scroll-mt-6"
+            >
               <div className="mt-4">
                 <MarkScheduledButton
                   queueItemId={item.id}
@@ -1402,6 +1538,7 @@ export default async function QueueDetailPage({
                 />
               </div>
             </div>
+            </PersistentDetails>
           </RoleVisible>
 
           <div className="grid gap-6 md:grid-cols-2">
@@ -1494,15 +1631,7 @@ export default async function QueueDetailPage({
             businessSlug={businessSlug}
             allow={["owner", "admin", "accountant", "technician"]}
           >
-            <div className="mt-6 rounded-2xl border border-sky-500/25 bg-sky-500/10 px-4 py-3 text-sm leading-6 text-sky-100">
-              <p className="font-black uppercase tracking-[0.18em] text-sky-200">
-                Internal scheduling note
-              </p>
-              <p className="mt-2">
-                Needed By = property deadline. Priority = manager&apos;s requested
-                order. Schedule = internal work plan.
-              </p>
-            </div>
+            {null}
           </RoleVisible>
 
           {item.smoked_in && (
@@ -1520,34 +1649,38 @@ export default async function QueueDetailPage({
             </p>
           </div>
         </Card>
+        </PersistentDetails>
 
         <RoleVisible
           businessSlug={businessSlug}
           allow={["owner", "admin", "accountant", "technician"]}
         >
+          <PersistentDetails
+            storageKey={`queue-detail-team-notes-${item.id}`}
+            title="Team Notes"
+            subtitle="Private notes and note history"
+            className="rounded-2xl border border-white/10 bg-black/20 p-3"
+          >
           <InternalNotes
             businessId={item.business_id}
             entityType="queue_item"
             entityId={item.id}
             title="Queue Item Conversation"
           />
+          </PersistentDetails>
         </RoleVisible>
 
+        <PersistentDetails
+          storageKey={`queue-detail-more-actions-${item.id}`}
+          title="More Actions"
+          subtitle="Edit, complete, calendar, or delete"
+          className="rounded-2xl border border-white/10 bg-black/20 p-3"
+        >
         <div id="complete-work" className="flex scroll-mt-6 flex-wrap gap-4">
-          <BackButton label="Back" fallbackHref={`/queue?business=${businessSlug}`} />
-
           <RoleVisible
             businessSlug={businessSlug}
             allow={["owner", "admin", "accountant"]}
           >
-            {!linkedEstimate && (
-              <Link
-                href={`/estimates/new?queueId=${item.id}&business=${businessSlug}`}
-              >
-                <Button>Create Estimate</Button>
-              </Link>
-            )}
-
             <Link href={`/queue/${item.id}/edit?business=${businessSlug}`}>
               <Button variant="secondary">Edit Queue Item</Button>
             </Link>
@@ -1593,6 +1726,7 @@ export default async function QueueDetailPage({
             />
           </RoleVisible>
         </div>
+        </PersistentDetails>
       </div>
     </AppShell>
   );
@@ -1853,6 +1987,29 @@ function Info({
     <div>
       <p className="text-sm text-zinc-500">{label}</p>
       <p className="mt-1 text-lg font-medium">{value || emptyValue}</p>
+    </div>
+  );
+}
+
+function CompactDetail({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  if (!usefulValue(value)) {
+    return null;
+  }
+
+  return (
+    <div className="min-w-0 rounded-2xl border border-white/10 bg-black/25 px-3 py-2">
+      <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-zinc-500">
+        {label}
+      </p>
+      <p className="mt-1 break-words text-sm font-black text-white">
+        {value}
+      </p>
     </div>
   );
 }

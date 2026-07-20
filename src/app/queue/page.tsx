@@ -251,6 +251,8 @@ function isClosedQueueItem(item: QueueItemWithEstimate) {
 
   return (
     status === "completed" ||
+    status === "invoiced" ||
+    status === "invoice sent" ||
     status === "paid" ||
     Boolean(item.completed_date)
   );
@@ -260,7 +262,9 @@ function isClosedForOperations(
   item: QueueItemWithEstimate,
   activeQueueItemIds: Set<string>
 ) {
-  return !activeQueueItemIds.has(item.id) && isClosedQueueItem(item);
+  void activeQueueItemIds;
+
+  return isClosedQueueItem(item);
 }
 
 function daysUntil(value: string | null) {

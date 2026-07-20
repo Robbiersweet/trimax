@@ -1317,6 +1317,7 @@ export default function JobSessionPanel({
   });
 
   const completedPanelSessions = sessions.filter((session) => session.ended_at);
+  const hasSessionHistory = sessions.length > 0;
   const sessionSummary = {
     completedMinutes: completedPanelSessions.reduce(
       (total, session) =>
@@ -1465,6 +1466,7 @@ export default function JobSessionPanel({
         </p>
       ) : null}
 
+      {hasSessionHistory ? (
       <div className="job-session-snapshot mt-5 grid gap-3 md:grid-cols-4">
         <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
           <p className="text-xs font-black uppercase tracking-[0.18em] text-sky-200">
@@ -1529,12 +1531,16 @@ export default function JobSessionPanel({
           </p>
         </div>
       </div>
+      ) : null}
 
+      {hasSessionHistory ? (
       <p className="mt-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm font-semibold text-zinc-300">
         Elapsed time is the length of the job session. Labor hours include every
         person who worked. Breakdown rows allocate elapsed session time.
       </p>
+      ) : null}
 
+      {hasSessionHistory && laborGuide.sampleCount > 0 ? (
       <div className="job-session-labor-guide mt-5 rounded-3xl border border-sky-300/20 bg-black/25 p-4">
         <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
           <div>
@@ -1605,6 +1611,7 @@ export default function JobSessionPanel({
           </div>
         ) : null}
       </div>
+      ) : null}
 
       {otherActiveSession ? (
         <div className="job-session-active-elsewhere mt-5 rounded-3xl border border-amber-400/35 bg-amber-500/10 p-4">
@@ -2102,19 +2109,19 @@ export default function JobSessionPanel({
         </div>
       ) : null}
 
-      <div className="mt-5">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm font-black uppercase tracking-[0.18em] text-zinc-400">
+      {hasSessionHistory ? (
+      <details className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-3">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+          <span className="text-sm font-black uppercase tracking-[0.18em] text-zinc-400">
             Session History
-          </p>
-          <p className="text-sm font-semibold text-zinc-400">
+          </span>
+          <span className="text-sm font-semibold text-zinc-400">
             {sessions.length} saved
-          </p>
-        </div>
-
+          </span>
+        </summary>
+      <div className="mt-3">
         <div className="mt-3 space-y-3">
-          {sessions.length > 0 ? (
-            sessions.slice(0, 5).map((session) => {
+          {sessions.slice(0, 5).map((session) => {
               const sessionBreakdowns = breakdownBySession.get(session.id) ?? [];
               const totalMinutes =
                 session.total_minutes ?? minutesBetween(session.started_at, session.ended_at);
@@ -2609,14 +2616,11 @@ export default function JobSessionPanel({
                   ) : null}
                 </div>
               );
-            })
-          ) : (
-            <p className="rounded-2xl border border-dashed border-white/15 bg-black/20 p-4 text-sm text-zinc-400">
-              No job sessions saved for this queue item yet.
-            </p>
-          )}
+            })}
         </div>
       </div>
+      </details>
+      ) : null}
     </section>
   );
 }

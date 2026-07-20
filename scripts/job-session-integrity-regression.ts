@@ -100,6 +100,10 @@ function fixtureHubMetrics(
 const root = process.cwd();
 const hub = readFileSync(resolve(root, "src/app/job-sessions/page.tsx"), "utf8");
 const queue = readFileSync(resolve(root, "src/app/queue/page.tsx"), "utf8");
+const queueDetail = readFileSync(
+  resolve(root, "src/app/queue/[unit]/page.tsx"),
+  "utf8"
+);
 const panel = readFileSync(
   resolve(root, "src/app/components/JobSessionPanel.tsx"),
   "utf8"
@@ -208,9 +212,15 @@ assert(
 );
 assert(
   queue.includes("function isClosedForOperations") &&
-    queue.includes("!activeQueueItemIds.has(item.id) && isClosedQueueItem(item)") &&
-    !queue.match(/status === "invoice sent"/),
-  "Queue removal must not hide invoice-sent work while a job session is still active."
+    queue.includes('status === "invoiced"') &&
+    queue.includes('status === "invoice sent"'),
+  "Invoiced queue items must be excluded from the active Queue after reload."
+);
+assert(
+  queue.includes('status === "completed"') &&
+    queue.includes("Boolean(item.completed_date)") &&
+    queue.includes("splitChildren.every"),
+  "Completed and split-invoice lifecycle handling must remain intact."
 );
 assert(
   queue.includes("activeSessionByQueueItemId") &&
@@ -227,8 +237,32 @@ assert(
 assert(
   panel.includes('id="job-session"') &&
     panel.includes("Boolean(otherActiveSession)") &&
-    panel.includes("Stop that session before starting another."),
-  "Queue detail must keep active sessions addressable and prevent duplicate sessions."
+    panel.includes("Stop that session before starting another.") &&
+    panel.includes("hasSessionHistory") &&
+    panel.includes("Session History"),
+  "Queue detail must keep active sessions addressable, prevent duplicate sessions, and hide empty history."
+);
+assert(
+  queueDetail.includes("wallPaintSource") &&
+    queueDetail.includes("paintCode") &&
+    queueDetail.includes("Wall Paint") &&
+    queueDetail.includes("queue_items") &&
+    queueDetail.includes("wall_paint_color"),
+  "Queue detail must render stored wall paint color/code from real queue data."
+);
+assert(
+  queueDetail.includes("Job Details") &&
+    queueDetail.includes("Unit Profile") &&
+    queueDetail.includes("Schedule Work") &&
+    queueDetail.includes("Team Notes") &&
+    queueDetail.includes("More Actions") &&
+    queueDetail.includes("PersistentDetails"),
+  "Queue detail secondary sections must be collapsed without deleting their content."
+);
+assert(
+  queueDetail.match(/<BackButton/g)?.length === 1 &&
+    !queueDetail.includes("<Button>Create Estimate</Button>"),
+  "Queue detail must avoid duplicate Back and Create Estimate actions."
 );
 assert(
   dock.includes("Job Session Running") &&
