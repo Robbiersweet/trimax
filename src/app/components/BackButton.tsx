@@ -15,8 +15,19 @@ type BackButtonProps = {
   variant?: "inline" | "floating";
 };
 
-function isSafeInternalRoute(value: string | null): value is string {
-  return Boolean(value && value.startsWith("/") && !value.startsWith("//"));
+function isSafeTrimaxBackRoute(value: string | null): value is string {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) {
+    return false;
+  }
+
+  const pathname = value.split("?")[0] ?? value;
+
+  return ![
+    "/login",
+    "/request-access",
+    "/forgot-password",
+    "/reset-password",
+  ].some((authPath) => pathname === authPath || pathname.startsWith(`${authPath}/`));
 }
 
 function readRouteStack() {
@@ -26,7 +37,7 @@ function readRouteStack() {
     );
 
     return Array.isArray(parsed)
-      ? parsed.filter((route): route is string => isSafeInternalRoute(route))
+      ? parsed.filter((route): route is string => isSafeTrimaxBackRoute(route))
       : [];
   } catch {
     return [];
@@ -34,7 +45,7 @@ function readRouteStack() {
 }
 
 function routeHint(route: string | null) {
-  if (!isSafeInternalRoute(route)) {
+  if (!isSafeTrimaxBackRoute(route)) {
     return "Previous Trimax screen";
   }
 
@@ -112,6 +123,26 @@ function findStackedPreviousRoute(currentRoute: string, pathname: string) {
     .find((route) => route !== currentRoute && route !== pathname);
 }
 
+function routePathname(route: string) {
+  return route.split("?")[0] ?? route;
+}
+
+function findStackedParentRoute(currentRoute: string, fallbackHref: string) {
+  if (!isSafeTrimaxBackRoute(fallbackHref)) {
+    return null;
+  }
+
+  const fallbackPathname = routePathname(fallbackHref);
+
+  return readRouteStack()
+    .slice()
+    .reverse()
+    .find(
+      (route) =>
+        route !== currentRoute && routePathname(route) === fallbackPathname
+    ) ?? null;
+}
+
 export default function BackButton({
   label = "Back",
   fallbackHref = "/",
@@ -127,7 +158,19 @@ export default function BackButton({
   function handleBack() {
     const currentRoute = window.location.pathname + window.location.search;
 
-    if (preferFallback && isSafeInternalRoute(fallbackHref)) {
+    if (preferFallback) {
+      const stackedParentRoute = findStackedParentRoute(
+        currentRoute,
+        fallbackHref
+      );
+
+      if (stackedParentRoute) {
+        router.push(stackedParentRoute);
+        return;
+      }
+    }
+
+    if (preferFallback && isSafeTrimaxBackRoute(fallbackHref)) {
       router.push(fallbackHref);
       return;
     }
@@ -151,7 +194,7 @@ export default function BackButton({
     const previousRoute = sessionStorage.getItem(previousTrimaxRouteKey);
 
     if (
-      isSafeInternalRoute(previousRoute) &&
+      isSafeTrimaxBackRoute(previousRoute) &&
       previousRoute !== currentRoute &&
       previousRoute !== pathname
     ) {
@@ -159,7 +202,7 @@ export default function BackButton({
       return;
     }
 
-    if (isSafeInternalRoute(fallbackHref)) {
+    if (isSafeTrimaxBackRoute(fallbackHref)) {
       router.push(fallbackHref);
       return;
     }

@@ -249,13 +249,7 @@ function compareQueueItems(
 function isClosedQueueItem(item: QueueItemWithEstimate) {
   const status = normalizeStatus(item.status);
 
-  return (
-    status === "completed" ||
-    status === "invoiced" ||
-    status === "invoice sent" ||
-    status === "paid" ||
-    Boolean(item.completed_date)
-  );
+  return status === "completed" || Boolean(item.completed_date);
 }
 
 function isClosedForOperations(

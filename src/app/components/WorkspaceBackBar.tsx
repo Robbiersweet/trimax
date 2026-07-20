@@ -77,6 +77,17 @@ function shouldHideFloatingBack(pathname: string, hash: string) {
   );
 }
 
+function shouldPreferParentRoute(pathname: string, hash: string) {
+  const parts = pathname.split("/").filter(Boolean);
+  const section = parts[0] ?? "";
+
+  return (
+    (["queue", "invoices", "estimates"].includes(section) &&
+      parts.length > 1) ||
+    (pathname === "/payments" && hash.length > 0)
+  );
+}
+
 export default function WorkspaceBackBar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -100,15 +111,17 @@ export default function WorkspaceBackBar() {
 
   return (
     <div
-      className="app-floating-back-control fixed z-50"
+      className="app-floating-back-control pointer-events-auto fixed z-[70]"
+      data-floating-back-control="true"
       style={{
         right: "max(1rem, env(safe-area-inset-right, 0px))",
-        bottom: "calc(5.75rem + env(safe-area-inset-bottom, 0px))",
+        bottom: "calc(5.6rem + env(safe-area-inset-bottom, 0px))",
       }}
     >
       <BackButton
         label="Back"
         fallbackHref={fallbackForPath(pathname, business)}
+        preferFallback={shouldPreferParentRoute(pathname, hash)}
         variant="floating"
       />
     </div>

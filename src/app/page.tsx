@@ -442,8 +442,8 @@ function relativeTime(value: string | null) {
   return `${differenceDays} day${differenceDays === 1 ? "" : "s"} ago`;
 }
 
-function isClosedQueueStatus(value: string | null) {
-  return ["completed", "invoiced", "paid"].includes(normalizeStatus(value));
+function isCompletedQueueItem(item: QueueItem) {
+  return normalizeStatus(item.status) === "completed" || Boolean(item.completed_date);
 }
 
 export default async function DashboardPage({
@@ -562,7 +562,7 @@ export default async function DashboardPage({
   const queueSummary = queueItems.reduce(
     (summary, item) => {
       const status = normalizeStatus(item.status);
-      const isClosed = isClosedQueueStatus(item.status);
+      const isClosed = isCompletedQueueItem(item);
       const readyDate = dateValue(item.ready_date);
 
       if (status !== "scheduled" && !isClosed) {
@@ -2256,12 +2256,12 @@ export default async function DashboardPage({
     .slice(0, 5);
   const operationsMoneySnapshot = [
     {
-      label: "Open",
+      label: "Outstanding Balance",
       value: outstandingRevenue,
       detail: `${workingYearOpenInvoicesWithAmounts.length} collectible invoice${
         workingYearOpenInvoicesWithAmounts.length === 1 ? "" : "s"
       }`,
-      href: `/payments?business=${selectedBusinessSlug}`,
+      href: `/invoices?business=${selectedBusinessSlug}&collection=open`,
       tone: "open",
     },
     {
@@ -4276,7 +4276,7 @@ export default async function DashboardPage({
                   <div className="flex items-end justify-between gap-3">
                     <div>
                       <p className="dashboard-section-label text-xs uppercase tracking-[0.24em]">
-                        Money Snapshot
+                        Cash Snapshot
                       </p>
                       <h2 className="mt-1 text-xl font-black text-white">
                         Cash
@@ -4291,22 +4291,39 @@ export default async function DashboardPage({
                   </div>
 
                   <div className="mt-3 grid gap-2">
-                    {operationsMoneySnapshot.map((item) => (
-                      <Link
-                        key={item.label}
-                        href={item.href}
-                        data-tone={item.tone}
-                        className="dashboard-revenue-flow-card rounded-2xl border px-3 py-2.5 transition hover:-translate-y-0.5"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <p className="text-xs font-black uppercase tracking-[0.16em]">
+                    <Link
+                      href={operationsMoneySnapshot[0].href}
+                      data-tone={operationsMoneySnapshot[0].tone}
+                      className="dashboard-revenue-flow-card rounded-2xl border px-3 py-3 transition hover:-translate-y-0.5"
+                    >
+                      <p className="text-xs font-black uppercase tracking-[0.16em]">
+                        {operationsMoneySnapshot[0].label}
+                      </p>
+                      <p className="mt-1 text-3xl font-black tracking-tight text-white sm:text-4xl">
+                        {operationsMoneySnapshot[0].value}
+                      </p>
+                      <p className="mt-1 text-xs font-semibold leading-5">
+                        {operationsMoneySnapshot[0].detail}
+                      </p>
+                    </Link>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      {operationsMoneySnapshot.slice(1, 3).map((item) => (
+                        <Link
+                          key={item.label}
+                          href={item.href}
+                          data-tone={item.tone}
+                          className="dashboard-revenue-flow-card rounded-2xl border px-3 py-2.5 transition hover:-translate-y-0.5"
+                        >
+                          <p className="text-[0.68rem] font-black uppercase tracking-[0.14em]">
                             {item.label}
                           </p>
-                          <p className="text-base font-black">{item.value}</p>
-                        </div>
-                        <p className="mt-1 text-xs leading-5">{item.detail}</p>
-                      </Link>
-                    ))}
+                          <p className="mt-1 text-base font-black text-white">
+                            {item.value}
+                          </p>
+                        </Link>
+                      ))}
+                    </div>
                   </div>
                 </Card>
               </section>

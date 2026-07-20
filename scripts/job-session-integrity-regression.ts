@@ -100,6 +100,7 @@ function fixtureHubMetrics(
 const root = process.cwd();
 const hub = readFileSync(resolve(root, "src/app/job-sessions/page.tsx"), "utf8");
 const queue = readFileSync(resolve(root, "src/app/queue/page.tsx"), "utf8");
+const dashboard = readFileSync(resolve(root, "src/app/page.tsx"), "utf8");
 const queueDetail = readFileSync(
   resolve(root, "src/app/queue/[unit]/page.tsx"),
   "utf8"
@@ -219,17 +220,66 @@ assert(
     panel.includes("crewSchemaAvailable"),
   "Queue detail session rendering must remain correct before and after the crew migration."
 );
+function fixtureQueueItemVisibility(item: {
+  status: string | null;
+  completedDate: string | null;
+}) {
+  return (
+    (item.status ?? "").trim().toLowerCase() !== "completed" &&
+    !item.completedDate
+  );
+}
+
+assert.equal(
+  fixtureQueueItemVisibility({ status: "Pending Estimate", completedDate: null }),
+  true,
+  "Uninvoiced incomplete queue work must remain visible."
+);
+assert.equal(
+  fixtureQueueItemVisibility({ status: "Invoice Created", completedDate: null }),
+  true,
+  "Creating an invoice must not remove incomplete work from the active Queue."
+);
+assert.equal(
+  fixtureQueueItemVisibility({ status: "Invoice Sent", completedDate: null }),
+  true,
+  "Sending an invoice must not remove incomplete work from the active Queue."
+);
+assert.equal(
+  fixtureQueueItemVisibility({ status: "Paid", completedDate: null }),
+  true,
+  "Paying an invoice must not remove incomplete physical work from the active Queue."
+);
+assert.equal(
+  fixtureQueueItemVisibility({ status: "Completed", completedDate: null }),
+  false,
+  "A completed queue status must leave the active Queue."
+);
+assert.equal(
+  fixtureQueueItemVisibility({ status: "Invoice Sent", completedDate: "2026-07-20" }),
+  false,
+  "A saved completed_date must keep completed work out of active Queue after reload."
+);
+const queueClosureFunction =
+  queue.match(/function isClosedQueueItem[\s\S]*?function isClosedForOperations/)?.[0] ??
+  "";
 assert(
-  queue.includes("function isClosedForOperations") &&
-    queue.includes('status === "invoiced"') &&
-    queue.includes('status === "invoice sent"'),
-  "Invoiced queue items must be excluded from the active Queue after reload."
+  queueClosureFunction.includes('status === "completed" || Boolean(item.completed_date)') &&
+    !queueClosureFunction.includes("invoiced") &&
+    !queueClosureFunction.includes("invoice sent") &&
+    !queueClosureFunction.includes("paid"),
+  "Queue visibility must be completion-based; invoice status must not close active work."
 );
 assert(
-  queue.includes('status === "completed"') &&
-    queue.includes("Boolean(item.completed_date)") &&
-    queue.includes("splitChildren.every"),
-  "Completed and split-invoice lifecycle handling must remain intact."
+  dashboard.includes("function isCompletedQueueItem") &&
+    dashboard.includes('normalizeStatus(item.status) === "completed"') &&
+    dashboard.includes("Boolean(item.completed_date)") &&
+    !dashboard.includes('return ["completed", "invoiced", "paid"].includes'),
+  "Dashboard Queue preview must use the same completion-based active-work rule."
+);
+assert(
+  queue.includes("splitChildren.every"),
+  "Split invoice status may inform labels, but split invoices must not independently remove incomplete work."
 );
 assert(
   queue.includes("activeSessionByQueueItemId") &&
@@ -275,11 +325,14 @@ assert(
 );
 assert(
   appShell.includes("<WorkspaceBackBar />") &&
+    appShell.includes("pb-32") &&
     workspaceBackBar.includes("app-floating-back-control") &&
+    workspaceBackBar.includes('data-floating-back-control="true"') &&
     workspaceBackBar.includes('variant="floating"') &&
+    workspaceBackBar.includes("preferFallback={shouldPreferParentRoute") &&
     workspaceBackBar.includes("shouldHideFloatingBack") &&
     workspaceBackBar.includes("primaryWorkspaceSections"),
-  "The app shell must provide one shared floating Back control and hide it on primary workspace screens."
+  "The app shell must provide one shared floating Back control, reserve bottom space, and hide it on primary workspace screens."
 );
 assert(
   workspaceBackBar.includes('queue: { fallback: "/queue" }') &&
@@ -287,16 +340,30 @@ assert(
     workspaceBackBar.includes('estimates: { fallback: "/estimates" }') &&
     workspaceBackBar.includes('payments: { fallback: "/payments" }') &&
     workspaceBackBar.includes('pathname === "/payments" && hash.length > 0') &&
-    workspaceBackBar.includes("5.75rem") &&
+    workspaceBackBar.includes("5.6rem") &&
     workspaceBackBar.includes("env(safe-area-inset-bottom"),
   "Floating Back must keep safe fallback routes and sit above the Command launcher without covering it."
 );
 assert(
   backButton.includes('variant = "inline"') &&
     backButton.includes('variant === "floating"') &&
+    backButton.includes("isSafeTrimaxBackRoute") &&
+    backButton.includes('"/login"') &&
+    backButton.includes("findStackedParentRoute") &&
     backButton.includes("previousTrimaxRouteKey") &&
     backButton.includes("trimaxRouteStackKey"),
-  "BackButton must support the shared floating control while preserving inline use for standalone print and error screens."
+  "BackButton must support the shared floating control, preserve parent route context, and reject auth routes."
+);
+assert(
+  dashboard.includes("Cash Snapshot") &&
+    dashboard.includes("Outstanding Balance") &&
+    dashboard.includes("operationsMoneySnapshot[0].value") &&
+    dashboard.includes("workingYearOpenInvoicesWithAmounts") &&
+    dashboard.includes("invoiceCollectionAmountDue(invoice)") &&
+    dashboard.includes("selectedBusinessSlug") &&
+    dashboard.includes("operationsMoneySnapshot.slice(1, 3)") &&
+    !dashboard.includes("Receivables Snapshot"),
+  "Dashboard must promote the existing Cash Snapshot without adding a duplicate financial widget."
 );
 assert(
   dock.includes("Job Session Running") &&
