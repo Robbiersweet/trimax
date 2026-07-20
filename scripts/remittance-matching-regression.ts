@@ -176,6 +176,13 @@ const route = readFileSync(
 assert(!route.includes("OPENAI_API_KEY"), "OCR route must not require OpenAI.");
 assert(!route.includes("api.openai.com"), "OCR route must not call OpenAI.");
 assert(route.includes("tesseract.js"), "OCR route must keep a Tesseract fallback.");
+assert(
+  route.includes("const ROTATIONS = [0, 90, 180, 270] as const") &&
+    route.includes("scoreOcrText") &&
+    route.includes("recognizeBestText") &&
+    route.includes("shouldAcceptFirstPass"),
+  "OCR route must score 0/90/180/270 rotations before parsing sideways remittance photos."
+);
 
 const paymentScreen = readFileSync(
   resolve(root, "src/app/components/BatchInvoicePayments.tsx"),
