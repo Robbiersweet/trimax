@@ -12,6 +12,7 @@ type BackButtonProps = {
   fallbackHref?: string;
   className?: string;
   preferFallback?: boolean;
+  variant?: "inline" | "floating";
 };
 
 function isSafeInternalRoute(value: string | null): value is string {
@@ -116,6 +117,7 @@ export default function BackButton({
   fallbackHref = "/",
   className = "",
   preferFallback = false,
+  variant = "inline",
 }: BackButtonProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -171,14 +173,26 @@ export default function BackButton({
       onClick={handleBack}
       aria-label={`Go back to ${targetHint}`}
       title={`Go back to ${targetHint}`}
-      className={`app-back-button inline-flex items-center gap-3 rounded-2xl border border-zinc-700 bg-zinc-900 px-4 py-2 text-left text-sm font-semibold text-zinc-300 transition hover:border-sky-500 hover:text-sky-300 ${className}`}
+      className={
+        variant === "floating"
+          ? `app-back-button app-floating-back-button inline-flex min-h-11 items-center gap-2 rounded-full border border-white/15 bg-zinc-950/90 px-3 py-2 text-left text-xs font-black text-zinc-100 shadow-2xl shadow-black/35 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-sky-300/60 hover:text-sky-100 focus:outline-none focus:ring-2 focus:ring-sky-300/70 focus:ring-offset-2 focus:ring-offset-zinc-950 sm:px-3.5 ${className}`
+          : `app-back-button inline-flex items-center gap-3 rounded-2xl border border-zinc-700 bg-zinc-900 px-4 py-2 text-left text-sm font-semibold text-zinc-300 transition hover:border-sky-500 hover:text-sky-300 ${className}`
+      }
     >
       <span className="app-back-button-arrow" aria-hidden="true">
         &larr;
       </span>
       <span className="min-w-0">
         <span className="app-back-button-label block">{label}</span>
-        <span className="app-back-button-meta block">{targetHint}</span>
+        <span
+          className={
+            variant === "floating"
+              ? "app-back-button-meta sr-only"
+              : "app-back-button-meta block"
+          }
+        >
+          {targetHint}
+        </span>
       </span>
     </button>
   );

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import AppShell from "../../components/AppShell";
-import BackButton from "../../components/BackButton";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import StatusBadge from "../../components/StatusBadge";
@@ -900,8 +899,6 @@ export default async function QueueDetailPage({
         />
       ) : null}
       <div className="space-y-6">
-        <BackButton label="Back" fallbackHref={`/queue?business=${businessSlug}`} />
-
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="queue-unit-plate queue-unit-plate-v2 queue-unit-plate-large">
@@ -967,7 +964,7 @@ export default async function QueueDetailPage({
               />
               <CompactDetail
                 label="Flooring"
-                value={tbdDisplay(item.flooring)}
+                value={item.flooring ? tbdDisplay(item.flooring) : ""}
               />
             </div>
 

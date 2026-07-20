@@ -5,7 +5,6 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createPortal } from "react-dom";
 import AppShell from "../components/AppShell";
-import BackButton from "../components/BackButton";
 import Button from "../components/Button";
 import Card from "../components/Card";
 import InputField from "../components/InputField";
@@ -1367,9 +1366,7 @@ function RecurringInvoicesPageContent() {
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <BackButton label="Back" fallbackHref={`/invoices${businessQuery}`} />
-
-            <p className="mt-4 text-sm uppercase tracking-[0.3em] text-orange-400">
+            <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
               Recurring Invoices
             </p>
 

@@ -112,6 +112,15 @@ const dock = readFileSync(
   resolve(root, "src/app/components/ActiveJobSessionDock.tsx"),
   "utf8"
 );
+const appShell = readFileSync(resolve(root, "src/app/components/AppShell.tsx"), "utf8");
+const backButton = readFileSync(
+  resolve(root, "src/app/components/BackButton.tsx"),
+  "utf8"
+);
+const workspaceBackBar = readFileSync(
+  resolve(root, "src/app/components/WorkspaceBackBar.tsx"),
+  "utf8"
+);
 
 const q08Session: FixtureSession = {
   id: "session-q08",
@@ -260,9 +269,34 @@ assert(
   "Queue detail secondary sections must be collapsed without deleting their content."
 );
 assert(
-  queueDetail.match(/<BackButton/g)?.length === 1 &&
+  !queueDetail.includes("BackButton") &&
     !queueDetail.includes("<Button>Create Estimate</Button>"),
-  "Queue detail must avoid duplicate Back and Create Estimate actions."
+  "Queue detail must avoid duplicate page-level Back and Create Estimate actions."
+);
+assert(
+  appShell.includes("<WorkspaceBackBar />") &&
+    workspaceBackBar.includes("app-floating-back-control") &&
+    workspaceBackBar.includes('variant="floating"') &&
+    workspaceBackBar.includes("shouldHideFloatingBack") &&
+    workspaceBackBar.includes("primaryWorkspaceSections"),
+  "The app shell must provide one shared floating Back control and hide it on primary workspace screens."
+);
+assert(
+  workspaceBackBar.includes('queue: { fallback: "/queue" }') &&
+    workspaceBackBar.includes('invoices: { fallback: "/invoices" }') &&
+    workspaceBackBar.includes('estimates: { fallback: "/estimates" }') &&
+    workspaceBackBar.includes('payments: { fallback: "/payments" }') &&
+    workspaceBackBar.includes('pathname === "/payments" && hash.length > 0') &&
+    workspaceBackBar.includes("5.75rem") &&
+    workspaceBackBar.includes("env(safe-area-inset-bottom"),
+  "Floating Back must keep safe fallback routes and sit above the Command launcher without covering it."
+);
+assert(
+  backButton.includes('variant = "inline"') &&
+    backButton.includes('variant === "floating"') &&
+    backButton.includes("previousTrimaxRouteKey") &&
+    backButton.includes("trimaxRouteStackKey"),
+  "BackButton must support the shared floating control while preserving inline use for standalone print and error screens."
 );
 assert(
   dock.includes("Job Session Running") &&

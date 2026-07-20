@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AppShell from "../../components/AppShell";
-import BackButton from "../../components/BackButton";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import InputField from "../../components/InputField";
@@ -144,8 +143,6 @@ export default function NewClientPage() {
       )}
 
       <div className="mx-auto max-w-3xl">
-        <BackButton label="Back" fallbackHref={`/clients?business=${businessSlug}`} />
-
         <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
           Trimax
         </p>

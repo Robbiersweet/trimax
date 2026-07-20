@@ -1,6 +1,5 @@
 import Link from "next/link";
 import AppShell from "../../components/AppShell";
-import BackButton from "../../components/BackButton";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import StatusBadge from "../../components/StatusBadge";
@@ -763,18 +762,14 @@ function PaymentProgressCard({
 function ProblemCard({
   title,
   message,
-  businessQuery,
 }: {
   title: string;
   message: string;
-  businessQuery: string;
 }) {
   return (
     <AppShell>
       <main className="mx-auto w-full max-w-4xl px-6 py-10">
-        <BackButton label="Back" fallbackHref={`/invoices${businessQuery}`} />
-
-        <Card className="mt-6">
+        <Card>
           <p className="text-sm font-semibold uppercase tracking-[0.35em] text-orange-400">
             Invoice Details
           </p>
@@ -812,7 +807,6 @@ export default async function InvoiceDetailPage({
       <ProblemCard
         title="Business Not Found"
         message={`Trimax could not find a business for "${businessSlug}".`}
-        businessQuery={businessQuery}
       />
     );
   }
@@ -835,7 +829,6 @@ export default async function InvoiceDetailPage({
       <ProblemCard
         title="Invoice Not Found"
         message="Trimax could not find this invoice record. It may have been deleted, or the link may be old."
-        businessQuery={businessQuery}
       />
     );
   }
@@ -845,7 +838,6 @@ export default async function InvoiceDetailPage({
       <ProblemCard
         title="Wrong Business Context"
         message="This invoice exists, but it does not belong to the selected business. Go back to invoices and choose the correct business."
-        businessQuery={businessQuery}
       />
     );
   }
@@ -1332,9 +1324,7 @@ export default async function InvoiceDetailPage({
       ) : null}
       <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
         <div className="mb-8 sm:mb-10">
-          <BackButton label="Back" fallbackHref={`/invoices${businessQuery}`} />
-
-          <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.35em] text-orange-400">
                 Invoice Details

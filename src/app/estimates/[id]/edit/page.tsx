@@ -7,7 +7,6 @@ import {
   useSearchParams,
 } from "next/navigation";
 import AppShell from "../../../components/AppShell";
-import BackButton from "../../../components/BackButton";
 import Card from "../../../components/Card";
 import Button from "../../../components/Button";
 import DocumentReadinessPanel from "../../../components/DocumentReadinessPanel";
@@ -901,11 +900,6 @@ export default function EditEstimatePage() {
       )}
 
       <div className="mx-auto max-w-4xl">
-        <BackButton
-          label="Back"
-          fallbackHref={`/estimates/${estimateId}?business=${businessSlug}`}
-        />
-
         <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
           Estimate Details
         </p>

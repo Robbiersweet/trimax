@@ -1,6 +1,5 @@
 import Link from "next/link";
 import AppShell from "../../components/AppShell";
-import BackButton from "../../components/BackButton";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import DeleteClientButton from "../../components/DeleteClientButton";
@@ -308,8 +307,6 @@ export default async function ClientDetailsPage({
   return (
     <AppShell>
       <div className="space-y-6">
-        <BackButton label="Back" fallbackHref={`/clients${businessQuery}`} />
-
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
