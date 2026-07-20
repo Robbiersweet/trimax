@@ -131,10 +131,10 @@ function fileToDataUrl(file: Blob) {
       if (typeof reader.result === "string") {
         resolve(reader.result);
       } else {
-        reject(new Error("The check photo could not be read."));
+        reject(new Error("The remittance image could not be read."));
       }
     };
-    reader.onerror = () => reject(new Error("The check photo could not be read."));
+    reader.onerror = () => reject(new Error("The remittance image could not be read."));
     reader.readAsDataURL(file);
   });
 }
@@ -146,7 +146,7 @@ async function imageElementFromFile(file: File) {
   try {
     await new Promise<void>((resolve, reject) => {
       image.onload = () => resolve();
-      image.onerror = () => reject(new Error("That photo format could not be previewed."));
+      image.onerror = () => reject(new Error("That image format could not be previewed."));
       image.src = imageUrl;
     });
 
@@ -161,7 +161,7 @@ function canvasToJpegDataUrl(canvas: HTMLCanvasElement) {
     canvas.toBlob(
       (blob) => {
         if (!blob) {
-          reject(new Error("The check photo could not be prepared."));
+          reject(new Error("The remittance image could not be prepared."));
           return;
         }
 
@@ -187,7 +187,7 @@ async function normalizePhotoForOcr(file: File) {
     const context = canvas.getContext("2d");
 
     if (!context) {
-      throw new Error("The check photo could not be prepared.");
+      throw new Error("The remittance image could not be prepared.");
     }
 
     canvas.width = width;
@@ -334,7 +334,7 @@ export default function BatchInvoicePayments({
   const [paymentEntryMode, setPaymentEntryMode] =
     useState<PaymentEntryMode>("choice");
   const [checkOcrMessage, setCheckOcrMessage] = useState(
-    "Choose a photo or enter the payment manually."
+    "Upload a remittance stub or enter the payment manually."
   );
   const [internalNote, setInternalNote] = useState(
     startedFromInvoiceSelection
@@ -600,13 +600,13 @@ export default function BatchInvoicePayments({
     if (file.size > 8_000_000) {
       setCheckOcrStatus("manual");
       setCheckOcrMessage(
-        "That photo is large. Paste the stub text manually or retake a closer photo."
+        "That image is large. Enter the payment manually or upload a closer remittance photo."
       );
       return;
     }
 
     setCheckOcrStatus("reading");
-    setCheckOcrMessage("Reading the check stub from the photo...");
+    setCheckOcrMessage("Reading the remittance stub from the image...");
 
     try {
       const imageDataUrl = await normalizePhotoForOcr(file);
@@ -623,7 +623,7 @@ export default function BatchInvoicePayments({
         setCheckOcrStatus(response.status === 503 ? "manual" : "error");
         setCheckOcrMessage(
           data.error ??
-            "Trimax could not read that photo. Paste the stub text manually."
+            "Trimax could not read that remittance. Enter the payment manually."
         );
         return;
       }
@@ -632,7 +632,7 @@ export default function BatchInvoicePayments({
         setCheckOcrStatus("manual");
         setCheckOcrMessage(
           data.error ??
-            "Trimax did not find readable text. Enter the payment manually."
+            "Trimax did not find readable remittance text. Enter the payment manually."
         );
         return;
       }
@@ -667,14 +667,14 @@ export default function BatchInvoicePayments({
 
       setCheckOcrStatus("ready");
       setCheckOcrMessage(
-        "Check read. Review the suggested invoice matches before applying."
+        "Remittance read. Review the suggested invoice matches before applying."
       );
     } catch (error) {
       setCheckOcrStatus("error");
       setCheckOcrMessage(
         error instanceof Error
           ? error.message
-          : "Trimax could not read that photo. Paste the stub text manually."
+          : "Trimax could not read that remittance. Enter the payment manually."
       );
     }
   }
@@ -690,7 +690,7 @@ export default function BatchInvoicePayments({
     setCheckPayor("");
     setCheckOcrStatus("idle");
     setCheckOcrMessage(
-      "Choose a photo or enter the payment manually."
+      "Upload a remittance stub or enter the payment manually."
     );
     setPaymentEntryMode("choice");
   }
@@ -716,7 +716,7 @@ export default function BatchInvoicePayments({
     void extractCheckStubFromPhoto(file);
     setToast({
       type: "success",
-      message: "Check photo added. Trimax is reading it now.",
+      message: "Remittance image added. Trimax is reading it now.",
     });
   }
 
@@ -724,7 +724,7 @@ export default function BatchInvoicePayments({
     if (!hasRemittanceStub) {
       setToast({
         type: "error",
-        message: "Paste the check stub text before matching invoices.",
+        message: "Paste the remittance stub text before matching invoices.",
       });
       return;
     }
@@ -949,13 +949,13 @@ export default function BatchInvoicePayments({
                     +
                   </span>
                   <span className="mt-2 block font-semibold text-white">
-                    Take Photo
+                    Upload Remittance
                   </span>
                 </span>
               )}
               <div className="mt-4 flex flex-wrap justify-center gap-2">
                 <label className="check-camera-action inline-flex cursor-pointer rounded-full bg-sky-500 px-4 py-2 text-sm font-black text-white transition hover:bg-sky-600">
-                  Take Photo
+                  Upload Remittance
                   <input
                     type="file"
                     accept="image/*,.heic,.heif"
@@ -1009,7 +1009,7 @@ export default function BatchInvoicePayments({
                 <p className="mt-3 text-xs font-semibold text-sky-200">
                   {filedPaymentImage
                     ? "Photo filed with payment."
-                    : "Photo will be saved when the payment is applied."}
+                    : "Image will be saved when the payment is applied."}
                 </p>
               ) : null}
             </div>
@@ -1019,7 +1019,7 @@ export default function BatchInvoicePayments({
             {paymentEntryMode === "choice" ? (
               <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
                 <p className="text-lg font-black text-white">
-                  Take Photo or Enter Check Manually
+                  Upload Remittance or Enter Check Manually
                 </p>
                 <p className="mt-2 text-sm leading-6 text-zinc-300">
                   Pick one path to start. Trimax keeps the current invoice list ready below.
@@ -1032,7 +1032,7 @@ export default function BatchInvoicePayments({
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <p className="font-black text-white">
                     {checkOcrStatus === "reading"
-                      ? "Reading check"
+                      ? "Reading remittance"
                       : hasRemittanceMatch
                         ? "Show Matches"
                         : "Review payment"}
@@ -1089,7 +1089,7 @@ export default function BatchInvoicePayments({
                   <textarea
                     value={remittanceStubText}
                     onChange={(event) => setRemittanceStubText(event.target.value)}
-                    placeholder="Paste readable stub text here if the photo did not read cleanly."
+                    placeholder="Paste readable remittance text here if the image did not read cleanly."
                     className="mt-4 min-h-24 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm leading-6 text-slate-950 outline-none transition focus:border-sky-500"
                   />
                 ) : null}

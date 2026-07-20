@@ -12,6 +12,10 @@ const nextConfig: NextConfig = {
     "/api/invoices/send-overdue-reminders": [
       "./node_modules/@sparticuz/chromium/bin/**/*",
     ],
+    "/api/payments/extract-check-stub": [
+      "./node_modules/tesseract.js/**/*",
+      "./node_modules/tesseract.js-core/**/*",
+    ],
   },
   async headers() {
     return [

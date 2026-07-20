@@ -65,15 +65,20 @@ export function extractUnitCodes(text: string) {
 }
 
 export function extractCheckNumber(text: string) {
-  const match = text.match(
-    /\b(?:CK|CHECK|CHECK\s*NO|CHECK\s*NUMBER)\s*#?\s*:?\s*(\d{3,})\b/i
+  const normalizedText = text.replace(/[Oo]/g, "0");
+  const match = normalizedText.match(
+    /\b(?:CK|CHK|CHECK|CHECK\s*NO\.?|CHECK\s*NUMBER|CHECK\s*#)\s*#?\s*:?\s*(\d{3,})\b/i
   );
 
   return match?.[1] ?? "";
 }
 
 export function normalizeInvoiceNumber(value: string) {
-  const digits = value.replace(/\D/g, "");
+  const rawDigits = value.replace(/\D/g, "");
+  const digits =
+    rawDigits.length > 4 && rawDigits.startsWith("0")
+      ? rawDigits.replace(/^0+/, "")
+      : rawDigits;
 
   if (!digits) {
     return "";
@@ -84,10 +89,18 @@ export function normalizeInvoiceNumber(value: string) {
 
 export function extractInvoiceNumbers(text: string) {
   const matches = new Set<string>();
+  const normalizedText = text.replace(
+    /\b(INV(?:OICE)?\.?\s*[-#: ]?\s*)([0-9OoIl|Vv]{3,8})\b/gi,
+    (_match, prefix: string, rawDigits: string) =>
+      `${prefix}${rawDigits
+        .replace(/[Vv]/g, "")
+        .replace(/[Oo]/g, "0")
+        .replace(/[Il|]/g, "1")}`
+  );
   const invoicePattern =
     /\b(?:inv(?:oice)?\.?\s*[-#: ]?\s*)?0*(\d{3,6})\b/gi;
 
-  for (const match of text.matchAll(invoicePattern)) {
+  for (const match of normalizedText.matchAll(invoicePattern)) {
     const raw = match[0];
     const digits = match[1] ?? "";
 
@@ -96,8 +109,9 @@ export function extractInvoiceNumbers(text: string) {
     }
 
     const index = match.index ?? 0;
-    const before = text.slice(Math.max(0, index - 16), index);
-    const after = text.slice(index + raw.length, index + raw.length + 16);
+    const before = normalizedText.slice(Math.max(0, index - 16), index);
+    const after = normalizedText.slice(index + raw.length, index + raw.length + 16);
+    const rawHasInvoicePrefix = /^inv(?:oice)?\.?\s*[-#: ]?\s*/i.test(raw);
     const hasInvoiceContext = /\binv(?:oice)?\.?\s*[-#: ]?\s*$/i.test(before);
     const hasNearbyAmount = /^\s*(?:\.\d{2}|,\d{3}|\d|\$)/.test(after);
     const hasDateContext =
@@ -109,7 +123,7 @@ export function extractInvoiceNumbers(text: string) {
       !hasCheckContext &&
       digits.length >= 3;
 
-    if (hasInvoiceContext || isBareInvoiceNumber) {
+    if (rawHasInvoicePrefix || hasInvoiceContext || isBareInvoiceNumber) {
       matches.add(normalizeInvoiceNumber(digits));
     }
   }
@@ -119,7 +133,7 @@ export function extractInvoiceNumbers(text: string) {
 
 export function extractTotalAmount(text: string) {
   const explicitTotal = text.match(
-    /\b(?:TOTAL|CHECK\s*TOTAL|AMOUNT)\s*:?\s*\$?\s*([\d,]+\.\d{2})/i
+    /\b(?:TOTAL|CHECK\s*TOTAL|CHECK\s*AMOUNT|PAYMENT\s*AMOUNT|AMOUNT\s*PAID|AMOUNT)\s*:?\s*\$?\s*([\d,]+\.\d{2})/i
   );
 
   if (explicitTotal?.[1]) {
@@ -133,7 +147,7 @@ export function extractTotalAmount(text: string) {
 
 export function extractLikelyPayor(text: string) {
   const explicitPayor = text.match(
-    /\b(?:PAYOR|PAYER|CUSTOMER|ACCOUNT)\s*:?\s*([^\n\r]+)/i
+    /\b(?:PAYOR|PAYER|CUSTOMER|ACCOUNT|PROPERTY|CLIENT)\s*:?\s*([^\n\r]+)/i
   );
 
   if (explicitPayor?.[1]) {
@@ -187,18 +201,46 @@ export function parseCheckDate(value: string) {
 }
 
 export function extractCheckDate(text: string) {
-  const match = text.match(
-    /\b(?:date|check\s*date)\s*:?\s*(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?|\d{4}-\d{1,2}-\d{1,2})\b/i
+  const labelledMatch = text.match(
+    /\b(?:date|check\s*date|payment\s*date|paid\s*date)\s*:?\s*(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?|\d{4}-\d{1,2}-\d{1,2})\b/i
   );
+  const match =
+    labelledMatch ??
+    text.match(/\b(\d{1,2}\/\d{1,2}\/\d{2,4}|\d{4}-\d{1,2}-\d{1,2})\b/);
 
   return match?.[1] ? parseCheckDate(match[1]) : "";
 }
 
+function combineSplitRemittanceRows(lines: string[]) {
+  const combined: string[] = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    const nextLine = lines[index + 1] ?? "";
+    const hasInvoice = extractInvoiceNumbers(line).length > 0;
+    const hasAmount = extractMoneyValues(line).length > 0;
+    const nextHasInvoice = extractInvoiceNumbers(nextLine).length > 0;
+    const nextAmounts = extractMoneyValues(nextLine);
+
+    if (hasInvoice && !hasAmount && !nextHasInvoice && nextAmounts.length > 0) {
+      combined.push(`${line} ${nextLine}`);
+      index += 1;
+      continue;
+    }
+
+    combined.push(line);
+  }
+
+  return combined;
+}
+
 export function parseRemittanceLines(text: string): RemittanceLine[] {
-  return text
+  const sourceLines = text
     .split(/\r?\n/)
     .map((line) => line.trim())
-    .filter(Boolean)
+    .filter(Boolean);
+
+  return combineSplitRemittanceRows(sourceLines)
     .map((line) => {
       const amounts = extractMoneyValues(line);
 
@@ -215,7 +257,7 @@ export function parseRemittanceLines(text: string): RemittanceLine[] {
           .trim(),
       };
     })
-    .filter((line) => !/\bTOTAL\b/i.test(line.text));
+    .filter((line) => !/\b(?:TOTAL|CHECK\s*AMOUNT|PAYMENT\s*AMOUNT|AMOUNT\s*PAID)\b/i.test(line.text));
 }
 
 export function parseCheckStubText(rawText: string): ParsedCheckStub {

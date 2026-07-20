@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import sharp from "sharp";
-import Tesseract from "tesseract.js";
 import { parseCheckStubText } from "@/app/lib/remittanceMatching";
 
 export const runtime = "nodejs";
@@ -48,6 +47,7 @@ async function preprocessForOcr(input: Buffer) {
 }
 
 async function recognizeText(image: Buffer) {
+  const Tesseract = await import("tesseract.js");
   const worker = await Tesseract.createWorker("eng", Tesseract.OEM.LSTM_ONLY, {
     cachePath: "/tmp/tesseract-cache",
     gzip: true,
@@ -70,7 +70,7 @@ async function recognizeText(image: Buffer) {
           () =>
             reject(
               new Error(
-                "Trimax could not finish reading that photo in time. Try a closer, brighter photo or paste the stub text manually."
+                "Trimax could not finish reading that remittance in time. Try a closer, brighter photo or enter it manually."
               )
             ),
           OCR_TIMEOUT_MS
@@ -95,10 +95,7 @@ export async function POST(request: Request) {
 
   if (!isSafeDataUrl(imageDataUrl)) {
     return NextResponse.json(
-      {
-        error:
-          "Upload a clear check photo under the current size limit.",
-      },
+      { error: "Upload a clear remittance stub or check photo under the current size limit." },
       { status: 400 }
     );
   }
@@ -114,7 +111,7 @@ export async function POST(request: Request) {
         stubText: "",
         lines: [],
         error:
-          "Owner Review Required. Trimax did not find readable printed text in that photo.",
+          "Owner Review Required. Trimax did not find readable printed text in that remittance.",
       });
     }
 
@@ -125,7 +122,7 @@ export async function POST(request: Request) {
       ...extraction,
     });
   } catch (error) {
-    console.error("Check stub OCR failed", {
+    console.error("Remittance OCR failed", {
       message: error instanceof Error ? error.message : String(error),
     });
 
@@ -134,7 +131,7 @@ export async function POST(request: Request) {
         error:
           error instanceof Error
             ? error.message
-            : "Trimax could not read that photo. Paste the stub text manually.",
+            : "Trimax could not read that remittance. Enter the payment manually.",
       },
       { status: 422 }
     );

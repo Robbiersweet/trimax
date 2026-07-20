@@ -19,6 +19,15 @@ const invoices = [
     status: "sent",
   },
   {
+    id: "inv-501",
+    displayId: "INV-0501",
+    customerName: "North Creek Apartments",
+    projectTitle: "Production remittance acceptance case",
+    invoiceAmount: 1099,
+    amountPaid: 0,
+    status: "sent",
+  },
+  {
     id: "inv-504",
     displayId: "INV-0504",
     customerName: "North Creek Apartments",
@@ -90,6 +99,36 @@ assert.deepEqual(match2734.referencedInvoiceNumbers, [
 assert.equal(match2734.totalAmount, 2198);
 assert.equal(match2734.confidence, "verified");
 
+const productionStub2721 = [
+  "North Creek Apartments",
+  "Date 07/07/2026",
+  "Check #2721",
+  "Total $2,198.00",
+  "INV0500 $1,099.00",
+  "INV0501 $1,099.00",
+].join("\n");
+const parsed2721 = parseCheckStubText(productionStub2721);
+const match2721 = findRemittanceMatches(
+  invoices,
+  parsed2721.stubText,
+  parsed2721.payor
+);
+
+assert.equal(parsed2721.checkNumber, "2721");
+assert.equal(parsed2721.totalAmount, 2198);
+assert.equal(parsed2721.payor, "North Creek Apartments");
+assert.equal(parsed2721.checkDate, "2026-07-07");
+assert.deepEqual(match2721.referencedInvoiceNumbers, [
+  "INV-0500",
+  "INV-0501",
+]);
+assert.deepEqual(
+  match2721.matches.map((invoice) => invoice.id),
+  ["inv-500", "inv-501"],
+  "Remittance-only production stub must match INV0500 and INV0501."
+);
+assert.equal(match2721.confidence, "verified");
+
 assert.notEqual(
   parsed2743.checkNumber,
   parsed2734.checkNumber,
@@ -131,7 +170,7 @@ const route = readFileSync(
 );
 assert(!route.includes("OPENAI_API_KEY"), "OCR route must not require OpenAI.");
 assert(!route.includes("api.openai.com"), "OCR route must not call OpenAI.");
-assert(route.includes("tesseract.js"), "OCR route must use Tesseract.js.");
+assert(route.includes("tesseract.js"), "OCR route must keep a Tesseract fallback.");
 
 const paymentScreen = readFileSync(
   resolve(root, "src/app/components/BatchInvoicePayments.tsx"),
