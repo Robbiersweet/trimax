@@ -2281,33 +2281,31 @@ export default async function DashboardPage({
       tone: "paid",
     },
   ];
-  const operationsRecentInvoices = recentBillableInvoices.slice(0, 3);
   const operationsRecentActivityLogs = ownerRecentActivityLogs.slice(0, 4);
 
   return (
     <AppShell>
-      <div className="space-y-6">
-        <div className="dashboard-masthead flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="space-y-4">
+        <div className="dashboard-masthead flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="dashboard-masthead-kicker text-sm uppercase tracking-[0.3em] text-orange-400">
               Trimax
             </p>
 
-            <h1 className="mt-2 text-4xl font-bold">
-              Dashboard
+            <h1 className="mt-1 text-3xl font-bold">
+              {isExecutiveDashboard ? "Executive Dashboard" : "Operations Dashboard"}
             </h1>
 
-            <p className="mt-2 text-zinc-400">
-              Operations overview for{" "}
-              {selectedBusiness?.name ??
-                "your business"}
-              .
-            </p>
+            {isExecutiveDashboard ? (
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
+                Reporting, patterns, proof, and business intelligence live here.
+              </p>
+            ) : null}
           </div>
 
           <Link
             href={`/settings?business=${selectedBusinessSlug}`}
-            className="dashboard-workspace-pill rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm transition hover:-translate-y-0.5 hover:border-sky-400/60"
+            className="dashboard-workspace-pill rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-2.5 text-sm transition hover:-translate-y-0.5 hover:border-sky-400/60"
           >
             <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
               Workspace
@@ -2321,7 +2319,7 @@ export default async function DashboardPage({
 
         <nav
           aria-label="Dashboard view"
-          className="dashboard-view-switch flex flex-wrap gap-2 rounded-2xl border border-white/10 bg-black/20 p-2"
+          className="dashboard-view-switch flex w-fit flex-wrap gap-2 rounded-2xl border border-white/10 bg-black/20 p-1.5"
         >
           <Link
             href={operationsDashboardHref}
@@ -4227,22 +4225,16 @@ export default async function DashboardPage({
               ]}
             >
               <section className="dashboard-operations-board grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
-                <Card className="dashboard-morning-brief dark-surface border-emerald-500/25 bg-zinc-950 p-4 sm:p-5">
+                <Card className="dashboard-morning-brief dark-surface border-emerald-500/25 bg-zinc-950 p-3 sm:p-4">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                       <p className="dashboard-section-label text-xs uppercase tracking-[0.24em]">
                         Morning Brief
                       </p>
                       <h2 className="mt-1 text-xl font-black text-white">
-                        Do these first
+                        Today
                       </h2>
                     </div>
-                    <Link
-                      href={executiveDashboardHref}
-                      className="dashboard-readable-link text-sm font-black transition"
-                    >
-                      Executive dashboard
-                    </Link>
                   </div>
 
                   <div className="mt-3 space-y-2">
@@ -4280,14 +4272,14 @@ export default async function DashboardPage({
                   </div>
                 </Card>
 
-                <Card className="dashboard-money-snapshot dark-surface border-sky-500/20 bg-zinc-950 p-4 sm:p-5">
+                <Card className="dashboard-money-snapshot dark-surface border-sky-500/20 bg-zinc-950 p-3 sm:p-4">
                   <div className="flex items-end justify-between gap-3">
                     <div>
                       <p className="dashboard-section-label text-xs uppercase tracking-[0.24em]">
                         Money Snapshot
                       </p>
                       <h2 className="mt-1 text-xl font-black text-white">
-                        Cash position
+                        Cash
                       </h2>
                     </div>
                     <Link
@@ -4322,7 +4314,7 @@ export default async function DashboardPage({
 
             <Card
               id="dashboard-queue"
-              className="dashboard-queue-command dark-surface overflow-hidden border-sky-500/20 bg-gradient-to-br from-zinc-950 via-zinc-900 to-emerald-950/20 p-4 sm:p-5"
+              className="dashboard-queue-command dark-surface overflow-hidden border-sky-500/20 bg-gradient-to-br from-zinc-950 via-zinc-900 to-emerald-950/20 p-3 sm:p-4"
             >
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
@@ -4332,9 +4324,6 @@ export default async function DashboardPage({
                   <h2 className="mt-1 text-xl font-black text-white">
                     Next 5 units
                   </h2>
-                  <p className="mt-1 max-w-2xl text-sm leading-5 text-zinc-300">
-                    {queueFocusDetail}
-                  </p>
                 </div>
                 <Link
                   href={`/queue?business=${selectedBusinessSlug}`}
@@ -4350,7 +4339,7 @@ export default async function DashboardPage({
                     <Link
                       key={item.id}
                       href={`/queue/${item.id}?business=${selectedBusinessSlug}`}
-                      className="dashboard-feature-card dark-surface rounded-2xl border border-zinc-800 bg-zinc-950 p-3 transition hover:border-sky-400/60"
+                      className="dashboard-feature-card dark-surface rounded-2xl border border-zinc-800 bg-zinc-950 p-2.5 transition hover:border-sky-400/60"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <p className="min-w-0 truncate font-black text-white">
@@ -4390,135 +4379,15 @@ export default async function DashboardPage({
                 "accountant",
               ]}
             >
-              <section className="dashboard-operations-board grid gap-4 xl:grid-cols-[1fr_0.9fr]">
-                <Card className="dashboard-workstream-card p-4 sm:p-5">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <p className="dashboard-section-label text-xs uppercase tracking-[0.24em]">
-                        Recent Invoices
-                      </p>
-                      <h2 className="mt-1 text-xl font-black text-white">
-                        Quick billing actions
-                      </h2>
-                    </div>
-                    <Link
-                      href={`/invoices?business=${selectedBusinessSlug}`}
-                      className="dashboard-readable-link text-sm font-black transition"
-                    >
-                      View all
-                    </Link>
-                  </div>
-
-                  <div className="mt-3 space-y-2">
-                    {operationsRecentInvoices.map((invoice) => {
-                      const amountDue = invoiceCollectionAmountDue(invoice);
-                      const isDepositRequest = hasActiveDepositRequest(invoice);
-                      const daysLate = daysPastDue(invoice.due_date);
-                      const isLate =
-                        amountDue > 0 &&
-                        daysLate !== null &&
-                        daysLate > 0;
-                      const paymentParams = new URLSearchParams({
-                        business: selectedBusinessSlug,
-                        customer: invoice.customer_name ?? "",
-                      });
-
-                      return (
-                        <div
-                          key={invoice.id}
-                          className="dashboard-feature-card dark-surface rounded-2xl border border-zinc-800 bg-zinc-950 px-3 py-2.5"
-                        >
-                          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-                            <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <p className="text-sm font-semibold text-orange-400">
-                                  {invoice.display_id ?? "Invoice"}
-                                </p>
-                                <StatusBadge status={invoice.status || "Draft"} />
-                                {isDepositRequest ? (
-                                  <span className="rounded-full border border-emerald-500/35 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200">
-                                    Deposit
-                                  </span>
-                                ) : null}
-                                {isLate ? (
-                                  <span className="rounded-full border border-pink-500/35 bg-pink-500/10 px-3 py-1 text-xs font-semibold text-pink-200">
-                                    {daysLate} day{daysLate === 1 ? "" : "s"} late
-                                  </span>
-                                ) : null}
-                              </div>
-                              <p className="mt-1 truncate text-sm">
-                                <Link
-                                  href={`/invoices/${invoice.id}?business=${selectedBusinessSlug}`}
-                                  className="font-semibold transition hover:text-orange-300"
-                                >
-                                  {invoice.project_title || "Untitled Invoice"}
-                                </Link>
-                                <span className="text-zinc-500"> / </span>
-                                <span className="text-zinc-400">
-                                  {invoice.customer_name || "Unknown Customer"}
-                                </span>
-                              </p>
-                            </div>
-                            <div className="shrink-0 sm:text-right">
-                              <p className="font-bold text-orange-400">
-                                {formatMoney(amountDue)}
-                              </p>
-                              <p className="text-xs text-zinc-500">
-                                Due {formatShortDate(invoice.due_date)}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="mt-2 flex flex-wrap gap-2 border-t border-zinc-800 pt-2">
-                            <Link
-                              href={`/invoices/${invoice.id}?business=${selectedBusinessSlug}`}
-                              className="app-button-primary rounded-full px-4 py-2 text-sm font-black"
-                            >
-                              Open
-                            </Link>
-                            <Link
-                              href={`/invoices/${invoice.id}/print?business=${selectedBusinessSlug}`}
-                              className="rounded-full border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-200 transition hover:border-orange-400 hover:text-orange-300"
-                            >
-                              Print
-                            </Link>
-                            {amountDue > 0 ? (
-                              <Link
-                                href={`/payments?${paymentParams.toString()}`}
-                                className="payment-action-button dashboard-payment-action rounded-full border px-4 py-2 text-sm font-semibold transition"
-                              >
-                                Record Payment
-                              </Link>
-                            ) : null}
-                            {isLate ? (
-                              <Link
-                                href={`/invoices/${invoice.id}?business=${selectedBusinessSlug}#late-payment-reminder`}
-                                className="rounded-full border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-black text-rose-800 transition hover:border-rose-400 hover:bg-rose-100"
-                              >
-                                Remind
-                              </Link>
-                            ) : null}
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    {billableInvoices.length === 0 ? (
-                      <p className="text-sm text-zinc-400">
-                        No invoices for this business yet.
-                      </p>
-                    ) : null}
-                  </div>
-                </Card>
-
-                <Card className="dashboard-workstream-card p-4 sm:p-5">
+              <section className="dashboard-operations-board grid gap-4">
+                <Card className="dashboard-workstream-card p-3 sm:p-4">
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <p className="dashboard-section-label text-xs uppercase tracking-[0.24em]">
                         Recent Activity
                       </p>
                       <h2 className="mt-1 text-xl font-black text-white">
-                        Latest updates
+                        Activity
                       </h2>
                     </div>
                     <Link
@@ -4555,8 +4424,7 @@ export default async function DashboardPage({
                       ))
                     ) : (
                       <p className="rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-3 text-sm leading-6 text-zinc-400">
-                        Activity will appear here as queue items, estimates,
-                        invoices, and payments are updated.
+                        No recent activity.
                       </p>
                     )}
                   </div>
@@ -4575,7 +4443,7 @@ export default async function DashboardPage({
                       Operations Dashboard
                     </p>
                     <h2 className="mt-2 text-2xl font-black text-white">
-                      Queue and schedule at a glance
+                      Queue and schedule
                     </h2>
                   </div>
                   <Link href={`/queue?business=${selectedBusinessSlug}`}>

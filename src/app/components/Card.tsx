@@ -12,7 +12,7 @@ export default function Card({
   return (
     <div
       id={id}
-      className={`app-card min-w-0 rounded-2xl border border-zinc-800 bg-zinc-900 p-5 shadow-lg sm:p-6 ${className}`}
+      className={`app-card min-w-0 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 shadow-lg sm:p-5 ${className}`}
     >
       {children}
     </div>

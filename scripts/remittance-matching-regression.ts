@@ -277,7 +277,7 @@ assert(
 assert(
   paymentScreen.includes('paymentEntryMode === "complete"') &&
     paymentScreen.includes("Payment Applied") &&
-    paymentScreen.includes("Process Another Payment"),
+    paymentScreen.includes("Record Another Payment"),
   "Payments screen must show a focused complete state after applying payment."
 );
 assert(
@@ -297,6 +297,24 @@ assert(
 assert(
   paymentScreen.includes("Matched Invoices"),
   "Payments screen must show extracted invoice matches during review."
+);
+assert(
+  paymentScreen.includes("readPreparedRemittanceFromFile(file, suggestion.cropBox, 0)") &&
+    paymentScreen.includes("Preparing remittance..."),
+  "Payments screen must auto-read after photo selection instead of forcing crop first."
+);
+assert(
+  paymentScreen.includes("beginCropDrag") &&
+    paymentScreen.includes('"top-left"') &&
+    paymentScreen.includes("cursor-nwse-resize") &&
+    !paymentScreen.includes('type="range"'),
+  "Manual crop must use draggable handles instead of edge sliders."
+);
+assert(
+  paymentScreen.includes("function reconcileReviewMatches") &&
+    paymentScreen.includes("invoiceTotalMatchesCheck") &&
+    paymentScreen.includes("Line amount reviewed against Trimax invoice balances"),
+  "Payments screen must reconcile OCR line amounts against real invoice balances."
 );
 
 console.log("Remittance matching regression checks passed.");

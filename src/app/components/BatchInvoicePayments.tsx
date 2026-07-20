@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { PointerEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Card from "./Card";
 import DateInputField from "./DateInputField";
@@ -85,6 +85,20 @@ type FiledPaymentImage = {
   storagePath: string;
   fileName: string;
 } | null;
+
+type CompletedPaymentSummary = {
+  checkNumber: string;
+  payor: string;
+  totalAmount: number;
+  invoiceCount: number;
+} | null;
+
+type CropDragTarget =
+  | "move"
+  | "top-left"
+  | "top-right"
+  | "bottom-left"
+  | "bottom-right";
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat("en-US", {
@@ -477,6 +491,13 @@ export default function BatchInvoicePayments({
     right: 92,
     bottom: 92,
   });
+  const cropFrameRef = useRef<HTMLDivElement | null>(null);
+  const cropDragRef = useRef<{
+    target: CropDragTarget;
+    startX: number;
+    startY: number;
+    startBox: CropBox;
+  } | null>(null);
   const [cropRotation, setCropRotation] = useState(0);
   const [cropPreviewAspectRatio, setCropPreviewAspectRatio] = useState(4 / 3);
   const [isTightlyFramedRemittance, setIsTightlyFramedRemittance] =
@@ -495,6 +516,9 @@ export default function BatchInvoicePayments({
   const [reviewMatchedInvoices, setReviewMatchedInvoices] = useState<
     ReviewMatchedInvoice[]
   >([]);
+  const [paymentReviewNotice, setPaymentReviewNotice] = useState("");
+  const [completedPaymentSummary, setCompletedPaymentSummary] =
+    useState<CompletedPaymentSummary>(null);
   const [remittanceStubText, setRemittanceStubText] = useState("");
   const [checkOcrStatus, setCheckOcrStatus] = useState<CheckOcrStatus>("idle");
   const [paymentEntryMode, setPaymentEntryMode] =
@@ -821,6 +845,60 @@ export default function BatchInvoicePayments({
       .filter((invoice): invoice is ReviewMatchedInvoice => Boolean(invoice));
   }
 
+  function reconcileReviewMatches(
+    matches: ReviewMatchedInvoice[],
+    extractedTotal: number
+  ) {
+    const invoiceTotal = Number(
+      matches.reduce((total, invoice) => total + invoice.amountDue, 0).toFixed(2)
+    );
+    const ocrLineTotal = Number(
+      matches
+        .reduce(
+          (total, invoice) => total + (invoice.remittanceAmount ?? invoice.amountDue),
+          0
+        )
+        .toFixed(2)
+    );
+    const invoiceTotalMatchesCheck =
+      extractedTotal > 0 && Math.abs(invoiceTotal - extractedTotal) < 0.01;
+    const ocrTotalMismatchesCheck =
+      extractedTotal > 0 && Math.abs(ocrLineTotal - extractedTotal) >= 0.01;
+    const corrected = matches.map((invoice) => {
+      const remittanceAmount = invoice.remittanceAmount;
+      const shouldUseInvoiceBalance =
+        remittanceAmount !== null &&
+        Math.abs(remittanceAmount - invoice.amountDue) >= 0.01 &&
+        invoiceTotalMatchesCheck;
+
+      return {
+        ...invoice,
+        remittanceAmount: shouldUseInvoiceBalance
+          ? invoice.amountDue
+          : remittanceAmount,
+      };
+    });
+    const correctedAny = corrected.some(
+      (invoice, index) =>
+        matches[index]?.remittanceAmount !== null &&
+        matches[index]?.remittanceAmount !== invoice.remittanceAmount
+    );
+    const notice =
+      correctedAny && ocrTotalMismatchesCheck
+        ? "Line amount reviewed against Trimax invoice balances and the remittance total."
+        : extractedTotal > 0 &&
+            matches.length > 0 &&
+            Math.abs(invoiceTotal - extractedTotal) >= 0.01
+          ? "Review required: matched invoice balances do not equal the remittance total."
+          : "";
+
+    return {
+      matches: corrected,
+      notice,
+      invoiceTotal,
+    };
+  }
+
   function loadExtractedRemittance(data: CheckStubOcrResponse) {
     const stubText = data.stubText?.trim() ?? "";
     const extractedPayor =
@@ -857,7 +935,12 @@ export default function BatchInvoicePayments({
       stubText,
       extractedPayor
     );
-    const reviewMatches = matchInvoicesFromExtraction(data, stubText);
+    const rawReviewMatches = matchInvoicesFromExtraction(data, stubText);
+    const reconciledReview = reconcileReviewMatches(
+      rawReviewMatches,
+      extractedTotal
+    );
+    const reviewMatches = reconciledReview.matches;
     const matchedCustomers = Array.from(
       new Set(reviewMatches.map((invoice) => invoice.customerName))
     );
@@ -886,6 +969,7 @@ export default function BatchInvoicePayments({
     setPaymentReference(extractedCheckNumber);
     setCapturedCheckReference(extractedCheckNumber);
     setCheckPayor(extractedPayor);
+    setPaymentReviewNotice(reconciledReview.notice);
 
     if (extractedDate) {
       setPaymentDate(extractedDate);
@@ -1011,12 +1095,24 @@ export default function BatchInvoicePayments({
       }
 
       const { reviewMatches } = loadExtractedRemittance(data);
+      const responseTotal =
+        typeof data.totalAmount === "number" && data.totalAmount > 0
+          ? data.totalAmount
+          : 0;
+      const matchedInvoiceTotal = reviewMatches.reduce(
+        (total, invoice) => total + invoice.amountDue,
+        0
+      );
+      const hasConfidentReview =
+        reviewMatches.length > 0 &&
+        (responseTotal <= 0 ||
+          Math.abs(matchedInvoiceTotal - responseTotal) < 0.01);
 
-      setCheckOcrStatus("ready");
+      setCheckOcrStatus(hasConfidentReview ? "ready" : "manual");
       setCheckOcrMessage(
-        reviewMatches.length > 0
+        hasConfidentReview
           ? "Remittance read. Review the payment before applying."
-          : "Remittance read. Select the invoices before applying."
+          : "Could not confidently match this remittance. Adjust crop or enter manually."
       );
     } catch (error) {
       setCheckOcrStatus("error");
@@ -1028,18 +1124,18 @@ export default function BatchInvoicePayments({
     }
   }
 
-  async function readCroppedRemittance() {
-    if (!checkImageFile) {
-      return;
-    }
-
+  async function readPreparedRemittanceFromFile(
+    file: File,
+    nextCropBox: CropBox,
+    nextRotation: number
+  ) {
     setIsPreparingCrop(true);
 
     try {
       const imageDataUrl = await cropPhotoForOcr(
-        checkImageFile,
-        cropBox,
-        cropRotation
+        file,
+        nextCropBox,
+        nextRotation
       );
 
       setPaymentEntryMode("photo");
@@ -1054,6 +1150,14 @@ export default function BatchInvoicePayments({
     } finally {
       setIsPreparingCrop(false);
     }
+  }
+
+  async function readCroppedRemittance() {
+    if (!checkImageFile) {
+      return;
+    }
+
+    await readPreparedRemittanceFromFile(checkImageFile, cropBox, cropRotation);
   }
 
   function resetCheckCaptureState() {
@@ -1072,6 +1176,8 @@ export default function BatchInvoicePayments({
     setCapturedCheckAmount("");
     setCapturedCheckReference("");
     setCheckPayor("");
+    setPaymentReviewNotice("");
+    setCompletedPaymentSummary(null);
     setCheckOcrStatus("idle");
     setCheckOcrMessage(
       "Upload a remittance stub or enter the payment manually."
@@ -1079,17 +1185,94 @@ export default function BatchInvoicePayments({
     setPaymentEntryMode("choice");
   }
 
-  function updateCropEdge(edge: keyof CropBox, value: number) {
-    setCropBox((current) => {
-      const next = { ...current, [edge]: value };
+  function constrainCropBox(next: CropBox): CropBox {
+    const minimumSize = 8;
+    const left = Math.max(0, Math.min(next.left, 100 - minimumSize));
+    const top = Math.max(0, Math.min(next.top, 100 - minimumSize));
+    const right = Math.min(100, Math.max(next.right, left + minimumSize));
+    const bottom = Math.min(100, Math.max(next.bottom, top + minimumSize));
 
-      return {
-        left: Math.min(next.left, next.right - 5),
-        top: Math.min(next.top, next.bottom - 5),
-        right: Math.max(next.right, next.left + 5),
-        bottom: Math.max(next.bottom, next.top + 5),
-      };
-    });
+    return {
+      left: Math.min(left, right - minimumSize),
+      top: Math.min(top, bottom - minimumSize),
+      right,
+      bottom,
+    };
+  }
+
+  function beginCropDrag(
+    event: PointerEvent<HTMLButtonElement | HTMLDivElement>,
+    target: CropDragTarget
+  ) {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    cropDragRef.current = {
+      target,
+      startX: event.clientX,
+      startY: event.clientY,
+      startBox: cropBox,
+    };
+  }
+
+  function updateCropDrag(event: PointerEvent<HTMLDivElement>) {
+    const drag = cropDragRef.current;
+    const frame = cropFrameRef.current;
+
+    if (!drag || !frame) {
+      return;
+    }
+
+    const rect = frame.getBoundingClientRect();
+    const deltaX = ((event.clientX - drag.startX) / rect.width) * 100;
+    const deltaY = ((event.clientY - drag.startY) / rect.height) * 100;
+    const start = drag.startBox;
+    const width = start.right - start.left;
+    const height = start.bottom - start.top;
+
+    if (drag.target === "move") {
+      const left = Math.max(0, Math.min(start.left + deltaX, 100 - width));
+      const top = Math.max(0, Math.min(start.top + deltaY, 100 - height));
+
+      setCropBox({
+        left,
+        top,
+        right: left + width,
+        bottom: top + height,
+      });
+      return;
+    }
+
+    setCropBox(
+      constrainCropBox({
+        left:
+          drag.target === "top-left" || drag.target === "bottom-left"
+            ? start.left + deltaX
+            : start.left,
+        top:
+          drag.target === "top-left" || drag.target === "top-right"
+            ? start.top + deltaY
+            : start.top,
+        right:
+          drag.target === "top-right" || drag.target === "bottom-right"
+            ? start.right + deltaX
+            : start.right,
+        bottom:
+          drag.target === "bottom-left" || drag.target === "bottom-right"
+            ? start.bottom + deltaY
+            : start.bottom,
+      })
+    );
+  }
+
+  function endCropDrag() {
+    cropDragRef.current = null;
+  }
+
+  function resetCropToSuggestion() {
+    setCropBox({ left: 8, top: 8, right: 92, bottom: 92 });
+    setCropRotation(0);
+    setIsTightlyFramedRemittance(false);
+    setCheckOcrMessage("Adjust the crop, then read it.");
   }
 
   function captureCheckImage(file: File | undefined) {
@@ -1104,14 +1287,16 @@ export default function BatchInvoicePayments({
     setCheckImagePreview(URL.createObjectURL(file));
     setCheckImageName(file.name);
     setCheckImageFile(file);
-    setPaymentEntryMode("crop");
+    setPaymentEntryMode("photo");
     setCheckOcrStatus("idle");
-    setCheckOcrMessage("Crop to the remittance, then read it.");
+    setCheckOcrMessage("Preparing remittance...");
     setFiledPaymentImage(null);
     setRemittanceStubText("");
     setSelectedIds([]);
     setReviewMatchedInvoices([]);
     setExtractedPaymentAmount(null);
+    setPaymentReviewNotice("");
+    setCompletedPaymentSummary(null);
     setCheckAmount("");
     setPaymentReference("");
     setCheckPayor("");
@@ -1128,15 +1313,11 @@ export default function BatchInvoicePayments({
     void detectDefaultCropBox(file).then((suggestion) => {
       setCropBox(suggestion.cropBox);
       setIsTightlyFramedRemittance(suggestion.isTightlyFramed);
-      setCheckOcrMessage(
-        suggestion.isTightlyFramed
-          ? "This looks tightly cropped. Use it as-is or adjust before reading."
-          : "Crop to the remittance, then read it."
-      );
+      void readPreparedRemittanceFromFile(file, suggestion.cropBox, 0);
     });
     setToast({
       type: "success",
-      message: "Remittance image added. Adjust the crop, then read it.",
+      message: "Remittance image added.",
     });
   }
 
@@ -1245,6 +1426,12 @@ export default function BatchInvoicePayments({
           selectedInvoices.length === 1 ? "" : "s"
         }.`,
       });
+      setCompletedPaymentSummary({
+        checkNumber: paymentReference || capturedCheckReference,
+        payor: checkPayor,
+        totalAmount: enteredCheckAmount ?? selectedTotal,
+        invoiceCount: selectedInvoices.length,
+      });
       setPaymentEntryMode("complete");
       setCheckOcrStatus("idle");
       setCheckOcrMessage("Payment applied.");
@@ -1252,7 +1439,6 @@ export default function BatchInvoicePayments({
         URL.revokeObjectURL(checkImagePreview);
         setCheckImagePreview("");
       }
-      router.refresh();
     } catch (error) {
       setToast({
         type: "error",
@@ -1275,13 +1461,44 @@ export default function BatchInvoicePayments({
       {toast ? <Toast type={toast.type} message={toast.message} /> : null}
 
       {paymentEntryMode === "complete" ? (
-        <div className="rounded-3xl border border-emerald-300/40 bg-emerald-500/10 p-5">
-          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-emerald-200">
-            Complete
-          </p>
-          <h3 className="mt-2 text-2xl font-black text-white">
+        <div className="rounded-2xl border border-emerald-300/40 bg-emerald-500/10 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-200">
             Payment Applied
-          </h3>
+          </p>
+          <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
+            <div className="min-w-0 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+              <p className="text-xs uppercase tracking-[0.16em] text-emerald-100/70">
+                Check #
+              </p>
+              <p className="mt-1 break-words font-black text-white">
+                {completedPaymentSummary?.checkNumber || "Not entered"}
+              </p>
+            </div>
+            <div className="min-w-0 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+              <p className="text-xs uppercase tracking-[0.16em] text-emerald-100/70">
+                Payor
+              </p>
+              <p className="mt-1 break-words font-black text-white">
+                {completedPaymentSummary?.payor || "Not entered"}
+              </p>
+            </div>
+            <div className="min-w-0 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+              <p className="text-xs uppercase tracking-[0.16em] text-emerald-100/70">
+                Total
+              </p>
+              <p className="mt-1 font-black text-white">
+                {formatMoney(completedPaymentSummary?.totalAmount ?? 0)}
+              </p>
+            </div>
+            <div className="min-w-0 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+              <p className="text-xs uppercase tracking-[0.16em] text-emerald-100/70">
+                Invoices
+              </p>
+              <p className="mt-1 font-black text-white">
+                {completedPaymentSummary?.invoiceCount ?? 0}
+              </p>
+            </div>
+          </div>
           <button
             type="button"
             onClick={() => {
@@ -1289,10 +1506,11 @@ export default function BatchInvoicePayments({
               setCheckAmount("");
               setInternalNote("");
               resetCheckCaptureState();
+              router.refresh();
             }}
-            className="mt-5 rounded-2xl bg-emerald-500 px-5 py-3 font-black text-black transition hover:bg-emerald-400"
+            className="mt-4 rounded-2xl bg-emerald-500 px-5 py-3 font-black text-black transition hover:bg-emerald-400"
           >
-            Process Another Payment
+            Record Another Payment
           </button>
         </div>
       ) : null}
@@ -1392,6 +1610,8 @@ export default function BatchInvoicePayments({
                   setRemittanceStubText("");
                   setReviewMatchedInvoices([]);
                   setExtractedPaymentAmount(null);
+                  setPaymentReviewNotice("");
+                  setCompletedPaymentSummary(null);
                   setCapturedCheckAmount("");
                   setCapturedCheckReference("");
                   setCheckPayor("");
@@ -1421,9 +1641,6 @@ export default function BatchInvoicePayments({
               <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
                 <p className="text-lg font-black text-white">
                   Upload Remittance or Enter Check Manually
-                </p>
-                <p className="mt-2 text-sm leading-6 text-zinc-300">
-                  Pick one path to start. Trimax keeps the current invoice list ready below.
                 </p>
               </div>
             ) : null}
@@ -1461,8 +1678,12 @@ export default function BatchInvoicePayments({
                 {checkImagePreview ? (
                   <div className="mt-4 overflow-hidden rounded-2xl border border-sky-400/30 bg-black">
                     <div
-                      className="relative mx-auto max-h-[52vh] w-full overflow-hidden"
+                      ref={cropFrameRef}
+                      className="relative mx-auto max-h-[52vh] w-full touch-none overflow-hidden"
                       style={{ aspectRatio: cropPreviewAspectRatio }}
+                      onPointerMove={updateCropDrag}
+                      onPointerUp={endCropDrag}
+                      onPointerCancel={endCropDrag}
                     >
                       <div
                         role="img"
@@ -1474,14 +1695,35 @@ export default function BatchInvoicePayments({
                         }}
                       />
                       <div
-                        className="pointer-events-none absolute border-2 border-emerald-300 bg-emerald-300/10 shadow-[0_0_0_9999px_rgba(0,0,0,0.42)]"
+                        className="absolute border-2 border-emerald-300 bg-emerald-300/10 shadow-[0_0_0_9999px_rgba(0,0,0,0.42)]"
                         style={{
                           left: `${cropBox.left}%`,
                           top: `${cropBox.top}%`,
                           width: `${cropBox.right - cropBox.left}%`,
                           height: `${cropBox.bottom - cropBox.top}%`,
                         }}
-                      />
+                        onPointerDown={(event) => beginCropDrag(event, "move")}
+                      >
+                        {(
+                          [
+                            ["top-left", "-left-3 -top-3 cursor-nwse-resize"],
+                            ["top-right", "-right-3 -top-3 cursor-nesw-resize"],
+                            ["bottom-left", "-bottom-3 -left-3 cursor-nesw-resize"],
+                            ["bottom-right", "-bottom-3 -right-3 cursor-nwse-resize"],
+                          ] as const
+                        ).map(([target, positionClass]) => (
+                          <button
+                            key={target}
+                            type="button"
+                            aria-label={`Drag ${target.replace("-", " ")} crop handle`}
+                            onPointerDown={(event) => {
+                              event.stopPropagation();
+                              beginCropDrag(event, target);
+                            }}
+                            className={`absolute h-8 w-8 rounded-full border-2 border-black bg-emerald-300 shadow-lg ${positionClass}`}
+                          />
+                        ))}
+                      </div>
                     </div>
                   </div>
                 ) : null}
@@ -1489,29 +1731,6 @@ export default function BatchInvoicePayments({
                 <p className="mt-3 text-sm font-semibold text-sky-100">
                   {checkOcrMessage}
                 </p>
-
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  {([
-                    ["left", "Left edge"],
-                    ["right", "Right edge"],
-                    ["top", "Top edge"],
-                    ["bottom", "Bottom edge"],
-                  ] as const).map(([edge, label]) => (
-                    <label key={edge} className="text-xs font-semibold text-zinc-200">
-                      <span className="mb-1 block">{label}</span>
-                      <input
-                        type="range"
-                        min={0}
-                        max={100}
-                        value={cropBox[edge]}
-                        onChange={(event) =>
-                          updateCropEdge(edge, Number(event.target.value))
-                        }
-                        className="w-full accent-emerald-400"
-                      />
-                    </label>
-                  ))}
-                </div>
 
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button
@@ -1540,14 +1759,10 @@ export default function BatchInvoicePayments({
                   ) : null}
                   <button
                     type="button"
-                    onClick={() => {
-                      setCropBox({ left: 8, top: 8, right: 92, bottom: 92 });
-                      setIsTightlyFramedRemittance(false);
-                      setCheckOcrMessage("Adjust the crop, then read it.");
-                    }}
+                    onClick={resetCropToSuggestion}
                     className="rounded-full border border-slate-400/40 px-4 py-2 text-sm font-semibold text-zinc-100 transition hover:bg-white/10"
                   >
-                    Reset Crop
+                    Reset
                   </button>
                   <label className="inline-flex cursor-pointer rounded-full border border-slate-400/40 px-4 py-2 text-sm font-semibold text-zinc-100 transition hover:bg-white/10">
                     Retake
@@ -1640,8 +1855,14 @@ export default function BatchInvoicePayments({
                 ) : null}
 
                 {checkOcrStatus === "ready" ? (
-                  <div className="mt-3 rounded-xl border border-emerald-300/35 bg-emerald-300/10 px-3 py-2 text-sm font-semibold text-emerald-50">
+                  <div className="mt-3 min-w-0 rounded-xl border border-emerald-300/35 bg-emerald-300/10 px-3 py-2 text-sm font-semibold text-emerald-50">
                     {checkOcrMessage}
+                  </div>
+                ) : null}
+
+                {isRemittanceReview && paymentReviewNotice ? (
+                  <div className="mt-2 min-w-0 rounded-xl border border-amber-300/35 bg-amber-300/10 px-3 py-2 text-sm font-semibold text-amber-50">
+                    {paymentReviewNotice}
                   </div>
                 ) : null}
 
@@ -1653,17 +1874,21 @@ export default function BatchInvoicePayments({
                     {reviewMatchedInvoices.map((invoice) => (
                       <div
                         key={invoice.id}
-                        className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm"
+                        className="grid min-w-0 gap-2 rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start"
                       >
-                        <span className="min-w-0">
-                          <span className="block truncate font-semibold text-white">
-                            {invoice.displayId} - {invoice.projectTitle}
+                        <span className="min-w-0 break-words">
+                          <span className="block font-black text-white">
+                            {invoice.displayId}
+                            <span className="font-semibold text-zinc-300">
+                              {" "}
+                              {invoice.projectTitle}
+                            </span>
                           </span>
-                          <span className="mt-0.5 block truncate text-zinc-400">
+                          <span className="mt-0.5 block text-zinc-400">
                             {invoice.customerName}
                           </span>
                         </span>
-                        <span className="font-black text-emerald-300">
+                        <span className="shrink-0 font-black text-emerald-300 sm:text-right">
                           {formatMoney(invoice.remittanceAmount ?? invoice.amountDue)}
                         </span>
                       </div>
@@ -1694,12 +1919,12 @@ export default function BatchInvoicePayments({
 
       {showPaymentReview ? (
         <>
-      <div className="app-soft-panel mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="app-soft-panel mt-4 min-w-0 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
         <div
-          className={`grid gap-4 md:grid-cols-2 ${
+          className={`grid min-w-0 gap-3 md:grid-cols-2 ${
             isRemittanceReview
-              ? "xl:grid-cols-[150px_170px_180px_1fr_auto]"
-              : "xl:grid-cols-[150px_130px_170px_180px_1fr_auto]"
+              ? "xl:grid-cols-[minmax(130px,150px)_minmax(140px,170px)_minmax(140px,180px)_minmax(0,1fr)_minmax(190px,auto)]"
+              : "xl:grid-cols-[minmax(130px,150px)_minmax(110px,130px)_minmax(140px,170px)_minmax(140px,180px)_minmax(0,1fr)_minmax(190px,auto)]"
           }`}
         >
           <DateInputField
@@ -1710,7 +1935,7 @@ export default function BatchInvoicePayments({
           />
 
           {!isRemittanceReview ? (
-          <div>
+          <div className="min-w-0">
             <label className="mb-2 block text-sm text-zinc-400">
               Payment Type
             </label>
@@ -1728,7 +1953,7 @@ export default function BatchInvoicePayments({
           </div>
           ) : null}
 
-          <div>
+          <div className="min-w-0">
             <div className="mb-2 flex items-center justify-between gap-3">
               <label className="block text-sm text-zinc-400">
                 Check Amount
@@ -1764,7 +1989,7 @@ export default function BatchInvoicePayments({
             />
           </div>
 
-          <div>
+          <div className="min-w-0">
             <label className="mb-2 block text-sm text-zinc-400">
               Check #
             </label>

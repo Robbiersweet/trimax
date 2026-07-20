@@ -3,6 +3,7 @@ import AppShell from "../components/AppShell";
 import BatchInvoicePayments from "../components/BatchInvoicePayments";
 import Button from "../components/Button";
 import Card from "../components/Card";
+import PersistentDetails from "../components/PersistentDetails";
 import { supabase } from "../lib/supabase";
 
 type Business = {
@@ -345,22 +346,6 @@ export default async function PaymentsPage({
             </p>
 
             <h1 className="mt-3 text-4xl font-bold">Payment Workspace</h1>
-
-            <p className="mt-3 max-w-3xl text-zinc-400">
-              Built for check days: capture checks, match them to open
-              invoices, apply deposits or full payments, and keep the
-              accounting trail clean.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <Link href={`/invoices${businessQuery}#invoice-results`}>
-              <Button variant="secondary">Open Invoices</Button>
-            </Link>
-
-            <Link href={`/invoices${businessQuery}&view=aging#invoice-results`}>
-              <Button variant="secondary">Aging View</Button>
-            </Link>
           </div>
         </div>
 
@@ -379,48 +364,6 @@ export default async function PaymentsPage({
                 <p key={issue}>{issue}</p>
               ))}
             </div>
-
-            <p className="mt-4 text-sm leading-6 text-amber-100/90">
-              If you are on the login page, sign in again first. If you are
-              already signed in and this stays here, the invoice or activity
-              access rules may need review.
-            </p>
-          </Card>
-        ) : null}
-
-        {focusedCustomer ? (
-          <Card className="border-green-500/30 bg-green-500/10">
-            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-green-200">
-              Customer Payment Focus
-            </p>
-
-            <h2 className="mt-2 text-2xl font-bold">
-              Ready to record payment for {focusedCustomer}
-            </h2>
-
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
-              Review the invoice list, enter the check details, and use the
-              remittance stub when it identifies exact invoice numbers. If the
-              stub is incomplete, select invoices manually.
-            </p>
-          </Card>
-        ) : null}
-
-        {initialInvoiceIds.length > 0 ? (
-          <Card className="border-green-500/30 bg-green-500/10">
-            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-green-200">
-              Selected Invoice Batch
-            </p>
-
-            <h2 className="mt-2 text-2xl font-bold">
-              Payment batch loaded from invoices
-            </h2>
-
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
-              Trimax brought over the invoices you selected on the invoice
-              list. Review the check amount, date, and reference, then apply
-              the payment when everything matches.
-            </p>
           </Card>
         ) : null}
 
@@ -435,12 +378,6 @@ export default async function PaymentsPage({
                 <h2 className="mt-2 text-3xl font-black">
                   No open invoices need payment right now
                 </h2>
-
-                <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-400">
-                  When an invoice, deposit request, or imported FreshBooks
-                  balance is collectible, it will appear here for check capture
-                  and batch payment matching.
-                </p>
               </div>
 
               <div className="flex flex-wrap gap-3">
@@ -477,32 +414,25 @@ export default async function PaymentsPage({
           />
         </div>
 
-          <Card>
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-sm uppercase tracking-[0.3em] text-green-300">
-                  Recent Payments
-                </p>
-                <h2 className="mt-2 text-2xl font-bold">Latest activity</h2>
-              </div>
-
+          <PersistentDetails
+            storageKey={`trimax.payments.history.${businessSlug}`}
+            title="History"
+            subtitle="Recent payments"
+            summaryMeta={
               <Link
                 href={`/activity${businessQuery}&type=payment`}
                 className="text-sm font-semibold text-orange-400"
               >
                 Open log
               </Link>
-            </div>
+            }
+            className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-3"
+          >
 
             {paymentLogs.length === 0 ? (
               <div className="mt-5 rounded-2xl border border-green-500/20 bg-green-500/10 p-4">
                 <p className="font-semibold text-green-200">
-                  Batch payment history will appear here.
-                </p>
-                <p className="mt-2 text-sm leading-6 text-zinc-300">
-                  After you apply one check across multiple invoices, Trimax
-                  will record the payment reference, customer, amount, and time
-                  here for quick review.
+                  No recent payment activity.
                 </p>
               </div>
             ) : (
@@ -566,7 +496,7 @@ export default async function PaymentsPage({
                 })}
               </div>
             )}
-          </Card>
+          </PersistentDetails>
       </div>
     </AppShell>
   );

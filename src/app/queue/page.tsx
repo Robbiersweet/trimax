@@ -5,6 +5,7 @@ import Button from "../components/Button";
 import PriorityPlanner, {
   type PriorityPlannerItem,
 } from "../components/PriorityPlanner";
+import PersistentDetails from "../components/PersistentDetails";
 import StatusBadge from "../components/StatusBadge";
 import RoleVisible from "../components/RoleVisible";
 import Toast from "../components/Toast";
@@ -1196,13 +1197,7 @@ export default async function QueuePage({
                 <h2 className="mt-2 text-2xl font-black text-white">
                   Choose a property first
                 </h2>
-                <p className="mt-2 text-sm leading-6 text-zinc-300">
-                  Arrange the order work should be completed. Manager requested
-                  priority is property-scoped, so pick one property before
-                  planning.
-                </p>
-
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-3 flex flex-wrap gap-2">
                   {propertyPlannerOptions.length === 0 ? (
                     <p className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm font-semibold text-zinc-300">
                       No properties are available yet.
@@ -1230,115 +1225,24 @@ export default async function QueuePage({
           </>
         ) : (
           <>
-        <Card className="queue-compass border-cyan-500/20 bg-zinc-950/70 p-4">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.22em]">
-                Queue Compass
-              </p>
-              <h2 className="mt-1 text-xl font-black text-white">
-                {activeView.title} for {activePropertyLabel}
-              </h2>
-              <p className="mt-1 max-w-3xl text-sm leading-6 text-zinc-300">
-                {activeView.detail}
-              </p>
-            </div>
-
-            <Link
-              href={queueHref(businessSlug, {
-                property: propertyFilter,
-                view: "ready-soon",
-              })}
-              className="queue-compass-action rounded-2xl border border-amber-300/30 bg-amber-400/10 px-4 py-3 text-sm font-black text-amber-100 transition hover:-translate-y-0.5 hover:border-amber-200"
-            >
-              Review due-soon work
-            </Link>
-          </div>
-
-          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            {[
-              {
-                label: "Active Work",
-                value: activeWorkCount,
-                detail: "Open queue items",
-                href: queueHref(businessSlug, { property: propertyFilter }),
-                tone: "sky",
-              },
-              {
-                label: "Needs Estimate",
-                value: needsEstimateCount,
-                detail: "Pricing blockers",
-                href: queueHref(businessSlug, {
-                  property: propertyFilter,
-                  view: "needs-estimate",
-                }),
-                tone: "violet",
-              },
-              {
-                label: "Ready Soon",
-                value: readySoonCount,
-                detail: "Needs schedule attention",
-                href: queueHref(businessSlug, {
-                  property: propertyFilter,
-                  view: "ready-soon",
-                }),
-                tone: "amber",
-              },
-              {
-                label: "Remediation",
-                value: remediationCount,
-                detail: "Smoke or special work",
-                href: queueHref(businessSlug, {
-                  property: propertyFilter,
-                  view: "remediation",
-                }),
-                tone: "rose",
-              },
-            ].map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                data-tone={item.tone}
-                className="queue-compass-card rounded-2xl border border-white/10 bg-white/[0.04] p-4 transition hover:-translate-y-0.5 hover:border-cyan-300/60"
-              >
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-zinc-400">
-                  {item.label}
-                </p>
-                <p className="mt-2 text-3xl font-black text-white">
-                  {item.value}
-                </p>
-                <p className="mt-1 text-sm font-semibold text-zinc-300">
-                  {item.detail}
-                </p>
-              </Link>
-            ))}
-          </div>
-        </Card>
-
-        <Card className="queue-dispatch-radar border-emerald-500/20 bg-zinc-950/70 p-4">
-          <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.22em]">
-                Dispatch Radar
-              </p>
-              <h2 className="mt-1 text-xl font-black text-white">
-                Workload pressure at a glance
-              </h2>
-              <p className="mt-1 max-w-3xl text-sm leading-6 text-zinc-300">
-                Trimax is watching schedule gaps, overdue work, active field
-                sessions, and missing labor proof from the same queue data.
-              </p>
-            </div>
-
-            <Link
-              href={`/job-sessions?business=${businessSlug}`}
-              className="queue-dispatch-action rounded-2xl border border-emerald-300/30 bg-emerald-400/10 px-4 py-3 text-sm font-black text-emerald-100 transition hover:-translate-y-0.5 hover:border-emerald-200"
-            >
-              Review labor proof
-            </Link>
-          </div>
-
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <PersistentDetails
+          storageKey={`trimax.queue.dispatch.${businessSlug}`}
+          title="Secondary"
+          subtitle="Dispatch / Workload"
+          summaryMeta={
+            <span className="rounded-full border border-emerald-300/30 bg-emerald-400/10 px-3 py-1 text-xs font-black text-emerald-100">
+              Labor Proof
+            </span>
+          }
+          className="queue-dispatch-radar rounded-2xl border border-emerald-500/20 bg-zinc-950/70 p-3"
+        >
+          <Link
+            href={`/job-sessions?business=${businessSlug}`}
+            className="mb-3 inline-flex rounded-2xl border border-emerald-300/30 bg-emerald-400/10 px-4 py-3 text-sm font-black text-emerald-100 transition hover:-translate-y-0.5 hover:border-emerald-200"
+          >
+            Labor Proof
+          </Link>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {queueDispatchCards.map((card) => (
               <Link
                 key={card.label}
@@ -1352,35 +1256,23 @@ export default async function QueuePage({
                 <p className="mt-2 text-3xl font-black text-white">
                   {card.value}
                 </p>
-                <p className="mt-1 text-sm font-semibold leading-5 text-zinc-300">
-                  {card.detail}
-                </p>
               </Link>
             ))}
           </div>
-        </Card>
+        </PersistentDetails>
 
-        <Card className="queue-operations-summary border-cyan-500/20 bg-cyan-500/10 p-5">
-          <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="dashboard-readable-label text-xs font-black uppercase tracking-[0.22em]">
-                Operations Summary
-              </p>
-              <h2 className="mt-1 text-xl font-black text-white">
-                What deserves attention right now
-              </h2>
-              <p className="mt-1 max-w-3xl text-sm leading-6 text-zinc-300">
-                Trimax is reading deadlines, requested priority, schedule,
-                progress, and lifecycle status from the current queue.
-              </p>
-            </div>
-
-            <p className="rounded-full border border-white/10 bg-black/25 px-3 py-2 text-sm font-bold text-cyan-100">
-              {activePropertyLabel}
-            </p>
-          </div>
-
-          <div className="mt-5 grid gap-4 xl:grid-cols-[1.05fr_1.1fr_0.85fr]">
+        <PersistentDetails
+          storageKey={`trimax.queue.attention.${businessSlug}.${propertyFilter}`}
+          title="Secondary"
+          subtitle={`Attention / ${activePropertyLabel}`}
+          summaryMeta={
+            <span className="rounded-full border border-white/10 bg-black/25 px-3 py-1 text-xs font-black text-cyan-100">
+              {overdueItems.length + dueTodayItems.length + managerPriorityItems.length} items
+            </span>
+          }
+          className="queue-operations-summary rounded-2xl border border-cyan-500/20 bg-cyan-500/10 p-3"
+        >
+          <div className="grid gap-4 xl:grid-cols-[1.05fr_1.1fr_0.85fr]">
             <div className="grid gap-3">
               <OperationsMetricCard
                 label="Needs Attention"
@@ -1493,7 +1385,7 @@ export default async function QueuePage({
                 <div className="mt-3 grid gap-2">
                   {smartSuggestions.length === 0 ? (
                     <p className="text-sm font-semibold leading-6 text-zinc-300">
-                      No urgent queue suggestions right now.
+                      Nothing urgent.
                     </p>
                   ) : (
                     smartSuggestions.map((suggestion) => (
@@ -1509,7 +1401,7 @@ export default async function QueuePage({
               </div>
             </div>
           </div>
-        </Card>
+        </PersistentDetails>
 
         {queueLoadMessage ? (
           <Card className="app-notice-card border-amber-500/40 bg-amber-500/10">
@@ -1523,10 +1415,10 @@ export default async function QueuePage({
           </Card>
         ) : null}
 
-        <Card>
+        <Card className="p-3 sm:p-4">
           <form
             action="/queue#queue-results"
-            className="grid gap-4 md:grid-cols-[1fr_auto]"
+            className="grid gap-3 md:grid-cols-[1fr_auto]"
           >
             <input type="hidden" name="business" value={businessSlug} />
             {propertyFilter !== "all" ? (
@@ -1678,37 +1570,16 @@ export default async function QueuePage({
           ))}
         </div>
 
-        <Card className="border-sky-500/25 bg-sky-500/10 p-4">
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-sky-200">
-            Queue field guide
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/70 px-4 py-3">
+          <p className="text-sm font-black text-white">
+            {activeView.title}
           </p>
-          <p className="mt-2 text-sm leading-6 text-sky-100">
-            Needed By = property deadline. Priority = manager&apos;s requested
-            order. Work Scheduled Date = internal Robbie schedule.
+          <p className="text-sm font-semibold text-zinc-300">
+            {displayQueueItems.length} of {propertyScopedQueueItems.length}
           </p>
-        </Card>
+        </div>
 
-        <Card className="queue-view-summary border-sky-500/20 bg-sky-500/10 p-5">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-sm uppercase tracking-[0.3em] text-sky-100">
-                Current Queue View
-              </p>
-              <h2 className="mt-2 text-2xl font-bold">
-                {activeView.title}
-              </h2>
-              <p className="mt-2 text-zinc-300">{activeView.detail}</p>
-            </div>
-
-            <p className="rounded-full border border-white/10 bg-black/20 px-3 py-2 text-sm font-semibold text-zinc-300">
-              Showing {displayQueueItems.length} of{" "}
-              {propertyScopedQueueItems.length}{" "}
-              queue items.
-            </p>
-          </div>
-        </Card>
-
-        <div id="queue-results" className="grid scroll-mt-6 gap-6">
+        <div id="queue-results" className="grid scroll-mt-6 gap-3">
           {propertyScopedQueueItems.length === 0 ? (
             <Card className="queue-empty-card border-sky-500/20 bg-sky-500/10">
               <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
@@ -1719,11 +1590,6 @@ export default async function QueuePage({
                   <h2 className="mt-2 text-2xl font-bold">
                     Start this property queue
                   </h2>
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-300">
-                    Add the first unit when a property manager sends a turn,
-                    repair request, or scheduling note. Trimax will keep the
-                    work tied to this workspace and property.
-                  </p>
                 </div>
 
                 <RoleVisible
@@ -1781,13 +1647,13 @@ export default async function QueuePage({
                   : item.status || "Pending Estimate");
 
               return (
-                <Card key={item.id} className="queue-list-card queue-dispatch-card p-4">
-                  <div className="grid gap-3 lg:grid-cols-[5.5rem_minmax(10rem,1.2fr)_repeat(6,minmax(7rem,0.85fr))_auto] lg:items-center">
+                <Card key={item.id} className="queue-list-card queue-dispatch-card p-3">
+                  <div className="grid gap-2 lg:grid-cols-[4.5rem_minmax(10rem,1.2fr)_repeat(6,minmax(6.5rem,0.85fr))_auto] lg:items-center">
                     <div className="min-w-0">
                       <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-zinc-500">
                         Unit
                       </p>
-                      <p className="mt-1 text-2xl font-black text-white">
+                      <p className="mt-1 text-xl font-black text-white">
                         {displayUnit || "-"}
                       </p>
                     </div>

@@ -6,6 +6,7 @@ import InvoiceBatchSendActions from "../components/InvoiceBatchSendActions";
 import InvoiceBulkPaymentActions from "../components/InvoiceBulkPaymentActions";
 import InvoiceFilterLink from "../components/InvoiceFilterLink";
 import InvoiceResultsScroller from "../components/InvoiceResultsScroller";
+import PersistentDetails from "../components/PersistentDetails";
 import StatusBadge from "../components/StatusBadge";
 import { supabase } from "../lib/supabase";
 
@@ -1783,7 +1784,19 @@ export default async function InvoicesPage({
             ) : null}
           </Card>
 
-        <Card className="invoice-snapshot-card border-blue-500/20 bg-blue-500/5">
+        <PersistentDetails
+          storageKey={`trimax.invoices.secondary.${businessSlug}`}
+          title="Secondary"
+          subtitle="Snapshot, aging, proof, and collection radar"
+          summaryMeta={
+            <span className="rounded-full border border-sky-300/25 bg-sky-400/10 px-3 py-1 text-xs font-black text-sky-100">
+              {openInvoicesWithAmounts.length} open
+            </span>
+          }
+          className="rounded-2xl border border-sky-500/20 bg-zinc-950/70 p-3"
+          contentClassName="mt-3 grid gap-3"
+        >
+        <Card className="invoice-snapshot-card border-blue-500/20 bg-blue-500/5 p-3 sm:p-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.3em] text-blue-300">
@@ -1872,7 +1885,7 @@ export default async function InvoicesPage({
           </div>
         </Card>
 
-        <Card className="invoice-next-moves-card border-sky-500/20 bg-zinc-950">
+        <Card className="invoice-next-moves-card border-sky-500/20 bg-zinc-950 p-3 sm:p-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.3em] text-sky-300">
@@ -1923,7 +1936,7 @@ export default async function InvoicesPage({
           </div>
         </Card>
 
-        <Card className="invoice-intelligence-card border-orange-500/20 bg-zinc-950">
+        <Card className="invoice-intelligence-card border-orange-500/20 bg-zinc-950 p-3 sm:p-4">
           <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr] xl:items-start">
             <div>
               <p className="text-sm font-black uppercase tracking-[0.28em] text-orange-300">
@@ -2019,7 +2032,7 @@ export default async function InvoicesPage({
           </div>
         </Card>
 
-        <Card className="invoice-proof-radar border-emerald-500/20 bg-zinc-950">
+        <Card className="invoice-proof-radar border-emerald-500/20 bg-zinc-950 p-3 sm:p-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-sm font-black uppercase tracking-[0.28em] text-emerald-300">
@@ -2065,7 +2078,7 @@ export default async function InvoicesPage({
           </div>
         </Card>
 
-        <Card className="invoice-collection-playbook border-orange-500/20 bg-zinc-950">
+        <Card className="invoice-collection-playbook border-orange-500/20 bg-zinc-950 p-3 sm:p-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-sm font-black uppercase tracking-[0.28em] text-orange-300">
@@ -2123,7 +2136,7 @@ export default async function InvoicesPage({
         </Card>
 
         {priorityInvoiceQueue.length > 0 ? (
-          <Card className="invoice-priority-queue border-rose-500/20 bg-zinc-950">
+          <Card className="invoice-priority-queue border-rose-500/20 bg-zinc-950 p-3 sm:p-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <p className="text-sm font-black uppercase tracking-[0.28em] text-rose-300">
@@ -2191,7 +2204,7 @@ export default async function InvoicesPage({
         ) : null}
 
         {customerBalanceRows.length > 0 ? (
-          <Card className="invoice-customer-radar border-emerald-500/20 bg-zinc-950">
+          <Card className="invoice-customer-radar border-emerald-500/20 bg-zinc-950 p-3 sm:p-4">
             <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-start">
               <div>
                 <p className="text-sm uppercase tracking-[0.3em] text-emerald-300">
@@ -2239,7 +2252,9 @@ export default async function InvoicesPage({
           </Card>
         ) : null}
 
-        <Card className="invoice-search-card">
+        </PersistentDetails>
+
+        <Card className="invoice-search-card p-3 sm:p-4">
           <form
             action={`/invoices${invoiceResultsAnchor}`}
             className="grid gap-4 md:grid-cols-[1fr_auto]"
@@ -2470,6 +2485,18 @@ export default async function InvoicesPage({
           }))}
         />
 
+        <PersistentDetails
+          storageKey={`trimax.invoices.actions-secondary.${businessSlug}`}
+          title="Secondary"
+          subtitle="Drafts, aging, and customer balances"
+          summaryMeta={
+            <span className="rounded-full border border-orange-300/25 bg-orange-400/10 px-3 py-1 text-xs font-black text-orange-100">
+              {draftsToSend.length + customerBalanceRows.length} items
+            </span>
+          }
+          className="rounded-2xl border border-orange-500/20 bg-zinc-950/70 p-3"
+          contentClassName="mt-3 grid gap-3"
+        >
         {draftsToSend.length > 0 ? (
           <Card className="border-green-500/30 bg-green-500/10">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -2704,8 +2731,21 @@ export default async function InvoicesPage({
             </div>
           </Card>
         ) : null}
+        </PersistentDetails>
 
         <div className="invoice-results-anchor">
+        <PersistentDetails
+          storageKey={`trimax.invoices.history.${businessSlug}`}
+          title="History"
+          subtitle="Recently updated invoices"
+          summaryMeta={
+            <span className="rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-xs font-black text-zinc-300">
+              {recentlyUpdatedInvoices.length}
+            </span>
+          }
+          className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-3"
+          contentClassName="mt-3"
+        >
         {recentlyUpdatedInvoices.length > 0 ? (
           <Card>
             <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
@@ -2761,6 +2801,7 @@ export default async function InvoicesPage({
             </div>
           </Card>
         ) : null}
+        </PersistentDetails>
 
         <div
           id="invoice-results-list-full"
@@ -2830,7 +2871,7 @@ export default async function InvoicesPage({
             </div>
             </Card>
           ) : (
-            <div className="invoice-list grid gap-4">
+            <div className="invoice-list grid gap-3">
             {filteredInvoices.map((invoice) => {
               const isSplitInvoice = Boolean(
                 invoice.split_parent_invoice_id
@@ -2897,7 +2938,7 @@ export default async function InvoicesPage({
               return (
                 <Card
                   key={invoice.id}
-                  className={`invoice-list-card transition hover:border-sky-300 hover:bg-sky-50 ${
+                  className={`invoice-list-card p-3 transition hover:border-sky-300 hover:bg-sky-50 ${
                     isSplitInvoice
                       ? "border-green-500/30 bg-green-500/5"
                       : hasSplitChildren
@@ -2905,7 +2946,7 @@ export default async function InvoicesPage({
                         : ""
                   }`}
                 >
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div>
                         <div className="flex flex-wrap items-center gap-3">
                           <p className="text-sm text-orange-400">
@@ -2935,7 +2976,7 @@ export default async function InvoicesPage({
                           ) : null}
                         </div>
 
-                        <h2 className="mt-1 text-2xl font-semibold">
+                        <h2 className="mt-1 text-lg font-semibold sm:text-xl">
                           {invoice.project_title || "Untitled Invoice"}
                         </h2>
 
@@ -2985,7 +3026,20 @@ export default async function InvoicesPage({
                       </div>
                     </div>
 
-                    <div className="invoice-card-intelligence mt-5 rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4">
+                    <PersistentDetails
+                      storageKey={`trimax.invoice.card-details.${invoice.id}`}
+                      title="Secondary"
+                      subtitle="Collection cue and proof"
+                      summaryMeta={
+                        <span
+                          data-tone={collectionStage.tone}
+                          className="invoice-stage-pill rounded-full border px-3 py-1 text-xs font-black"
+                        >
+                          {collectionStage.label}
+                        </span>
+                      }
+                      className="invoice-card-intelligence mt-3 rounded-2xl border border-zinc-800 bg-zinc-950/70 p-3"
+                    >
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                           <p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">
@@ -2999,10 +3053,7 @@ export default async function InvoicesPage({
                           </p>
                         </div>
 
-                        <span
-                          data-tone={collectionStage.tone}
-                          className="invoice-stage-pill rounded-full border px-3 py-1 text-xs font-black"
-                        >
+                        <span className="rounded-full border border-white/10 px-3 py-1 text-xs font-black text-zinc-300">
                           Priority {priorityScore}
                         </span>
                       </div>
@@ -3038,9 +3089,9 @@ export default async function InvoicesPage({
                           </span>
                         ))}
                       </div>
-                    </div>
+                    </PersistentDetails>
 
-                    <div className="invoice-list-actions mt-5 flex flex-col gap-3 border-t border-zinc-800 pt-4 sm:flex-row sm:flex-wrap">
+                    <div className="invoice-list-actions mt-3 flex flex-col gap-2 border-t border-zinc-800 pt-3 sm:flex-row sm:flex-wrap">
                       <Link
                         href={`/invoices/${invoice.id}${businessQuery}`}
                         className="rounded-full bg-sky-600 px-4 py-2 text-center text-sm font-black text-white transition hover:bg-sky-700"
