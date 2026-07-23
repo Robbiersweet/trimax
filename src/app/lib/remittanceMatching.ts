@@ -33,6 +33,25 @@ export function parseMoney(value: string) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function isCollectibleRemittanceInvoiceStatus(value: string) {
+  const status = (value || "draft")
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, " ");
+
+  return ![
+    "paid",
+    "draft",
+    "void",
+    "voided",
+    "cancelled",
+    "canceled",
+    "superseded",
+    "corrected",
+    "archived",
+  ].includes(status);
+}
+
 export function customerMatchesPayor(customerName: string, payor: string) {
   const normalizedPayor = payor.trim().toLowerCase();
 
@@ -383,7 +402,7 @@ function inferInvoiceNumberFromLineContext(
   const candidates = invoiceNumberRecords.filter(({ invoice }) => {
     if (
       invoice.amountDue <= 0 ||
-      invoice.status.toLowerCase() === "paid" ||
+      !isCollectibleRemittanceInvoiceStatus(invoice.status) ||
       Math.abs(invoice.amountDue - line.amount) >= 0.01 ||
       !customerMatchesPayor(invoice.customerName, payor)
     ) {
@@ -593,7 +612,8 @@ export function findRemittanceMatches(
       : "",
     matches.some(
       (invoice) =>
-        invoice.amountDue <= 0 || invoice.status.toLowerCase() === "paid"
+        invoice.amountDue <= 0 ||
+        !isCollectibleRemittanceInvoiceStatus(invoice.status)
     )
       ? "One or more referenced invoices has no unpaid balance."
       : "",

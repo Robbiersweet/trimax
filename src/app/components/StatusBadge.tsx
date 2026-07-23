@@ -127,6 +127,26 @@ export default function StatusBadge({ status }: StatusBadgeProps) {
       className: "bg-red-500/20 text-red-300",
       tone: "on-hold",
     },
+    superseded: {
+      className: "bg-zinc-700/40 text-zinc-300",
+      tone: "cancelled",
+    },
+    void: {
+      className: "bg-zinc-700/40 text-zinc-300",
+      tone: "cancelled",
+    },
+    voided: {
+      className: "bg-zinc-700/40 text-zinc-300",
+      tone: "cancelled",
+    },
+    cancelled: {
+      className: "bg-zinc-700/40 text-zinc-300",
+      tone: "cancelled",
+    },
+    canceled: {
+      className: "bg-zinc-700/40 text-zinc-300",
+      tone: "cancelled",
+    },
   };
   const statusKey = status.trim().toLowerCase().replace(/[_-]+/g, " ");
   const style = styles[statusKey] ?? {

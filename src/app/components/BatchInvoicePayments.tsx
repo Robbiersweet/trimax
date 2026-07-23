@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Card from "./Card";
 import DateInputField from "./DateInputField";
 import Toast from "./Toast";
+import { isCollectibleInvoiceStatus } from "../lib/invoiceLifecycle";
 import { assertCanWriteDuringMaintenance } from "../lib/maintenanceMode";
 import { supabase } from "../lib/supabase";
 import { logActivity } from "../lib/activityLog";
@@ -397,7 +398,7 @@ function initialCustomerFocus(
       (invoice) =>
         invoice.customerName.toLowerCase() ===
           focusedCustomer.toLowerCase() &&
-        invoice.status.toLowerCase() !== "paid" &&
+        isCollectibleInvoiceStatus(invoice.status) &&
         invoice.amountDue > 0
     );
 
@@ -435,7 +436,7 @@ function initialInvoiceFocus(
     .filter(
       (invoice) =>
         requestedIds.has(invoice.id) &&
-        invoice.status.toLowerCase() !== "paid" &&
+        isCollectibleInvoiceStatus(invoice.status) &&
         invoice.amountDue > 0
     );
 
@@ -556,7 +557,7 @@ export default function BatchInvoicePayments({
     () =>
       invoiceRecords.filter(
         (invoice) =>
-          invoice.status.toLowerCase() !== "paid" &&
+          isCollectibleInvoiceStatus(invoice.status) &&
           invoice.amountDue > 0
       ),
     [invoiceRecords]

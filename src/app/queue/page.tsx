@@ -10,6 +10,10 @@ import PersistentDetails from "../components/PersistentDetails";
 import StatusBadge from "../components/StatusBadge";
 import RoleVisible from "../components/RoleVisible";
 import Toast from "../components/Toast";
+import {
+  chooseAuthoritativeInvoice,
+  resolveFinancialStatus,
+} from "../lib/invoiceLifecycle";
 import { supabase } from "../lib/supabase";
 import { tbdDisplay } from "../lib/tbd";
 import { maybeCanonicalApartmentUnitLabel } from "../utils/unitLabels";
@@ -55,6 +59,7 @@ type QueueItemWithEstimate = {
 type LinkedEstimate = {
   id: string;
   display_id: string | null;
+  status: string | null;
 };
 
 type LinkedInvoice = {
@@ -321,45 +326,6 @@ function queueItemLabel(item: QueueItemWithEstimate) {
   return [unit, item.property].filter(Boolean).join(" / ") || "Queue item";
 }
 
-function moneyNumber(value: string | number | null | undefined) {
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? value : 0;
-  }
-
-  if (!value) {
-    return 0;
-  }
-
-  const parsed = Number.parseFloat(String(value).replace(/[^0-9.-]+/g, ""));
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function isInvoicePaid(invoice: LinkedInvoice | null | undefined) {
-  if (!invoice) {
-    return false;
-  }
-
-  const status = normalizeStatus(invoice.status);
-  const invoiceAmount = moneyNumber(invoice.invoice_amount);
-  const amountPaid = moneyNumber(invoice.amount_paid);
-
-  return status === "paid" || (invoiceAmount > 0 && amountPaid >= invoiceAmount);
-}
-
-function invoiceWasSent(
-  invoice: LinkedInvoice | null | undefined,
-  invoiceIdsWithSendProof: Set<string>
-) {
-  if (!invoice) {
-    return false;
-  }
-
-  return (
-    invoiceIdsWithSendProof.has(invoice.id) ||
-    ["sent", "paid"].includes(normalizeStatus(invoice.status))
-  );
-}
-
 function derivedQueueStatusFromInvoicePackage({
   invoice,
   splitChildren,
@@ -369,30 +335,13 @@ function derivedQueueStatusFromInvoicePackage({
   splitChildren: LinkedInvoice[];
   invoiceIdsWithSendProof: Set<string>;
 }) {
-  if (!invoice) {
-    return null;
-  }
-
-  const hasSplitChildren = splitChildren.length > 0;
-  const invoicePackageWasSent =
-    invoiceWasSent(invoice, invoiceIdsWithSendProof) ||
-    (hasSplitChildren &&
-      splitChildren.every((child) =>
-        invoiceWasSent(child, invoiceIdsWithSendProof)
-      ));
-  const invoicePackageIsPaid =
-    isInvoicePaid(invoice) ||
-    (hasSplitChildren && splitChildren.every((child) => isInvoicePaid(child)));
-
-  if (invoicePackageIsPaid) {
-    return "Paid";
-  }
-
-  if (invoicePackageWasSent) {
-    return "Invoice Sent";
-  }
-
-  return "Invoice Created";
+  return invoice
+    ? resolveFinancialStatus({
+        invoice,
+        splitChildren,
+        invoiceIdsWithSendProof,
+      })
+    : null;
 }
 
 function queueLifecycleDisplayStatus(status: string) {
@@ -707,7 +656,7 @@ export default async function QueuePage({
   if (linkedEstimateIds.length > 0) {
     const { data } = await supabase
       .from("estimates")
-      .select("id, display_id")
+      .select("id, display_id, status")
       .in("id", linkedEstimateIds);
 
     linkedEstimates = data ?? [];
@@ -779,9 +728,25 @@ export default async function QueuePage({
   const invoiceByEstimateId = new Map<string, LinkedInvoice>();
   const splitChildrenByParentInvoiceId = new Map<string, LinkedInvoice[]>();
 
+  const linkedInvoicesByEstimateId = new Map<string, LinkedInvoice[]>();
+
   linkedInvoices.forEach((invoice) => {
-    if (invoice.estimate_id && !invoiceByEstimateId.has(invoice.estimate_id)) {
-      invoiceByEstimateId.set(invoice.estimate_id, invoice);
+    if (!invoice.estimate_id) {
+      return;
+    }
+
+    const invoicesForEstimate =
+      linkedInvoicesByEstimateId.get(invoice.estimate_id) ?? [];
+    invoicesForEstimate.push(invoice);
+    linkedInvoicesByEstimateId.set(invoice.estimate_id, invoicesForEstimate);
+  });
+
+  linkedInvoicesByEstimateId.forEach((invoicesForEstimate, estimateId) => {
+    const authoritativeInvoice =
+      chooseAuthoritativeInvoice(invoicesForEstimate);
+
+    if (authoritativeInvoice) {
+      invoiceByEstimateId.set(estimateId, authoritativeInvoice);
     }
   });
 
@@ -802,6 +767,9 @@ export default async function QueuePage({
       .filter((id): id is string => Boolean(id))
   );
   const queueItemsWithLifecycle = queueItems.map((item) => {
+    const linkedEstimate = item.linked_estimate_id
+      ? estimateById.get(item.linked_estimate_id) ?? null
+      : null;
     const linkedInvoice = item.linked_estimate_id
       ? invoiceByEstimateId.get(item.linked_estimate_id) ?? null
       : null;
@@ -814,12 +782,17 @@ export default async function QueuePage({
       invoiceIdsWithSendProof,
     });
 
-    return derivedStatus
-      ? {
-          ...item,
-          status: derivedStatus,
-        }
-      : item;
+    return {
+      ...item,
+      status:
+        derivedStatus ??
+        resolveFinancialStatus({
+          invoice: null,
+          hasEstimate: Boolean(linkedEstimate),
+          estimateStatus: linkedEstimate?.status ?? null,
+          fallbackStatus: item.status || "Pending Estimate",
+        }),
+    };
   });
   const breakdownSessionIds = new Set(
     jobSessionBreakdowns.map((breakdown) => breakdown.job_session_id)
@@ -1733,9 +1706,12 @@ export default async function QueuePage({
                   splitChildren,
                   invoiceIdsWithSendProof,
                 }) ??
-                (linkedEstimate
-                  ? "Estimate Created"
-                  : item.status || "Pending Estimate");
+                resolveFinancialStatus({
+                  invoice: null,
+                  hasEstimate: Boolean(linkedEstimate),
+                  estimateStatus: linkedEstimate?.status ?? null,
+                  fallbackStatus: item.status || "Pending Estimate",
+                });
               const primaryAction = primaryQueueAction({
                 item,
                 linkedEstimate,

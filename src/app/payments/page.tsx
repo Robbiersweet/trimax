@@ -4,6 +4,9 @@ import BatchInvoicePayments from "../components/BatchInvoicePayments";
 import Button from "../components/Button";
 import Card from "../components/Card";
 import PersistentDetails from "../components/PersistentDetails";
+import {
+  isCollectibleInvoiceStatus,
+} from "../lib/invoiceLifecycle";
 import { supabase } from "../lib/supabase";
 
 type Business = {
@@ -90,16 +93,6 @@ function daysPastDue(value: string | null) {
   today.setHours(0, 0, 0, 0);
 
   return Math.floor((today.getTime() - dueDate.getTime()) / 86_400_000);
-}
-
-function invoiceStatusKey(value: string | null | undefined) {
-  return (value || "Draft").trim().toLowerCase();
-}
-
-function isCollectibleInvoiceStatus(value: string | null | undefined) {
-  const status = invoiceStatusKey(value);
-
-  return status !== "paid" && status !== "draft";
 }
 
 function hasActiveDepositRequest(invoice: Invoice) {

@@ -5,6 +5,7 @@ import Button from "../../components/Button";
 import DeleteClientButton from "../../components/DeleteClientButton";
 import InternalNotes from "../../components/InternalNotes";
 import StatusBadge from "../../components/StatusBadge";
+import { isCollectibleInvoiceStatus } from "../../lib/invoiceLifecycle";
 import { supabase } from "../../lib/supabase";
 
 type Client = {
@@ -174,8 +175,8 @@ export default async function ClientDetailsPage({
   const estimates = (estimateResponse.data ?? []) as Estimate[];
   const invoices = (invoiceResponse.data ?? []) as Invoice[];
 
-  const openInvoices = invoices.filter(
-    (invoice) => (invoice.status || "Draft").toLowerCase() !== "paid"
+  const openInvoices = invoices.filter((invoice) =>
+    isCollectibleInvoiceStatus(invoice.status)
   );
 
   const openBalance = openInvoices.reduce((total, invoice) => {

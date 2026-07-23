@@ -10,6 +10,7 @@ import {
   normalizeWorkspaceRole,
 } from "../lib/rolePermissions";
 import { logActivity } from "../lib/activityLog";
+import { isCollectibleInvoiceStatus } from "../lib/invoiceLifecycle";
 import { supabase } from "../lib/supabase";
 import { appendUnitHistoryForQueueItem } from "../lib/unitHistory";
 import { loadWorkspaceAccess } from "../lib/workspaceAccess";
@@ -1065,7 +1066,7 @@ function buildSmartCommands({
   const openInvoices = invoices.filter((invoice) => {
     const status = invoice.status?.toLowerCase() ?? "";
 
-    return status !== "paid" && invoiceDueAmount(invoice) > 0;
+    return isCollectibleInvoiceStatus(status) && invoiceDueAmount(invoice) > 0;
   });
   const largestOpenInvoice = [...openInvoices].sort(
     (first, second) => invoiceDueAmount(second) - invoiceDueAmount(first)

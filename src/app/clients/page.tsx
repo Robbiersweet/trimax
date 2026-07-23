@@ -4,6 +4,7 @@ import Card from "../components/Card";
 import Button from "../components/Button";
 import ClientSmartSearch from "../components/ClientSmartSearch";
 import DeleteClientButton from "../components/DeleteClientButton";
+import { isCollectibleInvoiceStatus } from "../lib/invoiceLifecycle";
 import { supabase } from "../lib/supabase";
 
 type Business = {
@@ -188,7 +189,7 @@ export default async function ClientsPage({
 
     clientSummaries[invoice.client_id].linkedInvoices += 1;
 
-    if (status === "paid") {
+    if (!isCollectibleInvoiceStatus(status)) {
       return;
     }
 

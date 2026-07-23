@@ -8,6 +8,10 @@ import InvoiceFilterLink from "../components/InvoiceFilterLink";
 import InvoiceResultsScroller from "../components/InvoiceResultsScroller";
 import PersistentDetails from "../components/PersistentDetails";
 import StatusBadge from "../components/StatusBadge";
+import {
+  isCollectibleInvoiceStatus,
+  invoiceStatusKey,
+} from "../lib/invoiceLifecycle";
 import { supabase } from "../lib/supabase";
 
 type Business = {
@@ -299,16 +303,6 @@ function hasActiveDepositRequest(invoice: Invoice) {
     String(invoice.deposit_status ?? "none").toLowerCase() === "requested" &&
     parseMoney(invoice.deposit_requested_amount ?? null) > 0
   );
-}
-
-function invoiceStatusKey(value: string | null) {
-  return (value || "Draft").trim().toLowerCase();
-}
-
-function isCollectibleInvoiceStatus(value: string | null) {
-  const status = invoiceStatusKey(value);
-
-  return status !== "paid" && status !== "draft";
 }
 
 function dateYear(value: string | null) {

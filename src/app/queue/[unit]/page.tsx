@@ -20,6 +20,12 @@ import {
   queueTimingBadge,
   queueTimingTone,
 } from "../../lib/queueTiming";
+import {
+  chooseAuthoritativeInvoice,
+  invoiceWasSent as lifecycleInvoiceWasSent,
+  isInvoicePaid,
+  resolveFinancialStatus,
+} from "../../lib/invoiceLifecycle";
 import { supabase } from "../../lib/supabase";
 import {
   queueTbdDecisions,
@@ -575,11 +581,11 @@ export default async function QueueDetailPage({
       )
       .eq("estimate_id", item.linked_estimate_id)
       .eq("business_id", selectedBusiness.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .order("created_at", { ascending: false });
 
-    linkedInvoice = invoiceData as LinkedInvoice | null;
+    linkedInvoice = chooseAuthoritativeInvoice(
+      (invoiceData ?? []) as LinkedInvoice[]
+    );
 
     if (linkedInvoice?.id) {
       const { data: activityData } = await supabase
@@ -796,7 +802,7 @@ export default async function QueueDetailPage({
     linkedInvoiceActivity?.details?.pdf_attached === true;
   const invoiceWasSent =
     Boolean(linkedInvoiceActivity) ||
-    linkedInvoice?.status?.trim().toLowerCase() === "sent";
+    lifecycleInvoiceWasSent(linkedInvoice);
   const invoiceDeliveryLabel = linkedInvoiceActivity
     ? "Proof logged"
     : invoiceWasSent
@@ -809,10 +815,7 @@ export default async function QueueDetailPage({
         0
       )
     : null;
-  const invoiceIsPaid =
-    Boolean(linkedInvoice) &&
-    (linkedInvoice?.status?.trim().toLowerCase() === "paid" ||
-      linkedInvoiceBalance === 0);
+  const invoiceIsPaid = isInvoicePaid(linkedInvoice);
   const workflowNextAction = !linkedEstimate
     ? {
         title: "Create the estimate",
@@ -865,15 +868,16 @@ export default async function QueueDetailPage({
             };
   const managerLifecycleStatus = item.completed_date
     ? "Completed"
-    : invoiceIsPaid
-      ? "Paid"
-    : invoiceWasSent
-      ? "Invoice Sent"
-      : linkedInvoice
-        ? "Ready to Send"
-        : linkedEstimate
-          ? "Estimate Created"
-          : queueLifecycleDisplayStatus(item.status);
+    : resolveFinancialStatus({
+        invoice: linkedInvoice,
+        invoiceIdsWithSendProof:
+          linkedInvoiceActivity && linkedInvoice
+            ? new Set([linkedInvoice.id])
+            : new Set(),
+        hasEstimate: Boolean(linkedEstimate),
+        estimateStatus: linkedEstimate?.status ?? null,
+        fallbackStatus: queueLifecycleDisplayStatus(item.status),
+      });
   const linkedInvoiceStatus = linkedInvoiceLifecycleStatus({
     linkedInvoice,
     invoiceWasSent,

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { isCollectibleInvoiceStatus } from "../lib/invoiceLifecycle";
 
 type InvoiceForBulkPayment = {
   id: string;
@@ -89,7 +90,7 @@ export default function InvoiceBulkPaymentActions({
         .filter(
           (invoice) =>
             invoice.amountDue > 0 &&
-            invoice.status.toLowerCase() !== "paid"
+            isCollectibleInvoiceStatus(invoice.status)
         ),
     [invoices]
   );

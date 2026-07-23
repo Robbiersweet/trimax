@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import {
+  chooseAuthoritativeInvoice,
+  invoiceAmountDue,
+  isCollectibleInvoiceStatus,
+  resolveFinancialStatus,
+} from "../src/app/lib/invoiceLifecycle.ts";
 
 type FixtureSession = {
   id: string;
@@ -137,6 +143,14 @@ const quickCommandCenter = readFileSync(
 );
 const createQueueItem = readFileSync(
   resolve(root, "src/app/lib/createQueueItem.ts"),
+  "utf8"
+);
+const invoiceLifecycle = readFileSync(
+  resolve(root, "src/app/lib/invoiceLifecycle.ts"),
+  "utf8"
+);
+const correctInvoiceButton = readFileSync(
+  resolve(root, "src/app/components/CorrectInvoiceButton.tsx"),
   "utf8"
 );
 
@@ -337,8 +351,9 @@ assert(
   "Creating queue items must canonicalize North Creek unit formatting and must not upsert by unit, which could overwrite older jobs."
 );
 assert(
-  queue.includes("splitChildren.every"),
-  "Split invoice status may inform labels, but split invoices must not independently remove incomplete work."
+  queue.includes("resolveFinancialStatus") &&
+    invoiceLifecycle.includes("activeSplitChildren.every"),
+  "Split invoice status may inform labels through the shared resolver, but split invoices must not independently remove incomplete work."
 );
 assert(
   queue.includes("activeSessionByQueueItemId") &&
@@ -477,6 +492,100 @@ assert(
     markCompletedButton.includes("active Work Queue") &&
     markCompletedButton.includes("notes, sessions, estimates, invoices, and payments stay saved"),
   "Mark Job Complete must confirm completion, preserve linked records, and block active-session completion."
+);
+
+const supersededP01Original = {
+  id: "INV-0516-original",
+  display_id: "INV-0516",
+  status: "superseded",
+  invoice_amount: 1099,
+  amount_paid: 0,
+  created_at: "2026-07-21T22:53:37.251257+00:00",
+};
+const p01ReplacementDraft = {
+  id: "INV-0517-replacement",
+  display_id: "INV-0517",
+  status: "Draft",
+  invoice_amount: 1099,
+  amount_paid: 0,
+  created_at: "2026-07-22T12:00:00.000Z",
+};
+const authoritativeP01Invoice = chooseAuthoritativeInvoice([
+  supersededP01Original,
+  p01ReplacementDraft,
+]);
+
+assert.equal(
+  authoritativeP01Invoice?.display_id,
+  "INV-0517",
+  "P01 correction must resolve to the active replacement draft, not the superseded sent original."
+);
+assert.equal(
+  resolveFinancialStatus({
+    invoice: authoritativeP01Invoice,
+    hasEstimate: true,
+    fallbackStatus: "Estimate Created",
+  }),
+  "Invoice Created",
+  "P01 replacement draft must display Invoice Created until Robbie reviews and sends it."
+);
+assert.equal(
+  invoiceAmountDue(supersededP01Original),
+  0,
+  "Superseded INV-0516 must preserve history but contribute no collectible balance."
+);
+assert.equal(
+  isCollectibleInvoiceStatus("superseded"),
+  false,
+  "Superseded invoices must be excluded from payment matching and cash snapshots."
+);
+assert.equal(
+  isCollectibleInvoiceStatus("void"),
+  false,
+  "Voided M07 INV-0511 must be excluded from collectible balances and payment candidates."
+);
+assert.equal(
+  resolveFinancialStatus({
+    invoice: {
+      id: "INV-0512",
+      display_id: "INV-0512",
+      status: "sent",
+      invoice_amount: 1099,
+      amount_paid: 0,
+    },
+    hasEstimate: true,
+  }),
+  "Invoice Sent",
+  "G01/Q08/U09 linked sent invoices must win over Estimate Created badges."
+);
+assert.equal(
+  resolveFinancialStatus({
+    invoice: null,
+    hasEstimate: false,
+    fallbackStatus: "Pending Estimate",
+  }),
+  "Pending Estimate",
+  "U03 must remain Pending Estimate until a real linked estimate exists."
+);
+assert(
+  invoiceLifecycle.includes("isNonCollectibleInvoiceStatus") &&
+    invoiceLifecycle.includes('"superseded"') &&
+    invoiceLifecycle.includes('"void"') &&
+    invoiceLifecycle.includes("chooseAuthoritativeInvoice") &&
+    invoiceLifecycle.includes("resolveFinancialStatus"),
+  "Invoice lifecycle helper must centralize non-collectible correction statuses and authoritative queue badge resolution."
+);
+assert(
+  correctInvoiceButton.includes("Correct Invoice") &&
+    correctInvoiceButton.includes("amountPaid > 0") &&
+    correctInvoiceButton.includes("estimate.corrected_replacement_created") &&
+    correctInvoiceButton.includes("replacementEstimateId") &&
+    correctInvoiceButton.includes("linked_estimate_id: replacementEstimateId") &&
+    correctInvoiceButton.includes("status: \"Draft\"") &&
+    correctInvoiceButton.includes("status: createReplacement ? \"superseded\" : \"void\"") &&
+    correctInvoiceButton.includes("invoice.corrected_replacement_created") &&
+    correctInvoiceButton.includes("invoice.superseded"),
+  "Correct Invoice must block paid originals, preserve sent history, create an unsent draft replacement, and log the relationship."
 );
 
 console.log("Job session integrity regression checks passed.");

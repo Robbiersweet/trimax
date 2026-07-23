@@ -6,11 +6,16 @@ import StatusBadge from "../../components/StatusBadge";
 import InternalNotes from "../../components/InternalNotes";
 import DeleteInvoiceButton from "../../components/DeleteInvoiceButton";
 import CopyProofSummaryButton from "../../components/CopyProofSummaryButton";
+import CorrectInvoiceButton from "../../components/CorrectInvoiceButton";
 import InvoiceEmailSendPanel from "../../components/InvoiceEmailSendPanel";
 import RequestDepositButton from "../../components/RequestDepositButton";
 import SplitInvoicePlanner from "../../components/SplitInvoicePlanner";
 import Toast from "../../components/Toast";
 import UpdateInvoiceStatusButton from "../../components/UpdateInvoiceStatusButton";
+import {
+  isNonCollectibleInvoiceStatus,
+  invoiceStatusKey,
+} from "../../lib/invoiceLifecycle";
 import { buildSplitInvoicePlan } from "../../lib/splitInvoices";
 import { resolveInvoiceTerms } from "../../lib/documentTerms";
 import { supabase } from "../../lib/supabase";
@@ -977,10 +982,14 @@ export default async function InvoiceDetailPage({
   const taxAmount = subtotal * (taxRate / 100);
   const invoiceTotal = subtotal + taxAmount;
   const amountPaid = numberValue(invoice.amount_paid);
-  const amountDue = Math.max(invoiceTotal - amountPaid, 0);
   const status = invoice.status || "Draft";
-  const normalizedStatus = status.toLowerCase();
-  const isFullyPaid = normalizedStatus === "paid" || amountDue <= 0;
+  const normalizedStatus = invoiceStatusKey(status);
+  const isNonCollectibleInvoice = isNonCollectibleInvoiceStatus(status);
+  const amountDue = isNonCollectibleInvoice
+    ? 0
+    : Math.max(invoiceTotal - amountPaid, 0);
+  const isFullyPaid =
+    !isNonCollectibleInvoice && (normalizedStatus === "paid" || amountDue <= 0);
   const collectedAmount = isFullyPaid
     ? amountPaid > 0
       ? amountPaid
@@ -1045,7 +1054,8 @@ export default async function InvoiceDetailPage({
     customerFacingAmountDue > 0 &&
     daysLate !== null &&
     daysLate > 0 &&
-    !["paid", "draft"].includes(normalizedStatus);
+    !["paid", "draft"].includes(normalizedStatus) &&
+    !isNonCollectibleInvoice;
   const showFiveStarsBoaPrintButton =
     business.slug === "just-kleen" &&
     looksLikeFiveStarsBoaInvoice(invoice, items);
@@ -1157,7 +1167,8 @@ export default async function InvoiceDetailPage({
         )}.`
       : "Use this when you want the customer to pay part of the invoice now without marking it as paid.";
   const depositCardShouldShow =
-    !isFullyPaid || hasDepositRequest || hasInferredDepositCollection;
+    !isNonCollectibleInvoice &&
+    (!isFullyPaid || hasDepositRequest || hasInferredDepositCollection);
   const proofTimelineEvents: ProofTimelineEvent[] = [
     {
       id: "invoice-created",
@@ -1237,6 +1248,31 @@ export default async function InvoiceDetailPage({
       ],
     });
   }
+  const correctionLog = invoiceActivityLogs.find(
+    (log) =>
+      log.action === "invoice.superseded" ||
+      log.action === "invoice.voided" ||
+      log.action === "invoice.corrected_replacement_created"
+  );
+  const noteReplacementDisplayId =
+    invoice.notes?.match(/\bsuperseded\s+by\s+(INV-\d+)\b/i)?.[1] ?? null;
+  const noteOriginalDisplayId =
+    invoice.notes?.match(/\bcorrection\s+of\s+(INV-\d+)\b/i)?.[1] ?? null;
+  const replacementDisplayId =
+    detailText(correctionLog?.details, "replacementDisplayId") ??
+    detailText(correctionLog?.details, "replacement_display_id") ??
+    noteReplacementDisplayId;
+  const originalDisplayId =
+    detailText(correctionLog?.details, "originalDisplayId") ??
+    detailText(correctionLog?.details, "original_display_id") ??
+    noteOriginalDisplayId;
+  const correctionReason =
+    detailText(correctionLog?.details, "correctionReason") ??
+    detailText(correctionLog?.details, "reason") ??
+    invoice.notes
+      ?.split(/\r?\n/)
+      .find((line) => /^Correction:/i.test(line.trim()))
+      ?.trim();
   proofTimelineEvents.sort((first, second) => {
     const firstTime = first.date ? new Date(first.date).getTime() : 0;
     const secondTime = second.date ? new Date(second.date).getTime() : 0;
@@ -1247,7 +1283,16 @@ export default async function InvoiceDetailPage({
     businessQuery ? "&" : "?"
   }customer=${encodeURIComponent(customerName)}`;
   const invoiceIntelligenceAction: InvoiceIntelligenceAction =
-    hasSplitInvoiceGroup && normalizedStatus === "draft"
+    isNonCollectibleInvoice
+      ? {
+          href: "#proof-vault",
+          label: "View History",
+          title: "This invoice is historical",
+          detail: replacementDisplayId
+            ? `${invoice.display_id ?? "This invoice"} was corrected and replaced by ${replacementDisplayId}. It no longer counts as collectible.`
+            : `${invoice.display_id ?? "This invoice"} was corrected and no longer counts as collectible.`,
+        }
+      : hasSplitInvoiceGroup && normalizedStatus === "draft"
       ? {
           href: "#send-invoice",
           label: "Send Split Group",
@@ -1359,6 +1404,25 @@ export default async function InvoiceDetailPage({
             latestPaymentDate={latestPaymentDate}
             nextAction={invoiceIntelligenceAction}
           />
+
+          {isNonCollectibleInvoice || correctionLog ? (
+            <Card className="border-amber-500/35 bg-amber-500/10">
+              <p className="text-sm font-black uppercase tracking-[0.3em] text-amber-200">
+                Invoice Correction
+              </p>
+              <h2 className="mt-2 text-2xl font-black text-white">
+                {replacementDisplayId
+                  ? `Superseded by ${replacementDisplayId}`
+                  : originalDisplayId
+                    ? `Correction of ${originalDisplayId}`
+                    : "Corrected invoice"}
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-amber-50/85">
+                {correctionReason ||
+                  "This invoice is preserved for history and does not count toward collectible balance."}
+              </p>
+            </Card>
+          ) : null}
 
           <PaymentProgressCard
             amountDue={amountDue}
@@ -1607,7 +1671,7 @@ export default async function InvoiceDetailPage({
             </Card>
           ) : null}
 
-          {hasSplitInvoiceGroup ? (
+          {hasSplitInvoiceGroup && !isNonCollectibleInvoice ? (
             <div id="send-invoice" className="scroll-mt-6">
               <InvoiceEmailSendPanel
                 documentId={invoice.id}
@@ -1653,7 +1717,7 @@ export default async function InvoiceDetailPage({
             </Card>
           ) : null}
 
-          {!hasSplitInvoiceGroup ? (
+          {!hasSplitInvoiceGroup && !isNonCollectibleInvoice ? (
             <div id="send-invoice" className="scroll-mt-6">
               <InvoiceEmailSendPanel
                 documentId={invoice.id}
@@ -1672,7 +1736,7 @@ export default async function InvoiceDetailPage({
             </div>
           ) : null}
 
-          {isPaymentLate ? (
+          {isPaymentLate && !isNonCollectibleInvoice ? (
             <section
               id="late-payment-reminder"
               className="late-reminder-section scroll-mt-6 rounded-3xl border border-rose-500/30 bg-rose-500/10 p-4 sm:p-5"
@@ -1802,7 +1866,7 @@ export default async function InvoiceDetailPage({
                   ) : null}
                 </div>
 
-                {!isFullyPaid ? (
+                {!isFullyPaid && !isNonCollectibleInvoice ? (
                   <RequestDepositButton
                     invoiceId={invoice.id}
                     businessId={invoice.business_id}
@@ -2002,7 +2066,7 @@ export default async function InvoiceDetailPage({
             ) : null}
 
             <div className="flex flex-wrap gap-4">
-            {normalizedStatus === "draft" ? (
+            {normalizedStatus === "draft" && !isNonCollectibleInvoice ? (
               <UpdateInvoiceStatusButton
                 invoiceId={invoice.id}
                 newStatus="sent"
@@ -2015,13 +2079,13 @@ export default async function InvoiceDetailPage({
               />
             ) : null}
 
-            {!isFullyPaid && isPartiallyPaid ? (
+            {!isFullyPaid && isPartiallyPaid && !isNonCollectibleInvoice ? (
               <Link href={paymentHref}>
                 <Button>Record Payment</Button>
               </Link>
             ) : null}
 
-            {!isFullyPaid && !isPartiallyPaid ? (
+            {!isFullyPaid && !isPartiallyPaid && !isNonCollectibleInvoice ? (
               <UpdateInvoiceStatusButton
                 invoiceId={invoice.id}
                 newStatus="paid"
@@ -2038,6 +2102,16 @@ export default async function InvoiceDetailPage({
               <a href="#late-payment-reminder">
                 <Button variant="secondary">Send Reminder</Button>
               </a>
+            ) : null}
+
+            {normalizedStatus === "sent" && amountPaid <= 0 ? (
+              <CorrectInvoiceButton
+                invoiceId={invoice.id}
+                businessId={invoice.business_id}
+                businessSlug={businessSlug}
+                invoiceLabel={invoice.display_id || projectTitle || "Invoice"}
+                amountPaid={amountPaid}
+              />
             ) : null}
 
             {showFiveStarsBoaPrintButton ? (

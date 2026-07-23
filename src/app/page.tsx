@@ -5,6 +5,11 @@ import Button from "./components/Button";
 import StatusBadge from "./components/StatusBadge";
 import RoleVisible from "./components/RoleVisible";
 import {
+  chooseAuthoritativeInvoice,
+  isCollectibleInvoiceStatus,
+  resolveFinancialStatus,
+} from "./lib/invoiceLifecycle";
+import {
   queueTimingBadge,
   queueTimingTone,
 } from "./lib/queueTiming";
@@ -44,6 +49,7 @@ type QueueItem = {
 
 type Invoice = {
   id: string;
+  estimate_id: string | null;
   display_id: string | null;
   project_title: string | null;
   customer_name: string | null;
@@ -199,16 +205,6 @@ function invoiceBelongsToYear(invoice: Invoice, year: number) {
 
 function normalizeStatus(value: string | null) {
   return (value || "Pending Estimate").trim().toLowerCase();
-}
-
-function invoiceStatusKey(value: string | null) {
-  return (value || "Draft").trim().toLowerCase();
-}
-
-function isCollectibleInvoiceStatus(value: string | null) {
-  const status = invoiceStatusKey(value);
-
-  return status !== "paid" && status !== "draft";
 }
 
 function activityLabel(action: string) {
@@ -502,7 +498,7 @@ export default async function DashboardPage({
       supabase
         .from("invoices")
         .select(
-          "id, display_id, project_title, customer_name, invoice_amount, amount_paid, deposit_requested_amount, deposit_status, status, issue_date, due_date, updated_at, created_at, split_parent_invoice_id"
+          "id, estimate_id, display_id, project_title, customer_name, invoice_amount, amount_paid, deposit_requested_amount, deposit_status, status, issue_date, due_date, updated_at, created_at, split_parent_invoice_id"
         )
         .eq("business_id", selectedBusiness.id)
         .order("created_at", { ascending: false }),
@@ -553,13 +549,47 @@ export default async function DashboardPage({
       (activityResponse.data ?? []) as ActivityLog[];
   }
 
+  const linkedInvoicesByEstimateId = new Map<string, Invoice[]>();
+
+  invoices.forEach((invoice) => {
+    if (!invoice.estimate_id) {
+      return;
+    }
+
+    const invoicesForEstimate =
+      linkedInvoicesByEstimateId.get(invoice.estimate_id) ?? [];
+    invoicesForEstimate.push(invoice);
+    linkedInvoicesByEstimateId.set(invoice.estimate_id, invoicesForEstimate);
+  });
+
+  const invoiceByEstimateId = new Map<string, Invoice>();
+  linkedInvoicesByEstimateId.forEach((invoicesForEstimate, estimateId) => {
+    const authoritativeInvoice =
+      chooseAuthoritativeInvoice(invoicesForEstimate);
+
+    if (authoritativeInvoice) {
+      invoiceByEstimateId.set(estimateId, authoritativeInvoice);
+    }
+  });
+
+  const queueItemsWithLifecycle = queueItems.map((item) => ({
+    ...item,
+    status: resolveFinancialStatus({
+      invoice: item.linked_estimate_id
+        ? invoiceByEstimateId.get(item.linked_estimate_id) ?? null
+        : null,
+      hasEstimate: Boolean(item.linked_estimate_id),
+      fallbackStatus: item.status || "Pending Estimate",
+    }),
+  }));
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   const sevenDaysFromNow = new Date(today);
   sevenDaysFromNow.setDate(today.getDate() + 7);
 
-  const queueSummary = queueItems.reduce(
+  const queueSummary = queueItemsWithLifecycle.reduce(
     (summary, item) => {
       const status = normalizeStatus(item.status);
       const isClosed = isCompletedQueueItem(item);
