@@ -131,6 +131,21 @@ const markCompletedButton = readFileSync(
   resolve(root, "src/app/components/MarkCompletedButton.tsx"),
   "utf8"
 );
+const quickCommandCenter = readFileSync(
+  resolve(root, "src/app/components/QuickCommandCenter.tsx"),
+  "utf8"
+);
+const createQueueItem = readFileSync(
+  resolve(root, "src/app/lib/createQueueItem.ts"),
+  "utf8"
+);
+
+function canonicalUnit(value: string | null | undefined) {
+  const normalized = (value || "").trim().replace(/[\s-]+/g, "").toUpperCase();
+  const match = normalized.match(/^([A-Z])0*([1-9]\d?)$/);
+
+  return match ? `${match[1]}${match[2].padStart(2, "0")}` : normalized;
+}
 
 const q08Session: FixtureSession = {
   id: "session-q08",
@@ -269,6 +284,28 @@ assert.equal(
   false,
   "A saved completed_date must keep completed work out of active Queue after reload."
 );
+assert.equal(canonicalUnit("U03"), "U03", "Canonical U03 must stay U03.");
+assert.equal(canonicalUnit("U3"), "U03", "U3 must normalize to U03.");
+assert.equal(canonicalUnit("U-03"), "U03", "U-03 must normalize to U03.");
+assert.equal(canonicalUnit("M7"), "M07", "M7 must normalize to M07.");
+const samePropertyJobs = [
+  { id: "u03-job", unit: "U03", createdAt: "2026-06-19" },
+  { id: "u05-job", unit: "U05", createdAt: "2026-06-19" },
+];
+assert.equal(
+  samePropertyJobs.map((job) => canonicalUnit(job.unit)).join(","),
+  "U03,U05",
+  "U03 and U05 must coexist as separate normalized queue records."
+);
+const duplicateUnitDifferentDates = [
+  { id: "m07-old", unit: "M07", createdAt: "2026-06-29", completedDate: "2026-07-20" },
+  { id: "m07-new", unit: "M07", createdAt: "2026-07-22", completedDate: null },
+];
+assert.equal(
+  duplicateUnitDifferentDates.length,
+  2,
+  "Duplicate-unit jobs from different dates must remain separate records, not a unit-keyed overwrite."
+);
 const queueClosureFunction =
   queue.match(/function isClosedQueueItem[\s\S]*?function isClosedForOperations/)?.[0] ??
   "";
@@ -285,6 +322,19 @@ assert(
     dashboard.includes("Boolean(item.completed_date)") &&
     !dashboard.includes('return ["completed", "invoiced", "paid"].includes'),
   "Dashboard Queue preview must use the same completion-based active-work rule."
+);
+assert(
+  quickCommandCenter.includes("function isActiveQueueItem") &&
+    quickCommandCenter.includes("!item.completed_date") &&
+    quickCommandCenter.includes("completed_date, linked_estimate_id"),
+  "Quick Command active queue filtering must exclude completed_date records using the same completion state as Queue."
+);
+assert(
+  createQueueItem.includes("canonicalApartmentUnitLabel") &&
+    createQueueItem.includes("shouldCanonicalizeUnit") &&
+    createQueueItem.includes(".insert([queueItemInsert])") &&
+    !createQueueItem.includes(".upsert("),
+  "Creating queue items must canonicalize North Creek unit formatting and must not upsert by unit, which could overwrite older jobs."
 );
 assert(
   queue.includes("splitChildren.every"),

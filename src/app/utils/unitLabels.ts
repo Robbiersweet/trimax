@@ -1,5 +1,8 @@
 export function canonicalApartmentUnitLabel(value: string | null | undefined) {
-  const normalized = (value || "").trim().replace(/\s+/g, "").toUpperCase();
+  const normalized = (value || "")
+    .trim()
+    .replace(/[\s-]+/g, "")
+    .toUpperCase();
   const match = normalized.match(/^([A-Z])0*([1-9]\d?)$/);
 
   if (!match) {

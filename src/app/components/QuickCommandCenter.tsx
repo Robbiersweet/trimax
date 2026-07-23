@@ -507,6 +507,7 @@ function isActiveQueueItem(item: QueueSearchRecord) {
   const status = item.status?.toLowerCase() ?? "";
 
   return (
+    !item.completed_date &&
     !status.includes("complete") &&
     !status.includes("cancel") &&
     !status.includes("closed")

@@ -2,6 +2,7 @@ import { supabase } from "./supabase";
 import { logActivity } from "./activityLog";
 import { assertCanWriteDuringMaintenance } from "./maintenanceMode";
 import { normalizeTbdValue } from "./tbd";
+import { canonicalApartmentUnitLabel } from "../utils/unitLabels";
 
 type CreateQueueItemInput = {
   property: string;
@@ -44,6 +45,13 @@ function normalizePriorityOrder(value: string | number | null | undefined) {
   return parsed;
 }
 
+function shouldCanonicalizeUnit(property: string, businessSlug?: string) {
+  return (
+    businessSlug === "rnl-creations" &&
+    property.trim().toLowerCase() === "north creek apartments"
+  );
+}
+
 function isMissingQueueColumnError(error: unknown) {
   if (!error || typeof error !== "object") {
     return false;
@@ -78,6 +86,9 @@ export async function createQueueItem(input: CreateQueueItemInput) {
   const priorityOrder = normalizePriorityOrder(input.priorityOrder);
   const neededByDate = normalizeDate(input.readyDate);
   const now = new Date().toISOString();
+  const storedUnit = shouldCanonicalizeUnit(input.property, input.businessSlug)
+    ? canonicalApartmentUnitLabel(input.unit)
+    : input.unit;
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -86,7 +97,7 @@ export async function createQueueItem(input: CreateQueueItemInput) {
     id,
     business_id: input.businessId,
     property: input.property,
-    unit: input.unit,
+    unit: storedUnit,
     paint_type: input.paintType,
     unit_layout: input.unitLayout.trim() || null,
     wall_paint_color: normalizeTbdValue(input.wallPaintColor).trim() || null,
@@ -171,7 +182,7 @@ export async function createQueueItem(input: CreateQueueItemInput) {
     }`,
     details: {
       property: input.property,
-      unit: input.unit,
+      unit: storedUnit,
       paintType: input.paintType,
       unitLayout: input.unitLayout,
       wallPaintColor: input.wallPaintColor,
