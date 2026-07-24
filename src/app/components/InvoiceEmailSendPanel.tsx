@@ -35,6 +35,7 @@ type InvoiceEmailSendPanelProps = {
     splitLabel?: string | null;
   }[];
   splitGroupCombinedTotal?: string;
+  sendDisabledReason?: string | null;
 };
 
 function defaultSubject(
@@ -189,6 +190,7 @@ export default function InvoiceEmailSendPanel({
   splitGroupLabel,
   splitGroupItems = [],
   splitGroupCombinedTotal,
+  sendDisabledReason,
 }: InvoiceEmailSendPanelProps) {
   const effectiveSplitGroupLabel =
     splitGroupLabel?.trim() ||
@@ -241,7 +243,10 @@ export default function InvoiceEmailSendPanel({
     technicalDetails?: string;
   } | null>(null);
 
-  const canSend = recipient.trim().includes("@") && subject.trim();
+  const canSend =
+    !sendDisabledReason &&
+    recipient.trim().includes("@") &&
+    Boolean(subject.trim());
   const dueDateSentence =
     dueDate && dueDate !== "-"
       ? requestType === "reminder"
@@ -577,6 +582,14 @@ export default function InvoiceEmailSendPanel({
 
   async function handleSend(sendAsSplitGroup = sendSplitGroup) {
     setToast(null);
+
+    if (sendDisabledReason) {
+      setToast({
+        type: "error",
+        message: sendDisabledReason,
+      });
+      return;
+    }
 
     if (!canSend) {
       setToast({
@@ -922,7 +935,9 @@ export default function InvoiceEmailSendPanel({
       <div className="invoice-email-footer flex flex-col gap-4 border-t border-slate-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <div className="max-w-2xl">
           <p className="text-sm font-semibold text-slate-700">
-            {canSend
+            {sendDisabledReason
+              ? sendDisabledReason
+              : canSend
               ? sendSplitGroup && splitGroupCount > 1
                 ? `Split invoice group is ready to send`
                 : `${documentLabel} is ready to send`

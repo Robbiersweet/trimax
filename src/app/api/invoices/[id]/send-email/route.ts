@@ -27,6 +27,7 @@ type Database = {
       business_users: GenericTable;
       businesses: GenericTable;
       clients: GenericTable;
+      invoice_line_items: GenericTable;
       invoices: GenericTable;
     };
     Views: Record<string, never>;
@@ -62,6 +63,14 @@ type InvoiceRow = {
   split_parent_invoice_id: string | null;
   split_sequence: number | null;
   split_count: number | null;
+};
+
+type InvoiceLineItemRow = {
+  invoice_id: string;
+  description: string | null;
+  quantity: string | number | null;
+  unit_price: string | number | null;
+  line_total: string | number | null;
 };
 
 type BusinessRow = {
@@ -134,6 +143,15 @@ function formatCurrency(value: number) {
     currency: "USD",
     style: "currency",
   }).format(Number.isFinite(value) ? value : 0);
+}
+
+function meaningfulInvoiceLine(lineItem: InvoiceLineItemRow) {
+  const description = String(lineItem.description ?? "").trim();
+  const savedLineTotal = numberValue(lineItem.line_total);
+  const calculatedLineTotal =
+    numberValue(lineItem.quantity) * numberValue(lineItem.unit_price);
+
+  return Boolean(description) && Math.max(savedLineTotal, calculatedLineTotal) > 0;
 }
 
 type SendPipelineStage =
@@ -802,6 +820,65 @@ export async function POST(request: Request, { params }: RouteParams) {
 
   const isSplitGroupSend =
     sendSplitGroup && emailPurpose !== "reminder" && targetInvoices.length > 1;
+
+  if (emailPurpose !== "reminder") {
+    const targetInvoiceIds = targetInvoices.map((targetInvoice) => targetInvoice.id);
+    const { data: lineItems, error: lineItemsError } = await supabase
+      .from("invoice_line_items")
+      .select("invoice_id, description, quantity, unit_price, line_total")
+      .in("invoice_id", targetInvoiceIds)
+      .returns<InvoiceLineItemRow[]>();
+
+    if (lineItemsError) {
+      return sendFailureResponse({
+        traceId,
+        steps,
+        stage: "request_validation",
+        message: "Trimax could not verify invoice line items before sending.",
+        status: 500,
+        detail: { invoice_ids: targetInvoiceIds },
+      });
+    }
+
+    const lineItemsByInvoiceId = new Map<string, InvoiceLineItemRow[]>();
+    for (const lineItem of lineItems ?? []) {
+      const current = lineItemsByInvoiceId.get(lineItem.invoice_id) ?? [];
+      current.push(lineItem);
+      lineItemsByInvoiceId.set(lineItem.invoice_id, current);
+    }
+
+    const invalidDraftInvoices = targetInvoices.filter((targetInvoice) => {
+      const status = String(targetInvoice.status ?? "").trim().toLowerCase();
+
+      if (status !== "draft") {
+        return false;
+      }
+
+      const invoiceLineItems = lineItemsByInvoiceId.get(targetInvoice.id) ?? [];
+
+      return (
+        numberValue(targetInvoice.invoice_amount) <= 0 ||
+        !invoiceLineItems.some(meaningfulInvoiceLine)
+      );
+    });
+
+    if (invalidDraftInvoices.length > 0) {
+      return sendFailureResponse({
+        traceId,
+        steps,
+        stage: "request_validation",
+        message: "Add line items and pricing before sending this invoice.",
+        status: 400,
+        detail: {
+          invalid_invoice_ids: invalidDraftInvoices.map((item) => item.id),
+          invalid_invoice_numbers: invalidDraftInvoices.map(
+            (item) => item.display_id ?? "Invoice"
+          ),
+        },
+      });
+    }
+  }
+
   const { lines: splitSummaryLines, combinedTotal } =
     buildSplitGroupSummary(targetInvoices);
   const groupLabel = splitGroupLabel(targetInvoices);

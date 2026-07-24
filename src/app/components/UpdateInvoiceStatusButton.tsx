@@ -12,6 +12,7 @@ type UpdateInvoiceStatusButtonProps = {
   label: string;
   businessId?: string | null;
   invoiceLabel?: string | null;
+  disabledReason?: string | null;
 };
 
 export default function UpdateInvoiceStatusButton({
@@ -20,6 +21,7 @@ export default function UpdateInvoiceStatusButton({
   label,
   businessId,
   invoiceLabel,
+  disabledReason,
 }: UpdateInvoiceStatusButtonProps) {
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
@@ -27,6 +29,12 @@ export default function UpdateInvoiceStatusButton({
 
   async function handleUpdateStatus() {
     setErrorMessage("");
+
+    if (disabledReason) {
+      setErrorMessage(disabledReason);
+      return;
+    }
+
     setIsSaving(true);
 
     const { error } = await supabase
@@ -64,12 +72,16 @@ export default function UpdateInvoiceStatusButton({
     <div className="grid gap-2">
       <Button
         onClick={handleUpdateStatus}
-        disabled={isSaving}
+        disabled={isSaving || Boolean(disabledReason)}
       >
         {isSaving ? "Saving..." : label}
       </Button>
 
-      {errorMessage ? (
+      {disabledReason ? (
+        <p className="text-sm font-semibold text-amber-200">
+          {disabledReason}
+        </p>
+      ) : errorMessage ? (
         <p className="text-sm font-semibold text-red-300">
           {errorMessage}
         </p>

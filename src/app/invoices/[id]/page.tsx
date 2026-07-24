@@ -253,6 +253,17 @@ function looksLikeFiveStarsBoaInvoice(
   return hasFiveStars || hasBankOfAmerica;
 }
 
+function hasMeaningfulInvoiceLineItems(lineItems: InvoiceLineItem[]) {
+  return lineItems.some((item) => {
+    const description = String(item.description ?? "").trim();
+    const savedLineTotal = numberValue(item.line_total);
+    const calculatedLineTotal =
+      numberValue(item.quantity) * numberValue(item.unit_price);
+
+    return Boolean(description) && Math.max(savedLineTotal, calculatedLineTotal) > 0;
+  });
+}
+
 function detailText(
   details: Record<string, unknown> | null | undefined,
   key: string
@@ -555,6 +566,7 @@ function InvoiceIntelligence({
   hasReminderProof,
   hasSendProof,
   isFullyPaid,
+  isDraftIncomplete,
   isPartiallyPaid,
   isPaymentLate,
   latestPaymentDate,
@@ -571,6 +583,7 @@ function InvoiceIntelligence({
   hasReminderProof: boolean;
   hasSendProof: boolean;
   isFullyPaid: boolean;
+  isDraftIncomplete: boolean;
   isPartiallyPaid: boolean;
   isPaymentLate: boolean;
   latestPaymentDate: string | null;
@@ -589,16 +602,20 @@ function InvoiceIntelligence({
     },
     {
       label: "Payment",
-      value: isFullyPaid
+      value: isDraftIncomplete
+        ? "Draft incomplete"
+        : isFullyPaid
         ? "Paid in Full"
         : isPartiallyPaid
           ? `${collectedPercent}% Collected`
           : money(balanceDue),
-      done: isFullyPaid || hasPaymentProof,
+      done: !isDraftIncomplete && (isFullyPaid || hasPaymentProof),
     },
     {
       label: "Reminder",
-      value: isPaymentLate
+      value: isDraftIncomplete
+        ? "Not ready"
+        : isPaymentLate
         ? hasReminderProof
           ? "Sent"
           : "Due Now"
@@ -637,7 +654,11 @@ function InvoiceIntelligence({
                 {isFullyPaid ? "Collected" : amountDueLabel}
               </p>
               <p className="mt-1 text-lg font-black text-white">
-                {isFullyPaid ? money(amountPaid) : money(balanceDue)}
+                {isDraftIncomplete
+                  ? "Draft incomplete"
+                  : isFullyPaid
+                    ? money(amountPaid)
+                    : money(balanceDue)}
               </p>
               {isFullyPaid && latestPaymentDate ? (
                 <p className="mt-1 text-xs font-semibold text-emerald-200">
@@ -681,6 +702,7 @@ function PaymentProgressCard({
   amountPaid,
   invoiceTotal,
   isFullyPaid,
+  isDraftIncomplete,
   isPartiallyPaid,
   latestPaymentDate,
 }: {
@@ -688,19 +710,24 @@ function PaymentProgressCard({
   amountPaid: number;
   invoiceTotal: number;
   isFullyPaid: boolean;
+  isDraftIncomplete: boolean;
   isPartiallyPaid: boolean;
   latestPaymentDate: string | null;
 }) {
   const collectedPercent =
-    invoiceTotal > 0
+    !isDraftIncomplete && invoiceTotal > 0
       ? Math.min(100, Math.round((amountPaid / invoiceTotal) * 100))
       : 0;
-  const heading = isFullyPaid
+  const heading = isDraftIncomplete
+    ? "Draft incomplete"
+    : isFullyPaid
     ? "Paid in full"
     : isPartiallyPaid
       ? `${collectedPercent}% collected`
       : "Balance ready to collect";
-  const detail = isFullyPaid
+  const detail = isDraftIncomplete
+    ? "Add line items and pricing before sending this invoice."
+    : isFullyPaid
     ? latestPaymentDate
       ? `Collected ${formatLifecycleDate(latestPaymentDate)}`
       : "Collection is complete."
@@ -984,12 +1011,24 @@ export default async function InvoiceDetailPage({
   const amountPaid = numberValue(invoice.amount_paid);
   const status = invoice.status || "Draft";
   const normalizedStatus = invoiceStatusKey(status);
+  const isDraftInvoice = normalizedStatus === "draft";
   const isNonCollectibleInvoice = isNonCollectibleInvoiceStatus(status);
+  const hasPricedLineItems = hasMeaningfulInvoiceLineItems(items);
+  const isIncompleteDraftInvoice =
+    isDraftInvoice && (items.length === 0 || invoiceTotal <= 0 || !hasPricedLineItems);
+  const draftSendDisabledReason = isIncompleteDraftInvoice
+    ? "Add line items and pricing before sending."
+    : null;
+  const draftPaymentDisabledReason = isIncompleteDraftInvoice
+    ? "Add line items and pricing before marking paid."
+    : null;
   const amountDue = isNonCollectibleInvoice
     ? 0
     : Math.max(invoiceTotal - amountPaid, 0);
   const isFullyPaid =
-    !isNonCollectibleInvoice && (normalizedStatus === "paid" || amountDue <= 0);
+    !isNonCollectibleInvoice &&
+    !isIncompleteDraftInvoice &&
+    (normalizedStatus === "paid" || amountDue <= 0);
   const collectedAmount = isFullyPaid
     ? amountPaid > 0
       ? amountPaid
@@ -1013,7 +1052,9 @@ export default async function InvoiceDetailPage({
   const customerFacingAmountDue = hasDepositRequest
     ? depositDueNow
     : amountDue;
-  const amountDueLabel = isFullyPaid
+  const amountDueLabel = isIncompleteDraftInvoice
+    ? "Draft Status"
+    : isFullyPaid
     ? "Balance"
     : hasDepositRequest
       ? "Deposit Due"
@@ -1300,13 +1341,16 @@ export default async function InvoiceDetailPage({
           detail:
             "This is one customer transaction represented by multiple accounting invoices. Send one email with every split invoice PDF attached.",
         }
-      : normalizedStatus === "draft"
+      : isDraftInvoice
       ? {
-          href: "#send-invoice",
-          label: "Send Invoice",
-          title: "Send this invoice next",
-          detail:
-            "This invoice is still in draft. Send it from Trimax so the email, PDF attachment, recipient, and sender proof are saved together.",
+          href: `/invoices/${invoice.id}/edit${businessQuery}`,
+          label: "Edit Invoice",
+          title: isIncompleteDraftInvoice
+            ? "Draft incomplete"
+            : "Review this draft before sending",
+          detail: isIncompleteDraftInvoice
+            ? "Add line items and pricing, then review the invoice before sending."
+            : "This invoice is still in draft. Review pricing and line items before sending it from Trimax.",
         }
       : isPartiallyPaid
         ? {
@@ -1387,6 +1431,50 @@ export default async function InvoiceDetailPage({
         </div>
 
         <div className="space-y-6">
+          {isDraftInvoice && !isNonCollectibleInvoice ? (
+            <Card className="border-sky-500/30 bg-sky-500/10">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.3em] text-sky-200">
+                    Draft Workflow
+                  </p>
+                  <h2 className="mt-2 text-2xl font-black text-white">
+                    {isIncompleteDraftInvoice
+                      ? "Draft incomplete"
+                      : "Ready for review"}
+                  </h2>
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-sm font-bold text-zinc-300">
+                    <span className="rounded-full border border-sky-400/25 bg-black/25 px-3 py-1">
+                      Edit Invoice
+                    </span>
+                    <span className="text-zinc-500">-&gt;</span>
+                    <span className="rounded-full border border-sky-400/25 bg-black/25 px-3 py-1">
+                      Review
+                    </span>
+                    <span className="text-zinc-500">-&gt;</span>
+                    <span className="rounded-full border border-sky-400/25 bg-black/25 px-3 py-1">
+                      Send Invoice
+                    </span>
+                  </div>
+                  {isIncompleteDraftInvoice ? (
+                    <p className="mt-3 text-sm font-semibold text-amber-100">
+                      Add line items and pricing before sending.
+                    </p>
+                  ) : null}
+                </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <Link href={`/invoices/${invoice.id}/edit${businessQuery}`}>
+                    <Button>Edit Invoice</Button>
+                  </Link>
+                  <Link href={`/invoices/${invoice.id}/print${businessQuery}`}>
+                    <Button variant="secondary">Review PDF</Button>
+                  </Link>
+                </div>
+              </div>
+            </Card>
+          ) : null}
+
           <InvoiceIntelligence
             amountDueLabel={amountDueLabel}
             amountPaid={collectedAmount}
@@ -1399,6 +1487,7 @@ export default async function InvoiceDetailPage({
             hasReminderProof={hasReminderProof}
             hasSendProof={hasSendProof}
             isFullyPaid={isFullyPaid}
+            isDraftIncomplete={isIncompleteDraftInvoice}
             isPartiallyPaid={isPartiallyPaid}
             isPaymentLate={isPaymentLate}
             latestPaymentDate={latestPaymentDate}
@@ -1429,6 +1518,7 @@ export default async function InvoiceDetailPage({
             amountPaid={collectedAmount}
             invoiceTotal={invoiceTotal}
             isFullyPaid={isFullyPaid}
+            isDraftIncomplete={isIncompleteDraftInvoice}
             isPartiallyPaid={isPartiallyPaid}
             latestPaymentDate={latestPaymentDate}
           />
@@ -1686,6 +1776,7 @@ export default async function InvoiceDetailPage({
                 projectTitle={projectTitle}
                 printHref={`/invoices/${invoice.id}/print${businessQuery}`}
                 requestType="invoice"
+                sendDisabledReason={draftSendDisabledReason}
                 sendSplitGroup
                 splitGroupCount={splitSendInvoiceCount}
                 splitGroupLabel={splitGroupLabel}
@@ -1732,6 +1823,7 @@ export default async function InvoiceDetailPage({
                 projectTitle={projectTitle}
                 printHref={`/invoices/${invoice.id}/print${businessQuery}`}
                 requestType={hasDepositRequest ? "deposit" : "invoice"}
+                sendDisabledReason={draftSendDisabledReason}
               />
             </div>
           ) : null}
@@ -1886,7 +1978,13 @@ export default async function InvoiceDetailPage({
               <Info label="Customer" value={customerName} />
               <Info
                 label={isFullyPaid ? "Collected" : amountDueLabel}
-                value={isFullyPaid ? money(collectedAmount) : money(customerFacingAmountDue)}
+                value={
+                  isIncompleteDraftInvoice
+                    ? "Draft incomplete"
+                    : isFullyPaid
+                      ? money(collectedAmount)
+                      : money(customerFacingAmountDue)
+                }
                 strong
               />
               {isFullyPaid ? (
@@ -2022,7 +2120,11 @@ export default async function InvoiceDetailPage({
               <div className="border-t border-zinc-700 pt-4">
                 <SummaryRow
                   label={isFullyPaid ? "Balance" : amountDueLabel}
-                  value={money(isFullyPaid ? 0 : customerFacingAmountDue)}
+                  value={
+                    isIncompleteDraftInvoice
+                      ? "Draft incomplete"
+                      : money(isFullyPaid ? 0 : customerFacingAmountDue)
+                  }
                   strong
                 />
               </div>
@@ -2072,6 +2174,7 @@ export default async function InvoiceDetailPage({
                 newStatus="sent"
                 label="Mark Sent"
                 businessId={invoice.business_id}
+                disabledReason={draftSendDisabledReason}
                 invoiceLabel={
                   invoice.display_id ||
                   projectTitle
@@ -2091,6 +2194,7 @@ export default async function InvoiceDetailPage({
                 newStatus="paid"
                 label="Mark Paid"
                 businessId={invoice.business_id}
+                disabledReason={draftPaymentDisabledReason}
                 invoiceLabel={
                   invoice.display_id ||
                   projectTitle

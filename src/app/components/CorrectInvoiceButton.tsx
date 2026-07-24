@@ -453,7 +453,7 @@ export default function CorrectInvoiceButton({
   if (!isOpen) {
     return (
       <Button variant="secondary" onClick={() => setIsOpen(true)}>
-        Correct Invoice
+        Supersede This Invoice
       </Button>
     );
   }
@@ -462,11 +462,12 @@ export default function CorrectInvoiceButton({
     <div className="grid max-w-xl gap-3 rounded-2xl border border-amber-500/35 bg-amber-500/10 p-4">
       <div>
         <p className="text-sm font-black uppercase tracking-[0.22em] text-amber-200">
-          Correct Invoice
+          Supersede This Invoice
         </p>
         <p className="mt-2 text-sm leading-6 text-amber-50/85">
-          The sent invoice stays in history and becomes non-collectible. A
-          replacement draft is created for review and is not sent automatically.
+          This will preserve the current invoice, mark it as superseded, and
+          create a new draft replacement. The customer will not be notified
+          until you review and send the replacement.
         </p>
       </div>
       <label className="grid gap-2 text-sm font-semibold text-amber-50">
@@ -481,7 +482,7 @@ export default function CorrectInvoiceButton({
       </label>
       <div className="flex flex-wrap gap-2">
         <Button onClick={handleCorrectInvoice} disabled={isSaving}>
-          {isSaving ? "Correcting..." : "Create Correction Draft"}
+          {isSaving ? "Creating..." : "Create Draft Replacement"}
         </Button>
         <Button
           variant="secondary"

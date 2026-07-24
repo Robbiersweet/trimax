@@ -149,6 +149,22 @@ const invoiceLifecycle = readFileSync(
   resolve(root, "src/app/lib/invoiceLifecycle.ts"),
   "utf8"
 );
+const invoiceDetail = readFileSync(
+  resolve(root, "src/app/invoices/[id]/page.tsx"),
+  "utf8"
+);
+const invoiceEmailSendPanel = readFileSync(
+  resolve(root, "src/app/components/InvoiceEmailSendPanel.tsx"),
+  "utf8"
+);
+const updateInvoiceStatusButton = readFileSync(
+  resolve(root, "src/app/components/UpdateInvoiceStatusButton.tsx"),
+  "utf8"
+);
+const invoiceSendEmailRoute = readFileSync(
+  resolve(root, "src/app/api/invoices/[id]/send-email/route.ts"),
+  "utf8"
+);
 const correctInvoiceButton = readFileSync(
   resolve(root, "src/app/components/CorrectInvoiceButton.tsx"),
   "utf8"
@@ -576,7 +592,8 @@ assert(
   "Invoice lifecycle helper must centralize non-collectible correction statuses and authoritative queue badge resolution."
 );
 assert(
-  correctInvoiceButton.includes("Correct Invoice") &&
+  correctInvoiceButton.includes("Supersede This Invoice") &&
+    correctInvoiceButton.includes("mark it as superseded") &&
     correctInvoiceButton.includes("amountPaid > 0") &&
     correctInvoiceButton.includes("estimate.corrected_replacement_created") &&
     correctInvoiceButton.includes("replacementEstimateId") &&
@@ -585,7 +602,39 @@ assert(
     correctInvoiceButton.includes("status: createReplacement ? \"superseded\" : \"void\"") &&
     correctInvoiceButton.includes("invoice.corrected_replacement_created") &&
     correctInvoiceButton.includes("invoice.superseded"),
-  "Correct Invoice must block paid originals, preserve sent history, create an unsent draft replacement, and log the relationship."
+  "Supersede This Invoice must block paid originals, preserve sent history, create an unsent draft replacement, and log the relationship."
+);
+assert(
+  invoiceDetail.includes("hasMeaningfulInvoiceLineItems") &&
+    invoiceDetail.includes("isIncompleteDraftInvoice") &&
+    invoiceDetail.includes("Draft incomplete") &&
+    invoiceDetail.includes("Edit Invoice") &&
+    invoiceDetail.includes("Review") &&
+    invoiceDetail.includes("Send Invoice") &&
+    invoiceDetail.includes("draftSendDisabledReason") &&
+    invoiceDetail.includes("sendDisabledReason={draftSendDisabledReason}") &&
+    invoiceDetail.includes("disabledReason={draftSendDisabledReason}") &&
+    invoiceDetail.includes("draftPaymentDisabledReason"),
+  "Invoice detail must show incomplete drafts as editable drafts, not paid invoices, and must disable draft send/status actions until priced line items exist."
+);
+assert(
+  invoiceEmailSendPanel.includes("sendDisabledReason?: string | null") &&
+    invoiceEmailSendPanel.includes("!sendDisabledReason") &&
+    invoiceEmailSendPanel.includes("message: sendDisabledReason"),
+  "Invoice email panel must accept an app-level disabled reason before attempting a send."
+);
+assert(
+  updateInvoiceStatusButton.includes("disabledReason?: string | null") &&
+    updateInvoiceStatusButton.includes("disabled={isSaving || Boolean(disabledReason)}"),
+  "Invoice status button must support visible disabled reasons for incomplete drafts."
+);
+assert(
+  invoiceSendEmailRoute.includes("invoice_line_items") &&
+    invoiceSendEmailRoute.includes("meaningfulInvoiceLine") &&
+    invoiceSendEmailRoute.includes("invalidDraftInvoices") &&
+    invoiceSendEmailRoute.includes("Add line items and pricing before sending this invoice.") &&
+    invoiceSendEmailRoute.includes("stage: \"request_validation\""),
+  "Invoice send API must reject incomplete zero-dollar drafts before email delivery or status updates."
 );
 
 console.log("Job session integrity regression checks passed.");
