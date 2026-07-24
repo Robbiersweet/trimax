@@ -59,6 +59,8 @@ type InvoiceRow = {
   project_title: string | null;
   invoice_amount: string | number | null;
   amount_paid: string | number | null;
+  notes: string | null;
+  created_at: string | null;
   due_date: string | null;
   issue_date: string | null;
   reference: string | null;
@@ -571,7 +573,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   const { data: invoice, error: invoiceError } = await supabase
     .from("invoices")
     .select(
-      "id, business_id, client_id, display_id, customer_name, project_title, invoice_amount, amount_paid, due_date, issue_date, reference, service_address, status, split_parent_invoice_id, split_sequence, split_count"
+      "id, business_id, client_id, display_id, customer_name, project_title, invoice_amount, amount_paid, notes, created_at, due_date, issue_date, reference, service_address, status, split_parent_invoice_id, split_sequence, split_count"
     )
     .eq("id", id)
     .limit(1)
@@ -769,7 +771,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     const { data: splitInvoices, error: splitInvoicesError } = await supabase
       .from("invoices")
       .select(
-        "id, business_id, client_id, display_id, customer_name, project_title, invoice_amount, amount_paid, due_date, issue_date, reference, service_address, status, split_parent_invoice_id, split_sequence, split_count"
+        "id, business_id, client_id, display_id, customer_name, project_title, invoice_amount, amount_paid, notes, created_at, due_date, issue_date, reference, service_address, status, split_parent_invoice_id, split_sequence, split_count"
       )
       .eq("business_id", invoice.business_id)
       .eq("split_parent_invoice_id", splitGroupRootId)

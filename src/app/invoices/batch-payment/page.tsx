@@ -1,6 +1,4 @@
-import Link from "next/link";
 import AppShell from "../../components/AppShell";
-import Button from "../../components/Button";
 import Card from "../../components/Card";
 import InvoiceBulkPaymentActions from "../../components/InvoiceBulkPaymentActions";
 import InvoiceWorkspaceNav from "../../components/InvoiceWorkspaceNav";
@@ -43,7 +41,6 @@ export default async function InvoiceBatchPaymentPage({
 }) {
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const businessSlug = resolvedSearchParams.business ?? "rnl-creations";
-  const businessQuery = `?business=${businessSlug}`;
   const { data: businessData, error: businessError } = await supabase
     .from("businesses")
     .select("id, name, slug")
@@ -117,7 +114,7 @@ export default async function InvoiceBatchPaymentPage({
 
   return (
     <AppShell>
-      <div className="space-y-5 sm:space-y-6">
+      <div className="space-y-5 pb-32 sm:space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm uppercase tracking-[0.3em] text-green-300">
@@ -127,11 +124,6 @@ export default async function InvoiceBatchPaymentPage({
               Batch Payment
             </h1>
           </div>
-          <Link href={`/payments${businessQuery}`}>
-            <Button variant="secondary" className="w-full sm:w-auto">
-              Open Payments
-            </Button>
-          </Link>
         </div>
 
         <InvoiceWorkspaceNav businessSlug={businessSlug} active="batch-payment" />
@@ -175,4 +167,3 @@ export default async function InvoiceBatchPaymentPage({
     </AppShell>
   );
 }
-

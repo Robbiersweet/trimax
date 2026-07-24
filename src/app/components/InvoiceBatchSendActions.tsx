@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Button from "./Button";
 import Card from "./Card";
 import Toast from "./Toast";
@@ -15,6 +16,10 @@ type BatchSendInvoice = {
   invoiceAmount: number;
   status: string;
   recipientEmail: string | null;
+  href: string;
+  issueDate: string | null;
+  createdAt: string | null;
+  sourceLabel?: string | null;
   splitParentInvoiceId: string | null;
   splitChildrenCount: number;
   splitParentDisplayId: string | null;
@@ -81,6 +86,30 @@ function documentListLabel(documents: string[]) {
 
 function invoiceContext(invoice: Pick<BatchSendInvoice, "customerName" | "projectTitle">) {
   return invoice.projectTitle?.trim() || invoice.customerName?.trim() || "this work";
+}
+
+function formatDate(value: string | null) {
+  if (!value) {
+    return "No date";
+  }
+
+  const date = new Date(value.includes("T") ? value : `${value}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
+
+function isInteractiveTarget(target: EventTarget | null) {
+  return target instanceof Element
+    ? Boolean(target.closest("a, button, input, select, textarea"))
+    : false;
 }
 
 function groupSelection(
@@ -351,11 +380,6 @@ export default function InvoiceBatchSendActions({
           <h2 className="mt-2 text-2xl font-black text-white">
             Send selected invoice emails
           </h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
-            Select draft invoices here. Normal invoices send individually.
-            Split invoices are grouped first and use the existing Send Split
-            Group workflow.
-          </p>
         </div>
 
         <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[440px]">
@@ -375,7 +399,7 @@ export default function InvoiceBatchSendActions({
           }
           className="rounded-full border border-sky-400/40 bg-sky-500/15 px-4 py-2 text-sm font-black text-sky-100 transition hover:bg-sky-500/25"
         >
-          {allSelected ? "Clear All" : "Select All Visible Drafts"}
+          {allSelected ? "Clear All" : "Select All Send-Ready Drafts"}
         </button>
         <button
           type="button"
@@ -395,9 +419,25 @@ export default function InvoiceBatchSendActions({
             invoice.splitChildrenCount > 0;
 
           return (
-            <label
+            <div
               key={invoice.id}
-              className={`grid cursor-pointer gap-3 rounded-2xl border px-4 py-3 transition sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center ${
+              role="link"
+              tabIndex={0}
+              onClick={(event) => {
+                if (!isInteractiveTarget(event.target)) {
+                  router.push(invoice.href);
+                }
+              }}
+              onKeyDown={(event) => {
+                if (
+                  !isInteractiveTarget(event.target) &&
+                  (event.key === "Enter" || event.key === " ")
+                ) {
+                  event.preventDefault();
+                  router.push(invoice.href);
+                }
+              }}
+              className={`grid cursor-pointer gap-3 rounded-2xl border px-4 py-3 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center ${
                 isSelected
                   ? "border-sky-300 bg-sky-500/20"
                   : "border-white/10 bg-zinc-950/70 hover:border-sky-400/40"
@@ -407,14 +447,24 @@ export default function InvoiceBatchSendActions({
                 type="checkbox"
                 checked={isSelected}
                 onChange={() => toggleInvoice(invoice.id)}
+                onClick={(event) => event.stopPropagation()}
+                aria-label={`Select ${invoice.displayId}`}
                 className="h-5 w-5 accent-sky-500"
               />
               <span className="min-w-0">
-                <span className="block break-words text-sm font-black text-white">
+                <Link
+                  href={invoice.href}
+                  className="block break-words text-sm font-black text-white hover:text-sky-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
+                >
                   {invoice.displayId} - {invoice.projectTitle}
-                </span>
+                </Link>
                 <span className="mt-1 block text-xs font-semibold text-zinc-400">
-                  {invoice.customerName} / {invoice.status}
+                  <Link
+                    href={invoice.href}
+                    className="hover:text-sky-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
+                  >
+                    {invoice.customerName} / {invoice.status}
+                  </Link>
                   {isSplit
                     ? invoice.splitParentInvoiceId
                       ? ` / Split ${invoice.splitSequence ?? "-"} of ${
@@ -423,16 +473,26 @@ export default function InvoiceBatchSendActions({
                       : ` / Split group source`
                     : ""}
                 </span>
+                <span className="mt-1 block text-xs font-semibold text-zinc-500">
+                  {formatDate(invoice.issueDate ?? invoice.createdAt)}
+                  {invoice.sourceLabel ? ` / ${invoice.sourceLabel}` : ""}
+                  {isValidEmail(invoice.recipientEmail)
+                    ? " / Recipient ready"
+                    : ""}
+                </span>
                 {!isValidEmail(invoice.recipientEmail) ? (
                   <span className="mt-1 block text-xs font-black text-amber-200">
                     Missing saved recipient email
                   </span>
                 ) : null}
               </span>
-              <span className="text-sm font-black text-emerald-200 sm:text-right">
+              <Link
+                href={invoice.href}
+                className="text-sm font-black text-emerald-200 hover:text-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 sm:text-right"
+              >
                 {formatMoney(invoice.invoiceAmount)}
-              </span>
-            </label>
+              </Link>
+            </div>
           );
         })}
       </div>

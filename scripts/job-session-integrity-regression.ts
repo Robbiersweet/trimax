@@ -169,6 +169,14 @@ const invoiceWorkspaceNav = readFileSync(
   resolve(root, "src/app/components/InvoiceWorkspaceNav.tsx"),
   "utf8"
 );
+const invoiceBatchSendActions = readFileSync(
+  resolve(root, "src/app/components/InvoiceBatchSendActions.tsx"),
+  "utf8"
+);
+const invoiceBulkPaymentActions = readFileSync(
+  resolve(root, "src/app/components/InvoiceBulkPaymentActions.tsx"),
+  "utf8"
+);
 const invoiceEligibility = readFileSync(
   resolve(root, "src/app/lib/invoiceEligibility.ts"),
   "utf8"
@@ -661,6 +669,7 @@ assert(
     invoiceSendEmailRoute.includes("invoiceSendIneligibleReason") &&
     invoiceSendEmailRoute.includes("invalidInvoices") &&
     invoiceSendEmailRoute.includes("invalid_reasons") &&
+    invoiceSendEmailRoute.includes("notes, created_at, due_date, issue_date") &&
     invoiceSendEmailRoute.includes("stage: \"request_validation\""),
   "Invoice send API must reject ineligible drafts, non-collectible invoices, and split sources before email delivery or status updates."
 );
@@ -668,6 +677,7 @@ assert(
   invoicesPage.indexOf("<form") < invoicesPage.indexOf('id="invoice-results-list"') &&
     invoicesPage.includes("resultLimit") &&
     invoicesPage.includes("Load More") &&
+    invoicesPage.includes("pb-32") &&
     invoicesPage.includes("compareInvoices(lineItemsByInvoiceId)") &&
     invoicesPage.includes("isIncompleteDraftInvoice") &&
     invoicesPage.includes("View Replacement") &&
@@ -685,26 +695,57 @@ assert(
 assert(
   invoiceBatchPaymentPage.includes("isPaymentEligibleInvoice") &&
     invoiceBatchPaymentPage.includes("InvoiceBulkPaymentActions") &&
-    invoiceBatchPaymentPage.includes('active="batch-payment"'),
+    invoiceBatchPaymentPage.includes('active="batch-payment"') &&
+    invoiceBatchPaymentPage.includes("pb-32") &&
+    !invoiceBatchPaymentPage.includes("Open Payments"),
   "Batch Payment page must own the batch-payment prep workflow and feed it only collectible invoices."
 );
 assert(
   invoiceBatchSendPage.includes("isSendEligibleInvoice") &&
+    invoiceBatchSendPage.includes("requiresImportReview") &&
+    invoiceBatchSendPage.includes("Imported Drafts") &&
+    invoiceBatchSendPage.includes("Imported draft - review before sending") &&
     invoiceBatchSendPage.includes("Needs Attention") &&
     invoiceBatchSendPage.includes("isIncompleteDraftInvoice") &&
     invoiceBatchSendPage.includes("InvoiceBatchSendActions") &&
-    invoiceBatchSendPage.includes('active="batch-send"'),
-  "Batch Send page must own selectable sendable drafts while listing incomplete drafts separately without checkboxes."
+    invoiceBatchSendPage.includes('active="batch-send"') &&
+    invoiceBatchSendPage.includes("pb-32") &&
+    !invoiceBatchSendPage.includes("Review Invoices"),
+  "Batch Send page must own selectable sendable drafts while listing imported and incomplete drafts separately without checkboxes."
 );
 assert(
   invoiceEligibility.includes("isPaymentEligibleInvoice") &&
     invoiceEligibility.includes("isSendEligibleInvoice") &&
+    invoiceEligibility.includes("isSendReadyInvoice") &&
+    invoiceEligibility.includes("isHistoricalImportedDraft") &&
+    invoiceEligibility.includes("requiresImportReview") &&
+    invoiceEligibility.includes("Imported draft - review before sending") &&
     invoiceEligibility.includes("nonCollectibleInvoiceLabel") &&
     invoiceEligibility.includes("Superseded - Non-collectible") &&
     invoiceEligibility.includes("Void - Non-collectible") &&
     invoiceEligibility.includes("isSplitSourceInvoice") &&
     invoiceEligibility.includes("Draft incomplete - add line items and pricing"),
   "Central invoice eligibility helpers must classify payment/send safety, non-collectible labels, split sources, and incomplete drafts."
+);
+assert(
+  invoiceBatchSendActions.includes('role="link"') &&
+    invoiceBatchSendActions.includes("router.push(invoice.href)") &&
+    invoiceBatchSendActions.includes("isInteractiveTarget") &&
+    invoiceBatchSendActions.includes("onClick={(event) => event.stopPropagation()}") &&
+    invoiceBatchSendActions.includes("aria-label={`Select ${invoice.displayId}`}") &&
+    invoiceBatchSendActions.includes("href={invoice.href}") &&
+    invoiceBatchSendActions.includes("Select All Send-Ready Drafts") &&
+    !invoiceBatchSendActions.includes("<label"),
+  "Batch Send rows must open invoices independently from checkbox selection, including keyboard row activation and a safe Select All Send-Ready Drafts control."
+);
+assert(
+  invoiceBulkPaymentActions.includes('role="link"') &&
+    invoiceBulkPaymentActions.includes("router.push(`/invoices/${invoice.id}?business=${businessSlug}`)") &&
+    invoiceBulkPaymentActions.includes("isInteractiveTarget") &&
+    invoiceBulkPaymentActions.includes("onClick={(event) => event.stopPropagation()}") &&
+    invoiceBulkPaymentActions.includes("aria-label={`Select ${invoice.displayId}`}") &&
+    !invoiceBulkPaymentActions.includes("<label"),
+  "Batch Payment rows must follow the same separate checkbox versus invoice-link interaction rule."
 );
 assert(
   paymentApplyRoute.includes("isPaymentEligibleInvoice") &&

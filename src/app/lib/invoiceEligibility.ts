@@ -12,6 +12,14 @@ export type InvoiceEligibilityRecord = {
   amount_paid?: string | number | null;
   deposit_requested_amount?: string | number | null;
   deposit_status?: string | null;
+  notes?: string | null;
+  issue_date?: string | null;
+  created_at?: string | null;
+  import_source?: string | null;
+  source?: string | null;
+  external_id?: string | null;
+  imported_at?: string | null;
+  import_reviewed?: boolean | null;
   split_parent_invoice_id?: string | null;
   split_children_count?: number | null;
 };
@@ -73,6 +81,58 @@ export function isIncompleteDraftInvoice({
     (moneyNumber(invoice.invoice_amount) <= 0 ||
       !hasMeaningfulInvoiceLineItems(lineItems))
   );
+}
+
+function dateTime(value: string | null | undefined) {
+  if (!value) {
+    return 0;
+  }
+
+  const date = new Date(value.includes("T") ? value : `${value}T00:00:00`);
+
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+}
+
+export function isHistoricalImportedDraft(invoice: InvoiceEligibilityRecord) {
+  if (invoiceStatusKey(invoice.status) !== "draft") {
+    return false;
+  }
+
+  if (invoice.import_reviewed) {
+    return false;
+  }
+
+  const provenanceText = [
+    invoice.notes,
+    invoice.import_source,
+    invoice.source,
+    invoice.external_id,
+    invoice.imported_at,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  const hasAuthoritativeImportSignal =
+    /\b(freshbooks|imported|import|legacy|migration|migrated|csv)\b/.test(
+      provenanceText
+    );
+
+  if (hasAuthoritativeImportSignal) {
+    return true;
+  }
+
+  const issueTime = dateTime(invoice.issue_date);
+  const createdTime = dateTime(invoice.created_at);
+  const daysBetween =
+    issueTime > 0 && createdTime > 0
+      ? (createdTime - issueTime) / 86_400_000
+      : 0;
+
+  return daysBetween >= 30;
+}
+
+export function requiresImportReview(invoice: InvoiceEligibilityRecord) {
+  return isHistoricalImportedDraft(invoice);
 }
 
 export function nonCollectibleInvoiceLabel(status: string | null | undefined) {
@@ -156,6 +216,8 @@ export function isSendEligibleInvoice({
   });
 }
 
+export const isSendReadyInvoice = isSendEligibleInvoice;
+
 export function invoiceSendIneligibleReason({
   invoice,
   lineItems = [],
@@ -176,6 +238,10 @@ export function invoiceSendIneligibleReason({
     return "Split source - send split invoices";
   }
 
+  if (requiresImportReview(invoice)) {
+    return "Imported draft - review before sending";
+  }
+
   if (status !== "draft") {
     return status === "sent" ? "Already sent" : "Not a sendable draft";
   }
@@ -190,4 +256,3 @@ export function invoiceSendIneligibleReason({
 
   return null;
 }
-

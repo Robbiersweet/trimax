@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { isCollectibleInvoiceStatus } from "../lib/invoiceLifecycle";
 
 type InvoiceForBulkPayment = {
@@ -72,10 +73,17 @@ function daysPastDue(value?: string | null) {
   return Math.floor((today.getTime() - dueDate.getTime()) / 86_400_000);
 }
 
+function isInteractiveTarget(target: EventTarget | null) {
+  return target instanceof Element
+    ? Boolean(target.closest("a, button, input, select, textarea"))
+    : false;
+}
+
 export default function InvoiceBulkPaymentActions({
   businessSlug,
   invoices,
 }: InvoiceBulkPaymentActionsProps) {
+  const router = useRouter();
   const payableInvoices = useMemo(
     () =>
       invoices
@@ -266,9 +274,25 @@ export default function InvoiceBulkPaymentActions({
             const isLate = (invoice.daysLate ?? -1) >= 0;
 
             return (
-              <label
+              <div
                 key={invoice.id}
-                className={`payment-prep-row grid cursor-pointer grid-cols-[48px_1fr_130px_140px] items-center gap-3 border-b border-slate-200 px-4 py-4 transition last:border-b-0 max-md:grid-cols-[34px_minmax(0,1fr)_auto] max-md:gap-2 max-md:px-3 ${
+                role="link"
+                tabIndex={0}
+                onClick={(event) => {
+                  if (!isInteractiveTarget(event.target)) {
+                    router.push(`/invoices/${invoice.id}?business=${businessSlug}`);
+                  }
+                }}
+                onKeyDown={(event) => {
+                  if (
+                    !isInteractiveTarget(event.target) &&
+                    (event.key === "Enter" || event.key === " ")
+                  ) {
+                    event.preventDefault();
+                    router.push(`/invoices/${invoice.id}?business=${businessSlug}`);
+                  }
+                }}
+                className={`payment-prep-row grid cursor-pointer grid-cols-[48px_1fr_130px_140px] items-center gap-3 border-b border-slate-200 px-4 py-4 transition last:border-b-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 max-md:grid-cols-[34px_minmax(0,1fr)_auto] max-md:gap-2 max-md:px-3 ${
                   isSelected
                     ? "payment-prep-row-selected bg-green-50"
                     : "bg-white hover:bg-sky-50"
@@ -278,16 +302,24 @@ export default function InvoiceBulkPaymentActions({
                   type="checkbox"
                   checked={isSelected}
                   onChange={() => toggleInvoice(invoice.id)}
+                  onClick={(event) => event.stopPropagation()}
+                  aria-label={`Select ${invoice.displayId}`}
                   className="h-5 w-5 accent-green-500"
                 />
 
                 <span className="min-w-0">
-                  <span className="block break-words font-semibold leading-snug text-slate-950">
+                  <Link
+                    href={`/invoices/${invoice.id}?business=${businessSlug}`}
+                    className="block break-words font-semibold leading-snug text-slate-950 hover:text-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
+                  >
                     {invoice.displayId} - {invoice.projectTitle}
-                  </span>
-                  <span className="mt-1 block text-sm text-slate-500">
+                  </Link>
+                  <Link
+                    href={`/invoices/${invoice.id}?business=${businessSlug}`}
+                    className="mt-1 block text-sm text-slate-500 hover:text-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
+                  >
                     {invoice.customerName} / {invoice.status}
-                  </span>
+                  </Link>
                   <span className="mt-2 hidden text-xs text-slate-500 max-md:block">
                     Due {formatDate(invoice.dueDate)}
                   </span>
@@ -305,10 +337,13 @@ export default function InvoiceBulkPaymentActions({
                   ) : null}
                 </span>
 
-                <span className="shrink-0 text-right font-black text-emerald-700">
+                <Link
+                  href={`/invoices/${invoice.id}?business=${businessSlug}`}
+                  className="shrink-0 text-right font-black text-emerald-700 hover:text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
+                >
                   {formatMoney(invoice.amountDue)}
-                </span>
-              </label>
+                </Link>
+              </div>
             );
           })}
         </div>

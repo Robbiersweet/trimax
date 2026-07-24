@@ -425,7 +425,7 @@ export default async function InvoicesPage({
   return (
     <AppShell>
       <InvoiceResultsScroller />
-      <div className="invoice-dashboard space-y-5 sm:space-y-6">
+      <div className="invoice-dashboard space-y-5 pb-32 sm:space-y-6">
         <div className="invoice-page-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm uppercase tracking-[0.3em] text-orange-400">

@@ -8,6 +8,7 @@ import {
   invoiceSendIneligibleReason,
   isIncompleteDraftInvoice,
   isSendEligibleInvoice,
+  requiresImportReview,
   type InvoiceEligibilityLineItem,
 } from "../../lib/invoiceEligibility";
 import { moneyNumber } from "../../lib/invoiceLifecycle";
@@ -27,6 +28,9 @@ type Invoice = {
   project_title: string | null;
   invoice_amount: string | number | null;
   amount_paid: string | number | null;
+  notes: string | null;
+  issue_date: string | null;
+  created_at: string | null;
   status: string | null;
   split_parent_invoice_id: string | null;
   split_sequence: number | null;
@@ -41,6 +45,24 @@ type ClientEmailContact = {
   id: string;
   email: string | null;
 };
+
+function formatDate(value: string | null) {
+  if (!value) {
+    return "No date";
+  }
+
+  const date = new Date(value.includes("T") ? value : `${value}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
 
 export default async function InvoiceBatchSendPage({
   searchParams,
@@ -70,7 +92,7 @@ export default async function InvoiceBatchSendPage({
     const { data: invoiceData, error: invoiceError } = await supabase
       .from("invoices")
       .select(
-        "id, client_id, display_id, customer_name, project_title, invoice_amount, amount_paid, status, split_parent_invoice_id, split_sequence, split_count"
+        "id, client_id, display_id, customer_name, project_title, invoice_amount, amount_paid, notes, issue_date, created_at, status, split_parent_invoice_id, split_sequence, split_count"
       )
       .eq("business_id", business.id)
       .order("created_at", { ascending: false });
@@ -149,8 +171,12 @@ export default async function InvoiceBatchSendPage({
       recipientEmail: invoice.recipientEmail,
     })
   );
+  const importedDraftsNeedingReview = invoicesWithSendContext
+    .filter((invoice) => requiresImportReview(invoice))
+    .slice(0, 30);
   const needsAttention = invoicesWithSendContext
     .filter((invoice) =>
+      !requiresImportReview(invoice) &&
       isIncompleteDraftInvoice({
         invoice,
         lineItems: lineItemsByInvoiceId.get(invoice.id) ?? [],
@@ -160,7 +186,7 @@ export default async function InvoiceBatchSendPage({
 
   return (
     <AppShell>
-      <div className="space-y-5 sm:space-y-6">
+      <div className="space-y-5 pb-32 sm:space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm uppercase tracking-[0.3em] text-sky-300">
@@ -170,11 +196,6 @@ export default async function InvoiceBatchSendPage({
               Batch Send
             </h1>
           </div>
-          <Link href={`/invoices${businessQuery}`}>
-            <Button variant="secondary" className="w-full sm:w-auto">
-              Review Invoices
-            </Button>
-          </Link>
         </div>
 
         <InvoiceWorkspaceNav businessSlug={businessSlug} active="batch-send" />
@@ -210,6 +231,10 @@ export default async function InvoiceBatchSendPage({
               invoiceAmount: moneyNumber(invoice.invoice_amount),
               status: invoice.status ?? "Draft",
               recipientEmail: invoice.recipientEmail,
+              href: `/invoices/${invoice.id}${businessQuery}`,
+              issueDate: invoice.issue_date,
+              createdAt: invoice.created_at,
+              sourceLabel: requiresImportReview(invoice) ? "Imported" : null,
               splitParentInvoiceId: invoice.split_parent_invoice_id,
               splitChildrenCount: invoice.split_children_count,
               splitParentDisplayId: null,
@@ -218,6 +243,52 @@ export default async function InvoiceBatchSendPage({
             }))}
           />
         )}
+
+        {importedDraftsNeedingReview.length > 0 ? (
+          <Card className="border-amber-500/30 bg-amber-500/10">
+            <p className="text-sm font-black uppercase tracking-[0.3em] text-amber-200">
+              Imported Drafts
+            </p>
+            <div className="mt-4 grid gap-2">
+              {importedDraftsNeedingReview.map((invoice) => (
+                <div
+                  key={invoice.id}
+                  className="grid gap-3 rounded-2xl border border-amber-300/25 bg-black/25 p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+                >
+                  <Link
+                    href={`/invoices/${invoice.id}${businessQuery}`}
+                    className="min-w-0 rounded-xl transition hover:text-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+                  >
+                    <p className="break-words font-black text-white">
+                      {invoice.display_id ?? "Invoice"} -{" "}
+                      {invoice.project_title ?? "Untitled Invoice"}
+                    </p>
+                    <p className="mt-1 text-sm text-amber-100">
+                      {invoice.customer_name ?? "Unknown Customer"} /{" "}
+                      {formatDate(invoice.issue_date ?? invoice.created_at)}
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-amber-100">
+                      Imported draft - review before sending
+                    </p>
+                  </Link>
+                  <div className="flex flex-col gap-2 sm:items-end">
+                    <p className="font-black text-emerald-100">
+                      {new Intl.NumberFormat("en-US", {
+                        style: "currency",
+                        currency: "USD",
+                      }).format(moneyNumber(invoice.invoice_amount))}
+                    </p>
+                    <Link href={`/invoices/${invoice.id}${businessQuery}`}>
+                      <Button variant="secondary" className="w-full sm:w-auto">
+                        Open Invoice
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        ) : null}
 
         {needsAttention.length > 0 ? (
           <Card className="border-amber-500/30 bg-amber-500/10">
@@ -257,4 +328,3 @@ export default async function InvoiceBatchSendPage({
     </AppShell>
   );
 }
-
