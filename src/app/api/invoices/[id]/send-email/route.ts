@@ -11,6 +11,10 @@ import {
   type EmailAttachment,
 } from "../../../../lib/pdfAttachments";
 import { createPrintPagePdfAttachment } from "../../../../lib/printPagePdf";
+import {
+  invoiceSendIneligibleReason,
+  type InvoiceEligibilityLineItem,
+} from "../../../../lib/invoiceEligibility";
 
 type GenericTable = {
   Row: Record<string, unknown>;
@@ -65,12 +69,8 @@ type InvoiceRow = {
   split_count: number | null;
 };
 
-type InvoiceLineItemRow = {
+type InvoiceLineItemRow = InvoiceEligibilityLineItem & {
   invoice_id: string;
-  description: string | null;
-  quantity: string | number | null;
-  unit_price: string | number | null;
-  line_total: string | number | null;
 };
 
 type BusinessRow = {
@@ -143,15 +143,6 @@ function formatCurrency(value: number) {
     currency: "USD",
     style: "currency",
   }).format(Number.isFinite(value) ? value : 0);
-}
-
-function meaningfulInvoiceLine(lineItem: InvoiceLineItemRow) {
-  const description = String(lineItem.description ?? "").trim();
-  const savedLineTotal = numberValue(lineItem.line_total);
-  const calculatedLineTotal =
-    numberValue(lineItem.quantity) * numberValue(lineItem.unit_price);
-
-  return Boolean(description) && Math.max(savedLineTotal, calculatedLineTotal) > 0;
 }
 
 type SendPipelineStage =
@@ -823,6 +814,21 @@ export async function POST(request: Request, { params }: RouteParams) {
 
   if (emailPurpose !== "reminder") {
     const targetInvoiceIds = targetInvoices.map((targetInvoice) => targetInvoice.id);
+    const { data: splitChildren } = await supabase
+      .from("invoices")
+      .select("split_parent_invoice_id")
+      .eq("business_id", invoice.business_id)
+      .in("split_parent_invoice_id", targetInvoiceIds)
+      .returns<{ split_parent_invoice_id: string | null }[]>();
+    const splitChildrenByParentId = new Map<string, number>();
+    (splitChildren ?? []).forEach((child) => {
+      const parentId = String(child.split_parent_invoice_id ?? "");
+      if (!parentId) return;
+      splitChildrenByParentId.set(
+        parentId,
+        (splitChildrenByParentId.get(parentId) ?? 0) + 1
+      );
+    });
     const { data: lineItems, error: lineItemsError } = await supabase
       .from("invoice_line_items")
       .select("invoice_id, description, quantity, unit_price, line_total")
@@ -847,33 +853,38 @@ export async function POST(request: Request, { params }: RouteParams) {
       lineItemsByInvoiceId.set(lineItem.invoice_id, current);
     }
 
-    const invalidDraftInvoices = targetInvoices.filter((targetInvoice) => {
-      const status = String(targetInvoice.status ?? "").trim().toLowerCase();
+    const invalidInvoices = targetInvoices
+      .map((targetInvoice) => {
+        const reason = invoiceSendIneligibleReason({
+          invoice: {
+            ...targetInvoice,
+            split_children_count:
+              splitChildrenByParentId.get(targetInvoice.id) ?? 0,
+          },
+          lineItems: lineItemsByInvoiceId.get(targetInvoice.id) ?? [],
+          recipientEmail,
+        });
 
-      if (status !== "draft") {
-        return false;
-      }
-
-      const invoiceLineItems = lineItemsByInvoiceId.get(targetInvoice.id) ?? [];
-
-      return (
-        numberValue(targetInvoice.invoice_amount) <= 0 ||
-        !invoiceLineItems.some(meaningfulInvoiceLine)
+        return reason ? { invoice: targetInvoice, reason } : null;
+      })
+      .filter(
+        (item): item is { invoice: InvoiceRow; reason: string } =>
+          Boolean(item)
       );
-    });
 
-    if (invalidDraftInvoices.length > 0) {
+    if (invalidInvoices.length > 0) {
       return sendFailureResponse({
         traceId,
         steps,
         stage: "request_validation",
-        message: "Add line items and pricing before sending this invoice.",
+        message: invalidInvoices[0].reason,
         status: 400,
         detail: {
-          invalid_invoice_ids: invalidDraftInvoices.map((item) => item.id),
-          invalid_invoice_numbers: invalidDraftInvoices.map(
-            (item) => item.display_id ?? "Invoice"
+          invalid_invoice_ids: invalidInvoices.map((item) => item.invoice.id),
+          invalid_invoice_numbers: invalidInvoices.map(
+            (item) => item.invoice.display_id ?? "Invoice"
           ),
+          invalid_reasons: invalidInvoices.map((item) => item.reason),
         },
       });
     }

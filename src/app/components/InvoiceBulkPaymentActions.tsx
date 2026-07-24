@@ -261,7 +261,7 @@ export default function InvoiceBulkPaymentActions({
         </div>
 
         <div className="max-h-80 overflow-y-auto">
-          {payableInvoices.slice(0, 12).map((invoice) => {
+          {payableInvoices.map((invoice) => {
             const isSelected = selectedIds.includes(invoice.id);
             const isLate = (invoice.daysLate ?? -1) >= 0;
 
@@ -316,8 +316,7 @@ export default function InvoiceBulkPaymentActions({
 
       <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-zinc-400">
-          Showing up to 12 open invoices here. Use the payment workspace for the
-          full check-day list. Selected invoices carry over automatically.
+          Selected invoices carry into the payment workspace automatically.
         </p>
 
         <Link

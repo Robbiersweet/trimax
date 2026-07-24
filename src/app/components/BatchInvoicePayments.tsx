@@ -8,7 +8,6 @@ import Toast from "./Toast";
 import { isCollectibleInvoiceStatus } from "../lib/invoiceLifecycle";
 import { assertCanWriteDuringMaintenance } from "../lib/maintenanceMode";
 import { supabase } from "../lib/supabase";
-import { logActivity } from "../lib/activityLog";
 import {
   extractCheckDate,
   extractCheckNumber,
@@ -1380,77 +1379,57 @@ export default function BatchInvoicePayments({
     try {
       await assertCanWriteDuringMaintenance(businessSlug);
       const filedImage = await filePaymentImage();
-
-      for (const invoice of selectedInvoices) {
-        const nextAmountPaid = Math.min(
-          invoice.invoiceAmount,
-          invoice.amountPaid + invoice.amountDue
-        );
-        const isFullyPaid =
-          invoice.invoiceAmount > 0 &&
-          nextAmountPaid >= invoice.invoiceAmount - 0.01;
-        const updatePayload: {
-          amount_paid: number;
-          status: string;
-          deposit_status?: string;
-        } = {
-          amount_paid: nextAmountPaid,
-          status: isFullyPaid ? "Paid" : invoice.status,
-        };
-
-        if (invoice.isDepositRequest && !isFullyPaid) {
-          updatePayload.deposit_status = "paid";
-        }
-
-        const { error } = await supabase
-          .from("invoices")
-          .update(updatePayload)
-          .eq("id", invoice.id)
-          .eq("business_id", businessId);
-
-        if (error) {
-          throw error;
-        }
-
-        await logActivity({
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const response = await fetch("/api/payments/apply-batch", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token
+            ? { Authorization: `Bearer ${session.access_token}` }
+            : {}),
+        },
+        body: JSON.stringify({
           businessId,
-          action: "invoice.batch_payment_applied",
-          entityType: "invoice",
-          entityId: invoice.id,
-          entityLabel: invoice.displayId,
-          details: {
-            paymentDate,
-            paymentType,
-            paymentReference,
-            internalNote,
-            checkAmount: enteredCheckAmount,
-            amountApplied: invoice.amountDue,
-            resultingAmountPaid: nextAmountPaid,
-            paymentOutcome: isFullyPaid ? "paid" : "partial",
-            depositPayment: Boolean(invoice.isDepositRequest),
-            batchInvoiceCount: selectedInvoices.length,
-            remittanceStubMatched:
-              hasRemittanceStub && reviewMatchedInvoices.length > 0,
-            remittanceStubTotal: hasRemittanceStub
-              ? remittanceMatch.totalAmount
-              : null,
-            remittanceStubLineCount: hasRemittanceStub
-              ? remittanceMatch.lineItems.length
-              : null,
-            remittanceMatchConfidence: hasRemittanceStub
-              ? remittanceMatch.confidence
-              : null,
-            paymentAttachmentId: filedImage?.id ?? null,
-            paymentImagePath: filedImage?.storagePath ?? null,
-            paymentImageFileName: filedImage?.fileName ?? null,
-          },
-        });
+          invoiceIds: selectedInvoices.map((invoice) => invoice.id),
+          paymentDate,
+          paymentType,
+          paymentReference,
+          internalNote,
+          checkAmount: enteredCheckAmount,
+          paymentAttachmentId: filedImage?.id ?? null,
+          paymentImagePath: filedImage?.storagePath ?? null,
+          paymentImageFileName: filedImage?.fileName ?? null,
+          remittanceStubMatched:
+            hasRemittanceStub && reviewMatchedInvoices.length > 0,
+          remittanceStubTotal: hasRemittanceStub
+            ? remittanceMatch.totalAmount
+            : null,
+          remittanceStubLineCount: hasRemittanceStub
+            ? remittanceMatch.lineItems.length
+            : null,
+          remittanceMatchConfidence: hasRemittanceStub
+            ? remittanceMatch.confidence
+            : null,
+        }),
+      });
+      const result = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        appliedCount?: number;
+      };
+
+      if (!response.ok) {
+        throw new Error(
+          result.error ??
+            "Unable to apply the batch payment. Refresh, sign in again if needed, then try once more."
+        );
       }
 
       setToast({
         type: "success",
-        message: `Applied payment to ${selectedInvoices.length} invoice${
-          selectedInvoices.length === 1 ? "" : "s"
+        message: `Applied payment to ${result.appliedCount ?? selectedInvoices.length} invoice${
+          (result.appliedCount ?? selectedInvoices.length) === 1 ? "" : "s"
         }.`,
       });
       setCompletedPaymentSummary({

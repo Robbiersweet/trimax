@@ -153,6 +153,34 @@ const invoiceDetail = readFileSync(
   resolve(root, "src/app/invoices/[id]/page.tsx"),
   "utf8"
 );
+const invoicesPage = readFileSync(
+  resolve(root, "src/app/invoices/page.tsx"),
+  "utf8"
+);
+const invoiceBatchPaymentPage = readFileSync(
+  resolve(root, "src/app/invoices/batch-payment/page.tsx"),
+  "utf8"
+);
+const invoiceBatchSendPage = readFileSync(
+  resolve(root, "src/app/invoices/batch-send/page.tsx"),
+  "utf8"
+);
+const invoiceWorkspaceNav = readFileSync(
+  resolve(root, "src/app/components/InvoiceWorkspaceNav.tsx"),
+  "utf8"
+);
+const invoiceEligibility = readFileSync(
+  resolve(root, "src/app/lib/invoiceEligibility.ts"),
+  "utf8"
+);
+const paymentApplyRoute = readFileSync(
+  resolve(root, "src/app/api/payments/apply-batch/route.ts"),
+  "utf8"
+);
+const batchInvoicePayments = readFileSync(
+  resolve(root, "src/app/components/BatchInvoicePayments.tsx"),
+  "utf8"
+);
 const invoiceEmailSendPanel = readFileSync(
   resolve(root, "src/app/components/InvoiceEmailSendPanel.tsx"),
   "utf8"
@@ -630,11 +658,65 @@ assert(
 );
 assert(
   invoiceSendEmailRoute.includes("invoice_line_items") &&
-    invoiceSendEmailRoute.includes("meaningfulInvoiceLine") &&
-    invoiceSendEmailRoute.includes("invalidDraftInvoices") &&
-    invoiceSendEmailRoute.includes("Add line items and pricing before sending this invoice.") &&
+    invoiceSendEmailRoute.includes("invoiceSendIneligibleReason") &&
+    invoiceSendEmailRoute.includes("invalidInvoices") &&
+    invoiceSendEmailRoute.includes("invalid_reasons") &&
     invoiceSendEmailRoute.includes("stage: \"request_validation\""),
-  "Invoice send API must reject incomplete zero-dollar drafts before email delivery or status updates."
+  "Invoice send API must reject ineligible drafts, non-collectible invoices, and split sources before email delivery or status updates."
+);
+assert(
+  invoicesPage.indexOf("<form") < invoicesPage.indexOf('id="invoice-results-list"') &&
+    invoicesPage.includes("resultLimit") &&
+    invoicesPage.includes("Load More") &&
+    invoicesPage.includes("compareInvoices(lineItemsByInvoiceId)") &&
+    invoicesPage.includes("isIncompleteDraftInvoice") &&
+    invoicesPage.includes("View Replacement") &&
+    !invoicesPage.includes("InvoiceBulkPaymentActions") &&
+    !invoicesPage.includes("InvoiceBatchSendActions") &&
+    !invoicesPage.includes("PersistentDetails"),
+  "Main Invoices page must be a focused search/filter/open workspace with progressive results and no embedded batch or duplicate history sections."
+);
+assert(
+  invoiceWorkspaceNav.includes("/invoices/batch-payment") &&
+    invoiceWorkspaceNav.includes("/invoices/batch-send") &&
+    invoiceWorkspaceNav.includes("sm:grid-cols-3"),
+  "Invoices workspace navigation must expose separate routes for Invoices, Batch Payment, and Batch Send."
+);
+assert(
+  invoiceBatchPaymentPage.includes("isPaymentEligibleInvoice") &&
+    invoiceBatchPaymentPage.includes("InvoiceBulkPaymentActions") &&
+    invoiceBatchPaymentPage.includes('active="batch-payment"'),
+  "Batch Payment page must own the batch-payment prep workflow and feed it only collectible invoices."
+);
+assert(
+  invoiceBatchSendPage.includes("isSendEligibleInvoice") &&
+    invoiceBatchSendPage.includes("Needs Attention") &&
+    invoiceBatchSendPage.includes("isIncompleteDraftInvoice") &&
+    invoiceBatchSendPage.includes("InvoiceBatchSendActions") &&
+    invoiceBatchSendPage.includes('active="batch-send"'),
+  "Batch Send page must own selectable sendable drafts while listing incomplete drafts separately without checkboxes."
+);
+assert(
+  invoiceEligibility.includes("isPaymentEligibleInvoice") &&
+    invoiceEligibility.includes("isSendEligibleInvoice") &&
+    invoiceEligibility.includes("nonCollectibleInvoiceLabel") &&
+    invoiceEligibility.includes("Superseded - Non-collectible") &&
+    invoiceEligibility.includes("Void - Non-collectible") &&
+    invoiceEligibility.includes("isSplitSourceInvoice") &&
+    invoiceEligibility.includes("Draft incomplete - add line items and pricing"),
+  "Central invoice eligibility helpers must classify payment/send safety, non-collectible labels, split sources, and incomplete drafts."
+);
+assert(
+  paymentApplyRoute.includes("isPaymentEligibleInvoice") &&
+    paymentApplyRoute.includes("not collectible and cannot receive a payment") &&
+    paymentApplyRoute.includes("business_users") &&
+    paymentApplyRoute.includes("invoice.batch_payment_applied"),
+  "Server-side payment application must recheck workspace access and reject non-collectible or ineligible invoices before updating payment state."
+);
+assert(
+  batchInvoicePayments.includes("/api/payments/apply-batch") &&
+    !batchInvoicePayments.includes("invoice.batch_payment_applied"),
+  "Payments UI must use the guarded payment API instead of directly mutating invoice payment rows and activity logs."
 );
 
 console.log("Job session integrity regression checks passed.");
