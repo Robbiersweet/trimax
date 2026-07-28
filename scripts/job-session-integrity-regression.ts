@@ -111,6 +111,14 @@ const queueDetail = readFileSync(
   resolve(root, "src/app/queue/[unit]/page.tsx"),
   "utf8"
 );
+const queueEdit = readFileSync(
+  resolve(root, "src/app/queue/[unit]/edit/page.tsx"),
+  "utf8"
+);
+const queueItemApiRoute = readFileSync(
+  resolve(root, "src/app/api/queue-items/[id]/route.ts"),
+  "utf8"
+);
 const panel = readFileSync(
   resolve(root, "src/app/components/JobSessionPanel.tsx"),
   "utf8"
@@ -456,6 +464,42 @@ assert(
     queueDetail.includes("More Actions") &&
     queueDetail.includes("PersistentDetails"),
   "Queue detail secondary sections must be collapsed without deleting their content."
+);
+assert(
+  queueDetail.includes('allow={["owner", "admin", "property_manager"]}') &&
+    queueDetail.indexOf("workflowNextAction.href") <
+      queueDetail.indexOf(">Edit Queue Item</Button>") &&
+    queueDetail.indexOf(">Edit Queue Item</Button>") <
+      queueDetail.indexOf("<MarkCompletedButton") &&
+    !queueDetail.includes('allow={["owner", "admin", "accountant"]}\n          >\n            <Link href={`/queue/${item.id}/edit'),
+  "Queue detail must expose Edit Queue Item as a primary owner/admin/mobile action without offering accountants a false edit affordance."
+);
+assert(
+  queueEdit.includes("canEditOwnerFields") &&
+    queueEdit.includes('workspaceRole === "owner"') &&
+    queueEdit.includes('workspaceRole === "admin"') &&
+    queueEdit.includes('workspaceRole === "property_manager"') &&
+    queueEdit.includes("Your role can view this queue item but cannot edit it.") &&
+    queueEdit.includes("logActivity") &&
+    queueEdit.includes('action: "queue_item.updated"') &&
+    queueEdit.includes("fetch(`/api/queue-items/${queueItemId}`") &&
+    !queueEdit.includes(".from(\"queue_items\")\n      .update(updatePayload)") &&
+    queueEdit.includes("Save Changes") &&
+    queueEdit.includes("Cancel") &&
+    queueEdit.includes("`/queue/${queueItemId}?business=${businessSlug}`"),
+  "Queue edit must preserve owner/admin/property-manager authorization, audit logging, save, and cancel back to the same queue detail."
+);
+assert(
+  queueItemApiRoute.includes("export async function PATCH") &&
+    queueItemApiRoute.includes("SUPABASE_SERVICE_ROLE_KEY") &&
+    queueItemApiRoute.includes("supabase.auth.getUser(token)") &&
+    queueItemApiRoute.includes('workspaceRole === "owner"') &&
+    queueItemApiRoute.includes('workspaceRole === "admin"') &&
+    queueItemApiRoute.includes("can_update_queue_items") &&
+    queueItemApiRoute.includes("ownerOnlyFields") &&
+    queueItemApiRoute.includes("You are not allowed to edit this queue item.") &&
+    queueItemApiRoute.includes("allowedQueueUpdateFields"),
+  "Queue edit API must reject unauthorized updates server-side and preserve manager field limits."
 );
 assert(
   !queueDetail.includes("BackButton") &&

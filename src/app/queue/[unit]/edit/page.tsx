@@ -1,6 +1,7 @@
 "use client";
 
 import { type ReactNode, useEffect, useState } from "react";
+import Link from "next/link";
 import {
   useParams,
   useRouter,
@@ -503,60 +504,30 @@ export default function EditQueueItemPage() {
       move_out_date: updatePayload.move_out_date,
     };
 
-    let { error } = await supabase
-      .from("queue_items")
-      .update(updatePayload)
-      .eq("id", queueItemId)
-      .eq("business_id", businessId);
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const response = await fetch(`/api/queue-items/${queueItemId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(session?.access_token
+          ? { Authorization: `Bearer ${session.access_token}` }
+          : {}),
+      },
+      body: JSON.stringify({
+        businessId,
+        updates: updatePayload,
+      }),
+    });
 
-    if (
-      error?.message?.includes("primer_requested") ||
-      error?.message?.includes("unit_layout") ||
-      error?.message?.includes("wall_paint_color") ||
-      error?.message?.includes("priority_order") ||
-      error?.message?.includes("priority_updated_at") ||
-      error?.message?.includes("priority_updated_by") ||
-      error?.message?.includes("deadline_updated_at") ||
-      error?.message?.includes("deadline_updated_by") ||
-      error?.message?.includes("projected_completion_date") ||
-      error?.message?.includes("progress_stage") ||
-      error?.message?.includes("percent_complete") ||
-      error?.message?.includes("delay_reason") ||
-      error?.message?.includes("manager_update")
-    ) {
-      const legacyUpdatePayload: Record<string, unknown> = {
-        ...updatePayload,
-      };
-      delete legacyUpdatePayload.primer_requested;
-      delete legacyUpdatePayload.unit_layout;
-      delete legacyUpdatePayload.wall_paint_color;
-      delete legacyUpdatePayload.priority_order;
-      delete legacyUpdatePayload.priority_updated_at;
-      delete legacyUpdatePayload.priority_updated_by;
-      delete legacyUpdatePayload.deadline_updated_at;
-      delete legacyUpdatePayload.deadline_updated_by;
-      delete legacyUpdatePayload.projected_completion_date;
-      delete legacyUpdatePayload.progress_stage;
-      delete legacyUpdatePayload.percent_complete;
-      delete legacyUpdatePayload.delay_reason;
-      delete legacyUpdatePayload.manager_update;
-      delete legacyUpdatePayload.manager_update_at;
-      delete legacyUpdatePayload.manager_update_by;
-
-      const retry = await supabase
-        .from("queue_items")
-        .update(legacyUpdatePayload)
-        .eq("id", queueItemId)
-        .eq("business_id", businessId);
-
-      error = retry.error;
-    }
-
-    if (error) {
-      console.error(error);
+    if (!response.ok) {
+      const result = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
       setToast({
         type: "error",
-        message: "Unable to update queue item.",
+        message: result?.error ?? "Unable to update queue item.",
       });
       return;
     }
@@ -1047,9 +1018,14 @@ export default function EditQueueItemPage() {
               </details>
             ) : null}
 
-            <Button onClick={handleSave}>
-              Save Changes
-            </Button>
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end">
+              <Link href={`/queue/${queueItemId}?business=${businessSlug}`}>
+                <Button variant="secondary">Cancel</Button>
+              </Link>
+              <Button onClick={handleSave}>
+                Save Changes
+              </Button>
+            </div>
           </div>
         </Card>
       </div>

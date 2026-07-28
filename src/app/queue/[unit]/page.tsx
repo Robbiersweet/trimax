@@ -988,6 +988,14 @@ export default async function QueueDetailPage({
               </Link>
               <RoleVisible
                 businessSlug={businessSlug}
+                allow={["owner", "admin", "property_manager"]}
+              >
+                <Link href={`/queue/${item.id}/edit?business=${businessSlug}`}>
+                  <Button variant="secondary">Edit Queue Item</Button>
+                </Link>
+              </RoleVisible>
+              <RoleVisible
+                businessSlug={businessSlug}
                 allow={["owner", "admin", "accountant"]}
               >
                 <MarkCompletedButton
@@ -1064,9 +1072,6 @@ export default async function QueueDetailPage({
                   exposing internal planning or financial controls.
                 </p>
               </div>
-              <Link href={`/queue/${item.id}/edit?business=${businessSlug}`}>
-                <Button variant="secondary">Edit Queue Item</Button>
-              </Link>
             </div>
           </Card>
         </RoleVisible>
@@ -1711,14 +1716,8 @@ export default async function QueueDetailPage({
         <div id="complete-work" className="flex scroll-mt-6 flex-wrap gap-4">
           <RoleVisible
             businessSlug={businessSlug}
-            allow={["owner", "admin", "accountant"]}
+            allow={["owner", "admin", "property_manager"]}
           >
-            <Link href={`/queue/${item.id}/edit?business=${businessSlug}`}>
-              <Button variant="secondary">Edit Queue Item</Button>
-            </Link>
-          </RoleVisible>
-
-          <RoleVisible businessSlug={businessSlug} allow={["property_manager"]}>
             <Link href={`/queue/${item.id}/edit?business=${businessSlug}`}>
               <Button variant="secondary">Edit Queue Item</Button>
             </Link>
