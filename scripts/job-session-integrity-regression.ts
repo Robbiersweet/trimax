@@ -557,10 +557,23 @@ assert(
     dashboard.includes("operationsMoneySnapshot[0].value") &&
     dashboard.includes("workingYearOpenInvoicesWithAmounts") &&
     dashboard.includes("invoiceCollectionAmountDue(invoice)") &&
+    dashboard.includes("isOverdueCollectibleInvoice") &&
+    dashboard.includes("status=overdue&sort=oldest_due#invoice-results-list") &&
     dashboard.includes("selectedBusinessSlug") &&
     dashboard.includes("operationsMoneySnapshot.slice(1, 3)") &&
     !dashboard.includes("Receivables Snapshot"),
   "Dashboard must promote the existing Cash Snapshot without adding a duplicate financial widget."
+);
+assert(
+  invoicesPage.includes("isOverdueCollectibleInvoice") &&
+    invoicesPage.includes("invoiceDueBucket") &&
+    invoicesPage.includes('name="sort"') &&
+    invoicesPage.includes("Needs Attention") &&
+    invoicesPage.includes("Oldest Due") &&
+    invoicesPage.includes("Highest Balance") &&
+    invoicesPage.includes("Overdue by") &&
+    !invoicesPage.includes("(daysPastDue(invoice.due_date) ?? -1) >= 0"),
+  "Invoices page must use the centralized overdue helper, provide sort options, and avoid treating due-today invoices as overdue."
 );
 assert(
   dock.includes("Job Session Running") &&
@@ -639,6 +652,228 @@ assert.equal(
   isCollectibleInvoiceStatus("void"),
   false,
   "Voided M07 INV-0511 must be excluded from collectible balances and payment candidates."
+);
+
+function fixtureAmountDue(invoice: {
+  invoice_amount?: string | number | null;
+  amount_paid?: string | number | null;
+}) {
+  return Math.max(
+    Number(invoice.invoice_amount ?? 0) - Number(invoice.amount_paid ?? 0),
+    0
+  );
+}
+
+function fixturePaymentEligible(invoice: {
+  status?: string | null;
+  invoice_amount?: string | number | null;
+  amount_paid?: string | number | null;
+  split_children_count?: number | null;
+}) {
+  return (
+    isCollectibleInvoiceStatus(invoice.status) &&
+    fixtureAmountDue(invoice) > 0 &&
+    Number(invoice.split_children_count ?? 0) <= 0
+  );
+}
+
+function fixtureDueBucket(invoice: {
+  status?: string | null;
+  due_date?: string | null;
+  invoice_amount?: string | number | null;
+  amount_paid?: string | number | null;
+  split_children_count?: number | null;
+}) {
+  const dueDateKey = invoice.due_date?.slice(0, 10) ?? null;
+
+  if (!dueDateKey || !fixturePaymentEligible(invoice)) {
+    return "not_collectible";
+  }
+
+  if (dueDateKey < overdueTodayKey) {
+    return "overdue";
+  }
+
+  if (dueDateKey === overdueTodayKey) {
+    return "due_today";
+  }
+
+  return "due_soon";
+}
+
+function fixtureOverdue(invoice: {
+  status?: string | null;
+  due_date?: string | null;
+  invoice_amount?: string | number | null;
+  amount_paid?: string | number | null;
+  split_children_count?: number | null;
+}) {
+  return fixtureDueBucket(invoice) === "overdue";
+}
+
+const overdueTodayKey = "2026-07-28";
+const productionOverdueFixtures = [
+  {
+    id: "inv-0404",
+    display_id: "INV-0404",
+    status: "sent",
+    due_date: "2026-07-11",
+    invoice_amount: 11024.31,
+    amount_paid: 0,
+  },
+  {
+    id: "inv-0506",
+    display_id: "INV-0506",
+    status: "sent",
+    due_date: "2026-07-25",
+    invoice_amount: 1300,
+    amount_paid: 0,
+    split_parent_invoice_id: "split-source-d01",
+  },
+  {
+    id: "inv-0507",
+    display_id: "INV-0507",
+    status: "sent",
+    due_date: "2026-07-25",
+    invoice_amount: 952.95,
+    amount_paid: 0,
+    split_parent_invoice_id: "split-source-d01",
+  },
+  {
+    id: "inv-0508",
+    display_id: "INV-0508",
+    status: "sent",
+    due_date: "2026-07-26",
+    invoice_amount: 1099,
+    amount_paid: 0,
+  },
+];
+const nonOverdueFixtures = [
+  {
+    id: "due-today",
+    display_id: "INV-TODAY",
+    status: "sent",
+    due_date: overdueTodayKey,
+    invoice_amount: 500,
+    amount_paid: 0,
+  },
+  {
+    id: "future",
+    display_id: "INV-FUTURE",
+    status: "sent",
+    due_date: "2026-07-29",
+    invoice_amount: 500,
+    amount_paid: 0,
+  },
+  {
+    id: "paid",
+    display_id: "INV-PAID",
+    status: "paid",
+    due_date: "2026-07-11",
+    invoice_amount: 500,
+    amount_paid: 500,
+  },
+  {
+    id: "superseded",
+    display_id: "INV-SUPERSEDED",
+    status: "superseded",
+    due_date: "2026-07-11",
+    invoice_amount: 500,
+    amount_paid: 0,
+  },
+  {
+    id: "void",
+    display_id: "INV-VOID",
+    status: "void",
+    due_date: "2026-07-11",
+    invoice_amount: 500,
+    amount_paid: 0,
+  },
+  {
+    id: "draft",
+    display_id: "INV-DRAFT",
+    status: "draft",
+    due_date: "2026-07-11",
+    invoice_amount: 500,
+    amount_paid: 0,
+  },
+  {
+    id: "incomplete-draft",
+    display_id: "INV-INCOMPLETE",
+    status: "draft",
+    due_date: "2026-07-11",
+    invoice_amount: 0,
+    amount_paid: 0,
+  },
+  {
+    id: "split-source",
+    display_id: "INV-SPLIT-SOURCE",
+    status: "sent",
+    due_date: "2026-07-11",
+    invoice_amount: 2252.95,
+    amount_paid: 0,
+    split_children_count: 2,
+  },
+];
+const partialOverdueInvoice = {
+  id: "partial",
+  display_id: "INV-PARTIAL",
+  status: "sent",
+  due_date: "2026-07-20",
+  invoice_amount: 1000,
+  amount_paid: 400,
+};
+const overdueFixtureResults = [
+  ...productionOverdueFixtures,
+  partialOverdueInvoice,
+  ...nonOverdueFixtures,
+].filter((invoice) =>
+  fixtureOverdue(invoice)
+);
+
+assert.equal(
+  fixtureDueBucket(productionOverdueFixtures[0]),
+  "overdue",
+  "Sent collectible invoice due yesterday or earlier must be overdue."
+);
+assert.equal(
+  fixtureDueBucket(nonOverdueFixtures[0]),
+  "due_today",
+  "Sent collectible invoice due today must not be overdue."
+);
+assert.equal(
+  fixtureDueBucket(nonOverdueFixtures[1]),
+  "due_soon",
+  "Future invoice inside the warning period must be due soon, not overdue."
+);
+assert.equal(
+  fixtureAmountDue(partialOverdueInvoice),
+  600,
+  "Partially paid overdue invoices must use remaining balance."
+);
+assert.deepEqual(
+  overdueFixtureResults.map((invoice) => invoice.display_id),
+  ["INV-0404", "INV-0506", "INV-0507", "INV-0508", "INV-PARTIAL"],
+  "Overdue filtering must return every qualifying sent collectible invoice, including split children, and exclude paid, draft, superseded, void, and split-source records."
+);
+assert.equal(
+  overdueFixtureResults.reduce(
+    (total, invoice) => total + fixtureAmountDue(invoice),
+    0
+  ),
+  14976.26,
+  "Dashboard past-due total and Overdue filter total must sum remaining collectible balances, not original totals or only the first result."
+);
+assert.deepEqual(
+  [...productionOverdueFixtures]
+    .sort(
+      (first, second) =>
+        String(first.due_date).localeCompare(String(second.due_date)) ||
+        String(first.display_id).localeCompare(String(second.display_id))
+    )
+    .map((invoice) => invoice.display_id),
+  ["INV-0404", "INV-0506", "INV-0507", "INV-0508"],
+  "Overdue ordering must be oldest due first with deterministic invoice-number tie-breaking."
 );
 assert.equal(
   resolveFinancialStatus({
@@ -722,7 +957,8 @@ assert(
     invoicesPage.includes("resultLimit") &&
     invoicesPage.includes("Load More") &&
     invoicesPage.includes("pb-32") &&
-    invoicesPage.includes("compareInvoices(lineItemsByInvoiceId)") &&
+    invoicesPage.includes("compareInvoices(") &&
+    invoicesPage.includes('name="sort"') &&
     invoicesPage.includes("isIncompleteDraftInvoice") &&
     invoicesPage.includes("View Replacement") &&
     !invoicesPage.includes("InvoiceBulkPaymentActions") &&

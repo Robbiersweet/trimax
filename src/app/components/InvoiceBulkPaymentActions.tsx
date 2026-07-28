@@ -3,6 +3,10 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  businessDateKey,
+  isOverdueCollectibleInvoice,
+} from "../lib/invoiceEligibility";
 import { isCollectibleInvoiceStatus } from "../lib/invoiceLifecycle";
 
 type InvoiceForBulkPayment = {
@@ -87,14 +91,27 @@ export default function InvoiceBulkPaymentActions({
   const payableInvoices = useMemo(
     () =>
       invoices
-        .map((invoice) => ({
-          ...invoice,
-          amountDue:
+        .map((invoice) => {
+          const amountDue =
             typeof invoice.collectionAmountDue === "number"
               ? Math.max(invoice.collectionAmountDue, 0)
-              : Math.max(invoice.invoiceAmount - invoice.amountPaid, 0),
-          daysLate: daysPastDue(invoice.dueDate),
-        }))
+              : Math.max(invoice.invoiceAmount - invoice.amountPaid, 0);
+
+          return {
+            ...invoice,
+            amountDue,
+            daysLate: daysPastDue(invoice.dueDate),
+            isOverdue: isOverdueCollectibleInvoice({
+              invoice: {
+                ...invoice,
+                invoice_amount: invoice.invoiceAmount,
+                amount_paid: invoice.amountPaid,
+                due_date: invoice.dueDate,
+              },
+              todayKey: businessDateKey(),
+            }),
+          };
+        })
         .filter(
           (invoice) =>
             invoice.amountDue > 0 &&
@@ -112,7 +129,8 @@ export default function InvoiceBulkPaymentActions({
     0
   );
   const overdueInvoices = payableInvoices.filter(
-    (invoice) => (invoice.daysLate ?? -1) >= 0
+    (invoice) =>
+      invoice.isOverdue
   );
   const customerGroups = Array.from(
     payableInvoices
@@ -271,7 +289,7 @@ export default function InvoiceBulkPaymentActions({
         <div className="max-h-80 overflow-y-auto">
           {payableInvoices.map((invoice) => {
             const isSelected = selectedIds.includes(invoice.id);
-            const isLate = (invoice.daysLate ?? -1) >= 0;
+            const isLate = invoice.isOverdue;
 
             return (
               <div

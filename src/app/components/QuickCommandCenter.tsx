@@ -1407,7 +1407,7 @@ function buildIntentShortcutCommands(
       title: "Find money that needs follow-up",
       detail:
         "Open aging, overdue invoices, and late reminder workflows for collection.",
-      href: `/invoices?business=${business}&view=aging`,
+      href: `/invoices?business=${business}&status=overdue&sort=oldest_due#invoice-results-list`,
       tone: "cash",
       keywords: ["intent", "overdue", "late", "aging", "reminder", "collect"],
       source: "smart",
@@ -1648,7 +1648,7 @@ export default function QuickCommandCenter() {
       {
         title: "Who owes me?",
         detail: "Open open invoices and aging so you can collect first.",
-        href: `/invoices?business=${business}&view=aging`,
+        href: `/invoices?business=${business}&status=overdue&sort=oldest_due#invoice-results-list`,
         tone: "cash",
         keywords: [
           "who owes me",
@@ -1687,7 +1687,7 @@ export default function QuickCommandCenter() {
       {
         title: "Late Reminders",
         detail: "Review overdue invoices ready for follow-up.",
-        href: `/invoices?business=${business}&view=aging`,
+        href: `/invoices?business=${business}&status=overdue&sort=oldest_due#invoice-results-list`,
         tone: "cash",
         keywords: ["overdue", "late", "reminder", "aging", "past due"],
       },

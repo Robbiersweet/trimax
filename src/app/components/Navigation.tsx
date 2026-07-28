@@ -299,7 +299,7 @@ export default function Navigation() {
         {
           label: "Aging View",
           description: "Collections",
-          href: `/invoices?business=${business}&view=aging`,
+          href: `/invoices?business=${business}&status=overdue&sort=oldest_due#invoice-results-list`,
         },
         {
           label: "New Invoice",
@@ -417,7 +417,7 @@ export default function Navigation() {
         links.map((link) => link.href)
       ),
       `/payments?business=${business}#check-capture`,
-      `/invoices?business=${business}&view=aging`,
+      `/invoices?business=${business}&status=overdue&sort=oldest_due#invoice-results-list`,
       `/settings?business=${business}#outlook-integration`,
     ];
 

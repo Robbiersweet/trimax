@@ -6,9 +6,15 @@ import StatusBadge from "./components/StatusBadge";
 import RoleVisible from "./components/RoleVisible";
 import {
   chooseAuthoritativeInvoice,
-  isCollectibleInvoiceStatus,
   resolveFinancialStatus,
 } from "./lib/invoiceLifecycle";
+import {
+  businessDateKey,
+  invoiceCollectionAmountDue,
+  invoiceDaysPastDue,
+  isOverdueCollectibleInvoice,
+  isPaymentEligibleInvoice,
+} from "./lib/invoiceEligibility";
 import {
   queueTimingBadge,
   queueTimingTone,
@@ -95,17 +101,6 @@ function formatMoney(value: number) {
   });
 }
 
-function invoiceCollectionAmountDue(invoice: Invoice) {
-  const invoiceTotal = parseMoney(invoice.invoice_amount);
-  const amountPaid = parseMoney(invoice.amount_paid);
-  const fullAmountDue = Math.max(invoiceTotal - amountPaid, 0);
-  const depositAmount = parseMoney(invoice.deposit_requested_amount ?? null);
-
-  return hasActiveDepositRequest(invoice)
-    ? Math.max(depositAmount - amountPaid, 0)
-    : fullAmountDue;
-}
-
 function hasActiveDepositRequest(invoice: Invoice) {
   return (
     String(invoice.deposit_status ?? "none").toLowerCase() === "requested" &&
@@ -125,21 +120,6 @@ function dateValue(value: string | null) {
   }
 
   return date;
-}
-
-function daysPastDue(value: string | null) {
-  const dueDate = dateValue(value);
-
-  if (!dueDate) {
-    return null;
-  }
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const difference = today.getTime() - dueDate.getTime();
-
-  return Math.floor(difference / 86_400_000);
 }
 
 function formatShortDate(value: string | null) {
@@ -646,7 +626,11 @@ export default async function DashboardPage({
       .map((invoice) => invoice.split_parent_invoice_id)
       .filter((id): id is string => Boolean(id))
   );
-  const billableInvoices = invoices.filter(
+  const invoicesWithSplitInfo = invoices.map((invoice) => ({
+    ...invoice,
+    split_children_count: splitParentInvoiceIds.has(invoice.id) ? 1 : 0,
+  }));
+  const billableInvoices = invoicesWithSplitInfo.filter(
     (invoice) => !splitParentInvoiceIds.has(invoice.id)
   );
   const recentBillableInvoices = [...billableInvoices]
@@ -662,19 +646,23 @@ export default async function DashboardPage({
     })
     .slice(0, 5);
 
-  const openInvoices = billableInvoices.filter((invoice) =>
-    isCollectibleInvoiceStatus(invoice.status)
-  );
-
-  const openInvoicesWithAmounts = openInvoices
+  const dashboardTodayKey = businessDateKey();
+  const openInvoicesWithAmounts = billableInvoices
     .map((invoice) => {
       return {
         ...invoice,
         amountDue: invoiceCollectionAmountDue(invoice),
-        daysLate: daysPastDue(invoice.due_date),
+        daysLate: invoiceDaysPastDue({
+          dueDate: invoice.due_date,
+          todayKey: dashboardTodayKey,
+        }),
       };
     })
-    .filter((invoice) => invoice.amountDue > 0);
+    .filter((invoice) =>
+      isPaymentEligibleInvoice({
+        invoice,
+      })
+    );
 
   const workingYear = new Date().getFullYear();
   const workingYearLabel = String(workingYear);
@@ -714,14 +702,35 @@ export default async function DashboardPage({
   const ytdRevenue = formatMoney(ytdRevenueTotal);
 
   const mostOverdueInvoices = workingYearOpenInvoicesWithAmounts
-    .filter((invoice) => (invoice.daysLate ?? -1) >= 0)
+    .filter((invoice) =>
+      isOverdueCollectibleInvoice({
+        invoice,
+        todayKey: dashboardTodayKey,
+      })
+    )
     .sort((first, second) => {
-      return (second.daysLate ?? 0) - (first.daysLate ?? 0);
+      return (
+        String(first.due_date ?? "").localeCompare(String(second.due_date ?? "")) ||
+        String(first.display_id ?? "").localeCompare(String(second.display_id ?? ""))
+      );
     })
     .slice(0, 5);
-  const pastDueInvoices = workingYearOpenInvoicesWithAmounts.filter(
-    (invoice) => (invoice.daysLate ?? -1) > 0
-  );
+  const pastDueInvoices = openInvoicesWithAmounts
+    .filter((invoice) =>
+      isOverdueCollectibleInvoice({
+        invoice,
+        todayKey: dashboardTodayKey,
+      })
+    )
+    .sort(
+      (first, second) =>
+        String(first.due_date ?? "").localeCompare(
+          String(second.due_date ?? "")
+        ) ||
+        String(first.display_id ?? "").localeCompare(
+          String(second.display_id ?? "")
+        )
+    );
   const pastDueTotal = pastDueInvoices.reduce(
     (total, invoice) => total + invoice.amountDue,
     0
@@ -965,7 +974,7 @@ export default async function DashboardPage({
         pastDueInvoices.length > 0
           ? `${formatMoney(pastDueTotal)} is past due across open invoices.`
           : "The overdue reminder queue is clear right now.",
-      href: `/invoices?business=${selectedBusinessSlug}&view=aging`,
+      href: `/invoices?business=${selectedBusinessSlug}&status=overdue&sort=oldest_due#invoice-results-list`,
       action: "Review Aging",
       tone: "remind",
     },
@@ -1051,7 +1060,10 @@ export default async function DashboardPage({
   const recentQueueItems = queueItems.slice(0, 3);
   const propertyHandoffItems = activeQueueItems
     .map((item) => {
-      const readyDays = daysPastDue(item.ready_date);
+      const readyDays = invoiceDaysPastDue({
+        dueDate: item.ready_date,
+        todayKey: dashboardTodayKey,
+      });
       const readyDate = dateValue(item.ready_date);
       const status = normalizeStatus(item.status);
       const needsSchedule = !item.scheduled_date;
@@ -1122,7 +1134,7 @@ export default async function DashboardPage({
       label: "Late",
       value: String(pastDueInvoices.length),
       detail: formatMoney(pastDueTotal),
-      href: `/invoices?business=${selectedBusinessSlug}&view=aging`,
+      href: `/invoices?business=${selectedBusinessSlug}&status=overdue&sort=oldest_due#invoice-results-list`,
       tone: "late",
     },
     {
@@ -1182,7 +1194,7 @@ export default async function DashboardPage({
             : "Use check capture when a payment arrives and Trimax will suggest invoice matches.",
       href:
         pastDueInvoices.length > 0
-          ? `/invoices?business=${selectedBusinessSlug}&view=aging`
+          ? `/invoices?business=${selectedBusinessSlug}&status=overdue&sort=oldest_due#invoice-results-list`
           : depositRequestInvoices[0]
             ? `/invoices/${depositRequestInvoices[0].id}?business=${selectedBusinessSlug}`
             : `/payments?business=${selectedBusinessSlug}#check-capture`,
@@ -1336,7 +1348,7 @@ export default async function DashboardPage({
           : "Past-due reminders are up to date",
       action:
         pastDueWithoutReminderCount > 0 ? "Review aging" : "Up to date",
-      href: `/invoices?business=${selectedBusinessSlug}&view=aging`,
+      href: `/invoices?business=${selectedBusinessSlug}&status=overdue&sort=oldest_due#invoice-results-list`,
       tone: pastDueWithoutReminderCount > 0 ? "rose" : "emerald",
     },
     {
@@ -1836,9 +1848,41 @@ export default async function DashboardPage({
     tone: string;
   }[] = [];
 
-  if (priorityInvoice) {
+  if (pastDueInvoices.length > 0) {
+    const oldestPastDueInvoice = pastDueInvoices[0];
+    const oldestPastDueDaysLate =
+      invoiceDaysPastDue({
+        dueDate: oldestPastDueInvoice.due_date,
+        todayKey: dashboardTodayKey,
+      }) ?? 0;
+
+    topPriorityStackCandidates.push({
+      action: "Review overdue",
+      confidence: 96,
+      detail: `${pastDueInvoices.length} invoice${
+        pastDueInvoices.length === 1 ? "" : "s"
+      } / oldest ${oldestPastDueInvoice.display_id ?? "invoice"}`,
+      href: `/invoices?business=${selectedBusinessSlug}&status=overdue&sort=oldest_due#invoice-results-list`,
+      label: "Past-due collection",
+      metric: formatMoney(pastDueTotal),
+      reason:
+        pastDueInvoices.length > 1
+          ? `${oldestPastDueInvoice.display_id ?? "Oldest invoice"} is ${oldestPastDueDaysLate} day${
+              oldestPastDueDaysLate === 1 ? "" : "s"
+            } late, plus ${pastDueInvoices.length - 1} more`
+          : `${oldestPastDueDaysLate} day${
+              oldestPastDueDaysLate === 1 ? "" : "s"
+            } late and still collectible`,
+      score: 900 + Math.min(pastDueTotal / 100, 140),
+      tone: "rose",
+    });
+  } else if (priorityInvoice) {
     const priorityInvoiceAmountDue = invoiceCollectionAmountDue(priorityInvoice);
-    const priorityInvoiceDaysLate = daysPastDue(priorityInvoice.due_date) ?? -1;
+    const priorityInvoiceDaysLate =
+      invoiceDaysPastDue({
+        dueDate: priorityInvoice.due_date,
+        todayKey: dashboardTodayKey,
+      }) ?? -1;
     const isPriorityDeposit = hasActiveDepositRequest(priorityInvoice);
 
     topPriorityStackCandidates.push({
@@ -2012,7 +2056,7 @@ export default async function DashboardPage({
       detail: `${pastDueInvoices.length} invoice${
         pastDueInvoices.length === 1 ? "" : "s"
       } should be handled before new billing work pulls attention away.`,
-      href: `/invoices?business=${selectedBusinessSlug}&view=aging`,
+      href: `/invoices?business=${selectedBusinessSlug}&status=overdue&sort=oldest_due#invoice-results-list`,
       action: "Review aging",
       tone: "rose",
     });
@@ -2209,7 +2253,7 @@ export default async function DashboardPage({
           : `${formatMoney(outstandingRevenueTotal)} remains open across collectible invoices.`,
       href:
         pastDueInvoices.length > 0
-          ? `/invoices?business=${selectedBusinessSlug}&view=aging`
+          ? `/invoices?business=${selectedBusinessSlug}&status=overdue&sort=oldest_due#invoice-results-list`
           : `/payments?${priorityPaymentParams.toString()}`,
       action:
         pastDueInvoices.length > 0 ? "Review aging" : "Open payments",
@@ -2300,7 +2344,7 @@ export default async function DashboardPage({
       detail: `${pastDueInvoices.length} invoice${
         pastDueInvoices.length === 1 ? "" : "s"
       } need follow-up`,
-      href: `/invoices?business=${selectedBusinessSlug}&view=aging`,
+      href: `/invoices?business=${selectedBusinessSlug}&status=overdue&sort=oldest_due#invoice-results-list`,
       tone: pastDueInvoices.length > 0 ? "late" : "paid",
     },
     {
@@ -3703,7 +3747,7 @@ export default async function DashboardPage({
                     key={item.label}
                     href={
                       item.tone === "late"
-                        ? `/invoices?business=${selectedBusinessSlug}&view=aging`
+                        ? `/invoices?business=${selectedBusinessSlug}&status=overdue&sort=oldest_due#invoice-results-list`
                         : item.tone === "paid"
                           ? `/reports?business=${selectedBusinessSlug}`
                           : item.tone === "open"
@@ -3759,7 +3803,7 @@ export default async function DashboardPage({
                         item.tone === "paid"
                           ? `/reports?business=${selectedBusinessSlug}`
                           : item.tone === "late"
-                            ? `/invoices?business=${selectedBusinessSlug}&view=aging`
+                            ? `/invoices?business=${selectedBusinessSlug}&status=overdue&sort=oldest_due#invoice-results-list`
                             : item.tone === "deposit"
                               ? `/invoices?business=${selectedBusinessSlug}&collection=open`
                               : `/payments?business=${selectedBusinessSlug}`
@@ -4126,7 +4170,10 @@ export default async function DashboardPage({
                 {recentBillableInvoices.map((invoice) => {
                     const amountDue = invoiceCollectionAmountDue(invoice);
                     const isDepositRequest = hasActiveDepositRequest(invoice);
-                    const daysLate = daysPastDue(invoice.due_date);
+                    const daysLate = invoiceDaysPastDue({
+                      dueDate: invoice.due_date,
+                      todayKey: dashboardTodayKey,
+                    });
                     const isLate =
                       amountDue > 0 &&
                       daysLate !== null &&

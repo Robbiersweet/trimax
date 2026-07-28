@@ -7,11 +7,16 @@ import InvoiceResultsScroller from "../components/InvoiceResultsScroller";
 import InvoiceWorkspaceNav from "../components/InvoiceWorkspaceNav";
 import StatusBadge from "../components/StatusBadge";
 import {
+  businessDateKey,
   invoiceCollectionAmountDue,
+  invoiceDaysPastDue,
+  invoiceDueBucket,
   invoicePaymentIneligibleReason,
   isIncompleteDraftInvoice,
+  isOverdueCollectibleInvoice,
   isPaymentEligibleInvoice,
   isSplitSourceInvoice,
+  isHistoricalImportedDraft,
   nonCollectibleInvoiceLabel,
   type InvoiceEligibilityLineItem,
 } from "../lib/invoiceEligibility";
@@ -87,23 +92,6 @@ function formatDate(value: string | null) {
   }).format(date);
 }
 
-function daysPastDue(value: string | null) {
-  if (!value) {
-    return null;
-  }
-
-  const dueDate = new Date(`${value}T00:00:00`);
-
-  if (Number.isNaN(dueDate.getTime())) {
-    return null;
-  }
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  return Math.floor((today.getTime() - dueDate.getTime()) / 86_400_000);
-}
-
 function parseInvoiceNumber(displayId: string | null) {
   const match = String(displayId ?? "").match(/(\d+)/);
 
@@ -120,62 +108,129 @@ function recordTime(value: string | null) {
   return Number.isNaN(date.getTime()) ? 0 : date.getTime();
 }
 
+type InvoiceSortMode =
+  | "needs_attention"
+  | "oldest_due"
+  | "newest_due"
+  | "newest_invoice"
+  | "highest_balance"
+  | "invoice_number";
+
 function invoiceActionRank(
   invoice: InvoiceWithSplitInfo,
-  lineItems: InvoiceEligibilityLineItem[]
+  lineItems: InvoiceEligibilityLineItem[],
+  todayKey: string
 ) {
   const status = invoiceStatusKey(invoice.status);
   const amountDue = invoiceCollectionAmountDue(invoice);
+  const dueBucket = invoiceDueBucket({
+    invoice,
+    lineItems,
+    todayKey,
+  });
 
-  if (isIncompleteDraftInvoice({ invoice, lineItems })) {
+  if (dueBucket === "overdue") {
     return 0;
   }
 
-  if (status === "draft") {
+  if (dueBucket === "due_today") {
     return 1;
   }
 
-  if (status === "sent" && amountDue > 0 && daysPastDue(invoice.due_date) === null) {
+  if (dueBucket === "due_soon") {
     return 2;
   }
 
-  if (status === "sent" && amountDue > 0 && (daysPastDue(invoice.due_date) ?? -1) < 0) {
-    return 2;
-  }
-
-  if (status === "sent" && amountDue > 0) {
+  if (isIncompleteDraftInvoice({ invoice, lineItems })) {
     return 3;
   }
 
-  if (status === "paid" || amountDue <= 0) {
+  if (isHistoricalImportedDraft(invoice)) {
+    return 8;
+  }
+
+  if (status === "sent" && amountDue > 0) {
     return 4;
   }
 
-  if (nonCollectibleInvoiceLabel(invoice.status)) {
+  if (status === "draft") {
     return 5;
   }
 
-  return 6;
+  if (status === "paid" || amountDue <= 0) {
+    return 6;
+  }
+
+  if (nonCollectibleInvoiceLabel(invoice.status)) {
+    return 7;
+  }
+
+  return 9;
 }
 
 function compareInvoices(
-  lineItemsByInvoiceId: Map<string, InvoiceEligibilityLineItem[]>
+  lineItemsByInvoiceId: Map<string, InvoiceEligibilityLineItem[]>,
+  sortMode: InvoiceSortMode,
+  todayKey: string
 ) {
   return (first: InvoiceWithSplitInfo, second: InvoiceWithSplitInfo) => {
+    const firstLineItems = lineItemsByInvoiceId.get(first.id) ?? [];
+    const secondLineItems = lineItemsByInvoiceId.get(second.id) ?? [];
     const firstRank = invoiceActionRank(
       first,
-      lineItemsByInvoiceId.get(first.id) ?? []
+      firstLineItems,
+      todayKey
     );
     const secondRank = invoiceActionRank(
       second,
-      lineItemsByInvoiceId.get(second.id) ?? []
+      secondLineItems,
+      todayKey
     );
+    const firstDueTime = recordTime(first.due_date);
+    const secondDueTime = recordTime(second.due_date);
+    const firstBalance = invoiceCollectionAmountDue(first);
+    const secondBalance = invoiceCollectionAmountDue(second);
+    const firstInvoiceNumber = parseInvoiceNumber(first.display_id);
+    const secondInvoiceNumber = parseInvoiceNumber(second.display_id);
 
-    if (firstRank !== secondRank) {
-      return firstRank - secondRank;
+    if (sortMode === "oldest_due") {
+      return (
+        (firstDueTime || Number.MAX_SAFE_INTEGER) -
+          (secondDueTime || Number.MAX_SAFE_INTEGER) ||
+        firstInvoiceNumber - secondInvoiceNumber
+      );
+    }
+
+    if (sortMode === "newest_due") {
+      return (
+        secondDueTime - firstDueTime ||
+        secondInvoiceNumber - firstInvoiceNumber
+      );
+    }
+
+    if (sortMode === "newest_invoice") {
+      return (
+        recordTime(second.created_at) - recordTime(first.created_at) ||
+        secondInvoiceNumber - firstInvoiceNumber
+      );
+    }
+
+    if (sortMode === "highest_balance") {
+      return (
+        secondBalance - firstBalance ||
+        firstRank - secondRank ||
+        firstInvoiceNumber - secondInvoiceNumber
+      );
+    }
+
+    if (sortMode === "invoice_number") {
+      return firstInvoiceNumber - secondInvoiceNumber;
     }
 
     return (
+      firstRank - secondRank ||
+      (firstDueTime || Number.MAX_SAFE_INTEGER) -
+        (secondDueTime || Number.MAX_SAFE_INTEGER) ||
       recordTime(second.updated_at ?? second.created_at) -
         recordTime(first.updated_at ?? first.created_at) ||
       recordTime(second.created_at) - recordTime(first.created_at) ||
@@ -242,6 +297,7 @@ export default async function InvoicesPage({
     view?: string;
     collection?: string;
     limit?: string;
+    sort?: string;
   }>;
 }) {
   const resolvedSearchParams = searchParams ? await searchParams : {};
@@ -265,6 +321,16 @@ export default async function InvoicesPage({
     : "all";
   const collectionFilter =
     resolvedSearchParams.collection === "open" ? "open" : "";
+  const sortMode: InvoiceSortMode = [
+    "needs_attention",
+    "oldest_due",
+    "newest_due",
+    "newest_invoice",
+    "highest_balance",
+    "invoice_number",
+  ].includes(resolvedSearchParams.sort ?? "")
+    ? (resolvedSearchParams.sort as InvoiceSortMode)
+    : "needs_attention";
   const resultLimit = Math.min(
     Math.max(Number(resolvedSearchParams.limit) || 30, 20),
     150
@@ -275,6 +341,7 @@ export default async function InvoicesPage({
   if (statusFilter !== "all") activeParams.set("status", statusFilter);
   if (view !== "all") activeParams.set("view", view);
   if (collectionFilter) activeParams.set("collection", collectionFilter);
+  if (sortMode !== "needs_attention") activeParams.set("sort", sortMode);
 
   const { data: businessData, error: businessError } = await supabase
     .from("businesses")
@@ -360,6 +427,7 @@ export default async function InvoicesPage({
   }, new Map<string, InvoiceEligibilityLineItem[]>());
   const { replacementByOriginalId, originalByReplacementId } =
     buildCorrectionLinks(invoiceLogs);
+  const todayKey = businessDateKey();
   const invoicesWithSplitInfo: InvoiceWithSplitInfo[] = invoices.map((invoice) => ({
     ...invoice,
     split_children_count: splitChildrenByParentId.get(invoice.id) ?? 0,
@@ -370,7 +438,6 @@ export default async function InvoicesPage({
   const filteredInvoices = invoicesWithSplitInfo
     .filter((invoice) => {
       const status = invoiceStatusKey(invoice.status);
-      const amountDue = invoiceCollectionAmountDue(invoice);
       const searchableText = [
         invoice.display_id,
         invoice.project_title,
@@ -404,7 +471,11 @@ export default async function InvoicesPage({
       }
 
       if (statusFilter === "overdue") {
-        return amountDue > 0 && (daysPastDue(invoice.due_date) ?? -1) >= 0;
+        return isOverdueCollectibleInvoice({
+          invoice,
+          lineItems: lineItemsByInvoiceId.get(invoice.id) ?? [],
+          todayKey,
+        });
       }
 
       if (statusFilter === "historical") {
@@ -417,7 +488,15 @@ export default async function InvoicesPage({
 
       return true;
     })
-    .sort(compareInvoices(lineItemsByInvoiceId));
+    .sort(
+      compareInvoices(
+        lineItemsByInvoiceId,
+        statusFilter === "overdue" && sortMode === "needs_attention"
+          ? "oldest_due"
+          : sortMode,
+        todayKey
+      )
+    );
   const visibleInvoices = filteredInvoices.slice(0, resultLimit);
   const nextLimitParams = new URLSearchParams(activeParams);
   nextLimitParams.set("limit", String(resultLimit + 30));
@@ -464,7 +543,7 @@ export default async function InvoicesPage({
         <Card className="border-zinc-800 bg-zinc-950/70">
           <form
             action="/invoices"
-            className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_160px_150px_auto]"
+            className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_150px_145px_170px_auto]"
           >
             <input type="hidden" name="business" value={businessSlug} />
             <label className="grid gap-2 text-sm font-semibold text-zinc-200">
@@ -501,6 +580,21 @@ export default async function InvoicesPage({
                 <option value="all">All</option>
                 <option value="originals">Originals</option>
                 <option value="splits">Splits</option>
+              </select>
+            </label>
+            <label className="grid gap-2 text-sm font-semibold text-zinc-200">
+              Sort
+              <select
+                name="sort"
+                defaultValue={sortMode}
+                className="rounded-xl border border-zinc-700 bg-black/40 px-4 py-3 text-white outline-none focus:border-orange-400"
+              >
+                <option value="needs_attention">Needs Attention</option>
+                <option value="oldest_due">Oldest Due</option>
+                <option value="newest_due">Newest Due</option>
+                <option value="newest_invoice">Newest Invoice</option>
+                <option value="highest_balance">Highest Balance</option>
+                <option value="invoice_number">Invoice Number</option>
               </select>
             </label>
             <div className="flex items-end">
@@ -547,6 +641,10 @@ export default async function InvoicesPage({
               {visibleInvoices.map((invoice) => {
                 const itemLines = lineItemsByInvoiceId.get(invoice.id) ?? [];
                 const amountDue = invoiceCollectionAmountDue(invoice);
+                const overdueDays = invoiceDaysPastDue({
+                  dueDate: invoice.due_date,
+                  todayKey,
+                });
                 const nonCollectibleLabel = nonCollectibleInvoiceLabel(
                   invoice.status
                 );
@@ -563,6 +661,14 @@ export default async function InvoicesPage({
                   lineItems: itemLines,
                 });
                 const splitSource = isSplitSourceInvoice(invoice);
+                const overdue =
+                  overdueDays !== null &&
+                  overdueDays > 0 &&
+                  isOverdueCollectibleInvoice({
+                    invoice,
+                    lineItems: itemLines,
+                    todayKey,
+                  });
                 const replacement = replacementByOriginalId.get(invoice.id);
                 const original = originalByReplacementId.get(invoice.id);
 
@@ -586,6 +692,12 @@ export default async function InvoicesPage({
                           {incompleteDraft ? (
                             <span className="rounded-full border border-amber-300/40 bg-amber-500/10 px-3 py-1 text-xs font-black text-amber-100">
                               Draft incomplete
+                            </span>
+                          ) : null}
+                          {overdue ? (
+                            <span className="rounded-full border border-rose-300/40 bg-rose-500/10 px-3 py-1 text-xs font-black text-rose-100">
+                              Overdue by {overdueDays} day
+                              {overdueDays === 1 ? "" : "s"}
                             </span>
                           ) : null}
                         </div>

@@ -1,4 +1,5 @@
 import {
+  invoiceWasSent,
   invoiceStatusKey,
   isCollectibleInvoiceStatus,
   isNonCollectibleInvoiceStatus,
@@ -22,6 +23,9 @@ export type InvoiceEligibilityRecord = {
   import_reviewed?: boolean | null;
   split_parent_invoice_id?: string | null;
   split_children_count?: number | null;
+  due_date?: string | null;
+  updated_at?: string | null;
+  display_id?: string | null;
 };
 
 export type InvoiceEligibilityLineItem = {
@@ -91,6 +95,73 @@ function dateTime(value: string | null | undefined) {
   const date = new Date(value.includes("T") ? value : `${value}T00:00:00`);
 
   return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+}
+
+export function businessDateKey(
+  date: Date = new Date(),
+  timeZone = "America/Los_Angeles"
+) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone,
+    year: "numeric",
+  }).formatToParts(date);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+
+  return year && month && day ? `${year}-${month}-${day}` : "";
+}
+
+export function invoiceDateKey(value: string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  const key = String(value).slice(0, 10);
+
+  return /^\d{4}-\d{2}-\d{2}$/.test(key) ? key : null;
+}
+
+function daysBetweenDateKeys(first: string, second: string) {
+  const firstDate = new Date(`${first}T00:00:00`);
+  const secondDate = new Date(`${second}T00:00:00`);
+
+  if (
+    Number.isNaN(firstDate.getTime()) ||
+    Number.isNaN(secondDate.getTime())
+  ) {
+    return null;
+  }
+
+  return Math.round((firstDate.getTime() - secondDate.getTime()) / 86_400_000);
+}
+
+export function invoiceDaysPastDue({
+  dueDate,
+  todayKey = businessDateKey(),
+}: {
+  dueDate: string | null | undefined;
+  todayKey?: string;
+}) {
+  const dueDateKey = invoiceDateKey(dueDate);
+
+  if (!dueDateKey || !todayKey) {
+    return null;
+  }
+
+  return daysBetweenDateKeys(todayKey, dueDateKey);
+}
+
+export function isOfficiallyIssuedInvoice({
+  invoice,
+  invoiceIdsWithSendProof = new Set<string>(),
+}: {
+  invoice: InvoiceEligibilityRecord;
+  invoiceIdsWithSendProof?: Set<string>;
+}) {
+  return invoiceWasSent(invoice, invoiceIdsWithSendProof);
 }
 
 export function isHistoricalImportedDraft(invoice: InvoiceEligibilityRecord) {
@@ -166,6 +237,67 @@ export function isPaymentEligibleInvoice({
     !isSplitSourceInvoice(invoice) &&
     !isIncompleteDraftInvoice({ invoice, lineItems })
   );
+}
+
+export function isOverdueCollectibleInvoice({
+  invoice,
+  lineItems = [],
+  invoiceIdsWithSendProof = new Set<string>(),
+  todayKey = businessDateKey(),
+}: {
+  invoice: InvoiceEligibilityRecord;
+  lineItems?: InvoiceEligibilityLineItem[];
+  invoiceIdsWithSendProof?: Set<string>;
+  todayKey?: string;
+}) {
+  const dueDateKey = invoiceDateKey(invoice.due_date);
+
+  return (
+    Boolean(dueDateKey) &&
+    dueDateKey! < todayKey &&
+    isPaymentEligibleInvoice({ invoice, lineItems }) &&
+    isOfficiallyIssuedInvoice({ invoice, invoiceIdsWithSendProof })
+  );
+}
+
+export function invoiceDueBucket({
+  invoice,
+  lineItems = [],
+  invoiceIdsWithSendProof = new Set<string>(),
+  todayKey = businessDateKey(),
+  dueSoonDays = 7,
+}: {
+  invoice: InvoiceEligibilityRecord;
+  lineItems?: InvoiceEligibilityLineItem[];
+  invoiceIdsWithSendProof?: Set<string>;
+  todayKey?: string;
+  dueSoonDays?: number;
+}) {
+  const dueDateKey = invoiceDateKey(invoice.due_date);
+
+  if (
+    !dueDateKey ||
+    !isPaymentEligibleInvoice({ invoice, lineItems }) ||
+    !isOfficiallyIssuedInvoice({ invoice, invoiceIdsWithSendProof })
+  ) {
+    return "not_collectible" as const;
+  }
+
+  if (dueDateKey < todayKey) {
+    return "overdue" as const;
+  }
+
+  if (dueDateKey === todayKey) {
+    return "due_today" as const;
+  }
+
+  const daysUntilDue = daysBetweenDateKeys(dueDateKey, todayKey);
+
+  if (daysUntilDue !== null && daysUntilDue <= dueSoonDays) {
+    return "due_soon" as const;
+  }
+
+  return "upcoming" as const;
 }
 
 export function invoicePaymentIneligibleReason({

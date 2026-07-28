@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 import Card from "./Card";
 import DateInputField from "./DateInputField";
 import Toast from "./Toast";
+import {
+  businessDateKey,
+  isOverdueCollectibleInvoice,
+} from "../lib/invoiceEligibility";
 import { isCollectibleInvoiceStatus } from "../lib/invoiceLifecycle";
 import { assertCanWriteDuringMaintenance } from "../lib/maintenanceMode";
 import { supabase } from "../lib/supabase";
@@ -43,6 +47,7 @@ type BatchInvoicePaymentsProps = {
 type PayableInvoice = BatchInvoice & {
   amountDue: number;
   daysLate: number | null;
+  isOverdue: boolean;
 };
 
 type ReviewMatchedInvoice = PayableInvoice & {
@@ -542,14 +547,27 @@ export default function BatchInvoicePayments({
   const invoiceRecords = useMemo<PayableInvoice[]>(
     () =>
       invoices
-        .map((invoice) => ({
-          ...invoice,
-          amountDue:
+        .map((invoice) => {
+          const amountDue =
             typeof invoice.collectionAmountDue === "number"
               ? Math.max(invoice.collectionAmountDue, 0)
-              : Math.max(invoice.invoiceAmount - invoice.amountPaid, 0),
-          daysLate: daysPastDue(invoice.dueDate),
-        })),
+              : Math.max(invoice.invoiceAmount - invoice.amountPaid, 0);
+
+          return {
+            ...invoice,
+            amountDue,
+            daysLate: daysPastDue(invoice.dueDate),
+            isOverdue: isOverdueCollectibleInvoice({
+              invoice: {
+                ...invoice,
+                invoice_amount: invoice.invoiceAmount,
+                amount_paid: invoice.amountPaid,
+                due_date: invoice.dueDate,
+              },
+              todayKey: businessDateKey(),
+            }),
+          };
+        }),
     [invoices]
   );
   const payableInvoices = useMemo(
@@ -717,7 +735,7 @@ export default function BatchInvoicePayments({
 
   function selectOverdueInvoices() {
     const overdueInvoices = payableInvoices.filter(
-      (invoice) => (invoice.daysLate ?? -1) >= 0
+      (invoice) => invoice.isOverdue
     );
 
     setCustomerFilter("all");
@@ -2196,7 +2214,7 @@ export default function BatchInvoicePayments({
           <button
             type="button"
             onClick={selectOverdueInvoices}
-            disabled={!payableInvoices.some((invoice) => (invoice.daysLate ?? -1) >= 0)}
+            disabled={!payableInvoices.some((invoice) => invoice.isOverdue)}
             className="rounded-full border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-800 transition hover:border-rose-400 hover:bg-rose-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
           >
             Select Overdue
@@ -2238,7 +2256,7 @@ export default function BatchInvoicePayments({
 
         <div className="max-h-96 overflow-y-auto">
           {visibleInvoices.map((invoice) => {
-            const isLate = (invoice.daysLate ?? -1) >= 0;
+            const isLate = invoice.isOverdue;
 
             return (
               <label
