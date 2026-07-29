@@ -4,8 +4,13 @@ import Card from "../../components/Card";
 import Button from "../../components/Button";
 import DeleteClientButton from "../../components/DeleteClientButton";
 import InternalNotes from "../../components/InternalNotes";
+import PersistentDetails from "../../components/PersistentDetails";
 import StatusBadge from "../../components/StatusBadge";
 import { isCollectibleInvoiceStatus } from "../../lib/invoiceLifecycle";
+import {
+  summarizePaymentTimeliness,
+  timelinessLogFromActivity,
+} from "../../lib/paymentTimeliness";
 import { supabase } from "../../lib/supabase";
 
 type Client = {
@@ -44,6 +49,14 @@ type Invoice = {
   amount_paid: string | number | null;
   status: string | null;
   due_date: string | null;
+  created_at: string | null;
+};
+
+type ActivityLog = {
+  id: string;
+  entity_id: string | null;
+  entity_label: string | null;
+  details: Record<string, unknown> | null;
   created_at: string | null;
 };
 
@@ -151,7 +164,7 @@ export default async function ClientDetailsPage({
 
   const client = data as Client;
 
-  const [estimateResponse, invoiceResponse] = await Promise.all([
+  const [estimateResponse, invoiceResponse, paymentActivityResponse] = await Promise.all([
     supabase
       .from("estimates")
       .select(
@@ -170,10 +183,22 @@ export default async function ClientDetailsPage({
       .eq("client_id", client.id)
       .order("created_at", { ascending: false })
       .limit(5),
+    supabase
+      .from("activity_logs")
+      .select("id, entity_id, entity_label, details, created_at")
+      .eq("business_id", selectedBusiness.id)
+      .eq("action", "invoice.batch_payment_applied")
+      .order("created_at", { ascending: false })
+      .limit(250),
   ]);
 
   const estimates = (estimateResponse.data ?? []) as Estimate[];
   const invoices = (invoiceResponse.data ?? []) as Invoice[];
+  const paymentTimelinessLogs = ((paymentActivityResponse.data ?? []) as ActivityLog[])
+    .map((log) => timelinessLogFromActivity(log))
+    .filter((log): log is NonNullable<typeof log> => Boolean(log))
+    .filter((log) => log.clientId === client.id || log.customerName === client.name);
+  const paymentTimelinessStats = summarizePaymentTimeliness(paymentTimelinessLogs);
 
   const openInvoices = invoices.filter((invoice) =>
     isCollectibleInvoiceStatus(invoice.status)
@@ -559,6 +584,87 @@ export default async function ClientDetailsPage({
           entityId={client.id}
           title="Client Conversation"
         />
+
+        <PersistentDetails
+          storageKey={`trimax.client.payment-history.${client.id}`}
+          title="Payment History"
+          subtitle={`${paymentTimelinessStats.completedInvoices} completed invoices`}
+          summaryMeta={
+            <Link
+              href={`/payments?${new URLSearchParams({
+                business: businessSlug,
+                paymentClient: client.name,
+              }).toString()}#payment-history`}
+              className="text-sm font-semibold text-orange-400"
+            >
+              Open history
+            </Link>
+          }
+          className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-3"
+        >
+          <div className="mt-4 grid gap-3 sm:grid-cols-4">
+            <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-2">
+              <p className="text-xs text-zinc-500">Completed</p>
+              <p className="mt-1 text-xl font-black text-white">
+                {paymentTimelinessStats.completedInvoices}
+              </p>
+            </div>
+            <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-2">
+              <p className="text-xs text-emerald-100/80">On Time</p>
+              <p className="mt-1 text-xl font-black text-emerald-100">
+                {paymentTimelinessStats.onTimePayments}
+              </p>
+            </div>
+            <div className="rounded-xl border border-amber-400/20 bg-amber-400/10 px-3 py-2">
+              <p className="text-xs text-amber-100/80">Late</p>
+              <p className="mt-1 text-xl font-black text-amber-100">
+                {paymentTimelinessStats.latePayments}
+              </p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-2">
+              <p className="text-xs text-zinc-500">On-Time Rate</p>
+              <p className="mt-1 text-xl font-black text-white">
+                {paymentTimelinessStats.onTimePercent}%
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-2">
+            {paymentTimelinessLogs.slice(0, 5).map((log) => (
+              <Link
+                key={log.logId}
+                href={`/invoices/${log.invoiceId}${businessQuery}`}
+                className="rounded-xl border border-zinc-800 bg-zinc-950 p-3 transition hover:border-green-400/50"
+              >
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="font-black text-white">
+                      {log.invoiceNumber}
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-400">
+                      Due {formatDate(log.dueDateAtCompletion)} · Paid {formatDate(log.fullyPaidDate)}
+                    </p>
+                  </div>
+                  <span
+                    className={`rounded-full border px-3 py-1 text-xs font-black ${
+                      log.paidLate
+                        ? "border-amber-300/30 bg-amber-300/10 text-amber-100"
+                        : "border-emerald-300/30 bg-emerald-300/10 text-emerald-100"
+                    }`}
+                  >
+                    {log.paidLate ? `Paid ${log.daysLate} days late` : "Paid on time"}
+                  </span>
+                </div>
+              </Link>
+            ))}
+
+            {paymentTimelinessLogs.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-zinc-700 bg-black/20 p-4 text-sm text-zinc-300">
+                No completed payment-timeliness snapshots for this client yet.
+              </div>
+            ) : null}
+          </div>
+        </PersistentDetails>
 
         <div className="grid gap-4 md:grid-cols-3">
           <Card className="client-followup-card border-orange-500/30 bg-orange-500/10">

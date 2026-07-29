@@ -10,6 +10,10 @@ import {
   type InvoiceEligibilityLineItem,
 } from "../lib/invoiceEligibility";
 import { moneyNumber } from "../lib/invoiceLifecycle";
+import {
+  summarizePaymentTimeliness,
+  timelinessLogFromActivity,
+} from "../lib/paymentTimeliness";
 import { supabase } from "../lib/supabase";
 
 type Business = {
@@ -48,6 +52,9 @@ type ActivityLog = {
   details: Record<string, unknown> | null;
   created_at: string | null;
 };
+
+type PaymentHistoryFilter = "all" | "on-time" | "late";
+type PaymentHistorySort = "recent" | "days-late" | "client" | "invoice";
 
 function parseMoney(value: string | number | null | undefined) {
   if (typeof value === "number") {
@@ -213,6 +220,32 @@ function paymentProofChips(log: ActivityLog) {
   });
 }
 
+function paymentHistoryHref({
+  businessSlug,
+  filter,
+  sort,
+  from,
+  to,
+  client,
+}: {
+  businessSlug: string;
+  filter: PaymentHistoryFilter;
+  sort: PaymentHistorySort;
+  from: string;
+  to: string;
+  client: string;
+}) {
+  const params = new URLSearchParams({ business: businessSlug });
+
+  if (filter !== "all") params.set("paymentHistory", filter);
+  if (sort !== "recent") params.set("paymentSort", sort);
+  if (from) params.set("paymentFrom", from);
+  if (to) params.set("paymentTo", to);
+  if (client) params.set("paymentClient", client);
+
+  return `/payments?${params.toString()}#payment-history`;
+}
+
 export default async function PaymentsPage({
   searchParams,
 }: {
@@ -220,12 +253,31 @@ export default async function PaymentsPage({
     business?: string;
     customer?: string;
     invoiceIds?: string;
+    paymentClient?: string;
+    paymentFrom?: string;
+    paymentHistory?: PaymentHistoryFilter;
+    paymentSort?: PaymentHistorySort;
+    paymentTo?: string;
   }>;
 }) {
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const businessSlug = resolvedSearchParams.business ?? "rnl-creations";
   const businessQuery = `?business=${businessSlug}`;
   const focusedCustomer = resolvedSearchParams.customer?.trim() ?? "";
+  const paymentHistoryFilter: PaymentHistoryFilter =
+    resolvedSearchParams.paymentHistory === "late" ||
+    resolvedSearchParams.paymentHistory === "on-time"
+      ? resolvedSearchParams.paymentHistory
+      : "all";
+  const paymentHistorySort: PaymentHistorySort =
+    resolvedSearchParams.paymentSort === "days-late" ||
+    resolvedSearchParams.paymentSort === "client" ||
+    resolvedSearchParams.paymentSort === "invoice"
+      ? resolvedSearchParams.paymentSort
+      : "recent";
+  const paymentHistoryClient = resolvedSearchParams.paymentClient?.trim() ?? "";
+  const paymentHistoryFrom = resolvedSearchParams.paymentFrom?.trim() ?? "";
+  const paymentHistoryTo = resolvedSearchParams.paymentTo?.trim() ?? "";
   const initialInvoiceIds = (resolvedSearchParams.invoiceIds ?? "")
     .split(",")
     .map((id) => id.trim())
@@ -308,7 +360,7 @@ export default async function PaymentsPage({
         "invoice.deposit_cleared",
       ])
       .order("created_at", { ascending: false })
-      .limit(8);
+      .limit(250);
 
     if (activityError) {
       loadIssues.push(
@@ -355,6 +407,55 @@ export default async function PaymentsPage({
         lineItems: lineItemsByInvoiceId.get(invoice.id) ?? [],
       })
     );
+  const paymentTimelinessLogs = paymentLogs
+    .map((log) => timelinessLogFromActivity(log))
+    .filter((log): log is NonNullable<typeof log> => Boolean(log));
+  const paymentClients = Array.from(
+    new Set(paymentTimelinessLogs.map((log) => log.customerName))
+  ).sort((first, second) => first.localeCompare(second));
+  const filteredPaymentTimelinessLogs = paymentTimelinessLogs
+    .filter((log) => {
+      if (paymentHistoryFilter === "late" && !log.paidLate) return false;
+      if (paymentHistoryFilter === "on-time" && log.paidLate) return false;
+      if (paymentHistoryClient && log.customerName !== paymentHistoryClient) {
+        return false;
+      }
+      if (paymentHistoryFrom && log.fullyPaidDate < paymentHistoryFrom) {
+        return false;
+      }
+      if (paymentHistoryTo && log.fullyPaidDate > paymentHistoryTo) {
+        return false;
+      }
+
+      return true;
+    })
+    .sort((first, second) => {
+      if (paymentHistorySort === "days-late") {
+        return (
+          second.daysLate - first.daysLate ||
+          second.fullyPaidDate.localeCompare(first.fullyPaidDate)
+        );
+      }
+
+      if (paymentHistorySort === "client") {
+        return (
+          first.customerName.localeCompare(second.customerName) ||
+          second.fullyPaidDate.localeCompare(first.fullyPaidDate)
+        );
+      }
+
+      if (paymentHistorySort === "invoice") {
+        return (
+          first.invoiceNumber.localeCompare(second.invoiceNumber) ||
+          second.fullyPaidDate.localeCompare(first.fullyPaidDate)
+        );
+      }
+
+      return second.fullyPaidDate.localeCompare(first.fullyPaidDate);
+    });
+  const paymentTimelinessStats = summarizePaymentTimeliness(
+    filteredPaymentTimelinessLogs
+  );
 
   return (
     <AppShell>
@@ -433,6 +534,213 @@ export default async function PaymentsPage({
             }))}
           />
         </div>
+
+          <PersistentDetails
+            storageKey={`trimax.payments.late-history.${businessSlug}`}
+            title="Payment History"
+            subtitle={`${paymentTimelinessStats.completedInvoices} completed invoices`}
+            summaryMeta={
+              <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-black text-emerald-100">
+                {paymentTimelinessStats.onTimePercent}% on time
+              </span>
+            }
+            className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-3"
+            contentClassName="mt-4"
+          >
+            <div id="payment-history" className="grid gap-3 sm:grid-cols-4">
+              <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-2">
+                <p className="text-xs text-zinc-500">Completed</p>
+                <p className="mt-1 text-xl font-black text-white">
+                  {paymentTimelinessStats.completedInvoices}
+                </p>
+              </div>
+              <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-2">
+                <p className="text-xs text-emerald-100/80">On Time</p>
+                <p className="mt-1 text-xl font-black text-emerald-100">
+                  {paymentTimelinessStats.onTimePayments}
+                </p>
+              </div>
+              <div className="rounded-xl border border-amber-400/20 bg-amber-400/10 px-3 py-2">
+                <p className="text-xs text-amber-100/80">Late</p>
+                <p className="mt-1 text-xl font-black text-amber-100">
+                  {paymentTimelinessStats.latePayments}
+                </p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-2">
+                <p className="text-xs text-zinc-500">Avg Days Late</p>
+                <p className="mt-1 text-xl font-black text-white">
+                  {paymentTimelinessStats.averageDaysLate}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold">
+              {(["all", "on-time", "late"] as PaymentHistoryFilter[]).map((filter) => (
+                <Link
+                  key={filter}
+                  href={paymentHistoryHref({
+                    businessSlug,
+                    filter,
+                    sort: paymentHistorySort,
+                    from: paymentHistoryFrom,
+                    to: paymentHistoryTo,
+                    client: paymentHistoryClient,
+                  })}
+                  className={`rounded-full border px-3 py-1.5 ${
+                    paymentHistoryFilter === filter
+                      ? "border-green-400 bg-green-400 text-black"
+                      : "border-zinc-700 bg-black/20 text-zinc-200"
+                  }`}
+                >
+                  {filter === "all" ? "All" : filter === "on-time" ? "On time" : "Late"}
+                </Link>
+              ))}
+              {(["recent", "days-late", "client", "invoice"] as PaymentHistorySort[]).map((sort) => (
+                <Link
+                  key={sort}
+                  href={paymentHistoryHref({
+                    businessSlug,
+                    filter: paymentHistoryFilter,
+                    sort,
+                    from: paymentHistoryFrom,
+                    to: paymentHistoryTo,
+                    client: paymentHistoryClient,
+                  })}
+                  className={`rounded-full border px-3 py-1.5 ${
+                    paymentHistorySort === sort
+                      ? "border-sky-300 bg-sky-300 text-black"
+                      : "border-zinc-700 bg-black/20 text-zinc-200"
+                  }`}
+                >
+                  {sort === "recent"
+                    ? "Recent"
+                    : sort === "days-late"
+                      ? "Most late"
+                      : sort === "client"
+                        ? "Client"
+                        : "Invoice #"}
+                </Link>
+              ))}
+              {paymentClients.slice(0, 8).map((client) => (
+                <Link
+                  key={client}
+                  href={paymentHistoryHref({
+                    businessSlug,
+                    filter: paymentHistoryFilter,
+                    sort: paymentHistorySort,
+                    from: paymentHistoryFrom,
+                    to: paymentHistoryTo,
+                    client,
+                  })}
+                  className={`rounded-full border px-3 py-1.5 ${
+                    paymentHistoryClient === client
+                      ? "border-orange-300 bg-orange-300 text-black"
+                      : "border-zinc-700 bg-black/20 text-zinc-200"
+                  }`}
+                >
+                  {client}
+                </Link>
+              ))}
+              {(paymentHistoryClient || paymentHistoryFilter !== "all" || paymentHistorySort !== "recent") ? (
+                <Link
+                  href={`/payments${businessQuery}#payment-history`}
+                  className="rounded-full border border-zinc-700 bg-black/20 px-3 py-1.5 text-zinc-200"
+                >
+                  Clear
+                </Link>
+              ) : null}
+            </div>
+
+            <form
+              action="/payments"
+              className="mt-3 grid gap-2 text-sm sm:grid-cols-[repeat(3,minmax(0,1fr))_auto]"
+            >
+              <input type="hidden" name="business" value={businessSlug} />
+              <input type="hidden" name="paymentHistory" value={paymentHistoryFilter} />
+              <input type="hidden" name="paymentSort" value={paymentHistorySort} />
+              {paymentHistoryClient ? (
+                <input type="hidden" name="paymentClient" value={paymentHistoryClient} />
+              ) : null}
+              <label className="grid gap-1 text-zinc-400">
+                From
+                <input
+                  type="date"
+                  name="paymentFrom"
+                  defaultValue={paymentHistoryFrom}
+                  className="rounded-xl border border-zinc-700 bg-black/30 px-3 py-2 text-white"
+                />
+              </label>
+              <label className="grid gap-1 text-zinc-400">
+                To
+                <input
+                  type="date"
+                  name="paymentTo"
+                  defaultValue={paymentHistoryTo}
+                  className="rounded-xl border border-zinc-700 bg-black/30 px-3 py-2 text-white"
+                />
+              </label>
+              <label className="grid gap-1 text-zinc-400">
+                Client
+                <select
+                  name="paymentClient"
+                  defaultValue={paymentHistoryClient}
+                  className="rounded-xl border border-zinc-700 bg-black/30 px-3 py-2 text-white"
+                >
+                  <option value="">All clients</option>
+                  {paymentClients.map((client) => (
+                    <option key={client} value={client}>
+                      {client}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="submit"
+                className="self-end rounded-xl bg-green-500 px-4 py-2 font-black text-black"
+              >
+                Filter
+              </button>
+            </form>
+
+            <div className="mt-4 grid gap-2">
+              {filteredPaymentTimelinessLogs.length > 0 ? (
+                filteredPaymentTimelinessLogs.slice(0, 50).map((log) => (
+                  <Link
+                    key={log.logId}
+                    href={`/invoices/${log.invoiceId}${businessQuery}`}
+                    className="rounded-xl border border-zinc-800 bg-zinc-950 p-3 transition hover:border-green-400/50"
+                  >
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="font-black text-white">
+                          {log.invoiceNumber} {log.customerName}
+                        </p>
+                        <p className="mt-1 text-sm text-zinc-400">
+                          Due {formatDate(log.dueDateAtCompletion)} · Paid {formatDate(log.fullyPaidDate)}
+                          {log.finalPaymentReference
+                            ? ` · Ref ${log.finalPaymentReference}`
+                            : ""}
+                        </p>
+                      </div>
+                      <span
+                        className={`rounded-full border px-3 py-1 text-xs font-black ${
+                          log.paidLate
+                            ? "border-amber-300/30 bg-amber-300/10 text-amber-100"
+                            : "border-emerald-300/30 bg-emerald-300/10 text-emerald-100"
+                        }`}
+                      >
+                        {log.paidLate ? `Paid ${log.daysLate} days late` : "Paid on time"}
+                      </span>
+                    </div>
+                  </Link>
+                ))
+              ) : (
+                <div className="rounded-xl border border-dashed border-zinc-700 bg-black/20 p-4 text-sm text-zinc-300">
+                  No completed payment-timeliness snapshots match these filters yet.
+                </div>
+              )}
+            </div>
+          </PersistentDetails>
 
           <PersistentDetails
             storageKey={`trimax.payments.history.${businessSlug}`}

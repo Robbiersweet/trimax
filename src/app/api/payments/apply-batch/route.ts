@@ -6,6 +6,10 @@ import {
   type InvoiceEligibilityLineItem,
 } from "../../../lib/invoiceEligibility";
 import { moneyNumber } from "../../../lib/invoiceLifecycle";
+import {
+  createPaymentTimelinessSnapshot,
+  paymentDateKey,
+} from "../../../lib/paymentTimeliness";
 
 type GenericTable = {
   Row: Record<string, unknown>;
@@ -34,6 +38,7 @@ type AdminClient = SupabaseClient<Database>;
 type InvoiceRow = {
   id: string;
   business_id: string;
+  client_id: string | null;
   display_id: string | null;
   customer_name: string | null;
   project_title: string | null;
@@ -42,6 +47,8 @@ type InvoiceRow = {
   deposit_requested_amount: string | number | null;
   deposit_status: string | null;
   status: string | null;
+  due_date: string | null;
+  split_parent_invoice_id?: string | null;
 };
 
 type InvoiceLineItemRow = InvoiceEligibilityLineItem & {
@@ -176,7 +183,7 @@ export async function POST(request: Request) {
   const { data: invoiceData, error: invoiceError } = await supabase
     .from("invoices")
     .select(
-      "id, business_id, display_id, customer_name, project_title, invoice_amount, amount_paid, deposit_requested_amount, deposit_status, status"
+      "id, business_id, client_id, display_id, customer_name, project_title, invoice_amount, amount_paid, deposit_requested_amount, deposit_status, status, due_date, split_parent_invoice_id"
     )
     .eq("business_id", businessId)
     .in("id", invoiceIds)
@@ -284,6 +291,7 @@ export async function POST(request: Request) {
   }
 
   const appliedInvoices = [];
+  const paymentDate = paymentDateKey(cleanString(body.paymentDate, 40));
 
   for (const invoice of invoices) {
     const invoiceAmount = moneyNumber(invoice.invoice_amount);
@@ -308,6 +316,15 @@ export async function POST(request: Request) {
       updatePayload.deposit_status = "paid";
     }
 
+    const timelinessSnapshot = isFullyPaid
+      ? createPaymentTimelinessSnapshot({
+          invoice,
+          lineItems: lineItemsByInvoiceId.get(invoice.id) ?? [],
+          fullyPaidDate: paymentDate,
+          finalPaymentReference: cleanString(body.paymentReference, 120),
+        })
+      : null;
+
     const { error: updateError } = await supabase
       .from("invoices")
       .update(updatePayload)
@@ -330,14 +347,31 @@ export async function POST(request: Request) {
       entity_id: invoice.id,
       entity_label: invoice.display_id ?? invoice.project_title ?? "Invoice",
       details: {
-        paymentDate: cleanString(body.paymentDate, 40),
+        paymentDate,
         paymentType: cleanString(body.paymentType, 80),
         paymentReference: cleanString(body.paymentReference, 120),
         internalNote: cleanString(body.internalNote, 1000),
+        invoiceId: invoice.id,
+        businessId,
+        clientId: invoice.client_id ?? null,
+        customerName: invoice.customer_name ?? null,
+        invoiceNumber: invoice.display_id ?? null,
+        dueDateAtPayment: invoice.due_date ?? null,
         checkAmount,
         amountApplied: amountDue,
         resultingAmountPaid: nextAmountPaid,
         paymentOutcome: isFullyPaid ? "paid" : "partial",
+        paymentCompletedInvoice: isFullyPaid,
+        ...(timelinessSnapshot
+          ? {
+              dueDateAtCompletion: timelinessSnapshot.dueDateAtCompletion,
+              fullyPaidDate: timelinessSnapshot.fullyPaidDate,
+              daysLate: timelinessSnapshot.daysLate,
+              paidLate: timelinessSnapshot.paidLate,
+              finalPaymentReference: timelinessSnapshot.finalPaymentReference,
+              recordedAt: timelinessSnapshot.recordedAt,
+            }
+          : {}),
         depositPayment: isDepositRequest,
         batchInvoiceCount: invoices.length,
         remittanceStubMatched: Boolean(body.remittanceStubMatched),
