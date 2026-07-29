@@ -418,7 +418,7 @@ assert(
 assert(
   queue.includes("activeSessionByQueueItemId") &&
     queue.includes("Running") &&
-    queue.includes("Resume Job") &&
+    queue.includes("Manage Session") &&
     queue.includes("primaryQueueAction"),
   "Queue rows must surface active job sessions with one clear primary action."
 );

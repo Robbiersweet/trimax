@@ -377,7 +377,7 @@ function primaryQueueAction({
 }) {
   if (activeSession) {
     return {
-      label: "Resume Job",
+      label: "Manage Session",
       href: `/queue/${item.id}?business=${businessSlug}#job-session`,
     };
   }
@@ -1728,9 +1728,9 @@ export default async function QueuePage({
                   key={item.id}
                   href={`/queue/${item.id}${businessQuery}`}
                   label={`Open queue item ${displayUnit || item.unit || item.id}`}
-                  className="queue-list-card queue-dispatch-card p-2.5 sm:p-3"
+                  className="queue-list-card queue-dispatch-card p-2 sm:p-2.5"
                 >
-                  <div className="grid min-w-0 gap-2 md:grid-cols-[4.25rem_minmax(4.5rem,0.6fr)_minmax(7rem,1.15fr)_minmax(6rem,0.75fr)_minmax(7rem,0.9fr)_auto] md:items-center">
+                  <div className="grid min-w-0 gap-2 md:grid-cols-[4rem_minmax(6rem,0.85fr)_minmax(7rem,1.05fr)_minmax(6rem,0.72fr)_minmax(7rem,0.9fr)_auto] md:items-center">
                     <CompactQueueField
                       label="Priority"
                       value={
@@ -1745,6 +1745,9 @@ export default async function QueuePage({
                       </p>
                       <p className="mt-0.5 break-words text-lg font-black leading-6 text-white">
                         {displayUnit || "-"}
+                      </p>
+                      <p className="mt-0.5 break-words text-xs font-semibold leading-4 text-zinc-400">
+                        {item.property || "Unknown Property"}
                       </p>
                     </div>
                     <CompactQueueField label="Work" value={serviceType} />
@@ -1780,10 +1783,6 @@ export default async function QueuePage({
                       More
                     </summary>
                     <div className="mt-2 grid min-w-0 gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
-                      <CompactQueueField
-                        label="Property"
-                        value={item.property || "Unknown Property"}
-                      />
                       <CompactQueueField
                         label="Move Out"
                         value={item.move_out_date || "Not set"}

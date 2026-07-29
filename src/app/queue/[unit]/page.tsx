@@ -912,8 +912,8 @@ export default async function QueueDetailPage({
           message="Work marked complete. If the invoice has been sent, this item is ready to leave the Active Queue."
         />
       ) : null}
-      <div className="space-y-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div className="space-y-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="queue-unit-plate queue-unit-plate-v2 queue-unit-plate-large">
               <span className="queue-unit-plate-label">Unit</span>
@@ -934,24 +934,15 @@ export default async function QueueDetailPage({
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <StatusBadge status={queueLifecycleDisplayStatus(item.status)} />
-            <RoleVisible
-              businessSlug={businessSlug}
-              allow={["owner", "admin", "accountant", "property_manager"]}
-            >
-              {linkedInvoiceStatus ? (
-                <StatusBadge status={linkedInvoiceStatus} />
-              ) : null}
-            </RoleVisible>
+            <StatusBadge status={managerLifecycleStatus} />
           </div>
         </div>
 
-        <Card className="queue-detail-operational-header border-sky-500/25 bg-zinc-950 p-3 sm:p-4">
+        <Card className="queue-detail-operational-header border-sky-500/25 bg-zinc-950 p-2.5 sm:p-3">
           <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-start">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
               <CompactDetail label="Unit" value={displayUnit || item.unit || ""} />
               <CompactDetail label="Property" value={item.property || ""} />
-              <CompactDetail label="Status" value={managerLifecycleStatus} />
               <CompactDetail
                 label="Manager Priority"
                 value={
@@ -1058,7 +1049,7 @@ export default async function QueueDetailPage({
         </RoleVisible>
 
         <RoleVisible businessSlug={businessSlug} allow={["property_manager"]}>
-          <Card className="border-sky-500/25 bg-sky-500/10">
+          <Card className="border-sky-500/25 bg-sky-500/10 p-3">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
                 <p className="text-sm uppercase tracking-[0.3em] text-sky-200">
@@ -1067,17 +1058,13 @@ export default async function QueueDetailPage({
                 <div className="mt-3">
                   <StatusBadge status={managerLifecycleStatus} />
                 </div>
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-sky-50/80">
-                  This shows where the request is in the workflow without
-                  exposing internal planning or financial controls.
-                </p>
               </div>
             </div>
           </Card>
         </RoleVisible>
 
         {tbdDecisions.length > 0 ? (
-          <Card className="border-amber-400/30 bg-amber-500/10">
+          <Card className="border-amber-400/30 bg-amber-500/10 p-3">
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div>
                 <p className="text-sm uppercase tracking-[0.3em] text-amber-200">
@@ -1086,10 +1073,6 @@ export default async function QueueDetailPage({
                 <h2 className="mt-2 text-2xl font-bold text-white">
                   {tbdDecisions.length} TBD
                 </h2>
-                <p className="mt-2 text-sm leading-6 text-amber-100/80">
-                  This queue item can stay active, but these details still need
-                  a real decision after inspection.
-                </p>
               </div>
 
               <div className="grid gap-2 text-sm font-semibold text-amber-50 md:min-w-72">
@@ -1259,12 +1242,12 @@ export default async function QueueDetailPage({
           allow={["owner", "admin", "accountant"]}
         >
           {linkedEstimate && (
-            <Card className="border-purple-500/40">
+            <Card className="border-purple-500/40 p-3">
               <p className="text-sm uppercase tracking-[0.25em] text-purple-300">
                 Linked Estimate
               </p>
 
-              <div className="mt-3 flex items-center justify-between gap-4">
+              <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-lg font-semibold">
                     {linkedEstimate.display_id ?? "Estimate"}
@@ -1285,12 +1268,12 @@ export default async function QueueDetailPage({
           )}
 
           {linkedInvoice && (
-            <Card className="border-emerald-500/40 bg-gradient-to-br from-emerald-500/10 via-zinc-950 to-sky-500/5">
+            <Card className="border-emerald-500/40 bg-emerald-500/10 p-3">
               <p className="text-sm uppercase tracking-[0.25em] text-emerald-300">
                 Linked Invoice
               </p>
 
-              <div className="mt-3 grid gap-4 lg:grid-cols-[1fr_auto] lg:items-start">
+              <div className="mt-2 grid gap-3 lg:grid-cols-[1fr_auto] lg:items-start">
                 <div>
                   <div className="flex flex-wrap items-center gap-3">
                     <p className="text-xl font-semibold">
@@ -1305,35 +1288,35 @@ export default async function QueueDetailPage({
                     {linkedInvoice.project_title ?? "No project title"}
                   </p>
 
-                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-2xl border border-emerald-500/20 bg-black/30 px-4 py-3">
+                  <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                    <div className="rounded-xl border border-emerald-500/20 bg-black/30 px-3 py-2">
                       <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
                         Invoice Total
                       </p>
-                      <p className="mt-1 text-lg font-black text-white">
+                      <p className="mt-1 text-base font-black text-white">
                         {formatMoney(linkedInvoice.invoice_amount)}
                       </p>
                     </div>
-                    <div className="rounded-2xl border border-emerald-500/20 bg-black/30 px-4 py-3">
+                    <div className="rounded-xl border border-emerald-500/20 bg-black/30 px-3 py-2">
                       <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
                         Due Date
                       </p>
-                      <p className="mt-1 text-lg font-black text-white">
+                      <p className="mt-1 text-base font-black text-white">
                         {formatHistoryDate(linkedInvoice.due_date)}
                       </p>
                     </div>
-                    <div className="rounded-2xl border border-emerald-500/20 bg-black/30 px-4 py-3">
+                    <div className="rounded-xl border border-emerald-500/20 bg-black/30 px-3 py-2">
                       <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
                         Delivery
                       </p>
-                      <p className="mt-1 text-lg font-black text-white">
+                      <p className="mt-1 text-base font-black text-white">
                         {invoiceDeliveryLabel}
                       </p>
                     </div>
                   </div>
 
                   {linkedInvoiceActivity ? (
-                    <div className="mt-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-50">
+                    <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-50">
                       <p className="font-black">
                         Sent proof saved{" "}
                         {formatEventDateTime(linkedInvoiceActivity.created_at)
@@ -1351,7 +1334,7 @@ export default async function QueueDetailPage({
                       </p>
                     </div>
                   ) : (
-                    <div className="mt-4 rounded-2xl border border-sky-500/25 bg-sky-500/10 px-4 py-3 text-sm text-sky-100">
+                    <div className="mt-3 rounded-xl border border-sky-500/25 bg-sky-500/10 px-3 py-2 text-sm text-sky-100">
                       {invoiceWasSent
                         ? "Invoice is marked sent. No email activity proof was found yet, so the invoice page is the best place to confirm delivery details."
                         : "Invoice created from this estimate. Send it from the invoice page when you are ready to notify the customer."}
@@ -1692,19 +1675,12 @@ export default async function QueueDetailPage({
           businessSlug={businessSlug}
           allow={["owner", "admin", "accountant", "technician"]}
         >
-          <PersistentDetails
-            storageKey={`queue-detail-team-notes-${item.id}`}
-            title="Team Notes"
-            subtitle="Private notes and note history"
-            className="rounded-2xl border border-white/10 bg-black/20 p-3"
-          >
           <InternalNotes
             businessId={item.business_id}
             entityType="queue_item"
             entityId={item.id}
-            title="Queue Item Conversation"
+            title="Team Notes"
           />
-          </PersistentDetails>
         </RoleVisible>
 
           <PersistentDetails
