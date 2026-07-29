@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import sharp from "sharp";
-import { parseCheckStubText } from "@/app/lib/remittanceMatching";
+import {
+  hasExplicitRemittanceTotal,
+  parseCheckStubText,
+} from "@/app/lib/remittanceMatching";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -239,18 +242,27 @@ async function buildOcrSources(originalImage: Buffer) {
 
 function scoreOcrText(text: string, confidence: number) {
   const invoiceMatches =
-    text.match(/\bINV(?:OICE)?\.?\s*[-#: ]?\s*[0-9OoIl|Vv]{3,8}\b/gi) ?? [];
+    text.match(/\b[Il1|]?NV(?:OICE)?\.?\s*[-#: ]?\s*[0-9OoSsZzIl|Vv]{3,8}\b/gi) ??
+    [];
   const currencyMatches =
     text.match(/\$?\s*\d{1,3}(?:,\d{3})*(?:\.\d{2})\b/g) ?? [];
   const parsed = parseCheckStubText(text);
   const invoiceNumbers = parsed.lines.flatMap((line) => line.invoiceNumbers);
-  const checkNumberNearLabel = /\b(?:CK|CHK|CHECK)\s*#?\s*:?\s*2721\b/i.test(
+  const checkNumberNearLabel = /\b(?:CK|CHK|CHECK)\s*#?\s*:?\s*\d{3,5}\b/i.test(
     text.replace(/[Oo]/g, "0")
   );
-  const hasNorthCreek = /north\s+creek/i.test(text);
+  const hasPropertyName = /north\s+creek/i.test(text);
   const hasApartments = /apartments?/i.test(text);
-  const hasTargetTotal = /\$?\s*2,?198\.00\b/.test(text);
-  const lineAmountCount = text.match(/\$?\s*1,?099\.00\b/g)?.length ?? 0;
+  const explicitTotal = hasExplicitRemittanceTotal(text);
+  const referencedLineTotal = parsed.lines
+    .filter((line) => line.invoiceNumbers.length > 0)
+    .reduce((total, line) => total + line.amount, 0);
+  const linesReconcile =
+    parsed.totalAmount > 0 &&
+    referencedLineTotal > 0 &&
+    Math.abs(referencedLineTotal - parsed.totalAmount) < 0.01;
+  const hasMultipleRemittanceRows =
+    parsed.lines.filter((line) => line.invoiceNumbers.length > 0).length > 1;
   const noInvoicesDespiteAmounts =
     invoiceNumbers.length === 0 && currencyMatches.length >= 2;
   const implausibleCheckNumber =
@@ -274,9 +286,10 @@ function scoreOcrText(text: string, confidence: number) {
     currencyMatches.length * 12 +
     fieldCount * 28 +
     (checkNumberNearLabel ? 45 : 0) +
-    (hasNorthCreek && hasApartments ? 55 : 0) +
-    (hasTargetTotal ? 35 : 0) +
-    Math.min(lineAmountCount, 2) * 24 +
+    (hasPropertyName && hasApartments ? 55 : 0) +
+    (explicitTotal ? 45 : 0) +
+    (linesReconcile ? 80 : 0) +
+    (hasMultipleRemittanceRows ? 35 : 0) +
     Math.min(keywordMatches.length, 10) * 4 +
     Math.min(text.trim().length / 20, 20) -
     (headerPayor ? 70 : 0) -
@@ -298,6 +311,7 @@ function shouldAcceptFirstPass(attempt: OcrAttempt) {
 
   return (
     attempt.score >= GOOD_OCR_SCORE &&
+    hasExplicitRemittanceTotal(attempt.text) &&
     parsed.totalAmount > 0 &&
     (hasInvoice || parsed.checkNumber || parsed.payor) &&
     invoiceLinesReconcile

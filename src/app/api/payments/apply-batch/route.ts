@@ -153,6 +153,15 @@ export async function POST(request: Request) {
     );
   }
 
+  const checkAmount = moneyNumber(body.checkAmount ?? null);
+
+  if (checkAmount <= 0) {
+    return NextResponse.json(
+      { error: "Enter a payment amount greater than $0 before applying payment." },
+      { status: 400 }
+    );
+  }
+
   const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? null;
   const access = await requireWorkspaceAccess({
     supabase,
@@ -244,6 +253,36 @@ export async function POST(request: Request) {
     );
   }
 
+  const selectedTotal = invoices.reduce(
+    (total, invoice) => total + invoiceCollectionAmountDue(invoice),
+    0
+  );
+  const remittanceTotal = moneyNumber(body.remittanceStubTotal ?? null);
+
+  if (Math.abs(selectedTotal - checkAmount) >= 0.01) {
+    return NextResponse.json(
+      {
+        error:
+          "The payment amount does not match the selected collectible invoice balances.",
+      },
+      { status: 400 }
+    );
+  }
+
+  if (
+    body.remittanceStubMatched &&
+    remittanceTotal > 0 &&
+    Math.abs(selectedTotal - remittanceTotal) >= 0.01
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "The remittance total does not match the selected collectible invoices.",
+      },
+      { status: 400 }
+    );
+  }
+
   const appliedInvoices = [];
 
   for (const invoice of invoices) {
@@ -295,7 +334,7 @@ export async function POST(request: Request) {
         paymentType: cleanString(body.paymentType, 80),
         paymentReference: cleanString(body.paymentReference, 120),
         internalNote: cleanString(body.internalNote, 1000),
-        checkAmount: moneyNumber(body.checkAmount ?? null),
+        checkAmount,
         amountApplied: amountDue,
         resultingAmountPaid: nextAmountPaid,
         paymentOutcome: isFullyPaid ? "paid" : "partial",

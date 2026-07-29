@@ -5,8 +5,11 @@ import Button from "../components/Button";
 import Card from "../components/Card";
 import PersistentDetails from "../components/PersistentDetails";
 import {
-  isCollectibleInvoiceStatus,
-} from "../lib/invoiceLifecycle";
+  invoiceCollectionAmountDue,
+  isPaymentEligibleInvoice,
+  type InvoiceEligibilityLineItem,
+} from "../lib/invoiceEligibility";
+import { moneyNumber } from "../lib/invoiceLifecycle";
 import { supabase } from "../lib/supabase";
 
 type Business = {
@@ -28,9 +31,14 @@ type Invoice = {
   due_date: string | null;
   updated_at: string | null;
   created_at: string | null;
+  split_parent_invoice_id?: string | null;
 };
 
 type InvoiceWithoutUpdatedAt = Omit<Invoice, "updated_at">;
+
+type InvoiceLineItem = InvoiceEligibilityLineItem & {
+  invoice_id: string;
+};
 
 type ActivityLog = {
   id: string;
@@ -100,18 +108,6 @@ function hasActiveDepositRequest(invoice: Invoice) {
     String(invoice.deposit_status ?? "none").toLowerCase() === "requested" &&
     parseMoney(invoice.deposit_requested_amount) > 0
   );
-}
-
-function invoiceCollectionAmountDue(invoice: Invoice) {
-  const invoiceAmount = parseMoney(invoice.invoice_amount);
-  const amountPaid = parseMoney(invoice.amount_paid);
-  const fullAmountDue = Math.max(invoiceAmount - amountPaid, 0);
-
-  if (!hasActiveDepositRequest(invoice)) {
-    return fullAmountDue;
-  }
-
-  return Math.max(parseMoney(invoice.deposit_requested_amount) - amountPaid, 0);
 }
 
 function activityAmount(log: ActivityLog) {
@@ -245,6 +241,7 @@ export default async function PaymentsPage({
   const business = businessData as Business | null;
 
   let invoices: Invoice[] = [];
+  let lineItems: InvoiceLineItem[] = [];
   let paymentLogs: ActivityLog[] = [];
   const loadIssues: string[] = [];
 
@@ -256,7 +253,7 @@ export default async function PaymentsPage({
     const { data: invoiceData, error: invoiceError } = await supabase
       .from("invoices")
       .select(
-        "id, display_id, customer_name, project_title, invoice_amount, amount_paid, deposit_requested_amount, deposit_status, status, due_date, updated_at, created_at"
+        "id, display_id, customer_name, project_title, invoice_amount, amount_paid, deposit_requested_amount, deposit_status, status, due_date, updated_at, created_at, split_parent_invoice_id"
       )
       .eq("business_id", business.id)
       .order("created_at", { ascending: false });
@@ -266,7 +263,7 @@ export default async function PaymentsPage({
         await supabase
           .from("invoices")
           .select(
-            "id, display_id, customer_name, project_title, invoice_amount, amount_paid, status, due_date, created_at"
+            "id, display_id, customer_name, project_title, invoice_amount, amount_paid, status, due_date, created_at, split_parent_invoice_id"
           )
           .eq("business_id", business.id)
           .order("created_at", { ascending: false });
@@ -285,6 +282,20 @@ export default async function PaymentsPage({
       }
     } else {
       invoices = (invoiceData ?? []) as Invoice[];
+    }
+
+    const invoiceIds = invoices.map((invoice) => invoice.id);
+    if (invoiceIds.length > 0) {
+      const { data: lineItemData, error: lineItemError } = await supabase
+        .from("invoice_line_items")
+        .select("invoice_id, description, quantity, unit_price, line_total")
+        .in("invoice_id", invoiceIds);
+
+      if (lineItemError) {
+        loadIssues.push("Invoice payment eligibility could not be fully checked.");
+      } else {
+        lineItems = (lineItemData ?? []) as InvoiceLineItem[];
+      }
     }
 
     const { data: activityData, error: activityError } = await supabase
@@ -308,14 +319,29 @@ export default async function PaymentsPage({
     paymentLogs = (activityData ?? []) as ActivityLog[];
   }
 
+  const splitChildrenByParentId = new Map<string, number>();
+  invoices.forEach((invoice) => {
+    if (!invoice.split_parent_invoice_id) return;
+    splitChildrenByParentId.set(
+      invoice.split_parent_invoice_id,
+      (splitChildrenByParentId.get(invoice.split_parent_invoice_id) ?? 0) + 1
+    );
+  });
+  const lineItemsByInvoiceId = lineItems.reduce((itemsById, item) => {
+    const current = itemsById.get(item.invoice_id) ?? [];
+    current.push(item);
+    itemsById.set(item.invoice_id, current);
+    return itemsById;
+  }, new Map<string, InvoiceEligibilityLineItem[]>());
   const payableInvoices = invoices
     .map((invoice) => {
-      const invoiceAmount = parseMoney(invoice.invoice_amount);
-      const amountPaid = parseMoney(invoice.amount_paid);
+      const invoiceAmount = moneyNumber(invoice.invoice_amount);
+      const amountPaid = moneyNumber(invoice.amount_paid);
       const isDepositRequest = hasActiveDepositRequest(invoice);
 
       return {
         ...invoice,
+        split_children_count: splitChildrenByParentId.get(invoice.id) ?? 0,
         invoiceAmount,
         amountPaid,
         amountDue: invoiceCollectionAmountDue(invoice),
@@ -323,10 +349,11 @@ export default async function PaymentsPage({
         daysLate: daysPastDue(invoice.due_date),
       };
     })
-    .filter(
-      (invoice) =>
-        invoice.amountDue > 0 &&
-        isCollectibleInvoiceStatus(invoice.status)
+    .filter((invoice) =>
+      isPaymentEligibleInvoice({
+        invoice,
+        lineItems: lineItemsByInvoiceId.get(invoice.id) ?? [],
+      })
     );
 
   return (

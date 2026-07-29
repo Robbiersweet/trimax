@@ -7,6 +7,8 @@ export type RemittanceInvoiceRecord = {
   amountPaid: number;
   collectionAmountDue?: number;
   status: string;
+  splitParentInvoiceId?: string | null;
+  splitChildrenCount?: number | null;
 };
 
 export type RemittanceLine = {
@@ -20,6 +22,7 @@ export type RemittanceLine = {
 export type ParsedCheckStub = {
   rawText: string;
   payor: string;
+  payee: string;
   checkNumber: string;
   checkDate: string;
   totalAmount: number;
@@ -85,6 +88,10 @@ function isSummaryTotalLine(text: string) {
   return summaryTotalKeywordPattern().test(text);
 }
 
+function hasExplicitSummaryTotal(text: string) {
+  return summaryTotalKeywordPattern().test(text);
+}
+
 function lineItemTextWithoutSummaryTotal(text: string) {
   const summaryMatch = text.match(summaryTotalKeywordPattern());
 
@@ -101,8 +108,61 @@ export function extractUnitCodes(text: string) {
   );
 }
 
+function isBankingNoiseLine(text: string) {
+  const normalized = text.trim().toLowerCase();
+  const compact = normalized.replace(/[^a-z0-9]/g, "");
+  const keywordCount = [
+    "routing",
+    "account",
+    "bank",
+    "memo",
+    "operating",
+    "wire",
+    "ach",
+    "deposit",
+    "transit",
+  ].filter((word) => normalized.includes(word)).length;
+  const micrLike =
+    /[⑆⑈⑉]|(?:\b\d{7,12}\b.*\b\d{4,12}\b)|(?:\b\d{2,4}[- ]\d{2,4}[- ]\d{3,6}\b)/.test(
+      text
+    );
+
+  return (
+    keywordCount >= 1 ||
+    micrLike ||
+    /^oho\d{6,}$/i.test(compact) ||
+    /^0h0\d{6,}$/i.test(compact)
+  );
+}
+
+function remittanceRegionText(text: string) {
+  const lines = text.split(/\r?\n/);
+  const firstRemittanceIndex = lines.findIndex(
+    (line) =>
+      isRemittanceHeaderText(line) ||
+      extractInvoiceNumbers(line).length > 0 ||
+      (extractUnitCodes(line).length > 0 &&
+        /(?:paint|interior|serv|apartment|property)/i.test(line) &&
+        extractMoneyValues(line).length > 0)
+  );
+
+  return firstRemittanceIndex >= 0
+    ? lines.slice(firstRemittanceIndex).join("\n")
+    : text;
+}
+
+function checkRegionText(text: string) {
+  const lines = text.split(/\r?\n/);
+  const firstRemittanceIndex = lines.findIndex(
+    (line) => isRemittanceHeaderText(line) || extractInvoiceNumbers(line).length > 0
+  );
+  const checkLines = firstRemittanceIndex >= 0 ? lines.slice(0, firstRemittanceIndex) : lines;
+
+  return checkLines.filter((line) => !isBankingNoiseLine(line)).join("\n");
+}
+
 export function extractCheckNumber(text: string) {
-  const normalizedText = text.replace(/[Oo]/g, "0");
+  const normalizedText = checkRegionText(text).replace(/[Oo]/g, "0");
   const lines = normalizedText
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -194,13 +254,21 @@ export function extractInvoiceNumbers(text: string) {
     const hasCheckContext = /\b(?:ck|check)\s*#?\s*:?\s*$/i.test(before);
     const hasFollowingInvoiceContext = /^\s+inv(?:oice)?\.?\s*[-#: ]?\s*/i.test(after);
     const hasAccountContext = /\baccount\s*$/i.test(before);
+    const rowContext = normalizedText
+      .slice(Math.max(0, index - 80), index + raw.length + 80)
+      .toLowerCase();
+    const hasBareRemittanceContext =
+      /(?:north\s+creek|apartment|paint|interior|serv|unit|\b[A-Z]\d{2}\b)/i.test(
+        rowContext
+      ) && /\$?\s*\d{1,3}(?:,\d{3})*(?:\.\d{2})\b/.test(rowContext);
     const isBareInvoiceNumber =
       !hasNearbyAmount &&
       !hasDateContext &&
       !hasCheckContext &&
       !hasFollowingInvoiceContext &&
       !hasAccountContext &&
-      digits.length >= 3;
+      digits.length >= 3 &&
+      hasBareRemittanceContext;
 
     if (rawHasInvoicePrefix || hasInvoiceContext || isBareInvoiceNumber) {
       matches.add(normalizeInvoiceNumber(digits));
@@ -219,6 +287,16 @@ export function extractTotalAmount(text: string) {
     return parseMoney(explicitTotal[1]);
   }
 
+  const remittanceText = remittanceRegionText(text);
+  const remittanceLines = parseRemittanceLines(remittanceText);
+  const referencedLineTotal = remittanceLines
+    .filter((line) => line.invoiceNumbers.length > 0)
+    .reduce((total, line) => total + line.amount, 0);
+
+  if (remittanceLines.length > 1 && referencedLineTotal > 0) {
+    return Number(referencedLineTotal.toFixed(2));
+  }
+
   const values = extractMoneyValues(text);
 
   return values.length > 0 ? Math.max(...values) : 0;
@@ -230,8 +308,11 @@ export function extractLikelyPayor(text: string) {
     .map((line) => line.trim())
     .find(
       (line) =>
+        !isBankingNoiseLine(line) &&
         /north\s+creek\s+apartments/i.test(line) ||
-        (/north\s+creek/i.test(line) && /apartment/i.test(line))
+        (!isBankingNoiseLine(line) &&
+          /north\s+creek/i.test(line) &&
+          /apartment/i.test(line))
     );
 
   if (likelyPropertyLine) {
@@ -248,19 +329,43 @@ export function extractLikelyPayor(text: string) {
   }
 
   const explicitPayor = text.match(
-    /\b(?:PAYOR|PAYER|CUSTOMER|ACCOUNT|PROPERTY|CLIENT)\s*:?\s*([^\n\r]+)/i
+    /\b(?:PAYOR|PAYER|CUSTOMER|PROPERTY|CLIENT)\s*:?\s*([^\n\r]+)/i
   );
 
-  if (explicitPayor?.[1] && !isRemittanceHeaderText(explicitPayor[1])) {
+  if (
+    explicitPayor?.[1] &&
+    !isRemittanceHeaderText(explicitPayor[1]) &&
+    !isBankingNoiseLine(explicitPayor[1])
+  ) {
     return explicitPayor[1].trim();
   }
 
-  const propertyLine = text
+  const propertyLine = remittanceRegionText(text)
     .split(/\r?\n/)
     .map((line) => line.trim())
-    .find((line) => /apartment/i.test(line) && !isRemittanceHeaderText(line));
+    .find(
+      (line) =>
+        /apartment/i.test(line) &&
+        !isRemittanceHeaderText(line) &&
+        !isBankingNoiseLine(line)
+    );
 
   return propertyLine ?? "";
+}
+
+export function extractLikelyPayee(text: string) {
+  const checkText = checkRegionText(text);
+  const explicitPayee = checkText.match(
+    /\b(?:PAYEE|PAY\s+TO\s+THE\s+ORDER\s+OF|PAY\s+TO)\s*:?\s*([^\n\r]+)/i
+  );
+
+  if (explicitPayee?.[1] && !isBankingNoiseLine(explicitPayee[1])) {
+    return explicitPayee[1].trim().replace(/\s+/g, " ");
+  }
+
+  const rlMatch = checkText.match(/\bR\s*&\s*L\s+Creations\b/i);
+
+  return rlMatch?.[0]?.replace(/\s+/g, " ").trim() ?? "";
 }
 
 function isRemittanceHeaderText(text: string) {
@@ -347,11 +452,13 @@ export function parseCheckDate(value: string) {
 }
 
 export function extractCheckDate(text: string) {
+  const checkText = checkRegionText(text);
   const labelledMatch = text.match(
     /\b(?:date|check\s*date|payment\s*date|paid\s*date)\s*:?\s*(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?|\d{4}-\d{1,2}-\d{1,2})\b/i
   );
   const match =
     labelledMatch ??
+    checkText.match(/\b(\d{1,2}\/\d{1,2}\/\d{2,4}|\d{4}-\d{1,2}-\d{1,2})\b/) ??
     text.match(/\b(\d{1,2}\/\d{1,2}\/\d{2,4}|\d{4}-\d{1,2}-\d{1,2})\b/);
 
   return match?.[1] ? parseCheckDate(match[1]) : "";
@@ -436,7 +543,7 @@ function inferInvoiceNumberFromLineContext(
 }
 
 export function parseRemittanceLines(text: string): RemittanceLine[] {
-  const sourceLines = text
+  const sourceLines = remittanceRegionText(text)
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
@@ -480,11 +587,13 @@ export function parseCheckStubText(rawText: string): ParsedCheckStub {
   const checkDate = extractCheckDate(normalizedText);
   const checkNumber = extractCheckNumber(normalizedText);
   const payor = extractLikelyPayor(normalizedText);
+  const payee = extractLikelyPayee(normalizedText);
   const header = [
     checkDate ? `DATE: ${checkDate}` : "",
     checkNumber ? `CK#: ${checkNumber}` : "",
     totalAmount > 0 ? `TOTAL: $${totalAmount.toFixed(2)}` : "",
     payor ? `PAYOR: ${payor}` : "",
+    payee ? `PAYEE: ${payee}` : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -492,12 +601,17 @@ export function parseCheckStubText(rawText: string): ParsedCheckStub {
   return {
     rawText: normalizedText,
     payor,
+    payee,
     checkNumber,
     checkDate,
     totalAmount,
     lines,
     stubText: [header, normalizedText].filter(Boolean).join("\n"),
   };
+}
+
+export function hasExplicitRemittanceTotal(text: string) {
+  return hasExplicitSummaryTotal(text);
 }
 
 export function findRemittanceMatches(
@@ -521,7 +635,13 @@ export function findRemittanceMatches(
         amountDue: amountDueForInvoice(invoice),
       },
     }))
-    .filter((record) => record.invoiceNumber);
+    .filter(
+      (record) =>
+        record.invoiceNumber &&
+        record.invoice.amountDue > 0 &&
+        isCollectibleRemittanceInvoiceStatus(record.invoice.status) &&
+        Number(record.invoice.splitChildrenCount ?? 0) <= 0
+    );
   const duplicateTrimaxInvoiceNumbers = Array.from(
     new Set(
       invoiceNumberRecords
@@ -610,12 +730,8 @@ export function findRemittanceMatches(
           )
           .join(", ")}.`
       : "",
-    matches.some(
-      (invoice) =>
-        invoice.amountDue <= 0 ||
-        !isCollectibleRemittanceInvoiceStatus(invoice.status)
-    )
-      ? "One or more referenced invoices has no unpaid balance."
+    referencedInvoiceNumbers.length > 0 && matches.length === 0
+      ? "Referenced invoices are not collectible payment targets."
       : "",
     payor.trim().length === 0
       ? "Payor/customer could not be confidently read from the stub."

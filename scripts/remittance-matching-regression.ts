@@ -11,6 +11,16 @@ const root = process.cwd();
 
 const invoices = [
   {
+    id: "inv-split-source-506",
+    displayId: "INV-0506",
+    customerName: "North Creek Apartments",
+    projectTitle: "Split source parent that must not receive payment",
+    invoiceAmount: 2252.95,
+    amountPaid: 0,
+    status: "sent",
+    splitChildrenCount: 2,
+  },
+  {
     id: "inv-500",
     displayId: "INV-0500",
     customerName: "North Creek Apartments",
@@ -72,6 +82,26 @@ const invoices = [
     invoiceAmount: 1099,
     amountPaid: 0,
     status: "sent",
+  },
+  {
+    id: "inv-506-child",
+    displayId: "INV-0506",
+    customerName: "North Creek Apartments",
+    projectTitle: "North Creek Apartments - split child one",
+    invoiceAmount: 1300,
+    amountPaid: 0,
+    status: "sent",
+    splitParentInvoiceId: "inv-split-source-506",
+  },
+  {
+    id: "inv-507-child",
+    displayId: "INV-0507",
+    customerName: "North Creek Apartments",
+    projectTitle: "North Creek Apartments - split child two",
+    invoiceAmount: 952.95,
+    amountPaid: 0,
+    status: "sent",
+    splitParentInvoiceId: "inv-split-source-506",
   },
 ];
 
@@ -257,6 +287,71 @@ assert.deepEqual(contextRecoveredMatch2734.referencedInvoiceNumbers, [
   "INV-0502",
 ]);
 
+const splitCheck2758 = [
+  "CHECK DATE: 07/23/2026 CK#: 2758",
+  "PAY TO THE ORDER OF R&L Creations",
+  "OHO-01-27-0528 BANK: memo routing operating account",
+  "Property Account Invoice - Date Description Amount",
+  "North Creek Apartments Paint Serv INV0506 - 07/23/2026 split child one $1,300.00",
+  "North Creek Apartments Paint Serv INV0507 - 07/23/2026 split child two $952.95",
+  "PAYMENT TOTAL $2,252.95",
+].join("\n");
+const parsed2758 = parseCheckStubText(splitCheck2758);
+const match2758 = findRemittanceMatches(invoices, parsed2758.stubText, "North Creek Apartments");
+
+assert.equal(parsed2758.checkNumber, "2758");
+assert.equal(parsed2758.checkDate, "2026-07-23");
+assert.equal(parsed2758.totalAmount, 2252.95);
+assert.equal(parsed2758.payee, "R&L Creations");
+assert.notEqual(parsed2758.payor, "OHO-01-27-0528");
+assert.deepEqual(
+  parsed2758.lines
+    .filter((line) => line.invoiceNumbers.length > 0)
+    .map((line) => ({ invoice: line.invoiceNumbers[0], amount: line.amount })),
+  [
+    { invoice: "INV-0506", amount: 1300 },
+    { invoice: "INV-0507", amount: 952.95 },
+  ],
+  "The 2758 split remittance must parse both child rows and keep the grand total separate."
+);
+assert.deepEqual(match2758.referencedInvoiceNumbers, [
+  "INV-0506",
+  "INV-0507",
+]);
+assert.deepEqual(
+  match2758.matches.map((invoice) => invoice.id),
+  ["inv-506-child", "inv-507-child"],
+  "Split child invoices must match, and the non-collectible split source parent must be excluded."
+);
+assert.equal(match2758.matchedTotal, 2252.95);
+assert.equal(match2758.confidence, "verified");
+assert(
+  !match2758.matches.some((invoice) => invoice.id === "inv-split-source-506"),
+  "The split-source parent must never receive the remittance payment."
+);
+
+const splitCheck2758WithoutReadableTotal = [
+  "CHECK DATE: 07/23/2026 CK#: 2758",
+  "PAY TO THE ORDER OF R&L Creations",
+  "Property Account Invoice - Date Description Amount",
+  "North Creek Apartments Paint Serv INV0506 - 07/23/2026 split child one $1,300.00",
+  "North Creek Apartments Paint Serv INV0507 - 07/23/2026 split child two $952.95",
+].join("\n");
+const parsed2758WithoutReadableTotal = parseCheckStubText(
+  splitCheck2758WithoutReadableTotal
+);
+
+assert.equal(
+  parsed2758WithoutReadableTotal.totalAmount,
+  2252.95,
+  "When the printed total is not readable, the parser should use the sum of all remittance invoice rows instead of the first/largest line."
+);
+assert.notEqual(
+  parsed2758WithoutReadableTotal.totalAmount,
+  1300,
+  "The first split child amount must not become the check total."
+);
+
 const productionStub2721 = [
   "North Creek Apartments",
   "Date 07/07/2026",
@@ -402,6 +497,25 @@ assert(
     route.includes("shouldAcceptFirstPass") &&
     route.includes("referencedLineTotal"),
   "OCR route must score 0/90/180/270 rotations and reject partial first-pass remittance reads."
+);
+assert(
+  !route.includes("2721") && !route.includes("2198") && !route.includes("1099"),
+  "OCR candidate scoring must not be biased toward an old production fixture."
+);
+
+const applyBatchRoute = readFileSync(
+  resolve(root, "src/app/api/payments/apply-batch/route.ts"),
+  "utf8"
+);
+assert(
+  applyBatchRoute.includes("checkAmount <= 0") &&
+    applyBatchRoute.includes("Enter a payment amount greater than $0 before applying payment."),
+  "Server-side payment validation must reject zero-dollar OCR/application attempts."
+);
+assert(
+  applyBatchRoute.includes("selectedTotal - remittanceTotal") &&
+    applyBatchRoute.includes("The remittance total does not match the selected collectible invoices."),
+  "Server-side payment validation must reject remittance selections that do not reconcile."
 );
 
 const paymentScreen = readFileSync(

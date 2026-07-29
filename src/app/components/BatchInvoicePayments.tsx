@@ -909,13 +909,14 @@ export default function BatchInvoicePayments({
         matches[index]?.remittanceAmount !== invoice.remittanceAmount
     );
     const isComplete = invoiceTotalMatchesCheck;
+    const difference = Number((extractedTotal - invoiceTotal).toFixed(2));
     const notice =
       correctedAny && ocrTotalMismatchesCheck
         ? "Line amount reviewed against Trimax invoice balances and the remittance total."
         : extractedTotal > 0 &&
             matches.length > 0 &&
             Math.abs(invoiceTotal - extractedTotal) >= 0.01
-          ? "Remittance total does not match selected invoices."
+          ? `Remittance total does not match selected invoices. Document total: ${formatMoney(extractedTotal)}. Matched invoices: ${formatMoney(invoiceTotal)}. Difference: ${formatMoney(Math.abs(difference))}.`
           : "";
 
     return {
