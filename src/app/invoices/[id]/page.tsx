@@ -10,6 +10,7 @@ import CorrectInvoiceButton from "../../components/CorrectInvoiceButton";
 import InvoiceEmailSendPanel from "../../components/InvoiceEmailSendPanel";
 import RequestDepositButton from "../../components/RequestDepositButton";
 import SplitInvoicePlanner from "../../components/SplitInvoicePlanner";
+import SplitInvoiceRelationshipDisplay from "../../components/SplitInvoiceRelationshipDisplay";
 import Toast from "../../components/Toast";
 import UpdateInvoiceStatusButton from "../../components/UpdateInvoiceStatusButton";
 import {
@@ -1723,6 +1724,12 @@ export default async function InvoiceDetailPage({
                     </div>
                   ) : null}
                 </div>
+
+                <SplitInvoiceRelationshipDisplay
+                  businessQuery={businessQuery}
+                  sourceInvoice={splitParentInvoice}
+                  childInvoices={splitRelatedInvoices}
+                />
 
                 {splitParentInvoice ? (
                   <div className="rounded-2xl border border-green-500/30 bg-black/20 p-4">
