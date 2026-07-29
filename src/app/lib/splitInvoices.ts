@@ -1,5 +1,10 @@
 import { getNextDocumentDisplayId } from "./documentNumbers";
 import { logActivity } from "./activityLog";
+import {
+  buildCorrectionAuditDetails,
+  buildReplacementCorrectionNote,
+  extractCorrectionOriginalDisplayId,
+} from "./invoiceCorrections";
 import { supabase } from "./supabase";
 
 export type SplitInvoiceSource = {
@@ -42,6 +47,10 @@ function centsToDollars(cents: number) {
 
 function formatCurrency(amount: number) {
   return `$${amount.toFixed(2)}`;
+}
+
+function displayNumber(value: string) {
+  return Number(value.match(/-(\d+)$/)?.[1] ?? 0);
 }
 
 function getTaxCents(subtotalCents: number, taxRate: number) {
@@ -142,15 +151,47 @@ export async function createSplitInvoices({
     return [];
   }
 
-  const insertedInvoices: { id: string; display_id: string | null }[] = [];
+  const correctionOriginalDisplayId = extractCorrectionOriginalDisplayId(
+    sourceInvoice.notes
+  );
+  const splitDisplayIds: string[] = [];
 
-  for (const item of plan) {
+  let nextMinimumNumber: number | undefined;
+
+  for (let index = 0; index < plan.length; index += 1) {
     const displayId = await getNextDocumentDisplayId({
       table: "invoices",
       prefix: "INV",
       businessId: sourceInvoice.businessId,
+      minimumNumber: nextMinimumNumber,
     });
+    splitDisplayIds.push(displayId);
+    nextMinimumNumber = displayNumber(displayId) + 1;
+  }
+
+  const insertedInvoices: {
+    id: string;
+    display_id: string | null;
+    totalAmount: number;
+  }[] = [];
+
+  for (const item of plan) {
+    const displayId = splitDisplayIds[item.sequence - 1];
     const splitLabel = `Split ${item.sequence} of ${plan.length}`;
+    const notes = correctionOriginalDisplayId
+      ? buildReplacementCorrectionNote({
+          existingNotes: sourceInvoice.notes,
+          originalDisplayId: correctionOriginalDisplayId,
+          replacementDisplayIds: splitDisplayIds,
+        })
+      : [
+          sourceInvoice.notes,
+          `Created from ${
+            sourceInvoice.displayId || sourceInvoice.projectTitle
+          } as ${splitLabel}.`,
+        ]
+          .filter(Boolean)
+          .join("\n\n");
 
     const { data: insertedInvoice, error: invoiceError } = await supabase
       .from("invoices")
@@ -179,14 +220,7 @@ export async function createSplitInvoices({
       split_sequence: item.sequence,
       split_count: plan.length,
       terms: sourceInvoice.terms,
-      notes: [
-        sourceInvoice.notes,
-        `Created from ${
-          sourceInvoice.displayId || sourceInvoice.projectTitle
-        } as ${splitLabel}.`,
-      ]
-        .filter(Boolean)
-        .join("\n\n"),
+      notes,
       status: "Draft",
       })
       .select("id, display_id")
@@ -214,7 +248,45 @@ export async function createSplitInvoices({
       throw lineItemError;
     }
 
-    insertedInvoices.push(insertedInvoice);
+    insertedInvoices.push({
+      ...insertedInvoice,
+      totalAmount: item.totalAmount,
+    });
+  }
+
+  if (correctionOriginalDisplayId) {
+    const replacementGroup = insertedInvoices.map((invoice) => ({
+      id: invoice.id,
+      displayId: invoice.display_id,
+      amount: invoice.totalAmount,
+      status: "Draft",
+    }));
+    const details = buildCorrectionAuditDetails({
+      original: {
+        displayId: correctionOriginalDisplayId,
+      },
+      replacement: {
+        id: sourceInvoice.id,
+        displayId: sourceInvoice.displayId,
+        status: "Draft",
+      },
+      replacementGroup,
+      reason: "Corrected replacement split into customer invoice group.",
+      correctedByUserId: createdByUserId,
+      intermediateSplitSourceId: sourceInvoice.id,
+      intermediateSplitSourceDisplayId: sourceInvoice.displayId,
+    });
+
+    for (const invoice of insertedInvoices) {
+      await logActivity({
+        businessId: sourceInvoice.businessId,
+        action: "invoice.corrected_replacement_created",
+        entityType: "invoice",
+        entityId: invoice.id,
+        entityLabel: invoice.display_id,
+        details,
+      });
+    }
   }
 
   await logActivity({

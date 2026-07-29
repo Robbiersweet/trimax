@@ -235,6 +235,7 @@ export default async function InvoiceBatchSendPage({
               issueDate: invoice.issue_date,
               createdAt: invoice.created_at,
               sourceLabel: requiresImportReview(invoice) ? "Imported" : null,
+              notes: invoice.notes,
               splitParentInvoiceId: invoice.split_parent_invoice_id,
               splitChildrenCount: invoice.split_children_count,
               splitParentDisplayId: null,

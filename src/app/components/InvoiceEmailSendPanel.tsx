@@ -10,6 +10,10 @@ import {
   normalizeInvoiceEmailSettings,
   renderEmailTemplate,
 } from "../lib/invoiceEmailSettings";
+import {
+  buildCorrectionEmailMessage,
+  buildCorrectionEmailSubject,
+} from "../lib/invoiceCorrections";
 import { supabase } from "../lib/supabase";
 
 type InvoiceEmailSendPanelProps = {
@@ -35,6 +39,7 @@ type InvoiceEmailSendPanelProps = {
     splitLabel?: string | null;
   }[];
   splitGroupCombinedTotal?: string;
+  correctionOriginalDisplayId?: string | null;
   sendDisabledReason?: string | null;
 };
 
@@ -190,6 +195,7 @@ export default function InvoiceEmailSendPanel({
   splitGroupLabel,
   splitGroupItems = [],
   splitGroupCombinedTotal,
+  correctionOriginalDisplayId,
   sendDisabledReason,
 }: InvoiceEmailSendPanelProps) {
   const effectiveSplitGroupLabel =
@@ -204,15 +210,33 @@ export default function InvoiceEmailSendPanel({
         ? "Estimate"
       : "Invoice";
   const documentLabelLower = documentLabel.toLowerCase();
+  const splitGroupIsCorrection = Boolean(
+    sendSplitGroup &&
+      splitGroupCount > 1 &&
+      requestType === "invoice" &&
+      correctionOriginalDisplayId
+  );
   const [recipient, setRecipient] = useState(recipientEmail ?? "");
   const visibleClientCc = clientCcEmail?.trim() ?? "";
   const [subject, setSubject] = useState(
-    sendSplitGroup && splitGroupCount > 1 && requestType === "invoice"
+    splitGroupIsCorrection
+      ? buildCorrectionEmailSubject({
+          projectTitle,
+          fallbackLabel: effectiveSplitGroupLabel,
+        })
+      : sendSplitGroup && splitGroupCount > 1 && requestType === "invoice"
       ? defaultSplitGroupSubject(effectiveSplitGroupLabel)
       : defaultSubject(businessName, documentNumber, requestType)
   );
   const [message, setMessage] = useState(
-    sendSplitGroup && splitGroupCount > 1 && requestType === "invoice"
+    splitGroupIsCorrection
+      ? buildCorrectionEmailMessage({
+          documentNumbers: splitGroupItems.map((item) => item.documentNumber),
+          projectTitle,
+          originalDisplayId: correctionOriginalDisplayId ?? "",
+          combinedTotal: splitGroupCombinedTotal,
+        })
+      : sendSplitGroup && splitGroupCount > 1 && requestType === "invoice"
       ? defaultSplitGroupMessage({
           projectTitle,
           splitGroupItems,
@@ -295,6 +319,36 @@ export default function InvoiceEmailSendPanel({
       : "";
 
     if (sendSplitGroup && splitGroupCount > 1 && requestType === "invoice") {
+      if (correctionOriginalDisplayId) {
+        const invoiceNumbers = splitGroupItems.map(
+          (item) => item.documentNumber
+        );
+
+        return [
+          {
+            label: "Standard",
+            text: buildCorrectionEmailMessage({
+              documentNumbers: invoiceNumbers,
+              projectTitle,
+              originalDisplayId: correctionOriginalDisplayId,
+              combinedTotal: splitGroupCombinedTotal,
+            }),
+          },
+          {
+            label: "Brief",
+            text: `Attached are corrected invoices ${documentListLabel(
+              invoiceNumbers
+            )}${friendlyProject}. These replace ${correctionOriginalDisplayId}.`,
+          },
+          {
+            label: "Clear",
+            text: `${documentListLabel(
+              invoiceNumbers
+            )} are corrected replacement invoices${friendlyProject}. Both PDFs are attached to this one email.`,
+          },
+        ];
+      }
+
       return [
         {
           label: "Standard",
@@ -399,6 +453,7 @@ export default function InvoiceEmailSendPanel({
     dueDate,
     projectTitle,
     requestType,
+    correctionOriginalDisplayId,
     sendSplitGroup,
     splitGroupCombinedTotal,
     splitGroupCount,
@@ -413,7 +468,9 @@ export default function InvoiceEmailSendPanel({
       label: "Document",
       value:
         sendSplitGroup && splitGroupCount > 1
-          ? `${splitGroupCount} attached invoices`
+          ? correctionOriginalDisplayId
+            ? `${splitGroupCount} corrected invoices`
+            : `${splitGroupCount} attached invoices`
           : `${documentLabel} ${documentNumber}`,
     },
     {
@@ -457,7 +514,9 @@ export default function InvoiceEmailSendPanel({
       label: "PDF attachment",
       detail:
         sendSplitGroup && splitGroupCount > 1
-          ? `${splitGroupCount} official PDFs attach automatically`
+          ? correctionOriginalDisplayId
+            ? `${splitGroupCount} corrected invoice PDFs attach automatically`
+            : `${splitGroupCount} official PDFs attach automatically`
           : "Official document attaches automatically",
       status: "ready",
     },
@@ -492,7 +551,12 @@ export default function InvoiceEmailSendPanel({
       const settings = normalizeInvoiceEmailSettings(data?.value, fallback);
 
       setSubject(
-        sendSplitGroup && splitGroupCount > 1 && requestType === "invoice"
+        splitGroupIsCorrection
+          ? buildCorrectionEmailSubject({
+              projectTitle,
+              fallbackLabel: effectiveSplitGroupLabel,
+            })
+          : sendSplitGroup && splitGroupCount > 1 && requestType === "invoice"
           ? defaultSplitGroupSubject(effectiveSplitGroupLabel)
           : requestType === "deposit"
           ? defaultSubject(businessName, documentNumber, requestType)
@@ -509,7 +573,16 @@ export default function InvoiceEmailSendPanel({
             )
       );
       setMessage(
-        sendSplitGroup && splitGroupCount > 1 && requestType === "invoice"
+        splitGroupIsCorrection
+          ? buildCorrectionEmailMessage({
+              documentNumbers: splitGroupItems.map(
+                (item) => item.documentNumber
+              ),
+              projectTitle,
+              originalDisplayId: correctionOriginalDisplayId ?? "",
+              combinedTotal: splitGroupCombinedTotal,
+            })
+          : sendSplitGroup && splitGroupCount > 1 && requestType === "invoice"
           ? defaultSplitGroupMessage({
               projectTitle,
               splitGroupItems,
@@ -572,7 +645,9 @@ export default function InvoiceEmailSendPanel({
     dueDate,
     projectTitle,
     requestType,
+    correctionOriginalDisplayId,
     sendSplitGroup,
+    splitGroupIsCorrection,
     effectiveSplitGroupLabel,
     splitGroupCombinedTotal,
     splitGroupCount,

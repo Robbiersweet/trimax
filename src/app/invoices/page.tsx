@@ -20,6 +20,7 @@ import {
   nonCollectibleInvoiceLabel,
   type InvoiceEligibilityLineItem,
 } from "../lib/invoiceEligibility";
+import { displayDocumentList } from "../lib/invoiceCorrections";
 import { invoiceStatusKey, moneyNumber } from "../lib/invoiceLifecycle";
 import { supabase } from "../lib/supabase";
 
@@ -248,6 +249,23 @@ function detailText(
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+function detailTextList(
+  details: Record<string, unknown> | null | undefined,
+  key: string
+) {
+  const value = details?.[key];
+
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => (typeof item === "string" ? item.trim() : ""))
+      .filter(Boolean);
+  }
+
+  const text = detailText(details, key);
+
+  return text ? [text] : [];
+}
+
 function buildCorrectionLinks(logs: InvoiceActivityLog[]) {
   const replacementByOriginalId = new Map<
     string,
@@ -267,7 +285,14 @@ function buildCorrectionLinks(logs: InvoiceActivityLog[]) {
       detailText(log.details, "originalInvoiceId") ?? log.entity_id;
     const originalDisplayId = detailText(log.details, "originalDisplayId");
     const replacementId = detailText(log.details, "replacementInvoiceId");
-    const replacementDisplayId = detailText(log.details, "replacementDisplayId");
+    const replacementDisplayIds =
+      detailTextList(log.details, "replacementDisplayIds").length > 0
+        ? detailTextList(log.details, "replacementDisplayIds")
+        : detailTextList(log.details, "replacement_display_ids");
+    const replacementDisplayId =
+      replacementDisplayIds.length > 0
+        ? displayDocumentList(replacementDisplayIds)
+        : detailText(log.details, "replacementDisplayId");
 
     if (originalId && (replacementId || replacementDisplayId)) {
       replacementByOriginalId.set(originalId, {

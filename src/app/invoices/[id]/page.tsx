@@ -16,6 +16,11 @@ import {
   isNonCollectibleInvoiceStatus,
   invoiceStatusKey,
 } from "../../lib/invoiceLifecycle";
+import {
+  displayDocumentList,
+  extractCorrectionOriginalDisplayId,
+  extractReplacementDisplayIds,
+} from "../../lib/invoiceCorrections";
 import { buildSplitInvoicePlan } from "../../lib/splitInvoices";
 import { resolveInvoiceTerms } from "../../lib/documentTerms";
 import { supabase } from "../../lib/supabase";
@@ -279,6 +284,23 @@ function detailText(
   }
 
   return null;
+}
+
+function detailTextList(
+  details: Record<string, unknown> | null | undefined,
+  key: string
+) {
+  const value = details?.[key];
+
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => (typeof item === "string" ? item.trim() : ""))
+      .filter(Boolean);
+  }
+
+  const text = detailText(details, key);
+
+  return text ? [text] : [];
 }
 
 function detailMoney(
@@ -1295,14 +1317,21 @@ export default async function InvoiceDetailPage({
       log.action === "invoice.voided" ||
       log.action === "invoice.corrected_replacement_created"
   );
-  const noteReplacementDisplayId =
-    invoice.notes?.match(/\bsuperseded\s+by\s+(INV-\d+)\b/i)?.[1] ?? null;
-  const noteOriginalDisplayId =
-    invoice.notes?.match(/\bcorrection\s+of\s+(INV-\d+)\b/i)?.[1] ?? null;
+  const noteReplacementDisplayIds = extractReplacementDisplayIds(invoice.notes);
+  const noteOriginalDisplayId = extractCorrectionOriginalDisplayId(invoice.notes);
+  const replacementDisplayIds =
+    detailTextList(correctionLog?.details, "replacementDisplayIds").length > 0
+      ? detailTextList(correctionLog?.details, "replacementDisplayIds")
+      : detailTextList(correctionLog?.details, "replacement_display_ids")
+          .length > 0
+        ? detailTextList(correctionLog?.details, "replacement_display_ids")
+        : noteReplacementDisplayIds;
   const replacementDisplayId =
-    detailText(correctionLog?.details, "replacementDisplayId") ??
-    detailText(correctionLog?.details, "replacement_display_id") ??
-    noteReplacementDisplayId;
+    replacementDisplayIds.length > 0
+      ? displayDocumentList(replacementDisplayIds)
+      : detailText(correctionLog?.details, "replacementDisplayId") ??
+        detailText(correctionLog?.details, "replacement_display_id") ??
+        null;
   const originalDisplayId =
     detailText(correctionLog?.details, "originalDisplayId") ??
     detailText(correctionLog?.details, "original_display_id") ??
@@ -1314,6 +1343,21 @@ export default async function InvoiceDetailPage({
       ?.split(/\r?\n/)
       .find((line) => /^Correction:/i.test(line.trim()))
       ?.trim();
+  const correctedBy =
+    detailText(correctionLog?.details, "correctedByEmail") ??
+    detailText(correctionLog?.details, "corrected_by_email") ??
+    correctionLog?.actor_email ??
+    null;
+  const correctedAt =
+    detailText(correctionLog?.details, "correctedAt") ??
+    detailText(correctionLog?.details, "corrected_at") ??
+    correctionLog?.created_at ??
+    null;
+  const originalAmount = detailMoney(correctionLog?.details, "originalAmount");
+  const replacementCombinedTotal = detailMoney(
+    correctionLog?.details,
+    "replacementCombinedTotal"
+  );
   proofTimelineEvents.sort((first, second) => {
     const firstTime = first.date ? new Date(first.date).getTime() : 0;
     const secondTime = second.date ? new Date(second.date).getTime() : 0;
@@ -1506,10 +1550,56 @@ export default async function InvoiceDetailPage({
                     ? `Correction of ${originalDisplayId}`
                     : "Corrected invoice"}
               </h2>
-              <p className="mt-2 text-sm leading-6 text-amber-50/85">
-                {correctionReason ||
-                  "This invoice is preserved for history and does not count toward collectible balance."}
-              </p>
+              {replacementDisplayId ? (
+                <p className="mt-2 text-sm leading-6 text-amber-50/85">
+                  This original invoice is preserved for history and does not
+                  count toward collectible balance.
+                </p>
+              ) : originalDisplayId ? (
+                <p className="mt-2 text-sm leading-6 text-amber-50/85">
+                  This is a draft replacement. It is not sent until Robbie sends
+                  it.
+                </p>
+              ) : (
+                <p className="mt-2 text-sm leading-6 text-amber-50/85">
+                  {correctionReason ||
+                    "This invoice is preserved for history and does not count toward collectible balance."}
+                </p>
+              )}
+              {correctionReason ||
+              correctedBy ||
+              correctedAt ||
+              originalAmount !== null ||
+              replacementCombinedTotal !== null ? (
+                <details className="mt-3 rounded-2xl border border-amber-200/20 bg-black/20 px-4 py-3 text-sm text-amber-50/85">
+                  <summary className="cursor-pointer font-black text-amber-100">
+                    Audit details
+                  </summary>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {correctionReason ? (
+                      <Info label="Reason" value={correctionReason} />
+                    ) : null}
+                    {correctedBy ? (
+                      <Info label="Corrected By" value={correctedBy} />
+                    ) : null}
+                    {correctedAt ? (
+                      <Info
+                        label="Corrected Date"
+                        value={formatLifecycleDate(correctedAt)}
+                      />
+                    ) : null}
+                    {originalAmount !== null ? (
+                      <Info label="Original Amount" value={originalAmount} />
+                    ) : null}
+                    {replacementCombinedTotal !== null ? (
+                      <Info
+                        label="Replacement Total"
+                        value={replacementCombinedTotal}
+                      />
+                    ) : null}
+                  </div>
+                </details>
+              ) : null}
             </Card>
           ) : null}
 
@@ -1782,6 +1872,7 @@ export default async function InvoiceDetailPage({
                 splitGroupLabel={splitGroupLabel}
                 splitGroupItems={splitGroupItems}
                 splitGroupCombinedTotal={money(splitGroupCombinedTotal)}
+                correctionOriginalDisplayId={originalDisplayId}
               />
             </div>
           ) : null}

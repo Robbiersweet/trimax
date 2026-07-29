@@ -5,6 +5,11 @@ import { useRouter } from "next/navigation";
 import Button from "./Button";
 import { logActivity } from "../lib/activityLog";
 import { getNextDocumentDisplayId } from "../lib/documentNumbers";
+import {
+  buildCorrectionAuditDetails,
+  buildOriginalCorrectionNote,
+  buildReplacementCorrectionNote,
+} from "../lib/invoiceCorrections";
 import { assertCanWriteDuringMaintenance } from "../lib/maintenanceMode";
 import { supabase } from "../lib/supabase";
 
@@ -28,6 +33,7 @@ type InvoiceRecord = {
   service_address: string | null;
   reference: string | null;
   invoice_amount: string | number | null;
+  status: string | null;
   issue_date: string | null;
   due_date: string | null;
   tax_mode: string | null;
@@ -39,6 +45,7 @@ type InvoiceRecord = {
   terms: string | null;
   notes: string | null;
   display_id: string | null;
+  sent_at?: string | null;
 };
 
 type EstimateRecord = {
@@ -152,6 +159,8 @@ export default function CorrectInvoiceButton({
     let replacementDisplayId: string | null = null;
     let replacementEstimateId = invoice.estimate_id;
     let replacementEstimateDisplayId: string | null = null;
+    const correctedAt = new Date().toISOString();
+    const { data: userData } = await supabase.auth.getUser();
 
     if (createReplacement) {
       if (invoice.estimate_id) {
@@ -303,15 +312,10 @@ export default function CorrectInvoiceButton({
         return;
       }
 
-      const { data: userData } = await supabase.auth.getUser();
-      const correctionNote = [
-        `Correction of ${invoice.display_id ?? invoiceLabel}.`,
-        `Reason: ${reason.trim()}`,
-        "Review scope and pricing before sending.",
-        invoice.notes ?? "",
-      ]
-        .filter(Boolean)
-        .join("\n");
+      const correctionNote = buildReplacementCorrectionNote({
+        existingNotes: invoice.notes,
+        originalDisplayId: invoice.display_id ?? invoiceLabel,
+      });
 
       const { data: replacement, error: replacementError } = await supabase
         .from("invoices")
@@ -390,23 +394,44 @@ export default function CorrectInvoiceButton({
         entityId: replacementId,
         entityLabel: replacementDisplayId,
         details: {
-          originalInvoiceId: invoice.id,
-          originalDisplayId: invoice.display_id,
-          replacementEstimateId,
-          replacementEstimateDisplayId,
-          correctionReason: reason.trim(),
+          ...buildCorrectionAuditDetails({
+            original: {
+              id: invoice.id,
+              displayId: invoice.display_id ?? invoiceLabel,
+              amount: invoice.invoice_amount,
+              status: invoice.status ?? "sent",
+              sentAt: invoice.sent_at ?? null,
+            },
+            replacement: {
+              id: replacementId,
+              displayId: replacementDisplayId,
+              amount: invoice.invoice_amount,
+              status: "Draft",
+            },
+            replacementEstimateId,
+            replacementEstimateDisplayId,
+            reason,
+            correctedAt,
+            correctedByUserId: userData.user?.id ?? null,
+            correctedByEmail: userData.user?.email ?? null,
+          }),
         },
       });
     }
 
-    const originalCorrectionNote = [
-      invoice.notes ?? "",
+    const originalCorrectionNote =
       createReplacement && replacementDisplayId
-        ? `Correction: superseded by ${replacementDisplayId}. Reason: ${reason.trim()}`
-        : `Correction: voided. Reason: ${reason.trim()}`,
-    ]
-      .filter(Boolean)
-      .join("\n");
+        ? buildOriginalCorrectionNote({
+            existingNotes: invoice.notes,
+            replacementDisplayIds: [replacementDisplayId],
+            reason,
+          })
+        : [
+            invoice.notes ?? "",
+            `Correction: voided. Reason: ${reason.trim()}`,
+          ]
+            .filter(Boolean)
+            .join("\n");
 
     const { error: statusError } = await supabase
       .from("invoices")
@@ -431,11 +456,29 @@ export default function CorrectInvoiceButton({
       entityId: invoice.id,
       entityLabel: invoice.display_id ?? invoiceLabel,
       details: {
-        replacementInvoiceId: replacementId,
-        replacementDisplayId,
-        replacementEstimateId,
-        replacementEstimateDisplayId,
-        correctionReason: reason.trim(),
+        ...buildCorrectionAuditDetails({
+          original: {
+            id: invoice.id,
+            displayId: invoice.display_id ?? invoiceLabel,
+            amount: invoice.invoice_amount,
+            status: invoice.status ?? "sent",
+            sentAt: invoice.sent_at ?? null,
+          },
+          replacement: replacementId
+            ? {
+                id: replacementId,
+                displayId: replacementDisplayId,
+                amount: invoice.invoice_amount,
+                status: "Draft",
+              }
+            : null,
+          replacementEstimateId,
+          replacementEstimateDisplayId,
+          reason,
+          correctedAt,
+          correctedByUserId: userData.user?.id ?? null,
+          correctedByEmail: userData.user?.email ?? null,
+        }),
         previousStatus: "sent",
         newStatus: createReplacement ? "superseded" : "void",
       },

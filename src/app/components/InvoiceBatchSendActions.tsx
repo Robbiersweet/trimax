@@ -6,6 +6,12 @@ import Link from "next/link";
 import Button from "./Button";
 import Card from "./Card";
 import Toast from "./Toast";
+import {
+  buildCorrectionEmailMessage,
+  buildCorrectionEmailSubject,
+  displayDocumentList,
+  extractCorrectionOriginalDisplayId,
+} from "../lib/invoiceCorrections";
 import { supabase } from "../lib/supabase";
 
 type BatchSendInvoice = {
@@ -20,6 +26,7 @@ type BatchSendInvoice = {
   issueDate: string | null;
   createdAt: string | null;
   sourceLabel?: string | null;
+  notes?: string | null;
   splitParentInvoiceId: string | null;
   splitChildrenCount: number;
   splitParentDisplayId: string | null;
@@ -36,6 +43,8 @@ type SendAction = {
   projectTitle: string;
   invoiceNumbers: string[];
   sendSplitGroup: boolean;
+  correctionOriginalDisplayId: string | null;
+  combinedTotal: number;
 };
 
 type SendResult = {
@@ -68,20 +77,6 @@ function formatMoney(value: number) {
 
 function invoiceStatusKey(status: string | null | undefined) {
   return (status || "draft").trim().toLowerCase();
-}
-
-function documentListLabel(documents: string[]) {
-  if (documents.length <= 1) {
-    return documents[0] ?? "the selected invoice";
-  }
-
-  if (documents.length === 2) {
-    return `${documents[0]} and ${documents[1]}`;
-  }
-
-  return `${documents.slice(0, -1).join(", ")}, and ${
-    documents[documents.length - 1]
-  }`;
 }
 
 function invoiceContext(invoice: Pick<BatchSendInvoice, "customerName" | "projectTitle">) {
@@ -159,6 +154,14 @@ function groupSelection(
           (invoice) => invoice.displayId
         )
       : [selectedPrimary.displayId];
+    const correctionOriginalDisplayId =
+      groupMembers
+        .map((invoice) => extractCorrectionOriginalDisplayId(invoice.notes))
+        .find(Boolean) ?? null;
+    const combinedTotal = (isSplitGroup ? splitChildren : groupInvoices).reduce(
+      (sum, invoice) => sum + invoice.invoiceAmount,
+      0
+    );
     const groupProject =
       selectedPrimary.projectTitle ||
       groupMembers.find((invoice) => invoice.projectTitle)?.projectTitle ||
@@ -175,6 +178,8 @@ function groupSelection(
       projectTitle: groupProject,
       invoiceNumbers,
       sendSplitGroup: isSplitGroup,
+      correctionOriginalDisplayId,
+      combinedTotal,
     } satisfies SendAction;
   });
 }
@@ -258,11 +263,25 @@ export default function InvoiceBatchSendActions({
         continue;
       }
 
-      const subject = action.sendSplitGroup
+      const subject =
+        action.sendSplitGroup && action.correctionOriginalDisplayId
+          ? buildCorrectionEmailSubject({
+              projectTitle: action.projectTitle,
+              fallbackLabel: action.projectTitle,
+            })
+        : action.sendSplitGroup
         ? `${action.projectTitle} - Split invoices`
         : `Invoice ${action.invoiceNumbers[0]} from ${businessName}`;
-      const message = action.sendSplitGroup
-        ? `Attached are invoices ${documentListLabel(
+      const message =
+        action.sendSplitGroup && action.correctionOriginalDisplayId
+          ? buildCorrectionEmailMessage({
+              documentNumbers: action.invoiceNumbers,
+              projectTitle: action.projectTitle,
+              originalDisplayId: action.correctionOriginalDisplayId,
+              combinedTotal: formatMoney(action.combinedTotal),
+            })
+        : action.sendSplitGroup
+        ? `Attached are invoices ${displayDocumentList(
             action.invoiceNumbers
           )} for ${action.projectTitle}.`
         : `Attached is invoice ${action.invoiceNumbers[0]} for ${invoiceContext(
