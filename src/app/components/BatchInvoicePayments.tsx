@@ -82,6 +82,17 @@ type CheckStubOcrResponse = {
   checkDate?: string;
   totalAmount?: number;
   lines?: { amount?: unknown; invoiceNumbers?: unknown }[];
+  diagnostics?: {
+    summary?: string[];
+    originalWidth?: number;
+    originalHeight?: number;
+    normalizedWidth?: number;
+    normalizedHeight?: number;
+    selectedRegion?: string;
+    selectedRotation?: number;
+    selectedVariant?: string;
+    selectedConfidence?: number;
+  };
   error?: string;
 };
 
@@ -205,9 +216,42 @@ function canvasToJpegDataUrl(canvas: HTMLCanvasElement) {
         void fileToDataUrl(blob).then(resolve, reject);
       },
       "image/jpeg",
-      0.92
+      0.98
     );
   });
+}
+
+function cropBoxForRotation(cropBox: CropBox, rotation: number): CropBox {
+  const normalizedRotation = ((rotation % 360) + 360) % 360;
+
+  if (normalizedRotation === 90) {
+    return {
+      left: 100 - cropBox.bottom,
+      top: cropBox.left,
+      right: 100 - cropBox.top,
+      bottom: cropBox.right,
+    };
+  }
+
+  if (normalizedRotation === 180) {
+    return {
+      left: 100 - cropBox.right,
+      top: 100 - cropBox.bottom,
+      right: 100 - cropBox.left,
+      bottom: 100 - cropBox.top,
+    };
+  }
+
+  if (normalizedRotation === 270) {
+    return {
+      left: cropBox.top,
+      top: 100 - cropBox.right,
+      right: cropBox.bottom,
+      bottom: 100 - cropBox.left,
+    };
+  }
+
+  return cropBox;
 }
 
 async function detectDefaultCropBox(file: File): Promise<CropSuggestion> {
@@ -317,22 +361,24 @@ async function cropPhotoForOcr(file: File, cropBox: CropBox, rotation: number) {
   const image = await imageElementFromFile(file);
   const naturalWidth = image.naturalWidth || image.width;
   const naturalHeight = image.naturalHeight || image.height;
-  const sourceX = Math.round((cropBox.left / 100) * naturalWidth);
-  const sourceY = Math.round((cropBox.top / 100) * naturalHeight);
+  const sourceCropBox = cropBoxForRotation(cropBox, rotation);
+  const sourceX = Math.round((sourceCropBox.left / 100) * naturalWidth);
+  const sourceY = Math.round((sourceCropBox.top / 100) * naturalHeight);
   const sourceWidth = Math.max(
     1,
-    Math.round(((cropBox.right - cropBox.left) / 100) * naturalWidth)
+    Math.round(((sourceCropBox.right - sourceCropBox.left) / 100) * naturalWidth)
   );
   const sourceHeight = Math.max(
     1,
-    Math.round(((cropBox.bottom - cropBox.top) / 100) * naturalHeight)
+    Math.round(((sourceCropBox.bottom - sourceCropBox.top) / 100) * naturalHeight)
   );
   const normalizedRotation = ((rotation % 360) + 360) % 360;
   const rotatedSideways = normalizedRotation === 90 || normalizedRotation === 270;
-  const maxEdge = 2600;
+  const maxEdge = 4600;
+  const minReadableEdge = 3200;
   const scale = Math.min(
-    1,
-    maxEdge / Math.max(sourceWidth, sourceHeight)
+    maxEdge / Math.max(sourceWidth, sourceHeight),
+    Math.max(1, minReadableEdge / Math.max(sourceWidth, sourceHeight))
   );
   const outputWidth = Math.max(
     1,
@@ -913,6 +959,8 @@ export default function BatchInvoicePayments({
     const notice =
       correctedAny && ocrTotalMismatchesCheck
         ? "Line amount reviewed against Trimax invoice balances and the remittance total."
+        : extractedTotal <= 0 && matches.length > 0
+          ? "Document total not found. Enter the check amount and verify the selected invoices."
         : extractedTotal > 0 &&
             matches.length > 0 &&
             Math.abs(invoiceTotal - extractedTotal) >= 0.01
@@ -920,7 +968,7 @@ export default function BatchInvoicePayments({
           : "";
 
     return {
-      matches: isComplete ? corrected : [],
+      matches: isComplete || extractedTotal <= 0 ? corrected : [],
       notice,
       invoiceTotal,
       isComplete,
@@ -1008,12 +1056,16 @@ export default function BatchInvoicePayments({
     setPaymentType("Check");
     setReviewMatchedInvoices(reviewMatches);
     setSelectedIds(reviewMatches.map((invoice) => invoice.id));
-    setExtractedPaymentAmount(paymentAmount > 0 ? paymentAmount : null);
-    setCheckAmount(paymentAmountText);
-    setCapturedCheckAmount(paymentAmountText);
-    setPaymentReference(extractedCheckNumber);
-    setCapturedCheckReference(extractedCheckNumber);
-    setCheckPayor(extractedPayor);
+    if (paymentAmount > 0) {
+      setExtractedPaymentAmount(paymentAmount);
+      setCheckAmount(paymentAmountText);
+      setCapturedCheckAmount(paymentAmountText);
+    }
+    if (extractedCheckNumber) {
+      setPaymentReference(extractedCheckNumber);
+      setCapturedCheckReference(extractedCheckNumber);
+    }
+    setCheckPayor((current) => extractedPayor || current);
     setPaymentReviewNotice(reconciledReview.notice);
 
     if (extractedDate) {
@@ -1030,6 +1082,34 @@ export default function BatchInvoicePayments({
     );
 
     return { match, reviewMatches, reconciledReview };
+  }
+
+  function ocrFailureMessage(data: CheckStubOcrResponse) {
+    const summary = data.diagnostics?.summary ?? [];
+    const found = (label: string) =>
+      summary.some((item) => item.toLowerCase().includes(label.toLowerCase()));
+    const hasCheckNumber = Boolean(data.checkNumber?.trim()) || found("Check number found");
+    const hasDate = Boolean(data.checkDate?.trim()) || found("Payment date found");
+    const hasTotal = typeof data.totalAmount === "number" && data.totalAmount > 0;
+    const invoiceCount =
+      data.lines?.filter(
+        (line) =>
+          Array.isArray(line.invoiceNumbers) && line.invoiceNumbers.length > 0
+      ).length ?? 0;
+
+    if ((hasCheckNumber || hasDate) && !hasTotal && invoiceCount === 0) {
+      return "Check details were found, but the amount and remittance rows were not. Adjust crop around the invoice rows or enter the missing amount/invoices manually.";
+    }
+
+    if (!hasTotal && invoiceCount > 0) {
+      return "Remittance rows were found, but the document total was not. Enter the check amount and verify the selected invoices.";
+    }
+
+    if (hasTotal && invoiceCount === 0) {
+      return "Check amount was found, but remittance invoice rows were not. Adjust crop around the invoice rows or select the missing invoices manually.";
+    }
+
+    return data.error ?? "Could not read this remittance. Adjust crop or enter manually.";
   }
 
   async function filePaymentImage() {
@@ -1100,7 +1180,7 @@ export default function BatchInvoicePayments({
   }
 
   async function extractCheckStubFromPhoto(imageDataUrl: string) {
-    if (imageDataUrl.length > 11_500_000) {
+    if (imageDataUrl.length > 19_500_000) {
       setCheckOcrStatus("manual");
       setCheckOcrMessage(
         "That crop is large. Adjust crop tighter or enter the payment manually."
@@ -1132,10 +1212,7 @@ export default function BatchInvoicePayments({
 
       if (!data.stubText?.trim()) {
         setCheckOcrStatus("manual");
-        setCheckOcrMessage(
-          data.error ??
-            "Could not read this remittance. Adjust crop or enter manually."
-        );
+        setCheckOcrMessage(ocrFailureMessage(data));
         return;
       }
 
@@ -1157,7 +1234,7 @@ export default function BatchInvoicePayments({
       setCheckOcrMessage(
         hasConfidentReview
           ? "Remittance read. Review the payment before applying."
-          : "Remittance total does not match selected invoices."
+          : ocrFailureMessage(data)
       );
     } catch (error) {
       setCheckOcrStatus("error");

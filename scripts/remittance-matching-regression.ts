@@ -499,6 +499,15 @@ assert(
   "OCR route must score 0/90/180/270 rotations and reject partial first-pass remittance reads."
 );
 assert(
+  route.includes("MAX_IMAGE_DATA_URL_LENGTH = 20_000_000") &&
+    route.includes("buildRegionSources") &&
+    route.includes("remittance-right") &&
+    route.includes("amounts-right-edge") &&
+    route.includes("redactedTextSummary") &&
+    route.includes("diagnostics"),
+  "OCR route must preserve mobile image quality, use document regions, and return safe diagnostics."
+);
+assert(
   !route.includes("2721") && !route.includes("2198") && !route.includes("1099"),
   "OCR candidate scoring must not be biased toward an old production fixture."
 );
@@ -574,6 +583,15 @@ assert(
   paymentScreen.includes("readPreparedRemittanceFromFile(file, suggestion.cropBox, 0)") &&
     paymentScreen.includes("Preparing remittance..."),
   "Payments screen must auto-read after photo selection instead of forcing crop first."
+);
+assert(
+  paymentScreen.includes("0.98") &&
+    paymentScreen.includes("const maxEdge = 4600") &&
+    paymentScreen.includes("cropBoxForRotation") &&
+    paymentScreen.includes("Document total not found. Enter the check amount") &&
+    paymentScreen.includes("ocrFailureMessage") &&
+    paymentScreen.includes("setPaymentReference(extractedCheckNumber)"),
+  "Payments screen must preserve OCR-quality image detail, transform rotated crop coordinates, keep good fields, and guide partial manual fallback."
 );
 assert(
   paymentScreen.includes("beginCropDrag") &&

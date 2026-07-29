@@ -8,7 +8,7 @@ import {
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const MAX_IMAGE_DATA_URL_LENGTH = 12_000_000;
+const MAX_IMAGE_DATA_URL_LENGTH = 20_000_000;
 const OCR_ATTEMPT_TIMEOUT_MS = 6_000;
 const GOOD_OCR_SCORE = 130;
 const ROTATIONS = [0, 90, 180, 270] as const;
@@ -40,6 +40,7 @@ type OcrAttemptSpec = {
 };
 
 type OcrAttempt = {
+  region: string;
   variant: OcrVariant;
   pageMode: TesseractPageMode["name"];
   rotation: OcrRotation;
@@ -48,6 +49,13 @@ type OcrAttempt = {
   score: number;
   imageWidth?: number;
   imageHeight?: number;
+};
+
+type OcrImageSource = {
+  name: string;
+  image: Buffer;
+  width?: number;
+  height?: number;
 };
 
 function isSafeDataUrl(value: unknown) {
@@ -175,6 +183,13 @@ async function cropDocument(input: Buffer, bounds: ImageBounds) {
     .toBuffer();
 }
 
+async function cropImageRegion(input: Buffer, bounds: ImageBounds) {
+  return sharp(input, { limitInputPixels: 48_000_000 })
+    .extract(bounds)
+    .png({ compressionLevel: 6 })
+    .toBuffer();
+}
+
 async function preprocessForOcr(input: Buffer, rotation: OcrRotation, variant: OcrVariant) {
   const pipeline = sharp(input, { limitInputPixels: 48_000_000 })
     .rotate(rotation)
@@ -216,6 +231,7 @@ function isHeaderLikePayor(value: string) {
 }
 
 async function buildOcrSources(originalImage: Buffer) {
+  const originalMetadata = await imageMetadata(originalImage);
   const normalizedScene = await normalizeInputImage(originalImage);
   const sceneMetadata = await imageMetadata(normalizedScene);
   const detectedBounds = await detectDocumentBounds(normalizedScene);
@@ -226,6 +242,12 @@ async function buildOcrSources(originalImage: Buffer) {
 
   return {
     detectedBounds,
+    original: {
+      width: originalMetadata.width,
+      height: originalMetadata.height,
+      format: originalMetadata.format,
+      orientation: originalMetadata.orientation,
+    },
     scene: {
       image: normalizedScene,
       width: sceneMetadata.width,
@@ -238,6 +260,102 @@ async function buildOcrSources(originalImage: Buffer) {
       wasDetected: Boolean(detectedBounds),
     },
   };
+}
+
+async function buildRegionSources(documentImage: Buffer): Promise<OcrImageSource[]> {
+  const metadata = await imageMetadata(documentImage);
+  const width = metadata.width ?? 0;
+  const height = metadata.height ?? 0;
+
+  if (width <= 0 || height <= 0) {
+    return [];
+  }
+
+  const regions: Array<{ name: string; bounds: ImageBounds }> = [
+    {
+      name: "full-document",
+      bounds: { left: 0, top: 0, width, height },
+    },
+  ];
+  const isWideDocument = width / Math.max(height, 1) >= 1.65;
+  const isTallDocument = height / Math.max(width, 1) >= 1.65;
+
+  if (isWideDocument) {
+    regions.push(
+      {
+        name: "check-left",
+        bounds: { left: 0, top: 0, width: Math.round(width * 0.52), height },
+      },
+      {
+        name: "remittance-right",
+        bounds: {
+          left: Math.round(width * 0.38),
+          top: 0,
+          width: width - Math.round(width * 0.38),
+          height,
+        },
+      },
+      {
+        name: "amounts-right-edge",
+        bounds: {
+          left: Math.round(width * 0.68),
+          top: 0,
+          width: width - Math.round(width * 0.68),
+          height,
+        },
+      }
+    );
+  }
+
+  if (isTallDocument) {
+    regions.push(
+      {
+        name: "check-top",
+        bounds: { left: 0, top: 0, width, height: Math.round(height * 0.46) },
+      },
+      {
+        name: "remittance-bottom",
+        bounds: {
+          left: 0,
+          top: Math.round(height * 0.34),
+          width,
+          height: height - Math.round(height * 0.34),
+        },
+      }
+    );
+  }
+
+  if (!isWideDocument && !isTallDocument) {
+    regions.push(
+      {
+        name: "upper-half",
+        bounds: { left: 0, top: 0, width, height: Math.round(height * 0.58) },
+      },
+      {
+        name: "lower-half",
+        bounds: {
+          left: 0,
+          top: Math.round(height * 0.42),
+          width,
+          height: height - Math.round(height * 0.42),
+        },
+      }
+    );
+  }
+
+  return Promise.all(
+    regions.map(async (region) => {
+      const image = await cropImageRegion(documentImage, region.bounds);
+      const regionMetadata = await imageMetadata(image);
+
+      return {
+        name: region.name,
+        image,
+        width: regionMetadata.width,
+        height: regionMetadata.height,
+      };
+    })
+  );
 }
 
 function scoreOcrText(text: string, confidence: number) {
@@ -298,6 +416,19 @@ function scoreOcrText(text: string, confidence: number) {
   );
 }
 
+function redactedTextSummary(text: string) {
+  return text
+    .replace(/\b\d{7,}\b/g, "[redacted-number]")
+    .replace(/\b\d{2,4}[- ]\d{2,4}[- ]\d{3,6}\b/g, "[redacted-bank-text]")
+    .replace(/[^\S\r\n]+/g, " ")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 8)
+    .join(" | ")
+    .slice(0, 800);
+}
+
 function shouldAcceptFirstPass(attempt: OcrAttempt) {
   const parsed = parseCheckStubText(attempt.text);
   const hasInvoice = parsed.lines.some((line) => line.invoiceNumbers.length > 0);
@@ -356,16 +487,20 @@ async function recognizeBestText(originalImage: Buffer) {
 
     const attempts: OcrAttempt[] = [];
     const sources = await buildOcrSources(originalImage);
-    const sourceImage = sources.document.image;
+    const regionSources = await buildRegionSources(sources.document.image);
     const specs = ocrAttemptSpecs(Tesseract.PSM);
 
-    for (const spec of specs) {
+    async function runAttemptsForSource(
+      source: OcrImageSource,
+      sourceSpecs: OcrAttemptSpec[]
+    ) {
+      for (const spec of sourceSpecs) {
       for (const rotation of ROTATIONS) {
         await worker.setParameters({
           tessedit_pageseg_mode: spec.pageMode.value,
         });
 
-        const image = await preprocessForOcr(sourceImage, rotation, spec.variant);
+        const image = await preprocessForOcr(source.image, rotation, spec.variant);
         const recognition = worker.recognize(image, {}, { text: true });
         const result = await Promise.race([
           recognition,
@@ -385,19 +520,21 @@ async function recognizeBestText(originalImage: Buffer) {
         const confidence =
           typeof result.data.confidence === "number" ? result.data.confidence : 0;
         const attempt = {
+          region: source.name,
           variant: spec.variant,
           pageMode: spec.pageMode.name,
           rotation,
           text,
           confidence,
           score: scoreOcrText(text, confidence),
-          imageWidth: sources.document.width,
-          imageHeight: sources.document.height,
+          imageWidth: source.width,
+          imageHeight: source.height,
         };
 
         attempts.push(attempt);
 
         if (
+          source.name === "full-document" &&
           spec.variant === "grayscale-normalized" &&
           rotation === 0 &&
           shouldAcceptFirstPass(attempt)
@@ -411,12 +548,68 @@ async function recognizeBestText(originalImage: Buffer) {
         }
       }
     }
+    }
+
+    await runAttemptsForSource(regionSources[0] ?? {
+      name: "full-document",
+      image: sources.document.image,
+      width: sources.document.width,
+      height: sources.document.height,
+    }, specs);
+
+    attempts.sort((left, right) => right.score - left.score);
+    const firstSelected = attempts[0] ?? null;
+    const firstParsed = firstSelected ? parseCheckStubText(firstSelected.text) : null;
+    const needsRegionFallback =
+      !firstParsed ||
+      firstParsed.totalAmount <= 0 ||
+      firstParsed.lines.filter((line) => line.invoiceNumbers.length > 0).length < 2;
+
+    if (needsRegionFallback && regionSources.length > 1) {
+      const fallbackSpecs = specs.filter((spec) =>
+        ["sparse-text", "single-block"].includes(spec.pageMode.name)
+      );
+
+      for (const source of regionSources.slice(1)) {
+        await runAttemptsForSource(source, fallbackSpecs);
+      }
+    }
 
     attempts.sort((left, right) => right.score - left.score);
 
     const selected = attempts[0] ?? null;
+    const regionBestText = regionSources
+      .map((source) =>
+        attempts
+          .filter((attempt) => attempt.region === source.name)
+          .sort((left, right) => right.score - left.score)[0]?.text ?? ""
+      )
+      .filter(Boolean);
+    const combinedText = Array.from(new Set([selected?.text ?? "", ...regionBestText]))
+      .filter(Boolean)
+      .join("\n\n--- OCR REGION ---\n\n");
+    const combinedScore = scoreOcrText(combinedText, selected?.confidence ?? 0);
+    const finalText =
+      combinedText && combinedScore >= (selected?.score ?? 0)
+        ? combinedText
+        : selected?.text ?? "";
 
-    return selected?.text ?? "";
+    return {
+      text: finalText,
+      diagnostics: {
+        originalWidth: sources.original.width,
+        originalHeight: sources.original.height,
+        normalizedWidth: sources.scene.width,
+        normalizedHeight: sources.scene.height,
+        detectedBounds: sources.detectedBounds,
+        selectedRegion: selected?.region,
+        selectedRotation: selected?.rotation,
+        selectedVariant: selected?.variant,
+        selectedConfidence: selected?.confidence,
+        selectedSummary: redactedTextSummary(selected?.text ?? ""),
+        regionSummaries: regionBestText.map(redactedTextSummary),
+      },
+    };
   } finally {
     if (timeout) {
       clearTimeout(timeout);
@@ -440,13 +633,20 @@ export async function POST(request: Request) {
 
   try {
     const originalImage = dataUrlToBuffer(imageDataUrl as string);
-    const rawText = await recognizeBestText(originalImage);
+    const ocrResult = await recognizeBestText(originalImage);
+    const rawText = ocrResult.text;
 
     if (!rawText) {
       return NextResponse.json({
         rawText: "",
         stubText: "",
         lines: [],
+        diagnostics: {
+          summary: [
+            "No readable OCR text was returned from the selected image.",
+          ],
+          ...ocrResult.diagnostics,
+        },
         error:
           "Owner Review Required. Trimax did not find readable printed text in that remittance.",
       });
@@ -468,13 +668,34 @@ export async function POST(request: Request) {
         rawText,
         stubText: "",
         lines: [],
-        error: "Could not read this remittance. Adjust crop or enter manually.",
+        diagnostics: {
+          summary: [
+            "Check number not found.",
+            "Payment date not found.",
+            "Document total not found.",
+            "Remittance invoice rows not found.",
+          ],
+          ...ocrResult.diagnostics,
+        },
+        error: "Could not read the payment fields. Adjust crop or enter manually.",
       });
     }
+    const diagnosticSummary = [
+      extraction.checkNumber ? "Check number found." : "Check number not found.",
+      extraction.checkDate ? "Payment date found." : "Payment date not found.",
+      extraction.totalAmount > 0 ? "Document total found." : "Document total not found.",
+      extractedInvoiceNumbers.length > 0
+        ? `${extractedInvoiceNumbers.length} invoice row${extractedInvoiceNumbers.length === 1 ? "" : "s"} found.`
+        : "Remittance rows not found.",
+    ];
 
     return NextResponse.json({
       ocrEngine: "tesseract.js",
       ...extraction,
+      diagnostics: {
+        summary: diagnosticSummary,
+        ...ocrResult.diagnostics,
+      },
     });
   } catch (error) {
     console.error("Remittance OCR failed", {
