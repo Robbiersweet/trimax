@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Button from "./Button";
+import PersistentDetails from "./PersistentDetails";
 import Toast from "./Toast";
 import { supabase } from "../lib/supabase";
 
@@ -146,8 +147,18 @@ export default function InternalNotes({
     });
   }
 
+  const noteSummary = loading
+    ? "Loading notes"
+    : `${notes.length} note${notes.length === 1 ? "" : "s"}`;
+
   return (
-    <div className="app-card internal-notes-card rounded-2xl border border-zinc-800 bg-zinc-900/80 p-6">
+    <PersistentDetails
+      storageKey={`trimax-${entityType}-notes-${entityId}`}
+      title="Team Notes"
+      subtitle={noteSummary}
+      className="app-card internal-notes-card rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4"
+      contentClassName="mt-4"
+    >
       {toast ? (
         <Toast
           type={toast.type}
@@ -155,20 +166,7 @@ export default function InternalNotes({
         />
       ) : null}
 
-      <div>
-        <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
-          Team Notes
-        </p>
-
-        <h2 className="mt-2 text-2xl font-bold text-white">
-          {title}
-        </h2>
-
-        <p className="mt-2 text-sm leading-6 text-zinc-400">
-          Private Trimax notes for your team. These do not print on customer
-          invoices or estimates.
-        </p>
-      </div>
+      <h2 className="text-xl font-bold text-white">{title}</h2>
 
       <div className="mt-5 grid gap-3">
         <textarea
@@ -217,6 +215,6 @@ export default function InternalNotes({
           ))
         )}
       </div>
-    </div>
+    </PersistentDetails>
   );
 }

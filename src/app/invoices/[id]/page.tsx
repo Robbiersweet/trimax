@@ -8,6 +8,7 @@ import DeleteInvoiceButton from "../../components/DeleteInvoiceButton";
 import CopyProofSummaryButton from "../../components/CopyProofSummaryButton";
 import CorrectInvoiceButton from "../../components/CorrectInvoiceButton";
 import InvoiceEmailSendPanel from "../../components/InvoiceEmailSendPanel";
+import PersistentDetails from "../../components/PersistentDetails";
 import RequestDepositButton from "../../components/RequestDepositButton";
 import SplitInvoicePlanner from "../../components/SplitInvoicePlanner";
 import SplitInvoiceRelationshipDisplay from "../../components/SplitInvoiceRelationshipDisplay";
@@ -1368,6 +1369,43 @@ export default async function InvoiceDetailPage({
   const paymentHref = `/payments${businessQuery}${
     businessQuery ? "&" : "?"
   }customer=${encodeURIComponent(customerName)}`;
+  const paymentSummary = isIncompleteDraftInvoice
+    ? "Draft incomplete"
+    : `${money(customerFacingAmountDue)} remaining / ${money(
+        collectedAmount
+      )} collected`;
+  const depositSummary = hasDepositRequest
+    ? `${depositStatusLabel} / ${money(depositDueNow)} due`
+    : hasInferredDepositCollection
+      ? `${money(amountPaid)} collected`
+      : "Not requested";
+  const emailPdfCount =
+    hasSplitInvoiceGroup && splitSendInvoiceCount > 1
+      ? splitSendInvoiceCount
+      : 1;
+  const emailSummary = `${recipientEmail ? "Ready" : "Needs recipient"} / ${
+    clientContact?.cc_email ? "CC saved" : "No CC"
+  } / ${emailPdfCount} PDF${emailPdfCount === 1 ? "" : "s"}`;
+  const latestProofEvent =
+    proofTimelineEvents.length > 0
+      ? proofTimelineEvents[proofTimelineEvents.length - 1]
+      : null;
+  const proofSummaryText = latestProofEvent
+    ? `${proofTimelineEvents.length} event${
+        proofTimelineEvents.length === 1 ? "" : "s"
+      } / ${latestProofEvent.title} ${formatLifecycleDate(
+        latestProofEvent.date
+      )}`
+    : "0 events";
+  const moreActionsSummary = [
+    normalizedStatus === "draft" && !isNonCollectibleInvoice ? "Mark sent" : "",
+    !isFullyPaid && !isNonCollectibleInvoice ? "Mark paid" : "",
+    showFiveStarsBoaPrintButton ? "5Stars export" : "",
+    "Print",
+    "Delete",
+  ]
+    .filter(Boolean)
+    .join(", ");
   const invoiceIntelligenceAction: InvoiceIntelligenceAction =
     isNonCollectibleInvoice
       ? {
@@ -1604,15 +1642,23 @@ export default async function InvoiceDetailPage({
             </Card>
           ) : null}
 
-          <PaymentProgressCard
-            amountDue={amountDue}
-            amountPaid={collectedAmount}
-            invoiceTotal={invoiceTotal}
-            isFullyPaid={isFullyPaid}
-            isDraftIncomplete={isIncompleteDraftInvoice}
-            isPartiallyPaid={isPartiallyPaid}
-            latestPaymentDate={latestPaymentDate}
-          />
+          <PersistentDetails
+            storageKey={`trimax-invoice-payment-${invoice.id}`}
+            title="Payment"
+            subtitle={paymentSummary}
+            className="rounded-2xl border border-emerald-500/25 bg-zinc-950/70 p-4"
+            contentClassName="mt-4"
+          >
+            <PaymentProgressCard
+              amountDue={amountDue}
+              amountPaid={collectedAmount}
+              invoiceTotal={invoiceTotal}
+              isFullyPaid={isFullyPaid}
+              isDraftIncomplete={isIncompleteDraftInvoice}
+              isPartiallyPaid={isPartiallyPaid}
+              latestPaymentDate={latestPaymentDate}
+            />
+          </PersistentDetails>
 
           {showSplitWarning ? (
             <Card className="border-yellow-500/60 bg-yellow-500/10">
@@ -1622,10 +1668,15 @@ export default async function InvoiceDetailPage({
               <p className="mt-3 text-lg font-bold text-yellow-100">
                 This invoice is over {money(splitWarningAmount)} after tax.
               </p>
-              <p className="mt-3 text-sm leading-6 text-yellow-100/80">
-                Trimax can prepare draft split invoices that stay under the
-                target including tax.
-              </p>
+              <details className="mt-3 rounded-xl border border-yellow-400/20 bg-black/20 px-3 py-2 text-sm leading-6 text-yellow-100/80">
+                <summary className="cursor-pointer font-black text-yellow-100">
+                  Details
+                </summary>
+                <p className="mt-2">
+                  Trimax can prepare draft split invoices that stay under the
+                  target including tax.
+                </p>
+              </details>
             </Card>
           ) : null}
 
@@ -1860,27 +1911,35 @@ export default async function InvoiceDetailPage({
 
           {hasSplitInvoiceGroup && !isNonCollectibleInvoice ? (
             <div id="send-invoice" className="scroll-mt-6">
-              <InvoiceEmailSendPanel
-                documentId={invoice.id}
-                businessSlug={businessSlug}
-                businessName={businessName}
-                customerName={customerName}
-                recipientEmail={recipientEmail}
-                clientCcEmail={clientContact?.cc_email ?? null}
-                documentNumber={invoiceNumber}
-                amountDue={money(customerFacingAmountDue)}
-                dueDate={displayDueDate ? formatDate(displayDueDate) : "-"}
-                projectTitle={projectTitle}
-                printHref={`/invoices/${invoice.id}/print${businessQuery}`}
-                requestType="invoice"
-                sendDisabledReason={draftSendDisabledReason}
-                sendSplitGroup
-                splitGroupCount={splitSendInvoiceCount}
-                splitGroupLabel={splitGroupLabel}
-                splitGroupItems={splitGroupItems}
-                splitGroupCombinedTotal={money(splitGroupCombinedTotal)}
-                correctionOriginalDisplayId={originalDisplayId}
-              />
+              <PersistentDetails
+                storageKey={`trimax-invoice-email-${invoice.id}`}
+                title="Email & Preview"
+                subtitle={emailSummary}
+                className="rounded-2xl border border-sky-500/25 bg-sky-500/5 p-4"
+                contentClassName="mt-4"
+              >
+                <InvoiceEmailSendPanel
+                  documentId={invoice.id}
+                  businessSlug={businessSlug}
+                  businessName={businessName}
+                  customerName={customerName}
+                  recipientEmail={recipientEmail}
+                  clientCcEmail={clientContact?.cc_email ?? null}
+                  documentNumber={invoiceNumber}
+                  amountDue={money(customerFacingAmountDue)}
+                  dueDate={displayDueDate ? formatDate(displayDueDate) : "-"}
+                  projectTitle={projectTitle}
+                  printHref={`/invoices/${invoice.id}/print${businessQuery}`}
+                  requestType="invoice"
+                  sendDisabledReason={draftSendDisabledReason}
+                  sendSplitGroup
+                  splitGroupCount={splitSendInvoiceCount}
+                  splitGroupLabel={splitGroupLabel}
+                  splitGroupItems={splitGroupItems}
+                  splitGroupCombinedTotal={money(splitGroupCombinedTotal)}
+                  correctionOriginalDisplayId={originalDisplayId}
+                />
+              </PersistentDetails>
             </div>
           ) : null}
 
@@ -1908,21 +1967,29 @@ export default async function InvoiceDetailPage({
 
           {!hasSplitInvoiceGroup && !isNonCollectibleInvoice ? (
             <div id="send-invoice" className="scroll-mt-6">
-              <InvoiceEmailSendPanel
-                documentId={invoice.id}
-                businessSlug={businessSlug}
-                businessName={businessName}
-                customerName={customerName}
-                recipientEmail={recipientEmail}
-                clientCcEmail={clientContact?.cc_email ?? null}
-                documentNumber={invoiceNumber}
-                amountDue={money(customerFacingAmountDue)}
-                dueDate={displayDueDate ? formatDate(displayDueDate) : "-"}
-                projectTitle={projectTitle}
-                printHref={`/invoices/${invoice.id}/print${businessQuery}`}
-                requestType={hasDepositRequest ? "deposit" : "invoice"}
-                sendDisabledReason={draftSendDisabledReason}
-              />
+              <PersistentDetails
+                storageKey={`trimax-invoice-email-${invoice.id}`}
+                title="Email & Preview"
+                subtitle={emailSummary}
+                className="rounded-2xl border border-sky-500/25 bg-sky-500/5 p-4"
+                contentClassName="mt-4"
+              >
+                <InvoiceEmailSendPanel
+                  documentId={invoice.id}
+                  businessSlug={businessSlug}
+                  businessName={businessName}
+                  customerName={customerName}
+                  recipientEmail={recipientEmail}
+                  clientCcEmail={clientContact?.cc_email ?? null}
+                  documentNumber={invoiceNumber}
+                  amountDue={money(customerFacingAmountDue)}
+                  dueDate={displayDueDate ? formatDate(displayDueDate) : "-"}
+                  projectTitle={projectTitle}
+                  printHref={`/invoices/${invoice.id}/print${businessQuery}`}
+                  requestType={hasDepositRequest ? "deposit" : "invoice"}
+                  sendDisabledReason={draftSendDisabledReason}
+                />
+              </PersistentDetails>
             </div>
           ) : null}
 
@@ -1955,30 +2022,42 @@ export default async function InvoiceDetailPage({
                 </div>
               </div>
 
-              <InvoiceEmailSendPanel
-                documentId={invoice.id}
-                businessSlug={businessSlug}
-                businessName={businessName}
-                customerName={customerName}
-                recipientEmail={recipientEmail}
-                clientCcEmail={clientContact?.cc_email ?? null}
-                documentNumber={invoiceNumber}
-                amountDue={money(customerFacingAmountDue)}
-                dueDate={displayDueDate ? formatDate(displayDueDate) : "-"}
-                projectTitle={projectTitle}
-                printHref={`/invoices/${invoice.id}/print${businessQuery}`}
-                requestType="reminder"
-              />
+              <PersistentDetails
+                storageKey={`trimax-invoice-reminder-email-${invoice.id}`}
+                title="Email & Preview"
+                subtitle={emailSummary}
+                className="rounded-2xl border border-rose-300/25 bg-black/10 p-4"
+                contentClassName="mt-4"
+              >
+                <InvoiceEmailSendPanel
+                  documentId={invoice.id}
+                  businessSlug={businessSlug}
+                  businessName={businessName}
+                  customerName={customerName}
+                  recipientEmail={recipientEmail}
+                  clientCcEmail={clientContact?.cc_email ?? null}
+                  documentNumber={invoiceNumber}
+                  amountDue={money(customerFacingAmountDue)}
+                  dueDate={displayDueDate ? formatDate(displayDueDate) : "-"}
+                  projectTitle={projectTitle}
+                  printHref={`/invoices/${invoice.id}/print${businessQuery}`}
+                  requestType="reminder"
+                />
+              </PersistentDetails>
             </section>
           ) : null}
 
           {depositCardShouldShow ? (
-            <Card
-              className={
+            <PersistentDetails
+              storageKey={`trimax-invoice-deposit-${invoice.id}`}
+              title="Deposit"
+              subtitle={depositSummary}
+              className={`rounded-2xl border p-4 ${
                 hasDepositRequest || hasInferredDepositCollection
-                  ? "deposit-request-card"
-                  : ""
-              }
+                  ? "deposit-request-card border-emerald-200 bg-white"
+                  : "border-zinc-800 bg-zinc-950/70"
+              }`}
+              contentClassName="mt-4"
             >
               <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-start">
                 <div>
@@ -2068,7 +2147,7 @@ export default async function InvoiceDetailPage({
                   />
                 ) : null}
               </div>
-            </Card>
+            </PersistentDetails>
           ) : null}
 
           <Card className="invoice-summary-card">
@@ -2230,10 +2309,18 @@ export default async function InvoiceDetailPage({
           </Card>
 
           <div id="proof-vault" className="scroll-mt-6">
-            <EvidenceTrail
-              events={proofTimelineEvents}
-              invoiceLabel={invoice.display_id || projectTitle || "Invoice"}
-            />
+            <PersistentDetails
+              storageKey={`trimax-invoice-proof-${invoice.id}`}
+              title="Proof"
+              subtitle={proofSummaryText}
+              className="rounded-2xl border border-sky-500/20 bg-zinc-950/70 p-4"
+              contentClassName="mt-4"
+            >
+              <EvidenceTrail
+                events={proofTimelineEvents}
+                invoiceLabel={invoice.display_id || projectTitle || "Invoice"}
+              />
+            </PersistentDetails>
           </div>
 
           <Card>
@@ -2252,103 +2339,102 @@ export default async function InvoiceDetailPage({
           </Card>
 
           <div id="invoice-actions" className="scroll-mt-6">
-            {splitSendInvoiceCount > 1 ? (
-              <div className="mb-4 rounded-2xl border border-zinc-800 bg-black/25 p-4">
-                <p className="text-xs font-black uppercase tracking-[0.22em] text-zinc-500">
-                  Individual invoice actions
-                </p>
-                <p className="mt-2 text-sm leading-6 text-zinc-300">
-                  These controls affect only {invoice.display_id || "this invoice"}.
-                  Use Send Split Group above for the normal customer-facing
-                  split invoice email.
-                </p>
+            <PersistentDetails
+              storageKey={`trimax-invoice-actions-${invoice.id}`}
+              title="More Actions"
+              subtitle={moreActionsSummary}
+              className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4"
+              contentClassName="mt-4"
+            >
+              {splitSendInvoiceCount > 1 ? (
+                <div className="mb-4 rounded-2xl border border-zinc-800 bg-black/25 p-4">
+                  <p className="text-xs font-black uppercase tracking-[0.22em] text-zinc-500">
+                    Individual invoice actions
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-zinc-300">
+                    These controls affect only{" "}
+                    {invoice.display_id || "this invoice"}. Use Send Split
+                    Group above for the normal customer-facing split invoice
+                    email.
+                  </p>
+                </div>
+              ) : null}
+
+              <div className="flex flex-wrap gap-4">
+                {normalizedStatus === "draft" && !isNonCollectibleInvoice ? (
+                  <UpdateInvoiceStatusButton
+                    invoiceId={invoice.id}
+                    newStatus="sent"
+                    label="Mark Sent"
+                    businessId={invoice.business_id}
+                    disabledReason={draftSendDisabledReason}
+                    invoiceLabel={invoice.display_id || projectTitle}
+                  />
+                ) : null}
+
+                {!isFullyPaid && isPartiallyPaid && !isNonCollectibleInvoice ? (
+                  <Link href={paymentHref}>
+                    <Button>Record Payment</Button>
+                  </Link>
+                ) : null}
+
+                {!isFullyPaid && !isPartiallyPaid && !isNonCollectibleInvoice ? (
+                  <UpdateInvoiceStatusButton
+                    invoiceId={invoice.id}
+                    newStatus="paid"
+                    label="Mark Paid"
+                    businessId={invoice.business_id}
+                    disabledReason={draftPaymentDisabledReason}
+                    invoiceLabel={invoice.display_id || projectTitle}
+                  />
+                ) : null}
+
+                {isPaymentLate ? (
+                  <a href="#late-payment-reminder">
+                    <Button variant="secondary">Send Reminder</Button>
+                  </a>
+                ) : null}
+
+                {normalizedStatus === "sent" && amountPaid <= 0 ? (
+                  <CorrectInvoiceButton
+                    invoiceId={invoice.id}
+                    businessId={invoice.business_id}
+                    businessSlug={businessSlug}
+                    invoiceLabel={invoice.display_id || projectTitle || "Invoice"}
+                    amountPaid={amountPaid}
+                  />
+                ) : null}
+
+                {showFiveStarsBoaPrintButton ? (
+                  <Link
+                    href={`/invoices/${invoice.id}/print${businessQuery}&template=5stars-boa`}
+                  >
+                    <Button variant="secondary">Print 5Stars BOA Format</Button>
+                  </Link>
+                ) : null}
+
+                {showFiveStarsBoaPrintButton ? (
+                  <a
+                    href={`/invoices/${invoice.id}/exports/5stars-boa${businessQuery}`}
+                  >
+                    <Button variant="secondary">Download 5Stars Excel</Button>
+                  </a>
+                ) : null}
+
+                <Link href={`/invoices/${invoice.id}/print${businessQuery}`}>
+                  <Button variant="secondary">Print Invoice</Button>
+                </Link>
+
+                <Link href={`/invoices/${invoice.id}/edit${businessQuery}`}>
+                  <Button variant="secondary">Edit Invoice</Button>
+                </Link>
+
+                <DeleteInvoiceButton
+                  invoiceId={invoice.id}
+                  returnHref={`/invoices${businessQuery}`}
+                />
               </div>
-            ) : null}
-
-            <div className="flex flex-wrap gap-4">
-            {normalizedStatus === "draft" && !isNonCollectibleInvoice ? (
-              <UpdateInvoiceStatusButton
-                invoiceId={invoice.id}
-                newStatus="sent"
-                label="Mark Sent"
-                businessId={invoice.business_id}
-                disabledReason={draftSendDisabledReason}
-                invoiceLabel={
-                  invoice.display_id ||
-                  projectTitle
-                }
-              />
-            ) : null}
-
-            {!isFullyPaid && isPartiallyPaid && !isNonCollectibleInvoice ? (
-              <Link href={paymentHref}>
-                <Button>Record Payment</Button>
-              </Link>
-            ) : null}
-
-            {!isFullyPaid && !isPartiallyPaid && !isNonCollectibleInvoice ? (
-              <UpdateInvoiceStatusButton
-                invoiceId={invoice.id}
-                newStatus="paid"
-                label="Mark Paid"
-                businessId={invoice.business_id}
-                disabledReason={draftPaymentDisabledReason}
-                invoiceLabel={
-                  invoice.display_id ||
-                  projectTitle
-                }
-              />
-            ) : null}
-
-            {isPaymentLate ? (
-              <a href="#late-payment-reminder">
-                <Button variant="secondary">Send Reminder</Button>
-              </a>
-            ) : null}
-
-            {normalizedStatus === "sent" && amountPaid <= 0 ? (
-              <CorrectInvoiceButton
-                invoiceId={invoice.id}
-                businessId={invoice.business_id}
-                businessSlug={businessSlug}
-                invoiceLabel={invoice.display_id || projectTitle || "Invoice"}
-                amountPaid={amountPaid}
-              />
-            ) : null}
-
-            {showFiveStarsBoaPrintButton ? (
-              <Link
-                href={`/invoices/${invoice.id}/print${businessQuery}&template=5stars-boa`}
-              >
-                <Button variant="secondary">
-                  Print 5Stars BOA Format
-                </Button>
-              </Link>
-            ) : null}
-
-            {showFiveStarsBoaPrintButton ? (
-              <a
-                href={`/invoices/${invoice.id}/exports/5stars-boa${businessQuery}`}
-              >
-                <Button variant="secondary">
-                  Download 5Stars Excel
-                </Button>
-              </a>
-            ) : null}
-
-            <Link href={`/invoices/${invoice.id}/print${businessQuery}`}>
-              <Button variant="secondary">Print Invoice</Button>
-            </Link>
-
-            <Link href={`/invoices/${invoice.id}/edit${businessQuery}`}>
-              <Button variant="secondary">Edit Invoice</Button>
-            </Link>
-
-            <DeleteInvoiceButton
-              invoiceId={invoice.id}
-              returnHref={`/invoices${businessQuery}`}
-            />
-            </div>
+            </PersistentDetails>
           </div>
         </div>
       </main>
