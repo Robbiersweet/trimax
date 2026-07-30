@@ -30,12 +30,22 @@ type Estimate = {
   created_at: string | null;
   updated_at: string | null;
   hasLinkedInvoice?: boolean;
+  linkedInvoiceId?: string | null;
+  linkedInvoiceDisplayId?: string | null;
+  linkedInvoiceStatus?: string | null;
   sentCount?: number;
   lastSentAt?: string | null;
   lastSentRecipient?: string | null;
   convertedAt?: string | null;
   activityCount?: number;
   lastActivityAt?: string | null;
+};
+
+type LinkedInvoice = {
+  id: string;
+  estimate_id: string | null;
+  display_id: string | null;
+  status: string | null;
 };
 
 type ActivityLog = {
@@ -77,6 +87,20 @@ function getPipelineStatusKey(estimate: Estimate) {
   }
 
   return statusKey;
+}
+
+function getAuthoritativeStatusLabel(estimate: Estimate) {
+  const statusKey = getPipelineStatusKey(estimate);
+
+  if (estimate.hasLinkedInvoice) {
+    return "Invoice connected";
+  }
+
+  if (statusKey === "converted") {
+    return "Converted";
+  }
+
+  return estimate.status || "Draft";
 }
 
 function getDaysSince(value: string | null | undefined) {
@@ -193,6 +217,42 @@ function getEstimateReadiness(estimate: Estimate) {
   };
 }
 
+function getEstimateAttentionScore(estimate: Estimate) {
+  const statusKey = getPipelineStatusKey(estimate);
+  const amount = parseEstimateAmount(estimate.estimate_amount);
+  const readiness = getEstimateReadiness(estimate);
+  const daysSinceUpdate = getDaysSince(getEstimateFreshnessDate(estimate));
+  const daysSinceSent = getDaysSince(estimate.lastSentAt);
+  let score = Math.min(24, Math.floor(amount / 500));
+
+  if (statusKey === "approved" && !estimate.hasLinkedInvoice) {
+    score += 80;
+  } else if (statusKey === "sent") {
+    score += daysSinceSent !== null && daysSinceSent >= 3 ? 70 : 42;
+  } else if (statusKey === "draft") {
+    score += readiness.missing.length > 0 ? 66 : 48;
+  } else if (estimate.hasLinkedInvoice || statusKey === "converted") {
+    score -= 90;
+  }
+
+  if (readiness.missing.length > 0 && statusKey !== "converted") {
+    score += 12;
+  }
+
+  if (daysSinceUpdate !== null && daysSinceUpdate >= 7 && statusKey !== "converted") {
+    score += 8;
+  }
+
+  return score;
+}
+
+function compareEstimateNumbers(left: Estimate, right: Estimate) {
+  const leftNumber = Number(left.display_id?.match(/\d+/)?.[0] ?? 0);
+  const rightNumber = Number(right.display_id?.match(/\d+/)?.[0] ?? 0);
+
+  return rightNumber - leftNumber;
+}
+
 export default async function EstimatesPage({
   searchParams,
 }: {
@@ -200,6 +260,8 @@ export default async function EstimatesPage({
     business?: string;
     q?: string;
     status?: string;
+    sort?: string;
+    limit?: string;
   }>;
 }) {
   const resolvedSearchParams = searchParams ? await searchParams : {};
@@ -212,8 +274,37 @@ export default async function EstimatesPage({
     resolvedSearchParams.status === "converted"
       ? resolvedSearchParams.status
       : "all";
+  const sortMode =
+    resolvedSearchParams.sort === "newest" ||
+    resolvedSearchParams.sort === "oldest" ||
+    resolvedSearchParams.sort === "highest-value" ||
+    resolvedSearchParams.sort === "estimate-number"
+      ? resolvedSearchParams.sort
+      : "needs-attention";
+  const pageSize = 15;
+  const requestedLimit = Number(resolvedSearchParams.limit ?? pageSize);
+  const visibleLimit =
+    Number.isFinite(requestedLimit) && requestedLimit > pageSize
+      ? Math.min(100, Math.floor(requestedLimit))
+      : pageSize;
   const businessQuery = `?business=${businessSlug}`;
   const estimateResultsAnchor = "#estimate-results";
+  const baseResultsParams = new URLSearchParams({
+    business: businessSlug,
+  });
+
+  if (searchTerm) {
+    baseResultsParams.set("q", searchTerm);
+  }
+
+  if (statusFilter !== "all") {
+    baseResultsParams.set("status", statusFilter);
+  }
+
+  if (sortMode !== "needs-attention") {
+    baseResultsParams.set("sort", sortMode);
+  }
+
 
   const { data: businessData, error: businessError } = await supabase
     .from("businesses")
@@ -258,22 +349,27 @@ export default async function EstimatesPage({
     if (estimateIds.length > 0) {
       const { data: invoiceData, error: invoiceError } = await supabase
         .from("invoices")
-        .select("estimate_id")
+        .select("id, estimate_id, display_id, status")
         .eq("business_id", selectedBusiness.id)
         .in("estimate_id", estimateIds);
 
       if (invoiceError) {
         console.warn("Linked invoices could not be loaded:", invoiceError.message);
       } else {
-        const linkedEstimateIds = new Set(
-          (invoiceData ?? [])
-            .map((invoice) => invoice.estimate_id)
-            .filter(Boolean)
+        const invoiceByEstimateId = new Map(
+          ((invoiceData ?? []) as LinkedInvoice[])
+            .filter((invoice) => Boolean(invoice.estimate_id))
+            .map((invoice) => [invoice.estimate_id as string, invoice])
         );
 
         estimates = estimates.map((estimate) => ({
           ...estimate,
-          hasLinkedInvoice: linkedEstimateIds.has(estimate.id),
+          hasLinkedInvoice: invoiceByEstimateId.has(estimate.id),
+          linkedInvoiceId: invoiceByEstimateId.get(estimate.id)?.id ?? null,
+          linkedInvoiceDisplayId:
+            invoiceByEstimateId.get(estimate.id)?.display_id ?? null,
+          linkedInvoiceStatus:
+            invoiceByEstimateId.get(estimate.id)?.status ?? null,
         }));
       }
 
@@ -351,6 +447,44 @@ export default async function EstimatesPage({
 
     return searchableText.includes(searchTerm.toLowerCase());
   });
+  const sortedFilteredEstimates = [...filteredEstimates].sort((left, right) => {
+    if (sortMode === "newest") {
+      return (
+        new Date(right.created_at ?? 0).getTime() -
+        new Date(left.created_at ?? 0).getTime()
+      );
+    }
+
+    if (sortMode === "oldest") {
+      return (
+        new Date(left.created_at ?? 0).getTime() -
+        new Date(right.created_at ?? 0).getTime()
+      );
+    }
+
+    if (sortMode === "highest-value") {
+      return (
+        parseEstimateAmount(right.estimate_amount) -
+        parseEstimateAmount(left.estimate_amount) ||
+        compareEstimateNumbers(left, right)
+      );
+    }
+
+    if (sortMode === "estimate-number") {
+      return compareEstimateNumbers(left, right);
+    }
+
+    return (
+      getEstimateAttentionScore(right) -
+        getEstimateAttentionScore(left) ||
+      compareEstimateNumbers(left, right)
+    );
+  });
+  const visibleEstimates = sortedFilteredEstimates.slice(0, visibleLimit);
+  const hasMoreEstimates = sortedFilteredEstimates.length > visibleLimit;
+  const loadMoreParams = new URLSearchParams(baseResultsParams);
+  loadMoreParams.set("limit", String(visibleLimit + pageSize));
+  const loadMoreHref = `/estimates?${loadMoreParams.toString()}${estimateResultsAnchor}`;
 
   const draftEstimates = estimates.filter(
     (estimate) => getPipelineStatusKey(estimate) === "draft"
@@ -570,31 +704,72 @@ export default async function EstimatesPage({
     .sort((left, right) => right.score - left.score)
     .slice(0, 4);
 
+  const buildResultsHref = (overrides: {
+    status?: string;
+    sort?: string;
+    q?: string;
+    limit?: string | null;
+  }) => {
+    const params = new URLSearchParams(baseResultsParams);
+
+    if (overrides.status) {
+      if (overrides.status === "all") {
+        params.delete("status");
+      } else {
+        params.set("status", overrides.status);
+      }
+    }
+
+    if (overrides.sort) {
+      if (overrides.sort === "needs-attention") {
+        params.delete("sort");
+      } else {
+        params.set("sort", overrides.sort);
+      }
+    }
+
+    if (overrides.q !== undefined) {
+      if (overrides.q) {
+        params.set("q", overrides.q);
+      } else {
+        params.delete("q");
+      }
+    }
+
+    if (overrides.limit === null) {
+      params.delete("limit");
+    } else if (overrides.limit) {
+      params.set("limit", overrides.limit);
+    }
+
+    return `/estimates?${params.toString()}${estimateResultsAnchor}`;
+  };
+
   const filterLinks = [
     {
       label: "All",
       value: "all",
-      href: `/estimates${businessQuery}${searchTerm ? `&q=${encodeURIComponent(searchTerm)}` : ""}${estimateResultsAnchor}`,
+      href: buildResultsHref({ status: "all", limit: null }),
     },
     {
       label: "Draft",
       value: "draft",
-      href: `/estimates${businessQuery}&status=draft${searchTerm ? `&q=${encodeURIComponent(searchTerm)}` : ""}${estimateResultsAnchor}`,
+      href: buildResultsHref({ status: "draft", limit: null }),
     },
     {
       label: "Sent",
       value: "sent",
-      href: `/estimates${businessQuery}&status=sent${searchTerm ? `&q=${encodeURIComponent(searchTerm)}` : ""}${estimateResultsAnchor}`,
+      href: buildResultsHref({ status: "sent", limit: null }),
     },
     {
       label: "Approved",
       value: "approved",
-      href: `/estimates${businessQuery}&status=approved${searchTerm ? `&q=${encodeURIComponent(searchTerm)}` : ""}${estimateResultsAnchor}`,
+      href: buildResultsHref({ status: "approved", limit: null }),
     },
     {
       label: "Converted",
       value: "converted",
-      href: `/estimates${businessQuery}&status=converted${searchTerm ? `&q=${encodeURIComponent(searchTerm)}` : ""}${estimateResultsAnchor}`,
+      href: buildResultsHref({ status: "converted", limit: null }),
     },
   ];
 
@@ -641,21 +816,19 @@ export default async function EstimatesPage({
         ) : null}
 
         {!estimatesLoadFailed ? (
-        <Card className="estimate-command-center overflow-hidden border-sky-500/20 bg-gradient-to-br from-zinc-950 via-zinc-900 to-slate-950">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+        <Card className="estimate-command-center overflow-hidden border-sky-500/20 bg-gradient-to-br from-zinc-950 via-zinc-900 to-slate-950 p-3 sm:p-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="max-w-3xl">
-              <p className="text-sm uppercase tracking-[0.32em] text-sky-300">
-                Estimate Command Center
+              <p className="text-xs uppercase tracking-[0.28em] text-sky-300">
+                Estimate Workspace
               </p>
 
-              <h2 className="mt-3 text-3xl font-black text-white">
-                Turn proposals into billable work
+              <h2 className="mt-2 text-2xl font-black text-white">
+                What needs attention next
               </h2>
 
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-300">
-                Keep draft proposals moving, spot approved work that is ready for
-                invoicing, and track how much future revenue is still sitting in
-                estimates.
+              <p className="mt-1 max-w-2xl text-sm leading-5 text-zinc-300">
+                Drafts, follow-ups, and invoice-ready estimates first.
               </p>
             </div>
 
@@ -670,23 +843,23 @@ export default async function EstimatesPage({
             </div>
           </div>
 
-          <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+          <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
             {estimateHealthCards.map((metric) => (
               <Link
                 key={metric.label}
                 href={metric.href}
-                className="estimate-health-card rounded-2xl border border-zinc-800 bg-black/35 p-4 transition hover:-translate-y-0.5 hover:border-sky-400/60"
+                className="estimate-health-card rounded-2xl border border-zinc-800 bg-black/35 p-3 transition hover:-translate-y-0.5 hover:border-sky-400/60"
                 data-tone={metric.tone}
               >
-                <p className="text-xs font-bold uppercase tracking-[0.24em] text-zinc-400">
+                <p className="text-[0.68rem] font-bold uppercase tracking-[0.18em] text-zinc-400">
                   {metric.label}
                 </p>
 
-                <p className="mt-3 text-2xl font-black text-white">
+                <p className="mt-1 text-xl font-black text-white">
                   {metric.value}
                 </p>
 
-                <p className="mt-2 text-sm leading-5 text-zinc-400">
+                <p className="mt-1 text-xs leading-4 text-zinc-400">
                   {metric.detail}
                 </p>
               </Link>
@@ -694,13 +867,13 @@ export default async function EstimatesPage({
           </div>
 
           {topOpenEstimate ? (
-            <div className="estimate-top-open mt-5 flex flex-col gap-4 rounded-2xl border border-sky-400/20 bg-sky-500/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="estimate-top-open mt-3 flex flex-col gap-3 rounded-2xl border border-sky-400/20 bg-sky-500/10 p-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.24em] text-sky-200">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-sky-200">
                   Highest Open Proposal
                 </p>
 
-                <p className="mt-2 text-lg font-bold text-white">
+                <p className="mt-1 text-base font-bold text-white">
                   {topOpenEstimate.project_title ||
                     topOpenEstimate.display_id ||
                     "Open estimate"}
@@ -721,102 +894,53 @@ export default async function EstimatesPage({
             </div>
           ) : null}
 
-          <div className="estimate-proposal-radar mt-5 rounded-3xl border border-white/10 bg-black/25 p-4">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.24em] text-orange-300">
-                  Proposal Readiness
-                </p>
+          <details className="mt-3 rounded-2xl border border-white/10 bg-black/25 p-3">
+            <summary className="cursor-pointer text-sm font-black text-zinc-200">
+              More estimate signals
+            </summary>
 
-                <h3 className="mt-2 text-xl font-black text-white">
-                  What needs attention before the next bid meeting
-                </h3>
+            <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_1fr]">
+              <div className="grid gap-2 md:grid-cols-2">
+                {proposalReadinessCards.map((card) => (
+                  <Link
+                    key={card.label}
+                    href={card.href}
+                    data-tone={card.tone}
+                    className="estimate-proposal-card rounded-2xl border border-white/10 bg-zinc-950/60 p-3 transition hover:-translate-y-0.5 hover:border-orange-300/60"
+                  >
+                    <p className="text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+                      {card.label}
+                    </p>
+
+                    <p className="mt-1 line-clamp-1 text-lg font-black text-white">
+                      {card.value}
+                    </p>
+
+                    <p className="mt-1 text-xs leading-4 text-zinc-400">
+                      {card.detail}
+                    </p>
+                  </Link>
+                ))}
               </div>
 
-              <span className="rounded-full border border-white/10 px-3 py-1 text-xs font-black text-zinc-300">
-                {filteredEstimates.length} in current view
-              </span>
-            </div>
+              <div className="grid gap-2">
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <div className="estimate-proof-stat">
+                    <span>Email proof</span>
+                    <strong>{sentProofCount}</strong>
+                  </div>
 
-            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              {proposalReadinessCards.map((card) => (
-                <Link
-                  key={card.label}
-                  href={card.href}
-                  data-tone={card.tone}
-                  className="estimate-proposal-card rounded-2xl border border-white/10 bg-zinc-950/60 p-4 transition hover:-translate-y-0.5 hover:border-orange-300/60"
-                >
-                  <p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">
-                    {card.label}
-                  </p>
+                  <div className="estimate-proof-stat">
+                    <span>Queue-linked</span>
+                    <strong>{queueLinkedEstimates.length}</strong>
+                  </div>
 
-                  <p className="mt-3 line-clamp-2 text-2xl font-black text-white">
-                    {card.value}
-                  </p>
-
-                  <p className="mt-2 min-h-12 text-sm leading-6 text-zinc-400">
-                    {card.detail}
-                  </p>
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          <div className="estimate-bid-intelligence mt-5 grid gap-4 lg:grid-cols-[1.1fr_1.6fr]">
-            <div className="rounded-3xl border border-white/10 bg-black/30 p-4">
-              <p className="text-xs font-black uppercase tracking-[0.24em] text-orange-300">
-                Bid Proof
-              </p>
-
-              <h3 className="mt-2 text-xl font-black text-white">
-                Evidence already captured
-              </h3>
-
-              <div className="mt-4 grid gap-3">
-                <div className="estimate-proof-stat">
-                  <span>Email proof</span>
-                  <strong>{sentProofCount}</strong>
+                  <div className="estimate-proof-stat">
+                    <span>Ready to bill</span>
+                    <strong>{approvedReadyForInvoice.length}</strong>
+                  </div>
                 </div>
 
-                <div className="estimate-proof-stat">
-                  <span>Queue-linked scopes</span>
-                  <strong>{queueLinkedEstimates.length}</strong>
-                </div>
-
-                <div className="estimate-proof-stat">
-                  <span>Ready to bill</span>
-                  <strong>{approvedReadyForInvoice.length}</strong>
-                </div>
-              </div>
-
-              <p className="mt-4 text-sm leading-6 text-zinc-400">
-                Estimate sends and invoice conversions come from the existing
-                activity history, so future sales reporting can build on the
-                same audit trail.
-              </p>
-            </div>
-
-            <div className="rounded-3xl border border-white/10 bg-black/30 p-4">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <p className="text-xs font-black uppercase tracking-[0.24em] text-orange-300">
-                    Follow-up Queue
-                  </p>
-
-                  <h3 className="mt-2 text-xl font-black text-white">
-                    Proposals most likely to need a move
-                  </h3>
-                </div>
-
-                <Link
-                  href={`/activity${businessQuery}`}
-                  className="rounded-full border border-white/10 px-3 py-1 text-xs font-black text-zinc-300 transition hover:border-orange-300 hover:text-white"
-                >
-                  View Activity
-                </Link>
-              </div>
-
-              <div className="mt-4 grid gap-3">
                 {estimateAttentionList.length > 0 ? (
                   estimateAttentionList.map((item) => (
                     <Link
@@ -863,7 +987,7 @@ export default async function EstimatesPage({
                 )}
               </div>
             </div>
-          </div>
+          </details>
         </Card>
         ) : null}
 
@@ -871,7 +995,7 @@ export default async function EstimatesPage({
         <Card>
           <form
             action={`/estimates${estimateResultsAnchor}`}
-            className="grid gap-4 md:grid-cols-[1fr_auto]"
+            className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto]"
           >
             <input
               type="hidden"
@@ -898,6 +1022,24 @@ export default async function EstimatesPage({
                 placeholder="Search number, project, customer, or status"
                 className="app-form-input w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
               />
+            </div>
+
+            <div>
+              <label className="app-form-label mb-2 block text-sm text-zinc-400">
+                Sort
+              </label>
+
+              <select
+                name="sort"
+                defaultValue={sortMode}
+                className="app-form-input w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+              >
+                <option value="needs-attention">Needs Attention</option>
+                <option value="newest">Newest</option>
+                <option value="oldest">Oldest</option>
+                <option value="highest-value">Highest Value</option>
+                <option value="estimate-number">Estimate Number</option>
+              </select>
             </div>
 
             <div className="flex items-end gap-3">
@@ -1038,8 +1180,8 @@ export default async function EstimatesPage({
             </div>
           </Card>
         ) : (
-          <div className="grid gap-4">
-            {filteredEstimates.map((estimate) => {
+          <div className="grid gap-3 pb-28">
+            {visibleEstimates.map((estimate) => {
               const statusKey = getPipelineStatusKey(estimate);
               const isConverted = statusKey === "converted";
               const isLinkedToInvoice = Boolean(estimate.hasLinkedInvoice);
@@ -1049,31 +1191,34 @@ export default async function EstimatesPage({
                 getEstimateFreshnessDate(estimate)
               );
               const readiness = getEstimateReadiness(estimate);
-              const nextAction =
-                isConverted || isLinkedToInvoice
+              const hasMissingReadiness = readiness.missing.length > 0;
+              const isSendableDraft =
+                statusKey === "draft" &&
+                !isLinkedToInvoice &&
+                !isConverted &&
+                !hasMissingReadiness;
+              const nextActionLabel =
+                isLinkedToInvoice
                   ? {
                       label: "Invoice connected",
-                      detail:
-                        "This estimate is already converted or linked to an invoice.",
                       tone: "success",
                     }
+                  : isConverted
+                    ? {
+                        label: "No action required",
+                        tone: "success",
+                      }
                   : readyToInvoice
                     ? {
-                        label: "Ready to invoice",
-                        detail:
-                          "Approved work is waiting. Open it and convert the proposal into an invoice.",
+                        label: "Create invoice",
                         tone: "success",
                       }
                     : statusKey === "sent"
                       ? {
                           label:
                             daysSinceSent !== null && daysSinceSent >= 3
-                              ? "Follow up now"
-                              : "Waiting for decision",
-                          detail:
-                            daysSinceSent !== null
-                              ? `Last sent ${formatDaysLabel(daysSinceSent).toLowerCase()}. Keep the proposal warm and capture the next client response.`
-                              : "This estimate is marked sent, but no send proof was found in activity history.",
+                              ? "Follow up"
+                              : "Awaiting approval",
                           tone:
                             daysSinceSent !== null && daysSinceSent >= 3
                               ? "warning"
@@ -1081,15 +1226,13 @@ export default async function EstimatesPage({
                         }
                     : statusKey === "draft"
                       ? {
-                          label: "Finish proposal",
-                          detail:
-                            "Review the scope, pricing, and terms so this can be sent or approved.",
+                          label: hasMissingReadiness
+                            ? `Missing ${readiness.missing.slice(0, 2).join(" and ")}`
+                            : "Ready to send",
                           tone: "warning",
                         }
                       : {
                           label: "Review status",
-                          detail:
-                            "Confirm the next step before this estimate moves into billing.",
                           tone: "info",
                         };
               const estimateLabel =
@@ -1097,194 +1240,161 @@ export default async function EstimatesPage({
                 estimate.project_title ||
                 estimate.customer_name ||
                 "Estimate";
+              const primaryAction = isLinkedToInvoice && estimate.linkedInvoiceId
+                ? {
+                    label: "Open Invoice",
+                    href: `/invoices/${estimate.linkedInvoiceId}${businessQuery}`,
+                  }
+                : readyToInvoice
+                  ? {
+                      label: "Create Invoice",
+                      href: `/estimates/${estimate.id}${businessQuery}`,
+                    }
+                  : isSendableDraft
+                    ? {
+                        label: "Send",
+                        href: `/estimates/${estimate.id}${businessQuery}#send-estimate`,
+                      }
+                    : statusKey === "draft"
+                      ? {
+                          label: "Edit",
+                          href: `/estimates/${estimate.id}/edit${businessQuery}`,
+                        }
+                      : {
+                          label: "Open",
+                          href: `/estimates/${estimate.id}${businessQuery}`,
+                        };
+              const proofLabel = (estimate.sentCount ?? 0) > 0
+                ? `${estimate.sentCount} send proof${
+                    estimate.sentCount === 1 ? "" : "s"
+                  }`
+                : "No send proof";
+              const touchedLabel =
+                daysSinceUpdate !== null
+                  ? `Touched ${formatDaysLabel(daysSinceUpdate).toLowerCase()}`
+                  : "No activity date";
+              const invoiceLabel =
+                estimate.linkedInvoiceDisplayId ??
+                (estimate.linkedInvoiceId ? "Invoice" : null);
 
               return (
                 <Card
                   key={estimate.id}
-                  className="estimate-list-card transition hover:border-orange-500/60 hover:bg-zinc-800"
+                  className="estimate-list-card p-3 transition hover:border-orange-500/60 hover:bg-zinc-800 sm:p-4"
                 >
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <p className="text-sm text-orange-400">
-                        {estimate.display_id ?? "Estimate"}
-                      </p>
+                  <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-black text-orange-300">
+                          {estimate.display_id ?? "Estimate"}
+                        </p>
 
-                      <h2 className="mt-1 text-2xl font-semibold">
+                        <StatusBadge
+                          status={getAuthoritativeStatusLabel(estimate)}
+                        />
+
+                        <span
+                          className="rounded-full border px-2 py-0.5 text-xs font-bold"
+                          data-tone={nextActionLabel.tone}
+                        >
+                          {nextActionLabel.label}
+                        </span>
+                      </div>
+
+                      <h2 className="mt-1 truncate text-base font-black text-white sm:text-lg">
                         {estimate.project_title || "Untitled Estimate"}
                       </h2>
 
-                      <p className="mt-1 text-zinc-400">
+                      <p className="mt-0.5 truncate text-sm text-zinc-400">
                         {estimate.customer_name || "Unknown Customer"}
                       </p>
+
+                      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs font-semibold text-zinc-400">
+                        <span>{estimate.queue_item_id ? "Queue-linked" : "No queue link"}</span>
+                        <span>{proofLabel}</span>
+                        <span>{touchedLabel}</span>
+                        {invoiceLabel ? (
+                          <span>
+                            Invoice {invoiceLabel}
+                            {estimate.linkedInvoiceStatus
+                              ? ` / ${estimate.linkedInvoiceStatus}`
+                              : ""}
+                          </span>
+                        ) : null}
+                        {hasMissingReadiness && !isLinkedToInvoice && !isConverted ? (
+                          <span className="text-amber-200">
+                            Add {readiness.missing.join(", ")}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
 
-                    <div className="text-right">
-                      <p className="text-xl font-bold text-orange-400">
+                    <div className="grid gap-2 sm:grid-cols-[auto_auto] sm:items-center lg:text-right">
+                      <p className="text-lg font-black text-orange-300">
                         {formatMoney(estimate.estimate_amount)}
                       </p>
 
-                      <div className="mt-2">
-                        <StatusBadge
-                          status={estimate.status || "Draft"}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div
-                    className="estimate-next-action mt-5 rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4"
-                    data-tone={nextAction.tone}
-                  >
-                    <p className="text-xs font-bold uppercase tracking-[0.24em] text-sky-300">
-                      Next Best Action
-                    </p>
-
-                    <p className="mt-2 text-base font-bold text-white">
-                      {nextAction.label}
-                    </p>
-
-                    <p className="mt-1 text-sm leading-5 text-zinc-400">
-                      {nextAction.detail}
-                    </p>
-                  </div>
-
-                  <div
-                    className="estimate-readiness-panel mt-4 rounded-2xl border border-zinc-800 bg-black/30 p-4"
-                    data-tone={readiness.tone}
-                  >
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-300">
-                          Proposal Readiness
-                        </p>
-
-                        <p className="mt-2 text-base font-black text-white">
-                          {readiness.label}
-                        </p>
-
-                        <p className="mt-1 text-sm leading-5 text-zinc-400">
-                          {readiness.detail}
-                        </p>
-                      </div>
-
-                      <div className="min-w-28 text-left sm:text-right">
-                        <p className="text-2xl font-black text-white">
-                          {readiness.score}%
-                        </p>
-
-                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-500">
-                          Ready
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-zinc-800">
-                      <span
-                        className="block h-full rounded-full"
-                        style={{ width: `${readiness.score}%` }}
-                      />
-                    </div>
-
-                    {readiness.missing.length > 0 ? (
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {readiness.missing.map((item) => (
-                          <span key={item}>{item}</span>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-
-                  <div className="estimate-proof-strip mt-4 grid gap-2 md:grid-cols-4">
-                    <span
-                      data-tone={
-                        (estimate.sentCount ?? 0) > 0 ? "success" : "warning"
-                      }
-                    >
-                      {(estimate.sentCount ?? 0) > 0
-                        ? `${estimate.sentCount} send proof${
-                            estimate.sentCount === 1 ? "" : "s"
-                          }`
-                        : "No send proof"}
-                    </span>
-
-                    <span data-tone={estimate.queue_item_id ? "info" : "neutral"}>
-                      {estimate.queue_item_id ? "Queue-linked" : "No queue link"}
-                    </span>
-
-                    <span
-                      data-tone={
-                        daysSinceUpdate !== null && daysSinceUpdate >= 7
-                          ? "warning"
-                          : "neutral"
-                      }
-                    >
-                      {daysSinceUpdate !== null
-                        ? `Touched ${formatDaysLabel(daysSinceUpdate).toLowerCase()}`
-                        : "No activity date"}
-                    </span>
-
-                    <span
-                      data-tone={readyToInvoice || isConverted ? "success" : "neutral"}
-                    >
-                      {isConverted || isLinkedToInvoice
-                        ? "Invoice connected"
-                        : readyToInvoice
-                          ? "Ready to invoice"
-                          : "Pipeline open"}
-                    </span>
-                  </div>
-
-                  <div className="mt-5 flex flex-wrap gap-3 border-t border-zinc-800 pt-4">
-                    <Link
-                      href={`/estimates/${estimate.id}${businessQuery}`}
-                      className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-blue-700"
-                    >
-                      Open
-                    </Link>
-
-                    <Link
-                      href={`/estimates/${estimate.id}${businessQuery}#send-estimate`}
-                      className="rounded-xl border border-emerald-600 bg-emerald-500 px-4 py-2 text-sm font-bold text-white shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-600"
-                    >
-                      Send
-                    </Link>
-
-                    <Link
-                      href={`/estimates/${estimate.id}/print${businessQuery}`}
-                      className="app-button-secondary rounded-xl bg-zinc-800 px-4 py-2 text-sm font-bold text-white transition hover:bg-zinc-700"
-                    >
-                      Print
-                    </Link>
-
-                    {isConverted ? (
-                      <span className="rounded-xl border border-zinc-700 px-4 py-2 text-sm font-bold text-zinc-500">
-                        Converted
-                      </span>
-                    ) : (
                       <Link
-                        href={`/estimates/${estimate.id}/edit${businessQuery}`}
-                        className="app-button-secondary rounded-xl bg-zinc-800 px-4 py-2 text-sm font-bold text-white transition hover:bg-zinc-700"
+                        href={primaryAction.href}
+                        className="rounded-xl bg-blue-600 px-4 py-2 text-center text-sm font-bold text-white transition hover:bg-blue-700"
                       >
-                        Edit
+                        {primaryAction.label}
                       </Link>
-                    )}
-
-                    {isLinkedToInvoice ? (
-                      <span className="rounded-xl border border-zinc-700 px-4 py-2 text-sm font-bold text-zinc-500">
-                        Linked to invoice
-                      </span>
-                    ) : (
-                      <DeleteEstimateButton
-                        estimateId={estimate.id}
-                        businessId={estimate.business_id}
-                        estimateLabel={estimateLabel}
-                      />
-                    )}
+                    </div>
                   </div>
+
+                  <details className="mt-2 text-sm text-zinc-400">
+                    <summary className="cursor-pointer font-semibold text-zinc-300">
+                      Secondary actions
+                    </summary>
+
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Link
+                        href={`/estimates/${estimate.id}${businessQuery}`}
+                        className="app-button-secondary rounded-xl bg-zinc-800 px-3 py-2 text-sm font-bold text-white transition hover:bg-zinc-700"
+                      >
+                        Open Estimate
+                      </Link>
+
+                      <Link
+                        href={`/estimates/${estimate.id}/print${businessQuery}`}
+                        className="app-button-secondary rounded-xl bg-zinc-800 px-3 py-2 text-sm font-bold text-white transition hover:bg-zinc-700"
+                      >
+                        Print
+                      </Link>
+
+                      {!isLinkedToInvoice && !isConverted ? (
+                        <Link
+                          href={`/estimates/${estimate.id}/edit${businessQuery}`}
+                          className="app-button-secondary rounded-xl bg-zinc-800 px-3 py-2 text-sm font-bold text-white transition hover:bg-zinc-700"
+                        >
+                          Edit
+                        </Link>
+                      ) : null}
+
+                      {!isLinkedToInvoice && !isConverted ? (
+                        <DeleteEstimateButton
+                          estimateId={estimate.id}
+                          businessId={estimate.business_id}
+                          estimateLabel={estimateLabel}
+                        />
+                      ) : null}
+                    </div>
+                  </details>
                 </Card>
               );
             })}
-          </div>
+
+            {hasMoreEstimates ? (
+              <div className="flex justify-center pt-2">
+                <Link href={loadMoreHref} scroll={false}>
+                  <Button variant="secondary">
+                    Load More Estimates
+                  </Button>
+                </Link>
+              </div>
+            ) : null}
+                  </div>
         )}
         </div>
       </div>

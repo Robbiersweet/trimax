@@ -40,7 +40,7 @@ assert(
 
 assert(
   estimatesPage.includes("{!estimatesLoadFailed ? (") &&
-    estimatesPage.includes("Estimate Command Center") &&
+    estimatesPage.includes("Estimate Workspace") &&
     estimatesPage.includes("estimateHealthCards.map"),
   "Metrics must be hidden when the list query fails so zero values are not shown as authoritative."
 );
