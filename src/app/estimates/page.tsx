@@ -96,6 +96,14 @@ function getDaysSince(value: string | null | undefined) {
   );
 }
 
+function getEstimateFreshnessDate(estimate: Estimate) {
+  return (
+    estimate.lastActivityAt ??
+    estimate.updated_at ??
+    estimate.created_at
+  );
+}
+
 function getDetailString(
   details: Record<string, unknown> | null | undefined,
   key: string
@@ -217,6 +225,7 @@ export default async function EstimatesPage({
   let estimateLoadMessage = businessError
     ? "Workspace details could not be loaded. Try signing in again, then reopen this workspace."
     : null;
+  let estimatesLoadFailed = Boolean(businessError);
 
   if (businessError) {
     console.warn("Estimates workspace lookup failed:", businessError.message);
@@ -230,13 +239,14 @@ export default async function EstimatesPage({
     const { data, error } = await supabase
       .from("estimates")
       .select(
-        "id, business_id, client_id, queue_item_id, display_id, customer_name, project_title, project_address, service_address, reference, estimate_amount, status, notes, terms, created_at, updated_at"
+        "id, business_id, client_id, queue_item_id, display_id, customer_name, project_title, project_address, service_address, reference, estimate_amount, status, notes, terms, created_at"
       )
       .eq("business_id", selectedBusiness.id)
       .order("created_at", { ascending: false });
 
     if (error) {
       console.warn("Estimates could not be loaded:", error.message);
+      estimatesLoadFailed = true;
       estimateLoadMessage =
         "Estimates could not be loaded. Try signing in again; if this stays here, the estimate access settings need attention.";
     }
@@ -388,12 +398,14 @@ export default async function EstimatesPage({
     ? Math.round((sentProofCount / estimates.length) * 100)
     : 0;
   const staleDraftEstimates = draftEstimates.filter((estimate) => {
-    const age = getDaysSince(estimate.updated_at ?? estimate.created_at);
+    const age = getDaysSince(getEstimateFreshnessDate(estimate));
 
     return age !== null && age >= 7;
   });
   const sentFollowUpEstimates = sentEstimates.filter((estimate) => {
-    const age = getDaysSince(estimate.lastSentAt ?? estimate.updated_at);
+    const age = getDaysSince(
+      estimate.lastSentAt ?? getEstimateFreshnessDate(estimate)
+    );
 
     return age !== null && age >= 3;
   });
@@ -481,7 +493,7 @@ export default async function EstimatesPage({
       const amount = parseEstimateAmount(estimate.estimate_amount);
       const readiness = getEstimateReadiness(estimate);
       const daysSinceUpdate = getDaysSince(
-        estimate.lastActivityAt ?? estimate.updated_at ?? estimate.created_at
+        getEstimateFreshnessDate(estimate)
       );
       const daysSinceSent = getDaysSince(estimate.lastSentAt);
       const reasons: string[] = [];
@@ -610,16 +622,25 @@ export default async function EstimatesPage({
 
         {estimateLoadMessage ? (
           <Card className="app-notice-card border-amber-500/40 bg-amber-500/10">
-            <p className="text-sm font-semibold text-amber-200">
-              Estimate notice
-            </p>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-amber-200">
+                  Estimate notice
+                </p>
 
-            <p className="mt-2 text-sm leading-6 text-amber-100/90">
-              {estimateLoadMessage}
-            </p>
+                <p className="mt-2 text-sm leading-6 text-amber-100/90">
+                  {estimateLoadMessage}
+                </p>
+              </div>
+
+              <Link href={`/estimates${businessQuery}${estimateResultsAnchor}`}>
+                <Button variant="secondary">Retry</Button>
+              </Link>
+            </div>
           </Card>
         ) : null}
 
+        {!estimatesLoadFailed ? (
         <Card className="estimate-command-center overflow-hidden border-sky-500/20 bg-gradient-to-br from-zinc-950 via-zinc-900 to-slate-950">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-3xl">
@@ -844,7 +865,9 @@ export default async function EstimatesPage({
             </div>
           </div>
         </Card>
+        ) : null}
 
+        {!estimatesLoadFailed ? (
         <Card>
           <form
             action={`/estimates${estimateResultsAnchor}`}
@@ -890,7 +913,9 @@ export default async function EstimatesPage({
             </div>
           </form>
         </Card>
+        ) : null}
 
+        {!estimatesLoadFailed ? (
         <div className="workspace-filter-bar flex flex-wrap gap-3 rounded-2xl border border-zinc-800 p-2">
           {filterLinks.map((filter) => (
             <Link
@@ -907,12 +932,37 @@ export default async function EstimatesPage({
             </Link>
           ))}
         </div>
+        ) : null}
 
         <div
           id="estimate-results"
           className="estimate-results-anchor scroll-mt-6"
         >
-        {estimates.length > 0 ? (
+        {estimatesLoadFailed ? (
+          <Card className="app-empty-state border-amber-500/40 bg-zinc-950/80">
+            <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-amber-200">
+                  Estimates Not Loaded
+                </p>
+
+                <h2 className="mt-2 text-2xl font-black text-white">
+                  Retry the estimate list
+                </h2>
+
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
+                  Trimax did not use the zero totals because the estimate list
+                  did not load cleanly. Retry the workspace, then sign in again
+                  if the notice remains.
+                </p>
+              </div>
+
+              <Link href={`/estimates${businessQuery}${estimateResultsAnchor}`}>
+                <Button className="w-full sm:w-auto">Retry</Button>
+              </Link>
+            </div>
+          </Card>
+        ) : estimates.length > 0 ? (
           <div className="estimate-filter-summary flex flex-col gap-2 rounded-2xl border border-zinc-800 bg-zinc-900/60 px-4 py-3 text-sm text-zinc-300 sm:flex-row sm:items-center sm:justify-between">
             <span>
               Showing {filteredEstimates.length} of {estimates.length} estimates
@@ -925,19 +975,19 @@ export default async function EstimatesPage({
           </div>
         ) : null}
 
-        {estimates.length === 0 ? (
-          <Card className="app-empty-state border-sky-200 bg-sky-50">
+        {!estimatesLoadFailed && estimates.length === 0 ? (
+          <Card className="app-empty-state border-sky-500/40 bg-zinc-950/80">
             <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.24em] text-sky-700">
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-zinc-400">
                   Estimate Workspace Ready
                 </p>
 
-                <h2 className="mt-2 text-2xl font-black text-slate-950">
+                <h2 className="mt-2 text-2xl font-black text-white">
                   Start the first proposal
                 </h2>
 
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
                   Create a clean estimate from scratch, or open the queue when
                   apartment turn details should carry into the proposal.
                 </p>
@@ -956,19 +1006,19 @@ export default async function EstimatesPage({
               </div>
             </div>
           </Card>
-        ) : filteredEstimates.length === 0 ? (
-          <Card className="app-empty-state border-dashed border-slate-300 bg-white">
+        ) : !estimatesLoadFailed && filteredEstimates.length === 0 ? (
+          <Card className="app-empty-state border-dashed border-zinc-700 bg-zinc-950/80">
             <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-500">
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-zinc-400">
                   Filter Check
                 </p>
 
-                <h2 className="mt-2 text-2xl font-black text-slate-950">
+                <h2 className="mt-2 text-2xl font-black text-white">
                   No estimates match this view
                 </h2>
 
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
                   Try a broader search, switch back to all estimate statuses, or
                   start a fresh proposal if this is new work.
                 </p>
@@ -996,7 +1046,7 @@ export default async function EstimatesPage({
               const readyToInvoice = statusKey === "approved" && !isLinkedToInvoice;
               const daysSinceSent = getDaysSince(estimate.lastSentAt);
               const daysSinceUpdate = getDaysSince(
-                estimate.lastActivityAt ?? estimate.updated_at ?? estimate.created_at
+                getEstimateFreshnessDate(estimate)
               );
               const readiness = getEstimateReadiness(estimate);
               const nextAction =
