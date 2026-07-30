@@ -11,6 +11,10 @@ const workspaceBackBar = readFileSync(
   resolve(root, "src/app/components/WorkspaceBackBar.tsx"),
   "utf8"
 );
+const workspaceFloatingControls = readFileSync(
+  resolve(root, "src/app/components/WorkspaceFloatingControls.tsx"),
+  "utf8"
+);
 const appShell = readFileSync(
   resolve(root, "src/app/components/AppShell.tsx"),
   "utf8"
@@ -43,19 +47,44 @@ const batchPaymentPage = readFileSync(
   resolve(root, "src/app/invoices/batch-payment/page.tsx"),
   "utf8"
 );
+const settingsPage = readFileSync(
+  resolve(root, "src/app/settings/page.tsx"),
+  "utf8"
+);
 
 assert(
-  appShell.includes("<WorkspaceBackBar />") &&
-    appShell.includes("<QuickCommandCenter />") &&
-    appShell.indexOf("<WorkspaceBackBar />") <
-      appShell.indexOf("<QuickCommandCenter />"),
-  "AppShell must render exactly one floating Back control immediately before Command."
+  appShell.includes("<WorkspaceFloatingControls />") &&
+    !appShell.includes("<WorkspaceBackBar />") &&
+    !appShell.includes("<QuickCommandCenter />"),
+  "AppShell must delegate the protected floating Back/Command pair to one shared component."
 );
 
 assert.equal(
-  (appShell.match(/<WorkspaceBackBar \/>/g) ?? []).length,
+  (appShell.match(/<WorkspaceFloatingControls \/>/g) ?? []).length,
   1,
-  "AppShell must not duplicate the floating Back control."
+  "AppShell must not duplicate the protected floating-control pair."
+);
+
+assert(
+  workspaceFloatingControls.includes('data-protected-floating-pair="true"') &&
+    workspaceFloatingControls.includes('data-floating-control-group="true"') &&
+    workspaceFloatingControls.includes("<WorkspaceBackBar />") &&
+    workspaceFloatingControls.includes("<QuickCommandCenter />") &&
+    workspaceFloatingControls.indexOf("<WorkspaceBackBar />") <
+      workspaceFloatingControls.indexOf("<QuickCommandCenter />"),
+  "The shared floating-control component must render exactly one Back immediately left of Command."
+);
+
+assert.equal(
+  (workspaceFloatingControls.match(/<WorkspaceBackBar \/>/g) ?? []).length,
+  1,
+  "The protected floating-control pair must render exactly one Back wrapper."
+);
+
+assert.equal(
+  (workspaceFloatingControls.match(/<QuickCommandCenter \/>/g) ?? []).length,
+  1,
+  "The protected floating-control pair must render exactly one Command control."
 );
 
 assert(
@@ -113,6 +142,7 @@ assert(
 assert(
   workspaceBackBar.includes("if (pathname === \"/\" || !section)") &&
     workspaceBackBar.includes("return withBusiness(\"/\", business)") &&
+    workspaceBackBar.includes("floatingBackExcludedPathnames") &&
     !workspaceBackBar.includes("pathname === \"/\" ||\n    parts.length === 0") &&
     !workspaceBackBar.includes("primaryWorkspaceSections"),
   "Dashboard and top-level workspace routes must not be suppressed by shared floating Back visibility."
@@ -134,6 +164,51 @@ assert(
   !dashboardPage.includes("BackButton") &&
     !dashboardPage.includes("data-floating-back-control"),
   "Dashboard must not render a page-content Back control or duplicate the shared floating Back."
+);
+
+assert(
+  !settingsPage.includes("BackButton") &&
+    !settingsPage.includes("returnToParam") &&
+    !settingsPage.includes("returnTo ?"),
+  "Settings must rely on the shared floating Back control instead of rendering a page-content duplicate."
+);
+
+const representativeWorkspaceRoutes = [
+  "/",
+  "/queue",
+  "/queue/[id]",
+  "/estimates",
+  "/estimates/[id]",
+  "/estimates/[id]/edit",
+  "/invoices",
+  "/invoices/[id]",
+  "/invoices/[id]/edit",
+  "/invoices/batch-payment",
+  "/invoices/batch-send",
+  "/payments",
+  "/job-sessions",
+  "/schedule",
+  "/property-sales",
+  "/property-intelligence",
+  "/settings",
+];
+
+assert(
+  representativeWorkspaceRoutes.every((route) => route.startsWith("/")) &&
+    representativeWorkspaceRoutes.includes("/") &&
+    representativeWorkspaceRoutes.includes("/queue") &&
+    representativeWorkspaceRoutes.includes("/estimates") &&
+    representativeWorkspaceRoutes.includes("/invoices") &&
+    representativeWorkspaceRoutes.includes("/payments") &&
+    representativeWorkspaceRoutes.includes("/settings"),
+  "Floating Back route coverage must include representative top-level, detail, batch, property, payment, and settings workspaces."
+);
+
+assert(
+  representativeWorkspaceRoutes.every(
+    (route) => !workspaceBackBar.includes(`floatingBackExcludedPathnames.add("${route}")`)
+  ),
+  "Representative workspace routes must not be individually hidden while Command remains available."
 );
 
 assert(

@@ -136,6 +136,10 @@ const workspaceBackBar = readFileSync(
   resolve(root, "src/app/components/WorkspaceBackBar.tsx"),
   "utf8"
 );
+const workspaceFloatingControls = readFileSync(
+  resolve(root, "src/app/components/WorkspaceFloatingControls.tsx"),
+  "utf8"
+);
 const globalsCss = readFileSync(resolve(root, "src/app/globals.css"), "utf8");
 const queueClickableCard = readFileSync(
   resolve(root, "src/app/components/QueueClickableCard.tsx"),
@@ -507,11 +511,16 @@ assert(
   "Queue detail must avoid duplicate page-level Back and Create Estimate actions."
 );
 assert(
-  appShell.includes("<WorkspaceBackBar />") &&
-    appShell.includes("<QuickCommandCenter />") &&
-    appShell.includes("app-floating-control-group") &&
-    appShell.indexOf("<WorkspaceBackBar />") < appShell.indexOf("<QuickCommandCenter />") &&
-    appShell.indexOf("<WorkspaceBackBar />") < appShell.indexOf("<section") &&
+  appShell.includes("<WorkspaceFloatingControls />") &&
+    !appShell.includes("<WorkspaceBackBar />") &&
+    !appShell.includes("<QuickCommandCenter />") &&
+    appShell.indexOf("<WorkspaceFloatingControls />") < appShell.indexOf("<section") &&
+    workspaceFloatingControls.includes("app-floating-control-group") &&
+    workspaceFloatingControls.includes('data-protected-floating-pair="true"') &&
+    workspaceFloatingControls.includes("<WorkspaceBackBar />") &&
+    workspaceFloatingControls.includes("<QuickCommandCenter />") &&
+    workspaceFloatingControls.indexOf("<WorkspaceBackBar />") <
+      workspaceFloatingControls.indexOf("<QuickCommandCenter />") &&
     appShell.includes("pb-32") &&
     workspaceBackBar.includes("app-floating-back-control") &&
     workspaceBackBar.includes('data-floating-back-control="true"') &&

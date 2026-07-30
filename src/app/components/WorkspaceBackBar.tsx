@@ -8,6 +8,10 @@ type SectionContext = {
   fallback: string;
 };
 
+// Protected policy: Back renders everywhere the authenticated floating Command
+// control renders unless a route is explicitly listed here with a tested reason.
+const floatingBackExcludedPathnames = new Set<string>([]);
+
 const sectionContexts: Record<string, SectionContext> = {
   activity: { fallback: "/" },
   clients: { fallback: "/clients" },
@@ -54,7 +58,7 @@ function shouldHideFloatingBack(pathname: string, hash: string) {
     return false;
   }
 
-  return false;
+  return floatingBackExcludedPathnames.has(pathname);
 }
 
 function shouldPreferParentRoute(pathname: string, hash: string) {

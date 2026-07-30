@@ -4,7 +4,6 @@ import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import AppShell from "../components/AppShell";
-import BackButton from "../components/BackButton";
 import Button from "../components/Button";
 import Card from "../components/Card";
 import InputField from "../components/InputField";
@@ -279,12 +278,6 @@ function BusinessSettingsPageContent() {
   const businessSlug =
     searchParams.get("business") ??
     "rnl-creations";
-  const returnToParam = searchParams.get("returnTo");
-  const returnTo =
-    returnToParam?.startsWith("/") &&
-    !returnToParam.startsWith("//")
-      ? returnToParam
-      : null;
 
   const [business, setBusiness] =
     useState<Business | null>(null);
@@ -1459,14 +1452,6 @@ function BusinessSettingsPageContent() {
 
       <div className="space-y-6">
         <div>
-          {returnTo ? (
-            <BackButton
-              label="Back"
-              fallbackHref={returnTo}
-              className="mb-4 rounded-full"
-            />
-          ) : null}
-
           <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
             Trimax
           </p>

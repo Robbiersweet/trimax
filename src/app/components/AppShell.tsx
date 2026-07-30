@@ -7,9 +7,8 @@ import FilteredResultsScroller from "./FilteredResultsScroller";
 import HashScrollRestorer from "./HashScrollRestorer";
 import Navigation from "./Navigation";
 import NavigationHistoryTracker from "./NavigationHistoryTracker";
-import QuickCommandCenter from "./QuickCommandCenter";
 import TrimaxRefreshControl from "./TrimaxRefreshControl";
-import WorkspaceBackBar from "./WorkspaceBackBar";
+import WorkspaceFloatingControls from "./WorkspaceFloatingControls";
 import {
   defaultMaintenanceSettings,
   loadMaintenanceSettings,
@@ -103,13 +102,7 @@ export default function AppShell({
       ) : (
         <div className="app-shell-content mx-auto flex w-full max-w-[112rem] flex-col px-4 py-5 lg:flex-row lg:gap-6 lg:px-6">
           <Navigation />
-          <div
-            className="app-floating-control-group"
-            data-floating-control-group="true"
-          >
-            <WorkspaceBackBar />
-            <QuickCommandCenter />
-          </div>
+          <WorkspaceFloatingControls />
           {canUseJobSessions ? <ActiveJobSessionDock /> : null}
 
           <section
