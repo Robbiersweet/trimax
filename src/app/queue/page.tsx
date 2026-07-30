@@ -467,54 +467,6 @@ function priorityPlannerHref(businessSlug: string, property?: string) {
   return `/queue?${params.toString()}`;
 }
 
-function viewCopy(view: string) {
-  if (view === "ready-soon") {
-    return {
-      title: "R&L Start Soon",
-      detail:
-        "Unscheduled units with a property deadline in the next 7 days.",
-    };
-  }
-
-  if (view === "needs-estimate") {
-    return {
-      title: "Needs Estimate",
-      detail:
-        "Queue items without linked estimates that still need review.",
-    };
-  }
-
-  if (view === "remediation") {
-    return {
-      title: "Remediation",
-      detail:
-        "Items flagged for smoker/remediation work or smoke notes.",
-    };
-  }
-
-  if (view === "history") {
-    return {
-      title: "All History",
-      detail:
-        "Active and completed queue records saved for reporting and unit history.",
-    };
-  }
-
-  if (view === "priority-planner") {
-    return {
-      title: "Priority Planner",
-      detail:
-        "Reorder active queue items for the selected property using manager requested priority.",
-    };
-  }
-
-  return {
-    title: "Active Work",
-    detail:
-      "Open queue items that still need estimate, scheduling, invoice, or completion attention.",
-  };
-}
-
 export default async function QueuePage({
   searchParams,
 }: {
@@ -549,7 +501,6 @@ export default async function QueuePage({
     propertyFilter === "all"
       ? `?business=${businessSlug}`
       : `?business=${businessSlug}&property=${propertyFilter}`;
-  const activeView = viewCopy(viewFilter);
 
   const { data: businessData, error: businessError } = await supabase
     .from("businesses")
@@ -1134,9 +1085,9 @@ export default async function QueuePage({
     compareQueueItems(first, second, sortMode)
   );
   const sortLinks = [
-    { label: "Sort by Requested Priority", value: "priority" },
-    { label: "Sort by Deadline", value: "deadline" },
-    { label: "Sort by Status", value: "status" },
+    { label: "Priority", value: "priority" },
+    { label: "Deadline", value: "deadline" },
+    { label: "Status", value: "status" },
   ];
 
   const statusLinks = [
@@ -1190,6 +1141,16 @@ export default async function QueuePage({
     },
   ];
   const isPriorityPlannerView = viewFilter === "priority-planner";
+  const selectedViewLink =
+    specialViewLinks.find((filter) => filter.value === viewFilter) ??
+    specialViewLinks[0];
+  const selectedSortLink =
+    sortLinks.find((filter) => filter.value === sortMode) ?? sortLinks[0];
+  const filtersAreDefault =
+    !searchTerm &&
+    statusFilter === "all" &&
+    viewFilter === "all" &&
+    sortMode === "priority";
 
   return (
     <AppShell>
@@ -1478,10 +1439,37 @@ export default async function QueuePage({
           </Card>
         ) : null}
 
-        <Card className="p-3 sm:p-4">
+        <Card
+          className="queue-compact-filter-toolbar p-3 sm:p-3.5"
+          data-queue-compact-toolbar="true"
+        >
+          <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-400">
+                Queue
+              </p>
+              <span className="rounded-full border border-sky-400/25 bg-sky-400/10 px-2.5 py-1 text-xs font-black text-sky-100">
+                {selectedViewLink.count}{" "}
+                {viewFilter === "history" ? "history" : "active"}
+              </span>
+              <span className="text-xs font-semibold text-zinc-500">
+                {displayQueueItems.length} shown
+              </span>
+            </div>
+
+            {!filtersAreDefault ? (
+              <Link
+                href={`/queue${businessQuery}#queue-results`}
+                className="text-sm font-black text-sky-200 transition hover:text-white"
+              >
+                Clear filters
+              </Link>
+            ) : null}
+          </div>
+
           <form
             action="/queue#queue-results"
-            className="grid gap-3 md:grid-cols-[1fr_auto]"
+            className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto]"
           >
             <input type="hidden" name="business" value={businessSlug} />
             {propertyFilter !== "all" ? (
@@ -1499,12 +1487,12 @@ export default async function QueuePage({
             {viewFilter !== "all" ? (
               <input type="hidden" name="view" value={viewFilter} />
             ) : null}
-            {sortMode !== "deadline" ? (
+            {sortMode !== "priority" ? (
               <input type="hidden" name="sort" value={sortMode} />
             ) : null}
 
             <div>
-              <label className="mb-2 block text-sm text-zinc-400">
+              <label className="mb-1.5 block text-sm text-zinc-400">
                 Search Queue
               </label>
 
@@ -1516,131 +1504,144 @@ export default async function QueuePage({
               />
             </div>
 
-            <div className="flex items-end gap-3">
+            <div className="flex items-end">
               <Button type="submit">Search</Button>
-
-              {(searchTerm ||
-                statusFilter !== "all" ||
-                viewFilter !== "all") && (
-                <Link href={`/queue${businessQuery}#queue-results`}>
-                  <Button variant="secondary">Clear</Button>
-                </Link>
-              )}
             </div>
           </form>
+
+          <div className="mt-3 grid gap-2">
+            <div className="grid gap-1.5 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-center">
+              <p className="text-[0.66rem] font-black uppercase tracking-[0.18em] text-zinc-500">
+                View
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {specialViewLinks.map((filter) => {
+                  const isSelected = viewFilter === filter.value;
+                  const isEmpty = filter.count === 0;
+                  const isHistory = filter.value === "history";
+
+                  return (
+                    <Link
+                      key={filter.value}
+                      href={queueHref(businessSlug, {
+                        q: searchTerm,
+                        property: propertyFilter,
+                        status: statusFilter,
+                        view: filter.value,
+                        sort: sortMode,
+                      })}
+                      scroll={false}
+                      data-queue-view-filter={filter.value}
+                      data-zero-count={isEmpty ? "true" : undefined}
+                      className={`inline-flex min-h-10 items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold transition ${
+                        isSelected
+                          ? "bg-sky-600 text-white shadow-sm shadow-sky-900/10"
+                          : isHistory
+                            ? "border border-zinc-800 text-zinc-400 hover:border-zinc-600 hover:text-white"
+                            : isEmpty
+                              ? "queue-filter-link-muted border border-zinc-900 text-zinc-500 hover:border-zinc-700 hover:text-zinc-300"
+                              : "queue-filter-link-inactive text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                      }`}
+                    >
+                      <span>{filter.label}</span>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs ${
+                          isSelected
+                            ? "bg-white/20 text-white"
+                            : isEmpty
+                              ? "bg-zinc-950 text-zinc-600"
+                              : "queue-filter-count-inactive bg-zinc-950 text-zinc-400"
+                        }`}
+                      >
+                        {filter.count}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid gap-1.5 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-center">
+              <p className="text-[0.66rem] font-black uppercase tracking-[0.18em] text-zinc-500">
+                Status
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {statusLinks.map((filter) => {
+                  const isSelected = statusFilter === filter.value;
+                  const isEmpty = filter.count === 0;
+
+                  return (
+                    <Link
+                      key={filter.value}
+                      href={queueHref(businessSlug, {
+                        q: searchTerm,
+                        property: propertyFilter,
+                        status: filter.value,
+                        view: viewFilter,
+                        sort: sortMode,
+                      })}
+                      scroll={false}
+                      data-queue-status-filter={filter.value}
+                      data-zero-count={isEmpty ? "true" : undefined}
+                      className={`inline-flex min-h-10 items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold transition ${
+                        isSelected
+                          ? "bg-sky-600 text-white shadow-sm shadow-sky-900/10"
+                          : isEmpty
+                            ? "queue-filter-link-muted border border-zinc-900 text-zinc-500 hover:border-zinc-700 hover:text-zinc-300"
+                            : "queue-filter-link-inactive text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                      }`}
+                    >
+                      <span>{filter.label}</span>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs ${
+                          isSelected
+                            ? "bg-white/20 text-white"
+                            : isEmpty
+                              ? "bg-zinc-950 text-zinc-600"
+                              : "queue-filter-count-inactive bg-zinc-950 text-zinc-400"
+                        }`}
+                      >
+                        {filter.count}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid gap-1.5 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center">
+              <p className="text-[0.66rem] font-black uppercase tracking-[0.18em] text-zinc-500">
+                Sort
+              </p>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="rounded-xl border border-zinc-800 bg-black/20 px-3 py-2 text-sm font-semibold text-zinc-300">
+                  Sort: {selectedSortLink.label}
+                </span>
+                {sortLinks.map((filter) => (
+                  <Link
+                    key={filter.value}
+                    href={queueHref(businessSlug, {
+                      q: searchTerm,
+                      property: propertyFilter,
+                      status: statusFilter,
+                      view: viewFilter,
+                      sort: filter.value,
+                    })}
+                    scroll={false}
+                    data-queue-sort-filter={filter.value}
+                    className={`inline-flex min-h-10 items-center rounded-xl px-3 py-2 text-sm font-semibold transition ${
+                      sortMode === filter.value
+                        ? "bg-sky-600 text-white shadow-sm shadow-sky-900/10"
+                        : "queue-filter-link-inactive text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                    }`}
+                  >
+                    {filter.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
         </Card>
-
-        <div className="queue-filter-bar flex flex-wrap gap-3 rounded-2xl border border-zinc-800 p-2">
-          {specialViewLinks.map((filter) => (
-            <Link
-              key={filter.value}
-              href={queueHref(businessSlug, {
-                q: searchTerm,
-                property: propertyFilter,
-                status: statusFilter,
-                view: filter.value,
-                sort: sortMode,
-              })}
-              scroll={false}
-              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
-                viewFilter === filter.value
-                  ? "bg-sky-600 text-white shadow-sm shadow-sky-900/10"
-                  : "queue-filter-link-inactive text-zinc-300 hover:bg-zinc-800 hover:text-white"
-              }`}
-            >
-              <span
-                className={`filter-tab-icon ${
-                  viewFilter === filter.value ? "filter-tab-icon-active" : ""
-                }`}
-                aria-hidden="true"
-              >
-                {filter.icon}
-              </span>
-              <span>{filter.label}</span>
-              <span
-                className={`rounded-full px-2 py-0.5 text-xs ${
-                  viewFilter === filter.value
-                    ? "bg-white/20 text-white"
-                    : "queue-filter-count-inactive bg-zinc-950 text-zinc-400"
-                }`}
-              >
-                {filter.count}
-              </span>
-            </Link>
-          ))}
-        </div>
-
-        <div className="queue-filter-bar flex flex-wrap gap-3 rounded-2xl border border-zinc-800 p-2">
-          {statusLinks.map((filter) => (
-            <Link
-              key={filter.value}
-              href={queueHref(businessSlug, {
-                q: searchTerm,
-                property: propertyFilter,
-                status: filter.value,
-                view: viewFilter,
-                sort: sortMode,
-              })}
-              scroll={false}
-              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
-                statusFilter === filter.value
-                  ? "bg-sky-600 text-white shadow-sm shadow-sky-900/10"
-                  : "queue-filter-link-inactive text-zinc-300 hover:bg-zinc-800 hover:text-white"
-              }`}
-            >
-              <span
-                className={`filter-tab-icon ${
-                  statusFilter === filter.value ? "filter-tab-icon-active" : ""
-                }`}
-                aria-hidden="true"
-              >
-                {filter.icon}
-              </span>
-              <span>{filter.label}</span>
-              <span
-                className={`rounded-full px-2 py-0.5 text-xs ${
-                  statusFilter === filter.value
-                    ? "bg-white/20 text-white"
-                    : "queue-filter-count-inactive bg-zinc-950 text-zinc-400"
-                }`}
-              >
-                {filter.count}
-              </span>
-            </Link>
-          ))}
-        </div>
-
-        <div className="queue-filter-bar flex flex-wrap gap-3 rounded-2xl border border-zinc-800 p-2">
-          {sortLinks.map((filter) => (
-            <Link
-              key={filter.value}
-              href={queueHref(businessSlug, {
-                q: searchTerm,
-                property: propertyFilter,
-                status: statusFilter,
-                view: viewFilter,
-                sort: filter.value,
-              })}
-              scroll={false}
-              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
-                sortMode === filter.value
-                  ? "bg-sky-600 text-white shadow-sm shadow-sky-900/10"
-                  : "queue-filter-link-inactive text-zinc-300 hover:bg-zinc-800 hover:text-white"
-              }`}
-            >
-              {filter.label}
-            </Link>
-          ))}
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/70 px-4 py-3">
-          <p className="text-sm font-black text-white">
-            {activeView.title}
-          </p>
-          <p className="text-sm font-semibold text-zinc-300">
-            {displayQueueItems.length} of {propertyScopedQueueItems.length}
-          </p>
-        </div>
 
         <div id="queue-results" className="grid scroll-mt-6 gap-3">
           {propertyScopedQueueItems.length === 0 ? (
