@@ -26,23 +26,6 @@ const sectionContexts: Record<string, SectionContext> = {
   settings: { fallback: "/" },
 };
 
-const primaryWorkspaceSections = new Set([
-  "activity",
-  "clients",
-  "estimates",
-  "imports",
-  "invoices",
-  "job-sessions",
-  "payments",
-  "property-sales",
-  "queue",
-  "reports",
-  "schedule",
-  "services",
-  "settings",
-  "technician",
-]);
-
 function withBusiness(href: string, business: string) {
   const [pathAndQuery, hash] = href.split("#");
   const joiner = pathAndQuery.includes("?") ? "&" : "?";
@@ -67,20 +50,11 @@ function fallbackForPath(pathname: string, business: string) {
 }
 
 function shouldHideFloatingBack(pathname: string, hash: string) {
-  const parts = pathname.split("/").filter(Boolean);
-  const section = parts[0] ?? "";
-
   if (pathname === "/payments" && hash.length > 0) {
     return false;
   }
 
-  return (
-    pathname === "/" ||
-    parts.length === 0 ||
-    (parts.length === 1 &&
-      primaryWorkspaceSections.has(section) &&
-      section !== "estimates")
-  );
+  return false;
 }
 
 function shouldPreferParentRoute(pathname: string, hash: string) {

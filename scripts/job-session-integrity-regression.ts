@@ -518,8 +518,10 @@ assert(
     workspaceBackBar.includes('variant="floating"') &&
     workspaceBackBar.includes("preferFallback={shouldPreferParentRoute") &&
     workspaceBackBar.includes("shouldHideFloatingBack") &&
-    workspaceBackBar.includes("primaryWorkspaceSections"),
-  "The app shell must provide one shared floating Back/Command group, reserve bottom space, and hide Back on primary workspace screens."
+    !workspaceBackBar.includes("primaryWorkspaceSections") &&
+    !workspaceBackBar.includes('return (\n    pathname === "/"') &&
+    !workspaceBackBar.includes("parts.length === 0"),
+  "The app shell must provide one shared floating Back/Command group, reserve bottom space, and keep protected Back visible on top-level workspaces."
 );
 assert(
   workspaceBackBar.includes('queue: { fallback: "/queue" }') &&

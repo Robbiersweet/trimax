@@ -19,6 +19,10 @@ const historyTracker = readFileSync(
   resolve(root, "src/app/components/NavigationHistoryTracker.tsx"),
   "utf8"
 );
+const dashboardPage = readFileSync(
+  resolve(root, "src/app/page.tsx"),
+  "utf8"
+);
 const invoicePage = readFileSync(
   resolve(root, "src/app/invoices/[id]/page.tsx"),
   "utf8"
@@ -107,16 +111,29 @@ assert(
 );
 
 assert(
-  workspaceBackBar.includes("pathname === \"/estimates\"") &&
+  workspaceBackBar.includes("if (pathname === \"/\" || !section)") &&
     workspaceBackBar.includes("return withBusiness(\"/\", business)") &&
-    workspaceBackBar.includes("section !== \"estimates\""),
-  "The Estimates list must render the shared floating Back button and use Dashboard as its direct-open fallback."
+    !workspaceBackBar.includes("pathname === \"/\" ||\n    parts.length === 0") &&
+    !workspaceBackBar.includes("primaryWorkspaceSections"),
+  "Dashboard and top-level workspace routes must not be suppressed by shared floating Back visibility."
+);
+
+assert(
+  workspaceBackBar.includes("pathname === \"/estimates\"") &&
+    workspaceBackBar.includes("return withBusiness(\"/\", business)"),
+  "The Estimates list must still use Dashboard as its direct-open fallback."
 );
 
 assert.equal(
   (workspaceBackBar.match(/<BackButton/g) ?? []).length,
   1,
   "WorkspaceBackBar must render exactly one shared BackButton."
+);
+
+assert(
+  !dashboardPage.includes("BackButton") &&
+    !dashboardPage.includes("data-floating-back-control"),
+  "Dashboard must not render a page-content Back control or duplicate the shared floating Back."
 );
 
 assert(
