@@ -157,6 +157,21 @@ export default function BackButton({
 
   function handleBack() {
     const currentRoute = window.location.pathname + window.location.search;
+    const routeStack = readRouteStack();
+    const stackWithoutCurrent =
+      routeStack[routeStack.length - 1] === currentRoute
+        ? routeStack.slice(0, -1)
+        : routeStack.filter((route) => route !== currentRoute);
+    const stackedPreviousRoute = findStackedPreviousRoute(currentRoute, pathname);
+
+    if (stackedPreviousRoute) {
+      sessionStorage.setItem(
+        trimaxRouteStackKey,
+        JSON.stringify(stackWithoutCurrent)
+      );
+      router.back();
+      return;
+    }
 
     if (preferFallback) {
       const stackedParentRoute = findStackedParentRoute(
@@ -170,27 +185,6 @@ export default function BackButton({
       }
     }
 
-    if (preferFallback && isSafeTrimaxBackRoute(fallbackHref)) {
-      router.push(fallbackHref);
-      return;
-    }
-
-    const routeStack = readRouteStack();
-    const stackWithoutCurrent =
-      routeStack[routeStack.length - 1] === currentRoute
-        ? routeStack.slice(0, -1)
-        : routeStack.filter((route) => route !== currentRoute);
-    const stackedPreviousRoute = findStackedPreviousRoute(currentRoute, pathname);
-
-    if (stackedPreviousRoute) {
-      sessionStorage.setItem(
-        trimaxRouteStackKey,
-        JSON.stringify(stackWithoutCurrent)
-      );
-      router.push(stackedPreviousRoute);
-      return;
-    }
-
     const previousRoute = sessionStorage.getItem(previousTrimaxRouteKey);
 
     if (
@@ -198,7 +192,7 @@ export default function BackButton({
       previousRoute !== currentRoute &&
       previousRoute !== pathname
     ) {
-      router.push(previousRoute);
+      router.back();
       return;
     }
 

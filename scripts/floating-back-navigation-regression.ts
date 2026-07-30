@@ -1,0 +1,140 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+const root = process.cwd();
+const backButton = readFileSync(
+  resolve(root, "src/app/components/BackButton.tsx"),
+  "utf8"
+);
+const workspaceBackBar = readFileSync(
+  resolve(root, "src/app/components/WorkspaceBackBar.tsx"),
+  "utf8"
+);
+const appShell = readFileSync(
+  resolve(root, "src/app/components/AppShell.tsx"),
+  "utf8"
+);
+const historyTracker = readFileSync(
+  resolve(root, "src/app/components/NavigationHistoryTracker.tsx"),
+  "utf8"
+);
+const invoicePage = readFileSync(
+  resolve(root, "src/app/invoices/[id]/page.tsx"),
+  "utf8"
+);
+const queuePage = readFileSync(
+  resolve(root, "src/app/queue/page.tsx"),
+  "utf8"
+);
+const queueDetailPage = readFileSync(
+  resolve(root, "src/app/queue/[unit]/page.tsx"),
+  "utf8"
+);
+const batchSendPage = readFileSync(
+  resolve(root, "src/app/invoices/batch-send/page.tsx"),
+  "utf8"
+);
+const batchPaymentPage = readFileSync(
+  resolve(root, "src/app/invoices/batch-payment/page.tsx"),
+  "utf8"
+);
+
+assert(
+  appShell.includes("<WorkspaceBackBar />") &&
+    appShell.includes("<QuickCommandCenter />") &&
+    appShell.indexOf("<WorkspaceBackBar />") <
+      appShell.indexOf("<QuickCommandCenter />"),
+  "AppShell must render exactly one floating Back control immediately before Command."
+);
+
+assert.equal(
+  (appShell.match(/<WorkspaceBackBar \/>/g) ?? []).length,
+  1,
+  "AppShell must not duplicate the floating Back control."
+);
+
+assert(
+  historyTracker.includes("trimax.routeStack") &&
+    historyTracker.includes("trimax.previousRoute") &&
+    historyTracker.includes("sessionStorage.setItem(trimaxRouteStackKey"),
+  "Trimax route history must be tracked in one shared place."
+);
+
+assert(
+  historyTracker.includes("cameFromOutsideCurrentOrigin") &&
+    historyTracker.includes("isFreshDocumentNavigation") &&
+    historyTracker.includes("sessionStorage.removeItem(previousTrimaxRouteKey)") &&
+    historyTracker.includes("sessionStorage.removeItem(trimaxRouteStackKey)") &&
+    historyTracker.includes("sessionStorage.removeItem(currentTrimaxRouteKey)"),
+  "Direct or external document opens must clear stale Trimax history before fallback is used."
+);
+
+assert(
+  backButton.includes("function isSafeTrimaxBackRoute") &&
+    backButton.includes("value.startsWith(\"//\")") &&
+    backButton.includes("\"/login\"") &&
+    backButton.includes("\"/request-access\"") &&
+    backButton.includes("\"/forgot-password\"") &&
+    backButton.includes("\"/reset-password\""),
+  "Back destinations must reject external, protocol-relative, and auth routes."
+);
+
+const stackedPreviousIndex = backButton.indexOf("if (stackedPreviousRoute)");
+const preferFallbackIndex = backButton.indexOf("if (preferFallback)");
+
+assert(
+  stackedPreviousIndex > -1 &&
+    preferFallbackIndex > -1 &&
+    stackedPreviousIndex < preferFallbackIndex,
+  "Floating Back must try the immediate Trimax history before parent fallback."
+);
+
+assert(
+  backButton.includes("router.back();") &&
+    !backButton.includes("router.push(stackedPreviousRoute)"),
+  "Immediate in-app Back must use router.back() instead of pushing a fixed route."
+);
+
+assert(
+  workspaceBackBar.includes("invoices: { fallback: \"/invoices\" }") &&
+    workspaceBackBar.includes("queue: { fallback: \"/queue\" }") &&
+    workspaceBackBar.includes("estimates: { fallback: \"/estimates\" }") &&
+    workspaceBackBar.includes("payments: { fallback: \"/payments\" }") &&
+    workspaceBackBar.includes("withBusiness") &&
+    workspaceBackBar.includes("business=${encodeURIComponent(business)}"),
+  "Fallbacks must be context-aware and preserve business context."
+);
+
+assert(
+  invoicePage.includes("href={`/invoices/${relatedInvoice.id}${businessQuery}`}") &&
+    invoicePage.includes("href={`/invoices/${splitParentInvoice.id}${businessQuery}`}"),
+  "Split child and source invoice links must keep normal in-app drill-in navigation."
+);
+
+assert(
+  queueDetailPage.includes("href={`/invoices/${linkedInvoice.id}?business=${businessSlug}`}") &&
+    queuePage.includes("href={`/queue/${item.id}${businessQuery}`}"),
+  "Queue detail/list links must keep drill-in navigation through normal links."
+);
+
+assert(
+  batchSendPage.includes("href={`/invoices/${invoice.id}?business=${business.slug}`}") ||
+    batchSendPage.includes("href={`/invoices/${invoice.id}${businessQuery}`}") ||
+    batchSendPage.includes("/invoices/${"),
+  "Batch Send must keep invoice drill-in links available."
+);
+
+assert(
+  batchPaymentPage.includes("/invoices") || batchPaymentPage.includes("invoice"),
+  "Batch Payment workspace must remain an invoice-origin workspace for fallback coverage."
+);
+
+assert(
+  !invoicePage.includes("router.replace") &&
+    !queuePage.includes("router.replace") &&
+    !queueDetailPage.includes("router.replace"),
+  "Normal Queue and invoice drill-in pages must not replace navigation history."
+);
+
+console.log("Floating Back navigation regression checks passed.");

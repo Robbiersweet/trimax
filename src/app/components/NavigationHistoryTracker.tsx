@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 export const previousTrimaxRouteKey = "trimax.previousRoute";
 export const trimaxRouteStackKey = "trimax.routeStack";
@@ -28,12 +28,46 @@ function readRouteStack() {
   }
 }
 
+function cameFromOutsideCurrentOrigin() {
+  if (!document.referrer) {
+    return true;
+  }
+
+  try {
+    return new URL(document.referrer).origin !== window.location.origin;
+  } catch {
+    return true;
+  }
+}
+
+function isFreshDocumentNavigation() {
+  const [navigation] = performance.getEntriesByType("navigation");
+
+  return navigation instanceof PerformanceNavigationTiming
+    ? navigation.type === "navigate"
+    : false;
+}
+
 export default function NavigationHistoryTracker() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const hasInitialized = useRef(false);
 
   useEffect(() => {
     const nextRoute = buildRoute(pathname, searchParams);
+
+    if (
+      !hasInitialized.current &&
+      isFreshDocumentNavigation() &&
+      cameFromOutsideCurrentOrigin()
+    ) {
+      sessionStorage.removeItem(previousTrimaxRouteKey);
+      sessionStorage.removeItem(trimaxRouteStackKey);
+      sessionStorage.removeItem(currentTrimaxRouteKey);
+    }
+
+    hasInitialized.current = true;
+
     const currentRoute = sessionStorage.getItem(currentTrimaxRouteKey);
     const routeStack = readRouteStack();
     const lastRoute = routeStack[routeStack.length - 1];
