@@ -59,6 +59,10 @@ function fallbackForPath(pathname: string, business: string) {
     return withBusiness("/", business);
   }
 
+  if (pathname === "/estimates") {
+    return withBusiness("/", business);
+  }
+
   return withBusiness(sectionContexts[section]?.fallback ?? "/", business);
 }
 
@@ -73,7 +77,9 @@ function shouldHideFloatingBack(pathname: string, hash: string) {
   return (
     pathname === "/" ||
     parts.length === 0 ||
-    (parts.length === 1 && primaryWorkspaceSections.has(section))
+    (parts.length === 1 &&
+      primaryWorkspaceSections.has(section) &&
+      section !== "estimates")
   );
 }
 

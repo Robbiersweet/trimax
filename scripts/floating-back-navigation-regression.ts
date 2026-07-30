@@ -107,6 +107,19 @@ assert(
 );
 
 assert(
+  workspaceBackBar.includes("pathname === \"/estimates\"") &&
+    workspaceBackBar.includes("return withBusiness(\"/\", business)") &&
+    workspaceBackBar.includes("section !== \"estimates\""),
+  "The Estimates list must render the shared floating Back button and use Dashboard as its direct-open fallback."
+);
+
+assert.equal(
+  (workspaceBackBar.match(/<BackButton/g) ?? []).length,
+  1,
+  "WorkspaceBackBar must render exactly one shared BackButton."
+);
+
+assert(
   invoicePage.includes("href={`/invoices/${relatedInvoice.id}${businessQuery}`}") &&
     invoicePage.includes("href={`/invoices/${splitParentInvoice.id}${businessQuery}`}"),
   "Split child and source invoice links must keep normal in-app drill-in navigation."
