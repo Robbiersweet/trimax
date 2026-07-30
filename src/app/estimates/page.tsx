@@ -149,6 +149,28 @@ function formatDaysLabel(days: number | null) {
   return `${days} day${days === 1 ? "" : "s"} ago`;
 }
 
+function formatInvoiceRelationship(
+  displayId: string | null | undefined,
+  status: string | null | undefined
+) {
+  const invoiceId = displayId?.trim();
+  const invoiceStatus = status?.trim();
+
+  if (!invoiceId && !invoiceStatus) {
+    return null;
+  }
+
+  if (!invoiceId) {
+    return invoiceStatus;
+  }
+
+  if (!invoiceStatus) {
+    return invoiceId;
+  }
+
+  return `${invoiceId} · ${invoiceStatus}`;
+}
+
 function getEstimateReadiness(estimate: Estimate) {
   const missing: string[] = [];
   const amount = parseEstimateAmount(estimate.estimate_amount);
@@ -441,6 +463,8 @@ export default async function EstimatesPage({
       estimate.project_title,
       estimate.customer_name,
       estimate.status,
+      estimate.linkedInvoiceDisplayId,
+      estimate.linkedInvoiceStatus,
     ]
       .join(" ")
       .toLowerCase();
@@ -480,8 +504,25 @@ export default async function EstimatesPage({
       compareEstimateNumbers(left, right)
     );
   });
-  const visibleEstimates = sortedFilteredEstimates.slice(0, visibleLimit);
-  const hasMoreEstimates = sortedFilteredEstimates.length > visibleLimit;
+  const isDefaultNeedsAttentionView =
+    statusFilter === "all" && !searchTerm && sortMode === "needs-attention";
+  const currentActionableEstimates = isDefaultNeedsAttentionView
+    ? sortedFilteredEstimates.filter(
+        (estimate) => getPipelineStatusKey(estimate) !== "converted"
+      )
+    : sortedFilteredEstimates;
+  const completedEstimateResults = isDefaultNeedsAttentionView
+    ? sortedFilteredEstimates.filter(
+        (estimate) => getPipelineStatusKey(estimate) === "converted"
+      )
+    : [];
+  const visibleEstimates = currentActionableEstimates.slice(0, visibleLimit);
+  const visibleCompletedEstimates = completedEstimateResults.slice(0, 8);
+  const hiddenCompletedCount = Math.max(
+    0,
+    completedEstimateResults.length - visibleCompletedEstimates.length
+  );
+  const hasMoreEstimates = currentActionableEstimates.length > visibleLimit;
   const loadMoreParams = new URLSearchParams(baseResultsParams);
   loadMoreParams.set("limit", String(visibleLimit + pageSize));
   const loadMoreHref = `/estimates?${loadMoreParams.toString()}${estimateResultsAnchor}`;
@@ -790,9 +831,6 @@ export default async function EstimatesPage({
             </p>
           </div>
 
-          <Link href={`/estimates/new${businessQuery}`}>
-            <Button>+ New Estimate</Button>
-          </Link>
         </div>
 
         {estimateLoadMessage ? (
@@ -1107,7 +1145,11 @@ export default async function EstimatesPage({
         ) : estimates.length > 0 ? (
           <div className="estimate-filter-summary flex flex-col gap-2 rounded-2xl border border-zinc-800 bg-zinc-900/60 px-4 py-3 text-sm text-zinc-300 sm:flex-row sm:items-center sm:justify-between">
             <span>
-              Showing {filteredEstimates.length} of {estimates.length} estimates
+              Showing{" "}
+              {isDefaultNeedsAttentionView
+                ? currentActionableEstimates.length
+                : filteredEstimates.length}{" "}
+              of {estimates.length} estimates
               {searchTerm ? ` matching "${searchTerm}"` : ""}.
             </span>
 
@@ -1200,7 +1242,7 @@ export default async function EstimatesPage({
               const nextActionLabel =
                 isLinkedToInvoice
                   ? {
-                      label: "Invoice connected",
+                      label: "Open invoice",
                       tone: "success",
                     }
                   : isConverted
@@ -1252,7 +1294,7 @@ export default async function EstimatesPage({
                     }
                   : isSendableDraft
                     ? {
-                        label: "Send",
+                        label: "Review & Send",
                         href: `/estimates/${estimate.id}${businessQuery}#send-estimate`,
                       }
                     : statusKey === "draft"
@@ -1273,16 +1315,46 @@ export default async function EstimatesPage({
                 daysSinceUpdate !== null
                   ? `Touched ${formatDaysLabel(daysSinceUpdate).toLowerCase()}`
                   : "No activity date";
-              const invoiceLabel =
+              const untouchedLabel =
+                daysSinceUpdate !== null
+                  ? `untouched ${daysSinceUpdate} day${
+                      daysSinceUpdate === 1 ? "" : "s"
+                    }`
+                  : "no activity date";
+              const operationalCue =
+                isLinkedToInvoice
+                  ? "Invoice connected"
+                  : readyToInvoice
+                    ? "Ready to invoice"
+                    : statusKey === "sent"
+                      ? daysSinceSent !== null && daysSinceSent >= 3
+                        ? `Follow up · sent ${formatDaysLabel(daysSinceSent).toLowerCase()}`
+                        : "Sent · awaiting approval"
+                      : statusKey === "draft"
+                        ? hasMissingReadiness
+                          ? `Needs review · ${untouchedLabel}`
+                          : `Ready to send · ${untouchedLabel}`
+                        : nextActionLabel.label;
+              const invoiceRelationshipLabel = formatInvoiceRelationship(
                 estimate.linkedInvoiceDisplayId ??
-                (estimate.linkedInvoiceId ? "Invoice" : null);
+                  (estimate.linkedInvoiceId ? "Invoice" : null),
+                estimate.linkedInvoiceStatus
+              );
 
               return (
                 <Card
                   key={estimate.id}
-                  className="estimate-list-card p-3 transition hover:border-orange-500/60 hover:bg-zinc-800 sm:p-4"
+                  className="estimate-list-card group relative overflow-hidden p-3 transition hover:border-orange-500/60 hover:bg-zinc-800 sm:p-4"
+                  data-estimate-row
                 >
-                  <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                  <Link
+                    href={`/estimates/${estimate.id}${businessQuery}`}
+                    aria-label={`Open ${estimateLabel}`}
+                    className="absolute inset-0 z-0 rounded-[inherit] focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-zinc-950"
+                    data-estimate-row-link
+                  />
+
+                  <div className="pointer-events-none relative z-10 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="text-sm font-black text-orange-300">
@@ -1293,33 +1365,29 @@ export default async function EstimatesPage({
                           status={getAuthoritativeStatusLabel(estimate)}
                         />
 
-                        <span
-                          className="rounded-full border px-2 py-0.5 text-xs font-bold"
-                          data-tone={nextActionLabel.tone}
-                        >
-                          {nextActionLabel.label}
-                        </span>
+                        {!isLinkedToInvoice && !isConverted ? (
+                          <span
+                            className="rounded-full border px-2 py-0.5 text-xs font-bold"
+                            data-tone={nextActionLabel.tone}
+                          >
+                            {nextActionLabel.label}
+                          </span>
+                        ) : null}
                       </div>
 
-                      <h2 className="mt-1 truncate text-base font-black text-white sm:text-lg">
+                      <h2 className="mt-1 text-base font-black text-white transition group-hover:text-orange-100 sm:text-lg">
                         {estimate.project_title || "Untitled Estimate"}
                       </h2>
 
-                      <p className="mt-0.5 truncate text-sm text-zinc-400">
+                      <p className="mt-0.5 text-sm text-zinc-400">
                         {estimate.customer_name || "Unknown Customer"}
                       </p>
 
                       <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs font-semibold text-zinc-400">
+                        <span className="text-sky-200">{operationalCue}</span>
                         <span>{estimate.queue_item_id ? "Queue-linked" : "No queue link"}</span>
-                        <span>{proofLabel}</span>
-                        <span>{touchedLabel}</span>
-                        {invoiceLabel ? (
-                          <span>
-                            Invoice {invoiceLabel}
-                            {estimate.linkedInvoiceStatus
-                              ? ` / ${estimate.linkedInvoiceStatus}`
-                              : ""}
-                          </span>
+                        {invoiceRelationshipLabel ? (
+                          <span>{invoiceRelationshipLabel}</span>
                         ) : null}
                         {hasMissingReadiness && !isLinkedToInvoice && !isConverted ? (
                           <span className="text-amber-200">
@@ -1329,7 +1397,7 @@ export default async function EstimatesPage({
                       </div>
                     </div>
 
-                    <div className="grid gap-2 sm:grid-cols-[auto_auto] sm:items-center lg:text-right">
+                    <div className="pointer-events-auto relative z-20 grid gap-2 sm:grid-cols-[auto_auto] sm:items-center lg:text-right">
                       <p className="text-lg font-black text-orange-300">
                         {formatMoney(estimate.estimate_amount)}
                       </p>
@@ -1343,12 +1411,20 @@ export default async function EstimatesPage({
                     </div>
                   </div>
 
-                  <details className="mt-2 text-sm text-zinc-400">
+                  <details className="pointer-events-auto relative z-20 mt-2 text-sm text-zinc-400">
                     <summary className="cursor-pointer font-semibold text-zinc-300">
                       Secondary actions
                     </summary>
 
                     <div className="mt-2 flex flex-wrap gap-2">
+                      <span className="rounded-xl border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-300">
+                        {proofLabel}
+                      </span>
+
+                      <span className="rounded-xl border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-300">
+                        {touchedLabel}
+                      </span>
+
                       <Link
                         href={`/estimates/${estimate.id}${businessQuery}`}
                         className="app-button-secondary rounded-xl bg-zinc-800 px-3 py-2 text-sm font-bold text-white transition hover:bg-zinc-700"
@@ -1393,6 +1469,129 @@ export default async function EstimatesPage({
                   </Button>
                 </Link>
               </div>
+            ) : null}
+
+            {completedEstimateResults.length > 0 ? (
+              <details className="estimate-completed-section rounded-2xl border border-zinc-800 bg-zinc-950/70 p-3">
+                <summary className="cursor-pointer list-none">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-black text-zinc-100">
+                        Completed / Invoice Connected
+                      </p>
+
+                      <p className="text-xs font-semibold text-zinc-400">
+                        {completedEstimateResults.length} estimate
+                        {completedEstimateResults.length === 1 ? "" : "s"}
+                      </p>
+                    </div>
+
+                    <span className="rounded-xl border border-zinc-700 px-3 py-2 text-xs font-black text-zinc-300">
+                      Open section
+                    </span>
+                  </div>
+                </summary>
+
+                <div className="mt-3 grid gap-2">
+                  {visibleCompletedEstimates.map((estimate) => {
+                    const estimateLabel =
+                      estimate.display_id ||
+                      estimate.project_title ||
+                      estimate.customer_name ||
+                      "Estimate";
+                    const invoiceRelationshipLabel = formatInvoiceRelationship(
+                      estimate.linkedInvoiceDisplayId ??
+                        (estimate.linkedInvoiceId ? "Invoice" : null),
+                      estimate.linkedInvoiceStatus
+                    );
+
+                    return (
+                      <div
+                        key={estimate.id}
+                        className="estimate-list-card group relative overflow-hidden rounded-2xl border border-zinc-800 bg-black/25 p-3 transition hover:border-orange-500/60 hover:bg-zinc-900"
+                        data-completed-estimate-row
+                      >
+                        <Link
+                          href={`/estimates/${estimate.id}${businessQuery}`}
+                          aria-label={`Open ${estimateLabel}`}
+                          className="absolute inset-0 z-0 rounded-[inherit] focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-zinc-950"
+                          data-estimate-row-link
+                        />
+
+                        <div className="pointer-events-none relative z-10 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-sm font-black text-orange-300">
+                                {estimate.display_id ?? "Estimate"}
+                              </p>
+
+                              <StatusBadge
+                                status={getAuthoritativeStatusLabel(estimate)}
+                              />
+
+                              {invoiceRelationshipLabel ? (
+                                <span className="text-xs font-semibold text-zinc-400">
+                                  {invoiceRelationshipLabel}
+                                </span>
+                              ) : null}
+                            </div>
+
+                            <p className="mt-1 text-sm font-black text-white">
+                              {estimate.project_title || "Untitled Estimate"}
+                            </p>
+
+                            <p className="mt-0.5 text-xs text-zinc-400">
+                              {estimate.customer_name || "Unknown Customer"}
+                            </p>
+                          </div>
+
+                          <div className="pointer-events-auto relative z-20 flex flex-wrap items-center gap-2 sm:justify-end">
+                            <p className="mr-1 text-sm font-black text-orange-300">
+                              {formatMoney(estimate.estimate_amount)}
+                            </p>
+
+                            <Link
+                              href={`/estimates/${estimate.id}${businessQuery}`}
+                              className="app-button-secondary rounded-xl bg-zinc-800 px-3 py-2 text-sm font-bold text-white transition hover:bg-zinc-700"
+                            >
+                              Open Estimate
+                            </Link>
+
+                            {estimate.linkedInvoiceId ? (
+                              <Link
+                                href={`/invoices/${estimate.linkedInvoiceId}${businessQuery}`}
+                                className="rounded-xl bg-blue-600 px-3 py-2 text-sm font-bold text-white transition hover:bg-blue-700"
+                              >
+                                Open Invoice
+                              </Link>
+                            ) : null}
+
+                            <Link
+                              href={`/estimates/${estimate.id}/print${businessQuery}`}
+                              className="app-button-secondary rounded-xl bg-zinc-800 px-3 py-2 text-sm font-bold text-white transition hover:bg-zinc-700"
+                            >
+                              Print
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {hiddenCompletedCount > 0 ? (
+                    <Link
+                      href={buildResultsHref({
+                        status: "converted",
+                        limit: null,
+                      })}
+                      className="rounded-xl border border-zinc-800 px-3 py-2 text-center text-sm font-black text-zinc-200 transition hover:border-orange-400 hover:text-white"
+                    >
+                      View {hiddenCompletedCount} more converted estimate
+                      {hiddenCompletedCount === 1 ? "" : "s"}
+                    </Link>
+                  ) : null}
+                </div>
+              </details>
             ) : null}
                   </div>
         )}

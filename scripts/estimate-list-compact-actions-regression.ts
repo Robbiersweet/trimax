@@ -37,6 +37,20 @@ assert(
   "Linked invoices must take precedence over stale estimate status presentation."
 );
 
+assert.equal(
+  (page.match(/label: "Invoice connected"/g) ?? []).length,
+  0,
+  "Invoice-connected rows must not render a duplicate next-action status label."
+);
+
+assert(
+  page.includes("formatInvoiceRelationship") &&
+    page.includes("linkedInvoiceDisplayId") &&
+    page.includes("linkedInvoiceStatus") &&
+    page.includes("·"),
+  "Linked invoice number and status must remain visible as compact relationship metadata."
+);
+
 assert(
   !page.includes("filteredEstimates.map") &&
     !page.includes("estimate-next-action") &&
@@ -47,10 +61,54 @@ assert(
 
 assert(
   page.includes("isSendableDraft") &&
-    page.includes("label: \"Send\"") &&
+    page.includes("label: \"Review & Send\"") &&
     page.includes("statusKey === \"draft\"") &&
     page.includes("label: \"Edit\""),
   "Draft estimates must show draft-appropriate primary actions."
+);
+
+assert(
+  page.includes("data-estimate-row-link") &&
+    page.includes("aria-label={`Open ${estimateLabel}`}") &&
+    page.includes("pointer-events-auto relative z-20") &&
+    page.includes("Secondary actions"),
+  "Estimate rows must be directly openable while keeping row actions independently clickable."
+);
+
+assert(
+  page.includes("isDefaultNeedsAttentionView") &&
+    page.includes("currentActionableEstimates") &&
+    page.includes("completedEstimateResults") &&
+    page.includes("Completed / Invoice Connected"),
+  "Default Needs Attention must prioritize current actionable estimates and collapse completed connected records."
+);
+
+assert(
+  page.includes("visibleCompletedEstimates") &&
+    page.includes("data-completed-estimate-row") &&
+    page.includes("View {hiddenCompletedCount} more converted estimate"),
+  "Completed or invoice-connected estimates must remain accessible from the default workspace."
+);
+
+assert(
+  page.includes("estimate.linkedInvoiceDisplayId") &&
+    page.includes("estimate.linkedInvoiceStatus") &&
+    page.includes("searchableText"),
+  "Invoice-connected estimates must remain searchable by linked invoice metadata."
+);
+
+assert(
+  page.includes("operationalCue") &&
+    page.includes("Needs review ·") &&
+    page.includes("Ready to send ·") &&
+    page.includes("untouched"),
+  "Old actionable drafts must show stale age as an operational cue."
+);
+
+assert.equal(
+  (page.match(/<Button>New Estimate<\/Button>/g) ?? []).length,
+  1,
+  "Duplicate New Estimate actions must be removed when they share the same route."
 );
 
 assert(
