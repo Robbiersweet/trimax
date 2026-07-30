@@ -13,11 +13,21 @@ import DocumentReadinessPanel from "../../../components/DocumentReadinessPanel";
 import InputField from "../../../components/InputField";
 import TaxModeSelect from "../../../components/TaxModeSelect";
 import Toast from "../../../components/Toast";
-import { captureServicesFromLineItems } from "../../../lib/captureServicesFromLineItems";
 import {
   DEFAULT_INVOICE_TERMS,
   resolveInvoiceTerms,
 } from "../../../lib/documentTerms";
+import {
+  calculateDiscountedDocumentTotals,
+  discountDisplayLabel,
+  isDiscountLine,
+  parseDiscountFromLineItem,
+  type DiscountType,
+} from "../../../lib/documentDiscounts";
+import {
+  serviceSearchText,
+  uniqueSavedServices,
+} from "../../../lib/savedServicePresentation";
 import { logActivity } from "../../../lib/activityLog";
 import { assertCanWriteDuringMaintenance } from "../../../lib/maintenanceMode";
 import {
@@ -40,6 +50,7 @@ type Invoice = {
   business_id: string | null;
   client_id: string | null;
   display_id: string | null;
+  status: string | null;
   customer_name: string | null;
   project_title: string | null;
   invoice_amount: string | null;
@@ -140,8 +151,10 @@ export default function EditInvoicePage() {
     useState<string | null>(null);
   const [invoiceSplitParentId, setInvoiceSplitParentId] =
     useState<string | null>(null);
+  const [invoiceStatus, setInvoiceStatus] = useState<string | null>(null);
   const [serviceItems, setServiceItems] =
     useState<ServiceItem[]>([]);
+  const [serviceSearch, setServiceSearch] = useState("");
 
   const [customerName, setCustomerName] =
     useState("");
@@ -173,6 +186,11 @@ export default function EditInvoicePage() {
   ] = useState(false);
   const [terms, setTerms] = useState(DEFAULT_INVOICE_TERMS);
   const [notes, setNotes] = useState("");
+  const [discountEnabled, setDiscountEnabled] = useState(false);
+  const [discountType, setDiscountType] =
+    useState<DiscountType>("fixed");
+  const [discountValue, setDiscountValue] = useState("");
+  const [discountLabel, setDiscountLabel] = useState("");
 
   const [lineItems, setLineItems] =
     useState<LineItem[]>([
@@ -183,6 +201,18 @@ export default function EditInvoicePage() {
         unitPrice: "",
       },
     ]);
+  const visibleServiceItems = useMemo(() => {
+    const normalizedSearch = serviceSearch.trim().toLowerCase();
+    const uniqueServices = uniqueSavedServices(serviceItems);
+
+    if (!normalizedSearch) {
+      return uniqueServices;
+    }
+
+    return uniqueServices.filter((service) =>
+      serviceSearchText(service).includes(normalizedSearch)
+    );
+  }, [serviceItems, serviceSearch]);
 
   const subtotal = useMemo(() => {
     return lineItems.reduce(
@@ -191,16 +221,27 @@ export default function EditInvoicePage() {
     );
   }, [lineItems]);
 
-  const taxAmount = useMemo(() => {
+  const documentTotals = useMemo(() => {
     const effectiveTaxRate = getEffectiveTaxRate({
       taxMode,
       taxRate,
     });
 
-    return subtotal * (effectiveTaxRate / 100);
-  }, [subtotal, taxMode, taxRate]);
+    return calculateDiscountedDocumentTotals({
+      lineSubtotal: subtotal,
+      taxRate: effectiveTaxRate,
+      discount: {
+        enabled: discountEnabled,
+        type: discountType,
+        value: discountValue,
+        label: discountLabel,
+      },
+    });
+  }, [discountEnabled, discountLabel, discountType, discountValue, subtotal, taxMode, taxRate]);
 
-  const invoiceTotal = subtotal + taxAmount;
+  const taxAmount = documentTotals.taxAmount;
+  const discountAmount = documentTotals.discountAmount;
+  const invoiceTotal = documentTotals.total;
   const amountDue =
     invoiceTotal - (Number(amountPaid) || 0);
   const [splitWarningAmount, setSplitWarningAmount] =
@@ -211,12 +252,12 @@ export default function EditInvoicePage() {
     () =>
       effectiveSplitTargetAmount > 0
         ? buildSplitInvoicePlan({
-            subtotalAmount: subtotal,
+            subtotalAmount: documentTotals.taxableSubtotal,
             targetAmount: effectiveSplitTargetAmount,
             taxRate: getEffectiveTaxRate({ taxMode, taxRate }),
           })
         : [],
-    [effectiveSplitTargetAmount, subtotal, taxMode, taxRate]
+    [documentTotals.taxableSubtotal, effectiveSplitTargetAmount, taxMode, taxRate]
   );
   const looksLikeApartmentSplitJob = useMemo(() => {
     return looksLikeApartmentUnitPaintJob(
@@ -384,6 +425,7 @@ export default function EditInvoicePage() {
       setInvoiceDisplayId(invoice.display_id ?? null);
       setInvoiceClientId(invoice.client_id ?? null);
       setInvoiceSplitParentId(invoice.split_parent_invoice_id ?? null);
+      setInvoiceStatus(invoice.status ?? null);
       setCustomerName(invoice.customer_name ?? "");
       setProjectTitle(invoice.project_title ?? "");
       setIssueDate(invoice.issue_date ?? "");
@@ -467,9 +509,29 @@ export default function EditInvoicePage() {
 
       const savedLineItems =
         (lineItemData ?? []) as SavedLineItem[];
+      const savedDiscount = savedLineItems
+        .map((item) =>
+          parseDiscountFromLineItem({
+            description: item.description,
+            lineTotal: item.line_total,
+            unitPrice: item.unit_price,
+          })
+        )
+        .find(Boolean);
 
-      if (savedLineItems.length > 0) {
-        const loadedLineItems = savedLineItems.map(toLineItem);
+      if (savedDiscount) {
+        setDiscountEnabled(true);
+        setDiscountType(savedDiscount.type);
+        setDiscountValue(String(savedDiscount.value));
+        setDiscountLabel(savedDiscount.label ?? "");
+      }
+
+      const editableLineItems = savedLineItems.filter(
+        (item) => !isDiscountLine(item.description)
+      );
+
+      if (editableLineItems.length > 0) {
+        const loadedLineItems = editableLineItems.map(toLineItem);
         setLineItems(loadedLineItems);
 
         if (!invoice.issue_date || !invoice.due_date) {
@@ -672,11 +734,38 @@ export default function EditInvoicePage() {
 
     setSaving(true);
 
+    if (invoiceStatus && invoiceStatus.toLowerCase() !== "draft") {
+      setToast({
+        type: "error",
+        message:
+          "Sent invoices cannot be edited directly. Use Supersede This Invoice, then apply the discount to the replacement draft.",
+      });
+      setSaving(false);
+      return;
+    }
+
     const validLineItems = lineItems.filter(
       (item) =>
         item.description.trim() &&
         getLineTotal(item) > 0
     );
+    const discountLineItem =
+      discountAmount > 0
+        ? {
+            serviceItemId: "",
+            description: discountDisplayLabel({
+              enabled: discountEnabled,
+              type: discountType,
+              value: discountValue,
+              label: discountLabel,
+            }),
+            quantity: "1",
+            unitPrice: String(-discountAmount),
+          }
+        : null;
+    const saveLineItems = discountLineItem
+      ? [...validLineItems, discountLineItem]
+      : validLineItems;
 
     if (
       !customerName ||
@@ -767,7 +856,7 @@ export default function EditInvoicePage() {
       await supabase
         .from("invoice_line_items")
         .insert(
-          validLineItems.map((item, index) => ({
+          saveLineItems.map((item, index) => ({
             invoice_id: invoiceId,
             business_id: businessId,
             description: item.description.trim(),
@@ -789,11 +878,6 @@ export default function EditInvoicePage() {
 
       return;
     }
-
-    await captureServicesFromLineItems({
-      businessId,
-      lineItems: validLineItems,
-    });
 
     if (
       !invoiceSplitParentId &&
@@ -844,7 +928,7 @@ export default function EditInvoicePage() {
               terms,
               notes,
             },
-            subtotalAmount: subtotal,
+            subtotalAmount: documentTotals.taxableSubtotal,
             targetAmount: effectiveSplitTargetAmount,
             taxLabel: taxLabel.trim() || "Tax",
             taxRate: getEffectiveTaxRate({ taxMode, taxRate }),
@@ -877,7 +961,9 @@ export default function EditInvoicePage() {
         customerName,
         projectTitle,
         amount: formatCurrency(invoiceTotal),
-        lineItemCount: validLineItems.length,
+        lineItemCount: saveLineItems.length,
+        discountAmount: formatCurrency(discountAmount),
+        discountLabel: discountLabel.trim() || null,
         splitWarningEnabled: effectiveSplitWarningEnabled,
       },
     });
@@ -1146,6 +1232,15 @@ export default function EditInvoicePage() {
                 </Button>
               </div>
 
+              <div className="mt-3">
+                <InputField
+                  label="Find Saved Service"
+                  placeholder="Search saved services or choose Custom Line Item"
+                  value={serviceSearch}
+                  onChange={setServiceSearch}
+                />
+              </div>
+
               <div className="mt-4 grid gap-4">
                 {lineItems.map((item, index) => (
                   <div
@@ -1171,7 +1266,7 @@ export default function EditInvoicePage() {
                           -- Custom Line Item --
                         </option>
 
-                        {serviceItems.map((serviceItem) => (
+                        {visibleServiceItems.map((serviceItem) => (
                           <option
                             key={serviceItem.id}
                             value={serviceItem.id}
@@ -1256,6 +1351,59 @@ export default function EditInvoicePage() {
                   label="Subtotal"
                   value={formatCurrency(subtotal)}
                 />
+
+                <div className="rounded-2xl border border-zinc-800 bg-black/20 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-white">Discount</p>
+                      <p className="text-xs text-zinc-500">
+                        Applied before tax
+                      </p>
+                    </div>
+                    <label className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-zinc-300">
+                      <input
+                        type="checkbox"
+                        checked={discountEnabled}
+                        onChange={(event) =>
+                          setDiscountEnabled(event.target.checked)
+                        }
+                        className="h-4 w-4 accent-orange-500"
+                      />
+                      Add
+                    </label>
+                  </div>
+
+                  {discountEnabled ? (
+                    <div className="mt-3 grid gap-2">
+                      <select
+                        value={discountType}
+                        onChange={(event) =>
+                          setDiscountType(event.target.value as DiscountType)
+                        }
+                        className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white outline-none transition focus:border-orange-500"
+                      >
+                        <option value="fixed">Fixed amount</option>
+                        <option value="percentage">Percentage</option>
+                      </select>
+                      <InputField
+                        label={discountType === "percentage" ? "Value (%)" : "Value"}
+                        type="number"
+                        value={discountValue}
+                        onChange={setDiscountValue}
+                      />
+                      <InputField
+                        label="Label"
+                        placeholder="Courtesy discount"
+                        value={discountLabel}
+                        onChange={setDiscountLabel}
+                      />
+                      <SummaryRow
+                        label="Discount"
+                        value={`-${formatCurrency(discountAmount)}`}
+                      />
+                    </div>
+                  ) : null}
+                </div>
 
                 <SummaryRow
                   label={formatTaxSummaryLabel({

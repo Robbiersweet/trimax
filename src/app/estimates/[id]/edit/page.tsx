@@ -9,12 +9,21 @@ import {
 import AppShell from "../../../components/AppShell";
 import Card from "../../../components/Card";
 import Button from "../../../components/Button";
-import DocumentReadinessPanel from "../../../components/DocumentReadinessPanel";
 import InputField from "../../../components/InputField";
 import TaxModeSelect from "../../../components/TaxModeSelect";
 import Toast from "../../../components/Toast";
-import { captureServicesFromLineItems } from "../../../lib/captureServicesFromLineItems";
 import { logActivity } from "../../../lib/activityLog";
+import {
+  calculateDiscountedDocumentTotals,
+  discountDisplayLabel,
+  isDiscountLine,
+  parseDiscountFromLineItem,
+  type DiscountType,
+} from "../../../lib/documentDiscounts";
+import {
+  serviceSearchText,
+  uniqueSavedServices,
+} from "../../../lib/savedServicePresentation";
 import { assertCanWriteDuringMaintenance } from "../../../lib/maintenanceMode";
 import { buildSplitInvoicePlan } from "../../../lib/splitInvoices";
 import { supabase } from "../../../lib/supabase";
@@ -160,6 +169,7 @@ export default function EditEstimatePage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [serviceItems, setServiceItems] =
     useState<ServiceItem[]>([]);
+  const [serviceSearch, setServiceSearch] = useState("");
 
   const [selectedClientId, setSelectedClientId] =
     useState("");
@@ -191,6 +201,11 @@ export default function EditEstimatePage() {
     "This estimate is provided for review and approval. Final pricing may vary if scope, materials, or site conditions change."
   );
   const [notes, setNotes] = useState("");
+  const [discountEnabled, setDiscountEnabled] = useState(false);
+  const [discountType, setDiscountType] =
+    useState<DiscountType>("fixed");
+  const [discountValue, setDiscountValue] = useState("");
+  const [discountLabel, setDiscountLabel] = useState("");
 
   const [lineItems, setLineItems] =
     useState<LineItem[]>([
@@ -201,6 +216,18 @@ export default function EditEstimatePage() {
         unitPrice: "",
       },
     ]);
+  const visibleServiceItems = useMemo(() => {
+    const normalizedSearch = serviceSearch.trim().toLowerCase();
+    const uniqueServices = uniqueSavedServices(serviceItems);
+
+    if (!normalizedSearch) {
+      return uniqueServices;
+    }
+
+    return uniqueServices.filter((service) =>
+      serviceSearchText(service).includes(normalizedSearch)
+    );
+  }, [serviceItems, serviceSearch]);
 
   const subtotal = useMemo(() => {
     return lineItems.reduce(
@@ -209,16 +236,27 @@ export default function EditEstimatePage() {
     );
   }, [lineItems]);
 
-  const taxAmount = useMemo(() => {
+  const documentTotals = useMemo(() => {
     const effectiveTaxRate = getEffectiveTaxRate({
       taxMode,
       taxRate,
     });
 
-    return subtotal * (effectiveTaxRate / 100);
-  }, [subtotal, taxMode, taxRate]);
+    return calculateDiscountedDocumentTotals({
+      lineSubtotal: subtotal,
+      taxRate: effectiveTaxRate,
+      discount: {
+        enabled: discountEnabled,
+        type: discountType,
+        value: discountValue,
+        label: discountLabel,
+      },
+    });
+  }, [discountEnabled, discountLabel, discountType, discountValue, subtotal, taxMode, taxRate]);
 
-  const estimateTotal = subtotal + taxAmount;
+  const taxAmount = documentTotals.taxAmount;
+  const discountAmount = documentTotals.discountAmount;
+  const estimateTotal = documentTotals.total;
   const [splitWarningAmount, setSplitWarningAmount] =
     useState(0);
   const effectiveSplitTargetAmount =
@@ -227,12 +265,12 @@ export default function EditEstimatePage() {
     () =>
       effectiveSplitTargetAmount > 0
         ? buildSplitInvoicePlan({
-            subtotalAmount: subtotal,
+            subtotalAmount: documentTotals.taxableSubtotal,
             targetAmount: effectiveSplitTargetAmount,
             taxRate: getEffectiveTaxRate({ taxMode, taxRate }),
           })
         : [],
-    [effectiveSplitTargetAmount, subtotal, taxMode, taxRate]
+    [documentTotals.taxableSubtotal, effectiveSplitTargetAmount, taxMode, taxRate]
   );
   const looksLikeApartmentSplitJob = useMemo(() => {
     return looksLikeApartmentUnitPaintJob(
@@ -262,60 +300,6 @@ export default function EditEstimatePage() {
       item.description.trim() &&
       getLineTotal(item) > 0
   );
-  const scopeHasUsefulDetail = notes.trim().length >= 24;
-  const termsHaveUsefulDetail = terms.trim().length >= 24;
-  const editReadinessSteps = [
-    {
-      label: "Client",
-      detail: customerName.trim()
-        ? customerName.trim()
-        : "Choose or enter a customer",
-      status: customerName.trim() ? "ready" : "attention",
-    },
-    {
-      label: "Scope",
-      detail: projectTitle.trim()
-        ? projectTitle.trim()
-        : "Add a project title",
-      status: projectTitle.trim() ? "ready" : "attention",
-    },
-    {
-      label: "Pricing",
-      detail:
-        readyLineItems.length > 0
-          ? `${readyLineItems.length} priced line ${
-              readyLineItems.length === 1 ? "item" : "items"
-            }`
-          : "Add at least one priced line",
-      status: readyLineItems.length > 0 ? "ready" : "attention",
-    },
-    {
-      label: "Tax",
-      detail:
-        taxMode === "taxable"
-          ? taxRate
-            ? `${taxRate}% ${taxLabel || "tax"}`
-            : "Taxable, rate needed"
-          : taxMode === "tax_exempt"
-            ? "Tax exempt"
-            : "No tax",
-      status: taxMode === "taxable" && !taxRate ? "attention" : "ready",
-    },
-    {
-      label: "Proof Text",
-      detail: scopeHasUsefulDetail
-        ? "Scope has useful detail"
-        : "Add clearer scope notes",
-      status: scopeHasUsefulDetail ? "ready" : "waiting",
-    },
-    {
-      label: "Terms",
-      detail: termsHaveUsefulDetail
-        ? "Customer terms are present"
-        : "Confirm customer terms",
-      status: termsHaveUsefulDetail ? "ready" : "waiting",
-    },
-  ] as const;
   const editorWarnings = [
     !serviceAddress.trim()
       ? "No service address is saved, so tax and site context may be weaker."
@@ -508,9 +492,29 @@ export default function EditEstimatePage() {
 
       const savedLineItems =
         (lineItemData ?? []) as SavedLineItem[];
+      const savedDiscount = savedLineItems
+        .map((item) =>
+          parseDiscountFromLineItem({
+            description: item.description,
+            lineTotal: item.line_total,
+            unitPrice: item.unit_price,
+          })
+        )
+        .find(Boolean);
 
-      if (savedLineItems.length > 0) {
-        setLineItems(savedLineItems.map(toLineItem));
+      if (savedDiscount) {
+        setDiscountEnabled(true);
+        setDiscountType(savedDiscount.type);
+        setDiscountValue(String(savedDiscount.value));
+        setDiscountLabel(savedDiscount.label ?? "");
+      }
+
+      const editableLineItems = savedLineItems.filter(
+        (item) => !isDiscountLine(item.description)
+      );
+
+      if (editableLineItems.length > 0) {
+        setLineItems(editableLineItems.map(toLineItem));
       } else {
         setLineItems([
           {
@@ -683,6 +687,23 @@ export default function EditEstimatePage() {
         item.description.trim() &&
         getLineTotal(item) > 0
     );
+    const discountLineItem =
+      discountAmount > 0
+        ? {
+            serviceItemId: "",
+            description: discountDisplayLabel({
+              enabled: discountEnabled,
+              type: discountType,
+              value: discountValue,
+              label: discountLabel,
+            }),
+            quantity: "1",
+            unitPrice: String(-discountAmount),
+          }
+        : null;
+    const saveLineItems = discountLineItem
+      ? [...validLineItems, discountLineItem]
+      : validLineItems;
 
     if (
       !customerName ||
@@ -830,7 +851,7 @@ export default function EditEstimatePage() {
       await supabase
         .from("estimate_line_items")
         .insert(
-          validLineItems.map((item, index) => ({
+          saveLineItems.map((item, index) => ({
             estimate_id: estimateId,
             business_id: businessId,
             description: item.description.trim(),
@@ -855,11 +876,6 @@ export default function EditEstimatePage() {
       return;
     }
 
-    await captureServicesFromLineItems({
-      businessId,
-      lineItems: validLineItems,
-    });
-
     await logActivity({
       businessId: businessId || null,
       action: "estimate.updated",
@@ -870,7 +886,9 @@ export default function EditEstimatePage() {
         customerName,
         projectTitle,
         amount: formatCurrency(estimateTotal),
-        lineItemCount: validLineItems.length,
+        lineItemCount: saveLineItems.length,
+        discountAmount: formatCurrency(discountAmount),
+        discountLabel: discountLabel.trim() || null,
         splitWarningEnabled: effectiveSplitWarningEnabled,
       },
     });
@@ -908,58 +926,39 @@ export default function EditEstimatePage() {
           Edit Estimate
         </h1>
 
-        <div className="mt-6">
-          <DocumentReadinessPanel
-            eyebrow="Estimate Editor"
-            title="Ready to save and send"
-            totalLabel="Estimate Total"
-            totalValue={formatCurrency(estimateTotal)}
-            secondaryLabel="Priced lines"
-            secondaryValue={String(readyLineItems.length)}
-            steps={[...editReadinessSteps]}
-          />
-        </div>
-
-        <Card className="estimate-editor-coach mt-6 border-orange-500/25 bg-zinc-950/60">
-          <div className="grid gap-4 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.24em] text-orange-300">
-                Editor Intelligence
-              </p>
-
-              <h2 className="mt-2 text-2xl font-black text-white">
-                Clean proposal, cleaner approval
-              </h2>
-
-              <p className="mt-2 text-sm leading-6 text-zinc-400">
-                Trimax is checking the estimate before it leaves your hands:
-                pricing, tax, proof text, terms, and split-invoice behavior.
-              </p>
+        <Card className="mt-5 border-orange-500/25 bg-zinc-950/70 p-3 sm:p-4">
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+            <div className="grid gap-2 sm:grid-cols-4">
+              <SummaryMetric label="Status" value={editorWarnings.length > 0 ? "Needs review" : "Estimate ready"} />
+              <SummaryMetric label="Total" value={formatCurrency(estimateTotal)} strong />
+              <SummaryMetric label="Priced Lines" value={String(readyLineItems.length)} />
+              <SummaryMetric
+                label="Automatic Split"
+                value={showSplitWarning ? `${automaticSplitPlan.length} invoices` : "Off"}
+              />
             </div>
-
-            <div className="grid gap-3">
-              {editorWarnings.length > 0 ? (
-                editorWarnings.map((warning) => (
-                  <div
-                    key={warning}
-                    className="estimate-editor-signal"
-                    data-tone={
-                      warning.includes("will create") ||
-                      warning.includes("suggested")
-                        ? "info"
-                        : "warning"
-                    }
-                  >
-                    {warning}
-                  </div>
-                ))
-              ) : (
-                <div className="estimate-editor-signal" data-tone="success">
-                  This estimate is clean from the current editor checks.
-                </div>
-              )}
-            </div>
+            <Button onClick={handleSave}>
+              {saving ? "Saving..." : "Save Changes"}
+            </Button>
           </div>
+          {editorWarnings.length > 0 ? (
+            <div className="mt-3 grid gap-2">
+              {editorWarnings.map((warning) => (
+                <div
+                  key={warning}
+                  className="estimate-editor-signal"
+                  data-tone={
+                    warning.includes("will create") ||
+                    warning.includes("suggested")
+                      ? "info"
+                      : "warning"
+                  }
+                >
+                  {warning}
+                </div>
+              ))}
+            </div>
+          ) : null}
         </Card>
 
         <Card className="mt-8">
@@ -1132,6 +1131,15 @@ export default function EditEstimatePage() {
                 </Button>
               </div>
 
+              <div className="mt-3">
+                <InputField
+                  label="Find Saved Service"
+                  placeholder="Search saved services or choose Custom Line Item"
+                  value={serviceSearch}
+                  onChange={setServiceSearch}
+                />
+              </div>
+
               <div className="mt-4 grid gap-4">
                 {lineItems.map((item, index) => (
                   <div
@@ -1157,7 +1165,7 @@ export default function EditEstimatePage() {
                           -- Custom Line Item --
                         </option>
 
-                        {serviceItems.map((serviceItem) => (
+                        {visibleServiceItems.map((serviceItem) => (
                           <option
                             key={serviceItem.id}
                             value={serviceItem.id}
@@ -1273,6 +1281,59 @@ export default function EditEstimatePage() {
                   label="Subtotal"
                   value={formatCurrency(subtotal)}
                 />
+
+                <div className="rounded-2xl border border-zinc-800 bg-black/20 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-white">Discount</p>
+                      <p className="text-xs text-zinc-500">
+                        Applied before tax
+                      </p>
+                    </div>
+                    <label className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-zinc-300">
+                      <input
+                        type="checkbox"
+                        checked={discountEnabled}
+                        onChange={(event) =>
+                          setDiscountEnabled(event.target.checked)
+                        }
+                        className="h-4 w-4 accent-orange-500"
+                      />
+                      Add
+                    </label>
+                  </div>
+
+                  {discountEnabled ? (
+                    <div className="mt-3 grid gap-2">
+                      <select
+                        value={discountType}
+                        onChange={(event) =>
+                          setDiscountType(event.target.value as DiscountType)
+                        }
+                        className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white outline-none transition focus:border-orange-500"
+                      >
+                        <option value="fixed">Fixed amount</option>
+                        <option value="percentage">Percentage</option>
+                      </select>
+                      <InputField
+                        label={discountType === "percentage" ? "Value (%)" : "Value"}
+                        type="number"
+                        value={discountValue}
+                        onChange={setDiscountValue}
+                      />
+                      <InputField
+                        label="Label"
+                        placeholder="Courtesy discount"
+                        value={discountLabel}
+                        onChange={setDiscountLabel}
+                      />
+                      <SummaryRow
+                        label="Discount"
+                        value={`-${formatCurrency(discountAmount)}`}
+                      />
+                    </div>
+                  ) : null}
+                </div>
 
                 <SummaryRow
                   label={formatTaxSummaryLabel({
@@ -1406,6 +1467,27 @@ function SummaryRow({
       <span className="font-semibold">
         {value}
       </span>
+    </div>
+  );
+}
+
+function SummaryMetric({
+  label,
+  value,
+  strong = false,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/25 px-3 py-2">
+      <p className="text-[0.68rem] font-black uppercase tracking-[0.18em] text-zinc-500">
+        {label}
+      </p>
+      <p className={`mt-1 font-black ${strong ? "text-orange-300" : "text-white"}`}>
+        {value}
+      </p>
     </div>
   );
 }
