@@ -91,7 +91,9 @@ const invoicePage = readFileSync(
 assert(
   invoicePage.includes("originalDisplayId") &&
     invoicePage.includes("Correction of ${originalDisplayId}") &&
-    invoicePage.includes("SplitInvoiceRelationshipDisplay"),
+    invoicePage.includes("Split Source") &&
+    invoicePage.includes("Creates {splitRelatedInvoices.length}") &&
+    invoicePage.includes("href={`/invoices/${relatedInvoice.id}${businessQuery}`}"),
   "source and correction relationships must remain separate displays"
 );
 

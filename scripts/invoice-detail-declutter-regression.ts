@@ -27,6 +27,7 @@ assert(
   "trimax-invoice-email",
   "trimax-invoice-deposit",
   "trimax-invoice-proof",
+  "trimax-invoice-terms",
   "trimax-invoice-actions",
 ].forEach((storageKey) => {
   assert(
@@ -44,10 +45,11 @@ assert(
 );
 
 assert(
-  invoicePage.includes("SplitInvoiceRelationshipDisplay") &&
-    invoicePage.includes("childInvoices={splitRelatedInvoices}") &&
-    invoicePage.includes("sourceInvoice={splitParentInvoice}"),
-  "Split Source and Source relationships must remain visible from authoritative data."
+  invoicePage.includes("Split Source") &&
+    invoicePage.includes("Creates {splitRelatedInvoices.length}") &&
+    invoicePage.includes("Open individual invoice") &&
+    invoicePage.includes("Open Original"),
+  "Split Source and child invoice relationships must remain compact, visible, and openable from authoritative data."
 );
 
 assert(
@@ -84,6 +86,49 @@ assert(
     invoicePage.includes("title=\"More Actions\"") &&
     invoicePage.includes("<UpdateInvoiceStatusButton"),
   "More Actions must preserve existing invoice action buttons."
+);
+
+assert(
+  invoicePage.includes("invoice-intelligence-card") &&
+    invoicePage.includes("Next Action") &&
+    invoicePage.includes("Review PDF") &&
+    !invoicePage.includes("invoice-intelligence-step"),
+  "Invoice Intelligence must render as a compact action bar instead of large repeated status cards."
+);
+
+assert(
+  invoicePage.includes("Automatic Split") &&
+    invoicePage.includes("Complete / ${splitRelatedInvoices.length} invoices created") &&
+    invoicePage.includes("Ready / target ${money(splitWarningAmount)}"),
+  "Automatic Split must show a compact ready/complete status."
+);
+
+assert(
+  invoicePage.includes('title="Terms"') &&
+    invoicePage.includes("Payment due according to invoice terms") &&
+    invoicePage.includes("invoiceTerms"),
+  "Terms must be collapsed by default while preserving the invoice terms text."
+);
+
+assert(
+  invoicePage.includes("<h2 className=\"text-2xl font-bold text-white\">Line Items</h2>") &&
+    !invoicePage.includes("title=\"Line Items\""),
+  "Line Items must remain expanded by default."
+);
+
+const splitSendActionLabelCount = (
+  invoicePage.match(/label: "Send Split Group"/g) ?? []
+).length;
+
+assert.equal(
+  splitSendActionLabelCount,
+  1,
+  "Invoice detail must define exactly one visually dominant Send Split Group primary action."
+);
+
+assert(
+  !invoicePage.includes("<Button>Send Split Group</Button>"),
+  "Split relationship sections must not duplicate the primary Send Split Group button."
 );
 
 const protectedFiles = [

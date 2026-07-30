@@ -11,7 +11,6 @@ import InvoiceEmailSendPanel from "../../components/InvoiceEmailSendPanel";
 import PersistentDetails from "../../components/PersistentDetails";
 import RequestDepositButton from "../../components/RequestDepositButton";
 import SplitInvoicePlanner from "../../components/SplitInvoicePlanner";
-import SplitInvoiceRelationshipDisplay from "../../components/SplitInvoiceRelationshipDisplay";
 import Toast from "../../components/Toast";
 import UpdateInvoiceStatusButton from "../../components/UpdateInvoiceStatusButton";
 import {
@@ -582,139 +581,58 @@ function InvoiceIntelligence({
   amountDueLabel,
   amountPaid,
   balanceDue,
-  collectedPercent,
-  depositStatusLabel,
-  hasDepositRequest,
-  hasPaymentProof,
-  hasPdfProof,
-  hasReminderProof,
   hasSendProof,
   isFullyPaid,
   isDraftIncomplete,
-  isPartiallyPaid,
-  isPaymentLate,
   latestPaymentDate,
   nextAction,
+  reviewPdfHref,
 }: {
   amountDueLabel: string;
   amountPaid: number;
   balanceDue: number;
-  collectedPercent: number;
-  depositStatusLabel: string;
-  hasDepositRequest: boolean;
-  hasPaymentProof: boolean;
-  hasPdfProof: boolean;
-  hasReminderProof: boolean;
   hasSendProof: boolean;
   isFullyPaid: boolean;
   isDraftIncomplete: boolean;
-  isPartiallyPaid: boolean;
-  isPaymentLate: boolean;
   latestPaymentDate: string | null;
   nextAction: InvoiceIntelligenceAction;
+  reviewPdfHref: string;
 }) {
-  const steps = [
-    {
-      label: "Send Proof",
-      value: hasSendProof ? "Delivered" : "Not Sent Yet",
-      done: hasSendProof,
-    },
-    {
-      label: "PDF Copy",
-      value: hasPdfProof ? "Stored" : hasSendProof ? "Not Attached" : "Pending",
-      done: hasPdfProof,
-    },
-    {
-      label: "Payment",
-      value: isDraftIncomplete
-        ? "Draft incomplete"
-        : isFullyPaid
-        ? "Paid in Full"
-        : isPartiallyPaid
-          ? `${collectedPercent}% Collected`
-          : money(balanceDue),
-      done: !isDraftIncomplete && (isFullyPaid || hasPaymentProof),
-    },
-    {
-      label: "Reminder",
-      value: isDraftIncomplete
-        ? "Not ready"
-        : isPaymentLate
-        ? hasReminderProof
-          ? "Sent"
-          : "Due Now"
-        : isFullyPaid
-          ? "Not Required"
-          : "Current",
-      done: !isPaymentLate || hasReminderProof,
-    },
-    {
-      label: "Deposit",
-      value: depositStatusLabel,
-      done: depositStatusLabel === "Collected" || !hasDepositRequest,
-    },
-  ];
+  const balanceLabel = isDraftIncomplete
+    ? "Draft incomplete"
+    : isFullyPaid
+      ? money(amountPaid)
+      : money(balanceDue);
 
   return (
-    <Card className="invoice-intelligence-card overflow-hidden border-sky-500/30 bg-gradient-to-br from-sky-500/10 via-zinc-950 to-emerald-500/10">
-      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.35em] text-sky-300">
-            Invoice Intelligence
-          </p>
-          <h2 className="mt-3 text-2xl font-black text-white">
-            {nextAction.title}
-          </h2>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-300">
-            {nextAction.detail}
-          </p>
-
-          <div className="mt-5 flex flex-wrap items-center gap-3">
-            <Link href={nextAction.href}>
-              <Button>{nextAction.label}</Button>
-            </Link>
-            <div className="rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm">
-              <p className="text-zinc-400">
-                {isFullyPaid ? "Collected" : amountDueLabel}
-              </p>
-              <p className="mt-1 text-lg font-black text-white">
-                {isDraftIncomplete
-                  ? "Draft incomplete"
-                  : isFullyPaid
-                    ? money(amountPaid)
-                    : money(balanceDue)}
-              </p>
-              {isFullyPaid && latestPaymentDate ? (
-                <p className="mt-1 text-xs font-semibold text-emerald-200">
-                  Paid {formatLifecycleDate(latestPaymentDate)}
-                </p>
-              ) : null}
-            </div>
-          </div>
+    <Card className="invoice-intelligence-card border-sky-500/30 bg-sky-500/10 p-3 sm:p-4">
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+        <div className="grid gap-2 sm:grid-cols-3">
+          <Info label="Next Action" value={nextAction.title} strong />
+          <Info
+            label={isFullyPaid ? "Collected" : amountDueLabel}
+            value={balanceLabel}
+            strong
+          />
+          <Info
+            label="Send Status"
+            value={hasSendProof ? "Sent proof saved" : "Not sent yet"}
+          />
+          {isFullyPaid && latestPaymentDate ? (
+            <Info
+              label="Paid Date"
+              value={formatLifecycleDate(latestPaymentDate)}
+            />
+          ) : null}
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          {steps.map((step) => (
-            <div
-              key={step.label}
-              className={`invoice-intelligence-step rounded-2xl border px-4 py-3 ${
-                step.done
-                  ? "border-emerald-400/30 bg-emerald-400/10"
-                  : "border-sky-400/20 bg-black/25"
-              }`}
-            >
-              <p className="text-[0.72rem] font-bold uppercase tracking-[0.25em] text-zinc-500">
-                {step.label}
-              </p>
-              <p
-                className={`mt-2 text-lg font-black ${
-                  step.done ? "text-emerald-200" : "text-white"
-                }`}
-              >
-                {step.value}
-              </p>
-            </div>
-          ))}
+        <div className="flex flex-col gap-2 sm:flex-row lg:justify-end">
+          <Link href={nextAction.href}>
+            <Button>{nextAction.label}</Button>
+          </Link>
+          <Link href={reviewPdfHref}>
+            <Button variant="secondary">Review PDF</Button>
+          </Link>
         </div>
       </div>
     </Card>
@@ -1059,10 +977,6 @@ export default async function InvoiceDetailPage({
       : invoiceTotal
     : amountPaid;
   const isPartiallyPaid = amountPaid > 0 && amountDue > 0;
-  const collectedPercent =
-    invoiceTotal > 0
-      ? Math.min(100, Math.round((collectedAmount / invoiceTotal) * 100))
-      : 0;
   const depositRequestedAmount = numberValue(
     invoice.deposit_requested_amount
   );
@@ -1196,14 +1110,6 @@ export default async function InvoiceDetailPage({
     null;
   const hasSendProof = Boolean(latestSendLog);
   const hasReminderProof = Boolean(latestReminderLog);
-  const hasPaymentProof = Boolean(latestPaymentLog);
-  const hasPdfProof = invoiceActivityLogs.some((log) => {
-    const isEmailProof =
-      log.action === "invoice.email_sent" ||
-      log.action === "invoice.payment_reminder_sent";
-
-    return isEmailProof && detailText(log.details, "pdf_attached") === "true";
-  });
   const depositStatusLabel = isPartiallyPaid
     ? "Collected"
     : isFullyPaid && collectedAmount > 0
@@ -1494,17 +1400,17 @@ export default async function InvoiceDetailPage({
           message={`Invoice ${invoice.display_id ?? "Invoice"} created. Next step: send the invoice.`}
         />
       ) : null}
-      <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
-        <div className="mb-8 sm:mb-10">
+      <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+        <div className="mb-5 sm:mb-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.35em] text-orange-400">
                 Invoice Details
               </p>
-              <h1 className="mt-3 text-3xl font-black leading-tight text-white sm:text-4xl">
+              <h1 className="mt-2 text-3xl font-black leading-tight text-white sm:text-4xl">
                 {projectTitle}
               </h1>
-              <p className="mt-3 text-lg text-zinc-400">
+              <p className="mt-2 text-lg text-zinc-400">
                 {invoice.display_id || "Invoice"}
               </p>
             </div>
@@ -1513,9 +1419,9 @@ export default async function InvoiceDetailPage({
           </div>
         </div>
 
-        <div className="space-y-6">
-          {isDraftInvoice && !isNonCollectibleInvoice ? (
-            <Card className="border-sky-500/30 bg-sky-500/10">
+        <div className="space-y-4">
+          {isDraftInvoice && !isNonCollectibleInvoice && !hasSplitInvoiceGroup ? (
+            <Card className="border-sky-500/30 bg-sky-500/10 p-3 sm:p-4">
               <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <p className="text-sm font-semibold uppercase tracking-[0.3em] text-sky-200">
@@ -1562,19 +1468,12 @@ export default async function InvoiceDetailPage({
             amountDueLabel={amountDueLabel}
             amountPaid={collectedAmount}
             balanceDue={customerFacingAmountDue}
-            collectedPercent={collectedPercent}
-            depositStatusLabel={depositStatusLabel}
-            hasDepositRequest={hasDepositRequest}
-            hasPaymentProof={hasPaymentProof}
-            hasPdfProof={hasPdfProof}
-            hasReminderProof={hasReminderProof}
             hasSendProof={hasSendProof}
             isFullyPaid={isFullyPaid}
             isDraftIncomplete={isIncompleteDraftInvoice}
-            isPartiallyPaid={isPartiallyPaid}
-            isPaymentLate={isPaymentLate}
             latestPaymentDate={latestPaymentDate}
             nextAction={invoiceIntelligenceAction}
+            reviewPdfHref={`/invoices/${invoice.id}/print${businessQuery}`}
           />
 
           {isNonCollectibleInvoice || correctionLog ? (
@@ -1646,7 +1545,7 @@ export default async function InvoiceDetailPage({
             storageKey={`trimax-invoice-payment-${invoice.id}`}
             title="Payment"
             subtitle={paymentSummary}
-            className="rounded-2xl border border-emerald-500/25 bg-zinc-950/70 p-4"
+            className="rounded-2xl border border-emerald-500/25 bg-zinc-950/70 p-3"
             contentClassName="mt-4"
           >
             <PaymentProgressCard
@@ -1661,20 +1560,32 @@ export default async function InvoiceDetailPage({
           </PersistentDetails>
 
           {showSplitWarning ? (
-            <Card className="border-yellow-500/60 bg-yellow-500/10">
-              <p className="text-sm font-semibold uppercase tracking-[0.35em] text-yellow-300">
-                Automatic Split Ready
-              </p>
-              <p className="mt-3 text-lg font-bold text-yellow-100">
-                This invoice is over {money(splitWarningAmount)} after tax.
-              </p>
-              <details className="mt-3 rounded-xl border border-yellow-400/20 bg-black/20 px-3 py-2 text-sm leading-6 text-yellow-100/80">
+            <Card className="border-yellow-500/60 bg-yellow-500/10 p-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.25em] text-yellow-300">
+                    Automatic Split
+                  </p>
+                  <p className="mt-1 text-lg font-bold text-yellow-100">
+                    {splitRelatedInvoices.length > 0
+                      ? `Complete / ${splitRelatedInvoices.length} invoices created`
+                      : `Ready / target ${money(splitWarningAmount)}`}
+                  </p>
+                </div>
+                {canCreateSplitInvoices ? (
+                  <p className="text-sm font-semibold text-yellow-100/80">
+                    Review split drafts below.
+                  </p>
+                ) : null}
+              </div>
+              <details className="mt-2 rounded-xl border border-yellow-400/20 bg-black/20 px-3 py-2 text-sm leading-6 text-yellow-100/80">
                 <summary className="cursor-pointer font-black text-yellow-100">
                   Details
                 </summary>
                 <p className="mt-2">
-                  Trimax can prepare draft split invoices that stay under the
-                  target including tax.
+                  Trimax prepares draft split invoices that stay under the
+                  target including tax while preserving the original source
+                  invoice relationship.
                 </p>
               </details>
             </Card>
@@ -1707,15 +1618,15 @@ export default async function InvoiceDetailPage({
           ) : null}
 
           {splitParentInvoice || splitRelatedInvoices.length > 0 ? (
-            <Card className="overflow-visible border-green-500/40 bg-green-500/10">
-              <div className="flex flex-col gap-6">
-                <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr] lg:items-start">
+            <Card className="overflow-visible border-green-500/40 bg-green-500/10 p-3 sm:p-4">
+              <div className="flex flex-col gap-3">
+                <div className="grid gap-3 lg:grid-cols-[1.2fr_0.8fr] lg:items-start">
                   <div>
-                    <p className="text-sm font-semibold uppercase tracking-[0.35em] text-green-300">
+                    <p className="text-sm font-semibold uppercase tracking-[0.25em] text-green-300">
                       Split Invoice Group
                     </p>
 
-                    <p className="mt-3 text-lg font-bold text-green-100">
+                    <p className="mt-2 text-lg font-bold text-green-100">
                       {invoice.split_parent_invoice_id
                         ? `Split ${
                             invoice.split_sequence ?? "-"
@@ -1728,23 +1639,28 @@ export default async function InvoiceDetailPage({
                           }.`}
                     </p>
 
-                    <p className="mt-2 text-sm leading-6 text-green-100/75">
-                      A split invoice group is one customer transaction
-                      represented by multiple accounting invoices. The default
-                      customer workflow sends one email with every child invoice
-                      PDF attached.
-                    </p>
+                    <details className="mt-2 rounded-xl border border-green-400/20 bg-black/15 px-3 py-2 text-sm text-green-100/75">
+                      <summary className="cursor-pointer font-black text-green-100">
+                        Details
+                      </summary>
+                      <p className="mt-2 leading-6">
+                        A split invoice group is one customer transaction
+                        represented by multiple accounting invoices. The default
+                        customer workflow sends one email with every child
+                        invoice PDF attached.
+                      </p>
+                    </details>
                   </div>
 
                   {splitRelatedInvoices.length > 1 ? (
-                    <div className="rounded-2xl border border-green-400/30 bg-black/25 p-4">
+                    <div className="rounded-xl border border-green-400/30 bg-black/25 p-3">
                       <p className="text-xs font-black uppercase tracking-[0.22em] text-green-200/70">
                         Group Status
                       </p>
-                      <p className="mt-2 text-2xl font-black text-white">
+                      <p className="mt-1 text-xl font-black text-white">
                         {splitGroupStatus}
                       </p>
-                      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
                         <div>
                           <p className="text-xs uppercase tracking-[0.2em] text-green-100/55">
                             Included
@@ -1762,10 +1678,7 @@ export default async function InvoiceDetailPage({
                           </p>
                         </div>
                       </div>
-                      <div className="mt-4 flex flex-col gap-3">
-                        <Link href="#send-invoice">
-                          <Button>Send Split Group</Button>
-                        </Link>
+                      <div className="mt-3 flex flex-col gap-2">
                         <Link href={`/invoices/${invoice.id}/print${businessQuery}`}>
                           <Button variant="secondary">
                             Preview Current PDF
@@ -1776,19 +1689,13 @@ export default async function InvoiceDetailPage({
                   ) : null}
                 </div>
 
-                <SplitInvoiceRelationshipDisplay
-                  businessQuery={businessQuery}
-                  sourceInvoice={splitParentInvoice}
-                  childInvoices={splitRelatedInvoices}
-                />
-
                 {splitParentInvoice ? (
-                  <div className="rounded-2xl border border-green-500/30 bg-black/20 p-4">
+                  <div className="rounded-xl border border-green-500/30 bg-black/20 p-3">
                     <p className="text-sm text-green-100/70">
-                      Original Invoice
+                      Split Source
                     </p>
 
-                    <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <p className="font-semibold text-white">
                           {splitParentInvoice.display_id || "Invoice"}
@@ -1805,38 +1712,31 @@ export default async function InvoiceDetailPage({
                       >
                         <Button variant="secondary">Open Original</Button>
                       </Link>
-
-                      {hasSplitInvoiceGroup ? (
-                        <Link href="#send-invoice">
-                          <Button>Send Split Group</Button>
-                        </Link>
-                      ) : null}
                     </div>
                   </div>
                 ) : null}
 
                 {splitRelatedInvoices.length > 0 ? (
-                  <div className="rounded-2xl border border-green-500/30 bg-black/15 p-4">
+                  <div className="rounded-xl border border-green-500/30 bg-black/15 p-3">
                     <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                       <div>
                         <p className="text-xs font-black uppercase tracking-[0.22em] text-green-200/70">
-                          Included invoices
+                          Split Source
                         </p>
                         <p className="mt-1 text-sm text-green-100/70">
-                          Each child keeps its own invoice number for
-                          accounting, but the customer normally receives one
-                          group email.
+                          Creates {splitRelatedInvoices.length} invoice
+                          {splitRelatedInvoices.length === 1 ? "" : "s"}
                         </p>
                       </div>
                     </div>
 
-                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    <div className="mt-3 grid gap-2 md:grid-cols-2">
                       {splitRelatedInvoices.map((relatedInvoice) => (
                         <div
                           key={relatedInvoice.id}
-                          className="rounded-2xl border border-green-500/25 bg-black/25 p-4 text-green-50"
+                          className="rounded-xl border border-green-500/25 bg-black/25 p-3 text-green-50"
                         >
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                             <div className="min-w-0">
                               <p className="overflow-wrap-anywhere text-lg font-black">
                                 {relatedInvoice.display_id || "Invoice"}
@@ -1858,7 +1758,7 @@ export default async function InvoiceDetailPage({
                             {relatedInvoice.project_title || "Untitled invoice"}
                           </p>
 
-                          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                          <div className="mt-3 grid gap-2 sm:grid-cols-2">
                             <div>
                               <p className="text-xs uppercase tracking-[0.2em] text-green-100/50">
                                 Amount
@@ -1882,26 +1782,6 @@ export default async function InvoiceDetailPage({
                         </div>
                       ))}
                     </div>
-
-                    <div className="mt-4 rounded-2xl border border-green-500/25 bg-black/20 p-4">
-                      <p className="text-xs font-black uppercase tracking-[0.22em] text-green-200/70">
-                        Secondary actions
-                      </p>
-                      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                        {splitParentInvoice ? (
-                          <Link
-                            href={`/invoices/${splitParentInvoice.id}${businessQuery}`}
-                          >
-                            <Button variant="secondary">Open Original</Button>
-                          </Link>
-                        ) : null}
-                        <a href="#invoice-actions">
-                          <Button variant="secondary">
-                            Manage Individual Invoices
-                          </Button>
-                        </a>
-                      </div>
-                    </div>
                   </div>
                 ) : null}
 
@@ -1915,7 +1795,7 @@ export default async function InvoiceDetailPage({
                 storageKey={`trimax-invoice-email-${invoice.id}`}
                 title="Email & Preview"
                 subtitle={emailSummary}
-                className="rounded-2xl border border-sky-500/25 bg-sky-500/5 p-4"
+                className="rounded-2xl border border-sky-500/25 bg-sky-500/5 p-3"
                 contentClassName="mt-4"
               >
                 <InvoiceEmailSendPanel
@@ -1944,16 +1824,16 @@ export default async function InvoiceDetailPage({
           ) : null}
 
           {linkedEstimate ? (
-            <Card>
-              <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+            <Card className="p-3 sm:p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.35em] text-purple-300">
+                  <p className="text-sm font-semibold uppercase tracking-[0.25em] text-purple-300">
                     Linked Estimate
                   </p>
-                  <p className="mt-4 text-lg font-bold text-white">
+                  <p className="mt-2 text-lg font-bold text-white">
                     {linkedEstimate.display_id || "Estimate"}
                   </p>
-                  <p className="mt-2 text-zinc-400">
+                  <p className="mt-1 text-zinc-400">
                     {linkedEstimate.project_title || "Untitled estimate"}
                   </p>
                 </div>
@@ -1996,9 +1876,9 @@ export default async function InvoiceDetailPage({
           {isPaymentLate && !isNonCollectibleInvoice ? (
             <section
               id="late-payment-reminder"
-              className="late-reminder-section scroll-mt-6 rounded-3xl border border-rose-500/30 bg-rose-500/10 p-4 sm:p-5"
+              className="late-reminder-section scroll-mt-6 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3 sm:p-4"
             >
-              <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <p className="text-sm font-semibold uppercase tracking-[0.35em] text-rose-300">
                     Late Payment Reminder
@@ -2007,11 +1887,6 @@ export default async function InvoiceDetailPage({
                     Invoice is {daysLate} day
                     {daysLate === 1 ? "" : "s"} past due
                   </h2>
-                  <p className="mt-2 max-w-3xl text-sm leading-6 text-rose-100/80">
-                    Send a polite payment reminder using the reminder template
-                    saved in Settings. Trimax logs the reminder separately from
-                    the original invoice send.
-                  </p>
                 </div>
 
                 <div className="rounded-2xl border border-rose-500/25 bg-black/20 px-4 py-3 text-sm">
@@ -2026,7 +1901,7 @@ export default async function InvoiceDetailPage({
                 storageKey={`trimax-invoice-reminder-email-${invoice.id}`}
                 title="Email & Preview"
                 subtitle={emailSummary}
-                className="rounded-2xl border border-rose-300/25 bg-black/10 p-4"
+                className="rounded-2xl border border-rose-300/25 bg-black/10 p-3"
                 contentClassName="mt-4"
               >
                 <InvoiceEmailSendPanel
@@ -2052,7 +1927,7 @@ export default async function InvoiceDetailPage({
               storageKey={`trimax-invoice-deposit-${invoice.id}`}
               title="Deposit"
               subtitle={depositSummary}
-              className={`rounded-2xl border p-4 ${
+              className={`rounded-2xl border p-3 ${
                 hasDepositRequest || hasInferredDepositCollection
                   ? "deposit-request-card border-emerald-200 bg-white"
                   : "border-zinc-800 bg-zinc-950/70"
@@ -2150,8 +2025,8 @@ export default async function InvoiceDetailPage({
             </PersistentDetails>
           ) : null}
 
-          <Card className="invoice-summary-card">
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <Card className="invoice-summary-card p-3 sm:p-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <Info label="Customer" value={customerName} />
               <Info
                 label={isFullyPaid ? "Collected" : amountDueLabel}
@@ -2192,8 +2067,8 @@ export default async function InvoiceDetailPage({
             </div>
           </Card>
 
-          <Card className="invoice-line-items-card">
-            <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <Card className="invoice-line-items-card p-3 sm:p-4">
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-2xl font-bold text-white">Line Items</h2>
               <p className="text-2xl font-black text-orange-400 sm:text-right">
                 {isFullyPaid ? money(collectedAmount) : money(amountDue)}
@@ -2202,7 +2077,7 @@ export default async function InvoiceDetailPage({
 
             {items.length > 0 ? (
               <div className="rounded-2xl border border-zinc-800 md:overflow-hidden">
-                <div className="hidden grid-cols-[minmax(0,1fr)_90px_130px_130px] gap-4 bg-black/50 px-5 py-4 text-sm font-bold text-zinc-400 md:grid">
+                <div className="hidden grid-cols-[minmax(0,1fr)_90px_130px_130px] gap-4 bg-black/50 px-4 py-3 text-sm font-bold text-zinc-400 md:grid">
                   <div>Description</div>
                   <div className="text-right">Qty</div>
                   <div className="text-right">Unit</div>
@@ -2218,7 +2093,7 @@ export default async function InvoiceDetailPage({
                   return (
                     <div
                       key={item.id}
-                      className="invoice-line-item-row grid gap-4 border-t border-zinc-800 px-4 py-5 text-white first:border-t-0 md:grid-cols-[minmax(0,1fr)_90px_130px_130px] md:px-5 md:py-4"
+                      className="invoice-line-item-row grid gap-3 border-t border-zinc-800 px-4 py-4 text-white first:border-t-0 md:grid-cols-[minmax(0,1fr)_90px_130px_130px] md:py-3"
                     >
                       <div className="min-w-0 whitespace-pre-wrap break-words text-base leading-7 md:leading-6">
                         {item.description}
@@ -2249,7 +2124,7 @@ export default async function InvoiceDetailPage({
               <p className="text-zinc-400">No line items added.</p>
             )}
 
-            <div className="ml-auto mt-8 max-w-sm space-y-4">
+            <div className="ml-auto mt-5 max-w-sm space-y-3">
               <SummaryRow label="Subtotal" value={money(subtotal)} />
               <SummaryRow
                 label={formatTaxSummaryLabel({
@@ -2294,7 +2169,7 @@ export default async function InvoiceDetailPage({
                 value={money(isFullyPaid ? collectedAmount : amountPaid)}
               />
 
-              <div className="border-t border-zinc-700 pt-4">
+              <div className="border-t border-zinc-700 pt-3">
                 <SummaryRow
                   label={isFullyPaid ? "Balance" : amountDueLabel}
                   value={
@@ -2313,7 +2188,7 @@ export default async function InvoiceDetailPage({
               storageKey={`trimax-invoice-proof-${invoice.id}`}
               title="Proof"
               subtitle={proofSummaryText}
-              className="rounded-2xl border border-sky-500/20 bg-zinc-950/70 p-4"
+              className="rounded-2xl border border-sky-500/20 bg-zinc-950/70 p-3"
               contentClassName="mt-4"
             >
               <EvidenceTrail
@@ -2323,7 +2198,7 @@ export default async function InvoiceDetailPage({
             </PersistentDetails>
           </div>
 
-          <Card>
+          <Card className="p-3 sm:p-4">
             <Info label="Notes" value={invoice.notes || "No notes added."} />
           </Card>
 
@@ -2334,16 +2209,22 @@ export default async function InvoiceDetailPage({
             title="Invoice Conversation"
           />
 
-          <Card>
+          <PersistentDetails
+            storageKey={`trimax-invoice-terms-${invoice.id}`}
+            title="Terms"
+            subtitle="Payment due according to invoice terms"
+            className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-3"
+            contentClassName="mt-4"
+          >
             <Info label="Terms" value={invoiceTerms} />
-          </Card>
+          </PersistentDetails>
 
           <div id="invoice-actions" className="scroll-mt-6">
             <PersistentDetails
               storageKey={`trimax-invoice-actions-${invoice.id}`}
               title="More Actions"
               subtitle={moreActionsSummary}
-              className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4"
+              className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-3"
               contentClassName="mt-4"
             >
               {splitSendInvoiceCount > 1 ? (
