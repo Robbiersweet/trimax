@@ -15,6 +15,10 @@ const persistentDetails = readFileSync(
   resolve(root, "src/app/components/PersistentDetails.tsx"),
   "utf8"
 );
+const sendPanel = readFileSync(
+  resolve(root, "src/app/components/InvoiceEmailSendPanel.tsx"),
+  "utf8"
+);
 
 assert(
   persistentDetails.includes("window.localStorage.setItem") &&
@@ -55,9 +59,10 @@ assert(
 assert(
   invoicePage.includes("<InvoiceEmailSendPanel") &&
     invoicePage.includes("title=\"Email & Preview\"") &&
-    invoicePage.includes("Send Split Group") &&
+    invoicePage.includes("Review Split Group") &&
+    sendPanel.includes("Send Split Group") &&
     invoicePage.includes("sendSplitGroup"),
-  "Email details must collapse while preserving the existing send panel and split workflow warning."
+  "Email details must collapse while preserving review-first split workflow and the existing final send panel."
 );
 
 assert(
@@ -117,13 +122,13 @@ assert(
 );
 
 const splitSendActionLabelCount = (
-  invoicePage.match(/label: "Send Split Group"/g) ?? []
+  invoicePage.match(/label: "Review Split Group"/g) ?? []
 ).length;
 
 assert.equal(
   splitSendActionLabelCount,
   1,
-  "Invoice detail must define exactly one visually dominant Send Split Group primary action."
+  "Invoice detail must define exactly one visually dominant Review Split Group primary action."
 );
 
 assert(

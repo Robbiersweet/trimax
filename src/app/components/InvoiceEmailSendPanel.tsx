@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import Button from "./Button";
 import Card from "./Card";
 import Toast from "./Toast";
@@ -41,6 +42,9 @@ type InvoiceEmailSendPanelProps = {
   splitGroupCombinedTotal?: string;
   correctionOriginalDisplayId?: string | null;
   sendDisabledReason?: string | null;
+  initialSent?: boolean;
+  initialSentAt?: string | null;
+  initialSentPdfCount?: number;
 };
 
 function defaultSubject(
@@ -169,7 +173,7 @@ function defaultSplitGroupMessage({
 
   return `Attached are invoices ${documentListLabel(documentNumbers)}${projectText}.
 
-This invoice was split because of the billing limit. Both official invoice PDFs are attached to this email.${invoiceLines}`;
+This invoice was split because of the billing limit. Both official invoice PDFs are attached to this email.${invoiceLines ? `\n${invoiceLines}` : ""}`;
 }
 
 function normalizeInvoiceBodyCopy(message: string, fallback: string) {
@@ -197,7 +201,11 @@ export default function InvoiceEmailSendPanel({
   splitGroupCombinedTotal,
   correctionOriginalDisplayId,
   sendDisabledReason,
+  initialSent = false,
+  initialSentAt = null,
+  initialSentPdfCount = 0,
 }: InvoiceEmailSendPanelProps) {
+  const router = useRouter();
   const effectiveSplitGroupLabel =
     splitGroupLabel?.trim() ||
     (projectTitle?.trim() ? `Invoice ${projectTitle.trim()}` : documentNumber);
@@ -261,16 +269,51 @@ export default function InvoiceEmailSendPanel({
   const [replyToEmail, setReplyToEmail] = useState("");
   const [templateLoaded, setTemplateLoaded] = useState(false);
   const [sending, setSending] = useState(false);
+  const [sentState, setSentState] = useState<{
+    sent: boolean;
+    sentAt: string | null;
+    pdfCount: number;
+  }>({
+    sent: initialSent,
+    sentAt: initialSentAt,
+    pdfCount: initialSentPdfCount,
+  });
+  const [sendIdempotencyKey, setSendIdempotencyKey] = useState(() => {
+    if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+      return crypto.randomUUID();
+    }
+
+    return `trimax-send-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  });
   const [toast, setToast] = useState<{
     type: "success" | "error";
     message: string;
     technicalDetails?: string;
   } | null>(null);
+  const hasBeenSent = sentState.sent;
 
   const canSend =
+    !hasBeenSent &&
     !sendDisabledReason &&
     recipient.trim().includes("@") &&
     Boolean(subject.trim());
+  const sentDateLabel = useMemo(() => {
+    if (!sentState.sentAt) {
+      return "Sent";
+    }
+
+    const date = new Date(sentState.sentAt);
+
+    if (Number.isNaN(date.getTime())) {
+      return sentState.sentAt;
+    }
+
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }).format(date);
+  }, [sentState.sentAt]);
   const dueDateSentence =
     dueDate && dueDate !== "-"
       ? requestType === "reminder"
@@ -658,6 +701,10 @@ export default function InvoiceEmailSendPanel({
   async function handleSend(sendAsSplitGroup = sendSplitGroup) {
     setToast(null);
 
+    if (sending || hasBeenSent) {
+      return;
+    }
+
     if (sendDisabledReason) {
       setToast({
         type: "error",
@@ -700,6 +747,7 @@ export default function InvoiceEmailSendPanel({
           attachOfficialPdf: true,
           sendSplitGroup: sendAsSplitGroup,
           emailPurpose: requestType === "reminder" ? "reminder" : "send",
+          sendIdempotencyKey,
         }),
         }
       );
@@ -713,6 +761,8 @@ export default function InvoiceEmailSendPanel({
         pipelineStage?: string;
         pipelineStageLabel?: string;
         traceId?: string;
+        sentAt?: string | null;
+        attachmentCount?: number;
       };
 
       if (!response.ok) {
@@ -758,6 +808,24 @@ export default function InvoiceEmailSendPanel({
               ? `Invoice ${documentNumber} sent. Next step: mark the work complete if the job is finished.`
               : result.message ?? `${documentLabel} email sent.`,
       });
+      if (requestType !== "reminder") {
+        setSentState({
+          sent: true,
+          sentAt: result.sentAt ?? new Date().toISOString(),
+          pdfCount:
+            typeof result.attachmentCount === "number"
+              ? result.attachmentCount
+              : sendSplitGroup && splitGroupCount > 1
+                ? splitGroupCount
+                : 1,
+        });
+        setSendIdempotencyKey(
+          typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : `trimax-send-${Date.now()}-${Math.random().toString(36).slice(2)}`
+        );
+        router.refresh();
+      }
     } catch (error) {
       setToast({
         type: "error",
@@ -801,6 +869,8 @@ export default function InvoiceEmailSendPanel({
               ? `Send Payment Reminder`
             : requestType === "estimate"
               ? `Send ${documentNumber}`
+            : hasBeenSent
+              ? "Sent"
             : sendSplitGroup && splitGroupCount > 1
               ? "Send Split Group"
             : `Send ${documentNumber}`}
@@ -1009,22 +1079,39 @@ export default function InvoiceEmailSendPanel({
 
       <div className="invoice-email-footer flex flex-col gap-4 border-t border-slate-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <div className="max-w-2xl">
-          <p className="text-sm font-semibold text-slate-700">
-            {sendDisabledReason
+          {hasBeenSent ? (
+            <div className="invoice-email-sent-state rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+              <p className="text-sm font-black text-emerald-800">
+                Sent
+              </p>
+              <p className="mt-1 text-sm font-semibold text-emerald-950">
+                {sentDateLabel}
+                {sentState.pdfCount > 0
+                  ? ` / ${sentState.pdfCount} PDF${
+                      sentState.pdfCount === 1 ? "" : "s"
+                    } delivered`
+                  : ""}
+              </p>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm font-semibold text-slate-700">
+                {sendDisabledReason
               ? sendDisabledReason
               : canSend
               ? sendSplitGroup && splitGroupCount > 1
                 ? `Split invoice group is ready to send`
                 : `${documentLabel} is ready to send`
               : `Finish the ${documentLabelLower} email setup`}
-          </p>
-          <p className="mt-1 text-sm leading-6 text-slate-500">
-            Direct sending uses a verified email provider so messages do not
-            look like random mail.
-            {templateLoaded
-              ? " The PDF attachment uses the official customer document."
-              : " Loading saved email settings..."}
-          </p>
+              </p>
+              <p className="mt-1 text-sm leading-6 text-slate-500">
+                Direct sending uses a verified email provider.
+                {templateLoaded
+                  ? " The PDF attachment uses the official customer document."
+                  : " Loading saved email settings..."}
+              </p>
+            </>
+          )}
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -1033,33 +1120,37 @@ export default function InvoiceEmailSendPanel({
               Preview {requestType === "estimate" ? "Estimate" : "Invoice"}
             </Button>
           </a>
-          <button
-            type="button"
-            onClick={() => handleSend(sendSplitGroup)}
-            disabled={!canSend || sending}
-            className="inline-flex w-full items-center justify-center rounded-2xl border border-emerald-700 bg-emerald-600 px-5 py-3 text-center font-semibold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none sm:w-auto"
-          >
-            {sending
-              ? "Sending..."
-              : requestType === "deposit"
-                ? "Send Deposit Request"
-                : requestType === "reminder"
-                  ? "Send Reminder"
-                : requestType === "estimate"
-                  ? "Send Estimate"
-                : sendSplitGroup && splitGroupCount > 1
-                  ? "Send Split Group"
-                  : "Send Invoice"}
-          </button>
-          {sendSplitGroup && splitGroupCount > 1 ? (
+          {!hasBeenSent ? (
             <button
               type="button"
-              onClick={() => handleSend(false)}
+              onClick={() => handleSend(sendSplitGroup)}
               disabled={!canSend || sending}
-              className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-3 text-center font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 sm:w-auto"
+              aria-busy={sending}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-700 bg-emerald-600 px-5 py-3 text-center font-semibold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:border-slate-400 disabled:bg-slate-200 disabled:text-slate-700 disabled:shadow-none sm:w-auto"
             >
-              Send This Invoice Only
+              {sending ? (
+                <span
+                  aria-hidden="true"
+                  className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+                />
+              ) : null}
+              {sending
+                ? "Sending..."
+                : requestType === "deposit"
+                  ? "Send Deposit Request"
+                  : requestType === "reminder"
+                    ? "Send Reminder"
+                  : requestType === "estimate"
+                    ? "Send Estimate"
+                  : sendSplitGroup && splitGroupCount > 1
+                    ? "Send Split Group"
+                    : "Send Invoice"}
             </button>
+          ) : null}
+          {sendSplitGroup && splitGroupCount > 1 && !hasBeenSent ? (
+            <p className="w-full text-sm font-semibold text-slate-600 sm:max-w-xs">
+              Split invoices must be sent together.
+            </p>
           ) : null}
         </div>
       </div>

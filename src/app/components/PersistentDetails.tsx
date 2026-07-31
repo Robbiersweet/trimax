@@ -44,6 +44,7 @@ export default function PersistentDetails({
   return (
     <details
       className={className}
+      data-persistent-details-key={storageKey}
       open={open}
       onToggle={(event) => {
         const nextOpen = event.currentTarget.open;

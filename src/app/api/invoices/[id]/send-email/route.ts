@@ -90,6 +90,12 @@ type ClientEmailRouteRow = {
   cc_email: string | null;
 };
 
+type ExistingSendLogRow = {
+  id: string;
+  created_at: string | null;
+  details: Record<string, unknown> | null;
+};
+
 function getAdminClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -385,6 +391,7 @@ async function sendWithResend({
   html,
   text,
   attachments,
+  idempotencyKey,
 }: {
   from: string;
   to: string;
@@ -395,6 +402,7 @@ async function sendWithResend({
   html: string;
   text: string;
   attachments?: EmailAttachment[];
+  idempotencyKey?: string | null;
 }) {
   const apiKey = process.env.RESEND_API_KEY;
 
@@ -415,6 +423,7 @@ async function sendWithResend({
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
+        ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
       },
       body: JSON.stringify({
         from,
@@ -518,6 +527,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   const replyToEmail = cleanText(body.replyToEmail, 200).toLowerCase();
   const businessSlug = cleanText(body.businessSlug, 80);
   const sendSplitGroup = Boolean(body.sendSplitGroup);
+  const sendIdempotencyKey = cleanText(body.sendIdempotencyKey, 120);
   const attachOfficialPdf = true;
   const emailPurpose =
     cleanText(body.emailPurpose, 40) === "reminder" ? "reminder" : "send";
@@ -534,6 +544,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       business_slug: businessSlug,
       send_split_group: sendSplitGroup,
       email_purpose: emailPurpose,
+      idempotency_key_present: Boolean(sendIdempotencyKey),
     },
   });
 
@@ -814,6 +825,75 @@ export async function POST(request: Request, { params }: RouteParams) {
   const isSplitGroupSend =
     sendSplitGroup && emailPurpose !== "reminder" && targetInvoices.length > 1;
 
+  if (sendIdempotencyKey && emailPurpose !== "reminder") {
+    const existingSendAction = isSplitGroupSend
+      ? "invoice.split_group_email_sent"
+      : "invoice.email_sent";
+    const existingSendEntityId = isSplitGroupSend ? splitGroupRootId : invoice.id;
+    const { data: existingSendLog, error: existingSendError } = await supabase
+      .from("activity_logs")
+      .select("id, created_at, details")
+      .eq("business_id", invoice.business_id)
+      .eq("entity_type", "invoice")
+      .eq("entity_id", existingSendEntityId)
+      .eq("action", existingSendAction)
+      .filter("details->>send_idempotency_key", "eq", sendIdempotencyKey)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<ExistingSendLogRow>();
+
+    if (existingSendError) {
+      logSendStep({
+        traceId,
+        steps,
+        stage: "proof_logging",
+        ok: false,
+        detail: {
+          message: existingSendError.message,
+          send_idempotency_key: sendIdempotencyKey,
+        },
+      });
+    }
+
+    if (existingSendLog) {
+      const details = existingSendLog.details ?? {};
+      const attachmentCount = Number(details.pdf_attachment_count ?? 0);
+
+      logSendStep({
+        traceId,
+        steps,
+        stage: "proof_logging",
+        ok: true,
+        detail: {
+          duplicate_retry: true,
+          send_idempotency_key: sendIdempotencyKey,
+          existing_activity_log_id: existingSendLog.id,
+        },
+      });
+
+      return NextResponse.json({
+        message: isSplitGroupSend
+          ? "Split group was already sent. Existing proof is saved."
+          : `${invoice.display_id ?? "Invoice"} was already sent. Existing proof is saved.`,
+        sentCount: targetInvoices.length,
+        attachmentCount: Number.isFinite(attachmentCount)
+          ? attachmentCount
+          : targetInvoices.length,
+        includedInvoices: targetInvoices.map((targetInvoice) => ({
+          id: targetInvoice.id,
+          documentNumber: targetInvoice.display_id ?? "Invoice",
+          amount: splitInvoiceAmount(targetInvoice),
+        })),
+        duplicateOfActivityLogId: existingSendLog.id,
+        sentAt: existingSendLog.created_at,
+        statusUpdateError: details.status_update_error ?? null,
+        traceId,
+        pipelineStage: "proof_logging",
+        steps,
+      });
+    }
+  }
+
   if (emailPurpose !== "reminder") {
     const targetInvoiceIds = targetInvoices.map((targetInvoice) => targetInvoice.id);
     const { data: splitChildren } = await supabase
@@ -1082,6 +1162,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     html,
     text: effectiveMessage,
     attachments: pdfAttachments.length > 0 ? pdfAttachments : undefined,
+    idempotencyKey: sendIdempotencyKey || null,
   });
 
   logSendStep({
@@ -1161,6 +1242,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   }
 
   let statusUpdateErrorMessage: string | null = null;
+  const sentAt = new Date().toISOString();
 
   if (emailPurpose !== "reminder") {
     const { error: statusUpdateError } = await supabase
@@ -1234,6 +1316,7 @@ export async function POST(request: Request, { params }: RouteParams) {
         pdf_attachment_source: pdfAttachmentSource,
         split_group_send: true,
         split_group_root_id: splitGroupRootId,
+        send_idempotency_key: sendIdempotencyKey || null,
         provider: "resend",
         provider_status: sendResult.status,
         provider_response: sendResult.providerResponse ?? null,
@@ -1273,6 +1356,7 @@ export async function POST(request: Request, { params }: RouteParams) {
         pdf_attachment_source: pdfAttachmentSource,
         split_group_send: isSplitGroupSend,
         split_group_root_id: splitGroupRootId,
+        send_idempotency_key: sendIdempotencyKey || null,
         ...(isSplitGroupSend
           ? {
               included_invoice_ids: targetInvoices.map((item) => item.id),
@@ -1326,6 +1410,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       message: successMessage,
       sentCount: targetInvoices.length,
       attachmentCount: pdfAttachments.length,
+      sentAt,
       includedInvoices: targetInvoices.map((targetInvoice) => ({
         id: targetInvoice.id,
         documentNumber: targetInvoice.display_id ?? "Invoice",

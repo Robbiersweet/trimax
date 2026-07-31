@@ -8,6 +8,7 @@ import DeleteInvoiceButton from "../../components/DeleteInvoiceButton";
 import CopyProofSummaryButton from "../../components/CopyProofSummaryButton";
 import CorrectInvoiceButton from "../../components/CorrectInvoiceButton";
 import InvoiceEmailSendPanel from "../../components/InvoiceEmailSendPanel";
+import OpenSendReviewButton from "../../components/OpenSendReviewButton";
 import PersistentDetails from "../../components/PersistentDetails";
 import RequestDepositButton from "../../components/RequestDepositButton";
 import SplitInvoicePlanner from "../../components/SplitInvoicePlanner";
@@ -575,6 +576,8 @@ type InvoiceIntelligenceAction = {
   label: string;
   title: string;
   detail: string;
+  opensStorageKey?: string;
+  targetId?: string;
 };
 
 function InvoiceIntelligence({
@@ -627,9 +630,17 @@ function InvoiceIntelligence({
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row lg:justify-end">
-          <Link href={nextAction.href}>
-            <Button>{nextAction.label}</Button>
-          </Link>
+          {nextAction.opensStorageKey && nextAction.targetId ? (
+            <OpenSendReviewButton
+              label={nextAction.label}
+              storageKey={nextAction.opensStorageKey}
+              targetId={nextAction.targetId}
+            />
+          ) : (
+            <Link href={nextAction.href}>
+              <Button>{nextAction.label}</Button>
+            </Link>
+          )}
           <Link href={reviewPdfHref}>
             <Button variant="secondary">Review PDF</Button>
           </Link>
@@ -1076,6 +1087,8 @@ export default async function InvoiceDetailPage({
           : splitGroupSentCount > 0
             ? `${splitGroupSentCount} of ${splitRelatedInvoices.length} sent`
             : "Draft";
+  const splitGroupIsSent =
+    hasSplitInvoiceGroup && splitGroupSentCount === splitRelatedInvoices.length;
   const splitGroupItems = splitRelatedInvoices.map((relatedInvoice) => ({
     documentNumber: relatedInvoice.display_id || "Invoice",
     amountLabel: money(numberValue(relatedInvoice.invoice_amount)),
@@ -1289,7 +1302,10 @@ export default async function InvoiceDetailPage({
     hasSplitInvoiceGroup && splitSendInvoiceCount > 1
       ? splitSendInvoiceCount
       : 1;
-  const emailSummary = `${recipientEmail ? "Ready" : "Needs recipient"} / ${
+  const invoiceEmailStorageKey = `trimax-invoice-email-${invoice.id}`;
+  const emailSummary = splitGroupIsSent
+    ? `Sent / ${emailPdfCount} PDF${emailPdfCount === 1 ? "" : "s"}`
+    : `${recipientEmail ? "Ready" : "Needs recipient"} / ${
     clientContact?.cc_email ? "CC saved" : "No CC"
   } / ${emailPdfCount} PDF${emailPdfCount === 1 ? "" : "s"}`;
   const latestProofEvent =
@@ -1322,13 +1338,23 @@ export default async function InvoiceDetailPage({
             ? `${invoice.display_id ?? "This invoice"} was corrected and replaced by ${replacementDisplayId}. It no longer counts as collectible.`
             : `${invoice.display_id ?? "This invoice"} was corrected and no longer counts as collectible.`,
         }
+      : splitGroupIsSent
+      ? {
+          href: "#proof-vault",
+          label: "View Proof",
+          title: "Split group sent",
+          detail:
+            "The split invoice group has been sent. Proof is saved with the invoice history.",
+        }
       : hasSplitInvoiceGroup && normalizedStatus === "draft"
       ? {
           href: "#send-invoice",
-          label: "Send Split Group",
-          title: "Send the split group next",
+          label: "Review Split Group",
+          title: "Review the split group next",
           detail:
-            "This is one customer transaction represented by multiple accounting invoices. Send one email with every split invoice PDF attached.",
+            "Open the email review, confirm recipients and PDFs, then send the split group.",
+          opensStorageKey: invoiceEmailStorageKey,
+          targetId: "send-invoice",
         }
       : isDraftInvoice
       ? {
@@ -1792,7 +1818,7 @@ export default async function InvoiceDetailPage({
           {hasSplitInvoiceGroup && !isNonCollectibleInvoice ? (
             <div id="send-invoice" className="scroll-mt-6">
               <PersistentDetails
-                storageKey={`trimax-invoice-email-${invoice.id}`}
+                storageKey={invoiceEmailStorageKey}
                 title="Email & Preview"
                 subtitle={emailSummary}
                 className="rounded-2xl border border-sky-500/25 bg-sky-500/5 p-3"
@@ -1818,6 +1844,9 @@ export default async function InvoiceDetailPage({
                   splitGroupItems={splitGroupItems}
                   splitGroupCombinedTotal={money(splitGroupCombinedTotal)}
                   correctionOriginalDisplayId={originalDisplayId}
+                  initialSent={splitGroupIsSent}
+                  initialSentAt={latestSendLog?.created_at ?? null}
+                  initialSentPdfCount={splitSendInvoiceCount}
                 />
               </PersistentDetails>
             </div>
