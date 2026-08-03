@@ -60,7 +60,7 @@ export function defaultInvoiceEmailSettings({
     paymentReminderSubjectTemplate:
       "Reminder: Invoice {invoiceNumber} from {businessName} is past due",
     paymentReminderBodyTemplate:
-      "Your payment of {amountDue} for invoice {invoiceNumber} from {businessName} {dueDateSentence}.",
+      "Your payment of {amountDue} for invoice {invoiceNumber} from {businessName} {dueDateSentence}. This invoice is {reminderAge}.",
   };
 }
 

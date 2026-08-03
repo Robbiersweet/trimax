@@ -215,6 +215,27 @@ function formatTimelineDay(value: string | null) {
   }).format(date);
 }
 
+function businessDayKey(value: string | null | Date = new Date()) {
+  const date =
+    value === null ? null : typeof value === "string" ? new Date(value) : value;
+
+  if (!date || Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "America/Los_Angeles",
+    year: "numeric",
+  }).formatToParts(date);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+
+  return year && month && day ? `${year}-${month}-${day}` : "";
+}
+
 function daysPastDue(value: string | null) {
   if (!value) {
     return null;
@@ -1122,7 +1143,8 @@ export default async function InvoiceDetailPage({
     detailText(latestPaymentLog?.details, "paymentImagePath") ??
     null;
   const hasSendProof = Boolean(latestSendLog);
-  const hasReminderProof = Boolean(latestReminderLog);
+  const latestReminderSentToday =
+    businessDayKey(latestReminderLog?.created_at ?? null) === businessDayKey();
   const depositStatusLabel = isPartiallyPaid
     ? "Collected"
     : isFullyPaid && collectedAmount > 0
@@ -1303,11 +1325,17 @@ export default async function InvoiceDetailPage({
       ? splitSendInvoiceCount
       : 1;
   const invoiceEmailStorageKey = `trimax-invoice-email-${invoice.id}`;
+  const reminderEmailStorageKey = `trimax-invoice-reminder-email-${invoice.id}`;
   const emailSummary = splitGroupIsSent
     ? `Sent / ${emailPdfCount} PDF${emailPdfCount === 1 ? "" : "s"}`
     : `${recipientEmail ? "Ready" : "Needs recipient"} / ${
     clientContact?.cc_email ? "CC saved" : "No CC"
   } / ${emailPdfCount} PDF${emailPdfCount === 1 ? "" : "s"}`;
+  const reminderEmailSummary = latestReminderSentToday
+    ? `Reminder sent ${formatLifecycleDate(latestReminderLog?.created_at ?? null)}`
+    : `${recipientEmail ? "Ready" : "Needs recipient"} / ${
+        clientContact?.cc_email ? "CC saved" : "No CC"
+      } / PDF`;
   const latestProofEvent =
     proofTimelineEvents.length > 0
       ? proofTimelineEvents[proofTimelineEvents.length - 1]
@@ -1383,14 +1411,16 @@ export default async function InvoiceDetailPage({
             title: "Collect the active deposit",
             detail: `${money(depositDueNow)} is still open on this deposit request. The payment workspace can apply it without closing the full invoice early.`,
           }
-        : isPaymentLate && !hasReminderProof
+        : isPaymentLate && !latestReminderSentToday
           ? {
               href: "#late-payment-reminder",
-              label: "Send Reminder",
+              label: "Review & Send Reminder",
               title: "A late reminder is due",
               detail: `This invoice is ${daysLate ?? 0} day${
                 daysLate === 1 ? "" : "s"
-              } past due and no reminder proof is saved yet.`,
+              } past due. Review the recipient and message before sending.`,
+              opensStorageKey: reminderEmailStorageKey,
+              targetId: "late-payment-reminder",
             }
           : customerFacingAmountDue > 0
             ? {
@@ -1927,9 +1957,9 @@ export default async function InvoiceDetailPage({
               </div>
 
               <PersistentDetails
-                storageKey={`trimax-invoice-reminder-email-${invoice.id}`}
+                storageKey={reminderEmailStorageKey}
                 title="Email & Preview"
-                subtitle={emailSummary}
+                subtitle={reminderEmailSummary}
                 className="rounded-2xl border border-rose-300/25 bg-black/10 p-3"
                 contentClassName="mt-4"
               >
@@ -1943,9 +1973,13 @@ export default async function InvoiceDetailPage({
                   documentNumber={invoiceNumber}
                   amountDue={money(customerFacingAmountDue)}
                   dueDate={displayDueDate ? formatDate(displayDueDate) : "-"}
+                  daysPastDue={daysLate}
                   projectTitle={projectTitle}
                   printHref={`/invoices/${invoice.id}/print${businessQuery}`}
                   requestType="reminder"
+                  initialSent={latestReminderSentToday}
+                  initialSentAt={latestReminderLog?.created_at ?? null}
+                  initialSentPdfCount={1}
                 />
               </PersistentDetails>
             </section>
@@ -2300,9 +2334,15 @@ export default async function InvoiceDetailPage({
                 ) : null}
 
                 {isPaymentLate ? (
-                  <a href="#late-payment-reminder">
-                    <Button variant="secondary">Send Reminder</Button>
-                  </a>
+                  <OpenSendReviewButton
+                    label={
+                      latestReminderSentToday
+                        ? "View Reminder"
+                        : "Review Reminder"
+                    }
+                    storageKey={reminderEmailStorageKey}
+                    targetId="late-payment-reminder"
+                  />
                 ) : null}
 
                 {normalizedStatus === "sent" && amountPaid <= 0 ? (

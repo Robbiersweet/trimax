@@ -28,6 +28,7 @@ type InvoiceEmailSendPanelProps = {
   documentNumber: string;
   amountDue: string;
   dueDate: string;
+  daysPastDue?: number | null;
   projectTitle?: string | null;
   printHref: string;
   requestType?: "invoice" | "deposit" | "estimate" | "reminder";
@@ -191,6 +192,7 @@ export default function InvoiceEmailSendPanel({
   documentNumber,
   amountDue,
   dueDate,
+  daysPastDue = null,
   projectTitle,
   printHref,
   requestType = "invoice",
@@ -291,6 +293,12 @@ export default function InvoiceEmailSendPanel({
     technicalDetails?: string;
   } | null>(null);
   const hasBeenSent = sentState.sent;
+  const reminderAgeText =
+    requestType === "reminder" && typeof daysPastDue === "number" && daysPastDue > 0
+      ? `${daysPastDue} day${daysPastDue === 1 ? "" : "s"} past due`
+      : requestType === "reminder"
+        ? "past due"
+        : "";
 
   const canSend =
     !hasBeenSent &&
@@ -329,6 +337,11 @@ export default function InvoiceEmailSendPanel({
       amountDue,
       dueDate,
       dueDateSentence,
+      daysPastDue:
+        typeof daysPastDue === "number" && daysPastDue > 0
+          ? String(daysPastDue)
+          : "",
+      reminderAge: reminderAgeText,
       customerName,
       projectTitle: documentContext({ customerName, projectTitle }),
     }),
@@ -340,6 +353,8 @@ export default function InvoiceEmailSendPanel({
       dueDate,
       dueDateSentence,
       projectTitle,
+      daysPastDue,
+      reminderAgeText,
     ]
   );
 
@@ -418,15 +433,21 @@ export default function InvoiceEmailSendPanel({
       return [
         {
           label: "Friendly",
-          text: `Hi ${customerName}, this is a friendly reminder that ${documentNumber} for ${amountDue} ${dueText}. Please send payment when available, or reply if you have any questions.`,
+          text: `Hi ${customerName}, this is a friendly reminder that ${documentNumber} for ${amountDue} ${dueText}${
+            reminderAgeText ? ` (${reminderAgeText})` : ""
+          }. Please send payment when available, or reply if you have any questions.`,
         },
         {
           label: "Short",
-          text: `Reminder: ${documentNumber} for ${amountDue} ${dueText}. Please send payment when available. Thank you.`,
+          text: `Reminder: ${documentNumber} for ${amountDue} ${dueText}${
+            reminderAgeText ? ` (${reminderAgeText})` : ""
+          }. Please send payment when available. Thank you.`,
         },
         {
           label: "Firm",
-          text: `${documentNumber} for ${amountDue} ${dueText}. Please arrange payment or reply with a status update today. Thank you.`,
+          text: `${documentNumber} for ${amountDue} ${dueText}${
+            reminderAgeText ? ` (${reminderAgeText})` : ""
+          }. Please arrange payment or reply with a status update today. Thank you.`,
         },
       ];
     }
@@ -496,6 +517,7 @@ export default function InvoiceEmailSendPanel({
     dueDate,
     projectTitle,
     requestType,
+    reminderAgeText,
     correctionOriginalDisplayId,
     sendSplitGroup,
     splitGroupCombinedTotal,
@@ -808,7 +830,7 @@ export default function InvoiceEmailSendPanel({
               ? `Invoice ${documentNumber} sent. Next step: mark the work complete if the job is finished.`
               : result.message ?? `${documentLabel} email sent.`,
       });
-      if (requestType !== "reminder") {
+      if (requestType !== "estimate") {
         setSentState({
           sent: true,
           sentAt: result.sentAt ?? new Date().toISOString(),
@@ -863,14 +885,16 @@ export default function InvoiceEmailSendPanel({
           Send by Email
         </p>
         <h2 className="mt-1 text-2xl font-black leading-tight text-slate-950">
-          {requestType === "deposit"
+          {hasBeenSent
+            ? requestType === "reminder"
+              ? "Reminder Sent"
+              : "Sent"
+            : requestType === "deposit"
             ? `Send Deposit Request`
             : requestType === "reminder"
               ? `Send Payment Reminder`
             : requestType === "estimate"
               ? `Send ${documentNumber}`
-            : hasBeenSent
-              ? "Sent"
             : sendSplitGroup && splitGroupCount > 1
               ? "Send Split Group"
             : `Send ${documentNumber}`}
@@ -1082,7 +1106,7 @@ export default function InvoiceEmailSendPanel({
           {hasBeenSent ? (
             <div className="invoice-email-sent-state rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
               <p className="text-sm font-black text-emerald-800">
-                Sent
+                {requestType === "reminder" ? "Reminder sent" : "Sent"}
               </p>
               <p className="mt-1 text-sm font-semibold text-emerald-950">
                 {sentDateLabel}

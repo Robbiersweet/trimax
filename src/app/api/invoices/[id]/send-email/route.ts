@@ -825,10 +825,12 @@ export async function POST(request: Request, { params }: RouteParams) {
   const isSplitGroupSend =
     sendSplitGroup && emailPurpose !== "reminder" && targetInvoices.length > 1;
 
-  if (sendIdempotencyKey && emailPurpose !== "reminder") {
+  if (sendIdempotencyKey) {
     const existingSendAction = isSplitGroupSend
       ? "invoice.split_group_email_sent"
-      : "invoice.email_sent";
+      : emailPurpose === "reminder"
+        ? "invoice.payment_reminder_sent"
+        : "invoice.email_sent";
     const existingSendEntityId = isSplitGroupSend ? splitGroupRootId : invoice.id;
     const { data: existingSendLog, error: existingSendError } = await supabase
       .from("activity_logs")
@@ -874,6 +876,8 @@ export async function POST(request: Request, { params }: RouteParams) {
       return NextResponse.json({
         message: isSplitGroupSend
           ? "Split group was already sent. Existing proof is saved."
+          : emailPurpose === "reminder"
+            ? "Payment reminder was already sent. Existing proof is saved."
           : `${invoice.display_id ?? "Invoice"} was already sent. Existing proof is saved.`,
         sentCount: targetInvoices.length,
         attachmentCount: Number.isFinite(attachmentCount)
