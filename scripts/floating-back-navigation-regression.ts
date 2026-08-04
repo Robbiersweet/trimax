@@ -75,6 +75,14 @@ assert(
   "The shared floating-control component must render exactly one Back immediately left of Command."
 );
 
+assert(
+  workspaceFloatingControls.includes("trimax-remittance-capture-active") &&
+    workspaceFloatingControls.includes("trimax-remittance-capture-mode") &&
+    workspaceFloatingControls.includes("data-remittance-capture-hidden") &&
+    workspaceFloatingControls.includes('captureModeActive ? "hidden" : ""'),
+  "The protected floating-control pair may hide only during the intentional full-screen remittance capture exception."
+);
+
 assert.equal(
   (workspaceFloatingControls.match(/<WorkspaceBackBar \/>/g) ?? []).length,
   1,

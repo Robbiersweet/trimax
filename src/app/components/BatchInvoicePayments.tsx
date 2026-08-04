@@ -1005,6 +1005,43 @@ export default function BatchInvoicePayments({
     };
   }, [paymentEntryMode]);
 
+  useEffect(() => {
+    const captureActive = paymentEntryMode === "camera";
+
+    document.body.classList.toggle(
+      "trimax-remittance-capture-active",
+      captureActive
+    );
+    window.dispatchEvent(new Event("trimax-remittance-capture-mode"));
+
+    if (!captureActive) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    const previousTouchAction = document.body.style.touchAction;
+    document.body.style.overflow = "hidden";
+    document.body.style.touchAction = "none";
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        stopCameraCapture();
+        setPaymentEntryMode("choice");
+        setCameraStatusMessage("Align the remittance inside the frame.");
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.touchAction = previousTouchAction;
+      document.body.classList.remove("trimax-remittance-capture-active");
+      window.dispatchEvent(new Event("trimax-remittance-capture-mode"));
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [paymentEntryMode]);
+
   function toggleInvoice(invoiceId: string) {
     setSelectedIds((current) =>
       current.includes(invoiceId)
@@ -1744,6 +1781,7 @@ export default function BatchInvoicePayments({
           { type: "image/jpeg" }
         );
 
+        setCameraStatusMessage("Checking image...");
         stopCameraCapture();
         captureCheckImage(file, "camera");
       },
@@ -1813,14 +1851,21 @@ export default function BatchInvoicePayments({
       if (suggestion.shouldAutoRead) {
         void readPreparedRemittanceFromFile(file, suggestion.cropBox, 0);
       } else {
-        setPaymentEntryMode("crop");
         setCheckOcrStatus("idle");
-        setCheckOcrMessage(
+        const nextMessage =
           suggestion.qualityMessages[0] ??
-            (source === "camera"
-              ? "Review the capture, then read it."
-              : "Use image as-is or adjust crop before reading.")
-        );
+          (source === "camera"
+            ? "Review the capture, then read it."
+            : "Use image as-is or adjust crop before reading.");
+
+        setCheckOcrMessage(nextMessage);
+
+        if (source === "camera" && suggestion.qualityMessages.length > 0) {
+          setPaymentEntryMode("camera");
+          setCameraStatusMessage(nextMessage);
+        } else {
+          setPaymentEntryMode("crop");
+        }
       }
     });
     setToast({
@@ -1947,6 +1992,112 @@ export default function BatchInvoicePayments({
   return (
     <Card className="batch-payments-card border-green-500/30 bg-green-500/5">
       {toast ? <Toast type={toast.type} message={toast.message} /> : null}
+
+      {paymentEntryMode === "camera" ? (
+        <div
+          aria-label="Remittance camera"
+          aria-modal="true"
+          className="fixed inset-0 z-[2147483000] flex h-[100dvh] w-screen flex-col overflow-hidden bg-black text-white"
+          data-remittance-fullscreen-capture="true"
+          role="dialog"
+        >
+          <div
+            className="flex shrink-0 items-center justify-between gap-3 px-4 pb-2 pt-[calc(env(safe-area-inset-top)+0.75rem)]"
+            data-camera-safe-area-top="true"
+          >
+            <button
+              type="button"
+              autoFocus
+              onClick={() => {
+                stopCameraCapture();
+                setPaymentEntryMode("choice");
+                setCameraStatusMessage("Align the remittance inside the frame.");
+              }}
+              className="min-h-11 rounded-full border border-white/30 bg-black/70 px-4 py-2 text-sm font-black text-white shadow-xl backdrop-blur transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-sky-200"
+            >
+              Cancel
+            </button>
+            <div
+              className={`rounded-full px-4 py-2 text-sm font-black shadow-xl backdrop-blur ${
+                cameraReady
+                  ? "bg-emerald-400 text-black"
+                  : "bg-black/70 text-sky-100"
+              }`}
+              aria-live="polite"
+            >
+              {cameraReady ? "Ready" : cameraStatusMessage}
+            </div>
+          </div>
+
+          <div className="relative min-h-0 flex-1 overflow-hidden">
+            <video
+              ref={cameraVideoRef}
+              muted
+              playsInline
+              autoPlay
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+            <div className="pointer-events-none absolute inset-0 bg-black/30" />
+            <div
+              className="pointer-events-none absolute left-1/2 top-1/2 h-[min(72dvh,78vw)] max-h-[72dvh] min-h-[42dvh] w-[min(92vw,132dvh)] max-w-[92vw] -translate-x-1/2 -translate-y-1/2 rounded-[1.35rem] border-[3px] border-emerald-300 shadow-[0_0_0_9999px_rgba(0,0,0,0.55),0_0_36px_rgba(110,231,183,0.35)] landscape:h-[min(70dvh,58vw)] landscape:w-[min(94vw,142dvh)]"
+              data-remittance-document-frame="true"
+            >
+              <span className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-emerald-100/30" />
+              <span className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-emerald-100/30" />
+              <span className="absolute -left-1 -top-1 h-8 w-8 rounded-tl-[1.35rem] border-l-4 border-t-4 border-white" />
+              <span className="absolute -right-1 -top-1 h-8 w-8 rounded-tr-[1.35rem] border-r-4 border-t-4 border-white" />
+              <span className="absolute -bottom-1 -left-1 h-8 w-8 rounded-bl-[1.35rem] border-b-4 border-l-4 border-white" />
+              <span className="absolute -bottom-1 -right-1 h-8 w-8 rounded-br-[1.35rem] border-b-4 border-r-4 border-white" />
+            </div>
+          </div>
+
+          <div
+            className="shrink-0 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3"
+            data-camera-safe-area-bottom="true"
+          >
+            <p className="mb-3 text-center text-sm font-semibold text-sky-100">
+              Fill the frame. Hold steady. Use good light.
+            </p>
+            <div className="mx-auto grid max-w-lg grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={captureFromTrimaxCamera}
+                disabled={!cameraReady}
+                className="col-span-2 min-h-14 rounded-full bg-emerald-400 px-6 py-3 text-base font-black text-black shadow-2xl shadow-emerald-950/40 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-slate-300"
+              >
+                Capture
+              </button>
+              <label className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-full border border-sky-200/50 bg-black/70 px-4 py-2 text-center text-sm font-black text-sky-50 backdrop-blur transition hover:bg-white/10">
+                Use Device Camera
+                <input
+                  type="file"
+                  accept="image/*,.heic,.heif"
+                  capture="environment"
+                  className="sr-only"
+                  onChange={(event) => {
+                    stopCameraCapture();
+                    captureCheckImage(event.target.files?.[0], "camera");
+                    event.currentTarget.value = "";
+                  }}
+                />
+              </label>
+              <label className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-full border border-white/25 bg-black/70 px-4 py-2 text-center text-sm font-bold text-zinc-50 backdrop-blur transition hover:bg-white/10">
+                Choose Existing
+                <input
+                  type="file"
+                  accept="image/*,.heic,.heif"
+                  className="sr-only"
+                  onChange={(event) => {
+                    stopCameraCapture();
+                    captureCheckImage(event.target.files?.[0], "existing");
+                    event.currentTarget.value = "";
+                  }}
+                />
+              </label>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {paymentEntryMode === "complete" ? (
         <div className="rounded-2xl border border-emerald-300/40 bg-emerald-500/10 p-4">
@@ -2129,92 +2280,6 @@ export default function BatchInvoicePayments({
               <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
                 <p className="text-lg font-black text-white">
                   Upload Remittance or Enter Check Manually
-                </p>
-              </div>
-            ) : null}
-
-            {paymentEntryMode === "camera" ? (
-              <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="font-black text-white">Frame Remittance</p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      stopCameraCapture();
-                      setPaymentEntryMode("choice");
-                      setCameraStatusMessage(
-                        "Align the remittance inside the frame."
-                      );
-                    }}
-                    className="rounded-full border border-slate-400/40 px-3 py-1.5 text-xs font-semibold text-zinc-100 transition hover:bg-white/10"
-                  >
-                    Cancel
-                  </button>
-                </div>
-
-                <div className="mt-4 overflow-hidden rounded-2xl border border-sky-400/30 bg-black">
-                  <div className="remittance-camera-frame relative mx-auto aspect-[9/14] max-h-[58vh] w-full overflow-hidden sm:aspect-[16/9]">
-                    <video
-                      ref={cameraVideoRef}
-                      muted
-                      playsInline
-                      autoPlay
-                      className="h-full w-full object-cover"
-                    />
-                    <div className="pointer-events-none absolute inset-0 bg-black/35" />
-                    <div className="pointer-events-none absolute left-1/2 top-1/2 h-[78%] w-[72%] -translate-x-1/2 -translate-y-1/2 rounded-xl border-2 border-emerald-300 shadow-[0_0_0_9999px_rgba(0,0,0,0.48)] sm:h-[72%] sm:w-[84%]">
-                      <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-emerald-200/35" />
-                      <div className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-emerald-200/35" />
-                    </div>
-                    <div className="absolute inset-x-4 top-4 rounded-xl bg-black/70 px-3 py-2 text-center text-sm font-bold text-white">
-                      Align the remittance inside the frame. Fill the frame.
-                    </div>
-                    <div className="absolute inset-x-4 bottom-4 rounded-xl bg-black/70 px-3 py-2 text-center text-sm font-semibold text-emerald-100">
-                      {cameraReady ? "Ready" : cameraStatusMessage}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4 flex flex-wrap justify-center gap-2">
-                  <button
-                    type="button"
-                    onClick={captureFromTrimaxCamera}
-                    disabled={!cameraReady}
-                    className="rounded-full bg-emerald-500 px-5 py-3 text-sm font-black text-black transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-300"
-                  >
-                    Capture
-                  </button>
-                  <label className="inline-flex cursor-pointer rounded-full border border-sky-300/50 px-5 py-3 text-sm font-black text-sky-100 transition hover:border-sky-200 hover:bg-sky-500/10">
-                    Use Device Camera
-                    <input
-                      type="file"
-                      accept="image/*,.heic,.heif"
-                      capture="environment"
-                      className="sr-only"
-                      onChange={(event) => {
-                        stopCameraCapture();
-                        captureCheckImage(event.target.files?.[0], "camera");
-                        event.currentTarget.value = "";
-                      }}
-                    />
-                  </label>
-                  <label className="inline-flex cursor-pointer rounded-full border border-slate-400/40 px-5 py-3 text-sm font-semibold text-zinc-100 transition hover:bg-white/10">
-                    Choose Existing
-                    <input
-                      type="file"
-                      accept="image/*,.heic,.heif"
-                      className="sr-only"
-                      onChange={(event) => {
-                        stopCameraCapture();
-                        captureCheckImage(event.target.files?.[0], "existing");
-                        event.currentTarget.value = "";
-                      }}
-                    />
-                  </label>
-                </div>
-
-                <p className="mt-3 text-center text-sm font-semibold text-sky-100">
-                  Move closer / hold steady / use good lighting.
                 </p>
               </div>
             ) : null}

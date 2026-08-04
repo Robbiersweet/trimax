@@ -580,11 +580,34 @@ assert(
   "Payments screen must show extracted invoice matches during review."
 );
 assert(
-  paymentScreen.includes("remittance-camera-frame") &&
+  paymentScreen.includes('data-remittance-fullscreen-capture="true"') &&
+    paymentScreen.includes('className="fixed inset-0 z-[2147483000]') &&
+    paymentScreen.includes("h-[100dvh]") &&
     paymentScreen.includes("Align the remittance inside the frame") &&
     paymentScreen.includes("captureFromTrimaxCamera") &&
     paymentScreen.includes("Use Device Camera"),
-  "Payments screen must show a Trimax document frame before mobile camera OCR."
+  "Payments screen must open a full-viewport Trimax document frame before mobile camera OCR."
+);
+assert(
+  paymentScreen.includes("trimax-remittance-capture-active") &&
+    paymentScreen.includes("document.body.style.overflow = \"hidden\"") &&
+    paymentScreen.includes("document.body.style.touchAction = \"none\"") &&
+    paymentScreen.includes("Escape"),
+  "Full-screen capture must lock page scrolling and support Escape/cancel cleanup."
+);
+assert(
+  paymentScreen.includes('data-remittance-document-frame="true"') &&
+    paymentScreen.includes("env(safe-area-inset-top)") &&
+    paymentScreen.includes("env(safe-area-inset-bottom)") &&
+    paymentScreen.includes("landscape:h-") &&
+    paymentScreen.includes("landscape:w-"),
+  "Camera capture must respect iPhone safe areas and adapt the frame in portrait and landscape."
+);
+assert(
+  paymentScreen.includes("Fill the frame. Hold steady. Use good light.") &&
+    paymentScreen.indexOf("Fill the frame. Hold steady. Use good light.") >
+      paymentScreen.indexOf('data-remittance-document-frame="true"'),
+  "Camera instructions must sit outside the document frame instead of covering remittance text."
 );
 assert(
   paymentScreen.includes("Choose Existing Photo") &&
