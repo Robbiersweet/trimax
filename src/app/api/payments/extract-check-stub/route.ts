@@ -15,6 +15,10 @@ const ROTATIONS = [0, 90, 180, 270] as const;
 const DOCUMENT_SCAN_WIDTH = 720;
 
 type OcrRotation = (typeof ROTATIONS)[number];
+type RemittanceDocumentType =
+  | "remittance_stub"
+  | "full_check_stub"
+  | "check_only";
 
 type ImageBounds = {
   left: number;
@@ -57,6 +61,12 @@ type OcrImageSource = {
   width?: number;
   height?: number;
 };
+
+function normalizeDocumentType(value: unknown): RemittanceDocumentType {
+  return value === "full_check_stub" || value === "check_only"
+    ? value
+    : "remittance_stub";
+}
 
 function isSafeDataUrl(value: unknown) {
   return (
@@ -262,7 +272,10 @@ async function buildOcrSources(originalImage: Buffer) {
   };
 }
 
-async function buildRegionSources(documentImage: Buffer): Promise<OcrImageSource[]> {
+async function buildRegionSources(
+  documentImage: Buffer,
+  documentType: RemittanceDocumentType
+): Promise<OcrImageSource[]> {
   const metadata = await imageMetadata(documentImage);
   const width = metadata.width ?? 0;
   const height = metadata.height ?? 0;
@@ -280,11 +293,61 @@ async function buildRegionSources(documentImage: Buffer): Promise<OcrImageSource
   const isWideDocument = width / Math.max(height, 1) >= 1.65;
   const isTallDocument = height / Math.max(width, 1) >= 1.65;
 
-  if (isWideDocument) {
+  if (documentType === "remittance_stub") {
+    regions.push(
+      {
+        name: "stub-header",
+        bounds: { left: 0, top: 0, width, height: Math.round(height * 0.34) },
+      },
+      {
+        name: "stub-invoice-rows",
+        bounds: {
+          left: 0,
+          top: Math.round(height * 0.18),
+          width,
+          height: Math.round(height * 0.68),
+        },
+      },
+      {
+        name: "stub-total-footer",
+        bounds: {
+          left: 0,
+          top: Math.round(height * 0.66),
+          width,
+          height: height - Math.round(height * 0.66),
+        },
+      }
+    );
+  } else if (documentType === "check_only") {
+    regions.push(
+      {
+        name: "check-face-no-micr",
+        bounds: { left: 0, top: 0, width, height: Math.round(height * 0.84) },
+      },
+      {
+        name: "check-number-date-amount",
+        bounds: {
+          left: Math.round(width * 0.42),
+          top: 0,
+          width: width - Math.round(width * 0.42),
+          height: Math.round(height * 0.6),
+        },
+      }
+    );
+  } else if (isWideDocument) {
     regions.push(
       {
         name: "check-left",
         bounds: { left: 0, top: 0, width: Math.round(width * 0.52), height },
+      },
+      {
+        name: "check-face-no-micr",
+        bounds: {
+          left: 0,
+          top: 0,
+          width: Math.round(width * 0.56),
+          height: Math.round(height * 0.84),
+        },
       },
       {
         name: "remittance-right",
@@ -307,7 +370,7 @@ async function buildRegionSources(documentImage: Buffer): Promise<OcrImageSource
     );
   }
 
-  if (isTallDocument) {
+  if (documentType === "full_check_stub" && isTallDocument) {
     regions.push(
       {
         name: "check-top",
@@ -325,7 +388,7 @@ async function buildRegionSources(documentImage: Buffer): Promise<OcrImageSource
     );
   }
 
-  if (!isWideDocument && !isTallDocument) {
+  if (documentType === "full_check_stub" && !isWideDocument && !isTallDocument) {
     regions.push(
       {
         name: "upper-half",
@@ -359,19 +422,20 @@ async function buildRegionSources(documentImage: Buffer): Promise<OcrImageSource
 }
 
 function scoreOcrText(text: string, confidence: number) {
+  const scoringText = withoutMicrBandText(text);
   const invoiceMatches =
-    text.match(/\b[Il1|]?NV(?:OICE)?\.?\s*[-#: ]?\s*[0-9OoSsZzIl|Vv]{3,8}\b/gi) ??
+    scoringText.match(/\b[Il1|]?NV(?:OICE)?\.?\s*[-#: ]?\s*[0-9OoSsZzIl|Vv]{3,8}\b/gi) ??
     [];
   const currencyMatches =
-    text.match(/\$?\s*\d{1,3}(?:,\d{3})*(?:\.\d{2})\b/g) ?? [];
-  const parsed = parseCheckStubText(text);
+    scoringText.match(/\$?\s*\d{1,3}(?:,\d{3})*(?:\.\d{2})\b/g) ?? [];
+  const parsed = parseCheckStubText(scoringText);
   const invoiceNumbers = parsed.lines.flatMap((line) => line.invoiceNumbers);
   const checkNumberNearLabel = /\b(?:CK|CHK|CHECK)\s*#?\s*:?\s*\d{3,5}\b/i.test(
-    text.replace(/[Oo]/g, "0")
+    scoringText.replace(/[Oo]/g, "0")
   );
-  const hasPropertyName = /north\s+creek/i.test(text);
-  const hasApartments = /apartments?/i.test(text);
-  const explicitTotal = hasExplicitRemittanceTotal(text);
+  const hasPropertyName = /north\s+creek/i.test(scoringText);
+  const hasApartments = /apartments?/i.test(scoringText);
+  const explicitTotal = hasExplicitRemittanceTotal(scoringText);
   const referencedLineTotal = parsed.lines
     .filter((line) => line.invoiceNumbers.length > 0)
     .reduce((total, line) => total + line.amount, 0);
@@ -394,7 +458,7 @@ function scoreOcrText(text: string, confidence: number) {
     invoiceNumbers.length > 0 ? "invoice" : "",
   ].filter(Boolean).length;
   const keywordMatches =
-    text.match(/\b(?:check|ck|date|total|amount|invoice|inv|payor|payer|property|customer|apartment|apartments)\b/gi) ??
+    scoringText.match(/\b(?:check|ck|date|total|amount|invoice|inv|payor|payer|property|customer|apartment|apartments)\b/gi) ??
     [];
 
   return (
@@ -409,7 +473,7 @@ function scoreOcrText(text: string, confidence: number) {
     (linesReconcile ? 80 : 0) +
     (hasMultipleRemittanceRows ? 35 : 0) +
     Math.min(keywordMatches.length, 10) * 4 +
-    Math.min(text.trim().length / 20, 20) -
+    Math.min(scoringText.trim().length / 20, 20) -
     (headerPayor ? 70 : 0) -
     (implausibleCheckNumber ? 55 : 0) -
     (noInvoicesDespiteAmounts ? 60 : 0)
@@ -429,8 +493,22 @@ function redactedTextSummary(text: string) {
     .slice(0, 800);
 }
 
+function withoutMicrBandText(text: string) {
+  return text
+    .split(/\r?\n/)
+    .filter((line) => {
+      const compact = line.replace(/\s/g, "");
+      const digitCount = (compact.match(/\d/g) ?? []).length;
+      const micrMarks = /[⑆⑈⑉]|routing|account|micr/i.test(line);
+
+      return !(digitCount >= 9 && (micrMarks || compact.length >= 12));
+    })
+    .join("\n");
+}
+
 function shouldAcceptFirstPass(attempt: OcrAttempt) {
-  const parsed = parseCheckStubText(attempt.text);
+  const text = withoutMicrBandText(attempt.text);
+  const parsed = parseCheckStubText(text);
   const hasInvoice = parsed.lines.some((line) => line.invoiceNumbers.length > 0);
   const referencedLineTotal = parsed.lines
     .filter((line) => line.invoiceNumbers.length > 0)
@@ -442,7 +520,7 @@ function shouldAcceptFirstPass(attempt: OcrAttempt) {
 
   return (
     attempt.score >= GOOD_OCR_SCORE &&
-    hasExplicitRemittanceTotal(attempt.text) &&
+    hasExplicitRemittanceTotal(text) &&
     parsed.totalAmount > 0 &&
     (hasInvoice || parsed.checkNumber || parsed.payor) &&
     invoiceLinesReconcile
@@ -470,7 +548,10 @@ function ocrAttemptSpecs(psm: typeof import("tesseract.js").PSM): OcrAttemptSpec
   ];
 }
 
-async function recognizeBestText(originalImage: Buffer) {
+async function recognizeBestText(
+  originalImage: Buffer,
+  documentType: RemittanceDocumentType
+) {
   const Tesseract = await import("tesseract.js");
   const startedAt = Date.now();
   const stageTimings: Record<string, number> = {};
@@ -493,7 +574,10 @@ async function recognizeBestText(originalImage: Buffer) {
     const attempts: OcrAttempt[] = [];
     const sources = await buildOcrSources(originalImage);
     markStage("document-normalized");
-    const regionSources = await buildRegionSources(sources.document.image);
+    const regionSources = await buildRegionSources(
+      sources.document.image,
+      documentType
+    );
     markStage("regions-built");
     const specs = ocrAttemptSpecs(Tesseract.PSM);
 
@@ -607,6 +691,7 @@ async function recognizeBestText(originalImage: Buffer) {
     return {
       text: finalText,
       diagnostics: {
+        documentType,
         originalWidth: sources.original.width,
         originalHeight: sources.original.height,
         originalFormat: sources.original.format,
@@ -637,8 +722,10 @@ async function recognizeBestText(originalImage: Buffer) {
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as {
     imageDataUrl?: unknown;
+    documentType?: unknown;
   } | null;
   const imageDataUrl = body?.imageDataUrl;
+  const documentType = normalizeDocumentType(body?.documentType);
 
   if (!isSafeDataUrl(imageDataUrl)) {
     return NextResponse.json(
@@ -649,8 +736,9 @@ export async function POST(request: Request) {
 
   try {
     const originalImage = dataUrlToBuffer(imageDataUrl as string);
-    const ocrResult = await recognizeBestText(originalImage);
+    const ocrResult = await recognizeBestText(originalImage, documentType);
     const rawText = ocrResult.text;
+    const parsedText = withoutMicrBandText(rawText);
 
     if (!rawText) {
       return NextResponse.json({
@@ -668,7 +756,7 @@ export async function POST(request: Request) {
       });
     }
 
-    const extraction = parseCheckStubText(rawText);
+    const extraction = parseCheckStubText(parsedText);
     const extractedInvoiceNumbers = extraction.lines.flatMap(
       (line) => line.invoiceNumbers
     );
@@ -707,6 +795,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       ocrEngine: "tesseract.js",
+      documentType,
       ...extraction,
       diagnostics: {
         summary: diagnosticSummary,

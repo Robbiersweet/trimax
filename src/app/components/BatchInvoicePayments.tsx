@@ -76,6 +76,13 @@ type PaymentEntryMode =
   | "manual"
   | "complete";
 
+type RemittanceDocumentType =
+  | "remittance_stub"
+  | "full_check_stub"
+  | "check_only";
+
+type CaptureIntent = "primary" | "check_details";
+
 type CropBox = {
   left: number;
   top: number;
@@ -103,6 +110,7 @@ type ImageQualityReport = {
 };
 
 type CheckStubOcrResponse = {
+  documentType?: RemittanceDocumentType;
   stubText?: string;
   rawText?: string;
   payor?: string;
@@ -203,6 +211,46 @@ function todayInputValue() {
   const day = String(today.getDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
+}
+
+const remittanceDocumentModes: Array<{
+  value: RemittanceDocumentType;
+  label: string;
+  help: string;
+}> = [
+  {
+    value: "remittance_stub",
+    label: "Remittance Stub",
+    help: "Best for invoice numbers and amounts.",
+  },
+  {
+    value: "full_check_stub",
+    label: "Full Check + Stub",
+    help: "Use when check details are not on the stub.",
+  },
+  {
+    value: "check_only",
+    label: "Check Only",
+    help: "Use for check details without invoice rows.",
+  },
+];
+
+function defaultGuideModeForDocumentType(
+  documentType: RemittanceDocumentType
+): "horizontal" | "vertical" {
+  return documentType === "check_only" ? "horizontal" : "horizontal";
+}
+
+function guidanceForDocumentType(documentType: RemittanceDocumentType) {
+  if (documentType === "full_check_stub") {
+    return "Show the entire check and stub. For small text, capture the stub separately.";
+  }
+
+  if (documentType === "check_only") {
+    return "Align the check face inside the frame.";
+  }
+
+  return "Fill the frame with the remittance section.";
 }
 
 function fileToDataUrl(file: Blob) {
@@ -776,6 +824,9 @@ export default function BatchInvoicePayments({
   const [cameraGuideMode, setCameraGuideMode] = useState<
     "horizontal" | "vertical"
   >("horizontal");
+  const [captureDocumentType, setCaptureDocumentType] =
+    useState<RemittanceDocumentType>("remittance_stub");
+  const [captureIntent, setCaptureIntent] = useState<CaptureIntent>("primary");
   const [isPreparingCrop, setIsPreparingCrop] = useState(false);
   const [filedPaymentImage, setFiledPaymentImage] =
     useState<FiledPaymentImage>(null);
@@ -1405,6 +1456,54 @@ export default function BatchInvoicePayments({
     return { match, reviewMatches, reconciledReview };
   }
 
+  function loadCheckDetailsFromExtraction(data: CheckStubOcrResponse) {
+    const stubText = data.stubText?.trim() ?? "";
+    const extractedPayor =
+      data.payor?.trim() || extractLikelyPayor(stubText);
+    const extractedCheckNumber =
+      data.checkNumber?.trim() || extractCheckNumber(stubText);
+    const extractedDate = data.checkDate?.trim()
+      ? parseCheckDate(data.checkDate)
+      : extractCheckDate(stubText);
+    const extractedTotal =
+      typeof data.totalAmount === "number" && data.totalAmount > 0
+        ? data.totalAmount
+        : 0;
+
+    if (stubText) {
+      setRemittanceStubText((current) =>
+        current.trim()
+          ? `${current}\n\n--- CHECK PHOTO ---\n${stubText}`
+          : stubText
+      );
+    }
+
+    if (extractedCheckNumber && !paymentReference.trim()) {
+      setPaymentReference(extractedCheckNumber);
+      setCapturedCheckReference(extractedCheckNumber);
+    }
+
+    if (extractedDate) {
+      setPaymentDate((current) => current || extractedDate);
+    }
+
+    if (extractedPayor && !checkPayor.trim()) {
+      setCheckPayor(extractedPayor);
+    }
+
+    if (extractedTotal > 0 && parseMoney(visibleCheckAmount) <= 0) {
+      const amountText = formatMoney(extractedTotal);
+
+      setExtractedPaymentAmount(extractedTotal);
+      setCheckAmount(amountText);
+      setCapturedCheckAmount(amountText);
+    }
+
+    setPaymentReviewNotice((current) =>
+      current || "Check photo used only for missing check details."
+    );
+  }
+
   function ocrFailureMessage(data: CheckStubOcrResponse) {
     const summary = data.diagnostics?.summary ?? [];
     const found = (label: string) =>
@@ -1500,7 +1599,11 @@ export default function BatchInvoicePayments({
     return filedImage;
   }
 
-  async function extractCheckStubFromPhoto(imageDataUrl: string) {
+  async function extractCheckStubFromPhoto(
+    imageDataUrl: string,
+    documentType: RemittanceDocumentType = captureDocumentType,
+    intent: CaptureIntent = captureIntent
+  ) {
     if (imageDataUrl.length > 19_500_000) {
       setCheckOcrStatus("manual");
       setCheckOcrMessage(
@@ -1518,7 +1621,7 @@ export default function BatchInvoicePayments({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ imageDataUrl }),
+        body: JSON.stringify({ imageDataUrl, documentType }),
       });
       const data = (await response.json().catch(() => ({}))) as CheckStubOcrResponse;
 
@@ -1534,6 +1637,16 @@ export default function BatchInvoicePayments({
       if (!data.stubText?.trim()) {
         setCheckOcrStatus("manual");
         setCheckOcrMessage(ocrFailureMessage(data));
+        return;
+      }
+
+      if (intent === "check_details" || documentType === "check_only") {
+        loadCheckDetailsFromExtraction(data);
+        setCheckOcrStatus("manual");
+        setPaymentEntryMode("photo");
+        setCheckOcrMessage(
+          "Check details added. Review the payment before applying."
+        );
         return;
       }
 
@@ -1570,7 +1683,9 @@ export default function BatchInvoicePayments({
   async function readPreparedRemittanceFromFile(
     file: File,
     nextCropBox: CropBox,
-    nextRotation: number
+    nextRotation: number,
+    documentType: RemittanceDocumentType = captureDocumentType,
+    intent: CaptureIntent = captureIntent
   ) {
     setIsPreparingCrop(true);
 
@@ -1612,7 +1727,7 @@ export default function BatchInvoicePayments({
 
       setCaptureQualityMessage("Document quality looks ready.");
       setPaymentEntryMode("photo");
-      void extractCheckStubFromPhoto(imageDataUrl);
+      void extractCheckStubFromPhoto(imageDataUrl, documentType, intent);
     } catch (error) {
       setCheckOcrStatus("error");
       setCheckOcrMessage(
@@ -1652,6 +1767,9 @@ export default function BatchInvoicePayments({
     setPaymentReviewNotice("");
     setCompletedPaymentSummary(null);
     setCheckOcrStatus("idle");
+    setCaptureDocumentType("remittance_stub");
+    setCaptureIntent("primary");
+    setCameraGuideMode("horizontal");
     setCheckOcrMessage(
       "Upload a remittance stub or enter the payment manually."
     );
@@ -1757,8 +1875,24 @@ export default function BatchInvoicePayments({
       return null;
     }
 
-    const guideWidthRatio = cameraGuideMode === "horizontal" ? 0.9 : 0.68;
-    const guideHeightRatio = cameraGuideMode === "horizontal" ? 0.34 : 0.72;
+    const guideWidthRatio =
+      cameraGuideMode === "horizontal"
+        ? captureDocumentType === "full_check_stub"
+          ? 0.92
+          : 0.9
+        : captureDocumentType === "check_only"
+          ? 0.7
+          : 0.68;
+    const guideHeightRatio =
+      cameraGuideMode === "horizontal"
+        ? captureDocumentType === "full_check_stub"
+          ? 0.5
+          : captureDocumentType === "check_only"
+            ? 0.36
+            : 0.34
+        : captureDocumentType === "full_check_stub"
+          ? 0.78
+          : 0.72;
     const sourceWidth = Math.round(video.videoWidth * guideWidthRatio);
     const sourceHeight = Math.round(video.videoHeight * guideHeightRatio);
     const sourceX = Math.round((video.videoWidth - sourceWidth) / 2);
@@ -1835,7 +1969,35 @@ export default function BatchInvoicePayments({
     }
 
     const blurScore = edgeTotal / Math.max(edgeCount, 1);
-    const minimumCoverage = cameraGuideMode === "horizontal" ? 0.5 : 0.58;
+    const minimumCoverage =
+      captureDocumentType === "remittance_stub"
+        ? cameraGuideMode === "horizontal"
+          ? 0.58
+          : 0.64
+        : captureDocumentType === "full_check_stub"
+          ? 0.46
+          : 0.5;
+    const effectiveGuideShortEdge = Math.min(sourceWidth, sourceHeight);
+
+    if (
+      captureDocumentType === "full_check_stub" &&
+      effectiveGuideShortEdge < 980
+    ) {
+      return {
+        ready: false,
+        message: "Capture stub separately",
+      };
+    }
+
+    if (
+      captureDocumentType === "remittance_stub" &&
+      effectiveGuideShortEdge < 1050
+    ) {
+      return {
+        ready: false,
+        message: "Move closer",
+      };
+    }
 
     if (paperCoverage < minimumCoverage) {
       return {
@@ -1869,7 +2031,7 @@ export default function BatchInvoicePayments({
       ready: true,
       message: "Ready",
     };
-  }, [cameraGuideMode]);
+  }, [cameraGuideMode, captureDocumentType]);
 
   useEffect(() => {
     if (paymentEntryMode !== "camera" || !cameraReady) {
@@ -1950,7 +2112,7 @@ export default function BatchInvoicePayments({
 
         setCameraStatusMessage("Checking image...");
         stopCameraCapture();
-        captureCheckImage(file, "camera");
+        captureCheckImage(file, "camera", captureDocumentType, captureIntent);
       },
       "image/jpeg",
       0.98
@@ -1959,7 +2121,9 @@ export default function BatchInvoicePayments({
 
   function captureCheckImage(
     file: File | undefined,
-    source: "camera" | "existing" = "existing"
+    source: "camera" | "existing" = "existing",
+    documentType: RemittanceDocumentType = captureDocumentType,
+    intent: CaptureIntent = captureIntent
   ) {
     if (!file) {
       return;
@@ -1976,17 +2140,21 @@ export default function BatchInvoicePayments({
     setCheckOcrStatus("idle");
     setCheckOcrMessage("Preparing remittance...");
     setFiledPaymentImage(null);
-    setRemittanceStubText("");
-    setSelectedIds([]);
-    setReviewMatchedInvoices([]);
-    setExtractedPaymentAmount(null);
-    setPaymentReviewNotice("");
+    if (intent === "primary") {
+      setRemittanceStubText("");
+      setSelectedIds([]);
+      setReviewMatchedInvoices([]);
+      setExtractedPaymentAmount(null);
+      setPaymentReviewNotice("");
+      setCheckAmount("");
+      setPaymentReference("");
+      setCheckPayor("");
+      setCapturedCheckAmount("");
+      setCapturedCheckReference("");
+    }
     setCompletedPaymentSummary(null);
-    setCheckAmount("");
-    setPaymentReference("");
-    setCheckPayor("");
-    setCapturedCheckAmount("");
-    setCapturedCheckReference("");
+    setCaptureDocumentType(documentType);
+    setCaptureIntent(intent);
     setCropRotation(0);
     setIsTightlyFramedRemittance(false);
     setCaptureQualityMessage("");
@@ -2016,7 +2184,13 @@ export default function BatchInvoicePayments({
       );
 
       if (suggestion.shouldAutoRead) {
-        void readPreparedRemittanceFromFile(file, suggestion.cropBox, 0);
+        void readPreparedRemittanceFromFile(
+          file,
+          suggestion.cropBox,
+          0,
+          documentType,
+          intent
+        );
       } else {
         setCheckOcrStatus("idle");
         const nextMessage =
@@ -2039,6 +2213,21 @@ export default function BatchInvoicePayments({
       type: "success",
       message: "Remittance image added.",
     });
+  }
+
+  function openCameraCapture(
+    documentType: RemittanceDocumentType = captureDocumentType,
+    intent: CaptureIntent = "primary"
+  ) {
+    setCaptureDocumentType(documentType);
+    setCaptureIntent(intent);
+    setCameraGuideMode(defaultGuideModeForDocumentType(documentType));
+    setCameraQualityReady(false);
+    setPaymentEntryMode("camera");
+    setCheckOcrStatus("idle");
+    setCameraStatusMessage(
+      documentType === "full_check_stub" ? "Capture stub separately" : "Move closer"
+    );
   }
 
   async function applyBatchPayment() {
@@ -2208,6 +2397,34 @@ export default function BatchInvoicePayments({
               Rotate Guide
             </button>
           </div>
+          <div className="shrink-0 px-4 pb-2">
+            <div className="mx-auto grid max-w-xl grid-cols-3 gap-1.5 rounded-2xl bg-black/55 p-1.5 backdrop-blur">
+              {remittanceDocumentModes.map((mode) => (
+                <button
+                  key={mode.value}
+                  type="button"
+                  onClick={() => {
+                    setCaptureDocumentType(mode.value);
+                    setCameraGuideMode(defaultGuideModeForDocumentType(mode.value));
+                    setCameraQualityReady(false);
+                    setCameraStatusMessage(
+                      mode.value === "full_check_stub"
+                        ? "Capture stub separately"
+                        : "Move closer"
+                    );
+                  }}
+                  className={`min-h-10 rounded-xl px-2 py-2 text-xs font-black transition ${
+                    captureDocumentType === mode.value
+                      ? "bg-emerald-300 text-black"
+                      : "bg-white/10 text-zinc-100"
+                  }`}
+                  title={mode.help}
+                >
+                  {mode.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <div className="relative min-h-0 flex-1 overflow-hidden">
             <video
@@ -2221,7 +2438,11 @@ export default function BatchInvoicePayments({
             <div
               className={`pointer-events-none absolute left-1/2 top-1/2 max-h-[72dvh] max-w-[94vw] -translate-x-1/2 -translate-y-1/2 rounded-[1.35rem] border-[3px] border-emerald-300 shadow-[0_0_0_9999px_rgba(0,0,0,0.55),0_0_36px_rgba(110,231,183,0.35)] ${
                 cameraGuideMode === "horizontal"
-                  ? "h-[min(34dvh,34vw)] min-h-[22dvh] w-[min(94vw,142dvh)] landscape:h-[min(52dvh,40vw)]"
+                  ? captureDocumentType === "full_check_stub"
+                    ? "h-[min(50dvh,54vw)] min-h-[30dvh] w-[min(94vw,128dvh)] landscape:h-[min(64dvh,52vw)]"
+                    : captureDocumentType === "check_only"
+                      ? "h-[min(36dvh,38vw)] min-h-[24dvh] w-[min(92vw,118dvh)] landscape:h-[min(50dvh,40vw)]"
+                      : "h-[min(34dvh,34vw)] min-h-[22dvh] w-[min(94vw,142dvh)] landscape:h-[min(52dvh,40vw)]"
                   : "h-[min(72dvh,128vw)] min-h-[48dvh] w-[min(70vw,64dvh)] landscape:h-[min(72dvh,88vw)] landscape:w-[min(45vw,64dvh)]"
               }`}
               data-remittance-document-frame="true"
@@ -2241,7 +2462,7 @@ export default function BatchInvoicePayments({
             data-camera-safe-area-bottom="true"
           >
             <p className="mb-3 text-center text-sm font-semibold text-sky-100">
-              Fill the frame. Hold steady. Use good light.
+              {guidanceForDocumentType(captureDocumentType)}
             </p>
             <div className="mx-auto grid max-w-lg grid-cols-2 gap-2">
               <button
@@ -2261,7 +2482,12 @@ export default function BatchInvoicePayments({
                   className="sr-only"
                   onChange={(event) => {
                     stopCameraCapture();
-                    captureCheckImage(event.target.files?.[0], "camera");
+                    captureCheckImage(
+                      event.target.files?.[0],
+                      "camera",
+                      captureDocumentType,
+                      captureIntent
+                    );
                     event.currentTarget.value = "";
                   }}
                 />
@@ -2274,7 +2500,12 @@ export default function BatchInvoicePayments({
                   className="sr-only"
                   onChange={(event) => {
                     stopCameraCapture();
-                    captureCheckImage(event.target.files?.[0], "existing");
+                    captureCheckImage(
+                      event.target.files?.[0],
+                      "existing",
+                      captureDocumentType,
+                      captureIntent
+                    );
                     event.currentTarget.value = "";
                   }}
                 />
@@ -2383,11 +2614,7 @@ export default function BatchInvoicePayments({
                 <button
                   type="button"
                   onClick={() => {
-                    setPaymentEntryMode("camera");
-                    setCheckOcrStatus("idle");
-                    setCameraStatusMessage(
-                      "Align the remittance inside the frame."
-                    );
+                    openCameraCapture("remittance_stub", "primary");
                   }}
                   className="check-camera-action inline-flex rounded-full bg-sky-500 px-4 py-2 text-sm font-black text-white transition hover:bg-sky-600"
                 >
@@ -2607,7 +2834,12 @@ export default function BatchInvoicePayments({
                       capture="environment"
                       className="sr-only"
                       onChange={(event) => {
-                        captureCheckImage(event.target.files?.[0], "camera");
+                        captureCheckImage(
+                          event.target.files?.[0],
+                          "camera",
+                          captureDocumentType,
+                          captureIntent
+                        );
                         event.currentTarget.value = "";
                       }}
                     />
@@ -2619,7 +2851,12 @@ export default function BatchInvoicePayments({
                       accept="image/*,.heic,.heif"
                       className="sr-only"
                       onChange={(event) => {
-                        captureCheckImage(event.target.files?.[0], "existing");
+                        captureCheckImage(
+                          event.target.files?.[0],
+                          "existing",
+                          captureDocumentType,
+                          captureIntent
+                        );
                         event.currentTarget.value = "";
                       }}
                     />
@@ -2693,6 +2930,15 @@ export default function BatchInvoicePayments({
                       <button
                         type="button"
                         onClick={() => {
+                          openCameraCapture("check_only", "check_details");
+                        }}
+                        className="rounded-full border border-amber-100/50 px-3 py-1.5 text-xs font-semibold text-amber-50 transition hover:bg-white/10"
+                      >
+                        Add Check Photo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
                           setPaymentEntryMode("manual");
                           setCheckOcrStatus("manual");
                           setCheckOcrMessage("Select the missing invoice, verify the total, and apply the payment.");
@@ -2738,6 +2984,9 @@ export default function BatchInvoicePayments({
                           <span className="mt-0.5 block text-zinc-400">
                             {invoice.customerName}
                           </span>
+                          <span className="mt-0.5 block text-xs font-semibold text-sky-200">
+                            Source: Remittance photo
+                          </span>
                         </span>
                         <span className="shrink-0 font-black text-emerald-300 sm:text-right">
                           {formatMoney(invoice.remittanceAmount ?? invoice.amountDue)}
@@ -2751,6 +3000,19 @@ export default function BatchInvoicePayments({
                   <div className="mt-4 rounded-xl border border-amber-300/35 bg-amber-300/10 px-3 py-2 text-sm text-amber-50">
                     No invoice matches were found from the extracted invoice numbers.
                   </div>
+                ) : null}
+
+                {isRemittanceReview &&
+                (!paymentReference.trim() ||
+                  !checkPayor.trim() ||
+                  !visibleCheckAmount.trim()) ? (
+                  <button
+                    type="button"
+                    onClick={() => openCameraCapture("check_only", "check_details")}
+                    className="mt-3 rounded-full border border-sky-300/50 px-4 py-2 text-sm font-black text-sky-100 transition hover:border-sky-200 hover:bg-sky-500/10"
+                  >
+                    Add Check Photo
+                  </button>
                 ) : null}
 
                 {checkOcrStatus === "error" || checkOcrStatus === "manual" ? (
@@ -2771,6 +3033,19 @@ export default function BatchInvoicePayments({
       {showPaymentReview ? (
         <>
       <div className="app-soft-panel mt-4 min-w-0 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+        {isRemittanceReview ? (
+          <div className="mb-3 flex flex-wrap gap-2 text-xs font-semibold text-slate-500">
+            <span className="rounded-full bg-sky-50 px-3 py-1 text-sky-700">
+              Invoice rows: Remittance photo
+            </span>
+            <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">
+              Total: {checkAmountMatches ? "Reconciled" : "Review"}
+            </span>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">
+              Check details: {captureIntent === "check_details" ? "Check photo" : "Remittance photo"}
+            </span>
+          </div>
+        ) : null}
         <div
           className={`grid min-w-0 gap-3 md:grid-cols-2 ${
             isRemittanceReview

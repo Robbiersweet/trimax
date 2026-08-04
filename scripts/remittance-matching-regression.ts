@@ -592,6 +592,21 @@ assert(
   "Payments screen must open a full-viewport Trimax document frame before mobile camera OCR."
 );
 assert(
+  paymentScreen.includes("type RemittanceDocumentType") &&
+    paymentScreen.includes('"remittance_stub"') &&
+    paymentScreen.includes('"full_check_stub"') &&
+    paymentScreen.includes('"check_only"') &&
+    paymentScreen.includes('useState<RemittanceDocumentType>("remittance_stub")'),
+  "Payments capture must expose Remittance Stub, Full Check + Stub, and Check Only modes with Remittance Stub as the default."
+);
+assert(
+  paymentScreen.includes("Add Check Photo") &&
+    paymentScreen.includes('"check_details"') &&
+    paymentScreen.includes("loadCheckDetailsFromExtraction") &&
+    paymentScreen.includes("Check photo used only for missing check details."),
+  "Payments capture must support an optional second check photo without discarding successful remittance fields."
+);
+assert(
   paymentScreen.includes("trimax-remittance-capture-active") &&
     paymentScreen.includes("document.body.style.overflow = \"hidden\"") &&
     paymentScreen.includes("document.body.style.touchAction = \"none\"") &&
@@ -611,8 +626,8 @@ assert(
   "Camera capture must respect iPhone safe areas and adapt the frame in portrait and landscape."
 );
 assert(
-  paymentScreen.includes("Fill the frame. Hold steady. Use good light.") &&
-    paymentScreen.indexOf("Fill the frame. Hold steady. Use good light.") >
+  paymentScreen.includes("guidanceForDocumentType(captureDocumentType)") &&
+    paymentScreen.indexOf("guidanceForDocumentType(captureDocumentType)") >
       paymentScreen.indexOf('data-remittance-document-frame="true"'),
   "Camera instructions must sit outside the document frame instead of covering remittance text."
 );
@@ -640,10 +655,19 @@ assert(
   "Payments screen must reject small, blurry, or low-light remittance images before OCR."
 );
 assert(
+  paymentScreen.includes("Capture stub separately") &&
+    paymentScreen.includes('captureDocumentType === "full_check_stub"') &&
+    paymentScreen.includes("effectiveGuideShortEdge < 980") &&
+    paymentScreen.includes("guidanceForDocumentType(captureDocumentType)"),
+  "Full Check + Stub capture must warn when invoice text resolution is too distant and suggest a stub close-up."
+);
+assert(
   paymentScreen.includes("shouldAutoRead") &&
     paymentScreen.includes("Document detected. Reading remittance...") &&
     paymentScreen.includes("Use image as-is or adjust crop before reading.") &&
-    paymentScreen.includes("readPreparedRemittanceFromFile(file, suggestion.cropBox, 0)"),
+    paymentScreen.includes("readPreparedRemittanceFromFile(") &&
+    paymentScreen.includes("documentType") &&
+    paymentScreen.includes("intent"),
   "Payments screen must auto-read only high-confidence captures and keep crop review available."
 );
 assert(
@@ -676,6 +700,15 @@ assert(
     route.includes("ocrReceivedThumbnail: false") &&
     route.includes("redactedTextSummary"),
   "OCR route must report timeout stage, avoid thumbnail OCR, and keep diagnostics redacted."
+);
+assert(
+  route.includes("type RemittanceDocumentType") &&
+    route.includes("normalizeDocumentType") &&
+    route.includes("documentType: RemittanceDocumentType") &&
+    route.includes("stub-invoice-rows") &&
+    route.includes("check-face-no-micr") &&
+    route.includes("withoutMicrBandText"),
+  "OCR route must use document-type-aware regions, canonical orientation, and MICR-excluded parsing."
 );
 
 console.log("Remittance matching regression checks passed.");
