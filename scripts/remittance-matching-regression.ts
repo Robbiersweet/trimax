@@ -580,13 +580,37 @@ assert(
   "Payments screen must show extracted invoice matches during review."
 );
 assert(
-  paymentScreen.includes("readPreparedRemittanceFromFile(file, suggestion.cropBox, 0)") &&
-    paymentScreen.includes("Preparing remittance..."),
-  "Payments screen must auto-read after photo selection instead of forcing crop first."
+  paymentScreen.includes("remittance-camera-frame") &&
+    paymentScreen.includes("Align the remittance inside the frame") &&
+    paymentScreen.includes("captureFromTrimaxCamera") &&
+    paymentScreen.includes("Use Device Camera"),
+  "Payments screen must show a Trimax document frame before mobile camera OCR."
+);
+assert(
+  paymentScreen.includes("Choose Existing Photo") &&
+    paymentScreen.includes('captureCheckImage(event.target.files?.[0], "existing")') &&
+    paymentScreen.includes("Choose Existing"),
+  "Existing-photo workflow must remain available and use the same quality/crop path."
+);
+assert(
+  paymentScreen.includes("qualityMessageFromMetrics") &&
+    paymentScreen.includes("Move closer - document is too small.") &&
+    paymentScreen.includes("Retake photo - image is blurry.") &&
+    paymentScreen.includes("More light needed.") &&
+    paymentScreen.includes("Use stronger lighting or a darker background."),
+  "Payments screen must reject small, blurry, or low-light remittance images before OCR."
+);
+assert(
+  paymentScreen.includes("shouldAutoRead") &&
+    paymentScreen.includes("Document detected. Reading remittance...") &&
+    paymentScreen.includes("Use image as-is or adjust crop before reading.") &&
+    paymentScreen.includes("readPreparedRemittanceFromFile(file, suggestion.cropBox, 0)"),
+  "Payments screen must auto-read only high-confidence captures and keep crop review available."
 );
 assert(
   paymentScreen.includes("0.98") &&
     paymentScreen.includes("const maxEdge = 4600") &&
+    paymentScreen.includes("OCR image target: at least 3200px readable edge") &&
     paymentScreen.includes("cropBoxForRotation") &&
     paymentScreen.includes("Document total not found. Enter the check amount") &&
     paymentScreen.includes("ocrFailureMessage") &&
@@ -606,6 +630,13 @@ assert(
     paymentScreen.includes("Remittance total does not match selected invoices.") &&
     paymentScreen.includes("Select Missing Invoice Manually"),
   "Payments screen must reconcile OCR line amounts against real invoice balances and reject partial matches."
+);
+assert(
+  route.includes("OCR timed out during ${source.name}") &&
+    route.includes("stageTimings") &&
+    route.includes("ocrReceivedThumbnail: false") &&
+    route.includes("redactedTextSummary"),
+  "OCR route must report timeout stage, avoid thumbnail OCR, and keep diagnostics redacted."
 );
 
 console.log("Remittance matching regression checks passed.");

@@ -60,7 +60,13 @@ type ToastState = {
 } | null;
 
 type CheckOcrStatus = "idle" | "reading" | "ready" | "manual" | "error";
-type PaymentEntryMode = "choice" | "crop" | "photo" | "manual" | "complete";
+type PaymentEntryMode =
+  | "choice"
+  | "camera"
+  | "crop"
+  | "photo"
+  | "manual"
+  | "complete";
 
 type CropBox = {
   left: number;
@@ -72,6 +78,20 @@ type CropBox = {
 type CropSuggestion = {
   cropBox: CropBox;
   isTightlyFramed: boolean;
+  documentAreaRatio: number;
+  effectiveWidth: number;
+  effectiveHeight: number;
+  confidence: "high" | "medium" | "low";
+  qualityMessages: string[];
+  shouldAutoRead: boolean;
+};
+
+type ImageQualityReport = {
+  ok: boolean;
+  message: string;
+  brightness: number;
+  contrast: number;
+  blurScore: number;
 };
 
 type CheckStubOcrResponse = {
@@ -86,12 +106,18 @@ type CheckStubOcrResponse = {
     summary?: string[];
     originalWidth?: number;
     originalHeight?: number;
+    originalFormat?: string;
+    originalOrientation?: number;
     normalizedWidth?: number;
     normalizedHeight?: number;
+    documentWidth?: number;
+    documentHeight?: number;
+    ocrReceivedThumbnail?: boolean;
     selectedRegion?: string;
     selectedRotation?: number;
     selectedVariant?: string;
     selectedConfidence?: number;
+    stageTimings?: Record<string, number>;
   };
   error?: string;
 };
@@ -254,6 +280,137 @@ function cropBoxForRotation(cropBox: CropBox, rotation: number): CropBox {
   return cropBox;
 }
 
+function cropBoxAreaRatio(cropBox: CropBox) {
+  return (
+    (Math.max(cropBox.right - cropBox.left, 0) *
+      Math.max(cropBox.bottom - cropBox.top, 0)) /
+    10_000
+  );
+}
+
+function qualityMessageFromMetrics(
+  effectiveWidth: number,
+  effectiveHeight: number,
+  documentAreaRatio: number,
+  quality: ImageQualityReport
+) {
+  const messages: string[] = [];
+  const shortestEdge = Math.min(effectiveWidth, effectiveHeight);
+
+  if (documentAreaRatio < 0.32 || shortestEdge < 900) {
+    messages.push("Move closer - document is too small.");
+  }
+
+  if (quality.blurScore < 8) {
+    messages.push("Retake photo - image is blurry.");
+  }
+
+  if (quality.brightness < 70) {
+    messages.push("More light needed.");
+  }
+
+  if (quality.contrast < 22) {
+    messages.push("Use stronger lighting or a darker background.");
+  }
+
+  return messages;
+}
+
+async function inspectImageQuality(
+  file: File,
+  cropBox: CropBox
+): Promise<ImageQualityReport> {
+  const image = await imageElementFromFile(file);
+  const naturalWidth = image.naturalWidth || image.width;
+  const naturalHeight = image.naturalHeight || image.height;
+  const sourceX = Math.round((cropBox.left / 100) * naturalWidth);
+  const sourceY = Math.round((cropBox.top / 100) * naturalHeight);
+  const sourceWidth = Math.max(
+    1,
+    Math.round(((cropBox.right - cropBox.left) / 100) * naturalWidth)
+  );
+  const sourceHeight = Math.max(
+    1,
+    Math.round(((cropBox.bottom - cropBox.top) / 100) * naturalHeight)
+  );
+  const scanWidth = 360;
+  const scale = Math.min(1, scanWidth / Math.max(sourceWidth, sourceHeight));
+  const width = Math.max(1, Math.round(sourceWidth * scale));
+  const height = Math.max(1, Math.round(sourceHeight * scale));
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+
+  if (!context) {
+    throw new Error("Unable to inspect the remittance photo.");
+  }
+
+  canvas.width = width;
+  canvas.height = height;
+  context.drawImage(
+    image,
+    sourceX,
+    sourceY,
+    sourceWidth,
+    sourceHeight,
+    0,
+    0,
+    width,
+    height
+  );
+
+  const pixels = context.getImageData(0, 0, width, height).data;
+  let total = 0;
+  let totalSquared = 0;
+  const grayscale = new Float32Array(width * height);
+
+  for (let index = 0; index < width * height; index += 1) {
+    const offset = index * 4;
+    const red = pixels[offset] ?? 0;
+    const green = pixels[offset + 1] ?? red;
+    const blue = pixels[offset + 2] ?? red;
+    const value = red * 0.299 + green * 0.587 + blue * 0.114;
+
+    grayscale[index] = value;
+    total += value;
+    totalSquared += value * value;
+  }
+
+  const count = Math.max(width * height, 1);
+  const brightness = total / count;
+  const variance = Math.max(totalSquared / count - brightness * brightness, 0);
+  const contrast = Math.sqrt(variance);
+  let laplacianTotal = 0;
+  let laplacianCount = 0;
+
+  for (let y = 1; y < height - 1; y += 1) {
+    for (let x = 1; x < width - 1; x += 1) {
+      const center = grayscale[y * width + x] ?? 0;
+      const laplacian =
+        Math.abs(
+          (grayscale[(y - 1) * width + x] ?? center) +
+            (grayscale[(y + 1) * width + x] ?? center) +
+            (grayscale[y * width + x - 1] ?? center) +
+            (grayscale[y * width + x + 1] ?? center) -
+            center * 4
+        );
+
+      laplacianTotal += laplacian;
+      laplacianCount += 1;
+    }
+  }
+
+  const blurScore = laplacianTotal / Math.max(laplacianCount, 1);
+  const ok = brightness >= 70 && contrast >= 22 && blurScore >= 8;
+
+  return {
+    ok,
+    message: ok ? "Ready" : "Retake or adjust crop before reading.",
+    brightness,
+    contrast,
+    blurScore,
+  };
+}
+
 async function detectDefaultCropBox(file: File): Promise<CropSuggestion> {
   const fullImageCrop = {
     left: 0,
@@ -324,25 +481,65 @@ async function detectDefaultCropBox(file: File): Promise<CropSuggestion> {
       maxY >= height * 0.96;
     const isTightlyFramed =
       paperPixelRatio > 0.72 || boundsAreaRatio > 0.78 || touchesEdges;
+    const padX = Math.round((maxX - minX) * 0.06);
+    const padY = Math.round((maxY - minY) * 0.06);
+    const cropBox = isTightlyFramed
+      ? fullImageCrop
+      : {
+          left: Math.max(0, Math.round(((minX - padX) / width) * 100)),
+          top: Math.max(0, Math.round(((minY - padY) / height) * 100)),
+          right: Math.min(100, Math.round(((maxX + padX) / width) * 100)),
+          bottom: Math.min(100, Math.round(((maxY + padY) / height) * 100)),
+        };
+    const effectiveWidth = Math.round(
+      ((cropBox.right - cropBox.left) / 100) * naturalWidth
+    );
+    const effectiveHeight = Math.round(
+      ((cropBox.bottom - cropBox.top) / 100) * naturalHeight
+    );
+    const quality = await inspectImageQuality(file, cropBox);
+    const documentAreaRatio = isTightlyFramed
+      ? 1
+      : Math.max(boundsAreaRatio, cropBoxAreaRatio(cropBox));
+    const qualityMessages = qualityMessageFromMetrics(
+      effectiveWidth,
+      effectiveHeight,
+      documentAreaRatio,
+      quality
+    );
+    const confidence =
+      qualityMessages.length === 0 && documentAreaRatio >= 0.42
+        ? "high"
+        : qualityMessages.length <= 1 && documentAreaRatio >= 0.28
+          ? "medium"
+          : "low";
+    const shouldAutoRead =
+      confidence === "high" &&
+      Math.min(effectiveWidth, effectiveHeight) >= 1000 &&
+      quality.ok;
 
     if (isTightlyFramed) {
       return {
-        cropBox: fullImageCrop,
+        cropBox,
         isTightlyFramed: true,
+        documentAreaRatio,
+        effectiveWidth,
+        effectiveHeight,
+        confidence,
+        qualityMessages,
+        shouldAutoRead,
       };
     }
 
-    const padX = Math.round((maxX - minX) * 0.06);
-    const padY = Math.round((maxY - minY) * 0.06);
-
     return {
-      cropBox: {
-        left: Math.max(0, Math.round(((minX - padX) / width) * 100)),
-        top: Math.max(0, Math.round(((minY - padY) / height) * 100)),
-        right: Math.min(100, Math.round(((maxX + padX) / width) * 100)),
-        bottom: Math.min(100, Math.round(((maxY + padY) / height) * 100)),
-      },
+      cropBox,
       isTightlyFramed: false,
+      documentAreaRatio,
+      effectiveWidth,
+      effectiveHeight,
+      confidence,
+      qualityMessages,
+      shouldAutoRead,
     };
   } catch {
     return {
@@ -353,6 +550,12 @@ async function detectDefaultCropBox(file: File): Promise<CropSuggestion> {
         bottom: 92,
       },
       isTightlyFramed: false,
+      documentAreaRatio: 0.7,
+      effectiveWidth: 0,
+      effectiveHeight: 0,
+      confidence: "low",
+      qualityMessages: ["Adjust crop around the remittance before reading."],
+      shouldAutoRead: false,
     };
   }
 }
@@ -543,6 +746,8 @@ export default function BatchInvoicePayments({
     bottom: 92,
   });
   const cropFrameRef = useRef<HTMLDivElement | null>(null);
+  const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
   const cropDragRef = useRef<{
     target: CropDragTarget;
     startX: number;
@@ -553,6 +758,12 @@ export default function BatchInvoicePayments({
   const [cropPreviewAspectRatio, setCropPreviewAspectRatio] = useState(4 / 3);
   const [isTightlyFramedRemittance, setIsTightlyFramedRemittance] =
     useState(false);
+  const [captureQualityMessage, setCaptureQualityMessage] = useState("");
+  const [captureQualityDetails, setCaptureQualityDetails] = useState("");
+  const [cameraStatusMessage, setCameraStatusMessage] = useState(
+    "Align the remittance inside the frame."
+  );
+  const [cameraReady, setCameraReady] = useState(false);
   const [isPreparingCrop, setIsPreparingCrop] = useState(false);
   const [filedPaymentImage, setFiledPaymentImage] =
     useState<FiledPaymentImage>(null);
@@ -734,6 +945,65 @@ export default function BatchInvoicePayments({
       }
     };
   }, [checkImagePreview]);
+
+  useEffect(() => {
+    if (paymentEntryMode !== "camera") {
+      stopCameraCapture();
+      return;
+    }
+
+    let canceled = false;
+
+    async function startCameraCapture() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setCameraReady(false);
+        setCameraStatusMessage(
+          "Camera guide ready. Use the capture button below if live preview is unavailable."
+        );
+        return;
+      }
+
+      setCameraStatusMessage("Starting camera...");
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+          },
+        });
+
+        if (canceled) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+
+        cameraStreamRef.current = stream;
+
+        if (cameraVideoRef.current) {
+          cameraVideoRef.current.srcObject = stream;
+          await cameraVideoRef.current.play().catch(() => undefined);
+        }
+
+        setCameraReady(true);
+        setCameraStatusMessage("Fill the frame, hold steady, then capture.");
+      } catch {
+        setCameraReady(false);
+        setCameraStatusMessage(
+          "Live camera unavailable. Use the capture button inside the guide."
+        );
+      }
+    }
+
+    void startCameraCapture();
+
+    return () => {
+      canceled = true;
+      stopCameraCapture();
+    };
+  }, [paymentEntryMode]);
 
   function toggleInvoice(invoiceId: string) {
     setSelectedIds((current) =>
@@ -1254,12 +1524,42 @@ export default function BatchInvoicePayments({
     setIsPreparingCrop(true);
 
     try {
+      const image = await imageElementFromFile(file);
+      const naturalWidth = image.naturalWidth || image.width;
+      const naturalHeight = image.naturalHeight || image.height;
+      const effectiveWidth = Math.round(
+        ((nextCropBox.right - nextCropBox.left) / 100) * naturalWidth
+      );
+      const effectiveHeight = Math.round(
+        ((nextCropBox.bottom - nextCropBox.top) / 100) * naturalHeight
+      );
+      const quality = await inspectImageQuality(file, nextCropBox);
+      const qualityMessages = qualityMessageFromMetrics(
+        effectiveWidth,
+        effectiveHeight,
+        cropBoxAreaRatio(nextCropBox),
+        quality
+      );
+
+      setCaptureQualityDetails(
+        `OCR image target: at least 3200px readable edge. Selected crop: ${effectiveWidth} x ${effectiveHeight}.`
+      );
+
+      if (qualityMessages.length > 0) {
+        setPaymentEntryMode("crop");
+        setCheckOcrStatus("manual");
+        setCheckOcrMessage(qualityMessages[0]);
+        setCaptureQualityMessage(qualityMessages[0]);
+        return;
+      }
+
       const imageDataUrl = await cropPhotoForOcr(
         file,
         nextCropBox,
         nextRotation
       );
 
+      setCaptureQualityMessage("Document quality looks ready.");
       setPaymentEntryMode("photo");
       void extractCheckStubFromPhoto(imageDataUrl);
     } catch (error) {
@@ -1394,10 +1694,68 @@ export default function BatchInvoicePayments({
     setCropBox({ left: 8, top: 8, right: 92, bottom: 92 });
     setCropRotation(0);
     setIsTightlyFramedRemittance(false);
+    setCaptureQualityMessage("");
+    setCaptureQualityDetails("");
     setCheckOcrMessage("Adjust the crop, then read it.");
   }
 
-  function captureCheckImage(file: File | undefined) {
+  function stopCameraCapture() {
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+
+    if (cameraVideoRef.current) {
+      cameraVideoRef.current.srcObject = null;
+    }
+
+    setCameraReady(false);
+  }
+
+  async function captureFromTrimaxCamera() {
+    const video = cameraVideoRef.current;
+
+    if (!video || video.videoWidth <= 0 || video.videoHeight <= 0) {
+      setCameraStatusMessage(
+        "Camera is not ready. Use the capture button below or choose an existing photo."
+      );
+      return;
+    }
+
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+
+    if (!context) {
+      setCameraStatusMessage("Camera capture could not be prepared.");
+      return;
+    }
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          setCameraStatusMessage("Camera capture could not be saved.");
+          return;
+        }
+
+        const file = new File(
+          [blob],
+          `trimax-remittance-${Date.now()}.jpg`,
+          { type: "image/jpeg" }
+        );
+
+        stopCameraCapture();
+        captureCheckImage(file, "camera");
+      },
+      "image/jpeg",
+      0.98
+    );
+  }
+
+  function captureCheckImage(
+    file: File | undefined,
+    source: "camera" | "existing" = "existing"
+  ) {
     if (!file) {
       return;
     }
@@ -1426,6 +1784,8 @@ export default function BatchInvoicePayments({
     setCapturedCheckReference("");
     setCropRotation(0);
     setIsTightlyFramedRemittance(false);
+    setCaptureQualityMessage("");
+    setCaptureQualityDetails("");
     void imageElementFromFile(file).then((image) => {
       const width = image.naturalWidth || image.width || 4;
       const height = image.naturalHeight || image.height || 3;
@@ -1435,7 +1795,33 @@ export default function BatchInvoicePayments({
     void detectDefaultCropBox(file).then((suggestion) => {
       setCropBox(suggestion.cropBox);
       setIsTightlyFramedRemittance(suggestion.isTightlyFramed);
-      void readPreparedRemittanceFromFile(file, suggestion.cropBox, 0);
+      setCaptureQualityMessage(
+        suggestion.qualityMessages[0] ??
+          (suggestion.shouldAutoRead
+            ? "Document detected. Reading remittance..."
+            : suggestion.isTightlyFramed
+              ? "Document fills the image. Use as-is or adjust crop."
+              : "Document detected. Check the crop before reading.")
+      );
+      setCaptureQualityDetails(
+        `OCR image target: at least 3200px readable edge. Detected crop: ${Math.max(
+          suggestion.effectiveWidth,
+          0
+        )} x ${Math.max(suggestion.effectiveHeight, 0)}.`
+      );
+
+      if (suggestion.shouldAutoRead) {
+        void readPreparedRemittanceFromFile(file, suggestion.cropBox, 0);
+      } else {
+        setPaymentEntryMode("crop");
+        setCheckOcrStatus("idle");
+        setCheckOcrMessage(
+          suggestion.qualityMessages[0] ??
+            (source === "camera"
+              ? "Review the capture, then read it."
+              : "Use image as-is or adjust crop before reading.")
+        );
+      }
     });
     setToast({
       type: "success",
@@ -1657,19 +2043,19 @@ export default function BatchInvoicePayments({
                 </span>
               )}
               <div className="mt-4 flex flex-wrap justify-center gap-2">
-                <label className="check-camera-action inline-flex cursor-pointer rounded-full bg-sky-500 px-4 py-2 text-sm font-black text-white transition hover:bg-sky-600">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPaymentEntryMode("camera");
+                    setCheckOcrStatus("idle");
+                    setCameraStatusMessage(
+                      "Align the remittance inside the frame."
+                    );
+                  }}
+                  className="check-camera-action inline-flex rounded-full bg-sky-500 px-4 py-2 text-sm font-black text-white transition hover:bg-sky-600"
+                >
                   Take Photo
-                  <input
-                    type="file"
-                    accept="image/*,.heic,.heif"
-                    capture="environment"
-                    className="sr-only"
-                    onChange={(event) => {
-                      captureCheckImage(event.target.files?.[0]);
-                      event.currentTarget.value = "";
-                    }}
-                  />
-                </label>
+                </button>
 
                 <label className="inline-flex cursor-pointer rounded-full border border-sky-300/50 px-4 py-2 text-sm font-black text-sky-100 transition hover:border-sky-200 hover:bg-sky-500/10">
                   Choose Existing Photo
@@ -1678,7 +2064,7 @@ export default function BatchInvoicePayments({
                     accept="image/*,.heic,.heif"
                     className="sr-only"
                     onChange={(event) => {
-                      captureCheckImage(event.target.files?.[0]);
+                      captureCheckImage(event.target.files?.[0], "existing");
                       event.currentTarget.value = "";
                     }}
                   />
@@ -1743,6 +2129,92 @@ export default function BatchInvoicePayments({
               <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
                 <p className="text-lg font-black text-white">
                   Upload Remittance or Enter Check Manually
+                </p>
+              </div>
+            ) : null}
+
+            {paymentEntryMode === "camera" ? (
+              <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-black text-white">Frame Remittance</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      stopCameraCapture();
+                      setPaymentEntryMode("choice");
+                      setCameraStatusMessage(
+                        "Align the remittance inside the frame."
+                      );
+                    }}
+                    className="rounded-full border border-slate-400/40 px-3 py-1.5 text-xs font-semibold text-zinc-100 transition hover:bg-white/10"
+                  >
+                    Cancel
+                  </button>
+                </div>
+
+                <div className="mt-4 overflow-hidden rounded-2xl border border-sky-400/30 bg-black">
+                  <div className="remittance-camera-frame relative mx-auto aspect-[9/14] max-h-[58vh] w-full overflow-hidden sm:aspect-[16/9]">
+                    <video
+                      ref={cameraVideoRef}
+                      muted
+                      playsInline
+                      autoPlay
+                      className="h-full w-full object-cover"
+                    />
+                    <div className="pointer-events-none absolute inset-0 bg-black/35" />
+                    <div className="pointer-events-none absolute left-1/2 top-1/2 h-[78%] w-[72%] -translate-x-1/2 -translate-y-1/2 rounded-xl border-2 border-emerald-300 shadow-[0_0_0_9999px_rgba(0,0,0,0.48)] sm:h-[72%] sm:w-[84%]">
+                      <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-emerald-200/35" />
+                      <div className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-emerald-200/35" />
+                    </div>
+                    <div className="absolute inset-x-4 top-4 rounded-xl bg-black/70 px-3 py-2 text-center text-sm font-bold text-white">
+                      Align the remittance inside the frame. Fill the frame.
+                    </div>
+                    <div className="absolute inset-x-4 bottom-4 rounded-xl bg-black/70 px-3 py-2 text-center text-sm font-semibold text-emerald-100">
+                      {cameraReady ? "Ready" : cameraStatusMessage}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex flex-wrap justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={captureFromTrimaxCamera}
+                    disabled={!cameraReady}
+                    className="rounded-full bg-emerald-500 px-5 py-3 text-sm font-black text-black transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-300"
+                  >
+                    Capture
+                  </button>
+                  <label className="inline-flex cursor-pointer rounded-full border border-sky-300/50 px-5 py-3 text-sm font-black text-sky-100 transition hover:border-sky-200 hover:bg-sky-500/10">
+                    Use Device Camera
+                    <input
+                      type="file"
+                      accept="image/*,.heic,.heif"
+                      capture="environment"
+                      className="sr-only"
+                      onChange={(event) => {
+                        stopCameraCapture();
+                        captureCheckImage(event.target.files?.[0], "camera");
+                        event.currentTarget.value = "";
+                      }}
+                    />
+                  </label>
+                  <label className="inline-flex cursor-pointer rounded-full border border-slate-400/40 px-5 py-3 text-sm font-semibold text-zinc-100 transition hover:bg-white/10">
+                    Choose Existing
+                    <input
+                      type="file"
+                      accept="image/*,.heic,.heif"
+                      className="sr-only"
+                      onChange={(event) => {
+                        stopCameraCapture();
+                        captureCheckImage(event.target.files?.[0], "existing");
+                        event.currentTarget.value = "";
+                      }}
+                    />
+                  </label>
+                </div>
+
+                <p className="mt-3 text-center text-sm font-semibold text-sky-100">
+                  Move closer / hold steady / use good lighting.
                 </p>
               </div>
             ) : null}
@@ -1833,6 +2305,16 @@ export default function BatchInvoicePayments({
                 <p className="mt-3 text-sm font-semibold text-sky-100">
                   {checkOcrMessage}
                 </p>
+                {captureQualityMessage ? (
+                  <p className="mt-2 rounded-xl border border-sky-300/25 bg-sky-300/10 px-3 py-2 text-sm font-semibold text-sky-50">
+                    {captureQualityMessage}
+                  </p>
+                ) : null}
+                {captureQualityDetails ? (
+                  <p className="mt-2 text-xs font-semibold text-zinc-300">
+                    {captureQualityDetails}
+                  </p>
+                ) : null}
 
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button
@@ -1874,7 +2356,7 @@ export default function BatchInvoicePayments({
                       capture="environment"
                       className="sr-only"
                       onChange={(event) => {
-                        captureCheckImage(event.target.files?.[0]);
+                        captureCheckImage(event.target.files?.[0], "camera");
                         event.currentTarget.value = "";
                       }}
                     />
@@ -1886,7 +2368,7 @@ export default function BatchInvoicePayments({
                       accept="image/*,.heic,.heif"
                       className="sr-only"
                       onChange={(event) => {
-                        captureCheckImage(event.target.files?.[0]);
+                        captureCheckImage(event.target.files?.[0], "existing");
                         event.currentTarget.value = "";
                       }}
                     />

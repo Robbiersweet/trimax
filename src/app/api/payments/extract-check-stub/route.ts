@@ -472,6 +472,11 @@ function ocrAttemptSpecs(psm: typeof import("tesseract.js").PSM): OcrAttemptSpec
 
 async function recognizeBestText(originalImage: Buffer) {
   const Tesseract = await import("tesseract.js");
+  const startedAt = Date.now();
+  const stageTimings: Record<string, number> = {};
+  const markStage = (stage: string) => {
+    stageTimings[stage] = Date.now() - startedAt;
+  };
   const worker = await Tesseract.createWorker("eng", Tesseract.OEM.LSTM_ONLY, {
     cachePath: "/tmp/tesseract-cache",
     gzip: true,
@@ -487,7 +492,9 @@ async function recognizeBestText(originalImage: Buffer) {
 
     const attempts: OcrAttempt[] = [];
     const sources = await buildOcrSources(originalImage);
+    markStage("document-normalized");
     const regionSources = await buildRegionSources(sources.document.image);
+    markStage("regions-built");
     const specs = ocrAttemptSpecs(Tesseract.PSM);
 
     async function runAttemptsForSource(
@@ -500,7 +507,9 @@ async function recognizeBestText(originalImage: Buffer) {
           tessedit_pageseg_mode: spec.pageMode.value,
         });
 
+        const attemptStage = `${source.name}/${spec.variant}/${spec.pageMode.name}/${rotation}`;
         const image = await preprocessForOcr(source.image, rotation, spec.variant);
+        markStage(`preprocessed:${attemptStage}`);
         const recognition = worker.recognize(image, {}, { text: true });
         const result = await Promise.race([
           recognition,
@@ -509,7 +518,7 @@ async function recognizeBestText(originalImage: Buffer) {
               () =>
                 reject(
                   new Error(
-                    "Trimax could not finish reading that remittance in time. Try a closer, brighter photo or enter it manually."
+                    `OCR timed out during ${source.name}. Try a closer, brighter photo or enter it manually.`
                   )
                 ),
               OCR_ATTEMPT_TIMEOUT_MS
@@ -533,6 +542,12 @@ async function recognizeBestText(originalImage: Buffer) {
 
         attempts.push(attempt);
 
+        if (timeout) {
+          clearTimeout(timeout);
+          timeout = null;
+        }
+        markStage(`recognized:${attemptStage}`);
+
         if (
           source.name === "full-document" &&
           spec.variant === "grayscale-normalized" &&
@@ -540,11 +555,6 @@ async function recognizeBestText(originalImage: Buffer) {
           shouldAcceptFirstPass(attempt)
         ) {
           break;
-        }
-
-        if (timeout) {
-          clearTimeout(timeout);
-          timeout = null;
         }
       }
     }
@@ -599,13 +609,19 @@ async function recognizeBestText(originalImage: Buffer) {
       diagnostics: {
         originalWidth: sources.original.width,
         originalHeight: sources.original.height,
+        originalFormat: sources.original.format,
+        originalOrientation: sources.original.orientation,
         normalizedWidth: sources.scene.width,
         normalizedHeight: sources.scene.height,
+        documentWidth: sources.document.width,
+        documentHeight: sources.document.height,
+        ocrReceivedThumbnail: false,
         detectedBounds: sources.detectedBounds,
         selectedRegion: selected?.region,
         selectedRotation: selected?.rotation,
         selectedVariant: selected?.variant,
         selectedConfidence: selected?.confidence,
+        stageTimings,
         selectedSummary: redactedTextSummary(selected?.text ?? ""),
         regionSummaries: regionBestText.map(redactedTextSummary),
       },
