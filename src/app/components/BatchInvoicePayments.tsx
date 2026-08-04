@@ -1,6 +1,14 @@
 "use client";
 
-import { PointerEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+  PointerEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Card from "./Card";
 import DateInputField from "./DateInputField";
@@ -764,6 +772,10 @@ export default function BatchInvoicePayments({
     "Align the remittance inside the frame."
   );
   const [cameraReady, setCameraReady] = useState(false);
+  const [cameraQualityReady, setCameraQualityReady] = useState(false);
+  const [cameraGuideMode, setCameraGuideMode] = useState<
+    "horizontal" | "vertical"
+  >("horizontal");
   const [isPreparingCrop, setIsPreparingCrop] = useState(false);
   const [filedPaymentImage, setFiledPaymentImage] =
     useState<FiledPaymentImage>(null);
@@ -988,9 +1000,11 @@ export default function BatchInvoicePayments({
         }
 
         setCameraReady(true);
-        setCameraStatusMessage("Fill the frame, hold steady, then capture.");
+        setCameraQualityReady(false);
+        setCameraStatusMessage("Move closer");
       } catch {
         setCameraReady(false);
+        setCameraQualityReady(false);
         setCameraStatusMessage(
           "Live camera unavailable. Use the capture button inside the guide."
         );
@@ -1736,6 +1750,158 @@ export default function BatchInvoicePayments({
     setCheckOcrMessage("Adjust the crop, then read it.");
   }
 
+  const analyzeLiveCameraFrame = useCallback(() => {
+    const video = cameraVideoRef.current;
+
+    if (!video || video.videoWidth <= 0 || video.videoHeight <= 0) {
+      return null;
+    }
+
+    const guideWidthRatio = cameraGuideMode === "horizontal" ? 0.9 : 0.68;
+    const guideHeightRatio = cameraGuideMode === "horizontal" ? 0.34 : 0.72;
+    const sourceWidth = Math.round(video.videoWidth * guideWidthRatio);
+    const sourceHeight = Math.round(video.videoHeight * guideHeightRatio);
+    const sourceX = Math.round((video.videoWidth - sourceWidth) / 2);
+    const sourceY = Math.round((video.videoHeight - sourceHeight) / 2);
+    const scanWidth = 260;
+    const scale = Math.min(1, scanWidth / Math.max(sourceWidth, sourceHeight));
+    const width = Math.max(1, Math.round(sourceWidth * scale));
+    const height = Math.max(1, Math.round(sourceHeight * scale));
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+
+    if (!context) {
+      return null;
+    }
+
+    canvas.width = width;
+    canvas.height = height;
+    context.drawImage(
+      video,
+      sourceX,
+      sourceY,
+      sourceWidth,
+      sourceHeight,
+      0,
+      0,
+      width,
+      height
+    );
+
+    const pixels = context.getImageData(0, 0, width, height).data;
+    const grayscale = new Float32Array(width * height);
+    let paperHits = 0;
+    let total = 0;
+    let totalSquared = 0;
+
+    for (let index = 0; index < width * height; index += 1) {
+      const offset = index * 4;
+      const red = pixels[offset] ?? 0;
+      const green = pixels[offset + 1] ?? red;
+      const blue = pixels[offset + 2] ?? red;
+      const brightness = red * 0.299 + green * 0.587 + blue * 0.114;
+      const chroma = Math.max(red, green, blue) - Math.min(red, green, blue);
+
+      grayscale[index] = brightness;
+      total += brightness;
+      totalSquared += brightness * brightness;
+
+      if ((brightness > 145 && chroma < 72) || brightness > 198) {
+        paperHits += 1;
+      }
+    }
+
+    const count = Math.max(width * height, 1);
+    const paperCoverage = paperHits / count;
+    const brightness = total / count;
+    const contrast = Math.sqrt(
+      Math.max(totalSquared / count - brightness * brightness, 0)
+    );
+    let edgeTotal = 0;
+    let edgeCount = 0;
+
+    for (let y = 1; y < height - 1; y += 1) {
+      for (let x = 1; x < width - 1; x += 1) {
+        const center = grayscale[y * width + x] ?? 0;
+        edgeTotal += Math.abs(
+          (grayscale[(y - 1) * width + x] ?? center) +
+            (grayscale[(y + 1) * width + x] ?? center) +
+            (grayscale[y * width + x - 1] ?? center) +
+            (grayscale[y * width + x + 1] ?? center) -
+            center * 4
+        );
+        edgeCount += 1;
+      }
+    }
+
+    const blurScore = edgeTotal / Math.max(edgeCount, 1);
+    const minimumCoverage = cameraGuideMode === "horizontal" ? 0.5 : 0.58;
+
+    if (paperCoverage < minimumCoverage) {
+      return {
+        ready: false,
+        message: "Move closer",
+      };
+    }
+
+    if (paperCoverage > 0.94) {
+      return {
+        ready: false,
+        message: "Fit entire document",
+      };
+    }
+
+    if (brightness < 72) {
+      return {
+        ready: false,
+        message: "More light",
+      };
+    }
+
+    if (contrast < 20 || blurScore < 7.5) {
+      return {
+        ready: false,
+        message: "Hold steady",
+      };
+    }
+
+    return {
+      ready: true,
+      message: "Ready",
+    };
+  }, [cameraGuideMode]);
+
+  useEffect(() => {
+    if (paymentEntryMode !== "camera" || !cameraReady) {
+      return;
+    }
+
+    let stableReadyCount = 0;
+    const interval = window.setInterval(() => {
+      const result = analyzeLiveCameraFrame();
+
+      if (!result) {
+        setCameraQualityReady(false);
+        setCameraStatusMessage("Move closer");
+        stableReadyCount = 0;
+        return;
+      }
+
+      if (result.ready) {
+        stableReadyCount += 1;
+        setCameraQualityReady(stableReadyCount >= 2);
+        setCameraStatusMessage(stableReadyCount >= 2 ? "Ready" : "Hold steady");
+        return;
+      }
+
+      stableReadyCount = 0;
+      setCameraQualityReady(false);
+      setCameraStatusMessage(result.message);
+    }, 450);
+
+    return () => window.clearInterval(interval);
+  }, [analyzeLiveCameraFrame, cameraReady, paymentEntryMode]);
+
   function stopCameraCapture() {
     cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
     cameraStreamRef.current = null;
@@ -1745,6 +1911,7 @@ export default function BatchInvoicePayments({
     }
 
     setCameraReady(false);
+    setCameraQualityReady(false);
   }
 
   async function captureFromTrimaxCamera() {
@@ -1993,7 +2160,7 @@ export default function BatchInvoicePayments({
     <Card className="batch-payments-card border-green-500/30 bg-green-500/5">
       {toast ? <Toast type={toast.type} message={toast.message} /> : null}
 
-      {paymentEntryMode === "camera" ? (
+      {typeof document !== "undefined" && paymentEntryMode === "camera" ? createPortal(
         <div
           aria-label="Remittance camera"
           aria-modal="true"
@@ -2002,7 +2169,7 @@ export default function BatchInvoicePayments({
           role="dialog"
         >
           <div
-            className="flex shrink-0 items-center justify-between gap-3 px-4 pb-2 pt-[calc(env(safe-area-inset-top)+0.75rem)]"
+            className="grid shrink-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-4 pb-2 pt-[calc(env(safe-area-inset-top)+0.75rem)]"
             data-camera-safe-area-top="true"
           >
             <button
@@ -2018,15 +2185,28 @@ export default function BatchInvoicePayments({
               Cancel
             </button>
             <div
-              className={`rounded-full px-4 py-2 text-sm font-black shadow-xl backdrop-blur ${
-                cameraReady
+              className={`min-w-0 justify-self-center rounded-full px-3 py-2 text-center text-sm font-black shadow-xl backdrop-blur ${
+                cameraQualityReady
                   ? "bg-emerald-400 text-black"
                   : "bg-black/70 text-sky-100"
               }`}
               aria-live="polite"
             >
-              {cameraReady ? "Ready" : cameraStatusMessage}
+              {cameraQualityReady ? "Ready" : cameraStatusMessage}
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                setCameraGuideMode((current) =>
+                  current === "horizontal" ? "vertical" : "horizontal"
+                );
+                setCameraQualityReady(false);
+                setCameraStatusMessage("Move closer");
+              }}
+              className="min-h-11 rounded-full border border-white/30 bg-black/70 px-3 py-2 text-xs font-black text-white shadow-xl backdrop-blur transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-sky-200"
+            >
+              Rotate Guide
+            </button>
           </div>
 
           <div className="relative min-h-0 flex-1 overflow-hidden">
@@ -2039,8 +2219,13 @@ export default function BatchInvoicePayments({
             />
             <div className="pointer-events-none absolute inset-0 bg-black/30" />
             <div
-              className="pointer-events-none absolute left-1/2 top-1/2 h-[min(72dvh,78vw)] max-h-[72dvh] min-h-[42dvh] w-[min(92vw,132dvh)] max-w-[92vw] -translate-x-1/2 -translate-y-1/2 rounded-[1.35rem] border-[3px] border-emerald-300 shadow-[0_0_0_9999px_rgba(0,0,0,0.55),0_0_36px_rgba(110,231,183,0.35)] landscape:h-[min(70dvh,58vw)] landscape:w-[min(94vw,142dvh)]"
+              className={`pointer-events-none absolute left-1/2 top-1/2 max-h-[72dvh] max-w-[94vw] -translate-x-1/2 -translate-y-1/2 rounded-[1.35rem] border-[3px] border-emerald-300 shadow-[0_0_0_9999px_rgba(0,0,0,0.55),0_0_36px_rgba(110,231,183,0.35)] ${
+                cameraGuideMode === "horizontal"
+                  ? "h-[min(34dvh,34vw)] min-h-[22dvh] w-[min(94vw,142dvh)] landscape:h-[min(52dvh,40vw)]"
+                  : "h-[min(72dvh,128vw)] min-h-[48dvh] w-[min(70vw,64dvh)] landscape:h-[min(72dvh,88vw)] landscape:w-[min(45vw,64dvh)]"
+              }`}
               data-remittance-document-frame="true"
+              data-guide-mode={cameraGuideMode}
             >
               <span className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-emerald-100/30" />
               <span className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-emerald-100/30" />
@@ -2062,7 +2247,7 @@ export default function BatchInvoicePayments({
               <button
                 type="button"
                 onClick={captureFromTrimaxCamera}
-                disabled={!cameraReady}
+                disabled={!cameraReady || !cameraQualityReady}
                 className="col-span-2 min-h-14 rounded-full bg-emerald-400 px-6 py-3 text-base font-black text-black shadow-2xl shadow-emerald-950/40 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-slate-300"
               >
                 Capture
@@ -2096,7 +2281,8 @@ export default function BatchInvoicePayments({
               </label>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       ) : null}
 
       {paymentEntryMode === "complete" ? (

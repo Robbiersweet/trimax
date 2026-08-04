@@ -83,6 +83,16 @@ assert(
   "The protected floating-control pair may hide only during the intentional full-screen remittance capture exception."
 );
 
+assert(
+  appShell.includes("captureModeActive") &&
+    appShell.includes("trimax-remittance-capture-mode") &&
+    appShell.includes("{!captureModeActive ? <Navigation /> : null}") &&
+    appShell.includes("{!captureModeActive ? (") &&
+    appShell.includes("<TrimaxRefreshControl />") &&
+    appShell.includes("canUseJobSessions && !captureModeActive"),
+  "The app shell must hide normal Navigation, Refresh, and job dock chrome during full-screen remittance capture only."
+);
+
 assert.equal(
   (workspaceFloatingControls.match(/<WorkspaceBackBar \/>/g) ?? []).length,
   1,

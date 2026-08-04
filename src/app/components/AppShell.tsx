@@ -32,6 +32,7 @@ export default function AppShell({
     useState<MaintenanceSettings>(defaultMaintenanceSettings());
   const [canManageMaintenance, setCanManageMaintenance] = useState(false);
   const [canUseJobSessions, setCanUseJobSessions] = useState(false);
+  const [captureModeActive, setCaptureModeActive] = useState(false);
 
   const isAuthPage =
     pathname.startsWith("/login") ||
@@ -76,6 +77,24 @@ export default function AppShell({
     };
   }, [isAuthPage]);
 
+  useEffect(() => {
+    function syncCaptureMode() {
+      setCaptureModeActive(
+        document.body.classList.contains("trimax-remittance-capture-active")
+      );
+    }
+
+    syncCaptureMode();
+    window.addEventListener("trimax-remittance-capture-mode", syncCaptureMode);
+
+    return () => {
+      window.removeEventListener(
+        "trimax-remittance-capture-mode",
+        syncCaptureMode
+      );
+    };
+  }, []);
+
   return (
     <main
       className="app-shell-root min-h-screen bg-zinc-950 text-white"
@@ -101,9 +120,11 @@ export default function AppShell({
         </div>
       ) : (
         <div className="app-shell-content mx-auto flex w-full max-w-[112rem] flex-col px-4 py-5 lg:flex-row lg:gap-6 lg:px-6">
-          <Navigation />
+          {!captureModeActive ? <Navigation /> : null}
           <WorkspaceFloatingControls />
-          {canUseJobSessions ? <ActiveJobSessionDock /> : null}
+          {canUseJobSessions && !captureModeActive ? (
+            <ActiveJobSessionDock />
+          ) : null}
 
           <section
             aria-label="Trimax workspace content"
@@ -111,9 +132,11 @@ export default function AppShell({
             id="trimax-main-content"
             tabIndex={-1}
           >
-            <div className="app-toolbar mb-4 flex justify-end">
-              <TrimaxRefreshControl />
-            </div>
+            {!captureModeActive ? (
+              <div className="app-toolbar mb-4 flex justify-end">
+                <TrimaxRefreshControl />
+              </div>
+            ) : null}
             {maintenance.enabled && canManageMaintenance ? (
               <div className="mb-4 rounded-2xl border border-orange-500/40 bg-orange-500/15 px-4 py-3 text-sm font-semibold text-orange-100">
                 Maintenance Mode is ON. Normal users are temporarily paused.

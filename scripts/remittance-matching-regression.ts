@@ -581,6 +581,9 @@ assert(
 );
 assert(
   paymentScreen.includes('data-remittance-fullscreen-capture="true"') &&
+    paymentScreen.includes('import { createPortal } from "react-dom"') &&
+    paymentScreen.includes("createPortal(") &&
+    paymentScreen.includes("document.body") &&
     paymentScreen.includes('className="fixed inset-0 z-[2147483000]') &&
     paymentScreen.includes("h-[100dvh]") &&
     paymentScreen.includes("Align the remittance inside the frame") &&
@@ -597,6 +600,10 @@ assert(
 );
 assert(
   paymentScreen.includes('data-remittance-document-frame="true"') &&
+    paymentScreen.includes('data-guide-mode={cameraGuideMode}') &&
+    paymentScreen.includes('useState<') &&
+    paymentScreen.includes('"horizontal" | "vertical"') &&
+    paymentScreen.includes("Rotate Guide") &&
     paymentScreen.includes("env(safe-area-inset-top)") &&
     paymentScreen.includes("env(safe-area-inset-bottom)") &&
     paymentScreen.includes("landscape:h-") &&
@@ -608,6 +615,15 @@ assert(
     paymentScreen.indexOf("Fill the frame. Hold steady. Use good light.") >
       paymentScreen.indexOf('data-remittance-document-frame="true"'),
   "Camera instructions must sit outside the document frame instead of covering remittance text."
+);
+assert(
+  paymentScreen.includes("const analyzeLiveCameraFrame = useCallback") &&
+    paymentScreen.includes("paperCoverage < minimumCoverage") &&
+    paymentScreen.includes('message: "Move closer"') &&
+    paymentScreen.includes("stableReadyCount >= 2") &&
+    paymentScreen.includes("disabled={!cameraReady || !cameraQualityReady}") &&
+    paymentScreen.includes("{cameraQualityReady ? \"Ready\" : cameraStatusMessage}"),
+  "Camera Ready state must require document scale, live quality, and stable frames before Capture is enabled."
 );
 assert(
   paymentScreen.includes("Choose Existing Photo") &&
