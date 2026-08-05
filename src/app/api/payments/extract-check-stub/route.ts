@@ -595,20 +595,38 @@ async function recognizeBestText(
         const image = await preprocessForOcr(source.image, rotation, spec.variant);
         markStage(`preprocessed:${attemptStage}`);
         const recognition = worker.recognize(image, {}, { text: true });
-        const result = await Promise.race([
-          recognition,
-          new Promise<never>((_, reject) => {
-            timeout = setTimeout(
-              () =>
-                reject(
-                  new Error(
-                    `OCR timed out during ${source.name}. Try a closer, brighter photo or enter it manually.`
-                  )
-                ),
-              OCR_ATTEMPT_TIMEOUT_MS
-            );
-          }),
-        ]);
+        let result;
+
+        try {
+          result = await Promise.race([
+            recognition,
+            new Promise<never>((_, reject) => {
+              timeout = setTimeout(
+                () =>
+                  reject(
+                    new Error(
+                      `OCR timed out during ${source.name}. Try a closer, brighter photo or enter it manually.`
+                    )
+                  ),
+                OCR_ATTEMPT_TIMEOUT_MS
+              );
+            }),
+          ]);
+        } catch (error) {
+          if (timeout) {
+            clearTimeout(timeout);
+            timeout = null;
+          }
+
+          markStage(`timeout:${attemptStage}`);
+
+          if (attempts.length > 0) {
+            return;
+          }
+
+          throw error;
+        }
+
         const text = result.data.text.trim();
         const confidence =
           typeof result.data.confidence === "number" ? result.data.confidence : 0;

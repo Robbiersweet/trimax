@@ -304,6 +304,15 @@ function canvasToJpegDataUrl(canvas: HTMLCanvasElement) {
   });
 }
 
+async function dataUrlToImageFile(dataUrl: string, fileName: string) {
+  const response = await fetch(dataUrl);
+  const blob = await response.blob();
+
+  return new File([blob], fileName, {
+    type: blob.type || "image/jpeg",
+  });
+}
+
 function cropBoxForRotation(cropBox: CropBox, rotation: number): CropBox {
   const normalizedRotation = ((rotation % 360) + 360) % 360;
 
@@ -796,6 +805,7 @@ export default function BatchInvoicePayments({
   const [checkImagePreview, setCheckImagePreview] = useState("");
   const [checkImageName, setCheckImageName] = useState("");
   const [checkImageFile, setCheckImageFile] = useState<File | null>(null);
+  const [ocrImageFile, setOcrImageFile] = useState<File | null>(null);
   const [cropBox, setCropBox] = useState<CropBox>({
     left: 8,
     top: 8,
@@ -1537,18 +1547,20 @@ export default function BatchInvoicePayments({
   }
 
   async function filePaymentImage() {
-    if (!checkImageFile || !businessId) {
+    const paymentImageFile = ocrImageFile ?? checkImageFile;
+
+    if (!paymentImageFile || !businessId) {
       return null;
     }
 
     const extension =
-      checkImageFile.type === "image/png"
+      paymentImageFile.type === "image/png"
         ? "png"
-        : checkImageFile.type === "image/webp"
+        : paymentImageFile.type === "image/webp"
           ? "webp"
           : "jpg";
     const storageFileName = `${crypto.randomUUID()}-${safeStorageFileName(
-      checkImageFile.name
+      paymentImageFile.name
     )}`;
     const storagePath = `${businessId}/payments/${new Date()
       .toISOString()
@@ -1556,9 +1568,9 @@ export default function BatchInvoicePayments({
     const bucket = "trimax-payment-images";
     const { error: uploadError } = await supabase.storage
       .from(bucket)
-      .upload(storagePath, checkImageFile, {
+      .upload(storagePath, paymentImageFile, {
         cacheControl: "31536000",
-        contentType: checkImageFile.type || "image/jpeg",
+        contentType: paymentImageFile.type || "image/jpeg",
         upsert: false,
       });
 
@@ -1574,9 +1586,9 @@ export default function BatchInvoicePayments({
         business_id: businessId,
         storage_bucket: bucket,
         storage_path: storagePath,
-        file_name: checkImageFile.name || checkImageName || storageFileName,
-        content_type: checkImageFile.type || null,
-        file_size: checkImageFile.size,
+        file_name: paymentImageFile.name || checkImageName || storageFileName,
+        content_type: paymentImageFile.type || null,
+        file_size: paymentImageFile.size,
         check_number: paymentReference || capturedCheckReference || null,
         check_amount: enteredCheckAmount ?? (capturedAmountValue || null),
         payor: checkPayor || null,
@@ -1595,7 +1607,7 @@ export default function BatchInvoicePayments({
     const filedImage = {
       id: String(attachment.id),
       storagePath: String(attachment.storage_path),
-      fileName: String(attachment.file_name ?? checkImageFile.name),
+      fileName: String(attachment.file_name ?? paymentImageFile.name),
     };
 
     setFiledPaymentImage(filedImage);
@@ -1728,7 +1740,25 @@ export default function BatchInvoicePayments({
         nextCropBox,
         nextRotation
       );
+      const preparedFile = await dataUrlToImageFile(
+        imageDataUrl,
+        `trimax-remittance-ocr-${Date.now()}.jpg`
+      );
+      const normalizedRotation = ((nextRotation % 360) + 360) % 360;
+      const rotatedSideways =
+        normalizedRotation === 90 || normalizedRotation === 270;
 
+      setOcrImageFile(preparedFile);
+      setCheckImageFile(preparedFile);
+      setCheckImagePreview(imageDataUrl);
+      setCheckImageName(preparedFile.name);
+      setCropBox({ left: 0, top: 0, right: 100, bottom: 100 });
+      setCropRotation(0);
+      setCropPreviewAspectRatio(
+        rotatedSideways
+          ? effectiveHeight / Math.max(effectiveWidth, 1)
+          : effectiveWidth / Math.max(effectiveHeight, 1)
+      );
       setCaptureQualityMessage("Document quality looks ready.");
       setPaymentEntryMode("photo");
       void extractCheckStubFromPhoto(imageDataUrl, documentType, intent);
@@ -2248,6 +2278,7 @@ export default function BatchInvoicePayments({
     setCheckImagePreview(URL.createObjectURL(file));
     setCheckImageName(file.name);
     setCheckImageFile(file);
+    setOcrImageFile(null);
     setPaymentEntryMode("photo");
     setCheckOcrStatus("idle");
     setCheckOcrMessage("Preparing remittance...");
@@ -2780,7 +2811,8 @@ export default function BatchInvoicePayments({
                     URL.revokeObjectURL(checkImagePreview);
                     setCheckImagePreview("");
                   }
-                  setCheckImageFile(null);
+    setCheckImageFile(null);
+    setOcrImageFile(null);
                   setCheckImageName("");
                   setFiledPaymentImage(null);
                   setRemittanceStubText("");

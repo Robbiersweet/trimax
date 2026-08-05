@@ -550,6 +550,18 @@ assert(
   "Payments screen must load the extracted $2,198.00 total into the visible review amount."
 );
 assert(
+  paymentScreen.includes("const [ocrImageFile, setOcrImageFile]") &&
+    paymentScreen.includes("const paymentImageFile = ocrImageFile ?? checkImageFile") &&
+    paymentScreen.includes(".upload(storagePath, paymentImageFile") &&
+    paymentScreen.includes("const preparedFile = await dataUrlToImageFile") &&
+    paymentScreen.includes("setOcrImageFile(preparedFile)") &&
+    paymentScreen.includes("setCheckImageFile(preparedFile)") &&
+    paymentScreen.includes("setCheckImagePreview(imageDataUrl)") &&
+    paymentScreen.includes("setCropBox({ left: 0, top: 0, right: 100, bottom: 100 })") &&
+    paymentScreen.includes("setCropRotation(0)"),
+  "Payments screen must use the same normalized cropped image for OCR, preview, retry, and payment-image upload."
+);
+assert(
   paymentScreen.includes("function invoiceLookupKeys") &&
     paymentScreen.includes("extractInvoiceNumbers(candidate)") &&
     paymentScreen.includes("candidate.matchAll"),
@@ -699,6 +711,18 @@ assert(
     paymentScreen.includes("More light needed.") &&
     paymentScreen.includes("Use stronger lighting or a darker background."),
   "Payments screen must reject small, blurry, or low-light remittance images before OCR."
+);
+
+const ocrRoute = readFileSync(
+  resolve(root, "src/app/api/payments/extract-check-stub/route.ts"),
+  "utf8"
+);
+assert(
+  ocrRoute.includes("markStage(`timeout:${attemptStage}`)") &&
+    ocrRoute.includes("if (attempts.length > 0)") &&
+    ocrRoute.includes("return;") &&
+    ocrRoute.includes("regionSummaries"),
+  "OCR route must preserve earlier partial OCR attempts when a later attempt times out."
 );
 assert(
   paymentScreen.includes("Capture stub separately") &&
