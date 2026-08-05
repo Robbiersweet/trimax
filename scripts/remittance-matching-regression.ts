@@ -639,10 +639,12 @@ assert(
     paymentScreen.includes("stableReadyCount >= 2") &&
     !paymentScreen.includes("disabled={!cameraReady || !cameraQualityReady}") &&
     paymentScreen.includes("Check Capture") &&
-    paymentScreen.includes("setCheckOcrMessage(nextMessage)") &&
+    paymentScreen.includes("Capturing remittance...") &&
+    paymentScreen.includes("Camera capture timed out. Try Use Device Camera.") &&
+    paymentScreen.includes('setPaymentEntryMode("crop")') &&
     paymentScreen.includes("Capturing...") &&
     paymentScreen.includes("{cameraQualityReady ? \"Ready\" : cameraStatusMessage}"),
-  "Camera tap must always respond while Ready still requires document scale, live quality, and stable frames."
+  "Camera tap must always capture or show a visible error while Ready still reports live quality."
 );
 assert(
   paymentScreen.includes("Choose Existing Photo") &&

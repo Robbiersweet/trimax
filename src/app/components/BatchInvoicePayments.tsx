@@ -2088,16 +2088,6 @@ export default function BatchInvoicePayments({
       return;
     }
 
-    if (!cameraQualityReady) {
-      const result = analyzeLiveCameraFrame();
-      const nextMessage = result?.message ?? cameraStatusMessage;
-
-      setCameraStatusMessage(nextMessage);
-      setCheckOcrStatus("error");
-      setCheckOcrMessage(nextMessage);
-      return;
-    }
-
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d");
 
@@ -2110,11 +2100,32 @@ export default function BatchInvoicePayments({
 
     setIsCapturingFrame(true);
     setCameraStatusMessage("Capturing...");
+    setCheckOcrStatus("reading");
+    setCheckOcrMessage("Capturing remittance...");
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    let captureFinished = false;
+    const captureTimeout = window.setTimeout(() => {
+      if (captureFinished) {
+        return;
+      }
+
+      captureFinished = true;
+      setCameraStatusMessage("Camera capture timed out. Try Use Device Camera.");
+      setCheckOcrStatus("error");
+      setCheckOcrMessage("Camera capture timed out. Try Use Device Camera.");
+      setIsCapturingFrame(false);
+    }, 3500);
     canvas.toBlob(
       (blob) => {
+        if (captureFinished) {
+          return;
+        }
+
+        captureFinished = true;
+        window.clearTimeout(captureTimeout);
+
         if (!blob) {
           setCameraStatusMessage("Camera capture could not be saved.");
           setCheckOcrStatus("error");
@@ -2220,12 +2231,8 @@ export default function BatchInvoicePayments({
 
         setCheckOcrMessage(nextMessage);
 
-        if (source === "camera" && suggestion.qualityMessages.length > 0) {
-          setPaymentEntryMode("camera");
-          setCameraStatusMessage(nextMessage);
-        } else {
-          setPaymentEntryMode("crop");
-        }
+        setPaymentEntryMode("crop");
+        setCameraStatusMessage(nextMessage);
       }
     });
     setToast({
@@ -2455,14 +2462,16 @@ export default function BatchInvoicePayments({
             />
             <div className="pointer-events-none absolute inset-0 bg-black/30" />
             <div
-              className={`pointer-events-none absolute left-1/2 top-1/2 max-h-[72dvh] max-w-[94vw] -translate-x-1/2 -translate-y-1/2 rounded-[1.35rem] border-[3px] border-emerald-300 shadow-[0_0_0_9999px_rgba(0,0,0,0.55),0_0_36px_rgba(110,231,183,0.35)] ${
+              className={`pointer-events-none absolute left-1/2 top-1/2 max-h-[82dvh] max-w-[96vw] -translate-x-1/2 -translate-y-1/2 rounded-[1.35rem] border-[3px] border-emerald-300 shadow-[0_0_0_9999px_rgba(0,0,0,0.55),0_0_36px_rgba(110,231,183,0.35)] ${
                 cameraGuideMode === "horizontal"
                   ? captureDocumentType === "full_check_stub"
                     ? "h-[min(50dvh,54vw)] min-h-[30dvh] w-[min(94vw,128dvh)] landscape:h-[min(64dvh,52vw)]"
                     : captureDocumentType === "check_only"
                       ? "h-[min(36dvh,38vw)] min-h-[24dvh] w-[min(92vw,118dvh)] landscape:h-[min(50dvh,40vw)]"
                       : "h-[min(34dvh,34vw)] min-h-[22dvh] w-[min(94vw,142dvh)] landscape:h-[min(52dvh,40vw)]"
-                  : "h-[min(72dvh,128vw)] min-h-[48dvh] w-[min(70vw,64dvh)] landscape:h-[min(72dvh,88vw)] landscape:w-[min(45vw,64dvh)]"
+                  : captureDocumentType === "remittance_stub"
+                    ? "h-[min(66dvh,112vw)] min-h-[48dvh] w-[min(94vw,78dvh)] landscape:h-[min(78dvh,88vw)] landscape:w-[min(60vw,82dvh)]"
+                    : "h-[min(72dvh,128vw)] min-h-[48dvh] w-[min(70vw,64dvh)] landscape:h-[min(72dvh,88vw)] landscape:w-[min(45vw,64dvh)]"
               }`}
               data-remittance-document-frame="true"
               data-guide-mode={cameraGuideMode}
