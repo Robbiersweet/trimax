@@ -238,7 +238,7 @@ const remittanceDocumentModes: Array<{
 function defaultGuideModeForDocumentType(
   documentType: RemittanceDocumentType
 ): "horizontal" | "vertical" {
-  return documentType === "check_only" ? "horizontal" : "horizontal";
+  return documentType === "remittance_stub" ? "vertical" : "horizontal";
 }
 
 function guidanceForDocumentType(documentType: RemittanceDocumentType) {
@@ -821,6 +821,7 @@ export default function BatchInvoicePayments({
   );
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraQualityReady, setCameraQualityReady] = useState(false);
+  const [isCapturingFrame, setIsCapturingFrame] = useState(false);
   const [cameraGuideMode, setCameraGuideMode] = useState<
     "horizontal" | "vertical"
   >("horizontal");
@@ -2074,6 +2075,7 @@ export default function BatchInvoicePayments({
 
     setCameraReady(false);
     setCameraQualityReady(false);
+    setIsCapturingFrame(false);
   }
 
   async function captureFromTrimaxCamera() {
@@ -2086,14 +2088,28 @@ export default function BatchInvoicePayments({
       return;
     }
 
+    if (!cameraQualityReady) {
+      const result = analyzeLiveCameraFrame();
+      const nextMessage = result?.message ?? cameraStatusMessage;
+
+      setCameraStatusMessage(nextMessage);
+      setCheckOcrStatus("error");
+      setCheckOcrMessage(nextMessage);
+      return;
+    }
+
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d");
 
     if (!context) {
       setCameraStatusMessage("Camera capture could not be prepared.");
+      setCheckOcrStatus("error");
+      setCheckOcrMessage("Camera capture could not be prepared.");
       return;
     }
 
+    setIsCapturingFrame(true);
+    setCameraStatusMessage("Capturing...");
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -2101,6 +2117,9 @@ export default function BatchInvoicePayments({
       (blob) => {
         if (!blob) {
           setCameraStatusMessage("Camera capture could not be saved.");
+          setCheckOcrStatus("error");
+          setCheckOcrMessage("Camera capture could not be saved.");
+          setIsCapturingFrame(false);
           return;
         }
 
@@ -2468,10 +2487,17 @@ export default function BatchInvoicePayments({
               <button
                 type="button"
                 onClick={captureFromTrimaxCamera}
-                disabled={!cameraReady || !cameraQualityReady}
-                className="col-span-2 min-h-14 rounded-full bg-emerald-400 px-6 py-3 text-base font-black text-black shadow-2xl shadow-emerald-950/40 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-slate-300"
+                className={`col-span-2 min-h-14 rounded-full px-6 py-3 text-base font-black shadow-2xl shadow-emerald-950/40 transition ${
+                  cameraReady && cameraQualityReady
+                    ? "bg-emerald-400 text-black hover:bg-emerald-300"
+                    : "bg-amber-300 text-black hover:bg-amber-200"
+                }`}
               >
-                Capture
+                {isCapturingFrame
+                  ? "Capturing..."
+                  : cameraReady && cameraQualityReady
+                    ? "Capture"
+                    : "Check Capture"}
               </button>
               <label className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-full border border-sky-200/50 bg-black/70 px-4 py-2 text-center text-sm font-black text-sky-50 backdrop-blur transition hover:bg-white/10">
                 Use Device Camera

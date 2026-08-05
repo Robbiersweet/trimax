@@ -596,7 +596,8 @@ assert(
     paymentScreen.includes('"remittance_stub"') &&
     paymentScreen.includes('"full_check_stub"') &&
     paymentScreen.includes('"check_only"') &&
-    paymentScreen.includes('useState<RemittanceDocumentType>("remittance_stub")'),
+    paymentScreen.includes('useState<RemittanceDocumentType>("remittance_stub")') &&
+    paymentScreen.includes('documentType === "remittance_stub" ? "vertical" : "horizontal"'),
   "Payments capture must expose Remittance Stub, Full Check + Stub, and Check Only modes with Remittance Stub as the default."
 );
 assert(
@@ -636,9 +637,12 @@ assert(
     paymentScreen.includes("paperCoverage < minimumCoverage") &&
     paymentScreen.includes('message: "Move closer"') &&
     paymentScreen.includes("stableReadyCount >= 2") &&
-    paymentScreen.includes("disabled={!cameraReady || !cameraQualityReady}") &&
+    !paymentScreen.includes("disabled={!cameraReady || !cameraQualityReady}") &&
+    paymentScreen.includes("Check Capture") &&
+    paymentScreen.includes("setCheckOcrMessage(nextMessage)") &&
+    paymentScreen.includes("Capturing...") &&
     paymentScreen.includes("{cameraQualityReady ? \"Ready\" : cameraStatusMessage}"),
-  "Camera Ready state must require document scale, live quality, and stable frames before Capture is enabled."
+  "Camera tap must always respond while Ready still requires document scale, live quality, and stable frames."
 );
 assert(
   paymentScreen.includes("Choose Existing Photo") &&
