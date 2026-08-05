@@ -236,24 +236,9 @@ const remittanceDocumentModes: Array<{
 ];
 
 function defaultGuideModeForDocumentType(
-  _documentType: RemittanceDocumentType
-): "horizontal" | "vertical" {
-  void _documentType;
-  return "horizontal";
-}
-
-function guideModeForCurrentViewport(
   documentType: RemittanceDocumentType
 ): "horizontal" | "vertical" {
-  if (
-    documentType === "remittance_stub" &&
-    typeof window !== "undefined" &&
-    window.matchMedia("(orientation: landscape)").matches
-  ) {
-    return "vertical";
-  }
-
-  return defaultGuideModeForDocumentType(documentType);
+  return documentType === "remittance_stub" ? "vertical" : "horizontal";
 }
 
 function guidanceForDocumentType(documentType: RemittanceDocumentType) {
@@ -839,7 +824,6 @@ export default function BatchInvoicePayments({
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraQualityReady, setCameraQualityReady] = useState(false);
   const [isCapturingFrame, setIsCapturingFrame] = useState(false);
-  const [guideManuallyRotated, setGuideManuallyRotated] = useState(false);
   const [cameraGuideMode, setCameraGuideMode] = useState<
     "horizontal" | "vertical"
   >("horizontal");
@@ -1938,30 +1922,6 @@ export default function BatchInvoicePayments({
     };
   }, [captureDocumentType]);
 
-  useEffect(() => {
-    if (
-      paymentEntryMode !== "camera" ||
-      captureDocumentType !== "remittance_stub" ||
-      guideManuallyRotated
-    ) {
-      return;
-    }
-
-    const syncGuideToViewport = () => {
-      setCameraGuideMode(guideModeForCurrentViewport(captureDocumentType));
-      setCameraQualityReady(false);
-    };
-
-    syncGuideToViewport();
-    window.addEventListener("orientationchange", syncGuideToViewport);
-    window.addEventListener("resize", syncGuideToViewport);
-
-    return () => {
-      window.removeEventListener("orientationchange", syncGuideToViewport);
-      window.removeEventListener("resize", syncGuideToViewport);
-    };
-  }, [captureDocumentType, guideManuallyRotated, paymentEntryMode]);
-
   const analyzeLiveCameraFrame = useCallback(() => {
     const video = cameraVideoRef.current;
 
@@ -2340,8 +2300,7 @@ export default function BatchInvoicePayments({
   ) {
     setCaptureDocumentType(documentType);
     setCaptureIntent(intent);
-    setGuideManuallyRotated(false);
-    setCameraGuideMode(guideModeForCurrentViewport(documentType));
+    setCameraGuideMode(defaultGuideModeForDocumentType(documentType));
     setCameraQualityReady(false);
     setPaymentEntryMode("camera");
     setCheckOcrStatus("idle");
@@ -2506,7 +2465,6 @@ export default function BatchInvoicePayments({
             <button
               type="button"
               onClick={() => {
-                setGuideManuallyRotated(true);
                 setCameraGuideMode((current) =>
                   current === "horizontal" ? "vertical" : "horizontal"
                 );
@@ -2526,8 +2484,7 @@ export default function BatchInvoicePayments({
                   type="button"
                   onClick={() => {
                     setCaptureDocumentType(mode.value);
-                    setGuideManuallyRotated(false);
-                    setCameraGuideMode(guideModeForCurrentViewport(mode.value));
+                    setCameraGuideMode(defaultGuideModeForDocumentType(mode.value));
                     setCameraQualityReady(false);
                     setCameraStatusMessage(
                       mode.value === "full_check_stub"

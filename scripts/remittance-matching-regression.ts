@@ -597,17 +597,15 @@ assert(
     paymentScreen.includes('"full_check_stub"') &&
     paymentScreen.includes('"check_only"') &&
     paymentScreen.includes('useState<RemittanceDocumentType>("remittance_stub")') &&
-    paymentScreen.includes('return "horizontal";'),
-  "Payments capture must expose Remittance Stub, Full Check + Stub, and Check Only modes with Remittance Stub as the default."
+    paymentScreen.includes('documentType === "remittance_stub" ? "vertical" : "horizontal"'),
+  "Payments capture must expose Remittance Stub, Full Check + Stub, and Check Only modes with Remittance Stub using the rotated guide by default."
 );
 assert(
-  paymentScreen.includes("guideModeForCurrentViewport") &&
-    paymentScreen.includes('window.matchMedia("(orientation: landscape)").matches') &&
-    paymentScreen.includes('documentType === "remittance_stub"') &&
-    paymentScreen.includes("guideManuallyRotated") &&
-    paymentScreen.includes('window.addEventListener("orientationchange"') &&
-    paymentScreen.includes("setGuideManuallyRotated(true)"),
-  "Remittance Stub camera guide must rotate automatically in landscape while preserving the manual Rotate Guide override."
+  paymentScreen.includes('captureDocumentType === "remittance_stub"') &&
+    paymentScreen.includes("h-[min(66dvh,112vw)]") &&
+    paymentScreen.includes("w-[min(94vw,78dvh)]") &&
+    paymentScreen.includes("Rotate Guide"),
+  "Remittance Stub camera guide must render the 90-degree rotated rectangle by default while preserving Rotate Guide."
 );
 assert(
   paymentScreen.includes("Add Check Photo") &&
@@ -661,11 +659,11 @@ assert(
   "Camera tap must submit the framed document crop or show a visible error while Ready still reports live quality."
 );
 assert(
-  paymentScreen.includes('return "horizontal";') &&
+  paymentScreen.includes('documentType === "remittance_stub" ? "vertical" : "horizontal"') &&
     paymentScreen.includes("Fill the wide frame with the remittance rows.") &&
-    paymentScreen.includes("h-[min(23dvh,28vw)]") &&
-    paymentScreen.includes("w-[min(96vw,160dvh)]"),
-  "Remittance Stub capture must default to a wide, low frame for long pay stubs."
+    paymentScreen.includes("h-[min(66dvh,112vw)]") &&
+    paymentScreen.includes("w-[min(94vw,78dvh)]"),
+  "Remittance Stub capture must default to the 90-degree rotated frame."
 );
 assert(
   paymentScreen.includes("Choose Existing Photo") &&
