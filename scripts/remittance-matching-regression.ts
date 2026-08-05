@@ -586,7 +586,7 @@ assert(
     paymentScreen.includes("document.body") &&
     paymentScreen.includes('className="fixed inset-0 z-[2147483000]') &&
     paymentScreen.includes("h-[100dvh]") &&
-    paymentScreen.includes("landscape:grid-cols-[minmax(0,1fr)_18rem]") &&
+    paymentScreen.includes("landscape:grid-cols-[minmax(0,1fr)_14rem]") &&
     paymentScreen.includes("landscape:row-span-3") &&
     paymentScreen.includes("landscape:grid-cols-1") &&
     paymentScreen.includes("Align the remittance inside the frame") &&
@@ -600,17 +600,17 @@ assert(
     paymentScreen.includes('"full_check_stub"') &&
     paymentScreen.includes('"check_only"') &&
     paymentScreen.includes('useState<RemittanceDocumentType>("remittance_stub")') &&
-    paymentScreen.includes('documentType === "remittance_stub" ? "vertical" : "horizontal"'),
-  "Payments capture must expose Remittance Stub, Full Check + Stub, and Check Only modes with Remittance Stub using the rotated guide by default."
+    paymentScreen.includes('return "horizontal";'),
+  "Payments capture must expose Remittance Stub, Full Check + Stub, and Check Only modes with Remittance Stub using the wide guide by default."
 );
 assert(
   paymentScreen.includes('captureDocumentType === "remittance_stub"') &&
-    paymentScreen.includes("h-[min(72dvh,88%)]") &&
-    paymentScreen.includes("w-[min(94vw,78dvh)]") &&
-    paymentScreen.includes("landscape:h-[min(88%,88dvh)]") &&
-    paymentScreen.includes("landscape:w-[min(42vw,58dvh)]") &&
+    paymentScreen.includes("h-[min(23dvh,28vw)]") &&
+    paymentScreen.includes("w-[min(96vw,160dvh)]") &&
+    paymentScreen.includes("landscape:h-[min(62%,54dvh)]") &&
+    paymentScreen.includes("landscape:w-[min(96%,150dvh)]") &&
     paymentScreen.includes("Rotate Guide"),
-  "Remittance Stub camera guide must render the 90-degree rotated rectangle by default while preserving Rotate Guide."
+  "Remittance Stub camera guide must render a wide horizontal landscape frame by default while preserving Rotate Guide."
 );
 assert(
   paymentScreen.includes("Add Check Photo") &&
@@ -650,6 +650,7 @@ assert(
     paymentScreen.includes('message: "Move closer"') &&
     paymentScreen.includes("stableReadyCount >= 2") &&
     !paymentScreen.includes("disabled={!cameraReady || !cameraQualityReady}") &&
+    paymentScreen.includes("Capture Remittance") &&
     paymentScreen.includes("Check Capture") &&
     paymentScreen.includes("Capturing remittance...") &&
     paymentScreen.includes("Camera capture timed out. Try Use Device Camera.") &&
@@ -664,12 +665,11 @@ assert(
   "Camera tap must submit the framed document crop or show a visible error while Ready still reports live quality."
 );
 assert(
-  paymentScreen.includes('documentType === "remittance_stub" ? "vertical" : "horizontal"') &&
+  paymentScreen.includes('return "horizontal";') &&
     paymentScreen.includes("Fill the wide frame with the remittance rows.") &&
-    paymentScreen.includes("h-[min(72dvh,88%)]") &&
-    paymentScreen.includes("landscape:h-[min(88%,88dvh)]") &&
-    paymentScreen.includes("landscape:w-[min(42vw,58dvh)]"),
-  "Remittance Stub capture must default to the 90-degree rotated frame."
+    paymentScreen.includes("landscape:h-[min(62%,54dvh)]") &&
+    paymentScreen.includes("landscape:w-[min(96%,150dvh)]"),
+  "Remittance Stub capture must default to the wide horizontal landscape frame."
 );
 assert(
   paymentScreen.includes("Choose Existing Photo") &&

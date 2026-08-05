@@ -238,7 +238,8 @@ const remittanceDocumentModes: Array<{
 function defaultGuideModeForDocumentType(
   documentType: RemittanceDocumentType
 ): "horizontal" | "vertical" {
-  return documentType === "remittance_stub" ? "vertical" : "horizontal";
+  void documentType;
+  return "horizontal";
 }
 
 function guidanceForDocumentType(documentType: RemittanceDocumentType) {
@@ -2432,7 +2433,7 @@ export default function BatchInvoicePayments({
         <div
           aria-label="Remittance camera"
           aria-modal="true"
-          className="fixed inset-0 z-[2147483000] flex h-[100dvh] w-screen flex-col overflow-hidden bg-black text-white landscape:grid landscape:grid-cols-[minmax(0,1fr)_18rem] landscape:grid-rows-[auto_minmax(0,1fr)_auto] landscape:gap-2 landscape:p-2"
+          className="fixed inset-0 z-[2147483000] flex h-[100dvh] w-screen flex-col overflow-hidden bg-black text-white landscape:grid landscape:grid-cols-[minmax(0,1fr)_14rem] landscape:grid-rows-[auto_minmax(0,1fr)_auto] landscape:gap-2 landscape:p-2"
           data-remittance-fullscreen-capture="true"
           role="dialog"
         >
@@ -2525,7 +2526,7 @@ export default function BatchInvoicePayments({
                     ? "h-[min(50dvh,54vw)] min-h-[30dvh] w-[min(94vw,128dvh)] landscape:h-[min(64dvh,52vw)]"
                     : captureDocumentType === "check_only"
                       ? "h-[min(36dvh,38vw)] min-h-[24dvh] w-[min(92vw,118dvh)] landscape:h-[min(50dvh,40vw)]"
-                      : "h-[min(23dvh,28vw)] min-h-[16dvh] w-[min(96vw,160dvh)] landscape:h-[min(38dvh,26vw)]"
+                      : "h-[min(23dvh,28vw)] min-h-[16dvh] w-[min(96vw,160dvh)] landscape:h-[min(62%,54dvh)] landscape:w-[min(96%,150dvh)]"
                   : captureDocumentType === "remittance_stub"
                     ? "h-[min(72dvh,88%)] min-h-[48dvh] w-[min(94vw,78dvh)] landscape:h-[min(88%,88dvh)] landscape:min-h-0 landscape:w-[min(42vw,58dvh)]"
                     : "h-[min(72dvh,128vw)] min-h-[48dvh] w-[min(70vw,64dvh)] landscape:h-[min(72dvh,88vw)] landscape:w-[min(45vw,64dvh)]"
@@ -2562,8 +2563,12 @@ export default function BatchInvoicePayments({
                 {isCapturingFrame
                   ? "Capturing..."
                   : cameraReady && cameraQualityReady
-                    ? "Capture"
-                    : "Check Capture"}
+                    ? captureDocumentType === "remittance_stub"
+                      ? "Capture Remittance"
+                      : "Capture"
+                    : captureDocumentType === "remittance_stub"
+                      ? "Capture Remittance"
+                      : "Check Capture"}
               </button>
               <label className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-full border border-sky-200/50 bg-black/70 px-4 py-2 text-center text-sm font-black text-sky-50 backdrop-blur transition hover:bg-white/10 landscape:min-h-9 landscape:px-3 landscape:py-1.5 landscape:text-xs">
                 Use Device Camera
