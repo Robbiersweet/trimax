@@ -586,6 +586,9 @@ assert(
     paymentScreen.includes("document.body") &&
     paymentScreen.includes('className="fixed inset-0 z-[2147483000]') &&
     paymentScreen.includes("h-[100dvh]") &&
+    paymentScreen.includes("landscape:grid-cols-[minmax(0,1fr)_18rem]") &&
+    paymentScreen.includes("landscape:row-span-3") &&
+    paymentScreen.includes("landscape:grid-cols-1") &&
     paymentScreen.includes("Align the remittance inside the frame") &&
     paymentScreen.includes("captureFromTrimaxCamera") &&
     paymentScreen.includes("Use Device Camera"),
@@ -602,8 +605,10 @@ assert(
 );
 assert(
   paymentScreen.includes('captureDocumentType === "remittance_stub"') &&
-    paymentScreen.includes("h-[min(66dvh,112vw)]") &&
+    paymentScreen.includes("h-[min(72dvh,88%)]") &&
     paymentScreen.includes("w-[min(94vw,78dvh)]") &&
+    paymentScreen.includes("landscape:h-[min(88%,88dvh)]") &&
+    paymentScreen.includes("landscape:w-[min(42vw,58dvh)]") &&
     paymentScreen.includes("Rotate Guide"),
   "Remittance Stub camera guide must render the 90-degree rotated rectangle by default while preserving Rotate Guide."
 );
@@ -661,8 +666,9 @@ assert(
 assert(
   paymentScreen.includes('documentType === "remittance_stub" ? "vertical" : "horizontal"') &&
     paymentScreen.includes("Fill the wide frame with the remittance rows.") &&
-    paymentScreen.includes("h-[min(66dvh,112vw)]") &&
-    paymentScreen.includes("w-[min(94vw,78dvh)]"),
+    paymentScreen.includes("h-[min(72dvh,88%)]") &&
+    paymentScreen.includes("landscape:h-[min(88%,88dvh)]") &&
+    paymentScreen.includes("landscape:w-[min(42vw,58dvh)]"),
   "Remittance Stub capture must default to the 90-degree rotated frame."
 );
 assert(

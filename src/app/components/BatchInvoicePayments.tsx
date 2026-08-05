@@ -2432,12 +2432,12 @@ export default function BatchInvoicePayments({
         <div
           aria-label="Remittance camera"
           aria-modal="true"
-          className="fixed inset-0 z-[2147483000] flex h-[100dvh] w-screen flex-col overflow-hidden bg-black text-white"
+          className="fixed inset-0 z-[2147483000] flex h-[100dvh] w-screen flex-col overflow-hidden bg-black text-white landscape:grid landscape:grid-cols-[minmax(0,1fr)_18rem] landscape:grid-rows-[auto_minmax(0,1fr)_auto] landscape:gap-2 landscape:p-2"
           data-remittance-fullscreen-capture="true"
           role="dialog"
         >
           <div
-            className="grid shrink-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-4 pb-2 pt-[calc(env(safe-area-inset-top)+0.75rem)]"
+            className="grid shrink-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-4 pb-2 pt-[calc(env(safe-area-inset-top)+0.75rem)] landscape:col-start-2 landscape:row-start-1 landscape:grid-cols-1 landscape:px-0 landscape:pb-1 landscape:pt-[max(env(safe-area-inset-top),0.25rem)]"
             data-camera-safe-area-top="true"
           >
             <button
@@ -2448,12 +2448,12 @@ export default function BatchInvoicePayments({
                 setPaymentEntryMode("choice");
                 setCameraStatusMessage("Align the remittance inside the frame.");
               }}
-              className="min-h-11 rounded-full border border-white/30 bg-black/70 px-4 py-2 text-sm font-black text-white shadow-xl backdrop-blur transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-sky-200"
+              className="min-h-11 rounded-full border border-white/30 bg-black/70 px-4 py-2 text-sm font-black text-white shadow-xl backdrop-blur transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-sky-200 landscape:min-h-9 landscape:px-3 landscape:py-1.5 landscape:text-xs"
             >
               Cancel
             </button>
             <div
-              className={`min-w-0 justify-self-center rounded-full px-3 py-2 text-center text-sm font-black shadow-xl backdrop-blur ${
+              className={`min-w-0 justify-self-center rounded-full px-3 py-2 text-center text-sm font-black shadow-xl backdrop-blur landscape:w-full landscape:py-1.5 landscape:text-xs ${
                 cameraQualityReady
                   ? "bg-emerald-400 text-black"
                   : "bg-black/70 text-sky-100"
@@ -2471,13 +2471,13 @@ export default function BatchInvoicePayments({
                 setCameraQualityReady(false);
                 setCameraStatusMessage("Move closer");
               }}
-              className="min-h-11 rounded-full border border-white/30 bg-black/70 px-3 py-2 text-xs font-black text-white shadow-xl backdrop-blur transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-sky-200"
+              className="min-h-11 rounded-full border border-white/30 bg-black/70 px-3 py-2 text-xs font-black text-white shadow-xl backdrop-blur transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-sky-200 landscape:min-h-9 landscape:py-1.5"
             >
               Rotate Guide
             </button>
           </div>
-          <div className="shrink-0 px-4 pb-2">
-            <div className="mx-auto grid max-w-xl grid-cols-3 gap-1.5 rounded-2xl bg-black/55 p-1.5 backdrop-blur">
+          <div className="shrink-0 px-4 pb-2 landscape:col-start-2 landscape:row-start-2 landscape:px-0 landscape:pb-1">
+            <div className="mx-auto grid max-w-xl grid-cols-3 gap-1.5 rounded-2xl bg-black/55 p-1.5 backdrop-blur landscape:grid-cols-1">
               {remittanceDocumentModes.map((mode) => (
                 <button
                   key={mode.value}
@@ -2492,7 +2492,7 @@ export default function BatchInvoicePayments({
                         : "Move closer"
                     );
                   }}
-                  className={`min-h-10 rounded-xl px-2 py-2 text-xs font-black transition ${
+                  className={`min-h-10 rounded-xl px-2 py-2 text-xs font-black transition landscape:min-h-9 landscape:py-1.5 ${
                     captureDocumentType === mode.value
                       ? "bg-emerald-300 text-black"
                       : "bg-white/10 text-zinc-100"
@@ -2507,7 +2507,7 @@ export default function BatchInvoicePayments({
 
           <div
             ref={cameraViewportRef}
-            className="relative min-h-0 flex-1 overflow-hidden"
+            className="relative min-h-0 flex-1 overflow-hidden landscape:col-start-1 landscape:row-span-3 landscape:row-start-1 landscape:rounded-2xl"
           >
             <video
               ref={cameraVideoRef}
@@ -2519,7 +2519,7 @@ export default function BatchInvoicePayments({
             <div className="pointer-events-none absolute inset-0 bg-black/30" />
             <div
               ref={cameraGuideRef}
-              className={`pointer-events-none absolute left-1/2 top-1/2 max-h-[82dvh] max-w-[96vw] -translate-x-1/2 -translate-y-1/2 rounded-[1.35rem] border-[3px] border-emerald-300 shadow-[0_0_0_9999px_rgba(0,0,0,0.55),0_0_36px_rgba(110,231,183,0.35)] ${
+              className={`pointer-events-none absolute left-1/2 top-1/2 max-h-[88%] max-w-[96%] -translate-x-1/2 -translate-y-1/2 rounded-[1.35rem] border-[3px] border-emerald-300 shadow-[0_0_0_9999px_rgba(0,0,0,0.55),0_0_36px_rgba(110,231,183,0.35)] ${
                 cameraGuideMode === "horizontal"
                   ? captureDocumentType === "full_check_stub"
                     ? "h-[min(50dvh,54vw)] min-h-[30dvh] w-[min(94vw,128dvh)] landscape:h-[min(64dvh,52vw)]"
@@ -2527,7 +2527,7 @@ export default function BatchInvoicePayments({
                       ? "h-[min(36dvh,38vw)] min-h-[24dvh] w-[min(92vw,118dvh)] landscape:h-[min(50dvh,40vw)]"
                       : "h-[min(23dvh,28vw)] min-h-[16dvh] w-[min(96vw,160dvh)] landscape:h-[min(38dvh,26vw)]"
                   : captureDocumentType === "remittance_stub"
-                    ? "h-[min(66dvh,112vw)] min-h-[48dvh] w-[min(94vw,78dvh)] landscape:h-[min(78dvh,88vw)] landscape:w-[min(60vw,82dvh)]"
+                    ? "h-[min(72dvh,88%)] min-h-[48dvh] w-[min(94vw,78dvh)] landscape:h-[min(88%,88dvh)] landscape:min-h-0 landscape:w-[min(42vw,58dvh)]"
                     : "h-[min(72dvh,128vw)] min-h-[48dvh] w-[min(70vw,64dvh)] landscape:h-[min(72dvh,88vw)] landscape:w-[min(45vw,64dvh)]"
               }`}
               data-remittance-document-frame="true"
@@ -2543,17 +2543,17 @@ export default function BatchInvoicePayments({
           </div>
 
           <div
-            className="shrink-0 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3"
+            className="shrink-0 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 landscape:col-start-2 landscape:row-start-3 landscape:px-0 landscape:pb-[max(env(safe-area-inset-bottom),0.25rem)] landscape:pt-1"
             data-camera-safe-area-bottom="true"
           >
-            <p className="mb-3 text-center text-sm font-semibold text-sky-100">
+            <p className="mb-3 text-center text-sm font-semibold text-sky-100 landscape:mb-2 landscape:text-xs">
               {guidanceForDocumentType(captureDocumentType)}
             </p>
-            <div className="mx-auto grid max-w-lg grid-cols-2 gap-2">
+            <div className="mx-auto grid max-w-lg grid-cols-2 gap-2 landscape:grid-cols-1">
               <button
                 type="button"
                 onClick={captureFromTrimaxCamera}
-                className={`col-span-2 min-h-14 rounded-full px-6 py-3 text-base font-black shadow-2xl shadow-emerald-950/40 transition ${
+                className={`col-span-2 min-h-14 rounded-full px-6 py-3 text-base font-black shadow-2xl shadow-emerald-950/40 transition landscape:col-span-1 landscape:min-h-10 landscape:px-4 landscape:py-2 landscape:text-sm ${
                   cameraReady && cameraQualityReady
                     ? "bg-emerald-400 text-black hover:bg-emerald-300"
                     : "bg-amber-300 text-black hover:bg-amber-200"
@@ -2565,7 +2565,7 @@ export default function BatchInvoicePayments({
                     ? "Capture"
                     : "Check Capture"}
               </button>
-              <label className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-full border border-sky-200/50 bg-black/70 px-4 py-2 text-center text-sm font-black text-sky-50 backdrop-blur transition hover:bg-white/10">
+              <label className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-full border border-sky-200/50 bg-black/70 px-4 py-2 text-center text-sm font-black text-sky-50 backdrop-blur transition hover:bg-white/10 landscape:min-h-9 landscape:px-3 landscape:py-1.5 landscape:text-xs">
                 Use Device Camera
                 <input
                   type="file"
@@ -2584,7 +2584,7 @@ export default function BatchInvoicePayments({
                   }}
                 />
               </label>
-              <label className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-full border border-white/25 bg-black/70 px-4 py-2 text-center text-sm font-bold text-zinc-50 backdrop-blur transition hover:bg-white/10">
+              <label className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-full border border-white/25 bg-black/70 px-4 py-2 text-center text-sm font-bold text-zinc-50 backdrop-blur transition hover:bg-white/10 landscape:min-h-9 landscape:px-3 landscape:py-1.5 landscape:text-xs">
                 Choose Existing
                 <input
                   type="file"
