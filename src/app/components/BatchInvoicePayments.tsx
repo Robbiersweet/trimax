@@ -2112,7 +2112,35 @@ export default function BatchInvoicePayments({
     setIsCapturingFrame(false);
   }
 
-  async function captureFromTrimaxCamera() {
+  function handleCameraModeSelection(
+    event: { preventDefault: () => void; stopPropagation: () => void },
+    documentType: RemittanceDocumentType
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (isCapturingFrame) {
+      return;
+    }
+
+    setCaptureDocumentType(documentType);
+    setCameraGuideMode(defaultGuideModeForDocumentType(documentType));
+    setCameraQualityReady(false);
+    setCameraStatusMessage(
+      documentType === "full_check_stub" ? "Capture stub separately" : "Move closer"
+    );
+  }
+
+  async function captureFromTrimaxCamera(
+    event?: { preventDefault: () => void; stopPropagation: () => void }
+  ) {
+    event?.preventDefault();
+    event?.stopPropagation();
+
+    if (isCapturingFrame) {
+      return;
+    }
+
     const video = cameraVideoRef.current;
 
     if (!video || video.videoWidth <= 0 || video.videoHeight <= 0) {
@@ -2465,7 +2493,10 @@ export default function BatchInvoicePayments({
             </div>
             <button
               type="button"
-              onClick={() => {
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
                 setCameraGuideMode((current) =>
                   current === "horizontal" ? "vertical" : "horizontal"
                 );
@@ -2483,17 +2514,10 @@ export default function BatchInvoicePayments({
                 <button
                   key={mode.value}
                   type="button"
-                  onClick={() => {
-                    setCaptureDocumentType(mode.value);
-                    setCameraGuideMode(defaultGuideModeForDocumentType(mode.value));
-                    setCameraQualityReady(false);
-                    setCameraStatusMessage(
-                      mode.value === "full_check_stub"
-                        ? "Capture stub separately"
-                        : "Move closer"
-                    );
-                  }}
-                  className={`min-h-10 rounded-xl px-2 py-2 text-xs font-black transition landscape:min-h-9 landscape:py-1.5 ${
+                  disabled={isCapturingFrame}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => handleCameraModeSelection(event, mode.value)}
+                  className={`relative z-10 min-h-10 rounded-xl px-2 py-2 text-xs font-black transition disabled:cursor-not-allowed disabled:opacity-60 landscape:min-h-9 landscape:py-1.5 ${
                     captureDocumentType === mode.value
                       ? "bg-emerald-300 text-black"
                       : "bg-white/10 text-zinc-100"
@@ -2544,7 +2568,7 @@ export default function BatchInvoicePayments({
           </div>
 
           <div
-            className="shrink-0 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 landscape:col-start-2 landscape:row-start-3 landscape:px-0 landscape:pb-[max(env(safe-area-inset-bottom),0.25rem)] landscape:pt-1"
+            className="relative z-30 shrink-0 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 landscape:col-start-2 landscape:row-start-3 landscape:px-0 landscape:pb-[max(env(safe-area-inset-bottom),0.25rem)] landscape:pt-1"
             data-camera-safe-area-bottom="true"
           >
             <p className="mb-3 text-center text-sm font-semibold text-sky-100 landscape:mb-2 landscape:text-xs">
@@ -2553,8 +2577,11 @@ export default function BatchInvoicePayments({
             <div className="mx-auto grid max-w-lg grid-cols-2 gap-2 landscape:grid-cols-1">
               <button
                 type="button"
+                disabled={isCapturingFrame}
+                onPointerDown={(event) => event.stopPropagation()}
+                onTouchStart={(event) => event.stopPropagation()}
                 onClick={captureFromTrimaxCamera}
-                className={`col-span-2 min-h-14 rounded-full px-6 py-3 text-base font-black shadow-2xl shadow-emerald-950/40 transition landscape:col-span-1 landscape:min-h-10 landscape:px-4 landscape:py-2 landscape:text-sm ${
+                className={`relative z-40 col-span-2 min-h-14 rounded-full px-6 py-3 text-base font-black shadow-2xl shadow-emerald-950/40 transition disabled:cursor-wait disabled:opacity-80 landscape:col-span-1 landscape:min-h-10 landscape:px-4 landscape:py-2 landscape:text-sm ${
                   cameraReady && cameraQualityReady
                     ? "bg-emerald-400 text-black hover:bg-emerald-300"
                     : "bg-amber-300 text-black hover:bg-amber-200"

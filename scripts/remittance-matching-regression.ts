@@ -657,12 +657,27 @@ assert(
     paymentScreen.includes("getVisibleCameraGuideSourceRect(video)") &&
     paymentScreen.includes("cameraGuideRef") &&
     paymentScreen.includes("cameraViewportRef") &&
+    paymentScreen.includes("handleCameraModeSelection") &&
+    paymentScreen.includes("event.preventDefault();") &&
+    paymentScreen.includes("event.stopPropagation();") &&
+    paymentScreen.includes("disabled={isCapturingFrame}") &&
+    paymentScreen.includes("relative z-40") &&
+    paymentScreen.includes("relative z-10") &&
     paymentScreen.includes("sourceX") &&
     paymentScreen.includes("sourceWidth") &&
     paymentScreen.includes('setPaymentEntryMode("crop")') &&
     paymentScreen.includes("Capturing...") &&
     paymentScreen.includes("{cameraQualityReady ? \"Ready\" : cameraStatusMessage}"),
   "Camera tap must submit the framed document crop or show a visible error while Ready still reports live quality."
+);
+assert(
+  paymentScreen.includes("async function captureFromTrimaxCamera(") &&
+    paymentScreen.includes("if (isCapturingFrame)") &&
+    paymentScreen.includes("handleCameraModeSelection(event, mode.value)") &&
+    paymentScreen.includes("if (isCapturingFrame) {\n      return;\n    }\n\n    setCaptureDocumentType(documentType)") &&
+    paymentScreen.includes("onPointerDown={(event) => event.stopPropagation()}") &&
+    paymentScreen.includes("onTouchStart={(event) => event.stopPropagation()}"),
+  "Capture and document-mode taps must be isolated so Capture cannot trigger a mode change or duplicate capture."
 );
 assert(
   paymentScreen.includes('return "horizontal";') &&
