@@ -236,9 +236,10 @@ const remittanceDocumentModes: Array<{
 ];
 
 function defaultGuideModeForDocumentType(
-  documentType: RemittanceDocumentType
+  _documentType: RemittanceDocumentType
 ): "horizontal" | "vertical" {
-  return documentType === "remittance_stub" ? "vertical" : "horizontal";
+  void _documentType;
+  return "horizontal";
 }
 
 function guidanceForDocumentType(documentType: RemittanceDocumentType) {
@@ -250,7 +251,7 @@ function guidanceForDocumentType(documentType: RemittanceDocumentType) {
     return "Align the check face inside the frame.";
   }
 
-  return "Fill the frame with the remittance section.";
+  return "Fill the wide frame with the remittance rows.";
 }
 
 function fileToDataUrl(file: Blob) {
@@ -803,6 +804,8 @@ export default function BatchInvoicePayments({
   });
   const cropFrameRef = useRef<HTMLDivElement | null>(null);
   const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
+  const cameraViewportRef = useRef<HTMLDivElement | null>(null);
+  const cameraGuideRef = useRef<HTMLDivElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const cropDragRef = useRef<{
     target: CropDragTarget;
@@ -1869,6 +1872,57 @@ export default function BatchInvoicePayments({
     setCheckOcrMessage("Adjust the crop, then read it.");
   }
 
+  const getVisibleCameraGuideSourceRect = useCallback((video: HTMLVideoElement) => {
+    const viewport = cameraViewportRef.current;
+    const guide = cameraGuideRef.current;
+
+    if (!viewport || !guide || video.videoWidth <= 0 || video.videoHeight <= 0) {
+      return {
+        sourceX: 0,
+        sourceY: 0,
+        sourceWidth: video.videoWidth,
+        sourceHeight: video.videoHeight,
+      };
+    }
+
+    const viewportRect = viewport.getBoundingClientRect();
+    const guideRect = guide.getBoundingClientRect();
+    const scale = Math.max(
+      viewportRect.width / video.videoWidth,
+      viewportRect.height / video.videoHeight
+    );
+    const renderedWidth = video.videoWidth * scale;
+    const renderedHeight = video.videoHeight * scale;
+    const renderedLeft = (viewportRect.width - renderedWidth) / 2;
+    const renderedTop = (viewportRect.height - renderedHeight) / 2;
+    const guideLeft = guideRect.left - viewportRect.left;
+    const guideTop = guideRect.top - viewportRect.top;
+    const padRatio = captureDocumentType === "remittance_stub" ? 0.035 : 0.05;
+    const padX = guideRect.width * padRatio;
+    const padY = guideRect.height * padRatio;
+    const rawX = (guideLeft - padX - renderedLeft) / scale;
+    const rawY = (guideTop - padY - renderedTop) / scale;
+    const rawWidth = (guideRect.width + padX * 2) / scale;
+    const rawHeight = (guideRect.height + padY * 2) / scale;
+    const sourceX = Math.max(0, Math.floor(rawX));
+    const sourceY = Math.max(0, Math.floor(rawY));
+    const sourceWidth = Math.max(
+      1,
+      Math.min(video.videoWidth - sourceX, Math.ceil(rawWidth))
+    );
+    const sourceHeight = Math.max(
+      1,
+      Math.min(video.videoHeight - sourceY, Math.ceil(rawHeight))
+    );
+
+    return {
+      sourceX,
+      sourceY,
+      sourceWidth,
+      sourceHeight,
+    };
+  }, [captureDocumentType]);
+
   const analyzeLiveCameraFrame = useCallback(() => {
     const video = cameraVideoRef.current;
 
@@ -1876,28 +1930,8 @@ export default function BatchInvoicePayments({
       return null;
     }
 
-    const guideWidthRatio =
-      cameraGuideMode === "horizontal"
-        ? captureDocumentType === "full_check_stub"
-          ? 0.92
-          : 0.9
-        : captureDocumentType === "check_only"
-          ? 0.7
-          : 0.68;
-    const guideHeightRatio =
-      cameraGuideMode === "horizontal"
-        ? captureDocumentType === "full_check_stub"
-          ? 0.5
-          : captureDocumentType === "check_only"
-            ? 0.36
-            : 0.34
-        : captureDocumentType === "full_check_stub"
-          ? 0.78
-          : 0.72;
-    const sourceWidth = Math.round(video.videoWidth * guideWidthRatio);
-    const sourceHeight = Math.round(video.videoHeight * guideHeightRatio);
-    const sourceX = Math.round((video.videoWidth - sourceWidth) / 2);
-    const sourceY = Math.round((video.videoHeight - sourceHeight) / 2);
+    const { sourceX, sourceY, sourceWidth, sourceHeight } =
+      getVisibleCameraGuideSourceRect(video);
     const scanWidth = 260;
     const scale = Math.min(1, scanWidth / Math.max(sourceWidth, sourceHeight));
     const width = Math.max(1, Math.round(sourceWidth * scale));
@@ -2032,7 +2066,7 @@ export default function BatchInvoicePayments({
       ready: true,
       message: "Ready",
     };
-  }, [cameraGuideMode, captureDocumentType]);
+  }, [cameraGuideMode, captureDocumentType, getVisibleCameraGuideSourceRect]);
 
   useEffect(() => {
     if (paymentEntryMode !== "camera" || !cameraReady) {
@@ -2102,9 +2136,29 @@ export default function BatchInvoicePayments({
     setCameraStatusMessage("Capturing...");
     setCheckOcrStatus("reading");
     setCheckOcrMessage("Capturing remittance...");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const { sourceX, sourceY, sourceWidth, sourceHeight } =
+      getVisibleCameraGuideSourceRect(video);
+    const maxOutputEdge = 3600;
+    const minReadableEdge = captureDocumentType === "remittance_stub" ? 2400 : 1800;
+    const outputScale = Math.min(
+      maxOutputEdge / Math.max(sourceWidth, sourceHeight),
+      Math.max(1, minReadableEdge / Math.max(sourceWidth, sourceHeight))
+    );
+    canvas.width = Math.max(1, Math.round(sourceWidth * outputScale));
+    canvas.height = Math.max(1, Math.round(sourceHeight * outputScale));
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(
+      video,
+      sourceX,
+      sourceY,
+      sourceWidth,
+      sourceHeight,
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
     let captureFinished = false;
     const captureTimeout = window.setTimeout(() => {
       if (captureFinished) {
@@ -2452,7 +2506,10 @@ export default function BatchInvoicePayments({
             </div>
           </div>
 
-          <div className="relative min-h-0 flex-1 overflow-hidden">
+          <div
+            ref={cameraViewportRef}
+            className="relative min-h-0 flex-1 overflow-hidden"
+          >
             <video
               ref={cameraVideoRef}
               muted
@@ -2462,13 +2519,14 @@ export default function BatchInvoicePayments({
             />
             <div className="pointer-events-none absolute inset-0 bg-black/30" />
             <div
+              ref={cameraGuideRef}
               className={`pointer-events-none absolute left-1/2 top-1/2 max-h-[82dvh] max-w-[96vw] -translate-x-1/2 -translate-y-1/2 rounded-[1.35rem] border-[3px] border-emerald-300 shadow-[0_0_0_9999px_rgba(0,0,0,0.55),0_0_36px_rgba(110,231,183,0.35)] ${
                 cameraGuideMode === "horizontal"
                   ? captureDocumentType === "full_check_stub"
                     ? "h-[min(50dvh,54vw)] min-h-[30dvh] w-[min(94vw,128dvh)] landscape:h-[min(64dvh,52vw)]"
                     : captureDocumentType === "check_only"
                       ? "h-[min(36dvh,38vw)] min-h-[24dvh] w-[min(92vw,118dvh)] landscape:h-[min(50dvh,40vw)]"
-                      : "h-[min(34dvh,34vw)] min-h-[22dvh] w-[min(94vw,142dvh)] landscape:h-[min(52dvh,40vw)]"
+                      : "h-[min(23dvh,28vw)] min-h-[16dvh] w-[min(96vw,160dvh)] landscape:h-[min(38dvh,26vw)]"
                   : captureDocumentType === "remittance_stub"
                     ? "h-[min(66dvh,112vw)] min-h-[48dvh] w-[min(94vw,78dvh)] landscape:h-[min(78dvh,88vw)] landscape:w-[min(60vw,82dvh)]"
                     : "h-[min(72dvh,128vw)] min-h-[48dvh] w-[min(70vw,64dvh)] landscape:h-[min(72dvh,88vw)] landscape:w-[min(45vw,64dvh)]"

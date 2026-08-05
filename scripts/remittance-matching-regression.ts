@@ -597,7 +597,7 @@ assert(
     paymentScreen.includes('"full_check_stub"') &&
     paymentScreen.includes('"check_only"') &&
     paymentScreen.includes('useState<RemittanceDocumentType>("remittance_stub")') &&
-    paymentScreen.includes('documentType === "remittance_stub" ? "vertical" : "horizontal"'),
+    paymentScreen.includes('return "horizontal";'),
   "Payments capture must expose Remittance Stub, Full Check + Stub, and Check Only modes with Remittance Stub as the default."
 );
 assert(
@@ -641,10 +641,22 @@ assert(
     paymentScreen.includes("Check Capture") &&
     paymentScreen.includes("Capturing remittance...") &&
     paymentScreen.includes("Camera capture timed out. Try Use Device Camera.") &&
+    paymentScreen.includes("getVisibleCameraGuideSourceRect(video)") &&
+    paymentScreen.includes("cameraGuideRef") &&
+    paymentScreen.includes("cameraViewportRef") &&
+    paymentScreen.includes("sourceX") &&
+    paymentScreen.includes("sourceWidth") &&
     paymentScreen.includes('setPaymentEntryMode("crop")') &&
     paymentScreen.includes("Capturing...") &&
     paymentScreen.includes("{cameraQualityReady ? \"Ready\" : cameraStatusMessage}"),
-  "Camera tap must always capture or show a visible error while Ready still reports live quality."
+  "Camera tap must submit the framed document crop or show a visible error while Ready still reports live quality."
+);
+assert(
+  paymentScreen.includes('return "horizontal";') &&
+    paymentScreen.includes("Fill the wide frame with the remittance rows.") &&
+    paymentScreen.includes("h-[min(23dvh,28vw)]") &&
+    paymentScreen.includes("w-[min(96vw,160dvh)]"),
+  "Remittance Stub capture must default to a wide, low frame for long pay stubs."
 );
 assert(
   paymentScreen.includes("Choose Existing Photo") &&
