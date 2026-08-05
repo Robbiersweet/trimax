@@ -601,6 +601,15 @@ assert(
   "Payments capture must expose Remittance Stub, Full Check + Stub, and Check Only modes with Remittance Stub as the default."
 );
 assert(
+  paymentScreen.includes("guideModeForCurrentViewport") &&
+    paymentScreen.includes('window.matchMedia("(orientation: landscape)").matches') &&
+    paymentScreen.includes('documentType === "remittance_stub"') &&
+    paymentScreen.includes("guideManuallyRotated") &&
+    paymentScreen.includes('window.addEventListener("orientationchange"') &&
+    paymentScreen.includes("setGuideManuallyRotated(true)"),
+  "Remittance Stub camera guide must rotate automatically in landscape while preserving the manual Rotate Guide override."
+);
+assert(
   paymentScreen.includes("Add Check Photo") &&
     paymentScreen.includes('"check_details"') &&
     paymentScreen.includes("loadCheckDetailsFromExtraction") &&
