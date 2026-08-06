@@ -53,14 +53,14 @@ const settingsPage = readFileSync(
 );
 
 assert(
-  appShell.includes("<WorkspaceFloatingControls />") &&
+  appShell.includes("<WorkspaceFloatingControls hidden={captureModeActive} />") &&
     !appShell.includes("<WorkspaceBackBar />") &&
     !appShell.includes("<QuickCommandCenter />"),
   "AppShell must delegate the protected floating Back/Command pair to one shared component."
 );
 
 assert.equal(
-  (appShell.match(/<WorkspaceFloatingControls \/>/g) ?? []).length,
+  (appShell.match(/<WorkspaceFloatingControls hidden=\{captureModeActive\} \/>/g) ?? []).length,
   1,
   "AppShell must not duplicate the protected floating-control pair."
 );
@@ -79,7 +79,8 @@ assert(
   workspaceFloatingControls.includes("trimax-remittance-capture-active") &&
     workspaceFloatingControls.includes("trimax-remittance-capture-mode") &&
     workspaceFloatingControls.includes("data-remittance-capture-hidden") &&
-    workspaceFloatingControls.includes('captureModeActive ? "hidden" : ""'),
+    workspaceFloatingControls.includes('isHidden ? "hidden" : ""') &&
+    workspaceFloatingControls.includes('style={isHidden ? { display: "none" } : undefined}'),
   "The protected floating-control pair may hide only during the intentional full-screen remittance capture exception."
 );
 

@@ -161,8 +161,80 @@ function checkRegionText(text: string) {
   return checkLines.filter((line) => !isBankingNoiseLine(line)).join("\n");
 }
 
+const dateValuePattern =
+  String.raw`(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?|\d{4}-\d{1,2}-\d{1,2})`;
+
+function findLabeledHeaderDate(text: string) {
+  const matches = Array.from(
+    text.matchAll(
+      new RegExp(
+        String.raw`\b(?:check\s*date|payment\s*date|paid\s*date|date)\b\s*:?\s*[^\d]{0,48}${dateValuePattern}\b`,
+        "gi"
+      )
+    )
+  );
+
+  for (const match of matches) {
+    const index = match.index ?? 0;
+    const context = text.slice(Math.max(0, index - 36), index + match[0].length + 36);
+
+    if (/invoice\s*[-:]?\s*date|invoice\s+date/i.test(context)) {
+      continue;
+    }
+
+    const parsed = parseCheckDate(match[1] ?? "");
+
+    if (parsed) {
+      return parsed;
+    }
+  }
+
+  return "";
+}
+
+function findLabeledHeaderCheckNumber(text: string) {
+  const normalizedText = text.replace(/[Oo]/g, "0");
+  const matches = Array.from(
+    normalizedText.matchAll(
+      /\b(?:CK|CHK|CHECK(?:\s*(?:NO\.?|NUMBER|#))?)\b\s*#?\s*:?\s*([^\d]{0,28})(\d{3,5})\b/gi
+    )
+  );
+
+  for (const match of matches) {
+    const separator = match[1] ?? "";
+    const value = match[2] ?? "";
+
+    if (
+      value.length > 4 ||
+      /\b(?:total|amount|payment|invoice|account|date)\b/i.test(separator)
+    ) {
+      continue;
+    }
+
+    return value;
+  }
+
+  return "";
+}
+
+function findExplicitTotalAmount(text: string) {
+  const explicitTotal = text.match(
+    /\b(?:GRAND\s+TOTAL|CHECK\s*TOTAL|PAYMENT\s*TOTAL|PAYMENT\s*AMOUNT|AMOUNT\s*ENCLOSED|AMOUNT\s*PAID|CHECK\s*AMOUNT|TOTAL)\b\s*:?\s*[^\d$]{0,48}\$?\s*([\d,]+\.\d{2})/i
+  );
+
+  return explicitTotal?.[1] ? parseMoney(explicitTotal[1]) : 0;
+}
+
 export function extractCheckNumber(text: string) {
-  const normalizedText = checkRegionText(text).replace(/[Oo]/g, "0");
+  const checkText = checkRegionText(text);
+  const labelledCheckNumber =
+    findLabeledHeaderCheckNumber(checkText) || findLabeledHeaderCheckNumber(text);
+
+  if (labelledCheckNumber) {
+    return labelledCheckNumber;
+  }
+
+  const normalizedText = checkText.replace(/[Oo]/g, "0");
   const lines = normalizedText
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -303,12 +375,10 @@ export function extractInvoiceNumbers(text: string) {
 }
 
 export function extractTotalAmount(text: string) {
-  const explicitTotal = text.match(
-    /\b(?:GRAND\s+TOTAL|CHECK\s*TOTAL|PAYMENT\s*TOTAL|PAYMENT\s*AMOUNT|AMOUNT\s*ENCLOSED|AMOUNT\s*PAID|CHECK\s*AMOUNT|TOTAL)\s*:?\s*\$?\s*([\d,]+\.\d{2})/i
-  );
+  const explicitTotal = findExplicitTotalAmount(text);
 
-  if (explicitTotal?.[1]) {
-    return parseMoney(explicitTotal[1]);
+  if (explicitTotal > 0) {
+    return explicitTotal;
   }
 
   const remittanceText = remittanceRegionText(text);
@@ -477,11 +547,14 @@ export function parseCheckDate(value: string) {
 
 export function extractCheckDate(text: string) {
   const checkText = checkRegionText(text);
-  const labelledMatch = text.match(
-    /\b(?:date|check\s*date|payment\s*date|paid\s*date)\s*:?\s*(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?|\d{4}-\d{1,2}-\d{1,2})\b/i
-  );
+  const labelledDate =
+    findLabeledHeaderDate(checkText) || findLabeledHeaderDate(text);
+
+  if (labelledDate) {
+    return labelledDate;
+  }
+
   const match =
-    labelledMatch ??
     checkText.match(/\b(\d{1,2}\/\d{1,2}\/\d{2,4}|\d{4}-\d{1,2}-\d{1,2})\b/) ??
     text.match(/\b(\d{1,2}\/\d{1,2}\/\d{2,4}|\d{4}-\d{1,2}-\d{1,2})\b/);
 
@@ -493,16 +566,35 @@ function combineSplitRemittanceRows(lines: string[]) {
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
-    const nextLine = lines[index + 1] ?? "";
     const hasInvoice = extractInvoiceNumbers(line).length > 0;
     const hasAmount = extractMoneyValues(line).length > 0;
-    const nextHasInvoice = extractInvoiceNumbers(nextLine).length > 0;
-    const nextAmounts = extractMoneyValues(nextLine);
 
-    if (hasInvoice && !hasAmount && !nextHasInvoice && nextAmounts.length > 0) {
-      combined.push(`${line} ${nextLine}`);
-      index += 1;
-      continue;
+    if (hasInvoice && !hasAmount) {
+      const fragments = [line];
+      let consumed = 0;
+
+      for (let offset = 1; offset <= 2; offset += 1) {
+        const nextLine = lines[index + offset] ?? "";
+
+        if (!nextLine || extractInvoiceNumbers(nextLine).length > 0) {
+          break;
+        }
+
+        fragments.push(nextLine);
+        consumed = offset;
+
+        if (extractMoneyValues(nextLine).length > 0) {
+          break;
+        }
+      }
+
+      const candidate = fragments.join(" ");
+
+      if (extractMoneyValues(candidate).length > 0) {
+        combined.push(candidate);
+        index += consumed;
+        continue;
+      }
     }
 
     combined.push(line);

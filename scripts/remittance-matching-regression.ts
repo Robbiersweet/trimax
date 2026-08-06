@@ -192,6 +192,66 @@ assert.equal(normalizeInvoiceNumber("INVOS02"), "INV-0502");
 assert.equal(normalizeInvoiceNumber("INV0S02"), "INV-0502");
 assert.equal(normalizeInvoiceNumber("INV050Z"), "INV-0502");
 
+const productionStub2734SplitHeader = [
+  "DATE:",
+  "07/10/2026",
+  "CK#:",
+  "2734",
+  "TOTAL:",
+  "$2,198.00",
+  "PAYEE:",
+  "R&L Creations",
+  "Property Account Invoice - Date Description Amount",
+  "North Creek Apartments Paint ServiINV0502 - 06/08/2026 V01 full interior paint",
+  "$1,099.00",
+  "North Creek Apartments Paint Service INVOS03 - 06/10/2026 K08 full interior paint",
+  "$1,099.00",
+].join("\n");
+const parsedProduction2734SplitHeader = parseCheckStubText(
+  productionStub2734SplitHeader
+);
+const matchProduction2734SplitHeader = findRemittanceMatches(
+  invoices,
+  parsedProduction2734SplitHeader.stubText,
+  "North Creek Apartments"
+);
+
+assert.equal(
+  parsedProduction2734SplitHeader.checkDate,
+  "2026-07-10",
+  "A labeled DATE header split across OCR lines must outrank invoice-row service dates."
+);
+assert.notEqual(
+  parsedProduction2734SplitHeader.checkDate,
+  "2026-06-08",
+  "Invoice-row dates must not become the payment date when a labeled document date exists."
+);
+assert.equal(parsedProduction2734SplitHeader.checkNumber, "2734");
+assert.equal(parsedProduction2734SplitHeader.totalAmount, 2198);
+assert.deepEqual(
+  extractInvoiceNumbers("Paint ServiINV0502 - 06/08/2026"),
+  ["INV-0502"],
+  "Fused service text must still expose INV0502."
+);
+assert.deepEqual(
+  extractInvoiceNumbers("Paint Service INVOS03 - 06/10/2026"),
+  ["INV-0503"],
+  "OCR letter confusion in INV0503 must normalize before lookup."
+);
+assert.deepEqual(
+  parsedProduction2734SplitHeader.lines
+    .filter((line) => line.invoiceNumbers.length > 0)
+    .map((line) => ({ invoice: line.invoiceNumbers[0], amount: line.amount })),
+  [
+    { invoice: "INV-0502", amount: 1099 },
+    { invoice: "INV-0503", amount: 1099 },
+  ],
+  "Split OCR rows must pair each invoice with its nearby amount."
+);
+assert.equal(matchProduction2734SplitHeader.totalAmount, 2198);
+assert.equal(matchProduction2734SplitHeader.matchedTotal, 2198);
+assert.equal(matchProduction2734SplitHeader.confidence, "verified");
+
 const productionStub2734WithSummaryRow = [
   "DATE: 07/10/2026 CK#: 2734",
   "Property Account Invoice - Date Description Amount",
@@ -572,7 +632,10 @@ assert(
     route.includes("remittance-right") &&
     route.includes("amounts-right-edge") &&
     route.includes("redactedTextSummary") &&
-    route.includes("diagnostics"),
+    route.includes("diagnostics") &&
+    route.includes('type OcrRetryStrategy = "standard" | "alternate"') &&
+    route.includes("normalizeRetryStrategy") &&
+    route.includes("retryStrategy === \"alternate\""),
   "OCR route must preserve mobile image quality, use document regions, and return safe diagnostics."
 );
 assert(
@@ -628,6 +691,13 @@ assert(
     paymentScreen.includes("setCropBox({ left: 0, top: 0, right: 100, bottom: 100 })") &&
     paymentScreen.includes("setCropRotation(0)"),
   "Payments screen must use the same normalized cropped image for OCR, preview, retry, and payment-image upload."
+);
+assert(
+  paymentScreen.includes('type OcrRetryStrategy = "standard" | "alternate"') &&
+    paymentScreen.includes("retryStrategy: OcrRetryStrategy = \"standard\"") &&
+    paymentScreen.includes("JSON.stringify({ imageDataUrl, documentType, retryStrategy })") &&
+    paymentScreen.includes('"alternate"'),
+  "Retry Reading must reuse the saved crop while requesting a distinct local OCR preprocessing strategy."
 );
 assert(
   paymentScreen.includes("function invoiceLookupKeys") &&

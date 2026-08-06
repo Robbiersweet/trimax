@@ -511,10 +511,10 @@ assert(
   "Queue detail must avoid duplicate page-level Back and Create Estimate actions."
 );
 assert(
-  appShell.includes("<WorkspaceFloatingControls />") &&
+  appShell.includes("<WorkspaceFloatingControls hidden={captureModeActive} />") &&
     !appShell.includes("<WorkspaceBackBar />") &&
     !appShell.includes("<QuickCommandCenter />") &&
-    appShell.indexOf("<WorkspaceFloatingControls />") < appShell.indexOf("<section") &&
+    appShell.indexOf("<WorkspaceFloatingControls hidden={captureModeActive} />") < appShell.indexOf("<section") &&
     workspaceFloatingControls.includes("app-floating-control-group") &&
     workspaceFloatingControls.includes('data-protected-floating-pair="true"') &&
     workspaceFloatingControls.includes("<WorkspaceBackBar />") &&

@@ -84,6 +84,7 @@ type RemittanceDocumentType =
   | "check_only";
 
 type CaptureIntent = "primary" | "check_details";
+type OcrRetryStrategy = "standard" | "alternate";
 
 type CropBox = {
   left: number;
@@ -129,6 +130,7 @@ type CheckStubOcrResponse = {
   lines?: { amount?: unknown; invoiceNumbers?: unknown }[];
   diagnostics?: {
     summary?: string[];
+    retryStrategy?: OcrRetryStrategy;
     originalWidth?: number;
     originalHeight?: number;
     originalFormat?: string;
@@ -1703,7 +1705,8 @@ export default function BatchInvoicePayments({
   async function extractCheckStubFromPhoto(
     imageDataUrl: string,
     documentType: RemittanceDocumentType = captureDocumentType,
-    intent: CaptureIntent = captureIntent
+    intent: CaptureIntent = captureIntent,
+    retryStrategy: OcrRetryStrategy = "standard"
   ) {
     if (imageDataUrl.length > 19_500_000) {
       setCheckOcrStatus("manual");
@@ -1722,7 +1725,7 @@ export default function BatchInvoicePayments({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ imageDataUrl, documentType }),
+        body: JSON.stringify({ imageDataUrl, documentType, retryStrategy }),
       });
       const data = (await response.json().catch(() => ({}))) as CheckStubOcrResponse;
 
@@ -1786,7 +1789,8 @@ export default function BatchInvoicePayments({
     nextCropBox: CropBox,
     nextRotation: number,
     documentType: RemittanceDocumentType = captureDocumentType,
-    intent: CaptureIntent = captureIntent
+    intent: CaptureIntent = captureIntent,
+    retryStrategy: OcrRetryStrategy = "standard"
   ) {
     setIsPreparingCrop(true);
 
@@ -1846,7 +1850,12 @@ export default function BatchInvoicePayments({
       );
       setCaptureQualityMessage("Document quality looks ready.");
       setPaymentEntryMode("photo");
-      void extractCheckStubFromPhoto(imageDataUrl, documentType, intent);
+      void extractCheckStubFromPhoto(
+        imageDataUrl,
+        documentType,
+        intent,
+        retryStrategy
+      );
     } catch (error) {
       setCheckOcrStatus("error");
       setCheckOcrMessage(
@@ -3173,7 +3182,10 @@ export default function BatchInvoicePayments({
                             void readPreparedRemittanceFromFile(
                               checkImageFile,
                               cropBox,
-                              cropRotation
+                              cropRotation,
+                              captureDocumentType,
+                              captureIntent,
+                              "alternate"
                             );
                           }
                         }}

@@ -20,6 +20,7 @@ type RemittanceDocumentType =
   | "remittance_stub"
   | "full_check_stub"
   | "check_only";
+type OcrRetryStrategy = "standard" | "alternate";
 
 type ImageBounds = {
   left: number;
@@ -67,6 +68,10 @@ function normalizeDocumentType(value: unknown): RemittanceDocumentType {
   return value === "full_check_stub" || value === "check_only"
     ? value
     : "remittance_stub";
+}
+
+function normalizeRetryStrategy(value: unknown): OcrRetryStrategy {
+  return value === "alternate" ? "alternate" : "standard";
 }
 
 function isSafeDataUrl(value: unknown) {
@@ -573,8 +578,11 @@ function shouldAcceptFirstPass(attempt: OcrAttempt) {
   );
 }
 
-function ocrAttemptSpecs(psm: typeof import("tesseract.js").PSM): OcrAttemptSpec[] {
-  return [
+function ocrAttemptSpecs(
+  psm: typeof import("tesseract.js").PSM,
+  retryStrategy: OcrRetryStrategy
+): OcrAttemptSpec[] {
+  const specs: OcrAttemptSpec[] = [
     {
       variant: "grayscale-normalized",
       pageMode: { name: "sparse-text", value: psm.SPARSE_TEXT },
@@ -592,11 +600,16 @@ function ocrAttemptSpecs(psm: typeof import("tesseract.js").PSM): OcrAttemptSpec
       pageMode: { name: "sparse-text", value: psm.SPARSE_TEXT },
     },
   ];
+
+  return retryStrategy === "alternate"
+    ? [specs[2], specs[3], specs[1], specs[0]]
+    : specs;
 }
 
 async function recognizeBestText(
   originalImage: Buffer,
-  documentType: RemittanceDocumentType
+  documentType: RemittanceDocumentType,
+  retryStrategy: OcrRetryStrategy
 ) {
   const Tesseract = await import("tesseract.js");
   const startedAt = Date.now();
@@ -625,7 +638,7 @@ async function recognizeBestText(
       documentType
     );
     markStage("regions-built");
-    const specs = ocrAttemptSpecs(Tesseract.PSM);
+    const specs = ocrAttemptSpecs(Tesseract.PSM, retryStrategy);
     const fullDocumentSource = regionSources[0] ?? {
       name: "full-document",
       image: sources.document.image,
@@ -793,6 +806,7 @@ async function recognizeBestText(
       text: finalText,
       diagnostics: {
         documentType,
+        retryStrategy,
         originalWidth: sources.original.width,
         originalHeight: sources.original.height,
         originalFormat: sources.original.format,
@@ -827,9 +841,11 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as {
     imageDataUrl?: unknown;
     documentType?: unknown;
+    retryStrategy?: unknown;
   } | null;
   const imageDataUrl = body?.imageDataUrl;
   const documentType = normalizeDocumentType(body?.documentType);
+  const retryStrategy = normalizeRetryStrategy(body?.retryStrategy);
 
   if (!isSafeDataUrl(imageDataUrl)) {
     return NextResponse.json(
@@ -840,7 +856,11 @@ export async function POST(request: Request) {
 
   try {
     const originalImage = dataUrlToBuffer(imageDataUrl as string);
-    const ocrResult = await recognizeBestText(originalImage, documentType);
+    const ocrResult = await recognizeBestText(
+      originalImage,
+      documentType,
+      retryStrategy
+    );
     const rawText = ocrResult.text;
     const parsedText = withoutMicrBandText(rawText);
 
@@ -907,6 +927,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ocrEngine: "tesseract.js",
       documentType,
+      retryStrategy,
       ...extraction,
       diagnostics: {
         summary: diagnosticSummary,
