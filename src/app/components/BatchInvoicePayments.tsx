@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  CSSProperties,
   MouseEvent,
   PointerEvent,
   useCallback,
@@ -108,6 +109,13 @@ type ImageQualityReport = {
   brightness: number;
   contrast: number;
   blurScore: number;
+};
+
+type CameraVisualViewport = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
 };
 
 type CheckStubOcrResponse = {
@@ -845,6 +853,8 @@ export default function BatchInvoicePayments({
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraQualityReady, setCameraQualityReady] = useState(false);
   const [isCapturingFrame, setIsCapturingFrame] = useState(false);
+  const [cameraVisualViewport, setCameraVisualViewport] =
+    useState<CameraVisualViewport | null>(null);
   const [cameraGuideMode, setCameraGuideMode] = useState<
     "horizontal" | "vertical"
   >("horizontal");
@@ -1109,8 +1119,30 @@ export default function BatchInvoicePayments({
 
     const previousOverflow = document.body.style.overflow;
     const previousTouchAction = document.body.style.touchAction;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    const previousHtmlTouchAction = document.documentElement.style.touchAction;
     document.body.style.overflow = "hidden";
     document.body.style.touchAction = "none";
+    document.documentElement.style.overflow = "hidden";
+    document.documentElement.style.touchAction = "none";
+    let viewportFrame = 0;
+
+    function updateCameraVisualViewport() {
+      if (viewportFrame) {
+        window.cancelAnimationFrame(viewportFrame);
+      }
+
+      viewportFrame = window.requestAnimationFrame(() => {
+        const viewport = window.visualViewport;
+
+        setCameraVisualViewport({
+          left: Math.round(viewport?.offsetLeft ?? 0),
+          top: Math.round(viewport?.offsetTop ?? 0),
+          width: Math.round(viewport?.width ?? window.innerWidth),
+          height: Math.round(viewport?.height ?? window.innerHeight),
+        });
+      });
+    }
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -1120,14 +1152,35 @@ export default function BatchInvoicePayments({
       }
     }
 
+    updateCameraVisualViewport();
     window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("resize", updateCameraVisualViewport);
+    window.addEventListener("orientationchange", updateCameraVisualViewport);
+    window.visualViewport?.addEventListener("resize", updateCameraVisualViewport);
+    window.visualViewport?.addEventListener("scroll", updateCameraVisualViewport);
 
     return () => {
+      if (viewportFrame) {
+        window.cancelAnimationFrame(viewportFrame);
+      }
+
       document.body.style.overflow = previousOverflow;
       document.body.style.touchAction = previousTouchAction;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+      document.documentElement.style.touchAction = previousHtmlTouchAction;
       document.body.classList.remove("trimax-remittance-capture-active");
       window.dispatchEvent(new Event("trimax-remittance-capture-mode"));
       window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("resize", updateCameraVisualViewport);
+      window.removeEventListener("orientationchange", updateCameraVisualViewport);
+      window.visualViewport?.removeEventListener(
+        "resize",
+        updateCameraVisualViewport
+      );
+      window.visualViewport?.removeEventListener(
+        "scroll",
+        updateCameraVisualViewport
+      );
     };
   }, [paymentEntryMode]);
 
@@ -2534,6 +2587,16 @@ export default function BatchInvoicePayments({
     return null;
   }
 
+  const cameraOverlayStyle: CSSProperties | undefined =
+    paymentEntryMode === "camera" && cameraVisualViewport
+    ? {
+        left: `${cameraVisualViewport.left}px`,
+        top: `${cameraVisualViewport.top}px`,
+        width: `${cameraVisualViewport.width}px`,
+        height: `${cameraVisualViewport.height}px`,
+      }
+    : undefined;
+
   return (
     <Card className="batch-payments-card border-green-500/30 bg-green-500/5">
       {toast ? <Toast type={toast.type} message={toast.message} /> : null}
@@ -2542,9 +2605,10 @@ export default function BatchInvoicePayments({
         <div
           aria-label="Remittance camera"
           aria-modal="true"
-          className="fixed inset-0 z-[2147483000] flex h-[100dvh] w-screen flex-col overflow-hidden bg-black text-white landscape:grid landscape:grid-cols-[minmax(0,1fr)_14rem] landscape:grid-rows-[auto_minmax(0,1fr)_auto] landscape:gap-2 landscape:p-2"
+          className="fixed left-0 top-0 z-[2147483000] flex h-[100dvh] w-screen flex-col overflow-hidden bg-black text-white landscape:grid landscape:grid-cols-[minmax(0,1fr)_14rem] landscape:grid-rows-[auto_minmax(0,1fr)_auto] landscape:gap-2 landscape:p-2"
           data-remittance-fullscreen-capture="true"
           role="dialog"
+          style={cameraOverlayStyle}
         >
           <div
             className="grid shrink-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-4 pb-2 pt-[calc(env(safe-area-inset-top)+0.75rem)] landscape:col-start-2 landscape:row-start-1 landscape:grid-cols-1 landscape:px-0 landscape:pb-1 landscape:pt-[max(env(safe-area-inset-top),0.25rem)]"
@@ -2634,7 +2698,7 @@ export default function BatchInvoicePayments({
                     ? "h-[min(50dvh,54vw)] min-h-[30dvh] w-[min(94vw,128dvh)] landscape:h-[min(64dvh,52vw)]"
                     : captureDocumentType === "check_only"
                       ? "h-[min(36dvh,38vw)] min-h-[24dvh] w-[min(92vw,118dvh)] landscape:h-[min(50dvh,40vw)]"
-                      : "h-[min(23dvh,28vw)] min-h-[16dvh] w-[min(96vw,160dvh)] landscape:h-[min(62%,54dvh)] landscape:w-[min(96%,150dvh)]"
+                      : "h-[min(18dvh,22vw)] min-h-[12dvh] w-[min(96vw,160dvh)] landscape:h-[min(62%,54dvh)] landscape:w-[min(96%,150dvh)]"
                   : captureDocumentType === "remittance_stub"
                     ? "h-[min(72dvh,88%)] min-h-[48dvh] w-[min(94vw,78dvh)] landscape:h-[min(88%,88dvh)] landscape:min-h-0 landscape:w-[min(42vw,58dvh)]"
                     : "h-[min(72dvh,128vw)] min-h-[48dvh] w-[min(70vw,64dvh)] landscape:h-[min(72dvh,88vw)] landscape:w-[min(45vw,64dvh)]"

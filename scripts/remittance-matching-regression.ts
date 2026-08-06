@@ -660,11 +660,14 @@ assert(
   "Payments screen must show extracted invoice matches during review."
 );
 assert(
-  paymentScreen.includes('data-remittance-fullscreen-capture="true"') &&
+    paymentScreen.includes('data-remittance-fullscreen-capture="true"') &&
     paymentScreen.includes('import { createPortal } from "react-dom"') &&
     paymentScreen.includes("createPortal(") &&
     paymentScreen.includes("document.body") &&
-    paymentScreen.includes('className="fixed inset-0 z-[2147483000]') &&
+    paymentScreen.includes('className="fixed left-0 top-0 z-[2147483000]') &&
+    paymentScreen.includes("cameraOverlayStyle") &&
+    paymentScreen.includes("window.visualViewport") &&
+    paymentScreen.includes("updateCameraVisualViewport") &&
     paymentScreen.includes("h-[100dvh]") &&
     paymentScreen.includes("landscape:grid-cols-[minmax(0,1fr)_14rem]") &&
     paymentScreen.includes("landscape:row-span-3") &&
@@ -685,7 +688,8 @@ assert(
 );
 assert(
   paymentScreen.includes('captureDocumentType === "remittance_stub"') &&
-    paymentScreen.includes("h-[min(23dvh,28vw)]") &&
+    paymentScreen.includes("h-[min(18dvh,22vw)]") &&
+    paymentScreen.includes("min-h-[12dvh]") &&
     paymentScreen.includes("w-[min(96vw,160dvh)]") &&
     paymentScreen.includes("landscape:h-[min(62%,54dvh)]") &&
     paymentScreen.includes("landscape:w-[min(96%,150dvh)]") &&
