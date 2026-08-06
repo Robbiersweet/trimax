@@ -139,7 +139,17 @@ type CameraGeometryDiagnostics = {
   layoutViewport: { width: number; height: number };
   visualViewport: CameraVisualViewport;
   devicePixelRatio: number;
+  video: {
+    hasSrcObject: boolean;
+    activeTracks: number;
+    readyState: number;
+    videoWidth: number;
+    videoHeight: number;
+    playStatus: string;
+    computedStyle: Record<string, string>;
+  };
   overlay: CameraRectSnapshot | null;
+  videoRect: CameraRectSnapshot | null;
   preview: CameraRectSnapshot | null;
   guide: CameraRectSnapshot | null;
   capture: CameraRectSnapshot | null;
@@ -906,6 +916,8 @@ export default function BatchInvoicePayments({
     useState<CameraGeometryDiagnostics | null>(null);
   const [cameraPipelineStages, setCameraPipelineStages] = useState<string[]>([]);
   const [cameraFailureStage, setCameraFailureStage] = useState("");
+  const [cameraVideoPlayStatus, setCameraVideoPlayStatus] =
+    useState("not-started");
   const [cameraGuideMode, setCameraGuideMode] = useState<
     "horizontal" | "vertical"
   >("horizontal");
@@ -1142,6 +1154,10 @@ export default function BatchInvoicePayments({
     }
 
     const viewport = window.visualViewport;
+    const video = cameraVideoRef.current;
+    const videoStyle = video ? window.getComputedStyle(video) : null;
+    const stream =
+      video?.srcObject instanceof MediaStream ? video.srcObject : null;
     const visualViewport = {
       left: Math.round(viewport?.offsetLeft ?? 0),
       top: Math.round(viewport?.offsetTop ?? 0),
@@ -1215,7 +1231,29 @@ export default function BatchInvoicePayments({
       },
       visualViewport,
       devicePixelRatio: window.devicePixelRatio,
+      video: {
+        hasSrcObject: Boolean(stream),
+        activeTracks:
+          stream?.getVideoTracks().filter((track) => track.readyState === "live")
+            .length ?? 0,
+        readyState: video?.readyState ?? 0,
+        videoWidth: video?.videoWidth ?? 0,
+        videoHeight: video?.videoHeight ?? 0,
+        playStatus: cameraVideoPlayStatus,
+        computedStyle: {
+          display: videoStyle?.display ?? "",
+          visibility: videoStyle?.visibility ?? "",
+          opacity: videoStyle?.opacity ?? "",
+          filter: videoStyle?.filter ?? "",
+          mixBlendMode: videoStyle?.mixBlendMode ?? "",
+          objectFit: videoStyle?.objectFit ?? "",
+          background: videoStyle?.backgroundColor ?? "",
+          zIndex: videoStyle?.zIndex ?? "",
+          transform: videoStyle?.transform ?? "",
+        },
+      },
       overlay: rectSnapshot(cameraOverlayRef.current),
+      videoRect: rectSnapshot(video),
       preview: rectSnapshot(cameraViewportRef.current),
       guide: rectSnapshot(cameraGuideRef.current),
       capture: captureRect,
@@ -1224,7 +1262,7 @@ export default function BatchInvoicePayments({
       hitTests,
       ancestorStyles,
     });
-  }, []);
+  }, [cameraVideoPlayStatus]);
 
   useEffect(() => {
     if (paymentEntryMode !== "camera") {
@@ -1264,7 +1302,19 @@ export default function BatchInvoicePayments({
 
         if (cameraVideoRef.current) {
           cameraVideoRef.current.srcObject = stream;
-          await cameraVideoRef.current.play().catch(() => undefined);
+          cameraVideoRef.current.setAttribute("playsinline", "true");
+          cameraVideoRef.current.setAttribute("webkit-playsinline", "true");
+
+          try {
+            await cameraVideoRef.current.play();
+            setCameraVideoPlayStatus("playing");
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : "Video play rejected.";
+
+            setCameraVideoPlayStatus(`play-rejected: ${message}`);
+            setCameraStatusMessage(`Preview blocked: ${message}`);
+          }
         }
 
         setCameraReady(true);
@@ -2456,6 +2506,7 @@ export default function BatchInvoicePayments({
     setCameraReady(false);
     setCameraQualityReady(false);
     setIsCapturingFrame(false);
+    setCameraVideoPlayStatus("not-started");
   }
 
   function handleCameraModeSelection(
@@ -2938,12 +2989,46 @@ export default function BatchInvoicePayments({
               muted
               playsInline
               autoPlay
-              className="absolute inset-0 h-full w-full object-cover"
+              disablePictureInPicture
+              data-camera-visible-video="true"
+              onLoadedMetadata={(event) => {
+                const video = event.currentTarget;
+
+                video.setAttribute("playsinline", "true");
+                video.setAttribute("webkit-playsinline", "true");
+                void video
+                  .play()
+                  .then(() => setCameraVideoPlayStatus("playing"))
+                  .catch((error: unknown) => {
+                    const message =
+                      error instanceof Error
+                        ? error.message
+                        : "Video play rejected.";
+
+                    setCameraVideoPlayStatus(`play-rejected: ${message}`);
+                    setCameraStatusMessage(`Preview blocked: ${message}`);
+                  });
+              }}
+              onCanPlay={() => {
+                setCameraVideoPlayStatus((current) =>
+                  current.startsWith("play-rejected") ? current : "can-play"
+                );
+              }}
+              className="absolute inset-0 z-0 h-full w-full bg-black object-cover opacity-100 [filter:none] [mix-blend-mode:normal]"
+              style={{
+                WebkitTransform: "translateZ(0)",
+                transform: "translateZ(0)",
+                WebkitBackfaceVisibility: "hidden",
+                backfaceVisibility: "hidden",
+              }}
             />
-            <div className="pointer-events-none absolute inset-0 bg-black/30" />
+            <div
+              className="pointer-events-none absolute inset-0 z-10 bg-black/20"
+              data-camera-transparent-dim-layer="true"
+            />
             <div
               ref={cameraGuideRef}
-              className={`pointer-events-none absolute left-1/2 top-1/2 max-h-[88%] max-w-[96%] -translate-x-1/2 -translate-y-1/2 rounded-[1.35rem] border-[3px] border-emerald-300 shadow-[0_0_0_9999px_rgba(0,0,0,0.55),0_0_36px_rgba(110,231,183,0.35)] ${
+              className={`pointer-events-none absolute left-1/2 top-1/2 z-20 max-h-[88%] max-w-[96%] -translate-x-1/2 -translate-y-1/2 rounded-[1.35rem] border-[3px] border-emerald-300 bg-transparent shadow-[0_0_0_9999px_rgba(0,0,0,0.45),0_0_36px_rgba(110,231,183,0.35)] ${
                 cameraGuideMode === "horizontal"
                   ? captureDocumentType === "full_check_stub"
                     ? "h-[min(50dvh,54vw)] min-h-[30dvh] w-[min(94vw,128dvh)] landscape:h-[min(64dvh,52vw)]"
@@ -2973,6 +3058,11 @@ export default function BatchInvoicePayments({
             <p className="mb-3 text-center text-sm font-semibold text-sky-100 landscape:mb-2 landscape:text-xs">
               {guidanceForDocumentType(captureDocumentType)}
             </p>
+            {cameraDiagnosticsEnabled ? (
+              <p className="mb-2 rounded-full border border-cyan-300/40 bg-cyan-950/60 px-3 py-1 text-center text-[10px] font-black uppercase tracking-[0.16em] text-cyan-100">
+                Diagnostics Active
+              </p>
+            ) : null}
             <div className="mx-auto grid max-w-lg grid-cols-2 gap-2 landscape:grid-cols-1">
               <button
                 ref={captureButtonRef}

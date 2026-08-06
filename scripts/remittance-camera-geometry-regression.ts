@@ -20,12 +20,53 @@ assert(
   paymentScreen.includes("type CameraGeometryDiagnostics") &&
     paymentScreen.includes("collectCameraGeometryDiagnostics") &&
     paymentScreen.includes("document.elementFromPoint") &&
+    paymentScreen.includes("hasSrcObject") &&
+    paymentScreen.includes("activeTracks") &&
+    paymentScreen.includes("readyState") &&
+    paymentScreen.includes("videoWidth") &&
+    paymentScreen.includes("videoHeight") &&
+    paymentScreen.includes("computedStyle") &&
     paymentScreen.includes("capture-center") &&
     paymentScreen.includes("capture-top-edge") &&
     paymentScreen.includes("capture-bottom-edge") &&
     paymentScreen.includes("check-only-center") &&
     paymentScreen.includes("use-device-camera-center"),
   "Camera diagnostics must collect viewport, visible control rectangles, and elementFromPoint hit tests."
+);
+
+assert(
+  paymentScreen.includes('data-camera-visible-video="true"') &&
+    paymentScreen.includes("cameraVideoRef.current.srcObject = stream") &&
+    paymentScreen.includes('setAttribute("playsinline", "true")') &&
+    paymentScreen.includes('setAttribute("webkit-playsinline", "true")') &&
+    paymentScreen.includes("await cameraVideoRef.current.play()") &&
+    paymentScreen.includes("setCameraVideoPlayStatus(\"playing\")") &&
+    paymentScreen.includes("Preview blocked:") &&
+    paymentScreen.includes("onLoadedMetadata") &&
+    paymentScreen.includes("onCanPlay"),
+  "The active MediaStream must attach to the visible video and expose play failures."
+);
+
+assert(
+  paymentScreen.includes("z-0 h-full w-full bg-black object-cover opacity-100") &&
+    paymentScreen.includes("[filter:none]") &&
+    paymentScreen.includes("[mix-blend-mode:normal]") &&
+    paymentScreen.includes("WebkitTransform: \"translateZ(0)\"") &&
+    paymentScreen.includes("WebkitBackfaceVisibility: \"hidden\"") &&
+    paymentScreen.includes('data-camera-transparent-dim-layer="true"') &&
+    paymentScreen.includes("pointer-events-none absolute inset-0 z-10 bg-black/20") &&
+    paymentScreen.includes("z-20") &&
+    paymentScreen.includes("bg-transparent") &&
+    !paymentScreen.includes("bg-black/30\" />"),
+  "The live preview must be the visible base layer with only transparent, pointer-safe overlays above it."
+);
+
+assert(
+  paymentScreen.includes("Diagnostics Active") &&
+    paymentScreen.includes("cameraDiagnosticsEnabled ?") &&
+    paymentScreen.includes("Camera geometry") &&
+    paymentScreen.includes("max-h-40 overflow-auto"),
+  "Diagnostic mode must be visible but compact and non-destructive."
 );
 
 assert(
