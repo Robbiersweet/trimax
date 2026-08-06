@@ -739,7 +739,7 @@ assert(
     paymentScreen.includes("window.visualViewport") &&
     paymentScreen.includes("updateCameraVisualViewport") &&
     paymentScreen.includes("h-[100dvh]") &&
-    paymentScreen.includes("landscape:grid-cols-[minmax(0,1fr)_14rem]") &&
+    paymentScreen.includes("landscape:grid-cols-[minmax(0,1fr)_13rem]") &&
     paymentScreen.includes("landscape:row-span-3") &&
     paymentScreen.includes("landscape:grid-cols-1") &&
     paymentScreen.includes("Align the remittance inside the frame") &&

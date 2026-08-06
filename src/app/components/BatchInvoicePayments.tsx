@@ -119,6 +119,36 @@ type CameraVisualViewport = {
   height: number;
 };
 
+type CameraRectSnapshot = {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+  bottom: number;
+  right: number;
+};
+
+type CameraHitTestSnapshot = {
+  point: string;
+  x: number;
+  y: number;
+  element: string;
+};
+
+type CameraGeometryDiagnostics = {
+  layoutViewport: { width: number; height: number };
+  visualViewport: CameraVisualViewport;
+  devicePixelRatio: number;
+  overlay: CameraRectSnapshot | null;
+  preview: CameraRectSnapshot | null;
+  guide: CameraRectSnapshot | null;
+  capture: CameraRectSnapshot | null;
+  checkOnly: CameraRectSnapshot | null;
+  useDeviceCamera: CameraRectSnapshot | null;
+  hitTests: CameraHitTestSnapshot[];
+  ancestorStyles: string[];
+};
+
 type CheckStubOcrResponse = {
   documentType?: RemittanceDocumentType;
   stubText?: string;
@@ -835,6 +865,10 @@ export default function BatchInvoicePayments({
   const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
   const cameraViewportRef = useRef<HTMLDivElement | null>(null);
   const cameraGuideRef = useRef<HTMLDivElement | null>(null);
+  const cameraOverlayRef = useRef<HTMLDivElement | null>(null);
+  const captureButtonRef = useRef<HTMLButtonElement | null>(null);
+  const checkOnlyModeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const deviceCameraLabelRef = useRef<HTMLLabelElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const lastCapturePointerAtRef = useRef(0);
   const cropDragRef = useRef<{
@@ -857,6 +891,21 @@ export default function BatchInvoicePayments({
   const [isCapturingFrame, setIsCapturingFrame] = useState(false);
   const [cameraVisualViewport, setCameraVisualViewport] =
     useState<CameraVisualViewport | null>(null);
+  const [cameraDiagnosticsEnabled] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+
+    return (
+      new URLSearchParams(window.location.search).get("trimaxCameraDebug") ===
+        "1" ||
+      window.localStorage.getItem("trimax.cameraDiagnostics") === "1"
+    );
+  });
+  const [cameraGeometryDiagnostics, setCameraGeometryDiagnostics] =
+    useState<CameraGeometryDiagnostics | null>(null);
+  const [cameraPipelineStages, setCameraPipelineStages] = useState<string[]>([]);
+  const [cameraFailureStage, setCameraFailureStage] = useState("");
   const [cameraGuideMode, setCameraGuideMode] = useState<
     "horizontal" | "vertical"
   >("horizontal");
@@ -1045,6 +1094,138 @@ export default function BatchInvoicePayments({
     };
   }, [checkImagePreview]);
 
+  function appendCameraStage(stage: string) {
+    setCameraPipelineStages((current) => [...current.slice(-7), stage]);
+  }
+
+  function rectSnapshot(element: Element | null): CameraRectSnapshot | null {
+    if (!element) {
+      return null;
+    }
+
+    const rect = element.getBoundingClientRect();
+
+    return {
+      top: Math.round(rect.top),
+      left: Math.round(rect.left),
+      width: Math.round(rect.width),
+      height: Math.round(rect.height),
+      bottom: Math.round(rect.bottom),
+      right: Math.round(rect.right),
+    };
+  }
+
+  function describeElement(element: Element | null) {
+    if (!element) {
+      return "none";
+    }
+
+    const tag = element.tagName.toLowerCase();
+    const id = element.id ? `#${element.id}` : "";
+    const testId = element.getAttribute("data-camera-control")
+      ? `[data-camera-control="${element.getAttribute("data-camera-control")}"]`
+      : "";
+    const capture = element.getAttribute("data-camera-capture-button")
+      ? "[data-camera-capture-button]"
+      : "";
+    const classes =
+      typeof element.className === "string" && element.className.trim()
+        ? `.${element.className.trim().split(/\s+/).slice(0, 3).join(".")}`
+        : "";
+
+    return `${tag}${id}${testId}${capture}${classes}`;
+  }
+
+  const collectCameraGeometryDiagnostics = useCallback(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const viewport = window.visualViewport;
+    const visualViewport = {
+      left: Math.round(viewport?.offsetLeft ?? 0),
+      top: Math.round(viewport?.offsetTop ?? 0),
+      width: Math.round(viewport?.width ?? window.innerWidth),
+      height: Math.round(viewport?.height ?? window.innerHeight),
+    };
+    const captureRect = rectSnapshot(captureButtonRef.current);
+    const checkOnlyRect = rectSnapshot(checkOnlyModeButtonRef.current);
+    const deviceRect = rectSnapshot(deviceCameraLabelRef.current);
+    const hitPoints = [
+      captureRect
+        ? {
+            point: "capture-center",
+            x: captureRect.left + captureRect.width / 2,
+            y: captureRect.top + captureRect.height / 2,
+          }
+        : null,
+      captureRect
+        ? {
+            point: "capture-top-edge",
+            x: captureRect.left + captureRect.width / 2,
+            y: captureRect.top + 2,
+          }
+        : null,
+      captureRect
+        ? {
+            point: "capture-bottom-edge",
+            x: captureRect.left + captureRect.width / 2,
+            y: captureRect.bottom - 2,
+          }
+        : null,
+      checkOnlyRect
+        ? {
+            point: "check-only-center",
+            x: checkOnlyRect.left + checkOnlyRect.width / 2,
+            y: checkOnlyRect.top + checkOnlyRect.height / 2,
+          }
+        : null,
+      deviceRect
+        ? {
+            point: "use-device-camera-center",
+            x: deviceRect.left + deviceRect.width / 2,
+            y: deviceRect.top + deviceRect.height / 2,
+          }
+        : null,
+    ].filter((point): point is { point: string; x: number; y: number } =>
+      Boolean(point)
+    );
+    const hitTests = hitPoints.map((point) => ({
+      point: point.point,
+      x: Math.round(point.x),
+      y: Math.round(point.y),
+      element: describeElement(document.elementFromPoint(point.x, point.y)),
+    }));
+    const ancestorStyles: string[] = [];
+    let ancestor: HTMLElement | null = cameraOverlayRef.current;
+
+    while (ancestor && ancestorStyles.length < 8) {
+      const style = window.getComputedStyle(ancestor);
+
+      ancestorStyles.push(
+        `${describeElement(ancestor)} position=${style.position} transform=${style.transform} scale=${style.scale} translate=${style.translate} zoom=${style.zoom}`
+      );
+      ancestor = ancestor.parentElement;
+    }
+
+    setCameraGeometryDiagnostics({
+      layoutViewport: {
+        width: Math.round(window.innerWidth),
+        height: Math.round(window.innerHeight),
+      },
+      visualViewport,
+      devicePixelRatio: window.devicePixelRatio,
+      overlay: rectSnapshot(cameraOverlayRef.current),
+      preview: rectSnapshot(cameraViewportRef.current),
+      guide: rectSnapshot(cameraGuideRef.current),
+      capture: captureRect,
+      checkOnly: checkOnlyRect,
+      useDeviceCamera: deviceRect,
+      hitTests,
+      ancestorStyles,
+    });
+  }, []);
+
   useEffect(() => {
     if (paymentEntryMode !== "camera") {
       stopCameraCapture();
@@ -1138,11 +1319,15 @@ export default function BatchInvoicePayments({
         const viewport = window.visualViewport;
 
         setCameraVisualViewport({
-          left: Math.round(viewport?.offsetLeft ?? 0),
-          top: Math.round(viewport?.offsetTop ?? 0),
+          left: 0,
+          top: 0,
           width: Math.round(viewport?.width ?? window.innerWidth),
           height: Math.round(viewport?.height ?? window.innerHeight),
         });
+
+        if (cameraDiagnosticsEnabled) {
+          window.requestAnimationFrame(collectCameraGeometryDiagnostics);
+        }
       });
     }
 
@@ -1184,7 +1369,26 @@ export default function BatchInvoicePayments({
         updateCameraVisualViewport
       );
     };
-  }, [paymentEntryMode]);
+  }, [
+    cameraDiagnosticsEnabled,
+    collectCameraGeometryDiagnostics,
+    paymentEntryMode,
+  ]);
+
+  useEffect(() => {
+    if (paymentEntryMode !== "camera" || !cameraDiagnosticsEnabled) {
+      return;
+    }
+
+    collectCameraGeometryDiagnostics();
+    const interval = window.setInterval(collectCameraGeometryDiagnostics, 750);
+
+    return () => window.clearInterval(interval);
+  }, [
+    cameraDiagnosticsEnabled,
+    collectCameraGeometryDiagnostics,
+    paymentEntryMode,
+  ]);
 
   function toggleInvoice(invoiceId: string) {
     setSelectedIds((current) =>
@@ -1718,6 +1922,8 @@ export default function BatchInvoicePayments({
 
     setCheckOcrStatus("reading");
     setCheckOcrMessage("Reading the remittance stub from the image...");
+    appendCameraStage("Upload started");
+    appendCameraStage("OCR started");
 
     try {
       const response = await fetch("/api/payments/extract-check-stub", {
@@ -1730,6 +1936,7 @@ export default function BatchInvoicePayments({
       const data = (await response.json().catch(() => ({}))) as CheckStubOcrResponse;
 
       if (!response.ok) {
+        setCameraFailureStage("ocr-request");
         setCheckOcrStatus(response.status === 503 ? "manual" : "error");
         setCheckOcrMessage(
           data.error ??
@@ -1739,13 +1946,16 @@ export default function BatchInvoicePayments({
       }
 
       if (!data.stubText?.trim()) {
+        setCameraFailureStage("ocr-parse");
         setCheckOcrStatus("manual");
         setCheckOcrMessage(ocrFailureMessage(data));
         return;
       }
 
+      appendCameraStage("OCR completed");
       if (intent === "check_details" || documentType === "check_only") {
         loadCheckDetailsFromExtraction(data);
+        appendCameraStage("Parsing completed");
         setCheckOcrStatus("manual");
         setPaymentEntryMode("photo");
         setCheckOcrMessage(
@@ -1755,6 +1965,7 @@ export default function BatchInvoicePayments({
       }
 
       const { reviewMatches, reconciledReview } = loadExtractedRemittance(data);
+      appendCameraStage("Parsing completed");
       const responseTotal =
         typeof data.totalAmount === "number" && data.totalAmount > 0
           ? data.totalAmount
@@ -1769,12 +1980,17 @@ export default function BatchInvoicePayments({
         (responseTotal <= 0 || Math.abs(matchedInvoiceTotal - responseTotal) < 0.01);
 
       setCheckOcrStatus(hasConfidentReview ? "ready" : "manual");
+      appendCameraStage("Matching completed");
+      if (!hasConfidentReview) {
+        setCameraFailureStage("matching-reconciliation");
+      }
       setCheckOcrMessage(
         hasConfidentReview
           ? "Remittance read. Review the payment before applying."
           : ocrFailureMessage(data)
       );
     } catch (error) {
+      setCameraFailureStage("ocr-request");
       setCheckOcrStatus("error");
       setCheckOcrMessage(
         error instanceof Error
@@ -1833,6 +2049,9 @@ export default function BatchInvoicePayments({
         imageDataUrl,
         `trimax-remittance-ocr-${Date.now()}.jpg`
       );
+      appendCameraStage(
+        `OCR upload prepared: ${preparedFile.size} bytes, preview and OCR input use same normalized crop`
+      );
       const normalizedRotation = ((nextRotation % 360) + 360) % 360;
       const rotatedSideways =
         normalizedRotation === 90 || normalizedRotation === 270;
@@ -1849,6 +2068,9 @@ export default function BatchInvoicePayments({
           : effectiveWidth / Math.max(effectiveHeight, 1)
       );
       setCaptureQualityMessage("Document quality looks ready.");
+      setCaptureQualityDetails(
+        `Saved preview and OCR input match: ${preparedFile.name}, ${preparedFile.size} bytes, crop ${effectiveWidth} x ${effectiveHeight}.`
+      );
       setPaymentEntryMode("photo");
       void extractCheckStubFromPhoto(
         imageDataUrl,
@@ -2268,6 +2490,7 @@ export default function BatchInvoicePayments({
     const video = cameraVideoRef.current;
 
     if (!video || video.videoWidth <= 0 || video.videoHeight <= 0) {
+      setCameraFailureStage("camera-ready");
       setCameraStatusMessage(
         "Camera is not ready. Use the capture button below or choose an existing photo."
       );
@@ -2278,6 +2501,7 @@ export default function BatchInvoicePayments({
     const context = canvas.getContext("2d");
 
     if (!context) {
+      setCameraFailureStage("capture-prepare");
       setCameraStatusMessage("Camera capture could not be prepared.");
       setCheckOcrStatus("error");
       setCheckOcrMessage("Camera capture could not be prepared.");
@@ -2285,11 +2509,18 @@ export default function BatchInvoicePayments({
     }
 
     setIsCapturingFrame(true);
+    setCameraFailureStage("");
+    setCameraPipelineStages(["Capturing..."]);
     setCameraStatusMessage("Capturing...");
     setCheckOcrStatus("reading");
     setCheckOcrMessage("Capturing remittance...");
     const { sourceX, sourceY, sourceWidth, sourceHeight } =
       getVisibleCameraGuideSourceRect(video);
+    appendCameraStage(
+      `Frame captured: video ${video.videoWidth}x${video.videoHeight}, crop ${Math.round(
+        sourceWidth
+      )}x${Math.round(sourceHeight)}`
+    );
     const maxOutputEdge = 3600;
     const minReadableEdge = captureDocumentType === "remittance_stub" ? 2400 : 1800;
     const outputScale = Math.min(
@@ -2311,6 +2542,8 @@ export default function BatchInvoicePayments({
       canvas.width,
       canvas.height
     );
+    appendCameraStage(`Crop created: ${canvas.width}x${canvas.height}`);
+    appendCameraStage("Image normalized");
     let captureFinished = false;
     const captureTimeout = window.setTimeout(() => {
       if (captureFinished) {
@@ -2318,6 +2551,7 @@ export default function BatchInvoicePayments({
       }
 
       captureFinished = true;
+      setCameraFailureStage("capture-timeout");
       setCameraStatusMessage("Camera capture timed out. Try Use Device Camera.");
       setCheckOcrStatus("error");
       setCheckOcrMessage("Camera capture timed out. Try Use Device Camera.");
@@ -2333,6 +2567,7 @@ export default function BatchInvoicePayments({
         window.clearTimeout(captureTimeout);
 
         if (!blob) {
+          setCameraFailureStage("save-normalized-crop");
           setCameraStatusMessage("Camera capture could not be saved.");
           setCheckOcrStatus("error");
           setCheckOcrMessage("Camera capture could not be saved.");
@@ -2347,6 +2582,7 @@ export default function BatchInvoicePayments({
         );
 
         setCameraStatusMessage("Checking image...");
+        appendCameraStage(`Normalized JPG saved: ${canvas.width}x${canvas.height}, ${blob.size} bytes`);
         stopCameraCapture();
         captureCheckImage(file, "camera", captureDocumentType, captureIntent);
       },
@@ -2599,10 +2835,12 @@ export default function BatchInvoicePayments({
   const cameraOverlayStyle: CSSProperties | undefined =
     paymentEntryMode === "camera" && cameraVisualViewport
     ? {
-        left: `${cameraVisualViewport.left}px`,
-        top: `${cameraVisualViewport.top}px`,
+        left: "0px",
+        top: "0px",
         width: `${cameraVisualViewport.width}px`,
         height: `${cameraVisualViewport.height}px`,
+        maxWidth: "100vw",
+        maxHeight: "100dvh",
       }
     : undefined;
 
@@ -2612,10 +2850,12 @@ export default function BatchInvoicePayments({
 
       {typeof document !== "undefined" && paymentEntryMode === "camera" ? createPortal(
         <div
+          ref={cameraOverlayRef}
           aria-label="Remittance camera"
           aria-modal="true"
-          className="fixed left-0 top-0 z-[2147483000] flex h-[100dvh] w-screen flex-col overflow-hidden bg-black text-white landscape:grid landscape:grid-cols-[minmax(0,1fr)_14rem] landscape:grid-rows-[auto_minmax(0,1fr)_auto] landscape:gap-2 landscape:p-2"
+          className="fixed left-0 top-0 z-[2147483000] flex h-[100dvh] w-screen flex-col overflow-hidden bg-black text-white landscape:grid landscape:grid-cols-[minmax(0,1fr)_13rem] landscape:grid-rows-[auto_minmax(0,1fr)_auto] landscape:gap-2 landscape:p-2"
           data-remittance-fullscreen-capture="true"
+          data-camera-overlay-root="true"
           role="dialog"
           style={cameraOverlayStyle}
         >
@@ -2667,6 +2907,7 @@ export default function BatchInvoicePayments({
               {remittanceDocumentModes.map((mode) => (
                 <button
                   key={mode.value}
+                  ref={mode.value === "check_only" ? checkOnlyModeButtonRef : undefined}
                   type="button"
                   disabled={isCapturingFrame}
                   onPointerDown={(event) => event.stopPropagation()}
@@ -2680,6 +2921,7 @@ export default function BatchInvoicePayments({
                       : "bg-white/10 text-zinc-100"
                   }`}
                   title={mode.help}
+                  data-camera-control={mode.value}
                 >
                   {mode.label}
                 </button>
@@ -2733,6 +2975,7 @@ export default function BatchInvoicePayments({
             </p>
             <div className="mx-auto grid max-w-lg grid-cols-2 gap-2 landscape:grid-cols-1">
               <button
+                ref={captureButtonRef}
                 type="button"
                 disabled={isCapturingFrame}
                 onPointerDown={(event) => {
@@ -2743,6 +2986,8 @@ export default function BatchInvoicePayments({
                 onTouchStart={(event) => event.stopPropagation()}
                 onTouchEnd={(event) => event.stopPropagation()}
                 onClick={handleCaptureButtonClick}
+                data-camera-capture-button="true"
+                data-camera-control="capture"
                 className={`relative z-40 col-span-2 min-h-14 rounded-full px-6 py-3 text-base font-black shadow-2xl shadow-emerald-950/40 transition disabled:cursor-wait disabled:opacity-80 landscape:col-span-1 landscape:min-h-10 landscape:px-4 landscape:py-2 landscape:text-sm ${
                   cameraReady && cameraQualityReady
                     ? "bg-emerald-400 text-black hover:bg-emerald-300"
@@ -2759,7 +3004,11 @@ export default function BatchInvoicePayments({
                       ? "Capture Remittance"
                       : "Check Capture"}
               </button>
-              <label className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-full border border-sky-200/50 bg-black/70 px-4 py-2 text-center text-sm font-black text-sky-50 backdrop-blur transition hover:bg-white/10 landscape:min-h-9 landscape:px-3 landscape:py-1.5 landscape:text-xs">
+              <label
+                ref={deviceCameraLabelRef}
+                data-camera-control="device-camera"
+                className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-full border border-sky-200/50 bg-black/70 px-4 py-2 text-center text-sm font-black text-sky-50 backdrop-blur transition hover:bg-white/10 landscape:min-h-9 landscape:px-3 landscape:py-1.5 landscape:text-xs"
+              >
                 Use Device Camera
                 <input
                   type="file"
@@ -2797,6 +3046,27 @@ export default function BatchInvoicePayments({
                 />
               </label>
             </div>
+            {cameraPipelineStages.length > 0 ? (
+              <div className="mt-2 rounded-xl border border-white/15 bg-black/70 px-2 py-1.5 text-[10px] font-semibold text-sky-50">
+                <p>{cameraPipelineStages.at(-1)}</p>
+                {cameraFailureStage ? (
+                  <p className="text-amber-200">Failed at: {cameraFailureStage}</p>
+                ) : null}
+              </div>
+            ) : null}
+            {cameraDiagnosticsEnabled && cameraGeometryDiagnostics ? (
+              <details
+                open
+                className="mt-2 max-h-40 overflow-auto rounded-xl border border-cyan-300/35 bg-cyan-950/80 px-2 py-1.5 text-[10px] text-cyan-50"
+              >
+                <summary className="cursor-pointer font-black">
+                  Camera geometry
+                </summary>
+                <pre className="mt-1 whitespace-pre-wrap break-words">
+                  {JSON.stringify(cameraGeometryDiagnostics, null, 2)}
+                </pre>
+              </details>
+            ) : null}
           </div>
         </div>,
         document.body
