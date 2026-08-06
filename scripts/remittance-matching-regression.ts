@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import assert from "node:assert/strict";
 import {
+  extractInvoiceNumbers,
   findRemittanceMatches,
   normalizeInvoiceNumber,
   parseCheckStubText,
@@ -329,6 +330,45 @@ assert(
   !match2758.matches.some((invoice) => invoice.id === "inv-split-source-506"),
   "The split-source parent must never receive the remittance payment."
 );
+
+const ocrNoisySplitCheck2758 = [
+  "DATE: 07/23/2026 CK#: 2758 TOTAL:$2,252.95",
+  "Property Account Invoice - Date Description Amount",
+  "North Creek Apartmen Paint 1INVO506 - 07/23/2026 P01 full interior paint $1,300.00",
+  "North Creek Apartmen Paint Servi INVOS07 - 07/23/2026 D01 cabinet and primer paint $952.95",
+  "PAYMENT TOTAL $2,252.95",
+].join("\n");
+const parsedOcrNoisySplitCheck2758 = parseCheckStubText(ocrNoisySplitCheck2758);
+const matchOcrNoisySplitCheck2758 = findRemittanceMatches(
+  invoices,
+  parsedOcrNoisySplitCheck2758.stubText,
+  "North Creek Apartments"
+);
+
+assert.deepEqual(extractInvoiceNumbers("1INVO506"), ["INV-0506"]);
+assert.deepEqual(extractInvoiceNumbers("viINV0506"), ["INV-0506"]);
+assert.deepEqual(extractInvoiceNumbers("ServiINV0507"), ["INV-0507"]);
+assert.deepEqual(extractInvoiceNumbers("INVOS07"), ["INV-0507"]);
+assert.deepEqual(extractInvoiceNumbers("INV0S07"), ["INV-0507"]);
+assert.deepEqual(extractInvoiceNumbers("INV050Z"), ["INV-0502"]);
+assert.deepEqual(
+  parsedOcrNoisySplitCheck2758.lines
+    .filter((line) => line.invoiceNumbers.length > 0)
+    .map((line) => ({ invoice: line.invoiceNumbers[0], amount: line.amount })),
+  [
+    { invoice: "INV-0506", amount: 1300 },
+    { invoice: "INV-0507", amount: 952.95 },
+  ],
+  "OCR-noisy 2758 rows must still parse both split child invoice rows."
+);
+assert.equal(parsedOcrNoisySplitCheck2758.totalAmount, 2252.95);
+assert.equal(matchOcrNoisySplitCheck2758.confidence, "verified");
+assert.deepEqual(
+  matchOcrNoisySplitCheck2758.matches.map((invoice) => invoice.id),
+  ["inv-506-child", "inv-507-child"],
+  "OCR-noisy 2758 remittance must reconcile to the two collectible split children."
+);
+assert.equal(matchOcrNoisySplitCheck2758.matchedTotal, 2252.95);
 
 const splitCheck2758WithoutReadableTotal = [
   "CHECK DATE: 07/23/2026 CK#: 2758",

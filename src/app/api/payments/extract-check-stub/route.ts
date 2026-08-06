@@ -10,6 +10,7 @@ export const maxDuration = 60;
 
 const MAX_IMAGE_DATA_URL_LENGTH = 20_000_000;
 const OCR_ATTEMPT_TIMEOUT_MS = 6_000;
+const OCR_ROUTE_BUDGET_MS = 48_000;
 const GOOD_OCR_SCORE = 130;
 const ROTATIONS = [0, 90, 180, 270] as const;
 const DOCUMENT_SCAN_WIDTH = 720;
@@ -580,13 +581,42 @@ async function recognizeBestText(
     );
     markStage("regions-built");
     const specs = ocrAttemptSpecs(Tesseract.PSM);
+    const fullDocumentSource = regionSources[0] ?? {
+      name: "full-document",
+      image: sources.document.image,
+      width: sources.document.width,
+      height: sources.document.height,
+    };
+    const enoughTimeForAnotherAttempt = () =>
+      Date.now() - startedAt < OCR_ROUTE_BUDGET_MS;
+    const bestParsedSoFar = () => {
+      attempts.sort((left, right) => right.score - left.score);
+      const selectedAttempt = attempts[0] ?? null;
+
+      return selectedAttempt ? parseCheckStubText(selectedAttempt.text) : null;
+    };
+    const needsMoreOcr = () => {
+      const parsed = bestParsedSoFar();
+
+      return (
+        !parsed ||
+        parsed.totalAmount <= 0 ||
+        parsed.lines.filter((line) => line.invoiceNumbers.length > 0).length < 2
+      );
+    };
 
     async function runAttemptsForSource(
       source: OcrImageSource,
-      sourceSpecs: OcrAttemptSpec[]
+      sourceSpecs: OcrAttemptSpec[],
+      rotations: readonly OcrRotation[] = ROTATIONS
     ) {
       for (const spec of sourceSpecs) {
-      for (const rotation of ROTATIONS) {
+      for (const rotation of rotations) {
+        if (!enoughTimeForAnotherAttempt()) {
+          markStage(`budget-exhausted:${source.name}`);
+          return;
+        }
+
         await worker.setParameters({
           tessedit_pageseg_mode: spec.pageMode.value,
         });
@@ -651,40 +681,37 @@ async function recognizeBestText(
         markStage(`recognized:${attemptStage}`);
 
         if (
-          source.name === "full-document" &&
           spec.variant === "grayscale-normalized" &&
           rotation === 0 &&
           shouldAcceptFirstPass(attempt)
         ) {
-          break;
+          return;
         }
       }
     }
     }
 
-    await runAttemptsForSource(regionSources[0] ?? {
-      name: "full-document",
-      image: sources.document.image,
-      width: sources.document.width,
-      height: sources.document.height,
-    }, specs);
+    await runAttemptsForSource(fullDocumentSource, [specs[0]], [0]);
 
-    attempts.sort((left, right) => right.score - left.score);
-    const firstSelected = attempts[0] ?? null;
-    const firstParsed = firstSelected ? parseCheckStubText(firstSelected.text) : null;
-    const needsRegionFallback =
-      !firstParsed ||
-      firstParsed.totalAmount <= 0 ||
-      firstParsed.lines.filter((line) => line.invoiceNumbers.length > 0).length < 2;
-
-    if (needsRegionFallback && regionSources.length > 1) {
+    if (needsMoreOcr() && regionSources.length > 1) {
       const fallbackSpecs = specs.filter((spec) =>
         ["sparse-text", "single-block"].includes(spec.pageMode.name)
       );
 
       for (const source of regionSources.slice(1)) {
-        await runAttemptsForSource(source, fallbackSpecs);
+        await runAttemptsForSource(source, fallbackSpecs, [0]);
+        if (!needsMoreOcr()) {
+          break;
+        }
       }
+    }
+
+    if (needsMoreOcr()) {
+      await runAttemptsForSource(fullDocumentSource, specs.slice(1), [0, 180]);
+    }
+
+    if (needsMoreOcr()) {
+      await runAttemptsForSource(fullDocumentSource, [specs[0]], [90, 270]);
     }
 
     attempts.sort((left, right) => right.score - left.score);

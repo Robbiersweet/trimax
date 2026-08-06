@@ -220,6 +220,30 @@ export function normalizeInvoiceNumber(value: string) {
 
 export function extractInvoiceNumbers(text: string) {
   const matches = new Set<string>();
+  const fuzzyInvoicePattern =
+    /[Il1|]?\s*I?\s*NV(?:OICE|O)?\.?\s*[-#: ]?\s*([0-9OoSsZzIl|Vv]{3,8})\b/gi;
+
+  for (const match of text.matchAll(fuzzyInvoicePattern)) {
+    const rawDigits = match[1] ?? "";
+    const prefixText = match[0].slice(0, match[0].length - rawDigits.length);
+    const ocrDigits =
+      /[Oo]$/.test(prefixText) && rawDigits.length === 3
+        ? `O${rawDigits}`
+        : rawDigits;
+    const normalized = normalizeInvoiceNumber(
+      ocrDigits
+        .replace(/[Vv]/g, "")
+        .replace(/[Oo]/g, "0")
+        .replace(/[Ss]/g, "5")
+        .replace(/[Zz]/g, "2")
+        .replace(/[Il|]/g, "1")
+    );
+
+    if (normalized) {
+      matches.add(normalized);
+    }
+  }
+
   const normalizedText = text
     .replace(/\b[Il1|]NV/gi, "INV")
     .replace(
