@@ -344,6 +344,20 @@ const matchOcrNoisySplitCheck2758 = findRemittanceMatches(
   parsedOcrNoisySplitCheck2758.stubText,
   "North Creek Apartments"
 );
+const noisyOcrFragments = [
+  "North Creek Apart",
+  "Eorth Creek Apart",
+  "Property Account invoice - Date",
+  "2734",
+  "R&L Creat",
+  "OCR REGION",
+  "x",
+  "INV0506",
+].join("\n");
+const parsedNoisyOcrFragments = parseCheckStubText(noisyOcrFragments);
+const headerOnlyOcr = parseCheckStubText(
+  "Property Account invoice - Date Description Amount"
+);
 
 assert.deepEqual(extractInvoiceNumbers("1INVO506"), ["INV-0506"]);
 assert.deepEqual(extractInvoiceNumbers("viINV0506"), ["INV-0506"]);
@@ -369,6 +383,20 @@ assert.deepEqual(
   "OCR-noisy 2758 remittance must reconcile to the two collectible split children."
 );
 assert.equal(matchOcrNoisySplitCheck2758.matchedTotal, 2252.95);
+assert.equal(
+  parsedNoisyOcrFragments.lines.filter(
+    (line) => line.invoiceNumbers.length > 0 && line.amount > 0
+  ).length,
+  0,
+  "Disconnected OCR fragments must not count as structurally valid invoice rows."
+);
+assert.equal(
+  headerOnlyOcr.lines.filter(
+    (line) => line.invoiceNumbers.length > 0 && line.amount > 0
+  ).length,
+  0,
+  "Remittance header text alone must not trigger row-found confidence."
+);
 
 const splitCheck2758WithoutReadableTotal = [
   "CHECK DATE: 07/23/2026 CK#: 2758",
@@ -724,10 +752,16 @@ assert(
 );
 assert(
   paymentScreen.includes("async function captureFromTrimaxCamera(") &&
+    paymentScreen.includes("function handleCaptureButtonPointerUp") &&
+    paymentScreen.includes("function handleCaptureButtonClick") &&
+    paymentScreen.includes("lastCapturePointerAtRef") &&
     paymentScreen.includes("if (isCapturingFrame)") &&
     paymentScreen.includes("handleCameraModeSelection(event, mode.value)") &&
     paymentScreen.includes("if (isCapturingFrame) {\n      return;\n    }\n\n    setCaptureDocumentType(documentType)") &&
     paymentScreen.includes("onPointerDown={(event) => event.stopPropagation()}") &&
+    paymentScreen.includes("onPointerUp={handleCaptureButtonPointerUp}") &&
+    paymentScreen.includes("onClick={handleCaptureButtonClick}") &&
+    paymentScreen.includes("onTouchEnd={(event) => event.stopPropagation()}") &&
     paymentScreen.includes("onTouchStart={(event) => event.stopPropagation()}"),
   "Capture and document-mode taps must be isolated so Capture cannot trigger a mode change or duplicate capture."
 );
@@ -761,8 +795,17 @@ assert(
   ocrRoute.includes("markStage(`timeout:${attemptStage}`)") &&
     ocrRoute.includes("if (attempts.length > 0)") &&
     ocrRoute.includes("return;") &&
-    ocrRoute.includes("regionSummaries"),
+    ocrRoute.includes("regionSummaries") &&
+    ocrRoute.includes("candidateSummaries"),
   "OCR route must preserve earlier partial OCR attempts when a later attempt times out."
+);
+assert(
+  ocrRoute.includes("candidateStructureScore") &&
+    ocrRoute.includes("structurallyValidRemittanceRows") &&
+    ocrRoute.includes("const finalText = selected?.text ?? \"\"") &&
+    !ocrRoute.includes("--- OCR REGION ---") &&
+    ocrRoute.includes("Some invoice text was detected, but invoice rows could not be confirmed."),
+  "OCR route must keep OCR candidates source-separated and avoid parsing concatenated noisy region text."
 );
 assert(
   paymentScreen.includes("Capture stub separately") &&

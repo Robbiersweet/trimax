@@ -430,7 +430,12 @@ function scoreOcrText(text: string, confidence: number) {
   const currencyMatches =
     scoringText.match(/\$?\s*\d{1,3}(?:,\d{3})*(?:\.\d{2})\b/g) ?? [];
   const parsed = parseCheckStubText(scoringText);
-  const invoiceNumbers = parsed.lines.flatMap((line) => line.invoiceNumbers);
+  const structurallyValidRows = parsed.lines.filter(
+    (line) => line.invoiceNumbers.length > 0 && line.amount > 0
+  );
+  const invoiceNumbers = structurallyValidRows.flatMap(
+    (line) => line.invoiceNumbers
+  );
   const checkNumberNearLabel = /\b(?:CK|CHK|CHECK)\s*#?\s*:?\s*\d{3,5}\b/i.test(
     scoringText.replace(/[Oo]/g, "0")
   );
@@ -438,14 +443,14 @@ function scoreOcrText(text: string, confidence: number) {
   const hasApartments = /apartments?/i.test(scoringText);
   const explicitTotal = hasExplicitRemittanceTotal(scoringText);
   const referencedLineTotal = parsed.lines
-    .filter((line) => line.invoiceNumbers.length > 0)
+    .filter((line) => line.invoiceNumbers.length > 0 && line.amount > 0)
     .reduce((total, line) => total + line.amount, 0);
   const linesReconcile =
     parsed.totalAmount > 0 &&
     referencedLineTotal > 0 &&
     Math.abs(referencedLineTotal - parsed.totalAmount) < 0.01;
   const hasMultipleRemittanceRows =
-    parsed.lines.filter((line) => line.invoiceNumbers.length > 0).length > 1;
+    structurallyValidRows.length > 1;
   const noInvoicesDespiteAmounts =
     invoiceNumbers.length === 0 && currencyMatches.length >= 2;
   const implausibleCheckNumber =
@@ -466,6 +471,7 @@ function scoreOcrText(text: string, confidence: number) {
     confidence +
     invoiceMatches.length * 35 +
     invoiceNumbers.length * 28 +
+    structurallyValidRows.length * 55 +
     currencyMatches.length * 12 +
     fieldCount * 28 +
     (checkNumberNearLabel ? 45 : 0) +
@@ -478,6 +484,43 @@ function scoreOcrText(text: string, confidence: number) {
     (headerPayor ? 70 : 0) -
     (implausibleCheckNumber ? 55 : 0) -
     (noInvoicesDespiteAmounts ? 60 : 0)
+  );
+}
+
+function structurallyValidRemittanceRows(text: string) {
+  return parseCheckStubText(withoutMicrBandText(text)).lines.filter(
+    (line) => line.invoiceNumbers.length > 0 && line.amount > 0
+  );
+}
+
+function candidateStructureScore(attempt: OcrAttempt) {
+  const text = withoutMicrBandText(attempt.text);
+  const parsed = parseCheckStubText(text);
+  const validRows = parsed.lines.filter(
+    (line) => line.invoiceNumbers.length > 0 && line.amount > 0
+  );
+  const lineTotal = validRows.reduce((total, line) => total + line.amount, 0);
+  const reconciles =
+    parsed.totalAmount > 0 &&
+    lineTotal > 0 &&
+    Math.abs(lineTotal - parsed.totalAmount) < 0.01;
+  const checkNumberNearLabel = /\b(?:CK|CHK|CHECK)\s*#?\s*:?\s*\d{3,5}\b/i.test(
+    text.replace(/[Oo]/g, "0")
+  );
+  const hasHeader = /\bproperty\b.*\binvoice\b.*\bamount\b/i.test(
+    text.replace(/\n/g, " ")
+  );
+
+  return (
+    attempt.score +
+    validRows.length * 90 +
+    (validRows.length >= 2 ? 120 : 0) +
+    (reconciles ? 180 : 0) +
+    (hasHeader ? 45 : 0) +
+    (parsed.totalAmount > 0 ? 60 : 0) +
+    (parsed.checkDate ? 35 : 0) +
+    (parsed.checkNumber && checkNumberNearLabel ? 50 : 0) -
+    (parsed.checkNumber && !checkNumberNearLabel ? 45 : 0)
   );
 }
 
@@ -510,9 +553,11 @@ function withoutMicrBandText(text: string) {
 function shouldAcceptFirstPass(attempt: OcrAttempt) {
   const text = withoutMicrBandText(attempt.text);
   const parsed = parseCheckStubText(text);
-  const hasInvoice = parsed.lines.some((line) => line.invoiceNumbers.length > 0);
+  const hasInvoice = parsed.lines.some(
+    (line) => line.invoiceNumbers.length > 0 && line.amount > 0
+  );
   const referencedLineTotal = parsed.lines
-    .filter((line) => line.invoiceNumbers.length > 0)
+    .filter((line) => line.invoiceNumbers.length > 0 && line.amount > 0)
     .reduce((total, line) => total + line.amount, 0);
   const invoiceLinesReconcile =
     parsed.totalAmount <= 0 ||
@@ -601,7 +646,9 @@ async function recognizeBestText(
       return (
         !parsed ||
         parsed.totalAmount <= 0 ||
-        parsed.lines.filter((line) => line.invoiceNumbers.length > 0).length < 2
+        parsed.lines.filter(
+          (line) => line.invoiceNumbers.length > 0 && line.amount > 0
+        ).length < 2
       );
     };
 
@@ -714,24 +761,33 @@ async function recognizeBestText(
       await runAttemptsForSource(fullDocumentSource, [specs[0]], [90, 270]);
     }
 
-    attempts.sort((left, right) => right.score - left.score);
+    attempts.sort(
+      (left, right) =>
+        candidateStructureScore(right) - candidateStructureScore(left)
+    );
 
     const selected = attempts[0] ?? null;
-    const regionBestText = regionSources
+    const regionBestAttempts = regionSources
       .map((source) =>
         attempts
           .filter((attempt) => attempt.region === source.name)
-          .sort((left, right) => right.score - left.score)[0]?.text ?? ""
+          .sort(
+            (left, right) =>
+              candidateStructureScore(right) - candidateStructureScore(left)
+          )[0] ?? null
       )
-      .filter(Boolean);
-    const combinedText = Array.from(new Set([selected?.text ?? "", ...regionBestText]))
-      .filter(Boolean)
-      .join("\n\n--- OCR REGION ---\n\n");
-    const combinedScore = scoreOcrText(combinedText, selected?.confidence ?? 0);
-    const finalText =
-      combinedText && combinedScore >= (selected?.score ?? 0)
-        ? combinedText
-        : selected?.text ?? "";
+      .filter((attempt): attempt is OcrAttempt => Boolean(attempt));
+    const candidateSummaries = attempts.slice(0, 8).map((attempt) => ({
+      region: attempt.region,
+      rotation: attempt.rotation,
+      variant: attempt.variant,
+      pageMode: attempt.pageMode,
+      confidence: attempt.confidence,
+      score: Math.round(candidateStructureScore(attempt)),
+      validRows: structurallyValidRemittanceRows(attempt.text).length,
+      summary: redactedTextSummary(attempt.text),
+    }));
+    const finalText = selected?.text ?? "";
 
     return {
       text: finalText,
@@ -753,7 +809,10 @@ async function recognizeBestText(
         selectedConfidence: selected?.confidence,
         stageTimings,
         selectedSummary: redactedTextSummary(selected?.text ?? ""),
-        regionSummaries: regionBestText.map(redactedTextSummary),
+        regionSummaries: regionBestAttempts.map((attempt) =>
+          redactedTextSummary(attempt.text)
+        ),
+        candidateSummaries,
       },
     };
   } finally {
@@ -829,13 +888,20 @@ export async function POST(request: Request) {
         error: "Could not read the payment fields. Adjust crop or enter manually.",
       });
     }
+    const confirmedInvoiceRowCount = extraction.lines.filter(
+      (line) => line.invoiceNumbers.length > 0 && line.amount > 0
+    ).length;
     const diagnosticSummary = [
       extraction.checkNumber ? "Check number found." : "Check number not found.",
       extraction.checkDate ? "Payment date found." : "Payment date not found.",
       extraction.totalAmount > 0 ? "Document total found." : "Document total not found.",
-      extractedInvoiceNumbers.length > 0
-        ? `${extractedInvoiceNumbers.length} invoice row${extractedInvoiceNumbers.length === 1 ? "" : "s"} found.`
-        : "Remittance rows not found.",
+      confirmedInvoiceRowCount > 0
+        ? `${confirmedInvoiceRowCount} confirmed invoice row${
+            confirmedInvoiceRowCount === 1 ? "" : "s"
+          } found.`
+        : extractedInvoiceNumbers.length > 0
+          ? "Some invoice text was detected, but invoice rows could not be confirmed."
+          : "Remittance rows not found.",
     ];
 
     return NextResponse.json({

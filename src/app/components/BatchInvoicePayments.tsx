@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  MouseEvent,
   PointerEvent,
   useCallback,
   useEffect,
@@ -134,6 +135,14 @@ type CheckStubOcrResponse = {
     selectedVariant?: string;
     selectedConfidence?: number;
     stageTimings?: Record<string, number>;
+    candidateSummaries?: Array<{
+      region?: string;
+      rotation?: number;
+      variant?: string;
+      confidence?: number;
+      validRows?: number;
+      summary?: string;
+    }>;
   };
   error?: string;
 };
@@ -817,6 +826,7 @@ export default function BatchInvoicePayments({
   const cameraViewportRef = useRef<HTMLDivElement | null>(null);
   const cameraGuideRef = useRef<HTMLDivElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
+  const lastCapturePointerAtRef = useRef(0);
   const cropDragRef = useRef<{
     target: CropDragTarget;
     startX: number;
@@ -1525,22 +1535,44 @@ export default function BatchInvoicePayments({
     const hasCheckNumber = Boolean(data.checkNumber?.trim()) || found("Check number found");
     const hasDate = Boolean(data.checkDate?.trim()) || found("Payment date found");
     const hasTotal = typeof data.totalAmount === "number" && data.totalAmount > 0;
-    const invoiceCount =
+    const confirmedInvoiceCount =
       data.lines?.filter(
         (line) =>
-          Array.isArray(line.invoiceNumbers) && line.invoiceNumbers.length > 0
+          Array.isArray(line.invoiceNumbers) &&
+          line.invoiceNumbers.length > 0 &&
+          ((typeof line.amount === "number" && line.amount > 0) ||
+            (typeof line.amount === "string" && parseMoney(line.amount) > 0))
       ).length ?? 0;
+    const hasInvoiceFragments = Boolean(
+      data.lines?.some(
+        (line) =>
+          Array.isArray(line.invoiceNumbers) && line.invoiceNumbers.length > 0
+      ) ||
+        summary.some((item) =>
+          item
+            .toLowerCase()
+            .includes("invoice text was detected")
+        )
+    );
 
-    if ((hasCheckNumber || hasDate) && !hasTotal && invoiceCount === 0) {
+    if ((hasCheckNumber || hasDate) && !hasTotal && confirmedInvoiceCount === 0) {
       return "Check details were found, but the amount and remittance rows were not. Adjust crop around the invoice rows or enter the missing amount/invoices manually.";
     }
 
-    if (!hasTotal && invoiceCount > 0) {
-      return "Remittance rows were found, but the document total was not. Enter the check amount and verify the selected invoices.";
+    if (!hasTotal && confirmedInvoiceCount > 0) {
+      return "Invoice rows were found, but the document total was not confirmed. Enter the check amount and verify the selected invoices.";
     }
 
-    if (hasTotal && invoiceCount === 0) {
+    if (hasTotal && confirmedInvoiceCount === 0) {
+      if (hasInvoiceFragments) {
+        return "Some text was detected, but invoice rows could not be confirmed. Invoice numbers or amounts are missing.";
+      }
+
       return "Check amount was found, but remittance invoice rows were not. Adjust crop around the invoice rows or select the missing invoices manually.";
+    }
+
+    if (hasInvoiceFragments && confirmedInvoiceCount === 0) {
+      return "Some text was detected, but invoice rows could not be confirmed. Invoice numbers or amounts are missing.";
     }
 
     return data.error ?? "Could not read this remittance. Adjust crop or enter manually.";
@@ -2261,6 +2293,24 @@ export default function BatchInvoicePayments({
     );
   }
 
+  function handleCaptureButtonPointerUp(event: PointerEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    lastCapturePointerAtRef.current = Date.now();
+    void captureFromTrimaxCamera(event);
+  }
+
+  function handleCaptureButtonClick(event: MouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (Date.now() - lastCapturePointerAtRef.current < 500) {
+      return;
+    }
+
+    void captureFromTrimaxCamera(event);
+  }
+
   function captureCheckImage(
     file: File | undefined,
     source: "camera" | "existing" = "existing",
@@ -2547,6 +2597,9 @@ export default function BatchInvoicePayments({
                   type="button"
                   disabled={isCapturingFrame}
                   onPointerDown={(event) => event.stopPropagation()}
+                  onPointerUp={(event) => event.stopPropagation()}
+                  onTouchStart={(event) => event.stopPropagation()}
+                  onTouchEnd={(event) => event.stopPropagation()}
                   onClick={(event) => handleCameraModeSelection(event, mode.value)}
                   className={`relative z-10 min-h-10 rounded-xl px-2 py-2 text-xs font-black transition disabled:cursor-not-allowed disabled:opacity-60 landscape:min-h-9 landscape:py-1.5 ${
                     captureDocumentType === mode.value
@@ -2609,9 +2662,14 @@ export default function BatchInvoicePayments({
               <button
                 type="button"
                 disabled={isCapturingFrame}
-                onPointerDown={(event) => event.stopPropagation()}
+                onPointerDown={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                }}
+                onPointerUp={handleCaptureButtonPointerUp}
                 onTouchStart={(event) => event.stopPropagation()}
-                onClick={captureFromTrimaxCamera}
+                onTouchEnd={(event) => event.stopPropagation()}
+                onClick={handleCaptureButtonClick}
                 className={`relative z-40 col-span-2 min-h-14 rounded-full px-6 py-3 text-base font-black shadow-2xl shadow-emerald-950/40 transition disabled:cursor-wait disabled:opacity-80 landscape:col-span-1 landscape:min-h-10 landscape:px-4 landscape:py-2 landscape:text-sm ${
                   cameraReady && cameraQualityReady
                     ? "bg-emerald-400 text-black hover:bg-emerald-300"
