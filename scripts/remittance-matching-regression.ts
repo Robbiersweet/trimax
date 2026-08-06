@@ -735,7 +735,7 @@ assert(
     paymentScreen.includes("createPortal(") &&
     paymentScreen.includes("document.body") &&
     paymentScreen.includes('className="fixed left-0 top-0 z-[2147483000]') &&
-    paymentScreen.includes("cameraOverlayStyle") &&
+    !paymentScreen.includes("cameraOverlayStyle") &&
     paymentScreen.includes("window.visualViewport") &&
     paymentScreen.includes("updateCameraVisualViewport") &&
     paymentScreen.includes("h-[100dvh]") &&
@@ -826,14 +826,14 @@ assert(
 );
 assert(
   paymentScreen.includes("async function captureFromTrimaxCamera(") &&
-    paymentScreen.includes("function handleCaptureButtonPointerUp") &&
+    paymentScreen.includes("function handleCaptureButtonPointerDown") &&
     paymentScreen.includes("function handleCaptureButtonClick") &&
     paymentScreen.includes("lastCapturePointerAtRef") &&
     paymentScreen.includes("if (isCapturingFrame)") &&
     paymentScreen.includes("handleCameraModeSelection(event, mode.value)") &&
     paymentScreen.includes("if (isCapturingFrame) {\n      return;\n    }\n\n    setCaptureDocumentType(documentType)") &&
     paymentScreen.includes("onPointerDown={(event) => event.stopPropagation()}") &&
-    paymentScreen.includes("onPointerUp={handleCaptureButtonPointerUp}") &&
+    paymentScreen.includes("onPointerDown={handleCaptureButtonPointerDown}") &&
     paymentScreen.includes("onClick={handleCaptureButtonClick}") &&
     paymentScreen.includes("onTouchEnd={(event) => event.stopPropagation()}") &&
     paymentScreen.includes("onTouchStart={(event) => event.stopPropagation()}"),
@@ -876,12 +876,23 @@ assert(
   "OCR route must preserve earlier partial OCR attempts when a later attempt times out."
 );
 assert(
+  ocrRoute.includes("stub-row-band") &&
+    ocrRoute.includes("stub-invoice-account-column") &&
+    ocrRoute.includes("stub-description-column") &&
+    ocrRoute.includes("stub-amount-column") &&
+    ocrRoute.includes('"row-focused"') &&
+    ocrRoute.includes("targetEdge = variant === \"row-focused\" ? 3600 : 2400") &&
+    ocrRoute.includes("rowSources"),
+  "OCR route must run targeted high-resolution remittance row and amount-column passes."
+);
+assert(
   ocrRoute.includes("candidateStructureScore") &&
     ocrRoute.includes("structurallyValidRemittanceRows") &&
-    ocrRoute.includes("const finalText = selected?.text ?? \"\"") &&
+    ocrRoute.includes("structurallyUsefulRegionAttempts") &&
+    ocrRoute.includes("--- OCR STRUCTURED REGION ---") &&
     !ocrRoute.includes("--- OCR REGION ---") &&
     ocrRoute.includes("Some invoice text was detected, but invoice rows could not be confirmed."),
-  "OCR route must keep OCR candidates source-separated and avoid parsing concatenated noisy region text."
+  "OCR route must keep OCR candidates source-separated and merge only structurally useful region text."
 );
 assert(
   paymentScreen.includes("Capture stub separately") &&
@@ -892,6 +903,8 @@ assert(
 );
 assert(
   paymentScreen.includes("shouldAutoRead") &&
+    paymentScreen.includes("guided-camera-crop") &&
+    paymentScreen.includes("manual crop skipped") &&
     paymentScreen.includes("Document detected. Reading remittance...") &&
     paymentScreen.includes("Use image as-is or adjust crop before reading.") &&
     paymentScreen.includes("readPreparedRemittanceFromFile(") &&

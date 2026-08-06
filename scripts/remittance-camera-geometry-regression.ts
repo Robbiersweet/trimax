@@ -86,13 +86,13 @@ assert(
   paymentScreen.includes('data-camera-overlay-root="true"') &&
     paymentScreen.includes('data-remittance-fullscreen-capture="true"') &&
     paymentScreen.includes("document.body") &&
-    paymentScreen.includes("left: \"0px\"") &&
-    paymentScreen.includes("top: \"0px\"") &&
-    paymentScreen.includes("width: `${cameraVisualViewport.width}px`") &&
-    paymentScreen.includes("height: `${cameraVisualViewport.height}px`") &&
+    paymentScreen.includes("fixed left-0 top-0") &&
+    paymentScreen.includes("h-[100dvh] w-screen") &&
+    !paymentScreen.includes("width: `${cameraVisualViewport.width}px`") &&
+    !paymentScreen.includes("height: `${cameraVisualViewport.height}px`") &&
     !paymentScreen.includes("left: `${cameraVisualViewport.left}px`") &&
     !paymentScreen.includes("top: `${cameraVisualViewport.top}px`"),
-  "The camera portal must be one root fixed layer sized to the visual viewport without offsetting its hitbox."
+  "The camera portal must be one root fixed viewport layer without visualViewport-sized hitbox offsets."
 );
 
 assert(
@@ -106,14 +106,25 @@ assert(
 );
 
 assert(
-  paymentScreen.includes('data-camera-capture-button="true"') &&
+    paymentScreen.includes('data-camera-capture-button="true"') &&
     paymentScreen.includes('data-camera-control="capture"') &&
     paymentScreen.includes('data-camera-control={mode.value}') &&
     paymentScreen.includes('data-camera-control="device-camera"') &&
-    paymentScreen.includes("handleCaptureButtonPointerUp") &&
+    paymentScreen.includes("handleCaptureButtonPointerDown") &&
+    paymentScreen.includes("setPointerCapture") &&
     paymentScreen.includes("event.preventDefault();") &&
     paymentScreen.includes("event.stopPropagation();"),
   "The visible Capture and mode controls must be isolated, measured hit targets."
+);
+
+assert(
+  paymentScreen.includes("capture-center") &&
+    paymentScreen.includes("capture-top-edge") &&
+    paymentScreen.includes("capture-bottom-edge") &&
+    paymentScreen.includes("below-visible-capture") &&
+    paymentScreen.includes("lastActualTap") &&
+    paymentScreen.includes("capture-pointer-down"),
+  "Diagnostics must prove visible Capture points hit Capture and tapping below it is a separate target."
 );
 
 assert(

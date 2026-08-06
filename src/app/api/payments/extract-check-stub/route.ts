@@ -33,10 +33,11 @@ type OcrVariant =
   | "grayscale-normalized"
   | "high-contrast"
   | "adaptive-threshold"
-  | "sharpened";
+  | "sharpened"
+  | "row-focused";
 
 type TesseractPageMode = {
-  name: "sparse-text" | "single-block" | "auto";
+  name: "sparse-text" | "single-block" | "single-line" | "auto";
   value: import("tesseract.js").PSM;
 };
 
@@ -207,11 +208,12 @@ async function cropImageRegion(input: Buffer, bounds: ImageBounds) {
 }
 
 async function preprocessForOcr(input: Buffer, rotation: OcrRotation, variant: OcrVariant) {
+  const targetEdge = variant === "row-focused" ? 3600 : 2400;
   const pipeline = sharp(input, { limitInputPixels: 48_000_000 })
     .rotate(rotation)
     .resize({
-      width: 2400,
-      height: 2400,
+      width: targetEdge,
+      height: targetEdge,
       fit: "inside",
       withoutEnlargement: false,
     })
@@ -223,6 +225,8 @@ async function preprocessForOcr(input: Buffer, rotation: OcrRotation, variant: O
     pipeline.linear(1.65, -36).sharpen({ sigma: 1.35 });
   } else if (variant === "adaptive-threshold") {
     pipeline.linear(1.5, -26).median(1).threshold(165).sharpen({ sigma: 1.1 });
+  } else if (variant === "row-focused") {
+    pipeline.linear(1.85, -48).median(1).sharpen({ sigma: 1.9 });
   } else if (variant === "sharpened") {
     pipeline.linear(1.25, -14).sharpen({ sigma: 1.8 });
   } else {
@@ -312,6 +316,42 @@ async function buildRegionSources(
           top: Math.round(height * 0.18),
           width,
           height: Math.round(height * 0.68),
+        },
+      },
+      {
+        name: "stub-row-band",
+        bounds: {
+          left: 0,
+          top: Math.round(height * 0.2),
+          width,
+          height: Math.round(height * 0.48),
+        },
+      },
+      {
+        name: "stub-invoice-account-column",
+        bounds: {
+          left: 0,
+          top: Math.round(height * 0.2),
+          width: Math.round(width * 0.62),
+          height: Math.round(height * 0.42),
+        },
+      },
+      {
+        name: "stub-description-column",
+        bounds: {
+          left: Math.round(width * 0.38),
+          top: Math.round(height * 0.2),
+          width: Math.round(width * 0.38),
+          height: Math.round(height * 0.42),
+        },
+      },
+      {
+        name: "stub-amount-column",
+        bounds: {
+          left: Math.round(width * 0.68),
+          top: Math.round(height * 0.18),
+          width: width - Math.round(width * 0.68),
+          height: Math.round(height * 0.58),
         },
       },
       {
@@ -599,6 +639,10 @@ function ocrAttemptSpecs(
       variant: "sharpened",
       pageMode: { name: "sparse-text", value: psm.SPARSE_TEXT },
     },
+    {
+      variant: "row-focused",
+      pageMode: { name: "single-line", value: psm.SINGLE_LINE },
+    },
   ];
 
   return retryStrategy === "alternate"
@@ -753,6 +797,22 @@ async function recognizeBestText(
 
     await runAttemptsForSource(fullDocumentSource, [specs[0]], [0]);
 
+    if (needsMoreOcr() && documentType === "remittance_stub") {
+      const rowFocusedSpec = specs.find((spec) => spec.variant === "row-focused");
+      const rowSources = regionSources.filter((source) =>
+        /stub-(?:row|invoice|description|amount)/i.test(source.name)
+      );
+
+      if (rowFocusedSpec) {
+        for (const source of rowSources) {
+          await runAttemptsForSource(source, [rowFocusedSpec], [0]);
+          if (!needsMoreOcr()) {
+            break;
+          }
+        }
+      }
+    }
+
     if (needsMoreOcr() && regionSources.length > 1) {
       const fallbackSpecs = specs.filter((spec) =>
         ["sparse-text", "single-block"].includes(spec.pageMode.name)
@@ -778,6 +838,62 @@ async function recognizeBestText(
       (left, right) =>
         candidateStructureScore(right) - candidateStructureScore(left)
     );
+
+    const structurallyUsefulRegionAttempts = attempts
+      .filter((attempt) => {
+        const parsed = parseCheckStubText(withoutMicrBandText(attempt.text));
+        const validRows = parsed.lines.filter(
+          (line) => line.invoiceNumbers.length > 0 && line.amount > 0
+        );
+
+        return (
+          validRows.length > 0 ||
+          parsed.totalAmount > 0 ||
+          parsed.checkDate ||
+          (parsed.checkNumber &&
+            /\b(?:CK|CHK|CHECK)\s*#?\s*:?\s*\d{3,5}\b/i.test(
+              attempt.text.replace(/[Oo]/g, "0")
+            ))
+        );
+      })
+      .reduce<OcrAttempt[]>((selectedAttempts, attempt) => {
+        if (
+          selectedAttempts.some(
+            (selectedAttempt) => selectedAttempt.region === attempt.region
+          )
+        ) {
+          return selectedAttempts;
+        }
+
+        return [...selectedAttempts, attempt];
+      }, []);
+
+    if (structurallyUsefulRegionAttempts.length > 1) {
+      const mergedText = structurallyUsefulRegionAttempts
+        .map((attempt) => attempt.text)
+        .join("\n\n--- OCR STRUCTURED REGION ---\n\n");
+      const mergedAttempt: OcrAttempt = {
+        region: "structured-region-merge",
+        variant: "row-focused",
+        pageMode: "sparse-text",
+        rotation: 0,
+        text: mergedText,
+        confidence:
+          structurallyUsefulRegionAttempts.reduce(
+            (total, attempt) => total + attempt.confidence,
+            0
+          ) / structurallyUsefulRegionAttempts.length,
+        score: scoreOcrText(mergedText, 0),
+        imageWidth: sources.document.width,
+        imageHeight: sources.document.height,
+      };
+
+      attempts.push(mergedAttempt);
+      attempts.sort(
+        (left, right) =>
+          candidateStructureScore(right) - candidateStructureScore(left)
+      );
+    }
 
     const selected = attempts[0] ?? null;
     const regionBestAttempts = regionSources

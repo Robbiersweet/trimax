@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  CSSProperties,
   MouseEvent,
   PointerEvent,
   useCallback,
@@ -144,6 +143,13 @@ type CameraHitTestSnapshot = {
   element: string;
 };
 
+type CameraActualTapSnapshot = {
+  point: string;
+  x: number;
+  y: number;
+  element: string;
+} | null;
+
 type CameraGeometryDiagnostics = {
   runtime: {
     displayMode: "standalone" | "browser";
@@ -170,6 +176,7 @@ type CameraGeometryDiagnostics = {
   checkOnly: CameraRectSnapshot | null;
   useDeviceCamera: CameraRectSnapshot | null;
   hitTests: CameraHitTestSnapshot[];
+  lastActualTap: CameraActualTapSnapshot;
   ancestorStyles: string[];
   qualityGate: {
     sourceWidth: number;
@@ -238,6 +245,8 @@ type CompletedPaymentSummary = {
 } | null;
 
 const trimaxBuildIdentifier = "remittance-diagnostics-v3";
+
+const guidedCameraCropLabel = "guided-camera-crop";
 
 type CropDragTarget =
   | "move"
@@ -683,9 +692,12 @@ async function detectDefaultCropBox(file: File): Promise<CropSuggestion> {
         : qualityMessages.length <= 1 && documentAreaRatio >= 0.28
           ? "medium"
           : "low";
+    const hasReadableRemittanceResolution =
+      Math.max(effectiveWidth, effectiveHeight) >= 1800 &&
+      Math.min(effectiveWidth, effectiveHeight) >= 650;
     const shouldAutoRead =
       confidence === "high" &&
-      Math.min(effectiveWidth, effectiveHeight) >= 1000 &&
+      hasReadableRemittanceResolution &&
       quality.ok;
 
     if (isTightlyFramed) {
@@ -967,8 +979,6 @@ export default function BatchInvoicePayments({
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraQualityReady, setCameraQualityReady] = useState(false);
   const [isCapturingFrame, setIsCapturingFrame] = useState(false);
-  const [cameraVisualViewport, setCameraVisualViewport] =
-    useState<CameraVisualViewport | null>(null);
   const [cameraDiagnosticsEnabled] = useState(() => {
     if (typeof window === "undefined") {
       return false;
@@ -984,6 +994,8 @@ export default function BatchInvoicePayments({
     useState<CameraGeometryDiagnostics | null>(null);
   const [lastQualityGate, setLastQualityGate] =
     useState<CameraGeometryDiagnostics["qualityGate"]>(null);
+  const [lastActualCaptureTap, setLastActualCaptureTap] =
+    useState<CameraActualTapSnapshot>(null);
   const [cameraPipelineStages, setCameraPipelineStages] = useState<string[]>([]);
   const [cameraFailureStage, setCameraFailureStage] = useState("");
   const [cameraVideoPlayStatus, setCameraVideoPlayStatus] =
@@ -1259,6 +1271,13 @@ export default function BatchInvoicePayments({
             y: captureRect.bottom - 2,
           }
         : null,
+      captureRect
+        ? {
+            point: "below-visible-capture",
+            x: captureRect.left + captureRect.width / 2,
+            y: captureRect.bottom + Math.max(18, captureRect.height * 0.45),
+          }
+        : null,
       checkOnlyRect
         ? {
             point: "check-only-center",
@@ -1339,10 +1358,11 @@ export default function BatchInvoicePayments({
       checkOnly: checkOnlyRect,
       useDeviceCamera: deviceRect,
       hitTests,
+      lastActualTap: lastActualCaptureTap,
       ancestorStyles,
       qualityGate: lastQualityGate,
     });
-  }, [cameraVideoPlayStatus, lastQualityGate]);
+  }, [cameraVideoPlayStatus, lastActualCaptureTap, lastQualityGate]);
 
   useEffect(() => {
     if (paymentEntryMode !== "camera") {
@@ -1446,15 +1466,6 @@ export default function BatchInvoicePayments({
       }
 
       viewportFrame = window.requestAnimationFrame(() => {
-        const viewport = window.visualViewport;
-
-        setCameraVisualViewport({
-          left: 0,
-          top: 0,
-          width: Math.round(viewport?.width ?? window.innerWidth),
-          height: Math.round(viewport?.height ?? window.innerHeight),
-        });
-
         if (cameraDiagnosticsEnabled) {
           window.requestAnimationFrame(collectCameraGeometryDiagnostics);
         }
@@ -2747,10 +2758,19 @@ export default function BatchInvoicePayments({
     );
   }
 
-  function handleCaptureButtonPointerUp(event: PointerEvent<HTMLButtonElement>) {
+  function handleCaptureButtonPointerDown(event: PointerEvent<HTMLButtonElement>) {
     event.preventDefault();
     event.stopPropagation();
+    const element = document.elementFromPoint(event.clientX, event.clientY);
+
+    setLastActualCaptureTap({
+      point: "capture-pointer-down",
+      x: Math.round(event.clientX),
+      y: Math.round(event.clientY),
+      element: describeElement(element),
+    });
     lastCapturePointerAtRef.current = Date.now();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
     void captureFromTrimaxCamera(event);
   }
 
@@ -2828,9 +2848,18 @@ export default function BatchInvoicePayments({
         guidance: suggestion.qualityMessages[0] ?? "Use Cropped Image.",
         ocrPermitted: suggestion.qualityMessages.length === 0,
       });
+      const cameraGuidedCropReady =
+        source === "camera" &&
+        documentType === "remittance_stub" &&
+        suggestion.qualityMessages.length === 0 &&
+        suggestion.quality.ok &&
+        Math.max(suggestion.effectiveWidth, suggestion.effectiveHeight) >= 1800 &&
+        Math.min(suggestion.effectiveWidth, suggestion.effectiveHeight) >= 650;
+      const shouldReadNow = suggestion.shouldAutoRead || cameraGuidedCropReady;
+
       setCaptureQualityMessage(
         suggestion.qualityMessages[0] ??
-          (suggestion.shouldAutoRead
+          (shouldReadNow
             ? "Document detected. Reading remittance..."
             : suggestion.isTightlyFramed
               ? "Document fills the image. Use as-is or adjust crop."
@@ -2843,7 +2872,10 @@ export default function BatchInvoicePayments({
         )} x ${Math.max(suggestion.effectiveHeight, 0)}.`
       );
 
-      if (suggestion.shouldAutoRead) {
+      if (shouldReadNow) {
+        appendCameraStage(
+          `${guidedCameraCropLabel}: ${suggestion.effectiveWidth}x${suggestion.effectiveHeight}, manual crop skipped`
+        );
         void readPreparedRemittanceFromFile(
           file,
           suggestion.cropBox,
@@ -3003,18 +3035,6 @@ export default function BatchInvoicePayments({
     return null;
   }
 
-  const cameraOverlayStyle: CSSProperties | undefined =
-    paymentEntryMode === "camera" && cameraVisualViewport
-    ? {
-        left: "0px",
-        top: "0px",
-        width: `${cameraVisualViewport.width}px`,
-        height: `${cameraVisualViewport.height}px`,
-        maxWidth: "100vw",
-        maxHeight: "100dvh",
-      }
-    : undefined;
-
   return (
     <Card className="batch-payments-card border-green-500/30 bg-green-500/5">
       {toast ? <Toast type={toast.type} message={toast.message} /> : null}
@@ -3028,7 +3048,6 @@ export default function BatchInvoicePayments({
           data-remittance-fullscreen-capture="true"
           data-camera-overlay-root="true"
           role="dialog"
-          style={cameraOverlayStyle}
         >
           <div
             className="grid shrink-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-4 pb-2 pt-[calc(env(safe-area-inset-top)+0.75rem)] landscape:col-start-2 landscape:row-start-1 landscape:grid-cols-1 landscape:px-0 landscape:pb-1 landscape:pt-[max(env(safe-area-inset-top),0.25rem)]"
@@ -3188,11 +3207,11 @@ export default function BatchInvoicePayments({
                 ref={captureButtonRef}
                 type="button"
                 disabled={isCapturingFrame}
-                onPointerDown={(event) => {
+                onPointerDown={handleCaptureButtonPointerDown}
+                onPointerUp={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
                 }}
-                onPointerUp={handleCaptureButtonPointerUp}
                 onTouchStart={(event) => event.stopPropagation()}
                 onTouchEnd={(event) => event.stopPropagation()}
                 onClick={handleCaptureButtonClick}
