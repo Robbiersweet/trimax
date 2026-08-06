@@ -97,8 +97,17 @@ type CropSuggestion = {
   cropBox: CropBox;
   isTightlyFramed: boolean;
   documentAreaRatio: number;
+  sourceWidth: number;
+  sourceHeight: number;
   effectiveWidth: number;
   effectiveHeight: number;
+  clipping: {
+    left: boolean;
+    top: boolean;
+    right: boolean;
+    bottom: boolean;
+  };
+  quality: ImageQualityReport;
   confidence: "high" | "medium" | "low";
   qualityMessages: string[];
   shouldAutoRead: boolean;
@@ -136,6 +145,11 @@ type CameraHitTestSnapshot = {
 };
 
 type CameraGeometryDiagnostics = {
+  runtime: {
+    displayMode: "standalone" | "browser";
+    build: string;
+    serviceWorkerController: string;
+  };
   layoutViewport: { width: number; height: number };
   visualViewport: CameraVisualViewport;
   devicePixelRatio: number;
@@ -157,6 +171,19 @@ type CameraGeometryDiagnostics = {
   useDeviceCamera: CameraRectSnapshot | null;
   hitTests: CameraHitTestSnapshot[];
   ancestorStyles: string[];
+  qualityGate: {
+    sourceWidth: number;
+    sourceHeight: number;
+    cropWidth: number;
+    cropHeight: number;
+    documentAreaRatio: number;
+    clipping: CropSuggestion["clipping"];
+    brightness: number;
+    contrast: number;
+    blurScore: number;
+    guidance: string;
+    ocrPermitted: boolean;
+  } | null;
 };
 
 type CheckStubOcrResponse = {
@@ -209,6 +236,8 @@ type CompletedPaymentSummary = {
   totalAmount: number;
   invoiceCount: number;
 } | null;
+
+const trimaxBuildIdentifier = "remittance-diagnostics-v3";
 
 type CropDragTarget =
   | "move"
@@ -421,9 +450,19 @@ function qualityMessageFromMetrics(
 ) {
   const messages: string[] = [];
   const shortestEdge = Math.min(effectiveWidth, effectiveHeight);
+  const longestEdge = Math.max(effectiveWidth, effectiveHeight);
+  const completeDocumentLikely = documentAreaRatio >= 0.72;
+  const readableLongRemittance =
+    longestEdge >= 1800 && shortestEdge >= 650 && quality.ok;
 
-  if (documentAreaRatio < 0.32 || shortestEdge < 900) {
-    messages.push("Move closer - document is too small.");
+  if (documentAreaRatio < 0.22 && longestEdge < 1800) {
+    messages.push("Move closer - document is too distant.");
+  } else if (
+    !completeDocumentLikely &&
+    !readableLongRemittance &&
+    (longestEdge < 1500 || shortestEdge < 520)
+  ) {
+    messages.push("Use a higher-resolution photo.");
   }
 
   if (quality.blurScore < 8) {
@@ -599,6 +638,12 @@ async function detectDefaultCropBox(file: File): Promise<CropSuggestion> {
 
     const boundsAreaRatio =
       ((maxX - minX + 1) * (maxY - minY + 1)) / (width * height);
+    const clipping = {
+      left: minX <= width * 0.02,
+      top: minY <= height * 0.02,
+      right: maxX >= width * 0.98,
+      bottom: maxY >= height * 0.98,
+    };
     const touchesEdges =
       minX <= width * 0.04 &&
       minY <= height * 0.04 &&
@@ -648,8 +693,12 @@ async function detectDefaultCropBox(file: File): Promise<CropSuggestion> {
         cropBox,
         isTightlyFramed: true,
         documentAreaRatio,
+        sourceWidth: naturalWidth,
+        sourceHeight: naturalHeight,
         effectiveWidth,
         effectiveHeight,
+        clipping,
+        quality,
         confidence,
         qualityMessages,
         shouldAutoRead,
@@ -660,8 +709,12 @@ async function detectDefaultCropBox(file: File): Promise<CropSuggestion> {
       cropBox,
       isTightlyFramed: false,
       documentAreaRatio,
+      sourceWidth: naturalWidth,
+      sourceHeight: naturalHeight,
       effectiveWidth,
       effectiveHeight,
+      clipping,
+      quality,
       confidence,
       qualityMessages,
       shouldAutoRead,
@@ -676,8 +729,23 @@ async function detectDefaultCropBox(file: File): Promise<CropSuggestion> {
       },
       isTightlyFramed: false,
       documentAreaRatio: 0.7,
+      sourceWidth: 0,
+      sourceHeight: 0,
       effectiveWidth: 0,
       effectiveHeight: 0,
+      clipping: {
+        left: false,
+        top: false,
+        right: false,
+        bottom: false,
+      },
+      quality: {
+        ok: false,
+        message: "Crop not inspected.",
+        brightness: 0,
+        contrast: 0,
+        blurScore: 0,
+      },
       confidence: "low",
       qualityMessages: ["Adjust crop around the remittance before reading."],
       shouldAutoRead: false,
@@ -703,7 +771,7 @@ async function cropPhotoForOcr(file: File, cropBox: CropBox, rotation: number) {
   const normalizedRotation = ((rotation % 360) + 360) % 360;
   const rotatedSideways = normalizedRotation === 90 || normalizedRotation === 270;
   const maxEdge = 4600;
-  const minReadableEdge = 3200;
+  const minReadableEdge = 2400;
   const scale = Math.min(
     maxEdge / Math.max(sourceWidth, sourceHeight),
     Math.max(1, minReadableEdge / Math.max(sourceWidth, sourceHeight))
@@ -914,6 +982,8 @@ export default function BatchInvoicePayments({
   });
   const [cameraGeometryDiagnostics, setCameraGeometryDiagnostics] =
     useState<CameraGeometryDiagnostics | null>(null);
+  const [lastQualityGate, setLastQualityGate] =
+    useState<CameraGeometryDiagnostics["qualityGate"]>(null);
   const [cameraPipelineStages, setCameraPipelineStages] = useState<string[]>([]);
   const [cameraFailureStage, setCameraFailureStage] = useState("");
   const [cameraVideoPlayStatus, setCameraVideoPlayStatus] =
@@ -1225,6 +1295,15 @@ export default function BatchInvoicePayments({
     }
 
     setCameraGeometryDiagnostics({
+      runtime: {
+        displayMode: window.matchMedia("(display-mode: standalone)").matches
+          ? "standalone"
+          : "browser",
+        build: trimaxBuildIdentifier,
+        serviceWorkerController: navigator.serviceWorker?.controller
+          ? "controlled"
+          : "not-controlled",
+      },
       layoutViewport: {
         width: Math.round(window.innerWidth),
         height: Math.round(window.innerHeight),
@@ -1261,8 +1340,9 @@ export default function BatchInvoicePayments({
       useDeviceCamera: deviceRect,
       hitTests,
       ancestorStyles,
+      qualityGate: lastQualityGate,
     });
-  }, [cameraVideoPlayStatus]);
+  }, [cameraVideoPlayStatus, lastQualityGate]);
 
   useEffect(() => {
     if (paymentEntryMode !== "camera") {
@@ -2056,7 +2136,8 @@ export default function BatchInvoicePayments({
     nextRotation: number,
     documentType: RemittanceDocumentType = captureDocumentType,
     intent: CaptureIntent = captureIntent,
-    retryStrategy: OcrRetryStrategy = "standard"
+    retryStrategy: OcrRetryStrategy = "standard",
+    allowQualityOverride = false
   ) {
     setIsPreparingCrop(true);
 
@@ -2077,12 +2158,35 @@ export default function BatchInvoicePayments({
         cropBoxAreaRatio(nextCropBox),
         quality
       );
+      const ocrPermitted = qualityMessages.length === 0;
 
       setCaptureQualityDetails(
-        `OCR image target: at least 3200px readable edge. Selected crop: ${effectiveWidth} x ${effectiveHeight}.`
+        `OCR crop: ${effectiveWidth} x ${effectiveHeight}. Brightness ${quality.brightness.toFixed(
+          1
+        )}, contrast ${quality.contrast.toFixed(1)}, sharpness ${quality.blurScore.toFixed(
+          1
+        )}.`
       );
+      setLastQualityGate({
+        sourceWidth: naturalWidth,
+        sourceHeight: naturalHeight,
+        cropWidth: effectiveWidth,
+        cropHeight: effectiveHeight,
+        documentAreaRatio: cropBoxAreaRatio(nextCropBox),
+        clipping: {
+          left: nextCropBox.left <= 1,
+          top: nextCropBox.top <= 1,
+          right: nextCropBox.right >= 99,
+          bottom: nextCropBox.bottom >= 99,
+        },
+        brightness: quality.brightness,
+        contrast: quality.contrast,
+        blurScore: quality.blurScore,
+        guidance: qualityMessages[0] ?? "Use Cropped Image.",
+        ocrPermitted,
+      });
 
-      if (qualityMessages.length > 0) {
+      if (qualityMessages.length > 0 && !allowQualityOverride) {
         setPaymentEntryMode("crop");
         setCheckOcrStatus("manual");
         setCheckOcrMessage(qualityMessages[0]);
@@ -2422,7 +2526,8 @@ export default function BatchInvoicePayments({
 
     if (
       captureDocumentType === "remittance_stub" &&
-      effectiveGuideShortEdge < 1050
+      effectiveGuideShortEdge < 900 &&
+      paperCoverage < minimumCoverage
     ) {
       return {
         ready: false,
@@ -2440,7 +2545,7 @@ export default function BatchInvoicePayments({
     if (paperCoverage > 0.94) {
       return {
         ready: false,
-        message: "Fit entire document",
+        message: "Move farther away - show the full remittance",
       };
     }
 
@@ -2710,6 +2815,19 @@ export default function BatchInvoicePayments({
     void detectDefaultCropBox(file).then((suggestion) => {
       setCropBox(suggestion.cropBox);
       setIsTightlyFramedRemittance(suggestion.isTightlyFramed);
+      setLastQualityGate({
+        sourceWidth: suggestion.sourceWidth,
+        sourceHeight: suggestion.sourceHeight,
+        cropWidth: suggestion.effectiveWidth,
+        cropHeight: suggestion.effectiveHeight,
+        documentAreaRatio: suggestion.documentAreaRatio,
+        clipping: suggestion.clipping,
+        brightness: suggestion.quality.brightness,
+        contrast: suggestion.quality.contrast,
+        blurScore: suggestion.quality.blurScore,
+        guidance: suggestion.qualityMessages[0] ?? "Use Cropped Image.",
+        ocrPermitted: suggestion.qualityMessages.length === 0,
+      });
       setCaptureQualityMessage(
         suggestion.qualityMessages[0] ??
           (suggestion.shouldAutoRead
@@ -2719,7 +2837,7 @@ export default function BatchInvoicePayments({
               : "Document detected. Check the crop before reading.")
       );
       setCaptureQualityDetails(
-        `OCR image target: at least 3200px readable edge. Detected crop: ${Math.max(
+        `Detected crop: ${Math.max(
           suggestion.effectiveWidth,
           0
         )} x ${Math.max(suggestion.effectiveHeight, 0)}.`
@@ -2763,6 +2881,8 @@ export default function BatchInvoicePayments({
     setCameraQualityReady(false);
     setPaymentEntryMode("camera");
     setCheckOcrStatus("idle");
+    setCameraPipelineStages([]);
+    setCameraFailureStage("");
     setCameraStatusMessage(
       documentType === "full_check_stub" ? "Capture stub separately" : "Move closer"
     );
@@ -3454,6 +3574,28 @@ export default function BatchInvoicePayments({
                         ? "Use Image As-Is"
                         : "Use Cropped Image"}
                   </button>
+                  {captureQualityMessage ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (checkImageFile) {
+                          void readPreparedRemittanceFromFile(
+                            checkImageFile,
+                            cropBox,
+                            cropRotation,
+                            captureDocumentType,
+                            captureIntent,
+                            "standard",
+                            true
+                          );
+                        }
+                      }}
+                      disabled={isPreparingCrop || !checkImageFile}
+                      className="rounded-full border border-amber-200/60 px-4 py-2 text-sm font-semibold text-amber-100 transition hover:bg-amber-300/10 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Use Cropped Image Anyway
+                    </button>
+                  ) : null}
                   {isTightlyFramedRemittance ? (
                     <button
                       type="button"

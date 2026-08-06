@@ -26,12 +26,25 @@ assert(
     paymentScreen.includes("videoWidth") &&
     paymentScreen.includes("videoHeight") &&
     paymentScreen.includes("computedStyle") &&
+    paymentScreen.includes("displayMode") &&
+    paymentScreen.includes("serviceWorkerController") &&
+    paymentScreen.includes("trimaxBuildIdentifier") &&
+    paymentScreen.includes("qualityGate") &&
     paymentScreen.includes("capture-center") &&
     paymentScreen.includes("capture-top-edge") &&
     paymentScreen.includes("capture-bottom-edge") &&
     paymentScreen.includes("check-only-center") &&
     paymentScreen.includes("use-device-camera-center"),
   "Camera diagnostics must collect viewport, visible control rectangles, and elementFromPoint hit tests."
+);
+
+assert(
+  paymentScreen.includes("remittance-diagnostics-v3") &&
+    paymentScreen.includes("window.matchMedia(\"(display-mode: standalone)\")") &&
+    paymentScreen.includes("navigator.serviceWorker?.controller") &&
+    paymentScreen.includes("standalone") &&
+    paymentScreen.includes("browser"),
+  "Diagnostics must identify installed PWA versus Safari/browser runtime and current diagnostic build."
 );
 
 assert(
@@ -123,6 +136,20 @@ assert(
     paymentScreen.includes("setCheckImagePreview(imageDataUrl)") &&
     paymentScreen.includes("preview and OCR input use same normalized crop"),
   "The saved preview and OCR input must use the same normalized crop."
+);
+
+assert(
+  paymentScreen.includes("const minReadableEdge = 2400") &&
+    !paymentScreen.includes("OCR image target: at least 3200px readable edge") &&
+    paymentScreen.includes("Move closer - document is too distant.") &&
+    paymentScreen.includes("Move farther away - show the full remittance") &&
+    paymentScreen.includes("Use a higher-resolution photo.") &&
+    paymentScreen.includes("Use Cropped Image Anyway") &&
+    paymentScreen.includes("longestEdge >= 1800 && shortestEdge >= 650") &&
+    paymentScreen.includes("cropWidth") &&
+    paymentScreen.includes("cropHeight") &&
+    paymentScreen.includes("ocrPermitted"),
+  "Quality guidance must not block complete readable long remittances behind the old 3200px/short-edge gate."
 );
 
 assert(

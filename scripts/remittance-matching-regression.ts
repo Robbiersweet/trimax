@@ -854,11 +854,13 @@ assert(
 );
 assert(
   paymentScreen.includes("qualityMessageFromMetrics") &&
-    paymentScreen.includes("Move closer - document is too small.") &&
+    paymentScreen.includes("Move closer - document is too distant.") &&
+    paymentScreen.includes("Use a higher-resolution photo.") &&
+    paymentScreen.includes("Use Cropped Image Anyway") &&
     paymentScreen.includes("Retake photo - image is blurry.") &&
     paymentScreen.includes("More light needed.") &&
     paymentScreen.includes("Use stronger lighting or a darker background."),
-  "Payments screen must reject small, blurry, or low-light remittance images before OCR."
+  "Payments screen must give factual crop quality guidance and allow owner override before OCR."
 );
 
 const ocrRoute = readFileSync(
@@ -900,7 +902,8 @@ assert(
 assert(
   paymentScreen.includes("0.98") &&
     paymentScreen.includes("const maxEdge = 4600") &&
-    paymentScreen.includes("OCR image target: at least 3200px readable edge") &&
+    paymentScreen.includes("const minReadableEdge = 2400") &&
+    paymentScreen.includes("OCR crop:") &&
     paymentScreen.includes("cropBoxForRotation") &&
     paymentScreen.includes("Document total not found. Enter the check amount") &&
     paymentScreen.includes("ocrFailureMessage") &&
