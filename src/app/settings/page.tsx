@@ -15,7 +15,6 @@ import {
 } from "../lib/maintenanceMode";
 import {
   defaultInvoiceEmailSettings,
-  emailSettingsKey,
   normalizeInvoiceEmailSettings,
   resolveWorkspaceSenderEmail,
 } from "../lib/invoiceEmailSettings";
@@ -535,9 +534,10 @@ function BusinessSettingsPageContent() {
       data: emailSettingsRow,
       error: emailSettingsError,
     } = await supabase
-      .from("app_settings")
+      .from("business_settings")
       .select("value")
-      .eq("key", emailSettingsKey(businessSlug))
+      .eq("business_id", selectedBusiness.id)
+      .eq("key", "email_settings")
       .maybeSingle<{ value: unknown }>();
 
     if (emailSettingsError) {
@@ -886,15 +886,16 @@ function BusinessSettingsPageContent() {
 
     setSavingEmailSettings(true);
 
-    const { error } = await supabase.from("app_settings").upsert(
+    const { error } = await supabase.from("business_settings").upsert(
       {
-        key: emailSettingsKey(businessSlug),
+        business_id: business.id,
+        key: "email_settings",
         value: nextSettings,
         updated_at: new Date().toISOString(),
         updated_by: user?.id ?? null,
       },
       {
-        onConflict: "key",
+        onConflict: "business_id,key",
       }
     );
 

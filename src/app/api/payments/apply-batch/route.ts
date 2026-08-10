@@ -222,6 +222,7 @@ export async function POST(request: Request) {
   const { data: lineItemData, error: lineItemError } = await supabase
     .from("invoice_line_items")
     .select("invoice_id, description, quantity, unit_price, line_total")
+    .eq("business_id", businessId)
     .in("invoice_id", invoiceIds)
     .returns<InvoiceLineItemRow[]>();
 

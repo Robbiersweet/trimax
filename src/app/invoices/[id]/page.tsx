@@ -1856,6 +1856,7 @@ export default async function InvoiceDetailPage({
               >
                 <InvoiceEmailSendPanel
                   documentId={invoice.id}
+                  businessId={invoice.business_id}
                   businessSlug={businessSlug}
                   businessName={businessName}
                   customerName={customerName}
@@ -1915,6 +1916,7 @@ export default async function InvoiceDetailPage({
               >
                 <InvoiceEmailSendPanel
                   documentId={invoice.id}
+                  businessId={invoice.business_id}
                   businessSlug={businessSlug}
                   businessName={businessName}
                   customerName={customerName}
@@ -1965,6 +1967,7 @@ export default async function InvoiceDetailPage({
               >
                 <InvoiceEmailSendPanel
                   documentId={invoice.id}
+                  businessId={invoice.business_id}
                   businessSlug={businessSlug}
                   businessName={businessName}
                   customerName={customerName}

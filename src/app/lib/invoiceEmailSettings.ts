@@ -24,36 +24,16 @@ export function emailSettingsKey(businessSlug: string) {
 }
 
 export function defaultInvoiceEmailSettings({
-  businessSlug,
   businessName,
   currentEmail,
 }: DefaultSettingsInput): InvoiceEmailSettings {
-  const signature =
-    businessSlug === "just-kleen"
-      ? [
-          "Lyubov Sweet",
-          "Just Kleen",
-          "1011 90th St. SW #B",
-          "Everett, WA 98204",
-          "425-350-4898",
-        ].join("\n")
-      : [
-          "Robbie Sweet",
-          "Owner",
-          "R&L Creations",
-          "1011 90th St. SW #B",
-          "Everett, WA 98204",
-          "425-350-4898",
-        ].join("\n");
-
   return {
     senderName: businessName,
-    senderEmail:
-      businessSlug === "just-kleen" ? trimaxDefaultSenderEmail : "",
+    senderEmail: "",
     replyToEmail: currentEmail ?? "",
     ccEmail: "",
     bccEmail: "",
-    signature,
+    signature: businessName,
     invoiceSubjectTemplate: `Invoice {invoiceNumber} from ${businessName}`,
     invoiceBodyTemplate:
       "Attached is invoice {invoiceNumber} for {projectTitle}.",
@@ -137,7 +117,6 @@ export function formatSenderAddress({
 
 export function resolveWorkspaceSenderEmail({
   senderEmail,
-  businessSlug,
   environmentSenderEmail,
 }: {
   senderEmail: string;
@@ -156,7 +135,7 @@ export function resolveWorkspaceSenderEmail({
     return envSenderEmail;
   }
 
-  return businessSlug === "just-kleen" ? trimaxDefaultSenderEmail : "";
+  return "";
 }
 
 export function renderEmailTemplate(

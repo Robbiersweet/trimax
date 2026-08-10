@@ -2,7 +2,6 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import {
   defaultInvoiceEmailSettings,
-  emailSettingsKey,
   formatSenderAddress,
   normalizeInvoiceEmailSettings,
   resolveWorkspaceSenderEmail,
@@ -24,6 +23,7 @@ type Database = {
     Tables: {
       activity_logs: GenericTable;
       app_settings: GenericTable;
+      business_settings: GenericTable;
       business_users: GenericTable;
       businesses: GenericTable;
       clients: GenericTable;
@@ -327,9 +327,10 @@ export async function POST(request: Request, { params }: RouteParams) {
   }
 
   const { data: emailSettingsRow } = await supabase
-    .from("app_settings")
+    .from("business_settings")
     .select("value")
-    .eq("key", emailSettingsKey(business.slug))
+    .eq("business_id", business.id)
+    .eq("key", "email_settings")
     .maybeSingle<{ value: unknown }>();
   const emailSettings = normalizeInvoiceEmailSettings(
     emailSettingsRow?.value,
@@ -478,7 +479,8 @@ export async function POST(request: Request, { params }: RouteParams) {
     .update({
       status: "Sent",
     })
-    .eq("id", estimate.id);
+    .eq("id", estimate.id)
+    .eq("business_id", estimate.business_id);
 
   await supabase.from("activity_logs").insert({
     business_id: estimate.business_id,

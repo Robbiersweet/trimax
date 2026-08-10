@@ -172,6 +172,7 @@ export default async function EstimatePrintPage({
   const { data: lineItemData } = await printSupabase
     .from("estimate_line_items")
     .select("*")
+    .eq("business_id", business.id)
     .eq("estimate_id", estimate.id)
     .order("sort_order", {
       ascending: true,

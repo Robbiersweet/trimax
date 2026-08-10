@@ -2,7 +2,6 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import {
   defaultInvoiceEmailSettings,
-  emailSettingsKey,
   formatSenderAddress,
   normalizeInvoiceEmailSettings,
   resolveWorkspaceSenderEmail,
@@ -28,6 +27,7 @@ type Database = {
     Tables: {
       activity_logs: GenericTable;
       app_settings: GenericTable;
+      business_settings: GenericTable;
       business_users: GenericTable;
       businesses: GenericTable;
       clients: GenericTable;
@@ -687,9 +687,10 @@ export async function POST(request: Request, { params }: RouteParams) {
   });
 
   const { data: emailSettingsRow } = await supabase
-    .from("app_settings")
+    .from("business_settings")
     .select("value")
-    .eq("key", emailSettingsKey(business.slug))
+    .eq("business_id", business.id)
+    .eq("key", "email_settings")
     .maybeSingle<{ value: unknown }>();
   const emailSettings = normalizeInvoiceEmailSettings(
     emailSettingsRow?.value,
@@ -918,6 +919,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     const { data: lineItems, error: lineItemsError } = await supabase
       .from("invoice_line_items")
       .select("invoice_id, description, quantity, unit_price, line_total")
+      .eq("business_id", invoice.business_id)
       .in("invoice_id", targetInvoiceIds)
       .returns<InvoiceLineItemRow[]>();
 
@@ -1255,6 +1257,7 @@ export async function POST(request: Request, { params }: RouteParams) {
         status: "sent",
         updated_at: new Date().toISOString(),
       })
+      .eq("business_id", invoice.business_id)
       .in(
         "id",
         targetInvoices.map((targetInvoice) => targetInvoice.id)

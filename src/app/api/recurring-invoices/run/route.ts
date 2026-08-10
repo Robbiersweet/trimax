@@ -430,7 +430,7 @@ async function createInvoiceFromTemplate(
     last_error: null,
     last_send_error: null,
     updated_at: new Date().toISOString(),
-  }).eq("id", template.id);
+  }).eq("id", template.id).eq("business_id", template.business_id);
 
   return {
     invoiceId: invoice.id as string,
@@ -696,7 +696,8 @@ export async function POST(request: Request) {
         last_error: null,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", template.id);
+      .eq("id", template.id)
+      .eq("business_id", template.business_id);
 
     await supabase.from("activity_logs").insert({
       business_id: template.business_id,
@@ -734,7 +735,8 @@ export async function POST(request: Request) {
         next_run_date: futureNextRunDate,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", template.id);
+      .eq("id", template.id)
+      .eq("business_id", template.business_id);
 
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -794,7 +796,7 @@ export async function GET(request: Request) {
           auto_send_enabled: false,
           last_error: null,
           updated_at: new Date().toISOString(),
-        }).eq("id", template.id);
+        }).eq("id", template.id).eq("business_id", template.business_id);
         continue;
       }
 
@@ -838,7 +840,7 @@ export async function GET(request: Request) {
             auto_send_enabled: shouldPause ? false : template.auto_send_enabled,
             last_error: null,
             updated_at: new Date().toISOString(),
-          }).eq("id", template.id);
+          }).eq("id", template.id).eq("business_id", template.business_id);
         } else {
           await supabase.from("recurring_invoice_templates").update({
             next_run_date: result.nextRunDate,
@@ -847,7 +849,7 @@ export async function GET(request: Request) {
             auto_send_enabled: shouldPause ? false : template.auto_send_enabled,
             last_error: null,
             updated_at: new Date().toISOString(),
-          }).eq("id", template.id);
+          }).eq("id", template.id).eq("business_id", template.business_id);
         }
       }
     } catch (error) {
@@ -863,7 +865,8 @@ export async function GET(request: Request) {
           last_send_error: template.auto_send_enabled ? message : null,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", template.id);
+        .eq("id", template.id)
+        .eq("business_id", template.business_id);
     }
   }
 

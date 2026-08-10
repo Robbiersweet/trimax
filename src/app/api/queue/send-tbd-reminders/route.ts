@@ -2,7 +2,6 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import {
   defaultInvoiceEmailSettings,
-  emailSettingsKey,
   formatSenderAddress,
   normalizeInvoiceEmailSettings,
   resolveWorkspaceSenderEmail,
@@ -21,6 +20,7 @@ type Database = {
     Tables: {
       activity_logs: GenericTable;
       app_settings: GenericTable;
+      business_settings: GenericTable;
       businesses: GenericTable;
       property_users: GenericTable;
       queue_items: GenericTable;
@@ -386,9 +386,10 @@ async function runTbdReminderCheck(
       .returns<PropertyUserRow[]>();
 
     const { data: setting } = await supabase
-      .from("app_settings")
+      .from("business_settings")
       .select("value")
-      .eq("key", emailSettingsKey(business.slug))
+      .eq("business_id", business.id)
+      .eq("key", "email_settings")
       .maybeSingle<{ value: unknown }>();
     const settings = normalizeInvoiceEmailSettings(
       setting?.value,

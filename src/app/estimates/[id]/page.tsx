@@ -615,6 +615,7 @@ export default async function EstimateDetailsPage({
         <InvoiceEmailSendPanel
           documentId={estimate.id}
           documentKind="estimate"
+          businessId={selectedBusiness.id}
           businessSlug={businessSlug}
           businessName={selectedBusiness.name ?? "Trimax"}
           customerName={estimate.customer_name ?? "Customer"}

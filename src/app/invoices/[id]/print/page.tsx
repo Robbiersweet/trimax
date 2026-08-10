@@ -242,6 +242,7 @@ export default async function InvoicePrintPage({
   const { data: lineItemData } = await printSupabase
     .from("invoice_line_items")
     .select("*")
+    .eq("business_id", business.id)
     .eq("invoice_id", invoice.id)
     .order("sort_order", {
       ascending: true,

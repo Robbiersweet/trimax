@@ -20,6 +20,7 @@ import { supabase } from "../lib/supabase";
 type InvoiceEmailSendPanelProps = {
   documentId: string;
   documentKind?: "invoice" | "estimate";
+  businessId?: string | null;
   businessSlug: string;
   businessName: string;
   customerName: string;
@@ -184,6 +185,7 @@ function normalizeInvoiceBodyCopy(message: string, fallback: string) {
 export default function InvoiceEmailSendPanel({
   documentId,
   documentKind = "invoice",
+  businessId = null,
   businessSlug,
   businessName,
   customerName,
@@ -599,11 +601,18 @@ export default function InvoiceEmailSendPanel({
         businessName,
         currentEmail: user?.email ?? null,
       });
-      const { data, error } = await supabase
-        .from("app_settings")
-        .select("value")
-        .eq("key", emailSettingsKey(businessSlug))
-        .maybeSingle<{ value: unknown }>();
+      const { data, error } = businessId
+        ? await supabase
+            .from("business_settings")
+            .select("value")
+            .eq("business_id", businessId)
+            .eq("key", "email_settings")
+            .maybeSingle<{ value: unknown }>()
+        : await supabase
+            .from("app_settings")
+            .select("value")
+            .eq("key", emailSettingsKey(businessSlug))
+            .maybeSingle<{ value: unknown }>();
 
       if (!isActive) {
         return;
@@ -703,6 +712,7 @@ export default function InvoiceEmailSendPanel({
     };
   }, [
     amountDue,
+    businessId,
     businessName,
     businessSlug,
     customerName,
