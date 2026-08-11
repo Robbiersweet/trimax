@@ -26,7 +26,7 @@ import {
   isInvoicePaid,
   resolveFinancialStatus,
 } from "../../lib/invoiceLifecycle";
-import { supabase } from "../../lib/supabase";
+import { createSupabaseServerClient } from "../../lib/supabaseServer";
 import {
   queueTbdDecisions,
   tbdDisplay,
@@ -491,6 +491,7 @@ export default async function QueueDetailPage({
   searchParams?: Promise<{ business?: string; completed?: string }>;
 }) {
   const { unit } = await params;
+  const supabase = await createSupabaseServerClient();
   const resolvedSearchParams = searchParams
     ? await searchParams
     : {};

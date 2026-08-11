@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
 import BackButton from "../../../components/BackButton";
 import PrintToolbar from "../../../components/PrintToolbar";
-import { supabase } from "../../../lib/supabase";
+import { createSupabaseServerClient } from "../../../lib/supabaseServer";
 import {
   formatTaxSummaryLabel,
   getEffectiveTaxRate,
@@ -13,7 +13,11 @@ import { getSmartInvoiceDates } from "../../../utils/invoiceDates";
 import { resolveInvoiceTerms } from "../../../lib/documentTerms";
 import { maybeCanonicalApartmentUnitLabel } from "../../../utils/unitLabels";
 
-function createPrintSupabase(accessToken: string | null, cronSecret: string | null) {
+function createPrintSupabase(
+  accessToken: string | null,
+  cronSecret: string | null,
+  fallbackSupabase: Awaited<ReturnType<typeof createSupabaseServerClient>>
+) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -34,7 +38,7 @@ function createPrintSupabase(accessToken: string | null, cronSecret: string | nu
   }
 
   if (!accessToken || !supabaseUrl || !supabaseAnonKey) {
-    return supabase;
+    return fallbackSupabase;
   }
 
   return createClient(supabaseUrl, supabaseAnonKey, {
@@ -110,6 +114,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
+  const supabase = await createSupabaseServerClient();
   const { data } = await supabase
     .from("invoices")
     .select("display_id")
@@ -177,6 +182,7 @@ export default async function InvoicePrintPage({
   searchParams?: Promise<{ business?: string; template?: string }>;
 }) {
   const { id } = await params;
+  const supabase = await createSupabaseServerClient();
   const resolvedSearchParams = searchParams
     ? await searchParams
     : {};
@@ -190,7 +196,11 @@ export default async function InvoicePrintPage({
     ? authorization.slice("Bearer ".length)
     : null;
   const cronSecret = requestHeaders.get("x-trimax-cron-secret");
-  const printSupabase = createPrintSupabase(accessToken, cronSecret);
+  const printSupabase = createPrintSupabase(
+    accessToken,
+    cronSecret,
+    supabase
+  );
 
   const { data: selectedBusinessData } = await printSupabase
     .from("businesses")

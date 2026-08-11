@@ -4,7 +4,7 @@ import AppShell from "../components/AppShell";
 import Card from "../components/Card";
 import CopyManagerBriefButton from "../components/CopyManagerBriefButton";
 import PresentationCueDeck from "../components/PresentationCueDeck";
-import { supabase } from "../lib/supabase";
+import { createSupabaseServerClient } from "../lib/supabaseServer";
 
 type Business = {
   id: string;
@@ -486,7 +486,14 @@ function notesPreview(value: string | null | undefined) {
   return value.trim().length > 96 ? `${value.trim().slice(0, 96)}...` : value.trim();
 }
 
-async function loadBusiness(businessSlug: string) {
+type SupabaseServerClient = Awaited<
+  ReturnType<typeof createSupabaseServerClient>
+>;
+
+async function loadBusiness(
+  supabase: SupabaseServerClient,
+  businessSlug: string
+) {
   const { data } = await supabase
     .from("businesses")
     .select("id, name, slug")
@@ -497,6 +504,7 @@ async function loadBusiness(businessSlug: string) {
 }
 
 async function loadLivePropertyData(
+  supabase: SupabaseServerClient,
   business: Business,
   propertyLabel: string
 ) {
@@ -641,6 +649,7 @@ export default async function PropertySalesPage({
     demo?: string;
   }>;
 }) {
+  const supabase = await createSupabaseServerClient();
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const businessSlug = resolvedSearchParams.business ?? "rnl-creations";
   const isDemo = resolvedSearchParams.demo === "evergreen";
@@ -648,10 +657,10 @@ export default async function PropertySalesPage({
     ? "Evergreen Apartments"
     : propertySlugToLabel(resolvedSearchParams.property);
 
-  const business = await loadBusiness(businessSlug);
+  const business = await loadBusiness(supabase, businessSlug);
   const liveData =
     !isDemo && business
-      ? await loadLivePropertyData(business, propertyLabel)
+      ? await loadLivePropertyData(supabase, business, propertyLabel)
       : null;
 
   const queueItems = isDemo ? demoQueueItems : liveData?.queueItems ?? [];

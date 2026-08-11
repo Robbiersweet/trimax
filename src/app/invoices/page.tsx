@@ -22,7 +22,7 @@ import {
 } from "../lib/invoiceEligibility";
 import { displayDocumentList } from "../lib/invoiceCorrections";
 import { invoiceStatusKey, moneyNumber } from "../lib/invoiceLifecycle";
-import { supabase } from "../lib/supabase";
+import { createSupabaseServerClient } from "../lib/supabaseServer";
 
 type Business = {
   id: string;
@@ -325,6 +325,7 @@ export default async function InvoicesPage({
     sort?: string;
   }>;
 }) {
+  const supabase = await createSupabaseServerClient();
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const businessSlug = resolvedSearchParams.business ?? "rnl-creations";
   const businessQuery = `?business=${businessSlug}`;

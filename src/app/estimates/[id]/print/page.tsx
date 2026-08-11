@@ -3,19 +3,22 @@ import { headers } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
 import BackButton from "../../../components/BackButton";
 import PrintToolbar from "../../../components/PrintToolbar";
-import { supabase } from "../../../lib/supabase";
+import { createSupabaseServerClient } from "../../../lib/supabaseServer";
 import {
   formatTaxSummaryLabel,
   getEffectiveTaxRate,
 } from "../../../utils/tax";
 import { maybeCanonicalApartmentUnitLabel } from "../../../utils/unitLabels";
 
-function createPrintSupabase(accessToken: string | null) {
+function createPrintSupabase(
+  accessToken: string | null,
+  fallbackSupabase: Awaited<ReturnType<typeof createSupabaseServerClient>>
+) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!accessToken || !supabaseUrl || !supabaseAnonKey) {
-    return supabase;
+    return fallbackSupabase;
   }
 
   return createClient(supabaseUrl, supabaseAnonKey, {
@@ -108,6 +111,7 @@ export default async function EstimatePrintPage({
   searchParams?: Promise<{ business?: string }>;
 }) {
   const { id } = await params;
+  const supabase = await createSupabaseServerClient();
   const resolvedSearchParams = searchParams
     ? await searchParams
     : {};
@@ -118,7 +122,7 @@ export default async function EstimatePrintPage({
   const accessToken = authorization?.startsWith("Bearer ")
     ? authorization.slice("Bearer ".length)
     : null;
-  const printSupabase = createPrintSupabase(accessToken);
+  const printSupabase = createPrintSupabase(accessToken, supabase);
 
   const { data: selectedBusinessData } = await printSupabase
     .from("businesses")

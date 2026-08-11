@@ -1,4 +1,4 @@
-import { supabase } from "../../../../lib/supabase";
+import { createSupabaseServerClient } from "../../../../lib/supabaseServer";
 
 type Invoice = {
   id: string;
@@ -348,6 +348,7 @@ export async function GET(
     params: Promise<{ id: string }>;
   }
 ) {
+  const supabase = await createSupabaseServerClient();
   const { id } = await params;
   const url = new URL(request.url);
   const businessSlug =

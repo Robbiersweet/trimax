@@ -7,7 +7,7 @@ import {
   type ServiceAnalyticsLineItem,
   type ServiceAnalyticsService,
 } from "../lib/serviceAnalytics";
-import { supabase } from "../lib/supabase";
+import { createSupabaseServerClient } from "../lib/supabaseServer";
 
 type Business = {
   id: string;
@@ -68,7 +68,15 @@ function pricingConfidence(row: {
   };
 }
 
-async function loadLineItems(table: "estimate_line_items" | "invoice_line_items", businessId: string) {
+type SupabaseServerClient = Awaited<
+  ReturnType<typeof createSupabaseServerClient>
+>;
+
+async function loadLineItems(
+  supabase: SupabaseServerClient,
+  table: "estimate_line_items" | "invoice_line_items",
+  businessId: string
+) {
   const withCreatedAt = await supabase
     .from(table)
     .select("description, quantity, unit_price, line_total, created_at")
@@ -98,6 +106,7 @@ export default async function ServiceAnalyticsPage({
     business?: string;
   }>;
 }) {
+  const supabase = await createSupabaseServerClient();
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const businessSlug = resolvedSearchParams.business ?? "rnl-creations";
   const businessQuery = `?business=${businessSlug}`;
@@ -129,8 +138,8 @@ export default async function ServiceAnalyticsPage({
     }
 
     [estimateLineItems, invoiceLineItems] = await Promise.all([
-      loadLineItems("estimate_line_items", business.id),
-      loadLineItems("invoice_line_items", business.id),
+    loadLineItems(supabase, "estimate_line_items", business.id),
+    loadLineItems(supabase, "invoice_line_items", business.id),
     ]);
   }
 

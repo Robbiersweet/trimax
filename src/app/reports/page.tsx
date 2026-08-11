@@ -5,7 +5,7 @@ import Card from "../components/Card";
 import DateInputField from "../components/DateInputField";
 import RoleVisible from "../components/RoleVisible";
 import StatusBadge from "../components/StatusBadge";
-import { supabase } from "../lib/supabase";
+import { createSupabaseServerClient } from "../lib/supabaseServer";
 import { maybeCanonicalApartmentUnitLabel } from "../utils/unitLabels";
 
 type Business = {
@@ -454,6 +454,7 @@ export default async function ReportsPage({
     to?: string;
   }>;
 }) {
+  const supabase = await createSupabaseServerClient();
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const businessSlug = resolvedSearchParams.business ?? "rnl-creations";
   const propertyFilter =

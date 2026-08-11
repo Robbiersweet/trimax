@@ -14,7 +14,7 @@ import {
   chooseAuthoritativeInvoice,
   resolveFinancialStatus,
 } from "../lib/invoiceLifecycle";
-import { supabase } from "../lib/supabase";
+import { createSupabaseServerClient } from "../lib/supabaseServer";
 import { tbdDisplay } from "../lib/tbd";
 import { maybeCanonicalApartmentUnitLabel } from "../utils/unitLabels";
 
@@ -480,6 +480,7 @@ export default async function QueuePage({
     completed?: string;
   }>;
 }) {
+  const supabase = await createSupabaseServerClient();
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const businessSlug = resolvedSearchParams.business ?? "rnl-creations";
   const showCompletedToast = resolvedSearchParams.completed === "1";

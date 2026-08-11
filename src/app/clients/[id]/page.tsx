@@ -11,7 +11,7 @@ import {
   summarizePaymentTimeliness,
   timelinessLogFromActivity,
 } from "../../lib/paymentTimeliness";
-import { supabase } from "../../lib/supabase";
+import { createSupabaseServerClient } from "../../lib/supabaseServer";
 
 type Client = {
   id: string;
@@ -113,6 +113,7 @@ export default async function ClientDetailsPage({
   searchParams?: Promise<{ business?: string }>;
 }) {
   const { id } = await params;
+  const supabase = await createSupabaseServerClient();
   const resolvedSearchParams = searchParams
     ? await searchParams
     : {};

@@ -19,7 +19,7 @@ import {
   queueTimingBadge,
   queueTimingTone,
 } from "./lib/queueTiming";
-import { supabase } from "./lib/supabase";
+import { createSupabaseServerClient } from "./lib/supabaseServer";
 import { maybeCanonicalApartmentUnitLabel } from "./utils/unitLabels";
 
 type Business = {
@@ -427,6 +427,7 @@ export default async function DashboardPage({
 }: {
   searchParams?: Promise<{ business?: string; dashboard?: string }>;
 }) {
+  const supabase = await createSupabaseServerClient();
   const resolvedSearchParams = searchParams
     ? await searchParams
     : {};

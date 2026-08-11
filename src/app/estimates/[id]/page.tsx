@@ -10,7 +10,7 @@ import SplitInvoicePlanner from "../../components/SplitInvoicePlanner";
 import Toast from "../../components/Toast";
 import { buildOutlookDraftPreview } from "../../lib/outlookDrafts";
 import { buildSplitInvoicePlan } from "../../lib/splitInvoices";
-import { supabase } from "../../lib/supabase";
+import { createSupabaseServerClient } from "../../lib/supabaseServer";
 import {
   formatTaxSummaryLabel,
   getEffectiveTaxRate,
@@ -174,6 +174,7 @@ export default async function EstimateDetailsPage({
   searchParams?: Promise<{ business?: string; created?: string }>;
 }) {
   const { id } = await params;
+  const supabase = await createSupabaseServerClient();
   const resolvedSearchParams = searchParams
     ? await searchParams
     : {};

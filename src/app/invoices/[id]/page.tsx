@@ -25,7 +25,7 @@ import {
 } from "../../lib/invoiceCorrections";
 import { buildSplitInvoicePlan } from "../../lib/splitInvoices";
 import { resolveInvoiceTerms } from "../../lib/documentTerms";
-import { supabase } from "../../lib/supabase";
+import { createSupabaseServerClient } from "../../lib/supabaseServer";
 import { getSmartInvoiceDates } from "../../utils/invoiceDates";
 import {
   formatTaxSummaryLabel,
@@ -792,6 +792,7 @@ export default async function InvoiceDetailPage({
   searchParams,
 }: PageProps) {
   const { id } = await params;
+  const supabase = await createSupabaseServerClient();
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const businessSlug = resolvedSearchParams.business ?? "rnl-creations";
   const showCreatedToast = resolvedSearchParams.created === "1";

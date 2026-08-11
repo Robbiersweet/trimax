@@ -4,7 +4,7 @@ import Card from "../components/Card";
 import Button from "../components/Button";
 import DeleteEstimateButton from "../components/DeleteEstimateButton";
 import StatusBadge from "../components/StatusBadge";
-import { supabase } from "../lib/supabase";
+import { createSupabaseServerClient } from "../lib/supabaseServer";
 
 type Business = {
   id: string;
@@ -286,6 +286,7 @@ export default async function EstimatesPage({
     limit?: string;
   }>;
 }) {
+  const supabase = await createSupabaseServerClient();
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const businessSlug = resolvedSearchParams.business ?? "rnl-creations";
   const searchTerm = resolvedSearchParams.q?.trim() ?? "";

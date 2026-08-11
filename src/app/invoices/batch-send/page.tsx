@@ -12,7 +12,7 @@ import {
   type InvoiceEligibilityLineItem,
 } from "../../lib/invoiceEligibility";
 import { moneyNumber } from "../../lib/invoiceLifecycle";
-import { supabase } from "../../lib/supabase";
+import { createSupabaseServerClient } from "../../lib/supabaseServer";
 
 type Business = {
   id: string;
@@ -69,6 +69,7 @@ export default async function InvoiceBatchSendPage({
 }: {
   searchParams?: Promise<{ business?: string }>;
 }) {
+  const supabase = await createSupabaseServerClient();
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const businessSlug = resolvedSearchParams.business ?? "rnl-creations";
   const businessQuery = `?business=${businessSlug}`;

@@ -5,7 +5,7 @@ import Button from "../components/Button";
 import ClientSmartSearch from "../components/ClientSmartSearch";
 import DeleteClientButton from "../components/DeleteClientButton";
 import { isCollectibleInvoiceStatus } from "../lib/invoiceLifecycle";
-import { supabase } from "../lib/supabase";
+import { createSupabaseServerClient } from "../lib/supabaseServer";
 
 type Business = {
   id: string;
@@ -114,6 +114,7 @@ export default async function ClientsPage({
     q?: string;
   }>;
 }) {
+  const supabase = await createSupabaseServerClient();
   const resolvedSearchParams = searchParams
     ? await searchParams
     : {};

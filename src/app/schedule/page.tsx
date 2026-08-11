@@ -7,7 +7,7 @@ import {
   calendarDataUri,
   calendarFileName,
 } from "../lib/calendar";
-import { supabase } from "../lib/supabase";
+import { createSupabaseServerClient } from "../lib/supabaseServer";
 import { maybeCanonicalApartmentUnitLabel } from "../utils/unitLabels";
 
 type Business = {
@@ -156,6 +156,7 @@ export default async function SchedulePage({
     property?: string;
   }>;
 }) {
+  const supabase = await createSupabaseServerClient();
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const businessSlug = resolvedSearchParams.business ?? "rnl-creations";
   const activeView =
