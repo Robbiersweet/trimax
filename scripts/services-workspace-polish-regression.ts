@@ -52,7 +52,8 @@ assert(
 
 assert(
   servicesPage.includes("healthOpen") &&
-    servicesPage.includes("Cleanup {servicesNeedingPolishCount}") &&
+    servicesPage.includes("Cleanup {cleanupSignalCount}") &&
+    servicesPage.includes("buildServiceCleanupAudit") &&
     servicesPage.includes("Price book health") &&
     servicesPage.includes("Build cleaner bids from the price book"),
   "Analytics and cleanup sections must remain available behind the compact health toggle."

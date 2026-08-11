@@ -12,6 +12,9 @@ import Card from "../components/Card";
 import Button from "../components/Button";
 import InputField from "../components/InputField";
 import Toast from "../components/Toast";
+import {
+  buildServiceCleanupAudit,
+} from "../lib/serviceDuplicateCleanup";
 import { supabase } from "../lib/supabase";
 
 type Business = {
@@ -32,6 +35,7 @@ type ServiceItem = {
   difficult_unit_price?: number | string | null;
   category: string | null;
   is_active: boolean | null;
+  created_at?: string | null;
 };
 
 type StatusFilter = "active" | "all" | "inactive";
@@ -249,6 +253,7 @@ function ServicesPageContent() {
   const [pricingTiersOpen, setPricingTiersOpen] = useState(false);
   const [starterOpen, setStarterOpen] = useState(false);
   const [healthOpen, setHealthOpen] = useState(false);
+  const [cleanupReviewOpen, setCleanupReviewOpen] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -378,6 +383,21 @@ function ServicesPageContent() {
     );
   }, [services]);
 
+  const cleanupAudit = useMemo(
+    () => buildServiceCleanupAudit(services),
+    [services]
+  );
+
+  const cleanupCandidateIds = useMemo(
+    () =>
+      new Set(
+        cleanupAudit.exactDuplicateGroups.flatMap((group) =>
+          group.redundantServices.map((service) => service.id)
+        )
+      ),
+    [cleanupAudit]
+  );
+
   const filteredServices = useMemo(() => {
     const normalizedSearch =
       searchTerm.trim().toLowerCase();
@@ -502,10 +522,11 @@ function ServicesPageContent() {
   const duplicateServiceCount = services.filter((service) =>
     duplicateNameKeys.has(normalizeServiceName(service.name))
   ).length;
-  const servicesNeedingPolishCount = activeServices.filter(
-    (service) =>
-      serviceQualitySignals(service, duplicateNameKeys).length > 0
-  ).length;
+  const cleanupSignalCount =
+    cleanupAudit.exactDuplicateGroups.length +
+    cleanupAudit.zeroPriceArtifactGroups.length +
+    cleanupAudit.priceConflictGroups.length +
+    cleanupAudit.incompleteServices.length;
   const servicePrices = activeServices.map((service) =>
     Number(service.default_unit_price) || 0
   );
@@ -1090,6 +1111,53 @@ function ServicesPageContent() {
     await reloadServices();
   }
 
+  async function deactivateExactDuplicates() {
+    if (!business) {
+      setToast({
+        type: "error",
+        message: "Business is still loading.",
+      });
+      return;
+    }
+
+    const redundantIds = cleanupAudit.exactDuplicateGroups.flatMap((group) =>
+      group.redundantServices
+        .filter((service) => service.business_id === business.id)
+        .map((service) => service.id)
+    );
+
+    if (redundantIds.length === 0) {
+      setToast({
+        type: "success",
+        message: "No exact duplicate services are ready to deactivate.",
+      });
+      return;
+    }
+
+    const { error } = await supabase
+      .from("service_items")
+      .update({ is_active: false })
+      .eq("business_id", business.id)
+      .in("id", redundantIds);
+
+    if (error) {
+      console.error(error);
+      setToast({
+        type: "error",
+        message: "Unable to deactivate exact duplicates.",
+      });
+      return;
+    }
+
+    setToast({
+      type: "success",
+      message: `Deactivated ${redundantIds.length} exact duplicate service${
+        redundantIds.length === 1 ? "" : "s"
+      }.`,
+    });
+    await reloadServices();
+  }
+
   return (
     <AppShell>
       {toast && (
@@ -1135,7 +1203,7 @@ function ServicesPageContent() {
                 onClick={() => setHealthOpen((open) => !open)}
                 className="text-orange-200 underline-offset-4 hover:underline"
               >
-                Cleanup {servicesNeedingPolishCount}
+                Cleanup {cleanupSignalCount}
               </button>
             </div>
 
@@ -1713,6 +1781,157 @@ function ServicesPageContent() {
           </div>
         </Card>
 
+        <Card className="service-cleanup-card service-collapsible-panel border-orange-500/20 bg-zinc-950/70">
+          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.24em] text-orange-300">
+                Cleanup
+              </p>
+              <h2 className="mt-1 text-xl font-black text-white">
+                Review duplicate service records
+              </h2>
+            </div>
+
+            <Button
+              variant="secondary"
+              onClick={() => setCleanupReviewOpen((open) => !open)}
+            >
+              {cleanupReviewOpen ? "Hide cleanup" : "Review cleanup"}
+            </Button>
+          </div>
+
+          <div className="service-cleanup-summary mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            <button
+              type="button"
+              onClick={() => setCleanupReviewOpen(true)}
+              className="service-cleanup-metric"
+            >
+              <span>Exact duplicates</span>
+              <strong>{cleanupAudit.exactDuplicateGroups.length}</strong>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCleanupReviewOpen(true)}
+              className="service-cleanup-metric"
+            >
+              <span>Zero-price artifacts</span>
+              <strong>{cleanupAudit.zeroPriceArtifactGroups.length}</strong>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCleanupReviewOpen(true)}
+              className="service-cleanup-metric"
+            >
+              <span>Price conflicts</span>
+              <strong>{cleanupAudit.priceConflictGroups.length}</strong>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCleanupReviewOpen(true)}
+              className="service-cleanup-metric"
+            >
+              <span>Incomplete</span>
+              <strong>{cleanupAudit.incompleteServices.length}</strong>
+            </button>
+          </div>
+
+          {cleanupReviewOpen && (
+            <div className="mt-4 grid gap-3">
+              {cleanupAudit.exactDuplicateGroups.length > 0 ? (
+                <div className="service-cleanup-group">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-200">
+                        Exact Duplicates
+                      </p>
+                      <p className="mt-1 text-sm text-zinc-300">
+                        Same name, category, description, quantity, and price.
+                      </p>
+                    </div>
+                    <Button
+                      variant="secondary"
+                      onClick={deactivateExactDuplicates}
+                    >
+                      Deactivate exact duplicates
+                    </Button>
+                  </div>
+
+                  {cleanupAudit.exactDuplicateGroups.map((group) => (
+                    <div key={group.key} className="service-cleanup-row">
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+                          Canonical
+                        </p>
+                        <p className="font-black text-white">
+                          {group.canonical.name} - {formatCurrency(group.canonical.default_unit_price)}
+                        </p>
+                        <p className="text-xs text-zinc-500">
+                          ID {group.canonical.id}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {group.redundantServices.map((service) => (
+                          <span key={service.id}>
+                            {formatCurrency(service.default_unit_price)} duplicate
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              {cleanupAudit.zeroPriceArtifactGroups.length > 0 ? (
+                <div className="service-cleanup-group">
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-200">
+                    Zero-Price Artifacts
+                  </p>
+                  <div className="mt-3 grid gap-2">
+                    {cleanupAudit.zeroPriceArtifactGroups.map((group) => (
+                      <div key={group.key} className="service-cleanup-row">
+                        <p className="font-black text-white">
+                          {group.canonical.name}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {group.services.map((service) => (
+                            <span key={service.id}>
+                              {formatCurrency(service.default_unit_price)}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {cleanupAudit.priceConflictGroups.length > 0 ? (
+                <div className="service-cleanup-group">
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-rose-200">
+                    Price Conflicts
+                  </p>
+                  <div className="mt-3 grid gap-2">
+                    {cleanupAudit.priceConflictGroups.map((group) => (
+                      <div key={group.key} className="service-cleanup-row">
+                        <p className="font-black text-white">
+                          {group.services[0]?.name}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {group.prices.map((price) => (
+                            <span key={price}>
+                              {formatCurrency(price / 100)}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          )}
+        </Card>
+
         <Card className="service-action-strip border-emerald-500/20 bg-zinc-950/70 p-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
@@ -2143,15 +2362,21 @@ function ServicesPageContent() {
                     </div>
 
                     <div className="service-card-meta">
-                      <span>Qty {Number(service.default_quantity) || 1}</span>
                       <span
                         data-tone={readinessTone}
                         className="service-readiness-badge"
                       >
                         {readinessScore}% ready
                       </span>
-                      <span>{service.category?.trim() ? "Categorized" : "Needs category"}</span>
-                      <span>{service.description?.trim() ? "Estimate-ready" : "Needs detail"}</span>
+                      <span>{service.is_active ? "Active" : "Inactive"}</span>
+                      {(Number(service.default_quantity) || 1) !== 1 && (
+                        <span>Qty {Number(service.default_quantity) || 1}</span>
+                      )}
+                      {!service.category?.trim() && <span>Needs category</span>}
+                      {!service.description?.trim() && <span>Needs detail</span>}
+                      {cleanupCandidateIds.has(service.id) && (
+                        <span>Duplicate cleanup</span>
+                      )}
                     </div>
 
                     <div className="service-card-actions">
@@ -2187,6 +2412,9 @@ function ServicesPageContent() {
                         <span className="service-price-band" data-tone={priceBand}>
                           {priceBandLabel}
                         </span>
+                        <span>Qty {Number(service.default_quantity) || 1}</span>
+                        <span>{service.category?.trim() ? "Categorized" : "Needs category"}</span>
+                        <span>{service.description?.trim() ? "Estimate-ready" : "Needs detail"}</span>
                         {isPossibleDuplicate && <span>Similar name</span>}
                         {(qualitySignals.length > 0 ? qualitySignals : ["Clean catalog item"]).map((signal) => (
                           <span key={signal}>{signal}</span>
