@@ -16689,6 +16689,246 @@ html.theme-light :is(a, button).dashboard-workflow-node:focus-visible {
   }
 }
 
+.services-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.services-workspace > * {
+  margin-top: 0 !important;
+}
+
+.services-compact-hero {
+  order: 1;
+  padding: 1.25rem;
+}
+
+.service-library-controls {
+  order: 2;
+  padding: 1rem;
+}
+
+.service-library-results {
+  order: 3;
+}
+
+.service-builder-card {
+  order: 4;
+}
+
+.service-starter-lab {
+  order: 5;
+}
+
+.service-capture-card,
+.service-intelligence-card,
+.service-action-strip,
+.service-price-map {
+  order: 6;
+}
+
+.services-summary-row,
+.service-card-meta,
+.service-card-actions,
+.service-card-main {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.services-summary-row {
+  align-items: center;
+}
+
+.services-summary-row span:not(:last-child)::after {
+  content: "â€¢";
+  margin-left: 0.65rem;
+  color: rgb(148 163 184 / 0.8);
+}
+
+.service-filter-pill {
+  border: 1px solid rgb(63 63 70);
+  border-radius: 999px;
+  background: rgb(9 9 11 / 0.86);
+  color: rgb(212 212 216);
+  font-size: 0.875rem;
+  font-weight: 800;
+  line-height: 1.15;
+  padding: 0.65rem 0.9rem;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.service-filter-pill.is-active,
+.service-filter-pill:hover {
+  border-color: rgb(249 115 22);
+  background: rgb(249 115 22);
+  color: rgb(0 0 0);
+}
+
+.service-builder-collapsed,
+.service-collapsible-panel {
+  padding: 1rem;
+}
+
+.service-library-card {
+  padding: 1rem;
+}
+
+.service-card-compact {
+  display: grid;
+  gap: 0.8rem;
+  min-width: 0;
+}
+
+.service-card-main {
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.service-card-main > :first-child {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.service-card-category {
+  color: rgb(251 146 60);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.service-card-title {
+  color: white;
+  font-size: clamp(1.1rem, 4.6vw, 1.5rem);
+  font-weight: 850;
+  line-height: 1.15;
+  margin-top: 0.35rem;
+  overflow-wrap: anywhere;
+}
+
+.service-card-description {
+  color: rgb(161 161 170);
+  font-size: 0.92rem;
+  line-height: 1.45;
+  margin-top: 0.45rem;
+  overflow-wrap: anywhere;
+}
+
+.service-card-price {
+  align-items: flex-end;
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 0.2rem;
+  text-align: right;
+}
+
+.service-card-price strong {
+  color: rgb(167 243 208);
+  font-size: 1.15rem;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.service-card-price span {
+  color: rgb(161 161 170);
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.service-card-meta {
+  align-items: center;
+}
+
+.service-card-meta > *,
+.service-card-details span,
+.service-card-more summary {
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.05);
+  color: rgb(212 212 216);
+  font-size: 0.76rem;
+  font-weight: 850;
+  line-height: 1.1;
+  padding: 0.42rem 0.7rem;
+}
+
+.service-card-actions {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.service-card-actions > button {
+  min-width: 7.5rem;
+}
+
+.service-card-more,
+.service-card-details {
+  min-width: min(100%, 12rem);
+}
+
+.service-card-more summary,
+.service-card-details summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.service-card-details {
+  border-top: 1px solid rgb(255 255 255 / 0.08);
+  padding-top: 0.75rem;
+}
+
+.service-card-details summary {
+  color: rgb(191 219 254);
+  font-size: 0.85rem;
+  font-weight: 850;
+}
+
+@media (max-width: 640px) {
+  .services-compact-hero,
+  .service-library-controls,
+  .service-builder-card,
+  .service-starter-lab,
+  .service-intelligence-card,
+  .service-action-strip,
+  .service-price-map {
+    border-radius: 1.2rem;
+    padding: 1rem;
+  }
+
+  .services-summary-row {
+    gap: 0.45rem;
+    padding: 0.75rem;
+  }
+
+  .service-filter-pill {
+    padding: 0.58rem 0.75rem;
+  }
+
+  .service-card-price {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .service-card-actions {
+    align-items: stretch;
+  }
+
+  .service-card-actions > button,
+  .service-card-more {
+    flex: 1 1 100%;
+  }
+
+  .service-focus-bar {
+    padding: 0.75rem;
+  }
+}
+
 @keyframes trimaxWorkspaceReveal {
   from {
     opacity: 0;

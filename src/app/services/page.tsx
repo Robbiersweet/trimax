@@ -6,7 +6,6 @@ import {
   useMemo,
   useState,
 } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import AppShell from "../components/AppShell";
 import Card from "../components/Card";
@@ -246,6 +245,10 @@ function ServicesPageContent() {
     useState<ServiceFocusFilter>("all");
   const [sortMode, setSortMode] =
     useState<ServiceSortMode>("category");
+  const [builderOpen, setBuilderOpen] = useState(false);
+  const [pricingTiersOpen, setPricingTiersOpen] = useState(false);
+  const [starterOpen, setStarterOpen] = useState(false);
+  const [healthOpen, setHealthOpen] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -646,14 +649,6 @@ function ServicesPageContent() {
       tone: "cyan",
     },
   ];
-  const serviceLibraryLabel =
-    serviceLibraryScore >= 86
-      ? "Client-ready"
-      : serviceLibraryScore >= 68
-        ? "Needs polish"
-        : services.length > 0
-          ? "Needs cleanup"
-          : "Build starter";
   const linePreviewTotal =
     (Number(defaultQuantity) || 0) *
     (Number(defaultUnitPrice) || 0);
@@ -772,30 +767,6 @@ function ServicesPageContent() {
     (suggestedCategory) =>
       !categories.includes(suggestedCategory)
   );
-  const serviceSpotlightCards = [
-    {
-      label: "Library Health",
-      value: `${serviceLibraryScore}%`,
-      detail: serviceLibraryLabel,
-      tone: "emerald",
-    },
-    {
-      label: "Bid Gaps",
-      value: String(servicesNeedingPolishCount),
-      detail: "Active services with cleanup signals.",
-      tone: servicesNeedingPolishCount > 0 ? "amber" : "emerald",
-    },
-    {
-      label: "Top Lane",
-      value: topCategories[0]?.name ?? "Not set",
-      detail: topCategories[0]
-        ? `${topCategories[0].count} service${
-            topCategories[0].count === 1 ? "" : "s"
-          } grouped here.`
-        : "Add categories to organize bids by work type.",
-      tone: "cyan",
-    },
-  ];
   const existingServiceKeys = new Set(
     services.map((service) => normalizeServiceName(service.name))
   );
@@ -850,6 +821,7 @@ function ServicesPageContent() {
   }
 
   function scrollToServiceForm() {
+    setBuilderOpen(true);
     window.setTimeout(() => {
       document.getElementById("service-form")?.scrollIntoView({
         behavior: "smooth",
@@ -1127,53 +1099,88 @@ function ServicesPageContent() {
         />
       )}
 
-      <div className="space-y-6">
-        <Card className="services-command-hero border-cyan-500/20 bg-zinc-950/80">
-          <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr] xl:items-end">
-            <div>
-              <p className="text-sm font-black uppercase tracking-[0.3em] text-orange-300">
-                Trimax Price Book
-              </p>
-
-              <h1 className="mt-2 text-4xl font-black tracking-tight text-white">
-                Services
-              </h1>
-
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-300">
-                Manage reusable line items for{" "}
-                {business?.name ?? "this business"} so every estimate starts
-                cleaner, faster, and more consistent.
-              </p>
-
-              <div className="mt-5 flex flex-wrap gap-3">
-                <Link href={`/service-analytics?business=${businessSlug}`}>
-                  <Button variant="secondary">Service Analytics</Button>
-                </Link>
+      <div className="services-workspace space-y-6">
+        <Card className="services-command-hero services-compact-hero border-cyan-500/20 bg-zinc-950/80">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-300">
+                  Trimax Price Book
+                </p>
+                <h1 className="mt-1 text-3xl font-black tracking-tight text-white">
+                  Services
+                </h1>
+                <p className="mt-1 text-sm text-zinc-300">
+                  Reusable pricing for {business?.name ?? "this workspace"}.
+                </p>
               </div>
+
+              <Button
+                onClick={() => {
+                  resetForm();
+                  setBuilderOpen(true);
+                  scrollToServiceForm();
+                }}
+              >
+                + New Service
+              </Button>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
-              {serviceSpotlightCards.map((card) => (
-                <div
-                  key={card.label}
-                  data-tone={card.tone}
-                  className="services-spotlight-card rounded-2xl border border-white/10 bg-black/25 p-4"
+            <div className="services-summary-row rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm font-black text-zinc-200">
+              <span>{services.length} services</span>
+              <span>{quoteReadyCount} quote-ready</span>
+              <span>{autoCapturedCount} auto-captured</span>
+              <button
+                type="button"
+                onClick={() => setHealthOpen((open) => !open)}
+                className="text-orange-200 underline-offset-4 hover:underline"
+              >
+                Cleanup {servicesNeedingPolishCount}
+              </button>
+            </div>
+
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+              <InputField
+                label="Search services"
+                placeholder="Search name, description, or category"
+                value={searchTerm}
+                onChange={setSearchTerm}
+              />
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCategoryFilter("all");
+                    setServiceFocusFilter("all");
+                  }}
+                  className={`service-filter-pill ${
+                    categoryFilter === "all" ? "is-active" : ""
+                  }`}
                 >
-                  <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">
-                    {card.label}
-                  </p>
-                  <p className="mt-2 line-clamp-2 text-2xl font-black text-white">
-                    {card.value}
-                  </p>
-                  <p className="mt-2 text-xs leading-5 text-zinc-400">
-                    {card.detail}
-                  </p>
-                </div>
-              ))}
+                  All
+                </button>
+                {categorySummaries.map((serviceCategory) => (
+                  <button
+                    key={serviceCategory.name}
+                    type="button"
+                    onClick={() => {
+                      setCategoryFilter(serviceCategory.name);
+                      setServiceFocusFilter("all");
+                    }}
+                    className={`service-filter-pill ${
+                      categoryFilter === serviceCategory.name ? "is-active" : ""
+                    }`}
+                  >
+                    {serviceCategory.name} {serviceCategory.count}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </Card>
 
+        {builderOpen || editingServiceId ? (
         <Card id="service-form" className="service-builder-card">
           <div className="grid gap-6 xl:grid-cols-[1fr_22rem]">
             <div className="grid gap-5">
@@ -1264,6 +1271,15 @@ function ServicesPageContent() {
                   </p>
                 </div>
 
+                <button
+                  type="button"
+                  onClick={() => setPricingTiersOpen((open) => !open)}
+                  className="mt-3 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm font-black text-emerald-100"
+                >
+                  {pricingTiersOpen ? "Hide pricing tiers" : "Pricing tiers"}
+                </button>
+
+                {pricingTiersOpen && (
                 <div className="mt-4 grid gap-4 md:grid-cols-3">
                   <InputField
                     label="Easy Unit Price"
@@ -1286,6 +1302,7 @@ function ServicesPageContent() {
                     onChange={setDifficultUnitPrice}
                   />
                 </div>
+                )}
               </div>
 
               {suggestedCategories.length > 0 ? (
@@ -1430,40 +1447,59 @@ function ServicesPageContent() {
             </aside>
           </div>
         </Card>
+        ) : (
+          <Card id="service-form" className="service-builder-card service-builder-collapsed">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-200">
+                  Service Builder
+                </p>
+                <h2 className="mt-1 text-xl font-black text-white">
+                  Add or edit a service
+                </h2>
+              </div>
+              <Button onClick={() => setBuilderOpen(true)}>+ New Service</Button>
+            </div>
+          </Card>
+        )}
 
-        <Card className="service-starter-lab border-orange-500/20 bg-zinc-950/70">
+        <Card className="service-starter-lab service-collapsible-panel border-orange-500/20 bg-zinc-950/70">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.26em] text-orange-300">
                 Service Starter Lab
               </p>
-              <h2 className="mt-2 text-2xl font-black text-white">
-                Start from real-world contractor work
+              <h2 className="mt-2 text-xl font-black text-white">
+                Starter services
               </h2>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
-                Use these as quick drafts for common work types, then tune the
-                wording and price to match how R&L wants to bid.
+              <p className="mt-1 text-sm text-zinc-300">
+                {starterServices.length} templates for quick drafts.
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={() => applyStarter(nextStarterService)}
-              className="service-next-starter rounded-2xl border border-orange-300/30 bg-orange-400/10 px-4 py-3 text-left transition hover:-translate-y-0.5 hover:border-orange-200 hover:bg-orange-400/15"
-            >
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-orange-200">
-                Suggested Next
-              </p>
-              <p className="mt-1 text-sm font-black text-white">
-                {nextStarterService.name}
-              </p>
-              <p className="mt-1 text-xs text-zinc-400">
-                {nextStarterService.category} -{" "}
-                {formatCurrency(nextStarterService.defaultUnitPrice)}
-              </p>
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => applyStarter(nextStarterService)}
+                className="service-next-starter rounded-2xl border border-orange-300/30 bg-orange-400/10 px-4 py-3 text-left transition hover:border-orange-200 hover:bg-orange-400/15"
+              >
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-orange-200">
+                  Suggested
+                </p>
+                <p className="mt-1 text-sm font-black text-white">
+                  {nextStarterService.name}
+                </p>
+              </button>
+              <Button
+                variant="secondary"
+                onClick={() => setStarterOpen((open) => !open)}
+              >
+                {starterOpen ? "Hide templates" : "Browse templates"}
+              </Button>
+            </div>
           </div>
 
+          {starterOpen && (
           <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
             {starterServices.map((starter) => (
               <button
@@ -1488,9 +1524,12 @@ function ServicesPageContent() {
               </button>
             ))}
           </div>
+          )}
         </Card>
 
-        <Card className="service-capture-card border-emerald-500/30 bg-emerald-500/10">
+        {healthOpen && (
+        <>
+        <Card className="service-capture-card service-collapsible-panel border-emerald-500/30 bg-emerald-500/10">
           <p className="text-sm uppercase tracking-[0.25em] text-emerald-300">
             Smart Service Capture
           </p>
@@ -1855,8 +1894,10 @@ function ServicesPageContent() {
             </div>
           </Card>
         )}
+        </>
+        )}
 
-        <Card>
+        <Card className="service-library-controls">
           <div className="grid gap-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
@@ -1897,45 +1938,7 @@ function ServicesPageContent() {
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-[1fr_240px_220px]">
-              <InputField
-                label="Search Services"
-                placeholder="Search name, description, or category"
-                value={searchTerm}
-                onChange={setSearchTerm}
-              />
-
-              <div>
-                <label className="mb-2 block text-sm text-zinc-400">
-                  Category
-                </label>
-
-                <select
-                  value={categoryFilter}
-                  onChange={(event) =>
-                    setCategoryFilter(
-                      event.target.value
-                    )
-                  }
-                  className="app-form-input w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
-                >
-                  <option value="all">
-                    All Categories
-                  </option>
-
-                  {categories.map(
-                    (serviceCategory) => (
-                      <option
-                        key={serviceCategory}
-                        value={serviceCategory}
-                      >
-                        {serviceCategory}
-                      </option>
-                    )
-                  )}
-                </select>
-              </div>
-
+            <div className="grid gap-4 md:grid-cols-[220px]">
               <div>
                 <label className="mb-2 block text-sm text-zinc-400">
                   Sort
@@ -2030,50 +2033,6 @@ function ServicesPageContent() {
               .
             </div>
 
-            {categorySummaries.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCategoryFilter("all");
-                    setServiceFocusFilter("all");
-                  }}
-                  className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
-                    categoryFilter === "all"
-                      ? "app-chip-active border-orange-500 bg-orange-500 text-black"
-                      : "app-chip border-zinc-700 bg-zinc-950 text-zinc-300 hover:border-orange-400 hover:text-orange-300"
-                  }`}
-                >
-                  All categories
-                </button>
-
-                {categorySummaries.map(
-                  (serviceCategory) => (
-                    <button
-                      key={serviceCategory.name}
-                      type="button"
-                      onClick={() => {
-                        setCategoryFilter(
-                          serviceCategory.name
-                        );
-                        setServiceFocusFilter("all");
-                      }}
-                      className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
-                        categoryFilter ===
-                        serviceCategory.name
-                          ? "app-chip-active border-orange-500 bg-orange-500 text-black"
-                          : "app-chip border-zinc-700 bg-zinc-950 text-zinc-300 hover:border-orange-400 hover:text-orange-300"
-                      }`}
-                    >
-                      {serviceCategory.name}{" "}
-                      <span className="text-xs opacity-75">
-                        {serviceCategory.count}
-                      </span>
-                    </button>
-                  )
-                )}
-              </div>
-            )}
           </div>
         </Card>
 
@@ -2102,7 +2061,7 @@ function ServicesPageContent() {
             </p>
           </Card>
         ) : (
-          <div className="grid gap-4">
+          <div className="service-library-results grid gap-3">
             {visibleServices.map((service) => {
               const readinessScore = serviceReadinessScore(service);
               const readinessTone =
@@ -2163,146 +2122,82 @@ function ServicesPageContent() {
                       : "opacity-50"
                   }`}
                 >
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-sm uppercase tracking-[0.2em] text-orange-400">
-                          {service.category ||
-                            "Uncategorized"}
+                  <div className="service-card-compact">
+                    <div className="service-card-main">
+                      <div className="min-w-0">
+                        <p className="service-card-category">
+                          {service.category || "Uncategorized"}
                         </p>
-                        <span
-                          data-tone={readinessTone}
-                          className="service-readiness-badge rounded-full border px-3 py-1 text-xs font-black"
-                        >
-                          {readinessScore}% ready
-                        </span>
+                        <h2 className="service-card-title">
+                          {service.name}
+                        </h2>
+                        <p className="service-card-description">
+                          {service.description || "No description."}
+                        </p>
                       </div>
 
-                      <h2 className="mt-2 text-2xl font-semibold">
-                        {service.name}
-                      </h2>
-
-                      <p className="mt-2 text-zinc-400">
-                        {service.description ||
-                          "No description."}
-                      </p>
-
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        <span className="service-line-signal rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-black text-zinc-300">
-                          Qty {Number(service.default_quantity) || 1}
-                        </span>
-                        <span className="service-line-signal rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-black text-emerald-100">
-                          {formatCurrency(service.default_unit_price)}
-                        </span>
-                        <span
-                          data-tone={priceBand}
-                          className="service-price-band rounded-full border px-3 py-1 text-xs font-black"
-                        >
-                          {priceBandLabel}
-                        </span>
-                        <span
-                          className={`service-line-signal rounded-full border px-3 py-1 text-xs font-black ${
-                            service.category?.trim()
-                              ? "border-cyan-400/20 bg-cyan-400/10 text-cyan-100"
-                              : "border-amber-400/30 bg-amber-400/10 text-amber-100"
-                          }`}
-                        >
-                          {service.category?.trim()
-                            ? "Categorized"
-                            : "Needs category"}
-                        </span>
-                        <span
-                          className={`service-line-signal rounded-full border px-3 py-1 text-xs font-black ${
-                            service.description?.trim()
-                              ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-100"
-                              : "border-amber-400/30 bg-amber-400/10 text-amber-100"
-                          }`}
-                        >
-                          {service.description?.trim()
-                            ? "Estimate-ready"
-                            : "Needs detail"}
-                        </span>
-                        {isPossibleDuplicate && (
-                          <span className="service-line-signal rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-xs font-black text-amber-100">
-                            Similar name
-                          </span>
-                        )}
-                        {servicePricingTiers.map((tier) => (
-                          <span
-                            key={tier.label}
-                            className="service-line-signal rounded-full border border-sky-400/25 bg-sky-400/10 px-3 py-1 text-xs font-black text-sky-100"
-                          >
-                            {tier.label} {formatCurrency(tier.price)}
-                          </span>
-                        ))}
-                      </div>
-
-                      <div className="service-quality-strip mt-4 rounded-2xl border border-white/10 bg-white/5 p-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">
-                            Bid Polish
-                          </p>
-                          <span
-                            className={`rounded-full border px-3 py-1 text-xs font-black ${
-                              qualitySignals.length === 0
-                                ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-100"
-                                : "border-amber-400/30 bg-amber-400/10 text-amber-100"
-                            }`}
-                          >
-                            {qualitySignals.length === 0
-                              ? "Ready to sell"
-                              : `${qualitySignals.length} signal${
-                                  qualitySignals.length === 1 ? "" : "s"
-                                }`}
-                          </span>
-                        </div>
-
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {(qualitySignals.length > 0
-                            ? qualitySignals
-                            : ["Clean catalog item"]
-                          ).map((signal) => (
-                            <span
-                              key={signal}
-                              className="service-quality-chip rounded-full border border-white/10 bg-zinc-950/50 px-3 py-1 text-xs font-black text-zinc-300"
-                            >
-                              {signal}
-                            </span>
-                          ))}
-                        </div>
+                      <div className="service-card-price">
+                        <strong>{formatCurrency(service.default_unit_price)}</strong>
+                        <span>{service.is_active ? "Active" : "Inactive"}</span>
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-3">
+                    <div className="service-card-meta">
+                      <span>Qty {Number(service.default_quantity) || 1}</span>
+                      <span
+                        data-tone={readinessTone}
+                        className="service-readiness-badge"
+                      >
+                        {readinessScore}% ready
+                      </span>
+                      <span>{service.category?.trim() ? "Categorized" : "Needs category"}</span>
+                      <span>{service.description?.trim() ? "Estimate-ready" : "Needs detail"}</span>
+                    </div>
+
+                    <div className="service-card-actions">
                       <Button
                         variant="secondary"
-                        onClick={() =>
-                          startEdit(service)
-                        }
+                        onClick={() => startEdit(service)}
                       >
                         Edit
                       </Button>
 
-                      <Button
-                        variant="secondary"
-                        onClick={() =>
-                          duplicateService(service)
-                        }
-                      >
-                        Duplicate
-                      </Button>
-
-                      <Button
-                        variant="secondary"
-                        onClick={() =>
-                          toggleActive(service)
-                        }
-                      >
-                        {service.is_active
-                          ? "Deactivate"
-                          : "Activate"}
-                      </Button>
+                      <details className="service-card-more">
+                        <summary>More actions</summary>
+                        <div className="mt-3 grid gap-2">
+                          <Button
+                            variant="secondary"
+                            onClick={() => duplicateService(service)}
+                          >
+                            Duplicate
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            onClick={() => toggleActive(service)}
+                          >
+                            {service.is_active ? "Deactivate" : "Activate"}
+                          </Button>
+                        </div>
+                      </details>
                     </div>
+
+                    <details className="service-card-details">
+                      <summary>Details</summary>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <span className="service-price-band" data-tone={priceBand}>
+                          {priceBandLabel}
+                        </span>
+                        {isPossibleDuplicate && <span>Similar name</span>}
+                        {(qualitySignals.length > 0 ? qualitySignals : ["Clean catalog item"]).map((signal) => (
+                          <span key={signal}>{signal}</span>
+                        ))}
+                        {servicePricingTiers.map((tier) => (
+                          <span key={tier.label}>
+                            {tier.label} {formatCurrency(tier.price)}
+                          </span>
+                        ))}
+                      </div>
+                    </details>
                   </div>
                 </Card>
               );
