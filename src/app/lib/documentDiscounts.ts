@@ -59,27 +59,33 @@ export function calculateDiscountedDocumentTotals({
   lineSubtotal,
   taxRate,
   discount,
+  roundLineSubtotalToCents = true,
 }: {
   lineSubtotal: number;
   taxRate: number;
   discount: DiscountDraft;
+  roundLineSubtotalToCents?: boolean;
 }): DiscountTotals {
-  const subtotalCents = Math.max(0, toCents(lineSubtotal));
+  const normalizedSubtotal = Math.max(0, Number(lineSubtotal) || 0);
+  const subtotal = roundLineSubtotalToCents
+    ? centsToNumber(toCents(normalizedSubtotal))
+    : normalizedSubtotal;
   const discountCents = toCents(
     calculateDiscountAmount({
-      subtotal: centsToNumber(subtotalCents),
+      subtotal,
       discount,
     })
   );
-  const taxableSubtotalCents = Math.max(0, subtotalCents - discountCents);
-  const taxCents = Math.round(taxableSubtotalCents * ((Number(taxRate) || 0) / 100));
+  const discountAmount = centsToNumber(discountCents);
+  const taxableSubtotal = Math.max(0, subtotal - discountAmount);
+  const taxAmount = taxableSubtotal * ((Number(taxRate) || 0) / 100);
 
   return {
-    lineSubtotal: centsToNumber(subtotalCents),
-    discountAmount: centsToNumber(discountCents),
-    taxableSubtotal: centsToNumber(taxableSubtotalCents),
-    taxAmount: centsToNumber(taxCents),
-    total: centsToNumber(taxableSubtotalCents + taxCents),
+    lineSubtotal: subtotal,
+    discountAmount,
+    taxableSubtotal,
+    taxAmount,
+    total: taxableSubtotal + taxAmount,
   };
 }
 

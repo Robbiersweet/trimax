@@ -246,6 +246,7 @@ export default function EditInvoicePage() {
         value: discountValue,
         label: discountLabel,
       },
+      roundLineSubtotalToCents: false,
     });
   }, [discountEnabled, discountLabel, discountType, discountValue, subtotal, taxMode, taxRate]);
 

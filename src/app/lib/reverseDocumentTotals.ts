@@ -36,15 +36,11 @@ function toCents(value: number) {
   return Math.round((Number(value) || 0) * 100);
 }
 
-function centsToNumber(cents: number) {
-  return cents / 100;
-}
-
-function lineTotalCents(item: ReverseTotalLineItem) {
+function lineTotalUnits(item: ReverseTotalLineItem) {
   const quantity = Number(item.quantity) || 0;
   const unitPrice = Number(item.unitPrice) || 0;
 
-  return toCents(quantity * unitPrice);
+  return Math.round(quantity * unitPrice * 10_000);
 }
 
 function formatUnitPrice(value: number) {
@@ -54,18 +50,19 @@ function formatUnitPrice(value: number) {
 }
 
 function calculateTotalCents({
-  subtotalCents,
+  subtotalUnits,
   taxRate,
   discount,
 }: {
-  subtotalCents: number;
+  subtotalUnits: number;
   taxRate: number;
   discount: DiscountDraft;
 }) {
   const totals = calculateDiscountedDocumentTotals({
-    lineSubtotal: centsToNumber(subtotalCents),
+    lineSubtotal: subtotalUnits / 10_000,
     taxRate,
     discount,
+    roundLineSubtotalToCents: false,
   });
 
   return {
@@ -121,8 +118,8 @@ export function reverseCalculateFinalTotal({
     };
   }
 
-  const otherSubtotalCents = lineItems.reduce((total, item, index) => {
-    return index === selectedLineIndex ? total : total + lineTotalCents(item);
+  const otherSubtotalUnits = lineItems.reduce((total, item, index) => {
+    return index === selectedLineIndex ? total : total + lineTotalUnits(item);
   }, 0);
   const normalizedTaxRate = Math.max(0, Number(taxRate) || 0);
   const normalizedDiscount: DiscountDraft = {
@@ -130,17 +127,17 @@ export function reverseCalculateFinalTotal({
     value: discount.value ?? 0,
   };
 
-  let high = Math.max(targetCents, otherSubtotalCents, 100);
+  let high = Math.max(targetCents * 100, otherSubtotalUnits, 10_000);
   let highTotal = calculateTotalCents({
-    subtotalCents: otherSubtotalCents + high,
+    subtotalUnits: otherSubtotalUnits + high,
     taxRate: normalizedTaxRate,
     discount: normalizedDiscount,
   }).totalCents;
 
-  while (highTotal < targetCents && high < 10_000_000) {
+  while (highTotal < targetCents && high < 1_000_000_000) {
     high *= 2;
     highTotal = calculateTotalCents({
-      subtotalCents: otherSubtotalCents + high,
+      subtotalUnits: otherSubtotalUnits + high,
       taxRate: normalizedTaxRate,
       discount: normalizedDiscount,
     }).totalCents;
@@ -158,7 +155,7 @@ export function reverseCalculateFinalTotal({
   while (low < high) {
     const mid = Math.floor((low + high) / 2);
     const midTotal = calculateTotalCents({
-      subtotalCents: otherSubtotalCents + mid,
+      subtotalUnits: otherSubtotalUnits + mid,
       taxRate: normalizedTaxRate,
       discount: normalizedDiscount,
     }).totalCents;
@@ -171,20 +168,20 @@ export function reverseCalculateFinalTotal({
   }
 
   const candidateWindow = Array.from(
-    { length: 1001 },
-    (_, index) => Math.max(0, low - 500 + index)
+    { length: 20_001 },
+    (_, index) => Math.max(0, low - 10_000 + index)
   );
-  const matchingLineTotalCents = candidateWindow.find((candidateCents) => {
+  const matchingLineTotalUnits = candidateWindow.find((candidateUnits) => {
     return (
       calculateTotalCents({
-        subtotalCents: otherSubtotalCents + candidateCents,
+        subtotalUnits: otherSubtotalUnits + candidateUnits,
         taxRate: normalizedTaxRate,
         discount: normalizedDiscount,
       }).totalCents === targetCents
     );
   });
 
-  if (matchingLineTotalCents === undefined) {
+  if (matchingLineTotalUnits === undefined) {
     return {
       ok: false,
       message:
@@ -193,7 +190,7 @@ export function reverseCalculateFinalTotal({
   }
 
   const { totals } = calculateTotalCents({
-    subtotalCents: otherSubtotalCents + matchingLineTotalCents,
+    subtotalUnits: otherSubtotalUnits + matchingLineTotalUnits,
     taxRate: normalizedTaxRate,
     discount: normalizedDiscount,
   });
@@ -202,9 +199,9 @@ export function reverseCalculateFinalTotal({
     ok: true,
     selectedLineIndex,
     unitPrice: formatUnitPrice(
-      centsToNumber(matchingLineTotalCents) / selectedQuantity
+      matchingLineTotalUnits / 10_000 / selectedQuantity
     ),
-    lineTotal: centsToNumber(matchingLineTotalCents),
+    lineTotal: matchingLineTotalUnits / 10_000,
     subtotal: totals.lineSubtotal,
     taxAmount: totals.taxAmount,
     discountAmount: totals.discountAmount,
