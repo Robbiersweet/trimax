@@ -2089,6 +2089,18 @@ input[type="number"]::-webkit-outer-spin-button {
   margin: 0;
 }
 
+select option,
+select optgroup {
+  background-color: #09090b;
+  color: #f8fafc;
+}
+
+html.theme-light select option,
+html.theme-light select optgroup {
+  background-color: #ffffff;
+  color: #111827;
+}
+
 .app-button-primary {
   background:
     linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%);

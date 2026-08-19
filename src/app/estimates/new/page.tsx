@@ -1397,6 +1397,7 @@ function NewEstimatePageContent() {
               <InputField
                 label="Tax Rate (%)"
                 type="number"
+                preventWheelChange
                 placeholder="9.9"
                 value={taxRate}
                 onChange={(value) => {
@@ -1472,6 +1473,7 @@ function NewEstimatePageContent() {
             <InputField
               label="Split Target Amount"
               type="number"
+              preventWheelChange
               placeholder={
                 splitWarningAmount > 0
                   ? `Default: ${formatCurrency(splitWarningAmount)}`
@@ -1592,6 +1594,7 @@ function NewEstimatePageContent() {
                       <InputField
                         label="Unit Price"
                         type="number"
+                        preventWheelChange
                         value={item.unitPrice}
                         onChange={(value) =>
                           updateLineItem(

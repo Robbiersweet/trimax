@@ -1878,6 +1878,7 @@ function RecurringInvoicesPageContent() {
             <InputField
               label="Tax Rate"
               type="number"
+              preventWheelChange
               placeholder="Example: 10.3"
               value={taxRate}
               onChange={setTaxRate}
@@ -1930,6 +1931,7 @@ function RecurringInvoicesPageContent() {
                   <InputField
                     label="Unit Price"
                     type="number"
+                    preventWheelChange
                     value={item.unitPrice}
                     onChange={(value) => updateLineItem(index, "unitPrice", value)}
                   />

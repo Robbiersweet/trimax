@@ -1033,6 +1033,7 @@ export default function EditEstimatePage() {
               <InputField
                 label="Tax Rate (%)"
                 type="number"
+                preventWheelChange
                 placeholder="9.9"
                 value={taxRate}
                 onChange={(value) => {
@@ -1108,6 +1109,7 @@ export default function EditEstimatePage() {
             <InputField
               label="Split Target Amount"
               type="number"
+              preventWheelChange
               placeholder={
                 splitWarningAmount > 0
                   ? `Default: ${formatCurrency(splitWarningAmount)}`
@@ -1239,6 +1241,7 @@ export default function EditEstimatePage() {
                       <InputField
                         label="Unit Price"
                         type="number"
+                        preventWheelChange
                         value={item.unitPrice}
                         onChange={(value) =>
                           updateLineItem(
@@ -1318,6 +1321,7 @@ export default function EditEstimatePage() {
                       <InputField
                         label={discountType === "percentage" ? "Value (%)" : "Value"}
                         type="number"
+                        preventWheelChange
                         value={discountValue}
                         onChange={setDiscountValue}
                       />

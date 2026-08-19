@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type WheelEvent } from "react";
 import DateInputField from "./DateInputField";
 
 type InputFieldProps = {
@@ -15,6 +15,7 @@ type InputFieldProps = {
   emptyOptionsMessage?: string;
   optionAliases?: (option: string) => string[];
   helperText?: string;
+  preventWheelChange?: boolean;
 };
 
 export default function InputField({
@@ -29,6 +30,7 @@ export default function InputField({
   emptyOptionsMessage = "No matching options.",
   optionAliases,
   helperText,
+  preventWheelChange = false,
 }: InputFieldProps) {
   const [showPassword, setShowPassword] =
     useState(false);
@@ -54,6 +56,15 @@ export default function InputField({
     isPasswordField && showPassword
       ? "text"
       : type;
+  const handleWheel = (event: WheelEvent<HTMLInputElement>) => {
+    if (
+      preventWheelChange &&
+      type === "number" &&
+      document.activeElement === event.currentTarget
+    ) {
+      event.currentTarget.blur();
+    }
+  };
   const normalizedValue = value.trim().toLowerCase();
   const hasCustomOptions = options.length > 0;
   const optionSearchValues = (option: string) =>
@@ -120,6 +131,7 @@ export default function InputField({
             setIsOptionsOpen(hasCustomOptions);
             onChange(event.target.value);
           }}
+          onWheel={preventWheelChange ? handleWheel : undefined}
           placeholder={placeholder}
           className="app-form-input w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 pr-16 text-white outline-none transition focus:border-orange-500"
         />

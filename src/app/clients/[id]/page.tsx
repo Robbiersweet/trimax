@@ -583,7 +583,7 @@ export default async function ClientDetailsPage({
           businessId={selectedBusiness.id}
           entityType="client"
           entityId={client.id}
-          title="Client Conversation"
+          title="Internal Client Notes"
         />
 
         <PersistentDetails

@@ -1127,6 +1127,7 @@ export default function EditInvoicePage() {
               <InputField
                 label="Tax Rate (%)"
                 type="number"
+                preventWheelChange
                 placeholder="9.9"
                 value={taxRate}
                 onChange={(value) => {
@@ -1145,6 +1146,7 @@ export default function EditInvoicePage() {
               <InputField
                 label="Amount Paid"
                 type="number"
+                preventWheelChange
                 value={amountPaid}
                 onChange={setAmountPaid}
               />
@@ -1209,6 +1211,7 @@ export default function EditInvoicePage() {
             <InputField
               label="Split Target Amount"
               type="number"
+              preventWheelChange
               placeholder={
                 splitWarningAmount > 0
                   ? `Default: ${formatCurrency(splitWarningAmount)}`
@@ -1309,6 +1312,7 @@ export default function EditInvoicePage() {
                       <InputField
                         label="Unit Price"
                         type="number"
+                        preventWheelChange
                         value={item.unitPrice}
                         onChange={(value) =>
                           updateLineItem(
@@ -1388,6 +1392,7 @@ export default function EditInvoicePage() {
                       <InputField
                         label={discountType === "percentage" ? "Value (%)" : "Value"}
                         type="number"
+                        preventWheelChange
                         value={discountValue}
                         onChange={setDiscountValue}
                       />
@@ -1474,7 +1479,7 @@ export default function EditInvoicePage() {
 
             <div>
               <label className="mb-2 block text-sm text-zinc-400">
-                Notes
+                Customer-Facing Notes
               </label>
 
               <textarea
@@ -1482,7 +1487,7 @@ export default function EditInvoicePage() {
                 onChange={(event) =>
                   setNotes(event.target.value)
                 }
-                placeholder="Internal notes..."
+                placeholder="Notes shown on the customer invoice/PDF..."
                 className="min-h-32 w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
               />
             </div>

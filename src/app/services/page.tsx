@@ -1312,6 +1312,7 @@ function ServicesPageContent() {
                 <InputField
                   label="Default Unit Price"
                   type="number"
+                  preventWheelChange
                   value={defaultUnitPrice}
                   onChange={setDefaultUnitPrice}
                 />
@@ -1352,6 +1353,7 @@ function ServicesPageContent() {
                   <InputField
                     label="Easy Unit Price"
                     type="number"
+                    preventWheelChange
                     value={easyUnitPrice}
                     onChange={setEasyUnitPrice}
                   />
@@ -1359,6 +1361,7 @@ function ServicesPageContent() {
                   <InputField
                     label="Normal Unit Price"
                     type="number"
+                    preventWheelChange
                     value={normalUnitPrice}
                     onChange={setNormalUnitPrice}
                   />
@@ -1366,6 +1369,7 @@ function ServicesPageContent() {
                   <InputField
                     label="Difficult Unit Price"
                     type="number"
+                    preventWheelChange
                     value={difficultUnitPrice}
                     onChange={setDifficultUnitPrice}
                   />

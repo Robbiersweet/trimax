@@ -2266,14 +2266,17 @@ export default async function InvoiceDetailPage({
           </div>
 
           <Card className="p-3 sm:p-4">
-            <Info label="Notes" value={invoice.notes || "No notes added."} />
+            <Info
+              label="Customer-Facing Notes"
+              value={invoice.notes || "No customer-facing notes added."}
+            />
           </Card>
 
           <InternalNotes
             businessId={business.id}
             entityType="invoice"
             entityId={invoice.id}
-            title="Invoice Conversation"
+            title="Internal Invoice Notes"
           />
 
           <PersistentDetails

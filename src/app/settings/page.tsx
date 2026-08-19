@@ -1867,6 +1867,7 @@ function BusinessSettingsPageContent() {
                 <InputField
                   label="Apartment Paint Split Threshold"
                   type="number"
+                  preventWheelChange
                   placeholder="Example: 1300"
                   value={splitWarningAmount}
                   onChange={setSplitWarningAmount}
