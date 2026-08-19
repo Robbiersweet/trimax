@@ -12,6 +12,7 @@ import AppShell from "../../components/AppShell";
 import Button from "../../components/Button";
 import DocumentReadinessPanel from "../../components/DocumentReadinessPanel";
 import InputField from "../../components/InputField";
+import ReverseTotalControl from "../../components/ReverseTotalControl";
 import TaxModeSelect from "../../components/TaxModeSelect";
 import Card from "../../components/Card";
 import Toast from "../../components/Toast";
@@ -19,6 +20,7 @@ import { captureServicesFromLineItems } from "../../lib/captureServicesFromLineI
 import { getNextDocumentDisplayId } from "../../lib/documentNumbers";
 import { logActivity } from "../../lib/activityLog";
 import { assertCanWriteDuringMaintenance } from "../../lib/maintenanceMode";
+import { reverseCalculateFinalTotal } from "../../lib/reverseDocumentTotals";
 import { buildSplitInvoicePlan } from "../../lib/splitInvoices";
 import { supabase } from "../../lib/supabase";
 import { looksLikeApartmentUnitPaintJob } from "../../utils/jobWorkflow";
@@ -457,6 +459,14 @@ function NewEstimatePageContent() {
         unitPrice: "",
       },
     ]);
+  const [reverseFinalTotal, setReverseFinalTotal] =
+    useState("");
+  const [
+    reverseAdjustLineIndex,
+    setReverseAdjustLineIndex,
+  ] = useState(0);
+  const [reverseTotalMessage, setReverseTotalMessage] =
+    useState("");
 
   const subtotal = useMemo(() => {
     return lineItems.reduce(
@@ -475,6 +485,20 @@ function NewEstimatePageContent() {
   }, [subtotal, taxMode, taxRate]);
 
   const estimateTotal = subtotal + taxAmount;
+  const safeReverseAdjustLineIndex = Math.min(
+    reverseAdjustLineIndex,
+    Math.max(0, lineItems.length - 1)
+  );
+  const reverseLineOptions = useMemo(
+    () =>
+      lineItems.map((item, index) => ({
+        value: String(index),
+        label:
+          item.description.trim() ||
+          `Line ${index + 1}`,
+      })),
+    [lineItems]
+  );
   const readyLineItems = lineItems.filter(
     (item) => item.description.trim() && getLineTotal(item) > 0
   );
@@ -513,6 +537,7 @@ function NewEstimatePageContent() {
   const splitPreview = showSplitWarning
     ? automaticSplitPlan
     : null;
+
   const taxSuggestion =
     getTaxSuggestionForAddress(serviceAddress);
   const showTaxSuggestionNote =
@@ -948,6 +973,29 @@ function NewEstimatePageContent() {
             }
           : item
       )
+    );
+  }
+
+  function handleReverseFinalTotal() {
+    const result = reverseCalculateFinalTotal({
+      desiredTotal: reverseFinalTotal,
+      lineItems,
+      selectedLineIndex: safeReverseAdjustLineIndex,
+      taxRate: getEffectiveTaxRate({ taxMode, taxRate }),
+    });
+
+    if (!result.ok) {
+      setReverseTotalMessage(result.message);
+      return;
+    }
+
+    updateLineItem(
+      result.selectedLineIndex,
+      "unitPrice",
+      result.unitPrice
+    );
+    setReverseTotalMessage(
+      `Adjusted ${reverseLineOptions[result.selectedLineIndex]?.label || "the selected line"} to ${formatCurrency(result.lineTotal)} before tax.`
     );
   }
 
@@ -1646,6 +1694,16 @@ function NewEstimatePageContent() {
                     taxMode,
                   })}
                   value={formatCurrency(taxAmount)}
+                />
+
+                <ReverseTotalControl
+                  desiredTotal={reverseFinalTotal}
+                  onDesiredTotalChange={setReverseFinalTotal}
+                  lineOptions={reverseLineOptions}
+                  selectedLineIndex={safeReverseAdjustLineIndex}
+                  onSelectedLineIndexChange={setReverseAdjustLineIndex}
+                  onApply={handleReverseFinalTotal}
+                  message={reverseTotalMessage}
                 />
 
                 <div className="border-t border-zinc-700 pt-3">
