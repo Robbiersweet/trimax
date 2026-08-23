@@ -109,6 +109,12 @@ assert(
     paymentScreen.includes('data-camera-capture-button="true"') &&
     paymentScreen.includes('data-camera-control="capture"') &&
     paymentScreen.includes('data-camera-control={mode.value}') &&
+    paymentScreen.includes('data-camera-control="document-frame-capture"') &&
+    paymentScreen.includes("Tap document to capture") &&
+    paymentScreen.includes("handleDocumentFramePointerDown") &&
+    paymentScreen.includes("handleDocumentFrameTouchStart") &&
+    paymentScreen.includes("document-frame-pointer-down") &&
+    paymentScreen.includes("document-frame-capture") &&
     paymentScreen.includes('data-camera-control="device-camera"') &&
     paymentScreen.includes("onPointerDownCapture={handleCameraOverlayPointerDownCapture}") &&
     paymentScreen.includes("onTouchStartCapture={handleCameraOverlayTouchStartCapture}") &&
@@ -126,6 +132,8 @@ assert(
     paymentScreen.includes("capture-top-edge") &&
     paymentScreen.includes("capture-bottom-edge") &&
     paymentScreen.includes("below-visible-capture") &&
+    paymentScreen.includes("frame: rectSnapshot(frame)") &&
+    paymentScreen.includes("captureStarted: true") &&
     paymentScreen.includes("lastActualTap") &&
     paymentScreen.includes("capture-pointer-down"),
   "Diagnostics must prove visible Capture points hit Capture and tapping below it is a separate target."

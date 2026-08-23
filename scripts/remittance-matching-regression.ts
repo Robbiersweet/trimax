@@ -833,6 +833,10 @@ assert(
     paymentScreen.includes("handleCameraModeSelection(event, mode.value)") &&
     paymentScreen.includes("pointIsInsideRect") &&
     paymentScreen.includes("captureVisibleButtonTap") &&
+    paymentScreen.includes("captureFromDocumentFrame") &&
+    paymentScreen.includes("handleDocumentFramePointerDown") &&
+    paymentScreen.includes("Tap document to capture") &&
+    paymentScreen.includes('data-camera-control="document-frame-capture"') &&
     paymentScreen.includes("overlay-capture-visible-button") &&
     paymentScreen.includes("onPointerDownCapture={handleCameraOverlayPointerDownCapture}") &&
     paymentScreen.includes("onTouchStartCapture={handleCameraOverlayTouchStartCapture}") &&

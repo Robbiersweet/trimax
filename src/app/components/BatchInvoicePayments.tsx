@@ -149,6 +149,10 @@ type CameraActualTapSnapshot = {
   x: number;
   y: number;
   element: string;
+  target?: string;
+  frame?: CameraRectSnapshot | null;
+  handler?: string;
+  captureStarted?: boolean;
 } | null;
 
 type CameraGeometryDiagnostics = {
@@ -2854,6 +2858,78 @@ export default function BatchInvoicePayments({
     void captureFromTrimaxCamera(event);
   }
 
+  function captureFromDocumentFrame(
+    x: number,
+    y: number,
+    event: {
+      preventDefault: () => void;
+      stopPropagation: () => void;
+      target: EventTarget | null;
+    },
+    pointerId?: number
+  ) {
+    const frame = cameraGuideRef.current;
+
+    if (!frame || isCapturingFrame) {
+      return false;
+    }
+
+    if (!pointIsInsideRect(frame.getBoundingClientRect(), x, y)) {
+      return false;
+    }
+
+    const element = document.elementFromPoint(x, y);
+    const now = Date.now();
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (now - lastCapturePointerAtRef.current < 500) {
+      return true;
+    }
+
+    setLastActualCaptureTap({
+      point: "document-frame-pointer-down",
+      x: Math.round(x),
+      y: Math.round(y),
+      element: describeElement(element),
+      target: describeElement(event.target instanceof Element ? event.target : null),
+      frame: rectSnapshot(frame),
+      handler: "document-frame-capture",
+      captureStarted: true,
+    });
+    lastCapturePointerAtRef.current = now;
+    if (typeof pointerId === "number") {
+      frame.setPointerCapture?.(pointerId);
+    }
+    void captureFromTrimaxCamera(event);
+
+    return true;
+  }
+
+  function handleDocumentFramePointerDown(event: PointerEvent<HTMLDivElement>) {
+    if (event.button !== 0) {
+      return;
+    }
+
+    captureFromDocumentFrame(
+      event.clientX,
+      event.clientY,
+      event,
+      event.pointerId
+    );
+  }
+
+  function handleDocumentFrameTouchStart(event: TouchEvent<HTMLDivElement>) {
+    const touch = event.changedTouches[0];
+
+    if (!touch) {
+      return;
+    }
+
+    captureFromDocumentFrame(touch.clientX, touch.clientY, event);
+  }
+
   function captureVisibleButtonTap(
     x: number,
     y: number,
@@ -3311,7 +3387,13 @@ export default function BatchInvoicePayments({
             />
             <div
               ref={cameraGuideRef}
-              className={`pointer-events-none absolute left-1/2 top-1/2 z-20 max-h-[88%] max-w-[96%] -translate-x-1/2 -translate-y-1/2 rounded-[1.35rem] border-[3px] border-emerald-300 bg-transparent shadow-[0_0_0_9999px_rgba(0,0,0,0.45),0_0_36px_rgba(110,231,183,0.35)] ${
+              role="button"
+              tabIndex={0}
+              aria-label="Tap document frame to capture remittance"
+              onPointerDown={handleDocumentFramePointerDown}
+              onTouchStart={handleDocumentFrameTouchStart}
+              data-camera-control="document-frame-capture"
+              className={`absolute left-1/2 top-1/2 z-20 max-h-[88%] max-w-[96%] -translate-x-1/2 -translate-y-1/2 cursor-pointer touch-manipulation rounded-[1.35rem] border-[3px] border-emerald-300 bg-transparent shadow-[0_0_0_9999px_rgba(0,0,0,0.45),0_0_36px_rgba(110,231,183,0.35)] focus:outline-none focus:ring-2 focus:ring-emerald-100 ${
                 cameraGuideMode === "horizontal"
                   ? captureDocumentType === "full_check_stub"
                     ? "h-[min(50dvh,54vw)] min-h-[30dvh] w-[min(94vw,128dvh)] landscape:h-[min(64dvh,52vw)]"
@@ -3325,12 +3407,15 @@ export default function BatchInvoicePayments({
               data-remittance-document-frame="true"
               data-guide-mode={cameraGuideMode}
             >
-              <span className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-emerald-100/30" />
-              <span className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-emerald-100/30" />
-              <span className="absolute -left-1 -top-1 h-8 w-8 rounded-tl-[1.35rem] border-l-4 border-t-4 border-white" />
-              <span className="absolute -right-1 -top-1 h-8 w-8 rounded-tr-[1.35rem] border-r-4 border-t-4 border-white" />
-              <span className="absolute -bottom-1 -left-1 h-8 w-8 rounded-bl-[1.35rem] border-b-4 border-l-4 border-white" />
-              <span className="absolute -bottom-1 -right-1 h-8 w-8 rounded-br-[1.35rem] border-b-4 border-r-4 border-white" />
+              <span className="pointer-events-none absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-emerald-100/30" />
+              <span className="pointer-events-none absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-emerald-100/30" />
+              <span className="pointer-events-none absolute -left-1 -top-1 h-8 w-8 rounded-tl-[1.35rem] border-l-4 border-t-4 border-white" />
+              <span className="pointer-events-none absolute -right-1 -top-1 h-8 w-8 rounded-tr-[1.35rem] border-r-4 border-t-4 border-white" />
+              <span className="pointer-events-none absolute -bottom-1 -left-1 h-8 w-8 rounded-bl-[1.35rem] border-b-4 border-l-4 border-white" />
+              <span className="pointer-events-none absolute -bottom-1 -right-1 h-8 w-8 rounded-br-[1.35rem] border-b-4 border-r-4 border-white" />
+              <span className="pointer-events-none absolute left-1/2 top-1/2 rounded-full border border-white/25 bg-black/55 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-white/90 shadow-lg backdrop-blur -translate-x-1/2 -translate-y-1/2">
+                Tap document to capture
+              </span>
             </div>
           </div>
 
