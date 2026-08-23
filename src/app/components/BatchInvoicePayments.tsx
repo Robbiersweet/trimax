@@ -3,6 +3,7 @@
 import {
   MouseEvent,
   PointerEvent,
+  TouchEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -1024,6 +1025,9 @@ export default function BatchInvoicePayments({
   const [completedPaymentSummary, setCompletedPaymentSummary] =
     useState<CompletedPaymentSummary>(null);
   const [remittanceStubText, setRemittanceStubText] = useState("");
+  const [lastOcrDiagnosticLines, setLastOcrDiagnosticLines] = useState<string[]>(
+    []
+  );
   const [checkOcrStatus, setCheckOcrStatus] = useState<CheckOcrStatus>("idle");
   const [paymentEntryMode, setPaymentEntryMode] =
     useState<PaymentEntryMode>("choice");
@@ -1190,6 +1194,20 @@ export default function BatchInvoicePayments({
 
   function appendCameraStage(stage: string) {
     setCameraPipelineStages((current) => [...current.slice(-7), stage]);
+  }
+
+  function pointIsInsideRect(
+    rect: DOMRect,
+    x: number,
+    y: number,
+    inset = 0
+  ) {
+    return (
+      x >= rect.left + inset &&
+      x <= rect.right - inset &&
+      y >= rect.top + inset &&
+      y <= rect.bottom - inset
+    );
   }
 
   function rectSnapshot(element: Element | null): CameraRectSnapshot | null {
@@ -1928,6 +1946,47 @@ export default function BatchInvoicePayments({
     );
   }
 
+  function ocrDiagnosticLines(data: CheckStubOcrResponse) {
+    const diagnostics = data.diagnostics;
+    const lines = [...(diagnostics?.summary ?? [])];
+
+    if (!diagnostics) {
+      return lines;
+    }
+
+    if (diagnostics.originalWidth && diagnostics.originalHeight) {
+      lines.push(
+        `Original image: ${diagnostics.originalWidth} x ${diagnostics.originalHeight}.`
+      );
+    }
+
+    if (diagnostics.documentWidth && diagnostics.documentHeight) {
+      lines.push(
+        `OCR image: ${diagnostics.documentWidth} x ${diagnostics.documentHeight}.`
+      );
+    }
+
+    if (diagnostics.selectedRegion || diagnostics.selectedVariant) {
+      lines.push(
+        `Selected OCR: ${diagnostics.selectedRegion ?? "unknown region"}, ${diagnostics.selectedVariant ?? "unknown variant"}, rotation ${diagnostics.selectedRotation ?? 0}, confidence ${Math.round(diagnostics.selectedConfidence ?? 0)}.`
+      );
+    }
+
+    if (diagnostics.candidateSummaries?.length) {
+      lines.push(
+        `Best candidates: ${diagnostics.candidateSummaries
+          .slice(0, 3)
+          .map(
+            (candidate) =>
+              `${candidate.region ?? "unknown"} ${candidate.variant ?? ""} r${candidate.rotation ?? 0} rows=${candidate.validRows ?? 0} conf=${Math.round(candidate.confidence ?? 0)}`
+          )
+          .join("; ")}.`
+      );
+    }
+
+    return lines;
+  }
+
   function ocrFailureMessage(data: CheckStubOcrResponse) {
     const summary = data.diagnostics?.summary ?? [];
     const found = (label: string) =>
@@ -2063,6 +2122,7 @@ export default function BatchInvoicePayments({
 
     setCheckOcrStatus("reading");
     setCheckOcrMessage("Reading the remittance stub from the image...");
+    setLastOcrDiagnosticLines([]);
     appendCameraStage("Upload started");
     appendCameraStage("OCR started");
 
@@ -2075,6 +2135,9 @@ export default function BatchInvoicePayments({
         body: JSON.stringify({ imageDataUrl, documentType, retryStrategy }),
       });
       const data = (await response.json().catch(() => ({}))) as CheckStubOcrResponse;
+      const diagnosticLines = ocrDiagnosticLines(data);
+
+      setLastOcrDiagnosticLines(diagnosticLines);
 
       if (!response.ok) {
         setCameraFailureStage("ocr-request");
@@ -2088,6 +2151,9 @@ export default function BatchInvoicePayments({
 
       if (!data.stubText?.trim()) {
         setCameraFailureStage("ocr-parse");
+        if (data.rawText?.trim()) {
+          setRemittanceStubText(data.rawText.trim());
+        }
         setCheckOcrStatus("manual");
         setCheckOcrMessage(ocrFailureMessage(data));
         return;
@@ -2282,6 +2348,7 @@ export default function BatchInvoicePayments({
     setPaymentReviewNotice("");
     setCompletedPaymentSummary(null);
     setCheckOcrStatus("idle");
+    setLastOcrDiagnosticLines([]);
     setCaptureDocumentType("remittance_stub");
     setCaptureIntent("primary");
     setCameraGuideMode("horizontal");
@@ -2626,13 +2693,26 @@ export default function BatchInvoicePayments({
   }
 
   function handleCameraModeSelection(
-    event: { preventDefault: () => void; stopPropagation: () => void },
+    event: MouseEvent<HTMLButtonElement>,
     documentType: RemittanceDocumentType
   ) {
     event.preventDefault();
     event.stopPropagation();
 
     if (isCapturingFrame) {
+      return;
+    }
+
+    if (
+      event.detail > 0 &&
+      !pointIsInsideRect(
+        event.currentTarget.getBoundingClientRect(),
+        event.clientX,
+        event.clientY,
+        2
+      )
+    ) {
+      setCameraStatusMessage("Tap the visible mode button to switch modes.");
       return;
     }
 
@@ -2774,6 +2854,67 @@ export default function BatchInvoicePayments({
     void captureFromTrimaxCamera(event);
   }
 
+  function captureVisibleButtonTap(
+    x: number,
+    y: number,
+    event: { preventDefault: () => void; stopPropagation: () => void }
+  ) {
+    const captureButton = captureButtonRef.current;
+
+    if (!captureButton || isCapturingFrame) {
+      return false;
+    }
+
+    if (!pointIsInsideRect(captureButton.getBoundingClientRect(), x, y)) {
+      return false;
+    }
+
+    const element = document.elementFromPoint(x, y);
+    const now = Date.now();
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (now - lastCapturePointerAtRef.current < 500) {
+      return true;
+    }
+
+    setLastActualCaptureTap({
+      point: "overlay-capture-visible-button",
+      x: Math.round(x),
+      y: Math.round(y),
+      element: describeElement(element),
+    });
+    lastCapturePointerAtRef.current = now;
+    void captureFromTrimaxCamera(event);
+
+    return true;
+  }
+
+  function handleCameraOverlayPointerDownCapture(
+    event: PointerEvent<HTMLDivElement>
+  ) {
+    if (event.button !== 0) {
+      return;
+    }
+
+    if (captureVisibleButtonTap(event.clientX, event.clientY, event)) {
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    }
+  }
+
+  function handleCameraOverlayTouchStartCapture(
+    event: TouchEvent<HTMLDivElement>
+  ) {
+    const touch = event.changedTouches[0];
+
+    if (!touch) {
+      return;
+    }
+
+    captureVisibleButtonTap(touch.clientX, touch.clientY, event);
+  }
+
   function handleCaptureButtonClick(event: MouseEvent<HTMLButtonElement>) {
     event.preventDefault();
     event.stopPropagation();
@@ -2818,6 +2959,7 @@ export default function BatchInvoicePayments({
       setCheckPayor("");
       setCapturedCheckAmount("");
       setCapturedCheckReference("");
+      setLastOcrDiagnosticLines([]);
     }
     setCompletedPaymentSummary(null);
     setCaptureDocumentType(documentType);
@@ -3047,6 +3189,8 @@ export default function BatchInvoicePayments({
           className="fixed left-0 top-0 z-[2147483000] flex h-[100dvh] w-screen flex-col overflow-hidden bg-black text-white landscape:grid landscape:grid-cols-[minmax(0,1fr)_13rem] landscape:grid-rows-[auto_minmax(0,1fr)_auto] landscape:gap-2 landscape:p-2"
           data-remittance-fullscreen-capture="true"
           data-camera-overlay-root="true"
+          onPointerDownCapture={handleCameraOverlayPointerDownCapture}
+          onTouchStartCapture={handleCameraOverlayTouchStartCapture}
           role="dialog"
         >
           <div
@@ -3760,6 +3904,20 @@ export default function BatchInvoicePayments({
                       </button>
                     </div>
                   </div>
+                ) : null}
+
+                {(checkOcrStatus === "error" || checkOcrStatus === "manual") &&
+                lastOcrDiagnosticLines.length > 0 ? (
+                  <details className="mt-3 rounded-xl border border-sky-300/25 bg-sky-300/10 px-3 py-2 text-xs text-sky-50">
+                    <summary className="cursor-pointer font-black">
+                      OCR pipeline details
+                    </summary>
+                    <ul className="mt-2 grid gap-1">
+                      {lastOcrDiagnosticLines.map((line, index) => (
+                        <li key={`${line}-${index}`}>{line}</li>
+                      ))}
+                    </ul>
+                  </details>
                 ) : null}
 
                 {checkOcrStatus === "ready" ? (

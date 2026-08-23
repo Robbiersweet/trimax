@@ -831,7 +831,11 @@ assert(
     paymentScreen.includes("lastCapturePointerAtRef") &&
     paymentScreen.includes("if (isCapturingFrame)") &&
     paymentScreen.includes("handleCameraModeSelection(event, mode.value)") &&
-    paymentScreen.includes("if (isCapturingFrame) {\n      return;\n    }\n\n    setCaptureDocumentType(documentType)") &&
+    paymentScreen.includes("pointIsInsideRect") &&
+    paymentScreen.includes("captureVisibleButtonTap") &&
+    paymentScreen.includes("overlay-capture-visible-button") &&
+    paymentScreen.includes("onPointerDownCapture={handleCameraOverlayPointerDownCapture}") &&
+    paymentScreen.includes("onTouchStartCapture={handleCameraOverlayTouchStartCapture}") &&
     paymentScreen.includes("onPointerDown={(event) => event.stopPropagation()}") &&
     paymentScreen.includes("onPointerDown={handleCaptureButtonPointerDown}") &&
     paymentScreen.includes("onClick={handleCaptureButtonClick}") &&

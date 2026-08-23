@@ -110,6 +110,10 @@ assert(
     paymentScreen.includes('data-camera-control="capture"') &&
     paymentScreen.includes('data-camera-control={mode.value}') &&
     paymentScreen.includes('data-camera-control="device-camera"') &&
+    paymentScreen.includes("onPointerDownCapture={handleCameraOverlayPointerDownCapture}") &&
+    paymentScreen.includes("onTouchStartCapture={handleCameraOverlayTouchStartCapture}") &&
+    paymentScreen.includes("overlay-capture-visible-button") &&
+    paymentScreen.includes("pointIsInsideRect") &&
     paymentScreen.includes("handleCaptureButtonPointerDown") &&
     paymentScreen.includes("setPointerCapture") &&
     paymentScreen.includes("event.preventDefault();") &&
@@ -136,6 +140,8 @@ assert(
     paymentScreen.includes("OCR completed") &&
     paymentScreen.includes("Parsing completed") &&
     paymentScreen.includes("Matching completed") &&
+    paymentScreen.includes("OCR pipeline details") &&
+    paymentScreen.includes("setLastOcrDiagnosticLines") &&
     paymentScreen.includes("Failed at:"),
   "Capture must show explicit progress stages and exact failure stage."
 );
