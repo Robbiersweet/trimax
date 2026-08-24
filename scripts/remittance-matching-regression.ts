@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import assert from "node:assert/strict";
 import {
+  extractMoneyValues,
   extractInvoiceNumbers,
   findRemittanceMatches,
   normalizeInvoiceNumber,
@@ -612,13 +613,13 @@ assert.equal(
 );
 
 const geometricRowBandStub = [
-  "DATE: 08/01/2026 TOTAL: $555.00",
+  "DATE: 08/01/2026 TOTAL: $5,555.00",
   "Property Account Invoice - Date Description Amount",
-  "A01 full interior paint 111 .00",
-  "B02 full interior paint 111 .00",
-  "C03 full interior paint 111 .00",
-  "D04 full interior paint 111 .00",
-  "E05 full interior paint 111 .00",
+  "A01 full interior paint 1,111 .00",
+  "B02 full interior paint 1,111.0",
+  "C03 full interior paint 1,111",
+  "D04 full interior paint 1,111 00",
+  "E05 full interior paint 1,111.00",
 ].join("\n");
 const parsedGeometricRowBandStub = parseCheckStubText(geometricRowBandStub);
 
@@ -628,11 +629,11 @@ assert.deepEqual(
     amount: line.amount,
   })),
   [
-    { unit: "A01", amount: 111 },
-    { unit: "B02", amount: 111 },
-    { unit: "C03", amount: 111 },
-    { unit: "D04", amount: 111 },
-    { unit: "E05", amount: 111 },
+    { unit: "A01", amount: 1111 },
+    { unit: "B02", amount: 1111 },
+    { unit: "C03", amount: 1111 },
+    { unit: "D04", amount: 1111 },
+    { unit: "E05", amount: 1111 },
   ],
   "Geometry-reconstructed OCR rows must preserve one physical row per unit/amount band."
 );
@@ -642,7 +643,10 @@ assert(
   ),
   "Geometry-reconstructed row text must retain the work context used for safe invoice inference."
 );
-assert.equal(parsedGeometricRowBandStub.totalAmount, 555);
+assert.equal(parsedGeometricRowBandStub.totalAmount, 5555);
+assert.deepEqual(extractMoneyValues("1,111"), [1111]);
+assert.deepEqual(extractMoneyValues("1,111.0"), [1111]);
+assert.deepEqual(extractMoneyValues("1,111 .00"), [1111]);
 
 const route = readFileSync(
   resolve(root, "src/app/api/payments/extract-check-stub/route.ts"),
@@ -945,6 +949,9 @@ assert(
     ocrRoute.includes("reconstructRowsFromOcrGeometry") &&
     ocrRoute.includes("geometryTokenSummaries") &&
     ocrRoute.includes("geometricRows") &&
+    ocrRoute.includes("geometricRowDetails") &&
+    ocrRoute.includes("rowAcceptance") &&
+    ocrRoute.includes("classifyGeometryWord") &&
     ocrRoute.includes("{ text: true, blocks: true }") &&
     ocrRoute.includes("structurallyUsefulRegionAttempts") &&
     ocrRoute.includes("--- OCR STRUCTURED REGION ---") &&

@@ -72,7 +72,9 @@ export function customerMatchesPayor(customerName: string, payor: string) {
 
 export function extractMoneyValues(text: string) {
   const matches =
-    text.match(/\$?\s*\d{1,3}(?:,\d{3})*(?:\.\d{2})\b|\b\d+\.\d{2}\b/g) ??
+    text.match(
+      /\$?\s*\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?\b|\$?\s*\d{1,3}(?:,\d{3})*(?:\.\d{2})\b|\b\d+\.\d{2}\b/g
+    ) ??
     [];
 
   return matches
@@ -83,7 +85,11 @@ export function extractMoneyValues(text: string) {
 function normalizeSplitMoneyFragments(text: string) {
   return text
     .replace(/\b(\d{1,3}(?:,\d{3})*)\s+\.(\d{2})\b/g, "$1.$2")
-    .replace(/\b(\d{1,3}(?:,\d{3})*)\s+([0O]{2})\b/g, "$1.00");
+    .replace(/\b(\d{1,3}(?:,\d{3})*)\s+([0O]{2})\b/g, "$1.00")
+    .replace(
+      /\b(\d{1,3}(?:,\d{3})*)\.(\d)\b/g,
+      (_match, dollars: string, cents: string) => `${dollars}.${cents}0`
+    );
 }
 
 function summaryTotalKeywordPattern() {

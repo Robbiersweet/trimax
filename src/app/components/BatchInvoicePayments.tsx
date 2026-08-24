@@ -248,6 +248,28 @@ type CheckStubOcrResponse = {
       score?: number;
       text?: string;
     }>;
+    geometricRowDetails?: Array<{
+      y?: number;
+      height?: number;
+      score?: number;
+      reconstructedText?: string;
+      accepted?: boolean;
+      rejectionReason?: string;
+      amount?: number;
+      invoiceNumbers?: string[];
+      unitCodes?: string[];
+      tokens?: Array<{
+        text?: string;
+        field?: string;
+        confidence?: number;
+        bbox?: {
+          x0?: number;
+          y0?: number;
+          x1?: number;
+          y1?: number;
+        };
+      }>;
+    }>;
   };
   error?: string;
 };
@@ -2079,6 +2101,25 @@ export default function BatchInvoicePayments({
           )
           .join(" | ")}.`
       );
+    }
+
+    if (diagnostics.geometricRowDetails?.length) {
+      diagnostics.geometricRowDetails.slice(0, 8).forEach((row, index) => {
+        const tokens =
+          row.tokens
+            ?.map((token) => {
+              const bbox = token.bbox
+                ? `@${Math.round(token.bbox.x0 ?? 0)},${Math.round(token.bbox.y0 ?? 0)}-${Math.round(token.bbox.x1 ?? 0)},${Math.round(token.bbox.y1 ?? 0)}`
+                : "";
+
+              return `${token.text ?? ""}:${token.field ?? "unclassified"}:${Math.round(token.confidence ?? 0)}${bbox}`;
+            })
+            .join(" ") || "none";
+
+        lines.push(
+          `Row ${index + 1}: y=${Math.round(row.y ?? 0)} ${row.accepted ? "accepted" : `rejected (${row.rejectionReason || "unknown"})`} amount=${typeof row.amount === "number" && row.amount > 0 ? formatMoney(row.amount) : "none"} invoices=${row.invoiceNumbers?.join(", ") || "none"} units=${row.unitCodes?.join(", ") || "none"} text="${row.reconstructedText || ""}" tokens=${tokens}.`
+        );
+      });
     }
 
     return lines;

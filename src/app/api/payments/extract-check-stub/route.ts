@@ -88,6 +88,7 @@ type GeometricRow = {
   text: string;
   score: number;
   tokens: string[];
+  words: OcrWord[];
 };
 
 function normalizeDocumentType(value: unknown): RemittanceDocumentType {
@@ -740,6 +741,10 @@ function normalizeGeometryRowText(tokens: string[]) {
     .join(" ")
     .replace(/\b(\d{1,3}(?:,\d{3})*)\s+\.(\d{2})\b/g, "$1.$2")
     .replace(/\b(\d{1,3}(?:,\d{3})*)\s+([0O]{2})\b/g, "$1.00")
+    .replace(
+      /\b(\d{1,3}(?:,\d{3})*)\.(\d)\b/g,
+      (_match, dollars: string, cents: string) => `${dollars}.${cents}0`
+    )
     .replace(/\b([A-Z])O(\d)\b/g, (_match, prefix: string, digit: string) => `${prefix}0${digit}`)
     .replace(/\b([A-Z])(\d)O\b/g, (_match, prefix: string, digit: string) => `${prefix}${digit}0`)
     .replace(/\s+/g, " ")
@@ -747,7 +752,9 @@ function normalizeGeometryRowText(tokens: string[]) {
 }
 
 function scoreGeometryRow(text: string) {
-  const hasAmount = /\$?\s*\d{1,3}(?:,\d{3})*(?:\.\d{2})\b/i.test(text);
+  const hasAmount = /\$?\s*\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?\b|\$?\s*\d{1,3}(?:,\d{3})*(?:\.\d{2})\b/i.test(
+    text
+  );
   const hasUnit = /\b[A-Z]\d{2}[A-Z]?\b/i.test(text);
   const hasInvoice = /\b[Il1|]?NV(?:OICE)?\.?\s*[-#: ]?\s*[0-9OoSsZzIl|Vv]{3,8}\b/i.test(
     text
@@ -820,6 +827,7 @@ function reconstructRowsFromOcrGeometry(words: OcrWord[]): GeometricRow[] {
         text,
         score,
         tokens: sortedWords.map((word) => normalizeGeometryToken(word.text)).filter(Boolean),
+        words: sortedWords,
       };
     })
     .filter(
@@ -884,6 +892,127 @@ function buildGeometryAttempt(attempts: OcrAttempt[], baseText: string): OcrAtte
     score: scoreOcrText(mergedText, confidence),
     words: rowWords,
   };
+}
+
+function classifyGeometryWord(word: OcrWord, documentWidth = 0) {
+  const text = normalizeGeometryToken(word.text);
+  const lower = text.toLowerCase();
+  const xCenter = (word.bbox.x0 + word.bbox.x1) / 2;
+  const xRatio = documentWidth > 0 ? xCenter / documentWidth : 0;
+
+  if (/\b[Il1|]?NV(?:OICE)?\.?\s*[-#: ]?\s*[0-9OoSsZzIl|Vv]{3,8}\b/i.test(text)) {
+    return "invoice number";
+  }
+
+  if (/\b\d{1,2}\/\d{1,2}\/\d{2,4}\b|\b\d{4}-\d{1,2}-\d{1,2}\b/.test(text)) {
+    return "date";
+  }
+
+  if (/\$?\s*\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?\b|\$?\s*\d{1,3}(?:,\d{3})*(?:\.\d{2})\b|\.\d{2}\b/i.test(text)) {
+    return "amount";
+  }
+
+  if (/\b[A-Z][0-9O]{2}[A-Z]?\b/i.test(text)) {
+    return "unit";
+  }
+
+  if (/north|creek|apart|property/.test(lower) || xRatio < 0.24) {
+    return "property";
+  }
+
+  if (/serv|paint/.test(lower) && xRatio < 0.42) {
+    return "account";
+  }
+
+  if (/\b(?:full|interior|paint|cabinet|primer|repair|clean|turn)\b/i.test(text)) {
+    return "description";
+  }
+
+  return "unclassified";
+}
+
+function rowAcceptance(row: GeometricRow) {
+  const parsed = parseCheckStubText(row.text).lines[0] ?? null;
+
+  if (!parsed) {
+    return {
+      accepted: false,
+      rejectionReason: "No remittance line parsed from reconstructed row text.",
+      amount: 0,
+      invoiceNumbers: [] as string[],
+      unitCodes: [] as string[],
+    };
+  }
+
+  const hasInvoiceOrUnit = parsed.invoiceNumbers.length > 0 || parsed.unitCodes.length > 0;
+  const hasWorkContext = /\b(?:full|interior|paint|cabinet|primer|repair|clean|turn)\b/i.test(
+    `${parsed.text} ${parsed.serviceDescription}`
+  );
+
+  if (parsed.amount <= 0) {
+    return {
+      accepted: false,
+      rejectionReason: "Amount not recognized on this row.",
+      amount: parsed.amount,
+      invoiceNumbers: parsed.invoiceNumbers,
+      unitCodes: parsed.unitCodes,
+    };
+  }
+
+  if (!hasInvoiceOrUnit) {
+    return {
+      accepted: false,
+      rejectionReason: "No invoice number or unit identifier recognized on this row.",
+      amount: parsed.amount,
+      invoiceNumbers: parsed.invoiceNumbers,
+      unitCodes: parsed.unitCodes,
+    };
+  }
+
+  if (!hasWorkContext) {
+    return {
+      accepted: false,
+      rejectionReason: "Work description context was not recognized on this row.",
+      amount: parsed.amount,
+      invoiceNumbers: parsed.invoiceNumbers,
+      unitCodes: parsed.unitCodes,
+    };
+  }
+
+  return {
+    accepted: true,
+    rejectionReason: "",
+    amount: parsed.amount,
+    invoiceNumbers: parsed.invoiceNumbers,
+    unitCodes: parsed.unitCodes,
+  };
+}
+
+function geometryRowDetails(rows: GeometricRow[], documentWidth = 0) {
+  return rows.map((row) => {
+    const acceptance = rowAcceptance(row);
+
+    return {
+      y: row.y,
+      height: row.height,
+      score: row.score,
+      reconstructedText: row.text,
+      accepted: acceptance.accepted,
+      rejectionReason: acceptance.rejectionReason,
+      amount: acceptance.amount,
+      invoiceNumbers: acceptance.invoiceNumbers,
+      unitCodes: acceptance.unitCodes,
+      tokens: row.words.map((word) => ({
+        text: normalizeGeometryToken(word.text),
+        field: classifyGeometryWord(word, documentWidth),
+        confidence: Math.round(word.confidence),
+        bbox: word.bbox,
+        region: word.region,
+        variant: word.variant,
+        pageMode: word.pageMode,
+      })),
+    };
+  });
 }
 
 function shouldAcceptFirstPass(attempt: OcrAttempt) {
@@ -1246,6 +1375,10 @@ async function recognizeBestText(
       0,
       12
     );
+    const geometricRowDetails = geometryRowDetails(
+      geometricRows,
+      sources.document.width ?? 0
+    );
 
     return {
       text: finalText,
@@ -1293,6 +1426,7 @@ async function recognizeBestText(
           score: row.score,
           text: row.text,
         })),
+        geometricRowDetails,
       },
     };
   } finally {
