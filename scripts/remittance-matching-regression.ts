@@ -1090,6 +1090,9 @@ assert(
     ocrRoute.includes("textRegionMetrics") &&
     ocrRoute.includes("candidateTokenSummary") &&
     ocrRoute.includes("durationMs") &&
+    ocrRoute.includes("invoiceColumnDiagnostics") &&
+    ocrRoute.includes("estimateInvoiceColumnBounds") &&
+    ocrRoute.includes("invoice-column-diagnostic") &&
     ocrRoute.includes("geometricRows") &&
     ocrRoute.includes("geometricRowDetails") &&
     ocrRoute.includes("rowAcceptance") &&
@@ -1108,7 +1111,10 @@ assert(
     paymentScreen.includes("median word height") &&
     paymentScreen.includes("high-conf") &&
     paymentScreen.includes("candidate.tokens") &&
-    paymentScreen.includes("diagnostics.textRegionMetrics"),
+    paymentScreen.includes("diagnostics.textRegionMetrics") &&
+    paymentScreen.includes("Invoice column diagnostics:") &&
+    paymentScreen.includes("Invoice column OCR") &&
+    paymentScreen.includes("diagnostics.invoiceColumnDiagnostics"),
   "Payments OCR diagnostics must expose per-pass token summaries and text-region quality so good and bad physical reads can be compared."
 );
 assert(

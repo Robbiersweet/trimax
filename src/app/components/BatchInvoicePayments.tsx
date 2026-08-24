@@ -310,6 +310,58 @@ type CheckStubOcrResponse = {
         };
       }>;
     }>;
+    invoiceColumnDiagnostics?: {
+      bounds?: {
+        left?: number;
+        top?: number;
+        width?: number;
+        height?: number;
+      };
+      width?: number;
+      height?: number;
+      estimatedCharacterHeight?: number;
+      sharpness?: number;
+      contrast?: number;
+      skippedReason?: string;
+      rowBands?: Array<{
+        row?: number;
+        y?: number;
+        height?: number;
+        sourceText?: string;
+        tokens?: Array<{
+          text?: string;
+          confidence?: number;
+          bbox?: {
+            x0?: number;
+            y0?: number;
+            x1?: number;
+            y1?: number;
+          };
+          region?: string;
+          variant?: string;
+          pageMode?: string;
+        }>;
+      }>;
+      attempts?: Array<{
+        variant?: string;
+        pageMode?: string;
+        scaling?: string;
+        durationMs?: number;
+        confidence?: number;
+        rawText?: string;
+        invoiceLikeTokens?: string[];
+        words?: Array<{
+          text?: string;
+          confidence?: number;
+          bbox?: {
+            x0?: number;
+            y0?: number;
+            x1?: number;
+            y1?: number;
+          };
+        }>;
+      }>;
+    } | null;
   };
   error?: string;
 };
@@ -2196,6 +2248,54 @@ export default function BatchInvoicePayments({
           lines.push(`Row ${index + 1} amount candidates: ${amountCandidates}.`);
         }
       });
+    }
+
+    if (diagnostics.invoiceColumnDiagnostics) {
+      const column = diagnostics.invoiceColumnDiagnostics;
+      const bounds = column.bounds
+        ? `${Math.round(column.bounds.left ?? 0)},${Math.round(column.bounds.top ?? 0)} ${Math.round(column.bounds.width ?? 0)}x${Math.round(column.bounds.height ?? 0)}`
+        : "unknown";
+
+      lines.push(
+        `Invoice column diagnostics: bounds=${bounds}, crop=${Math.round(column.width ?? 0)}x${Math.round(column.height ?? 0)}, charHeight=${column.estimatedCharacterHeight ?? 0}px, sharpness=${column.sharpness ?? 0}, contrast=${column.contrast ?? 0}.`
+      );
+      column.rowBands?.slice(0, 5).forEach((row) => {
+        const tokens =
+          row.tokens
+            ?.map((token) => {
+              const bbox = token.bbox
+                ? `@${Math.round(token.bbox.x0 ?? 0)},${Math.round(token.bbox.y0 ?? 0)}-${Math.round(token.bbox.x1 ?? 0)},${Math.round(token.bbox.y1 ?? 0)}`
+                : "";
+
+              return `${token.text ?? ""}:${Math.round(token.confidence ?? 0)}:${token.variant ?? "?"}/${token.pageMode ?? "?"}${bbox}`;
+            })
+            .join(" ") || "none";
+
+        lines.push(
+          `Invoice column row ${row.row ?? "?"}: y=${Math.round(row.y ?? 0)} text="${row.sourceText ?? ""}" tokens=${tokens}.`
+        );
+      });
+      column.attempts?.slice(0, 3).forEach((attempt, index) => {
+        const words =
+          attempt.words
+            ?.slice(0, 12)
+            .map((word) => {
+              const bbox = word.bbox
+                ? `@${Math.round(word.bbox.x0 ?? 0)},${Math.round(word.bbox.y0 ?? 0)}-${Math.round(word.bbox.x1 ?? 0)},${Math.round(word.bbox.y1 ?? 0)}`
+                : "";
+
+              return `${word.text ?? ""}:${Math.round(word.confidence ?? 0)}${bbox}`;
+            })
+            .join(" ") || "none";
+
+        lines.push(
+          `Invoice column OCR ${index + 1}: ${attempt.variant ?? "unknown"}/${attempt.pageMode ?? "psm?"}, scale=${attempt.scaling ?? "unknown"}, ${Math.round(attempt.durationMs ?? 0)}ms, conf=${Math.round(attempt.confidence ?? 0)}, invoiceTokens=${attempt.invoiceLikeTokens?.join(", ") || "none"}, raw="${attempt.rawText ?? ""}", words=${words}.`
+        );
+      });
+
+      if (column.skippedReason) {
+        lines.push(`Invoice column diagnostic note: ${column.skippedReason}`);
+      }
     }
 
     return lines;

@@ -93,6 +93,46 @@ type GeometricRow = {
   words: OcrWord[];
 };
 
+type InvoiceColumnDiagnosticAttempt = {
+  variant: OcrVariant;
+  pageMode: TesseractPageMode["name"];
+  scaling: string;
+  durationMs: number;
+  confidence: number;
+  rawText: string;
+  invoiceLikeTokens: string[];
+  words: Array<{
+    text: string;
+    confidence: number;
+    bbox: OcrWord["bbox"];
+  }>;
+};
+
+type InvoiceColumnDiagnostics = {
+  bounds: ImageBounds;
+  width: number;
+  height: number;
+  estimatedCharacterHeight: number;
+  sharpness: number;
+  contrast: number;
+  rowBands: Array<{
+    row: number;
+    y: number;
+    height: number;
+    sourceText: string;
+    tokens: Array<{
+      text: string;
+      confidence: number;
+      bbox: OcrWord["bbox"];
+      region: string;
+      variant: OcrVariant;
+      pageMode: TesseractPageMode["name"];
+    }>;
+  }>;
+  attempts: InvoiceColumnDiagnosticAttempt[];
+  skippedReason?: string;
+};
+
 function normalizeDocumentType(value: unknown): RemittanceDocumentType {
   return value === "full_check_stub" || value === "check_only"
     ? value
@@ -927,6 +967,140 @@ function candidateTokenSummary(attempt: OcrAttempt) {
   };
 }
 
+function wordCenterX(word: OcrWord) {
+  return (word.bbox.x0 + word.bbox.x1) / 2;
+}
+
+function boxesIntersect(first: ImageBounds, second: ImageBounds) {
+  return (
+    first.left < second.left + second.width &&
+    first.left + first.width > second.left &&
+    first.top < second.top + second.height &&
+    first.top + first.height > second.top
+  );
+}
+
+function wordBounds(word: OcrWord): ImageBounds {
+  return {
+    left: word.bbox.x0,
+    top: word.bbox.y0,
+    width: Math.max(1, word.bbox.x1 - word.bbox.x0),
+    height: Math.max(1, word.bbox.y1 - word.bbox.y0),
+  };
+}
+
+function estimateInvoiceColumnBounds(
+  words: OcrWord[],
+  rows: GeometricRow[],
+  documentWidth: number,
+  documentHeight: number
+): ImageBounds {
+  const normalizedWords = words.map((word) => ({
+    word,
+    text: normalizeGeometryToken(word.text).toLowerCase(),
+  }));
+  const invoiceHeader = normalizedWords.find(({ text }) =>
+    /^invoice\b|^mvoice\b|^nv[o0]?ice\b/.test(text)
+  )?.word;
+  const dateHeader = normalizedWords
+    .filter(({ text }) => /^date\b|^vate\b/.test(text))
+    .map(({ word }) => word)
+    .find((word) => invoiceHeader && wordCenterX(word) > wordCenterX(invoiceHeader));
+  const invoiceTokens = words.filter((word) =>
+    /\b[Il1|]?NV(?:OICE)?\.?\s*[-#: ]?\s*[0-9OoSsZzIl|Vv]{3,8}\b/i.test(
+      normalizeGeometryToken(word.text)
+    )
+  );
+  const unitTokens = words.filter((word) =>
+    /\b[A-Z][0-9O]{2}[A-Z]?\b/i.test(normalizeGeometryToken(word.text))
+  );
+  const rowTop =
+    rows.length > 0
+      ? Math.max(0, Math.min(...rows.map((row) => row.y - row.height * 2)))
+      : Math.round(documentHeight * 0.18);
+  const rowBottom =
+    rows.length > 0
+      ? Math.min(documentHeight, Math.max(...rows.map((row) => row.y + row.height * 2)))
+      : Math.round(documentHeight * 0.72);
+  let left = Math.round(documentWidth * 0.3);
+  let right = Math.round(documentWidth * 0.47);
+
+  if (invoiceHeader) {
+    left = Math.max(0, invoiceHeader.bbox.x0 - Math.round(documentWidth * 0.015));
+    right = dateHeader
+      ? Math.max(left + 40, dateHeader.bbox.x0 - Math.round(documentWidth * 0.01))
+      : Math.min(documentWidth, invoiceHeader.bbox.x1 + Math.round(documentWidth * 0.13));
+  } else if (invoiceTokens.length > 0) {
+    left = Math.max(0, Math.min(...invoiceTokens.map((word) => word.bbox.x0)) - 24);
+    right = Math.min(
+      documentWidth,
+      Math.max(...invoiceTokens.map((word) => word.bbox.x1)) + 34
+    );
+  } else if (unitTokens.length > 0) {
+    const medianUnitX = median(unitTokens.map(wordCenterX));
+    left = Math.max(0, Math.round(medianUnitX + documentWidth * 0.035));
+    right = Math.min(documentWidth, Math.round(left + documentWidth * 0.17));
+  }
+
+  return {
+    left: Math.max(0, Math.min(left, documentWidth - 1)),
+    top: Math.max(0, Math.round(rowTop - documentHeight * 0.025)),
+    width: Math.max(40, Math.min(documentWidth - left, right - left)),
+    height: Math.max(40, Math.min(documentHeight - rowTop, rowBottom - rowTop + documentHeight * 0.05)),
+  };
+}
+
+async function imageDetailMetrics(input: Buffer) {
+  const scan = await sharp(input, { limitInputPixels: 48_000_000 })
+    .resize({
+      width: 520,
+      height: 520,
+      fit: "inside",
+      withoutEnlargement: true,
+    })
+    .removeAlpha()
+    .grayscale()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const width = scan.info.width;
+  const height = scan.info.height;
+  const pixels = scan.data;
+  let total = 0;
+  let totalSquared = 0;
+
+  for (const value of pixels) {
+    total += value;
+    totalSquared += value * value;
+  }
+
+  const count = Math.max(width * height, 1);
+  const brightness = total / count;
+  const contrast = Math.sqrt(Math.max(totalSquared / count - brightness * brightness, 0));
+  let laplacianTotal = 0;
+  let laplacianCount = 0;
+
+  for (let y = 1; y < height - 1; y += 1) {
+    for (let x = 1; x < width - 1; x += 1) {
+      const center = pixels[y * width + x] ?? 0;
+      const laplacian = Math.abs(
+        (pixels[(y - 1) * width + x] ?? center) +
+          (pixels[(y + 1) * width + x] ?? center) +
+          (pixels[y * width + x - 1] ?? center) +
+          (pixels[y * width + x + 1] ?? center) -
+          center * 4
+      );
+
+      laplacianTotal += laplacian;
+      laplacianCount += 1;
+    }
+  }
+
+  return {
+    contrast: Math.round(contrast * 10) / 10,
+    sharpness: Math.round((laplacianTotal / Math.max(laplacianCount, 1)) * 10) / 10,
+  };
+}
+
 function buildGeometryAttempt(attempts: OcrAttempt[], baseText: string): OcrAttempt | null {
   const bestAttemptByRegion = Array.from(
     attempts
@@ -1519,6 +1693,174 @@ async function recognizeBestText(
       geometricRows,
       sources.document.width ?? 0
     );
+    const documentWidth = sources.document.width ?? 0;
+    const documentHeight = sources.document.height ?? 0;
+
+    async function buildInvoiceColumnDiagnostics(): Promise<InvoiceColumnDiagnostics | null> {
+      if (
+        documentType !== "remittance_stub" ||
+        documentWidth <= 0 ||
+        documentHeight <= 0
+      ) {
+        return null;
+      }
+
+      const bounds = estimateInvoiceColumnBounds(
+        diagnosticWordSource,
+        geometricRows,
+        documentWidth,
+        documentHeight
+      );
+      const columnImage = await cropImageRegion(sources.document.image, bounds);
+      const columnMetadata = await imageMetadata(columnImage);
+      const detailMetrics = await imageDetailMetrics(columnImage);
+      const columnBox = bounds;
+      const candidateRows = geometricRows.slice(0, 5);
+      const rowBands = candidateRows.map((row, index) => {
+        const bandHeight = Math.max(row.height * 2.4, 32);
+        const rowBox: ImageBounds = {
+          left: columnBox.left,
+          top: Math.max(0, Math.round(row.y - bandHeight / 2)),
+          width: columnBox.width,
+          height: Math.round(bandHeight),
+        };
+        const tokens = diagnosticWordSource
+          .filter((word) => boxesIntersect(wordBounds(word), rowBox))
+          .sort((left, right) => left.bbox.x0 - right.bbox.x0)
+          .map((word) => ({
+            text: normalizeGeometryToken(word.text),
+            confidence: Math.round(word.confidence),
+            bbox: word.bbox,
+            region: word.region,
+            variant: word.variant,
+            pageMode: word.pageMode,
+          }));
+
+        return {
+          row: index + 1,
+          y: row.y,
+          height: row.height,
+          sourceText: row.text,
+          tokens,
+        };
+      });
+      const estimatedCharacterHeight =
+        rowBands.flatMap((row) =>
+          row.tokens.map((token) =>
+            Math.max(1, (token.bbox.y1 ?? 0) - (token.bbox.y0 ?? 0))
+          )
+        );
+      const attemptsForDiagnostics: InvoiceColumnDiagnosticAttempt[] = [];
+      const diagnosticSpecs: OcrAttemptSpec[] = [
+        {
+          variant: "row-focused",
+          pageMode: { name: "single-block", value: Tesseract.PSM.SINGLE_BLOCK },
+        },
+        {
+          variant: "sharpened",
+          pageMode: { name: "sparse-text", value: Tesseract.PSM.SPARSE_TEXT },
+        },
+      ];
+      let skippedReason = "";
+
+      for (const spec of diagnosticSpecs) {
+        if (Date.now() - startedAt > 55_000) {
+          skippedReason = "Skipped remaining invoice-column OCR because route time budget was nearly exhausted.";
+          break;
+        }
+
+        await worker.setParameters({
+          tessedit_pageseg_mode: spec.pageMode.value,
+        });
+
+        const attemptStartedAt = Date.now();
+        const processedImage = await preprocessForOcr(columnImage, 0, spec.variant);
+        const processedMetadata = await imageMetadata(processedImage);
+        let diagnosticTimeout: ReturnType<typeof setTimeout> | null = null;
+
+        try {
+          const result = await Promise.race([
+            worker.recognize(processedImage, {}, { text: true, blocks: true }),
+            new Promise<never>((_, reject) => {
+              diagnosticTimeout = setTimeout(
+                () => reject(new Error("Invoice-column diagnostic OCR timed out.")),
+                3_500
+              );
+            }),
+          ]);
+          const source: OcrImageSource = {
+            name: "invoice-column-diagnostic",
+            image: columnImage,
+            width: columnMetadata.width,
+            height: columnMetadata.height,
+            bounds,
+          };
+          const words = extractOcrWords(
+            result.data,
+            source,
+            processedMetadata.width ?? columnMetadata.width ?? 0,
+            processedMetadata.height ?? columnMetadata.height ?? 0,
+            spec,
+            0
+          );
+          const confidence =
+            typeof result.data.confidence === "number" ? result.data.confidence : 0;
+
+          attemptsForDiagnostics.push({
+            variant: spec.variant,
+            pageMode: spec.pageMode.name,
+            scaling: `${columnMetadata.width ?? bounds.width}x${columnMetadata.height ?? bounds.height} -> ${processedMetadata.width ?? "?"}x${processedMetadata.height ?? "?"}`,
+            durationMs: Date.now() - attemptStartedAt,
+            confidence,
+            rawText: redactedTextSummary(result.data.text ?? ""),
+            invoiceLikeTokens: candidateTokenSummary({
+              region: "invoice-column-diagnostic",
+              variant: spec.variant,
+              pageMode: spec.pageMode.name,
+              rotation: 0,
+              text: result.data.text ?? "",
+              confidence,
+              score: 0,
+              durationMs: Date.now() - attemptStartedAt,
+              imageWidth: columnMetadata.width,
+              imageHeight: columnMetadata.height,
+              words,
+            }).invoiceLike,
+            words: words.slice(0, 30).map((word) => ({
+              text: normalizeGeometryToken(word.text),
+              confidence: Math.round(word.confidence),
+              bbox: word.bbox,
+            })),
+          });
+        } catch (error) {
+          skippedReason =
+            error instanceof Error
+              ? error.message
+              : "Invoice-column diagnostic OCR failed.";
+        } finally {
+          if (diagnosticTimeout) {
+            clearTimeout(diagnosticTimeout);
+          }
+        }
+      }
+
+      markStage("invoice-column-diagnostics");
+
+      return {
+        bounds,
+        width: columnMetadata.width ?? bounds.width,
+        height: columnMetadata.height ?? bounds.height,
+        estimatedCharacterHeight:
+          Math.round(median(estimatedCharacterHeight) * 10) / 10,
+        sharpness: detailMetrics.sharpness,
+        contrast: detailMetrics.contrast,
+        rowBands,
+        attempts: attemptsForDiagnostics,
+        skippedReason,
+      };
+    }
+
+    const invoiceColumnDiagnostics = await buildInvoiceColumnDiagnostics();
 
     return {
       text: finalText,
@@ -1572,6 +1914,7 @@ async function recognizeBestText(
           text: row.text,
         })),
         geometricRowDetails,
+        invoiceColumnDiagnostics,
       },
     };
   } finally {
