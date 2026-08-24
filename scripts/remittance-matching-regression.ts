@@ -1092,6 +1092,12 @@ assert(
     ocrRoute.includes("durationMs") &&
     ocrRoute.includes("invoiceColumnDiagnostics") &&
     ocrRoute.includes("estimateInvoiceColumnBounds") &&
+    ocrRoute.includes("integerImageBounds") &&
+    ocrRoute.includes("Math.floor(rawLeft)") &&
+    ocrRoute.includes("Math.ceil(rawRight)") &&
+    ocrRoute.includes("Math.floor(rawTop)") &&
+    ocrRoute.includes("Math.ceil(rawBottom)") &&
+    ocrRoute.includes(".extract(integerBounds)") &&
     ocrRoute.includes("invoice-column-diagnostic") &&
     ocrRoute.includes("geometricRows") &&
     ocrRoute.includes("geometricRowDetails") &&
@@ -1104,6 +1110,14 @@ assert(
     !ocrRoute.includes("--- OCR REGION ---") &&
     ocrRoute.includes("Some invoice text was detected, but invoice rows could not be confirmed."),
   "OCR route must keep OCR candidates source-separated, request word boxes, and reconstruct rows by geometry instead of concatenating noisy fragments."
+);
+assert(
+  ocrRoute.includes("rowBottom - rowTop + documentHeight * 0.05") &&
+    ocrRoute.includes("metadata.width ?? bounds.left + bounds.width") &&
+    ocrRoute.includes("metadata.height ?? bounds.top + bounds.height") &&
+    ocrRoute.includes("const right = Math.min(Math.max(left + 1, Math.ceil(rawRight)), maxWidth)") &&
+    ocrRoute.includes("const bottom = Math.min(Math.max(top + 1, Math.ceil(rawBottom)), maxHeight)"),
+  "Invoice-column diagnostic crops must convert fractional bounds like 257.65 and 2311.9 into clamped integer Sharp extract rectangles."
 );
 assert(
   paymentScreen.includes("OCR pass") &&

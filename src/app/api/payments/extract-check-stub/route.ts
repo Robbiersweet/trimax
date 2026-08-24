@@ -262,17 +262,59 @@ async function detectDocumentBounds(input: Buffer): Promise<ImageBounds | null> 
 }
 
 async function cropDocument(input: Buffer, bounds: ImageBounds) {
+  const metadata = await imageMetadata(input);
+  const integerBounds = integerImageBounds(
+    bounds,
+    metadata.width ?? bounds.left + bounds.width,
+    metadata.height ?? bounds.top + bounds.height
+  );
+
   return sharp(input, { limitInputPixels: 48_000_000 })
-    .extract(bounds)
+    .extract(integerBounds)
     .png({ compressionLevel: 6 })
     .toBuffer();
 }
 
 async function cropImageRegion(input: Buffer, bounds: ImageBounds) {
+  const metadata = await imageMetadata(input);
+  const integerBounds = integerImageBounds(
+    bounds,
+    metadata.width ?? bounds.left + bounds.width,
+    metadata.height ?? bounds.top + bounds.height
+  );
+
   return sharp(input, { limitInputPixels: 48_000_000 })
-    .extract(bounds)
+    .extract(integerBounds)
     .png({ compressionLevel: 6 })
     .toBuffer();
+}
+
+function integerImageBounds(
+  bounds: ImageBounds,
+  sourceWidth: number,
+  sourceHeight: number
+): ImageBounds {
+  const maxWidth = Math.max(1, Math.floor(sourceWidth));
+  const maxHeight = Math.max(1, Math.floor(sourceHeight));
+  const rawLeft = Number.isFinite(bounds.left) ? bounds.left : 0;
+  const rawTop = Number.isFinite(bounds.top) ? bounds.top : 0;
+  const rawRight = Number.isFinite(bounds.width)
+    ? rawLeft + Math.max(0, bounds.width)
+    : maxWidth;
+  const rawBottom = Number.isFinite(bounds.height)
+    ? rawTop + Math.max(0, bounds.height)
+    : maxHeight;
+  const left = Math.min(Math.max(0, Math.floor(rawLeft)), maxWidth - 1);
+  const top = Math.min(Math.max(0, Math.floor(rawTop)), maxHeight - 1);
+  const right = Math.min(Math.max(left + 1, Math.ceil(rawRight)), maxWidth);
+  const bottom = Math.min(Math.max(top + 1, Math.ceil(rawBottom)), maxHeight);
+
+  return {
+    left,
+    top,
+    width: right - left,
+    height: bottom - top,
+  };
 }
 
 async function preprocessForOcr(input: Buffer, rotation: OcrRotation, variant: OcrVariant) {
