@@ -146,6 +146,7 @@ export async function POST(request: Request) {
     checkDate?: string;
     paymentType?: string;
     paymentReference?: string;
+    payor?: string;
     internalNote?: string;
     checkAmount?: number;
     paymentAttachmentId?: string | null;
@@ -304,6 +305,8 @@ export async function POST(request: Request) {
     cleanString(body.receivedDate ?? body.paymentDate, 40)
   );
   const checkDate = optionalDateKey(body.checkDate);
+  const paymentReference = cleanString(body.paymentReference, 120);
+  const payor = cleanString(body.payor, 160);
 
   for (const invoice of invoices) {
     const invoiceAmount = moneyNumber(invoice.invoice_amount);
@@ -333,7 +336,7 @@ export async function POST(request: Request) {
           invoice,
           lineItems: lineItemsByInvoiceId.get(invoice.id) ?? [],
           fullyPaidDate: receivedDate,
-          finalPaymentReference: cleanString(body.paymentReference, 120),
+          finalPaymentReference: paymentReference,
         })
       : null;
 
@@ -363,7 +366,8 @@ export async function POST(request: Request) {
         receivedDate,
         checkDate,
         paymentType: cleanString(body.paymentType, 80),
-        paymentReference: cleanString(body.paymentReference, 120),
+        paymentReference,
+        payor,
         internalNote: cleanString(body.internalNote, 1000),
         invoiceId: invoice.id,
         businessId,
@@ -411,5 +415,10 @@ export async function POST(request: Request) {
     ok: true,
     appliedCount: appliedInvoices.length,
     appliedInvoices,
+    checkAmount,
+    paymentReference,
+    payor,
+    receivedDate,
+    checkDate,
   });
 }

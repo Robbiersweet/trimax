@@ -3582,6 +3582,9 @@ export default function BatchInvoicePayments({
       const {
         data: { session },
       } = await supabase.auth.getSession();
+      const submittedPaymentReference =
+        paymentReference.trim() || capturedCheckReference.trim();
+      const submittedPayor = checkPayor.trim();
       const response = await fetch("/api/payments/apply-batch", {
         method: "POST",
         headers: {
@@ -3597,7 +3600,8 @@ export default function BatchInvoicePayments({
           receivedDate,
           checkDate,
           paymentType,
-          paymentReference,
+          paymentReference: submittedPaymentReference,
+          payor: submittedPayor,
           internalNote,
           checkAmount: enteredCheckAmount,
           paymentAttachmentId: filedImage?.id ?? null,
@@ -3619,6 +3623,9 @@ export default function BatchInvoicePayments({
       const result = (await response.json().catch(() => ({}))) as {
         error?: string;
         appliedCount?: number;
+        checkAmount?: number;
+        paymentReference?: string;
+        payor?: string;
       };
 
       if (!response.ok) {
@@ -3635,14 +3642,15 @@ export default function BatchInvoicePayments({
         }.`,
       });
       setCompletedPaymentSummary({
-        checkNumber: paymentReference || capturedCheckReference,
-        payor: checkPayor,
-        totalAmount: enteredCheckAmount ?? selectedTotal,
+        checkNumber: result.paymentReference || submittedPaymentReference,
+        payor: result.payor || submittedPayor,
+        totalAmount: result.checkAmount ?? enteredCheckAmount ?? selectedTotal,
         invoiceCount: selectedInvoices.length,
       });
       setPaymentEntryMode("complete");
       setCheckOcrStatus("idle");
       setCheckOcrMessage("Payment applied.");
+      router.refresh();
       if (checkImagePreview) {
         URL.revokeObjectURL(checkImagePreview);
         setCheckImagePreview("");

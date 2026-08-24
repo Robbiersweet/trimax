@@ -235,7 +235,9 @@ assert(
     applyBatchRoute.includes("checkDate = optionalDateKey(body.checkDate)") &&
     applyBatchRoute.includes("paymentDate: receivedDate") &&
     applyBatchRoute.includes("receivedDate") &&
-    applyBatchRoute.includes("checkDate"),
+    applyBatchRoute.includes("checkDate") &&
+    applyBatchRoute.includes("payor = cleanString(body.payor") &&
+    applyBatchRoute.includes("payor,"),
   "Payment application must store Check Date separately and use Received Date for legacy paymentDate/timeliness."
 );
 assert(
@@ -257,7 +259,12 @@ assert(
     !batchInvoicePayments.includes("setPaymentDate(extractedDate)") &&
     batchInvoicePayments.includes("paymentDate: receivedDate") &&
     batchInvoicePayments.includes("receivedDate,") &&
-    batchInvoicePayments.includes("checkDate,"),
+    batchInvoicePayments.includes("checkDate,") &&
+    batchInvoicePayments.includes("submittedPaymentReference") &&
+    batchInvoicePayments.includes("submittedPayor") &&
+    batchInvoicePayments.includes("payor: submittedPayor") &&
+    batchInvoicePayments.includes("result.payor || submittedPayor") &&
+    batchInvoicePayments.includes("router.refresh();"),
   "Payment review must route OCR dates to Check Date while Received Date defaults to today and is submitted separately."
 );
 
@@ -275,6 +282,7 @@ assert(
 assert(
   paymentsPage.includes("Check Date") &&
     paymentsPage.includes("Received Date") &&
+    paymentsPage.includes("Payor") &&
     paymentsPage.includes("detailText(details.receivedDate)") &&
     paymentsPage.includes("detailText(details.paymentDate)") &&
     paymentsPage.includes("Received {formatDate(log.fullyPaidDate)}"),

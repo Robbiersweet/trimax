@@ -398,6 +398,7 @@ function evidenceFields(log: ActivityLog) {
     push("Amount applied", detailMoney(details, "amountApplied"));
     push("Check amount", detailMoney(details, "checkAmount"));
     push("Reference", detailText(details, "paymentReference"));
+    push("Payor", detailText(details, "payor"));
     push("Check date", detailText(details, "checkDate"));
     push("Received date", receivedDate);
     push("Outcome", detailText(details, "paymentOutcome"));

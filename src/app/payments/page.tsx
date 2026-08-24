@@ -204,6 +204,7 @@ function paymentProofChips(log: ActivityLog) {
     { label: "Received Date", value: formatDate(receivedDate) },
     { label: "Type", value: detailText(details.paymentType) },
     { label: "Reference", value: detailText(details.paymentReference) },
+    { label: "Payor", value: detailText(details.payor) },
     { label: "Check Amount", value: formatMoney(details.checkAmount as string | number | null | undefined) },
     { label: "Applied", value: formatMoney(details.amountApplied as string | number | null | undefined) },
     { label: "Deposit", value: formatMoney(details.depositAmount as string | number | null | undefined) },

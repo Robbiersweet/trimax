@@ -474,6 +474,10 @@ function detailChips(log: ActivityLog): DetailChip[] {
         label: "Reference",
         value: formatDetailValue(details.paymentReference),
       },
+      {
+        label: "Payor",
+        value: formatDetailValue(details.payor),
+      },
       { label: "Check Amount", value: formatMoney(details.checkAmount) },
       { label: "Applied", value: formatMoney(details.amountApplied) },
       {
