@@ -233,11 +233,34 @@ type CheckStubOcrResponse = {
       rotation?: number;
       variant?: string;
       pageMode?: string;
+      durationMs?: number;
+      imageWidth?: number;
+      imageHeight?: number;
       confidence?: number;
       score?: number;
       validRows?: number;
+      tokens?: {
+        invoiceLike?: string[];
+        dates?: string[];
+        units?: string[];
+        amounts?: string[];
+      };
       summary?: string;
     }>;
+    textRegionMetrics?: {
+      wordCount?: number;
+      highConfidenceWordCount?: number;
+      medianWordHeight?: number;
+      averageWordConfidence?: number;
+      textRegionBounds?: {
+        x0?: number;
+        y0?: number;
+        x1?: number;
+        y1?: number;
+      } | null;
+      textRegionAreaRatio?: number;
+      sourcePixelsPerDocumentHeight?: number;
+    };
     geometryTokenSummaries?: {
       invoiceLike?: string[];
       unitLike?: string[];
@@ -2097,6 +2120,25 @@ export default function BatchInvoicePayments({
               `${candidate.region ?? "unknown"} ${candidate.variant ?? ""}/${candidate.pageMode ?? "psm?"} r${candidate.rotation ?? 0} rows=${candidate.validRows ?? 0} conf=${Math.round(candidate.confidence ?? 0)} score=${Math.round(candidate.score ?? 0)}`
           )
           .join("; ")}.`
+      );
+
+      diagnostics.candidateSummaries.slice(0, 5).forEach((candidate, index) => {
+        const tokens = candidate.tokens;
+
+        lines.push(
+          `OCR pass ${index + 1}: ${candidate.region ?? "unknown"} ${candidate.variant ?? "unknown"}/${candidate.pageMode ?? "psm?"} r${candidate.rotation ?? 0}, ${candidate.imageWidth ?? "?"}x${candidate.imageHeight ?? "?"}, ${Math.round(candidate.durationMs ?? 0)}ms, conf=${Math.round(candidate.confidence ?? 0)}, rows=${candidate.validRows ?? 0}, score=${Math.round(candidate.score ?? 0)}, invoices=${tokens?.invoiceLike?.join(", ") || "none"}, dates=${tokens?.dates?.join(", ") || "none"}, units=${tokens?.units?.join(", ") || "none"}, amounts=${tokens?.amounts?.join(", ") || "none"}.`
+        );
+      });
+    }
+
+    if (diagnostics.textRegionMetrics) {
+      const metrics = diagnostics.textRegionMetrics;
+      const bounds = metrics.textRegionBounds
+        ? `${Math.round(metrics.textRegionBounds.x0 ?? 0)},${Math.round(metrics.textRegionBounds.y0 ?? 0)}-${Math.round(metrics.textRegionBounds.x1 ?? 0)},${Math.round(metrics.textRegionBounds.y1 ?? 0)}`
+        : "none";
+
+      lines.push(
+        `Text-region quality: words=${metrics.wordCount ?? 0}, high-conf=${metrics.highConfidenceWordCount ?? 0}, median word height=${metrics.medianWordHeight ?? 0}px, avg conf=${metrics.averageWordConfidence ?? 0}, bounds=${bounds}, area=${(((metrics.textRegionAreaRatio ?? 0) * 100)).toFixed(1)}%, document height=${metrics.sourcePixelsPerDocumentHeight ?? "unknown"}px.`
       );
     }
 

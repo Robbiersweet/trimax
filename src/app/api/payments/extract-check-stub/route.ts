@@ -55,6 +55,7 @@ type OcrAttempt = {
   text: string;
   confidence: number;
   score: number;
+  durationMs: number;
   imageWidth?: number;
   imageHeight?: number;
   words: OcrWord[];
@@ -851,6 +852,81 @@ function diagnosticWords(words: OcrWord[], pattern: RegExp, limit = 12) {
     .map(compactWordPosition);
 }
 
+function diagnosticTokenTexts(words: OcrWord[], pattern: RegExp, limit = 10) {
+  return words
+    .map((word) => normalizeGeometryToken(word.text))
+    .filter((text) => pattern.test(text))
+    .slice(0, limit);
+}
+
+function textRegionMetrics(words: OcrWord[], documentWidth = 0, documentHeight = 0) {
+  const usefulWords = words.filter((word) => {
+    const text = normalizeGeometryToken(word.text);
+
+    return text.length > 1 && word.confidence >= 10 && !/^[^\w$]+$/.test(text);
+  });
+  const textLikeWords = usefulWords.filter((word) =>
+    /[A-Za-z0-9]/.test(normalizeGeometryToken(word.text))
+  );
+  const heights = textLikeWords.map(wordHeight);
+  const highConfidenceWords = textLikeWords.filter((word) => word.confidence >= 60);
+  const x0 =
+    textLikeWords.length > 0 ? Math.min(...textLikeWords.map((word) => word.bbox.x0)) : 0;
+  const y0 =
+    textLikeWords.length > 0 ? Math.min(...textLikeWords.map((word) => word.bbox.y0)) : 0;
+  const x1 =
+    textLikeWords.length > 0 ? Math.max(...textLikeWords.map((word) => word.bbox.x1)) : 0;
+  const y1 =
+    textLikeWords.length > 0 ? Math.max(...textLikeWords.map((word) => word.bbox.y1)) : 0;
+  const textArea = Math.max(0, x1 - x0) * Math.max(0, y1 - y0);
+  const documentArea = Math.max(1, documentWidth * documentHeight);
+
+  return {
+    wordCount: textLikeWords.length,
+    highConfidenceWordCount: highConfidenceWords.length,
+    medianWordHeight: Math.round(median(heights) * 10) / 10,
+    averageWordConfidence:
+      textLikeWords.length > 0
+        ? Math.round(
+            (textLikeWords.reduce((total, word) => total + word.confidence, 0) /
+              textLikeWords.length) *
+              10
+          ) / 10
+        : 0,
+    textRegionBounds:
+      textLikeWords.length > 0
+        ? {
+            x0,
+            y0,
+            x1,
+            y1,
+          }
+        : null,
+    textRegionAreaRatio: Math.round((textArea / documentArea) * 1000) / 1000,
+    sourcePixelsPerDocumentHeight: documentHeight,
+  };
+}
+
+function candidateTokenSummary(attempt: OcrAttempt) {
+  const words = attempt.words;
+
+  return {
+    invoiceLike: diagnosticTokenTexts(
+      words,
+      /\b[Il1|]?NV(?:OICE)?\.?\s*[-#: ]?\s*[0-9OoSsZzIl|Vv]{3,8}\b/i
+    ),
+    dates: diagnosticTokenTexts(
+      words,
+      /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b|\b\d{4}-\d{1,2}-\d{1,2}\b/
+    ),
+    units: diagnosticTokenTexts(words, /\b[A-Z][0-9O]{2}[A-Z]?\b/i),
+    amounts: diagnosticTokenTexts(
+      words,
+      /\$?\d{1,3}(?:,\d{3})*(?:\.\d{2})?\b|\.\d{2}\b/
+    ),
+  };
+}
+
 function buildGeometryAttempt(attempts: OcrAttempt[], baseText: string): OcrAttempt | null {
   const bestAttemptByRegion = Array.from(
     attempts
@@ -891,6 +967,7 @@ function buildGeometryAttempt(attempts: OcrAttempt[], baseText: string): OcrAtte
     text: mergedText,
     confidence,
     score: scoreOcrText(mergedText, confidence),
+    durationMs: 0,
     words: rowWords,
   };
 }
@@ -1206,6 +1283,7 @@ async function recognizeBestText(
         const image = await preprocessForOcr(source.image, rotation, spec.variant);
         const processedMetadata = await imageMetadata(image);
         markStage(`preprocessed:${attemptStage}`);
+        const recognizeStartedAt = Date.now();
         const recognition = worker.recognize(image, {}, { text: true, blocks: true });
         let result;
 
@@ -1258,6 +1336,7 @@ async function recognizeBestText(
           text,
           confidence,
           score: scoreOcrText(text, confidence),
+          durationMs: Date.now() - recognizeStartedAt,
           imageWidth: source.width,
           imageHeight: source.height,
           words,
@@ -1369,6 +1448,10 @@ async function recognizeBestText(
             0
           ) / structurallyUsefulRegionAttempts.length,
         score: scoreOcrText(mergedText, 0),
+        durationMs: structurallyUsefulRegionAttempts.reduce(
+          (total, attempt) => total + attempt.durationMs,
+          0
+        ),
         imageWidth: sources.document.width,
         imageHeight: sources.document.height,
         words: structurallyUsefulRegionAttempts.flatMap((attempt) => attempt.words),
@@ -1412,9 +1495,13 @@ async function recognizeBestText(
       rotation: attempt.rotation,
       variant: attempt.variant,
       pageMode: attempt.pageMode,
+      durationMs: attempt.durationMs,
+      imageWidth: attempt.imageWidth,
+      imageHeight: attempt.imageHeight,
       confidence: attempt.confidence,
       score: Math.round(candidateStructureScore(attempt)),
       validRows: structurallyValidRemittanceRows(attempt.text).length,
+      tokens: candidateTokenSummary(attempt),
       summary: redactedTextSummary(attempt.text),
     }));
     const finalText = selected?.text ?? "";
@@ -1458,6 +1545,11 @@ async function recognizeBestText(
           redactedTextSummary(attempt.text)
         ),
         candidateSummaries,
+        textRegionMetrics: textRegionMetrics(
+          diagnosticWordSource,
+          sources.document.width ?? 0,
+          sources.document.height ?? 0
+        ),
         geometryTokenSummaries: {
           invoiceLike: diagnosticWords(
             diagnosticWordSource,

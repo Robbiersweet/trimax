@@ -1087,6 +1087,9 @@ assert(
     ocrRoute.includes("structurallyValidRemittanceRows") &&
     ocrRoute.includes("reconstructRowsFromOcrGeometry") &&
     ocrRoute.includes("geometryTokenSummaries") &&
+    ocrRoute.includes("textRegionMetrics") &&
+    ocrRoute.includes("candidateTokenSummary") &&
+    ocrRoute.includes("durationMs") &&
     ocrRoute.includes("geometricRows") &&
     ocrRoute.includes("geometricRowDetails") &&
     ocrRoute.includes("rowAcceptance") &&
@@ -1098,6 +1101,15 @@ assert(
     !ocrRoute.includes("--- OCR REGION ---") &&
     ocrRoute.includes("Some invoice text was detected, but invoice rows could not be confirmed."),
   "OCR route must keep OCR candidates source-separated, request word boxes, and reconstruct rows by geometry instead of concatenating noisy fragments."
+);
+assert(
+  paymentScreen.includes("OCR pass") &&
+    paymentScreen.includes("Text-region quality:") &&
+    paymentScreen.includes("median word height") &&
+    paymentScreen.includes("high-conf") &&
+    paymentScreen.includes("candidate.tokens") &&
+    paymentScreen.includes("diagnostics.textRegionMetrics"),
+  "Payments OCR diagnostics must expose per-pass token summaries and text-region quality so good and bad physical reads can be compared."
 );
 assert(
   paymentScreen.includes("Capture stub separately") &&
