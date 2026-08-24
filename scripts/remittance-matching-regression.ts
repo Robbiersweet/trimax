@@ -685,9 +685,11 @@ assert(
     paymentScreen.includes("const paymentImageFile = ocrImageFile ?? checkImageFile") &&
     paymentScreen.includes(".upload(storagePath, paymentImageFile") &&
     paymentScreen.includes("const preparedFile = await dataUrlToImageFile") &&
+    paymentScreen.includes("const preparedImage = await imageElementFromFile(preparedFile)") &&
     paymentScreen.includes("setOcrImageFile(preparedFile)") &&
     paymentScreen.includes("setCheckImageFile(preparedFile)") &&
     paymentScreen.includes("setCheckImagePreview(imageDataUrl)") &&
+    paymentScreen.includes("Saved preview and OCR input: same normalized crop.") &&
     paymentScreen.includes("setCropBox({ left: 0, top: 0, right: 100, bottom: 100 })") &&
     paymentScreen.includes("setCropRotation(0)"),
   "Payments screen must use the same normalized cropped image for OCR, preview, retry, and payment-image upload."
@@ -696,8 +698,19 @@ assert(
   paymentScreen.includes('type OcrRetryStrategy = "standard" | "alternate"') &&
     paymentScreen.includes("retryStrategy: OcrRetryStrategy = \"standard\"") &&
     paymentScreen.includes("JSON.stringify({ imageDataUrl, documentType, retryStrategy })") &&
+    paymentScreen.includes("Retry strategy:") &&
     paymentScreen.includes('"alternate"'),
   "Retry Reading must reuse the saved crop while requesting a distinct local OCR preprocessing strategy."
+);
+assert(
+  paymentScreen.includes("OCR pipeline details") &&
+    paymentScreen.includes("Raw OCR text") &&
+    paymentScreen.includes("OCR request duration") &&
+    paymentScreen.includes("Parsed invoice numbers:") &&
+    paymentScreen.includes("Parsed line amounts:") &&
+    paymentScreen.includes("Matched invoices:") &&
+    paymentScreen.includes("Reconciliation:"),
+  "Failed remittance reads must expose source, OCR, parser, matching, and reconciliation diagnostics without changing payment logic."
 );
 assert(
   paymentScreen.includes("function invoiceLookupKeys") &&

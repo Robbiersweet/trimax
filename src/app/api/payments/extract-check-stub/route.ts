@@ -1045,6 +1045,7 @@ export async function POST(request: Request) {
       documentType,
       retryStrategy,
       ...extraction,
+      rawText: parsedText,
       diagnostics: {
         summary: diagnosticSummary,
         ...ocrResult.diagnostics,

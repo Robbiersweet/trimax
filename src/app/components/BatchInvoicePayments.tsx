@@ -223,12 +223,16 @@ type CheckStubOcrResponse = {
     selectedRotation?: number;
     selectedVariant?: string;
     selectedConfidence?: number;
+    selectedSummary?: string;
+    regionSummaries?: string[];
     stageTimings?: Record<string, number>;
     candidateSummaries?: Array<{
       region?: string;
       rotation?: number;
       variant?: string;
+      pageMode?: string;
       confidence?: number;
+      score?: number;
       validRows?: number;
       summary?: string;
     }>;
@@ -1032,6 +1036,10 @@ export default function BatchInvoicePayments({
   const [lastOcrDiagnosticLines, setLastOcrDiagnosticLines] = useState<string[]>(
     []
   );
+  const [lastOcrPrepDiagnosticLines, setLastOcrPrepDiagnosticLines] = useState<
+    string[]
+  >([]);
+  const [lastOcrRawText, setLastOcrRawText] = useState("");
   const [checkOcrStatus, setCheckOcrStatus] = useState<CheckOcrStatus>("idle");
   const [paymentEntryMode, setPaymentEntryMode] =
     useState<PaymentEntryMode>("choice");
@@ -1953,6 +1961,34 @@ export default function BatchInvoicePayments({
   function ocrDiagnosticLines(data: CheckStubOcrResponse) {
     const diagnostics = data.diagnostics;
     const lines = [...(diagnostics?.summary ?? [])];
+    const parsedInvoiceNumbers =
+      data.lines
+        ?.flatMap((line) =>
+          Array.isArray(line.invoiceNumbers)
+            ? line.invoiceNumbers.map((invoiceNumber) => String(invoiceNumber))
+            : []
+        )
+        .filter(Boolean) ?? [];
+    const parsedAmounts =
+      data.lines
+        ?.map((line) =>
+          typeof line.amount === "number"
+            ? line.amount
+            : typeof line.amount === "string"
+              ? parseMoney(line.amount)
+              : 0
+        )
+        .filter((amount) => amount > 0) ?? [];
+
+    lines.push(
+      `Parsed fields: check=${data.checkNumber?.trim() || "not found"}, date=${data.checkDate?.trim() || "not found"}, payor=${data.payor?.trim() || "not found"}, total=${typeof data.totalAmount === "number" && data.totalAmount > 0 ? formatMoney(data.totalAmount) : "not found"}.`
+    );
+    lines.push(
+      `Parsed invoice numbers: ${parsedInvoiceNumbers.length > 0 ? parsedInvoiceNumbers.join(", ") : "none"}.`
+    );
+    lines.push(
+      `Parsed line amounts: ${parsedAmounts.length > 0 ? parsedAmounts.map((amount) => formatMoney(amount)).join(", ") : "none"}.`
+    );
 
     if (!diagnostics) {
       return lines;
@@ -1976,19 +2012,73 @@ export default function BatchInvoicePayments({
       );
     }
 
+    if (diagnostics.stageTimings) {
+      const stageEntries = Object.entries(diagnostics.stageTimings);
+      const lastStage = stageEntries.at(-1);
+      const maxDuration = Math.max(
+        ...stageEntries.map(([, duration]) => duration),
+        0
+      );
+
+      lines.push(`OCR started: yes.`);
+      lines.push(
+        `OCR completed: ${data.rawText?.trim() || data.stubText?.trim() ? "yes" : "no"}.`
+      );
+      lines.push(`OCR route duration: ${maxDuration}ms.`);
+      if (lastStage) {
+        lines.push(`Last OCR stage: ${lastStage[0]} at ${lastStage[1]}ms.`);
+      }
+    } else {
+      lines.push("OCR started: unknown.");
+      lines.push("OCR completed: unknown.");
+    }
+
+    if (diagnostics.selectedSummary) {
+      lines.push(`Selected text summary: ${diagnostics.selectedSummary}.`);
+    }
+
     if (diagnostics.candidateSummaries?.length) {
       lines.push(
         `Best candidates: ${diagnostics.candidateSummaries
           .slice(0, 3)
           .map(
             (candidate) =>
-              `${candidate.region ?? "unknown"} ${candidate.variant ?? ""} r${candidate.rotation ?? 0} rows=${candidate.validRows ?? 0} conf=${Math.round(candidate.confidence ?? 0)}`
+              `${candidate.region ?? "unknown"} ${candidate.variant ?? ""}/${candidate.pageMode ?? "psm?"} r${candidate.rotation ?? 0} rows=${candidate.validRows ?? 0} conf=${Math.round(candidate.confidence ?? 0)} score=${Math.round(candidate.score ?? 0)}`
           )
           .join("; ")}.`
       );
     }
 
     return lines;
+  }
+
+  function remittanceReviewDiagnosticLines(
+    reviewMatches: ReviewMatchedInvoice[],
+    reconciledReview: ReturnType<typeof reconcileReviewMatches>
+  ) {
+    const matchedTotal = reviewMatches.reduce(
+      (total, invoice) => total + (invoice.remittanceAmount ?? invoice.amountDue),
+      0
+    );
+
+    return [
+      `Matched invoices: ${
+        reviewMatches.length > 0
+          ? reviewMatches
+              .map(
+                (invoice) =>
+                  `${invoice.displayId} (${formatMoney(invoice.remittanceAmount ?? invoice.amountDue)})`
+              )
+              .join(", ")
+          : "none"
+      }.`,
+      `Matched total: ${formatMoney(matchedTotal)}.`,
+      `Reconciliation: ${
+        reconciledReview.isComplete
+          ? "complete"
+          : reconciledReview.notice || "not complete"
+      }.`,
+    ];
   }
 
   function ocrFailureMessage(data: CheckStubOcrResponse) {
@@ -2114,7 +2204,8 @@ export default function BatchInvoicePayments({
     imageDataUrl: string,
     documentType: RemittanceDocumentType = captureDocumentType,
     intent: CaptureIntent = captureIntent,
-    retryStrategy: OcrRetryStrategy = "standard"
+    retryStrategy: OcrRetryStrategy = "standard",
+    prepDiagnosticLines: string[] = lastOcrPrepDiagnosticLines
   ) {
     if (imageDataUrl.length > 19_500_000) {
       setCheckOcrStatus("manual");
@@ -2127,8 +2218,10 @@ export default function BatchInvoicePayments({
     setCheckOcrStatus("reading");
     setCheckOcrMessage("Reading the remittance stub from the image...");
     setLastOcrDiagnosticLines([]);
+    setLastOcrRawText("");
     appendCameraStage("Upload started");
     appendCameraStage("OCR started");
+    const requestStartedAt = performance.now();
 
     try {
       const response = await fetch("/api/payments/extract-check-stub", {
@@ -2139,9 +2232,20 @@ export default function BatchInvoicePayments({
         body: JSON.stringify({ imageDataUrl, documentType, retryStrategy }),
       });
       const data = (await response.json().catch(() => ({}))) as CheckStubOcrResponse;
-      const diagnosticLines = ocrDiagnosticLines(data);
+      const requestDuration = Math.max(
+        0,
+        Math.round(performance.now() - requestStartedAt)
+      );
+      const diagnosticLines = [
+        ...prepDiagnosticLines,
+        `OCR request prepared: yes.`,
+        `OCR request completed: ${response.ok ? "yes" : "no"} (${response.status}).`,
+        `OCR request duration: ${requestDuration}ms.`,
+        ...ocrDiagnosticLines(data),
+      ];
 
       setLastOcrDiagnosticLines(diagnosticLines);
+      setLastOcrRawText(data.rawText?.trim() || data.stubText?.trim() || "");
 
       if (!response.ok) {
         setCameraFailureStage("ocr-request");
@@ -2166,6 +2270,10 @@ export default function BatchInvoicePayments({
       appendCameraStage("OCR completed");
       if (intent === "check_details" || documentType === "check_only") {
         loadCheckDetailsFromExtraction(data);
+        setLastOcrDiagnosticLines([
+          ...diagnosticLines,
+          "Payment Review handoff: check details only.",
+        ]);
         appendCameraStage("Parsing completed");
         setCheckOcrStatus("manual");
         setPaymentEntryMode("photo");
@@ -2176,6 +2284,11 @@ export default function BatchInvoicePayments({
       }
 
       const { reviewMatches, reconciledReview } = loadExtractedRemittance(data);
+      setLastOcrDiagnosticLines([
+        ...diagnosticLines,
+        ...remittanceReviewDiagnosticLines(reviewMatches, reconciledReview),
+        "Payment Review handoff: remittance review state updated.",
+      ]);
       appendCameraStage("Parsing completed");
       const responseTotal =
         typeof data.totalAmount === "number" && data.totalAmount > 0
@@ -2240,6 +2353,15 @@ export default function BatchInvoicePayments({
         quality
       );
       const ocrPermitted = qualityMessages.length === 0;
+      const initialPrepDiagnosticLines = [
+        `Source image: ${naturalWidth} x ${naturalHeight}, ${file.size} bytes, ${file.name || "unnamed image"}.`,
+        `Crop box: left ${nextCropBox.left.toFixed(1)}%, top ${nextCropBox.top.toFixed(1)}%, right ${nextCropBox.right.toFixed(1)}%, bottom ${nextCropBox.bottom.toFixed(1)}%, rotation ${nextRotation}deg.`,
+        `Crop dimensions: ${effectiveWidth} x ${effectiveHeight}.`,
+        `Quality gate: ${ocrPermitted || allowQualityOverride ? "passed" : "blocked"}; brightness ${quality.brightness.toFixed(1)}, contrast ${quality.contrast.toFixed(1)}, sharpness ${quality.blurScore.toFixed(1)}, area ${(cropBoxAreaRatio(nextCropBox) * 100).toFixed(1)}%.`,
+        `Retry strategy: ${retryStrategy}; quality override: ${allowQualityOverride ? "yes" : "no"}.`,
+      ];
+
+      setLastOcrPrepDiagnosticLines(initialPrepDiagnosticLines);
 
       setCaptureQualityDetails(
         `OCR crop: ${effectiveWidth} x ${effectiveHeight}. Brightness ${quality.brightness.toFixed(
@@ -2272,6 +2394,12 @@ export default function BatchInvoicePayments({
         setCheckOcrStatus("manual");
         setCheckOcrMessage(qualityMessages[0]);
         setCaptureQualityMessage(qualityMessages[0]);
+        setLastOcrDiagnosticLines([
+          ...initialPrepDiagnosticLines,
+          "OCR request prepared: no.",
+          "OCR started: no.",
+          `Failure stage: image-quality-gate (${qualityMessages[0]}).`,
+        ]);
         return;
       }
 
@@ -2284,6 +2412,16 @@ export default function BatchInvoicePayments({
         imageDataUrl,
         `trimax-remittance-ocr-${Date.now()}.jpg`
       );
+      const preparedImage = await imageElementFromFile(preparedFile);
+      const preparedWidth = preparedImage.naturalWidth || preparedImage.width;
+      const preparedHeight = preparedImage.naturalHeight || preparedImage.height;
+      const prepDiagnosticLines = [
+        ...initialPrepDiagnosticLines,
+        `Normalized OCR image: ${preparedWidth} x ${preparedHeight}, ${preparedFile.size} bytes.`,
+        "Saved preview and OCR input: same normalized crop.",
+      ];
+
+      setLastOcrPrepDiagnosticLines(prepDiagnosticLines);
       appendCameraStage(
         `OCR upload prepared: ${preparedFile.size} bytes, preview and OCR input use same normalized crop`
       );
@@ -2311,7 +2449,8 @@ export default function BatchInvoicePayments({
         imageDataUrl,
         documentType,
         intent,
-        retryStrategy
+        retryStrategy,
+        prepDiagnosticLines
       );
     } catch (error) {
       setCheckOcrStatus("error");
@@ -2353,6 +2492,8 @@ export default function BatchInvoicePayments({
     setCompletedPaymentSummary(null);
     setCheckOcrStatus("idle");
     setLastOcrDiagnosticLines([]);
+    setLastOcrPrepDiagnosticLines([]);
+    setLastOcrRawText("");
     setCaptureDocumentType("remittance_stub");
     setCaptureIntent("primary");
     setCameraGuideMode("horizontal");
@@ -3036,6 +3177,8 @@ export default function BatchInvoicePayments({
       setCapturedCheckAmount("");
       setCapturedCheckReference("");
       setLastOcrDiagnosticLines([]);
+      setLastOcrPrepDiagnosticLines([]);
+      setLastOcrRawText("");
     }
     setCompletedPaymentSummary(null);
     setCaptureDocumentType(documentType);
@@ -4002,6 +4145,14 @@ export default function BatchInvoicePayments({
                         <li key={`${line}-${index}`}>{line}</li>
                       ))}
                     </ul>
+                    {lastOcrRawText ? (
+                      <div className="mt-3">
+                        <p className="font-black">Raw OCR text</p>
+                        <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-black/55 p-2 font-mono text-[10px] leading-4 text-sky-50">
+                          {lastOcrRawText}
+                        </pre>
+                      </div>
+                    ) : null}
                   </details>
                 ) : null}
 

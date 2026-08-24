@@ -149,7 +149,14 @@ assert(
     paymentScreen.includes("Parsing completed") &&
     paymentScreen.includes("Matching completed") &&
     paymentScreen.includes("OCR pipeline details") &&
+    paymentScreen.includes("Raw OCR text") &&
+    paymentScreen.includes("Source image:") &&
+    paymentScreen.includes("Crop box:") &&
+    paymentScreen.includes("Normalized OCR image:") &&
+    paymentScreen.includes("Parsed invoice numbers:") &&
+    paymentScreen.includes("Matched invoices:") &&
     paymentScreen.includes("setLastOcrDiagnosticLines") &&
+    paymentScreen.includes("setLastOcrRawText") &&
     paymentScreen.includes("Failed at:"),
   "Capture must show explicit progress stages and exact failure stage."
 );
