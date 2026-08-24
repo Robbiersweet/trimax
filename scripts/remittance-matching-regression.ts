@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import assert from "node:assert/strict";
 import {
+  extractMoneyCandidates,
   extractMoneyValues,
   extractInvoiceNumbers,
   findRemittanceMatches,
@@ -647,6 +648,81 @@ assert.equal(parsedGeometricRowBandStub.totalAmount, 5555);
 assert.deepEqual(extractMoneyValues("1,111"), [1111]);
 assert.deepEqual(extractMoneyValues("1,111.0"), [1111]);
 assert.deepEqual(extractMoneyValues("1,111 .00"), [1111]);
+
+const rowWithSmallAmountFragment = parseCheckStubText(
+  "P06 full interior paint 1,099.00 9.00"
+).lines[0];
+assert.equal(
+  rowWithSmallAmountFragment.amount,
+  1099,
+  "Complete row amount must beat a smaller trailing OCR fragment."
+);
+assert.deepEqual(
+  extractMoneyCandidates("P06 full interior paint 1,099.00 9.00").map(
+    (candidate) => candidate.value
+  ),
+  [1099, 9],
+  "Amount diagnostics must retain all row candidates."
+);
+
+const rowWithNinetyNineFragment = parseCheckStubText(
+  "G01 full interior paint 1,099.00 99.00"
+).lines[0];
+assert.equal(
+  rowWithNinetyNineFragment.amount,
+  1099,
+  "Complete amount-column value must beat a smaller 99.00 OCR fragment."
+);
+
+assert.deepEqual(
+  extractInvoiceNumbers("Property Account Invoice - Date 07/02/2026 Description Amount"),
+  [],
+  "Invoice-date header years must not become invoice numbers."
+);
+assert.deepEqual(
+  extractInvoiceNumbers("invoice 2026"),
+  [],
+  "A four-digit year after the word invoice must not become INV-2026."
+);
+assert.deepEqual(
+  parseCheckStubText("07/02/2026 M07 full interior paint 1,099.00").lines[0]
+    .invoiceNumbers,
+  [],
+  "Date/year tokens must remain separate from invoice identifiers."
+);
+
+const fiveInvoiceGeometryRows = [
+  "DATE: 08/01/2026 TOTAL: $5,555.00",
+  "Property Account Invoice - Date Description Amount",
+  "A01 INV0601 07/01/2026 full interior paint 1,111.00 9.00",
+  "B02 INV0602 07/02/2026 full interior paint 1,111.00 99.00",
+  "C03 INV0603 07/03/2026 full interior paint 1,111.00",
+  "D04 INV0604 07/04/2026 full interior paint 1,111 .00",
+  "E05 INV0605 07/05/2026 full interior paint 1,111.0",
+].join("\n");
+const parsedFiveInvoiceGeometryRows = parseCheckStubText(fiveInvoiceGeometryRows);
+
+assert.equal(
+  parsedFiveInvoiceGeometryRows.lines.length,
+  5,
+  "Five accepted geometric invoice bands must survive into five structured rows."
+);
+assert.deepEqual(
+  parsedFiveInvoiceGeometryRows.lines.map((line) => ({
+    invoice: line.invoiceNumbers[0],
+    unit: line.unitCodes[0],
+    amount: line.amount,
+  })),
+  [
+    { invoice: "INV-0601", unit: "A01", amount: 1111 },
+    { invoice: "INV-0602", unit: "B02", amount: 1111 },
+    { invoice: "INV-0603", unit: "C03", amount: 1111 },
+    { invoice: "INV-0604", unit: "D04", amount: 1111 },
+    { invoice: "INV-0605", unit: "E05", amount: 1111 },
+  ],
+  "Units, invoice identifiers, and row amounts must remain distinct."
+);
+assert.equal(parsedFiveInvoiceGeometryRows.totalAmount, 5555);
 
 const route = readFileSync(
   resolve(root, "src/app/api/payments/extract-check-stub/route.ts"),

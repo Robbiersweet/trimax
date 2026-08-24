@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import sharp from "sharp";
 import {
+  extractMoneyCandidates,
   hasExplicitRemittanceTotal,
   parseCheckStubText,
 } from "@/app/lib/remittanceMatching";
@@ -988,6 +989,57 @@ function rowAcceptance(row: GeometricRow) {
   };
 }
 
+function geometryAmountCandidates(row: GeometricRow) {
+  const candidates = extractMoneyCandidates(row.text);
+  const selectedValue = rowAcceptance(row).amount;
+
+  return candidates.map((candidate) => {
+    const matchingWords = row.words.filter((word) => {
+      const token = normalizeGeometryToken(word.text);
+      const value = extractMoneyCandidates(token)[0]?.value ?? 0;
+
+      return value > 0 && Math.abs(value - candidate.value) < 0.01;
+    });
+    const x0 =
+      matchingWords.length > 0
+        ? Math.min(...matchingWords.map((word) => word.bbox.x0))
+        : undefined;
+    const x1 =
+      matchingWords.length > 0
+        ? Math.max(...matchingWords.map((word) => word.bbox.x1))
+        : undefined;
+    const confidence =
+      matchingWords.length > 0
+        ? Math.round(
+            matchingWords.reduce((total, word) => total + word.confidence, 0) /
+              matchingWords.length
+          )
+        : undefined;
+
+    return {
+      raw: candidate.raw,
+      normalized: candidate.normalized,
+      value: candidate.value,
+      score: candidate.score,
+      selected: Math.abs(candidate.value - selectedValue) < 0.01,
+      reason:
+        Math.abs(candidate.value - selectedValue) < 0.01
+          ? "selected as strongest complete row amount"
+          : "lower-scored or fragment candidate",
+      bbox:
+        x0 !== undefined && x1 !== undefined
+          ? {
+              x0,
+              y0: Math.min(...matchingWords.map((word) => word.bbox.y0)),
+              x1,
+              y1: Math.max(...matchingWords.map((word) => word.bbox.y1)),
+            }
+          : undefined,
+      confidence,
+    };
+  });
+}
+
 function geometryRowDetails(rows: GeometricRow[], documentWidth = 0) {
   return rows.map((row) => {
     const acceptance = rowAcceptance(row);
@@ -1000,6 +1052,7 @@ function geometryRowDetails(rows: GeometricRow[], documentWidth = 0) {
       accepted: acceptance.accepted,
       rejectionReason: acceptance.rejectionReason,
       amount: acceptance.amount,
+      amountCandidates: geometryAmountCandidates(row),
       invoiceNumbers: acceptance.invoiceNumbers,
       unitCodes: acceptance.unitCodes,
       tokens: row.words.map((word) => ({

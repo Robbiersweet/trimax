@@ -256,6 +256,21 @@ type CheckStubOcrResponse = {
       accepted?: boolean;
       rejectionReason?: string;
       amount?: number;
+      amountCandidates?: Array<{
+        raw?: string;
+        normalized?: string;
+        value?: number;
+        score?: number;
+        selected?: boolean;
+        reason?: string;
+        confidence?: number;
+        bbox?: {
+          x0?: number;
+          y0?: number;
+          x1?: number;
+          y1?: number;
+        };
+      }>;
       invoiceNumbers?: string[];
       unitCodes?: string[];
       tokens?: Array<{
@@ -2119,6 +2134,23 @@ export default function BatchInvoicePayments({
         lines.push(
           `Row ${index + 1}: y=${Math.round(row.y ?? 0)} ${row.accepted ? "accepted" : `rejected (${row.rejectionReason || "unknown"})`} amount=${typeof row.amount === "number" && row.amount > 0 ? formatMoney(row.amount) : "none"} invoices=${row.invoiceNumbers?.join(", ") || "none"} units=${row.unitCodes?.join(", ") || "none"} text="${row.reconstructedText || ""}" tokens=${tokens}.`
         );
+
+        if (row.amountCandidates?.length) {
+          const amountCandidates = row.amountCandidates
+            .map((candidate) => {
+              const bbox = candidate.bbox
+                ? `@${Math.round(candidate.bbox.x0 ?? 0)},${Math.round(candidate.bbox.y0 ?? 0)}-${Math.round(candidate.bbox.x1 ?? 0)},${Math.round(candidate.bbox.y1 ?? 0)}`
+                : "";
+              const normalized =
+                candidate.normalized ??
+                (typeof candidate.value === "number" ? formatMoney(candidate.value) : "");
+
+              return `${candidate.raw ?? ""}->${normalized}${candidate.selected ? ":selected" : ":rejected"}:score=${Math.round(candidate.score ?? 0)}:conf=${Math.round(candidate.confidence ?? 0)}${bbox}:${candidate.reason ?? ""}`;
+            })
+            .join(" | ");
+
+          lines.push(`Row ${index + 1} amount candidates: ${amountCandidates}.`);
+        }
       });
     }
 
