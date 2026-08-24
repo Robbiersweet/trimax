@@ -532,6 +532,8 @@ export default async function PaymentsPage({
               projectTitle: invoice.project_title ?? "Untitled Invoice",
               status: invoice.status ?? "Draft",
               dueDate: invoice.due_date,
+              splitParentInvoiceId: invoice.split_parent_invoice_id ?? null,
+              splitChildrenCount: splitChildrenByParentId.get(invoice.id) ?? 0,
             }))}
           />
         </div>

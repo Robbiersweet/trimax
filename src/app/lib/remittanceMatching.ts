@@ -11,6 +11,26 @@ export type RemittanceInvoiceRecord = {
   splitChildrenCount?: number | null;
 };
 
+export type RemittanceInvoiceMatchTrace = {
+  ocrInvoiceIdentifier: string;
+  normalizedInvoiceIdentifier: string;
+  ocrRow: string;
+  ocrRowAmount: number;
+  lookupKey: string;
+  found: boolean;
+  invoiceId: string | null;
+  displayId: string | null;
+  status: string | null;
+  invoiceAmount: number;
+  amountPaid: number;
+  amountDue: number;
+  eligible: boolean;
+  invoiceRole: "original" | "split_source" | "split_child" | "unknown";
+  accepted: boolean;
+  rejectionReason: string;
+  matchedAmount: number;
+};
+
 export type RemittanceLine = {
   text: string;
   amount: number;
@@ -698,6 +718,44 @@ function amountDueForInvoice(invoice: RemittanceInvoiceRecord) {
     : Math.max(invoice.invoiceAmount - invoice.amountPaid, 0);
 }
 
+function remittanceInvoiceRole(invoice: RemittanceInvoiceRecord | null | undefined) {
+  if (!invoice) {
+    return "unknown" as const;
+  }
+
+  if (Number(invoice.splitChildrenCount ?? 0) > 0) {
+    return "split_source" as const;
+  }
+
+  if (invoice.splitParentInvoiceId) {
+    return "split_child" as const;
+  }
+
+  return "original" as const;
+}
+
+function remittanceInvoiceRejectionReason(
+  invoice: (RemittanceInvoiceRecord & { amountDue: number }) | null | undefined
+) {
+  if (!invoice) {
+    return "Invoice record not found in loaded Trimax invoices.";
+  }
+
+  if (!isCollectibleRemittanceInvoiceStatus(invoice.status)) {
+    return `Invoice status is not collectible: ${invoice.status || "unknown"}.`;
+  }
+
+  if (Number(invoice.splitChildrenCount ?? 0) > 0) {
+    return "Invoice is a split source; use collectible split child invoices.";
+  }
+
+  if (invoice.amountDue <= 0) {
+    return "Invoice has no collectible balance due.";
+  }
+
+  return "";
+}
+
 function inferInvoiceNumberFromLineContext(
   line: RemittanceLine,
   invoiceNumberRecords: Array<{
@@ -832,14 +890,27 @@ export function findRemittanceMatches(
   const referencedInvoiceNumbers = Array.from(
     new Set(allReferencedInvoiceNumbers)
   );
-  const invoiceNumberRecords = invoices
-    .map((invoice) => ({
+  const invoiceNumberRecords = invoices.map((invoice) => ({
       invoiceNumber: normalizeInvoiceNumber(invoice.displayId),
       invoice: {
         ...invoice,
         amountDue: amountDueForInvoice(invoice),
       },
-    }))
+    }));
+  const allInvoicesByNumber = new Map(
+    invoiceNumberRecords
+      .filter((record) => record.invoiceNumber)
+      .map((record) => [record.invoiceNumber, record.invoice])
+  );
+  const invoiceRowByNumber = new Map<string, RemittanceLine>();
+  lineItems.forEach((line) => {
+    line.invoiceNumbers.forEach((invoiceNumber) => {
+      if (!invoiceRowByNumber.has(invoiceNumber)) {
+        invoiceRowByNumber.set(invoiceNumber, line);
+      }
+    });
+  });
+  const eligibleInvoiceNumberRecords = invoiceNumberRecords
     .filter(
       (record) =>
         record.invoiceNumber &&
@@ -849,7 +920,7 @@ export function findRemittanceMatches(
     );
   const duplicateTrimaxInvoiceNumbers = Array.from(
     new Set(
-      invoiceNumberRecords
+      eligibleInvoiceNumberRecords
         .map((record) => record.invoiceNumber)
         .filter(
           (invoiceNumber, index, allNumbers) =>
@@ -858,7 +929,7 @@ export function findRemittanceMatches(
     )
   );
   const invoicesByNumber = new Map(
-    invoiceNumberRecords.map((record) => [
+    eligibleInvoiceNumberRecords.map((record) => [
       record.invoiceNumber,
       record.invoice,
     ])
@@ -869,7 +940,7 @@ export function findRemittanceMatches(
       line.invoiceNumbers.every((invoiceNumber) => !invoicesByNumber.has(invoiceNumber))
     )
     .map((line) =>
-      inferInvoiceNumberFromLineContext(line, invoiceNumberRecords, payor)
+      inferInvoiceNumberFromLineContext(line, eligibleInvoiceNumberRecords, payor)
     )
     .filter(
       (
@@ -898,6 +969,34 @@ export function findRemittanceMatches(
   const duplicatedInvoiceNumbers = allReferencedInvoiceNumbers.filter(
     (invoiceNumber, index) =>
       allReferencedInvoiceNumbers.indexOf(invoiceNumber) !== index
+  );
+  const matchTrace: RemittanceInvoiceMatchTrace[] = referencedInvoiceNumbers.map(
+    (invoiceNumber) => {
+      const invoice = allInvoicesByNumber.get(invoiceNumber) ?? null;
+      const eligibleInvoice = invoicesByNumber.get(invoiceNumber) ?? null;
+      const row = invoiceRowByNumber.get(invoiceNumber) ?? null;
+      const eligible = Boolean(eligibleInvoice);
+
+      return {
+        ocrInvoiceIdentifier: invoiceNumber,
+        normalizedInvoiceIdentifier: invoiceNumber,
+        ocrRow: row?.text ?? "",
+        ocrRowAmount: row?.amount ?? 0,
+        lookupKey: invoiceNumber,
+        found: Boolean(invoice),
+        invoiceId: invoice?.id ?? null,
+        displayId: invoice?.displayId ?? null,
+        status: invoice?.status ?? null,
+        invoiceAmount: invoice?.invoiceAmount ?? 0,
+        amountPaid: invoice?.amountPaid ?? 0,
+        amountDue: invoice?.amountDue ?? 0,
+        eligible,
+        invoiceRole: remittanceInvoiceRole(invoice),
+        accepted: eligible,
+        rejectionReason: eligible ? "" : remittanceInvoiceRejectionReason(invoice),
+        matchedAmount: eligibleInvoice?.amountDue ?? 0,
+      };
+    }
   );
   const matchedTotal = matches.reduce(
     (total, invoice) => total + invoice.amountDue,
@@ -961,6 +1060,7 @@ export function findRemittanceMatches(
     lineItems,
     referencedInvoiceNumbers: reconciledInvoiceNumbers,
     missingInvoiceNumbers,
+    matchTrace,
     matchedTotal,
     lineTotal,
     issues,

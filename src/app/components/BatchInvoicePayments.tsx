@@ -44,6 +44,8 @@ type BatchInvoice = {
   isDepositRequest?: boolean;
   status: string;
   dueDate?: string | null;
+  splitParentInvoiceId?: string | null;
+  splitChildrenCount?: number | null;
 };
 
 type BatchInvoicePaymentsProps = {
@@ -2159,14 +2161,15 @@ export default function BatchInvoicePayments({
 
   function remittanceReviewDiagnosticLines(
     reviewMatches: ReviewMatchedInvoice[],
-    reconciledReview: ReturnType<typeof reconcileReviewMatches>
+    reconciledReview: ReturnType<typeof reconcileReviewMatches>,
+    match: ReturnType<typeof findRemittanceMatches>
   ) {
     const matchedTotal = reviewMatches.reduce(
       (total, invoice) => total + (invoice.remittanceAmount ?? invoice.amountDue),
       0
     );
 
-    return [
+    const lines = [
       `Matched invoices: ${
         reviewMatches.length > 0
           ? reviewMatches
@@ -2184,6 +2187,16 @@ export default function BatchInvoicePayments({
           : reconciledReview.notice || "not complete"
       }.`,
     ];
+
+    if (match.matchTrace?.length) {
+      match.matchTrace.forEach((trace) => {
+        lines.push(
+          `Invoice trace ${trace.normalizedInvoiceIdentifier}: rowAmount=${formatMoney(trace.ocrRowAmount)} lookup=${trace.lookupKey} found=${trace.found ? "yes" : "no"} status=${trace.status ?? "unknown"} due=${formatMoney(trace.amountDue)} role=${trace.invoiceRole} eligible=${trace.eligible ? "yes" : "no"} accepted=${trace.accepted ? "yes" : "no"} matched=${formatMoney(trace.matchedAmount)} reason=${trace.rejectionReason || "accepted"} row="${trace.ocrRow}".`
+        );
+      });
+    }
+
+    return lines;
   }
 
   function ocrFailureMessage(data: CheckStubOcrResponse) {
@@ -2388,10 +2401,15 @@ export default function BatchInvoicePayments({
         return;
       }
 
-      const { reviewMatches, reconciledReview } = loadExtractedRemittance(data);
+      const { match, reviewMatches, reconciledReview } =
+        loadExtractedRemittance(data);
       setLastOcrDiagnosticLines([
         ...diagnosticLines,
-        ...remittanceReviewDiagnosticLines(reviewMatches, reconciledReview),
+        ...remittanceReviewDiagnosticLines(
+          reviewMatches,
+          reconciledReview,
+          match
+        ),
         "Payment Review handoff: remittance review state updated.",
       ]);
       appendCameraStage("Parsing completed");

@@ -724,6 +724,69 @@ assert.deepEqual(
 );
 assert.equal(parsedFiveInvoiceGeometryRows.totalAmount, 5555);
 
+const fiveInvoiceOneIneligibleRecords = ["0508", "0509", "0510", "0511", "0512"].map(
+  (suffix) => ({
+    id: `inv-${suffix}`,
+    displayId: `INV-${suffix}`,
+    customerName: "North Creek Apartments",
+    projectTitle: `North Creek Apartments - Unit ${suffix} full interior paint`,
+    invoiceAmount: 1099,
+    amountPaid: suffix === "0509" ? 1099 : 0,
+    status: suffix === "0509" ? "paid" : "sent",
+  })
+);
+const fiveInvoiceOneIneligibleStub = [
+  "PAYOR: North Creek Apartments",
+  "DATE: 08/01/2026 CHECK #: 2788 TOTAL: $5,495.00",
+  "INV-0508 P06 full interior paint $1,099.00",
+  "INV-0509 F02 full interior paint $1,099.00",
+  "INV-0510 M07 full interior paint $1,099.00",
+  "INV-0511 U09 full interior paint $1,099.00",
+  "INV-0512 G01 full interior paint $1,099.00",
+].join("\n");
+const fiveInvoiceOneIneligibleMatch = findRemittanceMatches(
+  fiveInvoiceOneIneligibleRecords,
+  fiveInvoiceOneIneligibleStub,
+  "North Creek Apartments"
+);
+
+assert.deepEqual(fiveInvoiceOneIneligibleMatch.referencedInvoiceNumbers, [
+  "INV-0508",
+  "INV-0509",
+  "INV-0510",
+  "INV-0511",
+  "INV-0512",
+]);
+assert.equal(fiveInvoiceOneIneligibleMatch.matchedTotal, 4396);
+assert.equal(fiveInvoiceOneIneligibleMatch.confidence, "review");
+assert.equal(
+  fiveInvoiceOneIneligibleMatch.matchTrace.length,
+  5,
+  "Every OCR-referenced invoice must produce a matching/eligibility trace row."
+);
+assert.deepEqual(
+  fiveInvoiceOneIneligibleMatch.matchTrace.map((trace) => ({
+    invoice: trace.normalizedInvoiceIdentifier,
+    found: trace.found,
+    eligible: trace.eligible,
+    matchedAmount: trace.matchedAmount,
+  })),
+  [
+    { invoice: "INV-0508", found: true, eligible: true, matchedAmount: 1099 },
+    { invoice: "INV-0509", found: true, eligible: false, matchedAmount: 0 },
+    { invoice: "INV-0510", found: true, eligible: true, matchedAmount: 1099 },
+    { invoice: "INV-0511", found: true, eligible: true, matchedAmount: 1099 },
+    { invoice: "INV-0512", found: true, eligible: true, matchedAmount: 1099 },
+  ],
+  "The trace must identify which invoice accounts for a one-line reconciliation gap."
+);
+assert(
+  fiveInvoiceOneIneligibleMatch.matchTrace
+    .find((trace) => trace.normalizedInvoiceIdentifier === "INV-0509")
+    ?.rejectionReason.includes("not collectible"),
+  "Paid or otherwise ineligible invoices must explain their exclusion instead of disappearing as missing."
+);
+
 const route = readFileSync(
   resolve(root, "src/app/api/payments/extract-check-stub/route.ts"),
   "utf8"
