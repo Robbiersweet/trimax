@@ -236,6 +236,18 @@ type CheckStubOcrResponse = {
       validRows?: number;
       summary?: string;
     }>;
+    geometryTokenSummaries?: {
+      invoiceLike?: string[];
+      unitLike?: string[];
+      dates?: string[];
+      amounts?: string[];
+    };
+    geometricRows?: Array<{
+      y?: number;
+      height?: number;
+      score?: number;
+      text?: string;
+    }>;
   };
   error?: string;
 };
@@ -2046,6 +2058,26 @@ export default function BatchInvoicePayments({
               `${candidate.region ?? "unknown"} ${candidate.variant ?? ""}/${candidate.pageMode ?? "psm?"} r${candidate.rotation ?? 0} rows=${candidate.validRows ?? 0} conf=${Math.round(candidate.confidence ?? 0)} score=${Math.round(candidate.score ?? 0)}`
           )
           .join("; ")}.`
+      );
+    }
+
+    if (diagnostics.geometryTokenSummaries) {
+      const tokenSummary = diagnostics.geometryTokenSummaries;
+
+      lines.push(
+        `Geometry tokens: invoices=${tokenSummary.invoiceLike?.join(", ") || "none"}; units=${tokenSummary.unitLike?.join(", ") || "none"}; dates=${tokenSummary.dates?.join(", ") || "none"}; amounts=${tokenSummary.amounts?.join(", ") || "none"}.`
+      );
+    }
+
+    if (diagnostics.geometricRows?.length) {
+      lines.push(
+        `Geometric row bands: ${diagnostics.geometricRows
+          .slice(0, 8)
+          .map(
+            (row) =>
+              `y=${Math.round(row.y ?? 0)} score=${Math.round(row.score ?? 0)} ${row.text ?? ""}`
+          )
+          .join(" | ")}.`
       );
     }
 

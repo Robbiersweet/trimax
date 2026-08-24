@@ -611,6 +611,39 @@ assert.equal(
   "Same-dollar invoices must not be selected without an exact invoice number."
 );
 
+const geometricRowBandStub = [
+  "DATE: 08/01/2026 TOTAL: $555.00",
+  "Property Account Invoice - Date Description Amount",
+  "A01 full interior paint 111 .00",
+  "B02 full interior paint 111 .00",
+  "C03 full interior paint 111 .00",
+  "D04 full interior paint 111 .00",
+  "E05 full interior paint 111 .00",
+].join("\n");
+const parsedGeometricRowBandStub = parseCheckStubText(geometricRowBandStub);
+
+assert.deepEqual(
+  parsedGeometricRowBandStub.lines.map((line) => ({
+    unit: line.unitCodes[0],
+    amount: line.amount,
+  })),
+  [
+    { unit: "A01", amount: 111 },
+    { unit: "B02", amount: 111 },
+    { unit: "C03", amount: 111 },
+    { unit: "D04", amount: 111 },
+    { unit: "E05", amount: 111 },
+  ],
+  "Geometry-reconstructed OCR rows must preserve one physical row per unit/amount band."
+);
+assert(
+  parsedGeometricRowBandStub.lines.every((line) =>
+    /full interior paint/i.test(line.text)
+  ),
+  "Geometry-reconstructed row text must retain the work context used for safe invoice inference."
+);
+assert.equal(parsedGeometricRowBandStub.totalAmount, 555);
+
 const route = readFileSync(
   resolve(root, "src/app/api/payments/extract-check-stub/route.ts"),
   "utf8"
@@ -909,11 +942,16 @@ assert(
 assert(
   ocrRoute.includes("candidateStructureScore") &&
     ocrRoute.includes("structurallyValidRemittanceRows") &&
+    ocrRoute.includes("reconstructRowsFromOcrGeometry") &&
+    ocrRoute.includes("geometryTokenSummaries") &&
+    ocrRoute.includes("geometricRows") &&
+    ocrRoute.includes("{ text: true, blocks: true }") &&
     ocrRoute.includes("structurallyUsefulRegionAttempts") &&
     ocrRoute.includes("--- OCR STRUCTURED REGION ---") &&
+    ocrRoute.includes("--- OCR GEOMETRIC ROWS ---") &&
     !ocrRoute.includes("--- OCR REGION ---") &&
     ocrRoute.includes("Some invoice text was detected, but invoice rows could not be confirmed."),
-  "OCR route must keep OCR candidates source-separated and merge only structurally useful region text."
+  "OCR route must keep OCR candidates source-separated, request word boxes, and reconstruct rows by geometry instead of concatenating noisy fragments."
 );
 assert(
   paymentScreen.includes("Capture stub separately") &&

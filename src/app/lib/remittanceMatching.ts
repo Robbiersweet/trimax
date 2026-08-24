@@ -80,6 +80,12 @@ export function extractMoneyValues(text: string) {
     .filter((value) => value > 0);
 }
 
+function normalizeSplitMoneyFragments(text: string) {
+  return text
+    .replace(/\b(\d{1,3}(?:,\d{3})*)\s+\.(\d{2})\b/g, "$1.$2")
+    .replace(/\b(\d{1,3}(?:,\d{3})*)\s+([0O]{2})\b/g, "$1.00");
+}
+
 function summaryTotalKeywordPattern() {
   return /\b(?:GRAND\s+TOTAL|CHECK\s+TOTAL|PAYMENT\s+TOTAL|PAYMENT\s+AMOUNT|AMOUNT\s+ENCLOSED|AMOUNT\s+PAID|CHECK\s+AMOUNT|TOTAL)\b\s*:?\s*/i;
 }
@@ -693,7 +699,7 @@ export function parseRemittanceLines(text: string): RemittanceLine[] {
 }
 
 export function parseCheckStubText(rawText: string): ParsedCheckStub {
-  const normalizedText = rawText
+  const normalizedText = normalizeSplitMoneyFragments(rawText)
     .replace(/\r\n/g, "\n")
     .replace(/[ \t]+/g, " ")
     .replace(/\n{3,}/g, "\n\n")

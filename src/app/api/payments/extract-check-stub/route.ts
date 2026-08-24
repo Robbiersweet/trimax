@@ -56,6 +56,7 @@ type OcrAttempt = {
   score: number;
   imageWidth?: number;
   imageHeight?: number;
+  words: OcrWord[];
 };
 
 type OcrImageSource = {
@@ -63,6 +64,30 @@ type OcrImageSource = {
   image: Buffer;
   width?: number;
   height?: number;
+  bounds: ImageBounds;
+};
+
+type OcrWord = {
+  text: string;
+  confidence: number;
+  bbox: {
+    x0: number;
+    y0: number;
+    x1: number;
+    y1: number;
+  };
+  region: string;
+  variant: OcrVariant;
+  pageMode: TesseractPageMode["name"];
+  rotation: OcrRotation;
+};
+
+type GeometricRow = {
+  y: number;
+  height: number;
+  text: string;
+  score: number;
+  tokens: string[];
 };
 
 function normalizeDocumentType(value: unknown): RemittanceDocumentType {
@@ -462,6 +487,7 @@ async function buildRegionSources(
         image,
         width: regionMetadata.width,
         height: regionMetadata.height,
+        bounds: region.bounds,
       };
     })
   );
@@ -475,9 +501,7 @@ function scoreOcrText(text: string, confidence: number) {
   const currencyMatches =
     scoringText.match(/\$?\s*\d{1,3}(?:,\d{3})*(?:\.\d{2})\b/g) ?? [];
   const parsed = parseCheckStubText(scoringText);
-  const structurallyValidRows = parsed.lines.filter(
-    (line) => line.invoiceNumbers.length > 0 && line.amount > 0
-  );
+  const structurallyValidRows = parsed.lines.filter(isStructurallyUsefulRow);
   const invoiceNumbers = structurallyValidRows.flatMap(
     (line) => line.invoiceNumbers
   );
@@ -488,7 +512,7 @@ function scoreOcrText(text: string, confidence: number) {
   const hasApartments = /apartments?/i.test(scoringText);
   const explicitTotal = hasExplicitRemittanceTotal(scoringText);
   const referencedLineTotal = parsed.lines
-    .filter((line) => line.invoiceNumbers.length > 0 && line.amount > 0)
+    .filter(isStructurallyUsefulRow)
     .reduce((total, line) => total + line.amount, 0);
   const linesReconcile =
     parsed.totalAmount > 0 &&
@@ -534,16 +558,25 @@ function scoreOcrText(text: string, confidence: number) {
 
 function structurallyValidRemittanceRows(text: string) {
   return parseCheckStubText(withoutMicrBandText(text)).lines.filter(
-    (line) => line.invoiceNumbers.length > 0 && line.amount > 0
+    isStructurallyUsefulRow
   );
+}
+
+function isStructurallyUsefulRow(
+  line: ReturnType<typeof parseCheckStubText>["lines"][number]
+) {
+  const hasInvoiceOrUnit = line.invoiceNumbers.length > 0 || line.unitCodes.length > 0;
+  const hasWorkContext = /\b(?:full|interior|paint|cabinet|primer|repair|clean|turn)\b/i.test(
+    `${line.text} ${line.serviceDescription}`
+  );
+
+  return line.amount > 0 && hasInvoiceOrUnit && hasWorkContext;
 }
 
 function candidateStructureScore(attempt: OcrAttempt) {
   const text = withoutMicrBandText(attempt.text);
   const parsed = parseCheckStubText(text);
-  const validRows = parsed.lines.filter(
-    (line) => line.invoiceNumbers.length > 0 && line.amount > 0
-  );
+  const validRows = parsed.lines.filter(isStructurallyUsefulRow);
   const lineTotal = validRows.reduce((total, line) => total + line.amount, 0);
   const reconciles =
     parsed.totalAmount > 0 &&
@@ -593,6 +626,264 @@ function withoutMicrBandText(text: string) {
       return !(digitCount >= 9 && (micrMarks || compact.length >= 12));
     })
     .join("\n");
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function numberFromRecord(record: Record<string, unknown>, key: string) {
+  const value = record[key];
+
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function childArray(record: unknown, key: string): unknown[] {
+  if (!isRecord(record)) {
+    return [];
+  }
+
+  const value = record[key];
+
+  return Array.isArray(value) ? value : [];
+}
+
+function extractOcrWords(
+  data: unknown,
+  source: OcrImageSource,
+  processedWidth: number,
+  processedHeight: number,
+  spec: OcrAttemptSpec,
+  rotation: OcrRotation
+): OcrWord[] {
+  if (!isRecord(data) || rotation !== 0) {
+    return [];
+  }
+
+  const blocks = childArray(data, "blocks");
+  const sourceWidth = source.width ?? processedWidth;
+  const sourceHeight = source.height ?? processedHeight;
+  const scaleX = sourceWidth > 0 && processedWidth > 0 ? sourceWidth / processedWidth : 1;
+  const scaleY = sourceHeight > 0 && processedHeight > 0 ? sourceHeight / processedHeight : 1;
+  const words: OcrWord[] = [];
+
+  for (const block of blocks) {
+    for (const paragraph of childArray(block, "paragraphs")) {
+      for (const line of childArray(paragraph, "lines")) {
+        for (const word of childArray(line, "words")) {
+          if (!isRecord(word)) {
+            continue;
+          }
+
+          const text = typeof word.text === "string" ? word.text.trim() : "";
+          const bbox = isRecord(word.bbox) ? word.bbox : null;
+
+          if (!text || !bbox) {
+            continue;
+          }
+
+          words.push({
+            text,
+            confidence: numberFromRecord(word, "confidence"),
+            bbox: {
+              x0: Math.round(source.bounds.left + numberFromRecord(bbox, "x0") * scaleX),
+              y0: Math.round(source.bounds.top + numberFromRecord(bbox, "y0") * scaleY),
+              x1: Math.round(source.bounds.left + numberFromRecord(bbox, "x1") * scaleX),
+              y1: Math.round(source.bounds.top + numberFromRecord(bbox, "y1") * scaleY),
+            },
+            region: source.name,
+            variant: spec.variant,
+            pageMode: spec.pageMode.name,
+            rotation,
+          });
+        }
+      }
+    }
+  }
+
+  return words;
+}
+
+function wordCenterY(word: OcrWord) {
+  return (word.bbox.y0 + word.bbox.y1) / 2;
+}
+
+function wordHeight(word: OcrWord) {
+  return Math.max(1, word.bbox.y1 - word.bbox.y0);
+}
+
+function median(values: number[]) {
+  if (values.length === 0) {
+    return 0;
+  }
+
+  const sorted = [...values].sort((left, right) => left - right);
+  const middle = Math.floor(sorted.length / 2);
+
+  return sorted.length % 2 === 0
+    ? (sorted[middle - 1] + sorted[middle]) / 2
+    : sorted[middle];
+}
+
+function normalizeGeometryToken(text: string) {
+  return text
+    .replace(/[|]/g, "I")
+    .replace(/[“”]/g, "\"")
+    .replace(/[^\w$.,/#:-]/g, "")
+    .trim();
+}
+
+function normalizeGeometryRowText(tokens: string[]) {
+  return tokens
+    .map(normalizeGeometryToken)
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\b(\d{1,3}(?:,\d{3})*)\s+\.(\d{2})\b/g, "$1.$2")
+    .replace(/\b(\d{1,3}(?:,\d{3})*)\s+([0O]{2})\b/g, "$1.00")
+    .replace(/\b([A-Z])O(\d)\b/g, (_match, prefix: string, digit: string) => `${prefix}0${digit}`)
+    .replace(/\b([A-Z])(\d)O\b/g, (_match, prefix: string, digit: string) => `${prefix}${digit}0`)
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function scoreGeometryRow(text: string) {
+  const hasAmount = /\$?\s*\d{1,3}(?:,\d{3})*(?:\.\d{2})\b/i.test(text);
+  const hasUnit = /\b[A-Z]\d{2}[A-Z]?\b/i.test(text);
+  const hasInvoice = /\b[Il1|]?NV(?:OICE)?\.?\s*[-#: ]?\s*[0-9OoSsZzIl|Vv]{3,8}\b/i.test(
+    text
+  );
+  const hasDate = /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b|\b\d{4}-\d{1,2}-\d{1,2}\b/.test(
+    text
+  );
+  const workWords =
+    text.match(/\b(?:full|interior|paint|cabinet|primer|repair|clean|turn)\b/gi) ?? [];
+  const isHeader = /\bproperty\b.*\binvoice\b.*\bamount\b/i.test(text);
+  const isSummary = /\b(?:grand\s+total|payment\s+total|check\s+total|total)\b/i.test(text);
+
+  return (
+    (hasInvoice ? 60 : 0) +
+    (hasUnit ? 45 : 0) +
+    (hasAmount ? 45 : 0) +
+    (hasDate ? 18 : 0) +
+    Math.min(workWords.length, 4) * 15 -
+    (isHeader ? 70 : 0) -
+    (isSummary ? 40 : 0)
+  );
+}
+
+function reconstructRowsFromOcrGeometry(words: OcrWord[]): GeometricRow[] {
+  const usefulWords = words
+    .filter((word) => {
+      const text = normalizeGeometryToken(word.text);
+
+      return (
+        text.length > 0 &&
+        word.confidence >= 10 &&
+        !/^[^\w$]+$/.test(text)
+      );
+    })
+    .sort((left, right) => wordCenterY(left) - wordCenterY(right));
+
+  if (usefulWords.length === 0) {
+    return [];
+  }
+
+  const medianHeight = median(usefulWords.map(wordHeight));
+  const yTolerance = Math.max(14, medianHeight * 0.85);
+  const bands: OcrWord[][] = [];
+
+  for (const word of usefulWords) {
+    const centerY = wordCenterY(word);
+    const band = bands.find((candidate) => {
+      const candidateCenter = median(candidate.map(wordCenterY));
+
+      return Math.abs(candidateCenter - centerY) <= yTolerance;
+    });
+
+    if (band) {
+      band.push(word);
+    } else {
+      bands.push([word]);
+    }
+  }
+
+  return bands
+    .map((band) => {
+      const sortedWords = [...band].sort((left, right) => left.bbox.x0 - right.bbox.x0);
+      const text = normalizeGeometryRowText(sortedWords.map((word) => word.text));
+      const heights = sortedWords.map(wordHeight);
+      const score = scoreGeometryRow(text);
+
+      return {
+        y: Math.round(median(sortedWords.map(wordCenterY))),
+        height: Math.round(median(heights)),
+        text,
+        score,
+        tokens: sortedWords.map((word) => normalizeGeometryToken(word.text)).filter(Boolean),
+      };
+    })
+    .filter(
+      (row) =>
+        row.score >= 55 &&
+        !/^[-_\s]+$/.test(row.text) &&
+        !/\bproperty\b.*\binvoice\b.*\bamount\b/i.test(row.text)
+    )
+    .sort((left, right) => left.y - right.y);
+}
+
+function compactWordPosition(word: OcrWord) {
+  return `${normalizeGeometryToken(word.text)}@${word.bbox.x0},${word.bbox.y0}-${word.bbox.x1},${word.bbox.y1}`;
+}
+
+function diagnosticWords(words: OcrWord[], pattern: RegExp, limit = 12) {
+  return words
+    .filter((word) => pattern.test(normalizeGeometryToken(word.text)))
+    .slice(0, limit)
+    .map(compactWordPosition);
+}
+
+function buildGeometryAttempt(attempts: OcrAttempt[], baseText: string): OcrAttempt | null {
+  const bestAttemptByRegion = Array.from(
+    attempts
+      .filter((attempt) => attempt.rotation === 0 && attempt.words.length > 0)
+      .reduce((map, attempt) => {
+        const current = map.get(attempt.region);
+
+        if (!current || candidateStructureScore(attempt) > candidateStructureScore(current)) {
+          map.set(attempt.region, attempt);
+        }
+
+        return map;
+      }, new Map<string, OcrAttempt>())
+      .values()
+  );
+  const rowWords = bestAttemptByRegion
+    .filter((attempt) => /full-document|stub-(?:row|invoice|description|amount)/i.test(attempt.region))
+    .flatMap((attempt) => attempt.words);
+  const rows = reconstructRowsFromOcrGeometry(rowWords);
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  const geometryText = rows.map((row) => row.text).join("\n");
+  const mergedText = [baseText, "--- OCR GEOMETRIC ROWS ---", geometryText]
+    .filter(Boolean)
+    .join("\n\n");
+  const confidence =
+    rowWords.reduce((total, word) => total + word.confidence, 0) /
+    Math.max(rowWords.length, 1);
+
+  return {
+    region: "geometric-row-reconstruction",
+    variant: "row-focused",
+    pageMode: "sparse-text",
+    rotation: 0,
+    text: mergedText,
+    confidence,
+    score: scoreOcrText(mergedText, confidence),
+    words: rowWords,
+  };
 }
 
 function shouldAcceptFirstPass(attempt: OcrAttempt) {
@@ -688,6 +979,12 @@ async function recognizeBestText(
       image: sources.document.image,
       width: sources.document.width,
       height: sources.document.height,
+      bounds: {
+        left: 0,
+        top: 0,
+        width: sources.document.width ?? 0,
+        height: sources.document.height ?? 0,
+      },
     };
     const enoughTimeForAnotherAttempt = () =>
       Date.now() - startedAt < OCR_ROUTE_BUDGET_MS;
@@ -703,9 +1000,7 @@ async function recognizeBestText(
       return (
         !parsed ||
         parsed.totalAmount <= 0 ||
-        parsed.lines.filter(
-          (line) => line.invoiceNumbers.length > 0 && line.amount > 0
-        ).length < 2
+        parsed.lines.filter(isStructurallyUsefulRow).length < 2
       );
     };
 
@@ -727,8 +1022,9 @@ async function recognizeBestText(
 
         const attemptStage = `${source.name}/${spec.variant}/${spec.pageMode.name}/${rotation}`;
         const image = await preprocessForOcr(source.image, rotation, spec.variant);
+        const processedMetadata = await imageMetadata(image);
         markStage(`preprocessed:${attemptStage}`);
-        const recognition = worker.recognize(image, {}, { text: true });
+        const recognition = worker.recognize(image, {}, { text: true, blocks: true });
         let result;
 
         try {
@@ -764,6 +1060,14 @@ async function recognizeBestText(
         const text = result.data.text.trim();
         const confidence =
           typeof result.data.confidence === "number" ? result.data.confidence : 0;
+        const words = extractOcrWords(
+          result.data,
+          source,
+          processedMetadata.width ?? source.width ?? 0,
+          processedMetadata.height ?? source.height ?? 0,
+          spec,
+          rotation
+        );
         const attempt = {
           region: source.name,
           variant: spec.variant,
@@ -774,6 +1078,7 @@ async function recognizeBestText(
           score: scoreOcrText(text, confidence),
           imageWidth: source.width,
           imageHeight: source.height,
+          words,
         };
 
         attempts.push(attempt);
@@ -842,9 +1147,7 @@ async function recognizeBestText(
     const structurallyUsefulRegionAttempts = attempts
       .filter((attempt) => {
         const parsed = parseCheckStubText(withoutMicrBandText(attempt.text));
-        const validRows = parsed.lines.filter(
-          (line) => line.invoiceNumbers.length > 0 && line.amount > 0
-        );
+        const validRows = parsed.lines.filter(isStructurallyUsefulRow);
 
         return (
           validRows.length > 0 ||
@@ -886,9 +1189,25 @@ async function recognizeBestText(
         score: scoreOcrText(mergedText, 0),
         imageWidth: sources.document.width,
         imageHeight: sources.document.height,
+        words: structurallyUsefulRegionAttempts.flatMap((attempt) => attempt.words),
       };
 
       attempts.push(mergedAttempt);
+      attempts.sort(
+        (left, right) =>
+          candidateStructureScore(right) - candidateStructureScore(left)
+      );
+    }
+
+    attempts.sort(
+      (left, right) =>
+        candidateStructureScore(right) - candidateStructureScore(left)
+    );
+    const bestTextBeforeGeometry = attempts[0]?.text ?? "";
+    const geometricAttempt = buildGeometryAttempt(attempts, bestTextBeforeGeometry);
+
+    if (geometricAttempt) {
+      attempts.push(geometricAttempt);
       attempts.sort(
         (left, right) =>
           candidateStructureScore(right) - candidateStructureScore(left)
@@ -917,6 +1236,16 @@ async function recognizeBestText(
       summary: redactedTextSummary(attempt.text),
     }));
     const finalText = selected?.text ?? "";
+    const diagnosticWordSource = selected?.region === "geometric-row-reconstruction"
+      ? selected.words
+      : attempts
+          .filter((attempt) => attempt.rotation === 0 && attempt.words.length > 0)
+          .slice(0, 6)
+          .flatMap((attempt) => attempt.words);
+    const geometricRows = reconstructRowsFromOcrGeometry(diagnosticWordSource).slice(
+      0,
+      12
+    );
 
     return {
       text: finalText,
@@ -943,6 +1272,27 @@ async function recognizeBestText(
           redactedTextSummary(attempt.text)
         ),
         candidateSummaries,
+        geometryTokenSummaries: {
+          invoiceLike: diagnosticWords(
+            diagnosticWordSource,
+            /\b[Il1|]?NV(?:OICE)?\.?\s*[-#: ]?\s*[0-9OoSsZzIl|Vv]{3,8}\b/i
+          ),
+          unitLike: diagnosticWords(diagnosticWordSource, /\b[A-Z][0-9O]{2}[A-Z]?\b/i),
+          dates: diagnosticWords(
+            diagnosticWordSource,
+            /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b|\b\d{4}-\d{1,2}-\d{1,2}\b/
+          ),
+          amounts: diagnosticWords(
+            diagnosticWordSource,
+            /\$?\d{1,3}(?:,\d{3})*(?:\.\d{2})?\b|\.\d{2}\b/
+          ),
+        },
+        geometricRows: geometricRows.map((row) => ({
+          y: row.y,
+          height: row.height,
+          score: row.score,
+          text: row.text,
+        })),
       },
     };
   } finally {
