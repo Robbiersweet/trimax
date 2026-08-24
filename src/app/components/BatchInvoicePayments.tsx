@@ -1070,7 +1070,8 @@ export default function BatchInvoicePayments({
   const [selectedIds, setSelectedIds] = useState<string[]>(
     startingFocus?.invoiceIds ?? []
   );
-  const [paymentDate, setPaymentDate] = useState(todayInputValue());
+  const [checkDate, setCheckDate] = useState("");
+  const [receivedDate, setReceivedDate] = useState(todayInputValue());
   const [paymentType, setPaymentType] = useState("Check");
   const [paymentReference, setPaymentReference] = useState("");
   const [checkAmount, setCheckAmount] = useState(
@@ -2021,7 +2022,7 @@ export default function BatchInvoicePayments({
     setPaymentReviewNotice(reconciledReview.notice);
 
     if (extractedDate) {
-      setPaymentDate(extractedDate);
+      setCheckDate(extractedDate);
     }
 
     setCustomerFilter(matchedCustomers.length === 1 ? matchedCustomers[0] : "all");
@@ -2064,7 +2065,7 @@ export default function BatchInvoicePayments({
     }
 
     if (extractedDate) {
-      setPaymentDate((current) => current || extractedDate);
+      setCheckDate((current) => current || extractedDate);
     }
 
     if (extractedPayor && !checkPayor.trim()) {
@@ -3592,7 +3593,9 @@ export default function BatchInvoicePayments({
         body: JSON.stringify({
           businessId,
           invoiceIds: selectedInvoices.map((invoice) => invoice.id),
-          paymentDate,
+          paymentDate: receivedDate,
+          receivedDate,
+          checkDate,
           paymentType,
           paymentReference,
           internalNote,
@@ -4519,14 +4522,23 @@ export default function BatchInvoicePayments({
         <div
           className={`grid min-w-0 gap-3 md:grid-cols-2 ${
             isRemittanceReview
-              ? "xl:grid-cols-[minmax(130px,150px)_minmax(140px,170px)_minmax(140px,180px)_minmax(0,1fr)_minmax(190px,auto)]"
-              : "xl:grid-cols-[minmax(130px,150px)_minmax(110px,130px)_minmax(140px,170px)_minmax(140px,180px)_minmax(0,1fr)_minmax(190px,auto)]"
+              ? "xl:grid-cols-[minmax(130px,150px)_minmax(130px,150px)_minmax(140px,170px)_minmax(140px,180px)_minmax(0,1fr)_minmax(190px,auto)]"
+              : "xl:grid-cols-[minmax(130px,150px)_minmax(130px,150px)_minmax(110px,130px)_minmax(140px,170px)_minmax(140px,180px)_minmax(0,1fr)_minmax(190px,auto)]"
           }`}
         >
           <DateInputField
-            label="Payment Date"
-            value={paymentDate}
-            onChange={setPaymentDate}
+            label="Check Date"
+            value={checkDate}
+            onChange={setCheckDate}
+            helperText={isRemittanceReview ? "From OCR when available." : undefined}
+            inputClassName="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 pr-28 text-slate-950 outline-none transition focus:border-sky-500"
+          />
+
+          <DateInputField
+            label="Received Date"
+            value={receivedDate}
+            onChange={setReceivedDate}
+            helperText={isRemittanceReview ? "Used for late-payment tracking." : undefined}
             inputClassName="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 pr-28 text-slate-950 outline-none transition focus:border-sky-500"
           />
 

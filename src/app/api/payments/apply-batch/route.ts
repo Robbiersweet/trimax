@@ -122,6 +122,12 @@ function cleanString(value: unknown, maxLength = 500) {
   return String(value ?? "").trim().slice(0, maxLength);
 }
 
+function optionalDateKey(value: unknown) {
+  const key = cleanString(value, 40).slice(0, 10);
+
+  return /^\d{4}-\d{2}-\d{2}$/.test(key) ? key : null;
+}
+
 export async function POST(request: Request) {
   const supabase = getAdminClient();
 
@@ -136,6 +142,8 @@ export async function POST(request: Request) {
     businessId?: string;
     invoiceIds?: string[];
     paymentDate?: string;
+    receivedDate?: string;
+    checkDate?: string;
     paymentType?: string;
     paymentReference?: string;
     internalNote?: string;
@@ -292,7 +300,10 @@ export async function POST(request: Request) {
   }
 
   const appliedInvoices = [];
-  const paymentDate = paymentDateKey(cleanString(body.paymentDate, 40));
+  const receivedDate = paymentDateKey(
+    cleanString(body.receivedDate ?? body.paymentDate, 40)
+  );
+  const checkDate = optionalDateKey(body.checkDate);
 
   for (const invoice of invoices) {
     const invoiceAmount = moneyNumber(invoice.invoice_amount);
@@ -321,7 +332,7 @@ export async function POST(request: Request) {
       ? createPaymentTimelinessSnapshot({
           invoice,
           lineItems: lineItemsByInvoiceId.get(invoice.id) ?? [],
-          fullyPaidDate: paymentDate,
+          fullyPaidDate: receivedDate,
           finalPaymentReference: cleanString(body.paymentReference, 120),
         })
       : null;
@@ -348,7 +359,9 @@ export async function POST(request: Request) {
       entity_id: invoice.id,
       entity_label: invoice.display_id ?? invoice.project_title ?? "Invoice",
       details: {
-        paymentDate,
+        paymentDate: receivedDate,
+        receivedDate,
+        checkDate,
         paymentType: cleanString(body.paymentType, 80),
         paymentReference: cleanString(body.paymentReference, 120),
         internalNote: cleanString(body.internalNote, 1000),

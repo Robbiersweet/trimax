@@ -195,8 +195,13 @@ function paymentReferenceLabel(log: ActivityLog) {
 
 function paymentProofChips(log: ActivityLog) {
   const details = log.details ?? {};
+  const receivedDate =
+    detailText(details.receivedDate) ||
+    detailText(details.paymentDate) ||
+    detailText(details.fullyPaidDate);
   const chips = [
-    { label: "Payment Date", value: formatDate(detailText(details.paymentDate)) },
+    { label: "Check Date", value: formatDate(detailText(details.checkDate)) },
+    { label: "Received Date", value: formatDate(receivedDate) },
     { label: "Type", value: detailText(details.paymentType) },
     { label: "Reference", value: detailText(details.paymentReference) },
     { label: "Check Amount", value: formatMoney(details.checkAmount as string | number | null | undefined) },
@@ -719,7 +724,7 @@ export default async function PaymentsPage({
                           {log.invoiceNumber} {log.customerName}
                         </p>
                         <p className="mt-1 text-sm text-zinc-400">
-                          Due {formatDate(log.dueDateAtCompletion)} · Paid {formatDate(log.fullyPaidDate)}
+                          Due {formatDate(log.dueDateAtCompletion)} · Received {formatDate(log.fullyPaidDate)}
                           {log.finalPaymentReference
                             ? ` · Ref ${log.finalPaymentReference}`
                             : ""}

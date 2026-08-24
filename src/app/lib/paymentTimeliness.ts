@@ -247,7 +247,10 @@ export function timelinessLogFromActivity(
   const dueDateAtCompletion = invoiceDateKey(
     cleanString(details.dueDateAtCompletion)
   );
-  const fullyPaidDate = invoiceDateKey(cleanString(details.fullyPaidDate));
+  const fullyPaidDate =
+    invoiceDateKey(cleanString(details.receivedDate)) ??
+    invoiceDateKey(cleanString(details.fullyPaidDate)) ??
+    invoiceDateKey(cleanString(details.paymentDate));
   const rawDaysLate = Number(details.daysLate ?? 0);
 
   if (

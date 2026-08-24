@@ -461,8 +461,14 @@ function detailChips(log: ActivityLog): DetailChip[] {
   }
 
   if (log.action === "invoice.batch_payment_applied") {
+    const receivedDate =
+      formatDetailValue(details.receivedDate) ||
+      formatDetailValue(details.paymentDate) ||
+      formatDetailValue(details.fullyPaidDate);
+
     return [
-      { label: "Payment Date", value: formatDate(details.paymentDate) },
+      { label: "Check Date", value: formatDate(details.checkDate) },
+      { label: "Received Date", value: formatDate(receivedDate) },
       { label: "Type", value: formatDetailValue(details.paymentType) },
       {
         label: "Reference",

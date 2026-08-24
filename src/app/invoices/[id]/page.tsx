@@ -390,10 +390,16 @@ function evidenceFields(log: ActivityLog) {
   }
 
   if (log.action === "invoice.batch_payment_applied") {
+    const receivedDate =
+      detailText(details, "receivedDate") ??
+      detailText(details, "paymentDate") ??
+      detailText(details, "fullyPaidDate");
+
     push("Amount applied", detailMoney(details, "amountApplied"));
     push("Check amount", detailMoney(details, "checkAmount"));
     push("Reference", detailText(details, "paymentReference"));
-    push("Payment date", detailText(details, "paymentDate"));
+    push("Check date", detailText(details, "checkDate"));
+    push("Received date", receivedDate);
     push("Outcome", detailText(details, "paymentOutcome"));
     push("Stub image", detailText(details, "paymentImageFileName"));
     push("Internal note", detailText(details, "internalNote"));
@@ -1136,7 +1142,9 @@ export default async function InvoiceDetailPage({
     (log) => log.action === "invoice.deposit_requested"
   );
   const latestPaymentDate =
+    detailText(latestPaymentLog?.details, "receivedDate") ??
     detailText(latestPaymentLog?.details, "paymentDate") ??
+    detailText(latestPaymentLog?.details, "fullyPaidDate") ??
     latestPaymentLog?.created_at ??
     null;
   const latestPaymentImageName =

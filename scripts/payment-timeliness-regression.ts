@@ -81,6 +81,64 @@ assert.equal(finalPaymentLog.fullyPaidDate, "2026-07-08");
 assert.equal(finalPaymentLog.dueDateAtCompletion, "2026-07-01");
 assert.equal(finalPaymentLog.daysLate, 7);
 
+const checkDateEarlierThanReceivedDate = timelinessLogFromActivity({
+  id: "log-received-date",
+  entity_id: "invoice-1",
+  entity_label: "INV-0600",
+  created_at: "2026-08-24T12:00:00.000Z",
+  details: {
+    ...afterDue,
+    checkDate: "2026-06-26",
+    receivedDate: "2026-07-08",
+    fullyPaidDate: "2026-07-08",
+    paymentDate: "2026-07-08",
+    paymentCompletedInvoice: true,
+  },
+});
+assert(checkDateEarlierThanReceivedDate);
+assert.equal(
+  checkDateEarlierThanReceivedDate.fullyPaidDate,
+  "2026-07-08",
+  "Late-payment tracking must use Received Date, not the check/remittance date."
+);
+assert.equal(checkDateEarlierThanReceivedDate.daysLate, 7);
+
+const lateAppliedDateDoesNotChangeReceivedDate = timelinessLogFromActivity({
+  id: "log-applied-later",
+  entity_id: "invoice-1",
+  entity_label: "INV-0600",
+  created_at: "2026-08-24T12:00:00.000Z",
+  details: {
+    ...afterDue,
+    checkDate: "2026-06-26",
+    receivedDate: "2026-07-01",
+    fullyPaidDate: "2026-07-01",
+    daysLate: 0,
+    paidLate: false,
+    paymentCompletedInvoice: true,
+  },
+});
+assert(lateAppliedDateDoesNotChangeReceivedDate);
+assert.equal(lateAppliedDateDoesNotChangeReceivedDate.fullyPaidDate, "2026-07-01");
+assert.equal(lateAppliedDateDoesNotChangeReceivedDate.daysLate, 0);
+
+const legacyPaymentLog = timelinessLogFromActivity({
+  id: "log-legacy",
+  entity_id: "invoice-1",
+  entity_label: "INV-0600",
+  created_at: "2026-07-08T12:00:00.000Z",
+  details: {
+    ...afterDue,
+    paymentCompletedInvoice: true,
+  },
+});
+assert(legacyPaymentLog);
+assert.equal(
+  legacyPaymentLog.fullyPaidDate,
+  "2026-07-08",
+  "Legacy payment activity must remain readable through fullyPaidDate."
+);
+
 const editedDueDateWouldNotRewriteSnapshot = timelinessLogFromActivity({
   id: "log-final",
   entity_id: "invoice-1",
@@ -172,9 +230,35 @@ assert(
   "Server-side payment application must record immutable payment-timeliness snapshots."
 );
 assert(
+  applyBatchRoute.includes("receivedDate = paymentDateKey") &&
+    applyBatchRoute.includes("body.receivedDate ?? body.paymentDate") &&
+    applyBatchRoute.includes("checkDate = optionalDateKey(body.checkDate)") &&
+    applyBatchRoute.includes("paymentDate: receivedDate") &&
+    applyBatchRoute.includes("receivedDate") &&
+    applyBatchRoute.includes("checkDate"),
+  "Payment application must store Check Date separately and use Received Date for legacy paymentDate/timeliness."
+);
+assert(
   applyBatchRoute.includes("isFullyPaid") &&
     applyBatchRoute.includes("paymentOutcome: isFullyPaid ? \"paid\" : \"partial\""),
   "Only the final payment should establish the completed payment history result."
+);
+
+const batchInvoicePayments = readFileSync(
+  resolve(root, "src/app/components/BatchInvoicePayments.tsx"),
+  "utf8"
+);
+assert(
+  batchInvoicePayments.includes("const [checkDate, setCheckDate] = useState(\"\")") &&
+    batchInvoicePayments.includes("const [receivedDate, setReceivedDate] = useState(todayInputValue())") &&
+    batchInvoicePayments.includes("label=\"Check Date\"") &&
+    batchInvoicePayments.includes("label=\"Received Date\"") &&
+    batchInvoicePayments.includes("setCheckDate(extractedDate)") &&
+    !batchInvoicePayments.includes("setPaymentDate(extractedDate)") &&
+    batchInvoicePayments.includes("paymentDate: receivedDate") &&
+    batchInvoicePayments.includes("receivedDate,") &&
+    batchInvoicePayments.includes("checkDate,"),
+  "Payment review must route OCR dates to Check Date while Received Date defaults to today and is submitted separately."
 );
 
 const paymentsPage = readFileSync(resolve(root, "src/app/payments/page.tsx"), "utf8");
@@ -187,6 +271,14 @@ assert(
     paymentsPage.includes("Paid on time") &&
     paymentsPage.includes("days late"),
   "Payments page must expose filtered historical late-payment reporting."
+);
+assert(
+  paymentsPage.includes("Check Date") &&
+    paymentsPage.includes("Received Date") &&
+    paymentsPage.includes("detailText(details.receivedDate)") &&
+    paymentsPage.includes("detailText(details.paymentDate)") &&
+    paymentsPage.includes("Received {formatDate(log.fullyPaidDate)}"),
+  "Payments page must display Check Date separately and label the timeliness date as Received Date."
 );
 
 const clientDetailPage = readFileSync(
