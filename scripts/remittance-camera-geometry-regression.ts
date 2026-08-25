@@ -34,7 +34,8 @@ assert(
     paymentScreen.includes("capture-top-edge") &&
     paymentScreen.includes("capture-bottom-edge") &&
     paymentScreen.includes("check-only-center") &&
-    paymentScreen.includes("use-device-camera-center"),
+    paymentScreen.includes("use-device-camera-center") &&
+    paymentScreen.includes("getVisibleCameraGuideSourceRect(video)"),
   "Camera diagnostics must collect viewport, visible control rectangles, and elementFromPoint hit tests."
 );
 
@@ -142,6 +143,11 @@ assert(
 assert(
   paymentScreen.includes("setCameraPipelineStages([\"Capturing...\"])") &&
     paymentScreen.includes("Frame captured") &&
+    paymentScreen.includes("Camera native video:") &&
+    paymentScreen.includes("Camera rendered video:") &&
+    paymentScreen.includes("Visible guide rectangle:") &&
+    paymentScreen.includes("Mapped native source rectangle:") &&
+    paymentScreen.includes("Live camera capture output:") &&
     paymentScreen.includes("Image normalized") &&
     paymentScreen.includes("Upload started") &&
     paymentScreen.includes("OCR started") &&
@@ -159,6 +165,26 @@ assert(
     paymentScreen.includes("setLastOcrRawText") &&
     paymentScreen.includes("Failed at:"),
   "Capture must show explicit progress stages and exact failure stage."
+);
+
+assert(
+  paymentScreen.includes("width: { ideal: 4096 }") &&
+    paymentScreen.includes("height: { ideal: 2160 }") &&
+    paymentScreen.includes('resizeMode: { ideal: "none" }') &&
+    paymentScreen.includes("const maxOutputEdge = 4600") &&
+    paymentScreen.includes("const outputScale = Math.min(") &&
+    paymentScreen.includes("canvas.width = outputWidth") &&
+    paymentScreen.includes("canvas.height = outputHeight") &&
+    !paymentScreen.includes("const minReadableEdge = captureDocumentType === \"remittance_stub\" ? 2400 : 1800"),
+  "Live Trimax camera capture must request high-detail video and preserve the mapped native crop instead of resampling to the old 2400px target."
+);
+
+assert(
+  paymentScreen.includes("openCameraCapture(captureDocumentType, captureIntent)") &&
+    paymentScreen.includes("setLastOcrSourceType(source)") &&
+    paymentScreen.includes("sourceDiagnosticLines") &&
+    paymentScreen.includes("lastCameraCaptureDiagnosticLines"),
+  "Crop Retake must reopen the Trimax camera while source diagnostics preserve camera/existing identity."
 );
 
 assert(

@@ -899,7 +899,9 @@ assert(
     paymentScreen.includes("canShareOcrDiagnostics") &&
     paymentScreen.includes("shareOcrDiagnostics") &&
     paymentScreen.includes('checkOcrStatus !== "reading"') &&
-    paymentScreen.includes("Source type: ${sourceType}."),
+    paymentScreen.includes("Source type: ${sourceType}.") &&
+    paymentScreen.includes("setLastOcrSourceType(source)") &&
+    paymentScreen.includes("lastCameraCaptureDiagnosticLines"),
   "OCR diagnostics must remain available after successful reads, include sourceType, and support one-tap copy/share without changing OCR behavior."
 );
 assert(

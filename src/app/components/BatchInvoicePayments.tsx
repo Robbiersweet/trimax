@@ -1189,6 +1189,8 @@ export default function BatchInvoicePayments({
   const [lastOcrRawText, setLastOcrRawText] = useState("");
   const [lastOcrSourceType, setLastOcrSourceType] =
     useState<OcrSourceType>("unknown");
+  const [lastCameraCaptureDiagnosticLines, setLastCameraCaptureDiagnosticLines] =
+    useState<string[]>([]);
   const [checkOcrStatus, setCheckOcrStatus] = useState<CheckOcrStatus>("idle");
   const [paymentEntryMode, setPaymentEntryMode] =
     useState<PaymentEntryMode>("choice");
@@ -1541,7 +1543,11 @@ export default function BatchInvoicePayments({
       ancestorStyles,
       qualityGate: lastQualityGate,
     });
-  }, [cameraVideoPlayStatus, lastActualCaptureTap, lastQualityGate]);
+  }, [
+    cameraVideoPlayStatus,
+    lastActualCaptureTap,
+    lastQualityGate,
+  ]);
 
   useEffect(() => {
     if (paymentEntryMode !== "camera") {
@@ -1563,13 +1569,15 @@ export default function BatchInvoicePayments({
       setCameraStatusMessage("Starting camera...");
 
       try {
+        const videoConstraints = {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 4096 },
+          height: { ideal: 2160 },
+          resizeMode: { ideal: "none" },
+        } as MediaTrackConstraints;
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: false,
-          video: {
-            facingMode: { ideal: "environment" },
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
-          },
+          video: videoConstraints,
         });
 
         if (canceled) {
@@ -2825,7 +2833,8 @@ export default function BatchInvoicePayments({
     intent: CaptureIntent = captureIntent,
     retryStrategy: OcrRetryStrategy = "standard",
     allowQualityOverride = false,
-    sourceType: OcrSourceType = lastOcrSourceType
+    sourceType: OcrSourceType = lastOcrSourceType,
+    sourceDiagnosticLines: string[] = lastCameraCaptureDiagnosticLines
   ) {
     setIsPreparingCrop(true);
 
@@ -2849,6 +2858,7 @@ export default function BatchInvoicePayments({
       const ocrPermitted = qualityMessages.length === 0;
       const initialPrepDiagnosticLines = [
         `Source type: ${sourceType}.`,
+        ...(sourceType === "camera" ? sourceDiagnosticLines : []),
         `Source image: ${naturalWidth} x ${naturalHeight}, ${file.size} bytes, ${file.name || "unnamed image"}, ${file.type || "unknown MIME type"}.`,
         `Crop box: left ${nextCropBox.left.toFixed(1)}%, top ${nextCropBox.top.toFixed(1)}%, right ${nextCropBox.right.toFixed(1)}%, bottom ${nextCropBox.bottom.toFixed(1)}%, rotation ${nextRotation}deg.`,
         `Crop dimensions: ${effectiveWidth} x ${effectiveHeight}.`,
@@ -2990,6 +3000,7 @@ export default function BatchInvoicePayments({
     setLastOcrPrepDiagnosticLines([]);
     setLastOcrRawText("");
     setLastOcrSourceType("unknown");
+    setLastCameraCaptureDiagnosticLines([]);
     setCaptureDocumentType("remittance_stub");
     setCaptureIntent("primary");
     setCameraGuideMode("horizontal");
@@ -3101,6 +3112,17 @@ export default function BatchInvoicePayments({
         sourceY: 0,
         sourceWidth: video.videoWidth,
         sourceHeight: video.videoHeight,
+        viewportWidth: 0,
+        viewportHeight: 0,
+        guideLeft: 0,
+        guideTop: 0,
+        guideWidth: 0,
+        guideHeight: 0,
+        renderedVideoLeft: 0,
+        renderedVideoTop: 0,
+        renderedVideoWidth: video.videoWidth,
+        renderedVideoHeight: video.videoHeight,
+        scale: 1,
       };
     }
 
@@ -3116,29 +3138,44 @@ export default function BatchInvoicePayments({
     const renderedTop = (viewportRect.height - renderedHeight) / 2;
     const guideLeft = guideRect.left - viewportRect.left;
     const guideTop = guideRect.top - viewportRect.top;
+    const guideWidth = guideRect.width;
+    const guideHeight = guideRect.height;
     const padRatio = captureDocumentType === "remittance_stub" ? 0.035 : 0.05;
-    const padX = guideRect.width * padRatio;
-    const padY = guideRect.height * padRatio;
+    const padX = guideWidth * padRatio;
+    const padY = guideHeight * padRatio;
     const rawX = (guideLeft - padX - renderedLeft) / scale;
     const rawY = (guideTop - padY - renderedTop) / scale;
-    const rawWidth = (guideRect.width + padX * 2) / scale;
-    const rawHeight = (guideRect.height + padY * 2) / scale;
-    const sourceX = Math.max(0, Math.floor(rawX));
-    const sourceY = Math.max(0, Math.floor(rawY));
-    const sourceWidth = Math.max(
-      1,
-      Math.min(video.videoWidth - sourceX, Math.ceil(rawWidth))
+    const rawRight = rawX + (guideWidth + padX * 2) / scale;
+    const rawBottom = rawY + (guideHeight + padY * 2) / scale;
+    const sourceX = Math.max(0, Math.min(video.videoWidth - 1, Math.floor(rawX)));
+    const sourceY = Math.max(0, Math.min(video.videoHeight - 1, Math.floor(rawY)));
+    const sourceRight = Math.max(
+      sourceX + 1,
+      Math.min(video.videoWidth, Math.ceil(rawRight))
     );
-    const sourceHeight = Math.max(
-      1,
-      Math.min(video.videoHeight - sourceY, Math.ceil(rawHeight))
+    const sourceBottom = Math.max(
+      sourceY + 1,
+      Math.min(video.videoHeight, Math.ceil(rawBottom))
     );
+    const sourceWidth = sourceRight - sourceX;
+    const sourceHeight = sourceBottom - sourceY;
 
     return {
       sourceX,
       sourceY,
       sourceWidth,
       sourceHeight,
+      viewportWidth: Math.round(viewportRect.width),
+      viewportHeight: Math.round(viewportRect.height),
+      guideLeft: Math.round(guideLeft),
+      guideTop: Math.round(guideTop),
+      guideWidth: Math.round(guideWidth),
+      guideHeight: Math.round(guideHeight),
+      renderedVideoLeft: Math.round(renderedLeft),
+      renderedVideoTop: Math.round(renderedTop),
+      renderedVideoWidth: Math.round(renderedWidth),
+      renderedVideoHeight: Math.round(renderedHeight),
+      scale,
     };
   }, [captureDocumentType]);
 
@@ -3402,21 +3439,46 @@ export default function BatchInvoicePayments({
     setCameraStatusMessage("Capturing...");
     setCheckOcrStatus("reading");
     setCheckOcrMessage("Capturing remittance...");
-    const { sourceX, sourceY, sourceWidth, sourceHeight } =
+    const {
+      sourceX,
+      sourceY,
+      sourceWidth,
+      sourceHeight,
+      viewportWidth,
+      viewportHeight,
+      guideLeft,
+      guideTop,
+      guideWidth,
+      guideHeight,
+      renderedVideoLeft,
+      renderedVideoTop,
+      renderedVideoWidth,
+      renderedVideoHeight,
+    } =
       getVisibleCameraGuideSourceRect(video);
-    appendCameraStage(
-      `Frame captured: video ${video.videoWidth}x${video.videoHeight}, crop ${Math.round(
-        sourceWidth
-      )}x${Math.round(sourceHeight)}`
-    );
-    const maxOutputEdge = 3600;
-    const minReadableEdge = captureDocumentType === "remittance_stub" ? 2400 : 1800;
+    const maxOutputEdge = 4600;
     const outputScale = Math.min(
-      maxOutputEdge / Math.max(sourceWidth, sourceHeight),
-      Math.max(1, minReadableEdge / Math.max(sourceWidth, sourceHeight))
+      1,
+      maxOutputEdge / Math.max(sourceWidth, sourceHeight)
     );
-    canvas.width = Math.max(1, Math.round(sourceWidth * outputScale));
-    canvas.height = Math.max(1, Math.round(sourceHeight * outputScale));
+    const outputWidth = Math.max(1, Math.round(sourceWidth * outputScale));
+    const outputHeight = Math.max(1, Math.round(sourceHeight * outputScale));
+    const cameraCaptureDiagnosticLines = [
+      `Frame captured: native video ${video.videoWidth} x ${video.videoHeight}.`,
+      `Camera native video: ${video.videoWidth} x ${video.videoHeight}.`,
+      `Camera rendered video: ${renderedVideoWidth} x ${renderedVideoHeight}.`,
+      `Camera viewport: ${viewportWidth} x ${viewportHeight}.`,
+      `Visible guide rectangle: left ${guideLeft}, top ${guideTop}, width ${guideWidth}, height ${guideHeight}.`,
+      `Mapped native source rectangle: left ${sourceX}, top ${sourceY}, width ${sourceWidth}, height ${sourceHeight}.`,
+      `Live camera capture output: ${outputWidth} x ${outputHeight}, scale ${outputScale.toFixed(3)}.`,
+    ];
+
+    cameraCaptureDiagnosticLines.forEach(appendCameraStage);
+    appendCameraStage(
+      `Rendered video offset: left ${renderedVideoLeft}, top ${renderedVideoTop}.`
+    );
+    canvas.width = outputWidth;
+    canvas.height = outputHeight;
     context.fillStyle = "#ffffff";
     context.fillRect(0, 0, canvas.width, canvas.height);
     context.drawImage(
@@ -3430,7 +3492,9 @@ export default function BatchInvoicePayments({
       canvas.width,
       canvas.height
     );
-    appendCameraStage(`Crop created: ${canvas.width}x${canvas.height}`);
+    appendCameraStage(
+      `Crop created: ${canvas.width}x${canvas.height}, output scale ${outputScale.toFixed(3)}`
+    );
     appendCameraStage("Image normalized");
     let captureFinished = false;
     const captureTimeout = window.setTimeout(() => {
@@ -3472,7 +3536,16 @@ export default function BatchInvoicePayments({
         setCameraStatusMessage("Checking image...");
         appendCameraStage(`Normalized JPG saved: ${canvas.width}x${canvas.height}, ${blob.size} bytes`);
         stopCameraCapture();
-        captureCheckImage(file, "camera", captureDocumentType, captureIntent);
+        captureCheckImage(
+          file,
+          "camera",
+          captureDocumentType,
+          captureIntent,
+          [
+            ...cameraCaptureDiagnosticLines,
+            `Normalized JPG saved: ${canvas.width} x ${canvas.height}, ${blob.size} bytes.`,
+          ]
+        );
       },
       "image/jpeg",
       0.98
@@ -3643,7 +3716,8 @@ export default function BatchInvoicePayments({
     file: File | undefined,
     source: "camera" | "existing" = "existing",
     documentType: RemittanceDocumentType = captureDocumentType,
-    intent: CaptureIntent = captureIntent
+    intent: CaptureIntent = captureIntent,
+    sourceDiagnosticLines: string[] = []
   ) {
     if (!file) {
       return;
@@ -3658,6 +3732,9 @@ export default function BatchInvoicePayments({
     setCheckImageFile(file);
     setOcrImageFile(null);
     setLastOcrSourceType(source);
+    setLastCameraCaptureDiagnosticLines(
+      source === "camera" ? sourceDiagnosticLines : []
+    );
     setPaymentEntryMode("photo");
     setCheckOcrStatus("idle");
     setCheckOcrMessage("Preparing remittance...");
@@ -3676,7 +3753,10 @@ export default function BatchInvoicePayments({
       setLastOcrDiagnosticLines([]);
       setLastOcrPrepDiagnosticLines([]);
       setLastOcrRawText("");
-      setLastOcrSourceType("unknown");
+      setLastOcrSourceType(source);
+      setLastCameraCaptureDiagnosticLines(
+        source === "camera" ? sourceDiagnosticLines : []
+      );
     }
     setCompletedPaymentSummary(null);
     setCaptureDocumentType(documentType);
@@ -3743,7 +3823,8 @@ export default function BatchInvoicePayments({
           intent,
           "standard",
           false,
-          source
+          source,
+          sourceDiagnosticLines
         );
       } else {
         setCheckOcrStatus("idle");
@@ -4517,24 +4598,30 @@ export default function BatchInvoicePayments({
                   >
                     Reset
                   </button>
-                  <label className="inline-flex cursor-pointer rounded-full border border-slate-400/40 px-4 py-2 text-sm font-semibold text-zinc-100 transition hover:bg-white/10">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (checkImagePreview) {
+                        URL.revokeObjectURL(checkImagePreview);
+                        setCheckImagePreview("");
+                      }
+                      setCheckImageFile(null);
+                      setOcrImageFile(null);
+                      setCheckImageName("");
+                      setCropBox({ left: 8, top: 8, right: 92, bottom: 92 });
+                      setCropRotation(0);
+                      setIsTightlyFramedRemittance(false);
+                      setLastOcrDiagnosticLines([]);
+                      setLastOcrPrepDiagnosticLines([]);
+                      setLastOcrRawText("");
+                      setLastOcrSourceType("unknown");
+                      setLastCameraCaptureDiagnosticLines([]);
+                      openCameraCapture(captureDocumentType, captureIntent);
+                    }}
+                    className="rounded-full border border-slate-400/40 px-4 py-2 text-sm font-semibold text-zinc-100 transition hover:bg-white/10"
+                  >
                     Retake
-                    <input
-                      type="file"
-                      accept="image/*,.heic,.heif"
-                      capture="environment"
-                      className="sr-only"
-                      onChange={(event) => {
-                        captureCheckImage(
-                          event.target.files?.[0],
-                          "camera",
-                          captureDocumentType,
-                          captureIntent
-                        );
-                        event.currentTarget.value = "";
-                      }}
-                    />
-                  </label>
+                  </button>
                   <label className="inline-flex cursor-pointer rounded-full border border-slate-400/40 px-4 py-2 text-sm font-semibold text-zinc-100 transition hover:bg-white/10">
                     Choose Another
                     <input
