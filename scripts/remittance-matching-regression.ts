@@ -889,6 +889,20 @@ assert(
   "Failed remittance reads must expose source, OCR, parser, matching, and reconciliation diagnostics without changing payment logic."
 );
 assert(
+  paymentScreen.includes("buildOcrDiagnosticReport") &&
+    paymentScreen.includes("TRIMAX OCR DIAGNOSTICS") &&
+    paymentScreen.includes("sourceType: ${lastOcrSourceType}") &&
+    paymentScreen.includes("Copy Diagnostics") &&
+    paymentScreen.includes("navigator.clipboard.writeText") &&
+    paymentScreen.includes('document.execCommand("copy")') &&
+    paymentScreen.includes("Share Diagnostics") &&
+    paymentScreen.includes("canShareOcrDiagnostics") &&
+    paymentScreen.includes("shareOcrDiagnostics") &&
+    paymentScreen.includes('checkOcrStatus !== "reading"') &&
+    paymentScreen.includes("Source type: ${sourceType}."),
+  "OCR diagnostics must remain available after successful reads, include sourceType, and support one-tap copy/share without changing OCR behavior."
+);
+assert(
   paymentScreen.includes("function invoiceLookupKeys") &&
     paymentScreen.includes("extractInvoiceNumbers(candidate)") &&
     paymentScreen.includes("candidate.matchAll"),

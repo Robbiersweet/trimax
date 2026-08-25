@@ -87,6 +87,7 @@ type RemittanceDocumentType =
 
 type CaptureIntent = "primary" | "check_details";
 type OcrRetryStrategy = "standard" | "alternate";
+type OcrSourceType = "camera" | "existing" | "unknown";
 
 type CropBox = {
   left: number;
@@ -1186,6 +1187,8 @@ export default function BatchInvoicePayments({
     string[]
   >([]);
   const [lastOcrRawText, setLastOcrRawText] = useState("");
+  const [lastOcrSourceType, setLastOcrSourceType] =
+    useState<OcrSourceType>("unknown");
   const [checkOcrStatus, setCheckOcrStatus] = useState<CheckOcrStatus>("idle");
   const [paymentEntryMode, setPaymentEntryMode] =
     useState<PaymentEntryMode>("choice");
@@ -2432,6 +2435,190 @@ export default function BatchInvoicePayments({
     return data.error ?? "Could not read this remittance. Adjust crop or enter manually.";
   }
 
+  function buildOcrDiagnosticReport() {
+    const matchedTotal = reviewMatchedInvoices.reduce(
+      (total, invoice) => total + (invoice.remittanceAmount ?? invoice.amountDue),
+      0
+    );
+    const selectedInvoiceSummary =
+      selectedInvoices.length > 0
+        ? selectedInvoices
+            .map((invoice) => `${invoice.displayId} ${formatMoney(invoice.amountDue)}`)
+            .join("\n")
+        : "none";
+    const reviewInvoiceSummary =
+      reviewMatchedInvoices.length > 0
+        ? reviewMatchedInvoices
+            .map(
+              (invoice) =>
+                `${invoice.displayId} ${invoice.projectTitle} ${formatMoney(invoice.remittanceAmount ?? invoice.amountDue)}`
+            )
+            .join("\n")
+        : "none";
+
+    return [
+      "TRIMAX OCR DIAGNOSTICS",
+      "",
+      "Build / Runtime",
+      `generatedAt: ${new Date().toISOString()}`,
+      `sourceType: ${lastOcrSourceType}`,
+      `documentType: ${captureDocumentType}`,
+      `captureIntent: ${captureIntent}`,
+      `ocrStatus: ${checkOcrStatus}`,
+      "",
+      "Input Source",
+      ...lastOcrPrepDiagnosticLines.filter((line) =>
+        /^(Source type|Source image|Crop box|Crop dimensions|Quality gate|Retry strategy|Normalized OCR image|Saved preview|OCR upload)/i.test(
+          line
+        )
+      ),
+      "",
+      "Crop / Normalization",
+      ...lastOcrPrepDiagnosticLines.filter((line) =>
+        /^(Crop box|Crop dimensions|Normalized OCR image|Saved preview|OCR upload)/i.test(
+          line
+        )
+      ),
+      "",
+      "Quality Metrics",
+      ...lastOcrDiagnosticLines.filter((line) =>
+        /^(Quality gate|Text-region quality|Invoice column diagnostics)/i.test(
+          line
+        )
+      ),
+      "",
+      "OCR Summary",
+      ...lastOcrDiagnosticLines.filter((line) =>
+        /^(OCR request|OCR started|OCR completed|OCR route duration|Last OCR stage|Selected text summary|Best candidates|Parsed fields|Parsed invoice numbers|Parsed line amounts)/i.test(
+          line
+        )
+      ),
+      "",
+      "OCR Passes",
+      ...lastOcrDiagnosticLines.filter((line) => /^OCR pass /i.test(line)),
+      "",
+      "Text Region Metrics",
+      ...lastOcrDiagnosticLines.filter((line) => /^Text-region quality/i.test(line)),
+      "",
+      "Geometric Row Bands",
+      ...lastOcrDiagnosticLines.filter((line) => /^Geometric row bands/i.test(line)),
+      "",
+      "Per-Row Diagnostics",
+      ...lastOcrDiagnosticLines.filter((line) =>
+        /^Row \d+|^Geometry tokens/i.test(line)
+      ),
+      "",
+      "Invoice Column Diagnostics",
+      ...lastOcrDiagnosticLines.filter((line) =>
+        /^Invoice column/i.test(line)
+      ),
+      "",
+      "Parsed Fields",
+      `checkDate: ${checkDate || "blank"}`,
+      `receivedDate: ${receivedDate || "blank"}`,
+      `visibleCheckAmount: ${visibleCheckAmount || "blank"}`,
+      `extractedPaymentAmount: ${
+        extractedPaymentAmount !== null ? formatMoney(extractedPaymentAmount) : "none"
+      }`,
+      `checkNumber: ${paymentReference || capturedCheckReference || "blank"}`,
+      `payor: ${checkPayor || "blank"}`,
+      "",
+      "Invoice Matching",
+      `selectedInvoices:\n${selectedInvoiceSummary}`,
+      `reviewMatchedInvoices:\n${reviewInvoiceSummary}`,
+      "",
+      "Reconciliation",
+      `matchedTotal: ${formatMoney(matchedTotal)}`,
+      `selectedTotal: ${formatMoney(selectedTotal)}`,
+      `enteredCheckAmount: ${
+        enteredCheckAmount === null ? "none" : formatMoney(enteredCheckAmount)
+      }`,
+      `checkDifference: ${formatMoney(checkDifference)}`,
+      `paymentCanApply: ${paymentCanApply ? "yes" : "no"}`,
+      `paymentReviewNotice: ${paymentReviewNotice || "none"}`,
+      "",
+      "Payment Review Handoff",
+      `paymentEntryMode: ${paymentEntryMode}`,
+      `checkOcrMessage: ${checkOcrMessage}`,
+      "",
+      "All Diagnostic Lines",
+      ...(lastOcrDiagnosticLines.length > 0 ? lastOcrDiagnosticLines : ["none"]),
+      "",
+      "Raw OCR Text",
+      lastOcrRawText || "none",
+    ].join("\n");
+  }
+
+  async function copyTextToClipboard(text: string) {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "true");
+    textarea.style.position = "fixed";
+    textarea.style.left = "-9999px";
+    textarea.style.top = "0";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+      const copied = document.execCommand("copy");
+
+      if (!copied) {
+        throw new Error("Clipboard copy was blocked.");
+      }
+    } finally {
+      document.body.removeChild(textarea);
+    }
+  }
+
+  async function copyOcrDiagnostics() {
+    try {
+      await copyTextToClipboard(buildOcrDiagnosticReport());
+      setToast({ type: "success", message: "Diagnostics copied" });
+    } catch {
+      setToast({
+        type: "error",
+        message: "Could not copy diagnostics. Leave this panel open and try again.",
+      });
+    }
+  }
+
+  function canShareOcrDiagnostics() {
+    return (
+      typeof navigator !== "undefined" &&
+      typeof (navigator as Navigator & { share?: unknown }).share === "function"
+    );
+  }
+
+  async function shareOcrDiagnostics() {
+    if (!canShareOcrDiagnostics()) {
+      return;
+    }
+
+    try {
+      await (navigator as Navigator & {
+        share: (data: ShareData) => Promise<void>;
+      }).share({
+        title: "Trimax OCR Diagnostics",
+        text: buildOcrDiagnosticReport(),
+      });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return;
+      }
+
+      setToast({
+        type: "error",
+        message: "Could not share diagnostics. Use Copy Diagnostics instead.",
+      });
+    }
+  }
+
   async function filePaymentImage() {
     const paymentImageFile = ocrImageFile ?? checkImageFile;
 
@@ -2637,7 +2824,8 @@ export default function BatchInvoicePayments({
     documentType: RemittanceDocumentType = captureDocumentType,
     intent: CaptureIntent = captureIntent,
     retryStrategy: OcrRetryStrategy = "standard",
-    allowQualityOverride = false
+    allowQualityOverride = false,
+    sourceType: OcrSourceType = lastOcrSourceType
   ) {
     setIsPreparingCrop(true);
 
@@ -2660,7 +2848,8 @@ export default function BatchInvoicePayments({
       );
       const ocrPermitted = qualityMessages.length === 0;
       const initialPrepDiagnosticLines = [
-        `Source image: ${naturalWidth} x ${naturalHeight}, ${file.size} bytes, ${file.name || "unnamed image"}.`,
+        `Source type: ${sourceType}.`,
+        `Source image: ${naturalWidth} x ${naturalHeight}, ${file.size} bytes, ${file.name || "unnamed image"}, ${file.type || "unknown MIME type"}.`,
         `Crop box: left ${nextCropBox.left.toFixed(1)}%, top ${nextCropBox.top.toFixed(1)}%, right ${nextCropBox.right.toFixed(1)}%, bottom ${nextCropBox.bottom.toFixed(1)}%, rotation ${nextRotation}deg.`,
         `Crop dimensions: ${effectiveWidth} x ${effectiveHeight}.`,
         `Quality gate: ${ocrPermitted || allowQualityOverride ? "passed" : "blocked"}; brightness ${quality.brightness.toFixed(1)}, contrast ${quality.contrast.toFixed(1)}, sharpness ${quality.blurScore.toFixed(1)}, area ${(cropBoxAreaRatio(nextCropBox) * 100).toFixed(1)}%.`,
@@ -2800,6 +2989,7 @@ export default function BatchInvoicePayments({
     setLastOcrDiagnosticLines([]);
     setLastOcrPrepDiagnosticLines([]);
     setLastOcrRawText("");
+    setLastOcrSourceType("unknown");
     setCaptureDocumentType("remittance_stub");
     setCaptureIntent("primary");
     setCameraGuideMode("horizontal");
@@ -3467,6 +3657,7 @@ export default function BatchInvoicePayments({
     setCheckImageName(file.name);
     setCheckImageFile(file);
     setOcrImageFile(null);
+    setLastOcrSourceType(source);
     setPaymentEntryMode("photo");
     setCheckOcrStatus("idle");
     setCheckOcrMessage("Preparing remittance...");
@@ -3485,6 +3676,7 @@ export default function BatchInvoicePayments({
       setLastOcrDiagnosticLines([]);
       setLastOcrPrepDiagnosticLines([]);
       setLastOcrRawText("");
+      setLastOcrSourceType("unknown");
     }
     setCompletedPaymentSummary(null);
     setCaptureDocumentType(documentType);
@@ -3548,7 +3740,10 @@ export default function BatchInvoicePayments({
           suggestion.cropBox,
           0,
           documentType,
-          intent
+          intent,
+          "standard",
+          false,
+          source
         );
       } else {
         setCheckOcrStatus("idle");
@@ -4450,12 +4645,34 @@ export default function BatchInvoicePayments({
                   </div>
                 ) : null}
 
-                {(checkOcrStatus === "error" || checkOcrStatus === "manual") &&
+                {checkOcrStatus !== "reading" &&
                 lastOcrDiagnosticLines.length > 0 ? (
                   <details className="mt-3 rounded-xl border border-sky-300/25 bg-sky-300/10 px-3 py-2 text-xs text-sky-50">
                     <summary className="cursor-pointer font-black">
                       OCR pipeline details
                     </summary>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void copyOcrDiagnostics();
+                        }}
+                        className="rounded-full border border-sky-200/50 px-3 py-1.5 text-xs font-black text-sky-50 transition hover:bg-sky-200/10"
+                      >
+                        Copy Diagnostics
+                      </button>
+                      {canShareOcrDiagnostics() ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void shareOcrDiagnostics();
+                          }}
+                          className="rounded-full border border-sky-200/50 px-3 py-1.5 text-xs font-black text-sky-50 transition hover:bg-sky-200/10"
+                        >
+                          Share Diagnostics
+                        </button>
+                      ) : null}
+                    </div>
                     <ul className="mt-2 grid gap-1">
                       {lastOcrDiagnosticLines.map((line, index) => (
                         <li key={`${line}-${index}`}>{line}</li>
