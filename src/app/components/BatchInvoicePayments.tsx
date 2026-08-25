@@ -296,6 +296,19 @@ type CheckStubOcrResponse = {
           y1?: number;
         };
       }>;
+      nearbyAmountTokens?: Array<{
+        text?: string;
+        confidence?: number;
+        bbox?: {
+          x0?: number;
+          y0?: number;
+          x1?: number;
+          y1?: number;
+        };
+        region?: string;
+        variant?: string;
+        pageMode?: string;
+      }>;
       invoiceNumbers?: string[];
       unitCodes?: string[];
       tokens?: Array<{
@@ -350,6 +363,12 @@ type CheckStubOcrResponse = {
         confidence?: number;
         rawText?: string;
         invoiceLikeTokens?: string[];
+        parseableInvoiceNumbers?: string[];
+        normalizedInvoiceTokens?: Array<{
+          raw?: string;
+          normalized?: string;
+          parsed?: boolean;
+        }>;
         words?: Array<{
           text?: string;
           confidence?: number;
@@ -2248,6 +2267,20 @@ export default function BatchInvoicePayments({
 
           lines.push(`Row ${index + 1} amount candidates: ${amountCandidates}.`);
         }
+
+        if (row.nearbyAmountTokens?.length) {
+          const nearbyAmounts = row.nearbyAmountTokens
+            .map((token) => {
+              const bbox = token.bbox
+                ? `@${Math.round(token.bbox.x0 ?? 0)},${Math.round(token.bbox.y0 ?? 0)}-${Math.round(token.bbox.x1 ?? 0)},${Math.round(token.bbox.y1 ?? 0)}`
+                : "";
+
+              return `${token.text ?? ""}:${Math.round(token.confidence ?? 0)}:${token.variant ?? "?"}/${token.pageMode ?? "?"}${bbox}`;
+            })
+            .join(" ");
+
+          lines.push(`Row ${index + 1} nearby amount tokens: ${nearbyAmounts}.`);
+        }
       });
     }
 
@@ -2288,9 +2321,16 @@ export default function BatchInvoicePayments({
               return `${word.text ?? ""}:${Math.round(word.confidence ?? 0)}${bbox}`;
             })
             .join(" ") || "none";
+        const normalizedTokens =
+          attempt.normalizedInvoiceTokens
+            ?.map(
+              (token) =>
+                `${token.raw ?? ""}->${token.normalized ?? "none"}:${token.parsed ? "parsed" : "not-parsed"}`
+            )
+            .join(", ") || "none";
 
         lines.push(
-          `Invoice column OCR ${index + 1}: ${attempt.variant ?? "unknown"}/${attempt.pageMode ?? "psm?"}, scale=${attempt.scaling ?? "unknown"}, ${Math.round(attempt.durationMs ?? 0)}ms, conf=${Math.round(attempt.confidence ?? 0)}, invoiceTokens=${attempt.invoiceLikeTokens?.join(", ") || "none"}, raw="${attempt.rawText ?? ""}", words=${words}.`
+          `Invoice column OCR ${index + 1}: ${attempt.variant ?? "unknown"}/${attempt.pageMode ?? "psm?"}, scale=${attempt.scaling ?? "unknown"}, ${Math.round(attempt.durationMs ?? 0)}ms, conf=${Math.round(attempt.confidence ?? 0)}, invoiceTokens=${attempt.invoiceLikeTokens?.join(", ") || "none"}, parsedInvoices=${attempt.parseableInvoiceNumbers?.join(", ") || "none"}, normalizedTokens=${normalizedTokens}, raw="${attempt.rawText ?? ""}", words=${words}.`
         );
       });
 

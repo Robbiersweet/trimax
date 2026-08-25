@@ -1091,6 +1091,10 @@ assert(
     ocrRoute.includes("candidateTokenSummary") &&
     ocrRoute.includes("durationMs") &&
     ocrRoute.includes("invoiceColumnDiagnostics") &&
+    ocrRoute.includes("parseableInvoiceNumbers") &&
+    ocrRoute.includes("normalizedInvoiceTokens") &&
+    ocrRoute.includes("nearbyAmountTokens") &&
+    ocrRoute.includes("sourceWords: OcrWord[]") &&
     ocrRoute.includes("estimateInvoiceColumnBounds") &&
     ocrRoute.includes("integerImageBounds") &&
     ocrRoute.includes("Math.floor(rawLeft)") &&
@@ -1128,6 +1132,9 @@ assert(
     paymentScreen.includes("diagnostics.textRegionMetrics") &&
     paymentScreen.includes("Invoice column diagnostics:") &&
     paymentScreen.includes("Invoice column OCR") &&
+    paymentScreen.includes("parsedInvoices=") &&
+    paymentScreen.includes("normalizedTokens=") &&
+    paymentScreen.includes("nearby amount tokens") &&
     paymentScreen.includes("diagnostics.invoiceColumnDiagnostics"),
   "Payments OCR diagnostics must expose per-pass token summaries and text-region quality so good and bad physical reads can be compared."
 );

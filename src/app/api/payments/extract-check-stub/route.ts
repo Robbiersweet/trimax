@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import sharp from "sharp";
 import {
   extractMoneyCandidates,
+  extractInvoiceNumbers,
   hasExplicitRemittanceTotal,
+  normalizeInvoiceNumber,
   parseCheckStubText,
 } from "@/app/lib/remittanceMatching";
 
@@ -101,6 +103,12 @@ type InvoiceColumnDiagnosticAttempt = {
   confidence: number;
   rawText: string;
   invoiceLikeTokens: string[];
+  parseableInvoiceNumbers: string[];
+  normalizedInvoiceTokens: Array<{
+    raw: string;
+    normalized: string;
+    parsed: boolean;
+  }>;
   words: Array<{
     text: string;
     confidence: number;
@@ -1333,9 +1341,23 @@ function geometryAmountCandidates(row: GeometricRow) {
   });
 }
 
-function geometryRowDetails(rows: GeometricRow[], documentWidth = 0) {
+function geometryRowDetails(
+  rows: GeometricRow[],
+  documentWidth = 0,
+  sourceWords: OcrWord[] = rows.flatMap((row) => row.words)
+) {
+  const amountWords = sourceWords.filter(
+    (word) => classifyGeometryWord(word, documentWidth) === "amount"
+  );
+
   return rows.map((row) => {
     const acceptance = rowAcceptance(row);
+    const nearbyAmountWords = amountWords
+      .filter(
+        (word) =>
+          Math.abs(wordCenterY(word) - row.y) <= Math.max(row.height * 2.5, 36)
+      )
+      .sort((left, right) => left.bbox.x0 - right.bbox.x0);
 
     return {
       y: row.y,
@@ -1346,6 +1368,14 @@ function geometryRowDetails(rows: GeometricRow[], documentWidth = 0) {
       rejectionReason: acceptance.rejectionReason,
       amount: acceptance.amount,
       amountCandidates: geometryAmountCandidates(row),
+      nearbyAmountTokens: nearbyAmountWords.map((word) => ({
+        text: normalizeGeometryToken(word.text),
+        confidence: Math.round(word.confidence),
+        bbox: word.bbox,
+        region: word.region,
+        variant: word.variant,
+        pageMode: word.pageMode,
+      })),
       invoiceNumbers: acceptance.invoiceNumbers,
       unitCodes: acceptance.unitCodes,
       tokens: row.words.map((word) => ({
@@ -1733,7 +1763,8 @@ async function recognizeBestText(
     );
     const geometricRowDetails = geometryRowDetails(
       geometricRows,
-      sources.document.width ?? 0
+      sources.document.width ?? 0,
+      diagnosticWordSource
     );
     const documentWidth = sources.document.width ?? 0;
     const documentHeight = sources.document.height ?? 0;
@@ -1847,6 +1878,22 @@ async function recognizeBestText(
           );
           const confidence =
             typeof result.data.confidence === "number" ? result.data.confidence : 0;
+          const rawText = result.data.text ?? "";
+          const tokenSummary = candidateTokenSummary({
+            region: "invoice-column-diagnostic",
+            variant: spec.variant,
+            pageMode: spec.pageMode.name,
+            rotation: 0,
+            text: rawText,
+            confidence,
+            score: 0,
+            durationMs: Date.now() - attemptStartedAt,
+            imageWidth: columnMetadata.width,
+            imageHeight: columnMetadata.height,
+            words,
+          });
+          const parseableInvoiceNumbers = extractInvoiceNumbers(rawText);
+          const parseableInvoiceSet = new Set(parseableInvoiceNumbers);
 
           attemptsForDiagnostics.push({
             variant: spec.variant,
@@ -1854,20 +1901,18 @@ async function recognizeBestText(
             scaling: `${columnMetadata.width ?? bounds.width}x${columnMetadata.height ?? bounds.height} -> ${processedMetadata.width ?? "?"}x${processedMetadata.height ?? "?"}`,
             durationMs: Date.now() - attemptStartedAt,
             confidence,
-            rawText: redactedTextSummary(result.data.text ?? ""),
-            invoiceLikeTokens: candidateTokenSummary({
-              region: "invoice-column-diagnostic",
-              variant: spec.variant,
-              pageMode: spec.pageMode.name,
-              rotation: 0,
-              text: result.data.text ?? "",
-              confidence,
-              score: 0,
-              durationMs: Date.now() - attemptStartedAt,
-              imageWidth: columnMetadata.width,
-              imageHeight: columnMetadata.height,
-              words,
-            }).invoiceLike,
+            rawText: redactedTextSummary(rawText),
+            invoiceLikeTokens: tokenSummary.invoiceLike,
+            parseableInvoiceNumbers,
+            normalizedInvoiceTokens: tokenSummary.invoiceLike.map((raw) => {
+              const normalized = normalizeInvoiceNumber(raw);
+
+              return {
+                raw,
+                normalized,
+                parsed: parseableInvoiceSet.has(normalized),
+              };
+            }),
             words: words.slice(0, 30).map((word) => ({
               text: normalizeGeometryToken(word.text),
               confidence: Math.round(word.confidence),
