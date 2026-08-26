@@ -1142,8 +1142,11 @@ assert(
 assert(
   paymentScreen.includes("OCR pass") &&
     paymentScreen.includes("Text-region quality:") &&
+    paymentScreen.includes("Text-region scale:") &&
     paymentScreen.includes("median word height") &&
     paymentScreen.includes("high-conf") &&
+    paymentScreen.includes("textWidthPercent") &&
+    paymentScreen.includes("textHeightPercent") &&
     paymentScreen.includes("candidate.tokens") &&
     paymentScreen.includes("diagnostics.textRegionMetrics") &&
     paymentScreen.includes("Invoice column diagnostics:") &&

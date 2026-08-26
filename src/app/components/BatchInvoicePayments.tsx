@@ -201,6 +201,28 @@ type CameraGeometryDiagnostics = {
   } | null;
 };
 
+type CameraSourceRect = {
+  sourceX: number;
+  sourceY: number;
+  sourceWidth: number;
+  sourceHeight: number;
+  viewportWidth: number;
+  viewportHeight: number;
+  guideLeft: number;
+  guideTop: number;
+  guideWidth: number;
+  guideHeight: number;
+  renderedVideoLeft: number;
+  renderedVideoTop: number;
+  renderedVideoWidth: number;
+  renderedVideoHeight: number;
+  visibleSourceX: number;
+  visibleSourceY: number;
+  visibleSourceWidth: number;
+  visibleSourceHeight: number;
+  scale: number;
+};
+
 type CheckStubOcrResponse = {
   documentType?: RemittanceDocumentType;
   stubText?: string;
@@ -492,6 +514,89 @@ function defaultGuideModeForDocumentType(
 ): "horizontal" | "vertical" {
   void documentType;
   return "horizontal";
+}
+
+function formatCameraDiagnosticValue(value: unknown): string {
+  if (value === undefined || value === null) {
+    return "unsupported";
+  }
+
+  if (Array.isArray(value)) {
+    return value.length > 0 ? value.map(String).join("|") : "none";
+  }
+
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    const min = record.min;
+    const max = record.max;
+    const step = record.step;
+
+    if (typeof min !== "undefined" || typeof max !== "undefined") {
+      return `${String(min ?? "?")}-${String(max ?? "?")}${
+        typeof step !== "undefined" ? ` step ${String(step)}` : ""
+      }`;
+    }
+
+    return JSON.stringify(record);
+  }
+
+  return String(value);
+}
+
+function formatCameraTrackSettings(track: MediaStreamTrack | null) {
+  if (!track) {
+    return "track=none";
+  }
+
+  const settings = track.getSettings() as Record<string, unknown>;
+  const keys = [
+    "width",
+    "height",
+    "aspectRatio",
+    "frameRate",
+    "facingMode",
+    "resizeMode",
+    "zoom",
+    "focusMode",
+    "exposureMode",
+    "whiteBalanceMode",
+  ];
+
+  return keys
+    .map((key) => `${key}=${formatCameraDiagnosticValue(settings[key])}`)
+    .join(", ");
+}
+
+function formatCameraTrackCapabilities(track: MediaStreamTrack | null) {
+  if (!track) {
+    return "track=none";
+  }
+
+  const maybeTrack = track as MediaStreamTrack & {
+    getCapabilities?: () => Record<string, unknown>;
+  };
+
+  if (typeof maybeTrack.getCapabilities !== "function") {
+    return "getCapabilities=unsupported";
+  }
+
+  const capabilities = maybeTrack.getCapabilities() as Record<string, unknown>;
+  const keys = [
+    "width",
+    "height",
+    "aspectRatio",
+    "frameRate",
+    "facingMode",
+    "resizeMode",
+    "zoom",
+    "focusMode",
+    "exposureMode",
+    "whiteBalanceMode",
+  ];
+
+  return keys
+    .map((key) => `${key}=${formatCameraDiagnosticValue(capabilities[key])}`)
+    .join(", ");
 }
 
 function guidanceForDocumentType(documentType: RemittanceDocumentType) {
@@ -1116,6 +1221,11 @@ export default function BatchInvoicePayments({
   const checkOnlyModeButtonRef = useRef<HTMLButtonElement | null>(null);
   const deviceCameraLabelRef = useRef<HTMLLabelElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
+  const cameraOpenedAtRef = useRef(0);
+  const cameraReadyAtRef = useRef(0);
+  const cameraInitialTrackSettingsRef = useRef("not-started");
+  const cameraReadyTrackSettingsRef = useRef("not-ready");
+  const cameraSettledTrackSettingsRef = useRef("not-settled");
   const lastCapturePointerAtRef = useRef(0);
   const cropDragRef = useRef<{
     target: CropDragTarget;
@@ -1567,6 +1677,11 @@ export default function BatchInvoicePayments({
       }
 
       setCameraStatusMessage("Starting camera...");
+      cameraOpenedAtRef.current = performance.now();
+      cameraReadyAtRef.current = 0;
+      cameraInitialTrackSettingsRef.current = "pending";
+      cameraReadyTrackSettingsRef.current = "pending";
+      cameraSettledTrackSettingsRef.current = "pending";
 
       try {
         const videoConstraints = {
@@ -1586,6 +1701,10 @@ export default function BatchInvoicePayments({
         }
 
         cameraStreamRef.current = stream;
+        const track = stream.getVideoTracks()[0] ?? null;
+
+        cameraInitialTrackSettingsRef.current =
+          formatCameraTrackSettings(track);
 
         if (cameraVideoRef.current) {
           cameraVideoRef.current.srcObject = stream;
@@ -1604,6 +1723,14 @@ export default function BatchInvoicePayments({
           }
         }
 
+        cameraReadyAtRef.current = performance.now();
+        cameraReadyTrackSettingsRef.current = formatCameraTrackSettings(track);
+        window.setTimeout(() => {
+          if (cameraStreamRef.current === stream) {
+            cameraSettledTrackSettingsRef.current =
+              formatCameraTrackSettings(track);
+          }
+        }, 2500);
         setCameraReady(true);
         setCameraQualityReady(false);
         setCameraStatusMessage("Move closer");
@@ -2216,12 +2343,35 @@ export default function BatchInvoicePayments({
 
     if (diagnostics.textRegionMetrics) {
       const metrics = diagnostics.textRegionMetrics;
+      const textWidth = metrics.textRegionBounds
+        ? Math.max(
+            0,
+            (metrics.textRegionBounds.x1 ?? 0) - (metrics.textRegionBounds.x0 ?? 0)
+          )
+        : 0;
+      const textHeight = metrics.textRegionBounds
+        ? Math.max(
+            0,
+            (metrics.textRegionBounds.y1 ?? 0) - (metrics.textRegionBounds.y0 ?? 0)
+          )
+        : 0;
+      const textWidthPercent =
+        diagnostics.documentWidth && diagnostics.documentWidth > 0
+          ? (textWidth / diagnostics.documentWidth) * 100
+          : 0;
+      const textHeightPercent =
+        diagnostics.documentHeight && diagnostics.documentHeight > 0
+          ? (textHeight / diagnostics.documentHeight) * 100
+          : 0;
       const bounds = metrics.textRegionBounds
         ? `${Math.round(metrics.textRegionBounds.x0 ?? 0)},${Math.round(metrics.textRegionBounds.y0 ?? 0)}-${Math.round(metrics.textRegionBounds.x1 ?? 0)},${Math.round(metrics.textRegionBounds.y1 ?? 0)}`
         : "none";
 
       lines.push(
         `Text-region quality: words=${metrics.wordCount ?? 0}, high-conf=${metrics.highConfidenceWordCount ?? 0}, median word height=${metrics.medianWordHeight ?? 0}px, avg conf=${metrics.averageWordConfidence ?? 0}, bounds=${bounds}, area=${(((metrics.textRegionAreaRatio ?? 0) * 100)).toFixed(1)}%, document height=${metrics.sourcePixelsPerDocumentHeight ?? "unknown"}px.`
+      );
+      lines.push(
+        `Text-region scale: width=${Math.round(textWidth)}px (${textWidthPercent.toFixed(1)}%), height=${Math.round(textHeight)}px (${textHeightPercent.toFixed(1)}%).`
       );
     }
 
@@ -2490,7 +2640,7 @@ export default function BatchInvoicePayments({
       "",
       "Quality Metrics",
       ...lastOcrDiagnosticLines.filter((line) =>
-        /^(Quality gate|Text-region quality|Invoice column diagnostics)/i.test(
+        /^(Quality gate|Text-region quality|Text-region scale|Invoice column diagnostics)/i.test(
           line
         )
       ),
@@ -2506,7 +2656,9 @@ export default function BatchInvoicePayments({
       ...lastOcrDiagnosticLines.filter((line) => /^OCR pass /i.test(line)),
       "",
       "Text Region Metrics",
-      ...lastOcrDiagnosticLines.filter((line) => /^Text-region quality/i.test(line)),
+      ...lastOcrDiagnosticLines.filter((line) =>
+        /^Text-region quality|^Text-region scale/i.test(line)
+      ),
       "",
       "Geometric Row Bands",
       ...lastOcrDiagnosticLines.filter((line) => /^Geometric row bands/i.test(line)),
@@ -3102,7 +3254,7 @@ export default function BatchInvoicePayments({
     setCheckOcrMessage("Adjust the crop, then read it.");
   }
 
-  const getVisibleCameraGuideSourceRect = useCallback((video: HTMLVideoElement) => {
+  const getVisibleCameraGuideSourceRect = useCallback((video: HTMLVideoElement): CameraSourceRect => {
     const viewport = cameraViewportRef.current;
     const guide = cameraGuideRef.current;
 
@@ -3122,6 +3274,10 @@ export default function BatchInvoicePayments({
         renderedVideoTop: 0,
         renderedVideoWidth: video.videoWidth,
         renderedVideoHeight: video.videoHeight,
+        visibleSourceX: 0,
+        visibleSourceY: 0,
+        visibleSourceWidth: video.videoWidth,
+        visibleSourceHeight: video.videoHeight,
         scale: 1,
       };
     }
@@ -3147,6 +3303,26 @@ export default function BatchInvoicePayments({
     const rawY = (guideTop - padY - renderedTop) / scale;
     const rawRight = rawX + (guideWidth + padX * 2) / scale;
     const rawBottom = rawY + (guideHeight + padY * 2) / scale;
+    const visibleRawX = (0 - renderedLeft) / scale;
+    const visibleRawY = (0 - renderedTop) / scale;
+    const visibleRawRight = (viewportRect.width - renderedLeft) / scale;
+    const visibleRawBottom = (viewportRect.height - renderedTop) / scale;
+    const visibleSourceX = Math.max(
+      0,
+      Math.min(video.videoWidth - 1, Math.floor(visibleRawX))
+    );
+    const visibleSourceY = Math.max(
+      0,
+      Math.min(video.videoHeight - 1, Math.floor(visibleRawY))
+    );
+    const visibleSourceRight = Math.max(
+      visibleSourceX + 1,
+      Math.min(video.videoWidth, Math.ceil(visibleRawRight))
+    );
+    const visibleSourceBottom = Math.max(
+      visibleSourceY + 1,
+      Math.min(video.videoHeight, Math.ceil(visibleRawBottom))
+    );
     const sourceX = Math.max(0, Math.min(video.videoWidth - 1, Math.floor(rawX)));
     const sourceY = Math.max(0, Math.min(video.videoHeight - 1, Math.floor(rawY)));
     const sourceRight = Math.max(
@@ -3175,6 +3351,10 @@ export default function BatchInvoicePayments({
       renderedVideoTop: Math.round(renderedTop),
       renderedVideoWidth: Math.round(renderedWidth),
       renderedVideoHeight: Math.round(renderedHeight),
+      visibleSourceX,
+      visibleSourceY,
+      visibleSourceWidth: visibleSourceRight - visibleSourceX,
+      visibleSourceHeight: visibleSourceBottom - visibleSourceY,
       scale,
     };
   }, [captureDocumentType]);
@@ -3454,8 +3634,22 @@ export default function BatchInvoicePayments({
       renderedVideoTop,
       renderedVideoWidth,
       renderedVideoHeight,
+      visibleSourceX,
+      visibleSourceY,
+      visibleSourceWidth,
+      visibleSourceHeight,
     } =
       getVisibleCameraGuideSourceRect(video);
+    const track = cameraStreamRef.current?.getVideoTracks()[0] ?? null;
+    const now = performance.now();
+    const cameraOpenAge = cameraOpenedAtRef.current
+      ? Math.round(now - cameraOpenedAtRef.current)
+      : 0;
+    const cameraReadyAge = cameraReadyAtRef.current
+      ? Math.round(now - cameraReadyAtRef.current)
+      : 0;
+    const objectFit =
+      getComputedStyle(video).objectFit || "unknown";
     const maxOutputEdge = 4600;
     const outputScale = Math.min(
       1,
@@ -3468,8 +3662,17 @@ export default function BatchInvoicePayments({
       `Camera native video: ${video.videoWidth} x ${video.videoHeight}.`,
       `Camera rendered video: ${renderedVideoWidth} x ${renderedVideoHeight}.`,
       `Camera viewport: ${viewportWidth} x ${viewportHeight}.`,
+      `Camera object-fit: ${objectFit}.`,
+      `Visible object-fit source region: left ${visibleSourceX}, top ${visibleSourceY}, width ${visibleSourceWidth}, height ${visibleSourceHeight}.`,
       `Visible guide rectangle: left ${guideLeft}, top ${guideTop}, width ${guideWidth}, height ${guideHeight}.`,
       `Mapped native source rectangle: left ${sourceX}, top ${sourceY}, width ${sourceWidth}, height ${sourceHeight}.`,
+      `Camera open age at capture: ${cameraOpenAge}ms.`,
+      `Camera ready age at capture: ${cameraReadyAge}ms.`,
+      `Camera track settings initial: ${cameraInitialTrackSettingsRef.current}.`,
+      `Camera track settings ready: ${cameraReadyTrackSettingsRef.current}.`,
+      `Camera track settings settled: ${cameraSettledTrackSettingsRef.current}.`,
+      `Camera track settings capture: ${formatCameraTrackSettings(track)}.`,
+      `Camera track capabilities: ${formatCameraTrackCapabilities(track)}.`,
       `Live camera capture output: ${outputWidth} x ${outputHeight}, scale ${outputScale.toFixed(3)}.`,
     ];
 

@@ -146,7 +146,16 @@ assert(
     paymentScreen.includes("Camera native video:") &&
     paymentScreen.includes("Camera rendered video:") &&
     paymentScreen.includes("Visible guide rectangle:") &&
+    paymentScreen.includes("Camera object-fit:") &&
+    paymentScreen.includes("Visible object-fit source region:") &&
     paymentScreen.includes("Mapped native source rectangle:") &&
+    paymentScreen.includes("Camera open age at capture:") &&
+    paymentScreen.includes("Camera ready age at capture:") &&
+    paymentScreen.includes("Camera track settings initial:") &&
+    paymentScreen.includes("Camera track settings ready:") &&
+    paymentScreen.includes("Camera track settings settled:") &&
+    paymentScreen.includes("Camera track settings capture:") &&
+    paymentScreen.includes("Camera track capabilities:") &&
     paymentScreen.includes("Live camera capture output:") &&
     paymentScreen.includes("Image normalized") &&
     paymentScreen.includes("Upload started") &&
@@ -165,6 +174,27 @@ assert(
     paymentScreen.includes("setLastOcrRawText") &&
     paymentScreen.includes("Failed at:"),
   "Capture must show explicit progress stages and exact failure stage."
+);
+
+assert(
+  paymentScreen.includes("formatCameraTrackSettings") &&
+    paymentScreen.includes("formatCameraTrackCapabilities") &&
+    paymentScreen.includes("getCapabilities=unsupported") &&
+    paymentScreen.includes("focusMode") &&
+    paymentScreen.includes("exposureMode") &&
+    paymentScreen.includes("whiteBalanceMode") &&
+    paymentScreen.includes("zoom"),
+  "Camera diagnostics must expose real track settings/capabilities without inferring unsupported lens, focus, exposure, or zoom state."
+);
+
+assert(
+  paymentScreen.includes("visibleSourceX") &&
+    paymentScreen.includes("visibleSourceY") &&
+    paymentScreen.includes("visibleSourceWidth") &&
+    paymentScreen.includes("visibleSourceHeight") &&
+    paymentScreen.includes("visibleRawX") &&
+    paymentScreen.includes("visibleRawBottom"),
+  "Camera guide diagnostics must report the full object-fit native source region before applying the document guide crop."
 );
 
 assert(
