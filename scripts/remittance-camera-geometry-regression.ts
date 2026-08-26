@@ -16,6 +16,173 @@ const floatingControls = readFileSync(
   "utf8"
 );
 
+function mapGuideThroughObjectFitCover({
+  videoWidth,
+  videoHeight,
+  viewportWidth,
+  viewportHeight,
+  guideLeft,
+  guideTop,
+  guideWidth,
+  guideHeight,
+}: {
+  videoWidth: number;
+  videoHeight: number;
+  viewportWidth: number;
+  viewportHeight: number;
+  guideLeft: number;
+  guideTop: number;
+  guideWidth: number;
+  guideHeight: number;
+}) {
+  const scale = Math.max(viewportWidth / videoWidth, viewportHeight / videoHeight);
+  const renderedWidth = videoWidth * scale;
+  const renderedHeight = videoHeight * scale;
+  const renderedLeft = (viewportWidth - renderedWidth) / 2;
+  const renderedTop = (viewportHeight - renderedHeight) / 2;
+  const visibleRawX = (0 - renderedLeft) / scale;
+  const visibleRawY = (0 - renderedTop) / scale;
+  const visibleRawRight = (viewportWidth - renderedLeft) / scale;
+  const visibleRawBottom = (viewportHeight - renderedTop) / scale;
+  const visibleSourceX = Math.max(
+    0,
+    Math.min(videoWidth - 1, Math.floor(visibleRawX))
+  );
+  const visibleSourceY = Math.max(
+    0,
+    Math.min(videoHeight - 1, Math.floor(visibleRawY))
+  );
+  const visibleSourceRight = Math.max(
+    visibleSourceX + 1,
+    Math.min(videoWidth, Math.ceil(visibleRawRight))
+  );
+  const visibleSourceBottom = Math.max(
+    visibleSourceY + 1,
+    Math.min(videoHeight, Math.ceil(visibleRawBottom))
+  );
+  const visibleSourceWidth = visibleSourceRight - visibleSourceX;
+  const visibleSourceHeight = visibleSourceBottom - visibleSourceY;
+  const guideRight = Math.max(0, Math.min(viewportWidth, guideLeft + guideWidth));
+  const guideBottom = Math.max(0, Math.min(viewportHeight, guideTop + guideHeight));
+  const clampedGuideLeft = Math.max(0, Math.min(viewportWidth - 1, guideLeft));
+  const clampedGuideTop = Math.max(0, Math.min(viewportHeight - 1, guideTop));
+  const sourceX = Math.max(
+    visibleSourceX,
+    Math.min(
+      visibleSourceRight - 1,
+      Math.floor(
+        visibleSourceX +
+          (clampedGuideLeft / viewportWidth) * visibleSourceWidth
+      )
+    )
+  );
+  const sourceY = Math.max(
+    visibleSourceY,
+    Math.min(
+      visibleSourceBottom - 1,
+      Math.floor(
+        visibleSourceY +
+          (clampedGuideTop / viewportHeight) * visibleSourceHeight
+      )
+    )
+  );
+  const sourceRight = Math.max(
+    sourceX + 1,
+    Math.min(
+      visibleSourceRight,
+      Math.ceil(visibleSourceX + (guideRight / viewportWidth) * visibleSourceWidth)
+    )
+  );
+  const sourceBottom = Math.max(
+    sourceY + 1,
+    Math.min(
+      visibleSourceBottom,
+      Math.ceil(visibleSourceY + (guideBottom / viewportHeight) * visibleSourceHeight)
+    )
+  );
+
+  return {
+    visibleSourceX,
+    visibleSourceY,
+    visibleSourceWidth,
+    visibleSourceHeight,
+    sourceX,
+    sourceY,
+    sourceWidth: sourceRight - sourceX,
+    sourceHeight: sourceBottom - sourceY,
+    sourceRight,
+    sourceBottom,
+    visibleSourceRight,
+    visibleSourceBottom,
+  };
+}
+
+function assertGuideContained(result: ReturnType<typeof mapGuideThroughObjectFitCover>) {
+  assert(result.sourceX >= result.visibleSourceX);
+  assert(result.sourceY >= result.visibleSourceY);
+  assert(result.sourceRight <= result.visibleSourceRight);
+  assert(result.sourceBottom <= result.visibleSourceBottom);
+}
+
+const iphoneLandscapeEvidence = mapGuideThroughObjectFitCover({
+  videoWidth: 4032,
+  videoHeight: 2160,
+  viewportWidth: 582,
+  viewportHeight: 414,
+  guideLeft: 12,
+  guideTop: 91,
+  guideWidth: 559,
+  guideHeight: 232,
+});
+
+assertGuideContained(iphoneLandscapeEvidence);
+assert(iphoneLandscapeEvidence.sourceX >= 550 && iphoneLandscapeEvidence.sourceX <= 570);
+assert(iphoneLandscapeEvidence.sourceY >= 470 && iphoneLandscapeEvidence.sourceY <= 485);
+assert(
+  iphoneLandscapeEvidence.sourceWidth >= 2900 &&
+    iphoneLandscapeEvidence.sourceWidth <= 2935
+);
+assert(
+  iphoneLandscapeEvidence.sourceHeight >= 1205 &&
+    iphoneLandscapeEvidence.sourceHeight <= 1220
+);
+
+const nearlyFullViewportGuide = mapGuideThroughObjectFitCover({
+  videoWidth: 4032,
+  videoHeight: 2160,
+  viewportWidth: 582,
+  viewportHeight: 414,
+  guideLeft: 1,
+  guideTop: 1,
+  guideWidth: 580,
+  guideHeight: 412,
+});
+
+assertGuideContained(nearlyFullViewportGuide);
+assert(
+  nearlyFullViewportGuide.sourceWidth >=
+    nearlyFullViewportGuide.visibleSourceWidth - 12
+);
+assert(
+  nearlyFullViewportGuide.sourceHeight >=
+    nearlyFullViewportGuide.visibleSourceHeight - 12
+);
+
+const verticalSourceCropping = mapGuideThroughObjectFitCover({
+  videoWidth: 1080,
+  videoHeight: 1920,
+  viewportWidth: 414,
+  viewportHeight: 582,
+  guideLeft: 20,
+  guideTop: 18,
+  guideWidth: 374,
+  guideHeight: 546,
+});
+
+assertGuideContained(verticalSourceCropping);
+assert(verticalSourceCropping.visibleSourceY > 0);
+assert(verticalSourceCropping.visibleSourceX === 0);
+
 assert(
   paymentScreen.includes("type CameraGeometryDiagnostics") &&
     paymentScreen.includes("collectCameraGeometryDiagnostics") &&
@@ -149,6 +316,8 @@ assert(
     paymentScreen.includes("Camera object-fit:") &&
     paymentScreen.includes("Visible object-fit source region:") &&
     paymentScreen.includes("Mapped native source rectangle:") &&
+    paymentScreen.includes("Guide mapping containment:") &&
+    paymentScreen.includes("Guide mapping scale:") &&
     paymentScreen.includes("Camera open age at capture:") &&
     paymentScreen.includes("Camera ready age at capture:") &&
     paymentScreen.includes("Camera track settings initial:") &&
@@ -193,7 +362,11 @@ assert(
     paymentScreen.includes("visibleSourceWidth") &&
     paymentScreen.includes("visibleSourceHeight") &&
     paymentScreen.includes("visibleRawX") &&
-    paymentScreen.includes("visibleRawBottom"),
+    paymentScreen.includes("visibleRawBottom") &&
+    paymentScreen.includes("visibleSourceX + (clampedGuideLeft / viewportRect.width) * visibleSourceWidth") &&
+    paymentScreen.includes("visibleSourceY + (clampedGuideTop / viewportRect.height) * visibleSourceHeight") &&
+    paymentScreen.includes("Math.min(visibleSourceRight, Math.ceil(rawRight))") &&
+    paymentScreen.includes("Math.min(visibleSourceBottom, Math.ceil(rawBottom))"),
   "Camera guide diagnostics must report the full object-fit native source region before applying the document guide crop."
 );
 

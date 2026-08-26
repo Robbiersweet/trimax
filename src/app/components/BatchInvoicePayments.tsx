@@ -3284,6 +3284,31 @@ export default function BatchInvoicePayments({
 
     const viewportRect = viewport.getBoundingClientRect();
     const guideRect = guide.getBoundingClientRect();
+
+    if (viewportRect.width <= 0 || viewportRect.height <= 0) {
+      return {
+        sourceX: 0,
+        sourceY: 0,
+        sourceWidth: video.videoWidth,
+        sourceHeight: video.videoHeight,
+        viewportWidth: 0,
+        viewportHeight: 0,
+        guideLeft: 0,
+        guideTop: 0,
+        guideWidth: 0,
+        guideHeight: 0,
+        renderedVideoLeft: 0,
+        renderedVideoTop: 0,
+        renderedVideoWidth: video.videoWidth,
+        renderedVideoHeight: video.videoHeight,
+        visibleSourceX: 0,
+        visibleSourceY: 0,
+        visibleSourceWidth: video.videoWidth,
+        visibleSourceHeight: video.videoHeight,
+        scale: 1,
+      };
+    }
+
     const scale = Math.max(
       viewportRect.width / video.videoWidth,
       viewportRect.height / video.videoHeight
@@ -3296,13 +3321,6 @@ export default function BatchInvoicePayments({
     const guideTop = guideRect.top - viewportRect.top;
     const guideWidth = guideRect.width;
     const guideHeight = guideRect.height;
-    const padRatio = captureDocumentType === "remittance_stub" ? 0.035 : 0.05;
-    const padX = guideWidth * padRatio;
-    const padY = guideHeight * padRatio;
-    const rawX = (guideLeft - padX - renderedLeft) / scale;
-    const rawY = (guideTop - padY - renderedTop) / scale;
-    const rawRight = rawX + (guideWidth + padX * 2) / scale;
-    const rawBottom = rawY + (guideHeight + padY * 2) / scale;
     const visibleRawX = (0 - renderedLeft) / scale;
     const visibleRawY = (0 - renderedTop) / scale;
     const visibleRawRight = (viewportRect.width - renderedLeft) / scale;
@@ -3323,15 +3341,35 @@ export default function BatchInvoicePayments({
       visibleSourceY + 1,
       Math.min(video.videoHeight, Math.ceil(visibleRawBottom))
     );
-    const sourceX = Math.max(0, Math.min(video.videoWidth - 1, Math.floor(rawX)));
-    const sourceY = Math.max(0, Math.min(video.videoHeight - 1, Math.floor(rawY)));
+    const visibleSourceWidth = visibleSourceRight - visibleSourceX;
+    const visibleSourceHeight = visibleSourceBottom - visibleSourceY;
+    const guideRight = Math.max(0, Math.min(viewportRect.width, guideLeft + guideWidth));
+    const guideBottom = Math.max(0, Math.min(viewportRect.height, guideTop + guideHeight));
+    const clampedGuideLeft = Math.max(0, Math.min(viewportRect.width - 1, guideLeft));
+    const clampedGuideTop = Math.max(0, Math.min(viewportRect.height - 1, guideTop));
+    const rawX =
+      visibleSourceX + (clampedGuideLeft / viewportRect.width) * visibleSourceWidth;
+    const rawY =
+      visibleSourceY + (clampedGuideTop / viewportRect.height) * visibleSourceHeight;
+    const rawRight =
+      visibleSourceX + (guideRight / viewportRect.width) * visibleSourceWidth;
+    const rawBottom =
+      visibleSourceY + (guideBottom / viewportRect.height) * visibleSourceHeight;
+    const sourceX = Math.max(
+      visibleSourceX,
+      Math.min(visibleSourceRight - 1, Math.floor(rawX))
+    );
+    const sourceY = Math.max(
+      visibleSourceY,
+      Math.min(visibleSourceBottom - 1, Math.floor(rawY))
+    );
     const sourceRight = Math.max(
       sourceX + 1,
-      Math.min(video.videoWidth, Math.ceil(rawRight))
+      Math.min(visibleSourceRight, Math.ceil(rawRight))
     );
     const sourceBottom = Math.max(
       sourceY + 1,
-      Math.min(video.videoHeight, Math.ceil(rawBottom))
+      Math.min(visibleSourceBottom, Math.ceil(rawBottom))
     );
     const sourceWidth = sourceRight - sourceX;
     const sourceHeight = sourceBottom - sourceY;
@@ -3353,11 +3391,11 @@ export default function BatchInvoicePayments({
       renderedVideoHeight: Math.round(renderedHeight),
       visibleSourceX,
       visibleSourceY,
-      visibleSourceWidth: visibleSourceRight - visibleSourceX,
-      visibleSourceHeight: visibleSourceBottom - visibleSourceY,
+      visibleSourceWidth,
+      visibleSourceHeight,
       scale,
     };
-  }, [captureDocumentType]);
+  }, []);
 
   const analyzeLiveCameraFrame = useCallback(() => {
     const video = cameraVideoRef.current;
@@ -3657,6 +3695,17 @@ export default function BatchInvoicePayments({
     );
     const outputWidth = Math.max(1, Math.round(sourceWidth * outputScale));
     const outputHeight = Math.max(1, Math.round(sourceHeight * outputScale));
+    const sourceRight = sourceX + sourceWidth;
+    const sourceBottom = sourceY + sourceHeight;
+    const visibleSourceRight = visibleSourceX + visibleSourceWidth;
+    const visibleSourceBottom = visibleSourceY + visibleSourceHeight;
+    const guideContainmentPassed =
+      sourceX >= visibleSourceX &&
+      sourceY >= visibleSourceY &&
+      sourceRight <= visibleSourceRight &&
+      sourceBottom <= visibleSourceBottom;
+    const guideScaleX = viewportWidth > 0 ? visibleSourceWidth / viewportWidth : 0;
+    const guideScaleY = viewportHeight > 0 ? visibleSourceHeight / viewportHeight : 0;
     const cameraCaptureDiagnosticLines = [
       `Frame captured: native video ${video.videoWidth} x ${video.videoHeight}.`,
       `Camera native video: ${video.videoWidth} x ${video.videoHeight}.`,
@@ -3666,6 +3715,8 @@ export default function BatchInvoicePayments({
       `Visible object-fit source region: left ${visibleSourceX}, top ${visibleSourceY}, width ${visibleSourceWidth}, height ${visibleSourceHeight}.`,
       `Visible guide rectangle: left ${guideLeft}, top ${guideTop}, width ${guideWidth}, height ${guideHeight}.`,
       `Mapped native source rectangle: left ${sourceX}, top ${sourceY}, width ${sourceWidth}, height ${sourceHeight}.`,
+      `Guide mapping containment: ${guideContainmentPassed ? "passed" : "failed"}.`,
+      `Guide mapping scale: x=${guideScaleX.toFixed(3)}, y=${guideScaleY.toFixed(3)}.`,
       `Camera open age at capture: ${cameraOpenAge}ms.`,
       `Camera ready age at capture: ${cameraReadyAge}ms.`,
       `Camera track settings initial: ${cameraInitialTrackSettingsRef.current}.`,
