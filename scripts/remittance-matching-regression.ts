@@ -917,6 +917,34 @@ assert(
   "The final row trace must expose why damaged invoice and unit OCR resolved to the eligible invoice."
 );
 
+const damagedAtoFinalRowReferenceBMatch = findRemittanceMatches(
+  referenceBOpenInvoices,
+  [
+    "PAYOR: Reference Property",
+    "DATE: 08/15/2026 CHECK #: 2816 TOTAL: $5,495.00",
+    "INV0513 U05 full interior paint 1,099.00",
+    "INV0514 H10 full interior paint 1,099.00",
+    "INV0515 Q08 full interior paint 1,099.00",
+    "INV0518 U03 full interior paint 1,099.00",
+    "INVE51S ATO full interior paint 1,039.00",
+  ].join("\n"),
+  "Reference Property"
+);
+
+assert.equal(damagedAtoFinalRowReferenceBMatch.confidence, "verified");
+assert.equal(damagedAtoFinalRowReferenceBMatch.matchedTotal, 5495);
+assert.deepEqual(
+  damagedAtoFinalRowReferenceBMatch.matches.map((invoice) => invoice.id),
+  [
+    "reference-b-0513",
+    "reference-b-0514",
+    "reference-b-0515",
+    "reference-b-0518",
+    "reference-b-0519",
+  ],
+  "ATO-style unit OCR may corroborate A10 only after the invoice candidate is already structurally plausible."
+);
+
 const ambiguousInvoiceRecords = [
   ...referenceBOpenInvoices,
   {
@@ -1090,10 +1118,21 @@ assert(
   "Payments screen must hand extracted remittance data into the review form."
 );
 assert(
-    paymentScreen.includes("candidateInvoiceNumbers") &&
+  paymentScreen.includes("function uniqueReviewMatchesById") &&
+    paymentScreen.includes("const dedupedReview = uniqueReviewMatchesById") &&
+    paymentScreen.includes("setReviewMatchedInvoices(reviewMatches)") &&
+    paymentScreen.includes("setSelectedIds(reviewMatches.map((invoice) => invoice.id))") &&
+    paymentScreen.includes("Unique matched invoice total:") &&
+    paymentScreen.includes("Duplicate resolved invoice IDs removed:"),
+  "Payment review handoff must dedupe by invoice record ID before setting review matches, selected IDs, and matched-total diagnostics."
+);
+assert(
+  paymentScreen.includes("candidateInvoiceNumbers") &&
     paymentScreen.includes("resolutionReason") &&
     paymentScreen.includes("amountEvidence") &&
-    paymentScreen.includes("totalProof="),
+    paymentScreen.includes("totalProof=") &&
+    paymentScreen.includes("unitTokens=") &&
+    paymentScreen.includes("normalization="),
   "Payments screen diagnostics must expose deterministic row-resolution evidence."
 );
 assert(

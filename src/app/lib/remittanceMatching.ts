@@ -34,6 +34,8 @@ export type RemittanceInvoiceMatchTrace = {
   amountEvidence?: string;
   candidateInvoiceNumbers?: string[];
   documentTotalReconciliationRequired?: boolean;
+  unitCandidates?: string[];
+  normalizationOperations?: string[];
 };
 
 export type RemittanceLine = {
@@ -787,7 +789,7 @@ function invoiceCandidateDigitsFromRawToken(token: string) {
   const afterPrefix = compact.replace(/^[I1L|]*N[VY]?(?:OICE|O|0)?/, "");
   const source = afterPrefix || compact;
   const strictDigits = source
-    .replace(/[OQ]/g, "0")
+    .replace(/[EOQ]/g, "0")
     .replace(/[S]/g, "5")
     .replace(/[Z]/g, "2")
     .replace(/[IL|]/g, "1")
@@ -809,8 +811,58 @@ function invoiceCandidateDigitsFromRawToken(token: string) {
     .filter(Boolean);
 }
 
+function invoiceTokenBody(token: string) {
+  const compact = token.toUpperCase().replace(/[^A-Z0-9|]/g, "");
+
+  return compact.replace(/^[I1L|]*N[VY]?(?:OICE|O|0)?/, "");
+}
+
 function invoiceDigitKey(invoiceNumber: string) {
   return invoiceNumber.replace(/\D/g, "").replace(/^0+/, "");
+}
+
+function invoiceRawCharMatchesDigit(char: string, digit: string) {
+  if (char === digit) {
+    return true;
+  }
+
+  if (digit === "0") {
+    return /[EOQ]/.test(char);
+  }
+
+  if (digit === "1") {
+    return /[IL|]/.test(char);
+  }
+
+  if (digit === "2") {
+    return /[Z]/.test(char);
+  }
+
+  if (digit === "5") {
+    return /[S]/.test(char);
+  }
+
+  if (digit === "9") {
+    return /[S]/.test(char);
+  }
+
+  return false;
+}
+
+function invoiceTokenBodyCompatibleWithInvoice(
+  invoiceNumber: string,
+  rawToken: string
+) {
+  const body = invoiceTokenBody(rawToken);
+  const invoiceDigits = invoiceNumber.replace(/\D/g, "");
+
+  if (!body || !invoiceDigits || body.length !== invoiceDigits.length) {
+    return false;
+  }
+
+  return body.split("").every((char, index) =>
+    invoiceRawCharMatchesDigit(char, invoiceDigits[index] ?? "")
+  );
 }
 
 function invoiceNumberCompatibleWithRawToken(
@@ -821,6 +873,10 @@ function invoiceNumberCompatibleWithRawToken(
   const invoiceDigits = invoiceDigitKey(invoiceNumber);
 
   if (candidateNumbers.includes(invoiceNumber)) {
+    return true;
+  }
+
+  if (invoiceTokenBodyCompatibleWithInvoice(invoiceNumber, rawToken)) {
     return true;
   }
 
@@ -873,12 +929,7 @@ function extractUnitCodeCandidates(text: string) {
   const candidates = new Set(extractUnitCodes(text));
 
   for (const match of text.matchAll(/\b[A-Z][A-Z0-9.]{2,4}\b/gi)) {
-    const normalized = match[0]
-      .toUpperCase()
-      .replace(/\./g, "")
-      .replace(/[O]/g, "0")
-      .replace(/[ILJY]/g, "1")
-      .replace(/[ST]/g, "5");
+    const normalized = normalizeUnitLikeToken(match[0]);
 
     if (/^[A-Z]\d{2}[A-Z]?$/.test(normalized)) {
       candidates.add(normalized);
@@ -888,10 +939,84 @@ function extractUnitCodeCandidates(text: string) {
   return Array.from(candidates);
 }
 
+function rawUnitLikeTokens(text: string) {
+  return Array.from(
+    new Set(
+      Array.from(text.matchAll(/\b[A-Z][A-Z0-9.]{2,4}\b/gi))
+        .map((match) => match[0].toUpperCase().replace(/\./g, ""))
+        .filter((token) => {
+          const normalized = normalizeUnitLikeToken(token);
+
+          return (
+            /^[A-Z]\d{2}[A-Z]?$/.test(normalized) &&
+            (/\d/.test(token) || token.length <= 3)
+          );
+        })
+    )
+  );
+}
+
+function normalizeUnitLikeToken(token: string) {
+  return token
+    .toUpperCase()
+    .replace(/\./g, "")
+    .replace(/[O]/g, "0")
+    .replace(/[ILJYT]/g, "1")
+    .replace(/[S]/g, "5");
+}
+
+function invoiceUnitReferences(invoice: RemittanceInvoiceRecord) {
+  return extractUnitCodeCandidates(`${invoice.displayId} ${invoice.projectTitle}`);
+}
+
+function unitTokenCorroboratesReference(rawToken: string, reference: string) {
+  const normalized = normalizeUnitLikeToken(rawToken);
+
+  if (normalized === reference) {
+    return true;
+  }
+
+  const compactRaw = rawToken.toUpperCase().replace(/\./g, "");
+  const compactReference = reference.toUpperCase();
+
+  if (compactRaw.length !== compactReference.length) {
+    return false;
+  }
+
+  return compactRaw.split("").every((char, index) => {
+    const expected = compactReference[index] ?? "";
+
+    if (char === expected) {
+      return true;
+    }
+
+    if (expected === "0") {
+      return /[OQD]/.test(char);
+    }
+
+    if (expected === "1") {
+      return /[ILJYT]/.test(char);
+    }
+
+    if (expected === "5") {
+      return /[S]/.test(char);
+    }
+
+    return false;
+  });
+}
+
 function invoiceUnitEvidence(invoice: RemittanceInvoiceRecord, unitCodes: string[]) {
   const invoiceText = `${invoice.displayId} ${invoice.projectTitle}`.toUpperCase();
+  const invoiceUnits = invoiceUnitReferences(invoice);
 
-  return unitCodes.find((unitCode) => invoiceText.includes(unitCode)) ?? "";
+  return (
+    unitCodes.find((unitCode) => invoiceText.includes(unitCode)) ??
+    invoiceUnits.find((unitCode) =>
+      unitCodes.some((rawToken) => unitTokenCorroboratesReference(rawToken, unitCode))
+    ) ??
+    ""
+  );
 }
 
 type EligibleRemittanceInvoiceRecord = {
@@ -904,6 +1029,7 @@ type RemittanceRowResolution = {
   rawInvoiceCandidates: string[];
   normalizedCandidates: string[];
   unitCandidates: string[];
+  normalizationOperations: string[];
   eligibleCandidates: EligibleRemittanceInvoiceRecord[];
   invoiceNumber: string;
   invoice: (RemittanceInvoiceRecord & { amountDue: number }) | null;
@@ -942,6 +1068,8 @@ function resolveRemittanceRowInvoice(
     ])
   );
   const unitCandidates = extractUnitCodeCandidates(line.text);
+  const rawUnits = rawUnitLikeTokens(line.text);
+  const unitEvidenceTokens = Array.from(new Set([...unitCandidates, ...rawUnits]));
   const exactCandidates = normalizedCandidates
     .map((invoiceNumber) => {
       const invoice = invoicesByNumber.get(invoiceNumber) ?? null;
@@ -968,11 +1096,15 @@ function resolveRemittanceRowInvoice(
       line,
       rawInvoiceCandidates,
       normalizedCandidates,
-      unitCandidates,
+      unitCandidates: unitEvidenceTokens,
+      normalizationOperations: [
+        "invoice glyph confusions O/Q/E->0, S->5, Z->2, I/L/|->1",
+        "unit glyph confusions O->0, I/L/J/Y/T->1, S->5",
+      ],
       eligibleCandidates,
       invoiceNumber: "",
       invoice: null,
-      unitEvidence: unitCandidates.join(", "),
+      unitEvidence: unitEvidenceTokens.join(", "),
       amountEvidence,
       reason: unitCandidates.length > 0
         ? "unit evidence without invoice candidate"
@@ -982,13 +1114,17 @@ function resolveRemittanceRowInvoice(
 
   if (eligibleCandidates.length === 1) {
     const [candidate] = eligibleCandidates;
-    const unitEvidence = invoiceUnitEvidence(candidate.invoice, unitCandidates);
+    const unitEvidence = invoiceUnitEvidence(candidate.invoice, unitEvidenceTokens);
 
     return {
       line,
       rawInvoiceCandidates,
       normalizedCandidates,
-      unitCandidates,
+      unitCandidates: unitEvidenceTokens,
+      normalizationOperations: [
+        "invoice glyph confusions O/Q/E->0, S->5, Z->2, I/L/|->1",
+        "unit glyph confusions O->0, I/L/J/Y/T->1, S->5",
+      ],
       eligibleCandidates,
       invoiceNumber: candidate.invoiceNumber,
       invoice: candidate.invoice,
@@ -1001,18 +1137,22 @@ function resolveRemittanceRowInvoice(
   }
 
   const unitCorroboratedCandidates = eligibleCandidates.filter(({ invoice }) =>
-    invoiceUnitEvidence(invoice, unitCandidates)
+    invoiceUnitEvidence(invoice, unitEvidenceTokens)
   );
 
   if (unitCorroboratedCandidates.length === 1) {
     const [candidate] = unitCorroboratedCandidates;
-    const unitEvidence = invoiceUnitEvidence(candidate.invoice, unitCandidates);
+    const unitEvidence = invoiceUnitEvidence(candidate.invoice, unitEvidenceTokens);
 
     return {
       line,
       rawInvoiceCandidates,
       normalizedCandidates,
-      unitCandidates,
+      unitCandidates: unitEvidenceTokens,
+      normalizationOperations: [
+        "invoice glyph confusions O/Q/E->0, S->5, Z->2, I/L/|->1",
+        "unit glyph confusions O->0, I/L/J/Y/T->1, S->5",
+      ],
       eligibleCandidates,
       invoiceNumber: candidate.invoiceNumber,
       invoice: candidate.invoice,
@@ -1026,11 +1166,15 @@ function resolveRemittanceRowInvoice(
     line,
     rawInvoiceCandidates,
     normalizedCandidates,
-    unitCandidates,
+    unitCandidates: unitEvidenceTokens,
+    normalizationOperations: [
+      "invoice glyph confusions O/Q/E->0, S->5, Z->2, I/L/|->1",
+      "unit glyph confusions O->0, I/L/J/Y/T->1, S->5",
+    ],
     eligibleCandidates,
     invoiceNumber: "",
     invoice: null,
-    unitEvidence: unitCandidates.join(", "),
+    unitEvidence: unitEvidenceTokens.join(", "),
     amountEvidence,
     reason:
       eligibleCandidates.length > 1
@@ -1256,6 +1400,8 @@ export function findRemittanceMatches(
             (candidate) => candidate.invoiceNumber
           ),
           documentTotalReconciliationRequired: totalAmount > 0,
+          unitCandidates: resolution.unitCandidates,
+          normalizationOperations: resolution.normalizationOperations,
         };
       }),
     ...referencedInvoiceNumbers
@@ -1297,6 +1443,11 @@ export function findRemittanceMatches(
           amountEvidence: row?.amount ? `$${row.amount.toFixed(2)}` : "none",
           candidateInvoiceNumbers: eligible ? [invoiceNumber] : [],
           documentTotalReconciliationRequired: totalAmount > 0,
+          unitCandidates: row ? extractUnitCodeCandidates(row.text) : [],
+          normalizationOperations: [
+            "invoice glyph confusions O/Q/E->0, S->5, Z->2, I/L/|->1",
+            "unit glyph confusions O->0, I/L/J/Y/T->1, S->5",
+          ],
         };
       }),
   ];

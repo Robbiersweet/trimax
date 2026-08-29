@@ -2210,6 +2210,25 @@ export default function BatchInvoicePayments({
       .filter((invoice): invoice is ReviewMatchedInvoice => Boolean(invoice));
   }
 
+  function uniqueReviewMatchesById(matches: ReviewMatchedInvoice[]) {
+    const seenIds = new Set<string>();
+    const duplicateIds: string[] = [];
+    const uniqueMatches = matches.filter((invoice) => {
+      if (seenIds.has(invoice.id)) {
+        duplicateIds.push(invoice.id);
+        return false;
+      }
+
+      seenIds.add(invoice.id);
+      return true;
+    });
+
+    return {
+      matches: uniqueMatches,
+      duplicateIds: Array.from(new Set(duplicateIds)),
+    };
+  }
+
   function reconcileReviewMatches(
     matches: ReviewMatchedInvoice[],
     extractedTotal: number
@@ -2321,10 +2340,12 @@ export default function BatchInvoicePayments({
           : null;
       })
       .filter((invoice): invoice is ReviewMatchedInvoice => Boolean(invoice));
-    const rawReviewMatches =
+    const rawReviewMatchesBeforeDedupe =
       rawReviewMatchesFromParser.length > 0
         ? rawReviewMatchesFromParser
         : matchInvoicesFromExtraction(data, stubText);
+    const dedupedReview = uniqueReviewMatchesById(rawReviewMatchesBeforeDedupe);
+    const rawReviewMatches = dedupedReview.matches;
     const reconciledReview = reconcileReviewMatches(
       rawReviewMatches,
       extractedTotal
@@ -2362,7 +2383,16 @@ export default function BatchInvoicePayments({
       setCapturedCheckReference(extractedCheckNumber);
     }
     setCheckPayor((current) => extractedPayor || current);
-    setPaymentReviewNotice(reconciledReview.notice);
+    setPaymentReviewNotice(
+      [
+        dedupedReview.duplicateIds.length > 0
+          ? `Duplicate OCR invoice matches removed: ${dedupedReview.duplicateIds.join(", ")}.`
+          : "",
+        reconciledReview.notice,
+      ]
+        .filter(Boolean)
+        .join(" ")
+    );
 
     if (extractedDate) {
       setCheckDate(extractedDate);
@@ -2377,7 +2407,7 @@ export default function BatchInvoicePayments({
         : "Remittance stub review"
     );
 
-    return { match, reviewMatches, reconciledReview };
+    return { match, reviewMatches, reconciledReview, duplicateIds: dedupedReview.duplicateIds };
   }
 
   function loadCheckDetailsFromExtraction(data: CheckStubOcrResponse) {
@@ -2724,7 +2754,7 @@ export default function BatchInvoicePayments({
     if (match.matchTrace?.length) {
       match.matchTrace.forEach((trace) => {
         lines.push(
-          `Invoice trace ${trace.normalizedInvoiceIdentifier}: raw=${trace.ocrInvoiceIdentifier} candidates=${trace.candidateInvoiceNumbers?.join(", ") || "none"} unit=${trace.unitEvidence || "none"} amountEvidence=${trace.amountEvidence || "none"} totalProof=${trace.documentTotalReconciliationRequired ? "required" : "unavailable"} rowAmount=${formatMoney(trace.ocrRowAmount)} lookup=${trace.lookupKey} found=${trace.found ? "yes" : "no"} status=${trace.status ?? "unknown"} due=${formatMoney(trace.amountDue)} role=${trace.invoiceRole} eligible=${trace.eligible ? "yes" : "no"} accepted=${trace.accepted ? "yes" : "no"} matched=${formatMoney(trace.matchedAmount)} resolution=${trace.resolutionReason || "none"} reason=${trace.rejectionReason || "accepted"} row="${trace.ocrRow}".`
+          `Invoice trace ${trace.normalizedInvoiceIdentifier}: raw=${trace.ocrInvoiceIdentifier} candidates=${trace.candidateInvoiceNumbers?.join(", ") || "none"} unitTokens=${trace.unitCandidates?.join(", ") || "none"} unit=${trace.unitEvidence || "none"} amountEvidence=${trace.amountEvidence || "none"} totalProof=${trace.documentTotalReconciliationRequired ? "required" : "unavailable"} normalization=${trace.normalizationOperations?.join("; ") || "standard"} rowAmount=${formatMoney(trace.ocrRowAmount)} lookup=${trace.lookupKey} found=${trace.found ? "yes" : "no"} status=${trace.status ?? "unknown"} due=${formatMoney(trace.amountDue)} role=${trace.invoiceRole} eligible=${trace.eligible ? "yes" : "no"} accepted=${trace.accepted ? "yes" : "no"} matched=${formatMoney(trace.matchedAmount)} resolution=${trace.resolutionReason || "none"} reason=${trace.rejectionReason || "accepted"} row="${trace.ocrRow}".`
         );
       });
     }
@@ -2783,9 +2813,18 @@ export default function BatchInvoicePayments({
   }
 
   function buildOcrDiagnosticReport() {
-    const matchedTotal = reviewMatchedInvoices.reduce(
+    const uniqueReviewMatchedInvoices = uniqueReviewMatchesById(
+      reviewMatchedInvoices
+    );
+    const matchedTotal = uniqueReviewMatchedInvoices.matches.reduce(
       (total, invoice) => total + (invoice.remittanceAmount ?? invoice.amountDue),
       0
+    );
+    const uniqueResolvedInvoiceIds = uniqueReviewMatchedInvoices.matches.map(
+      (invoice) => invoice.id
+    );
+    const duplicateSelectedInvoiceIds = selectedIds.filter(
+      (invoiceId, index) => selectedIds.indexOf(invoiceId) !== index
     );
     const selectedInvoiceSummary =
       selectedInvoices.length > 0
@@ -2875,9 +2914,30 @@ export default function BatchInvoicePayments({
       "Invoice Matching",
       `selectedInvoices:\n${selectedInvoiceSummary}`,
       `reviewMatchedInvoices:\n${reviewInvoiceSummary}`,
+      `Unique resolved invoice IDs: ${
+        uniqueResolvedInvoiceIds.length > 0 ? uniqueResolvedInvoiceIds.join(", ") : "none"
+      }`,
+      `Duplicate resolved invoice IDs removed: ${
+        uniqueReviewMatchedInvoices.duplicateIds.length > 0 ||
+        duplicateSelectedInvoiceIds.length > 0
+          ? Array.from(
+              new Set([
+                ...uniqueReviewMatchedInvoices.duplicateIds,
+                ...duplicateSelectedInvoiceIds,
+              ])
+            ).join(", ")
+          : "none"
+      }`,
+      `Unique resolved invoice count: ${uniqueResolvedInvoiceIds.length}`,
+      `Selected invoice count: ${selectedInvoices.length}`,
+      `Review matched invoice count: ${uniqueReviewMatchedInvoices.matches.length}`,
       "",
       "Reconciliation",
       `matchedTotal: ${formatMoney(matchedTotal)}`,
+      `Explicit document total: ${
+        extractedPaymentAmount !== null ? formatMoney(extractedPaymentAmount) : "none"
+      }`,
+      `Unique matched invoice total: ${formatMoney(matchedTotal)}`,
       `selectedTotal: ${formatMoney(selectedTotal)}`,
       `enteredCheckAmount: ${
         enteredCheckAmount === null ? "none" : formatMoney(enteredCheckAmount)
