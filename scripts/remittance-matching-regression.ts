@@ -728,6 +728,30 @@ assert.deepEqual(
 );
 assert.equal(parsedFiveInvoiceGeometryRows.totalAmount, 5555);
 
+const visibleDocumentTotalWithPartialConfirmedRows = [
+  "DATE: 08/15/2026 $5,495.00",
+  "Property Account Invoice - Date Description Amount",
+  "INV0513 U05 full interior paint 1,099.00",
+  "INV0514 H10 full interior paint 1,099.00",
+].join("\n");
+const parsedVisibleDocumentTotalWithPartialConfirmedRows = parseCheckStubText(
+  visibleDocumentTotalWithPartialConfirmedRows
+);
+
+assert.equal(
+  parsedVisibleDocumentTotalWithPartialConfirmedRows.totalAmount,
+  5495,
+  "A visible document total must not be replaced by a subtotal from only the currently confirmed OCR rows."
+);
+assert.equal(
+  parsedVisibleDocumentTotalWithPartialConfirmedRows.lines.reduce(
+    (total, line) => total + line.amount,
+    0
+  ),
+  2198,
+  "The confirmed row subtotal remains separate diagnostic evidence."
+);
+
 const fiveInvoiceOneIneligibleRecords = ["0508", "0509", "0510", "0511", "0512"].map(
   (suffix) => ({
     id: `inv-${suffix}`,
@@ -847,6 +871,52 @@ assert(
   "Each deterministic row must expose compact resolution diagnostics."
 );
 
+const rowWithEqualScoreAmounts = parseCheckStubText(
+  "INVE519 ALO full interior paint 2,095 1,099"
+).lines[0];
+
+assert.equal(
+  rowWithEqualScoreAmounts.amount,
+  1099,
+  "Equal-score amount candidates must not select the larger lower-confidence corruption by default."
+);
+
+const damagedFinalRowReferenceBMatch = findRemittanceMatches(
+  referenceBOpenInvoices,
+  [
+    "PAYOR: Reference Property",
+    "DATE: 08/15/2026 CHECK #: 2814 TOTAL: $5,495.00",
+    "INV0513 U05 full interior paint 1,099.00",
+    "INV0514 H10 full interior paint 1,099.00",
+    "INV0515 Q08 full interior paint 1,099.00",
+    "INV0518 U03 full interior paint 1,099.00",
+    "INVE519 ALO full interior paint 2,095 1,099",
+  ].join("\n"),
+  "Reference Property"
+);
+
+assert.equal(damagedFinalRowReferenceBMatch.confidence, "verified");
+assert.deepEqual(
+  damagedFinalRowReferenceBMatch.matches.map((invoice) => invoice.id),
+  [
+    "reference-b-0513",
+    "reference-b-0514",
+    "reference-b-0515",
+    "reference-b-0518",
+    "reference-b-0519",
+  ],
+  "A damaged invoice OCR token plus corroborating damaged unit OCR must resolve only against a unique eligible open invoice set."
+);
+assert(
+  damagedFinalRowReferenceBMatch.matchTrace.some(
+    (trace) =>
+      trace.normalizedInvoiceIdentifier === "INV-0519" &&
+      trace.ocrInvoiceIdentifier === "INVE519" &&
+      trace.unitEvidence === "A10"
+  ),
+  "The final row trace must expose why damaged invoice and unit OCR resolved to the eligible invoice."
+);
+
 const ambiguousInvoiceRecords = [
   ...referenceBOpenInvoices,
   {
@@ -922,6 +992,34 @@ assert(
   )
 );
 
+const ambiguousDamagedFinalRowMatch = findRemittanceMatches(
+  [
+    ...referenceBOpenInvoices,
+    {
+      id: "reference-b-5519",
+      displayId: "INV-5519",
+      customerName: "Reference Property",
+      projectTitle: "Reference Property - Unit A10 full interior paint",
+      invoiceAmount: 1099,
+      amountPaid: 0,
+      status: "sent",
+    },
+  ],
+  [
+    "PAYOR: Reference Property",
+    "DATE: 08/15/2026 CHECK #: 2815 TOTAL: $1,099.00",
+    "INVE519 ALO full interior paint 1,099.00",
+  ].join("\n"),
+  "Reference Property"
+);
+
+assert.equal(ambiguousDamagedFinalRowMatch.confidence, "review");
+assert.equal(
+  ambiguousDamagedFinalRowMatch.matches.length,
+  0,
+  "Damaged invoice/unit OCR must remain manual when more than one eligible invoice is structurally plausible."
+);
+
 const route = readFileSync(
   resolve(root, "src/app/api/payments/extract-check-stub/route.ts"),
   "utf8"
@@ -948,6 +1046,13 @@ assert(
     route.includes("normalizeRetryStrategy") &&
     route.includes("retryStrategy === \"alternate\""),
   "OCR route must preserve mobile image quality, use document regions, and return safe diagnostics."
+);
+assert(
+  route.includes("strongestExplicitDocumentTotal") &&
+    route.includes("explicitDocumentTotal") &&
+    route.includes("right.confidence - left.confidence") &&
+    route.includes("equal score but lower OCR confidence"),
+  "OCR route must preserve explicit document totals across candidate handoff and tie-break row amount candidates by OCR confidence."
 );
 assert(
   !route.includes("2721") && !route.includes("2198") && !route.includes("1099"),

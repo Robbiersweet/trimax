@@ -145,7 +145,7 @@ function selectLineItemAmount(text: string) {
 
   return candidates
     .slice()
-    .sort((a, b) => b.score - a.score || b.value - a.value || b.index - a.index)[0]
+    .sort((a, b) => b.score - a.score || b.index - a.index)[0]
     .value;
 }
 
@@ -495,19 +495,28 @@ export function extractTotalAmount(text: string) {
     return explicitTotal;
   }
 
+  const values = extractMoneyValues(text);
+
   const remittanceText = remittanceRegionText(text);
   const remittanceLines = parseRemittanceLines(remittanceText);
   const referencedLineTotal = remittanceLines
     .filter((line) => line.invoiceNumbers.length > 0)
     .reduce((total, line) => total + line.amount, 0);
+  const largestVisibleAmount = values.length > 0 ? Math.max(...values) : 0;
+
+  if (
+    remittanceLines.length > 1 &&
+    referencedLineTotal > 0 &&
+    largestVisibleAmount > referencedLineTotal
+  ) {
+    return largestVisibleAmount;
+  }
 
   if (remittanceLines.length > 1 && referencedLineTotal > 0) {
     return Number(referencedLineTotal.toFixed(2));
   }
 
-  const values = extractMoneyValues(text);
-
-  return values.length > 0 ? Math.max(...values) : 0;
+  return largestVisibleAmount;
 }
 
 export function extractLikelyPayor(text: string) {
@@ -863,11 +872,12 @@ function invoiceNumberCompatibleWithRawToken(
 function extractUnitCodeCandidates(text: string) {
   const candidates = new Set(extractUnitCodes(text));
 
-  for (const match of text.matchAll(/\b[A-Z][0-9OILST]{2}[A-Z]?\b/gi)) {
+  for (const match of text.matchAll(/\b[A-Z][A-Z0-9.]{2,4}\b/gi)) {
     const normalized = match[0]
       .toUpperCase()
+      .replace(/\./g, "")
       .replace(/[O]/g, "0")
-      .replace(/[IL]/g, "1")
+      .replace(/[ILJY]/g, "1")
       .replace(/[ST]/g, "5");
 
     if (/^[A-Z]\d{2}[A-Z]?$/.test(normalized)) {

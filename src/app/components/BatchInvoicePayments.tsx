@@ -264,6 +264,7 @@ type CheckStubOcrResponse = {
     selectedRotation?: number;
     selectedVariant?: string;
     selectedConfidence?: number;
+    explicitDocumentTotal?: number;
     selectedSummary?: string;
     regionSummaries?: string[];
     stageTimings?: Record<string, number>;
@@ -2699,6 +2700,9 @@ export default function BatchInvoicePayments({
     );
 
     const lines = [
+      `Explicit document total: ${match.totalAmount > 0 ? formatMoney(match.totalAmount) : "not found"}.`,
+      `Confirmed OCR row subtotal: ${formatMoney(match.lineTotal)}.`,
+      `Resolved invoice total: ${formatMoney(match.matchedTotal)}.`,
       `Matched invoices: ${
         reviewMatches.length > 0
           ? reviewMatches

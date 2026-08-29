@@ -5,6 +5,7 @@ import {
   extractInvoiceNumbers,
   hasExplicitRemittanceTotal,
   normalizeInvoiceNumber,
+  parseMoney,
   parseCheckStubText,
 } from "@/app/lib/remittanceMatching";
 
@@ -1196,6 +1197,31 @@ function buildGeometryAttempt(attempts: OcrAttempt[], baseText: string): OcrAtte
   };
 }
 
+function explicitDocumentTotalFromText(text: string) {
+  const match = text.match(
+    /\b(?:GRAND\s+TOTAL|CHECK\s*TOTAL|PAYMENT\s*TOTAL|PAYMENT\s*AMOUNT|AMOUNT\s*ENCLOSED|AMOUNT\s*PAID|CHECK\s*AMOUNT|TOTAL)\b\s*:?\s*[^\d$]{0,48}\$?\s*([\d,]+\.\d{2})/i
+  );
+
+  return match?.[1] ? parseMoney(match[1]) : 0;
+}
+
+function strongestExplicitDocumentTotal(attempts: OcrAttempt[]) {
+  return attempts.reduce(
+    (best, attempt) => {
+      const value = explicitDocumentTotalFromText(withoutMicrBandText(attempt.text));
+
+      if (value <= 0) {
+        return best;
+      }
+
+      const score = candidateStructureScore(attempt);
+
+      return score > best.score ? { value, score } : best;
+    },
+    { value: 0, score: Number.NEGATIVE_INFINITY }
+  ).value;
+}
+
 function classifyGeometryWord(word: OcrWord, documentWidth = 0) {
   const text = normalizeGeometryToken(word.text);
   const lower = text.toLowerCase();
@@ -1235,6 +1261,7 @@ function classifyGeometryWord(word: OcrWord, documentWidth = 0) {
 
 function rowAcceptance(row: GeometricRow) {
   const parsed = parseCheckStubText(row.text).lines[0] ?? null;
+  const selectedAmount = selectGeometryRowAmount(row)?.value ?? parsed?.amount ?? 0;
 
   if (!parsed) {
     return {
@@ -1251,11 +1278,11 @@ function rowAcceptance(row: GeometricRow) {
     `${parsed.text} ${parsed.serviceDescription}`
   );
 
-  if (parsed.amount <= 0) {
+  if (selectedAmount <= 0) {
     return {
       accepted: false,
       rejectionReason: "Amount not recognized on this row.",
-      amount: parsed.amount,
+      amount: selectedAmount,
       invoiceNumbers: parsed.invoiceNumbers,
       unitCodes: parsed.unitCodes,
     };
@@ -1263,9 +1290,9 @@ function rowAcceptance(row: GeometricRow) {
 
   if (!hasInvoiceOrUnit) {
     return {
-      accepted: false,
-      rejectionReason: "No invoice number or unit identifier recognized on this row.",
-      amount: parsed.amount,
+    accepted: false,
+    rejectionReason: "No invoice number or unit identifier recognized on this row.",
+      amount: selectedAmount,
       invoiceNumbers: parsed.invoiceNumbers,
       unitCodes: parsed.unitCodes,
     };
@@ -1273,9 +1300,9 @@ function rowAcceptance(row: GeometricRow) {
 
   if (!hasWorkContext) {
     return {
-      accepted: false,
-      rejectionReason: "Work description context was not recognized on this row.",
-      amount: parsed.amount,
+    accepted: false,
+    rejectionReason: "Work description context was not recognized on this row.",
+      amount: selectedAmount,
       invoiceNumbers: parsed.invoiceNumbers,
       unitCodes: parsed.unitCodes,
     };
@@ -1284,15 +1311,54 @@ function rowAcceptance(row: GeometricRow) {
   return {
     accepted: true,
     rejectionReason: "",
-    amount: parsed.amount,
+    amount: selectedAmount,
     invoiceNumbers: parsed.invoiceNumbers,
     unitCodes: parsed.unitCodes,
   };
 }
 
+function geometryAmountCandidateConfidence(row: GeometricRow, value: number) {
+  const matchingWords = row.words.filter((word) => {
+    const token = normalizeGeometryToken(word.text);
+    const tokenValue = extractMoneyCandidates(token)[0]?.value ?? 0;
+
+    return tokenValue > 0 && Math.abs(tokenValue - value) < 0.01;
+  });
+
+  if (matchingWords.length === 0) {
+    return 0;
+  }
+
+  return Math.round(
+    matchingWords.reduce((total, word) => total + word.confidence, 0) /
+      matchingWords.length
+  );
+}
+
+function selectGeometryRowAmount(row: GeometricRow) {
+  const candidates = extractMoneyCandidates(row.text);
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  return candidates
+    .map((candidate) => ({
+      ...candidate,
+      confidence: geometryAmountCandidateConfidence(row, candidate.value),
+    }))
+    .sort(
+      (left, right) =>
+        right.score - left.score ||
+        right.confidence - left.confidence ||
+        right.index - left.index
+    )[0];
+}
+
 function geometryAmountCandidates(row: GeometricRow) {
   const candidates = extractMoneyCandidates(row.text);
-  const selectedValue = rowAcceptance(row).amount;
+  const selectedCandidate = selectGeometryRowAmount(row);
+  const selectedValue = selectedCandidate?.value ?? rowAcceptance(row).amount;
 
   return candidates.map((candidate) => {
     const matchingWords = row.words.filter((word) => {
@@ -1325,8 +1391,12 @@ function geometryAmountCandidates(row: GeometricRow) {
       selected: Math.abs(candidate.value - selectedValue) < 0.01,
       reason:
         Math.abs(candidate.value - selectedValue) < 0.01
-          ? "selected as strongest complete row amount"
-          : "lower-scored or fragment candidate",
+          ? "selected by score, then OCR confidence, then row position"
+          : candidate.score === selectedCandidate?.score &&
+              confidence !== undefined &&
+              selectedCandidate.confidence > confidence
+            ? "equal score but lower OCR confidence"
+            : "lower-scored or fragment candidate",
       bbox:
         x0 !== undefined && x1 !== undefined
           ? {
@@ -1726,6 +1796,7 @@ async function recognizeBestText(
     }
 
     const selected = attempts[0] ?? null;
+    const explicitDocumentTotal = strongestExplicitDocumentTotal(attempts);
     const regionBestAttempts = regionSources
       .map((source) =>
         attempts
@@ -1968,6 +2039,7 @@ async function recognizeBestText(
         selectedRotation: selected?.rotation,
         selectedVariant: selected?.variant,
         selectedConfidence: selected?.confidence,
+        explicitDocumentTotal,
         stageTimings,
         selectedSummary: redactedTextSummary(selected?.text ?? ""),
         regionSummaries: regionBestAttempts.map((attempt) =>
@@ -2055,7 +2127,18 @@ export async function POST(request: Request) {
       });
     }
 
-    const extraction = parseCheckStubText(parsedText);
+    const parsedExtraction = parseCheckStubText(parsedText);
+    const explicitDocumentTotal =
+      typeof ocrResult.diagnostics.explicitDocumentTotal === "number"
+        ? ocrResult.diagnostics.explicitDocumentTotal
+        : 0;
+    const extraction =
+      explicitDocumentTotal > 0 &&
+      Math.abs(parsedExtraction.totalAmount - explicitDocumentTotal) >= 0.01
+        ? parseCheckStubText(
+            `TOTAL: $${explicitDocumentTotal.toFixed(2)}\n${parsedText}`
+          )
+        : parsedExtraction;
     const extractedInvoiceNumbers = extraction.lines.flatMap(
       (line) => line.invoiceNumbers
     );
