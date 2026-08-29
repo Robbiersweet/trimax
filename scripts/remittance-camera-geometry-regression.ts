@@ -207,7 +207,7 @@ assert(
 );
 
 assert(
-  paymentScreen.includes("remittance-diagnostics-v4-imagecapture") &&
+  paymentScreen.includes("remittance-diagnostics-v5-still-detector") &&
     paymentScreen.includes("window.matchMedia(\"(display-mode: standalone)\")") &&
     paymentScreen.includes("navigator.serviceWorker?.controller") &&
     paymentScreen.includes("standalone") &&
@@ -337,6 +337,7 @@ assert(
     paymentScreen.includes("Source image:") &&
     paymentScreen.includes("Crop box:") &&
     paymentScreen.includes("Normalized OCR image:") &&
+    paymentScreen.includes("Final production OCR crop dimensions:") &&
     paymentScreen.includes("Parsed invoice numbers:") &&
     paymentScreen.includes("Matched invoices:") &&
     paymentScreen.includes("setLastOcrDiagnosticLines") &&
@@ -362,28 +363,29 @@ assert(
     paymentScreen.includes("ImageCapture constructor available:") &&
     paymentScreen.includes("ImageCapture takePhoto available:") &&
     paymentScreen.includes("capture.takePhoto()") &&
-    paymentScreen.includes("ImageCapture fallback reason:") &&
+    paymentScreen.includes("Canvas fallback reason:") &&
     paymentScreen.includes("ImageCapture still returned: MIME") &&
     paymentScreen.includes("ImageCapture EXIF/orientation metadata:") &&
-    paymentScreen.includes("Capture mechanism: canvas-video-frame.") &&
-    paymentScreen.includes("Diagnostic comparison mode: ImageCapture still beside canvas-video-frame; parser/matching/payment input remains canvas-video-frame."),
-  "Camera diagnostics must detect ImageCapture/takePhoto support at runtime and preserve canvas-video-frame as the active production capture input."
+    paymentScreen.includes("Camera capture selected for production OCR: imagecapture-still.") &&
+    paymentScreen.includes("Camera capture selected for production OCR: canvas-video-frame.") &&
+    paymentScreen.includes("Diagnostic comparison mode: ImageCapture full still may become production OCR input only after still-pixel document detection passes."),
+  "Camera diagnostics must detect ImageCapture/takePhoto support at runtime and select one production capture input with a canvas fallback."
 );
 
 assert(
-  paymentScreen.includes("mapCameraGuideToStillSource") &&
-    paymentScreen.includes("stillWidth") &&
-    paymentScreen.includes("stillHeight") &&
-    paymentScreen.includes("cameraRect.viewportWidth / stillWidth") &&
-    paymentScreen.includes("cameraRect.viewportHeight / stillHeight") &&
-    paymentScreen.includes("ImageCapture still visible source region:") &&
-    paymentScreen.includes("ImageCapture still mapped source rectangle:") &&
-    paymentScreen.includes("ImageCapture still crop output:") &&
+  paymentScreen.includes("readJpegPixelDimensions") &&
+    paymentScreen.includes("ImageCapture still normalized dimensions:") &&
+    paymentScreen.includes("Still document detector result:") &&
+    paymentScreen.includes("Detected still crop bounds:") &&
+    paymentScreen.includes("Detected still crop dimensions:") &&
+    paymentScreen.includes("Detected still crop quality:") &&
     paymentScreen.includes("Capture quality comparison: video-frame canvas") &&
-    paymentScreen.includes("ImageCapture still crop will be sent through OCR for diagnostics only") &&
-    paymentScreen.includes("ImageCapture still OCR request prepared: yes.") &&
-    paymentScreen.includes("ImageCapture still OCR result is diagnostic-only; parser/matching/payment state used canvas-video-frame response."),
-  "ImageCapture still diagnostics must remap the guide against actual still-image dimensions and report side-by-side quality/OCR evidence without changing parser, matching, or payment behavior."
+    paymentScreen.includes("Direct preview-to-still mapping used for production OCR: no.") &&
+    paymentScreen.includes("detectDefaultCropBox(stillFile)") &&
+    paymentScreen.includes("productionFile = stillComparison.productionFile ?? file") &&
+    !paymentScreen.includes("mapCameraGuideToStillSource") &&
+    !paymentScreen.includes("comparisonImageDataUrl"),
+  "ImageCapture still diagnostics must normalize/decode the full still, detect the document from still pixels, and avoid direct preview-to-still mapping or dual OCR requests."
 );
 
 assert(

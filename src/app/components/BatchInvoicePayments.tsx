@@ -234,7 +234,9 @@ type CameraSourceRect = {
 type CameraStillComparisonResult = {
   diagnosticLines: string[];
   stageLines: string[];
-  stillCropFile: File | null;
+  productionFile: File | null;
+  productionCropBox: CropBox | null;
+  productionReason: string;
 };
 
 type CheckStubOcrResponse = {
@@ -435,7 +437,7 @@ type CompletedPaymentSummary = {
   invoiceCount: number;
 } | null;
 
-const trimaxBuildIdentifier = "remittance-diagnostics-v4-imagecapture";
+const trimaxBuildIdentifier = "remittance-diagnostics-v5-still-detector";
 
 const guidedCameraCropLabel = "guided-camera-crop";
 
@@ -781,6 +783,67 @@ async function detectExifPresence(blob: Blob) {
   } catch {
     return "unknown";
   }
+}
+
+async function readJpegPixelDimensions(blob: Blob) {
+  if (!/^image\/jpe?g$/i.test(blob.type || "")) {
+    return null;
+  }
+
+  try {
+    const bytes = new Uint8Array(await blob.slice(0, 262_144).arrayBuffer());
+
+    if (bytes[0] !== 0xff || bytes[1] !== 0xd8) {
+      return null;
+    }
+
+    let offset = 2;
+
+    while (offset + 9 < bytes.length) {
+      if (bytes[offset] !== 0xff) {
+        offset += 1;
+        continue;
+      }
+
+      const marker = bytes[offset + 1];
+      offset += 2;
+
+      while (marker === 0xff && offset < bytes.length) {
+        offset += 1;
+      }
+
+      if (marker === 0xd9 || marker === 0xda) {
+        break;
+      }
+
+      const length = ((bytes[offset] ?? 0) << 8) + (bytes[offset + 1] ?? 0);
+
+      if (length < 2 || offset + length > bytes.length) {
+        break;
+      }
+
+      const isStartOfFrame =
+        (marker >= 0xc0 && marker <= 0xc3) ||
+        (marker >= 0xc5 && marker <= 0xc7) ||
+        (marker >= 0xc9 && marker <= 0xcb) ||
+        (marker >= 0xcd && marker <= 0xcf);
+
+      if (isStartOfFrame && offset + 7 < bytes.length) {
+        const height = ((bytes[offset + 3] ?? 0) << 8) + (bytes[offset + 4] ?? 0);
+        const width = ((bytes[offset + 5] ?? 0) << 8) + (bytes[offset + 6] ?? 0);
+
+        if (width > 0 && height > 0) {
+          return { width, height };
+        }
+      }
+
+      offset += length;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
 }
 
 async function dataUrlToImageFile(dataUrl: string, fileName: string) {
@@ -1349,7 +1412,6 @@ export default function BatchInvoicePayments({
   const cameraReadyTrackSettingsRef = useRef("not-ready");
   const cameraSettledTrackSettingsRef = useRef("not-settled");
   const lastCapturePointerAtRef = useRef(0);
-  const lastCameraStillComparisonFileRef = useRef<File | null>(null);
   const cropDragRef = useRef<{
     target: CropDragTarget;
     startX: number;
@@ -2976,8 +3038,7 @@ export default function BatchInvoicePayments({
     documentType: RemittanceDocumentType = captureDocumentType,
     intent: CaptureIntent = captureIntent,
     retryStrategy: OcrRetryStrategy = "standard",
-    prepDiagnosticLines: string[] = lastOcrPrepDiagnosticLines,
-    comparisonImageDataUrl: string | null = null
+    prepDiagnosticLines: string[] = lastOcrPrepDiagnosticLines
   ) {
     if (imageDataUrl.length > 19_500_000) {
       setCheckOcrStatus("manual");
@@ -3008,55 +3069,6 @@ export default function BatchInvoicePayments({
         0,
         Math.round(performance.now() - requestStartedAt)
       );
-      let comparisonDiagnosticLines: string[] = [];
-
-      if (comparisonImageDataUrl && comparisonImageDataUrl.length > 19_500_000) {
-        comparisonDiagnosticLines = [
-          "ImageCapture still OCR request prepared: no.",
-          "ImageCapture still OCR fallback reason: normalized still crop exceeded current size limit.",
-          "ImageCapture still OCR result is diagnostic-only; parser/matching/payment state used canvas-video-frame response.",
-        ];
-      } else if (comparisonImageDataUrl) {
-        const comparisonStartedAt = performance.now();
-
-        try {
-          const comparisonResponse = await fetch("/api/payments/extract-check-stub", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              imageDataUrl: comparisonImageDataUrl,
-              documentType,
-              retryStrategy,
-            }),
-          });
-          const comparisonData = (await comparisonResponse
-            .json()
-            .catch(() => ({}))) as CheckStubOcrResponse;
-          const comparisonDuration = Math.max(
-            0,
-            Math.round(performance.now() - comparisonStartedAt)
-          );
-
-          comparisonDiagnosticLines = [
-            "ImageCapture still OCR request prepared: yes.",
-            `ImageCapture still OCR request completed: ${comparisonResponse.ok ? "yes" : "no"} (${comparisonResponse.status}).`,
-            `ImageCapture still OCR request duration: ${comparisonDuration}ms.`,
-            ...ocrDiagnosticLines(comparisonData).map(
-              (line) => `ImageCapture still ${line}`
-            ),
-            "ImageCapture still OCR result is diagnostic-only; parser/matching/payment state used canvas-video-frame response.",
-          ];
-        } catch (error) {
-          comparisonDiagnosticLines = [
-            "ImageCapture still OCR request prepared: yes.",
-            "ImageCapture still OCR request completed: no (client-error).",
-            `ImageCapture still OCR fallback reason: ${error instanceof Error ? error.message : "comparison request failed"}.`,
-            "ImageCapture still OCR result is diagnostic-only; parser/matching/payment state used canvas-video-frame response.",
-          ];
-        }
-      }
 
       const diagnosticLines = [
         ...prepDiagnosticLines,
@@ -3064,7 +3076,6 @@ export default function BatchInvoicePayments({
         `OCR request completed: ${response.ok ? "yes" : "no"} (${response.status}).`,
         `OCR request duration: ${requestDuration}ms.`,
         ...ocrDiagnosticLines(data),
-        ...comparisonDiagnosticLines,
       ];
 
       setLastOcrDiagnosticLines(diagnosticLines);
@@ -3161,9 +3172,7 @@ export default function BatchInvoicePayments({
     retryStrategy: OcrRetryStrategy = "standard",
     allowQualityOverride = false,
     sourceType: OcrSourceType = lastOcrSourceType,
-    sourceDiagnosticLines: string[] = lastCameraCaptureDiagnosticLines,
-    sourceComparisonFile: File | null =
-      sourceType === "camera" ? lastCameraStillComparisonFileRef.current : null
+    sourceDiagnosticLines: string[] = lastCameraCaptureDiagnosticLines
   ) {
     setIsPreparingCrop(true);
 
@@ -3191,6 +3200,7 @@ export default function BatchInvoicePayments({
         `Source image: ${naturalWidth} x ${naturalHeight}, ${file.size} bytes, ${file.name || "unnamed image"}, ${file.type || "unknown MIME type"}.`,
         `Crop box: left ${nextCropBox.left.toFixed(1)}%, top ${nextCropBox.top.toFixed(1)}%, right ${nextCropBox.right.toFixed(1)}%, bottom ${nextCropBox.bottom.toFixed(1)}%, rotation ${nextRotation}deg.`,
         `Crop dimensions: ${effectiveWidth} x ${effectiveHeight}.`,
+        `Final production OCR crop dimensions: ${effectiveWidth} x ${effectiveHeight}.`,
         `Quality gate: ${ocrPermitted || allowQualityOverride ? "passed" : "blocked"}; brightness ${quality.brightness.toFixed(1)}, contrast ${quality.contrast.toFixed(1)}, sharpness ${quality.blurScore.toFixed(1)}, area ${(cropBoxAreaRatio(nextCropBox) * 100).toFixed(1)}%.`,
         `Retry strategy: ${retryStrategy}; quality override: ${allowQualityOverride ? "yes" : "no"}.`,
       ];
@@ -3242,57 +3252,16 @@ export default function BatchInvoicePayments({
         nextCropBox,
         nextRotation
       );
-      let comparisonImageDataUrl: string | null = null;
-      let comparisonPrepFailure = "";
-
-      if (sourceType === "camera" && sourceComparisonFile) {
-        try {
-          comparisonImageDataUrl = await cropPhotoForOcr(
-            sourceComparisonFile,
-            nextCropBox,
-            nextRotation
-          );
-        } catch (error) {
-          comparisonPrepFailure =
-            error instanceof Error
-              ? error.message
-              : "ImageCapture still crop could not be normalized.";
-        }
-      }
       const preparedFile = await dataUrlToImageFile(
         imageDataUrl,
         `trimax-remittance-ocr-${Date.now()}.jpg`
       );
-      const preparedComparisonFile = comparisonImageDataUrl
-        ? await dataUrlToImageFile(
-            comparisonImageDataUrl,
-            `trimax-remittance-still-ocr-${Date.now()}.jpg`
-          )
-        : null;
       const preparedImage = await imageElementFromFile(preparedFile);
       const preparedWidth = preparedImage.naturalWidth || preparedImage.width;
       const preparedHeight = preparedImage.naturalHeight || preparedImage.height;
-      const preparedComparisonImage = preparedComparisonFile
-        ? await imageElementFromFile(preparedComparisonFile)
-        : null;
-      const preparedComparisonWidth = preparedComparisonImage
-        ? preparedComparisonImage.naturalWidth || preparedComparisonImage.width
-        : 0;
-      const preparedComparisonHeight = preparedComparisonImage
-        ? preparedComparisonImage.naturalHeight || preparedComparisonImage.height
-        : 0;
       const prepDiagnosticLines = [
         ...initialPrepDiagnosticLines,
         `Normalized OCR image: ${preparedWidth} x ${preparedHeight}, ${preparedFile.size} bytes.`,
-        ...(preparedComparisonFile
-          ? [
-              `ImageCapture still normalized OCR image: ${preparedComparisonWidth} x ${preparedComparisonHeight}, ${preparedComparisonFile.size} bytes, diagnostic-only.`,
-            ]
-          : comparisonPrepFailure
-            ? [
-                `ImageCapture still normalized OCR image: unavailable (${comparisonPrepFailure}), diagnostic-only.`,
-              ]
-          : []),
         "Saved preview and OCR input: same normalized crop.",
       ];
 
@@ -3325,8 +3294,7 @@ export default function BatchInvoicePayments({
         documentType,
         intent,
         retryStrategy,
-        prepDiagnosticLines,
-        comparisonImageDataUrl
+        prepDiagnosticLines
       );
     } catch (error) {
       setCheckOcrStatus("error");
@@ -3372,7 +3340,6 @@ export default function BatchInvoicePayments({
     setLastOcrRawText("");
     setLastOcrSourceType("unknown");
     setLastCameraCaptureDiagnosticLines([]);
-    lastCameraStillComparisonFileRef.current = null;
     setCaptureDocumentType("remittance_stub");
     setCaptureIntent("primary");
     setCameraGuideMode("horizontal");
@@ -3617,126 +3584,6 @@ export default function BatchInvoicePayments({
     };
   }, []);
 
-  function mapCameraGuideToStillSource(
-    cameraRect: CameraSourceRect,
-    stillWidth: number,
-    stillHeight: number
-  ): CameraSourceRect {
-    if (
-      cameraRect.viewportWidth <= 0 ||
-      cameraRect.viewportHeight <= 0 ||
-      stillWidth <= 0 ||
-      stillHeight <= 0
-    ) {
-      return {
-        ...cameraRect,
-        sourceX: 0,
-        sourceY: 0,
-        sourceWidth: stillWidth,
-        sourceHeight: stillHeight,
-        renderedVideoLeft: 0,
-        renderedVideoTop: 0,
-        renderedVideoWidth: stillWidth,
-        renderedVideoHeight: stillHeight,
-        visibleSourceX: 0,
-        visibleSourceY: 0,
-        visibleSourceWidth: stillWidth,
-        visibleSourceHeight: stillHeight,
-        scale: 1,
-      };
-    }
-
-    const scale = Math.max(
-      cameraRect.viewportWidth / stillWidth,
-      cameraRect.viewportHeight / stillHeight
-    );
-    const renderedWidth = stillWidth * scale;
-    const renderedHeight = stillHeight * scale;
-    const renderedLeft = (cameraRect.viewportWidth - renderedWidth) / 2;
-    const renderedTop = (cameraRect.viewportHeight - renderedHeight) / 2;
-    const visibleRawX = (0 - renderedLeft) / scale;
-    const visibleRawY = (0 - renderedTop) / scale;
-    const visibleRawRight = (cameraRect.viewportWidth - renderedLeft) / scale;
-    const visibleRawBottom = (cameraRect.viewportHeight - renderedTop) / scale;
-    const visibleSourceX = Math.max(
-      0,
-      Math.min(stillWidth - 1, Math.floor(visibleRawX))
-    );
-    const visibleSourceY = Math.max(
-      0,
-      Math.min(stillHeight - 1, Math.floor(visibleRawY))
-    );
-    const visibleSourceRight = Math.max(
-      visibleSourceX + 1,
-      Math.min(stillWidth, Math.ceil(visibleRawRight))
-    );
-    const visibleSourceBottom = Math.max(
-      visibleSourceY + 1,
-      Math.min(stillHeight, Math.ceil(visibleRawBottom))
-    );
-    const visibleSourceWidth = visibleSourceRight - visibleSourceX;
-    const visibleSourceHeight = visibleSourceBottom - visibleSourceY;
-    const guideRight = Math.max(
-      0,
-      Math.min(cameraRect.viewportWidth, cameraRect.guideLeft + cameraRect.guideWidth)
-    );
-    const guideBottom = Math.max(
-      0,
-      Math.min(cameraRect.viewportHeight, cameraRect.guideTop + cameraRect.guideHeight)
-    );
-    const clampedGuideLeft = Math.max(
-      0,
-      Math.min(cameraRect.viewportWidth - 1, cameraRect.guideLeft)
-    );
-    const clampedGuideTop = Math.max(
-      0,
-      Math.min(cameraRect.viewportHeight - 1, cameraRect.guideTop)
-    );
-    const rawX =
-      visibleSourceX +
-      (clampedGuideLeft / cameraRect.viewportWidth) * visibleSourceWidth;
-    const rawY =
-      visibleSourceY +
-      (clampedGuideTop / cameraRect.viewportHeight) * visibleSourceHeight;
-    const rawRight =
-      visibleSourceX + (guideRight / cameraRect.viewportWidth) * visibleSourceWidth;
-    const rawBottom =
-      visibleSourceY + (guideBottom / cameraRect.viewportHeight) * visibleSourceHeight;
-    const sourceX = Math.max(
-      visibleSourceX,
-      Math.min(visibleSourceRight - 1, Math.floor(rawX))
-    );
-    const sourceY = Math.max(
-      visibleSourceY,
-      Math.min(visibleSourceBottom - 1, Math.floor(rawY))
-    );
-    const sourceRight = Math.max(
-      sourceX + 1,
-      Math.min(visibleSourceRight, Math.ceil(rawRight))
-    );
-    const sourceBottom = Math.max(
-      sourceY + 1,
-      Math.min(visibleSourceBottom, Math.ceil(rawBottom))
-    );
-
-    return {
-      ...cameraRect,
-      sourceX,
-      sourceY,
-      sourceWidth: sourceRight - sourceX,
-      sourceHeight: sourceBottom - sourceY,
-      renderedVideoLeft: Math.round(renderedLeft),
-      renderedVideoTop: Math.round(renderedTop),
-      renderedVideoWidth: Math.round(renderedWidth),
-      renderedVideoHeight: Math.round(renderedHeight),
-      visibleSourceX,
-      visibleSourceY,
-      visibleSourceWidth,
-      visibleSourceHeight,
-      scale,
-    };
-  }
-
   const analyzeLiveCameraFrame = useCallback(() => {
     const video = cameraVideoRef.current;
 
@@ -3962,13 +3809,10 @@ export default function BatchInvoicePayments({
 
   async function buildImageCaptureStillComparison(
     track: MediaStreamTrack | null,
-    videoFile: File,
-    cameraRect: CameraSourceRect,
-    maxOutputEdge: number
+    videoFile: File
   ): Promise<CameraStillComparisonResult> {
     const diagnosticLines = [
-      "Capture mechanism: canvas-video-frame.",
-      "Diagnostic comparison mode: ImageCapture still beside canvas-video-frame; parser/matching/payment input remains canvas-video-frame.",
+      "Diagnostic comparison mode: ImageCapture full still may become production OCR input only after still-pixel document detection passes.",
     ];
     const stageLines: string[] = [];
     const ImageCaptureCtor = imageCaptureConstructor();
@@ -3980,14 +3824,28 @@ export default function BatchInvoicePayments({
 
     if (!track) {
       diagnosticLines.push("ImageCapture takePhoto available: no.");
-      diagnosticLines.push("ImageCapture fallback reason: no active camera video track.");
-      return { diagnosticLines, stageLines, stillCropFile: null };
+      diagnosticLines.push("Camera capture selected for production OCR: canvas-video-frame.");
+      diagnosticLines.push("Canvas fallback reason: no active camera video track.");
+      return {
+        diagnosticLines,
+        stageLines,
+        productionFile: null,
+        productionCropBox: null,
+        productionReason: "no active camera video track",
+      };
     }
 
     if (!ImageCaptureCtor) {
       diagnosticLines.push("ImageCapture takePhoto available: no.");
-      diagnosticLines.push("ImageCapture fallback reason: ImageCapture constructor unavailable at runtime.");
-      return { diagnosticLines, stageLines, stillCropFile: null };
+      diagnosticLines.push("Camera capture selected for production OCR: canvas-video-frame.");
+      diagnosticLines.push("Canvas fallback reason: ImageCapture constructor unavailable at runtime.");
+      return {
+        diagnosticLines,
+        stageLines,
+        productionFile: null,
+        productionCropBox: null,
+        productionReason: "ImageCapture constructor unavailable",
+      };
     }
 
     let capture: BrowserImageCapture;
@@ -3995,11 +3853,18 @@ export default function BatchInvoicePayments({
     try {
       capture = new ImageCaptureCtor(track);
     } catch (error) {
+      const reason = error instanceof Error ? error.message : "unknown error";
+
       diagnosticLines.push("ImageCapture takePhoto available: no.");
-      diagnosticLines.push(
-        `ImageCapture fallback reason: constructor failed (${error instanceof Error ? error.message : "unknown error"}).`
-      );
-      return { diagnosticLines, stageLines, stillCropFile: null };
+      diagnosticLines.push("Camera capture selected for production OCR: canvas-video-frame.");
+      diagnosticLines.push(`Canvas fallback reason: ImageCapture constructor failed (${reason}).`);
+      return {
+        diagnosticLines,
+        stageLines,
+        productionFile: null,
+        productionCropBox: null,
+        productionReason: `ImageCapture constructor failed (${reason})`,
+      };
     }
 
     const takePhotoAvailable = typeof capture.takePhoto === "function";
@@ -4008,8 +3873,15 @@ export default function BatchInvoicePayments({
     );
 
     if (!takePhotoAvailable || !capture.takePhoto) {
-      diagnosticLines.push("ImageCapture fallback reason: takePhoto unavailable on active camera track.");
-      return { diagnosticLines, stageLines, stillCropFile: null };
+      diagnosticLines.push("Camera capture selected for production OCR: canvas-video-frame.");
+      diagnosticLines.push("Canvas fallback reason: takePhoto unavailable on active camera track.");
+      return {
+        diagnosticLines,
+        stageLines,
+        productionFile: null,
+        productionCropBox: null,
+        productionReason: "takePhoto unavailable on active camera track",
+      };
     }
 
     try {
@@ -4019,96 +3891,100 @@ export default function BatchInvoicePayments({
         7000,
         "ImageCapture takePhoto timed out."
       );
+      const rawDimensions = await readJpegPixelDimensions(stillBlob);
+      const exifPresence = await detectExifPresence(stillBlob);
       const stillFile = new File(
         [stillBlob],
         `trimax-remittance-still-${Date.now()}.jpg`,
         { type: stillBlob.type || "image/jpeg" }
       );
       const stillImage = await imageElementFromFile(stillFile);
-      const stillWidth = stillImage.naturalWidth || stillImage.width;
-      const stillHeight = stillImage.naturalHeight || stillImage.height;
-      const exifPresence = await detectExifPresence(stillBlob);
-      const stillRect = mapCameraGuideToStillSource(
-        cameraRect,
-        stillWidth,
-        stillHeight
-      );
-      const outputScale = Math.min(
-        1,
-        maxOutputEdge / Math.max(stillRect.sourceWidth, stillRect.sourceHeight)
-      );
-      const outputWidth = Math.max(1, Math.round(stillRect.sourceWidth * outputScale));
-      const outputHeight = Math.max(1, Math.round(stillRect.sourceHeight * outputScale));
-      const stillCanvas = document.createElement("canvas");
-      const stillContext = stillCanvas.getContext("2d");
+      const normalizedWidth = stillImage.naturalWidth || stillImage.width;
+      const normalizedHeight = stillImage.naturalHeight || stillImage.height;
+      const stillSuggestion = await detectDefaultCropBox(stillFile);
+      const stillCropQuality = stillSuggestion.quality;
+      const stillCropPlausible =
+        stillSuggestion.confidence === "high" &&
+        stillSuggestion.qualityMessages.length === 0 &&
+        stillSuggestion.shouldAutoRead &&
+        stillCropQuality.ok &&
+        stillSuggestion.effectiveWidth > 0 &&
+        stillSuggestion.effectiveHeight > 0;
+      const videoQuality = await inspectImageQuality(videoFile, {
+        left: 0,
+        top: 0,
+        right: 100,
+        bottom: 100,
+      });
+      const rawDimensionText = rawDimensions
+        ? `${rawDimensions.width} x ${rawDimensions.height}`
+        : "unknown";
+      const stillCropBounds = stillSuggestion.cropBox;
 
-      if (!stillContext) {
-        throw new Error("ImageCapture still crop could not be prepared.");
+      diagnosticLines.push(
+        `ImageCapture still returned: MIME ${stillBlob.type || "unknown"}, raw dimensions ${rawDimensionText}, ${stillBlob.size} bytes.`
+      );
+      diagnosticLines.push(`ImageCapture EXIF/orientation metadata: ${exifPresence}.`);
+      diagnosticLines.push(
+        `ImageCapture still normalized dimensions: ${normalizedWidth} x ${normalizedHeight}.`
+      );
+      diagnosticLines.push(
+        `Still document detector result: confidence ${stillSuggestion.confidence}, auto-read ${stillSuggestion.shouldAutoRead ? "yes" : "no"}, area ${(stillSuggestion.documentAreaRatio * 100).toFixed(1)}%, quality ${stillSuggestion.qualityMessages.length === 0 ? "passed" : "blocked"}.`
+      );
+      diagnosticLines.push(
+        `Detected still crop bounds: left ${stillCropBounds.left.toFixed(1)}%, top ${stillCropBounds.top.toFixed(1)}%, right ${stillCropBounds.right.toFixed(1)}%, bottom ${stillCropBounds.bottom.toFixed(1)}%.`
+      );
+      diagnosticLines.push(
+        `Detected still crop dimensions: ${stillSuggestion.effectiveWidth} x ${stillSuggestion.effectiveHeight}.`
+      );
+      diagnosticLines.push(
+        `Detected still crop quality: ${formatQualityComparisonMetrics(stillCropQuality)}.`
+      );
+      diagnosticLines.push(
+        `Capture quality comparison: video-frame canvas ${formatQualityComparisonMetrics(videoQuality)}; ImageCapture still detected crop ${formatQualityComparisonMetrics(stillCropQuality)}.`
+      );
+
+      if (!stillCropPlausible) {
+        const reason =
+          stillSuggestion.qualityMessages[0] ??
+          `still detector confidence ${stillSuggestion.confidence}, auto-read ${stillSuggestion.shouldAutoRead ? "yes" : "no"}`;
+
+        diagnosticLines.push("Camera capture selected for production OCR: canvas-video-frame.");
+        diagnosticLines.push(`Canvas fallback reason: still document detection not usable (${reason}).`);
+        return {
+          diagnosticLines,
+          stageLines,
+          productionFile: null,
+          productionCropBox: null,
+          productionReason: `still document detection not usable (${reason})`,
+        };
       }
 
-      stillCanvas.width = outputWidth;
-      stillCanvas.height = outputHeight;
-      stillContext.fillStyle = "#ffffff";
-      stillContext.fillRect(0, 0, stillCanvas.width, stillCanvas.height);
-      stillContext.drawImage(
-        stillImage,
-        stillRect.sourceX,
-        stillRect.sourceY,
-        stillRect.sourceWidth,
-        stillRect.sourceHeight,
-        0,
-        0,
-        stillCanvas.width,
-        stillCanvas.height
-      );
-
-      const stillCropBlob = await canvasToJpegBlob(stillCanvas, 3500);
-      const stillCropFile = new File(
-        [stillCropBlob],
-        `trimax-remittance-still-crop-${Date.now()}.jpg`,
-        { type: "image/jpeg" }
-      );
-      const [videoQuality, stillQuality] = await Promise.all([
-        inspectImageQuality(videoFile, { left: 0, top: 0, right: 100, bottom: 100 }),
-        inspectImageQuality(stillCropFile, {
-          left: 0,
-          top: 0,
-          right: 100,
-          bottom: 100,
-        }),
-      ]);
-
-      diagnosticLines.push(
-        `ImageCapture still returned: MIME ${stillBlob.type || "unknown"}, dimensions ${stillWidth} x ${stillHeight}, ${stillBlob.size} bytes.`
-      );
-      diagnosticLines.push(
-        `ImageCapture EXIF/orientation metadata: ${exifPresence}.`
-      );
-      diagnosticLines.push(
-        `ImageCapture still visible source region: left ${stillRect.visibleSourceX}, top ${stillRect.visibleSourceY}, width ${stillRect.visibleSourceWidth}, height ${stillRect.visibleSourceHeight}.`
-      );
-      diagnosticLines.push(
-        `ImageCapture still mapped source rectangle: left ${stillRect.sourceX}, top ${stillRect.sourceY}, width ${stillRect.sourceWidth}, height ${stillRect.sourceHeight}.`
-      );
-      diagnosticLines.push(
-        `ImageCapture still crop output: ${outputWidth} x ${outputHeight}, ${stillCropBlob.size} bytes, scale ${outputScale.toFixed(3)}.`
-      );
-      diagnosticLines.push(
-        `Capture quality comparison: video-frame canvas ${formatQualityComparisonMetrics(videoQuality)}; ImageCapture still ${formatQualityComparisonMetrics(stillQuality)}.`
-      );
-      diagnosticLines.push(
-        "Diagnostic comparison OCR metrics: ImageCapture still crop will be sent through OCR for diagnostics only when this capture is read."
-      );
+      diagnosticLines.push("Camera capture selected for production OCR: imagecapture-still.");
+      diagnosticLines.push("Direct preview-to-still mapping used for production OCR: no.");
       stageLines.push(
-        `ImageCapture still crop: ${outputWidth}x${outputHeight}, ${stillCropBlob.size} bytes`
+        `ImageCapture still selected: ${normalizedWidth}x${normalizedHeight}, crop ${stillSuggestion.effectiveWidth}x${stillSuggestion.effectiveHeight}`
       );
 
-      return { diagnosticLines, stageLines, stillCropFile };
+      return {
+        diagnosticLines,
+        stageLines,
+        productionFile: stillFile,
+        productionCropBox: stillSuggestion.cropBox,
+        productionReason: "still document detection passed",
+      };
     } catch (error) {
-      diagnosticLines.push(
-        `ImageCapture fallback reason: ${error instanceof Error ? error.message : "still capture failed"}.`
-      );
-      return { diagnosticLines, stageLines, stillCropFile: null };
+      const reason = error instanceof Error ? error.message : "still capture failed";
+
+      diagnosticLines.push("Camera capture selected for production OCR: canvas-video-frame.");
+      diagnosticLines.push(`Canvas fallback reason: ${reason}.`);
+      return {
+        diagnosticLines,
+        stageLines,
+        productionFile: null,
+        productionCropBox: null,
+        productionReason: reason,
+      };
     }
   }
 
@@ -4168,7 +4044,6 @@ export default function BatchInvoicePayments({
       visibleSourceY,
       visibleSourceWidth,
       visibleSourceHeight,
-      scale: videoObjectFitScale,
     } =
       getVisibleCameraGuideSourceRect(video);
     const track = cameraStreamRef.current?.getVideoTracks()[0] ?? null;
@@ -4252,46 +4127,35 @@ export default function BatchInvoicePayments({
       );
       const stillComparison = await buildImageCaptureStillComparison(
         track,
-        file,
-        {
-          sourceX,
-          sourceY,
-          sourceWidth,
-          sourceHeight,
-          viewportWidth,
-          viewportHeight,
-          guideLeft,
-          guideTop,
-          guideWidth,
-          guideHeight,
-          renderedVideoLeft,
-          renderedVideoTop,
-          renderedVideoWidth,
-          renderedVideoHeight,
-          visibleSourceX,
-          visibleSourceY,
-          visibleSourceWidth,
-          visibleSourceHeight,
-          scale: videoObjectFitScale,
-        },
-        maxOutputEdge
+        file
       );
+      const productionFile = stillComparison.productionFile ?? file;
+      const productionMechanism = stillComparison.productionFile
+        ? "imagecapture-still"
+        : "canvas-video-frame";
+      const productionCrop = stillComparison.productionCropBox;
 
       setCameraStatusMessage("Checking image...");
       appendCameraStage(`Normalized JPG saved: ${canvas.width}x${canvas.height}, ${blob.size} bytes`);
       stillComparison.stageLines.forEach(appendCameraStage);
       stopCameraCapture();
       captureCheckImage(
-        file,
+        productionFile,
         "camera",
         captureDocumentType,
         captureIntent,
         [
           ...cameraCaptureDiagnosticLines,
           `Normalized JPG saved: ${canvas.width} x ${canvas.height}, ${blob.size} bytes.`,
+          `Capture mechanism used for production OCR: ${productionMechanism}.`,
+          `Production capture selection reason: ${stillComparison.productionReason}.`,
+          ...(productionCrop
+            ? [
+                `Production still detector crop: left ${productionCrop.left.toFixed(1)}%, top ${productionCrop.top.toFixed(1)}%, right ${productionCrop.right.toFixed(1)}%, bottom ${productionCrop.bottom.toFixed(1)}%.`,
+              ]
+            : []),
           ...stillComparison.diagnosticLines,
-        ],
-        stillComparison.stillCropFile
+        ]
       );
     } catch (error) {
       setCameraFailureStage("save-normalized-crop");
@@ -4471,8 +4335,7 @@ export default function BatchInvoicePayments({
     source: "camera" | "existing" = "existing",
     documentType: RemittanceDocumentType = captureDocumentType,
     intent: CaptureIntent = captureIntent,
-    sourceDiagnosticLines: string[] = [],
-    sourceComparisonFile: File | null = null
+    sourceDiagnosticLines: string[] = []
   ) {
     if (!file) {
       return;
@@ -4490,8 +4353,6 @@ export default function BatchInvoicePayments({
     setLastCameraCaptureDiagnosticLines(
       source === "camera" ? sourceDiagnosticLines : []
     );
-    lastCameraStillComparisonFileRef.current =
-      source === "camera" ? sourceComparisonFile : null;
     setPaymentEntryMode("photo");
     setCheckOcrStatus("idle");
     setCheckOcrMessage("Preparing remittance...");
@@ -4514,8 +4375,6 @@ export default function BatchInvoicePayments({
       setLastCameraCaptureDiagnosticLines(
         source === "camera" ? sourceDiagnosticLines : []
       );
-      lastCameraStillComparisonFileRef.current =
-        source === "camera" ? sourceComparisonFile : null;
     }
     setCompletedPaymentSummary(null);
     setCaptureDocumentType(documentType);
@@ -4583,8 +4442,7 @@ export default function BatchInvoicePayments({
           "standard",
           false,
           source,
-          sourceDiagnosticLines,
-          source === "camera" ? sourceComparisonFile : null
+          sourceDiagnosticLines
         );
       } else {
         setCheckOcrStatus("idle");
