@@ -124,6 +124,14 @@ type ImageQualityReport = {
   blurScore: number;
 };
 
+type BrowserImageCapture = {
+  takePhoto?: () => Promise<Blob>;
+};
+
+type BrowserImageCaptureConstructor = new (
+  track: MediaStreamTrack
+) => BrowserImageCapture;
+
 type CameraVisualViewport = {
   left: number;
   top: number;
@@ -221,6 +229,12 @@ type CameraSourceRect = {
   visibleSourceWidth: number;
   visibleSourceHeight: number;
   scale: number;
+};
+
+type CameraStillComparisonResult = {
+  diagnosticLines: string[];
+  stageLines: string[];
+  stillCropFile: File | null;
 };
 
 type CheckStubOcrResponse = {
@@ -421,7 +435,7 @@ type CompletedPaymentSummary = {
   invoiceCount: number;
 } | null;
 
-const trimaxBuildIdentifier = "remittance-diagnostics-v3";
+const trimaxBuildIdentifier = "remittance-diagnostics-v4-imagecapture";
 
 const guidedCameraCropLabel = "guided-camera-crop";
 
@@ -659,6 +673,114 @@ function canvasToJpegDataUrl(canvas: HTMLCanvasElement) {
       0.98
     );
   });
+}
+
+function canvasToJpegBlob(canvas: HTMLCanvasElement, timeoutMs = 3500) {
+  return new Promise<Blob>((resolve, reject) => {
+    let finished = false;
+    const timeout = window.setTimeout(() => {
+      if (finished) {
+        return;
+      }
+
+      finished = true;
+      reject(new Error("Camera capture timed out. Try Use Device Camera."));
+    }, timeoutMs);
+
+    canvas.toBlob(
+      (blob) => {
+        if (finished) {
+          return;
+        }
+
+        finished = true;
+        window.clearTimeout(timeout);
+
+        if (!blob) {
+          reject(new Error("Camera capture could not be saved."));
+          return;
+        }
+
+        resolve(blob);
+      },
+      "image/jpeg",
+      0.98
+    );
+  });
+}
+
+function promiseWithTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  timeoutMessage: string
+) {
+  return new Promise<T>((resolve, reject) => {
+    let finished = false;
+    const timeout = window.setTimeout(() => {
+      if (finished) {
+        return;
+      }
+
+      finished = true;
+      reject(new Error(timeoutMessage));
+    }, timeoutMs);
+
+    promise.then(
+      (value) => {
+        if (finished) {
+          return;
+        }
+
+        finished = true;
+        window.clearTimeout(timeout);
+        resolve(value);
+      },
+      (error) => {
+        if (finished) {
+          return;
+        }
+
+        finished = true;
+        window.clearTimeout(timeout);
+        reject(error);
+      }
+    );
+  });
+}
+
+function imageCaptureConstructor() {
+  const browserWindow = window as typeof window & {
+    ImageCapture?: BrowserImageCaptureConstructor;
+  };
+
+  return typeof browserWindow.ImageCapture === "function"
+    ? browserWindow.ImageCapture
+    : null;
+}
+
+function formatQualityComparisonMetrics(quality: ImageQualityReport) {
+  return `brightness ${quality.brightness.toFixed(1)}, contrast ${quality.contrast.toFixed(1)}, sharpness ${quality.blurScore.toFixed(1)}`;
+}
+
+async function detectExifPresence(blob: Blob) {
+  if (!/^image\/jpe?g$/i.test(blob.type || "")) {
+    return "not-detectable-non-jpeg";
+  }
+
+  try {
+    const bytes = new Uint8Array(await blob.slice(0, 65_536).arrayBuffer());
+    const signature = [69, 120, 105, 102, 0, 0];
+
+    for (let index = 0; index <= bytes.length - signature.length; index += 1) {
+      if (signature.every((value, offset) => bytes[index + offset] === value)) {
+        return "present";
+      }
+    }
+
+    return "absent";
+  } catch {
+    return "unknown";
+  }
 }
 
 async function dataUrlToImageFile(dataUrl: string, fileName: string) {
@@ -1227,6 +1349,7 @@ export default function BatchInvoicePayments({
   const cameraReadyTrackSettingsRef = useRef("not-ready");
   const cameraSettledTrackSettingsRef = useRef("not-settled");
   const lastCapturePointerAtRef = useRef(0);
+  const lastCameraStillComparisonFileRef = useRef<File | null>(null);
   const cropDragRef = useRef<{
     target: CropDragTarget;
     startX: number;
@@ -2853,7 +2976,8 @@ export default function BatchInvoicePayments({
     documentType: RemittanceDocumentType = captureDocumentType,
     intent: CaptureIntent = captureIntent,
     retryStrategy: OcrRetryStrategy = "standard",
-    prepDiagnosticLines: string[] = lastOcrPrepDiagnosticLines
+    prepDiagnosticLines: string[] = lastOcrPrepDiagnosticLines,
+    comparisonImageDataUrl: string | null = null
   ) {
     if (imageDataUrl.length > 19_500_000) {
       setCheckOcrStatus("manual");
@@ -2884,12 +3008,63 @@ export default function BatchInvoicePayments({
         0,
         Math.round(performance.now() - requestStartedAt)
       );
+      let comparisonDiagnosticLines: string[] = [];
+
+      if (comparisonImageDataUrl && comparisonImageDataUrl.length > 19_500_000) {
+        comparisonDiagnosticLines = [
+          "ImageCapture still OCR request prepared: no.",
+          "ImageCapture still OCR fallback reason: normalized still crop exceeded current size limit.",
+          "ImageCapture still OCR result is diagnostic-only; parser/matching/payment state used canvas-video-frame response.",
+        ];
+      } else if (comparisonImageDataUrl) {
+        const comparisonStartedAt = performance.now();
+
+        try {
+          const comparisonResponse = await fetch("/api/payments/extract-check-stub", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              imageDataUrl: comparisonImageDataUrl,
+              documentType,
+              retryStrategy,
+            }),
+          });
+          const comparisonData = (await comparisonResponse
+            .json()
+            .catch(() => ({}))) as CheckStubOcrResponse;
+          const comparisonDuration = Math.max(
+            0,
+            Math.round(performance.now() - comparisonStartedAt)
+          );
+
+          comparisonDiagnosticLines = [
+            "ImageCapture still OCR request prepared: yes.",
+            `ImageCapture still OCR request completed: ${comparisonResponse.ok ? "yes" : "no"} (${comparisonResponse.status}).`,
+            `ImageCapture still OCR request duration: ${comparisonDuration}ms.`,
+            ...ocrDiagnosticLines(comparisonData).map(
+              (line) => `ImageCapture still ${line}`
+            ),
+            "ImageCapture still OCR result is diagnostic-only; parser/matching/payment state used canvas-video-frame response.",
+          ];
+        } catch (error) {
+          comparisonDiagnosticLines = [
+            "ImageCapture still OCR request prepared: yes.",
+            "ImageCapture still OCR request completed: no (client-error).",
+            `ImageCapture still OCR fallback reason: ${error instanceof Error ? error.message : "comparison request failed"}.`,
+            "ImageCapture still OCR result is diagnostic-only; parser/matching/payment state used canvas-video-frame response.",
+          ];
+        }
+      }
+
       const diagnosticLines = [
         ...prepDiagnosticLines,
         `OCR request prepared: yes.`,
         `OCR request completed: ${response.ok ? "yes" : "no"} (${response.status}).`,
         `OCR request duration: ${requestDuration}ms.`,
         ...ocrDiagnosticLines(data),
+        ...comparisonDiagnosticLines,
       ];
 
       setLastOcrDiagnosticLines(diagnosticLines);
@@ -2986,7 +3161,9 @@ export default function BatchInvoicePayments({
     retryStrategy: OcrRetryStrategy = "standard",
     allowQualityOverride = false,
     sourceType: OcrSourceType = lastOcrSourceType,
-    sourceDiagnosticLines: string[] = lastCameraCaptureDiagnosticLines
+    sourceDiagnosticLines: string[] = lastCameraCaptureDiagnosticLines,
+    sourceComparisonFile: File | null =
+      sourceType === "camera" ? lastCameraStillComparisonFileRef.current : null
   ) {
     setIsPreparingCrop(true);
 
@@ -3065,16 +3242,57 @@ export default function BatchInvoicePayments({
         nextCropBox,
         nextRotation
       );
+      let comparisonImageDataUrl: string | null = null;
+      let comparisonPrepFailure = "";
+
+      if (sourceType === "camera" && sourceComparisonFile) {
+        try {
+          comparisonImageDataUrl = await cropPhotoForOcr(
+            sourceComparisonFile,
+            nextCropBox,
+            nextRotation
+          );
+        } catch (error) {
+          comparisonPrepFailure =
+            error instanceof Error
+              ? error.message
+              : "ImageCapture still crop could not be normalized.";
+        }
+      }
       const preparedFile = await dataUrlToImageFile(
         imageDataUrl,
         `trimax-remittance-ocr-${Date.now()}.jpg`
       );
+      const preparedComparisonFile = comparisonImageDataUrl
+        ? await dataUrlToImageFile(
+            comparisonImageDataUrl,
+            `trimax-remittance-still-ocr-${Date.now()}.jpg`
+          )
+        : null;
       const preparedImage = await imageElementFromFile(preparedFile);
       const preparedWidth = preparedImage.naturalWidth || preparedImage.width;
       const preparedHeight = preparedImage.naturalHeight || preparedImage.height;
+      const preparedComparisonImage = preparedComparisonFile
+        ? await imageElementFromFile(preparedComparisonFile)
+        : null;
+      const preparedComparisonWidth = preparedComparisonImage
+        ? preparedComparisonImage.naturalWidth || preparedComparisonImage.width
+        : 0;
+      const preparedComparisonHeight = preparedComparisonImage
+        ? preparedComparisonImage.naturalHeight || preparedComparisonImage.height
+        : 0;
       const prepDiagnosticLines = [
         ...initialPrepDiagnosticLines,
         `Normalized OCR image: ${preparedWidth} x ${preparedHeight}, ${preparedFile.size} bytes.`,
+        ...(preparedComparisonFile
+          ? [
+              `ImageCapture still normalized OCR image: ${preparedComparisonWidth} x ${preparedComparisonHeight}, ${preparedComparisonFile.size} bytes, diagnostic-only.`,
+            ]
+          : comparisonPrepFailure
+            ? [
+                `ImageCapture still normalized OCR image: unavailable (${comparisonPrepFailure}), diagnostic-only.`,
+              ]
+          : []),
         "Saved preview and OCR input: same normalized crop.",
       ];
 
@@ -3107,7 +3325,8 @@ export default function BatchInvoicePayments({
         documentType,
         intent,
         retryStrategy,
-        prepDiagnosticLines
+        prepDiagnosticLines,
+        comparisonImageDataUrl
       );
     } catch (error) {
       setCheckOcrStatus("error");
@@ -3153,6 +3372,7 @@ export default function BatchInvoicePayments({
     setLastOcrRawText("");
     setLastOcrSourceType("unknown");
     setLastCameraCaptureDiagnosticLines([]);
+    lastCameraStillComparisonFileRef.current = null;
     setCaptureDocumentType("remittance_stub");
     setCaptureIntent("primary");
     setCameraGuideMode("horizontal");
@@ -3397,6 +3617,126 @@ export default function BatchInvoicePayments({
     };
   }, []);
 
+  function mapCameraGuideToStillSource(
+    cameraRect: CameraSourceRect,
+    stillWidth: number,
+    stillHeight: number
+  ): CameraSourceRect {
+    if (
+      cameraRect.viewportWidth <= 0 ||
+      cameraRect.viewportHeight <= 0 ||
+      stillWidth <= 0 ||
+      stillHeight <= 0
+    ) {
+      return {
+        ...cameraRect,
+        sourceX: 0,
+        sourceY: 0,
+        sourceWidth: stillWidth,
+        sourceHeight: stillHeight,
+        renderedVideoLeft: 0,
+        renderedVideoTop: 0,
+        renderedVideoWidth: stillWidth,
+        renderedVideoHeight: stillHeight,
+        visibleSourceX: 0,
+        visibleSourceY: 0,
+        visibleSourceWidth: stillWidth,
+        visibleSourceHeight: stillHeight,
+        scale: 1,
+      };
+    }
+
+    const scale = Math.max(
+      cameraRect.viewportWidth / stillWidth,
+      cameraRect.viewportHeight / stillHeight
+    );
+    const renderedWidth = stillWidth * scale;
+    const renderedHeight = stillHeight * scale;
+    const renderedLeft = (cameraRect.viewportWidth - renderedWidth) / 2;
+    const renderedTop = (cameraRect.viewportHeight - renderedHeight) / 2;
+    const visibleRawX = (0 - renderedLeft) / scale;
+    const visibleRawY = (0 - renderedTop) / scale;
+    const visibleRawRight = (cameraRect.viewportWidth - renderedLeft) / scale;
+    const visibleRawBottom = (cameraRect.viewportHeight - renderedTop) / scale;
+    const visibleSourceX = Math.max(
+      0,
+      Math.min(stillWidth - 1, Math.floor(visibleRawX))
+    );
+    const visibleSourceY = Math.max(
+      0,
+      Math.min(stillHeight - 1, Math.floor(visibleRawY))
+    );
+    const visibleSourceRight = Math.max(
+      visibleSourceX + 1,
+      Math.min(stillWidth, Math.ceil(visibleRawRight))
+    );
+    const visibleSourceBottom = Math.max(
+      visibleSourceY + 1,
+      Math.min(stillHeight, Math.ceil(visibleRawBottom))
+    );
+    const visibleSourceWidth = visibleSourceRight - visibleSourceX;
+    const visibleSourceHeight = visibleSourceBottom - visibleSourceY;
+    const guideRight = Math.max(
+      0,
+      Math.min(cameraRect.viewportWidth, cameraRect.guideLeft + cameraRect.guideWidth)
+    );
+    const guideBottom = Math.max(
+      0,
+      Math.min(cameraRect.viewportHeight, cameraRect.guideTop + cameraRect.guideHeight)
+    );
+    const clampedGuideLeft = Math.max(
+      0,
+      Math.min(cameraRect.viewportWidth - 1, cameraRect.guideLeft)
+    );
+    const clampedGuideTop = Math.max(
+      0,
+      Math.min(cameraRect.viewportHeight - 1, cameraRect.guideTop)
+    );
+    const rawX =
+      visibleSourceX +
+      (clampedGuideLeft / cameraRect.viewportWidth) * visibleSourceWidth;
+    const rawY =
+      visibleSourceY +
+      (clampedGuideTop / cameraRect.viewportHeight) * visibleSourceHeight;
+    const rawRight =
+      visibleSourceX + (guideRight / cameraRect.viewportWidth) * visibleSourceWidth;
+    const rawBottom =
+      visibleSourceY + (guideBottom / cameraRect.viewportHeight) * visibleSourceHeight;
+    const sourceX = Math.max(
+      visibleSourceX,
+      Math.min(visibleSourceRight - 1, Math.floor(rawX))
+    );
+    const sourceY = Math.max(
+      visibleSourceY,
+      Math.min(visibleSourceBottom - 1, Math.floor(rawY))
+    );
+    const sourceRight = Math.max(
+      sourceX + 1,
+      Math.min(visibleSourceRight, Math.ceil(rawRight))
+    );
+    const sourceBottom = Math.max(
+      sourceY + 1,
+      Math.min(visibleSourceBottom, Math.ceil(rawBottom))
+    );
+
+    return {
+      ...cameraRect,
+      sourceX,
+      sourceY,
+      sourceWidth: sourceRight - sourceX,
+      sourceHeight: sourceBottom - sourceY,
+      renderedVideoLeft: Math.round(renderedLeft),
+      renderedVideoTop: Math.round(renderedTop),
+      renderedVideoWidth: Math.round(renderedWidth),
+      renderedVideoHeight: Math.round(renderedHeight),
+      visibleSourceX,
+      visibleSourceY,
+      visibleSourceWidth,
+      visibleSourceHeight,
+      scale,
+    };
+  }
+
   const analyzeLiveCameraFrame = useCallback(() => {
     const video = cameraVideoRef.current;
 
@@ -3620,6 +3960,158 @@ export default function BatchInvoicePayments({
     );
   }
 
+  async function buildImageCaptureStillComparison(
+    track: MediaStreamTrack | null,
+    videoFile: File,
+    cameraRect: CameraSourceRect,
+    maxOutputEdge: number
+  ): Promise<CameraStillComparisonResult> {
+    const diagnosticLines = [
+      "Capture mechanism: canvas-video-frame.",
+      "Diagnostic comparison mode: ImageCapture still beside canvas-video-frame; parser/matching/payment input remains canvas-video-frame.",
+    ];
+    const stageLines: string[] = [];
+    const ImageCaptureCtor = imageCaptureConstructor();
+    const constructorAvailable = Boolean(ImageCaptureCtor);
+
+    diagnosticLines.push(
+      `ImageCapture constructor available: ${constructorAvailable ? "yes" : "no"}.`
+    );
+
+    if (!track) {
+      diagnosticLines.push("ImageCapture takePhoto available: no.");
+      diagnosticLines.push("ImageCapture fallback reason: no active camera video track.");
+      return { diagnosticLines, stageLines, stillCropFile: null };
+    }
+
+    if (!ImageCaptureCtor) {
+      diagnosticLines.push("ImageCapture takePhoto available: no.");
+      diagnosticLines.push("ImageCapture fallback reason: ImageCapture constructor unavailable at runtime.");
+      return { diagnosticLines, stageLines, stillCropFile: null };
+    }
+
+    let capture: BrowserImageCapture;
+
+    try {
+      capture = new ImageCaptureCtor(track);
+    } catch (error) {
+      diagnosticLines.push("ImageCapture takePhoto available: no.");
+      diagnosticLines.push(
+        `ImageCapture fallback reason: constructor failed (${error instanceof Error ? error.message : "unknown error"}).`
+      );
+      return { diagnosticLines, stageLines, stillCropFile: null };
+    }
+
+    const takePhotoAvailable = typeof capture.takePhoto === "function";
+    diagnosticLines.push(
+      `ImageCapture takePhoto available: ${takePhotoAvailable ? "yes" : "no"}.`
+    );
+
+    if (!takePhotoAvailable || !capture.takePhoto) {
+      diagnosticLines.push("ImageCapture fallback reason: takePhoto unavailable on active camera track.");
+      return { diagnosticLines, stageLines, stillCropFile: null };
+    }
+
+    try {
+      stageLines.push("ImageCapture still requested");
+      const stillBlob = await promiseWithTimeout(
+        capture.takePhoto(),
+        7000,
+        "ImageCapture takePhoto timed out."
+      );
+      const stillFile = new File(
+        [stillBlob],
+        `trimax-remittance-still-${Date.now()}.jpg`,
+        { type: stillBlob.type || "image/jpeg" }
+      );
+      const stillImage = await imageElementFromFile(stillFile);
+      const stillWidth = stillImage.naturalWidth || stillImage.width;
+      const stillHeight = stillImage.naturalHeight || stillImage.height;
+      const exifPresence = await detectExifPresence(stillBlob);
+      const stillRect = mapCameraGuideToStillSource(
+        cameraRect,
+        stillWidth,
+        stillHeight
+      );
+      const outputScale = Math.min(
+        1,
+        maxOutputEdge / Math.max(stillRect.sourceWidth, stillRect.sourceHeight)
+      );
+      const outputWidth = Math.max(1, Math.round(stillRect.sourceWidth * outputScale));
+      const outputHeight = Math.max(1, Math.round(stillRect.sourceHeight * outputScale));
+      const stillCanvas = document.createElement("canvas");
+      const stillContext = stillCanvas.getContext("2d");
+
+      if (!stillContext) {
+        throw new Error("ImageCapture still crop could not be prepared.");
+      }
+
+      stillCanvas.width = outputWidth;
+      stillCanvas.height = outputHeight;
+      stillContext.fillStyle = "#ffffff";
+      stillContext.fillRect(0, 0, stillCanvas.width, stillCanvas.height);
+      stillContext.drawImage(
+        stillImage,
+        stillRect.sourceX,
+        stillRect.sourceY,
+        stillRect.sourceWidth,
+        stillRect.sourceHeight,
+        0,
+        0,
+        stillCanvas.width,
+        stillCanvas.height
+      );
+
+      const stillCropBlob = await canvasToJpegBlob(stillCanvas, 3500);
+      const stillCropFile = new File(
+        [stillCropBlob],
+        `trimax-remittance-still-crop-${Date.now()}.jpg`,
+        { type: "image/jpeg" }
+      );
+      const [videoQuality, stillQuality] = await Promise.all([
+        inspectImageQuality(videoFile, { left: 0, top: 0, right: 100, bottom: 100 }),
+        inspectImageQuality(stillCropFile, {
+          left: 0,
+          top: 0,
+          right: 100,
+          bottom: 100,
+        }),
+      ]);
+
+      diagnosticLines.push(
+        `ImageCapture still returned: MIME ${stillBlob.type || "unknown"}, dimensions ${stillWidth} x ${stillHeight}, ${stillBlob.size} bytes.`
+      );
+      diagnosticLines.push(
+        `ImageCapture EXIF/orientation metadata: ${exifPresence}.`
+      );
+      diagnosticLines.push(
+        `ImageCapture still visible source region: left ${stillRect.visibleSourceX}, top ${stillRect.visibleSourceY}, width ${stillRect.visibleSourceWidth}, height ${stillRect.visibleSourceHeight}.`
+      );
+      diagnosticLines.push(
+        `ImageCapture still mapped source rectangle: left ${stillRect.sourceX}, top ${stillRect.sourceY}, width ${stillRect.sourceWidth}, height ${stillRect.sourceHeight}.`
+      );
+      diagnosticLines.push(
+        `ImageCapture still crop output: ${outputWidth} x ${outputHeight}, ${stillCropBlob.size} bytes, scale ${outputScale.toFixed(3)}.`
+      );
+      diagnosticLines.push(
+        `Capture quality comparison: video-frame canvas ${formatQualityComparisonMetrics(videoQuality)}; ImageCapture still ${formatQualityComparisonMetrics(stillQuality)}.`
+      );
+      diagnosticLines.push(
+        "Diagnostic comparison OCR metrics: ImageCapture still crop will be sent through OCR for diagnostics only when this capture is read."
+      );
+      stageLines.push(
+        `ImageCapture still crop: ${outputWidth}x${outputHeight}, ${stillCropBlob.size} bytes`
+      );
+
+      return { diagnosticLines, stageLines, stillCropFile };
+    } catch (error) {
+      diagnosticLines.push(
+        `ImageCapture fallback reason: ${error instanceof Error ? error.message : "still capture failed"}.`
+      );
+      return { diagnosticLines, stageLines, stillCropFile: null };
+    }
+  }
+
   async function captureFromTrimaxCamera(
     event?: { preventDefault: () => void; stopPropagation: () => void }
   ) {
@@ -3676,6 +4168,7 @@ export default function BatchInvoicePayments({
       visibleSourceY,
       visibleSourceWidth,
       visibleSourceHeight,
+      scale: videoObjectFitScale,
     } =
       getVisibleCameraGuideSourceRect(video);
     const track = cameraStreamRef.current?.getVideoTracks()[0] ?? null;
@@ -3750,60 +4243,67 @@ export default function BatchInvoicePayments({
       `Crop created: ${canvas.width}x${canvas.height}, output scale ${outputScale.toFixed(3)}`
     );
     appendCameraStage("Image normalized");
-    let captureFinished = false;
-    const captureTimeout = window.setTimeout(() => {
-      if (captureFinished) {
-        return;
-      }
+    try {
+      const blob = await canvasToJpegBlob(canvas, 3500);
+      const file = new File(
+        [blob],
+        `trimax-remittance-${Date.now()}.jpg`,
+        { type: "image/jpeg" }
+      );
+      const stillComparison = await buildImageCaptureStillComparison(
+        track,
+        file,
+        {
+          sourceX,
+          sourceY,
+          sourceWidth,
+          sourceHeight,
+          viewportWidth,
+          viewportHeight,
+          guideLeft,
+          guideTop,
+          guideWidth,
+          guideHeight,
+          renderedVideoLeft,
+          renderedVideoTop,
+          renderedVideoWidth,
+          renderedVideoHeight,
+          visibleSourceX,
+          visibleSourceY,
+          visibleSourceWidth,
+          visibleSourceHeight,
+          scale: videoObjectFitScale,
+        },
+        maxOutputEdge
+      );
 
-      captureFinished = true;
-      setCameraFailureStage("capture-timeout");
-      setCameraStatusMessage("Camera capture timed out. Try Use Device Camera.");
+      setCameraStatusMessage("Checking image...");
+      appendCameraStage(`Normalized JPG saved: ${canvas.width}x${canvas.height}, ${blob.size} bytes`);
+      stillComparison.stageLines.forEach(appendCameraStage);
+      stopCameraCapture();
+      captureCheckImage(
+        file,
+        "camera",
+        captureDocumentType,
+        captureIntent,
+        [
+          ...cameraCaptureDiagnosticLines,
+          `Normalized JPG saved: ${canvas.width} x ${canvas.height}, ${blob.size} bytes.`,
+          ...stillComparison.diagnosticLines,
+        ],
+        stillComparison.stillCropFile
+      );
+    } catch (error) {
+      setCameraFailureStage("save-normalized-crop");
+      setCameraStatusMessage(
+        error instanceof Error ? error.message : "Camera capture could not be saved."
+      );
       setCheckOcrStatus("error");
-      setCheckOcrMessage("Camera capture timed out. Try Use Device Camera.");
+      setCheckOcrMessage(
+        error instanceof Error ? error.message : "Camera capture could not be saved."
+      );
       setIsCapturingFrame(false);
-    }, 3500);
-    canvas.toBlob(
-      (blob) => {
-        if (captureFinished) {
-          return;
-        }
-
-        captureFinished = true;
-        window.clearTimeout(captureTimeout);
-
-        if (!blob) {
-          setCameraFailureStage("save-normalized-crop");
-          setCameraStatusMessage("Camera capture could not be saved.");
-          setCheckOcrStatus("error");
-          setCheckOcrMessage("Camera capture could not be saved.");
-          setIsCapturingFrame(false);
-          return;
-        }
-
-        const file = new File(
-          [blob],
-          `trimax-remittance-${Date.now()}.jpg`,
-          { type: "image/jpeg" }
-        );
-
-        setCameraStatusMessage("Checking image...");
-        appendCameraStage(`Normalized JPG saved: ${canvas.width}x${canvas.height}, ${blob.size} bytes`);
-        stopCameraCapture();
-        captureCheckImage(
-          file,
-          "camera",
-          captureDocumentType,
-          captureIntent,
-          [
-            ...cameraCaptureDiagnosticLines,
-            `Normalized JPG saved: ${canvas.width} x ${canvas.height}, ${blob.size} bytes.`,
-          ]
-        );
-      },
-      "image/jpeg",
-      0.98
-    );
+    }
   }
 
   function handleCaptureButtonPointerDown(event: PointerEvent<HTMLButtonElement>) {
@@ -3971,7 +4471,8 @@ export default function BatchInvoicePayments({
     source: "camera" | "existing" = "existing",
     documentType: RemittanceDocumentType = captureDocumentType,
     intent: CaptureIntent = captureIntent,
-    sourceDiagnosticLines: string[] = []
+    sourceDiagnosticLines: string[] = [],
+    sourceComparisonFile: File | null = null
   ) {
     if (!file) {
       return;
@@ -3989,6 +4490,8 @@ export default function BatchInvoicePayments({
     setLastCameraCaptureDiagnosticLines(
       source === "camera" ? sourceDiagnosticLines : []
     );
+    lastCameraStillComparisonFileRef.current =
+      source === "camera" ? sourceComparisonFile : null;
     setPaymentEntryMode("photo");
     setCheckOcrStatus("idle");
     setCheckOcrMessage("Preparing remittance...");
@@ -4011,6 +4514,8 @@ export default function BatchInvoicePayments({
       setLastCameraCaptureDiagnosticLines(
         source === "camera" ? sourceDiagnosticLines : []
       );
+      lastCameraStillComparisonFileRef.current =
+        source === "camera" ? sourceComparisonFile : null;
     }
     setCompletedPaymentSummary(null);
     setCaptureDocumentType(documentType);
@@ -4078,7 +4583,8 @@ export default function BatchInvoicePayments({
           "standard",
           false,
           source,
-          sourceDiagnosticLines
+          sourceDiagnosticLines,
+          source === "camera" ? sourceComparisonFile : null
         );
       } else {
         setCheckOcrStatus("idle");

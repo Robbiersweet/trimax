@@ -207,7 +207,7 @@ assert(
 );
 
 assert(
-  paymentScreen.includes("remittance-diagnostics-v3") &&
+  paymentScreen.includes("remittance-diagnostics-v4-imagecapture") &&
     paymentScreen.includes("window.matchMedia(\"(display-mode: standalone)\")") &&
     paymentScreen.includes("navigator.serviceWorker?.controller") &&
     paymentScreen.includes("standalone") &&
@@ -354,6 +354,36 @@ assert(
     paymentScreen.includes("whiteBalanceMode") &&
     paymentScreen.includes("zoom"),
   "Camera diagnostics must expose real track settings/capabilities without inferring unsupported lens, focus, exposure, or zoom state."
+);
+
+assert(
+  paymentScreen.includes("type BrowserImageCaptureConstructor") &&
+    paymentScreen.includes("imageCaptureConstructor()") &&
+    paymentScreen.includes("ImageCapture constructor available:") &&
+    paymentScreen.includes("ImageCapture takePhoto available:") &&
+    paymentScreen.includes("capture.takePhoto()") &&
+    paymentScreen.includes("ImageCapture fallback reason:") &&
+    paymentScreen.includes("ImageCapture still returned: MIME") &&
+    paymentScreen.includes("ImageCapture EXIF/orientation metadata:") &&
+    paymentScreen.includes("Capture mechanism: canvas-video-frame.") &&
+    paymentScreen.includes("Diagnostic comparison mode: ImageCapture still beside canvas-video-frame; parser/matching/payment input remains canvas-video-frame."),
+  "Camera diagnostics must detect ImageCapture/takePhoto support at runtime and preserve canvas-video-frame as the active production capture input."
+);
+
+assert(
+  paymentScreen.includes("mapCameraGuideToStillSource") &&
+    paymentScreen.includes("stillWidth") &&
+    paymentScreen.includes("stillHeight") &&
+    paymentScreen.includes("cameraRect.viewportWidth / stillWidth") &&
+    paymentScreen.includes("cameraRect.viewportHeight / stillHeight") &&
+    paymentScreen.includes("ImageCapture still visible source region:") &&
+    paymentScreen.includes("ImageCapture still mapped source rectangle:") &&
+    paymentScreen.includes("ImageCapture still crop output:") &&
+    paymentScreen.includes("Capture quality comparison: video-frame canvas") &&
+    paymentScreen.includes("ImageCapture still crop will be sent through OCR for diagnostics only") &&
+    paymentScreen.includes("ImageCapture still OCR request prepared: yes.") &&
+    paymentScreen.includes("ImageCapture still OCR result is diagnostic-only; parser/matching/payment state used canvas-video-frame response."),
+  "ImageCapture still diagnostics must remap the guide against actual still-image dimensions and report side-by-side quality/OCR evidence without changing parser, matching, or payment behavior."
 );
 
 assert(
