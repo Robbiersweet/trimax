@@ -29,6 +29,11 @@ export type RemittanceInvoiceMatchTrace = {
   accepted: boolean;
   rejectionReason: string;
   matchedAmount: number;
+  resolutionReason?: string;
+  unitEvidence?: string;
+  amountEvidence?: string;
+  candidateInvoiceNumbers?: string[];
+  documentTotalReconciliationRequired?: boolean;
 };
 
 export type RemittanceLine = {
@@ -756,53 +761,272 @@ function remittanceInvoiceRejectionReason(
   return "";
 }
 
-function inferInvoiceNumberFromLineContext(
-  line: RemittanceLine,
-  invoiceNumberRecords: Array<{
-    invoiceNumber: string;
-    invoice: RemittanceInvoiceRecord & { amountDue: number };
-  }>,
-  payor: string
-) {
-  if (line.amount <= 0 || line.unitCodes.length === 0) {
-    return null;
+function rawInvoiceLikeTokens(text: string) {
+  const tokens = new Set<string>();
+
+  for (const match of text.matchAll(
+    /\b[Il1|]?\s*I?\s*NV(?:OICE|O|0)?\.?\s*[-#: ]?\s*[A-Z0-9|]{3,10}\b/gi
+  )) {
+    tokens.add(match[0].replace(/\s+/g, ""));
   }
 
-  const lineText = line.text.toLowerCase();
-  const candidates = invoiceNumberRecords.filter(({ invoice }) => {
-    if (
-      invoice.amountDue <= 0 ||
-      !isCollectibleRemittanceInvoiceStatus(invoice.status) ||
-      Math.abs(invoice.amountDue - line.amount) >= 0.01 ||
-      !customerMatchesPayor(invoice.customerName, payor)
-    ) {
+  return Array.from(tokens);
+}
+
+function invoiceCandidateDigitsFromRawToken(token: string) {
+  const compact = token.toUpperCase().replace(/[^A-Z0-9|]/g, "");
+  const afterPrefix = compact.replace(/^[I1L|]*N[VY]?(?:OICE|O|0)?/, "");
+  const source = afterPrefix || compact;
+  const strictDigits = source
+    .replace(/[OQ]/g, "0")
+    .replace(/[S]/g, "5")
+    .replace(/[Z]/g, "2")
+    .replace(/[IL|]/g, "1")
+    .replace(/[^0-9]/g, "");
+  const candidates = new Set<string>();
+
+  if (strictDigits) {
+    candidates.add(strictDigits);
+  }
+
+  if (strictDigits.length > 4) {
+    for (let index = 0; index < strictDigits.length; index += 1) {
+      candidates.add(strictDigits.slice(0, index) + strictDigits.slice(index + 1));
+    }
+  }
+
+  return Array.from(candidates)
+    .map((digits) => normalizeInvoiceNumber(digits))
+    .filter(Boolean);
+}
+
+function invoiceDigitKey(invoiceNumber: string) {
+  return invoiceNumber.replace(/\D/g, "").replace(/^0+/, "");
+}
+
+function invoiceNumberCompatibleWithRawToken(
+  invoiceNumber: string,
+  rawToken: string
+) {
+  const candidateNumbers = invoiceCandidateDigitsFromRawToken(rawToken);
+  const invoiceDigits = invoiceDigitKey(invoiceNumber);
+
+  if (candidateNumbers.includes(invoiceNumber)) {
+    return true;
+  }
+
+  return candidateNumbers.some((candidate) => {
+    const candidateDigits = invoiceDigitKey(candidate);
+
+    if (!candidateDigits || !invoiceDigits) {
       return false;
     }
 
-    const invoiceText = `${invoice.displayId} ${invoice.projectTitle}`.toLowerCase();
-    const hasUnit = line.unitCodes.some((unitCode) =>
-      invoiceText.includes(unitCode.toLowerCase())
-    );
-    const hasSpecificPaintContext =
-      /full/i.test(line.text) &&
-      /interior/i.test(line.text) &&
-      /paint/i.test(line.text);
-    const hasPaintContext =
-      !/paint/i.test(line.text) || /paint/i.test(invoice.projectTitle);
-    const hasInteriorContext =
-      !/interior/i.test(line.text) || /interior/i.test(invoice.projectTitle);
+    if (candidateDigits === invoiceDigits) {
+      return true;
+    }
 
-    return (
-      hasUnit &&
-      hasSpecificPaintContext &&
-      hasPaintContext &&
-      hasInteriorContext &&
-      (lineText.includes("north creek") ||
-        customerMatchesPayor(invoice.customerName, "North Creek Apartments"))
-    );
+    if (Math.abs(candidateDigits.length - invoiceDigits.length) > 1) {
+      return false;
+    }
+
+    let mismatches = 0;
+    let left = 0;
+    let right = 0;
+
+    while (left < candidateDigits.length && right < invoiceDigits.length) {
+      if (candidateDigits[left] === invoiceDigits[right]) {
+        left += 1;
+        right += 1;
+        continue;
+      }
+
+      mismatches += 1;
+
+      if (mismatches > 1) {
+        return false;
+      }
+
+      if (candidateDigits.length > invoiceDigits.length) {
+        left += 1;
+      } else if (candidateDigits.length < invoiceDigits.length) {
+        right += 1;
+      } else {
+        return false;
+      }
+    }
+
+    return mismatches + (candidateDigits.length - left) + (invoiceDigits.length - right) <= 1;
   });
+}
 
-  return candidates.length === 1 ? candidates[0] : null;
+function extractUnitCodeCandidates(text: string) {
+  const candidates = new Set(extractUnitCodes(text));
+
+  for (const match of text.matchAll(/\b[A-Z][0-9OILST]{2}[A-Z]?\b/gi)) {
+    const normalized = match[0]
+      .toUpperCase()
+      .replace(/[O]/g, "0")
+      .replace(/[IL]/g, "1")
+      .replace(/[ST]/g, "5");
+
+    if (/^[A-Z]\d{2}[A-Z]?$/.test(normalized)) {
+      candidates.add(normalized);
+    }
+  }
+
+  return Array.from(candidates);
+}
+
+function invoiceUnitEvidence(invoice: RemittanceInvoiceRecord, unitCodes: string[]) {
+  const invoiceText = `${invoice.displayId} ${invoice.projectTitle}`.toUpperCase();
+
+  return unitCodes.find((unitCode) => invoiceText.includes(unitCode)) ?? "";
+}
+
+type EligibleRemittanceInvoiceRecord = {
+  invoiceNumber: string;
+  invoice: RemittanceInvoiceRecord & { amountDue: number };
+};
+
+type RemittanceRowResolution = {
+  line: RemittanceLine;
+  rawInvoiceCandidates: string[];
+  normalizedCandidates: string[];
+  unitCandidates: string[];
+  eligibleCandidates: EligibleRemittanceInvoiceRecord[];
+  invoiceNumber: string;
+  invoice: (RemittanceInvoiceRecord & { amountDue: number }) | null;
+  unitEvidence: string;
+  amountEvidence: string;
+  reason: string;
+};
+
+function uniqueEligibleInvoiceRecords(records: EligibleRemittanceInvoiceRecord[]) {
+  const seenIds = new Set<string>();
+
+  return records.filter(({ invoice }) => {
+    if (seenIds.has(invoice.id)) {
+      return false;
+    }
+
+    seenIds.add(invoice.id);
+    return true;
+  });
+}
+
+function resolveRemittanceRowInvoice(
+  line: RemittanceLine,
+  eligibleInvoiceNumberRecords: EligibleRemittanceInvoiceRecord[],
+  invoicesByNumber: Map<string, RemittanceInvoiceRecord & { amountDue: number }>
+): RemittanceRowResolution {
+  const rawInvoiceCandidates = Array.from(
+    new Set([...rawInvoiceLikeTokens(line.text), ...line.invoiceNumbers])
+  );
+  const normalizedCandidates = Array.from(
+    new Set([
+      ...line.invoiceNumbers,
+      ...rawInvoiceCandidates.flatMap((token) =>
+        invoiceCandidateDigitsFromRawToken(token)
+      ),
+    ])
+  );
+  const unitCandidates = extractUnitCodeCandidates(line.text);
+  const exactCandidates = normalizedCandidates
+    .map((invoiceNumber) => {
+      const invoice = invoicesByNumber.get(invoiceNumber) ?? null;
+
+      return invoice ? { invoiceNumber, invoice } : null;
+    })
+    .filter((record): record is EligibleRemittanceInvoiceRecord =>
+      Boolean(record)
+    );
+  const fuzzyCandidates = rawInvoiceCandidates.flatMap((token) =>
+    eligibleInvoiceNumberRecords.filter(({ invoiceNumber }) =>
+      invoiceNumberCompatibleWithRawToken(invoiceNumber, token)
+    )
+  );
+  const eligibleCandidates = uniqueEligibleInvoiceRecords([
+    ...exactCandidates,
+    ...fuzzyCandidates,
+  ]);
+  const amountEvidence =
+    line.amount > 0 ? `$${line.amount.toFixed(2)}` : "none";
+
+  if (rawInvoiceCandidates.length === 0 && normalizedCandidates.length === 0) {
+    return {
+      line,
+      rawInvoiceCandidates,
+      normalizedCandidates,
+      unitCandidates,
+      eligibleCandidates,
+      invoiceNumber: "",
+      invoice: null,
+      unitEvidence: unitCandidates.join(", "),
+      amountEvidence,
+      reason: unitCandidates.length > 0
+        ? "unit evidence without invoice candidate"
+        : "no invoice candidate",
+    };
+  }
+
+  if (eligibleCandidates.length === 1) {
+    const [candidate] = eligibleCandidates;
+    const unitEvidence = invoiceUnitEvidence(candidate.invoice, unitCandidates);
+
+    return {
+      line,
+      rawInvoiceCandidates,
+      normalizedCandidates,
+      unitCandidates,
+      eligibleCandidates,
+      invoiceNumber: candidate.invoiceNumber,
+      invoice: candidate.invoice,
+      unitEvidence,
+      amountEvidence,
+      reason: unitEvidence
+        ? "unique eligible invoice candidate with unit corroboration"
+        : "unique eligible invoice candidate",
+    };
+  }
+
+  const unitCorroboratedCandidates = eligibleCandidates.filter(({ invoice }) =>
+    invoiceUnitEvidence(invoice, unitCandidates)
+  );
+
+  if (unitCorroboratedCandidates.length === 1) {
+    const [candidate] = unitCorroboratedCandidates;
+    const unitEvidence = invoiceUnitEvidence(candidate.invoice, unitCandidates);
+
+    return {
+      line,
+      rawInvoiceCandidates,
+      normalizedCandidates,
+      unitCandidates,
+      eligibleCandidates,
+      invoiceNumber: candidate.invoiceNumber,
+      invoice: candidate.invoice,
+      unitEvidence,
+      amountEvidence,
+      reason: "ambiguous invoice candidates resolved by unit corroboration",
+    };
+  }
+
+  return {
+    line,
+    rawInvoiceCandidates,
+    normalizedCandidates,
+    unitCandidates,
+    eligibleCandidates,
+    invoiceNumber: "",
+    invoice: null,
+    unitEvidence: unitCandidates.join(", "),
+    amountEvidence,
+    reason:
+      eligibleCandidates.length > 1
+        ? "ambiguous invoice candidates"
+        : "no eligible invoice candidate",
+  };
 }
 
 export function parseRemittanceLines(text: string): RemittanceLine[] {
@@ -935,77 +1159,142 @@ export function findRemittanceMatches(
     ])
   );
   const payor = payorOverride.trim() || extractLikelyPayor(stubText);
-  const inferredInvoiceNumbers = lineItems
-    .filter((line) =>
-      line.invoiceNumbers.every((invoiceNumber) => !invoicesByNumber.has(invoiceNumber))
-    )
-    .map((line) =>
-      inferInvoiceNumberFromLineContext(line, eligibleInvoiceNumberRecords, payor)
-    )
-    .filter(
-      (
-        record
-      ): record is {
-        invoiceNumber: string;
-        invoice: RemittanceInvoiceRecord & { amountDue: number };
-      } => Boolean(record)
-    )
-    .map((record) => record.invoiceNumber);
+  const rowResolutions = lineItems.map((line) =>
+    resolveRemittanceRowInvoice(line, eligibleInvoiceNumberRecords, invoicesByNumber)
+  );
+  const resolvedInvoiceNumbers = rowResolutions
+    .filter((resolution) => resolution.invoice)
+    .map((resolution) => resolution.invoiceNumber);
   const reconciledInvoiceNumbers = Array.from(
-    new Set([...referencedInvoiceNumbers, ...inferredInvoiceNumbers])
+    new Set([...referencedInvoiceNumbers, ...resolvedInvoiceNumbers])
   );
   const missingInvoiceNumbers = referencedInvoiceNumbers.filter(
     (invoiceNumber) => !invoicesByNumber.has(invoiceNumber)
   );
-  const matches = referencedInvoiceNumbers
-    .concat(inferredInvoiceNumbers)
-    .filter((invoiceNumber, index, allNumbers) =>
-      allNumbers.indexOf(invoiceNumber) === index
-    )
-    .map((invoiceNumber) => invoicesByNumber.get(invoiceNumber) ?? null)
-    .filter((invoice): invoice is RemittanceInvoiceRecord & { amountDue: number } =>
-      Boolean(invoice)
+  const acceptedResolutionRows = rowResolutions.filter(
+    (
+      resolution
+    ): resolution is RemittanceRowResolution & {
+      invoice: RemittanceInvoiceRecord & { amountDue: number };
+    } => Boolean(resolution.invoice)
+  );
+  const duplicateResolvedInvoiceIds = acceptedResolutionRows
+    .map((resolution) => resolution.invoice.id)
+    .filter(
+      (invoiceId, index, invoiceIds) => invoiceIds.indexOf(invoiceId) !== index
     );
+  const matches = acceptedResolutionRows
+    .filter(
+      (resolution, index, allResolutions) =>
+        allResolutions.findIndex(
+          (candidate) => candidate.invoice.id === resolution.invoice.id
+        ) === index
+    )
+    .map((resolution) => resolution.invoice);
   const duplicatedInvoiceNumbers = allReferencedInvoiceNumbers.filter(
     (invoiceNumber, index) =>
       allReferencedInvoiceNumbers.indexOf(invoiceNumber) !== index
   );
-  const matchTrace: RemittanceInvoiceMatchTrace[] = referencedInvoiceNumbers.map(
-    (invoiceNumber) => {
-      const invoice = allInvoicesByNumber.get(invoiceNumber) ?? null;
-      const eligibleInvoice = invoicesByNumber.get(invoiceNumber) ?? null;
-      const row = invoiceRowByNumber.get(invoiceNumber) ?? null;
-      const eligible = Boolean(eligibleInvoice);
+  const traceKeys = new Set<string>();
+  const matchTrace: RemittanceInvoiceMatchTrace[] = [
+    ...rowResolutions
+      .filter(
+        (resolution) =>
+          resolution.invoice ||
+          resolution.rawInvoiceCandidates.length > 0 ||
+          resolution.normalizedCandidates.length > 0
+      )
+      .map((resolution) => {
+        const invoiceNumber =
+          resolution.invoiceNumber ||
+          resolution.normalizedCandidates[0] ||
+          resolution.rawInvoiceCandidates[0] ||
+          "";
+        const invoice =
+          resolution.invoice ??
+          (invoiceNumber ? allInvoicesByNumber.get(invoiceNumber) ?? null : null);
+        const eligible = Boolean(resolution.invoice);
+        const traceKey = `${resolution.line.text}|${invoiceNumber}`;
 
-      return {
-        ocrInvoiceIdentifier: invoiceNumber,
-        normalizedInvoiceIdentifier: invoiceNumber,
-        ocrRow: row?.text ?? "",
-        ocrRowAmount: row?.amount ?? 0,
-        lookupKey: invoiceNumber,
-        found: Boolean(invoice),
-        invoiceId: invoice?.id ?? null,
-        displayId: invoice?.displayId ?? null,
-        status: invoice?.status ?? null,
-        invoiceAmount: invoice?.invoiceAmount ?? 0,
-        amountPaid: invoice?.amountPaid ?? 0,
-        amountDue: invoice?.amountDue ?? 0,
-        eligible,
-        invoiceRole: remittanceInvoiceRole(invoice),
-        accepted: eligible,
-        rejectionReason: eligible ? "" : remittanceInvoiceRejectionReason(invoice),
-        matchedAmount: eligibleInvoice?.amountDue ?? 0,
-      };
-    }
-  );
+        traceKeys.add(traceKey);
+
+        return {
+          ocrInvoiceIdentifier:
+            resolution.rawInvoiceCandidates[0] || invoiceNumber,
+          normalizedInvoiceIdentifier: invoiceNumber,
+          ocrRow: resolution.line.text,
+          ocrRowAmount: resolution.line.amount,
+          lookupKey: invoiceNumber,
+          found: Boolean(invoice),
+          invoiceId: invoice?.id ?? null,
+          displayId: invoice?.displayId ?? null,
+          status: invoice?.status ?? null,
+          invoiceAmount: invoice?.invoiceAmount ?? 0,
+          amountPaid: invoice?.amountPaid ?? 0,
+          amountDue: invoice?.amountDue ?? 0,
+          eligible,
+          invoiceRole: remittanceInvoiceRole(invoice),
+          accepted: eligible,
+          rejectionReason: eligible
+            ? ""
+            : remittanceInvoiceRejectionReason(invoice) || resolution.reason,
+          matchedAmount: resolution.invoice?.amountDue ?? 0,
+          resolutionReason: resolution.reason,
+          unitEvidence: resolution.unitEvidence,
+          amountEvidence: resolution.amountEvidence,
+          candidateInvoiceNumbers: resolution.eligibleCandidates.map(
+            (candidate) => candidate.invoiceNumber
+          ),
+          documentTotalReconciliationRequired: totalAmount > 0,
+        };
+      }),
+    ...referencedInvoiceNumbers
+      .filter((invoiceNumber) => {
+        const row = invoiceRowByNumber.get(invoiceNumber) ?? null;
+
+        return !traceKeys.has(`${row?.text ?? ""}|${invoiceNumber}`);
+      })
+      .map((invoiceNumber) => {
+        const invoice = allInvoicesByNumber.get(invoiceNumber) ?? null;
+        const eligibleInvoice = invoicesByNumber.get(invoiceNumber) ?? null;
+        const row = invoiceRowByNumber.get(invoiceNumber) ?? null;
+        const eligible = Boolean(eligibleInvoice);
+
+        return {
+          ocrInvoiceIdentifier: invoiceNumber,
+          normalizedInvoiceIdentifier: invoiceNumber,
+          ocrRow: row?.text ?? "",
+          ocrRowAmount: row?.amount ?? 0,
+          lookupKey: invoiceNumber,
+          found: Boolean(invoice),
+          invoiceId: invoice?.id ?? null,
+          displayId: invoice?.displayId ?? null,
+          status: invoice?.status ?? null,
+          invoiceAmount: invoice?.invoiceAmount ?? 0,
+          amountPaid: invoice?.amountPaid ?? 0,
+          amountDue: invoice?.amountDue ?? 0,
+          eligible,
+          invoiceRole: remittanceInvoiceRole(invoice),
+          accepted: eligible,
+          rejectionReason: eligible
+            ? ""
+            : remittanceInvoiceRejectionReason(invoice),
+          matchedAmount: eligibleInvoice?.amountDue ?? 0,
+          resolutionReason: eligible
+            ? "exact eligible invoice candidate"
+            : "exact invoice candidate is not collectible",
+          unitEvidence: row ? extractUnitCodeCandidates(row.text).join(", ") : "",
+          amountEvidence: row?.amount ? `$${row.amount.toFixed(2)}` : "none",
+          candidateInvoiceNumbers: eligible ? [invoiceNumber] : [],
+          documentTotalReconciliationRequired: totalAmount > 0,
+        };
+      }),
+  ];
   const matchedTotal = matches.reduce(
     (total, invoice) => total + invoice.amountDue,
     0
   );
   const lineTotal = lineItems.reduce((total, line) => total + line.amount, 0);
-  const referencedLineTotal = lineItems
-    .filter((line) => line.invoiceNumbers.length > 0)
-    .reduce((total, line) => total + line.amount, 0);
   const customerNames = Array.from(
     new Set(matches.map((invoice) => invoice.customerName))
   );
@@ -1025,6 +1314,9 @@ export function findRemittanceMatches(
     duplicatedInvoiceNumbers.length > 0
       ? `Duplicate invoice number on stub: ${Array.from(new Set(duplicatedInvoiceNumbers)).join(", ")}.`
       : "",
+    duplicateResolvedInvoiceIds.length > 0
+      ? `Duplicate invoice row resolves to the same Trimax invoice: ${Array.from(new Set(duplicateResolvedInvoiceIds)).join(", ")}.`
+      : "",
     duplicateTrimaxInvoiceNumbers.some((invoiceNumber) =>
       reconciledInvoiceNumbers.includes(invoiceNumber)
     )
@@ -1034,7 +1326,7 @@ export function findRemittanceMatches(
           )
           .join(", ")}.`
       : "",
-    referencedInvoiceNumbers.length > 0 && matches.length === 0
+    reconciledInvoiceNumbers.length > 0 && matches.length === 0
       ? "Referenced invoices are not collectible payment targets."
       : "",
     payor.trim().length === 0
@@ -1047,9 +1339,8 @@ export function findRemittanceMatches(
       ? "Referenced invoice customer does not match the payor read from the stub."
       : "",
     totalAmount > 0 &&
-    Math.abs(matchedTotal - totalAmount) >= 0.01 &&
-    Math.abs(referencedLineTotal - totalAmount) >= 0.01
-      ? "Referenced invoice balances and remittance line amounts do not reconcile to the check total."
+    Math.abs(matchedTotal - totalAmount) >= 0.01
+      ? "Referenced invoice balances do not reconcile to the check total."
       : "",
     totalAmount <= 0 ? "Check total could not be confidently read from the stub." : "",
   ].filter(Boolean);

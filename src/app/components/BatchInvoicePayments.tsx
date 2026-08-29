@@ -2720,7 +2720,7 @@ export default function BatchInvoicePayments({
     if (match.matchTrace?.length) {
       match.matchTrace.forEach((trace) => {
         lines.push(
-          `Invoice trace ${trace.normalizedInvoiceIdentifier}: rowAmount=${formatMoney(trace.ocrRowAmount)} lookup=${trace.lookupKey} found=${trace.found ? "yes" : "no"} status=${trace.status ?? "unknown"} due=${formatMoney(trace.amountDue)} role=${trace.invoiceRole} eligible=${trace.eligible ? "yes" : "no"} accepted=${trace.accepted ? "yes" : "no"} matched=${formatMoney(trace.matchedAmount)} reason=${trace.rejectionReason || "accepted"} row="${trace.ocrRow}".`
+          `Invoice trace ${trace.normalizedInvoiceIdentifier}: raw=${trace.ocrInvoiceIdentifier} candidates=${trace.candidateInvoiceNumbers?.join(", ") || "none"} unit=${trace.unitEvidence || "none"} amountEvidence=${trace.amountEvidence || "none"} totalProof=${trace.documentTotalReconciliationRequired ? "required" : "unavailable"} rowAmount=${formatMoney(trace.ocrRowAmount)} lookup=${trace.lookupKey} found=${trace.found ? "yes" : "no"} status=${trace.status ?? "unknown"} due=${formatMoney(trace.amountDue)} role=${trace.invoiceRole} eligible=${trace.eligible ? "yes" : "no"} accepted=${trace.accepted ? "yes" : "no"} matched=${formatMoney(trace.matchedAmount)} resolution=${trace.resolutionReason || "none"} reason=${trace.rejectionReason || "accepted"} row="${trace.ocrRow}".`
         );
       });
     }
@@ -3812,7 +3812,7 @@ export default function BatchInvoicePayments({
     videoFile: File
   ): Promise<CameraStillComparisonResult> {
     const diagnosticLines = [
-      "Diagnostic comparison mode: ImageCapture full still may become production OCR input only after still-pixel document detection passes.",
+      "Diagnostic comparison mode: ImageCapture full still is measured only; production OCR remains canvas-video-frame.",
     ];
     const stageLines: string[] = [];
     const ImageCaptureCtor = imageCaptureConstructor();
@@ -3960,18 +3960,18 @@ export default function BatchInvoicePayments({
         };
       }
 
-      diagnosticLines.push("Camera capture selected for production OCR: imagecapture-still.");
-      diagnosticLines.push("Direct preview-to-still mapping used for production OCR: no.");
+      diagnosticLines.push("Camera capture selected for production OCR: canvas-video-frame.");
+      diagnosticLines.push("ImageCapture still selected for production OCR: no.");
       stageLines.push(
-        `ImageCapture still selected: ${normalizedWidth}x${normalizedHeight}, crop ${stillSuggestion.effectiveWidth}x${stillSuggestion.effectiveHeight}`
+        `ImageCapture still measured: ${normalizedWidth}x${normalizedHeight}, crop ${stillSuggestion.effectiveWidth}x${stillSuggestion.effectiveHeight}`
       );
 
       return {
         diagnosticLines,
         stageLines,
-        productionFile: stillFile,
-        productionCropBox: stillSuggestion.cropBox,
-        productionReason: "still document detection passed",
+        productionFile: null,
+        productionCropBox: null,
+        productionReason: "ImageCapture diagnostic only",
       };
     } catch (error) {
       const reason = error instanceof Error ? error.message : "still capture failed";

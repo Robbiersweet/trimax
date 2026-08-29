@@ -329,7 +329,7 @@ assert.equal(
 );
 assert(
   partialMatchProduction2734.issues.includes(
-    "Referenced invoice balances and remittance line amounts do not reconcile to the check total."
+    "Referenced invoice balances do not reconcile to the check total."
   )
 );
 
@@ -344,11 +344,15 @@ const contextRecoveredMatch2734 = findRemittanceMatches(
   "North Creek Apartments"
 );
 
-assert.equal(contextRecoveredMatch2734.confidence, "verified");
+assert.equal(contextRecoveredMatch2734.confidence, "review");
 assert.deepEqual(contextRecoveredMatch2734.referencedInvoiceNumbers, [
   "INV-0503",
-  "INV-0502",
 ]);
+assert.equal(
+  contextRecoveredMatch2734.matches.length,
+  0,
+  "Unit and amount evidence must not independently authorize an invoice match."
+);
 
 const splitCheck2758 = [
   "CHECK DATE: 07/23/2026 CK#: 2758",
@@ -787,6 +791,137 @@ assert(
   "Paid or otherwise ineligible invoices must explain their exclusion instead of disappearing as missing."
 );
 
+const referenceBOpenInvoices = [
+  ["0513", "U05"],
+  ["0514", "H10"],
+  ["0515", "Q08"],
+  ["0518", "U03"],
+  ["0519", "A10"],
+].map(([suffix, unit]) => ({
+  id: `reference-b-${suffix}`,
+  displayId: `INV-${suffix}`,
+  customerName: "Reference Property",
+  projectTitle: `Reference Property - Unit ${unit} full interior paint`,
+  invoiceAmount: 1099,
+  amountPaid: 0,
+  status: "sent",
+}));
+const noisyReferenceBStub = [
+  "PAYOR: Reference Property",
+  "DATE: 08/15/2026 CHECK #: 2810 TOTAL: $5,495.00",
+  "Property Account Invoice - Date Description Amount",
+  "INV0513 U05 full interior paint",
+  "1NV0S14 H10 full interior paint 1,099.00",
+  "INV0S15 Q08 full interior paint 1,099.00",
+  "1NV0S18 U03 full interior paint 1,099.00",
+  "INVO519 A10 full interior paint 1,029.00",
+].join("\n");
+const noisyReferenceBMatch = findRemittanceMatches(
+  referenceBOpenInvoices,
+  noisyReferenceBStub,
+  "Reference Property"
+);
+
+assert.equal(noisyReferenceBMatch.confidence, "verified");
+assert.deepEqual(
+  noisyReferenceBMatch.matches.map((invoice) => invoice.id),
+  [
+    "reference-b-0513",
+    "reference-b-0514",
+    "reference-b-0515",
+    "reference-b-0518",
+    "reference-b-0519",
+  ],
+  "Noisy row OCR must resolve to the five unique open invoices when invoice candidates and units are deterministic."
+);
+assert.equal(noisyReferenceBMatch.matchedTotal, 5495);
+assert.equal(noisyReferenceBMatch.totalAmount, 5495);
+assert(
+  noisyReferenceBMatch.matchTrace.every(
+    (trace) =>
+      trace.candidateInvoiceNumbers &&
+      trace.candidateInvoiceNumbers.length > 0 &&
+      trace.resolutionReason &&
+      trace.documentTotalReconciliationRequired
+  ),
+  "Each deterministic row must expose compact resolution diagnostics."
+);
+
+const ambiguousInvoiceRecords = [
+  ...referenceBOpenInvoices,
+  {
+    id: "reference-b-5514",
+    displayId: "INV-5514",
+    customerName: "Reference Property",
+    projectTitle: "Reference Property - Unit H10 full interior paint",
+    invoiceAmount: 1099,
+    amountPaid: 0,
+    status: "sent",
+  },
+];
+const ambiguousReferenceBMatch = findRemittanceMatches(
+  ambiguousInvoiceRecords,
+  [
+    "PAYOR: Reference Property",
+    "DATE: 08/15/2026 CHECK #: 2811 TOTAL: $1,099.00",
+    "1NVSS14 H10 full interior paint 1,099.00",
+  ].join("\n"),
+  "Reference Property"
+);
+
+assert.equal(ambiguousReferenceBMatch.confidence, "review");
+assert.equal(
+  ambiguousReferenceBMatch.matches.length,
+  0,
+  "Ambiguous invoice candidates must require review even when amount and unit are present."
+);
+assert(
+  ambiguousReferenceBMatch.matchTrace.some(
+    (trace) => trace.resolutionReason === "ambiguous invoice candidates"
+  ),
+  "Ambiguous rows must report the ambiguity in the trace."
+);
+
+const unitOnlyReferenceBMatch = findRemittanceMatches(
+  referenceBOpenInvoices,
+  [
+    "PAYOR: Reference Property",
+    "DATE: 08/15/2026 CHECK #: 2812 TOTAL: $1,099.00",
+    "H10 full interior paint 1,099.00",
+  ].join("\n"),
+  "Reference Property"
+);
+
+assert.equal(unitOnlyReferenceBMatch.confidence, "review");
+assert.equal(
+  unitOnlyReferenceBMatch.matches.length,
+  0,
+  "Unit and amount evidence must never independently authorize a payment target."
+);
+
+const duplicateReferenceBMatch = findRemittanceMatches(
+  referenceBOpenInvoices,
+  [
+    "PAYOR: Reference Property",
+    "DATE: 08/15/2026 CHECK #: 2813 TOTAL: $2,198.00",
+    "INV0513 U05 full interior paint 1,099.00",
+    "1NV0513 U05 full interior paint 1,099.00",
+  ].join("\n"),
+  "Reference Property"
+);
+
+assert.equal(duplicateReferenceBMatch.confidence, "review");
+assert.equal(
+  duplicateReferenceBMatch.matches.length,
+  0,
+  "Duplicate OCR rows resolving to one Trimax invoice must not double-count the invoice."
+);
+assert(
+  duplicateReferenceBMatch.issues.some((issue) =>
+    issue.includes("Duplicate invoice row resolves to the same Trimax invoice")
+  )
+);
+
 const route = readFileSync(
   resolve(root, "src/app/api/payments/extract-check-stub/route.ts"),
   "utf8"
@@ -848,6 +983,13 @@ assert(
 assert(
   paymentScreen.includes("function loadExtractedRemittance"),
   "Payments screen must hand extracted remittance data into the review form."
+);
+assert(
+    paymentScreen.includes("candidateInvoiceNumbers") &&
+    paymentScreen.includes("resolutionReason") &&
+    paymentScreen.includes("amountEvidence") &&
+    paymentScreen.includes("totalProof="),
+  "Payments screen diagnostics must expose deterministic row-resolution evidence."
 );
 assert(
   paymentScreen.includes("parsedTotalFromResponse") &&

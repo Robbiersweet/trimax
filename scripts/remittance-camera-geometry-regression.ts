@@ -366,10 +366,11 @@ assert(
     paymentScreen.includes("Canvas fallback reason:") &&
     paymentScreen.includes("ImageCapture still returned: MIME") &&
     paymentScreen.includes("ImageCapture EXIF/orientation metadata:") &&
-    paymentScreen.includes("Camera capture selected for production OCR: imagecapture-still.") &&
+    !paymentScreen.includes("Camera capture selected for production OCR: imagecapture-still.") &&
     paymentScreen.includes("Camera capture selected for production OCR: canvas-video-frame.") &&
-    paymentScreen.includes("Diagnostic comparison mode: ImageCapture full still may become production OCR input only after still-pixel document detection passes."),
-  "Camera diagnostics must detect ImageCapture/takePhoto support at runtime and select one production capture input with a canvas fallback."
+    paymentScreen.includes("Diagnostic comparison mode: ImageCapture full still is measured only; production OCR remains canvas-video-frame.") &&
+    paymentScreen.includes("ImageCapture still selected for production OCR: no."),
+  "Camera diagnostics must detect ImageCapture/takePhoto support at runtime while production OCR remains canvas video-frame capture."
 );
 
 assert(
@@ -380,12 +381,12 @@ assert(
     paymentScreen.includes("Detected still crop dimensions:") &&
     paymentScreen.includes("Detected still crop quality:") &&
     paymentScreen.includes("Capture quality comparison: video-frame canvas") &&
-    paymentScreen.includes("Direct preview-to-still mapping used for production OCR: no.") &&
+    paymentScreen.includes("ImageCapture still selected for production OCR: no.") &&
     paymentScreen.includes("detectDefaultCropBox(stillFile)") &&
     paymentScreen.includes("productionFile = stillComparison.productionFile ?? file") &&
     !paymentScreen.includes("mapCameraGuideToStillSource") &&
     !paymentScreen.includes("comparisonImageDataUrl"),
-  "ImageCapture still diagnostics must normalize/decode the full still, detect the document from still pixels, and avoid direct preview-to-still mapping or dual OCR requests."
+  "ImageCapture still diagnostics must normalize/decode the full still, detect the document from still pixels, and avoid production still selection, direct preview-to-still mapping, or dual OCR requests."
 );
 
 assert(
