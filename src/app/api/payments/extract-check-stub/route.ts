@@ -3,10 +3,16 @@ import sharp from "sharp";
 import {
   extractMoneyCandidates,
   extractInvoiceNumbers,
+  extractRemittanceTotalEvidence,
+  extractUnitCodeCandidates,
   hasExplicitRemittanceTotal,
+  invoiceCandidateDigitsFromRawToken,
   normalizeInvoiceNumber,
   parseMoney,
   parseCheckStubText,
+  rawInvoiceLikeTokens,
+  rawUnitLikeTokens,
+  type StructuredRemittanceRowEvidence,
 } from "@/app/lib/remittanceMatching";
 
 export const runtime = "nodejs";
@@ -94,6 +100,12 @@ type GeometricRow = {
   score: number;
   tokens: string[];
   words: OcrWord[];
+};
+
+type GeometryRowSet = {
+  attempt: OcrAttempt;
+  rows: GeometricRow[];
+  score: number;
 };
 
 type InvoiceColumnDiagnosticAttempt = {
@@ -696,6 +708,42 @@ function candidateStructureScore(attempt: OcrAttempt) {
   );
 }
 
+function impliedRemittanceRowCount(text: string) {
+  const parsed = parseCheckStubText(withoutMicrBandText(text));
+  const rowAmounts = parsed.lines
+    .map((line) => line.amount)
+    .filter((amount) => amount > 0);
+
+  if (parsed.totalAmount <= 0 || rowAmounts.length === 0) {
+    return 0;
+  }
+
+  const amountCounts = rowAmounts.reduce((counts, amount) => {
+    const key = amount.toFixed(2);
+
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+    return counts;
+  }, new Map<string, number>());
+  const dominant = Array.from(amountCounts.entries())
+    .map(([amount, count]) => ({ amount: Number(amount), count }))
+    .sort(
+      (left, right) =>
+        right.count - left.count || right.amount - left.amount
+    )[0] ?? null;
+
+  if (!dominant || dominant.amount <= 0 || dominant.count < 2) {
+    return 0;
+  }
+
+  const impliedCount = Math.round(parsed.totalAmount / dominant.amount);
+
+  return impliedCount >= dominant.count &&
+    impliedCount <= 30 &&
+    Math.abs(impliedCount * dominant.amount - parsed.totalAmount) < 0.01
+    ? impliedCount
+    : 0;
+}
+
 function redactedTextSummary(text: string) {
   return text
     .replace(/\b\d{7,}\b/g, "[redacted-number]")
@@ -1152,25 +1200,74 @@ async function imageDetailMetrics(input: Buffer) {
   };
 }
 
-function buildGeometryAttempt(attempts: OcrAttempt[], baseText: string): OcrAttempt | null {
-  const bestAttemptByRegion = Array.from(
-    attempts
-      .filter((attempt) => attempt.rotation === 0 && attempt.words.length > 0)
-      .reduce((map, attempt) => {
-        const current = map.get(attempt.region);
-
-        if (!current || candidateStructureScore(attempt) > candidateStructureScore(current)) {
-          map.set(attempt.region, attempt);
-        }
-
-        return map;
-      }, new Map<string, OcrAttempt>())
-      .values()
+function geometryRowSetScore(
+  attempt: OcrAttempt,
+  rows: GeometricRow[],
+  expectedRowCount: number
+) {
+  const acceptedRows = rows.filter((row) => rowAcceptance(row).accepted);
+  const rowTotal = acceptedRows.reduce(
+    (total, row) => total + rowAcceptance(row).amount,
+    0
   );
-  const rowWords = bestAttemptByRegion
-    .filter((attempt) => /full-document|stub-(?:row|invoice|description|amount)/i.test(attempt.region))
-    .flatMap((attempt) => attempt.words);
-  const rows = reconstructRowsFromOcrGeometry(rowWords);
+  const parsed = parseCheckStubText(withoutMicrBandText(attempt.text));
+  const totalAmount = parsed.totalAmount;
+  const reconciles =
+    totalAmount > 0 && rowTotal > 0 && Math.abs(rowTotal - totalAmount) < 0.01;
+  const completeness =
+    expectedRowCount > 0
+      ? Math.min(acceptedRows.length / expectedRowCount, 1) * 260
+      : acceptedRows.length * 70;
+
+  return (
+    candidateStructureScore(attempt) +
+    rows.length * 30 +
+    acceptedRows.length * 85 +
+    completeness +
+    (expectedRowCount > 0 && acceptedRows.length >= expectedRowCount ? 160 : 0) +
+    (reconciles ? 220 : 0)
+  );
+}
+
+function buildGeometryRowSets(
+  attempts: OcrAttempt[],
+  expectedRowCount: number
+): GeometryRowSet[] {
+  return attempts
+    .filter(
+      (attempt) =>
+        attempt.rotation === 0 &&
+        attempt.words.length > 0 &&
+        /full-document|stub-(?:row|invoice|description|amount)/i.test(
+          attempt.region
+        )
+    )
+    .map((attempt) => {
+      const rows = reconstructRowsFromOcrGeometry(attempt.words);
+
+      return {
+        attempt,
+        rows,
+        score: geometryRowSetScore(attempt, rows, expectedRowCount),
+      };
+    })
+    .filter((set) => set.rows.length > 0)
+    .sort((left, right) => right.score - left.score);
+}
+
+function buildGeometryAttempt(
+  attempts: OcrAttempt[],
+  baseText: string,
+  expectedRowCount: number
+): OcrAttempt | null {
+  const bestRowSet = buildGeometryRowSets(attempts, expectedRowCount)[0] ?? null;
+
+  if (!bestRowSet) {
+    return null;
+  }
+
+  const rowWords = bestRowSet.attempt.words;
+  const rows = bestRowSet.rows;
 
   if (rows.length === 0) {
     return null;
@@ -1195,6 +1292,81 @@ function buildGeometryAttempt(attempts: OcrAttempt[], baseText: string): OcrAtte
     durationMs: 0,
     words: rowWords,
   };
+}
+
+function buildStructuredRowEvidence(rows: GeometricRow[]): StructuredRemittanceRowEvidence[] {
+  return rows
+    .map((row, index) => {
+      const acceptance = rowAcceptance(row);
+      const amountCandidates = geometryAmountCandidates(row)
+        .filter((candidate) => candidate.value > 0)
+        .map((candidate) => ({
+          raw: candidate.raw,
+          normalized: candidate.normalized,
+          value: candidate.value,
+          score: candidate.score,
+          confidence: candidate.confidence,
+          selected: candidate.selected,
+          bbox: candidate.bbox,
+        }));
+      const rawInvoiceTokens = Array.from(
+        new Set([
+          ...rawInvoiceLikeTokens(row.text),
+          ...row.tokens.filter((token) => /^INV/i.test(token)),
+        ])
+      );
+      const normalizedInvoiceCandidates = Array.from(
+        new Set([
+          ...acceptance.invoiceNumbers,
+          ...rawInvoiceTokens.flatMap((token) =>
+            invoiceCandidateDigitsFromRawToken(token)
+          ),
+        ])
+      );
+      const unitLikeTokens = Array.from(
+        new Set([
+          ...acceptance.unitCodes,
+          ...extractUnitCodeCandidates(row.text),
+          ...rawUnitLikeTokens(row.text),
+        ])
+      );
+      const dateTokens = Array.from(
+        new Set(
+          row.tokens.filter((token) =>
+            /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b|\b\d{4}-\d{1,2}-\d{1,2}\b/.test(
+              token
+            )
+          )
+        )
+      );
+      const firstWord = row.words[0];
+
+      return {
+        rowId: `ocr-row-${index + 1}`,
+        text: row.text,
+        source: {
+          region: firstWord?.region ?? "geometric-row-reconstruction",
+          variant: firstWord?.variant ?? "row-focused",
+          pageMode: firstWord?.pageMode ?? "sparse-text",
+          rotation: firstWord?.rotation ?? 0,
+        },
+        y: row.y,
+        height: row.height,
+        rawInvoiceLikeTokens: rawInvoiceTokens,
+        normalizedInvoiceCandidates,
+        unitLikeTokens,
+        amountCandidates,
+        dateTokens,
+        score: row.score,
+      };
+    })
+    .filter(
+      (row) =>
+        row.rawInvoiceLikeTokens.length > 0 ||
+        row.normalizedInvoiceCandidates.length > 0 ||
+        row.unitLikeTokens.length > 0 ||
+        row.amountCandidates.length > 0
+    );
 }
 
 function explicitDocumentTotalFromText(text: string) {
@@ -1571,11 +1743,16 @@ async function recognizeBestText(
     };
     const needsMoreOcr = () => {
       const parsed = bestParsedSoFar();
+      const bestText = attempts[0]?.text ?? "";
+      const impliedRowCount = impliedRemittanceRowCount(bestText);
+      const usefulRowCount =
+        parsed?.lines.filter(isStructurallyUsefulRow).length ?? 0;
 
       return (
         !parsed ||
         parsed.totalAmount <= 0 ||
-        parsed.lines.filter(isStructurallyUsefulRow).length < 2
+        usefulRowCount < 2 ||
+        (impliedRowCount > 0 && usefulRowCount < impliedRowCount)
       );
     };
 
@@ -1785,7 +1962,16 @@ async function recognizeBestText(
         candidateStructureScore(right) - candidateStructureScore(left)
     );
     const bestTextBeforeGeometry = attempts[0]?.text ?? "";
-    const geometricAttempt = buildGeometryAttempt(attempts, bestTextBeforeGeometry);
+    const expectedRowCount = Math.max(
+      impliedRemittanceRowCount(bestTextBeforeGeometry),
+      ...attempts.map((attempt) => impliedRemittanceRowCount(attempt.text))
+    );
+    const geometryRowSets = buildGeometryRowSets(attempts, expectedRowCount);
+    const geometricAttempt = buildGeometryAttempt(
+      attempts,
+      bestTextBeforeGeometry,
+      expectedRowCount
+    );
 
     if (geometricAttempt) {
       attempts.push(geometricAttempt);
@@ -1822,16 +2008,20 @@ async function recognizeBestText(
       summary: redactedTextSummary(attempt.text),
     }));
     const finalText = selected?.text ?? "";
-    const diagnosticWordSource = selected?.region === "geometric-row-reconstruction"
-      ? selected.words
-      : attempts
-          .filter((attempt) => attempt.rotation === 0 && attempt.words.length > 0)
-          .slice(0, 6)
-          .flatMap((attempt) => attempt.words);
-    const geometricRows = reconstructRowsFromOcrGeometry(diagnosticWordSource).slice(
-      0,
-      12
-    );
+    const bestGeometryRowSet =
+      selected?.region === "geometric-row-reconstruction"
+        ? {
+            attempt: selected,
+            rows: reconstructRowsFromOcrGeometry(selected.words),
+            score: candidateStructureScore(selected),
+          }
+        : geometryRowSets[0] ?? null;
+    const diagnosticWordSource =
+      bestGeometryRowSet?.attempt.words ??
+      selected?.words ??
+      [];
+    const geometricRows = (bestGeometryRowSet?.rows ?? []).slice(0, 12);
+    const structuredRowEvidence = buildStructuredRowEvidence(geometricRows);
     const geometricRowDetails = geometryRowDetails(
       geometricRows,
       sources.document.width ?? 0,
@@ -1846,6 +2036,11 @@ async function recognizeBestText(
         documentWidth <= 0 ||
         documentHeight <= 0
       ) {
+        return null;
+      }
+
+      if (Date.now() - startedAt > OCR_ROUTE_BUDGET_MS - 4_000) {
+        markStage("invoice-column-diagnostics-skipped:near-budget");
         return null;
       }
 
@@ -1908,7 +2103,7 @@ async function recognizeBestText(
       let skippedReason = "";
 
       for (const spec of diagnosticSpecs) {
-        if (Date.now() - startedAt > 55_000) {
+        if (Date.now() - startedAt > OCR_ROUTE_BUDGET_MS - 3_000) {
           skippedReason = "Skipped remaining invoice-column OCR because route time budget was nearly exhausted.";
           break;
         }
@@ -2018,10 +2213,19 @@ async function recognizeBestText(
       };
     }
 
-    const invoiceColumnDiagnostics = await buildInvoiceColumnDiagnostics();
+    const invoiceColumnDiagnostics = await buildInvoiceColumnDiagnostics().catch(
+      (error) => {
+        markStage("invoice-column-diagnostics-skipped:failed");
+        console.warn("Invoice-column diagnostics skipped", {
+          message: error instanceof Error ? error.message : String(error),
+        });
+        return null;
+      }
+    );
 
     return {
       text: finalText,
+      structuredRowEvidence,
       diagnostics: {
         documentType,
         retryStrategy,
@@ -2046,6 +2250,15 @@ async function recognizeBestText(
           redactedTextSummary(attempt.text)
         ),
         candidateSummaries,
+        geometryRowSetSummaries: geometryRowSets.slice(0, 8).map((rowSet) => ({
+          region: rowSet.attempt.region,
+          variant: rowSet.attempt.variant,
+          pageMode: rowSet.attempt.pageMode,
+          rows: rowSet.rows.length,
+          acceptedRows: rowSet.rows.filter((row) => rowAcceptance(row).accepted).length,
+          score: Math.round(rowSet.score),
+        })),
+        expectedRowCount,
         textRegionMetrics: textRegionMetrics(
           diagnosticWordSource,
           sources.document.width ?? 0,
@@ -2128,6 +2341,10 @@ export async function POST(request: Request) {
     }
 
     const parsedExtraction = parseCheckStubText(parsedText);
+    const totalEvidence = extractRemittanceTotalEvidence(
+      parsedText,
+      ocrResult.structuredRowEvidence
+    );
     const explicitDocumentTotal =
       typeof ocrResult.diagnostics.explicitDocumentTotal === "number"
         ? ocrResult.diagnostics.explicitDocumentTotal
@@ -2187,7 +2404,9 @@ export async function POST(request: Request) {
       documentType,
       retryStrategy,
       ...extraction,
+      totalEvidence,
       rawText: parsedText,
+      structuredRowEvidence: ocrResult.structuredRowEvidence,
       diagnostics: {
         summary: diagnosticSummary,
         ...ocrResult.diagnostics,

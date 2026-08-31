@@ -31,6 +31,7 @@ import {
   normalizeInvoiceNumber,
   parseCheckDate,
   parseMoney,
+  type StructuredRemittanceRowEvidence,
 } from "../lib/remittanceMatching";
 
 type BatchInvoice = {
@@ -247,7 +248,13 @@ type CheckStubOcrResponse = {
   checkNumber?: string;
   checkDate?: string;
   totalAmount?: number;
+  totalEvidence?: {
+    amount?: number;
+    source?: string;
+    payable?: boolean;
+  };
   lines?: { amount?: unknown; invoiceNumbers?: unknown }[];
+  structuredRowEvidence?: StructuredRemittanceRowEvidence[];
   diagnostics?: {
     summary?: string[];
     retryStrategy?: OcrRetryStrategy;
@@ -287,6 +294,15 @@ type CheckStubOcrResponse = {
       };
       summary?: string;
     }>;
+    geometryRowSetSummaries?: Array<{
+      region?: string;
+      variant?: string;
+      pageMode?: string;
+      rows?: number;
+      acceptedRows?: number;
+      score?: number;
+    }>;
+    expectedRowCount?: number;
     textRegionMetrics?: {
       wordCount?: number;
       highConfidenceWordCount?: number;
@@ -1625,6 +1641,24 @@ export default function BatchInvoicePayments({
     () => findRemittanceMatches(invoiceRecords, remittanceStubText, checkPayor),
     [checkPayor, invoiceRecords, remittanceStubText]
   );
+  const selectedInvoiceIdSet = new Set(selectedInvoices.map((invoice) => invoice.id));
+  const reviewInvoiceIdSet = new Set(
+    reviewMatchedInvoices.map((invoice) => invoice.id)
+  );
+  const hasDuplicateReviewInvoiceIds =
+    reviewInvoiceIdSet.size !== reviewMatchedInvoices.length;
+  const hasDuplicateSelectedInvoiceIds =
+    selectedInvoiceIdSet.size !== selectedInvoices.length;
+  const selectedReviewSetsMatch =
+    selectedInvoiceIdSet.size > 0 &&
+    selectedInvoiceIdSet.size === reviewInvoiceIdSet.size &&
+    Array.from(selectedInvoiceIdSet).every((invoiceId) =>
+      reviewInvoiceIdSet.has(invoiceId)
+    );
+  const reviewMatchedTotal = reviewMatchedInvoices.reduce(
+    (total, invoice) => total + invoice.amountDue,
+    0
+  );
   const hasRemittanceStub = remittanceStubText.trim().length > 0;
   const showPaymentReview =
     paymentEntryMode === "manual" ||
@@ -1641,7 +1675,10 @@ export default function BatchInvoicePayments({
       (extractedPaymentAmount !== null &&
         extractedPaymentAmount > 0 &&
         Math.abs(selectedTotal - extractedPaymentAmount) < 0.01 &&
-        reviewMatchedInvoices.length === selectedInvoices.length));
+        Math.abs(reviewMatchedTotal - extractedPaymentAmount) < 0.01 &&
+        !hasDuplicateSelectedInvoiceIds &&
+        !hasDuplicateReviewInvoiceIds &&
+        selectedReviewSetsMatch));
 
   useEffect(() => {
     return () => {
@@ -2283,7 +2320,7 @@ export default function BatchInvoicePayments({
           : "";
 
     return {
-      matches: isComplete || extractedTotal <= 0 ? corrected : [],
+      matches: corrected,
       notice,
       invoiceTotal,
       isComplete,
@@ -2296,14 +2333,22 @@ export default function BatchInvoicePayments({
       data.payor?.trim() || extractLikelyPayor(stubText);
     const extractedCheckNumber =
       data.checkNumber?.trim() || extractCheckNumber(stubText);
+    const responseTotalIsPayable =
+      data.totalEvidence?.payable !== false;
     const parsedTotalFromResponse =
-      typeof data.totalAmount === "number" && data.totalAmount > 0
+      responseTotalIsPayable &&
+      typeof data.totalAmount === "number" &&
+      data.totalAmount > 0
         ? data.totalAmount
         : 0;
+    const structuredRowEvidence = Array.isArray(data.structuredRowEvidence)
+      ? data.structuredRowEvidence
+      : [];
     const parsedTotalFromStub = findRemittanceMatches(
       invoiceRecords,
       stubText,
-      extractedPayor
+      extractedPayor,
+      structuredRowEvidence
     ).totalAmount;
     const parsedTotalFromLines =
       data.lines?.reduce((total, line) => {
@@ -2317,16 +2362,20 @@ export default function BatchInvoicePayments({
         return total + amount;
       }, 0) ?? 0;
     const extractedTotal =
-      parsedTotalFromResponse || parsedTotalFromStub || parsedTotalFromLines;
+      parsedTotalFromResponse ||
+      parsedTotalFromStub ||
+      (responseTotalIsPayable ? parsedTotalFromLines : 0);
     const extractedDate = data.checkDate?.trim()
       ? parseCheckDate(data.checkDate)
       : extractCheckDate(stubText);
     const match = findRemittanceMatches(
       invoiceRecords,
       stubText,
-      extractedPayor
+      extractedPayor,
+      structuredRowEvidence
     );
-    const rawReviewMatchesFromParser = match.matches
+    const authoritativeResolvedMatches = match.resolvedMatches ?? match.matches;
+    const rawReviewMatchesFromParser = authoritativeResolvedMatches
       .map((matchedInvoice): ReviewMatchedInvoice | null => {
         const invoice = payableInvoices.find(
           (payableInvoice) => payableInvoice.id === matchedInvoice.id
@@ -2340,10 +2389,7 @@ export default function BatchInvoicePayments({
           : null;
       })
       .filter((invoice): invoice is ReviewMatchedInvoice => Boolean(invoice));
-    const rawReviewMatchesBeforeDedupe =
-      rawReviewMatchesFromParser.length > 0
-        ? rawReviewMatchesFromParser
-        : matchInvoicesFromExtraction(data, stubText);
+    const rawReviewMatchesBeforeDedupe = rawReviewMatchesFromParser;
     const dedupedReview = uniqueReviewMatchesById(rawReviewMatchesBeforeDedupe);
     const rawReviewMatches = dedupedReview.matches;
     const reconciledReview = reconcileReviewMatches(
@@ -2387,6 +2433,10 @@ export default function BatchInvoicePayments({
       [
         dedupedReview.duplicateIds.length > 0
           ? `Duplicate OCR invoice matches removed: ${dedupedReview.duplicateIds.join(", ")}.`
+          : "",
+        rawReviewMatchesFromParser.length === 0 &&
+        matchInvoicesFromExtraction(data, stubText).length > 0
+          ? "Legacy text-only matches were left as diagnostics and were not auto-selected."
           : "",
         reconciledReview.notice,
       ]

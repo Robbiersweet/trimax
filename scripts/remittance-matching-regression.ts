@@ -5,9 +5,13 @@ import {
   extractMoneyCandidates,
   extractMoneyValues,
   extractInvoiceNumbers,
+  extractRemittanceTotalEvidence,
   findRemittanceMatches,
   normalizeInvoiceNumber,
   parseCheckStubText,
+  rawInvoiceLikeTokens,
+  rawUnitLikeTokens,
+  type StructuredRemittanceRowEvidence,
 } from "../src/app/lib/remittanceMatching.ts";
 
 const root = process.cwd();
@@ -1048,6 +1052,100 @@ assert.equal(
   "Damaged invoice/unit OCR must remain manual when more than one eligible invoice is structurally plausible."
 );
 
+const structuredEvidenceRows: StructuredRemittanceRowEvidence[] = [
+  {
+    rowId: "pass-a-row-1",
+    text: "Reference Property U05 full interior paint 1,099.00",
+    source: {
+      region: "stub-row-band",
+      variant: "row-focused",
+      pageMode: "single-line",
+      rotation: 0,
+    },
+    y: 100,
+    height: 32,
+    rawInvoiceLikeTokens: ["INV0513"],
+    normalizedInvoiceCandidates: ["INV-0513"],
+    unitLikeTokens: ["U05"],
+    amountCandidates: [
+      { raw: "1,099.00", value: 1099, score: 125, confidence: 92, selected: true },
+    ],
+    dateTokens: ["08/15/2026"],
+    score: 120,
+  },
+  {
+    rowId: "pass-a-row-2",
+    text: "Reference Property H10 full interior paint 1,099.00",
+    source: {
+      region: "stub-row-band",
+      variant: "row-focused",
+      pageMode: "single-line",
+      rotation: 0,
+    },
+    y: 150,
+    height: 32,
+    rawInvoiceLikeTokens: ["1NV0S14"],
+    normalizedInvoiceCandidates: ["INV-0514"],
+    unitLikeTokens: ["H10"],
+    amountCandidates: [
+      { raw: "1,099.00", value: 1099, score: 125, confidence: 90, selected: true },
+    ],
+    dateTokens: ["08/15/2026"],
+    score: 122,
+  },
+];
+const structuredEvidenceMatch = findRemittanceMatches(
+  referenceBOpenInvoices,
+  "PAYOR: Reference Property\nTOTAL: $2,198.00\nReference Property U05 full interior paint 1,099.00\nReference Property H10 full interior paint 1,099.00",
+  "Reference Property",
+  structuredEvidenceRows
+);
+
+assert.equal(structuredEvidenceMatch.confidence, "verified");
+assert.deepEqual(
+  structuredEvidenceMatch.matches.map((invoice) => invoice.id),
+  ["reference-b-0513", "reference-b-0514"],
+  "Structured alternate-pass row evidence must reach the resolver even when selected text lacks invoice tokens."
+);
+assert.deepEqual(
+  structuredEvidenceMatch.referencedInvoiceNumbers,
+  ["INV-0513", "INV-0514"],
+  "Resolved invoice identities must become the authoritative row identities."
+);
+assert.equal(
+  structuredEvidenceMatch.missingInvoiceNumbers.length,
+  0,
+  "Fuzzy-resolved structured identities must not later appear as missing raw OCR invoice numbers."
+);
+
+const partialStructuredEvidenceMatch = findRemittanceMatches(
+  referenceBOpenInvoices,
+  "PAYOR: Reference Property\nTOTAL: $5,495.00\nReference Property U05 full interior paint 1,099.00\nReference Property H10 full interior paint 1,099.00",
+  "Reference Property",
+  structuredEvidenceRows
+);
+
+assert.equal(partialStructuredEvidenceMatch.confidence, "review");
+assert.equal(partialStructuredEvidenceMatch.matches.length, 0);
+assert.deepEqual(
+  partialStructuredEvidenceMatch.resolvedMatches.map((invoice) => invoice.id),
+  ["reference-b-0513", "reference-b-0514"],
+  "Incomplete reconciliation must preserve deterministic resolved rows for review without marking the payment verified."
+);
+
+const unlabeledLargeTotalEvidence = extractRemittanceTotalEvidence(
+  "INV0513 U05 full interior paint 1,099.00\n4,396.00"
+);
+
+assert.equal(unlabeledLargeTotalEvidence.source, "largest-visible-amount");
+assert.equal(
+  unlabeledLargeTotalEvidence.payable,
+  false,
+  "An unlabeled large visible amount must not silently become a payable document total."
+);
+assert.deepEqual(rawInvoiceLikeTokens("1NV0S14"), ["1NV0S14"]);
+assert.deepEqual(rawUnitLikeTokens("ATO full interior paint"), ["ATO"]);
+
 const route = readFileSync(
   resolve(root, "src/app/api/payments/extract-check-stub/route.ts"),
   "utf8"
@@ -1083,6 +1181,17 @@ assert(
   "OCR route must preserve explicit document totals across candidate handoff and tie-break row amount candidates by OCR confidence."
 );
 assert(
+  route.includes("buildGeometryRowSets") &&
+    route.includes("buildStructuredRowEvidence") &&
+    route.includes("structuredRowEvidence") &&
+    route.includes("geometryRowSetSummaries") &&
+    route.includes("expectedRowCount") &&
+    route.includes("OCR_ROUTE_BUDGET_MS - 4_000") &&
+    route.includes("invoice-column-diagnostics-skipped:near-budget") &&
+    route.includes("invoice-column-diagnostics-skipped:failed"),
+  "OCR route must keep pass-provenance row sets, emit structured row evidence, and skip non-blocking diagnostics near route budget."
+);
+assert(
   !route.includes("2721") && !route.includes("2198") && !route.includes("1099"),
   "OCR candidate scoring must not be biased toward an old production fixture."
 );
@@ -1116,6 +1225,16 @@ assert(
 assert(
   paymentScreen.includes("function loadExtractedRemittance"),
   "Payments screen must hand extracted remittance data into the review form."
+);
+assert(
+  paymentScreen.includes("authoritativeResolvedMatches") &&
+    paymentScreen.includes("rawReviewMatchesBeforeDedupe = rawReviewMatchesFromParser") &&
+    paymentScreen.includes("Legacy text-only matches were left as diagnostics") &&
+    paymentScreen.includes("selectedReviewSetsMatch") &&
+    paymentScreen.includes("hasDuplicateReviewInvoiceIds") &&
+    paymentScreen.includes("reviewMatchedTotal") &&
+    paymentScreen.includes("responseTotalIsPayable"),
+  "Payments screen must use deterministic resolver output as the sole auto-selection authority and require exact selected/review ID equality before Apply."
 );
 assert(
   paymentScreen.includes("function uniqueReviewMatchesById") &&

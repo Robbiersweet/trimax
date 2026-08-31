@@ -46,6 +46,53 @@ export type RemittanceLine = {
   serviceDescription: string;
 };
 
+export type RemittanceTotalSource =
+  | "explicit-document-total"
+  | "geometry-supported-total"
+  | "row-subtotal"
+  | "largest-visible-amount"
+  | "none";
+
+export type RemittanceTotalEvidence = {
+  amount: number;
+  source: RemittanceTotalSource;
+  payable: boolean;
+};
+
+export type StructuredRemittanceAmountCandidate = {
+  raw: string;
+  normalized?: string;
+  value: number;
+  score?: number;
+  confidence?: number;
+  selected?: boolean;
+  bbox?: {
+    x0?: number;
+    y0?: number;
+    x1?: number;
+    y1?: number;
+  };
+};
+
+export type StructuredRemittanceRowEvidence = {
+  rowId: string;
+  text: string;
+  source: {
+    region: string;
+    variant: string;
+    pageMode: string;
+    rotation?: number;
+  };
+  y?: number;
+  height?: number;
+  rawInvoiceLikeTokens: string[];
+  normalizedInvoiceCandidates: string[];
+  unitLikeTokens: string[];
+  amountCandidates: StructuredRemittanceAmountCandidate[];
+  dateTokens: string[];
+  score?: number;
+};
+
 export type ParsedCheckStub = {
   rawText: string;
   payor: string;
@@ -490,14 +537,33 @@ export function extractInvoiceNumbers(text: string) {
   return Array.from(matches);
 }
 
-export function extractTotalAmount(text: string) {
+export function extractRemittanceTotalEvidence(
+  text: string,
+  structuredRows: StructuredRemittanceRowEvidence[] = []
+): RemittanceTotalEvidence {
   const explicitTotal = findExplicitTotalAmount(text);
 
   if (explicitTotal > 0) {
-    return explicitTotal;
+    return {
+      amount: explicitTotal,
+      source: "explicit-document-total",
+      payable: true,
+    };
   }
 
   const values = extractMoneyValues(text);
+  const structuredLineTotal = structuredRows
+    .map((row) => selectedStructuredRowAmount(row)?.value ?? 0)
+    .filter((value) => value > 0)
+    .reduce((total, value) => total + value, 0);
+
+  if (structuredRows.length > 1 && structuredLineTotal > 0) {
+    return {
+      amount: Number(structuredLineTotal.toFixed(2)),
+      source: "geometry-supported-total",
+      payable: true,
+    };
+  }
 
   const remittanceText = remittanceRegionText(text);
   const remittanceLines = parseRemittanceLines(remittanceText);
@@ -511,14 +577,30 @@ export function extractTotalAmount(text: string) {
     referencedLineTotal > 0 &&
     largestVisibleAmount > referencedLineTotal
   ) {
-    return largestVisibleAmount;
+    return {
+      amount: largestVisibleAmount,
+      source: "largest-visible-amount",
+      payable: false,
+    };
   }
 
   if (remittanceLines.length > 1 && referencedLineTotal > 0) {
-    return Number(referencedLineTotal.toFixed(2));
+    return {
+      amount: Number(referencedLineTotal.toFixed(2)),
+      source: "row-subtotal",
+      payable: true,
+    };
   }
 
-  return largestVisibleAmount;
+  return {
+    amount: largestVisibleAmount,
+    source: largestVisibleAmount > 0 ? "largest-visible-amount" : "none",
+    payable: false,
+  };
+}
+
+export function extractTotalAmount(text: string) {
+  return extractRemittanceTotalEvidence(text).amount;
 }
 
 export function extractLikelyPayor(text: string) {
@@ -772,7 +854,7 @@ function remittanceInvoiceRejectionReason(
   return "";
 }
 
-function rawInvoiceLikeTokens(text: string) {
+export function rawInvoiceLikeTokens(text: string) {
   const tokens = new Set<string>();
 
   for (const match of text.matchAll(
@@ -784,7 +866,7 @@ function rawInvoiceLikeTokens(text: string) {
   return Array.from(tokens);
 }
 
-function invoiceCandidateDigitsFromRawToken(token: string) {
+export function invoiceCandidateDigitsFromRawToken(token: string) {
   const compact = token.toUpperCase().replace(/[^A-Z0-9|]/g, "");
   const afterPrefix = compact.replace(/^[I1L|]*N[VY]?(?:OICE|O|0)?/, "");
   const source = afterPrefix || compact;
@@ -925,7 +1007,7 @@ function invoiceNumberCompatibleWithRawToken(
   });
 }
 
-function extractUnitCodeCandidates(text: string) {
+export function extractUnitCodeCandidates(text: string) {
   const candidates = new Set(extractUnitCodes(text));
 
   for (const match of text.matchAll(/\b[A-Z][A-Z0-9.]{2,4}\b/gi)) {
@@ -939,7 +1021,7 @@ function extractUnitCodeCandidates(text: string) {
   return Array.from(candidates);
 }
 
-function rawUnitLikeTokens(text: string) {
+export function rawUnitLikeTokens(text: string) {
   return Array.from(
     new Set(
       Array.from(text.matchAll(/\b[A-Z][A-Z0-9.]{2,4}\b/gi))
@@ -1026,6 +1108,7 @@ type EligibleRemittanceInvoiceRecord = {
 
 type RemittanceRowResolution = {
   line: RemittanceLine;
+  evidence?: StructuredRemittanceRowEvidence;
   rawInvoiceCandidates: string[];
   normalizedCandidates: string[];
   unitCandidates: string[];
@@ -1037,6 +1120,25 @@ type RemittanceRowResolution = {
   amountEvidence: string;
   reason: string;
 };
+
+function selectedStructuredRowAmount(row: StructuredRemittanceRowEvidence) {
+  const candidates = row.amountCandidates.filter(
+    (candidate) => candidate.value > 0
+  );
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  return candidates
+    .slice()
+    .sort(
+      (left, right) =>
+        Number(Boolean(right.selected)) - Number(Boolean(left.selected)) ||
+        (right.score ?? 0) - (left.score ?? 0) ||
+        (right.confidence ?? 0) - (left.confidence ?? 0)
+    )[0];
+}
 
 function uniqueEligibleInvoiceRecords(records: EligibleRemittanceInvoiceRecord[]) {
   const seenIds = new Set<string>();
@@ -1054,13 +1156,19 @@ function uniqueEligibleInvoiceRecords(records: EligibleRemittanceInvoiceRecord[]
 function resolveRemittanceRowInvoice(
   line: RemittanceLine,
   eligibleInvoiceNumberRecords: EligibleRemittanceInvoiceRecord[],
-  invoicesByNumber: Map<string, RemittanceInvoiceRecord & { amountDue: number }>
+  invoicesByNumber: Map<string, RemittanceInvoiceRecord & { amountDue: number }>,
+  evidence?: StructuredRemittanceRowEvidence
 ): RemittanceRowResolution {
   const rawInvoiceCandidates = Array.from(
-    new Set([...rawInvoiceLikeTokens(line.text), ...line.invoiceNumbers])
+    new Set([
+      ...(evidence?.rawInvoiceLikeTokens ?? []),
+      ...rawInvoiceLikeTokens(line.text),
+      ...line.invoiceNumbers,
+    ])
   );
   const normalizedCandidates = Array.from(
     new Set([
+      ...(evidence?.normalizedInvoiceCandidates ?? []),
       ...line.invoiceNumbers,
       ...rawInvoiceCandidates.flatMap((token) =>
         invoiceCandidateDigitsFromRawToken(token)
@@ -1069,7 +1177,13 @@ function resolveRemittanceRowInvoice(
   );
   const unitCandidates = extractUnitCodeCandidates(line.text);
   const rawUnits = rawUnitLikeTokens(line.text);
-  const unitEvidenceTokens = Array.from(new Set([...unitCandidates, ...rawUnits]));
+  const unitEvidenceTokens = Array.from(
+    new Set([
+      ...(evidence?.unitLikeTokens ?? []),
+      ...unitCandidates,
+      ...rawUnits,
+    ])
+  );
   const exactCandidates = normalizedCandidates
     .map((invoiceNumber) => {
       const invoice = invoicesByNumber.get(invoiceNumber) ?? null;
@@ -1088,12 +1202,19 @@ function resolveRemittanceRowInvoice(
     ...exactCandidates,
     ...fuzzyCandidates,
   ]);
+  const selectedEvidenceAmount = evidence ? selectedStructuredRowAmount(evidence) : null;
+  const rowAmount = selectedEvidenceAmount?.value ?? line.amount;
   const amountEvidence =
-    line.amount > 0 ? `$${line.amount.toFixed(2)}` : "none";
+    rowAmount > 0 ? `$${rowAmount.toFixed(2)}` : "none";
+  const resolutionLine =
+    selectedEvidenceAmount && Math.abs(selectedEvidenceAmount.value - line.amount) >= 0.01
+      ? { ...line, amount: selectedEvidenceAmount.value }
+      : line;
 
   if (rawInvoiceCandidates.length === 0 && normalizedCandidates.length === 0) {
     return {
-      line,
+      line: resolutionLine,
+      evidence,
       rawInvoiceCandidates,
       normalizedCandidates,
       unitCandidates: unitEvidenceTokens,
@@ -1117,7 +1238,8 @@ function resolveRemittanceRowInvoice(
     const unitEvidence = invoiceUnitEvidence(candidate.invoice, unitEvidenceTokens);
 
     return {
-      line,
+      line: resolutionLine,
+      evidence,
       rawInvoiceCandidates,
       normalizedCandidates,
       unitCandidates: unitEvidenceTokens,
@@ -1145,7 +1267,8 @@ function resolveRemittanceRowInvoice(
     const unitEvidence = invoiceUnitEvidence(candidate.invoice, unitEvidenceTokens);
 
     return {
-      line,
+      line: resolutionLine,
+      evidence,
       rawInvoiceCandidates,
       normalizedCandidates,
       unitCandidates: unitEvidenceTokens,
@@ -1163,7 +1286,8 @@ function resolveRemittanceRowInvoice(
   }
 
   return {
-    line,
+    line: resolutionLine,
+    evidence,
     rawInvoiceCandidates,
     normalizedCandidates,
     unitCandidates: unitEvidenceTokens,
@@ -1258,10 +1382,32 @@ export function hasExplicitRemittanceTotal(text: string) {
 export function findRemittanceMatches(
   invoices: RemittanceInvoiceRecord[],
   stubText: string,
-  payorOverride = ""
+  payorOverride = "",
+  structuredRows: StructuredRemittanceRowEvidence[] = []
 ) {
-  const totalAmount = extractTotalAmount(stubText);
-  const lineItems = parseRemittanceLines(stubText);
+  const totalEvidence = extractRemittanceTotalEvidence(stubText, structuredRows);
+  const totalAmount = totalEvidence.amount;
+  const structuredLineItems = structuredRows.map((row) => {
+    const parsed = parseCheckStubText(row.text).lines[0] ?? {
+      text: row.text,
+      amount: selectedStructuredRowAmount(row)?.value ?? 0,
+      invoiceNumbers: [],
+      unitCodes: [],
+      serviceDescription: row.text,
+    };
+
+    return {
+      ...parsed,
+      text: row.text,
+      amount: selectedStructuredRowAmount(row)?.value ?? parsed.amount,
+      invoiceNumbers: Array.from(
+        new Set([...parsed.invoiceNumbers, ...row.normalizedInvoiceCandidates])
+      ),
+      unitCodes: Array.from(new Set([...parsed.unitCodes, ...row.unitLikeTokens])),
+    };
+  });
+  const textLineItems = parseRemittanceLines(stubText);
+  const lineItems = structuredLineItems.length > 0 ? structuredLineItems : textLineItems;
   const allReferencedInvoiceNumbers = lineItems.flatMap(
     (line) => line.invoiceNumbers
   );
@@ -1313,8 +1459,13 @@ export function findRemittanceMatches(
     ])
   );
   const payor = payorOverride.trim() || extractLikelyPayor(stubText);
-  const rowResolutions = lineItems.map((line) =>
-    resolveRemittanceRowInvoice(line, eligibleInvoiceNumberRecords, invoicesByNumber)
+  const rowResolutions = lineItems.map((line, index) =>
+    resolveRemittanceRowInvoice(
+      line,
+      eligibleInvoiceNumberRecords,
+      invoicesByNumber,
+      structuredRows[index]
+    )
   );
   const resolvedInvoiceNumbers = rowResolutions
     .filter((resolution) => resolution.invoice)
@@ -1322,8 +1473,15 @@ export function findRemittanceMatches(
   const reconciledInvoiceNumbers = Array.from(
     new Set([...referencedInvoiceNumbers, ...resolvedInvoiceNumbers])
   );
+  const resolvedNormalizedCandidates = new Set(
+    rowResolutions
+      .filter((resolution) => resolution.invoice)
+      .flatMap((resolution) => resolution.normalizedCandidates)
+  );
   const missingInvoiceNumbers = referencedInvoiceNumbers.filter(
-    (invoiceNumber) => !invoicesByNumber.has(invoiceNumber)
+    (invoiceNumber) =>
+      !invoicesByNumber.has(invoiceNumber) &&
+      !resolvedNormalizedCandidates.has(invoiceNumber)
   );
   const acceptedResolutionRows = rowResolutions.filter(
     (
@@ -1508,7 +1666,9 @@ export function findRemittanceMatches(
 
   return {
     matches: issues.length === 0 ? matches : [],
+    resolvedMatches: matches,
     totalAmount,
+    totalEvidence,
     lineItems,
     referencedInvoiceNumbers: reconciledInvoiceNumbers,
     missingInvoiceNumbers,
