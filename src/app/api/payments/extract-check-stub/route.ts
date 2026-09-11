@@ -78,6 +78,43 @@ type OcrImageSource = {
   bounds: ImageBounds;
 };
 
+type CaptureSourceSelectionCandidate = {
+  id?: unknown;
+  label?: unknown;
+  imageDataUrl?: unknown;
+  detectorConfidence?: unknown;
+  detectorAreaRatio?: unknown;
+  detectorSource?: unknown;
+};
+
+type CaptureSourceEvaluation = {
+  id: string;
+  label: string;
+  selectedImageDataUrl: string;
+  dimensions: {
+    width: number;
+    height: number;
+  };
+  quality: {
+    sharpness: number;
+    contrast: number;
+  };
+  detectorConfidence: string;
+  detectorAreaRatio: number;
+  words: number;
+  highConfidenceWords: number;
+  textWidthCoverage: number;
+  textHeightCoverage: number;
+  invoiceTokens: number;
+  dateTokens: number;
+  unitTokens: number;
+  amountTokens: number;
+  rowCount: number;
+  explicitTotal: number;
+  completenessScore: number;
+  suspiciousIncomplete: boolean;
+};
+
 type OcrWord = {
   text: string;
   confidence: number;
@@ -2297,15 +2334,317 @@ async function recognizeBestText(
   }
 }
 
+function detectorConfidenceScore(value: string) {
+  if (value === "high") {
+    return 35;
+  }
+
+  if (value === "medium") {
+    return 18;
+  }
+
+  if (value === "low") {
+    return -10;
+  }
+
+  return 0;
+}
+
+function normalizeCandidateLabel(value: unknown, fallback: string) {
+  return typeof value === "string" && value.trim()
+    ? value.trim().slice(0, 80)
+    : fallback;
+}
+
+function normalizeDetectorConfidence(value: unknown) {
+  return value === "high" || value === "medium" || value === "low"
+    ? value
+    : "unknown";
+}
+
+function sourceSelectionReason(
+  selected: CaptureSourceEvaluation,
+  alternatives: CaptureSourceEvaluation[]
+) {
+  const runnerUp = alternatives
+    .filter((candidate) => candidate.id !== selected.id)
+    .sort((left, right) => right.completenessScore - left.completenessScore)[0];
+  const evidence = [
+    `${selected.words} words`,
+    `${selected.highConfidenceWords} high-confidence`,
+    `${selected.invoiceTokens} invoice tokens`,
+    `${selected.rowCount} rows`,
+    `${selected.dateTokens} dates`,
+    `score ${selected.completenessScore}`,
+  ].join(", ");
+
+  if (!runnerUp) {
+    return `${selected.label} selected from available capture evidence (${evidence}).`;
+  }
+
+  return `${selected.label} selected over ${runnerUp.label}: ${evidence}; runner-up score ${runnerUp.completenessScore}, invoice tokens ${runnerUp.invoiceTokens}, words ${runnerUp.words}.`;
+}
+
+async function evaluateCaptureSourceCandidate(
+  candidate: CaptureSourceSelectionCandidate,
+  index: number,
+  worker: Awaited<ReturnType<typeof import("tesseract.js").createWorker>>,
+  psm: typeof import("tesseract.js").PSM
+): Promise<CaptureSourceEvaluation | null> {
+  const imageDataUrl = candidate.imageDataUrl;
+
+  if (!isSafeDataUrl(imageDataUrl)) {
+    return null;
+  }
+
+  const safeImageDataUrl = imageDataUrl as string;
+  const id = normalizeCandidateLabel(candidate.id, `candidate-${index + 1}`);
+  const label = normalizeCandidateLabel(candidate.label, id);
+  const detectorConfidence = normalizeDetectorConfidence(candidate.detectorConfidence);
+  const detectorAreaRatio =
+    typeof candidate.detectorAreaRatio === "number" &&
+    Number.isFinite(candidate.detectorAreaRatio)
+      ? candidate.detectorAreaRatio
+      : 0;
+  const originalImage = dataUrlToBuffer(safeImageDataUrl);
+  const sources = await buildOcrSources(originalImage);
+  const source = {
+    name: label,
+    image: sources.document.image,
+    width: sources.document.width,
+    height: sources.document.height,
+    bounds: {
+      left: 0,
+      top: 0,
+      width: sources.document.width ?? 0,
+      height: sources.document.height ?? 0,
+    },
+  };
+  const spec: OcrAttemptSpec = {
+    variant: "grayscale-normalized",
+    pageMode: { name: "sparse-text", value: psm.SPARSE_TEXT },
+  };
+  const processedImage = await preprocessForOcr(source.image, 0, spec.variant);
+  const processedMetadata = await imageMetadata(processedImage);
+  await worker.setParameters({
+    tessedit_pageseg_mode: spec.pageMode.value,
+  });
+  const startedAt = Date.now();
+  const result = await Promise.race([
+    worker.recognize(processedImage, {}, { text: true, blocks: true }),
+    new Promise<never>((_, reject) => {
+      setTimeout(
+        () => reject(new Error("Capture source selection OCR timed out.")),
+        5_000
+      );
+    }),
+  ]);
+  const confidence =
+    typeof result.data.confidence === "number" ? result.data.confidence : 0;
+  const text = result.data.text ?? "";
+  const words = extractOcrWords(
+    result.data,
+    source,
+    processedMetadata.width ?? source.width ?? 0,
+    processedMetadata.height ?? source.height ?? 0,
+    spec,
+    0
+  );
+  const attempt: OcrAttempt = {
+    region: label,
+    variant: spec.variant,
+    pageMode: spec.pageMode.name,
+    rotation: 0,
+    text,
+    confidence,
+    score: scoreOcrText(text, confidence),
+    durationMs: Date.now() - startedAt,
+    imageWidth: source.width,
+    imageHeight: source.height,
+    words,
+  };
+  const quality = await imageDetailMetrics(source.image);
+  const metrics = textRegionMetrics(
+    words,
+    source.width ?? 0,
+    source.height ?? 0
+  );
+  const bounds = metrics.textRegionBounds;
+  const textWidthCoverage =
+    bounds && source.width
+      ? Math.max(0, (Number(bounds.x1) - Number(bounds.x0)) / source.width)
+      : 0;
+  const textHeightCoverage =
+    bounds && source.height
+      ? Math.max(0, (Number(bounds.y1) - Number(bounds.y0)) / source.height)
+      : 0;
+  const tokenSummary = candidateTokenSummary(attempt);
+  const rows = reconstructRowsFromOcrGeometry(words);
+  const invoiceTokens = tokenSummary.invoiceLike.length;
+  const dateTokens = tokenSummary.dates.length;
+  const unitTokens = tokenSummary.units.length;
+  const amountTokens = tokenSummary.amounts.length;
+  const explicitTotal = explicitDocumentTotalFromText(text);
+  const suspiciousIncomplete =
+    rows.length >= 3 &&
+    dateTokens >= 2 &&
+    invoiceTokens === 0 &&
+    (metrics.wordCount < 80 || textWidthCoverage < 0.45);
+  const completenessScore = Math.round(
+    quality.sharpness * 4 +
+      quality.contrast * 1.3 +
+      Math.min(metrics.wordCount, 260) * 1.4 +
+      Math.min(metrics.highConfidenceWordCount, 220) * 1.2 +
+      textWidthCoverage * 120 +
+      textHeightCoverage * 50 +
+      invoiceTokens * 95 +
+      rows.length * 48 +
+      dateTokens * 22 +
+      unitTokens * 28 +
+      amountTokens * 30 +
+      (explicitTotal > 0 ? 70 : 0) +
+      detectorConfidenceScore(detectorConfidence) +
+      detectorAreaRatio * 35 -
+      (suspiciousIncomplete ? 180 : 0)
+  );
+
+  return {
+    id,
+    label,
+    selectedImageDataUrl: safeImageDataUrl,
+    dimensions: {
+      width: source.width ?? 0,
+      height: source.height ?? 0,
+    },
+    quality,
+    detectorConfidence,
+    detectorAreaRatio,
+    words: metrics.wordCount,
+    highConfidenceWords: metrics.highConfidenceWordCount,
+    textWidthCoverage: Math.round(textWidthCoverage * 1000) / 1000,
+    textHeightCoverage: Math.round(textHeightCoverage * 1000) / 1000,
+    invoiceTokens,
+    dateTokens,
+    unitTokens,
+    amountTokens,
+    rowCount: rows.length,
+    explicitTotal,
+    completenessScore,
+    suspiciousIncomplete,
+  };
+}
+
+async function selectCaptureSource(
+  candidates: CaptureSourceSelectionCandidate[]
+) {
+  const Tesseract = await import("tesseract.js");
+  const worker = await Tesseract.createWorker("eng", Tesseract.OEM.LSTM_ONLY, {
+    cachePath: "/tmp/tesseract-cache",
+    gzip: true,
+    logger: () => undefined,
+  });
+
+  try {
+    await worker.setParameters({
+      preserve_interword_spaces: "1",
+      user_defined_dpi: "300",
+    });
+
+    const evaluations: CaptureSourceEvaluation[] = [];
+    const startedAt = Date.now();
+
+    for (const [index, candidate] of candidates.slice(0, 4).entries()) {
+      if (Date.now() - startedAt > 18_000) {
+        break;
+      }
+
+      const evaluation = await evaluateCaptureSourceCandidate(
+        candidate,
+        index,
+        worker,
+        Tesseract.PSM
+      ).catch(() => null);
+
+      if (evaluation) {
+        evaluations.push(evaluation);
+      }
+    }
+
+    const selected =
+      evaluations
+        .slice()
+        .sort(
+          (left, right) =>
+            right.completenessScore - left.completenessScore ||
+            right.invoiceTokens - left.invoiceTokens ||
+            right.words - left.words
+        )[0] ?? null;
+
+    return {
+      selectedCandidateId: selected?.id ?? "",
+      selectedImageDataUrl: selected?.selectedImageDataUrl ?? "",
+      selectedLabel: selected?.label ?? "",
+      selectionReason: selected
+        ? sourceSelectionReason(selected, evaluations)
+        : "No capture candidate had usable selection evidence.",
+      evaluations: evaluations.map((evaluation) => ({
+        id: evaluation.id,
+        label: evaluation.label,
+        dimensions: evaluation.dimensions,
+        quality: evaluation.quality,
+        detectorConfidence: evaluation.detectorConfidence,
+        detectorAreaRatio: evaluation.detectorAreaRatio,
+        words: evaluation.words,
+        highConfidenceWords: evaluation.highConfidenceWords,
+        textWidthCoverage: evaluation.textWidthCoverage,
+        textHeightCoverage: evaluation.textHeightCoverage,
+        invoiceTokens: evaluation.invoiceTokens,
+        dateTokens: evaluation.dateTokens,
+        unitTokens: evaluation.unitTokens,
+        amountTokens: evaluation.amountTokens,
+        rowCount: evaluation.rowCount,
+        explicitTotal: evaluation.explicitTotal,
+        completenessScore: evaluation.completenessScore,
+        suspiciousIncomplete: evaluation.suspiciousIncomplete,
+      })),
+      durationMs: Date.now() - startedAt,
+    };
+  } finally {
+    await worker.terminate().catch(() => undefined);
+  }
+}
+
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as {
     imageDataUrl?: unknown;
     documentType?: unknown;
     retryStrategy?: unknown;
+    mode?: unknown;
+    captureCandidates?: CaptureSourceSelectionCandidate[];
   } | null;
   const imageDataUrl = body?.imageDataUrl;
   const documentType = normalizeDocumentType(body?.documentType);
   const retryStrategy = normalizeRetryStrategy(body?.retryStrategy);
+
+  if (body?.mode === "capture-source-selection") {
+    const candidates = Array.isArray(body.captureCandidates)
+      ? body.captureCandidates
+      : [];
+
+    if (candidates.length === 0) {
+      return NextResponse.json(
+        { error: "No capture candidates were provided." },
+        { status: 400 }
+      );
+    }
+
+    const selection = await selectCaptureSource(candidates);
+
+    return NextResponse.json({
+      mode: "capture-source-selection",
+      ...selection,
+    });
+  }
 
   if (!isSafeDataUrl(imageDataUrl)) {
     return NextResponse.json(

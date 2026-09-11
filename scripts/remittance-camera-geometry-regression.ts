@@ -7,6 +7,10 @@ const paymentScreen = readFileSync(
   resolve(root, "src/app/components/BatchInvoicePayments.tsx"),
   "utf8"
 );
+const ocrRoute = readFileSync(
+  resolve(root, "src/app/api/payments/extract-check-stub/route.ts"),
+  "utf8"
+);
 const appShell = readFileSync(
   resolve(root, "src/app/components/AppShell.tsx"),
   "utf8"
@@ -366,11 +370,11 @@ assert(
     paymentScreen.includes("Canvas fallback reason:") &&
     paymentScreen.includes("ImageCapture still returned: MIME") &&
     paymentScreen.includes("ImageCapture EXIF/orientation metadata:") &&
-    !paymentScreen.includes("Camera capture selected for production OCR: imagecapture-still.") &&
-    paymentScreen.includes("Camera capture selected for production OCR: canvas-video-frame.") &&
-    paymentScreen.includes("Diagnostic comparison mode: ImageCapture full still is measured only; production OCR remains canvas-video-frame.") &&
-    paymentScreen.includes("ImageCapture still selected for production OCR: no."),
-  "Camera diagnostics must detect ImageCapture/takePhoto support at runtime while production OCR remains canvas video-frame capture."
+    paymentScreen.includes("Production capture source selection: comparing canvas-video-frame and ImageCapture still evidence.") &&
+    paymentScreen.includes("selectProductionCaptureSource") &&
+    paymentScreen.includes("Production OCR source selected:") &&
+    paymentScreen.includes("Selection reason:"),
+  "Camera diagnostics must detect ImageCapture/takePhoto support at runtime and choose production OCR source from measured candidate evidence."
 );
 
 assert(
@@ -381,12 +385,40 @@ assert(
     paymentScreen.includes("Detected still crop dimensions:") &&
     paymentScreen.includes("Detected still crop quality:") &&
     paymentScreen.includes("Capture quality comparison: video-frame canvas") &&
-    paymentScreen.includes("ImageCapture still selected for production OCR: no.") &&
+    paymentScreen.includes("imagecapture-still-crop") &&
+    paymentScreen.includes("imagecapture-still-full") &&
+    paymentScreen.includes("canvas-video-frame") &&
+    paymentScreen.includes("candidate: dimensions=") &&
+    paymentScreen.includes("completenessScore=") &&
     paymentScreen.includes("detectDefaultCropBox(stillFile)") &&
     paymentScreen.includes("productionFile = stillComparison.productionFile ?? file") &&
     !paymentScreen.includes("mapCameraGuideToStillSource") &&
     !paymentScreen.includes("comparisonImageDataUrl"),
-  "ImageCapture still diagnostics must normalize/decode the full still, detect the document from still pixels, and avoid production still selection, direct preview-to-still mapping, or dual OCR requests."
+  "ImageCapture still diagnostics must normalize/decode the full still, evaluate detector crop and full still, and avoid direct preview-to-still mapping."
+);
+
+assert(
+  ocrRoute.includes('mode === "capture-source-selection"') &&
+    ocrRoute.includes("selectCaptureSource") &&
+    ocrRoute.includes("evaluateCaptureSourceCandidate") &&
+    ocrRoute.includes("suspiciousIncomplete") &&
+    ocrRoute.includes("rows.length >= 3") &&
+    ocrRoute.includes("dateTokens >= 2") &&
+    ocrRoute.includes("invoiceTokens === 0") &&
+    ocrRoute.includes("textWidthCoverage < 0.45") &&
+    ocrRoute.includes("detectorConfidenceScore") &&
+    ocrRoute.includes("value === \"medium\"") &&
+    ocrRoute.includes("sourceSelectionReason"),
+  "OCR route must compare capture candidates by remittance completeness, treat medium detector confidence as one signal, and flag row/date evidence with no invoice tokens as suspicious."
+);
+
+assert(
+  ocrRoute.includes("Capture source selection OCR timed out.") &&
+    ocrRoute.includes("Date.now() - startedAt > 18_000") &&
+    ocrRoute.includes("completenessScore") &&
+    ocrRoute.includes("const selection = await selectCaptureSource(candidates)") &&
+    !ocrRoute.includes("mode === \"capture-source-selection\" && recognizeBestText"),
+  "Capture source comparison must be a bounded preflight instead of running the full OCR diagnostics suite twice."
 );
 
 assert(

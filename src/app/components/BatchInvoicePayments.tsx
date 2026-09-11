@@ -240,6 +240,45 @@ type CameraStillComparisonResult = {
   productionReason: string;
 };
 
+type CaptureSourceCandidate = {
+  id: string;
+  label: string;
+  file: File;
+  cropBox: CropBox;
+  detectorConfidence?: "high" | "medium" | "low" | "unknown";
+  detectorAreaRatio?: number;
+  detectorSource?: string;
+};
+
+type CaptureSourceSelectionResponse = {
+  selectedCandidateId?: string;
+  selectedLabel?: string;
+  selectedImageDataUrl?: string;
+  selectionReason?: string;
+  durationMs?: number;
+  evaluations?: Array<{
+    id?: string;
+    label?: string;
+    dimensions?: { width?: number; height?: number };
+    quality?: { sharpness?: number; contrast?: number };
+    detectorConfidence?: string;
+    detectorAreaRatio?: number;
+    words?: number;
+    highConfidenceWords?: number;
+    textWidthCoverage?: number;
+    textHeightCoverage?: number;
+    invoiceTokens?: number;
+    dateTokens?: number;
+    unitTokens?: number;
+    amountTokens?: number;
+    rowCount?: number;
+    explicitTotal?: number;
+    completenessScore?: number;
+    suspiciousIncomplete?: boolean;
+  }>;
+  error?: string;
+};
+
 type CheckStubOcrResponse = {
   documentType?: RemittanceDocumentType;
   stubText?: string;
@@ -3921,12 +3960,87 @@ export default function BatchInvoicePayments({
     );
   }
 
+  async function selectProductionCaptureSource(
+    candidates: CaptureSourceCandidate[]
+  ): Promise<{
+    selectedCandidate: CaptureSourceCandidate | null;
+    reason: string;
+    diagnosticLines: string[];
+  }> {
+    const payloadCandidates = await Promise.all(
+      candidates.map(async (candidate) => ({
+        id: candidate.id,
+        label: candidate.label,
+        imageDataUrl: await fileToDataUrl(candidate.file),
+        detectorConfidence: candidate.detectorConfidence ?? "unknown",
+        detectorAreaRatio: candidate.detectorAreaRatio ?? 0,
+        detectorSource: candidate.detectorSource ?? "unknown",
+      }))
+    );
+    const response = await fetch("/api/payments/extract-check-stub", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        mode: "capture-source-selection",
+        captureCandidates: payloadCandidates,
+      }),
+    });
+    const result =
+      (await response.json().catch(() => ({}))) as CaptureSourceSelectionResponse;
+
+    if (!response.ok) {
+      const reason =
+        result.error || "capture source selection preflight failed";
+
+      return {
+        selectedCandidate: candidates[0] ?? null,
+        reason,
+        diagnosticLines: [
+          `Capture source selection failed: ${reason}.`,
+          "Production OCR source selected: canvas.",
+          `Selection reason: ${reason}; canvas fallback used.`,
+        ],
+      };
+    }
+
+    const selectedCandidate =
+      candidates.find((candidate) => candidate.id === result.selectedCandidateId) ??
+      candidates[0] ??
+      null;
+    const evaluationLines =
+      result.evaluations?.map((evaluation) => {
+        const width = evaluation.dimensions?.width ?? 0;
+        const height = evaluation.dimensions?.height ?? 0;
+        const quality = evaluation.quality;
+
+        return `${evaluation.label ?? evaluation.id ?? "candidate"} candidate: dimensions=${width}x${height}, detector=${evaluation.detectorConfidence ?? "unknown"}, quality sharpness=${quality?.sharpness ?? 0}, contrast=${quality?.contrast ?? 0}, words=${evaluation.words ?? 0}, highConfidence=${evaluation.highConfidenceWords ?? 0}, textCoverage=${(((evaluation.textWidthCoverage ?? 0) * 100)).toFixed(1)}%x${(((evaluation.textHeightCoverage ?? 0) * 100)).toFixed(1)}%, invoiceTokens=${evaluation.invoiceTokens ?? 0}, dates=${evaluation.dateTokens ?? 0}, units=${evaluation.unitTokens ?? 0}, amounts=${evaluation.amountTokens ?? 0}, rows=${evaluation.rowCount ?? 0}, explicitTotal=${evaluation.explicitTotal ?? 0}, suspicious=${evaluation.suspiciousIncomplete ? "yes" : "no"}, completenessScore=${evaluation.completenessScore ?? 0}.`;
+      }) ?? [];
+    const selectedSource =
+      selectedCandidate?.id === "canvas" ? "canvas" : "imagecapture-still";
+    const reason =
+      result.selectionReason ||
+      `${selectedCandidate?.label ?? "canvas-video-frame"} selected by capture source preflight.`;
+
+    return {
+      selectedCandidate,
+      reason,
+      diagnosticLines: [
+        ...evaluationLines,
+        `Capture source selection duration: ${result.durationMs ?? 0}ms.`,
+        `Production OCR source selected: ${selectedSource}.`,
+        `Selection reason: ${reason}`,
+      ],
+    };
+  }
+
   async function buildImageCaptureStillComparison(
     track: MediaStreamTrack | null,
     videoFile: File
   ): Promise<CameraStillComparisonResult> {
     const diagnosticLines = [
-      "Diagnostic comparison mode: ImageCapture full still is measured only; production OCR remains canvas-video-frame.",
+      "Production capture source selection: comparing canvas-video-frame and ImageCapture still evidence.",
     ];
     const stageLines: string[] = [];
     const ImageCaptureCtor = imageCaptureConstructor();
@@ -4017,13 +4131,6 @@ export default function BatchInvoicePayments({
       const normalizedHeight = stillImage.naturalHeight || stillImage.height;
       const stillSuggestion = await detectDefaultCropBox(stillFile);
       const stillCropQuality = stillSuggestion.quality;
-      const stillCropPlausible =
-        stillSuggestion.confidence === "high" &&
-        stillSuggestion.qualityMessages.length === 0 &&
-        stillSuggestion.shouldAutoRead &&
-        stillCropQuality.ok &&
-        stillSuggestion.effectiveWidth > 0 &&
-        stillSuggestion.effectiveHeight > 0;
       const videoQuality = await inspectImageQuality(videoFile, {
         left: 0,
         top: 0,
@@ -4058,24 +4165,62 @@ export default function BatchInvoicePayments({
         `Capture quality comparison: video-frame canvas ${formatQualityComparisonMetrics(videoQuality)}; ImageCapture still detected crop ${formatQualityComparisonMetrics(stillCropQuality)}.`
       );
 
-      if (!stillCropPlausible) {
-        const reason =
-          stillSuggestion.qualityMessages[0] ??
-          `still detector confidence ${stillSuggestion.confidence}, auto-read ${stillSuggestion.shouldAutoRead ? "yes" : "no"}`;
+      const stillCropDataUrl = await cropPhotoForOcr(
+        stillFile,
+        stillSuggestion.cropBox,
+        0
+      );
+      const stillCropFile = await dataUrlToImageFile(
+        stillCropDataUrl,
+        `trimax-remittance-still-crop-${Date.now()}.jpg`
+      );
+      const stillFullDataUrl = await cropPhotoForOcr(
+        stillFile,
+        { left: 0, top: 0, right: 100, bottom: 100 },
+        0
+      );
+      const stillFullFile = await dataUrlToImageFile(
+        stillFullDataUrl,
+        `trimax-remittance-still-full-${Date.now()}.jpg`
+      );
+      const selection = await selectProductionCaptureSource([
+        {
+          id: "canvas",
+          label: "canvas-video-frame",
+          file: videoFile,
+          cropBox: { left: 0, top: 0, right: 100, bottom: 100 },
+          detectorConfidence: "high",
+          detectorAreaRatio: 1,
+          detectorSource: "visible-guide",
+        },
+        {
+          id: "still-crop",
+          label: "imagecapture-still-crop",
+          file: stillCropFile,
+          cropBox: stillSuggestion.cropBox,
+          detectorConfidence: stillSuggestion.confidence,
+          detectorAreaRatio: stillSuggestion.documentAreaRatio,
+          detectorSource: "still-detector-crop",
+        },
+        {
+          id: "still-full",
+          label: "imagecapture-still-full",
+          file: stillFullFile,
+          cropBox: { left: 0, top: 0, right: 100, bottom: 100 },
+          detectorConfidence: "medium",
+          detectorAreaRatio: 1,
+          detectorSource: "normalized-full-still",
+        },
+      ]);
+      const productionFile =
+        selection.selectedCandidate?.id === "canvas"
+          ? null
+          : selection.selectedCandidate?.file ?? null;
 
-        diagnosticLines.push("Camera capture selected for production OCR: canvas-video-frame.");
-        diagnosticLines.push(`Canvas fallback reason: still document detection not usable (${reason}).`);
-        return {
-          diagnosticLines,
-          stageLines,
-          productionFile: null,
-          productionCropBox: null,
-          productionReason: `still document detection not usable (${reason})`,
-        };
-      }
-
-      diagnosticLines.push("Camera capture selected for production OCR: canvas-video-frame.");
-      diagnosticLines.push("ImageCapture still selected for production OCR: no.");
+      diagnosticLines.push(...selection.diagnosticLines);
+      diagnosticLines.push(
+        `Camera capture selected for production OCR: ${productionFile ? "imagecapture-still" : "canvas-video-frame"}.`
+      );
       stageLines.push(
         `ImageCapture still measured: ${normalizedWidth}x${normalizedHeight}, crop ${stillSuggestion.effectiveWidth}x${stillSuggestion.effectiveHeight}`
       );
@@ -4083,9 +4228,12 @@ export default function BatchInvoicePayments({
       return {
         diagnosticLines,
         stageLines,
-        productionFile: null,
-        productionCropBox: null,
-        productionReason: "ImageCapture diagnostic only",
+        productionFile,
+        productionCropBox:
+          selection.selectedCandidate?.id === "still-crop"
+            ? stillSuggestion.cropBox
+            : null,
+        productionReason: selection.reason,
       };
     } catch (error) {
       const reason = error instanceof Error ? error.message : "still capture failed";
