@@ -454,40 +454,118 @@ function selectBestCheckNumberCandidate(candidates: CheckNumberCandidate[]) {
   );
 
   if (distinctValues.length > 1 && !hasCompatiblePair) {
-    return candidates.slice().sort((left, right) => left.index - right.index)[0].value;
+    return (
+      candidates.slice().sort((left, right) => left.index - right.index)[0]
+        ?.value ?? ""
+    );
   }
 
-  return scored[0].value;
+  return scored[0]?.value ?? "";
+}
+
+type ExplicitTotalEvidenceCandidate = RemittanceTotalEvidence & { index: number };
+
+function totalEvidenceScore(
+  evidence: ExplicitTotalEvidenceCandidate,
+  text: string
+) {
+  const amountPattern = evidence.amount.toFixed(2);
+  const repeatedAgreement = (
+    text.match(new RegExp(amountPattern.replace(".", String.raw`[.,]\s*`), "g")) ??
+    []
+  ).length;
+
+  return (
+    (evidence.raw?.includes(",") ? 28 : 0) +
+    (evidence.raw?.includes(".") ? 28 : 0) +
+    ((evidence.raw ?? "").replace(/\D/g, "").length >= 6 ? 30 : 0) +
+    repeatedAgreement * 36 -
+    (evidence.amount < 100 ? 70 : 0) -
+    (evidence.raw && /\b\d{1,2}\.\d{2}\b/.test(evidence.raw) ? 45 : 0) -
+    Math.min(evidence.index ?? 0, 1200) / 100
+  );
+}
+
+function explicitTotalEvidenceCandidates(text: string): ExplicitTotalEvidenceCandidate[] {
+  const totalPattern =
+    /\b(?:GRAND\s+TOTAL|CHECK\s*TOTAL|PAYMENT\s*TOTAL|PAYMENT\s*AMOUNT|AMOUNT\s*ENCLOSED|AMOUNT\s*PAID|CHECK\s*AMOUNT|TOTAL)\b\s*:?\s*[^\d$]{0,48}\$?\s*((?:\d{1,3}(?:[,\s]\d{3})+|\d+)(?:\s*[,.]\s*\d{2}|\.\d{2}))/gi;
+
+  return Array.from(text.matchAll(totalPattern)).reduce<
+    ExplicitTotalEvidenceCandidate[]
+  >((candidates, rawMatch) => {
+      const raw = rawMatch[1] ?? "";
+      const normalized = normalizeSplitMoneyFragments(raw).replace(/\s+/g, "");
+      const amount = parseMoney(normalized);
+
+      if (amount <= 0) {
+        return candidates;
+      }
+
+      candidates.push({
+        amount,
+        source: "explicit-document-total",
+        payable: true,
+        raw,
+        normalized: `$${amount.toFixed(2)}`,
+        normalizationReason:
+          normalized !== raw.replace(/\s+/g, "")
+            ? "final separator followed by exactly two digits treated as cents in explicit monetary total"
+            : "standard explicit monetary total",
+        index: rawMatch.index ?? 0,
+      });
+
+      return candidates;
+    }, []);
 }
 
 function findExplicitTotalEvidence(text: string): RemittanceTotalEvidence | null {
-  const totalPattern =
-    /\b(?:GRAND\s+TOTAL|CHECK\s*TOTAL|PAYMENT\s*TOTAL|PAYMENT\s*AMOUNT|AMOUNT\s*ENCLOSED|AMOUNT\s*PAID|CHECK\s*AMOUNT|TOTAL)\b\s*:?\s*[^\d$]{0,48}\$?\s*((?:\d{1,3}(?:[,\s]\d{3})+|\d+)(?:\s*[,.]\s*\d{2}|\.\d{2}))/i;
-  const rawMatch = text.match(totalPattern);
+  const candidates = explicitTotalEvidenceCandidates(text);
 
-  if (!rawMatch?.[1]) {
+  if (candidates.length === 0) {
     return null;
   }
 
-  const raw = rawMatch[1];
-  const normalized = normalizeSplitMoneyFragments(raw).replace(/\s+/g, "");
-  const amount = parseMoney(normalized);
-
-  if (amount <= 0) {
-    return null;
-  }
-
+  const selected = candidates
+    .slice()
+    .sort(
+      (left, right) =>
+        totalEvidenceScore(right, text) - totalEvidenceScore(left, text) ||
+        right.amount - left.amount ||
+        left.index - right.index
+    )[0];
   return {
-    amount,
-    source: "explicit-document-total",
-    payable: true,
-    raw,
-    normalized: `$${amount.toFixed(2)}`,
-    normalizationReason:
-      normalized !== raw.replace(/\s+/g, "")
-        ? "final separator followed by exactly two digits treated as cents in explicit monetary total"
-        : "standard explicit monetary total",
+    amount: selected.amount,
+    source: selected.source,
+    payable: selected.payable,
+    raw: selected.raw,
+    normalized: selected.normalized,
+    normalizationReason: selected.normalizationReason,
   };
+}
+
+function cleanPayorCandidate(value: string) {
+  const withoutLabel = value
+    .replace(/\b(?:property|payor|payer|customer|client)\s*:?\s*/i, "")
+    .replace(
+      /\b(?:inv(?:oice)?\.?\s*[-#: ]?|unit\b|\d{1,2}\/\d{1,2}(?:\/\d{2,4})?|\d{4}-\d{1,2}-\d{1,2}|\$?\s*\d{1,3}(?:,\d{3})*(?:\.\d{2})\b|\d{5,}).*$/i,
+      ""
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+  const suffixMatch = withoutLabel.match(
+    /^(.+?\b(?:apartments?|property|hoa|condominiums?|condos?|management|homes?))\b/i
+  );
+  const truncated = (suffixMatch?.[1] ?? withoutLabel)
+    .replace(
+      /\b(?:inv(?:oice)?\.?\s*[-#: ]?|unit\b|\d{1,2}\/\d{1,2}(?:\/\d{2,4})?|\d{4}-\d{1,2}-\d{1,2}|\$?\s*\d{1,3}(?:,\d{3})*(?:\.\d{2})\b).*$/i,
+      ""
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return isRemittanceHeaderText(truncated) || isBankingNoiseLine(truncated)
+    ? ""
+    : truncated;
 }
 
 export function extractCheckNumber(text: string) {
@@ -757,32 +835,7 @@ export function extractTotalAmount(text: string) {
 }
 
 export function extractLikelyPayor(text: string) {
-  const likelyPropertyLine = text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .find(
-      (line) =>
-        !isBankingNoiseLine(line) &&
-        /north\s+creek\s+apartments/i.test(line) ||
-        (!isBankingNoiseLine(line) &&
-          /north\s+creek/i.test(line) &&
-          /apartment/i.test(line))
-    );
-
-  if (likelyPropertyLine) {
-    const northCreekMatch = likelyPropertyLine.match(/north\s+creek\s+apartments?/i);
-
-    if (northCreekMatch?.[0]) {
-      return northCreekMatch[0].replace(/\s+/g, " ").trim();
-    }
-
-    return likelyPropertyLine
-      .replace(/\b(?:property|payor|payer|customer|client)\s*:?\s*/i, "")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
-
-  const explicitPayor = text.match(
+  const explicitPayor = checkRegionText(text).match(
     /\b(?:PAYOR|PAYER|CUSTOMER|PROPERTY|CLIENT)\s*:?\s*([^\n\r]+)/i
   );
 
@@ -791,7 +844,35 @@ export function extractLikelyPayor(text: string) {
     !isRemittanceHeaderText(explicitPayor[1]) &&
     !isBankingNoiseLine(explicitPayor[1])
   ) {
-    return explicitPayor[1].trim();
+    return cleanPayorCandidate(explicitPayor[1]);
+  }
+
+  const likelyPropertyLine = checkRegionText(text)
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find(
+      (line) =>
+        !isBankingNoiseLine(line) &&
+        !isRemittanceHeaderText(line) &&
+        /\b(?:apartments?|property|hoa|condominiums?|condos?|management|homes?)\b/i.test(
+          line
+        )
+    );
+
+  if (likelyPropertyLine) {
+    return cleanPayorCandidate(likelyPropertyLine);
+  }
+
+  const fallbackExplicitPayor = text.match(
+    /\b(?:PAYOR|PAYER|CUSTOMER|PROPERTY|CLIENT)\s*:?\s*([^\n\r]+)/i
+  );
+
+  if (
+    fallbackExplicitPayor?.[1] &&
+    !isRemittanceHeaderText(fallbackExplicitPayor[1]) &&
+    !isBankingNoiseLine(fallbackExplicitPayor[1])
+  ) {
+    return cleanPayorCandidate(fallbackExplicitPayor[1]);
   }
 
   const propertyLine = remittanceRegionText(text)
@@ -804,7 +885,7 @@ export function extractLikelyPayor(text: string) {
         !isBankingNoiseLine(line)
     );
 
-  return propertyLine ?? "";
+  return propertyLine ? cleanPayorCandidate(propertyLine) : "";
 }
 
 export function extractLikelyPayee(text: string) {

@@ -111,8 +111,11 @@ assert(
     payments.includes("selection.selectedCandidate?.id === \"canvas\"") &&
     payments.includes("imagecapture-still-crop") &&
     payments.includes("imagecapture-still-full") &&
-    payments.includes("canvas-video-frame"),
-  "Sparse canvas versus stronger still candidates must all be eligible for production selection."
+    payments.includes("canvas-video-frame") &&
+    payments.includes("imagecapture-still-crop preparation failed at cropPhotoForOcr") &&
+    payments.includes("imagecapture-still-full preparation failed at cropPhotoForOcr") &&
+    payments.includes("sourceCandidates.push({"),
+  "Sparse canvas versus stronger still candidates must all be eligible for production selection, and one still derivative failure must not discard the other candidates."
 );
 
 assert(

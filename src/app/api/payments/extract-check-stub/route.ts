@@ -1488,6 +1488,118 @@ function invoiceEvidenceForRow(
   });
 }
 
+function sameBandWordsForRow(row: GeometricRow, words: OcrWord[]) {
+  const yTolerance = Math.max(row.height * 1.5, 28);
+
+  return words.filter(
+    (word) => Math.abs(wordCenterY(word) - row.y) <= yTolerance
+  );
+}
+
+function sameBandUnitTokens(row: GeometricRow, words: OcrWord[]) {
+  return Array.from(
+    new Set(
+      sameBandWordsForRow(row, words)
+        .flatMap((word) => [
+          ...extractUnitCodeCandidates(normalizeGeometryToken(word.text)),
+          ...rawUnitLikeTokens(normalizeGeometryToken(word.text)),
+        ])
+        .filter(Boolean)
+    )
+  );
+}
+
+function sameBandDateTokens(row: GeometricRow, words: OcrWord[]) {
+  return Array.from(
+    new Set(
+      sameBandWordsForRow(row, words)
+        .map((word) => normalizeGeometryToken(word.text))
+        .filter((token) =>
+          /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b|\b\d{4}-\d{1,2}-\d{1,2}\b/.test(
+            token
+          )
+        )
+    )
+  );
+}
+
+function sameBandAmountCandidates(row: GeometricRow, words: OcrWord[]) {
+  const amountWords = sameBandWordsForRow(row, words)
+    .filter((word) => classifyGeometryWord(word) === "amount")
+    .sort((left, right) => left.bbox.x0 - right.bbox.x0);
+  const candidates = amountWords.flatMap((word) =>
+    extractMoneyCandidates(normalizeGeometryToken(word.text)).map((candidate) => ({
+      raw: candidate.raw,
+      normalized: candidate.normalized,
+      value: candidate.value,
+      score: candidate.score,
+      confidence: Math.round(word.confidence),
+      bbox: word.bbox,
+    }))
+  );
+  const countByValue = new Map<string, number>();
+
+  candidates.forEach((candidate) => {
+    const key = candidate.value.toFixed(2);
+
+    countByValue.set(key, (countByValue.get(key) ?? 0) + 1);
+  });
+
+  return candidates.map((candidate) => ({
+    ...candidate,
+    score: candidate.score + (countByValue.get(candidate.value.toFixed(2)) ?? 0) * 18,
+  }));
+}
+
+function mergeStructuredAmountCandidates(
+  primaryCandidates: ReturnType<typeof geometryAmountCandidates>,
+  crossPassCandidates: ReturnType<typeof sameBandAmountCandidates>
+) {
+  const merged = new Map<
+    string,
+    {
+      raw: string;
+      normalized: string;
+      value: number;
+      score?: number;
+      confidence?: number;
+      selected?: boolean;
+      bbox?: OcrWord["bbox"];
+    }
+  >();
+
+  [...primaryCandidates, ...crossPassCandidates].forEach((candidate) => {
+    const key = `${candidate.value.toFixed(2)}|${candidate.raw}`;
+    const existing = merged.get(key);
+    const candidateScore = candidate.score ?? 0;
+    const existingScore = existing?.score ?? Number.NEGATIVE_INFINITY;
+
+    if (!existing || candidateScore > existingScore) {
+      merged.set(key, {
+        raw: candidate.raw,
+        normalized: candidate.normalized,
+        value: candidate.value,
+        score: candidate.score,
+        confidence: candidate.confidence,
+        selected: false,
+        bbox: candidate.bbox,
+      });
+    }
+  });
+
+  const ranked = Array.from(merged.values()).sort(
+    (left, right) =>
+      (right.score ?? 0) - (left.score ?? 0) ||
+      (right.confidence ?? 0) - (left.confidence ?? 0)
+  );
+  const selectedValue = ranked[0]?.value ?? 0;
+
+  return ranked.map((candidate) => ({
+    ...candidate,
+    selected: selectedValue > 0 && Math.abs(candidate.value - selectedValue) < 0.01,
+  }));
+}
+
 function buildStructuredRowEvidence(
   rows: GeometricRow[],
   attempts: OcrAttempt[] = [],
@@ -1503,7 +1615,11 @@ function buildStructuredRowEvidence(
         [...row.words, ...allWords],
         documentWidth
       );
-      const amountCandidates = geometryAmountCandidates(row)
+      const sameBandWords = sameBandWordsForRow(row, allWords);
+      const amountCandidates = mergeStructuredAmountCandidates(
+        geometryAmountCandidates(row),
+        sameBandAmountCandidates(row, allWords)
+      )
         .filter((candidate) => candidate.value > 0)
         .map((candidate) => ({
           raw: candidate.raw,
@@ -1535,15 +1651,19 @@ function buildStructuredRowEvidence(
           ...acceptance.unitCodes,
           ...extractUnitCodeCandidates(row.text),
           ...rawUnitLikeTokens(row.text),
+          ...sameBandUnitTokens(row, sameBandWords),
         ])
       );
       const dateTokens = Array.from(
         new Set(
-          row.tokens.filter((token) =>
-            /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b|\b\d{4}-\d{1,2}-\d{1,2}\b/.test(
-              token
+          [
+            ...row.tokens,
+            ...sameBandDateTokens(row, sameBandWords),
+          ].filter((token) =>
+              /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b|\b\d{4}-\d{1,2}-\d{1,2}\b/.test(
+                token
+              )
             )
-          )
         )
       );
       const firstWord = row.words[0];

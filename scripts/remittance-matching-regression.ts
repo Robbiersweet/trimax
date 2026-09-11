@@ -551,6 +551,14 @@ assert.deepEqual(
   "Column headers must not block INV0500 and INV0501 matching."
 );
 
+assert.equal(
+  parseCheckStubText(
+    "Description Amount\nINV0520 U20 full interior paint $901.18"
+  ).payor,
+  "",
+  "Column labels and row descriptions must not become the payor when no reliable payor header is present."
+);
+
 const productionStub2721OcrLike = [
   "CK# 2721 07/07/2026",
   "Property Account Invoice - Date Description Amount",
@@ -1588,6 +1596,10 @@ assert(
   ocrRoute.includes("candidateStructureScore") &&
     ocrRoute.includes("structurallyValidRemittanceRows") &&
     ocrRoute.includes("reconstructRowsFromOcrGeometry") &&
+    ocrRoute.includes("sameBandAmountCandidates") &&
+    ocrRoute.includes("sameBandUnitTokens") &&
+    ocrRoute.includes("sameBandDateTokens") &&
+    ocrRoute.includes("mergeStructuredAmountCandidates") &&
     ocrRoute.includes("geometryTokenSummaries") &&
     ocrRoute.includes("textRegionMetrics") &&
     ocrRoute.includes("candidateTokenSummary") &&

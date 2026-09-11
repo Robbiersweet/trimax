@@ -4502,25 +4502,44 @@ export default function BatchInvoicePayments({
         `Capture quality comparison: video-frame canvas ${formatQualityComparisonMetrics(videoQuality)}; ImageCapture still detected crop ${formatQualityComparisonMetrics(stillCropQuality)}.`
       );
 
-      const stillCropDataUrl = await cropPhotoForOcr(
-        stillFile,
-        stillSuggestion.cropBox,
-        0
-      );
-      const stillCropFile = await dataUrlToImageFile(
-        stillCropDataUrl,
-        `trimax-remittance-still-crop-${Date.now()}.jpg`
-      );
-      const stillFullDataUrl = await cropPhotoForOcr(
-        stillFile,
-        { left: 0, top: 0, right: 100, bottom: 100 },
-        0
-      );
-      const stillFullFile = await dataUrlToImageFile(
-        stillFullDataUrl,
-        `trimax-remittance-still-full-${Date.now()}.jpg`
-      );
-      const selection = await selectProductionCaptureSource([
+      let stillCropFile: File | null = null;
+      let stillFullFile: File | null = null;
+
+      try {
+        const stillCropDataUrl = await cropPhotoForOcr(
+          stillFile,
+          stillSuggestion.cropBox,
+          0
+        );
+
+        stillCropFile = await dataUrlToImageFile(
+          stillCropDataUrl,
+          `trimax-remittance-still-crop-${Date.now()}.jpg`
+        );
+      } catch (error) {
+        diagnosticLines.push(
+          `imagecapture-still-crop preparation failed at cropPhotoForOcr: ${error instanceof Error ? error.message : "unknown error"}.`
+        );
+      }
+
+      try {
+        const stillFullDataUrl = await cropPhotoForOcr(
+          stillFile,
+          { left: 0, top: 0, right: 100, bottom: 100 },
+          0
+        );
+
+        stillFullFile = await dataUrlToImageFile(
+          stillFullDataUrl,
+          `trimax-remittance-still-full-${Date.now()}.jpg`
+        );
+      } catch (error) {
+        diagnosticLines.push(
+          `imagecapture-still-full preparation failed at cropPhotoForOcr: ${error instanceof Error ? error.message : "unknown error"}.`
+        );
+      }
+
+      const sourceCandidates: CaptureSourceCandidate[] = [
         {
           id: "canvas",
           label: "canvas-video-frame",
@@ -4530,7 +4549,10 @@ export default function BatchInvoicePayments({
           detectorAreaRatio: 1,
           detectorSource: "visible-guide",
         },
-        {
+      ];
+
+      if (stillCropFile) {
+        sourceCandidates.push({
           id: "still-crop",
           label: "imagecapture-still-crop",
           file: stillCropFile,
@@ -4538,8 +4560,11 @@ export default function BatchInvoicePayments({
           detectorConfidence: stillSuggestion.confidence,
           detectorAreaRatio: stillSuggestion.documentAreaRatio,
           detectorSource: "still-detector-crop",
-        },
-        {
+        });
+      }
+
+      if (stillFullFile) {
+        sourceCandidates.push({
           id: "still-full",
           label: "imagecapture-still-full",
           file: stillFullFile,
@@ -4547,8 +4572,9 @@ export default function BatchInvoicePayments({
           detectorConfidence: "medium",
           detectorAreaRatio: 1,
           detectorSource: "normalized-full-still",
-        },
-      ]);
+        });
+      }
+      const selection = await selectProductionCaptureSource(sourceCandidates);
       const productionFile =
         selection.selectedCandidate?.id === "canvas"
           ? null
