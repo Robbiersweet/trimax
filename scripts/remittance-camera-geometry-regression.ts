@@ -388,7 +388,7 @@ assert(
     paymentScreen.includes("imagecapture-still-crop") &&
     paymentScreen.includes("imagecapture-still-full") &&
     paymentScreen.includes("canvas-video-frame") &&
-    paymentScreen.includes("candidate: dimensions=") &&
+    paymentScreen.includes("candidate dimensions=") &&
     paymentScreen.includes("completenessScore=") &&
     paymentScreen.includes("detectDefaultCropBox(stillFile)") &&
     paymentScreen.includes("productionFile = stillComparison.productionFile ?? file") &&
@@ -414,11 +414,27 @@ assert(
 
 assert(
   ocrRoute.includes("Capture source selection OCR timed out.") &&
+    ocrRoute.includes("Capture source preflight budget reached before this candidate could run.") &&
+    ocrRoute.includes("failures: CaptureSourceFailure[]") &&
+    ocrRoute.includes("fallbackOccurred") &&
+    ocrRoute.includes("Candidate image data URL was missing or unsafe.") &&
     ocrRoute.includes("Date.now() - startedAt > 18_000") &&
     ocrRoute.includes("completenessScore") &&
     ocrRoute.includes("const selection = await selectCaptureSource(candidates)") &&
     !ocrRoute.includes("mode === \"capture-source-selection\" && recognizeBestText"),
-  "Capture source comparison must be a bounded preflight instead of running the full OCR diagnostics suite twice."
+  "Capture source comparison must be a bounded isolated preflight instead of running the full OCR diagnostics suite twice or aborting all candidates after one failure."
+);
+
+assert(
+    paymentScreen.includes("Capture source preflight:") &&
+    paymentScreen.includes("\"Canvas evaluation\"") &&
+    paymentScreen.includes("\"Still crop evaluation\"") &&
+    paymentScreen.includes("\"Still full evaluation\"") &&
+    paymentScreen.includes("${prefix}:") &&
+    paymentScreen.includes("Fallback occurred:") &&
+    paymentScreen.includes("failed at") &&
+    paymentScreen.includes("Selected source:"),
+  "Camera diagnostics must report source-selection start, candidate-level results, candidate failures, fallback, and selected source."
 );
 
 assert(

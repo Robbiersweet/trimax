@@ -672,6 +672,20 @@ assert.deepEqual(
   [1099, 9],
   "Amount diagnostics must retain all row candidates."
 );
+assert.equal(parseCheckStubText("TOTAL: $4,505.90").totalAmount, 4505.9);
+assert.equal(parseCheckStubText("TOTAL: $4,505,90").totalAmount, 4505.9);
+assert.equal(parseCheckStubText("TOTAL: $4,505, 90").totalAmount, 4505.9);
+assert.equal(parseCheckStubText("TOTAL: $4 505.90").totalAmount, 4505.9);
+assert.equal(parseCheckStubText("TOTAL: $4,505 . 90").totalAmount, 4505.9);
+const commaCentTotalEvidence = extractRemittanceTotalEvidence("TOTAL: $4,505, 90");
+assert.equal(commaCentTotalEvidence.amount, 4505.9);
+assert.equal(commaCentTotalEvidence.source, "explicit-document-total");
+assert.equal(commaCentTotalEvidence.raw, "4,505, 90");
+assert.equal(commaCentTotalEvidence.normalized, "$4505.90");
+assert(
+  commaCentTotalEvidence.normalizationReason?.includes("treated as cents"),
+  "Explicit totals with comma-before-cents OCR must preserve the normalization reason."
+);
 
 const rowWithNinetyNineFragment = parseCheckStubText(
   "G01 full interior paint 1,099.00 99.00"
@@ -1117,6 +1131,11 @@ assert.equal(
   0,
   "Fuzzy-resolved structured identities must not later appear as missing raw OCR invoice numbers."
 );
+assert.deepEqual(
+  rawInvoiceLikeTokens("ServiINV0521"),
+  ["INV0521"],
+  "Embedded invoice substrings from OCR word merges must remain available to same-row structured evidence."
+);
 
 const partialStructuredEvidenceMatch = findRemittanceMatches(
   referenceBOpenInvoices,
@@ -1174,7 +1193,7 @@ assert(
   "OCR route must preserve mobile image quality, use document regions, and return safe diagnostics."
 );
 assert(
-  route.includes("strongestExplicitDocumentTotal") &&
+  route.includes("strongestExplicitDocumentTotalEvidence") &&
     route.includes("explicitDocumentTotal") &&
     route.includes("right.confidence - left.confidence") &&
     route.includes("equal score but lower OCR confidence"),
@@ -1183,6 +1202,11 @@ assert(
 assert(
   route.includes("buildGeometryRowSets") &&
     route.includes("buildStructuredRowEvidence") &&
+    route.includes("invoiceEvidenceForRow") &&
+    route.includes("invoiceEvidenceByPass") &&
+    route.includes("Math.abs(wordCenterY(word) - row.y)") &&
+    route.includes("xRatio >= 0.08 && xRatio <= 0.72") &&
+    route.includes("structuredRowDiagnostics") &&
     route.includes("structuredRowEvidence") &&
     route.includes("geometryRowSetSummaries") &&
     route.includes("expectedRowCount") &&
@@ -1190,6 +1214,10 @@ assert(
     route.includes("invoice-column-diagnostics-skipped:near-budget") &&
     route.includes("invoice-column-diagnostics-skipped:failed"),
   "OCR route must keep pass-provenance row sets, emit structured row evidence, and skip non-blocking diagnostics near route budget."
+);
+assert(
+  route.includes("explicitDocumentTotalEvidence"),
+  "OCR route must return raw and normalized explicit total evidence."
 );
 assert(
   !route.includes("2721") && !route.includes("2198") && !route.includes("1099"),
@@ -1253,6 +1281,16 @@ assert(
     paymentScreen.includes("unitTokens=") &&
     paymentScreen.includes("normalization="),
   "Payments screen diagnostics must expose deterministic row-resolution evidence."
+);
+assert(
+  paymentScreen.includes("Raw explicit total token:") &&
+    paymentScreen.includes("Normalized explicit total:") &&
+    paymentScreen.includes("Normalization reason:") &&
+    paymentScreen.includes("Total source:") &&
+    paymentScreen.includes("Row Y=") &&
+    paymentScreen.includes("Invoice evidence by pass=") &&
+    paymentScreen.includes("Chosen invoice evidence="),
+  "Payments screen diagnostics must expose total normalization and per-row cross-pass evidence."
 );
 assert(
   paymentScreen.includes("parsedTotalFromResponse") &&

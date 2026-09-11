@@ -8,7 +8,6 @@ import {
   hasExplicitRemittanceTotal,
   invoiceCandidateDigitsFromRawToken,
   normalizeInvoiceNumber,
-  parseMoney,
   parseCheckStubText,
   rawInvoiceLikeTokens,
   rawUnitLikeTokens,
@@ -113,6 +112,13 @@ type CaptureSourceEvaluation = {
   explicitTotal: number;
   completenessScore: number;
   suspiciousIncomplete: boolean;
+};
+
+type CaptureSourceFailure = {
+  id: string;
+  label: string;
+  stage: string;
+  error: string;
 };
 
 type OcrWord = {
@@ -1331,10 +1337,79 @@ function buildGeometryAttempt(
   };
 }
 
-function buildStructuredRowEvidence(rows: GeometricRow[]): StructuredRemittanceRowEvidence[] {
+function passLabelForWord(word: OcrWord) {
+  return `${word.region} ${word.variant}/${word.pageMode}`;
+}
+
+function invoiceEvidenceForRow(
+  row: GeometricRow,
+  allWords: OcrWord[],
+  documentWidth: number
+) {
+  const yTolerance = Math.max(row.height * 1.4, 26);
+  const rowWordSet = new Set(row.words);
+  const evidence = allWords
+    .filter((word) => {
+      const rawTokens = rawInvoiceLikeTokens(normalizeGeometryToken(word.text));
+
+      if (rawTokens.length === 0) {
+        return false;
+      }
+
+      if (Math.abs(wordCenterY(word) - row.y) > yTolerance) {
+        return false;
+      }
+
+      if (documentWidth <= 0 || rowWordSet.has(word)) {
+        return true;
+      }
+
+      const xRatio = wordCenterX(word) / documentWidth;
+
+      return xRatio >= 0.08 && xRatio <= 0.72;
+    })
+    .flatMap((word) =>
+      rawInvoiceLikeTokens(normalizeGeometryToken(word.text)).map((raw) => ({
+        raw,
+        normalized: invoiceCandidateDigitsFromRawToken(raw),
+        region: word.region,
+        variant: word.variant,
+        pageMode: word.pageMode,
+        confidence: Math.round(word.confidence),
+        bbox: word.bbox,
+        pass: passLabelForWord(word),
+      }))
+    )
+    .filter((item) => item.normalized.length > 0);
+  const seen = new Set<string>();
+
+  return evidence.filter((item) => {
+    const key = `${item.raw}|${item.normalized.join(",")}|${item.pass}|${item.bbox.x0},${item.bbox.y0}`;
+
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+}
+
+function buildStructuredRowEvidence(
+  rows: GeometricRow[],
+  attempts: OcrAttempt[] = [],
+  documentWidth = 0
+): StructuredRemittanceRowEvidence[] {
+  const allWords = attempts.length > 0 ? attempts.flatMap((attempt) => attempt.words) : [];
+
   return rows
     .map((row, index) => {
       const acceptance = rowAcceptance(row);
+      const invoiceEvidence = invoiceEvidenceForRow(
+        row,
+        [...row.words, ...allWords],
+        documentWidth
+      );
       const amountCandidates = geometryAmountCandidates(row)
         .filter((candidate) => candidate.value > 0)
         .map((candidate) => ({
@@ -1350,6 +1425,7 @@ function buildStructuredRowEvidence(rows: GeometricRow[]): StructuredRemittanceR
         new Set([
           ...rawInvoiceLikeTokens(row.text),
           ...row.tokens.filter((token) => /^INV/i.test(token)),
+          ...invoiceEvidence.map((item) => item.raw),
         ])
       );
       const normalizedInvoiceCandidates = Array.from(
@@ -1358,6 +1434,7 @@ function buildStructuredRowEvidence(rows: GeometricRow[]): StructuredRemittanceR
           ...rawInvoiceTokens.flatMap((token) =>
             invoiceCandidateDigitsFromRawToken(token)
           ),
+          ...invoiceEvidence.flatMap((item) => item.normalized),
         ])
       );
       const unitLikeTokens = Array.from(
@@ -1395,6 +1472,15 @@ function buildStructuredRowEvidence(rows: GeometricRow[]): StructuredRemittanceR
         amountCandidates,
         dateTokens,
         score: row.score,
+        invoiceEvidenceByPass: invoiceEvidence.map((item) => ({
+          raw: item.raw,
+          normalized: item.normalized,
+          region: item.region,
+          variant: item.variant,
+          pageMode: item.pageMode,
+          confidence: item.confidence,
+          bbox: item.bbox,
+        })),
       };
     })
     .filter(
@@ -1407,28 +1493,37 @@ function buildStructuredRowEvidence(rows: GeometricRow[]): StructuredRemittanceR
 }
 
 function explicitDocumentTotalFromText(text: string) {
-  const match = text.match(
-    /\b(?:GRAND\s+TOTAL|CHECK\s*TOTAL|PAYMENT\s*TOTAL|PAYMENT\s*AMOUNT|AMOUNT\s*ENCLOSED|AMOUNT\s*PAID|CHECK\s*AMOUNT|TOTAL)\b\s*:?\s*[^\d$]{0,48}\$?\s*([\d,]+\.\d{2})/i
-  );
+  const evidence = extractRemittanceTotalEvidence(text);
 
-  return match?.[1] ? parseMoney(match[1]) : 0;
+  return evidence.source === "explicit-document-total" ? evidence.amount : 0;
 }
 
-function strongestExplicitDocumentTotal(attempts: OcrAttempt[]) {
+function explicitDocumentTotalEvidenceFromText(text: string) {
+  const evidence = extractRemittanceTotalEvidence(text);
+
+  return evidence.source === "explicit-document-total" ? evidence : null;
+}
+
+function strongestExplicitDocumentTotalEvidence(attempts: OcrAttempt[]) {
   return attempts.reduce(
     (best, attempt) => {
-      const value = explicitDocumentTotalFromText(withoutMicrBandText(attempt.text));
+      const evidence = explicitDocumentTotalEvidenceFromText(
+        withoutMicrBandText(attempt.text)
+      );
 
-      if (value <= 0) {
+      if (!evidence || evidence.amount <= 0) {
         return best;
       }
 
       const score = candidateStructureScore(attempt);
 
-      return score > best.score ? { value, score } : best;
+      return score > best.score ? { evidence, score } : best;
     },
-    { value: 0, score: Number.NEGATIVE_INFINITY }
-  ).value;
+    {
+      evidence: null as ReturnType<typeof explicitDocumentTotalEvidenceFromText>,
+      score: Number.NEGATIVE_INFINITY,
+    }
+  );
 }
 
 function classifyGeometryWord(word: OcrWord, documentWidth = 0) {
@@ -2019,7 +2114,8 @@ async function recognizeBestText(
     }
 
     const selected = attempts[0] ?? null;
-    const explicitDocumentTotal = strongestExplicitDocumentTotal(attempts);
+    const explicitDocumentTotalEvidence = strongestExplicitDocumentTotalEvidence(attempts).evidence;
+    const explicitDocumentTotal = explicitDocumentTotalEvidence?.amount ?? 0;
     const regionBestAttempts = regionSources
       .map((source) =>
         attempts
@@ -2058,14 +2154,33 @@ async function recognizeBestText(
       selected?.words ??
       [];
     const geometricRows = (bestGeometryRowSet?.rows ?? []).slice(0, 12);
-    const structuredRowEvidence = buildStructuredRowEvidence(geometricRows);
-    const geometricRowDetails = geometryRowDetails(
-      geometricRows,
-      sources.document.width ?? 0,
-      diagnosticWordSource
-    );
     const documentWidth = sources.document.width ?? 0;
     const documentHeight = sources.document.height ?? 0;
+    const structuredRowEvidence = buildStructuredRowEvidence(
+      geometricRows,
+      attempts,
+      documentWidth
+    );
+    const structuredRowDiagnostics = structuredRowEvidence.map((row) => ({
+      rowId: row.rowId,
+      y: row.y,
+      height: row.height,
+      invoiceEvidenceByPass: row.invoiceEvidenceByPass ?? [],
+      chosenInvoiceEvidence: row.normalizedInvoiceCandidates,
+      unitEvidence: row.unitLikeTokens,
+      amountEvidence: row.amountCandidates
+        .filter((candidate) => candidate.selected)
+        .map((candidate) => candidate.normalized ?? `$${candidate.value.toFixed(2)}`),
+      resolutionHint:
+        row.normalizedInvoiceCandidates.length > 0
+          ? "structured row carries same-band invoice evidence to resolver"
+          : "no same-band invoice evidence found",
+    }));
+    const geometricRowDetails = geometryRowDetails(
+      geometricRows,
+      documentWidth,
+      diagnosticWordSource
+    );
 
     async function buildInvoiceColumnDiagnostics(): Promise<InvoiceColumnDiagnostics | null> {
       if (
@@ -2281,6 +2396,7 @@ async function recognizeBestText(
         selectedVariant: selected?.variant,
         selectedConfidence: selected?.confidence,
         explicitDocumentTotal,
+        explicitDocumentTotalEvidence,
         stageTimings,
         selectedSummary: redactedTextSummary(selected?.text ?? ""),
         regionSummaries: regionBestAttempts.map((attempt) =>
@@ -2322,6 +2438,7 @@ async function recognizeBestText(
           score: row.score,
           text: row.text,
         })),
+        structuredRowDiagnostics,
         geometricRowDetails,
         invoiceColumnDiagnostics,
       },
@@ -2362,6 +2479,13 @@ function normalizeDetectorConfidence(value: unknown) {
     : "unknown";
 }
 
+function captureSourceError(message: string, stage: string) {
+  const error = new Error(message) as Error & { stage?: string };
+
+  error.stage = stage;
+  return error;
+}
+
 function sourceSelectionReason(
   selected: CaptureSourceEvaluation,
   alternatives: CaptureSourceEvaluation[]
@@ -2391,10 +2515,11 @@ async function evaluateCaptureSourceCandidate(
   worker: Awaited<ReturnType<typeof import("tesseract.js").createWorker>>,
   psm: typeof import("tesseract.js").PSM
 ): Promise<CaptureSourceEvaluation | null> {
+  let stage = "validate-data-url";
   const imageDataUrl = candidate.imageDataUrl;
 
   if (!isSafeDataUrl(imageDataUrl)) {
-    return null;
+    throw captureSourceError("Candidate image data URL was missing or unsafe.", stage);
   }
 
   const safeImageDataUrl = imageDataUrl as string;
@@ -2406,7 +2531,10 @@ async function evaluateCaptureSourceCandidate(
     Number.isFinite(candidate.detectorAreaRatio)
       ? candidate.detectorAreaRatio
       : 0;
+  try {
+  stage = "decode-image";
   const originalImage = dataUrlToBuffer(safeImageDataUrl);
+  stage = "build-ocr-sources";
   const sources = await buildOcrSources(originalImage);
   const source = {
     name: label,
@@ -2424,21 +2552,35 @@ async function evaluateCaptureSourceCandidate(
     variant: "grayscale-normalized",
     pageMode: { name: "sparse-text", value: psm.SPARSE_TEXT },
   };
+  stage = "preprocess";
   const processedImage = await preprocessForOcr(source.image, 0, spec.variant);
   const processedMetadata = await imageMetadata(processedImage);
+  stage = "set-psm";
   await worker.setParameters({
     tessedit_pageseg_mode: spec.pageMode.value,
   });
   const startedAt = Date.now();
+  let preflightTimeout: ReturnType<typeof setTimeout> | null = null;
+  stage = "ocr-recognize";
   const result = await Promise.race([
     worker.recognize(processedImage, {}, { text: true, blocks: true }),
     new Promise<never>((_, reject) => {
-      setTimeout(
-        () => reject(new Error("Capture source selection OCR timed out.")),
+      preflightTimeout = setTimeout(
+        () =>
+          reject(
+            captureSourceError(
+              "Capture source selection OCR timed out.",
+              "ocr-recognize"
+            )
+          ),
         5_000
       );
     }),
-  ]);
+  ]).finally(() => {
+    if (preflightTimeout) {
+      clearTimeout(preflightTimeout);
+    }
+  });
   const confidence =
     typeof result.data.confidence === "number" ? result.data.confidence : 0;
   const text = result.data.text ?? "";
@@ -2463,6 +2605,7 @@ async function evaluateCaptureSourceCandidate(
     imageHeight: source.height,
     words,
   };
+  stage = "quality-metrics";
   const quality = await imageDetailMetrics(source.image);
   const metrics = textRegionMetrics(
     words,
@@ -2532,6 +2675,16 @@ async function evaluateCaptureSourceCandidate(
     completenessScore,
     suspiciousIncomplete,
   };
+  } catch (error) {
+    if (error instanceof Error && "stage" in error) {
+      throw error;
+    }
+
+    throw captureSourceError(
+      error instanceof Error ? error.message : "Candidate evaluation failed.",
+      stage
+    );
+  }
 }
 
 async function selectCaptureSource(
@@ -2551,19 +2704,41 @@ async function selectCaptureSource(
     });
 
     const evaluations: CaptureSourceEvaluation[] = [];
+    const failures: CaptureSourceFailure[] = [];
     const startedAt = Date.now();
 
     for (const [index, candidate] of candidates.slice(0, 4).entries()) {
       if (Date.now() - startedAt > 18_000) {
+        failures.push({
+          id: `candidate-${index + 1}`,
+          label: `candidate-${index + 1}`,
+          stage: "route-budget",
+          error: "Capture source preflight budget reached before this candidate could run.",
+        });
         break;
       }
+
+      const id = normalizeCandidateLabel(candidate.id, `candidate-${index + 1}`);
+      const label = normalizeCandidateLabel(candidate.label, id);
 
       const evaluation = await evaluateCaptureSourceCandidate(
         candidate,
         index,
         worker,
         Tesseract.PSM
-      ).catch(() => null);
+      ).catch((error) => {
+        failures.push({
+          id,
+          label,
+          stage:
+            error instanceof Error && "stage" in error && typeof error.stage === "string"
+              ? error.stage
+              : "candidate-evaluation",
+          error: error instanceof Error ? error.message : String(error),
+        });
+
+        return null;
+      });
 
       if (evaluation) {
         evaluations.push(evaluation);
@@ -2587,6 +2762,8 @@ async function selectCaptureSource(
       selectionReason: selected
         ? sourceSelectionReason(selected, evaluations)
         : "No capture candidate had usable selection evidence.",
+      fallbackOccurred: !selected,
+      failures,
       evaluations: evaluations.map((evaluation) => ({
         id: evaluation.id,
         label: evaluation.label,
@@ -2638,12 +2815,38 @@ export async function POST(request: Request) {
       );
     }
 
-    const selection = await selectCaptureSource(candidates);
+    try {
+      const selection = await selectCaptureSource(candidates);
 
-    return NextResponse.json({
-      mode: "capture-source-selection",
-      ...selection,
-    });
+      return NextResponse.json({
+        mode: "capture-source-selection",
+        preflightStarted: true,
+        ...selection,
+      });
+    } catch (error) {
+      return NextResponse.json({
+        mode: "capture-source-selection",
+        preflightStarted: true,
+        selectedCandidateId: "",
+        selectedImageDataUrl: "",
+        selectedLabel: "",
+        selectionReason: "No capture candidate had usable selection evidence.",
+        fallbackOccurred: true,
+        failures: [
+          {
+            id: "preflight",
+            label: "capture-source-selection",
+            stage:
+              error instanceof Error && "stage" in error && typeof error.stage === "string"
+                ? error.stage
+                : "preflight",
+            error: error instanceof Error ? error.message : String(error),
+          },
+        ],
+        evaluations: [],
+        durationMs: 0,
+      });
+    }
   }
 
   if (!isSafeDataUrl(imageDataUrl)) {

@@ -251,11 +251,19 @@ type CaptureSourceCandidate = {
 };
 
 type CaptureSourceSelectionResponse = {
+  preflightStarted?: boolean;
   selectedCandidateId?: string;
   selectedLabel?: string;
   selectedImageDataUrl?: string;
   selectionReason?: string;
   durationMs?: number;
+  fallbackOccurred?: boolean;
+  failures?: Array<{
+    id?: string;
+    label?: string;
+    stage?: string;
+    error?: string;
+  }>;
   evaluations?: Array<{
     id?: string;
     label?: string;
@@ -291,6 +299,9 @@ type CheckStubOcrResponse = {
     amount?: number;
     source?: string;
     payable?: boolean;
+    raw?: string;
+    normalized?: string;
+    normalizationReason?: string;
   };
   lines?: { amount?: unknown; invoiceNumbers?: unknown }[];
   structuredRowEvidence?: StructuredRemittanceRowEvidence[];
@@ -311,6 +322,14 @@ type CheckStubOcrResponse = {
     selectedVariant?: string;
     selectedConfidence?: number;
     explicitDocumentTotal?: number;
+    explicitDocumentTotalEvidence?: {
+      amount?: number;
+      source?: string;
+      payable?: boolean;
+      raw?: string;
+      normalized?: string;
+      normalizationReason?: string;
+    };
     selectedSummary?: string;
     regionSummaries?: string[];
     stageTimings?: Record<string, number>;
@@ -367,6 +386,29 @@ type CheckStubOcrResponse = {
       height?: number;
       score?: number;
       text?: string;
+    }>;
+    structuredRowDiagnostics?: Array<{
+      rowId?: string;
+      y?: number;
+      height?: number;
+      invoiceEvidenceByPass?: Array<{
+        raw?: string;
+        normalized?: string[];
+        region?: string;
+        variant?: string;
+        pageMode?: string;
+        confidence?: number;
+        bbox?: {
+          x0?: number;
+          y0?: number;
+          x1?: number;
+          y1?: number;
+        };
+      }>;
+      chosenInvoiceEvidence?: string[];
+      unitEvidence?: string[];
+      amountEvidence?: string[];
+      resolutionHint?: string;
     }>;
     geometricRowDetails?: Array<{
       y?: number;
@@ -2626,6 +2668,21 @@ export default function BatchInvoicePayments({
       lines.push(`Selected text summary: ${diagnostics.selectedSummary}.`);
     }
 
+    if (diagnostics.explicitDocumentTotalEvidence) {
+      const total = diagnostics.explicitDocumentTotalEvidence;
+
+      lines.push(
+        `Raw explicit total token: ${total.raw ?? "none"}.`
+      );
+      lines.push(
+        `Normalized explicit total: ${total.normalized ?? (typeof total.amount === "number" ? formatMoney(total.amount) : "none")}.`
+      );
+      lines.push(
+        `Normalization reason: ${total.normalizationReason ?? "none"}.`
+      );
+      lines.push(`Total source: ${total.source ?? "none"}.`);
+    }
+
     if (diagnostics.candidateSummaries?.length) {
       lines.push(
         `Best candidates: ${diagnostics.candidateSummaries
@@ -2698,6 +2755,25 @@ export default function BatchInvoicePayments({
           )
           .join(" | ")}.`
       );
+    }
+
+    if (diagnostics.structuredRowDiagnostics?.length) {
+      diagnostics.structuredRowDiagnostics.slice(0, 8).forEach((row, index) => {
+        const invoiceEvidence =
+          row.invoiceEvidenceByPass
+            ?.map((token) => {
+              const bbox = token.bbox
+                ? `@${Math.round(token.bbox.x0 ?? 0)},${Math.round(token.bbox.y0 ?? 0)}-${Math.round(token.bbox.x1 ?? 0)},${Math.round(token.bbox.y1 ?? 0)}`
+                : "";
+
+              return `${token.raw ?? ""}->${token.normalized?.join("/") || "none"}:${token.variant ?? "?"}/${token.pageMode ?? "?"}:conf=${Math.round(token.confidence ?? 0)}${bbox}`;
+            })
+            .join(" | ") || "none";
+
+        lines.push(
+          `Row ${index + 1} evidence: Row Y=${Math.round(row.y ?? 0)}, Invoice evidence by pass=${invoiceEvidence}, Chosen invoice evidence=${row.chosenInvoiceEvidence?.join(", ") || "none"}, Unit evidence=${row.unitEvidence?.join(", ") || "none"}, amount=${row.amountEvidence?.join(", ") || "none"}, Resolution reason=${row.resolutionHint ?? "none"}.`
+        );
+      });
     }
 
     if (diagnostics.geometricRowDetails?.length) {
@@ -3989,6 +4065,11 @@ export default function BatchInvoicePayments({
     });
     const result =
       (await response.json().catch(() => ({}))) as CaptureSourceSelectionResponse;
+    const failureLines =
+      result.failures?.map(
+        (failure) =>
+          `${failure.label ?? failure.id ?? "candidate"} failed at ${failure.stage ?? "unknown"}: ${failure.error ?? "unknown error"}.`
+      ) ?? [];
 
     if (!response.ok) {
       const reason =
@@ -3998,7 +4079,9 @@ export default function BatchInvoicePayments({
         selectedCandidate: candidates[0] ?? null,
         reason,
         diagnosticLines: [
+          "Capture source preflight: started.",
           `Capture source selection failed: ${reason}.`,
+          ...failureLines,
           "Production OCR source selected: canvas.",
           `Selection reason: ${reason}; canvas fallback used.`,
         ],
@@ -4014,8 +4097,17 @@ export default function BatchInvoicePayments({
         const width = evaluation.dimensions?.width ?? 0;
         const height = evaluation.dimensions?.height ?? 0;
         const quality = evaluation.quality;
+        let prefix = `${evaluation.label ?? evaluation.id ?? "candidate"} evaluation`;
 
-        return `${evaluation.label ?? evaluation.id ?? "candidate"} candidate: dimensions=${width}x${height}, detector=${evaluation.detectorConfidence ?? "unknown"}, quality sharpness=${quality?.sharpness ?? 0}, contrast=${quality?.contrast ?? 0}, words=${evaluation.words ?? 0}, highConfidence=${evaluation.highConfidenceWords ?? 0}, textCoverage=${(((evaluation.textWidthCoverage ?? 0) * 100)).toFixed(1)}%x${(((evaluation.textHeightCoverage ?? 0) * 100)).toFixed(1)}%, invoiceTokens=${evaluation.invoiceTokens ?? 0}, dates=${evaluation.dateTokens ?? 0}, units=${evaluation.unitTokens ?? 0}, amounts=${evaluation.amountTokens ?? 0}, rows=${evaluation.rowCount ?? 0}, explicitTotal=${evaluation.explicitTotal ?? 0}, suspicious=${evaluation.suspiciousIncomplete ? "yes" : "no"}, completenessScore=${evaluation.completenessScore ?? 0}.`;
+        if (evaluation.id === "canvas") {
+          prefix = "Canvas evaluation";
+        } else if (evaluation.id === "still-crop") {
+          prefix = "Still crop evaluation";
+        } else if (evaluation.id === "still-full") {
+          prefix = "Still full evaluation";
+        }
+
+        return `${prefix}: ${evaluation.label ?? evaluation.id ?? "candidate"} candidate dimensions=${width}x${height}, detector=${evaluation.detectorConfidence ?? "unknown"}, quality sharpness=${quality?.sharpness ?? 0}, contrast=${quality?.contrast ?? 0}, words=${evaluation.words ?? 0}, highConfidence=${evaluation.highConfidenceWords ?? 0}, textCoverage=${(((evaluation.textWidthCoverage ?? 0) * 100)).toFixed(1)}%x${(((evaluation.textHeightCoverage ?? 0) * 100)).toFixed(1)}%, invoiceTokens=${evaluation.invoiceTokens ?? 0}, dates=${evaluation.dateTokens ?? 0}, units=${evaluation.unitTokens ?? 0}, amounts=${evaluation.amountTokens ?? 0}, rows=${evaluation.rowCount ?? 0}, explicitTotal=${evaluation.explicitTotal ?? 0}, suspicious=${evaluation.suspiciousIncomplete ? "yes" : "no"}, completenessScore=${evaluation.completenessScore ?? 0}.`;
       }) ?? [];
     const selectedSource =
       selectedCandidate?.id === "canvas" ? "canvas" : "imagecapture-still";
@@ -4027,9 +4119,13 @@ export default function BatchInvoicePayments({
       selectedCandidate,
       reason,
       diagnosticLines: [
+        `Capture source preflight: ${result.preflightStarted === false ? "not started" : "started"}.`,
         ...evaluationLines,
+        ...failureLines,
         `Capture source selection duration: ${result.durationMs ?? 0}ms.`,
+        `Selected source: ${selectedSource}.`,
         `Production OCR source selected: ${selectedSource}.`,
+        `Fallback occurred: ${result.fallbackOccurred ? "yes" : "no"}.`,
         `Selection reason: ${reason}`,
       ],
     };

@@ -57,6 +57,9 @@ export type RemittanceTotalEvidence = {
   amount: number;
   source: RemittanceTotalSource;
   payable: boolean;
+  raw?: string;
+  normalized?: string;
+  normalizationReason?: string;
 };
 
 export type StructuredRemittanceAmountCandidate = {
@@ -91,6 +94,20 @@ export type StructuredRemittanceRowEvidence = {
   amountCandidates: StructuredRemittanceAmountCandidate[];
   dateTokens: string[];
   score?: number;
+  invoiceEvidenceByPass?: Array<{
+    raw: string;
+    normalized: string[];
+    region: string;
+    variant: string;
+    pageMode: string;
+    confidence?: number;
+    bbox?: {
+      x0?: number;
+      y0?: number;
+      x1?: number;
+      y1?: number;
+    };
+  }>;
 };
 
 export type ParsedCheckStub = {
@@ -105,7 +122,7 @@ export type ParsedCheckStub = {
 };
 
 export function parseMoney(value: string) {
-  const parsed = Number(value.replace(/[^0-9.-]/g, ""));
+  const parsed = Number(normalizeSplitMoneyFragments(value).replace(/[^0-9.-]/g, ""));
 
   return Number.isFinite(parsed) ? parsed : 0;
 }
@@ -151,8 +168,9 @@ export function extractMoneyValues(text: string) {
 }
 
 export function extractMoneyCandidates(text: string) {
+  const normalizedText = normalizeSplitMoneyFragments(text);
   const matches = Array.from(
-    text.matchAll(
+    normalizedText.matchAll(
       /\$?\s*\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?\b|\$?\s*\d{1,3}(?:,\d{3})*(?:\.\d{2})\b|\b\d+\.\d{2}\b/g
     )
   );
@@ -201,6 +219,9 @@ function selectLineItemAmount(text: string) {
 function normalizeSplitMoneyFragments(text: string) {
   return text
     .replace(/\b(\d{1,3}(?:,\d{3})*)\s+\.(\d{2})\b/g, "$1.$2")
+    .replace(/\b(\d{1,3}(?:[,\s]\d{3})+)\s*,\s*(\d{2})\b/g, "$1.$2")
+    .replace(/\b(\d{1,3}(?:,\d{3})*)\s+\.\s*(\d{2})\b/g, "$1.$2")
+    .replace(/\b(\d{1,3}(?:,\d{3})*)\s*,\s*(\d{2})\b/g, "$1.$2")
     .replace(/\b(\d{1,3}(?:,\d{3})*)\s+([0O]{2})\b/g, "$1.00")
     .replace(
       /\b(\d{1,3}(?:,\d{3})*)\.(\d)\b/g,
@@ -345,12 +366,34 @@ function findLabeledHeaderCheckNumber(text: string) {
   return "";
 }
 
-function findExplicitTotalAmount(text: string) {
-  const explicitTotal = text.match(
-    /\b(?:GRAND\s+TOTAL|CHECK\s*TOTAL|PAYMENT\s*TOTAL|PAYMENT\s*AMOUNT|AMOUNT\s*ENCLOSED|AMOUNT\s*PAID|CHECK\s*AMOUNT|TOTAL)\b\s*:?\s*[^\d$]{0,48}\$?\s*([\d,]+\.\d{2})/i
-  );
+function findExplicitTotalEvidence(text: string): RemittanceTotalEvidence | null {
+  const totalPattern =
+    /\b(?:GRAND\s+TOTAL|CHECK\s*TOTAL|PAYMENT\s*TOTAL|PAYMENT\s*AMOUNT|AMOUNT\s*ENCLOSED|AMOUNT\s*PAID|CHECK\s*AMOUNT|TOTAL)\b\s*:?\s*[^\d$]{0,48}\$?\s*((?:\d{1,3}(?:[,\s]\d{3})+|\d+)(?:\s*[,.]\s*\d{2}|\.\d{2}))/i;
+  const rawMatch = text.match(totalPattern);
 
-  return explicitTotal?.[1] ? parseMoney(explicitTotal[1]) : 0;
+  if (!rawMatch?.[1]) {
+    return null;
+  }
+
+  const raw = rawMatch[1];
+  const normalized = normalizeSplitMoneyFragments(raw).replace(/\s+/g, "");
+  const amount = parseMoney(normalized);
+
+  if (amount <= 0) {
+    return null;
+  }
+
+  return {
+    amount,
+    source: "explicit-document-total",
+    payable: true,
+    raw,
+    normalized: `$${amount.toFixed(2)}`,
+    normalizationReason:
+      normalized !== raw.replace(/\s+/g, "")
+        ? "final separator followed by exactly two digits treated as cents in explicit monetary total"
+        : "standard explicit monetary total",
+  };
 }
 
 export function extractCheckNumber(text: string) {
@@ -541,14 +584,10 @@ export function extractRemittanceTotalEvidence(
   text: string,
   structuredRows: StructuredRemittanceRowEvidence[] = []
 ): RemittanceTotalEvidence {
-  const explicitTotal = findExplicitTotalAmount(text);
+  const explicitTotal = findExplicitTotalEvidence(text);
 
-  if (explicitTotal > 0) {
-    return {
-      amount: explicitTotal,
-      source: "explicit-document-total",
-      payable: true,
-    };
+  if (explicitTotal) {
+    return explicitTotal;
   }
 
   const values = extractMoneyValues(text);
@@ -861,6 +900,12 @@ export function rawInvoiceLikeTokens(text: string) {
     /\b[Il1|]?\s*I?\s*NV(?:OICE|O|0)?\.?\s*[-#: ]?\s*[A-Z0-9|]{3,10}\b/gi
   )) {
     tokens.add(match[0].replace(/\s+/g, ""));
+  }
+
+  for (const match of text.matchAll(
+    /(INV(?:OICE|O|0)?\.?\s*[-#: ]?\s*[A-Z0-9|]{3,10})\b/gi
+  )) {
+    tokens.add((match[1] ?? match[0]).replace(/\s+/g, ""));
   }
 
   return Array.from(tokens);
