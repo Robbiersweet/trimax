@@ -341,15 +341,23 @@ function findLabeledHeaderDate(text: string) {
   return "";
 }
 
-function findLabeledHeaderCheckNumber(text: string) {
-  const normalizedText = text.replace(/[Oo]/g, "0");
-  const matches = Array.from(
-    normalizedText.matchAll(
-      /\b(?:CK|CHK|CHECK(?:\s*(?:NO\.?|NUMBER|#))?)\b\s*#?\s*:?\s*([^\d]{0,28})(\d{3,5})\b/gi
-    )
-  );
+type CheckNumberCandidate = {
+  value: string;
+  index: number;
+  score: number;
+};
 
-  for (const match of matches) {
+function checkNumberCandidatesFromText(text: string, baseScore: number) {
+  const normalizedText = text.replace(/[Oo]/g, "0");
+  const candidates: CheckNumberCandidate[] = [];
+
+  for (const match of normalizedText.matchAll(
+    /\b(?:CK|CHK|CHECK(?:\s*(?:NO\.?|NUMBER|#))?)\b\s*#?\s*:?\s*([^\d]{0,28})(\d{3,5})\b/gi
+  )) {
+    if (isLikelyAccountNumberContext(normalizedText, match)) {
+      continue;
+    }
+
     const separator = match[1] ?? "";
     const value = match[2] ?? "";
 
@@ -360,10 +368,96 @@ function findLabeledHeaderCheckNumber(text: string) {
       continue;
     }
 
-    return value;
+    candidates.push({
+      value,
+      index: match.index ?? 0,
+      score: baseScore + value.length * 8,
+    });
   }
 
-  return "";
+  const lines = normalizedText
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  lines.forEach((line, lineIndex) => {
+    if (
+      /\b(?:ck|check|total|payment|date)\b/i.test(line) &&
+      !isRemittanceHeaderText(line)
+    ) {
+      const value = extractPlausibleCheckCandidate(line);
+
+      if (value) {
+        candidates.push({
+          value,
+          index: lineIndex,
+          score: baseScore + 20 + value.length * 8,
+        });
+      }
+    }
+  });
+
+  return candidates;
+}
+
+function selectBestCheckNumberCandidate(candidates: CheckNumberCandidate[]) {
+  if (candidates.length === 0) {
+    return "";
+  }
+
+  const repeatedCounts = new Map<string, number>();
+
+  candidates.forEach((candidate) => {
+    repeatedCounts.set(candidate.value, (repeatedCounts.get(candidate.value) ?? 0) + 1);
+  });
+
+  const scored = candidates
+    .map((candidate) => {
+      const fullerCompatibleExists = candidates.some(
+        (other) =>
+          other.value !== candidate.value &&
+          other.value.length > candidate.value.length &&
+          other.value.endsWith(candidate.value) &&
+          other.value.length - candidate.value.length <= 1
+      );
+      const isFullerCompatible = candidates.some(
+        (other) =>
+          other.value !== candidate.value &&
+          candidate.value.length > other.value.length &&
+          candidate.value.endsWith(other.value) &&
+          candidate.value.length - other.value.length <= 1
+      );
+
+      return {
+        ...candidate,
+        score:
+          candidate.score +
+          (repeatedCounts.get(candidate.value) ?? 0) * 16 +
+          (isFullerCompatible ? 45 : 0) -
+          (fullerCompatibleExists ? 35 : 0),
+      };
+    })
+    .sort(
+      (left, right) =>
+        right.score - left.score ||
+        right.value.length - left.value.length ||
+        left.index - right.index
+    );
+  const distinctValues = Array.from(new Set(scored.map((candidate) => candidate.value)));
+  const hasCompatiblePair = distinctValues.some((value) =>
+    distinctValues.some(
+      (other) =>
+        other !== value &&
+        Math.abs(other.length - value.length) <= 1 &&
+        (other.endsWith(value) || value.endsWith(other))
+    )
+  );
+
+  if (distinctValues.length > 1 && !hasCompatiblePair) {
+    return candidates.slice().sort((left, right) => left.index - right.index)[0].value;
+  }
+
+  return scored[0].value;
 }
 
 function findExplicitTotalEvidence(text: string): RemittanceTotalEvidence | null {
@@ -398,11 +492,13 @@ function findExplicitTotalEvidence(text: string): RemittanceTotalEvidence | null
 
 export function extractCheckNumber(text: string) {
   const checkText = checkRegionText(text);
-  const labelledCheckNumber =
-    findLabeledHeaderCheckNumber(checkText) || findLabeledHeaderCheckNumber(text);
+  const bestCandidate = selectBestCheckNumberCandidate([
+    ...checkNumberCandidatesFromText(checkText, 80),
+    ...checkNumberCandidatesFromText(text, 50),
+  ]);
 
-  if (labelledCheckNumber) {
-    return labelledCheckNumber;
+  if (bestCandidate) {
+    return bestCandidate;
   }
 
   const normalizedText = checkText.replace(/[Oo]/g, "0");

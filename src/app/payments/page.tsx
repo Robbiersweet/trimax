@@ -302,6 +302,7 @@ export default async function PaymentsPage({
   let invoices: Invoice[] = [];
   let lineItems: InvoiceLineItem[] = [];
   let paymentLogs: ActivityLog[] = [];
+  let currentWorkspaceRole = "";
   const loadIssues: string[] = [];
 
   if (businessError) {
@@ -309,6 +310,31 @@ export default async function PaymentsPage({
   }
 
   if (business?.id) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const userEmail = user?.email?.toLowerCase() ?? "";
+
+    if (user?.id || userEmail) {
+      const accessFilter =
+        user?.id && userEmail
+          ? `user_id.eq.${user.id},email.ilike.${userEmail}`
+          : user?.id
+            ? `user_id.eq.${user.id}`
+            : `email.ilike.${userEmail}`;
+      const { data: workspaceUser } = await supabase
+        .from("business_users")
+        .select("role")
+        .eq("business_id", business.id)
+        .or(accessFilter)
+        .limit(1)
+        .maybeSingle();
+
+      currentWorkspaceRole = detailText(
+        (workspaceUser as { role?: string | null } | null)?.role
+      );
+    }
+
     const { data: invoiceData, error: invoiceError } = await supabase
       .from("invoices")
       .select(
@@ -527,6 +553,14 @@ export default async function PaymentsPage({
             businessSlug={businessSlug}
             initialCustomer={focusedCustomer}
             initialInvoiceIds={initialInvoiceIds}
+            workspaceRole={currentWorkspaceRole}
+            paymentActivities={paymentLogs.map((log) => ({
+              id: log.id,
+              action: log.action,
+              entityLabel: log.entity_label,
+              details: log.details,
+              createdAt: log.created_at,
+            }))}
             invoices={invoices.map((invoice) => ({
               invoiceAmount: parseMoney(invoice.invoice_amount),
               amountPaid: parseMoney(invoice.amount_paid),

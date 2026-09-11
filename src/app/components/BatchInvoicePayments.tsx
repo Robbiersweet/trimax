@@ -33,6 +33,11 @@ import {
   parseMoney,
   type StructuredRemittanceRowEvidence,
 } from "../lib/remittanceMatching";
+import {
+  findDuplicateRemittance,
+  type DuplicateRemittanceActivity,
+  type DuplicateRemittanceResult,
+} from "../lib/duplicateRemittance";
 
 type BatchInvoice = {
   id: string;
@@ -55,6 +60,8 @@ type BatchInvoicePaymentsProps = {
   businessSlug?: string | null;
   initialCustomer?: string | null;
   initialInvoiceIds?: string[];
+  workspaceRole?: string | null;
+  paymentActivities?: DuplicateRemittanceActivity[];
 };
 
 type PayableInvoice = BatchInvoice & {
@@ -533,6 +540,11 @@ type CompletedPaymentSummary = {
   payor: string;
   totalAmount: number;
   invoiceCount: number;
+} | null;
+
+type DuplicateRemittanceModalState = {
+  result: DuplicateRemittanceResult;
+  intent: "active" | "reversed" | "possible";
 } | null;
 
 const trimaxBuildIdentifier = "remittance-diagnostics-v5-still-detector";
@@ -1468,6 +1480,8 @@ export default function BatchInvoicePayments({
   businessSlug,
   initialCustomer,
   initialInvoiceIds,
+  workspaceRole,
+  paymentActivities = [],
 }: BatchInvoicePaymentsProps) {
   const router = useRouter();
   const startingFocus =
@@ -1572,6 +1586,12 @@ export default function BatchInvoicePayments({
   const [paymentReviewNotice, setPaymentReviewNotice] = useState("");
   const [completedPaymentSummary, setCompletedPaymentSummary] =
     useState<CompletedPaymentSummary>(null);
+  const [duplicateRemittanceModal, setDuplicateRemittanceModal] =
+    useState<DuplicateRemittanceModalState>(null);
+  const [duplicateOverrideClearedKey, setDuplicateOverrideClearedKey] =
+    useState("");
+  const [reversedDuplicateReviewedKey, setReversedDuplicateReviewedKey] =
+    useState("");
   const [remittanceStubText, setRemittanceStubText] = useState("");
   const [lastOcrDiagnosticLines, setLastOcrDiagnosticLines] = useState<string[]>(
     []
@@ -1741,6 +1761,41 @@ export default function BatchInvoicePayments({
     0
   );
   const hasRemittanceStub = remittanceStubText.trim().length > 0;
+  const duplicateEvidenceKey = [
+    paymentReference.trim() || capturedCheckReference.trim(),
+    enteredCheckAmount ?? "",
+    checkDate,
+    receivedDate,
+    checkPayor.trim().toLowerCase(),
+    selectedInvoices.map((invoice) => invoice.id).sort().join(","),
+  ].join("|");
+  const duplicateRemittanceCheck = useMemo(
+    () =>
+      findDuplicateRemittance(
+        {
+          checkNumber: paymentReference.trim() || capturedCheckReference.trim(),
+          amount: enteredCheckAmount,
+          checkDate,
+          receivedDate,
+          payor: checkPayor,
+          invoiceIds: selectedInvoices.map((invoice) => invoice.id),
+          invoiceNumbers: selectedInvoices.map((invoice) => invoice.displayId),
+        },
+        paymentActivities,
+        workspaceRole ?? ""
+      ),
+    [
+      capturedCheckReference,
+      checkDate,
+      checkPayor,
+      enteredCheckAmount,
+      paymentActivities,
+      paymentReference,
+      receivedDate,
+      selectedInvoices,
+      workspaceRole,
+    ]
+  );
   const showPaymentReview =
     paymentEntryMode === "manual" ||
     (paymentEntryMode === "photo" &&
@@ -4865,6 +4920,36 @@ export default function BatchInvoicePayments({
       return;
     }
 
+    if (duplicateRemittanceCheck.status === "active") {
+      setDuplicateRemittanceModal({
+        result: duplicateRemittanceCheck,
+        intent: "active",
+      });
+      return;
+    }
+
+    if (
+      duplicateRemittanceCheck.status === "reversed" &&
+      reversedDuplicateReviewedKey !== duplicateEvidenceKey
+    ) {
+      setDuplicateRemittanceModal({
+        result: duplicateRemittanceCheck,
+        intent: "reversed",
+      });
+      return;
+    }
+
+    if (
+      duplicateRemittanceCheck.status === "possible" &&
+      duplicateOverrideClearedKey !== duplicateEvidenceKey
+    ) {
+      setDuplicateRemittanceModal({
+        result: duplicateRemittanceCheck,
+        intent: "possible",
+      });
+      return;
+    }
+
     setIsSaving(true);
     setToast(null);
 
@@ -4910,6 +4995,14 @@ export default function BatchInvoicePayments({
           remittanceMatchConfidence: hasRemittanceStub
             ? remittanceMatch.confidence
             : null,
+          duplicateOverrideConfirmed:
+            duplicateRemittanceCheck.status === "possible" &&
+            duplicateOverrideClearedKey === duplicateEvidenceKey,
+          duplicateOverrideReason:
+            duplicateRemittanceCheck.status === "possible" &&
+            duplicateOverrideClearedKey === duplicateEvidenceKey
+              ? "Owner/admin confirmed possible duplicate review in payment workspace."
+              : "",
         }),
       });
       const result = (await response.json().catch(() => ({}))) as {
@@ -4918,9 +5011,22 @@ export default function BatchInvoicePayments({
         checkAmount?: number;
         paymentReference?: string;
         payor?: string;
+        duplicateRemittance?: DuplicateRemittanceResult;
       };
 
       if (!response.ok) {
+        if (result.duplicateRemittance) {
+          setDuplicateRemittanceModal({
+            result: result.duplicateRemittance,
+            intent:
+              result.duplicateRemittance.status === "active"
+                ? "active"
+                : result.duplicateRemittance.status === "reversed"
+                  ? "reversed"
+                  : "possible",
+          });
+        }
+
         throw new Error(
           result.error ??
             "Unable to apply the batch payment. Refresh, sign in again if needed, then try once more."
@@ -4960,6 +5066,151 @@ export default function BatchInvoicePayments({
     }
   }
 
+  function duplicatePaymentHref() {
+    return `/payments?business=${businessSlug ?? "rnl-creations"}#payment-history`;
+  }
+
+  function closeDuplicateModal() {
+    setDuplicateRemittanceModal(null);
+  }
+
+  function continueAfterPossibleDuplicateReview() {
+    if (!duplicateRemittanceModal?.result.canOverride) {
+      return;
+    }
+
+    setDuplicateOverrideClearedKey(duplicateEvidenceKey);
+    setDuplicateRemittanceModal(null);
+    setToast({
+      type: "success",
+      message: "Possible duplicate reviewed. Apply is available for this owner/admin session.",
+    });
+  }
+
+  function reviewReversedPayment() {
+    setReversedDuplicateReviewedKey(duplicateEvidenceKey);
+    setDuplicateRemittanceModal(null);
+  }
+
+  function duplicateRemittanceModalView() {
+    if (!duplicateRemittanceModal) {
+      return null;
+    }
+
+    const { result, intent } = duplicateRemittanceModal;
+    const payment = result.payment;
+    const title =
+      intent === "active"
+        ? "Remittance Already Applied"
+        : intent === "reversed"
+          ? "Previously Applied — Payment Reversed"
+          : "Possible Duplicate Remittance";
+    const message =
+      intent === "active"
+        ? "This check stub has already been applied."
+        : intent === "reversed"
+          ? "This remittance was applied before, but that payment has been reversed. You may review and apply it again."
+          : "This check stub closely matches a payment already in Trimax. Review the existing payment before continuing.";
+    const tone =
+      intent === "active"
+        ? "from-rose-500 to-orange-400"
+        : intent === "reversed"
+          ? "from-sky-500 to-emerald-400"
+          : "from-amber-400 to-orange-400";
+    const summaryBits = [
+      payment?.checkNumber ? `Check #${payment.checkNumber}` : "",
+      payment?.amount ? formatMoney(payment.amount) : "",
+      payment?.invoiceCount ? `${payment.invoiceCount} invoice${payment.invoiceCount === 1 ? "" : "s"}` : "",
+    ].filter(Boolean);
+    const invoiceNumbers = payment?.invoiceNumbers.slice(0, 6).join(", ") ?? "";
+    const appliedDate = payment?.appliedDate ? formatDate(payment.appliedDate) : "";
+
+    return createPortal(
+      <div className="fixed inset-0 z-[2147482500] grid place-items-center bg-black/65 px-4 py-6 backdrop-blur-sm">
+        <div className="w-full max-w-lg overflow-hidden rounded-[1.75rem] bg-white text-slate-950 shadow-2xl ring-1 ring-black/10 dark:bg-zinc-950 dark:text-white dark:ring-white/10">
+          <div className={`h-2 bg-gradient-to-r ${tone}`} />
+          <div className="p-6 sm:p-7">
+            <div className="flex items-start gap-4">
+              <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br ${tone} text-xl font-black text-black shadow-lg`}>
+                {intent === "active" ? "!" : intent === "reversed" ? "R" : "?"}
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-2xl font-black tracking-tight">{title}</h2>
+                <p className="mt-2 text-base leading-7 text-slate-600 dark:text-zinc-300">
+                  {message}
+                </p>
+              </div>
+            </div>
+
+            {summaryBits.length > 0 ? (
+              <div className="mt-6 rounded-2xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-800 dark:bg-white/10 dark:text-zinc-100">
+                {summaryBits.join(" | ")}
+              </div>
+            ) : null}
+
+            <div className="mt-4 grid gap-2 text-sm leading-6 text-slate-600 dark:text-zinc-300">
+              {appliedDate ? <p>Applied {appliedDate}</p> : null}
+              {payment?.payor ? <p>{payment.payor}</p> : null}
+              {invoiceNumbers ? <p>{invoiceNumbers}</p> : null}
+              {intent === "active" ? (
+                <p className="font-semibold text-rose-700 dark:text-rose-200">
+                  No duplicate payment will be created.
+                </p>
+              ) : null}
+              {intent === "reversed" && payment?.reversalDate ? (
+                <p>Reversed {formatDate(payment.reversalDate)}</p>
+              ) : null}
+              {intent === "reversed" && payment?.reversalReason ? (
+                <p>{payment.reversalReason}</p>
+              ) : null}
+              {intent === "possible" && !result.canOverride ? (
+                <p className="font-semibold text-amber-700 dark:text-amber-200">
+                  Owner or admin review is required to continue.
+                </p>
+              ) : null}
+            </div>
+
+            <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={closeDuplicateModal}
+                className="rounded-2xl border border-slate-200 px-5 py-3 font-bold text-slate-700 transition hover:bg-slate-100 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-white/10"
+              >
+                Close
+              </button>
+              <a
+                href={duplicatePaymentHref()}
+                onClick={closeDuplicateModal}
+                className="rounded-2xl bg-slate-950 px-5 py-3 text-center font-bold text-white shadow-lg transition hover:opacity-90 dark:bg-white dark:text-zinc-950"
+              >
+                {intent === "possible" ? "View Possible Match" : intent === "reversed" ? "View Reversal History" : "View Payment"}
+              </a>
+              {intent === "reversed" ? (
+                <button
+                  type="button"
+                  onClick={reviewReversedPayment}
+                  className="rounded-2xl bg-emerald-400 px-5 py-3 font-black text-black shadow-lg transition hover:opacity-90"
+                >
+                  Review Remittance
+                </button>
+              ) : null}
+              {intent === "possible" && result.canOverride ? (
+                <button
+                  type="button"
+                  onClick={continueAfterPossibleDuplicateReview}
+                  className="rounded-2xl bg-amber-400 px-5 py-3 font-black text-black shadow-lg transition hover:opacity-90"
+                >
+                  Continue After Review
+                </button>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </div>,
+      document.body
+    );
+  }
+
   if (payableInvoices.length === 0) {
     return null;
   }
@@ -4967,6 +5218,7 @@ export default function BatchInvoicePayments({
   return (
     <Card className="batch-payments-card border-green-500/30 bg-green-500/5">
       {toast ? <Toast type={toast.type} message={toast.message} /> : null}
+      {typeof document !== "undefined" ? duplicateRemittanceModalView() : null}
 
       {typeof document !== "undefined" && paymentEntryMode === "camera" ? createPortal(
         <div

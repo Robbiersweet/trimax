@@ -10,6 +10,10 @@ import {
   createPaymentTimelinessSnapshot,
   paymentDateKey,
 } from "../../../lib/paymentTimeliness";
+import {
+  findDuplicateRemittance,
+  type DuplicateRemittanceActivity,
+} from "../../../lib/duplicateRemittance";
 
 type GenericTable = {
   Row: Record<string, unknown>;
@@ -57,6 +61,7 @@ type InvoiceLineItemRow = InvoiceEligibilityLineItem & {
 
 type BusinessUserRow = {
   id: string;
+  role?: string | null;
 };
 
 function getAdminClient() {
@@ -97,7 +102,7 @@ async function requireWorkspaceAccess({
   const userEmail = userData.user.email?.toLowerCase() ?? "";
   const { data, error } = await supabase
     .from("business_users")
-    .select("id")
+    .select("id, role")
     .eq("business_id", businessId)
     .or(`user_id.eq.${userData.user.id},email.ilike.${userEmail}`)
     .limit(1)
@@ -115,6 +120,7 @@ async function requireWorkspaceAccess({
     ok: true,
     email: userData.user.email ?? null,
     userId: userData.user.id,
+    role: data.role ?? "",
   };
 }
 
@@ -156,6 +162,8 @@ export async function POST(request: Request) {
     remittanceStubTotal?: number | null;
     remittanceStubLineCount?: number | null;
     remittanceMatchConfidence?: number | null;
+    duplicateOverrideConfirmed?: boolean;
+    duplicateOverrideReason?: string;
   };
   const businessId = cleanString(body.businessId, 80);
   const invoiceIds = Array.from(
@@ -300,13 +308,123 @@ export async function POST(request: Request) {
     );
   }
 
-  const appliedInvoices = [];
+  const paymentReference = cleanString(body.paymentReference, 120);
+  const payor = cleanString(body.payor, 160);
   const receivedDate = paymentDateKey(
     cleanString(body.receivedDate ?? body.paymentDate, 40)
   );
   const checkDate = optionalDateKey(body.checkDate);
-  const paymentReference = cleanString(body.paymentReference, 120);
-  const payor = cleanString(body.payor, 160);
+  const { data: duplicateActivityData, error: duplicateActivityError } = await supabase
+    .from("activity_logs")
+    .select("id, action, entity_id, entity_label, details, created_at")
+    .eq("business_id", businessId)
+    .eq("action", "invoice.batch_payment_applied")
+    .order("created_at", { ascending: false })
+    .limit(500);
+
+  if (duplicateActivityError) {
+    return NextResponse.json(
+      { error: "Trimax could not verify whether this remittance was already applied." },
+      { status: 500 }
+    );
+  }
+
+  const duplicateCheck = findDuplicateRemittance(
+    {
+      checkNumber: paymentReference,
+      amount: checkAmount,
+      checkDate,
+      receivedDate,
+      payor,
+      invoiceIds,
+      invoiceNumbers: invoices.map((invoice) => invoice.display_id ?? ""),
+    },
+    ((duplicateActivityData ?? []) as Array<{
+      id: string;
+      action: string;
+      entity_id?: string | null;
+      entity_label?: string | null;
+      details?: Record<string, unknown> | null;
+      created_at?: string | null;
+    }>).map(
+      (activity): DuplicateRemittanceActivity => ({
+        id: activity.id,
+        action: activity.action,
+        entityId: activity.entity_id ?? null,
+        entityLabel: activity.entity_label ?? null,
+        details: activity.details ?? null,
+        createdAt: activity.created_at ?? null,
+      })
+    ),
+    access.role
+  );
+
+  if (duplicateCheck.status === "active") {
+    return NextResponse.json(
+      {
+        error: "This check stub has already been applied.",
+        duplicateRemittance: duplicateCheck,
+      },
+      { status: 409 }
+    );
+  }
+
+  if (
+    duplicateCheck.status === "possible" &&
+    !body.duplicateOverrideConfirmed
+  ) {
+    return NextResponse.json(
+      {
+        error: "This check stub closely matches a payment already in Trimax.",
+        duplicateRemittance: duplicateCheck,
+      },
+      { status: 409 }
+    );
+  }
+
+  if (
+    duplicateCheck.status === "possible" &&
+    body.duplicateOverrideConfirmed &&
+    !duplicateCheck.canOverride
+  ) {
+    return NextResponse.json(
+      {
+        error: "Only an owner or admin can continue after a possible duplicate warning.",
+        duplicateRemittance: duplicateCheck,
+      },
+      { status: 403 }
+    );
+  }
+
+  const appliedInvoices = [];
+
+  if (
+    duplicateCheck.status === "possible" &&
+    body.duplicateOverrideConfirmed &&
+    duplicateCheck.canOverride
+  ) {
+    await supabase.from("activity_logs").insert({
+      business_id: businessId,
+      actor_user_id: access.userId,
+      actor_email: access.email,
+      action: "payment.duplicate_override",
+      entity_type: "payment",
+      entity_id: duplicateCheck.payment?.id ?? null,
+      entity_label: paymentReference || "Possible duplicate remittance",
+      details: {
+        priorPaymentId: duplicateCheck.payment?.id ?? null,
+        priorActivityLogIds: duplicateCheck.payment?.activityLogIds ?? [],
+        reason: cleanString(body.duplicateOverrideReason, 500) || "Owner/admin confirmed possible duplicate review.",
+        duplicateEvidenceSummary: duplicateCheck.reasons.join(", "),
+        paymentReference,
+        checkAmount,
+        checkDate,
+        receivedDate,
+        payor,
+        invoiceIds,
+      },
+    });
+  }
 
   for (const invoice of invoices) {
     const invoiceAmount = moneyNumber(invoice.invoice_amount);
