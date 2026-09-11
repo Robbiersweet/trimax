@@ -546,6 +546,21 @@ type DuplicateRemittancePreflightResponse = {
   error?: string;
 };
 
+type ApplyBatchPaymentResponse = {
+  error?: string;
+  code?: string;
+  stage?: string;
+  serverMessage?: string;
+  partialMutationOccurred?: boolean;
+  rollbackAttempted?: boolean;
+  rollbackSucceeded?: boolean | null;
+  appliedCount?: number;
+  checkAmount?: number;
+  paymentReference?: string;
+  payor?: string;
+  duplicateRemittance?: DuplicateRemittanceResult;
+};
+
 type FiledPaymentImage = {
   id: string;
   storagePath: string;
@@ -5219,16 +5234,29 @@ export default function BatchInvoicePayments({
               : "",
         }),
       });
-      const result = (await response.json().catch(() => ({}))) as {
-        error?: string;
-        appliedCount?: number;
-        checkAmount?: number;
-        paymentReference?: string;
-        payor?: string;
-        duplicateRemittance?: DuplicateRemittanceResult;
-      };
+      const result = (await response
+        .json()
+        .catch(() => ({}))) as ApplyBatchPaymentResponse;
 
       if (!response.ok) {
+        const diagnosticParts = [
+          `status=${response.status}`,
+          result.code ? `code=${result.code}` : null,
+          result.stage ? `stage=${result.stage}` : null,
+          result.serverMessage ? `server=${result.serverMessage}` : null,
+          typeof result.partialMutationOccurred === "boolean"
+            ? `partialMutationOccurred=${result.partialMutationOccurred ? "yes" : "no"}`
+            : null,
+          result.rollbackAttempted
+            ? `rollback=${result.rollbackSucceeded ? "succeeded" : "failed"}`
+            : null,
+        ].filter(Boolean);
+
+        setLastOcrDiagnosticLines((current) => [
+          ...current,
+          `Apply-batch failure: ${diagnosticParts.join(" | ")}`,
+        ]);
+
         if (result.duplicateRemittance) {
           setDuplicateRemittanceModal({
             result: result.duplicateRemittance,

@@ -65,6 +65,39 @@ type BusinessUserRow = {
   role?: string | null;
 };
 
+class ApplyBatchError extends Error {
+  code: string;
+  stage: string;
+  status: number;
+  causeMessage?: string;
+
+  constructor({
+    message,
+    code,
+    stage,
+    status = 500,
+    cause,
+  }: {
+    message: string;
+    code: string;
+    stage: string;
+    status?: number;
+    cause?: unknown;
+  }) {
+    super(message);
+    this.name = "ApplyBatchError";
+    this.code = code;
+    this.stage = stage;
+    this.status = status;
+    this.causeMessage =
+      cause instanceof Error
+        ? cause.message
+        : typeof cause === "string"
+          ? cause
+          : undefined;
+  }
+}
+
 function getAdminClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -135,15 +168,61 @@ function optionalDateKey(value: unknown) {
   return /^\d{4}-\d{2}-\d{2}$/.test(key) ? key : null;
 }
 
+function applyErrorResponse({
+  message,
+  code,
+  stage,
+  status,
+  cause,
+  partialMutationOccurred = false,
+  rollbackAttempted = false,
+  rollbackSucceeded = null,
+  duplicateRemittance,
+}: {
+  message: string;
+  code: string;
+  stage: string;
+  status: number;
+  cause?: unknown;
+  partialMutationOccurred?: boolean;
+  rollbackAttempted?: boolean;
+  rollbackSucceeded?: boolean | null;
+  duplicateRemittance?: unknown;
+}) {
+  const serverMessage =
+    cause instanceof Error
+      ? cause.message
+      : typeof cause === "string"
+        ? cause
+        : undefined;
+
+  return NextResponse.json(
+    {
+      error: message,
+      code,
+      stage,
+      serverMessage,
+      partialMutationOccurred,
+      rollbackAttempted,
+      rollbackSucceeded,
+      duplicateRemittance,
+    },
+    { status }
+  );
+}
+
 export async function POST(request: Request) {
   const supabase = getAdminClient();
 
   if (!supabase) {
-    return NextResponse.json(
-      { error: "Payment application is not configured." },
-      { status: 503 }
-    );
+    return applyErrorResponse({
+      message: "Payment application is not configured.",
+      code: "payment_application_not_configured",
+      stage: "configuration",
+      status: 503,
+    });
   }
+  const adminSupabase = supabase;
 
   const body = (await request.json().catch(() => ({}))) as {
     businessId?: string;
@@ -173,19 +252,23 @@ export async function POST(request: Request) {
   );
 
   if (!businessId || invoiceIds.length === 0) {
-    return NextResponse.json(
-      { error: "Select at least one invoice before applying payment." },
-      { status: 400 }
-    );
+    return applyErrorResponse({
+      message: "Select at least one invoice before applying payment.",
+      code: "invalid_apply_request",
+      stage: "request-validation",
+      status: 400,
+    });
   }
 
   const checkAmount = moneyNumber(body.checkAmount ?? null);
 
   if (checkAmount <= 0) {
-    return NextResponse.json(
-      { error: "Enter a payment amount greater than $0 before applying payment." },
-      { status: 400 }
-    );
+    return applyErrorResponse({
+      message: "Enter a payment amount greater than $0 before applying payment.",
+      code: "invalid_payment_amount",
+      stage: "request-validation",
+      status: 400,
+    });
   }
 
   const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? null;
@@ -196,7 +279,12 @@ export async function POST(request: Request) {
   });
 
   if (!access.ok) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    return applyErrorResponse({
+      message: "Unauthorized.",
+      code: "unauthorized",
+      stage: "authorization",
+      status: 401,
+    });
   }
 
   const { data: invoiceData, error: invoiceError } = await supabase
@@ -419,13 +507,65 @@ export async function POST(request: Request) {
   }
 
   const appliedInvoices = [];
+  const invoiceRollbackSnapshots = invoices.map((invoice) => ({
+    id: invoice.id,
+    amount_paid: moneyNumber(invoice.amount_paid),
+    status: invoice.status ?? null,
+    deposit_status: invoice.deposit_status ?? null,
+  }));
+  const updatedInvoiceIds: string[] = [];
+  const insertedActivityLogIds: string[] = [];
+
+  async function rollbackAppliedMutations() {
+    let succeeded = true;
+
+    for (const invoiceId of [...updatedInvoiceIds].reverse()) {
+      const snapshot = invoiceRollbackSnapshots.find(
+        (invoice) => invoice.id === invoiceId
+      );
+
+      if (!snapshot) {
+        succeeded = false;
+        continue;
+      }
+
+      const { error } = await adminSupabase
+        .from("invoices")
+        .update({
+          amount_paid: snapshot.amount_paid,
+          status: snapshot.status,
+          deposit_status: snapshot.deposit_status,
+        })
+        .eq("id", snapshot.id)
+        .eq("business_id", businessId);
+
+      if (error) {
+        succeeded = false;
+      }
+    }
+
+    if (insertedActivityLogIds.length > 0) {
+      const { error } = await adminSupabase
+        .from("activity_logs")
+        .delete()
+        .eq("business_id", businessId)
+        .in("id", insertedActivityLogIds);
+
+      if (error) {
+        succeeded = false;
+      }
+    }
+
+    return succeeded;
+  }
 
   if (
     duplicateCheck.status === "possible" &&
     body.duplicateOverrideConfirmed &&
     duplicateCheck.canOverride
   ) {
-    await supabase.from("activity_logs").insert({
+    const { data: duplicateOverrideLog, error: duplicateOverrideError } =
+      await supabase.from("activity_logs").insert({
       business_id: businessId,
       actor_user_id: access.userId,
       actor_email: access.email,
@@ -445,113 +585,173 @@ export async function POST(request: Request) {
         payor,
         invoiceIds,
       },
-    });
+    }).select("id").single<{ id: string }>();
+
+    if (duplicateOverrideError) {
+      return applyErrorResponse({
+        message: "Trimax could not record duplicate review approval.",
+        code: "duplicate_override_audit_failed",
+        stage: "duplicate-override-audit",
+        status: 500,
+        cause: duplicateOverrideError.message,
+      });
+    }
+
+    if (duplicateOverrideLog?.id) {
+      insertedActivityLogIds.push(duplicateOverrideLog.id);
+    }
   }
 
-  for (const invoice of invoices) {
-    const invoiceAmount = moneyNumber(invoice.invoice_amount);
-    const amountPaid = moneyNumber(invoice.amount_paid);
-    const amountDue = invoiceCollectionAmountDue(invoice);
-    const nextAmountPaid = Math.min(invoiceAmount, amountPaid + amountDue);
-    const isFullyPaid =
-      invoiceAmount > 0 && nextAmountPaid >= invoiceAmount - 0.01;
-    const isDepositRequest =
-      String(invoice.deposit_status ?? "none").toLowerCase() === "requested" &&
-      moneyNumber(invoice.deposit_requested_amount) > 0;
-    const updatePayload: {
-      amount_paid: number;
-      status: string;
-      deposit_status?: string;
-    } = {
-      amount_paid: nextAmountPaid,
-      status: isFullyPaid ? "Paid" : invoice.status ?? "Sent",
-    };
+  try {
+    for (const invoice of invoices) {
+      const invoiceAmount = moneyNumber(invoice.invoice_amount);
+      const amountPaid = moneyNumber(invoice.amount_paid);
+      const amountDue = invoiceCollectionAmountDue(invoice);
+      const nextAmountPaid = Math.min(invoiceAmount, amountPaid + amountDue);
+      const isFullyPaid =
+        invoiceAmount > 0 && nextAmountPaid >= invoiceAmount - 0.01;
+      const isDepositRequest =
+        String(invoice.deposit_status ?? "none").toLowerCase() === "requested" &&
+        moneyNumber(invoice.deposit_requested_amount) > 0;
+      const updatePayload: {
+        amount_paid: number;
+        status: string;
+        deposit_status?: string;
+      } = {
+        amount_paid: nextAmountPaid,
+        status: isFullyPaid ? "Paid" : invoice.status ?? "Sent",
+      };
 
-    if (isDepositRequest && !isFullyPaid) {
-      updatePayload.deposit_status = "paid";
-    }
+      if (isDepositRequest && !isFullyPaid) {
+        updatePayload.deposit_status = "paid";
+      }
 
-    const timelinessSnapshot = isFullyPaid
-      ? createPaymentTimelinessSnapshot({
-          invoice,
-          lineItems: lineItemsByInvoiceId.get(invoice.id) ?? [],
-          fullyPaidDate: receivedDate,
-          finalPaymentReference: paymentReference,
+      const timelinessSnapshot = isFullyPaid
+        ? createPaymentTimelinessSnapshot({
+            invoice,
+            lineItems: lineItemsByInvoiceId.get(invoice.id) ?? [],
+            fullyPaidDate: receivedDate,
+            finalPaymentReference: paymentReference,
+          })
+        : null;
+
+      const { error: updateError } = await supabase
+        .from("invoices")
+        .update(updatePayload)
+        .eq("id", invoice.id)
+        .eq("business_id", businessId);
+
+      if (updateError) {
+        throw new ApplyBatchError({
+          message: `Unable to apply payment to ${invoice.display_id ?? "invoice"}.`,
+          code: "invoice_update_failed",
+          stage: "invoice-update",
+          cause: updateError.message,
+        });
+      }
+
+      updatedInvoiceIds.push(invoice.id);
+
+      const { data: activityLog, error: activityLogError } = await supabase
+        .from("activity_logs")
+        .insert({
+          business_id: businessId,
+          actor_user_id: access.userId,
+          actor_email: access.email,
+          action: "invoice.batch_payment_applied",
+          entity_type: "invoice",
+          entity_id: invoice.id,
+          entity_label: invoice.display_id ?? invoice.project_title ?? "Invoice",
+          details: {
+            paymentDate: receivedDate,
+            receivedDate,
+            checkDate,
+            paymentType: cleanString(body.paymentType, 80),
+            paymentReference,
+            payor,
+            internalNote: cleanString(body.internalNote, 1000),
+            invoiceId: invoice.id,
+            businessId,
+            clientId: invoice.client_id ?? null,
+            customerName: invoice.customer_name ?? null,
+            invoiceNumber: invoice.display_id ?? null,
+            dueDateAtPayment: invoice.due_date ?? null,
+            checkAmount,
+            amountApplied: amountDue,
+            resultingAmountPaid: nextAmountPaid,
+            paymentOutcome: isFullyPaid ? "paid" : "partial",
+            paymentCompletedInvoice: isFullyPaid,
+            ...(timelinessSnapshot
+              ? {
+                  dueDateAtCompletion: timelinessSnapshot.dueDateAtCompletion,
+                  fullyPaidDate: timelinessSnapshot.fullyPaidDate,
+                  daysLate: timelinessSnapshot.daysLate,
+                  paidLate: timelinessSnapshot.paidLate,
+                  finalPaymentReference: timelinessSnapshot.finalPaymentReference,
+                  recordedAt: timelinessSnapshot.recordedAt,
+                }
+              : {}),
+            depositPayment: isDepositRequest,
+            batchInvoiceCount: invoices.length,
+            remittanceStubMatched: Boolean(body.remittanceStubMatched),
+            remittanceStubTotal: body.remittanceStubTotal ?? null,
+            remittanceStubLineCount: body.remittanceStubLineCount ?? null,
+            remittanceMatchConfidence: body.remittanceMatchConfidence ?? null,
+            remittanceDocumentFingerprint: remittanceDocumentFingerprint || null,
+            remittanceDocumentFingerprintVersion: remittanceDocumentFingerprint
+              ? "trimax-ahash-32-v1"
+              : null,
+            paymentAttachmentId: body.paymentAttachmentId ?? null,
+            paymentImagePath: body.paymentImagePath ?? null,
+            paymentImageFileName: body.paymentImageFileName ?? null,
+          },
         })
-      : null;
+        .select("id")
+        .single<{ id: string }>();
 
-    const { error: updateError } = await supabase
-      .from("invoices")
-      .update(updatePayload)
-      .eq("id", invoice.id)
-      .eq("business_id", businessId);
+      if (activityLogError) {
+        throw new ApplyBatchError({
+          message: `Unable to record payment audit for ${invoice.display_id ?? "invoice"}.`,
+          code: "payment_audit_insert_failed",
+          stage: "payment-audit-insert",
+          cause: activityLogError.message,
+        });
+      }
 
-    if (updateError) {
-      return NextResponse.json(
-        { error: `Unable to apply payment to ${invoice.display_id ?? "invoice"}.` },
-        { status: 500 }
-      );
-    }
+      if (activityLog?.id) {
+        insertedActivityLogIds.push(activityLog.id);
+      }
 
-    await supabase.from("activity_logs").insert({
-      business_id: businessId,
-      actor_user_id: access.userId,
-      actor_email: access.email,
-      action: "invoice.batch_payment_applied",
-      entity_type: "invoice",
-      entity_id: invoice.id,
-      entity_label: invoice.display_id ?? invoice.project_title ?? "Invoice",
-      details: {
-        paymentDate: receivedDate,
-        receivedDate,
-        checkDate,
-        paymentType: cleanString(body.paymentType, 80),
-        paymentReference,
-        payor,
-        internalNote: cleanString(body.internalNote, 1000),
+      appliedInvoices.push({
         invoiceId: invoice.id,
-        businessId,
-        clientId: invoice.client_id ?? null,
-        customerName: invoice.customer_name ?? null,
-        invoiceNumber: invoice.display_id ?? null,
-        dueDateAtPayment: invoice.due_date ?? null,
-        checkAmount,
+        displayId: invoice.display_id,
         amountApplied: amountDue,
         resultingAmountPaid: nextAmountPaid,
-        paymentOutcome: isFullyPaid ? "paid" : "partial",
-        paymentCompletedInvoice: isFullyPaid,
-        ...(timelinessSnapshot
-          ? {
-              dueDateAtCompletion: timelinessSnapshot.dueDateAtCompletion,
-              fullyPaidDate: timelinessSnapshot.fullyPaidDate,
-              daysLate: timelinessSnapshot.daysLate,
-              paidLate: timelinessSnapshot.paidLate,
-              finalPaymentReference: timelinessSnapshot.finalPaymentReference,
-              recordedAt: timelinessSnapshot.recordedAt,
-            }
-          : {}),
-        depositPayment: isDepositRequest,
-        batchInvoiceCount: invoices.length,
-        remittanceStubMatched: Boolean(body.remittanceStubMatched),
-        remittanceStubTotal: body.remittanceStubTotal ?? null,
-        remittanceStubLineCount: body.remittanceStubLineCount ?? null,
-        remittanceMatchConfidence: body.remittanceMatchConfidence ?? null,
-        remittanceDocumentFingerprint: remittanceDocumentFingerprint || null,
-        remittanceDocumentFingerprintVersion: remittanceDocumentFingerprint
-          ? "trimax-ahash-32-v1"
-          : null,
-        paymentAttachmentId: body.paymentAttachmentId ?? null,
-        paymentImagePath: body.paymentImagePath ?? null,
-        paymentImageFileName: body.paymentImageFileName ?? null,
-      },
-    });
+        status: updatePayload.status,
+      });
+    }
+  } catch (error) {
+    const rollbackSucceeded = await rollbackAppliedMutations();
+    const applyError =
+      error instanceof ApplyBatchError
+        ? error
+        : new ApplyBatchError({
+            message: "Unable to apply the batch payment.",
+            code: "payment_apply_failed",
+            stage: "payment-application",
+            cause: error,
+          });
 
-    appliedInvoices.push({
-      invoiceId: invoice.id,
-      displayId: invoice.display_id,
-      amountApplied: amountDue,
-      resultingAmountPaid: nextAmountPaid,
-      status: updatePayload.status,
+    return applyErrorResponse({
+      message: applyError.message,
+      code: applyError.code,
+      stage: applyError.stage,
+      status: applyError.status,
+      cause: applyError.causeMessage,
+      partialMutationOccurred:
+        updatedInvoiceIds.length > 0 || insertedActivityLogIds.length > 0,
+      rollbackAttempted: true,
+      rollbackSucceeded,
     });
   }
 

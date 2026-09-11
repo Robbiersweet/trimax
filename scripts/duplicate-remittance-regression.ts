@@ -367,6 +367,7 @@ const duplicatePreflightRoute = readFileSync(
   resolve(root, "src/app/api/payments/duplicate-remittance-preflight/route.ts"),
   "utf8"
 );
+const nextConfig = readFileSync(resolve(root, "next.config.ts"), "utf8");
 
 assert(
   paymentScreen.includes("Remittance Already Applied") &&
@@ -408,6 +409,15 @@ assert(
   "Server-side duplicate detection must run before payment mutations and audit owner/admin overrides."
 );
 assert(
+  applyBatchRoute.includes("rollbackAppliedMutations") &&
+    applyBatchRoute.includes("insertedActivityLogIds") &&
+    applyBatchRoute.includes("payment_audit_insert_failed") &&
+    applyBatchRoute.includes("duplicate_override_audit_failed") &&
+    applyBatchRoute.indexOf("findDuplicateRemittance") <
+      applyBatchRoute.indexOf("invoiceRollbackSnapshots"),
+  "Duplicate protection must remain inside the atomic apply-batch envelope without breaking valid new payments."
+);
+assert(
   duplicatePreflightRoute.includes("createRemittanceDocumentFingerprint") &&
     duplicatePreflightRoute.includes("fingerprintStoredPaymentImage") &&
     duplicatePreflightRoute.includes("trimax-payment-images") &&
@@ -420,6 +430,14 @@ assert(
     !duplicatePreflightRoute.includes(".insert(") &&
     !duplicatePreflightRoute.includes(".update("),
   "Early duplicate preflight must compare current image evidence to persisted remittance evidence without mutating payments or invoices."
+);
+assert(
+  nextConfig.includes("\"/api/payments/apply-batch\"") &&
+    nextConfig.includes("\"/api/payments/duplicate-remittance-preflight\"") &&
+    nextConfig.includes("./node_modules/sharp/**/*") &&
+    nextConfig.includes("./node_modules/@img/sharp-linux-x64/**/*") &&
+    nextConfig.includes("./node_modules/@img/sharp-libvips-linux-x64/**/*"),
+  "Duplicate-remittance payment routes must include Sharp native binaries because fingerprinting imports Sharp at route load."
 );
 
 console.log("Duplicate remittance regression checks passed.");

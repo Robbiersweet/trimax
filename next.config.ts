@@ -22,6 +22,16 @@ const nextConfig: NextConfig = {
       "./node_modules/wasm-feature-detect/**/*",
       "./node_modules/zlibjs/**/*",
     ],
+    "/api/payments/apply-batch": [
+      "./node_modules/sharp/**/*",
+      "./node_modules/@img/sharp-linux-x64/**/*",
+      "./node_modules/@img/sharp-libvips-linux-x64/**/*",
+    ],
+    "/api/payments/duplicate-remittance-preflight": [
+      "./node_modules/sharp/**/*",
+      "./node_modules/@img/sharp-linux-x64/**/*",
+      "./node_modules/@img/sharp-libvips-linux-x64/**/*",
+    ],
   },
   async headers() {
     return [
