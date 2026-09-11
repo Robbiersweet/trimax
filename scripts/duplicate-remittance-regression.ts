@@ -20,6 +20,7 @@ function paymentActivity({
   payor = "North Creek Apartments",
   checkDate = "2026-08-15",
   receivedDate = "2026-08-16",
+  fingerprint = "",
   reversed = false,
 }: {
   id: string;
@@ -30,6 +31,7 @@ function paymentActivity({
   payor?: string;
   checkDate?: string;
   receivedDate?: string;
+  fingerprint?: string;
   reversed?: boolean;
 }): DuplicateRemittanceActivity {
   return {
@@ -46,6 +48,7 @@ function paymentActivity({
       payor,
       checkDate,
       receivedDate,
+      remittanceDocumentFingerprint: fingerprint || null,
       batchInvoiceCount: 5,
       ...(reversed
         ? {
@@ -200,6 +203,91 @@ const managerPossibleDuplicate = findDuplicateRemittance(
 
 assert.equal(managerPossibleDuplicate.status, "possible");
 assert.equal(managerPossibleDuplicate.canOverride, false);
+
+const strongFingerprint =
+  "f".repeat(256);
+const nearFingerprint =
+  "f".repeat(250) + "0".repeat(6);
+const looseFingerprint =
+  "f".repeat(236) + "0".repeat(20);
+const unrelatedFingerprint =
+  "0".repeat(256);
+const fingerprintActivities = northCreekInvoices.map((invoiceId, index) =>
+  paymentActivity({
+    id: `fingerprint-${invoiceId}`,
+    invoiceId,
+    invoiceNumber: northCreekNumbers[index],
+    fingerprint: strongFingerprint,
+  })
+);
+
+const partialOcrDuplicate = findDuplicateRemittance(
+  {
+    fingerprint: strongFingerprint,
+  },
+  fingerprintActivities,
+  "manager"
+);
+
+assert.equal(
+  partialOcrDuplicate.status,
+  "active",
+  "A near-identical document fingerprint can detect an active duplicate even when OCR found no check, amount, or invoice set."
+);
+assert(
+  partialOcrDuplicate.reasons.some((reason) =>
+    reason.includes("document fingerprint distance")
+  ),
+  "Fingerprint evidence must be reported in duplicate diagnostics."
+);
+
+const partialOcrPossible = findDuplicateRemittance(
+  {
+    fingerprint: looseFingerprint,
+  },
+  fingerprintActivities,
+  "owner"
+);
+
+assert.equal(
+  partialOcrPossible.status,
+  "possible",
+  "Meaningful image similarity without definitive metadata must become a possible duplicate."
+);
+assert.equal(partialOcrPossible.canOverride, true);
+
+const imageWithContextDuplicate = findDuplicateRemittance(
+  {
+    amount: 4505.9,
+    payor: "North Creek",
+    fingerprint: nearFingerprint,
+  },
+  fingerprintActivities,
+  "owner"
+);
+
+assert.equal(
+  imageWithContextDuplicate.status,
+  "active",
+  "Strong image similarity plus compatible amount/payor context should be high-confidence."
+);
+
+const unrelatedLayout = findDuplicateRemittance(
+  {
+    amount: 4505.9,
+    payor: "Other Property",
+    fingerprint: unrelatedFingerprint,
+  },
+  fingerprintActivities,
+  "owner"
+);
+
+assert.equal(
+  unrelatedLayout.status,
+  "none",
+  "An unrelated remittance with similar workflow context must not be blocked without fingerprint similarity."
+);
+
 assert.equal(
   activePaymentActivities.length,
   5,
@@ -233,6 +321,10 @@ const applyBatchRoute = readFileSync(
   resolve(root, "src/app/api/payments/apply-batch/route.ts"),
   "utf8"
 );
+const duplicatePreflightRoute = readFileSync(
+  resolve(root, "src/app/api/payments/duplicate-remittance-preflight/route.ts"),
+  "utf8"
+);
 
 assert(
   paymentScreen.includes("Remittance Already Applied") &&
@@ -246,14 +338,21 @@ assert(
 );
 assert(
     paymentScreen.includes("duplicateRemittanceCheck.status === \"active\"") &&
+    paymentScreen.includes("runDuplicateRemittancePreflight") &&
+    paymentScreen.includes("/api/payments/duplicate-remittance-preflight") &&
+    paymentScreen.includes("Duplicate remittance preflight:") &&
+    paymentScreen.includes("setDuplicateRemittanceModal") &&
     paymentScreen.includes("duplicateOverrideClearedKey") &&
     paymentScreen.includes("duplicateEvidenceKey") &&
     paymentScreen.includes("duplicateOverrideConfirmed") &&
+    paymentScreen.includes("remittanceDocumentFingerprint") &&
     paymentScreen.includes("workspaceRole"),
-  "Payments UI must block active duplicates and require explicit owner/admin review for possible duplicates."
+  "Payments UI must run duplicate detection before OCR, block active duplicates, and require explicit owner/admin review for possible duplicates."
 );
 assert(
   applyBatchRoute.includes("findDuplicateRemittance") &&
+    applyBatchRoute.includes("remittanceDocumentFingerprint") &&
+    applyBatchRoute.includes("createRemittanceDocumentFingerprint") &&
     applyBatchRoute.includes("status === \"active\"") &&
     applyBatchRoute.includes("status === \"possible\"") &&
     applyBatchRoute.includes("Only an owner or admin can continue") &&
@@ -261,6 +360,20 @@ assert(
     applyBatchRoute.indexOf("findDuplicateRemittance") <
       applyBatchRoute.indexOf("const appliedInvoices = []"),
   "Server-side duplicate detection must run before payment mutations and audit owner/admin overrides."
+);
+assert(
+  duplicatePreflightRoute.includes("createRemittanceDocumentFingerprint") &&
+    duplicatePreflightRoute.includes("fingerprintStoredPaymentImage") &&
+    duplicatePreflightRoute.includes("trimax-payment-images") &&
+    duplicatePreflightRoute.includes("findDuplicateRemittance") &&
+    duplicatePreflightRoute.includes("request.formData()") &&
+    duplicatePreflightRoute.includes("remittanceImage") &&
+    duplicatePreflightRoute.includes("priorImagesCompared") &&
+    duplicatePreflightRoute.includes("DuplicateRemittanceActivity") &&
+    duplicatePreflightRoute.includes("return NextResponse.json({") &&
+    !duplicatePreflightRoute.includes(".insert(") &&
+    !duplicatePreflightRoute.includes(".update("),
+  "Early duplicate preflight must compare current image evidence to persisted remittance evidence without mutating payments or invoices."
 );
 
 console.log("Duplicate remittance regression checks passed.");

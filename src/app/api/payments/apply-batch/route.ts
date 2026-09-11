@@ -14,6 +14,7 @@ import {
   findDuplicateRemittance,
   type DuplicateRemittanceActivity,
 } from "../../../lib/duplicateRemittance";
+import { createRemittanceDocumentFingerprint } from "../../../lib/remittanceDocumentFingerprint";
 
 type GenericTable = {
   Row: Record<string, unknown>;
@@ -162,6 +163,7 @@ export async function POST(request: Request) {
     remittanceStubTotal?: number | null;
     remittanceStubLineCount?: number | null;
     remittanceMatchConfidence?: number | null;
+    remittanceDocumentFingerprint?: string | null;
     duplicateOverrideConfirmed?: boolean;
     duplicateOverrideReason?: string;
   };
@@ -314,6 +316,25 @@ export async function POST(request: Request) {
     cleanString(body.receivedDate ?? body.paymentDate, 40)
   );
   const checkDate = optionalDateKey(body.checkDate);
+  let remittanceDocumentFingerprint = cleanString(
+    body.remittanceDocumentFingerprint,
+    300
+  );
+
+  if (!remittanceDocumentFingerprint && body.paymentImagePath) {
+    const { data: imageBlob } = await supabase.storage
+      .from("trimax-payment-images")
+      .download(cleanString(body.paymentImagePath, 1000));
+
+    if (imageBlob) {
+      const imageBuffer = Buffer.from(await imageBlob.arrayBuffer());
+      const fingerprint =
+        await createRemittanceDocumentFingerprint(imageBuffer).catch(() => null);
+
+      remittanceDocumentFingerprint = fingerprint?.hash ?? "";
+    }
+  }
+
   const { data: duplicateActivityData, error: duplicateActivityError } = await supabase
     .from("activity_logs")
     .select("id, action, entity_id, entity_label, details, created_at")
@@ -338,6 +359,7 @@ export async function POST(request: Request) {
       payor,
       invoiceIds,
       invoiceNumbers: invoices.map((invoice) => invoice.display_id ?? ""),
+      fingerprint: remittanceDocumentFingerprint,
     },
     ((duplicateActivityData ?? []) as Array<{
       id: string;
@@ -514,6 +536,10 @@ export async function POST(request: Request) {
         remittanceStubTotal: body.remittanceStubTotal ?? null,
         remittanceStubLineCount: body.remittanceStubLineCount ?? null,
         remittanceMatchConfidence: body.remittanceMatchConfidence ?? null,
+        remittanceDocumentFingerprint: remittanceDocumentFingerprint || null,
+        remittanceDocumentFingerprintVersion: remittanceDocumentFingerprint
+          ? "trimax-ahash-32-v1"
+          : null,
         paymentAttachmentId: body.paymentAttachmentId ?? null,
         paymentImagePath: body.paymentImagePath ?? null,
         paymentImageFileName: body.paymentImageFileName ?? null,

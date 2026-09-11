@@ -39,6 +39,8 @@ export type DuplicateRemittancePayment = {
   invoiceIds: string[];
   invoiceNumbers: string[];
   invoiceCount: number;
+  fingerprint: string;
+  fingerprintDistance: number | null;
   reversalDate: string;
   reversalReason: string;
 };
@@ -143,6 +145,37 @@ function isOwnerAdmin(role: DuplicateRemittanceRole | null | undefined) {
   return normalized === "owner" || normalized === "admin";
 }
 
+function normalizedFingerprint(value: unknown) {
+  return clean(value).replace(/[^a-f0-9]/gi, "").toLowerCase();
+}
+
+function fingerprintDistance(left: unknown, right: unknown) {
+  const first = normalizedFingerprint(left);
+  const second = normalizedFingerprint(right);
+
+  if (!first || first.length !== second.length) {
+    return null;
+  }
+
+  const firstBits = first
+    .split("")
+    .map((char) => Number.parseInt(char, 16).toString(2).padStart(4, "0"))
+    .join("");
+  const secondBits = second
+    .split("")
+    .map((char) => Number.parseInt(char, 16).toString(2).padStart(4, "0"))
+    .join("");
+  let distance = 0;
+
+  for (let index = 0; index < firstBits.length; index += 1) {
+    if (firstBits[index] !== secondBits[index]) {
+      distance += 1;
+    }
+  }
+
+  return distance;
+}
+
 function isReversed(details: Record<string, unknown>) {
   const outcome = clean(details.paymentOutcome).toLowerCase();
 
@@ -169,6 +202,9 @@ function groupPaymentActivities(
       const checkDate = normalizedDate(details.checkDate);
       const receivedDate = normalizedDate(details.receivedDate ?? details.paymentDate);
       const paymentAttachmentId = clean(details.paymentAttachmentId);
+      const fingerprint = normalizedFingerprint(
+        details.remittanceDocumentFingerprint ?? details.documentFingerprint
+      );
       const key = paymentAttachmentId
         ? `attachment:${paymentAttachmentId}`
         : [
@@ -194,6 +230,8 @@ function groupPaymentActivities(
           invoiceIds: [],
           invoiceNumbers: [],
           invoiceCount: 0,
+          fingerprint,
+          fingerprintDistance: null,
           reversalDate: "",
           reversalReason: "",
         };
@@ -211,6 +249,7 @@ function groupPaymentActivities(
         existing.invoiceIds.length,
         Number(details.batchInvoiceCount ?? 0) || 0
       );
+      existing.fingerprint = existing.fingerprint || fingerprint;
 
       if (isReversed(details)) {
         existing.status = "reversed";
@@ -236,6 +275,7 @@ export function findDuplicateRemittance(
   const inputInvoiceNumbers = setKey(input.invoiceNumbers ?? []);
   const amount = moneyNumber(input.amount);
   const checkNumber = normalizeDuplicateCheckNumber(input.checkNumber);
+  const inputFingerprint = normalizedFingerprint(input.fingerprint);
   const exactCandidates: Array<{
     payment: DuplicateRemittancePayment;
     reasons: string[];
@@ -262,6 +302,19 @@ export function findDuplicateRemittance(
     const dateCompatible =
       sameDateOrMissing(input.checkDate, payment.checkDate) &&
       sameDateOrMissing(input.receivedDate, payment.receivedDate);
+    const documentDistance = fingerprintDistance(inputFingerprint, payment.fingerprint);
+    const exactDocumentMatch =
+      documentDistance !== null && documentDistance <= 10;
+    const strongDocumentMatch =
+      documentDistance !== null && documentDistance <= 36;
+    const meaningfulDocumentMatch =
+      documentDistance !== null && documentDistance <= 84;
+    const hasCompatibleContext =
+      amountExact ||
+      checkCompatible ||
+      invoiceSetExact ||
+      invoiceOverlap > 0 ||
+      (payorCompatible && (Boolean(input.payor) || Boolean(payment.payor)));
 
     if (checkCompatible) reasons.push("compatible check number");
     if (amountExact) reasons.push("same amount");
@@ -269,17 +322,26 @@ export function findDuplicateRemittance(
     if (invoiceOverlap && !invoiceSetExact) reasons.push("overlapping invoice set");
     if (payorCompatible) reasons.push("compatible payor");
     if (dateCompatible) reasons.push("compatible date");
+    if (documentDistance !== null) {
+      payment.fingerprintDistance = documentDistance;
+      reasons.push(`document fingerprint distance ${documentDistance}`);
+    }
 
     const exact =
-      amountExact &&
-      payorCompatible &&
-      dateCompatible &&
-      invoiceSetExact;
+      (amountExact &&
+        payorCompatible &&
+        dateCompatible &&
+        invoiceSetExact) ||
+      (exactDocumentMatch && hasCompatibleContext) ||
+      (strongDocumentMatch && hasCompatibleContext) ||
+      (documentDistance !== null && documentDistance <= 4);
     const possible =
       !exact &&
-      amountExact &&
-      payorCompatible &&
-      (invoiceOverlap > 0 || invoiceSetExact);
+      ((amountExact &&
+        payorCompatible &&
+        (invoiceOverlap > 0 || invoiceSetExact)) ||
+        (strongDocumentMatch && hasCompatibleContext) ||
+        meaningfulDocumentMatch);
 
     if (exact) {
       exactCandidates.push({ payment, reasons });
