@@ -681,20 +681,38 @@ export function extractRemittanceTotalEvidence(
   structuredRows: StructuredRemittanceRowEvidence[] = []
 ): RemittanceTotalEvidence {
   const explicitTotal = findExplicitTotalEvidence(text);
-
-  if (explicitTotal) {
-    return explicitTotal;
-  }
-
   const values = extractMoneyValues(text);
   const structuredLineTotal = structuredRows
     .map((row) => selectedStructuredRowAmount(row)?.value ?? 0)
     .filter((value) => value > 0)
     .reduce((total, value) => total + value, 0);
+  const roundedStructuredLineTotal = Number(structuredLineTotal.toFixed(2));
+
+  if (
+    explicitTotal &&
+    structuredRows.length > 1 &&
+    roundedStructuredLineTotal > 0 &&
+    Math.abs(explicitTotal.amount - roundedStructuredLineTotal) > 0 &&
+    Math.abs(explicitTotal.amount - roundedStructuredLineTotal) <= 0.1
+  ) {
+    return {
+      amount: roundedStructuredLineTotal,
+      source: "geometry-supported-total",
+      payable: true,
+      raw: explicitTotal.raw,
+      normalized: `$${roundedStructuredLineTotal.toFixed(2)}`,
+      normalizationReason:
+        "structured row amount consensus overrode a nearby malformed explicit total candidate",
+    };
+  }
+
+  if (explicitTotal) {
+    return explicitTotal;
+  }
 
   if (structuredRows.length > 1 && structuredLineTotal > 0) {
     return {
-      amount: Number(structuredLineTotal.toFixed(2)),
+      amount: roundedStructuredLineTotal,
       source: "geometry-supported-total",
       payable: true,
     };

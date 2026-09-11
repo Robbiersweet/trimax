@@ -2533,6 +2533,36 @@ export default function BatchInvoicePayments({
       structuredRowEvidence
     );
     const authoritativeResolvedMatches = match.resolvedMatches ?? match.matches;
+    const duplicateEvidenceInvoiceIds = Array.from(
+      new Set([
+        ...authoritativeResolvedMatches.map((invoice) => invoice.id),
+        ...match.matchTrace
+          .filter((trace) => trace.found && trace.invoiceId)
+          .map((trace) => trace.invoiceId as string),
+      ])
+    );
+    const duplicateEvidenceInvoiceNumbers = Array.from(
+      new Set([
+        ...authoritativeResolvedMatches.map((invoice) => invoice.displayId),
+        ...match.matchTrace
+          .filter((trace) => trace.found && trace.displayId)
+          .map((trace) => trace.displayId as string),
+      ])
+    );
+    const historicalDuplicateCheck = findDuplicateRemittance(
+      {
+        checkNumber: extractedCheckNumber,
+        amount: extractedTotal,
+        checkDate: extractedDate,
+        receivedDate,
+        payor: extractedPayor,
+        invoiceIds: duplicateEvidenceInvoiceIds,
+        invoiceNumbers: duplicateEvidenceInvoiceNumbers,
+        fingerprint: remittanceDocumentFingerprint,
+      },
+      paymentActivities,
+      workspaceRole ?? ""
+    );
     const rawReviewMatchesFromParser = authoritativeResolvedMatches
       .map((matchedInvoice): ReviewMatchedInvoice | null => {
         const invoice = payableInvoices.find(
@@ -2606,6 +2636,26 @@ export default function BatchInvoicePayments({
       setCheckDate(extractedDate);
     }
 
+    if (historicalDuplicateCheck.status !== "none") {
+      setDuplicateRemittanceModal({
+        result: historicalDuplicateCheck,
+        intent:
+          historicalDuplicateCheck.status === "active"
+            ? "active"
+            : historicalDuplicateCheck.status === "reversed"
+              ? "reversed"
+              : "possible",
+      });
+      setCheckOcrStatus("manual");
+      setCheckOcrMessage(
+        historicalDuplicateCheck.status === "active"
+          ? "This check stub has already been applied."
+          : historicalDuplicateCheck.status === "reversed"
+            ? "Review the reversed payment before applying again."
+            : "Review the possible duplicate remittance before continuing."
+      );
+    }
+
     setCustomerFilter(matchedCustomers.length === 1 ? matchedCustomers[0] : "all");
     setInternalNote(
       reviewMatches.length > 0
@@ -2615,7 +2665,13 @@ export default function BatchInvoicePayments({
         : "Remittance stub review"
     );
 
-    return { match, reviewMatches, reconciledReview, duplicateIds: dedupedReview.duplicateIds };
+    return {
+      match,
+      reviewMatches,
+      reconciledReview,
+      duplicateIds: dedupedReview.duplicateIds,
+      historicalDuplicateCheck,
+    };
   }
 
   function loadCheckDetailsFromExtraction(data: CheckStubOcrResponse) {
@@ -3518,7 +3574,7 @@ export default function BatchInvoicePayments({
         return;
       }
 
-      const { match, reviewMatches, reconciledReview } =
+      const { match, reviewMatches, reconciledReview, historicalDuplicateCheck } =
         loadExtractedRemittance(data);
       setLastOcrDiagnosticLines([
         ...diagnosticLines,
@@ -3530,6 +3586,11 @@ export default function BatchInvoicePayments({
         "Payment Review handoff: remittance review state updated.",
       ]);
       appendCameraStage("Parsing completed");
+      if (historicalDuplicateCheck.status === "active") {
+        appendCameraStage("Duplicate detected");
+        return;
+      }
+
       const responseTotal =
         typeof data.totalAmount === "number" && data.totalAmount > 0
           ? data.totalAmount

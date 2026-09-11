@@ -111,6 +111,13 @@ function sameMoney(left: unknown, right: unknown) {
   return first > 0 && second > 0 && Math.abs(first - second) < 0.01;
 }
 
+function nearMoney(left: unknown, right: unknown) {
+  const first = moneyNumber(left);
+  const second = moneyNumber(right);
+
+  return first > 0 && second > 0 && Math.abs(first - second) <= 0.1;
+}
+
 function sameDateOrMissing(left: unknown, right: unknown) {
   const first = normalizedDate(left);
   const second = normalizedDate(right);
@@ -294,6 +301,7 @@ export function findDuplicateRemittance(
       overlapCount(inputInvoiceIds, payment.invoiceIds) ||
       overlapCount(inputInvoiceNumbers, payment.invoiceNumbers);
     const amountExact = sameMoney(amount, payment.amount);
+    const amountNear = nearMoney(amount, payment.amount);
     const checkCompatible = duplicateCheckNumbersCompatible(
       checkNumber,
       payment.checkNumber
@@ -311,6 +319,7 @@ export function findDuplicateRemittance(
       documentDistance !== null && documentDistance <= 84;
     const hasCompatibleContext =
       amountExact ||
+      amountNear ||
       checkCompatible ||
       invoiceSetExact ||
       invoiceOverlap > 0 ||
@@ -318,6 +327,7 @@ export function findDuplicateRemittance(
 
     if (checkCompatible) reasons.push("compatible check number");
     if (amountExact) reasons.push("same amount");
+    if (!amountExact && amountNear) reasons.push("near amount");
     if (invoiceSetExact) reasons.push("same invoice set");
     if (invoiceOverlap && !invoiceSetExact) reasons.push("overlapping invoice set");
     if (payorCompatible) reasons.push("compatible payor");
@@ -332,6 +342,11 @@ export function findDuplicateRemittance(
         payorCompatible &&
         dateCompatible &&
         invoiceSetExact) ||
+      (amountNear &&
+        payorCompatible &&
+        dateCompatible &&
+        invoiceSetExact &&
+        (checkCompatible || invoiceOverlap > 1)) ||
       (exactDocumentMatch && hasCompatibleContext) ||
       (strongDocumentMatch && hasCompatibleContext) ||
       (documentDistance !== null && documentDistance <= 4);
@@ -340,6 +355,9 @@ export function findDuplicateRemittance(
       ((amountExact &&
         payorCompatible &&
         (invoiceOverlap > 0 || invoiceSetExact)) ||
+        (amountNear &&
+          payorCompatible &&
+          (invoiceOverlap > 0 || invoiceSetExact)) ||
         (strongDocumentMatch && hasCompatibleContext) ||
         meaningfulDocumentMatch);
 

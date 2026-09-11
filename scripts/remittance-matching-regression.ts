@@ -687,6 +687,49 @@ assert(
   "Explicit totals with comma-before-cents OCR must preserve the normalization reason."
 );
 
+const totalConsensusRows: StructuredRemittanceRowEvidence[] = [
+  "INV0520 U20 full interior paint 901.18",
+  "INV0521 U21 full interior paint 901.18",
+  "INV0522 U22 full interior paint 901.18",
+  "INV0524 U24 full interior paint 901.18",
+  "INV0525 U25 full interior paint 901.18",
+].map((text, index) => ({
+  rowId: `consensus-${index}`,
+  text,
+  source: {
+    region: "diagnostic-regression",
+    variant: "fixture",
+    pageMode: "fixture",
+  },
+  rawInvoiceLikeTokens: [text.split(" ")[0]],
+  normalizedInvoiceCandidates: [normalizeInvoiceNumber(text.split(" ")[0])],
+  unitLikeTokens: [text.split(" ")[1]],
+  dateTokens: [],
+  amountCandidates: [
+    {
+      raw: "901.18",
+      normalized: "$901.18",
+      value: 901.18,
+      selected: true,
+    },
+  ],
+}));
+const malformedExplicitTotalWithRowConsensus = extractRemittanceTotalEvidence(
+  "TOTAL: $4,505.93\n" + totalConsensusRows.map((row) => row.text).join("\n"),
+  totalConsensusRows
+);
+assert.equal(malformedExplicitTotalWithRowConsensus.amount, 4505.9);
+assert.equal(
+  malformedExplicitTotalWithRowConsensus.source,
+  "geometry-supported-total"
+);
+assert(
+  malformedExplicitTotalWithRowConsensus.normalizationReason?.includes(
+    "structured row amount consensus"
+  ),
+  "Repeated structured row amounts must beat one nearby malformed explicit total without hard-coding a remittance."
+);
+
 const rowWithNinetyNineFragment = parseCheckStubText(
   "G01 full interior paint 1,099.00 99.00"
 ).lines[0];

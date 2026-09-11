@@ -114,6 +114,48 @@ assert(
   "Dropped-leading-digit check OCR must contribute without being the only proof."
 );
 
+const paidInvoiceIdentityDuplicate = findDuplicateRemittance(
+  {
+    checkNumber: "2804",
+    amount: 4505.93,
+    checkDate: "2026-08-15",
+    receivedDate: "2026-08-16",
+    payor: "North Creek Apartments",
+    invoiceIds: northCreekInvoices,
+    invoiceNumbers: northCreekNumbers,
+  },
+  activePaymentActivities,
+  "owner"
+);
+
+assert.equal(
+  paidInvoiceIdentityDuplicate.status,
+  "active",
+  "Paid/non-collectible OCR invoice identities must still identify an already-applied remittance before payment eligibility rejects them."
+);
+assert(
+  paidInvoiceIdentityDuplicate.reasons.includes("near amount"),
+  "A small OCR amount error must be duplicate evidence without rewriting the parsed amount."
+);
+
+const imperfectCheckNearAmountDuplicate = findDuplicateRemittance(
+  {
+    checkNumber: "804",
+    amount: 4505.93,
+    payor: "North Creek",
+    invoiceIds: northCreekInvoices,
+    invoiceNumbers: northCreekNumbers,
+  },
+  activePaymentActivities,
+  "owner"
+);
+
+assert.equal(
+  imperfectCheckNearAmountDuplicate.status,
+  "active",
+  "Compatible invoice history plus small check/amount OCR defects must still block an active duplicate."
+);
+
 const unrelatedInvoiceSet = findDuplicateRemittance(
   {
     checkNumber: "2804",
@@ -346,13 +388,17 @@ assert(
     paymentScreen.includes("duplicateEvidenceKey") &&
     paymentScreen.includes("duplicateOverrideConfirmed") &&
     paymentScreen.includes("remittanceDocumentFingerprint") &&
+    paymentScreen.includes("duplicateEvidenceInvoiceIds") &&
+    paymentScreen.includes("match.matchTrace") &&
     paymentScreen.includes("workspaceRole"),
-  "Payments UI must run duplicate detection before OCR, block active duplicates, and require explicit owner/admin review for possible duplicates."
+  "Payments UI must run duplicate detection before OCR and after OCR identity extraction, block active duplicates, and require explicit owner/admin review for possible duplicates."
 );
 assert(
   applyBatchRoute.includes("findDuplicateRemittance") &&
     applyBatchRoute.includes("remittanceDocumentFingerprint") &&
     applyBatchRoute.includes("createRemittanceDocumentFingerprint") &&
+    applyBatchRoute.includes("isPaymentEligibleInvoice") &&
+    applyBatchRoute.includes("is not collectible and cannot receive a payment") &&
     applyBatchRoute.includes("status === \"active\"") &&
     applyBatchRoute.includes("status === \"possible\"") &&
     applyBatchRoute.includes("Only an owner or admin can continue") &&
