@@ -388,7 +388,9 @@ assert(
     paymentScreen.includes("imagecapture-still-crop") &&
     paymentScreen.includes("imagecapture-still-full") &&
     paymentScreen.includes("canvas-video-frame") &&
-    paymentScreen.includes("candidate dimensions=") &&
+    paymentScreen.includes("dimensions=") &&
+    paymentScreen.includes("candidate input=") &&
+    paymentScreen.includes("bytes=") &&
     paymentScreen.includes("completenessScore=") &&
     paymentScreen.includes("detectDefaultCropBox(stillFile)") &&
     paymentScreen.includes("productionFile = stillComparison.productionFile ?? file") &&
@@ -413,11 +415,14 @@ assert(
 );
 
 assert(
-  ocrRoute.includes("Capture source selection OCR timed out.") &&
+    ocrRoute.includes("Capture source selection OCR timed out.") &&
     ocrRoute.includes("Capture source preflight budget reached before this candidate could run.") &&
     ocrRoute.includes("failures: CaptureSourceFailure[]") &&
     ocrRoute.includes("fallbackOccurred") &&
-    ocrRoute.includes("Candidate image data URL was missing or unsafe.") &&
+    ocrRoute.includes("imageBuffer?: Buffer") &&
+    ocrRoute.includes("imageBufferFromCandidate") &&
+    ocrRoute.includes("multipart/form-data") &&
+    ocrRoute.includes("Candidate image input was missing, unsafe, or over the data URL limit.") &&
     ocrRoute.includes("Date.now() - startedAt > 18_000") &&
     ocrRoute.includes("completenessScore") &&
     ocrRoute.includes("const selection = await selectCaptureSource(candidates)") &&
@@ -433,6 +438,8 @@ assert(
     paymentScreen.includes("${prefix}:") &&
     paymentScreen.includes("Fallback occurred:") &&
     paymentScreen.includes("failed at") &&
+    paymentScreen.includes("actual=") &&
+    paymentScreen.includes("expected=") &&
     paymentScreen.includes("Selected source:"),
   "Camera diagnostics must report source-selection start, candidate-level results, candidate failures, fallback, and selected source."
 );

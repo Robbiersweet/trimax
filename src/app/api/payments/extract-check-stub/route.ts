@@ -81,6 +81,9 @@ type CaptureSourceSelectionCandidate = {
   id?: unknown;
   label?: unknown;
   imageDataUrl?: unknown;
+  imageBuffer?: Buffer;
+  imageMimeType?: unknown;
+  imageByteSize?: unknown;
   detectorConfidence?: unknown;
   detectorAreaRatio?: unknown;
   detectorSource?: unknown;
@@ -90,6 +93,9 @@ type CaptureSourceEvaluation = {
   id: string;
   label: string;
   selectedImageDataUrl: string;
+  inputType: string;
+  imageMimeType: string;
+  imageByteSize: number;
   dimensions: {
     width: number;
     height: number;
@@ -119,6 +125,9 @@ type CaptureSourceFailure = {
   label: string;
   stage: string;
   error: string;
+  inputType?: string;
+  expectedInput?: string;
+  actualInput?: string;
 };
 
 type OcrWord = {
@@ -223,6 +232,90 @@ function dataUrlToBuffer(imageDataUrl: string) {
   }
 
   return Buffer.from(base64, "base64");
+}
+
+function cleanDiagnosticText(value: unknown) {
+  return String(value ?? "").replace(/\s+/g, " ").trim();
+}
+
+function describeCandidateInput(candidate: CaptureSourceSelectionCandidate) {
+  if (candidate.imageBuffer) {
+    return `buffer:${cleanDiagnosticText(candidate.imageMimeType) || "unknown"}:${candidate.imageBuffer.length}`;
+  }
+
+  if (typeof candidate.imageDataUrl === "string") {
+    const mime = candidate.imageDataUrl.match(/^data:([^;,]+)/i)?.[1] ?? "unknown";
+
+    return `data-url:${mime}:${candidate.imageDataUrl.length}`;
+  }
+
+  return `${typeof candidate.imageDataUrl}:${cleanDiagnosticText(candidate.imageDataUrl).slice(0, 32) || "missing"}`;
+}
+
+function captureSourceError(
+  message: string,
+  stage: string,
+  details: {
+    inputType?: string;
+    expectedInput?: string;
+    actualInput?: string;
+  } = {}
+) {
+  const error = new Error(message) as Error & {
+    stage?: string;
+    inputType?: string;
+    expectedInput?: string;
+    actualInput?: string;
+  };
+
+  error.stage = stage;
+  error.inputType = details.inputType;
+  error.expectedInput = details.expectedInput;
+  error.actualInput = details.actualInput;
+
+  return error;
+}
+
+function imageBufferFromCandidate(
+  candidate: CaptureSourceSelectionCandidate,
+  stage: string
+) {
+  if (candidate.imageBuffer) {
+    return {
+      buffer: candidate.imageBuffer,
+      inputType: "multipart-file",
+      mimeType: cleanDiagnosticText(candidate.imageMimeType) || "unknown",
+      byteSize:
+        typeof candidate.imageByteSize === "number" &&
+        Number.isFinite(candidate.imageByteSize)
+          ? candidate.imageByteSize
+          : candidate.imageBuffer.length,
+      selectedImageDataUrl: "",
+    };
+  }
+
+  const imageDataUrl = candidate.imageDataUrl;
+
+  if (!isSafeDataUrl(imageDataUrl)) {
+    throw captureSourceError("Candidate image input was missing, unsafe, or over the data URL limit.", stage, {
+      inputType: "data-url",
+      expectedInput:
+        "multipart image file bytes or data:image/png|jpeg|jpg|webp|heic|heif;base64 under the route data URL limit",
+      actualInput: describeCandidateInput(candidate),
+    });
+  }
+
+  const safeImageDataUrl = imageDataUrl as string;
+  const mimeType = safeImageDataUrl.match(/^data:([^;,]+)/i)?.[1] ?? "unknown";
+  const buffer = dataUrlToBuffer(safeImageDataUrl);
+
+  return {
+    buffer,
+    inputType: "data-url",
+    mimeType,
+    byteSize: buffer.length,
+    selectedImageDataUrl: safeImageDataUrl,
+  };
 }
 
 async function imageMetadata(input: Buffer) {
@@ -2479,13 +2572,6 @@ function normalizeDetectorConfidence(value: unknown) {
     : "unknown";
 }
 
-function captureSourceError(message: string, stage: string) {
-  const error = new Error(message) as Error & { stage?: string };
-
-  error.stage = stage;
-  return error;
-}
-
 function sourceSelectionReason(
   selected: CaptureSourceEvaluation,
   alternatives: CaptureSourceEvaluation[]
@@ -2515,14 +2601,7 @@ async function evaluateCaptureSourceCandidate(
   worker: Awaited<ReturnType<typeof import("tesseract.js").createWorker>>,
   psm: typeof import("tesseract.js").PSM
 ): Promise<CaptureSourceEvaluation | null> {
-  let stage = "validate-data-url";
-  const imageDataUrl = candidate.imageDataUrl;
-
-  if (!isSafeDataUrl(imageDataUrl)) {
-    throw captureSourceError("Candidate image data URL was missing or unsafe.", stage);
-  }
-
-  const safeImageDataUrl = imageDataUrl as string;
+  let stage = "resolve-image-input";
   const id = normalizeCandidateLabel(candidate.id, `candidate-${index + 1}`);
   const label = normalizeCandidateLabel(candidate.label, id);
   const detectorConfidence = normalizeDetectorConfidence(candidate.detectorConfidence);
@@ -2532,10 +2611,9 @@ async function evaluateCaptureSourceCandidate(
       ? candidate.detectorAreaRatio
       : 0;
   try {
-  stage = "decode-image";
-  const originalImage = dataUrlToBuffer(safeImageDataUrl);
+  const resolvedImage = imageBufferFromCandidate(candidate, stage);
   stage = "build-ocr-sources";
-  const sources = await buildOcrSources(originalImage);
+  const sources = await buildOcrSources(resolvedImage.buffer);
   const source = {
     name: label,
     image: sources.document.image,
@@ -2654,7 +2732,10 @@ async function evaluateCaptureSourceCandidate(
   return {
     id,
     label,
-    selectedImageDataUrl: safeImageDataUrl,
+    selectedImageDataUrl: resolvedImage.selectedImageDataUrl,
+    inputType: resolvedImage.inputType,
+    imageMimeType: resolvedImage.mimeType,
+    imageByteSize: resolvedImage.byteSize,
     dimensions: {
       width: source.width ?? 0,
       height: source.height ?? 0,
@@ -2735,6 +2816,24 @@ async function selectCaptureSource(
               ? error.stage
               : "candidate-evaluation",
           error: error instanceof Error ? error.message : String(error),
+          inputType:
+            error instanceof Error &&
+            "inputType" in error &&
+            typeof error.inputType === "string"
+              ? error.inputType
+              : undefined,
+          expectedInput:
+            error instanceof Error &&
+            "expectedInput" in error &&
+            typeof error.expectedInput === "string"
+              ? error.expectedInput
+              : undefined,
+          actualInput:
+            error instanceof Error &&
+            "actualInput" in error &&
+            typeof error.actualInput === "string"
+              ? error.actualInput
+              : describeCandidateInput(candidate),
         });
 
         return null;
@@ -2767,6 +2866,9 @@ async function selectCaptureSource(
       evaluations: evaluations.map((evaluation) => ({
         id: evaluation.id,
         label: evaluation.label,
+        inputType: evaluation.inputType,
+        imageMimeType: evaluation.imageMimeType,
+        imageByteSize: evaluation.imageByteSize,
         dimensions: evaluation.dimensions,
         quality: evaluation.quality,
         detectorConfidence: evaluation.detectorConfidence,
@@ -2791,14 +2893,56 @@ async function selectCaptureSource(
   }
 }
 
-export async function POST(request: Request) {
-  const body = (await request.json().catch(() => null)) as {
+async function parseExtractCheckStubRequest(request: Request) {
+  const contentType = request.headers.get("content-type") ?? "";
+
+  if (contentType.toLowerCase().includes("multipart/form-data")) {
+    const formData = await request.formData();
+    const rawMeta = formData.get("captureCandidates");
+    const candidateMeta = JSON.parse(
+      typeof rawMeta === "string" ? rawMeta : "[]"
+    ) as CaptureSourceSelectionCandidate[];
+    const captureCandidates = await Promise.all(
+      (Array.isArray(candidateMeta) ? candidateMeta : []).map(
+        async (candidate, index): Promise<CaptureSourceSelectionCandidate> => {
+          const file = formData.get(`candidate-${index}`);
+
+          if (!(file instanceof File)) {
+            return candidate;
+          }
+
+          const arrayBuffer = await file.arrayBuffer();
+
+          return {
+            ...candidate,
+            imageBuffer: Buffer.from(arrayBuffer),
+            imageMimeType: file.type || candidate.imageMimeType || "unknown",
+            imageByteSize: file.size,
+          };
+        }
+      )
+    );
+
+    return {
+      mode: formData.get("mode"),
+      imageDataUrl: null,
+      documentType: formData.get("documentType"),
+      retryStrategy: formData.get("retryStrategy"),
+      captureCandidates,
+    };
+  }
+
+  return (await request.json().catch(() => null)) as {
     imageDataUrl?: unknown;
     documentType?: unknown;
     retryStrategy?: unknown;
     mode?: unknown;
     captureCandidates?: CaptureSourceSelectionCandidate[];
   } | null;
+}
+
+export async function POST(request: Request) {
+  const body = await parseExtractCheckStubRequest(request);
   const imageDataUrl = body?.imageDataUrl;
   const documentType = normalizeDocumentType(body?.documentType);
   const retryStrategy = normalizeRetryStrategy(body?.retryStrategy);
@@ -2841,6 +2985,24 @@ export async function POST(request: Request) {
                 ? error.stage
                 : "preflight",
             error: error instanceof Error ? error.message : String(error),
+            inputType:
+              error instanceof Error &&
+              "inputType" in error &&
+              typeof error.inputType === "string"
+                ? error.inputType
+                : undefined,
+            expectedInput:
+              error instanceof Error &&
+              "expectedInput" in error &&
+              typeof error.expectedInput === "string"
+                ? error.expectedInput
+                : undefined,
+            actualInput:
+              error instanceof Error &&
+              "actualInput" in error &&
+              typeof error.actualInput === "string"
+                ? error.actualInput
+                : undefined,
           },
         ],
         evaluations: [],

@@ -270,10 +270,16 @@ type CaptureSourceSelectionResponse = {
     label?: string;
     stage?: string;
     error?: string;
+    inputType?: string;
+    expectedInput?: string;
+    actualInput?: string;
   }>;
   evaluations?: Array<{
     id?: string;
     label?: string;
+    inputType?: string;
+    imageMimeType?: string;
+    imageByteSize?: number;
     dimensions?: { width?: number; height?: number };
     quality?: { sharpness?: number; contrast?: number };
     detectorConfidence?: string;
@@ -4098,32 +4104,33 @@ export default function BatchInvoicePayments({
     reason: string;
     diagnosticLines: string[];
   }> {
-    const payloadCandidates = await Promise.all(
-      candidates.map(async (candidate) => ({
+    const payloadCandidates = candidates.map((candidate) => ({
         id: candidate.id,
         label: candidate.label,
-        imageDataUrl: await fileToDataUrl(candidate.file),
+        imageMimeType: candidate.file.type || "unknown",
+        imageByteSize: candidate.file.size,
         detectorConfidence: candidate.detectorConfidence ?? "unknown",
         detectorAreaRatio: candidate.detectorAreaRatio ?? 0,
         detectorSource: candidate.detectorSource ?? "unknown",
-      }))
-    );
+      }));
+    const formData = new FormData();
+
+    formData.append("mode", "capture-source-selection");
+    formData.append("captureCandidates", JSON.stringify(payloadCandidates));
+    candidates.forEach((candidate, index) => {
+      formData.append(`candidate-${index}`, candidate.file, candidate.file.name);
+    });
+
     const response = await fetch("/api/payments/extract-check-stub", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        mode: "capture-source-selection",
-        captureCandidates: payloadCandidates,
-      }),
+      body: formData,
     });
     const result =
       (await response.json().catch(() => ({}))) as CaptureSourceSelectionResponse;
     const failureLines =
       result.failures?.map(
         (failure) =>
-          `${failure.label ?? failure.id ?? "candidate"} failed at ${failure.stage ?? "unknown"}: ${failure.error ?? "unknown error"}.`
+          `${failure.label ?? failure.id ?? "candidate"} failed at ${failure.stage ?? "unknown"}: ${failure.error ?? "unknown error"}${failure.inputType ? ` inputType=${failure.inputType}` : ""}${failure.actualInput ? ` actual=${failure.actualInput}` : ""}${failure.expectedInput ? ` expected=${failure.expectedInput}` : ""}.`
       ) ?? [];
 
     if (!response.ok) {
@@ -4162,7 +4169,7 @@ export default function BatchInvoicePayments({
           prefix = "Still full evaluation";
         }
 
-        return `${prefix}: ${evaluation.label ?? evaluation.id ?? "candidate"} candidate dimensions=${width}x${height}, detector=${evaluation.detectorConfidence ?? "unknown"}, quality sharpness=${quality?.sharpness ?? 0}, contrast=${quality?.contrast ?? 0}, words=${evaluation.words ?? 0}, highConfidence=${evaluation.highConfidenceWords ?? 0}, textCoverage=${(((evaluation.textWidthCoverage ?? 0) * 100)).toFixed(1)}%x${(((evaluation.textHeightCoverage ?? 0) * 100)).toFixed(1)}%, invoiceTokens=${evaluation.invoiceTokens ?? 0}, dates=${evaluation.dateTokens ?? 0}, units=${evaluation.unitTokens ?? 0}, amounts=${evaluation.amountTokens ?? 0}, rows=${evaluation.rowCount ?? 0}, explicitTotal=${evaluation.explicitTotal ?? 0}, suspicious=${evaluation.suspiciousIncomplete ? "yes" : "no"}, completenessScore=${evaluation.completenessScore ?? 0}.`;
+        return `${prefix}: ${evaluation.label ?? evaluation.id ?? "candidate"} candidate input=${evaluation.inputType ?? "unknown"}, mime=${evaluation.imageMimeType ?? "unknown"}, bytes=${evaluation.imageByteSize ?? 0}, dimensions=${width}x${height}, detector=${evaluation.detectorConfidence ?? "unknown"}, quality sharpness=${quality?.sharpness ?? 0}, contrast=${quality?.contrast ?? 0}, words=${evaluation.words ?? 0}, highConfidence=${evaluation.highConfidenceWords ?? 0}, textCoverage=${(((evaluation.textWidthCoverage ?? 0) * 100)).toFixed(1)}%x${(((evaluation.textHeightCoverage ?? 0) * 100)).toFixed(1)}%, invoiceTokens=${evaluation.invoiceTokens ?? 0}, dates=${evaluation.dateTokens ?? 0}, units=${evaluation.unitTokens ?? 0}, amounts=${evaluation.amountTokens ?? 0}, rows=${evaluation.rowCount ?? 0}, explicitTotal=${evaluation.explicitTotal ?? 0}, suspicious=${evaluation.suspiciousIncomplete ? "yes" : "no"}, completenessScore=${evaluation.completenessScore ?? 0}.`;
       }) ?? [];
     const selectedSource =
       selectedCandidate?.id === "canvas" ? "canvas" : "imagecapture-still";
