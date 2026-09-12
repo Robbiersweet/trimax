@@ -546,6 +546,21 @@ type DuplicateRemittancePreflightResponse = {
   error?: string;
 };
 
+type DuplicatePreflightEvidence = {
+  checkNumber: string;
+  amount: number | null;
+  checkDate: string;
+  receivedDate: string;
+  payor: string;
+  invoiceIds: string[];
+  invoiceNumbers: string[];
+};
+
+type DuplicatePreflightOutcome = {
+  stoppedOcr: boolean;
+  fingerprint: string;
+};
+
 type ApplyBatchPaymentResponse = {
   error?: string;
   code?: string;
@@ -2500,7 +2515,10 @@ export default function BatchInvoicePayments({
     };
   }
 
-  function loadExtractedRemittance(data: CheckStubOcrResponse) {
+  function loadExtractedRemittance(
+    data: CheckStubOcrResponse,
+    currentDocumentFingerprint = remittanceDocumentFingerprint
+  ) {
     const stubText = data.stubText?.trim() ?? "";
     const extractedPayor =
       data.payor?.trim() || extractLikelyPayor(stubText);
@@ -2573,7 +2591,7 @@ export default function BatchInvoicePayments({
         payor: extractedPayor,
         invoiceIds: duplicateEvidenceInvoiceIds,
         invoiceNumbers: duplicateEvidenceInvoiceNumbers,
-        fingerprint: remittanceDocumentFingerprint,
+        fingerprint: currentDocumentFingerprint,
       },
       paymentActivities,
       workspaceRole ?? ""
@@ -3412,10 +3430,11 @@ export default function BatchInvoicePayments({
 
   async function runDuplicateRemittancePreflight(
     preparedFile: File,
-    prepDiagnosticLines: string[]
-  ) {
+    prepDiagnosticLines: string[],
+    evidence: DuplicatePreflightEvidence
+  ): Promise<DuplicatePreflightOutcome> {
     if (!businessId) {
-      return false;
+      return { stoppedOcr: false, fingerprint: "" };
     }
 
     try {
@@ -3426,22 +3445,13 @@ export default function BatchInvoicePayments({
 
       formData.append("businessId", businessId);
       formData.append("remittanceImage", preparedFile, preparedFile.name);
-      formData.append(
-        "checkNumber",
-        paymentReference.trim() || capturedCheckReference.trim()
-      );
-      formData.append("amount", String(enteredCheckAmount ?? ""));
-      formData.append("checkDate", checkDate);
-      formData.append("receivedDate", receivedDate);
-      formData.append("payor", checkPayor);
-      formData.append(
-        "invoiceIds",
-        selectedInvoices.map((invoice) => invoice.id).join(",")
-      );
-      formData.append(
-        "invoiceNumbers",
-        selectedInvoices.map((invoice) => invoice.displayId).join(",")
-      );
+      formData.append("checkNumber", evidence.checkNumber);
+      formData.append("amount", String(evidence.amount ?? ""));
+      formData.append("checkDate", evidence.checkDate);
+      formData.append("receivedDate", evidence.receivedDate);
+      formData.append("payor", evidence.payor);
+      formData.append("invoiceIds", evidence.invoiceIds.join(","));
+      formData.append("invoiceNumbers", evidence.invoiceNumbers.join(","));
 
       const response = await fetch("/api/payments/duplicate-remittance-preflight", {
         method: "POST",
@@ -3454,17 +3464,24 @@ export default function BatchInvoicePayments({
       });
       const result =
         (await response.json().catch(() => ({}))) as DuplicateRemittancePreflightResponse;
+      const currentFingerprint = result.documentFingerprint?.hash ?? "";
 
-      if (result.documentFingerprint?.hash) {
-        setRemittanceDocumentFingerprint(result.documentFingerprint.hash);
+      if (currentFingerprint) {
+        setRemittanceDocumentFingerprint(currentFingerprint);
       }
 
       const duplicate = result.duplicateRemittance;
       const diagnosticLines = [
         ...prepDiagnosticLines,
+        `Duplicate preflight invoice IDs: ${evidence.invoiceIds.length > 0 ? evidence.invoiceIds.join(",") : "none"}.`,
+        `Duplicate preflight invoice numbers: ${evidence.invoiceNumbers.length > 0 ? evidence.invoiceNumbers.join(",") : "none"}.`,
+        `Duplicate preflight total: ${evidence.amount ?? "none"}.`,
+        `Duplicate preflight check number: ${evidence.checkNumber || "none"}.`,
         `Duplicate remittance preflight: ${response.ok ? "completed" : "skipped"} (${response.status}).`,
         `Duplicate preflight prior images compared: ${result.priorImagesCompared ?? 0}.`,
         `Duplicate preflight status: ${duplicate?.status ?? "none"}.`,
+        `Duplicate preflight returned payment ID: ${duplicate?.payment?.id ?? "none"}.`,
+        `Duplicate preflight returned invoice IDs: ${duplicate?.payment?.invoiceIds?.join(",") || "none"}.`,
         ...(duplicate?.reasons?.length
           ? [`Duplicate preflight evidence: ${duplicate.reasons.join(", ")}.`]
           : []),
@@ -3474,7 +3491,7 @@ export default function BatchInvoicePayments({
       setLastOcrDiagnosticLines(diagnosticLines);
 
       if (!response.ok || !duplicate || duplicate.status === "none") {
-        return false;
+        return { stoppedOcr: false, fingerprint: currentFingerprint };
       }
 
       setDuplicateRemittanceModal({
@@ -3494,14 +3511,14 @@ export default function BatchInvoicePayments({
           : "Review the possible duplicate remittance before continuing."
       );
 
-      return true;
+      return { stoppedOcr: true, fingerprint: currentFingerprint };
     } catch (error) {
       setLastOcrPrepDiagnosticLines([
         ...prepDiagnosticLines,
         `Duplicate remittance preflight: skipped (${error instanceof Error ? error.message : "unknown error"}).`,
       ]);
 
-      return false;
+      return { stoppedOcr: false, fingerprint: "" };
     }
   }
 
@@ -3510,7 +3527,8 @@ export default function BatchInvoicePayments({
     documentType: RemittanceDocumentType = captureDocumentType,
     intent: CaptureIntent = captureIntent,
     retryStrategy: OcrRetryStrategy = "standard",
-    prepDiagnosticLines: string[] = lastOcrPrepDiagnosticLines
+    prepDiagnosticLines: string[] = lastOcrPrepDiagnosticLines,
+    currentDocumentFingerprint = remittanceDocumentFingerprint
   ) {
     if (imageDataUrl.length > 19_500_000) {
       setCheckOcrStatus("manual");
@@ -3590,7 +3608,7 @@ export default function BatchInvoicePayments({
       }
 
       const { match, reviewMatches, reconciledReview, historicalDuplicateCheck } =
-        loadExtractedRemittance(data);
+        loadExtractedRemittance(data, currentDocumentFingerprint);
       setLastOcrDiagnosticLines([
         ...diagnosticLines,
         ...remittanceReviewDiagnosticLines(
@@ -3766,10 +3784,21 @@ export default function BatchInvoicePayments({
         `Saved preview and OCR input match: ${preparedFile.name}, ${preparedFile.size} bytes, crop ${effectiveWidth} x ${effectiveHeight}.`
       );
       setPaymentEntryMode("photo");
-      const duplicatePreflightStoppedOcr =
-        await runDuplicateRemittancePreflight(preparedFile, prepDiagnosticLines);
+      const duplicatePreflight = await runDuplicateRemittancePreflight(
+        preparedFile,
+        prepDiagnosticLines,
+        {
+          checkNumber: "",
+          amount: null,
+          checkDate: "",
+          receivedDate,
+          payor: "",
+          invoiceIds: [],
+          invoiceNumbers: [],
+        }
+      );
 
-      if (duplicatePreflightStoppedOcr) {
+      if (duplicatePreflight.stoppedOcr) {
         return;
       }
 
@@ -3778,7 +3807,8 @@ export default function BatchInvoicePayments({
         documentType,
         intent,
         retryStrategy,
-        prepDiagnosticLines
+        prepDiagnosticLines,
+        duplicatePreflight.fingerprint
       );
     } catch (error) {
       setCheckOcrStatus("error");
@@ -3800,6 +3830,13 @@ export default function BatchInvoicePayments({
     await readPreparedRemittanceFromFile(checkImageFile, cropBox, cropRotation);
   }
 
+  function clearCurrentRemittanceReviewState() {
+    setRemittanceDocumentFingerprint("");
+    setDuplicateRemittanceModal(null);
+    setDuplicateOverrideClearedKey("");
+    setReversedDuplicateReviewedKey("");
+  }
+
   function resetCheckCaptureState() {
     setCheckImageFile(null);
     setCheckImageName("");
@@ -3809,6 +3846,7 @@ export default function BatchInvoicePayments({
     setIsTightlyFramedRemittance(false);
     setIsPreparingCrop(false);
     setFiledPaymentImage(null);
+    clearCurrentRemittanceReviewState();
     setRemittanceStubText("");
     setSelectedIds([]);
     setExtractedPaymentAmount(null);
@@ -4998,6 +5036,7 @@ export default function BatchInvoicePayments({
     setCheckOcrMessage("Preparing remittance...");
     setFiledPaymentImage(null);
     if (intent === "primary") {
+      clearCurrentRemittanceReviewState();
       setRemittanceStubText("");
       setSelectedIds([]);
       setReviewMatchedInvoices([]);
@@ -5108,6 +5147,20 @@ export default function BatchInvoicePayments({
     documentType: RemittanceDocumentType = captureDocumentType,
     intent: CaptureIntent = "primary"
   ) {
+    if (intent === "primary") {
+      clearCurrentRemittanceReviewState();
+      setRemittanceStubText("");
+      setSelectedIds([]);
+      setReviewMatchedInvoices([]);
+      setExtractedPaymentAmount(null);
+      setPaymentReviewNotice("");
+      setCheckAmount("");
+      setPaymentReference("");
+      setCheckPayor("");
+      setCapturedCheckAmount("");
+      setCapturedCheckReference("");
+      setFiledPaymentImage(null);
+    }
     setCaptureDocumentType(documentType);
     setCaptureIntent(intent);
     setCameraGuideMode(defaultGuideModeForDocumentType(documentType));
@@ -5290,6 +5343,18 @@ export default function BatchInvoicePayments({
       setPaymentEntryMode("complete");
       setCheckOcrStatus("idle");
       setCheckOcrMessage("Payment applied.");
+      clearCurrentRemittanceReviewState();
+      setRemittanceStubText("");
+      setSelectedIds([]);
+      setReviewMatchedInvoices([]);
+      setExtractedPaymentAmount(null);
+      setPaymentReviewNotice("");
+      setCheckAmount("");
+      setPaymentReference("");
+      setCheckPayor("");
+      setCapturedCheckAmount("");
+      setCapturedCheckReference("");
+      setFiledPaymentImage(null);
       router.refresh();
       if (checkImagePreview) {
         URL.revokeObjectURL(checkImagePreview);
@@ -5879,7 +5944,7 @@ export default function BatchInvoicePayments({
     setOcrImageFile(null);
                   setCheckImageName("");
     setFiledPaymentImage(null);
-    setRemittanceDocumentFingerprint("");
+    clearCurrentRemittanceReviewState();
     setRemittanceStubText("");
                   setReviewMatchedInvoices([]);
                   setExtractedPaymentAmount(null);
