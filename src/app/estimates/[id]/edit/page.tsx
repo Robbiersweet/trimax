@@ -15,6 +15,13 @@ import TaxModeSelect from "../../../components/TaxModeSelect";
 import Toast from "../../../components/Toast";
 import { logActivity } from "../../../lib/activityLog";
 import {
+  getClientSplitPolicy,
+  getClientTaxSettings,
+  hasClientTaxProfile,
+  resolveServicePricing,
+  type ServicePriceOverride,
+} from "../../../lib/propertyCommercialSettings";
+import {
   calculateDiscountedDocumentTotals,
   discountDisplayLabel,
   isDiscountLine,
@@ -72,6 +79,12 @@ type Client = {
   phone: string | null;
   billing_address: string | null;
   service_address: string | null;
+  tax_mode?: TaxMode | string | null;
+  tax_label?: string | null;
+  tax_rate?: number | string | null;
+  tax_number?: string | null;
+  auto_split_enabled?: boolean | null;
+  split_target_amount?: number | string | null;
 };
 
 type ServiceItem = {
@@ -171,6 +184,8 @@ export default function EditEstimatePage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [serviceItems, setServiceItems] =
     useState<ServiceItem[]>([]);
+  const [servicePriceOverrides, setServicePriceOverrides] =
+    useState<ServicePriceOverride[]>([]);
   const [serviceSearch, setServiceSearch] = useState("");
 
   const [selectedClientId, setSelectedClientId] =
@@ -284,8 +299,24 @@ export default function EditEstimatePage() {
   );
   const [splitWarningAmount, setSplitWarningAmount] =
     useState(0);
+  const selectedClient = useMemo(
+    () =>
+      clients.find(
+        (client) => client.id === selectedClientId
+      ) ?? null,
+    [clients, selectedClientId]
+  );
+  const selectedClientSplitPolicy = useMemo(
+    () =>
+      getClientSplitPolicy(
+        selectedClient,
+        splitWarningAmount
+      ),
+    [selectedClient, splitWarningAmount]
+  );
   const effectiveSplitTargetAmount =
-    toNumber(splitTargetAmount) || splitWarningAmount;
+    toNumber(splitTargetAmount) ||
+    selectedClientSplitPolicy.splitTargetAmount;
   const automaticSplitPlan = useMemo(
     () =>
       effectiveSplitTargetAmount > 0
@@ -305,7 +336,9 @@ export default function EditEstimatePage() {
     );
   }, [customerName, projectTitle, lineItems]);
   const shouldAutoEnableSplitWarning =
-    looksLikeApartmentSplitJob && automaticSplitPlan.length > 0;
+    selectedClientSplitPolicy.autoSplitEnabled &&
+    looksLikeApartmentSplitJob &&
+    automaticSplitPlan.length > 0;
   const effectiveSplitWarningEnabled =
     splitWarningManuallyChanged
       ? splitWarningEnabled
@@ -507,6 +540,19 @@ export default function EditEstimatePage() {
         (serviceData ?? []) as ServiceItem[]
       );
 
+      const { data: overrideData, error: overrideError } =
+        await supabase
+          .from("client_service_overrides")
+          .select("*")
+          .eq("business_id", selectedBusiness.id)
+          .eq("is_active", true);
+
+      if (!overrideError) {
+        setServicePriceOverrides(
+          (overrideData ?? []) as ServicePriceOverride[]
+        );
+      }
+
       const { data: lineItemData } =
         await supabase
           .from("estimate_line_items")
@@ -579,9 +625,66 @@ export default function EditEstimatePage() {
     setTaxRate(suggestion.rate);
   }
 
+  function applyClientCommercialSettings(client: Client) {
+    const taxSettings = getClientTaxSettings(client);
+    const splitPolicy = getClientSplitPolicy(
+      client,
+      splitWarningAmount
+    );
+
+    setTaxMode(taxSettings.taxMode);
+    setTaxLabel(taxSettings.taxLabel);
+    setTaxRate(taxSettings.taxRate);
+    setTaxNumber(taxSettings.taxNumber);
+    setTaxManuallyChanged(hasClientTaxProfile(client));
+
+    setSplitWarningEnabled(splitPolicy.autoSplitEnabled);
+    setSplitTargetAmount(
+      splitPolicy.splitTargetAmount > 0
+        ? String(splitPolicy.splitTargetAmount)
+        : ""
+    );
+    setSplitWarningManuallyChanged(false);
+  }
+
+  function repriceSavedServiceLinesForClient(clientId: string) {
+    setLineItems((currentItems) =>
+      currentItems.map((item) => {
+        const selectedService = serviceItems.find(
+          (serviceItem) => serviceItem.id === item.serviceItemId
+        );
+
+        if (!selectedService) {
+          return item;
+        }
+
+        const normalTier = servicePricingTiers(selectedService).find(
+          (tier) => tier.label === "Normal"
+        );
+        const servicePricing = resolveServicePricing({
+          service: selectedService,
+          overrides: servicePriceOverrides,
+          clientId,
+          normalTierPrice: normalTier?.price,
+        });
+
+        return {
+          ...item,
+          description: servicePricing.description || selectedService.name,
+          quantity: String(
+            Number(selectedService.default_quantity) || 1
+          ),
+          unitPrice: String(servicePricing.unitPrice),
+        };
+      })
+    );
+  }
+
   function handleServiceAddressChange(address: string) {
     setServiceAddress(address);
-    applyTaxSuggestion(address);
+    if (!hasClientTaxProfile(selectedClient)) {
+      applyTaxSuggestion(address);
+    }
   }
 
   function handleClientChange(clientId: string) {
@@ -592,6 +695,15 @@ export default function EditEstimatePage() {
     );
 
     if (!client) {
+      setCustomerName("");
+      setServiceAddress("");
+      setTaxLabel("");
+      setTaxRate("");
+      setTaxNumber("");
+      setTaxManuallyChanged(false);
+      setSplitWarningEnabled(false);
+      setSplitTargetAmount("");
+      setSplitWarningManuallyChanged(false);
       return;
     }
 
@@ -604,6 +716,15 @@ export default function EditEstimatePage() {
 
     if (clientServiceAddress) {
       setServiceAddress(clientServiceAddress);
+    }
+
+    applyClientCommercialSettings(client);
+    repriceSavedServiceLinesForClient(client.id);
+
+    if (
+      clientServiceAddress &&
+      !hasClientTaxProfile(client)
+    ) {
       applyTaxSuggestion(clientServiceAddress);
     }
   }
@@ -640,8 +761,12 @@ export default function EditEstimatePage() {
 
     const tiers = servicePricingTiers(selectedService);
     const normalTier = tiers.find((tier) => tier.label === "Normal");
-    const suggestedUnitPrice =
-      normalTier?.price || Number(selectedService.default_unit_price) || 0;
+    const servicePricing = resolveServicePricing({
+      service: selectedService,
+      overrides: servicePriceOverrides,
+      clientId: selectedClientId,
+      normalTierPrice: normalTier?.price,
+    });
 
     setLineItems((currentItems) =>
       currentItems.map((item, itemIndex) =>
@@ -649,15 +774,13 @@ export default function EditEstimatePage() {
           ? {
               ...item,
               serviceItemId,
-              description:
-                selectedService.description ||
-                selectedService.name,
+              description: servicePricing.description || selectedService.name,
               quantity: String(
                 Number(
                   selectedService.default_quantity
                 ) || 1
               ),
-              unitPrice: String(suggestedUnitPrice),
+              unitPrice: String(servicePricing.unitPrice),
             }
           : item
       )

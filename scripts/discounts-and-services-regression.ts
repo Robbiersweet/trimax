@@ -6,11 +6,30 @@ import {
   discountDisplayLabel,
   parseDiscountFromLineItem,
 } from "../src/app/lib/documentDiscounts.ts";
+import {
+  getClientSplitPolicy,
+  getClientTaxSettings,
+  hasClientTaxProfile,
+  resolveServicePricing,
+} from "../src/app/lib/propertyCommercialSettings.ts";
 import { uniqueSavedServices } from "../src/app/lib/savedServicePresentation.ts";
+import { getEffectiveTaxRate } from "../src/app/utils/tax.ts";
 
 const root = process.cwd();
 const estimateEdit = readFileSync(
   resolve(root, "src/app/estimates/[id]/edit/page.tsx"),
+  "utf8"
+);
+const estimateNew = readFileSync(
+  resolve(root, "src/app/estimates/new/page.tsx"),
+  "utf8"
+);
+const clientEdit = readFileSync(
+  resolve(root, "src/app/clients/[id]/edit/page.tsx"),
+  "utf8"
+);
+const propertyCommercialSettingsMigration = readFileSync(
+  resolve(root, "supabase/sql/2026-09-14-property-commercial-settings.sql"),
   "utf8"
 );
 const invoiceEdit = readFileSync(
@@ -199,6 +218,184 @@ const uniqueServices = uniqueSavedServices([
 ]);
 
 assert.equal(uniqueServices.length, 2, "Exact duplicate services must collapse in picker presentation.");
+
+const classicPaint = {
+  id: "classic-paint",
+  name: "Apartment Turns - Classic Paint",
+  description: "full interior paint",
+  default_unit_price: 875,
+};
+const northCreekPricing = resolveServicePricing({
+  service: classicPaint,
+  clientId: "north-creek",
+  normalTierPrice: 1000,
+  overrides: [
+    {
+      client_id: "north-creek",
+      service_item_id: "classic-paint",
+      unit_price: 1000,
+      is_active: true,
+    },
+    {
+      client_id: "the-glen",
+      service_item_id: "classic-paint",
+      unit_price: 1099,
+      is_active: true,
+    },
+  ],
+});
+const glenPricing = resolveServicePricing({
+  service: classicPaint,
+  clientId: "the-glen",
+  normalTierPrice: 1000,
+  overrides: [
+    {
+      client_id: "north-creek",
+      service_item_id: "classic-paint",
+      unit_price: 1000,
+      is_active: true,
+    },
+    {
+      client_id: "the-glen",
+      service_item_id: "classic-paint",
+      unit_price: 1099,
+      is_active: true,
+    },
+  ],
+});
+const fallbackPricing = resolveServicePricing({
+  service: classicPaint,
+  clientId: "other-property",
+  normalTierPrice: null,
+  overrides: [],
+});
+
+assert.equal(northCreekPricing.unitPrice, 1000, "North Creek can use its own override for a shared service.");
+assert.equal(glenPricing.unitPrice, 1099, "The Glen can use a different override for the same shared service.");
+assert.equal(fallbackPricing.unitPrice, 875, "Service pricing must fall back to the workspace default when no client override exists.");
+assert.equal(
+  resolveServicePricing({
+    service: classicPaint,
+    clientId: "the-glen",
+    normalTierPrice: 1000,
+    overrides: [
+      {
+        client_id: "the-glen",
+        service_item_id: "classic-paint",
+        unit_price: 1200,
+        is_active: false,
+      },
+    ],
+  }).unitPrice,
+  1000,
+  "Inactive overrides must not displace the saved-service tier/default price."
+);
+
+const taxableClient = {
+  tax_mode: "taxable",
+  tax_label: "Snohomish",
+  tax_rate: "9.9",
+  tax_number: "WA-1",
+};
+const nonTaxableClient = {
+  tax_mode: "no_tax",
+  tax_label: "Snohomish",
+  tax_rate: "9.9",
+  tax_number: "WA-1",
+};
+const taxableSettings = getClientTaxSettings(taxableClient);
+const nonTaxableSettings = getClientTaxSettings(nonTaxableClient);
+
+assert.equal(hasClientTaxProfile(taxableClient), true, "Saved client tax settings must be detectable.");
+assert.equal(
+  calculateDiscountedDocumentTotals({
+    lineSubtotal: 1000,
+    taxRate: getEffectiveTaxRate({
+      taxMode: taxableSettings.taxMode,
+      taxRate: taxableSettings.taxRate,
+    }),
+    discount: {
+      enabled: false,
+      type: "fixed",
+      value: 0,
+    },
+  }).taxAmount,
+  99,
+  "A taxable client configured at 9.9% must calculate $99.00 on $1,000."
+);
+assert.equal(
+  getEffectiveTaxRate({
+    taxMode: nonTaxableSettings.taxMode,
+    taxRate: nonTaxableSettings.taxRate,
+  }),
+  0,
+  "Non-taxable client settings must calculate zero tax even when a stored rate exists."
+);
+
+assert.deepEqual(
+  getClientSplitPolicy(
+    {
+      auto_split_enabled: true,
+      split_target_amount: 1300,
+    },
+    1500
+  ),
+  {
+    autoSplitEnabled: true,
+    splitTargetAmount: 1300,
+  },
+  "Client split policy must override the workspace fallback."
+);
+assert.deepEqual(
+  getClientSplitPolicy(
+    {
+      auto_split_enabled: false,
+      split_target_amount: null,
+    },
+    1500
+  ),
+  {
+    autoSplitEnabled: false,
+    splitTargetAmount: 1500,
+  },
+  "Workspace split target remains only a fallback, not an auto-enable flag."
+);
+
+assert(
+  estimateNew.includes("client_service_overrides") &&
+    estimateNew.includes("resolveServicePricing") &&
+    estimateNew.includes("getClientTaxSettings") &&
+    estimateNew.includes("repriceSavedServiceLinesForClient") &&
+    estimateNew.includes("selectedClientSplitPolicy.autoSplitEnabled") &&
+    estimateNew.includes("setSplitWarningManuallyChanged(false)"),
+  "New estimates must resolve client-specific price, tax, and split settings without prior-client leakage."
+);
+
+assert(
+  estimateEdit.includes("client_service_overrides") &&
+    estimateEdit.includes("resolveServicePricing") &&
+    estimateEdit.includes("getClientTaxSettings") &&
+    estimateEdit.includes("repriceSavedServiceLinesForClient") &&
+    estimateEdit.includes("selectedClientSplitPolicy.autoSplitEnabled"),
+  "Edited estimates must use client-specific settings for newly selected clients/services while preserving saved lines."
+);
+
+assert(
+  clientEdit.includes("Service Price Overrides") &&
+    clientEdit.includes("auto_split_enabled") &&
+    clientEdit.includes("tax_rate") &&
+    clientEdit.includes("upsert("),
+  "Client edit must expose property commercial settings without duplicating saved service identities."
+);
+
+assert(
+  propertyCommercialSettingsMigration.includes("create table if not exists public.client_service_overrides") &&
+    propertyCommercialSettingsMigration.includes("unique (business_id, client_id, service_item_id)") &&
+    propertyCommercialSettingsMigration.includes("auto_split_enabled") &&
+    propertyCommercialSettingsMigration.includes("split_target_amount"),
+  "Property commercial settings migration must store service overrides and client split policy in normalized form."
+);
+
 assert(
   estimateEdit.includes("Find Saved Service") &&
     invoiceEdit.includes("Find Saved Service") &&

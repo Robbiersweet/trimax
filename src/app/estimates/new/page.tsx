@@ -20,6 +20,13 @@ import { captureServicesFromLineItems } from "../../lib/captureServicesFromLineI
 import { getNextDocumentDisplayId } from "../../lib/documentNumbers";
 import { logActivity } from "../../lib/activityLog";
 import { assertCanWriteDuringMaintenance } from "../../lib/maintenanceMode";
+import {
+  getClientSplitPolicy,
+  getClientTaxSettings,
+  hasClientTaxProfile,
+  resolveServicePricing,
+  type ServicePriceOverride,
+} from "../../lib/propertyCommercialSettings";
 import { reverseCalculateFinalTotal } from "../../lib/reverseDocumentTotals";
 import { buildSplitInvoicePlan } from "../../lib/splitInvoices";
 import { supabase } from "../../lib/supabase";
@@ -47,6 +54,12 @@ type Client = {
   phone: string | null;
   billing_address: string | null;
   service_address: string | null;
+  tax_mode?: TaxMode | string | null;
+  tax_label?: string | null;
+  tax_rate?: number | string | null;
+  tax_number?: string | null;
+  auto_split_enabled?: boolean | null;
+  split_target_amount?: number | string | null;
 };
 
 type ServiceItem = {
@@ -418,6 +431,8 @@ function NewEstimatePageContent() {
   const [clients, setClients] = useState<Client[]>([]);
   const [serviceItems, setServiceItems] =
     useState<ServiceItem[]>([]);
+  const [servicePriceOverrides, setServicePriceOverrides] =
+    useState<ServicePriceOverride[]>([]);
   const [queueItem, setQueueItem] =
     useState<QueueItem | null>(null);
 
@@ -505,8 +520,24 @@ function NewEstimatePageContent() {
   const splitWarningAmount = toNumber(
     business?.split_warning_amount
   );
+  const selectedClient = useMemo(
+    () =>
+      clients.find(
+        (client) => client.id === selectedClientId
+      ) ?? null,
+    [clients, selectedClientId]
+  );
+  const selectedClientSplitPolicy = useMemo(
+    () =>
+      getClientSplitPolicy(
+        selectedClient,
+        splitWarningAmount
+      ),
+    [selectedClient, splitWarningAmount]
+  );
   const effectiveSplitTargetAmount =
-    toNumber(splitTargetAmount) || splitWarningAmount;
+    toNumber(splitTargetAmount) ||
+    selectedClientSplitPolicy.splitTargetAmount;
   const automaticSplitPlan = useMemo(
     () =>
       effectiveSplitTargetAmount > 0
@@ -526,7 +557,9 @@ function NewEstimatePageContent() {
     );
   }, [customerName, projectTitle, lineItems]);
   const shouldAutoEnableSplitWarning =
-    looksLikeApartmentSplitJob && automaticSplitPlan.length > 0;
+    selectedClientSplitPolicy.autoSplitEnabled &&
+    looksLikeApartmentSplitJob &&
+    automaticSplitPlan.length > 0;
   const effectiveSplitWarningEnabled =
     splitWarningManuallyChanged
       ? splitWarningEnabled
@@ -624,6 +657,69 @@ function NewEstimatePageContent() {
     [taxManuallyChanged]
   );
 
+  const applyClientCommercialSettings = useCallback(
+    (
+      client: Client,
+      fallbackSplitTargetAmount: number | string | null = splitWarningAmount
+    ) => {
+      const taxSettings = getClientTaxSettings(client);
+      const splitPolicy = getClientSplitPolicy(
+        client,
+        fallbackSplitTargetAmount
+      );
+
+      setTaxMode(taxSettings.taxMode);
+      setTaxLabel(taxSettings.taxLabel);
+      setTaxRate(taxSettings.taxRate);
+      setTaxNumber(taxSettings.taxNumber);
+      setTaxManuallyChanged(hasClientTaxProfile(client));
+
+      setSplitWarningEnabled(splitPolicy.autoSplitEnabled);
+      setSplitTargetAmount(
+        splitPolicy.splitTargetAmount > 0
+          ? String(splitPolicy.splitTargetAmount)
+          : ""
+      );
+      setSplitWarningManuallyChanged(false);
+    },
+    [splitWarningAmount]
+  );
+
+  function repriceSavedServiceLinesForClient(clientId: string) {
+    setLineItems((currentItems) =>
+      currentItems.map((item) => {
+        const selectedService = serviceItems.find(
+          (serviceItem) => serviceItem.id === item.serviceItemId
+        );
+
+        if (!selectedService) {
+          return item;
+        }
+
+        const normalTier = servicePricingTiers(selectedService).find(
+          (tier) => tier.label === "Normal"
+        );
+        const servicePricing = resolveServicePricing({
+          service: selectedService,
+          overrides: servicePriceOverrides,
+          clientId,
+          normalTierPrice: normalTier?.price,
+        });
+
+        return {
+          ...item,
+          description: stripApartmentUnitPrefix(
+            servicePricing.description
+          ),
+          quantity: String(
+            Number(selectedService.default_quantity) || 1
+          ),
+          unitPrice: String(servicePricing.unitPrice),
+        };
+      })
+    );
+  }
+
   useEffect(() => {
     async function loadBusiness() {
       const { data, error } = await supabase
@@ -674,8 +770,15 @@ function NewEstimatePageContent() {
           setSelectedClientId(clientFromUrl.id);
           setCustomerName(clientFromUrl.name);
           setServiceAddress(clientServiceAddress);
+          applyClientCommercialSettings(
+            clientFromUrl,
+            businessData.split_warning_amount
+          );
 
-          if (clientServiceAddress) {
+          if (
+            clientServiceAddress &&
+            !hasClientTaxProfile(clientFromUrl)
+          ) {
             applyTaxSuggestion(clientServiceAddress);
           }
         }
@@ -697,10 +800,29 @@ function NewEstimatePageContent() {
       setServiceItems(
         (serviceData ?? []) as ServiceItem[]
       );
+
+      const { data: overrideData, error: overrideError } =
+        await supabase
+          .from("client_service_overrides")
+          .select("*")
+          .eq("business_id", businessData.id)
+          .eq("is_active", true);
+
+      if (!overrideError) {
+        setServicePriceOverrides(
+          (overrideData ?? []) as ServicePriceOverride[]
+        );
+      }
     }
 
     loadBusiness();
-  }, [applyTaxSuggestion, businessSlug, clientIdFromUrl, queueId]);
+  }, [
+    applyClientCommercialSettings,
+    applyTaxSuggestion,
+    businessSlug,
+    clientIdFromUrl,
+    queueId,
+  ]);
 
   useEffect(() => {
     async function loadQueueItem() {
@@ -796,11 +918,25 @@ function NewEstimatePageContent() {
         matchingService,
         descriptionParts
       );
+      const matchingServicePricing =
+        matchingService
+          ? resolveServicePricing({
+              service: matchingService,
+              overrides: servicePriceOverrides,
+              clientId: matchingClient?.id,
+              normalTierPrice: servicePricingTiers(
+                matchingService
+              ).find((tier) => tier.label === "Normal")?.price,
+            })
+          : null;
       const startingLineItems: LineItem[] = [
         matchingService
           ? {
               ...serviceToLineItem(matchingService),
               description: lineDescription,
+              unitPrice: String(
+                matchingServicePricing?.unitPrice ?? 0
+              ),
             }
           : {
               serviceItemId: "",
@@ -816,9 +952,24 @@ function NewEstimatePageContent() {
           normalizeMatchText(item.description).includes("primer")
         )
       ) {
+        const primerPricing =
+          primerService
+            ? resolveServicePricing({
+                service: primerService,
+                overrides: servicePriceOverrides,
+                clientId: matchingClient?.id,
+                normalTierPrice: servicePricingTiers(
+                  primerService
+                ).find((tier) => tier.label === "Normal")?.price,
+              })
+            : null;
+
         startingLineItems.push(
           primerService
-            ? serviceToLineItem(primerService)
+            ? {
+                ...serviceToLineItem(primerService),
+                unitPrice: String(primerPricing?.unitPrice ?? 0),
+              }
             : {
                 serviceItemId: "",
                 description: "Full Primer",
@@ -843,12 +994,24 @@ function NewEstimatePageContent() {
           loadedQueueItem.renovation_needed_details?.trim()
             ? `Renovation and Cabinet Paint - ${loadedQueueItem.renovation_needed_details.trim()}`
             : "Renovation and Cabinet Paint";
+        const renovationPricing =
+          renovationService
+            ? resolveServicePricing({
+                service: renovationService,
+                overrides: servicePriceOverrides,
+                clientId: matchingClient?.id,
+                normalTierPrice: servicePricingTiers(
+                  renovationService
+                ).find((tier) => tier.label === "Normal")?.price,
+              })
+            : null;
 
         startingLineItems.push(
           renovationService
             ? {
                 ...serviceToLineItem(renovationService),
                 description: renovationDescription,
+                unitPrice: String(renovationPricing?.unitPrice ?? 0),
               }
             : {
                 serviceItemId: "",
@@ -889,17 +1052,35 @@ function NewEstimatePageContent() {
 
         if (clientServiceAddress) {
           setServiceAddress(clientServiceAddress);
+        }
+
+        applyClientCommercialSettings(matchingClient);
+
+        if (
+          clientServiceAddress &&
+          !hasClientTaxProfile(matchingClient)
+        ) {
           applyTaxSuggestion(clientServiceAddress);
         }
       }
     }
 
     loadQueueItem();
-  }, [applyTaxSuggestion, business, clients, queueId, serviceItems]);
+  }, [
+    applyClientCommercialSettings,
+    applyTaxSuggestion,
+    business,
+    clients,
+    queueId,
+    serviceItems,
+    servicePriceOverrides,
+  ]);
 
   function handleServiceAddressChange(address: string) {
     setServiceAddress(address);
-    applyTaxSuggestion(address);
+    if (!hasClientTaxProfile(selectedClient)) {
+      applyTaxSuggestion(address);
+    }
   }
 
   function handleClientChange(clientId: string) {
@@ -914,7 +1095,11 @@ function NewEstimatePageContent() {
       setServiceAddress("");
       setTaxLabel("");
       setTaxRate("");
+      setTaxNumber("");
       setTaxManuallyChanged(false);
+      setSplitWarningEnabled(false);
+      setSplitTargetAmount("");
+      setSplitWarningManuallyChanged(false);
       return;
     }
 
@@ -927,6 +1112,15 @@ function NewEstimatePageContent() {
 
     if (clientServiceAddress) {
       setServiceAddress(clientServiceAddress);
+    }
+
+    applyClientCommercialSettings(client);
+    repriceSavedServiceLinesForClient(client.id);
+
+    if (
+      clientServiceAddress &&
+      !hasClientTaxProfile(client)
+    ) {
       applyTaxSuggestion(clientServiceAddress);
     }
   }
@@ -1014,8 +1208,12 @@ function NewEstimatePageContent() {
 
     const tiers = servicePricingTiers(selectedService);
     const normalTier = tiers.find((tier) => tier.label === "Normal");
-    const suggestedUnitPrice =
-      normalTier?.price || Number(selectedService.default_unit_price) || 0;
+    const servicePricing = resolveServicePricing({
+      service: selectedService,
+      overrides: servicePriceOverrides,
+      clientId: selectedClientId,
+      normalTierPrice: normalTier?.price,
+    });
 
     setLineItems((currentItems) =>
       currentItems.map((item, itemIndex) =>
@@ -1023,13 +1221,15 @@ function NewEstimatePageContent() {
           ? {
               ...item,
               serviceItemId,
-              description: serviceLineDescription(selectedService),
+              description: stripApartmentUnitPrefix(
+                servicePricing.description
+              ),
               quantity: String(
                 Number(
                   selectedService.default_quantity
                 ) || 1
               ),
-              unitPrice: String(suggestedUnitPrice),
+              unitPrice: String(servicePricing.unitPrice),
             }
           : item
       )
