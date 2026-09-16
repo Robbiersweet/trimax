@@ -7,6 +7,10 @@ import {
   resolveWorkspaceSenderEmail,
 } from "../../../../lib/invoiceEmailSettings";
 import {
+  detectClientIdentityConflict,
+  type ClientIdentityRecord,
+} from "../../../../lib/clientIdentity";
+import {
   type EmailAttachment,
 } from "../../../../lib/pdfAttachments";
 import { createPrintPagePdfAttachment } from "../../../../lib/printPagePdf";
@@ -71,6 +75,8 @@ type BusinessUserRow = {
 };
 
 type ClientEmailRouteRow = {
+  id: string;
+  name: string | null;
   cc_email: string | null;
 };
 
@@ -326,6 +332,35 @@ export async function POST(request: Request, { params }: RouteParams) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { data: clientIdentityData, error: clientIdentityError } = await supabase
+    .from("clients")
+    .select("id, name, property_aliases, email, cc_email")
+    .eq("business_id", estimate.business_id);
+  const authoritativeClient = (clientIdentityData ?? []).find(client => client.id === estimate.client_id);
+  if (clientIdentityError || !authoritativeClient || recipientEmail !== String(authoritativeClient.email ?? "").trim().toLowerCase()) {
+    return NextResponse.json({ error: "Customer and property do not match. Review before continuing." }, { status: 409 });
+  }
+  const clientIdentityConflict = detectClientIdentityConflict({
+    clients: (clientIdentityData ?? []) as ClientIdentityRecord[],
+    currentClientId: estimate.client_id,
+    customerName: estimate.customer_name,
+    projectTitle: estimate.project_title,
+  });
+
+  if (clientIdentityConflict.hasConflict) {
+    return NextResponse.json(
+      {
+        error:
+          clientIdentityConflict.message ??
+          "Customer and property do not match. Review before continuing.",
+        code: "client_identity_conflict",
+        matchedClientId: clientIdentityConflict.matchedClientId,
+        matchedClientName: clientIdentityConflict.matchedClientName,
+      },
+      { status: 409 }
+    );
+  }
+
   const { data: emailSettingsRow } = await supabase
     .from("business_settings")
     .select("value")
@@ -348,7 +383,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   const { data: clientEmailRoute } = estimate.client_id
     ? await supabase
         .from("clients")
-        .select("cc_email")
+        .select("id, name, cc_email")
         .eq("id", estimate.client_id)
         .eq("business_id", estimate.business_id)
         .limit(1)

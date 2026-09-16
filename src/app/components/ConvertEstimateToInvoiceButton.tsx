@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { detectClientIdentityConflict } from "../lib/clientIdentity";
 import { useRouter } from "next/navigation";
 import Button from "./Button";
 import { getNextDocumentDisplayId } from "../lib/documentNumbers";
@@ -26,6 +27,7 @@ type ConvertEstimateToInvoiceButtonProps = {
   invoiceAmount: string;
   notes: string;
   splitTargetAmount?: number;
+  disabledReason?: string | null;
 };
 
 type Estimate = {
@@ -79,6 +81,7 @@ export default function ConvertEstimateToInvoiceButton({
   invoiceAmount,
   notes,
   splitTargetAmount = 0,
+  disabledReason = null,
 }: ConvertEstimateToInvoiceButtonProps) {
   const router = useRouter();
   const [isConverting, setIsConverting] = useState(false);
@@ -99,6 +102,14 @@ export default function ConvertEstimateToInvoiceButton({
           error instanceof Error
             ? error.message
             : "Trimax is being updated. Try again in a few minutes.",
+      });
+      return;
+    }
+
+    if (disabledReason) {
+      setMessage({
+        type: "error",
+        text: disabledReason,
       });
       return;
     }
@@ -153,6 +164,12 @@ export default function ConvertEstimateToInvoiceButton({
     }
 
     const estimate = estimateData as Estimate;
+    const { data: identityClients, error: identityError } = await supabase.from("clients").select("id, name, property_aliases").eq("business_id", estimate.business_id);
+    if (identityError || detectClientIdentityConflict({ clients: identityClients ?? [], currentClientId: estimate.client_id, customerName: estimate.customer_name, projectTitle: estimate.project_title }).hasConflict) {
+      setMessage({ type: "error", text: "Customer and property do not match. Review before continuing." });
+      setIsConverting(false);
+      return;
+    }
 
     const { data: estimateLineItemData } =
       await supabase
@@ -242,7 +259,7 @@ export default function ConvertEstimateToInvoiceButton({
       .insert({
         business_id: targetBusinessId,
         estimate_id: estimateId,
-        client_id: estimate.client_id ?? clientId,
+        client_id: estimate.client_id,
         created_by_user_id: user?.id ?? null,
         display_id: displayId,
         customer_name:
@@ -413,7 +430,7 @@ export default function ConvertEstimateToInvoiceButton({
     <div className="grid gap-2">
       <Button
         onClick={handleConvert}
-        disabled={isConverting}
+        disabled={isConverting || Boolean(disabledReason)}
       >
         {isConverting ? "Converting..." : "Convert to Invoice"}
       </Button>

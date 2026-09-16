@@ -17,7 +17,10 @@ import {
 } from "../lib/invoiceCorrections";
 import { supabase } from "../lib/supabase";
 
-type InvoiceEmailSendPanelProps = {
+export type InvoiceEmailSendPanelProps = {
+  compact?: boolean;
+  onSent?: () => void;
+  onSendingChange?: (sending: boolean) => void;
   documentId: string;
   documentKind?: "invoice" | "estimate";
   businessId?: string | null;
@@ -183,6 +186,9 @@ function normalizeInvoiceBodyCopy(message: string, fallback: string) {
 }
 
 export default function InvoiceEmailSendPanel({
+  compact = false,
+  onSent,
+  onSendingChange,
   documentId,
   documentKind = "invoice",
   businessId = null,
@@ -754,6 +760,7 @@ export default function InvoiceEmailSendPanel({
     }
 
     setSending(true);
+    onSendingChange?.(true);
 
     try {
       const {
@@ -840,7 +847,7 @@ export default function InvoiceEmailSendPanel({
               ? `Invoice ${documentNumber} sent. Next step: mark the work complete if the job is finished.`
               : result.message ?? `${documentLabel} email sent.`,
       });
-      if (requestType !== "estimate") {
+      if (requestType !== "estimate" && !(result.failedCount && result.failedCount > 0)) {
         setSentState({
           sent: true,
           sentAt: result.sentAt ?? new Date().toISOString(),
@@ -856,6 +863,7 @@ export default function InvoiceEmailSendPanel({
             ? crypto.randomUUID()
             : `trimax-send-${Date.now()}-${Math.random().toString(36).slice(2)}`
         );
+        onSent?.();
         router.refresh();
       }
     } catch (error) {
@@ -868,8 +876,18 @@ export default function InvoiceEmailSendPanel({
       });
     } finally {
       setSending(false);
+      onSendingChange?.(false);
     }
   }
+
+  if (compact) return (
+    <div className="space-y-3">
+      <p className="text-sm">To: {recipient}</p>
+      <p className="text-sm">CC: {visibleClientCc || "None"}</p>
+      {toast && <p role="status">{toast.message}</p>}
+      <Button onClick={() => handleSend(sendSplitGroup)} disabled={sending || !canSend}>{sending ? "Sending…" : "Send Invoice"}</Button>
+    </div>
+  );
 
   return (
     <Card

@@ -45,7 +45,7 @@ export function hasClientTaxProfile(client: ClientCommercialSettings | null) {
   }
 
   return Boolean(
-    client.tax_mode ||
+    client.tax_mode === "no_tax" || client.tax_mode === "tax_exempt" ||
       client.tax_label?.trim() ||
       toCommercialNumber(client.tax_rate) > 0 ||
       client.tax_number?.trim()
@@ -60,7 +60,7 @@ export function getClientTaxSettings(client: ClientCommercialSettings) {
     taxLabel:
       taxMode === "taxable" ? client.tax_label?.trim() ?? "" : "",
     taxRate:
-      taxMode === "taxable" && toCommercialNumber(client.tax_rate) > 0
+      taxMode === "taxable" && client.tax_rate != null && (toCommercialNumber(client.tax_rate) > 0 || Boolean(client.tax_label?.trim()))
         ? String(toCommercialNumber(client.tax_rate))
         : "",
     taxNumber:

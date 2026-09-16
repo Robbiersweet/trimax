@@ -462,38 +462,11 @@ export default function EditEstimatePage() {
           ? estimate.tax_mode
           : "taxable"
       );
-      setTaxLabel(
-        estimate.tax_label && estimate.tax_label !== "Tax"
-          ? estimate.tax_label
-          : ""
-      );
-      setTaxRate(
-        toNumber(estimate.tax_rate) > 0
-          ? String(toNumber(estimate.tax_rate))
-          : ""
-      );
+      // Existing documents keep their saved tax snapshot, including zero tax.
+      setTaxLabel(estimate.tax_label ?? "");
+      setTaxRate(estimate.tax_rate == null ? "" : String(estimate.tax_rate));
       setTaxNumber(estimate.tax_number ?? "");
-      const hasSavedTax =
-        Boolean(estimate.tax_label && estimate.tax_label !== "Tax") ||
-        toNumber(estimate.tax_rate) > 0;
-
-      setTaxManuallyChanged(hasSavedTax);
-
-      const savedServiceAddress =
-        estimate.service_address ??
-        estimate.project_address ??
-        "";
-
-      if (!hasSavedTax && savedServiceAddress) {
-        const suggestion = getTaxSuggestionForAddress(
-          savedServiceAddress
-        );
-
-        if (suggestion) {
-          setTaxLabel(suggestion.label);
-          setTaxRate(suggestion.rate);
-        }
-      }
+      setTaxManuallyChanged(true);
       setSplitWarningEnabled(
         Boolean(estimate.split_warning_enabled)
       );

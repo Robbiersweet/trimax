@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -21,6 +22,7 @@ import { DEFAULT_INVOICE_TERMS } from "../../lib/documentTerms";
 import { getNextDocumentDisplayId } from "../../lib/documentNumbers";
 import { logActivity } from "../../lib/activityLog";
 import { assertCanWriteDuringMaintenance } from "../../lib/maintenanceMode";
+import { getClientTaxSettings, getClientSplitPolicy, hasClientTaxProfile, resolveServicePricing, type ClientCommercialSettings, type ServicePriceOverride } from "../../lib/propertyCommercialSettings";
 import { reverseCalculateFinalTotal } from "../../lib/reverseDocumentTotals";
 import {
   buildSplitInvoicePlan,
@@ -44,7 +46,7 @@ type Business = {
   split_warning_amount: number | string | null;
 };
 
-type Client = {
+type Client = ClientCommercialSettings & {
   id: string;
   name: string;
   contact_name: string | null;
@@ -130,6 +132,9 @@ function NewInvoicePageContent() {
   const [clients, setClients] = useState<Client[]>([]);
   const [serviceItems, setServiceItems] =
     useState<ServiceItem[]>([]);
+  const initialized = useRef(false);
+  const userInteracted = useRef(false);
+  const [servicePriceOverrides, setServicePriceOverrides] = useState<ServicePriceOverride[]>([]);
   const [selectedClientId, setSelectedClientId] =
     useState("");
 
@@ -262,7 +267,7 @@ function NewInvoicePageContent() {
     );
   }, [customerName, projectTitle, lineItems]);
   const shouldAutoEnableSplitWarning =
-    looksLikeApartmentSplitJob && automaticSplitPlan.length > 0;
+    Boolean(clients.find(client => client.id === selectedClientId)?.auto_split_enabled) && looksLikeApartmentSplitJob && automaticSplitPlan.length > 0;
   const effectiveSplitWarningEnabled =
     splitWarningManuallyChanged
       ? splitWarningEnabled
@@ -385,6 +390,8 @@ function NewInvoicePageContent() {
   );
 
   useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
     async function loadBusiness() {
       const { data, error } = await supabase
         .from("businesses")
@@ -407,6 +414,13 @@ function NewInvoicePageContent() {
 
       setBusiness(businessData);
 
+      const { data: overrides } = await supabase
+        .from("client_service_overrides")
+        .select("*")
+        .eq("business_id", businessData.id)
+        .eq("is_active", true);
+      setServicePriceOverrides((overrides ?? []) as ServicePriceOverride[]);
+
       const { data: clientData } =
         await supabase
           .from("clients")
@@ -420,7 +434,7 @@ function NewInvoicePageContent() {
 
       setClients(loadedClients);
 
-      if (clientIdFromUrl) {
+      if (clientIdFromUrl && !userInteracted.current) {
         const clientFromUrl = loadedClients.find(
           (client) => client.id === clientIdFromUrl
         );
@@ -435,9 +449,13 @@ function NewInvoicePageContent() {
           setCustomerName(clientFromUrl.name);
           setServiceAddress(clientServiceAddress);
 
-          if (clientServiceAddress) {
-            applyTaxSuggestion(clientServiceAddress);
-          }
+          const settings = getClientTaxSettings(clientFromUrl);
+          setTaxMode(settings.taxMode); setTaxLabel(settings.taxLabel); setTaxRate(settings.taxRate); setTaxNumber(settings.taxNumber);
+          const policy = getClientSplitPolicy(clientFromUrl, Number(businessData.split_warning_amount) || 0);
+          setSplitWarningEnabled(policy.autoSplitEnabled);
+          setSplitTargetAmount(policy.splitTargetAmount ? String(policy.splitTargetAmount) : "");
+          setTaxManuallyChanged(hasClientTaxProfile(clientFromUrl));
+          if (!hasClientTaxProfile(clientFromUrl)) applyTaxSuggestion(clientServiceAddress);
         }
       }
 
@@ -464,17 +482,24 @@ function NewInvoicePageContent() {
 
   function handleServiceAddressChange(address: string) {
     setServiceAddress(address);
-    applyTaxSuggestion(address);
+    if (!hasClientTaxProfile(clients.find(client => client.id === selectedClientId) ?? null)) applyTaxSuggestion(address);
     updateDueDateIfAutomatic({ serviceAddress: address });
   }
 
   function handleClientChange(clientId: string) {
+    userInteracted.current = true;
     setSelectedClientId(clientId);
 
     const client = clients.find(
       (clientItem) => clientItem.id === clientId
     );
 
+    const settings = getClientTaxSettings(client ?? {});
+    setTaxMode(settings.taxMode); setTaxLabel(settings.taxLabel); setTaxRate(settings.taxRate); setTaxNumber(settings.taxNumber);
+    setTaxManuallyChanged(hasClientTaxProfile(client ?? null));
+    const policy = getClientSplitPolicy(client ?? null, splitWarningAmount);
+    setSplitWarningEnabled(policy.autoSplitEnabled); setSplitTargetAmount(policy.splitTargetAmount ? String(policy.splitTargetAmount) : ""); setSplitWarningManuallyChanged(false);
+    setLineItems(items => items.map(item => { const service = serviceItems.find(service => service.id === item.serviceItemId); if (!service) return item; const pricing = resolveServicePricing({ service, overrides: servicePriceOverrides, clientId }); return {...item, description: pricing.description ?? "", unitPrice: String(pricing.unitPrice)}; }));
     if (!client) {
       setCustomerName("");
       setServiceAddress("");
@@ -495,10 +520,8 @@ function NewInvoicePageContent() {
       client.billing_address ||
       "";
 
-    if (clientServiceAddress) {
-      setServiceAddress(clientServiceAddress);
-      applyTaxSuggestion(clientServiceAddress);
-    }
+    setServiceAddress(clientServiceAddress);
+    if (!hasClientTaxProfile(client)) { const suggestion = getTaxSuggestionForAddress(clientServiceAddress); setTaxLabel(suggestion?.label ?? ""); setTaxRate(suggestion?.rate ?? ""); }
 
     updateDueDateIfAutomatic({
       customerName: client.name,
@@ -507,6 +530,7 @@ function NewInvoicePageContent() {
   }
 
   function resetForm() {
+    userInteracted.current = true;
     const resetInvoiceDates = getSmartInvoiceDates({
       customerName: "",
       projectTitle: "",
@@ -611,25 +635,24 @@ function NewInvoicePageContent() {
       return;
     }
 
+    const pricing = resolveServicePricing({
+      service: selectedService,
+      overrides: servicePriceOverrides,
+      clientId: selectedClientId,
+    });
     setLineItems((currentItems) =>
       currentItems.map((item, itemIndex) =>
         itemIndex === index
           ? {
               ...item,
               serviceItemId,
-              description:
-                selectedService.description ||
-                selectedService.name,
+              description: pricing.description ?? "",
               quantity: String(
                 Number(
                   selectedService.default_quantity
                 ) || 1
               ),
-              unitPrice: String(
-                Number(
-                  selectedService.default_unit_price
-                ) || 0
-              ),
+              unitPrice: String(pricing.unitPrice),
             }
           : item
       )
@@ -923,7 +946,7 @@ function NewInvoicePageContent() {
         <Toast type={toast.type} message={toast.message} />
       )}
 
-      <div className="mx-auto max-w-4xl">
+      <div className="mx-auto max-w-4xl" onChangeCapture={() => { userInteracted.current = true; }}>
         <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
           Trimax
         </p>
@@ -1454,10 +1477,15 @@ function SummaryRow({
   );
 }
 
+function NewInvoiceRoute() {
+  const params = useSearchParams();
+  return <NewInvoicePageContent key={[params.get("business"),params.get("clientId")].join("|")} />;
+}
+
 export default function NewInvoicePage() {
   return (
     <Suspense>
-      <NewInvoicePageContent />
+      <NewInvoiceRoute />
     </Suspense>
   );
 }

@@ -9,6 +9,10 @@ import OutlookDraftPrepCard from "../../components/OutlookDraftPrepCard";
 import SplitInvoicePlanner from "../../components/SplitInvoicePlanner";
 import Toast from "../../components/Toast";
 import { buildOutlookDraftPreview } from "../../lib/outlookDrafts";
+import {
+  detectClientIdentityConflict,
+  type ClientIdentityRecord,
+} from "../../lib/clientIdentity";
 import { buildSplitInvoicePlan } from "../../lib/splitInvoices";
 import { createSupabaseServerClient } from "../../lib/supabaseServer";
 import {
@@ -63,6 +67,8 @@ type Business = {
 };
 
 type ClientContact = {
+  id: string;
+  name: string | null;
   email: string | null;
   cc_email: string | null;
 };
@@ -293,13 +299,23 @@ export default async function EstimateDetailsPage({
   const { data: clientData } = estimate.client_id
     ? await supabase
         .from("clients")
-        .select("email, cc_email")
+        .select("id, name, email, cc_email")
         .eq("id", estimate.client_id)
         .eq("business_id", selectedBusiness.id)
         .limit(1)
         .maybeSingle()
     : { data: null };
   const clientContact = clientData as ClientContact | null;
+  const { data: clientIdentityData } = await supabase
+    .from("clients")
+    .select("id, name, property_aliases, email, cc_email")
+    .eq("business_id", selectedBusiness.id);
+  const clientIdentityConflict = detectClientIdentityConflict({
+    clients: (clientIdentityData ?? []) as ClientIdentityRecord[],
+    currentClientId: estimate.client_id,
+    customerName: estimate.customer_name,
+    projectTitle: estimate.project_title,
+  });
 
   const { data: activityData } = await supabase
     .from("activity_logs")
@@ -421,6 +437,22 @@ export default async function EstimateDetailsPage({
         />
       ) : null}
       <div className="space-y-6">
+        {clientIdentityConflict.hasConflict ? (
+          <Card className="border-red-500/40 bg-red-500/10">
+            <p className="font-semibold text-red-100">
+              Customer and property do not match. Review before continuing.
+            </p>
+            <p className="mt-2 text-sm leading-6 text-red-100/80">
+              This estimate is linked to{" "}
+              {clientContact?.name || estimate.customer_name || "the saved customer"},
+              but the project title appears to reference{" "}
+              {clientIdentityConflict.matchedClientName || "another client"}.
+              Convert and send actions are blocked until the client identity is
+              corrected.
+            </p>
+          </Card>
+        ) : null}
+
         <div>
           <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
             Estimate Details
@@ -628,6 +660,7 @@ export default async function EstimateDetailsPage({
           projectTitle={estimate.project_title}
           printHref={`/estimates/${estimate.id}/print?business=${businessSlug}`}
           requestType="estimate"
+          sendDisabledReason={clientIdentityConflict.message}
         />
 
         <OutlookDraftPrepCard
@@ -831,6 +864,7 @@ export default async function EstimateDetailsPage({
               invoiceAmount={formatCurrency(estimateTotal)}
               notes={estimate.notes ?? ""}
               splitTargetAmount={effectiveSplitTargetAmount}
+              disabledReason={clientIdentityConflict.message}
             />
           )}
 

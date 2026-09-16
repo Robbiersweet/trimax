@@ -54,8 +54,8 @@ assertMatches(
   "Split invoice children must remain part of Queue status derivation."
 );
 assertIncludes(
-  queueList,
-  'label: "Manage Session"',
+  readFileSync(join(root, "src/app/lib/queueAction.ts"), "utf8"),
+  'result("manage_session", "Manage Session"',
   "Active queue sessions should present a single Manage Session action."
 );
 assert(

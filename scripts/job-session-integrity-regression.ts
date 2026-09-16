@@ -422,7 +422,7 @@ assert(
 assert(
   queue.includes("activeSessionByQueueItemId") &&
     queue.includes("Running") &&
-    queue.includes("Manage Session") &&
+    readFileSync(resolve(process.cwd(), "src/app/lib/queueAction.ts"), "utf8").includes("Manage Session") &&
     queue.includes("primaryQueueAction"),
   "Queue rows must surface active job sessions with one clear primary action."
 );

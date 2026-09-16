@@ -23,6 +23,10 @@ import {
   extractCorrectionOriginalDisplayId,
   extractReplacementDisplayIds,
 } from "../../lib/invoiceCorrections";
+import {
+  detectClientIdentityConflict,
+  type ClientIdentityRecord,
+} from "../../lib/clientIdentity";
 import { buildSplitInvoicePlan } from "../../lib/splitInvoices";
 import { resolveInvoiceTerms } from "../../lib/documentTerms";
 import { createSupabaseServerClient } from "../../lib/supabaseServer";
@@ -872,6 +876,7 @@ export default async function InvoiceDetailPage({
   let splitParentInvoice: SplitRelatedInvoice | null = null;
   let splitRelatedInvoices: SplitRelatedInvoice[] = [];
   let clientContact: ClientContact | null = null;
+  let clientIdentityRecords: ClientIdentityRecord[] = [];
   let invoiceActivityLogs: ActivityLog[] = [];
 
   if (invoice.client_id) {
@@ -889,6 +894,18 @@ export default async function InvoiceDetailPage({
 
     clientContact = data ?? null;
   }
+
+  const { data: clientIdentityData, error: clientIdentityError } = await supabase
+    .from("clients")
+    .select("id, name, property_aliases, email, cc_email")
+    .eq("business_id", business.id)
+    .returns<ClientIdentityRecord[]>();
+
+  if (clientIdentityError) {
+    console.error("Client identity lookup failed:", clientIdentityError);
+  }
+
+  clientIdentityRecords = clientIdentityData ?? [];
 
   if (invoice.estimate_id) {
     const { data, error } = await supabase
@@ -998,8 +1015,16 @@ export default async function InvoiceDetailPage({
   const hasPricedLineItems = hasMeaningfulInvoiceLineItems(items);
   const isIncompleteDraftInvoice =
     isDraftInvoice && (items.length === 0 || invoiceTotal <= 0 || !hasPricedLineItems);
+  const clientIdentityConflict = detectClientIdentityConflict({
+    clients: clientIdentityRecords,
+    currentClientId: invoice.client_id,
+    customerName: invoice.customer_name,
+    projectTitle: invoice.project_title,
+  });
   const draftSendDisabledReason = isIncompleteDraftInvoice
     ? "Add line items and pricing before sending."
+    : clientIdentityConflict.message
+      ? clientIdentityConflict.message
     : null;
   const draftPaymentDisabledReason = isIncompleteDraftInvoice
     ? "Add line items and pricing before marking paid."
@@ -1486,6 +1511,21 @@ export default async function InvoiceDetailPage({
         </div>
 
         <div className="space-y-4">
+          {clientIdentityConflict.hasConflict ? (
+            <Card className="border-red-500/40 bg-red-500/10 p-3 sm:p-4">
+              <p className="font-semibold text-red-100">
+                Customer and property do not match. Review before continuing.
+              </p>
+              <p className="mt-2 text-sm leading-6 text-red-100/80">
+                This invoice is linked to{" "}
+                {clientContact?.name || invoice.customer_name || "the saved customer"},
+                but the project title appears to reference{" "}
+                {clientIdentityConflict.matchedClientName || "another client"}.
+                Send actions are blocked until the client identity is corrected.
+              </p>
+            </Card>
+          ) : null}
+
           {isDraftInvoice && !isNonCollectibleInvoice && !hasSplitInvoiceGroup ? (
             <Card className="border-sky-500/30 bg-sky-500/10 p-3 sm:p-4">
               <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">

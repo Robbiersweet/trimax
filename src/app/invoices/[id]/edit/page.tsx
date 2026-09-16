@@ -464,33 +464,11 @@ export default function EditInvoicePage() {
           ? invoice.tax_mode
           : "taxable"
       );
-      setTaxLabel(
-        invoice.tax_label && invoice.tax_label !== "Tax"
-          ? invoice.tax_label
-          : ""
-      );
-      setTaxRate(
-        toNumber(invoice.tax_rate) > 0
-          ? String(toNumber(invoice.tax_rate))
-          : ""
-      );
+      // Existing documents keep their saved tax snapshot, including zero tax.
+      setTaxLabel(invoice.tax_label ?? "");
+      setTaxRate(invoice.tax_rate == null ? "" : String(invoice.tax_rate));
       setTaxNumber(invoice.tax_number ?? "");
-      const hasSavedTax =
-        Boolean(invoice.tax_label && invoice.tax_label !== "Tax") ||
-        toNumber(invoice.tax_rate) > 0;
-
-      setTaxManuallyChanged(hasSavedTax);
-
-      if (!hasSavedTax && invoice.service_address) {
-        const suggestion = getTaxSuggestionForAddress(
-          invoice.service_address
-        );
-
-        if (suggestion) {
-          setTaxLabel(suggestion.label);
-          setTaxRate(suggestion.rate);
-        }
-      }
+      setTaxManuallyChanged(true);
       setAmountPaid(String(toNumber(invoice.amount_paid)));
       setSplitWarningEnabled(
         Boolean(invoice.split_warning_enabled)

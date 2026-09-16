@@ -1,4 +1,8 @@
 import Link from "next/link";
+import QueueInvoiceAction from "../components/QueueInvoiceAction";
+import { resolveQueueAction as primaryQueueAction, type QueueDocument, type QueueClient } from "../lib/queueAction";
+import { defaultInvoiceEmailSettings, normalizeInvoiceEmailSettings } from "../lib/invoiceEmailSettings";
+import { moneyNumber } from "../lib/invoiceLifecycle";
 import AppShell from "../components/AppShell";
 import Card from "../components/Card";
 import Button from "../components/Button";
@@ -56,13 +60,13 @@ type QueueItemWithEstimate = {
   linked_estimate_id: string | null;
 };
 
-type LinkedEstimate = {
+type LinkedEstimate = QueueDocument & {
   id: string;
   display_id: string | null;
   status: string | null;
 };
 
-type LinkedInvoice = {
+type LinkedInvoice = QueueDocument & {
   id: string;
   estimate_id: string | null;
   display_id: string | null;
@@ -360,62 +364,6 @@ function serviceTypeForQueueItem(item: QueueItemWithEstimate) {
   );
 }
 
-function primaryQueueAction({
-  item,
-  linkedEstimate,
-  linkedInvoice,
-  lifecycleStatus,
-  activeSession,
-  businessSlug,
-}: {
-  item: QueueItemWithEstimate;
-  linkedEstimate: LinkedEstimate | null;
-  linkedInvoice: LinkedInvoice | null;
-  lifecycleStatus: string;
-  activeSession: QueueJobSession | null;
-  businessSlug: string;
-}) {
-  if (activeSession) {
-    return {
-      label: "Manage Session",
-      href: `/queue/${item.id}?business=${businessSlug}#job-session`,
-    };
-  }
-
-  if (!linkedEstimate) {
-    return {
-      label: "Create Estimate",
-      href: `/estimates/new?queueId=${item.id}&business=${businessSlug}`,
-    };
-  }
-
-  if (!linkedInvoice) {
-    return {
-      label: "Create Invoice",
-      href: `/estimates/${linkedEstimate.id}?business=${businessSlug}`,
-    };
-  }
-
-  if (["invoice created", "invoiced", "ready to send"].includes(normalizeStatus(lifecycleStatus))) {
-    return {
-      label: "Send Invoice",
-      href: `/invoices/${linkedInvoice.id}?business=${businessSlug}#send-invoice`,
-    };
-  }
-
-  if (!isClosedQueueItem(item)) {
-    return {
-      label: "Start Job",
-      href: `/queue/${item.id}?business=${businessSlug}#job-session`,
-    };
-  }
-
-  return {
-    label: "Open Item",
-    href: `/queue/${item.id}?business=${businessSlug}`,
-  };
-}
-
 function queueHref(
   businessSlug: string,
   options?: {
@@ -600,26 +548,29 @@ export default async function QueuePage({
     .map((item) => item.linked_estimate_id)
     .filter((id): id is string => Boolean(id));
 
+  let readinessLoadError = false;
   let linkedEstimates: LinkedEstimate[] = [];
   let linkedInvoices: LinkedInvoice[] = [];
   let linkedSplitChildInvoices: LinkedInvoice[] = [];
   let invoiceSendProofs: InvoiceSendProof[] = [];
 
   if (linkedEstimateIds.length > 0) {
-    const { data } = await supabase
+    const { data, error: estimateLoadError } = await supabase
       .from("estimates")
-      .select("id, display_id, status")
+      .select("*, lineItems:estimate_line_items(description, quantity, unit_price, line_total)")
       .in("id", linkedEstimateIds);
 
+    readinessLoadError ||= Boolean(estimateLoadError);
     linkedEstimates = data ?? [];
 
     const { data: invoiceData, error: invoiceError } = await supabase
       .from("invoices")
-      .select("id, estimate_id, display_id, status, amount_paid, invoice_amount, split_parent_invoice_id, split_sequence, split_count")
+      .select("*, lineItems:invoice_line_items(description, quantity, unit_price, line_total)")
       .in("estimate_id", linkedEstimateIds)
       .order("created_at", { ascending: false });
 
     if (invoiceError) {
+      readinessLoadError = true;
       console.warn("Queue linked invoices could not be loaded:", invoiceError.message);
     }
 
@@ -630,11 +581,12 @@ export default async function QueuePage({
     if (linkedInvoiceIds.length > 0) {
       const { data: splitChildData, error: splitChildError } = await supabase
         .from("invoices")
-        .select("id, estimate_id, display_id, status, amount_paid, invoice_amount, split_parent_invoice_id, split_sequence, split_count")
-        .in("split_parent_invoice_id", linkedInvoiceIds)
+        .select("*, lineItems:invoice_line_items(description, quantity, unit_price, line_total)")
+        .in("split_parent_invoice_id", Array.from(new Set(linkedInvoices.map(invoice => invoice.split_parent_invoice_id ?? invoice.id))))
         .order("split_sequence", { ascending: true });
 
       if (splitChildError) {
+        readinessLoadError = true;
         console.warn(
           "Queue split child invoices could not be loaded:",
           splitChildError.message
@@ -664,6 +616,7 @@ export default async function QueuePage({
         ]);
 
       if (sendProofError) {
+        readinessLoadError = true;
         console.warn(
           "Queue invoice send proof could not be loaded:",
           sendProofError.message
@@ -673,6 +626,10 @@ export default async function QueuePage({
       invoiceSendProofs = (sendProofData ?? []) as InvoiceSendProof[];
     }
   }
+
+  const { data: queueClients, error: queueClientError } = await supabase.from("clients").select("id, name, email, cc_email, property_aliases").eq("business_id", selectedBusiness?.id);
+  const { data: queueEmailSettings } = await supabase.from("business_settings").select("value").eq("business_id", selectedBusiness?.id).eq("key", "email_settings").maybeSingle();
+  const queueEmailDefaults = normalizeInvoiceEmailSettings(queueEmailSettings?.value, defaultInvoiceEmailSettings({ businessSlug, businessName: selectedBusiness?.name ?? "Trimax", currentEmail: null }));
 
   const estimateById = new Map(
     linkedEstimates.map((estimate) => [estimate.id, estimate])
@@ -720,13 +677,13 @@ export default async function QueuePage({
   );
   const queueItemsWithLifecycle = queueItems.map((item) => {
     const linkedEstimate = item.linked_estimate_id
-      ? estimateById.get(item.linked_estimate_id) ?? null
+      ? estimateById.get(item.linked_estimate_id) ?? { id: item.linked_estimate_id, display_id: null, status: null }
       : null;
     const linkedInvoice = item.linked_estimate_id
       ? invoiceByEstimateId.get(item.linked_estimate_id) ?? null
       : null;
     const splitChildren = linkedInvoice
-      ? splitChildrenByParentInvoiceId.get(linkedInvoice.id) ?? []
+      ? splitChildrenByParentInvoiceId.get(linkedInvoice.split_parent_invoice_id ?? linkedInvoice.id) ?? []
       : [];
     const derivedStatus = derivedQueueStatusFromInvoicePackage({
       invoice: linkedInvoice,
@@ -1692,13 +1649,13 @@ export default async function QueuePage({
             displayQueueItems.map((item) => {
               const displayUnit = maybeCanonicalApartmentUnitLabel(item.unit);
               const linkedEstimate = item.linked_estimate_id
-                ? estimateById.get(item.linked_estimate_id) ?? null
+                ? estimateById.get(item.linked_estimate_id) ?? { id: item.linked_estimate_id, display_id: null, status: null }
                 : null;
               const linkedInvoice = linkedEstimate?.id
                 ? invoiceByEstimateId.get(linkedEstimate.id) ?? null
                 : null;
               const splitChildren = linkedInvoice
-                ? splitChildrenByParentInvoiceId.get(linkedInvoice.id) ?? []
+                ? splitChildrenByParentInvoiceId.get(linkedInvoice.split_parent_invoice_id ?? linkedInvoice.id) ?? []
                 : [];
               const activeSession =
                 activeSessionByQueueItemId.get(item.id) ?? null;
@@ -1714,14 +1671,15 @@ export default async function QueuePage({
                   estimateStatus: linkedEstimate?.status ?? null,
                   fallbackStatus: item.status || "Pending Estimate",
                 });
-              const primaryAction = primaryQueueAction({
-                item,
-                linkedEstimate,
-                linkedInvoice,
-                lifecycleStatus,
-                activeSession,
-                businessSlug,
-              });
+              const actionContext = {
+                queueId: item.id, businessSlug, estimate: linkedEstimate, invoice: linkedInvoice,
+                packageInvoices: splitChildren.length ? splitChildren : linkedInvoice ? [linkedInvoice] : [],
+                clients: (queueClients ?? []) as QueueClient[], sentIds: [...invoiceIdsWithSendProof],
+                activeSession: Boolean(activeSession), closed: isClosedQueueItem(item), loadError: readinessLoadError || Boolean(queueClientError),
+                workspaceCc: queueEmailDefaults.ccEmail,
+              };
+              const primaryAction = primaryQueueAction(actionContext);
+              const invoiceClient = actionContext.clients.find(client => client.id === linkedInvoice?.client_id);
               const serviceType = serviceTypeForQueueItem(item);
               const dueDate = item.ready_date || item.scheduled_date || "No date";
 
@@ -1769,12 +1727,18 @@ export default async function QueuePage({
                         />
                       </div>
                     </div>
-                    <Link
-                      href={primaryAction.href}
-                      className="rounded-2xl bg-sky-500 px-4 py-3 text-center text-sm font-black text-white transition hover:bg-sky-400 md:justify-self-end"
-                    >
-                      {primaryAction.label}
-                    </Link>
+                    {linkedInvoice ? <QueueInvoiceAction key={linkedInvoice.id + JSON.stringify(actionContext)} context={actionContext} email={{
+                      documentId: linkedInvoice.id, businessId: selectedBusiness?.id, businessSlug,
+                      businessName: selectedBusiness?.name ?? "Trimax", customerName: linkedInvoice.customer_name ?? "",
+                      recipientEmail: invoiceClient?.email ?? null, clientCcEmail: invoiceClient?.cc_email || queueEmailDefaults.ccEmail,
+                      documentNumber: linkedInvoice.display_id ?? "Invoice", amountDue: new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(moneyNumber(linkedInvoice.invoice_amount)),
+                      dueDate: linkedInvoice.due_date ?? "", projectTitle: [linkedInvoice.project_title, linkedInvoice.reference].filter(Boolean).join(" / "),
+                      printHref: "/invoices/" + linkedInvoice.id + "/print" + businessQuery,
+                      sendSplitGroup: splitChildren.length > 0 || Boolean(linkedInvoice.split_parent_invoice_id),
+                      splitGroupCount: actionContext.packageInvoices.length,
+                      splitGroupItems: actionContext.packageInvoices.map(invoice => ({ documentNumber: invoice.display_id ?? "Invoice", amountLabel: invoice.invoice_amount?.toString() ?? "" })),
+                      splitGroupCombinedTotal: splitChildren.length ? "$" + splitChildren.reduce((sum, invoice) => sum + moneyNumber(invoice.invoice_amount), 0).toFixed(2) : undefined,
+                    }} /> : <Link href={primaryAction.href} title={primaryAction.blockedReason ?? undefined} className="rounded-2xl bg-sky-500 px-4 py-3 text-center text-sm font-black text-white transition hover:bg-sky-400 md:justify-self-end">{primaryAction.label}</Link>}
                   </div>
 
                   <details

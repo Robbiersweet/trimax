@@ -987,6 +987,7 @@ function ServicesPageContent() {
         Number(defaultUnitPrice) || 0,
       category,
     };
+    const hasTierValues = [easyUnitPrice, normalUnitPrice, difficultUnitPrice].some(value => value.trim() !== "");
     const tierServicePayload = {
       ...baseServicePayload,
       easy_unit_price:
@@ -1013,7 +1014,7 @@ function ServicesPageContent() {
           .eq("id", editingServiceId);
 
         error = fallback.error;
-        savedWithoutTiers = !fallback.error;
+        savedWithoutTiers = !fallback.error && hasTierValues;
       }
 
       setSaving(false);
@@ -1033,7 +1034,7 @@ function ServicesPageContent() {
       setToast({
         type: savedWithoutTiers ? "error" : "success",
         message: savedWithoutTiers
-          ? "Service updated. Run the service pricing tiers SQL before tier prices can be saved."
+          ? "Pricing tiers could not be saved. Please try again after database setup is complete."
           : "Service updated.",
       });
 
@@ -1061,7 +1062,7 @@ function ServicesPageContent() {
         });
 
       error = fallback.error;
-      savedWithoutTiers = !fallback.error;
+      savedWithoutTiers = !fallback.error && hasTierValues;
     }
 
     setSaving(false);
@@ -1080,7 +1081,7 @@ function ServicesPageContent() {
     setToast({
       type: savedWithoutTiers ? "error" : "success",
       message: savedWithoutTiers
-        ? "Service created. Run the service pricing tiers SQL before tier prices can be saved."
+        ? "Pricing tiers could not be saved. Please try again after database setup is complete."
         : "Service created.",
     });
 

@@ -7,8 +7,13 @@ import {
   resolveWorkspaceSenderEmail,
 } from "../../../../lib/invoiceEmailSettings";
 import {
+  detectClientIdentityConflict,
+  type ClientIdentityRecord,
+} from "../../../../lib/clientIdentity";
+import {
   type EmailAttachment,
 } from "../../../../lib/pdfAttachments";
+import { documentRequirements } from "../../../../lib/queueAction";
 import { createPrintPagePdfAttachment } from "../../../../lib/printPagePdf";
 import {
   invoiceSendIneligibleReason,
@@ -69,6 +74,9 @@ type InvoiceRow = {
   split_parent_invoice_id: string | null;
   split_sequence: number | null;
   split_count: number | null;
+  tax_mode?: string | null;
+  tax_label?: string | null;
+  tax_rate?: number | null;
 };
 
 type InvoiceLineItemRow = InvoiceEligibilityLineItem & {
@@ -87,6 +95,8 @@ type BusinessUserRow = {
 };
 
 type ClientEmailRouteRow = {
+  id: string;
+  name: string | null;
   cc_email: string | null;
 };
 
@@ -162,6 +172,7 @@ type SendPipelineStage =
   | "workspace_access"
   | "email_settings"
   | "split_group_lookup"
+  | "client_identity_check"
   | "pdf_generation"
   | "attachment_creation"
   | "email_payload"
@@ -186,6 +197,7 @@ const sendStageLabels: Record<SendPipelineStage, string> = {
   workspace_access: "Workspace access",
   email_settings: "Email settings",
   split_group_lookup: "Split group lookup",
+  client_identity_check: "Client identity check",
   pdf_generation: "PDF generation",
   attachment_creation: "Attachment creation",
   email_payload: "Email payload",
@@ -519,6 +531,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     string,
     unknown
   >;
+  const preflightOnly = body.preflightOnly === true;
   const recipientEmail = cleanText(body.recipientEmail, 200).toLowerCase();
   const requestedCcEmail = cleanText(body.ccEmail, 200).toLowerCase();
   const requestedBccEmail = cleanText(body.bccEmail, 200).toLowerCase();
@@ -584,7 +597,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   const { data: invoice, error: invoiceError } = await supabase
     .from("invoices")
     .select(
-      "id, business_id, client_id, display_id, customer_name, project_title, invoice_amount, amount_paid, notes, created_at, due_date, issue_date, reference, service_address, status, split_parent_invoice_id, split_sequence, split_count"
+      "id, business_id, client_id, display_id, customer_name, project_title, invoice_amount, amount_paid, notes, created_at, due_date, issue_date, reference, service_address, status, split_parent_invoice_id, split_sequence, split_count, tax_mode, tax_label, tax_rate"
     )
     .eq("id", id)
     .limit(1)
@@ -708,7 +721,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   const { data: clientEmailRoute } = invoice.client_id
     ? await supabase
         .from("clients")
-        .select("cc_email")
+        .select("id, name, cc_email")
         .eq("id", invoice.client_id)
         .eq("business_id", invoice.business_id)
         .limit(1)
@@ -732,6 +745,9 @@ export async function POST(request: Request, { params }: RouteParams) {
     : isValidEmail(fallbackCcEmail)
       ? fallbackCcEmail
       : "";
+  if ((clientCcEmail && !isValidEmail(clientCcEmail)) || (fallbackCcEmail && !isValidEmail(fallbackCcEmail))) {
+    return sendFailureResponse({ traceId, steps, stage: "email_settings", message: "Review CC email before sending.", status: 400 });
+  }
   const ccSource = ccEmail
     ? ccEmail === automationCcEmail
       ? "automation"
@@ -779,11 +795,15 @@ export async function POST(request: Request, { params }: RouteParams) {
   let targetInvoices = [invoice];
   const splitGroupRootId = invoice.split_parent_invoice_id ?? invoice.id;
 
+  if (!sendSplitGroup && emailPurpose !== "reminder" && (invoice.split_parent_invoice_id || (invoice.split_count ?? 0) > 1)) {
+    return sendFailureResponse({ traceId, steps, stage: "split_group_lookup", message: "Send the complete split invoice package together.", status: 409 });
+  }
+
   if (sendSplitGroup && emailPurpose !== "reminder") {
     const { data: splitInvoices, error: splitInvoicesError } = await supabase
       .from("invoices")
       .select(
-        "id, business_id, client_id, display_id, customer_name, project_title, invoice_amount, amount_paid, notes, created_at, due_date, issue_date, reference, service_address, status, split_parent_invoice_id, split_sequence, split_count"
+        "id, business_id, client_id, display_id, customer_name, project_title, invoice_amount, amount_paid, notes, created_at, due_date, issue_date, reference, service_address, status, split_parent_invoice_id, split_sequence, split_count, tax_mode, tax_label, tax_rate"
       )
       .eq("business_id", invoice.business_id)
       .eq("split_parent_invoice_id", splitGroupRootId)
@@ -822,6 +842,59 @@ export async function POST(request: Request, { params }: RouteParams) {
       ),
     },
   });
+
+  const { data: clientIdentityData, error: clientIdentityError } = await supabase
+    .from("clients")
+    .select("id, name, property_aliases, email, cc_email")
+    .eq("business_id", invoice.business_id)
+    .returns<ClientIdentityRecord[]>();
+
+  if (clientIdentityError) {
+    return sendFailureResponse({
+      traceId,
+      steps,
+      stage: "client_identity_check",
+      message: "Trimax could not verify invoice customer identity.",
+      status: 500,
+      detail: { error: clientIdentityError.message },
+    });
+  }
+
+  const selectedRecipientClient = (clientIdentityData ?? []).find(client => client.id === invoice.client_id);
+  if (!selectedRecipientClient || recipientEmail !== selectedRecipientClient.email?.trim().toLowerCase() || targetInvoices.some(target => target.client_id !== invoice.client_id)) {
+    return sendFailureResponse({ traceId, steps, stage: "client_identity_check", message: "Customer and property do not match. Review before continuing.", status: 409 });
+  }
+
+  const conflictingInvoice = targetInvoices
+    .map((targetInvoice) => ({
+      invoice: targetInvoice,
+      conflict: detectClientIdentityConflict({
+        clients: clientIdentityData ?? [],
+        currentClientId: targetInvoice.client_id,
+        customerName: targetInvoice.customer_name,
+        projectTitle: targetInvoice.project_title,
+      }),
+    }))
+    .find(({ conflict }) => conflict.hasConflict);
+
+  if (conflictingInvoice) {
+    return sendFailureResponse({
+      traceId,
+      steps,
+      stage: "client_identity_check",
+      message:
+        conflictingInvoice.conflict.message ??
+        "Customer and property do not match. Review before continuing.",
+      status: 409,
+      detail: {
+        code: "client_identity_conflict",
+        invoice_id: conflictingInvoice.invoice.id,
+        invoice_number: conflictingInvoice.invoice.display_id,
+        matched_client_id: conflictingInvoice.conflict.matchedClientId,
+        matched_client_name: conflictingInvoice.conflict.matchedClientName,
+      },
+    });
+  }
 
   const isSplitGroupSend =
     sendSplitGroup && emailPurpose !== "reminder" && targetInvoices.length > 1;
@@ -901,12 +974,15 @@ export async function POST(request: Request, { params }: RouteParams) {
 
   if (emailPurpose !== "reminder") {
     const targetInvoiceIds = targetInvoices.map((targetInvoice) => targetInvoice.id);
-    const { data: splitChildren } = await supabase
+    const { data: priorDelivery, error: priorDeliveryError } = await supabase.from("activity_logs").select("entity_id").eq("business_id", invoice.business_id).eq("entity_type", "invoice").in("entity_id", targetInvoiceIds).in("action", ["invoice.email_sent", "invoice.split_group_email_sent"]);
+    if (priorDeliveryError || priorDelivery?.length) return sendFailureResponse({ traceId, steps, stage: "request_validation", message: priorDeliveryError ? "Invoice delivery history could not be verified." : "Invoice was already sent. Review its delivery history.", status: 409 });
+    const { data: splitChildren, error: splitChildrenError } = await supabase
       .from("invoices")
       .select("split_parent_invoice_id")
       .eq("business_id", invoice.business_id)
       .in("split_parent_invoice_id", targetInvoiceIds)
       .returns<{ split_parent_invoice_id: string | null }[]>();
+    if (splitChildrenError) return sendFailureResponse({ traceId, steps, stage: "split_group_lookup", message: "The split invoice relationship could not be verified.", status: 500 });
     const splitChildrenByParentId = new Map<string, number>();
     (splitChildren ?? []).forEach((child) => {
       const parentId = String(child.split_parent_invoice_id ?? "");
@@ -943,7 +1019,8 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     const invalidInvoices = targetInvoices
       .map((targetInvoice) => {
-        const reason = invoiceSendIneligibleReason({
+        const readinessMissing = documentRequirements({ ...targetInvoice, lineItems: lineItemsByInvoiceId.get(targetInvoice.id) ?? [] }, clientIdentityData ?? []);
+        const reason = readinessMissing[0] ?? invoiceSendIneligibleReason({
           invoice: {
             ...targetInvoice,
             split_children_count:
@@ -976,6 +1053,10 @@ export async function POST(request: Request, { params }: RouteParams) {
         },
       });
     }
+  }
+
+  if (sendSplitGroup && emailPurpose !== "reminder" && (targetInvoices.length < 2 || targetInvoices.some(target => target.split_count !== targetInvoices.length))) {
+    return sendFailureResponse({ traceId, steps, stage: "split_group_lookup", message: "Review the complete split invoice package.", status: 409 });
   }
 
   const { lines: splitSummaryLines, combinedTotal } =
@@ -1056,7 +1137,7 @@ export async function POST(request: Request, { params }: RouteParams) {
           error instanceof Error ? error.message : "Unknown PDF render failure.";
 
         console.error("Official invoice PDF render failed.", error);
-        await supabase.from("activity_logs").insert({
+        if (!preflightOnly) await supabase.from("activity_logs").insert({
           business_id: targetInvoice.business_id,
           actor_user_id: access.userId,
           actor_email: access.email,
@@ -1144,6 +1225,10 @@ export async function POST(request: Request, { params }: RouteParams) {
       split_group_send: isSplitGroupSend,
     },
   });
+
+  if (preflightOnly) {
+    return NextResponse.json({ ready: true, attachmentCount: pdfAttachments.length, recipientEmail, ccEmail, invoiceIds: targetInvoices.map(item => item.id) });
+  }
 
   logSendStep({
     traceId,

@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -17,6 +18,7 @@ import TaxModeSelect from "../../components/TaxModeSelect";
 import Card from "../../components/Card";
 import Toast from "../../components/Toast";
 import { captureServicesFromLineItems } from "../../lib/captureServicesFromLineItems";
+import { findExactClientForProperty } from "../../lib/clientIdentity";
 import { getNextDocumentDisplayId } from "../../lib/documentNumbers";
 import { logActivity } from "../../lib/activityLog";
 import { assertCanWriteDuringMaintenance } from "../../lib/maintenanceMode";
@@ -49,6 +51,7 @@ type Business = {
 type Client = {
   id: string;
   name: string;
+  property_aliases?: string[] | null;
   contact_name: string | null;
   email: string | null;
   phone: string | null;
@@ -130,26 +133,7 @@ function findMatchingClient(
   clients: Client[],
   propertyName: string | null
 ) {
-  const normalizedProperty = normalizeMatchText(propertyName);
-
-  if (!normalizedProperty) {
-    return null;
-  }
-
-  return (
-    clients.find(
-      (client) => normalizeMatchText(client.name) === normalizedProperty
-    ) ??
-    clients.find((client) => {
-      const normalizedClient = normalizeMatchText(client.name);
-
-      return (
-        normalizedClient.includes(normalizedProperty) ||
-        normalizedProperty.includes(normalizedClient)
-      );
-    }) ??
-    null
-  );
+  return findExactClientForProperty(clients, propertyName);
 }
 
 function findMatchingService(
@@ -426,6 +410,11 @@ function NewEstimatePageContent() {
     searchParams.get("business") ?? "rnl-creations";
   const clientIdFromUrl = searchParams.get("clientId");
 
+  const businessHydrationStarted = useRef(false);
+  const queueHydrationStarted = useRef(false);
+  const userInteracted = useRef(false);
+  const [catalogLoaded, setCatalogLoaded] = useState(false);
+
   const [business, setBusiness] =
     useState<Business | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
@@ -637,8 +626,8 @@ function NewEstimatePageContent() {
   } | null>(null);
 
   const applyTaxSuggestion = useCallback(
-    (address: string) => {
-      if (taxManuallyChanged) {
+    (address: string, force = false) => {
+      if (taxManuallyChanged && !force) {
         return;
       }
 
@@ -711,9 +700,6 @@ function NewEstimatePageContent() {
           description: stripApartmentUnitPrefix(
             servicePricing.description
           ),
-          quantity: String(
-            Number(selectedService.default_quantity) || 1
-          ),
           unitPrice: String(servicePricing.unitPrice),
         };
       })
@@ -721,6 +707,8 @@ function NewEstimatePageContent() {
   }
 
   useEffect(() => {
+    if (businessHydrationStarted.current) return;
+    businessHydrationStarted.current = true;
     async function loadBusiness() {
       const { data, error } = await supabase
         .from("businesses")
@@ -756,7 +744,7 @@ function NewEstimatePageContent() {
 
       setClients(loadedClients);
 
-      if (clientIdFromUrl && !queueId) {
+      if (clientIdFromUrl && !queueId && !userInteracted.current) {
         const clientFromUrl = loadedClients.find(
           (client) => client.id === clientIdFromUrl
         );
@@ -779,7 +767,7 @@ function NewEstimatePageContent() {
             clientServiceAddress &&
             !hasClientTaxProfile(clientFromUrl)
           ) {
-            applyTaxSuggestion(clientServiceAddress);
+            applyTaxSuggestion(clientServiceAddress, true);
           }
         }
       }
@@ -815,7 +803,7 @@ function NewEstimatePageContent() {
       }
     }
 
-    loadBusiness();
+    void loadBusiness().finally(() => setCatalogLoaded(true));
   }, [
     applyClientCommercialSettings,
     applyTaxSuggestion,
@@ -826,7 +814,7 @@ function NewEstimatePageContent() {
 
   useEffect(() => {
     async function loadQueueItem() {
-      if (!queueId || !business) {
+      if (!queueId || !business || !catalogLoaded || queueHydrationStarted.current) {
         return;
       }
 
@@ -840,6 +828,7 @@ function NewEstimatePageContent() {
         return;
       }
 
+      queueHydrationStarted.current = true;
       const { data, error } = await supabase
         .from("queue_items")
         .select("*")
@@ -1022,7 +1011,9 @@ function NewEstimatePageContent() {
         );
       }
 
+      // A late queue response must never replace an explicit user edit.
       setQueueItem(loadedQueueItem);
+      if (userInteracted.current) return;
       setSelectedClientId(matchingClient?.id ?? "");
       setCustomerName(
         matchingClient?.name ?? loadedQueueItem.property ?? ""
@@ -1060,7 +1051,7 @@ function NewEstimatePageContent() {
           clientServiceAddress &&
           !hasClientTaxProfile(matchingClient)
         ) {
-          applyTaxSuggestion(clientServiceAddress);
+          applyTaxSuggestion(clientServiceAddress, true);
         }
       }
     }
@@ -1074,6 +1065,7 @@ function NewEstimatePageContent() {
     queueId,
     serviceItems,
     servicePriceOverrides,
+    catalogLoaded,
   ]);
 
   function handleServiceAddressChange(address: string) {
@@ -1084,6 +1076,7 @@ function NewEstimatePageContent() {
   }
 
   function handleClientChange(clientId: string) {
+    userInteracted.current = true;
     setSelectedClientId(clientId);
 
     const client = clients.find(
@@ -1093,6 +1086,8 @@ function NewEstimatePageContent() {
     if (!client) {
       setCustomerName("");
       setServiceAddress("");
+      setTaxMode("taxable");
+      repriceSavedServiceLinesForClient("");
       setTaxLabel("");
       setTaxRate("");
       setTaxNumber("");
@@ -1110,9 +1105,7 @@ function NewEstimatePageContent() {
       client.billing_address ||
       "";
 
-    if (clientServiceAddress) {
-      setServiceAddress(clientServiceAddress);
-    }
+    setServiceAddress(clientServiceAddress);
 
     applyClientCommercialSettings(client);
     repriceSavedServiceLinesForClient(client.id);
@@ -1121,11 +1114,12 @@ function NewEstimatePageContent() {
       clientServiceAddress &&
       !hasClientTaxProfile(client)
     ) {
-      applyTaxSuggestion(clientServiceAddress);
+      applyTaxSuggestion(clientServiceAddress, true);
     }
   }
 
   function resetForm() {
+    userInteracted.current = true;
     setSelectedClientId("");
     setCustomerName("");
     setProjectTitle("");
@@ -1487,7 +1481,7 @@ function NewEstimatePageContent() {
         />
       )}
 
-      <div className="mx-auto max-w-4xl">
+      <div className="mx-auto max-w-4xl" onChangeCapture={() => { userInteracted.current = true; }}>
         <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
           Trimax
         </p>
@@ -2039,10 +2033,16 @@ function SummaryRow({
   );
 }
 
+function NewEstimateRoute() {
+  const params = useSearchParams();
+  const key = [params.get("business"), params.get("queueId"), params.get("clientId")].join("|");
+  return <NewEstimatePageContent key={key} />;
+}
+
 export default function NewEstimatePage() {
   return (
     <Suspense>
-      <NewEstimatePageContent />
+      <NewEstimateRoute />
     </Suspense>
   );
 }

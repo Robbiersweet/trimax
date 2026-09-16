@@ -7,6 +7,10 @@ import {
   parseDiscountFromLineItem,
 } from "../src/app/lib/documentDiscounts.ts";
 import {
+  detectClientIdentityConflict,
+  findExactClientForProperty,
+} from "../src/app/lib/clientIdentity.ts";
+import {
   getClientSplitPolicy,
   getClientTaxSettings,
   hasClientTaxProfile,
@@ -22,6 +26,22 @@ const estimateEdit = readFileSync(
 );
 const estimateNew = readFileSync(
   resolve(root, "src/app/estimates/new/page.tsx"),
+  "utf8"
+);
+const estimateDetails = readFileSync(
+  resolve(root, "src/app/estimates/[id]/page.tsx"),
+  "utf8"
+);
+const invoiceDetails = readFileSync(
+  resolve(root, "src/app/invoices/[id]/page.tsx"),
+  "utf8"
+);
+const estimateSendEmailRoute = readFileSync(
+  resolve(root, "src/app/api/estimates/[id]/send-email/route.ts"),
+  "utf8"
+);
+const invoiceSendEmailRoute = readFileSync(
+  resolve(root, "src/app/api/invoices/[id]/send-email/route.ts"),
   "utf8"
 );
 const clientEdit = readFileSync(
@@ -291,6 +311,56 @@ assert.equal(
   "Inactive overrides must not displace the saved-service tier/default price."
 );
 
+const sisterClients = [
+  { id: "north-creek", name: "North Creek Apartments" },
+  { id: "the-glen", name: "The Glenn At North Creek Apartments" },
+  { id: "other", name: "Everett Landing Apartments" },
+];
+
+assert.equal(
+  findExactClientForProperty(sisterClients, "The Glenn At North Creek Apartments")?.id,
+  "the-glen",
+  "An exact property/client name should select that exact client."
+);
+assert.equal(
+  findExactClientForProperty(
+    sisterClients.filter((client) => client.id !== "the-glen"),
+    "The Glenn At North Creek Apartments"
+  ),
+  null,
+  "A sister property must not fall back to North Creek by substring."
+);
+assert.equal(
+  findExactClientForProperty(sisterClients, "North Creek Apartments")?.id,
+  "north-creek",
+  "Switching back to North Creek should still resolve North Creek exactly."
+);
+assert.deepEqual(
+  detectClientIdentityConflict({
+    clients: sisterClients,
+    currentClientId: "north-creek",
+    customerName: "North Creek Apartments",
+    projectTitle: "The Glenn At North Creek Apartments - Unit C127",
+  }),
+  {
+    hasConflict: true,
+    message: "Customer and property do not match. Review before continuing.",
+    matchedClientId: "the-glen",
+    matchedClientName: "The Glenn At North Creek Apartments",
+  },
+  "A document linked to North Creek with a Glen project title must be blocked before send/convert."
+);
+assert.equal(
+  detectClientIdentityConflict({
+    clients: sisterClients,
+    currentClientId: "the-glen",
+    customerName: "The Glenn At North Creek Apartments",
+    projectTitle: "The Glenn At North Creek Apartments - Unit C127",
+  }).hasConflict,
+  false,
+  "A matching authoritative client and project title should remain sendable."
+);
+
 const taxableClient = {
   tax_mode: "taxable",
   tax_label: "Snohomish",
@@ -367,7 +437,8 @@ assert(
     estimateNew.includes("getClientTaxSettings") &&
     estimateNew.includes("repriceSavedServiceLinesForClient") &&
     estimateNew.includes("selectedClientSplitPolicy.autoSplitEnabled") &&
-    estimateNew.includes("setSplitWarningManuallyChanged(false)"),
+    estimateNew.includes("setSplitWarningManuallyChanged(false)") &&
+    estimateNew.includes("findExactClientForProperty"),
   "New estimates must resolve client-specific price, tax, and split settings without prior-client leakage."
 );
 
@@ -394,6 +465,39 @@ assert(
     propertyCommercialSettingsMigration.includes("auto_split_enabled") &&
     propertyCommercialSettingsMigration.includes("split_target_amount"),
   "Property commercial settings migration must store service overrides and client split policy in normalized form."
+);
+
+assert(
+  !estimateNew.includes("normalizedClient.includes(normalizedProperty)") &&
+    !estimateNew.includes("normalizedProperty.includes(normalizedClient)"),
+  "Queue/client matching must not use broad substring fallback between sister properties."
+);
+
+assert(
+  converter.includes("client_id: estimate.client_id") &&
+    converter.includes("customer_name:") &&
+    converter.includes("estimate.customer_name ?? customerName") &&
+    converter.includes("disabledReason"),
+  "Estimate-to-invoice conversion must preserve the estimate client identity and honor identity blocks."
+);
+
+assert(
+  estimateDetails.includes("detectClientIdentityConflict") &&
+    estimateDetails.includes("Customer and property do not match. Review before continuing.") &&
+    estimateDetails.includes("disabledReason={clientIdentityConflict.message}") &&
+    invoiceDetails.includes("detectClientIdentityConflict") &&
+    invoiceDetails.includes("Customer and property do not match. Review before continuing.") &&
+    invoiceDetails.includes("sendDisabledReason={draftSendDisabledReason}"),
+  "Estimate and invoice details must warn and block Send/Convert when customer and property conflict."
+);
+
+assert(
+  estimateSendEmailRoute.includes("client_identity_conflict") &&
+    estimateSendEmailRoute.includes(".select(\"id, name, property_aliases, email, cc_email\")") &&
+    invoiceSendEmailRoute.includes("client_identity_conflict") &&
+    invoiceSendEmailRoute.includes(".select(\"id, name, property_aliases, email, cc_email\")") &&
+    invoiceSendEmailRoute.includes("targetInvoices"),
+  "Email APIs must verify recipient eligibility from the authoritative document client identity."
 );
 
 assert(
