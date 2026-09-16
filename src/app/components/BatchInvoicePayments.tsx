@@ -32,6 +32,7 @@ import {
   parseCheckDate,
   parseMoney,
   type StructuredRemittanceRowEvidence,
+  type RemittanceTotalEvidence,
 } from "../lib/remittanceMatching";
 import {
   findDuplicateRemittance,
@@ -308,18 +309,12 @@ type CheckStubOcrResponse = {
   checkNumber?: string;
   checkDate?: string;
   totalAmount?: number;
-  totalEvidence?: {
-    amount?: number;
-    source?: string;
-    payable?: boolean;
-    raw?: string;
-    normalized?: string;
-    normalizationReason?: string;
-  };
+  totalEvidence?: RemittanceTotalEvidence;
   lines?: { amount?: unknown; invoiceNumbers?: unknown }[];
   structuredRowEvidence?: StructuredRemittanceRowEvidence[];
   diagnostics?: {
     summary?: string[];
+    headerEvidence?: unknown;
     retryStrategy?: OcrRetryStrategy;
     originalWidth?: number;
     originalHeight?: number;
@@ -1631,6 +1626,8 @@ export default function BatchInvoicePayments({
     ReviewMatchedInvoice[]
   >([]);
   const [paymentReviewNotice, setPaymentReviewNotice] = useState("");
+  const [ocrReconciliationVerified, setOcrReconciliationVerified] = useState(false);
+  const ocrAttemptVersion = useRef(0);
   const [completedPaymentSummary, setCompletedPaymentSummary] =
     useState<CompletedPaymentSummary>(null);
   const [duplicateRemittanceModal, setDuplicateRemittanceModal] =
@@ -1856,11 +1853,14 @@ export default function BatchInvoicePayments({
   const showManualInvoiceBrowser = paymentEntryMode === "manual";
   const paymentCanApply =
     !isSaving &&
+    (paymentEntryMode !== "photo" || (checkOcrStatus === "ready" && ocrReconciliationVerified)) &&
     selectedInvoices.length > 0 &&
     enteredCheckAmount !== null &&
     checkAmountMatches &&
     (!isRemittanceReview ||
-      (extractedPaymentAmount !== null &&
+      (ocrReconciliationVerified &&
+        !isPreparingCrop &&
+        extractedPaymentAmount !== null &&
         extractedPaymentAmount > 0 &&
         Math.abs(selectedTotal - extractedPaymentAmount) < 0.01 &&
         Math.abs(reviewMatchedTotal - extractedPaymentAmount) < 0.01 &&
@@ -2456,7 +2456,8 @@ export default function BatchInvoicePayments({
 
   function reconcileReviewMatches(
     matches: ReviewMatchedInvoice[],
-    extractedTotal: number
+    extractedTotal: number,
+    documentProof: boolean
   ) {
     const invoiceTotal = Number(
       matches.reduce((total, invoice) => total + invoice.amountDue, 0).toFixed(2)
@@ -2480,7 +2481,7 @@ export default function BatchInvoicePayments({
       const shouldUseInvoiceBalance =
         remittanceAmount !== null &&
         Math.abs(remittanceAmount - invoice.amountDue) >= 0.01 &&
-        invoiceTotalMatchesCheck;
+        invoiceTotalMatchesCheck && documentProof;
 
       return {
         ...invoice,
@@ -2494,7 +2495,7 @@ export default function BatchInvoicePayments({
         matches[index]?.remittanceAmount !== null &&
         matches[index]?.remittanceAmount !== invoice.remittanceAmount
     );
-    const isComplete = invoiceTotalMatchesCheck;
+    const isComplete = invoiceTotalMatchesCheck && documentProof;
     const difference = Number((extractedTotal - invoiceTotal).toFixed(2));
     const notice =
       correctedAny && ocrTotalMismatchesCheck
@@ -2539,7 +2540,8 @@ export default function BatchInvoicePayments({
       invoiceRecords,
       stubText,
       extractedPayor,
-      structuredRowEvidence
+      structuredRowEvidence,
+      data.totalEvidence
     ).totalAmount;
     const parsedTotalFromLines =
       data.lines?.reduce((total, line) => {
@@ -2563,7 +2565,8 @@ export default function BatchInvoicePayments({
       invoiceRecords,
       stubText,
       extractedPayor,
-      structuredRowEvidence
+      structuredRowEvidence,
+      data.totalEvidence
     );
     const authoritativeResolvedMatches = match.resolvedMatches ?? match.matches;
     const duplicateEvidenceInvoiceIds = Array.from(
@@ -2605,7 +2608,7 @@ export default function BatchInvoicePayments({
         return invoice
           ? {
               ...invoice,
-              remittanceAmount: matchedInvoice.amountDue,
+              remittanceAmount: match.matchTrace.find((trace) => trace.invoiceId === matchedInvoice.id && trace.accepted)?.ocrRowAmount ?? null,
             }
           : null;
       })
@@ -2615,9 +2618,11 @@ export default function BatchInvoicePayments({
     const rawReviewMatches = dedupedReview.matches;
     const reconciledReview = reconcileReviewMatches(
       rawReviewMatches,
-      extractedTotal
+      extractedTotal,
+      match.issues.length === 0 && responseTotalIsPayable
     );
     const reviewMatches = reconciledReview.matches;
+    setOcrReconciliationVerified(match.issues.length === 0 && responseTotalIsPayable && reconciledReview.isComplete);
     const matchedCustomers = Array.from(
       new Set(reviewMatches.map((invoice) => invoice.customerName))
     );
@@ -2659,6 +2664,7 @@ export default function BatchInvoicePayments({
         matchInvoicesFromExtraction(data, stubText).length > 0
           ? "Legacy text-only matches were left as diagnostics and were not auto-selected."
           : "",
+        ...match.issues,
         reconciledReview.notice,
       ]
         .filter(Boolean)
@@ -2834,6 +2840,9 @@ export default function BatchInvoicePayments({
       lines.push(`Selected text summary: ${diagnostics.selectedSummary}.`);
     }
 
+    if (diagnostics.headerEvidence) {
+      lines.push(`Header candidate selection: ${JSON.stringify(diagnostics.headerEvidence)}`);
+    }
     if (diagnostics.explicitDocumentTotalEvidence) {
       const total = diagnostics.explicitDocumentTotalEvidence;
 
@@ -3538,6 +3547,21 @@ export default function BatchInvoicePayments({
       return;
     }
 
+    const attemptVersion = ++ocrAttemptVersion.current;
+    if (intent !== "check_details" && documentType !== "check_only") {
+      setOcrReconciliationVerified(false);
+      setSelectedIds([]);
+      setReviewMatchedInvoices([]);
+      setRemittanceStubText("");
+      setExtractedPaymentAmount(null);
+      setCheckAmount("");
+      setCapturedCheckAmount("");
+      setPaymentReference("");
+      setCapturedCheckReference("");
+      setCheckPayor("");
+      setCheckDate("");
+      setPaymentReviewNotice("");
+    }
     setCheckOcrStatus("reading");
     setCheckOcrMessage("Reading the remittance stub from the image...");
     setLastOcrDiagnosticLines([]);
@@ -3555,6 +3579,7 @@ export default function BatchInvoicePayments({
         body: JSON.stringify({ imageDataUrl, documentType, retryStrategy }),
       });
       const data = (await response.json().catch(() => ({}))) as CheckStubOcrResponse;
+      if (attemptVersion !== ocrAttemptVersion.current) return;
       const requestDuration = Math.max(
         0,
         Math.round(performance.now() - requestStartedAt)
@@ -3634,6 +3659,7 @@ export default function BatchInvoicePayments({
       );
       const hasConfidentReview =
         reviewMatches.length > 0 &&
+        match.issues.length === 0 && data.totalEvidence?.payable !== false &&
         reconciledReview.isComplete &&
         (responseTotal <= 0 || Math.abs(matchedInvoiceTotal - responseTotal) < 0.01);
 
@@ -3648,6 +3674,7 @@ export default function BatchInvoicePayments({
           : ocrFailureMessage(data)
       );
     } catch (error) {
+      if (attemptVersion !== ocrAttemptVersion.current) return;
       setCameraFailureStage("ocr-request");
       setCheckOcrStatus("error");
       setCheckOcrMessage(
@@ -3669,6 +3696,8 @@ export default function BatchInvoicePayments({
     sourceType: OcrSourceType = lastOcrSourceType,
     sourceDiagnosticLines: string[] = lastCameraCaptureDiagnosticLines
   ) {
+    const preparationVersion = ++ocrAttemptVersion.current;
+    setOcrReconciliationVerified(false);
     setIsPreparingCrop(true);
 
     try {
@@ -3798,6 +3827,7 @@ export default function BatchInvoicePayments({
         }
       );
 
+      if (preparationVersion !== ocrAttemptVersion.current) return;
       if (duplicatePreflight.stoppedOcr) {
         return;
       }
@@ -3838,6 +3868,8 @@ export default function BatchInvoicePayments({
   }
 
   function resetCheckCaptureState() {
+    ocrAttemptVersion.current++;
+    setOcrReconciliationVerified(false);
     setCheckImageFile(null);
     setCheckImageName("");
     setCropBox({ left: 8, top: 8, right: 92, bottom: 92 });
@@ -5175,6 +5207,10 @@ export default function BatchInvoicePayments({
   }
 
   async function applyBatchPayment() {
+    if (!paymentCanApply) {
+      setToast({ type: "error", message: "Review the payment and resolve reconciliation issues before applying." });
+      return;
+    }
     if (!businessId) {
       setToast({
         type: "error",
@@ -6216,7 +6252,7 @@ export default function BatchInvoicePayments({
                             );
                           }
                         }}
-                        disabled={!checkImageFile}
+                        disabled={!checkImageFile || isPreparingCrop}
                         className="rounded-full border border-amber-100/50 px-3 py-1.5 text-xs font-semibold text-amber-50 transition hover:bg-white/10 disabled:opacity-50"
                       >
                         Retry Reading

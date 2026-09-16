@@ -1,3 +1,4 @@
+import "./remittance-retry-regression.ts";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import assert from "node:assert/strict";
@@ -1244,7 +1245,7 @@ assert(
   "OCR route must preserve mobile image quality, use document regions, and return safe diagnostics."
 );
 assert(
-  route.includes("strongestExplicitDocumentTotalEvidence") &&
+  route.includes("selectRemittanceHeaderEvidence") &&
     route.includes("explicitDocumentTotal") &&
     route.includes("right.confidence - left.confidence") &&
     route.includes("equal score but lower OCR confidence"),

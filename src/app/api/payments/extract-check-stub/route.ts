@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import sharp from "sharp";
 import {
   extractMoneyCandidates,
+  selectRemittanceHeaderEvidence,
   extractInvoiceNumbers,
   extractRemittanceTotalEvidence,
   extractUnitCodeCandidates,
@@ -1711,33 +1712,6 @@ function explicitDocumentTotalFromText(text: string) {
   return evidence.source === "explicit-document-total" ? evidence.amount : 0;
 }
 
-function explicitDocumentTotalEvidenceFromText(text: string) {
-  const evidence = extractRemittanceTotalEvidence(text);
-
-  return evidence.source === "explicit-document-total" ? evidence : null;
-}
-
-function strongestExplicitDocumentTotalEvidence(attempts: OcrAttempt[]) {
-  return attempts.reduce(
-    (best, attempt) => {
-      const evidence = explicitDocumentTotalEvidenceFromText(
-        withoutMicrBandText(attempt.text)
-      );
-
-      if (!evidence || evidence.amount <= 0) {
-        return best;
-      }
-
-      const score = candidateStructureScore(attempt);
-
-      return score > best.score ? { evidence, score } : best;
-    },
-    {
-      evidence: null as ReturnType<typeof explicitDocumentTotalEvidenceFromText>,
-      score: Number.NEGATIVE_INFINITY,
-    }
-  );
-}
 
 function classifyGeometryWord(word: OcrWord, documentWidth = 0) {
   const text = normalizeGeometryToken(word.text);
@@ -2327,8 +2301,6 @@ async function recognizeBestText(
     }
 
     const selected = attempts[0] ?? null;
-    const explicitDocumentTotalEvidence = strongestExplicitDocumentTotalEvidence(attempts).evidence;
-    const explicitDocumentTotal = explicitDocumentTotalEvidence?.amount ?? 0;
     const regionBestAttempts = regionSources
       .map((source) =>
         attempts
@@ -2374,6 +2346,9 @@ async function recognizeBestText(
       attempts,
       documentWidth
     );
+    const headerEvidence = selectRemittanceHeaderEvidence(attempts.map((attempt) => ({ ...attempt, text: withoutMicrBandText(attempt.text) })), structuredRowEvidence);
+    const explicitDocumentTotalEvidence = headerEvidence.evidence;
+    const explicitDocumentTotal = explicitDocumentTotalEvidence?.amount ?? 0;
     const structuredRowDiagnostics = structuredRowEvidence.map((row) => ({
       rowId: row.rowId,
       y: row.y,
@@ -2610,6 +2585,7 @@ async function recognizeBestText(
         selectedConfidence: selected?.confidence,
         explicitDocumentTotal,
         explicitDocumentTotalEvidence,
+        headerEvidence,
         stageTimings,
         selectedSummary: redactedTextSummary(selected?.text ?? ""),
         regionSummaries: regionBestAttempts.map((attempt) =>
@@ -3165,21 +3141,18 @@ export async function POST(request: Request) {
     }
 
     const parsedExtraction = parseCheckStubText(parsedText);
-    const totalEvidence = extractRemittanceTotalEvidence(
-      parsedText,
-      ocrResult.structuredRowEvidence
-    );
-    const explicitDocumentTotal =
-      typeof ocrResult.diagnostics.explicitDocumentTotal === "number"
-        ? ocrResult.diagnostics.explicitDocumentTotal
-        : 0;
-    const extraction =
-      explicitDocumentTotal > 0 &&
-      Math.abs(parsedExtraction.totalAmount - explicitDocumentTotal) >= 0.01
-        ? parseCheckStubText(
-            `TOTAL: $${explicitDocumentTotal.toFixed(2)}\n${parsedText}`
-          )
-        : parsedExtraction;
+    const headerEvidence = ocrResult.diagnostics.headerEvidence;
+    const totalEvidence = headerEvidence?.evidence ?? extractRemittanceTotalEvidence(parsedText, ocrResult.structuredRowEvidence);
+    const extraction = {
+      ...parsedExtraction,
+      totalAmount: totalEvidence.amount,
+      checkNumber: headerEvidence?.checkNumber || parsedExtraction.checkNumber,
+      stubText: [
+        totalEvidence.amount > 0 ? `TOTAL: $${totalEvidence.amount.toFixed(2)}` : "",
+        headerEvidence?.checkNumber ? `CK#: ${headerEvidence.checkNumber}` : "",
+        parsedText,
+      ].filter(Boolean).join("\n"),
+    };
     const extractedInvoiceNumbers = extraction.lines.flatMap(
       (line) => line.invoiceNumbers
     );

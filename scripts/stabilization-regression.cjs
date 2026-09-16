@@ -989,7 +989,57 @@ async function queueBlockerRegression() {
   console.log("Queue blocker UI: recipient, tax, identity, split, priority, PDF failure, ready and consistent badges passed.");
 }
 
+async function retryStateRegression() {
+  const source = fs.readFileSync("src/app/components/BatchInvoicePayments.tsx", "utf8");
+  const gate = source.slice(source.indexOf("  const paymentCanApply =") + "  const paymentCanApply =".length, source.indexOf(";", source.indexOf("  const paymentCanApply =")));
+  const validGate = { isSaving: false, paymentEntryMode: "photo", checkOcrStatus: "ready", ocrReconciliationVerified: true, selectedInvoices: [{ id: "one" }], enteredCheckAmount: 5495, checkAmountMatches: true, isRemittanceReview: true, isPreparingCrop: false, extractedPaymentAmount: 5495, selectedTotal: 5495, reviewMatchedTotal: 5495, hasDuplicateSelectedInvoiceIds: false, hasDuplicateReviewInvoiceIds: false, selectedReviewSetsMatch: true };
+  const allowed = (overrides = {}) => { const values = { ...validGate, ...overrides }; return new Function(...Object.keys(values), "return (" + gate + ");")(...Object.values(values)); };
+  assert.equal(allowed(), true);
+  for (const overrides of [{ ocrReconciliationVerified: false }, { checkOcrStatus: "manual", isRemittanceReview: false }, { hasDuplicateSelectedInvoiceIds: true }, { selectedTotal: 4396 }, { isPreparingCrop: true }]) assert.equal(allowed(overrides), false);
+  const start = source.indexOf("  async function extractCheckStubFromPhoto(");
+  const end = source.indexOf("  async function readPreparedRemittanceFromFile", start);
+  const functionSource = source.slice(start, end);
+  const state = { PaymentReference: "old-check", ExtractedPaymentAmount: 2.49, SelectedIds: ["old-invoice"] };
+  const pending = [];
+  const calls = [];
+  const bindings = { performance, ocrAttemptVersion: { current: 0 },
+    appendCameraStage: () => {}, ocrDiagnosticLines: () => [], remittanceReviewDiagnosticLines: () => [],
+    ocrFailureMessage: () => "Incomplete", loadCheckDetailsFromExtraction: () => {},
+    fetch: async (_url, options) => { calls.push(JSON.parse(options.body)); return new Promise(resolve => pending.push(resolve)); },
+    loadExtractedRemittance: (data) => { state.PaymentReference = data.checkNumber; state.ExtractedPaymentAmount = data.totalAmount; return { match: { issues: [] }, reviewMatches: [{ amountDue: data.totalAmount }], reconciledReview: { isComplete: true }, historicalDuplicateCheck: { status: "none" } }; },
+  };
+  for (const name of new Set(functionSource.match(/set[A-Z][A-Za-z]+/g))) bindings[name] = value => { state[name.slice(3)] = value; };
+  const compiled = ts.transpileModule(functionSource + "\nreturn extractCheckStubFromPhoto;", { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+  const read = new Function(...Object.keys(bindings), compiled)(...Object.values(bindings));
+  const first = read("current-image", "remittance_stub", "primary", "standard", [], "fingerprint");
+  assert.equal(state.PaymentReference, "");
+  assert.equal(state.ExtractedPaymentAmount, null);
+  assert.deepEqual(state.SelectedIds, []);
+  pending.shift()({ ok: true, status: 200, json: async () => ({ stubText: "", rawText: "partial" }) });
+  await first;
+  assert.equal(state.CheckOcrStatus, "manual");
+  const second = read("current-image", "remittance_stub", "primary", "alternate", [], "fingerprint");
+  pending.shift()({ ok: true, status: 200, json: async () => ({ stubText: "complete", checkNumber: "2797", totalAmount: 5495, totalEvidence: { payable: true } }) });
+  await second;
+  assert.equal(state.PaymentReference, "2797");
+  assert.equal(state.ExtractedPaymentAmount, 5495);
+  assert.equal(state.CheckOcrStatus, "ready");
+  assert.deepEqual(calls.map(call => Object.keys(call).sort()), [ ["documentType", "imageDataUrl", "retryStrategy"], ["documentType", "imageDataUrl", "retryStrategy"] ]);
+  assert.equal(calls[1].retryStrategy, "alternate");
+  const old = read("old-image", "remittance_stub", "primary", "standard", [], "old");
+  const latest = read("new-image", "remittance_stub", "primary", "alternate", [], "new");
+  const staleResponse = pending.shift();
+  pending.shift()({ ok: true, status: 200, json: async () => ({ stubText: "new", checkNumber: "3124", totalAmount: 220 }) });
+  await latest;
+  staleResponse({ ok: true, status: 200, json: async () => ({ stubText: "old", checkNumber: "279", totalAmount: 2.49 }) });
+  await old;
+  assert.equal(state.PaymentReference, "3124");
+  assert.equal(state.ExtractedPaymentAmount, 220);
+  console.log("Actual Retry Reading request flow: incomplete -> retry, cleared fields, isolated request and stale response rejection passed.");
+}
+
 async function main() {
+  await retryStateRegression();
   await queueBlockerRegression();
   await conversionSplitPreferenceRegression(false);
   await conversionSplitPreferenceRegression(true);

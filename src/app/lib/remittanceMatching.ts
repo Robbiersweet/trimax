@@ -359,7 +359,10 @@ function checkNumberCandidatesFromText(text: string, baseScore: number) {
     }
 
     const separator = match[1] ?? "";
-    const value = match[2] ?? "";
+    const token = match[2] ?? "";
+    const tail = normalizedText.slice((match.index ?? 0) + match[0].length);
+    const adjacentDigit = tail.match(/^[ \t]+(\d)(?=[ \t]*(?:$|\b(?:DATE|T[O0]TAL|AM[O0]UNT)\b))/im)?.[1];
+    const value = token.length === 3 && adjacentDigit ? token + adjacentDigit : token;
 
     if (
       value.length > 4 ||
@@ -417,14 +420,14 @@ function selectBestCheckNumberCandidate(candidates: CheckNumberCandidate[]) {
         (other) =>
           other.value !== candidate.value &&
           other.value.length > candidate.value.length &&
-          other.value.endsWith(candidate.value) &&
+          (other.value.endsWith(candidate.value) || other.value.startsWith(candidate.value)) &&
           other.value.length - candidate.value.length <= 1
       );
       const isFullerCompatible = candidates.some(
         (other) =>
           other.value !== candidate.value &&
           candidate.value.length > other.value.length &&
-          candidate.value.endsWith(other.value) &&
+          (candidate.value.endsWith(other.value) || candidate.value.startsWith(other.value)) &&
           candidate.value.length - other.value.length <= 1
       );
 
@@ -449,7 +452,7 @@ function selectBestCheckNumberCandidate(candidates: CheckNumberCandidate[]) {
       (other) =>
         other !== value &&
         Math.abs(other.length - value.length) <= 1 &&
-        (other.endsWith(value) || value.endsWith(other))
+        (other.endsWith(value) || value.endsWith(other) || other.startsWith(value) || value.startsWith(other))
     )
   );
 
@@ -469,11 +472,7 @@ function totalEvidenceScore(
   evidence: ExplicitTotalEvidenceCandidate,
   text: string
 ) {
-  const amountPattern = evidence.amount.toFixed(2);
-  const repeatedAgreement = (
-    text.match(new RegExp(amountPattern.replace(".", String.raw`[.,]\s*`), "g")) ??
-    []
-  ).length;
+  const repeatedAgreement = extractMoneyValues(text).filter((amount) => amount === evidence.amount).length;
 
   return (
     (evidence.raw?.includes(",") ? 28 : 0) +
@@ -541,6 +540,55 @@ function findExplicitTotalEvidence(text: string): RemittanceTotalEvidence | null
     normalized: selected.normalized,
     normalizationReason: selected.normalizationReason,
   };
+}
+
+export type RemittanceHeaderPass = {
+  text: string;
+  region: string;
+  variant: string;
+  pageMode: string;
+  confidence?: number;
+};
+
+// Only independent OCR passes vote; synthetic merges would count the same evidence twice.
+export function selectRemittanceHeaderEvidence(passes: RemittanceHeaderPass[], rows: StructuredRemittanceRowEvidence[] = []) {
+  const independent = passes.filter((pass) => !/merge|reconstruction/.test(pass.region));
+  const rowSubtotal = rows.reduce((sum, row) => sum + (selectedStructuredRowAmount(row)?.value ?? 0), 0);
+  const candidates = independent.flatMap((pass) => {
+    const labelled = explicitTotalEvidenceCandidates(pass.text).map((candidate) => ({ ...candidate, labelled: true }));
+    const footer = Array.from(pass.text.matchAll(/^\s*\$?\s*(\d{1,3}(?:,\d{3})*\.\d{2})[ \t]*$/gm)).flatMap((match) => {
+      const index = match.index ?? 0;
+      if (index / Math.max(pass.text.length, 1) < 0.75) return [];
+      return explicitTotalEvidenceCandidates("TOTAL " + match[1]).map((candidate) => ({ ...candidate, index, labelled: false }));
+    });
+    return [...labelled, ...footer].map((candidate) => ({
+    ...candidate,
+    region: pass.region, variant: pass.variant, pageMode: pass.pageMode,
+    confidence: pass.confidence ?? 0,
+    // Text position is diagnostic only, never claimed as measured image geometry.
+    textPosition: candidate.index / Math.max(pass.text.length, 1),
+    passKey: [pass.region, pass.variant, pass.pageMode].join(":"),
+  }));
+  });
+  const totals = candidates.map((candidate) => {
+    const agreement = new Set(candidates.filter((other) => other.amount === candidate.amount).map((other) => other.passKey)).size;
+    const subtotalAgreement = rows.length > 1 && Math.round(rowSubtotal * 100) === Math.round(candidate.amount * 100);
+    const completeMoney = /\d[,.]\d{2}\b/.test((candidate.raw ?? "").replace(/\s/g, ""));
+    const score = (candidate.labelled ? 25 : 0) + (completeMoney ? 40 : 0) + Math.min(agreement, 4) * 60 +
+      (subtotalAgreement ? 120 : 0) + (candidate.textPosition > 0.75 ? 15 : 0) +
+      Math.min(candidate.confidence, 100) / 10 -
+      (candidate.amount < rowSubtotal * 0.1 && rows.length > 1 ? 150 : 0);
+    return { ...candidate, agreement, subtotalAgreement, score };
+  }).filter((candidate) => candidate.labelled || candidate.agreement >= 2 || candidate.subtotalAgreement).sort((a, b) => b.score - a.score || a.index - b.index);
+  const best = totals[0];
+  const conflictingStrong = totals.some((candidate) => candidate.amount !== best?.amount && candidate.score >= (best?.score ?? 0) - 20);
+  const evidence: RemittanceTotalEvidence | null = best ? {
+    amount: best.amount, source: "explicit-document-total", payable: !conflictingStrong,
+    raw: best.raw, normalized: best.normalized,
+    normalizationReason: conflictingStrong ? "conflicting explicit totals require review" : "explicit label, independent pass agreement and row subtotal evidence",
+  } : null;
+  const checkCandidates = independent.flatMap((pass) => checkNumberCandidatesFromText(checkRegionText(pass.text), 80).map((candidate) => ({ ...candidate, region: pass.region, variant: pass.variant, pageMode: pass.pageMode })));
+  return { evidence, totalCandidates: totals, checkNumber: selectBestCheckNumberCandidate(checkCandidates), checkCandidates };
 }
 
 function cleanPayorCandidate(value: string) {
@@ -1402,6 +1450,7 @@ function resolveRemittanceRowInvoice(
   const rawInvoiceCandidates = Array.from(
     new Set([
       ...(evidence?.rawInvoiceLikeTokens ?? []),
+      ...(evidence?.invoiceEvidenceByPass ?? []).map((pass) => pass.raw),
       ...rawInvoiceLikeTokens(line.text),
       ...line.invoiceNumbers,
     ])
@@ -1409,6 +1458,7 @@ function resolveRemittanceRowInvoice(
   const normalizedCandidates = Array.from(
     new Set([
       ...(evidence?.normalizedInvoiceCandidates ?? []),
+      ...(evidence?.invoiceEvidenceByPass ?? []).flatMap((pass) => pass.normalized),
       ...line.invoiceNumbers,
       ...rawInvoiceCandidates.flatMap((token) =>
         invoiceCandidateDigitsFromRawToken(token)
@@ -1451,7 +1501,15 @@ function resolveRemittanceRowInvoice(
       ? { ...line, amount: selectedEvidenceAmount.value }
       : line;
 
-  if (rawInvoiceCandidates.length === 0 && normalizedCandidates.length === 0) {
+  // A missing token can be recovered only by a unique same-row unit AND amount.
+  if (evidence && eligibleCandidates.length === 0 && rawInvoiceCandidates.length === 0 && normalizedCandidates.length === 0 && rowAmount > 0) {
+    const corroborated = uniqueEligibleInvoiceRecords(eligibleInvoiceNumberRecords.filter(({ invoice }) =>
+      invoiceUnitEvidence(invoice, unitEvidenceTokens) && Math.round(invoice.amountDue * 100) === Math.round(rowAmount * 100)
+    ));
+    if (corroborated.length === 1) eligibleCandidates.push(corroborated[0]);
+  }
+
+  if (eligibleCandidates.length === 0 && rawInvoiceCandidates.length === 0 && normalizedCandidates.length === 0) {
     return {
       line: resolutionLine,
       evidence,
@@ -1623,9 +1681,10 @@ export function findRemittanceMatches(
   invoices: RemittanceInvoiceRecord[],
   stubText: string,
   payorOverride = "",
-  structuredRows: StructuredRemittanceRowEvidence[] = []
+  structuredRows: StructuredRemittanceRowEvidence[] = [],
+  selectedTotalEvidence?: RemittanceTotalEvidence
 ) {
-  const totalEvidence = extractRemittanceTotalEvidence(stubText, structuredRows);
+  const totalEvidence = selectedTotalEvidence ?? extractRemittanceTotalEvidence(stubText, structuredRows);
   const totalAmount = totalEvidence.amount;
   const structuredLineItems = structuredRows.map((row) => {
     const parsed = parseCheckStubText(row.text).lines[0] ?? {
@@ -1861,7 +1920,15 @@ export function findRemittanceMatches(
     Boolean(payor.trim()) &&
     matches.some((invoice) => !customerMatchesPayor(invoice.customerName, payor));
   const hasReadableStub = stubText.trim().length > 0;
+  const allRowsResolved = rowResolutions.length > 0 && rowResolutions.every((row) => Boolean(row.invoice));
+  const exactInvoiceSetProof = allRowsResolved && duplicateResolvedInvoiceIds.length === 0 &&
+    totalEvidence.source === "explicit-document-total" && totalEvidence.payable && totalAmount > 0 &&
+    Math.round(matchedTotal * 100) === Math.round(totalAmount * 100);
+  const rowAmountConflict = acceptedResolutionRows.some((row) => Math.round(row.line.amount * 100) !== Math.round(row.invoice.amountDue * 100));
   const issues = [
+    !totalEvidence.payable ? "Document total evidence requires review." : "",
+    !allRowsResolved ? "One or more remittance rows could not be uniquely resolved." : "",
+    rowAmountConflict && !exactInvoiceSetProof ? "Row amounts require an exact invoice-set and explicit document-total proof." : "",
     !hasReadableStub ? "Remittance text is missing or unreadable." : "",
     reconciledInvoiceNumbers.length === 0
       ? "No exact invoice numbers were read from the remittance stub."
