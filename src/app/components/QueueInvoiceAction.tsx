@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import StatusBadge from "./StatusBadge";
 import { resolveQueueAction, type QueueActionInput } from "../lib/queueAction";
 import { supabase } from "../lib/supabase";
 import InvoiceEmailSendPanel, {
@@ -12,7 +13,9 @@ import InvoiceEmailSendPanel, {
 export default function QueueInvoiceAction({
   context,
   email,
+  lifecycleStatus,
 }: {
+  lifecycleStatus: string;
   context: QueueActionInput;
   email: InvoiceEmailSendPanelProps;
 }) {
@@ -92,6 +95,7 @@ export default function QueueInvoiceAction({
   const action = resolveQueueAction({
     ...context,
     pdfReady,
+    preflightError: failure,
     sentIds: sent
       ? [
           ...context.sentIds,
@@ -101,95 +105,131 @@ export default function QueueInvoiceAction({
       : context.sentIds,
   });
   const buttonClass =
-    "rounded-2xl bg-sky-500 px-4 py-3 text-center text-sm font-black text-white transition hover:bg-sky-400 md:justify-self-end";
+    "inline-flex justify-center rounded-2xl bg-sky-500 px-4 py-3 text-center text-sm font-black text-white transition hover:bg-sky-400 md:justify-self-end";
   return (
-    <div ref={row} data-queue-row-control="true">
-      {action.type === "send_invoice" ? (
-        <button className={buttonClass} onClick={() => setOpen(true)}>
-          Send Invoice
-        </button>
-      ) : (
-        <Link
-          className={buttonClass}
-          href={action.href}
-          title={failure || action.blockedReason || undefined}
-        >
-          {action.label}
-        </Link>
-      )}
-      {open &&
-        createPortal(
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-            onClick={() => {
-              if (!sending) setOpen(false);
-            }}
+    <>
+      <div className="min-w-0">
+        <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-zinc-500">
+          Status
+        </p>
+        <div className="mt-1 flex flex-wrap gap-1.5">
+          {context.activeSession && <StatusBadge status="Running" />}
+          <StatusBadge
+            status={
+              action.type === "finish_invoice"
+                ? "Needs Review"
+                : action.type === "send_invoice"
+                  ? "Ready To Send"
+                  : sent
+                    ? "Invoice Sent"
+                    : lifecycleStatus
+            }
+          />
+        </div>
+      </div>
+      <div ref={row} data-queue-row-control="true" className="min-w-0 max-w-xs">
+        {action.type === "send_invoice" ? (
+          <button className={buttonClass} onClick={() => setOpen(true)}>
+            Send Invoice
+          </button>
+        ) : (
+          <Link
+            className={buttonClass}
+            href={action.href}
+            title={action.blockedReason || undefined}
           >
-            <section
-              role="dialog"
-              aria-modal="true"
-              aria-label="Confirm invoice send"
-              onKeyDown={(event) => {
-                if (event.key === "Escape" && !sending) setOpen(false);
-                if (event.key === "Tab") {
-                  const controls = Array.from(
-                    event.currentTarget.querySelectorAll<HTMLElement>(
-                      "button:not(:disabled), a[href], input:not(:disabled)",
-                    ),
-                  );
-                  const first = controls[0];
-                  const last = controls[controls.length - 1];
-                  if (event.shiftKey && document.activeElement === first) {
-                    event.preventDefault();
-                    last?.focus();
-                  } else if (
-                    !event.shiftKey &&
-                    document.activeElement === last
-                  ) {
-                    event.preventDefault();
-                    first?.focus();
-                  }
-                }
-              }}
-              className="max-h-[90vh] w-full max-w-lg overflow-auto rounded-2xl border border-zinc-700 bg-zinc-950 p-6 text-white"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <h2 className="text-xl font-bold">Send {email.documentNumber}</h2>
-              <p className="mt-2">{email.customerName}</p>
-              <p>{email.projectTitle}</p>
-              <p className="my-3 font-semibold">
-                {email.splitGroupCombinedTotal || email.amountDue}
-              </p>
-              {email.sendSplitGroup && (
-                <p className="mb-3">
-                  {email.splitGroupCount} invoices will be sent together.
-                </p>
-              )}
-              <InvoiceEmailSendPanel
-                {...email}
-                compact
-                onSendingChange={setSending}
-                onSent={() => {
-                  setSent(true);
-                  setOpen(false);
-                }}
-              />
-              <div className="mt-4 flex gap-4">
-                <button
-                  autoFocus
-                  disabled={sending}
-                  onClick={() => {
-                    if (!sending) setOpen(false);
-                  }}
-                >
-                  Cancel
-                </button>
-                {!sending && <Link href={action.href}>Open Invoice</Link>}
-              </div>
-            </section>
-          </div>,
-          document.body,
+            {action.label}
+          </Link>
         )}
-    </div>
+        {action.type === "finish_invoice" && action.blockedReason && (
+          <p role="status" className="mt-2 text-xs leading-4 text-amber-200">
+            {action.blockedReason}
+            {action.missingRequirements.length > 1 && (
+              <span
+                className="ml-1"
+                title={action.missingRequirements.slice(1).join(" ")}
+              >
+                +{action.missingRequirements.length - 1} more
+              </span>
+            )}
+          </p>
+        )}
+        {open &&
+          createPortal(
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+              onClick={() => {
+                if (!sending) setOpen(false);
+              }}
+            >
+              <section
+                role="dialog"
+                aria-modal="true"
+                aria-label="Confirm invoice send"
+                onKeyDown={(event) => {
+                  if (event.key === "Escape" && !sending) setOpen(false);
+                  if (event.key === "Tab") {
+                    const controls = Array.from(
+                      event.currentTarget.querySelectorAll<HTMLElement>(
+                        "button:not(:disabled), a[href], input:not(:disabled)",
+                      ),
+                    );
+                    const first = controls[0];
+                    const last = controls[controls.length - 1];
+                    if (event.shiftKey && document.activeElement === first) {
+                      event.preventDefault();
+                      last?.focus();
+                    } else if (
+                      !event.shiftKey &&
+                      document.activeElement === last
+                    ) {
+                      event.preventDefault();
+                      first?.focus();
+                    }
+                  }
+                }}
+                className="max-h-[90vh] w-full max-w-lg overflow-auto rounded-2xl border border-zinc-700 bg-zinc-950 p-6 text-white"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <h2 className="text-xl font-bold">
+                  Send {email.documentNumber}
+                </h2>
+                <p className="mt-2">{email.customerName}</p>
+                <p>{email.projectTitle}</p>
+                <p className="my-3 font-semibold">
+                  {email.splitGroupCombinedTotal || email.amountDue}
+                </p>
+                {email.sendSplitGroup && (
+                  <p className="mb-3">
+                    {email.splitGroupCount} invoices will be sent together.
+                  </p>
+                )}
+                <InvoiceEmailSendPanel
+                  {...email}
+                  compact
+                  onSendingChange={setSending}
+                  onSent={() => {
+                    setSent(true);
+                    setOpen(false);
+                  }}
+                />
+                <div className="mt-4 flex gap-4">
+                  <button
+                    autoFocus
+                    disabled={sending}
+                    onClick={() => {
+                      if (!sending) setOpen(false);
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  {!sending && <Link href={action.href}>Open Invoice</Link>}
+                </div>
+              </section>
+            </div>,
+            document.body,
+          )}
+      </div>
+    </>
   );
 }

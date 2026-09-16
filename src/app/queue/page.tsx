@@ -1712,7 +1712,7 @@ export default async function QueuePage({
                     </div>
                     <CompactQueueField label="Work" value={serviceType} />
                     <CompactQueueField label="Needed" value={dueDate} />
-                    <div className="min-w-0">
+                    {!linkedInvoice && (<div className="min-w-0">
                       <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-zinc-500">
                         Status
                       </p>
@@ -1726,8 +1726,8 @@ export default async function QueuePage({
                           status={queueLifecycleDisplayStatus(lifecycleStatus)}
                         />
                       </div>
-                    </div>
-                    {linkedInvoice ? <QueueInvoiceAction key={linkedInvoice.id + JSON.stringify(actionContext)} context={actionContext} email={{
+                    </div>)}
+                    {linkedInvoice ? <QueueInvoiceAction key={linkedInvoice.id + JSON.stringify(actionContext)} context={actionContext} lifecycleStatus={queueLifecycleDisplayStatus(lifecycleStatus)} email={{
                       documentId: linkedInvoice.id, businessId: selectedBusiness?.id, businessSlug,
                       businessName: selectedBusiness?.name ?? "Trimax", customerName: linkedInvoice.customer_name ?? "",
                       recipientEmail: invoiceClient?.email ?? null, clientCcEmail: invoiceClient?.cc_email || queueEmailDefaults.ccEmail,

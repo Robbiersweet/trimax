@@ -936,7 +936,61 @@ async function conversionSplitPreferenceRegression(enabled) {
   await renderer.act(async () => tree.unmount());
 }
 
+async function queueBlockerRegression() {
+  const load = loader({
+    "next/link": { default: (props) => React.createElement("a", props, props.children) },
+    "../../lib/supabase": { supabase: { auth: { getSession: async () => ({ data: { session: null } }) } } },
+    "./InvoiceEmailSendPanel": { default: () => null },
+  });
+  const Component = load("src/app/components/QueueInvoiceAction.tsx").default;
+  const { resolveQueueAction } = load("src/app/lib/queueAction.ts");
+  const invoice = { id: "invoice", client_id: "client", customer_name: "Alpha", project_title: "Alpha Unit 2", status: "Draft", invoice_amount: 100, tax_mode: "no_tax", lineItems: [{ description: "Paint", quantity: 1, unit_price: 100 }] };
+  const base = { queueId: "queue", businessSlug: "rnl-creations", invoice, estimate: null, packageInvoices: [], clients: [{ id: "client", name: "Alpha", email: "manager@example.com" }], sentIds: [], activeSession: false, closed: false };
+  const priorObserver = global.IntersectionObserver;
+  const priorFetch = global.fetch;
+  global.IntersectionObserver = class { constructor(callback) { this.callback = callback; } observe() { this.callback([{ isIntersecting: true }]); } disconnect() {} };
+  try {
+    const cases = [
+      { name: "recipient", context: { ...base, clients: [{ ...base.clients[0], email: "" }] } },
+      { name: "tax", context: { ...base, invoice: { ...invoice, tax_mode: null } } },
+      { name: "identity", context: { ...base, invoice: { ...invoice, client_id: "missing" } } },
+      { name: "split", context: { ...base, invoice: { ...invoice, split_count: 2 } } },
+      { name: "multiple", context: { ...base, invoice: { ...invoice, client_id: "missing", tax_mode: null } } },
+      { name: "pdf failure", context: base, error: "Official invoice PDF could not be generated." },
+      { name: "ready", context: base, ready: true },
+    ];
+    for (const test of cases) {
+      let requests = 0;
+      global.fetch = async (_url, options) => {
+        requests++;
+        assert.equal(JSON.parse(options.body).preflightOnly, true);
+        return { ok: Boolean(test.ready), json: async () => ({ ready: test.ready, error: test.error }) };
+      };
+      let tree;
+      await renderer.act(async () => { tree = renderer.create(React.createElement(Component, { context: test.context, lifecycleStatus: "Ready To Send", email: { documentId: "invoice", businessSlug: "rnl-creations", recipientEmail: "manager@example.com" } }), { createNodeMock: () => ({}) }); });
+      const output = JSON.stringify(tree.toJSON());
+      const action = resolveQueueAction({ ...test.context, pdfReady: Boolean(test.ready), preflightError: test.error });
+      if (test.ready) {
+        assert.ok(output.includes("Send Invoice"));
+        assert.ok(output.includes("Ready To Send"));
+        assert.equal(tree.root.findAllByProps({ role: "status" }).length, 0);
+      } else {
+        assert.ok(output.includes("Finish Invoice"), test.name);
+        assert.ok(output.includes("Needs Review"), test.name);
+        assert.ok(!output.includes("Ready To Send"), test.name);
+        const note = tree.root.findByProps({ role: "status" });
+        assert.equal(note.children[0], action.blockedReason, test.name);
+        if (action.missingRequirements.length > 1) assert.ok(JSON.stringify(note.children[1].props.children).includes(String(action.missingRequirements.length - 1)));
+      }
+      assert.equal(requests, test.ready || test.error ? 1 : 0);
+      await renderer.act(async () => tree.unmount());
+    }
+  } finally { global.fetch = priorFetch; global.IntersectionObserver = priorObserver; }
+  console.log("Queue blocker UI: recipient, tax, identity, split, priority, PDF failure, ready and consistent badges passed.");
+}
+
 async function main() {
+  await queueBlockerRegression();
   await conversionSplitPreferenceRegression(false);
   await conversionSplitPreferenceRegression(true);
   await splitPreferenceRegression("invoices", false, true);

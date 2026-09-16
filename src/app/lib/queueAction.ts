@@ -36,6 +36,7 @@ export type QueueActionInput = {
   closed: boolean;
   loadError?: boolean;
   pdfReady?: boolean;
+  preflightError?: string | null;
   workspaceCc?: string | null;
 };
 export function validEmail(value: string | null | undefined) {
@@ -180,7 +181,10 @@ export function resolveQueueAction(input: QueueActionInput) {
     (members.length !== expected || expected < 2)
   )
     missing.push("Review the complete split invoice package.");
-  if (!input.pdfReady) missing.push("Verify the official PDF before sending.");
+  if (!input.pdfReady)
+    missing.push(
+      input.preflightError || "Verify the official PDF before sending.",
+    );
   if (missing.length)
     return result(
       "finish_invoice",
