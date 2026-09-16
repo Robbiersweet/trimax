@@ -61,7 +61,7 @@ async function formRegression(withProfiles, invoice = false) {
     {
       id: "north",
       name: "North Creek Apartments",
-      service_address: "Everett",
+      service_address: "11401 3rd Ave SE, Everett, WA 98208",
       ...(withProfiles
         ? { tax_mode: "taxable", tax_label: "City A", tax_rate: 10 }
         : {}),
@@ -70,7 +70,9 @@ async function formRegression(withProfiles, invoice = false) {
       id: "glen",
       name: "Glen North Creek",
       property_aliases: ["The Glenn At North Creek Apartments"],
-      service_address: "Glen address",
+      service_address: "12115 Meridian Avenue S\nEverett, WA 98208",
+      email: "manager@glenatnorthcreek.com",
+      cc_email: "manager@northcreekateverett.com",
       ...(withProfiles
         ? { tax_mode: "taxable", tax_label: "City B", tax_rate: 9.9 }
         : {}),
@@ -174,6 +176,10 @@ async function formRegression(withProfiles, invoice = false) {
     select("north").props.onChange({ target: { value: "glen" } }),
   );
   assert.equal(select("north").props.value, "glen");
+  assert.equal(
+    control("Service Address").props.value,
+    clients[1].service_address,
+  );
   if (withProfiles) {
     assert.equal(control("Tax Label").props.value, "City B");
     assert.equal(control("Tax Rate (%)").props.value, "9.9");
@@ -220,6 +226,10 @@ async function formRegression(withProfiles, invoice = false) {
   if (withProfiles) assert.equal(control("Tax Label").props.value, "City A");
   assert.equal(control("Unit Price").props.value, "900");
   assert.equal(service.default_unit_price, 900);
+  assert.equal(
+    control("Service Address").props.value,
+    clients[0].service_address,
+  );
   assert.equal(
     control("Qty").props.value,
     "2",
@@ -331,7 +341,7 @@ async function tiersRegression(entered, supported) {
   await renderer.act(async () => tree.unmount());
 }
 
-async function sendPanelRegression(ok) {
+async function sendPanelRegression(ok, compact = true) {
   let sent = false,
     refreshed = false,
     payload;
@@ -384,13 +394,14 @@ async function sendPanelRegression(ok) {
   await renderer.act(async () => {
     tree = renderer.create(
       React.createElement(Panel, {
-        compact: true,
+        compact,
         documentId: "invoice",
         businessId: "business",
         businessSlug: "test",
         businessName: "Test",
         customerName: "Client",
-        recipientEmail: "client@example.com",
+        recipientEmail: "manager@glenatnorthcreek.com",
+        clientCcEmail: "manager@northcreekateverett.com",
         documentNumber: "INV-1",
         amountDue: "$100",
         dueDate: "",
@@ -403,6 +414,38 @@ async function sendPanelRegression(ok) {
       }),
     );
   });
+  const visibleRouting = JSON.stringify(tree.toJSON());
+  assert.ok(visibleRouting.includes("manager@glenatnorthcreek.com"));
+  assert.ok(visibleRouting.includes("manager@northcreekateverett.com"));
+  const originalProps = tree.root.findByType(Panel).props;
+  await renderer.act(async () =>
+    tree.update(
+      React.createElement(Panel, {
+        ...originalProps,
+        documentId: "north-invoice",
+        recipientEmail: "manager@northcreekateverett.com",
+        clientCcEmail: "asstmanager@northcreekateverett.com",
+      }),
+    ),
+  );
+  const northRouting = JSON.stringify(tree.toJSON());
+  assert.ok(northRouting.includes("manager@northcreekateverett.com"));
+  assert.ok(northRouting.includes("asstmanager@northcreekateverett.com"));
+  assert.ok(
+    !northRouting.includes("manager@glenatnorthcreek.com"),
+    "Previous Glen recipient must not leak into North Creek",
+  );
+  await renderer.act(async () =>
+    tree.update(React.createElement(Panel, originalProps)),
+  );
+  assert.ok(
+    JSON.stringify(tree.toJSON()).includes("manager@glenatnorthcreek.com"),
+  );
+  if (!compact) {
+    await renderer.act(async () => tree.unmount());
+    global.fetch = originalFetch;
+    return;
+  }
   await renderer.act(async () =>
     tree.root
       .findAllByType("button")
@@ -411,7 +454,7 @@ async function sendPanelRegression(ok) {
   );
   assert.equal(payload.sendSplitGroup, true);
   assert.equal(payload.attachOfficialPdf, true);
-  assert.equal(payload.recipientEmail, "client@example.com");
+  assert.equal(payload.recipientEmail, "manager@glenatnorthcreek.com");
   assert.equal(sent, ok);
   assert.equal(refreshed, ok);
   await renderer.act(async () => tree.unmount());
@@ -434,8 +477,8 @@ async function sendApiRegression(scenario) {
   const client = {
     id: "client",
     name: "Client Alpha",
-    email: "client@example.com",
-    cc_email: null,
+    email: "manager@glenatnorthcreek.com",
+    cc_email: "manager@northcreekateverett.com",
   };
   const split = scenario.startsWith("split");
   if (split) {
@@ -568,6 +611,8 @@ async function sendApiRegression(scenario) {
     assert.equal(response.ok, ready, JSON.stringify(result));
     if (ready) {
       assert.equal(result.ready, true);
+      assert.equal(result.recipientEmail, client.email);
+      assert.equal(result.ccEmail, client.cc_email);
       assert.equal(pdfCount, split ? 2 : 1);
       assert.equal(result.attachmentCount, pdfCount);
     }
@@ -586,6 +631,18 @@ async function sendApiRegression(scenario) {
 }
 
 async function main() {
+  const queueSource = fs.readFileSync("src/app/queue/page.tsx", "utf8");
+  assert.ok(queueSource.includes("client.id === linkedInvoice?.client_id"));
+  assert.ok(queueSource.includes("recipientEmail: invoiceClient?.email"));
+  assert.ok(queueSource.includes("clientCcEmail: invoiceClient?.cc_email"));
+  for (const kind of ["estimates", "invoices"]) {
+    const detail = fs.readFileSync(`src/app/${kind}/[id]/page.tsx`, "utf8");
+    const document = kind === "estimates" ? "estimate" : "invoice";
+    assert.ok(detail.includes(`.eq("id", ${document}.client_id)`));
+    assert.ok(
+      detail.includes("clientCcEmail={clientContact?.cc_email ?? null}"),
+    );
+  }
   for (const kind of ["estimates", "invoices"]) {
     const record = {
       id: "doc",
@@ -688,6 +745,7 @@ async function main() {
     await sendApiRegression(scenario);
   await sendPanelRegression(false);
   await sendPanelRegression(true);
+  await sendPanelRegression(true, false);
   await tiersRegression(false, false);
   await tiersRegression(true, true);
   await tiersRegression(true, false);

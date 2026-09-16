@@ -234,7 +234,18 @@ export default function InvoiceEmailSendPanel({
       requestType === "invoice" &&
       correctionOriginalDisplayId
   );
-  const [recipient, setRecipient] = useState(recipientEmail ?? "");
+  // A document/contact change must replace a previous document's recipient edit.
+  const recipientSource = `${documentId}:${recipientEmail ?? ""}`;
+  const [recipientDraft, setRecipientDraft] = useState<{
+    source: string;
+    value: string;
+  } | null>(null);
+  const recipient = recipientDraft?.source === recipientSource
+    ? recipientDraft.value
+    : recipientEmail ?? "";
+  function setRecipient(value: string) {
+    setRecipientDraft({ source: recipientSource, value });
+  }
   const visibleClientCc = clientCcEmail?.trim() ?? "";
   const [subject, setSubject] = useState(
     splitGroupIsCorrection
