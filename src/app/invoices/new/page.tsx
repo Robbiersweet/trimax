@@ -29,7 +29,6 @@ import {
   createSplitInvoices,
 } from "../../lib/splitInvoices";
 import { supabase } from "../../lib/supabase";
-import { looksLikeApartmentUnitPaintJob } from "../../utils/jobWorkflow";
 import { getSmartInvoiceDates } from "../../utils/invoiceDates";
 import {
   formatTaxSummaryLabel,
@@ -182,10 +181,6 @@ function NewInvoicePageContent() {
     useState(false);
   const [splitTargetAmount, setSplitTargetAmount] =
     useState("");
-  const [
-    splitWarningManuallyChanged,
-    setSplitWarningManuallyChanged,
-  ] = useState(false);
   const [terms, setTerms] = useState(DEFAULT_INVOICE_TERMS);
   const [notes, setNotes] = useState("");
 
@@ -259,19 +254,8 @@ function NewInvoicePageContent() {
         : [],
     [effectiveSplitTargetAmount, subtotal, taxMode, taxRate]
   );
-  const looksLikeApartmentSplitJob = useMemo(() => {
-    return looksLikeApartmentUnitPaintJob(
-      customerName,
-      projectTitle,
-      lineItems
-    );
-  }, [customerName, projectTitle, lineItems]);
-  const shouldAutoEnableSplitWarning =
-    Boolean(clients.find(client => client.id === selectedClientId)?.auto_split_enabled) && looksLikeApartmentSplitJob && automaticSplitPlan.length > 0;
-  const effectiveSplitWarningEnabled =
-    splitWarningManuallyChanged
-      ? splitWarningEnabled
-      : shouldAutoEnableSplitWarning;
+  // Client defaults initialize new documents; saved/edited document state wins afterward.
+  const effectiveSplitWarningEnabled = splitWarningEnabled;
   const showSplitWarning =
     effectiveSplitWarningEnabled &&
     automaticSplitPlan.length > 0;
@@ -498,7 +482,7 @@ function NewInvoicePageContent() {
     setTaxMode(settings.taxMode); setTaxLabel(settings.taxLabel); setTaxRate(settings.taxRate); setTaxNumber(settings.taxNumber);
     setTaxManuallyChanged(hasClientTaxProfile(client ?? null));
     const policy = getClientSplitPolicy(client ?? null, splitWarningAmount);
-    setSplitWarningEnabled(policy.autoSplitEnabled); setSplitTargetAmount(policy.splitTargetAmount ? String(policy.splitTargetAmount) : ""); setSplitWarningManuallyChanged(false);
+    setSplitWarningEnabled(policy.autoSplitEnabled); setSplitTargetAmount(policy.splitTargetAmount ? String(policy.splitTargetAmount) : "");
     setLineItems(items => items.map(item => { const service = serviceItems.find(service => service.id === item.serviceItemId); if (!service) return item; const pricing = resolveServicePricing({ service, overrides: servicePriceOverrides, clientId }); return {...item, description: pricing.description ?? "", unitPrice: String(pricing.unitPrice)}; }));
     if (!client) {
       setCustomerName("");
@@ -557,7 +541,7 @@ function NewInvoicePageContent() {
     setAmountPaid("0");
     setSplitWarningEnabled(false);
     setSplitTargetAmount("");
-    setSplitWarningManuallyChanged(false);
+
     setTerms(DEFAULT_INVOICE_TERMS);
     setNotes("");
     setLineItems([
@@ -1141,23 +1125,11 @@ function NewInvoicePageContent() {
               </p>
             ) : null}
 
-            {shouldAutoEnableSplitWarning &&
-            !splitWarningManuallyChanged ? (
-              <p className="document-info-panel rounded-2xl border border-purple-500/30 bg-purple-500/10 px-4 py-3 text-sm leading-6 text-purple-100/80">
-                Apartment paint billing detected over the split threshold.
-                Trimax will automatically create split invoice drafts when you
-                save so no split invoice exceeds the target amount.
-              </p>
-            ) : null}
-
             <label className="document-option-card flex items-start gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/50 p-4">
               <input
                 type="checkbox"
                 checked={effectiveSplitWarningEnabled}
-                onChange={(event) => {
-                  setSplitWarningManuallyChanged(true);
-                  setSplitWarningEnabled(event.target.checked);
-                }}
+                onChange={(event) => setSplitWarningEnabled(event.target.checked)}
                 className="mt-1 h-5 w-5 accent-orange-500"
               />
 
@@ -1167,10 +1139,8 @@ function NewInvoicePageContent() {
                 </span>
 
                 <span className="mt-1 block text-sm leading-6 text-zinc-400">
-                  Leave this on for North Creek apartment paint work that
-                  should stay below the approved invoice amount. Turn it on
-                  manually for another invoice only when you truly want Trimax
-                  to create split drafts.
+                  When enabled, Trimax can create split invoice drafts when this
+                  document exceeds the configured threshold.
                 </span>
               </span>
             </label>

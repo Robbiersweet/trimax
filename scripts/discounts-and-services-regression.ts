@@ -436,8 +436,8 @@ assert(
     estimateNew.includes("resolveServicePricing") &&
     estimateNew.includes("getClientTaxSettings") &&
     estimateNew.includes("repriceSavedServiceLinesForClient") &&
-    estimateNew.includes("selectedClientSplitPolicy.autoSplitEnabled") &&
-    estimateNew.includes("setSplitWarningManuallyChanged(false)") &&
+    estimateNew.includes("setSplitWarningEnabled(splitPolicy.autoSplitEnabled)") &&
+    estimateNew.includes("const effectiveSplitWarningEnabled = splitWarningEnabled") &&
     estimateNew.includes("findExactClientForProperty"),
   "New estimates must resolve client-specific price, tax, and split settings without prior-client leakage."
 );
@@ -447,8 +447,9 @@ assert(
     estimateEdit.includes("resolveServicePricing") &&
     estimateEdit.includes("getClientTaxSettings") &&
     estimateEdit.includes("repriceSavedServiceLinesForClient") &&
-    estimateEdit.includes("selectedClientSplitPolicy.autoSplitEnabled"),
-  "Edited estimates must use client-specific settings for newly selected clients/services while preserving saved lines."
+    estimateEdit.includes("Boolean(estimate.split_warning_enabled)") &&
+    estimateEdit.includes("const effectiveSplitWarningEnabled = splitWarningEnabled"),
+  "Edited estimates must preserve their saved split preference while resolving client-specific tax and service pricing."
 );
 
 assert(

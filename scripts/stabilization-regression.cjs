@@ -61,6 +61,7 @@ async function formRegression(withProfiles, invoice = false) {
     {
       id: "north",
       name: "North Creek Apartments",
+      auto_split_enabled: true,
       service_address: "11401 3rd Ave SE, Everett, WA 98208",
       ...(withProfiles
         ? { tax_mode: "taxable", tax_label: "City A", tax_rate: 10 }
@@ -69,6 +70,7 @@ async function formRegression(withProfiles, invoice = false) {
     {
       id: "glen",
       name: "Glen North Creek",
+      auto_split_enabled: false,
       property_aliases: ["The Glenn At North Creek Apartments"],
       service_address: "12115 Meridian Avenue S\nEverett, WA 98208",
       email: "manager@glenatnorthcreek.com",
@@ -171,6 +173,23 @@ async function formRegression(withProfiles, invoice = false) {
     renderer.act(async () => {
       control(label).props.onChange(value);
     });
+  const splitCheckbox = () =>
+    tree.root
+      .findAllByType("input")
+      .find(
+        (node) =>
+          node.props.type === "checkbox" &&
+          node.parent.findAll(
+            (child) =>
+              typeof child.props.children === "string" &&
+              child.props.children.includes("Split this apartment paint"),
+          ).length,
+      );
+  assert.equal(
+    splitCheckbox().props.checked,
+    true,
+    "New North Creek document uses its configured ON default before the threshold is reached",
+  );
   assert.equal(select("north").props.value, "north");
   await renderer.act(async () =>
     select("north").props.onChange({ target: { value: "glen" } }),
@@ -188,6 +207,11 @@ async function formRegression(withProfiles, invoice = false) {
     select("paint").props.onChange({ target: { value: "paint" } }),
   );
   assert.equal(control("Unit Price").props.value, "1300");
+  assert.equal(
+    splitCheckbox().props.checked,
+    false,
+    "Paint pricing cannot turn the property split default ON",
+  );
   const before = calls.length;
   for (const value of ["S", "Sn", "Sno", "Snoh", "Snoho", "Snohomish"]) {
     await edit("Tax Label", value);
@@ -226,6 +250,11 @@ async function formRegression(withProfiles, invoice = false) {
   if (withProfiles) assert.equal(control("Tax Label").props.value, "City A");
   assert.equal(control("Unit Price").props.value, "900");
   assert.equal(service.default_unit_price, 900);
+  assert.equal(
+    splitCheckbox().props.checked,
+    true,
+    "Switching back restores North Creek default",
+  );
   assert.equal(
     control("Service Address").props.value,
     clients[0].service_address,
@@ -630,7 +659,292 @@ async function sendApiRegression(scenario) {
   }
 }
 
+async function splitPreferenceRegression(
+  kind,
+  choice,
+  propertyDefault,
+  initialValue = !choice,
+) {
+  const record = {
+    id: "doc",
+    business_id: "business",
+    client_id: "client",
+    customer_name: "Glen North Creek",
+    project_title: "Apartment Unit 8",
+    service_address: "Everett",
+    status: "Draft",
+    tax_mode: "taxable",
+    tax_label: "Saved tax",
+    tax_rate: 9.9,
+    amount_paid: 0,
+    split_warning_enabled: initialValue,
+    split_target_amount: 1300,
+    split_parent_invoice_id: kind === "invoices" ? "existing-parent" : null,
+  };
+  let payload;
+  const tables = {
+    businesses: { id: "business", slug: "test", split_warning_amount: 1300 },
+    [kind]: [record],
+    clients: [
+      {
+        id: "client",
+        name: record.customer_name,
+        auto_split_enabled: propertyDefault,
+        split_target_amount: 1300,
+      },
+    ],
+    service_items: [],
+    client_service_overrides: [],
+    [kind === "invoices" ? "invoice_line_items" : "estimate_line_items"]: [
+      {
+        description: "Classic Paint",
+        quantity: 1,
+        unit_price: 1300,
+        line_total: 1300,
+      },
+    ],
+  };
+  const supabase = {
+    auth: { getUser: async () => ({ data: { user: { id: "user" } } }) },
+    from(table) {
+      let single = false,
+        update;
+      const chain = new Proxy(
+        {},
+        {
+          get(_t, key) {
+            if (key === "then")
+              return (resolve) => {
+                if (update && table === kind) {
+                  payload = { ...update };
+                  Object.assign(record, update);
+                }
+                resolve({
+                  data:
+                    single && Array.isArray(tables[table])
+                      ? tables[table][0]
+                      : (tables[table] ?? []),
+                  error: null,
+                });
+              };
+            return (value) => {
+              if (key === "maybeSingle") single = true;
+              if (key === "update") update = value;
+              return chain;
+            };
+          },
+        },
+      );
+      return chain;
+    },
+  };
+  const router = { push() {} };
+  const load = loader({
+    components: true,
+    "next/navigation": {
+      useParams: () => ({ id: "doc" }),
+      useSearchParams: () => new URLSearchParams("business=test"),
+      useRouter: () => router,
+    },
+    "../../lib/supabase": { supabase },
+    "../../../lib/maintenanceMode": {
+      assertCanWriteDuringMaintenance: async () => {},
+    },
+    "../../../lib/activityLog": { logActivity: async () => {} },
+  });
+  const Page = load(`src/app/${kind}/[id]/edit/page.tsx`).default;
+  let tree;
+  const mount = async () =>
+    renderer.act(async () => {
+      tree = renderer.create(React.createElement(Page));
+    });
+  const checkbox = () =>
+    tree.root
+      .findAllByType("input")
+      .find(
+        (node) =>
+          node.props.type === "checkbox" &&
+          node.parent.findAll(
+            (child) =>
+              typeof child.props.children === "string" &&
+              child.props.children.includes("Split this apartment paint"),
+          ).length,
+      );
+  await mount();
+  if (initialValue === null)
+    assert.equal(
+      checkbox().props.checked,
+      false,
+      "Legacy null does not hydrate a property default into an existing document",
+    );
+  await renderer.act(async () =>
+    checkbox().props.onChange({ target: { checked: choice } }),
+  );
+  assert.equal(
+    checkbox().props.checked,
+    choice,
+    "Explicit checkbox choice before save",
+  );
+  await renderer.act(async () =>
+    tree.root
+      .findAllByType("test-control")
+      .find((node) => node.props.children === "Save Changes")
+      .props.onClick(),
+  );
+  assert.equal(
+    payload?.split_warning_enabled,
+    choice,
+    "Save payload preserves boolean choice",
+  );
+  assert.equal(
+    record.split_warning_enabled,
+    choice,
+    "Stored choice matches save payload",
+  );
+  assert.equal(
+    record.split_parent_invoice_id,
+    kind === "invoices" ? "existing-parent" : null,
+    "Existing split relationship preserved",
+  );
+  await renderer.act(async () => tree.unmount());
+  await mount();
+  console.log(
+    `${kind} split cycle: UI=${choice}, payload=${payload.split_warning_enabled}, stored=${record.split_warning_enabled}, reopened=${checkbox().props.checked}, property=${propertyDefault}`,
+  );
+  assert.equal(
+    checkbox().props.checked,
+    choice,
+    "Saved explicit choice must survive reopening",
+  );
+  await renderer.act(async () => tree.unmount());
+}
+
+async function conversionSplitPreferenceRegression(enabled) {
+  const estimate = {
+    id: "estimate",
+    business_id: "business",
+    client_id: "client",
+    customer_name: "Client Alpha",
+    project_title: "Client Alpha Unit 8",
+    estimate_amount: 1428.7,
+    tax_mode: "taxable",
+    tax_label: "Saved tax",
+    tax_rate: 9.9,
+    split_warning_enabled: enabled,
+    split_target_amount: 1300,
+  };
+  let inserted,
+    splitCalls = 0;
+  const supabase = {
+    auth: { getUser: async () => ({ data: { user: { id: "user" } } }) },
+    from(table) {
+      let payload;
+      const chain = new Proxy(
+        {},
+        {
+          get(_target, key) {
+            if (key === "then")
+              return (resolve) => {
+                if (table === "invoices" && payload)
+                  inserted = { ...payload, id: "new-invoice" };
+                const data =
+                  table === "estimates"
+                    ? estimate
+                    : table === "clients"
+                      ? [
+                          {
+                            id: "client",
+                            name: "Client Alpha",
+                            auto_split_enabled: !enabled,
+                          },
+                        ]
+                      : table === "estimate_line_items"
+                        ? [
+                            {
+                              description: "Classic Paint",
+                              quantity: 1,
+                              unit_price: 1300,
+                              line_total: 1300,
+                            },
+                          ]
+                        : table === "invoices"
+                          ? (inserted ?? null)
+                          : null;
+                resolve({ data, error: null });
+              };
+            return (value) => {
+              if (key === "insert") payload = value;
+              return chain;
+            };
+          },
+        },
+      );
+      return chain;
+    },
+  };
+  const load = loader({
+    "next/navigation": { useRouter: () => ({ push() {} }) },
+    "../lib/supabase": { supabase },
+    "../lib/maintenanceMode": {
+      assertCanWriteDuringMaintenance: async () => {},
+    },
+    "../lib/activityLog": { logActivity: async () => {} },
+    "../lib/documentNumbers": {
+      getNextDocumentDisplayId: async () => "INV-TEST",
+    },
+    "../lib/splitInvoices": {
+      createSplitInvoices: async () => {
+        splitCalls++;
+        return [];
+      },
+    },
+  });
+  const Convert = load(
+    "src/app/components/ConvertEstimateToInvoiceButton.tsx",
+  ).default;
+  let tree;
+  await renderer.act(async () => {
+    tree = renderer.create(
+      React.createElement(Convert, {
+        estimateId: estimate.id,
+        businessId: estimate.business_id,
+        businessSlug: "test",
+        clientId: estimate.client_id,
+        customerName: estimate.customer_name,
+        projectTitle: estimate.project_title,
+        invoiceAmount: "$1428.70",
+        notes: "",
+        splitTargetAmount: 1300,
+      }),
+    );
+  });
+  await renderer.act(async () =>
+    tree.root.findByType("button").props.onClick(),
+  );
+  assert.equal(
+    inserted?.split_warning_enabled,
+    enabled,
+    "Conversion copies the explicit estimate choice",
+  );
+  assert.equal(
+    splitCalls,
+    enabled ? 1 : 0,
+    "Conversion only invokes splitting for explicit ON",
+  );
+  assert.equal(inserted.client_id, estimate.client_id);
+  assert.equal(inserted.tax_rate, 9.9);
+  await renderer.act(async () => tree.unmount());
+}
+
 async function main() {
+  await conversionSplitPreferenceRegression(false);
+  await conversionSplitPreferenceRegression(true);
+  await splitPreferenceRegression("invoices", false, true);
+  await splitPreferenceRegression("invoices", true, false);
+  await splitPreferenceRegression("estimates", false, true);
+  await splitPreferenceRegression("estimates", true, false);
+  await splitPreferenceRegression("invoices", false, true, null);
+  await splitPreferenceRegression("estimates", false, true, null);
   const queueSource = fs.readFileSync("src/app/queue/page.tsx", "utf8");
   assert.ok(queueSource.includes("client.id === linkedInvoice?.client_id"));
   assert.ok(queueSource.includes("recipientEmail: invoiceClient?.email"));
