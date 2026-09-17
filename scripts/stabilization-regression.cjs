@@ -1038,7 +1038,49 @@ async function retryStateRegression() {
   console.log("Actual Retry Reading request flow: incomplete -> retry, cleared fields, isolated request and stale response rejection passed.");
 }
 
+async function duplicatePreflightAndViewRegression() {
+  const source = fs.readFileSync("src/app/components/BatchInvoicePayments.tsx", "utf8");
+  const compile = (text, bindings) => new Function("require", "exports", ...Object.keys(bindings), ts.transpileModule(text, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText)(require, {}, ...Object.values(bindings));
+  const preflightSource = source.slice(source.indexOf("  async function runDuplicateRemittancePreflight("), source.indexOf("  async function extractCheckStubFromPhoto("));
+  const writes = [];
+  let responseStatus = "possible";
+  const bindings = { businessId: "workspace", supabase: { auth: { getSession: async () => ({ data: { session: null } }) } },
+    fetch: async () => ({ ok: true, status: 200, json: async () => ({ documentFingerprint: { hash: "f".repeat(256) }, duplicateRemittance: { status: responseStatus, payment: { id: "prior", invoiceIds: ["0506", "0507"] }, reasons: ["document fingerprint distance 77"] } }) }),
+  };
+  for (const name of new Set(preflightSource.match(/set[A-Z][A-Za-z]+/g))) bindings[name] = value => writes.push([name, value]);
+  const preflight = compile(preflightSource + "\nreturn runDuplicateRemittancePreflight;", bindings);
+  for (responseStatus of ["possible", "active", "reversed", "none"]) {
+    writes.length = 0;
+    const result = await preflight(new File(["image"], "stub.jpg"), [], { checkNumber: "", amount: null, checkDate: "", receivedDate: "2026-09-16", payor: "", invoiceIds: [], invoiceNumbers: [] });
+    assert.equal(result.stoppedOcr, false);
+    assert.equal(result.fingerprint.length, 256);
+    assert.ok(writes.every(([name]) => ["setRemittanceDocumentFingerprint", "setLastOcrPrepDiagnosticLines", "setLastOcrDiagnosticLines"].includes(name)));
+  }
+  const modalSource = source.slice(source.indexOf("  function duplicatePaymentHref()"), source.indexOf("  if (payableInvoices.length === 0)"));
+  const events = [];
+  const modal = compile(modalSource + "\nreturn duplicateRemittanceModalView;", {
+    businessSlug: "rnl-creations", duplicateRemittanceModal: { intent: "possible", result: { canOverride: true, payment: { checkNumber: "", amount: 2252.95, invoiceNumbers: ["INV-0506", "INV-0507"], invoiceCount: 2 } } },
+    createPortal: element => element, document: { body: {} }, formatMoney: String, formatDate: String,
+    setDuplicateRemittanceModal: value => events.push(["modal", value]),
+    setDuplicateOverrideClearedKey: () => { throw new Error("View must not grant override"); },
+    setReversedDuplicateReviewedKey: () => { throw new Error("View must not commit review"); },
+    setToast: () => { throw new Error("View must not show success toast"); },
+    duplicateEvidenceKey: "current", fetch: () => { throw new Error("View must not call payment APIs"); },
+    supabase: new Proxy({}, { get: () => { throw new Error("View must not write data"); } }),
+  });
+  let tree;
+  await renderer.act(async () => { tree = renderer.create(modal()); });
+  const link = tree.root.findByType("a");
+  assert.equal(link.props.children, "View Possible Match");
+  assert.equal(link.props.href, "/payments?business=rnl-creations#payment-history");
+  await renderer.act(async () => link.props.onClick());
+  assert.deepEqual(events, [["modal", null]]);
+  await renderer.act(async () => tree.unmount());
+  console.log("Duplicate preflight continues OCR; View Possible Match only closes modal and links to history, with zero writes or overrides.");
+}
+
 async function main() {
+  await duplicatePreflightAndViewRegression();
   await retryStateRegression();
   await queueBlockerRegression();
   await conversionSplitPreferenceRegression(false);

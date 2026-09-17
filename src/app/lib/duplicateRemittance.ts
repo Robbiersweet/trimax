@@ -160,7 +160,7 @@ function fingerprintDistance(left: unknown, right: unknown) {
   const first = normalizedFingerprint(left);
   const second = normalizedFingerprint(right);
 
-  if (!first || first.length !== second.length) {
+  if (first.length !== 256 || second.length !== 256) {
     return null;
   }
 
@@ -308,58 +308,41 @@ export function findDuplicateRemittance(
     );
     const payorCompatible = compatiblePayor(input.payor ?? "", payment.payor);
     const dateCompatible =
-      sameDateOrMissing(input.checkDate, payment.checkDate) &&
-      sameDateOrMissing(input.receivedDate, payment.receivedDate);
+      sameDateOrMissing(input.checkDate, payment.checkDate);
     const documentDistance = fingerprintDistance(inputFingerprint, payment.fingerprint);
-    const exactDocumentMatch =
-      documentDistance !== null && documentDistance <= 10;
-    const strongDocumentMatch =
-      documentDistance !== null && documentDistance <= 36;
-    const meaningfulDocumentMatch =
-      documentDistance !== null && documentDistance <= 84;
-    const hasCompatibleContext =
-      amountExact ||
-      amountNear ||
-      checkCompatible ||
-      invoiceSetExact ||
-      invoiceOverlap > 0 ||
-      (payorCompatible && (Boolean(input.payor) || Boolean(payment.payor)));
+    const meaningfulDocumentMatch = documentDistance !== null && documentDistance <= 84;
+    const checkExact = Boolean(checkNumber && checkNumber === payment.checkNumber);
+    const checkConflict = Boolean(checkNumber && payment.checkNumber && !checkCompatible);
+    const amountConflict = amount > 0 && payment.amount > 0 && !amountNear;
+    const hasInvoiceSets = (inputInvoiceIds.length > 0 && payment.invoiceIds.length > 0) ||
+      (inputInvoiceNumbers.length > 0 && payment.invoiceNumbers.length > 0);
+    const disjointInvoices = hasInvoiceSets && invoiceOverlap === 0;
+    // Contradicting document identity outweighs even identical low-resolution hashes.
+    if ((amountConflict && disjointInvoices) || (checkConflict && (amountConflict || disjointInvoices))) continue;
 
     if (checkCompatible) reasons.push("compatible check number");
     if (amountExact) reasons.push("same amount");
     if (!amountExact && amountNear) reasons.push("near amount");
     if (invoiceSetExact) reasons.push("same invoice set");
     if (invoiceOverlap && !invoiceSetExact) reasons.push("overlapping invoice set");
-    if (payorCompatible) reasons.push("compatible payor");
-    if (dateCompatible) reasons.push("compatible date");
+    if (payorCompatible && clean(input.payor) && payment.payor) reasons.push("compatible payor");
+    if (dateCompatible && normalizedDate(input.checkDate) && payment.checkDate) reasons.push("compatible date");
     if (documentDistance !== null) {
       payment.fingerprintDistance = documentDistance;
       reasons.push(`document fingerprint distance ${documentDistance}`);
     }
 
-    const exact =
-      (amountExact &&
-        payorCompatible &&
-        dateCompatible &&
-        invoiceSetExact) ||
-      (amountNear &&
-        payorCompatible &&
-        dateCompatible &&
-        invoiceSetExact &&
-        (checkCompatible || invoiceOverlap > 1)) ||
-      (exactDocumentMatch && hasCompatibleContext) ||
-      (strongDocumentMatch && hasCompatibleContext) ||
-      (documentDistance !== null && documentDistance <= 4);
-    const possible =
-      !exact &&
-      ((amountExact &&
-        payorCompatible &&
-        (invoiceOverlap > 0 || invoiceSetExact)) ||
-        (amountNear &&
-          payorCompatible &&
-          (invoiceOverlap > 0 || invoiceSetExact)) ||
-        (strongDocumentMatch && hasCompatibleContext) ||
-        meaningfulDocumentMatch);
+    const exact = payorCompatible && dateCompatible && !checkConflict && (
+      (amountExact && invoiceSetExact) ||
+      (amountNear && invoiceSetExact && checkCompatible) ||
+      (amountExact && checkExact && !disjointInvoices && documentDistance !== null && documentDistance <= 10)
+    );
+    const possible = !exact && payorCompatible && !disjointInvoices && (
+      (amountNear && invoiceOverlap > 0) ||
+      (checkCompatible && (amountNear || invoiceOverlap > 0)) ||
+      (meaningfulDocumentMatch && !amountConflict && !checkConflict && !disjointInvoices &&
+        (amountNear || checkCompatible || invoiceOverlap > 0))
+    );
 
     if (exact) {
       exactCandidates.push({ payment, reasons });
@@ -402,4 +385,12 @@ export function findDuplicateRemittance(
     canOverride: false,
     ownerOverrideRequired: false,
   };
+}
+
+// Candidate discovery only: image similarity is never a duplicate decision.
+export function findRemittanceImageHints(fingerprint: string, activities: DuplicateRemittanceActivity[]) {
+  return groupPaymentActivities(activities).flatMap((payment) => {
+    const distance = fingerprintDistance(fingerprint, payment.fingerprint);
+    return distance !== null && distance <= 84 ? [{ paymentId: payment.id, distance, invoiceNumbers: payment.invoiceNumbers }] : [];
+  }).sort((a, b) => a.distance - b.distance);
 }

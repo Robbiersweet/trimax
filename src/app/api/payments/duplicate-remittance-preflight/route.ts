@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import {
   findDuplicateRemittance,
+  findRemittanceImageHints,
   type DuplicateRemittanceActivity,
 } from "@/app/lib/duplicateRemittance";
 import { createRemittanceDocumentFingerprint } from "@/app/lib/remittanceDocumentFingerprint";
@@ -254,6 +255,8 @@ export async function POST(request: Request) {
       hash: currentFingerprint.hash,
     },
     priorImagesCompared: storedImageFingerprints.size,
+    imageHints: findRemittanceImageHints(currentFingerprint.hash, activities),
+    continueOcr: true,
     duplicateRemittance,
   });
 }

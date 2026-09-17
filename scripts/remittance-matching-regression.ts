@@ -1,3 +1,4 @@
+import "./duplicate-remittance-regression.ts";
 import "./remittance-retry-regression.ts";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";

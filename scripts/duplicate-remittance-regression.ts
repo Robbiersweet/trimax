@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import {
   duplicateCheckNumbersCompatible,
   findDuplicateRemittance,
+  findRemittanceImageHints,
   normalizeDuplicateCheckNumber,
   type DuplicateRemittanceActivity,
 } from "../src/app/lib/duplicateRemittance.ts";
@@ -273,15 +274,10 @@ const partialOcrDuplicate = findDuplicateRemittance(
 
 assert.equal(
   partialOcrDuplicate.status,
-  "active",
-  "A near-identical document fingerprint can detect an active duplicate even when OCR found no check, amount, or invoice set."
+  "none",
+  "An average-image hash alone cannot establish document identity, even at distance zero."
 );
-assert(
-  partialOcrDuplicate.reasons.some((reason) =>
-    reason.includes("document fingerprint distance")
-  ),
-  "Fingerprint evidence must be reported in duplicate diagnostics."
-);
+assert.equal(findRemittanceImageHints(strongFingerprint, fingerprintActivities).length, 1);
 
 const partialOcrPossible = findDuplicateRemittance(
   {
@@ -293,10 +289,10 @@ const partialOcrPossible = findDuplicateRemittance(
 
 assert.equal(
   partialOcrPossible.status,
-  "possible",
-  "Meaningful image similarity without definitive metadata must become a possible duplicate."
+  "none",
+  "Template similarity without document evidence must continue OCR."
 );
-assert.equal(partialOcrPossible.canOverride, true);
+assert.equal(partialOcrPossible.canOverride, false);
 
 const imageWithContextDuplicate = findDuplicateRemittance(
   {
@@ -310,8 +306,8 @@ const imageWithContextDuplicate = findDuplicateRemittance(
 
 assert.equal(
   imageWithContextDuplicate.status,
-  "active",
-  "Strong image similarity plus compatible amount/payor context should be high-confidence."
+  "possible",
+  "Image similarity and amount overlap warrant review after OCR, not an exact identity claim."
 );
 
 const unrelatedLayout = findDuplicateRemittance(
@@ -441,3 +437,21 @@ assert(
 );
 
 console.log("Duplicate remittance regression checks passed.");
+
+// Reported incident: 77 bits differ out of 1024; old policy interrupted OCR.
+const incidentHash = "0".repeat(19) + "7" + "f".repeat(236);
+const priorTwo = ["0506", "0507"].map((number) => paymentActivity({ id: "prior-" + number, invoiceId: "inv-" + number, invoiceNumber: "INV-" + number, amount: 2252.95, checkNumber: "", fingerprint: strongFingerprint }));
+const before = JSON.stringify(priorTwo);
+const hints = findRemittanceImageHints(incidentHash, priorTwo);
+assert.equal(hints[0].distance, 77);
+assert.equal(findDuplicateRemittance({ fingerprint: incidentHash }, priorTwo).status, "none");
+assert.equal(findDuplicateRemittance({ fingerprint: incidentHash, payor: "North Creek Apartments" }, priorTwo).status, "none");
+for (const fingerprint of [incidentHash, strongFingerprint]) {
+  const five = ["0513", "0514", "0515", "0518", "0519"];
+  assert.equal(findDuplicateRemittance({ fingerprint, amount: 5495, checkNumber: "2797", payor: "North Creek Apartments", invoiceIds: five.map(n => "inv-" + n), invoiceNumbers: five.map(n => "INV-" + n) }, priorTwo).status, "none");
+}
+assert.equal(findDuplicateRemittance({ fingerprint: incidentHash, amount: 2252.95, payor: "North Creek Apartments", invoiceIds: ["inv-0506", "inv-0507"] }, priorTwo).status, "active");
+assert.equal(JSON.stringify(priorTwo), before);
+assert.equal(findRemittanceImageHints("f", priorTwo).length, 0);
+
+assert.equal(findDuplicateRemittance({ checkNumber: "2804", amount: 4505.9, invoiceIds: northCreekInvoices, invoiceNumbers: northCreekNumbers, payor: "North Creek Apartments", receivedDate: "2026-09-16" }, activePaymentActivities).status, "active", "Rescanning later does not change document identity.");

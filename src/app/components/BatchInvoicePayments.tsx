@@ -537,6 +537,7 @@ type DuplicateRemittancePreflightResponse = {
     hash?: string;
   };
   priorImagesCompared?: number;
+  imageHints?: Array<{ paymentId: string; distance: number; invoiceNumbers: string[] }>;
   duplicateRemittance?: DuplicateRemittanceResult;
   error?: string;
 };
@@ -3489,6 +3490,8 @@ export default function BatchInvoicePayments({
         `Duplicate remittance preflight: ${response.ok ? "completed" : "skipped"} (${response.status}).`,
         `Duplicate preflight prior images compared: ${result.priorImagesCompared ?? 0}.`,
         `Duplicate preflight status: ${duplicate?.status ?? "none"}.`,
+        "Duplicate preflight decision: continue OCR; image similarity is not document identity.",
+        `Duplicate image hints: ${JSON.stringify(result.imageHints ?? [])}.`,
         `Duplicate preflight returned payment ID: ${duplicate?.payment?.id ?? "none"}.`,
         `Duplicate preflight returned invoice IDs: ${duplicate?.payment?.invoiceIds?.join(",") || "none"}.`,
         ...(duplicate?.reasons?.length
@@ -3499,28 +3502,9 @@ export default function BatchInvoicePayments({
       setLastOcrPrepDiagnosticLines(diagnosticLines);
       setLastOcrDiagnosticLines(diagnosticLines);
 
-      if (!response.ok || !duplicate || duplicate.status === "none") {
-        return { stoppedOcr: false, fingerprint: currentFingerprint };
-      }
-
-      setDuplicateRemittanceModal({
-        result: duplicate,
-        intent:
-          duplicate.status === "active"
-            ? "active"
-            : duplicate.status === "reversed"
-              ? "reversed"
-              : "possible",
-      });
-      setPaymentEntryMode("photo");
-      setCheckOcrStatus("manual");
-      setCheckOcrMessage(
-        duplicate.status === "active"
-          ? "This check stub has already been applied."
-          : "Review the possible duplicate remittance before continuing."
-      );
-
-      return { stoppedOcr: true, fingerprint: currentFingerprint };
+      // Pre-OCR image candidates are hints only. Identity is checked after extraction
+      // and again by apply-batch before any financial mutation.
+      return { stoppedOcr: false, fingerprint: currentFingerprint };
     } catch (error) {
       setLastOcrPrepDiagnosticLines([
         ...prepDiagnosticLines,
