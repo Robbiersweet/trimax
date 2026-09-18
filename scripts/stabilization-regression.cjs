@@ -1080,6 +1080,7 @@ async function duplicatePreflightAndViewRegression() {
 }
 
 async function main() {
+  await require("./ocr-structure-regression.cjs");
   await duplicatePreflightAndViewRegression();
   await retryStateRegression();
   await queueBlockerRegression();

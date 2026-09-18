@@ -1,3 +1,4 @@
+import { rowAssignment, normalizeInvoiceColumnToken, rankSourceEvaluations, rankRowAmounts } from "@/app/lib/ocrStructure";
 import { NextResponse } from "next/server";
 import sharp from "sharp";
 import {
@@ -518,11 +519,11 @@ function isHeaderLikePayor(value: string) {
   return headerWords.filter((word) => normalized.includes(word)).length >= 2;
 }
 
-async function buildOcrSources(originalImage: Buffer) {
+async function buildOcrSources(originalImage: Buffer, preserveFrame = false) {
   const originalMetadata = await imageMetadata(originalImage);
   const normalizedScene = await normalizeInputImage(originalImage);
   const sceneMetadata = await imageMetadata(normalizedScene);
-  const detectedBounds = await detectDocumentBounds(normalizedScene);
+  const detectedBounds = preserveFrame ? null : await detectDocumentBounds(normalizedScene);
   const documentImage = detectedBounds
     ? await cropDocument(normalizedScene, detectedBounds)
     : normalizedScene;
@@ -1074,7 +1075,7 @@ function reconstructRowsFromOcrGeometry(words: OcrWord[]): GeometricRow[] {
   }
 
   const medianHeight = median(usefulWords.map(wordHeight));
-  const yTolerance = Math.max(14, medianHeight * 0.85);
+  const yTolerance = Math.max(3, medianHeight * 0.5);
   const bands: OcrWord[][] = [];
 
   for (const word of usefulWords) {
@@ -1440,11 +1441,11 @@ function invoiceEvidenceForRow(
   allWords: OcrWord[],
   documentWidth: number
 ) {
-  const yTolerance = Math.max(row.height * 1.4, 26);
+  const yTolerance = Math.max(row.height * 0.65, 2);
   const rowWordSet = new Set(row.words);
   const evidence = allWords
     .filter((word) => {
-      const rawTokens = rawInvoiceLikeTokens(normalizeGeometryToken(word.text));
+      const rawTokens = normalizeInvoiceColumnToken(word.text, word.region === "invoice-column-diagnostic") ? [word.text] : rawInvoiceLikeTokens(normalizeGeometryToken(word.text));
 
       if (rawTokens.length === 0) {
         return false;
@@ -1463,9 +1464,9 @@ function invoiceEvidenceForRow(
       return xRatio >= 0.08 && xRatio <= 0.72;
     })
     .flatMap((word) =>
-      rawInvoiceLikeTokens(normalizeGeometryToken(word.text)).map((raw) => ({
+      (normalizeInvoiceColumnToken(word.text, word.region === "invoice-column-diagnostic") ? [word.text] : rawInvoiceLikeTokens(normalizeGeometryToken(word.text))).map((raw) => ({
         raw,
-        normalized: invoiceCandidateDigitsFromRawToken(raw),
+        normalized: normalizeInvoiceColumnToken(raw, word.region === "invoice-column-diagnostic") ? [normalizeInvoiceColumnToken(raw, word.region === "invoice-column-diagnostic")] : invoiceCandidateDigitsFromRawToken(raw),
         region: word.region,
         variant: word.variant,
         pageMode: word.pageMode,
@@ -1477,8 +1478,8 @@ function invoiceEvidenceForRow(
     .filter((item) => item.normalized.length > 0);
   const seen = new Set<string>();
 
-  return evidence.filter((item) => {
-    const key = `${item.raw}|${item.normalized.join(",")}|${item.pass}|${item.bbox.x0},${item.bbox.y0}`;
+  return evidence.sort((a, b) => b.confidence - a.confidence).filter((item) => {
+    const key = item.normalized.slice().sort().join(",");
 
     if (seen.has(key)) {
       return false;
@@ -1490,7 +1491,7 @@ function invoiceEvidenceForRow(
 }
 
 function sameBandWordsForRow(row: GeometricRow, words: OcrWord[]) {
-  const yTolerance = Math.max(row.height * 1.5, 28);
+  const yTolerance = Math.max(row.height * 0.65, 2);
 
   return words.filter(
     (word) => Math.abs(wordCenterY(word) - row.y) <= yTolerance
@@ -1538,6 +1539,32 @@ function sameBandAmountCandidates(row: GeometricRow, words: OcrWord[]) {
       bbox: word.bbox,
     }))
   );
+  // Join adjacent fragments only within the same OCR pass and physical row.
+  const passWords = new Map<string, OcrWord[]>();
+  sameBandWordsForRow(row, words).forEach(word => {
+    const key = passLabelForWord(word);
+    passWords.set(key, [...(passWords.get(key) ?? []), word]);
+  });
+  for (const group of passWords.values()) {
+    group.sort((a, b) => a.bbox.x0 - b.bbox.x0);
+    for (let i = 0; i < group.length - 1; i++) {
+      const first = group[i];
+      let raw = first.text.trim();
+      let last = first;
+      for (let j = i + 1; j < Math.min(group.length, i + 4); j++) {
+        const next = group[j];
+        if (next.bbox.x0 - last.bbox.x1 > row.height * 0.8 || next.bbox.x0 < last.bbox.x1 - 2) break;
+        raw += next.text.trim();
+        last = next;
+        if (!/^\$?\d{1,3}(?:,\d{3})+\.\d{2}$/.test(raw)) continue;
+        for (const candidate of extractMoneyCandidates(raw)) candidates.push({
+          raw, normalized: candidate.normalized, value: candidate.value, score: candidate.score,
+          confidence: Math.round(Math.min(first.confidence, next.confidence)),
+          bbox: { x0: first.bbox.x0, x1: next.bbox.x1, y0: Math.min(first.bbox.y0, next.bbox.y0), y1: Math.max(first.bbox.y1, next.bbox.y1) },
+        });
+      }
+    }
+  }
   const countByValue = new Map<string, number>();
 
   candidates.forEach((candidate) => {
@@ -1588,11 +1615,7 @@ function mergeStructuredAmountCandidates(
     }
   });
 
-  const ranked = Array.from(merged.values()).sort(
-    (left, right) =>
-      (right.score ?? 0) - (left.score ?? 0) ||
-      (right.confidence ?? 0) - (left.confidence ?? 0)
-  );
+  const ranked = rankRowAmounts(Array.from(merged.values()));
   const selectedValue = ranked[0]?.value ?? 0;
 
   return ranked.map((candidate) => ({
@@ -1609,17 +1632,21 @@ function buildStructuredRowEvidence(
   const allWords = attempts.length > 0 ? attempts.flatMap((attempt) => attempt.words) : [];
 
   return rows
-    .map((row, index) => {
+    .map((originalRow, index) => {
+      const row = { ...originalRow, words: originalRow.words.filter(word => rowAssignment(word.bbox, originalRow, rows).accepted) };
+      row.tokens = row.words.map(word => normalizeGeometryToken(word.text));
+      row.text = normalizeGeometryRowText(row.tokens);
+      const assignedWords = allWords.filter(word => rowAssignment(word.bbox, row, rows).accepted);
       const acceptance = rowAcceptance(row);
       const invoiceEvidence = invoiceEvidenceForRow(
         row,
-        [...row.words, ...allWords],
+        [...row.words, ...assignedWords],
         documentWidth
       );
-      const sameBandWords = sameBandWordsForRow(row, allWords);
+      const sameBandWords = assignedWords;
       const amountCandidates = mergeStructuredAmountCandidates(
         geometryAmountCandidates(row),
-        sameBandAmountCandidates(row, allWords)
+        sameBandAmountCandidates(row, assignedWords)
       )
         .filter((candidate) => candidate.value > 0)
         .map((candidate) => ({
@@ -2032,7 +2059,7 @@ async function recognizeBestText(
     });
 
     const attempts: OcrAttempt[] = [];
-    const sources = await buildOcrSources(originalImage);
+    const sources = await buildOcrSources(originalImage, documentType === "remittance_stub");
     markStage("document-normalized");
     const regionSources = await buildRegionSources(
       sources.document.image,
@@ -2341,7 +2368,7 @@ async function recognizeBestText(
     const geometricRows = (bestGeometryRowSet?.rows ?? []).slice(0, 12);
     const documentWidth = sources.document.width ?? 0;
     const documentHeight = sources.document.height ?? 0;
-    const structuredRowEvidence = buildStructuredRowEvidence(
+    let structuredRowEvidence = buildStructuredRowEvidence(
       geometricRows,
       attempts,
       documentWidth
@@ -2349,27 +2376,14 @@ async function recognizeBestText(
     const headerEvidence = selectRemittanceHeaderEvidence(attempts.map((attempt) => ({ ...attempt, text: withoutMicrBandText(attempt.text) })), structuredRowEvidence);
     const explicitDocumentTotalEvidence = headerEvidence.evidence;
     const explicitDocumentTotal = explicitDocumentTotalEvidence?.amount ?? 0;
-    const structuredRowDiagnostics = structuredRowEvidence.map((row) => ({
-      rowId: row.rowId,
-      y: row.y,
-      height: row.height,
-      invoiceEvidenceByPass: row.invoiceEvidenceByPass ?? [],
-      chosenInvoiceEvidence: row.normalizedInvoiceCandidates,
-      unitEvidence: row.unitLikeTokens,
-      amountEvidence: row.amountCandidates
-        .filter((candidate) => candidate.selected)
-        .map((candidate) => candidate.normalized ?? `$${candidate.value.toFixed(2)}`),
-      resolutionHint:
-        row.normalizedInvoiceCandidates.length > 0
-          ? "structured row carries same-band invoice evidence to resolver"
-          : "no same-band invoice evidence found",
-    }));
+
     const geometricRowDetails = geometryRowDetails(
       geometricRows,
       documentWidth,
       diagnosticWordSource
     );
 
+    const invoiceColumnWords: OcrWord[] = [];
     async function buildInvoiceColumnDiagnostics(): Promise<InvoiceColumnDiagnostics | null> {
       if (
         documentType !== "remittance_stub" ||
@@ -2482,6 +2496,7 @@ async function recognizeBestText(
             spec,
             0
           );
+          invoiceColumnWords.push(...words);
           const confidence =
             typeof result.data.confidence === "number" ? result.data.confidence : 0;
           const rawText = result.data.text ?? "";
@@ -2563,6 +2578,25 @@ async function recognizeBestText(
       }
     );
 
+    if (invoiceColumnWords.length > 0) {
+      structuredRowEvidence = buildStructuredRowEvidence(geometricRows, [...attempts, { ...selected!, words: invoiceColumnWords }], documentWidth);
+    }
+    const structuredRowDiagnostics = structuredRowEvidence.map((row) => ({
+      rowId: row.rowId,
+      y: row.y,
+      height: row.height,
+      invoiceEvidenceByPass: row.invoiceEvidenceByPass ?? [],
+      chosenInvoiceEvidence: row.normalizedInvoiceCandidates,
+      unitEvidence: row.unitLikeTokens,
+      amountEvidence: row.amountCandidates
+        .filter((candidate) => candidate.selected)
+        .map((candidate) => candidate.normalized ?? `$${candidate.value.toFixed(2)}`),
+      resolutionHint:
+        row.normalizedInvoiceCandidates.length > 0
+          ? "structured row carries same-band invoice evidence to resolver"
+          : "no same-band invoice evidence found",
+    }));
+    const rowAssignments = geometricRows.flatMap((row, index) => [...attempts.flatMap(attempt => attempt.words), ...invoiceColumnWords].filter(word => /[0-9]/.test(word.text)).map(word => ({ row: index + 1, token: word.text, pass: passLabelForWord(word), ...rowAssignment(word.bbox, row, geometricRows) })));
     return {
       text: finalText,
       structuredRowEvidence,
@@ -2586,6 +2620,7 @@ async function recognizeBestText(
         explicitDocumentTotal,
         explicitDocumentTotalEvidence,
         headerEvidence,
+        rowAssignments,
         stageTimings,
         selectedSummary: redactedTextSummary(selected?.text ?? ""),
         regionSummaries: regionBestAttempts.map((attempt) =>
@@ -2709,17 +2744,17 @@ async function evaluateCaptureSourceCandidate(
   try {
   const resolvedImage = imageBufferFromCandidate(candidate, stage);
   stage = "build-ocr-sources";
-  const sources = await buildOcrSources(resolvedImage.buffer);
+  const sources = await buildOcrSources(resolvedImage.buffer, true);
   const source = {
     name: label,
-    image: sources.document.image,
-    width: sources.document.width,
-    height: sources.document.height,
+    image: sources.scene.image,
+    width: sources.scene.width,
+    height: sources.scene.height,
     bounds: {
       left: 0,
       top: 0,
-      width: sources.document.width ?? 0,
-      height: sources.document.height ?? 0,
+      width: sources.scene.width ?? 0,
+      height: sources.scene.height ?? 0,
     },
   };
   const spec: OcrAttemptSpec = {
@@ -2868,18 +2903,6 @@ async function selectCaptureSource(
   candidates: CaptureSourceSelectionCandidate[]
 ) {
   const Tesseract = await import("tesseract.js");
-  const worker = await Tesseract.createWorker("eng", Tesseract.OEM.LSTM_ONLY, {
-    cachePath: "/tmp/tesseract-cache",
-    gzip: true,
-    logger: () => undefined,
-  });
-
-  try {
-    await worker.setParameters({
-      preserve_interword_spaces: "1",
-      user_defined_dpi: "300",
-    });
-
     const evaluations: CaptureSourceEvaluation[] = [];
     const failures: CaptureSourceFailure[] = [];
     const startedAt = Date.now();
@@ -2898,12 +2921,13 @@ async function selectCaptureSource(
       const id = normalizeCandidateLabel(candidate.id, `candidate-${index + 1}`);
       const label = normalizeCandidateLabel(candidate.label, id);
 
-      const evaluation = await evaluateCaptureSourceCandidate(
-        candidate,
-        index,
-        worker,
-        Tesseract.PSM
-      ).catch((error) => {
+      const evaluation = await (async () => {
+        const worker = await Tesseract.createWorker("eng", Tesseract.OEM.LSTM_ONLY, { cachePath: "/tmp/tesseract-cache", gzip: true, logger: () => undefined });
+        try {
+          await worker.setParameters({ preserve_interword_spaces: "1", user_defined_dpi: "300" });
+          return await evaluateCaptureSourceCandidate(candidate, index, worker, Tesseract.PSM);
+        } finally { await worker.terminate().catch(() => undefined); }
+      })().catch((error) => {
         failures.push({
           id,
           label,
@@ -2940,19 +2964,11 @@ async function selectCaptureSource(
       }
     }
 
-    const selected =
-      evaluations
-        .slice()
-        .sort(
-          (left, right) =>
-            right.completenessScore - left.completenessScore ||
-            right.invoiceTokens - left.invoiceTokens ||
-            right.words - left.words
-        )[0] ?? null;
+    const selected = rankSourceEvaluations(evaluations)[0] ?? null;
 
     return {
       selectedCandidateId: selected?.id ?? "",
-      selectedImageDataUrl: selected?.selectedImageDataUrl ?? "",
+
       selectedLabel: selected?.label ?? "",
       selectionReason: selected
         ? sourceSelectionReason(selected, evaluations)
@@ -2984,9 +3000,6 @@ async function selectCaptureSource(
       })),
       durationMs: Date.now() - startedAt,
     };
-  } finally {
-    await worker.terminate().catch(() => undefined);
-  }
 }
 
 async function parseExtractCheckStubRequest(request: Request) {
@@ -3142,11 +3155,11 @@ export async function POST(request: Request) {
 
     const parsedExtraction = parseCheckStubText(parsedText);
     const headerEvidence = ocrResult.diagnostics.headerEvidence;
-    const totalEvidence = headerEvidence?.evidence ?? extractRemittanceTotalEvidence(parsedText, ocrResult.structuredRowEvidence);
+    const totalEvidence = headerEvidence?.evidence ?? { amount: 0, source: "none" as const, payable: false, normalizationReason: "No reliable explicit document total was read." };
     const extraction = {
       ...parsedExtraction,
       totalAmount: totalEvidence.amount,
-      checkNumber: headerEvidence?.checkNumber || parsedExtraction.checkNumber,
+      checkNumber: headerEvidence?.checkNumber || "",
       stubText: [
         totalEvidence.amount > 0 ? `TOTAL: $${totalEvidence.amount.toFixed(2)}` : "",
         headerEvidence?.checkNumber ? `CK#: ${headerEvidence.checkNumber}` : "",

@@ -1,5 +1,7 @@
 "use client";
 
+import { rankSourceEvaluations } from "@/app/lib/ocrStructure";
+
 import {
   MouseEvent,
   PointerEvent,
@@ -395,6 +397,7 @@ type CheckStubOcrResponse = {
       score?: number;
       text?: string;
     }>;
+    rowAssignments?: Array<{ row: number; token: string; pass: string; centerY: number; rowY: number; distance: number; accepted: boolean; reason: string }>;
     structuredRowDiagnostics?: Array<{
       rowId?: string;
       y?: number;
@@ -2525,7 +2528,7 @@ export default function BatchInvoicePayments({
     const extractedPayor =
       data.payor?.trim() || extractLikelyPayor(stubText);
     const extractedCheckNumber =
-      data.checkNumber?.trim() || extractCheckNumber(stubText);
+      data.checkNumber?.trim() ?? extractCheckNumber(stubText);
     const responseTotalIsPayable =
       data.totalEvidence?.payable !== false;
     const parsedTotalFromResponse =
@@ -2627,18 +2630,7 @@ export default function BatchInvoicePayments({
     const matchedCustomers = Array.from(
       new Set(reviewMatches.map((invoice) => invoice.customerName))
     );
-    const selectedTotalFromMatch = match.matches.reduce(
-      (total, invoice) => total + invoice.amountDue,
-      0
-    );
-    const selectedTotalFromReviewMatches = reviewMatches.reduce(
-      (total, invoice) => total + (invoice.remittanceAmount ?? invoice.amountDue),
-      0
-    );
-    const paymentAmount =
-      extractedTotal > 0
-        ? extractedTotal
-        : selectedTotalFromReviewMatches || selectedTotalFromMatch;
+    const paymentAmount = extractedTotal;
     const paymentAmountText =
       paymentAmount > 0 ? formatMoney(paymentAmount) : "";
 
@@ -2719,7 +2711,7 @@ export default function BatchInvoicePayments({
     const extractedPayor =
       data.payor?.trim() || extractLikelyPayor(stubText);
     const extractedCheckNumber =
-      data.checkNumber?.trim() || extractCheckNumber(stubText);
+      data.checkNumber?.trim() ?? extractCheckNumber(stubText);
     const extractedDate = data.checkDate?.trim()
       ? parseCheckDate(data.checkDate)
       : extractCheckDate(stubText);
@@ -2933,6 +2925,9 @@ export default function BatchInvoicePayments({
       );
     }
 
+    if (diagnostics.rowAssignments?.length) {
+      lines.push("Physical row assignments: " + JSON.stringify(diagnostics.rowAssignments));
+    }
     if (diagnostics.structuredRowDiagnostics?.length) {
       diagnostics.structuredRowDiagnostics.slice(0, 8).forEach((row, index) => {
         const invoiceEvidence =
@@ -4352,51 +4347,41 @@ export default function BatchInvoicePayments({
     reason: string;
     diagnosticLines: string[];
   }> {
-    const payloadCandidates = candidates.map((candidate) => ({
-        id: candidate.id,
-        label: candidate.label,
-        imageMimeType: candidate.file.type || "unknown",
-        imageByteSize: candidate.file.size,
-        detectorConfidence: candidate.detectorConfidence ?? "unknown",
-        detectorAreaRatio: candidate.detectorAreaRatio ?? 0,
-        detectorSource: candidate.detectorSource ?? "unknown",
-      }));
-    const formData = new FormData();
-
-    formData.append("mode", "capture-source-selection");
-    formData.append("captureCandidates", JSON.stringify(payloadCandidates));
-    candidates.forEach((candidate, index) => {
-      formData.append(`candidate-${index}`, candidate.file, candidate.file.name);
-    });
-
-    const response = await fetch("/api/payments/extract-check-stub", {
-      method: "POST",
-      body: formData,
-    });
-    const result =
-      (await response.json().catch(() => ({}))) as CaptureSourceSelectionResponse;
+    const started = Date.now();
+    const results = await Promise.all(candidates.map(async (candidate) => {
+      let stage = "prepare-request";
+      try {
+        const formData = new FormData();
+        formData.append("mode", "capture-source-selection");
+        formData.append("captureCandidates", JSON.stringify([{ ...candidate, file: undefined,
+          imageMimeType: candidate.file.type, imageByteSize: candidate.file.size }]));
+        formData.append("candidate-0", candidate.file, candidate.file.name);
+        stage = "http-request";
+        const response = await fetch("/api/payments/extract-check-stub", { method: "POST", body: formData });
+        stage = "http-response-" + response.status;
+        const body = await response.text();
+        if (!response.ok) throw new Error(body.slice(0, 500) || response.statusText);
+        stage = "parse-response";
+        return JSON.parse(body) as CaptureSourceSelectionResponse;
+      } catch (error) {
+        return { failures: [{ id: candidate.id, label: candidate.label, stage,
+          error: error instanceof Error ? error.message : String(error) }] } as CaptureSourceSelectionResponse;
+      }
+    }));
+    const evaluations = results.flatMap(result => result.evaluations ?? []);
+    const selected = rankSourceEvaluations(evaluations)[0];
+    const result: CaptureSourceSelectionResponse = {
+      evaluations, failures: results.flatMap(result => result.failures ?? []),
+      selectedCandidateId: selected?.id, preflightStarted: true,
+      fallbackOccurred: !selected, durationMs: Date.now() - started,
+      selectionReason: selected ? "Best successful candidate by header and row coverage, then OCR usefulness."
+        : "Every candidate evaluation failed; canvas retained for review OCR.",
+    };
     const failureLines =
       result.failures?.map(
         (failure) =>
           `${failure.label ?? failure.id ?? "candidate"} failed at ${failure.stage ?? "unknown"}: ${failure.error ?? "unknown error"}${failure.inputType ? ` inputType=${failure.inputType}` : ""}${failure.actualInput ? ` actual=${failure.actualInput}` : ""}${failure.expectedInput ? ` expected=${failure.expectedInput}` : ""}.`
       ) ?? [];
-
-    if (!response.ok) {
-      const reason =
-        result.error || "capture source selection preflight failed";
-
-      return {
-        selectedCandidate: candidates[0] ?? null,
-        reason,
-        diagnosticLines: [
-          "Capture source preflight: started.",
-          `Capture source selection failed: ${reason}.`,
-          ...failureLines,
-          "Production OCR source selected: canvas.",
-          `Selection reason: ${reason}; canvas fallback used.`,
-        ],
-      };
-    }
 
     const selectedCandidate =
       candidates.find((candidate) => candidate.id === result.selectedCandidateId) ??
@@ -5084,7 +5069,11 @@ export default function BatchInvoicePayments({
 
       setCropPreviewAspectRatio(width / height);
     });
-    void detectDefaultCropBox(file).then((suggestion) => {
+    void detectDefaultCropBox(file).then((detectedSuggestion) => {
+      // The production camera candidate was already compared as this exact frame.
+      const suggestion = source === "camera" && documentType === "remittance_stub"
+        ? { ...detectedSuggestion, cropBox: { left: 0, top: 0, right: 100, bottom: 100 }, effectiveWidth: detectedSuggestion.sourceWidth, effectiveHeight: detectedSuggestion.sourceHeight }
+        : detectedSuggestion;
       setCropBox(suggestion.cropBox);
       setIsTightlyFramedRemittance(suggestion.isTightlyFramed);
       setLastQualityGate({

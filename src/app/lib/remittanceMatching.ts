@@ -1488,9 +1488,13 @@ function resolveRemittanceRowInvoice(
       invoiceNumberCompatibleWithRawToken(invoiceNumber, token)
     )
   );
+  const literalRowNumbers = evidence
+    ? Array.from(evidence.text.matchAll(/\bINV[- ]?(\d{3,8})\b/gi), match => normalizeInvoiceNumber(match[0]))
+    : [];
+  const literalCandidates = exactCandidates.filter(record => literalRowNumbers.includes(record.invoiceNumber));
   const eligibleCandidates = uniqueEligibleInvoiceRecords([
-    ...exactCandidates,
-    ...fuzzyCandidates,
+    ...(literalCandidates.length === 1 ? literalCandidates : exactCandidates),
+    ...(evidence && exactCandidates.length ? [] : fuzzyCandidates),
   ]);
   const selectedEvidenceAmount = evidence ? selectedStructuredRowAmount(evidence) : null;
   const rowAmount = selectedEvidenceAmount?.value ?? line.amount;
@@ -1802,9 +1806,12 @@ export function findRemittanceMatches(
         ) === index
     )
     .map((resolution) => resolution.invoice);
-  const duplicatedInvoiceNumbers = allReferencedInvoiceNumbers.filter(
+  const duplicateCheckNumbers = structuredRows.length > 0
+    ? rowResolutions.flatMap((row, index) => row.invoice ? [row.invoiceNumber] : lineItems[index].invoiceNumbers)
+    : allReferencedInvoiceNumbers;
+  const duplicatedInvoiceNumbers = duplicateCheckNumbers.filter(
     (invoiceNumber, index) =>
-      allReferencedInvoiceNumbers.indexOf(invoiceNumber) !== index
+      duplicateCheckNumbers.indexOf(invoiceNumber) !== index
   );
   const traceKeys = new Set<string>();
   const matchTrace: RemittanceInvoiceMatchTrace[] = [
