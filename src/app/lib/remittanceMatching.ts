@@ -1505,14 +1505,6 @@ function resolveRemittanceRowInvoice(
       ? { ...line, amount: selectedEvidenceAmount.value }
       : line;
 
-  // A missing token can be recovered only by a unique same-row unit AND amount.
-  if (evidence && eligibleCandidates.length === 0 && rawInvoiceCandidates.length === 0 && normalizedCandidates.length === 0 && rowAmount > 0) {
-    const corroborated = uniqueEligibleInvoiceRecords(eligibleInvoiceNumberRecords.filter(({ invoice }) =>
-      invoiceUnitEvidence(invoice, unitEvidenceTokens) && Math.round(invoice.amountDue * 100) === Math.round(rowAmount * 100)
-    ));
-    if (corroborated.length === 1) eligibleCandidates.push(corroborated[0]);
-  }
-
   if (eligibleCandidates.length === 0 && rawInvoiceCandidates.length === 0 && normalizedCandidates.length === 0) {
     return {
       line: resolutionLine,

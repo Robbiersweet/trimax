@@ -1,3 +1,4 @@
+import { createRemittanceEvidence, selectObservedHeader } from "@/app/lib/remittanceAttempt";
 import { rowAssignment, normalizeInvoiceColumnToken, rankSourceEvaluations, rankRowAmounts } from "@/app/lib/ocrStructure";
 import { NextResponse } from "next/server";
 import sharp from "sharp";
@@ -110,6 +111,8 @@ type CaptureSourceEvaluation = {
   detectorAreaRatio: number;
   words: number;
   highConfidenceWords: number;
+  confidence: number;
+  headerEvidenceCount: number;
   textWidthCoverage: number;
   textHeightCoverage: number;
   invoiceTokens: number;
@@ -2384,6 +2387,7 @@ async function recognizeBestText(
     );
 
     const invoiceColumnWords: OcrWord[] = [];
+    const invoiceColumnPasses: OcrAttempt[] = [];
     async function buildInvoiceColumnDiagnostics(): Promise<InvoiceColumnDiagnostics | null> {
       if (
         documentType !== "remittance_stub" ||
@@ -2500,6 +2504,7 @@ async function recognizeBestText(
           const confidence =
             typeof result.data.confidence === "number" ? result.data.confidence : 0;
           const rawText = result.data.text ?? "";
+          invoiceColumnPasses.push({ region: "invoice-column-diagnostic", variant: spec.variant, pageMode: spec.pageMode.name, rotation: 0, text: rawText, confidence, score: 0, durationMs: Date.now() - attemptStartedAt, words });
           const tokenSummary = candidateTokenSummary({
             region: "invoice-column-diagnostic",
             variant: spec.variant,
@@ -2596,10 +2601,11 @@ async function recognizeBestText(
           ? "structured row carries same-band invoice evidence to resolver"
           : "no same-band invoice evidence found",
     }));
-    const rowAssignments = geometricRows.flatMap((row, index) => [...attempts.flatMap(attempt => attempt.words), ...invoiceColumnWords].filter(word => /[0-9]/.test(word.text)).map(word => ({ row: index + 1, token: word.text, pass: passLabelForWord(word), ...rowAssignment(word.bbox, row, geometricRows) })));
+    const rowAssignments = geometricRows.flatMap((row, index) => [...attempts.flatMap(attempt => attempt.words), ...invoiceColumnWords].filter(word => /[0-9]/.test(word.text)).map(word => ({ row: index + 1, token: word.text, pass: passLabelForWord(word), bbox: word.bbox, ...rowAssignment(word.bbox, row, geometricRows) })));
     return {
       text: finalText,
       structuredRowEvidence,
+      rawPasses: [...attempts, ...invoiceColumnPasses].filter(attempt => !/merged|reconstruction/.test(attempt.region)).map(attempt => ({ ...attempt, text: withoutMicrBandText(attempt.text) })),
       diagnostics: {
         documentType,
         retryStrategy,
@@ -2821,6 +2827,7 @@ async function evaluateCaptureSourceCandidate(
     source.width ?? 0,
     source.height ?? 0
   );
+  if (metrics.wordCount === 0) throw captureSourceError("No readable OCR words in candidate.", "ocr-usefulness");
   const bounds = metrics.textRegionBounds;
   const textWidthCoverage =
     bounds && source.width
@@ -2876,6 +2883,8 @@ async function evaluateCaptureSourceCandidate(
     detectorAreaRatio,
     words: metrics.wordCount,
     highConfidenceWords: metrics.highConfidenceWordCount,
+    confidence: attempt.confidence,
+    headerEvidenceCount: selectRemittanceHeaderEvidence([attempt]).totalCandidates.length + selectRemittanceHeaderEvidence([attempt]).checkCandidates.length,
     textWidthCoverage: Math.round(textWidthCoverage * 1000) / 1000,
     textHeightCoverage: Math.round(textHeightCoverage * 1000) / 1000,
     invoiceTokens,
@@ -2987,6 +2996,8 @@ async function selectCaptureSource(
         detectorAreaRatio: evaluation.detectorAreaRatio,
         words: evaluation.words,
         highConfidenceWords: evaluation.highConfidenceWords,
+        confidence: evaluation.confidence,
+        headerEvidenceCount: evaluation.headerEvidenceCount,
         textWidthCoverage: evaluation.textWidthCoverage,
         textHeightCoverage: evaluation.textHeightCoverage,
         invoiceTokens: evaluation.invoiceTokens,
@@ -3033,6 +3044,7 @@ async function parseExtractCheckStubRequest(request: Request) {
     );
 
     return {
+      attemptId: formData.get("attemptId"),
       mode: formData.get("mode"),
       imageDataUrl: null,
       documentType: formData.get("documentType"),
@@ -3042,6 +3054,7 @@ async function parseExtractCheckStubRequest(request: Request) {
   }
 
   return (await request.json().catch(() => null)) as {
+    attemptId?: unknown;
     imageDataUrl?: unknown;
     documentType?: unknown;
     retryStrategy?: unknown;
@@ -3154,15 +3167,17 @@ export async function POST(request: Request) {
     }
 
     const parsedExtraction = parseCheckStubText(parsedText);
-    const headerEvidence = ocrResult.diagnostics.headerEvidence;
-    const totalEvidence = headerEvidence?.evidence ?? { amount: 0, source: "none" as const, payable: false, normalizationReason: "No reliable explicit document total was read." };
+    const observedHeader = selectObservedHeader(ocrResult.rawPasses, ocrResult.structuredRowEvidence);
+    const totalEvidence = observedHeader.documentTotal ?? { amount: 0, source: "none" as const, payable: false, normalizationReason: "No reliable explicit document total was read." };
     const extraction = {
       ...parsedExtraction,
       totalAmount: totalEvidence.amount,
-      checkNumber: headerEvidence?.checkNumber || "",
+      checkNumber: observedHeader.checkNumber ?? "",
+      checkDate: observedHeader.checkDate ?? "",
+      payor: observedHeader.payor ?? "",
       stubText: [
         totalEvidence.amount > 0 ? `TOTAL: $${totalEvidence.amount.toFixed(2)}` : "",
-        headerEvidence?.checkNumber ? `CK#: ${headerEvidence.checkNumber}` : "",
+        observedHeader.checkNumber ? `CK#: ${observedHeader.checkNumber}` : "",
         parsedText,
       ].filter(Boolean).join("\n"),
     };
@@ -3196,6 +3211,14 @@ export async function POST(request: Request) {
     const confirmedInvoiceRowCount = extraction.lines.filter(
       (line) => line.invoiceNumbers.length > 0 && line.amount > 0
     ).length;
+    const evidence = createRemittanceEvidence({
+      attemptId: typeof body?.attemptId === "string" ? body.attemptId.slice(0, 128) : crypto.randomUUID(),
+      capture: { source: "prepared-image", image: { width: ocrResult.diagnostics.documentWidth ?? 0, height: ocrResult.diagnostics.documentHeight ?? 0,
+        bytes: typeof imageDataUrl === "string" ? Buffer.from(imageDataUrl.split(",")[1] ?? "", "base64").length : 0, mime: typeof imageDataUrl === "string" ? imageDataUrl.match(/^data:([^;]+)/)?.[1] ?? "unknown" : "unknown" }, quality: {}, sources: [], selectionReason: "Prepared client-selected frame" },
+      rawPasses: ocrResult.rawPasses, headerEvidence: observedHeader,
+      physicalRows: ocrResult.structuredRowEvidence.map((row, index) => ({ ...row, rowId: "row-" + (index + 1) })),
+      assignments: ocrResult.diagnostics.rowAssignments, diagnostics: [],
+    });
     const diagnosticSummary = [
       extraction.checkNumber ? "Check number found." : "Check number not found.",
       extraction.checkDate ? "Payment date found." : "Payment date not found.",
@@ -3214,6 +3237,7 @@ export async function POST(request: Request) {
       documentType,
       retryStrategy,
       ...extraction,
+      evidence,
       totalEvidence,
       rawText: parsedText,
       structuredRowEvidence: ocrResult.structuredRowEvidence,

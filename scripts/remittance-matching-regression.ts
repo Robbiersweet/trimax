@@ -1,3 +1,4 @@
+import "./remittance-contract-regression.ts";
 import "./duplicate-remittance-regression.ts";
 import "./remittance-retry-regression.ts";
 import { readFileSync } from "node:fs";
@@ -1314,7 +1315,7 @@ assert(
     paymentScreen.includes("selectedReviewSetsMatch") &&
     paymentScreen.includes("hasDuplicateReviewInvoiceIds") &&
     paymentScreen.includes("reviewMatchedTotal") &&
-    paymentScreen.includes("responseTotalIsPayable"),
+    paymentScreen.includes("attemptAllowsApply"),
   "Payments screen must use deterministic resolver output as the sole auto-selection authority and require exact selected/review ID equality before Apply."
 );
 assert(
@@ -1346,7 +1347,7 @@ assert(
   "Payments screen diagnostics must expose total normalization and per-row cross-pass evidence."
 );
 assert(
-  paymentScreen.includes("parsedTotalFromResponse") &&
+  paymentScreen.includes("attempt.reconciliationResult.documentTotal") &&
     paymentScreen.includes("extractedPaymentAmount") &&
     paymentScreen.includes("setCheckAmount(paymentAmountText)") &&
     paymentScreen.includes("setCapturedCheckAmount(paymentAmountText)"),
@@ -1369,7 +1370,7 @@ assert(
 assert(
   paymentScreen.includes('type OcrRetryStrategy = "standard" | "alternate"') &&
     paymentScreen.includes("retryStrategy: OcrRetryStrategy = \"standard\"") &&
-    paymentScreen.includes("JSON.stringify({ imageDataUrl, documentType, retryStrategy })") &&
+    paymentScreen.includes("JSON.stringify({ imageDataUrl, documentType, retryStrategy, attemptId })") &&
     paymentScreen.includes("Retry strategy:") &&
     paymentScreen.includes('"alternate"'),
   "Retry Reading must reuse the saved crop while requesting a distinct local OCR preprocessing strategy."
@@ -1694,9 +1695,9 @@ assert(
   "Manual crop must use draggable handles instead of edge sliders."
 );
 assert(
-  paymentScreen.includes("function reconcileReviewMatches") &&
-    paymentScreen.includes("invoiceTotalMatchesCheck") &&
-    paymentScreen.includes("Remittance total does not match selected invoices.") &&
+  paymentScreen.includes("resolveRemittanceAttempt") &&
+    paymentScreen.includes("attempt.reconciliationResult.eligible") &&
+    paymentScreen.includes("attempt.reconciliationResult.blockers") &&
     paymentScreen.includes("Select Missing Invoice Manually"),
   "Payments screen must reconcile OCR line amounts against real invoice balances and reject partial matches."
 );

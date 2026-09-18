@@ -40,7 +40,7 @@ assert(joined.some(a=>a.value===1099));
 const header = matching.selectRemittanceHeaderEvidence([{text:'INV0513 U05 29\nINV0514 H10 1099\nINV0515 Q08 1099',region:'document',variant:'one',confidence:90}]);
 assert.equal(header.evidence,null);
 assert.equal(header.checkNumber,'');
-assert(routeText.includes('headerEvidence?.evidence ?? { amount: 0, source: "none"'));
+assert(routeText.includes('observedHeader.documentTotal ?? { amount: 0, source: "none"'));
 const invoices=numbers.map((n,i)=>({id:n,displayId:'INV-'+n,customerName:'North Creek Apartments',projectTitle:units[i]+' Paint',invoiceAmount:1099,amountPaid:0,status:'sent'}));
 const match = matching.findRemittanceMatches(invoices,'TOTAL $5,495.00','North Creek Apartments',evidence);
 assert.equal(match.confidence,'verified');assert.equal(match.matches.length,5);assert.equal(match.matchedTotal,5495);
@@ -56,9 +56,10 @@ async function sourceRegression(){
   const start=component.indexOf('  async function selectProductionCaptureSource(');
   const end=component.indexOf('  async function buildImageCaptureStillComparison(',start);
   let calls=0;
+  let allFail=false;
   const select=compile(component.slice(start,end)+'\nexports.select=selectProductionCaptureSource;', {...structure,fetch:async()=>{
     const index=calls++;
-    if(index===1) throw new Error('synthetic still crop failure');
+    if(allFail || index===1) throw new Error('synthetic still crop failure');
     return {ok:true,status:200,text:async()=>JSON.stringify({evaluations:[{id:index===0?'canvas':'still-full',completenessScore:index===0?20:80,invoiceTokens:index===0?2:5,rowCount:index===0?2:5,explicitTotal:index===0?0:5495}]})};
   }}).select;
   const candidates=['canvas','still-crop','still-full'].map(id=>({id,label:id,file:new File(['image'],'test.jpg',{type:'image/jpeg'})}));
@@ -66,6 +67,11 @@ async function sourceRegression(){
   assert.equal(calls,3);assert.equal(result.selectedCandidate.id,'still-full');
   assert(result.diagnosticLines.some(l=>l.includes('synthetic still crop failure')));
   assert(result.diagnosticLines.some(l=>l.includes('Canvas evaluation')));
+  allFail=true;
+  const failed=await select(candidates);
+  assert.equal(failed.sources.filter(source=>source.status==='failure').length,3);
+  assert(failed.reason.includes('Every candidate evaluation failed'));
+  assert.equal(failed.selectedCandidate.id,'canvas');
   console.log('Structural OCR regressions passed: isolated source failure, five exclusive rows, normalization/deduplication, unknown header, money fragments and exact reconciliation.');
 }
 module.exports=sourceRegression();

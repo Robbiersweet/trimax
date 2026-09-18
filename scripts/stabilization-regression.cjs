@@ -989,10 +989,33 @@ async function queueBlockerRegression() {
   console.log("Queue blocker UI: recipient, tax, identity, split, priority, PDF failure, ready and consistent badges passed.");
 }
 
+async function contractHandoffRegression() {
+  const contract = require('../src/app/lib/remittanceAttempt.ts');
+  const source = fs.readFileSync('src/app/components/BatchInvoicePayments.tsx','utf8');
+  const start = source.indexOf('  function loadExtractedRemittance(');
+  const end = source.indexOf('  function loadCheckDetailsFromExtraction(',start);
+  const fn = source.slice(start,end);
+  const invoice = { id:'one', displayId:'INV-1234', customerName:'Fixture Property', projectTitle:'U05 Paint', invoiceAmount:220,amountPaid:0,amountDue:220,status:'sent' };
+  const row = { rowId:'row-1',text:'INV1234 U05 Paint 220.00',source:{region:'document',variant:'original',pageMode:'sparse'},rawInvoiceLikeTokens:['INV1234'],normalizedInvoiceCandidates:['INV-1234'],unitLikeTokens:['U05'],dateTokens:[],amountCandidates:[{raw:'220.00',value:220,selected:true}] };
+  const rawPasses = [{text:'PAYOR: Fixture Property\nCHECK 1234 TOTAL $220.00',region:'document',variant:'original',pageMode:'sparse',words:[]}];
+  const evidence = contract.createRemittanceEvidence({attemptId:'handoff',capture:{source:'existing',image:{width:1000,height:800,bytes:1,mime:'image/jpeg'},quality:{},sources:[],selectionReason:'existing photo'},rawPasses,headerEvidence:contract.selectObservedHeader(rawPasses,[row]),physicalRows:[row],assignments:[],diagnostics:[]});
+  const state = {};
+  const bindings = {...contract, payableInvoices:[invoice], checkImageName:'fixture.jpg', formatMoney:value=>value.toFixed(2), matchInvoicesFromExtraction:()=>[], uniqueReviewMatchesById:matches=>({matches,duplicateIds:[]})};
+  for(const name of new Set(fn.match(/set[A-Z][A-Za-z]+/g)))bindings[name]=value=>{state[name.slice(3)]=typeof value==='function'?value(state[name.slice(3)]):value;};
+  const compiled=ts.transpileModule(fn+'\nreturn loadExtractedRemittance;', {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+  const load=new Function(...Object.keys(bindings),compiled)(...Object.values(bindings));
+  const result=load({evidence,stubText:'Legacy conflicting INV9999 TOTAL 29',totalAmount:29,checkNumber:'wrong'},'', 'handoff',null,{invoices:[invoice],activities:[],role:'owner',receivedDate:'2026-09-17'});
+  assert.equal(state.CheckAmount,'220.00');assert.equal(state.PaymentReference,'1234');assert.deepEqual(state.SelectedIds,['one']);assert.equal(state.OcrReconciliationVerified,true);
+  assert.equal(result.attempt.evidence.rawPasses[0].text,rawPasses[0].text);
+  const rejected=load({stubText:'INV1234 TOTAL $220.00',totalAmount:220},'', 'missing-contract',null,{invoices:[invoice],activities:[],role:'owner',receivedDate:'2026-09-17'});
+  assert.equal(state.OcrReconciliationVerified,false);assert.deepEqual(state.SelectedIds,[]);assert.equal(rejected.attempt.reconciliationResult.eligible,false);
+  console.log('Actual Payment Review handoff uses immutable contract, rejects missing contract, and ignores conflicting legacy totals/identifiers.');
+}
+
 async function retryStateRegression() {
   const source = fs.readFileSync("src/app/components/BatchInvoicePayments.tsx", "utf8");
   const gate = source.slice(source.indexOf("  const paymentCanApply =") + "  const paymentCanApply =".length, source.indexOf(";", source.indexOf("  const paymentCanApply =")));
-  const validGate = { isSaving: false, paymentEntryMode: "photo", checkOcrStatus: "ready", ocrReconciliationVerified: true, selectedInvoices: [{ id: "one" }], enteredCheckAmount: 5495, checkAmountMatches: true, isRemittanceReview: true, isPreparingCrop: false, extractedPaymentAmount: 5495, selectedTotal: 5495, reviewMatchedTotal: 5495, hasDuplicateSelectedInvoiceIds: false, hasDuplicateReviewInvoiceIds: false, selectedReviewSetsMatch: true };
+  const validGate = { attemptAllowsApply: () => true, activeRemittanceAttempt: {}, selectedIds: ["one"], reviewMatchedInvoices: [{id:"one"}], duplicateRemittanceCheck: {status:"none"}, isSaving: false, paymentEntryMode: "photo", checkOcrStatus: "ready", ocrReconciliationVerified: true, selectedInvoices: [{ id: "one" }], enteredCheckAmount: 5495, checkAmountMatches: true, isRemittanceReview: true, isPreparingCrop: false, extractedPaymentAmount: 5495, selectedTotal: 5495, reviewMatchedTotal: 5495, hasDuplicateSelectedInvoiceIds: false, hasDuplicateReviewInvoiceIds: false, selectedReviewSetsMatch: true };
   const allowed = (overrides = {}) => { const values = { ...validGate, ...overrides }; return new Function(...Object.keys(values), "return (" + gate + ");")(...Object.values(values)); };
   assert.equal(allowed(), true);
   for (const overrides of [{ ocrReconciliationVerified: false }, { checkOcrStatus: "manual", isRemittanceReview: false }, { hasDuplicateSelectedInvoiceIds: true }, { selectedTotal: 4396 }, { isPreparingCrop: true }]) assert.equal(allowed(overrides), false);
@@ -1002,11 +1025,11 @@ async function retryStateRegression() {
   const state = { PaymentReference: "old-check", ExtractedPaymentAmount: 2.49, SelectedIds: ["old-invoice"] };
   const pending = [];
   const calls = [];
-  const bindings = { performance, ocrAttemptVersion: { current: 0 },
+  const bindings = { ...require("../src/app/lib/remittanceAttempt.ts"), performance, crypto, preparedCaptureRef: {current:null}, immutableSnapshot: value => structuredClone(value), invoiceRecords: [], paymentActivities: [], workspaceRole: "owner", receivedDate: "2026-09-17", ocrAttemptVersion: { current: 0 },
     appendCameraStage: () => {}, ocrDiagnosticLines: () => [], remittanceReviewDiagnosticLines: () => [],
     ocrFailureMessage: () => "Incomplete", loadCheckDetailsFromExtraction: () => {},
     fetch: async (_url, options) => { calls.push(JSON.parse(options.body)); return new Promise(resolve => pending.push(resolve)); },
-    loadExtractedRemittance: (data) => { state.PaymentReference = data.checkNumber; state.ExtractedPaymentAmount = data.totalAmount; return { match: { issues: [] }, reviewMatches: [{ amountDue: data.totalAmount }], reconciledReview: { isComplete: true }, historicalDuplicateCheck: { status: "none" } }; },
+    loadExtractedRemittance: (data) => { state.PaymentReference = data.checkNumber; state.ExtractedPaymentAmount = data.totalAmount; return { match: { issues: [] }, reviewMatches: [{ amountDue: data.totalAmount }], reconciledReview: { isComplete: true }, historicalDuplicateCheck: { status: "none" }, attempt: {diagnostics:{}, reconciliationResult:{eligible:true}} }; },
   };
   for (const name of new Set(functionSource.match(/set[A-Z][A-Za-z]+/g))) bindings[name] = value => { state[name.slice(3)] = value; };
   const compiled = ts.transpileModule(functionSource + "\nreturn extractCheckStubFromPhoto;", { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
@@ -1024,8 +1047,9 @@ async function retryStateRegression() {
   assert.equal(state.PaymentReference, "2797");
   assert.equal(state.ExtractedPaymentAmount, 5495);
   assert.equal(state.CheckOcrStatus, "ready");
-  assert.deepEqual(calls.map(call => Object.keys(call).sort()), [ ["documentType", "imageDataUrl", "retryStrategy"], ["documentType", "imageDataUrl", "retryStrategy"] ]);
+  assert.deepEqual(calls.map(call => Object.keys(call).sort()), [ ["attemptId", "documentType", "imageDataUrl", "retryStrategy"], ["attemptId", "documentType", "imageDataUrl", "retryStrategy"] ]);
   assert.equal(calls[1].retryStrategy, "alternate");
+  assert.notEqual(calls[0].attemptId, calls[1].attemptId);
   const old = read("old-image", "remittance_stub", "primary", "standard", [], "old");
   const latest = read("new-image", "remittance_stub", "primary", "alternate", [], "new");
   const staleResponse = pending.shift();
@@ -1082,6 +1106,7 @@ async function duplicatePreflightAndViewRegression() {
 async function main() {
   await require("./ocr-structure-regression.cjs");
   await duplicatePreflightAndViewRegression();
+  await contractHandoffRegression();
   await retryStateRegression();
   await queueBlockerRegression();
   await conversionSplitPreferenceRegression(false);

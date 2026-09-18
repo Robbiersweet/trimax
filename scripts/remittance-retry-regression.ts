@@ -35,7 +35,7 @@ assert.equal(findRemittanceMatches(invoices, "TOTAL $5496.00", "North Creek Apar
 assert.equal(findRemittanceMatches(invoices, text, "North Creek Apartments", [...rows, rows[0]]).confidence, "review");
 const missingToken = structuredClone(rows);
 missingToken[0].invoiceEvidenceByPass = [];
-assert.equal(findRemittanceMatches(invoices, text, "North Creek Apartments", missingToken).matches.length, 5);
+assert.equal(findRemittanceMatches(invoices, text, "North Creek Apartments", missingToken).matches.length, 0);
 assert.equal(findRemittanceMatches([...invoices, { ...invoices[0], id: "other", displayId: "INV-0900" }], text, "North Creek Apartments", missingToken).confidence, "review");
 const unresolved = [...rows, { ...rows[0], rowId: "extra", text: "Unknown work", unitLikeTokens: [], invoiceEvidenceByPass: [], amountCandidates: [] }];
 assert.equal(findRemittanceMatches(invoices, text, "North Creek Apartments", unresolved).confidence, "review");

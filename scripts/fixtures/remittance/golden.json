@@ -1,0 +1,198 @@
+[
+  {
+    "id": "A",
+    "provenance": "scripts/remittance-matching-regression.ts fiveInvoiceOneIneligibleStub; positive DB snapshot with all invoices collectible",
+    "capture": "reconstructed historical text; no original image supplied",
+    "expected": {
+      "checkNumber": "2788",
+      "checkDate": "2026-08-01",
+      "payor": "North Creek Apartments",
+      "total": 5495,
+      "rowCount": 5,
+      "invoiceNumbers": [
+        "INV-0508",
+        "INV-0509",
+        "INV-0510",
+        "INV-0511",
+        "INV-0512"
+      ],
+      "invoiceIds": [
+        "fixture-A-0508",
+        "fixture-A-0509",
+        "fixture-A-0510",
+        "fixture-A-0511",
+        "fixture-A-0512"
+      ],
+      "units": [
+        "P06",
+        "F02",
+        "M07",
+        "U09",
+        "G01"
+      ],
+      "amounts": [
+        1099,
+        1099,
+        1099,
+        1099,
+        1099
+      ],
+      "duplicate": "none",
+      "applyEligible": true
+    },
+    "split": false,
+    "physicalTruthComplete": true
+  },
+  {
+    "id": "B",
+    "provenance": "scripts/remittance-retry-regression.ts and supplied physical-test truth",
+    "capture": "reconstructed historical text; no original image supplied",
+    "expected": {
+      "checkNumber": "2797",
+      "checkDate": "2026-08-19",
+      "payor": "North Creek Apartments",
+      "total": 5495,
+      "rowCount": 5,
+      "invoiceNumbers": [
+        "INV-0513",
+        "INV-0514",
+        "INV-0515",
+        "INV-0518",
+        "INV-0519"
+      ],
+      "invoiceIds": [
+        "fixture-B-0513",
+        "fixture-B-0514",
+        "fixture-B-0515",
+        "fixture-B-0518",
+        "fixture-B-0519"
+      ],
+      "units": [
+        "U05",
+        "H10",
+        "Q08",
+        "U03",
+        "A10"
+      ],
+      "amounts": [
+        1099,
+        1099,
+        1099,
+        1099,
+        1099
+      ],
+      "duplicate": "none",
+      "applyEligible": true
+    },
+    "split": false,
+    "physicalTruthComplete": true
+  },
+  {
+    "id": "C",
+    "provenance": "scripts/remittance-matching-regression.ts splitCheck2758",
+    "capture": "reconstructed historical text; no original image supplied",
+    "expected": {
+      "checkNumber": "2758",
+      "checkDate": "2026-07-23",
+      "payor": "North Creek Apartments",
+      "total": 2252.95,
+      "rowCount": 2,
+      "invoiceNumbers": [
+        "INV-0506",
+        "INV-0507"
+      ],
+      "invoiceIds": [
+        "fixture-C-0506",
+        "fixture-C-0507"
+      ],
+      "units": [
+        null,
+        null
+      ],
+      "amounts": [
+        1300,
+        952.95
+      ],
+      "duplicate": "none",
+      "applyEligible": true
+    },
+    "split": true,
+    "physicalTruthComplete": true
+  },
+  {
+    "id": "D-repository-reconstruction",
+    "provenance": "Existing totalConsensusRows and duplicate fixture. Amounts/units are synthetic repository reconstruction, NOT verified mixed-amount physical truth. Real mixed-row evidence requested.",
+    "capture": "reconstructed historical text; no original image supplied",
+    "expected": {
+      "checkNumber": "2804",
+      "checkDate": "2026-08-15",
+      "payor": "North Creek Apartments",
+      "total": 4505.9,
+      "rowCount": 5,
+      "invoiceNumbers": [
+        "INV-0520",
+        "INV-0521",
+        "INV-0522",
+        "INV-0524",
+        "INV-0525"
+      ],
+      "invoiceIds": [
+        "fixture-D-repository-reconstruction-0520",
+        "fixture-D-repository-reconstruction-0521",
+        "fixture-D-repository-reconstruction-0522",
+        "fixture-D-repository-reconstruction-0524",
+        "fixture-D-repository-reconstruction-0525"
+      ],
+      "units": [
+        "U20",
+        "U21",
+        "U22",
+        "U24",
+        "U25"
+      ],
+      "amounts": [
+        901.18,
+        901.18,
+        901.18,
+        901.18,
+        901.18
+      ],
+      "duplicate": "none",
+      "applyEligible": true
+    },
+    "split": true,
+    "physicalTruthComplete": false
+  },
+  {
+    "id": "E",
+    "provenance": "scripts/remittance-matching-regression.ts productionStub2734",
+    "capture": "reconstructed historical text; no original image supplied",
+    "expected": {
+      "checkNumber": "2734",
+      "checkDate": "2026-07-10",
+      "payor": "North Creek Apartments",
+      "total": 2198,
+      "rowCount": 2,
+      "invoiceNumbers": [
+        "INV-0502",
+        "INV-0503"
+      ],
+      "invoiceIds": [
+        "fixture-E-0502",
+        "fixture-E-0503"
+      ],
+      "units": [
+        "V01",
+        "K08"
+      ],
+      "amounts": [
+        1099,
+        1099
+      ],
+      "duplicate": "none",
+      "applyEligible": true
+    },
+    "split": false,
+    "physicalTruthComplete": true
+  }
+]

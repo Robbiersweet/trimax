@@ -385,7 +385,7 @@ assert(
     paymentScreen.includes("duplicateEvidenceKey") &&
     paymentScreen.includes("duplicateOverrideConfirmed") &&
     paymentScreen.includes("remittanceDocumentFingerprint") &&
-    paymentScreen.includes("duplicateEvidenceInvoiceIds") &&
+    paymentScreen.includes("resolveRemittanceAttempt") &&
     paymentScreen.includes("match.matchTrace") &&
     paymentScreen.includes("workspaceRole"),
   "Payments UI must run duplicate detection before OCR and after OCR identity extraction, block active duplicates, and require explicit owner/admin review for possible duplicates."

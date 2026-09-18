@@ -8,5 +8,6 @@
       "path": "/api/queue/send-tbd-reminders",
       "schedule": "30 15 * * *"
     }
-  ]
+  ],
+  "buildCommand": "npm test && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/remittance-release-gate.ts && npm run build"
 }
