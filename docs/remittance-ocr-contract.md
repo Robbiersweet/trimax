@@ -33,11 +33,11 @@ Intentionally separate:
 
 ## Golden matrix and provenance
 
-`scripts/fixtures/remittance/golden.json` holds expected identifiers, fixture DB IDs, dates/checks, units, amounts, totals, duplicate state and Apply eligibility for A/B/C/D-repository/E. These are reconstructions from historically tested text, not original camera images. Existing Tesseract image, matching, source, geometry, duplicate, retry, correction, split, timeliness and application tests remain in the full matrix.
+`scripts/fixtures/remittance/golden.json` holds expected identifiers, fixture DB IDs, dates/checks, units, amounts, totals, duplicate state and Apply eligibility for A/B/C/D/E. These are reconstructions from historically tested text, not original camera images. Existing Tesseract image, matching, source, geometry, duplicate, retry, correction, split, timeliness and application tests remain in the full matrix.
 
-IMPORTANT DATA GAP: the repository's D amount-consensus fixture has five synthetic 901.18 rows (U20/U21/U22/U24/U25). The requested physical D is described as mixed amounts. That real row distribution/units is not supplied. D-repository is explicitly named and labeled; it must not be claimed as verified physical D. Obtain the real values or original evidence, add D-physical, and run the entire matrix before claiming full requested golden coverage. Unknown values must not be manufactured by distributing a known total.
+Fixture D corrected with user-verified physical values on 2026-09-17: INV-0520 B06 1099.00; INV-0521 P01 1300.00; INV-0522 P01 458.40; INV-0524 V10 1300.00; INV-0525 V10 348.50. Five unique invoices total 4505.90. This replaces the synthetic equal-row reconstruction. Original camera-image acceptance remains outstanding.
 
-Vercel's build command runs the full tests, then `scripts/remittance-release-gate.ts`, then the production build. The release gate currently rejects missing physical fixture D. The work must remain unpushed until its expected-value record is verified. The contract golden matrix is imported into the existing matching regression, so it cannot be skipped by the normal deployment build. A failed old or new fixture blocks deployment. Local lint and TypeScript remain required release checks.
+Vercel's build command runs the full tests, then `scripts/remittance-release-gate.ts`, then the production build. Required A–D expected-value records are now complete; the release gate still rejects any missing/unverified required fixture. The contract golden matrix is imported into the existing matching regression, so it cannot be skipped by the normal deployment build. A failed old or new fixture blocks deployment. Local lint and TypeScript remain required release checks.
 
 ## Acceptance and freeze
 

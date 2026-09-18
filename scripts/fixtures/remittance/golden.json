@@ -120,8 +120,8 @@
     "physicalTruthComplete": true
   },
   {
-    "id": "D-repository-reconstruction",
-    "provenance": "Existing totalConsensusRows and duplicate fixture. Amounts/units are synthetic repository reconstruction, NOT verified mixed-amount physical truth. Real mixed-row evidence requested.",
+    "id": "D",
+    "provenance": "User-verified physical remittance row amounts and units supplied 2026-09-17. Check/date retained from existing historical duplicate fixture.",
     "capture": "reconstructed historical text; no original image supplied",
     "expected": {
       "checkNumber": "2804",
@@ -137,31 +137,31 @@
         "INV-0525"
       ],
       "invoiceIds": [
-        "fixture-D-repository-reconstruction-0520",
-        "fixture-D-repository-reconstruction-0521",
-        "fixture-D-repository-reconstruction-0522",
-        "fixture-D-repository-reconstruction-0524",
-        "fixture-D-repository-reconstruction-0525"
+        "fixture-D-0520",
+        "fixture-D-0521",
+        "fixture-D-0522",
+        "fixture-D-0524",
+        "fixture-D-0525"
       ],
       "units": [
-        "U20",
-        "U21",
-        "U22",
-        "U24",
-        "U25"
+        "B06",
+        "P01",
+        "P01",
+        "V10",
+        "V10"
       ],
       "amounts": [
-        901.18,
-        901.18,
-        901.18,
-        901.18,
-        901.18
+        1099,
+        1300,
+        458.4,
+        1300,
+        348.5
       ],
       "duplicate": "none",
       "applyEligible": true
     },
     "split": true,
-    "physicalTruthComplete": false
+    "physicalTruthComplete": true
   },
   {
     "id": "E",

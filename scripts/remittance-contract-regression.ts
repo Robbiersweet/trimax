@@ -67,6 +67,8 @@ assert(!component.includes('parsedTotalFromLines'));
 assert(!component.includes('function reconcileReviewMatches'));
 assert(component.includes('attemptAllowsApply(activeRemittanceAttempt'));
 assert(readFileSync('vercel.json','utf8').includes('scripts/remittance-release-gate.ts'));
-assert.deepEqual(goldenCoverageBlockers(JSON.parse(readFileSync('scripts/fixtures/remittance/golden.json','utf8'))), ['Required physical fixture D has no complete verified expected-value record.']);
+assert.deepEqual(goldenCoverageBlockers(JSON.parse(readFileSync('scripts/fixtures/remittance/golden.json','utf8'))), []);
 assert.deepEqual(goldenCoverageBlockers(['A','B','C','D'].map(id=>({id,physicalTruthComplete:true}))),[]);
-console.log('Golden remittance contract matrix A/B/C/D-repository/E passed; immutable replay, unknown values, eligibility, exact sets, duplicate and adversarial guards passed.');
+console.log('Golden remittance contract matrix A/B/C/D/E passed; immutable replay, unknown values, eligibility, exact sets, duplicate and adversarial guards passed.');
+
+assert.deepEqual(goldenCoverageBlockers([{id:'A',physicalTruthComplete:true},{id:'B',physicalTruthComplete:true},{id:'C',physicalTruthComplete:true}]), ['Required physical fixture D has no complete verified expected-value record.']);
