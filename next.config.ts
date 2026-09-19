@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  env: { NEXT_PUBLIC_TRIMAX_BUILD: process.env.VERCEL_GIT_COMMIT_SHA ?? "local" },
   serverExternalPackages: ["@sparticuz/chromium", "sharp", "tesseract.js"],
   outputFileTracingIncludes: {
     "/api/invoices/[id]/send-email": [

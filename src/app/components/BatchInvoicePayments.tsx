@@ -16,6 +16,9 @@ import {
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Card from "./Card";
+import RecentScans from "./RecentScans";
+import { scanSummary, finishScan, failureSummary, debugFile, slimAttempt, type ScanSummary, type ScanResult } from "../lib/ocrHistory";
+import { saveScan, scanDiagnostics } from "../lib/ocrHistoryClient";
 import DateInputField from "./DateInputField";
 import Toast from "./Toast";
 import {
@@ -1634,6 +1637,9 @@ export default function BatchInvoicePayments({
   const [paymentReviewNotice, setPaymentReviewNotice] = useState("");
   const [ocrReconciliationVerified, setOcrReconciliationVerified] = useState(false);
   const ocrAttemptVersion = useRef(0);
+  const scanLineage = useRef<{original:string;last:string}|null>(null);
+  const latestScan = useRef<ScanSummary|null>(null);
+  const [scanSavedStatus,setScanSavedStatus] = useState("");
   const [activeRemittanceAttempt, setActiveRemittanceAttempt] = useState<RemittanceAttempt | null>(null);
   const sourceSelectionRef = useRef<ScanCapture["sources"]>([]);
   const preparedCaptureRef = useRef<ScanCapture | null>(null);
@@ -3205,9 +3211,16 @@ export default function BatchInvoicePayments({
     }
   }
 
+  async function retainedOcrReport() {
+    const summary=latestScan.current;
+    if(!summary || !businessId)return buildOcrDiagnosticReport();
+    if(summary.result==='success')return failureSummary(summary);
+    try{return debugFile(summary,await scanDiagnostics(businessId,summary.attemptId)).text;}catch{return buildOcrDiagnosticReport();}
+  }
+
   async function copyOcrDiagnostics() {
     try {
-      await copyTextToClipboard(buildOcrDiagnosticReport());
+      await copyTextToClipboard(await retainedOcrReport());
       setToast({ type: "success", message: "Diagnostics copied" });
     } catch {
       setToast({
@@ -3234,7 +3247,7 @@ export default function BatchInvoicePayments({
         share: (data: ShareData) => Promise<void>;
       }).share({
         title: "Trimax OCR Diagnostics",
-        text: buildOcrDiagnosticReport(),
+        text: await retainedOcrReport(),
       });
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
@@ -3406,21 +3419,46 @@ export default function BatchInvoicePayments({
     prepDiagnosticLines: string[] = lastOcrPrepDiagnosticLines,
     currentDocumentFingerprint = remittanceDocumentFingerprint
   ) {
+    const attemptVersion = ++ocrAttemptVersion.current;
+    const attemptId = crypto.randomUUID();
+    const startedAt = performance.now();
+    const parent = scanLineage.current;
+    const history = scanSummary(attemptId,parent?.original??attemptId,parent?.last??null,preparedCaptureRef.current?.source??"unknown",process.env.NEXT_PUBLIC_TRIMAX_BUILD??"local");
+    history.inputSource=lastOcrSourceType;
+    scanLineage.current = {original:history.originalId,last:attemptId};
+    latestScan.current = history;
+    const captureSnapshot = preparedCaptureRef.current ? immutableSnapshot(preparedCaptureRef.current) : null;
+    let retainedResponse: unknown = null;
+    let completed = false;
+    const persist = (summary:ScanSummary,payload:unknown,phase:0|2) => {
+      if (!businessId) { setScanSavedStatus("Attempt not saved: workspace unavailable."); return; }
+      return saveScan({businessId,summary,payload,phase}).then(status=>{
+        if (latestScan.current?.attemptId !== attemptId || (phase===0 && latestScan.current.result!=="processing")) return true;
+        setScanSavedStatus(status==='saved' ? (phase===2 ? "Attempt saved ✓"+(summary.result==='success'?"":" · Diagnostics retained for 30 days") : "Scan started · saving evidence") : "Saved on this device · waiting to sync");
+        return true;
+      }).catch(()=>{if(latestScan.current?.attemptId===attemptId)setScanSavedStatus("Attempt could not be saved. Keep this page open and use Copy Full Diagnostics.");return false;});
+    };
+    const complete = (result:ScanResult,attempt:RemittanceAttempt|null,reasons:string[]=[]) => {
+      if(completed)return;completed=true;
+      const summary=finishScan(history,attempt,result,performance.now()-startedAt,reasons);
+      if(attemptVersion===ocrAttemptVersion.current)latestScan.current=summary;
+      const saved = persist(summary,{response:retainedResponse,attempt,capture:captureSnapshot,preparation:prepDiagnosticLines,finalResult:result,reasons},2);
+      void saved?.then(durable=>{ if(durable && attemptVersion===ocrAttemptVersion.current){latestScan.current=summary;setLastOcrDiagnosticLines([failureSummary(summary)]);setLastOcrRawText("");if(attempt)setActiveRemittanceAttempt(slimAttempt(attempt));} });
+    };
+    persist(history,{preparation:prepDiagnosticLines,capture:preparedCaptureRef.current},0);
     if (imageDataUrl.length > 19_500_000) {
       setCheckOcrStatus("manual");
       setCheckOcrMessage(
         "That crop is large. Adjust crop tighter or enter the payment manually."
       );
+      complete("failed",null,["Image exceeds OCR request size limit."]);
       return;
     }
 
-    const attemptVersion = ++ocrAttemptVersion.current;
-    const attemptId = crypto.randomUUID();
-    const captureSnapshot = preparedCaptureRef.current ? immutableSnapshot(preparedCaptureRef.current) : null;
     const databaseSnapshot = { invoices: structuredClone(invoiceRecords), activities: structuredClone(paymentActivities), role: workspaceRole ?? "", receivedDate };
-    const recordAttemptFailure = (reason: string) => setActiveRemittanceAttempt(resolveRemittanceAttempt(
+    const recordAttemptFailure = (reason: string) => { const failedAttempt = resolveRemittanceAttempt(
       emptyRemittanceEvidence(attemptId, captureSnapshot ? structuredClone(captureSnapshot) as ScanCapture : null, reason),
-      databaseSnapshot.invoices, databaseSnapshot.activities, { role: databaseSnapshot.role, receivedDate: databaseSnapshot.receivedDate, fingerprint: currentDocumentFingerprint }));
+      databaseSnapshot.invoices, databaseSnapshot.activities, { role: databaseSnapshot.role, receivedDate: databaseSnapshot.receivedDate, fingerprint: currentDocumentFingerprint }); setActiveRemittanceAttempt(failedAttempt); if(!reason.startsWith("OCR request pending"))complete("failed",failedAttempt,[reason]); };
     recordAttemptFailure("OCR request pending; no values are authoritative.");
     setDuplicateRemittanceModal(null);
     setDuplicateOverrideClearedKey("");
@@ -3449,15 +3487,18 @@ export default function BatchInvoicePayments({
     const requestStartedAt = performance.now();
 
     try {
+      const {data:sessionData}=await supabase.auth.getSession().catch(()=>({data:{session:null}}));
       const response = await fetch("/api/payments/extract-check-stub", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...(sessionData.session?.access_token?{Authorization:`Bearer ${sessionData.session.access_token}`} : {}),
         },
-        body: JSON.stringify({ imageDataUrl, documentType, retryStrategy, attemptId }),
+        body: JSON.stringify({ imageDataUrl, documentType, retryStrategy, attemptId, businessId, history, debugContext:{capture:captureSnapshot,preparation:prepDiagnosticLines} }),
       });
       const data = (await response.json().catch(() => ({}))) as CheckStubOcrResponse;
-      if (attemptVersion !== ocrAttemptVersion.current) return;
+      retainedResponse=data;
+      if (attemptVersion !== ocrAttemptVersion.current) { complete("review",null,["Response arrived after this scan was replaced. Review was not completed."]); return; }
       const requestDuration = Math.max(
         0,
         Math.round(performance.now() - requestStartedAt)
@@ -3510,6 +3551,7 @@ export default function BatchInvoicePayments({
         setCheckOcrMessage(
           "Check details added. Review the payment before applying."
         );
+        complete("review",null,["Check details added. Review the payment before applying."]);
         return;
       }
 
@@ -3525,6 +3567,7 @@ export default function BatchInvoicePayments({
         "Attempt contract: " + JSON.stringify(attempt.diagnostics),
         "Payment Review handoff: remittance review state updated.",
       ]);
+      complete(historicalDuplicateCheck.status === "active" ? "duplicate" : attempt.reconciliationResult.eligible ? "success" : "review",attempt);
       appendCameraStage("Parsing completed");
       if (historicalDuplicateCheck.status === "active") {
         appendCameraStage("Duplicate detected");
@@ -3544,7 +3587,7 @@ export default function BatchInvoicePayments({
           : ocrFailureMessage(data)
       );
     } catch (error) {
-      if (attemptVersion !== ocrAttemptVersion.current) return;
+      if (attemptVersion !== ocrAttemptVersion.current) { complete("failed",null,[error instanceof Error?error.message:"OCR request failed."]); return; }
       recordAttemptFailure(error instanceof Error ? error.message : "OCR request failed.");
       setCameraFailureStage("ocr-request");
       setCheckOcrStatus("error");
@@ -3554,6 +3597,16 @@ export default function BatchInvoicePayments({
           : "Could not read this remittance. Adjust crop or enter manually."
       );
     }
+  }
+
+  function retainPreparationFailure(reason:string,preparation:string[],source:string,version:number) {
+    if(!businessId)return;
+    const id=crypto.randomUUID(),parent=scanLineage.current;
+    const summary=finishScan(scanSummary(id,parent?.original??id,parent?.last??null,source,process.env.NEXT_PUBLIC_TRIMAX_BUILD??"local"),null,"failed",0,[reason]);
+    scanLineage.current={original:summary.originalId,last:id};latestScan.current=summary;
+    void saveScan({businessId,phase:2,summary,payload:{stage:"image-preparation",reason,preparation,sources:sourceSelectionRef.current}}).then(status=>{
+      if(version===ocrAttemptVersion.current)setScanSavedStatus(status==='saved'?"Attempt saved ✓ · Diagnostics retained for 30 days":"Saved on this device · waiting to sync");
+    }).catch(()=>{if(version===ocrAttemptVersion.current)setScanSavedStatus("Attempt could not be saved. Keep this page open.");});
   }
 
   async function readPreparedRemittanceFromFile(
@@ -3646,6 +3699,7 @@ export default function BatchInvoicePayments({
         setCheckOcrStatus("manual");
         setCheckOcrMessage(qualityMessages[0]);
         setCaptureQualityMessage(qualityMessages[0]);
+        retainPreparationFailure(qualityMessages[0],initialPrepDiagnosticLines,sourceType,preparationVersion);
         setLastOcrDiagnosticLines([
           ...initialPrepDiagnosticLines,
           "OCR request prepared: no.",
@@ -3730,6 +3784,7 @@ export default function BatchInvoicePayments({
       );
     } catch (error) {
       if (preparationVersion !== ocrAttemptVersion.current) return;
+      retainPreparationFailure(error instanceof Error?error.message:"Image preparation failed",sourceDiagnosticLines,sourceType,preparationVersion);
       setCheckOcrStatus("error");
       setCheckOcrMessage(
         error instanceof Error
@@ -4931,6 +4986,9 @@ export default function BatchInvoicePayments({
     intent: CaptureIntent = captureIntent,
     sourceDiagnosticLines: string[] = []
   ) {
+    scanLineage.current = null;
+    latestScan.current = null;
+    setScanSavedStatus("");
     const captureVersion = ++ocrAttemptVersion.current;
     setActiveRemittanceAttempt(null);
     setOcrReconciliationVerified(false);
@@ -5448,11 +5506,12 @@ export default function BatchInvoicePayments({
   }
 
   if (payableInvoices.length === 0) {
-    return null;
+    return businessId ? <RecentScans businessId={businessId} role={workspaceRole} savedStatus={scanSavedStatus}/> : null;
   }
 
   return (
     <Card className="batch-payments-card border-green-500/30 bg-green-500/5">
+      {businessId && <RecentScans businessId={businessId} role={workspaceRole} savedStatus={scanSavedStatus}/> }
       {toast ? <Toast type={toast.type} message={toast.message} /> : null}
       {typeof document !== "undefined" ? duplicateRemittanceModalView() : null}
 

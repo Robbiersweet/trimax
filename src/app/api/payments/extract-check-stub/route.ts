@@ -1,3 +1,4 @@
+import { checkpointOcr } from "@/app/lib/ocrHistoryServer";
 import { createRemittanceEvidence, selectObservedHeader } from "@/app/lib/remittanceAttempt";
 import { rowAssignment, normalizeInvoiceColumnToken, rankSourceEvaluations, rankRowAmounts } from "@/app/lib/ocrStructure";
 import { NextResponse } from "next/server";
@@ -3064,6 +3065,10 @@ async function parseExtractCheckStubRequest(request: Request) {
 }
 
 export async function POST(request: Request) {
+  return checkpointOcr(request, runExtraction);
+}
+
+async function runExtraction(request: Request) {
   const body = await parseExtractCheckStubRequest(request);
   const imageDataUrl = body?.imageDataUrl;
   const documentType = normalizeDocumentType(body?.documentType);

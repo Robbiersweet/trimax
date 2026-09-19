@@ -1028,11 +1028,12 @@ async function retryStateRegression() {
   const state = { PaymentReference: "old-check", ExtractedPaymentAmount: 2.49, SelectedIds: ["old-invoice"] };
   const pending = [];
   const calls = [];
-  const bindings = { ...require("../src/app/lib/remittanceAttempt.ts"), performance, crypto, preparedCaptureRef: {current:null}, immutableSnapshot: value => structuredClone(value), invoiceRecords: [], paymentActivities: [], workspaceRole: "owner", receivedDate: "2026-09-17", ocrAttemptVersion: { current: 0 },
+  const historyWrites=[];
+  const bindings = { ...require("../src/app/lib/remittanceAttempt.ts"), ...require("../src/app/lib/ocrHistory.ts"), businessId:"test-workspace",lastOcrSourceType:"existing",process,scanLineage:{current:null},latestScan:{current:null},supabase:{auth:{getSession:async()=>({data:{session:null}})}},saveScan:async write=>{historyWrites.push(write);return 'saved';}, performance, crypto, preparedCaptureRef: {current:null}, immutableSnapshot: value => structuredClone(value), invoiceRecords: [], paymentActivities: [], workspaceRole: "owner", receivedDate: "2026-09-17", ocrAttemptVersion: { current: 0 },
     appendCameraStage: () => {}, ocrDiagnosticLines: () => [], remittanceReviewDiagnosticLines: () => [],
     ocrFailureMessage: () => "Incomplete", loadCheckDetailsFromExtraction: () => {},
     fetch: async (_url, options) => { calls.push(JSON.parse(options.body)); return new Promise(resolve => pending.push(resolve)); },
-    loadExtractedRemittance: (data) => { state.PaymentReference = data.checkNumber; state.ExtractedPaymentAmount = data.totalAmount; return { match: { issues: [] }, reviewMatches: [{ amountDue: data.totalAmount }], reconciledReview: { isComplete: true }, historicalDuplicateCheck: { status: "none" }, attempt: {diagnostics:{}, reconciliationResult:{eligible:true}} }; },
+    loadExtractedRemittance: (data) => { state.PaymentReference = data.checkNumber; state.ExtractedPaymentAmount = data.totalAmount; const observed=require("../src/app/lib/remittanceAttempt.ts").resolveRemittanceAttempt(require("../src/app/lib/remittanceAttempt.ts").emptyRemittanceEvidence("mock",null,"test"),[],[],{role:"owner",receivedDate:"2026-09-17",fingerprint:""}); return { match: { issues: [] }, reviewMatches: [{ amountDue: data.totalAmount }], reconciledReview: { isComplete: true }, historicalDuplicateCheck: { status: "none" }, attempt: {...observed,reconciliationResult:{...observed.reconciliationResult,eligible:true,blockers:[]}} }; },
   };
   for (const name of new Set(functionSource.match(/set[A-Z][A-Za-z]+/g))) bindings[name] = value => { state[name.slice(3)] = value; };
   const compiled = ts.transpileModule(functionSource + "\nreturn extractCheckStubFromPhoto;", { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
@@ -1041,20 +1042,23 @@ async function retryStateRegression() {
   assert.equal(state.PaymentReference, "");
   assert.equal(state.ExtractedPaymentAmount, null);
   assert.deepEqual(state.SelectedIds, []);
+  await new Promise(setImmediate);
   pending.shift()({ ok: true, status: 200, json: async () => ({ stubText: "", rawText: "partial" }) });
   await first;
   assert.equal(state.CheckOcrStatus, "manual");
   const second = read("current-image", "remittance_stub", "primary", "alternate", [], "fingerprint");
+  await new Promise(setImmediate);
   pending.shift()({ ok: true, status: 200, json: async () => ({ stubText: "complete", checkNumber: "2797", totalAmount: 5495, totalEvidence: { payable: true } }) });
   await second;
   assert.equal(state.PaymentReference, "2797");
   assert.equal(state.ExtractedPaymentAmount, 5495);
   assert.equal(state.CheckOcrStatus, "ready");
-  assert.deepEqual(calls.map(call => Object.keys(call).sort()), [ ["attemptId", "documentType", "imageDataUrl", "retryStrategy"], ["attemptId", "documentType", "imageDataUrl", "retryStrategy"] ]);
+  assert.deepEqual(calls.map(call => Object.keys(call).sort()), [ ["attemptId", "businessId", "debugContext", "documentType", "history", "imageDataUrl", "retryStrategy"], ["attemptId", "businessId", "debugContext", "documentType", "history", "imageDataUrl", "retryStrategy"] ]);
   assert.equal(calls[1].retryStrategy, "alternate");
   assert.notEqual(calls[0].attemptId, calls[1].attemptId);
   const old = read("old-image", "remittance_stub", "primary", "standard", [], "old");
   const latest = read("new-image", "remittance_stub", "primary", "alternate", [], "new");
+  await new Promise(setImmediate);
   const staleResponse = pending.shift();
   pending.shift()({ ok: true, status: 200, json: async () => ({ stubText: "new", checkNumber: "3124", totalAmount: 220 }) });
   await latest;
@@ -1062,6 +1066,9 @@ async function retryStateRegression() {
   await old;
   assert.equal(state.PaymentReference, "3124");
   assert.equal(state.ExtractedPaymentAmount, 220);
+  assert.equal(historyWrites.filter(write=>write.phase===2).length,4);
+  assert.equal(historyWrites.filter(write=>write.phase===2)[1].summary.parentId,calls[0].attemptId);
+  assert.equal(historyWrites.filter(write=>write.phase===2)[3].summary.result,'review');
   console.log("Actual Retry Reading request flow: incomplete -> retry, cleared fields, isolated request and stale response rejection passed.");
 }
 
@@ -1107,6 +1114,7 @@ async function duplicatePreflightAndViewRegression() {
 }
 
 async function main() {
+  await require("./ocr-history-regression.cjs")(loader,React,renderer);
   await require("./ocr-structure-regression.cjs");
   await duplicatePreflightAndViewRegression();
   await contractHandoffRegression();
