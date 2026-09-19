@@ -1,3 +1,5 @@
+import { probeOrientation } from "@/app/lib/ocrOrientationServer";
+import { opticalScore } from "@/app/lib/ocrOptical";
 import { checkpointOcr } from "@/app/lib/ocrHistoryServer";
 import { createRemittanceEvidence, selectObservedHeader } from "@/app/lib/remittanceAttempt";
 import { rowAssignment, normalizeInvoiceColumnToken, rankSourceEvaluations, rankRowAmounts } from "@/app/lib/ocrStructure";
@@ -742,6 +744,8 @@ async function buildRegionSources(
 }
 
 function scoreOcrText(text: string, confidence: number) {
+  const optical = opticalScore(text, confidence);
+  if (!optical.credible) return optical.score;
   const scoringText = withoutMicrBandText(text);
   const invoiceMatches =
     scoringText.match(/\b[Il1|]?NV(?:OICE)?\.?\s*[-#: ]?\s*[0-9OoSsZzIl|Vv]{3,8}\b/gi) ??
@@ -785,7 +789,7 @@ function scoreOcrText(text: string, confidence: number) {
     [];
 
   return (
-    confidence +
+    optical.score +
     invoiceMatches.length * 35 +
     invoiceNumbers.length * 28 +
     structurallyValidRows.length * 55 +
@@ -2235,6 +2239,7 @@ async function recognizeBestText(
       }
     }
 
+    const recoveryStartedAt=Date.now();
     if (needsMoreOcr()) {
       await runAttemptsForSource(fullDocumentSource, specs.slice(1), [0, 180]);
     }
@@ -2243,6 +2248,7 @@ async function recognizeBestText(
       await runAttemptsForSource(fullDocumentSource, [specs[0]], [90, 270]);
     }
 
+    const recoveryDurationMs=Date.now()-recoveryStartedAt;
     attempts.sort(
       (left, right) =>
         candidateStructureScore(right) - candidateStructureScore(left)
@@ -2352,6 +2358,7 @@ async function recognizeBestText(
       imageHeight: attempt.imageHeight,
       confidence: attempt.confidence,
       score: Math.round(candidateStructureScore(attempt)),
+      scoreBreakdown: opticalScore(attempt.text, attempt.confidence),
       validRows: structurallyValidRemittanceRows(attempt.text).length,
       tokens: candidateTokenSummary(attempt),
       summary: redactedTextSummary(attempt.text),
@@ -2608,6 +2615,9 @@ async function recognizeBestText(
       structuredRowEvidence,
       rawPasses: [...attempts, ...invoiceColumnPasses].filter(attempt => !/merged|reconstruction/.test(attempt.region)).map(attempt => ({ ...attempt, text: withoutMicrBandText(attempt.text) })),
       diagnostics: {
+        detailedOcrDurationMs: Date.now()-startedAt,
+        recoveryDurationMs,
+        totalDurationMs: Date.now()-startedAt,
         documentType,
         retryStrategy,
         originalWidth: sources.original.width,
@@ -2828,7 +2838,7 @@ async function evaluateCaptureSourceCandidate(
     source.width ?? 0,
     source.height ?? 0
   );
-  if (metrics.wordCount === 0) throw captureSourceError("No readable OCR words in candidate.", "ocr-usefulness");
+  if (!opticalScore(text, confidence).credible) throw captureSourceError("No credible remittance structure in candidate.", "ocr-usefulness");
   const bounds = metrics.textRegionBounds;
   const textWidthCoverage =
     bounds && source.width
@@ -3073,6 +3083,13 @@ async function runExtraction(request: Request) {
   const imageDataUrl = body?.imageDataUrl;
   const documentType = normalizeDocumentType(body?.documentType);
   const retryStrategy = normalizeRetryStrategy(body?.retryStrategy);
+
+  if (body?.mode === "orientation-probe") {
+    const candidate=body.captureCandidates?.[0];
+    if(!candidate) return NextResponse.json({error:"Missing image"},{status:400});
+    try {const input=imageBufferFromCandidate(candidate,"orientation"); const result=await probeOrientation(input.buffer); const {image,...diagnostics}=result; return NextResponse.json({...diagnostics,imageDataUrl:`data:image/jpeg;base64,${image.toString("base64")}`});}
+    catch(error){return NextResponse.json({resolved:false,error:error instanceof Error?error.message:"Orientation unavailable"},{status:422});}
+  }
 
   if (body?.mode === "capture-source-selection") {
     const candidates = Array.isArray(body.captureCandidates)

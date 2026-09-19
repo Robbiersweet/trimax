@@ -393,7 +393,7 @@ assert(
     paymentScreen.includes("bytes=") &&
     paymentScreen.includes("completenessScore=") &&
     paymentScreen.includes("detectDefaultCropBox(stillFile)") &&
-    paymentScreen.includes("productionFile = stillComparison.productionFile ?? file") &&
+    paymentScreen.includes("productionFile = stillComparison.productionFile ?? await orientPhysicalImage") &&
     !paymentScreen.includes("mapCameraGuideToStillSource") &&
     !paymentScreen.includes("comparisonImageDataUrl"),
   "ImageCapture still diagnostics must normalize/decode the full still, evaluate detector crop and full still, and avoid direct preview-to-still mapping."

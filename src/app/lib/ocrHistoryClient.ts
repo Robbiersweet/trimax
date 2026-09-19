@@ -156,7 +156,11 @@ export async function scanDiagnostics(businessId: string, id: string) {
     .sort((a, b) => b.phase - a.phase)[0];
   if (local) {
     const payload = await localPayload(local);
-    if (payload) return safeDiagnosticView(payload);
+    if (payload) {
+      const withoutImages = { ...payload };
+      delete withoutImages.optical;
+      return safeDiagnosticView(withoutImages);
+    }
   }
   const { data, error } = await supabase
     .from("ocr_attempt_diagnostics")
@@ -176,4 +180,24 @@ export async function pinScan(id: string, pinned: boolean) {
     p_pinned: pinned,
   });
   if (error) throw new Error(error.message);
+}
+
+export async function scanOptical(id: string) {
+  const queued = (await transaction([STORE], "readonly", (tx) =>
+    tx.objectStore(STORE).getAll(),
+  ).catch(() => [])) as Queued[];
+  const pending = queued
+    .filter((w) => w.summary.attemptId === id)
+    .sort((a, b) => b.phase - a.phase)[0];
+  if (pending) {
+    const p = await localPayload(pending);
+    if (p?.optical) return p.optical;
+  }
+  const { data, error } = await supabase
+    .from("ocr_attempt_optical")
+    .select("evidence")
+    .eq("attempt_id", id)
+    .maybeSingle();
+  if (error) throw Error(error.message);
+  return data?.evidence ?? null;
 }

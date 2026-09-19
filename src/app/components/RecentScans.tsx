@@ -1,4 +1,5 @@
 "use client";
+import OpticalEvidenceView from "./OpticalEvidenceView";
 import {
   attemptPath,
   debugTimestamp,
@@ -360,6 +361,7 @@ export default function RecentScans({
                     </summary>
                     {Boolean(payload) && <DecisionView payload={payload} />}
                   </details>
+                  <OpticalEvidenceView key={selected.id} attemptId={selected.id} />
                   <details
                     onToggle={(event) => {
                       setRawOpen(event.currentTarget.open);

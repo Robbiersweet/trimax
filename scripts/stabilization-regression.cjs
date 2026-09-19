@@ -1029,7 +1029,7 @@ async function retryStateRegression() {
   const pending = [];
   const calls = [];
   const historyWrites=[];
-  const bindings = { ...require("../src/app/lib/remittanceAttempt.ts"), ...require("../src/app/lib/ocrHistory.ts"), businessId:"test-workspace",lastOcrSourceType:"existing",process,scanLineage:{current:null},latestScan:{current:null},supabase:{auth:{getSession:async()=>({data:{session:null}})}},saveScan:async write=>{historyWrites.push(write);return 'saved';}, performance, crypto, preparedCaptureRef: {current:null}, immutableSnapshot: value => structuredClone(value), invoiceRecords: [], paymentActivities: [], workspaceRole: "owner", receivedDate: "2026-09-17", ocrAttemptVersion: { current: 0 },
+  const bindings = { opticalRef:{current:{images:[],notes:[]}}, ...require("../src/app/lib/remittanceAttempt.ts"), ...require("../src/app/lib/ocrHistory.ts"), businessId:"test-workspace",lastOcrSourceType:"existing",process,scanLineage:{current:null},latestScan:{current:null},supabase:{auth:{getSession:async()=>({data:{session:null}})}},saveScan:async write=>{historyWrites.push(write);return 'saved';}, performance, crypto, preparedCaptureRef: {current:null}, immutableSnapshot: value => structuredClone(value), invoiceRecords: [], paymentActivities: [], workspaceRole: "owner", receivedDate: "2026-09-17", ocrAttemptVersion: { current: 0 },
     appendCameraStage: () => {}, ocrDiagnosticLines: () => [], remittanceReviewDiagnosticLines: () => [],
     ocrFailureMessage: () => "Incomplete", loadCheckDetailsFromExtraction: () => {},
     fetch: async (_url, options) => { calls.push(JSON.parse(options.body)); return new Promise(resolve => pending.push(resolve)); },
@@ -1114,8 +1114,10 @@ async function duplicatePreflightAndViewRegression() {
 }
 
 async function main() {
+  require("node:child_process").execFileSync(process.execPath,["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON","--experimental-strip-types","scripts/ocr-optical-regression.ts"],{stdio:"inherit"});
   await require("./ocr-history-regression.cjs")(loader,React,renderer);
   await require("./ocr-debug-queue-regression.cjs")(loader,React,renderer);
+  await require("./ocr-optical-ui-regression.cjs")(loader,React,renderer);
   await require("./ocr-structure-regression.cjs");
   await duplicatePreflightAndViewRegression();
   await contractHandoffRegression();

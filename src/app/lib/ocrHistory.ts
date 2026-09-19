@@ -129,16 +129,18 @@ export function finishScan(
       .map((reason) => reason.slice(0, 400)),
   };
 }
-// Exclude image bytes and credentials. All OCR observations and decision evidence remain intact.
+// Optical images are explicitly bounded; other image bytes and credentials are excluded. All OCR observations and decision evidence remain intact.
 export function diagnosticPayload(value: unknown): unknown {
   return JSON.parse(
     JSON.stringify(value ?? null, (key, entry) =>
-      /^(imageDataUrl|imageBuffer|selectedImageDataUrl|access_token|refresh_token|password|authorization)$/i.test(
-        key,
-      ) ||
-      (typeof entry === "string" && /^data:image\//.test(entry))
-        ? undefined
-        : entry,
+      key === "optical"
+        ? boundedOptical(entry)
+        : /^(imageDataUrl|imageBuffer|selectedImageDataUrl|access_token|refresh_token|password|authorization)$/i.test(
+              key,
+            ) ||
+            (typeof entry === "string" && /^data:image\//.test(entry))
+          ? undefined
+          : entry,
     ),
   );
 }
@@ -218,4 +220,32 @@ export function captureReport(
   preparation: string[],
 ) {
   return { capture, preparation };
+}
+
+function boundedOptical(value: unknown) {
+  if (!value || typeof value !== "object") return undefined;
+  const e = value as {
+    images?: Array<Record<string, unknown>>;
+    notes?: string[];
+    probe?: unknown;
+    timings?: unknown;
+  };
+  let budget = 11000000;
+  const notes = [...(e.notes ?? [])];
+  const images = (e.images ?? []).slice(0, 3).sort((a,b)=>Number(b.label==="Final OCR input")-Number(a.label==="Final OCR input")).map((image) => {
+    const b = typeof image.base64 === "string" ? image.base64 : "";
+    if (
+      !/^(image\/jpeg|image\/png)$/.test(String(image.mime)) ||
+      !/^[A-Za-z0-9+/=]*$/.test(b) ||
+      b.length > budget
+    ) {
+      notes.push(
+        String(image.label) + ": bytes omitted by bounded diagnostic retention",
+      );
+      return { ...image, base64: "" };
+    }
+    budget -= b.length;
+    return image;
+  });
+  return { images, notes, probe: e.probe, timings:e.timings };
 }

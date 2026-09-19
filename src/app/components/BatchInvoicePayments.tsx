@@ -1,4 +1,6 @@
 "use client";
+import { normalizePhysicalStill, opticalImage } from "../lib/ocrOpticalBrowser";
+import type { OpticalEvidence } from "../lib/ocrOptical";
 
 import { createRemittanceEvidence, emptyRemittanceEvidence, immutableSnapshot, resolveRemittanceAttempt, attemptAllowsApply, type RemittanceAttempt, type RemittanceEvidence, type ScanCapture } from "../lib/remittanceAttempt";
 import { rankSourceEvaluations } from "@/app/lib/ocrStructure";
@@ -1550,6 +1552,7 @@ export default function BatchInvoicePayments({
   const [checkAmount, setCheckAmount] = useState(
     startingFocus ? formatMoney(startingFocus.total) : ""
   );
+  const opticalRef = useRef<OpticalEvidence>({images:[],notes:[]});
   const [checkImagePreview, setCheckImagePreview] = useState("");
   const [checkImageName, setCheckImageName] = useState("");
   const [checkImageFile, setCheckImageFile] = useState<File | null>(null);
@@ -3428,6 +3431,7 @@ export default function BatchInvoicePayments({
     scanLineage.current = {original:history.originalId,last:attemptId};
     latestScan.current = history;
     const captureSnapshot = preparedCaptureRef.current ? immutableSnapshot(preparedCaptureRef.current) : null;
+    const opticalSnapshot = structuredClone(opticalRef.current);
     let retainedResponse: unknown = null;
     let completed = false;
     const persist = (summary:ScanSummary,payload:unknown,phase:0|2) => {
@@ -3442,10 +3446,12 @@ export default function BatchInvoicePayments({
       if(completed)return;completed=true;
       const summary=finishScan(history,attempt,result,performance.now()-startedAt,reasons);
       if(attemptVersion===ocrAttemptVersion.current)latestScan.current=summary;
-      const saved = persist(summary,{response:retainedResponse,attempt,capture:captureSnapshot,preparation:prepDiagnosticLines,finalResult:result,reasons},2);
+      const opticalResponse=retainedResponse as CheckStubOcrResponse | null;
+      opticalSnapshot.timings={orientationProbeMs:(Array.isArray(opticalSnapshot.probe)?opticalSnapshot.probe:[]).reduce((n,p)=>n+Number(p.probeDurationMs??0),0),detailedOcrMs:performance.now()-startedAt,recoveryMs:Number((opticalResponse?.diagnostics as Record<string,unknown>|undefined)?.recoveryDurationMs??0),totalMs:performance.now()-(opticalSnapshot.startedAt??startedAt)};
+      const saved = persist(summary,{optical:opticalSnapshot,response:retainedResponse,attempt,capture:captureSnapshot,preparation:prepDiagnosticLines,finalResult:result,reasons},2);
       void saved?.then(durable=>{ if(durable && attemptVersion===ocrAttemptVersion.current){latestScan.current=summary;setLastOcrDiagnosticLines([failureSummary(summary)]);setLastOcrRawText("");if(attempt)setActiveRemittanceAttempt(slimAttempt(attempt));} });
     };
-    persist(history,{preparation:prepDiagnosticLines,capture:preparedCaptureRef.current},0);
+    persist(history,{optical:opticalSnapshot,preparation:prepDiagnosticLines,capture:preparedCaptureRef.current},0);
     if (imageDataUrl.length > 19_500_000) {
       setCheckOcrStatus("manual");
       setCheckOcrMessage(
@@ -3604,7 +3610,7 @@ export default function BatchInvoicePayments({
     const id=crypto.randomUUID(),parent=scanLineage.current;
     const summary=finishScan(scanSummary(id,parent?.original??id,parent?.last??null,source,process.env.NEXT_PUBLIC_TRIMAX_BUILD??"local"),null,"failed",0,[reason]);
     scanLineage.current={original:summary.originalId,last:id};latestScan.current=summary;
-    void saveScan({businessId,phase:2,summary,payload:{stage:"image-preparation",reason,preparation,sources:sourceSelectionRef.current}}).then(status=>{
+    void saveScan({businessId,phase:2,summary,payload:{optical:structuredClone(opticalRef.current),stage:"image-preparation",reason,preparation,sources:sourceSelectionRef.current}}).then(status=>{
       if(version===ocrAttemptVersion.current)setScanSavedStatus(status==='saved'?"Attempt saved ✓ · Diagnostics retained for 30 days":"Saved on this device · waiting to sync");
     }).catch(()=>{if(version===ocrAttemptVersion.current)setScanSavedStatus("Attempt could not be saved. Keep this page open.");});
   }
@@ -3737,6 +3743,7 @@ export default function BatchInvoicePayments({
       const rotatedSideways =
         normalizedRotation === 90 || normalizedRotation === 270;
 
+      if(sourceType === "camera"){opticalRef.current.images=opticalRef.current.images.filter(i=>i.label!=="Final OCR input");opticalRef.current.images.push(await opticalImage(preparedFile,"Final OCR input",preparedCaptureRef.current?.source??"camera",null,nextRotation,"Exact preview and OCR request JPEG"));}
       setOcrImageFile(preparedFile);
       setCheckImageFile(preparedFile);
       setCheckImagePreview(imageDataUrl);
@@ -4084,6 +4091,8 @@ export default function BatchInvoicePayments({
   }, []);
 
   const analyzeLiveCameraFrame = useCallback(() => {
+    opticalRef.current={images:[],notes:[],startedAt:performance.now()};
+    sourceSelectionRef.current=[];
     const video = cameraVideoRef.current;
 
     if (!video || video.videoWidth <= 0 || video.videoHeight <= 0) {
@@ -4394,6 +4403,20 @@ export default function BatchInvoicePayments({
     };
   }
 
+  async function orientPhysicalImage(file:File,source:string){
+    const normalized=await normalizePhysicalStill(file);
+    opticalRef.current.notes.push(JSON.stringify(normalized.metadata));
+    const original=opticalRef.current.images.find(i=>i.label==="Original capture");if(original&&original.source===source){original.width=normalized.metadata.rawWidth;original.height=normalized.metadata.rawHeight;}
+    const form=new FormData();form.append("mode","orientation-probe");form.append("captureCandidates",JSON.stringify([{id:source,label:source,fileField:"candidate-0"}]));form.append("candidate-0",normalized.file);
+    const response=await fetch("/api/payments/extract-check-stub",{method:"POST",body:form,signal:AbortSignal.timeout(25000)});
+    const result=await response.json(); const {imageDataUrl,...probe}=result;opticalRef.current.probe=[...(Array.isArray(opticalRef.current.probe)?opticalRef.current.probe:[]),{source,...probe}];
+    const output=imageDataUrl?await dataUrlToImageFile(imageDataUrl,"trimax-oriented.jpg"):normalized.file;
+    opticalRef.current.images=opticalRef.current.images.filter(i=>i.label!=="Normalized image");
+    opticalRef.current.images.push(await opticalImage(output,"Normalized image",source,normalized.metadata.exifOrientation,result.rotation??0,normalized.metadata.transformation+"; document probe rotation "+(result.rotation??"unresolved")));
+    if(!response.ok||!result.resolved)throw Error("Document orientation unresolved. Retake the photo or rotate it manually before retrying.");
+    return output;
+  }
+
   async function buildImageCaptureStillComparison(
     track: MediaStreamTrack | null,
     videoFile: File
@@ -4481,11 +4504,13 @@ export default function BatchInvoicePayments({
       );
       const rawDimensions = await readJpegPixelDimensions(stillBlob);
       const exifPresence = await detectExifPresence(stillBlob);
-      const stillFile = new File(
+      const originalStillFile = new File(
         [stillBlob],
         `trimax-remittance-still-${Date.now()}.jpg`,
         { type: stillBlob.type || "image/jpeg" }
       );
+      opticalRef.current.images.push(await opticalImage(originalStillFile,"Original capture","imagecapture-still",null,0,"Original JPEG; numeric EXIF recorded in normalization notes"));
+      const stillFile = await orientPhysicalImage(originalStillFile,"imagecapture-still");
       const stillImage = await imageElementFromFile(stillFile);
       const normalizedWidth = stillImage.naturalWidth || stillImage.width;
       const normalizedHeight = stillImage.naturalHeight || stillImage.height;
@@ -4778,7 +4803,7 @@ export default function BatchInvoicePayments({
         track,
         file
       );
-      const productionFile = stillComparison.productionFile ?? file;
+      const productionFile = stillComparison.productionFile ?? await orientPhysicalImage(file,"canvas-video-frame");
       const productionMechanism = stillComparison.productionFile
         ? "imagecapture-still"
         : "canvas-video-frame";
@@ -4807,6 +4832,7 @@ export default function BatchInvoicePayments({
         ]
       );
     } catch (error) {
+      retainPreparationFailure(error instanceof Error?error.message:"Camera preparation failed",cameraCaptureDiagnosticLines,"camera",ocrAttemptVersion.current);
       setCameraFailureStage("save-normalized-crop");
       setCameraStatusMessage(
         error instanceof Error ? error.message : "Camera capture could not be saved."
@@ -4986,6 +5012,7 @@ export default function BatchInvoicePayments({
     intent: CaptureIntent = captureIntent,
     sourceDiagnosticLines: string[] = []
   ) {
+    if(source !== "camera")opticalRef.current={images:[],notes:[]};
     scanLineage.current = null;
     latestScan.current = null;
     setScanSavedStatus("");
