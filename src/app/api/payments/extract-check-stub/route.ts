@@ -1,3 +1,4 @@
+import { prepareFaintRegions, faintVariantImage, faintProvenance, recognizeFaintVariants, FAINT_VARIANTS, type FaintPreparation, type FaintVariant } from "@/app/lib/ocrFaint";
 import { probeOrientation } from "@/app/lib/ocrOrientationServer";
 import { opticalScore } from "@/app/lib/ocrOptical";
 import { checkpointOcr } from "@/app/lib/ocrHistoryServer";
@@ -44,7 +45,7 @@ type ImageBounds = {
   height: number;
 };
 
-type OcrVariant =
+type OcrVariant = FaintVariant
   | "grayscale-normalized"
   | "high-contrast"
   | "adaptive-threshold"
@@ -73,9 +74,11 @@ type OcrAttempt = {
   imageWidth?: number;
   imageHeight?: number;
   words: OcrWord[];
+  preparation?: ReturnType<typeof faintProvenance>;
 };
 
 type OcrImageSource = {
+  prepared?: FaintPreparation;
   name: string;
   image: Buffer;
   width?: number;
@@ -126,6 +129,7 @@ type CaptureSourceEvaluation = {
   explicitTotal: number;
   completenessScore: number;
   suspiciousIncomplete: boolean;
+  opticalVariants?: unknown;
 };
 
 type CaptureSourceFailure = {
@@ -2087,8 +2091,9 @@ async function recognizeBestText(
         height: sources.document.height ?? 0,
       },
     };
+    let recognitionStopped = false;
     const enoughTimeForAnotherAttempt = () =>
-      Date.now() - startedAt < OCR_ROUTE_BUDGET_MS;
+      !recognitionStopped && Date.now() - startedAt < OCR_ROUTE_BUDGET_MS;
     const bestParsedSoFar = () => {
       attempts.sort((left, right) => right.score - left.score);
       const selectedAttempt = attempts[0] ?? null;
@@ -2127,7 +2132,9 @@ async function recognizeBestText(
         });
 
         const attemptStage = `${source.name}/${spec.variant}/${spec.pageMode.name}/${rotation}`;
-        const image = await preprocessForOcr(source.image, rotation, spec.variant);
+        const image = source.prepared && FAINT_VARIANTS.includes(spec.variant as FaintVariant)
+          ? faintVariantImage(source.prepared, spec.variant as FaintVariant)
+          : await preprocessForOcr(source.image, rotation, spec.variant);
         const processedMetadata = await imageMetadata(image);
         markStage(`preprocessed:${attemptStage}`);
         const recognizeStartedAt = Date.now();
@@ -2156,6 +2163,7 @@ async function recognizeBestText(
           }
 
           markStage(`timeout:${attemptStage}`);
+          recognitionStopped = true;
 
           if (attempts.length > 0) {
             return;
@@ -2184,9 +2192,10 @@ async function recognizeBestText(
           confidence,
           score: scoreOcrText(text, confidence),
           durationMs: Date.now() - recognizeStartedAt,
-          imageWidth: source.width,
-          imageHeight: source.height,
+          imageWidth: source.prepared?.inputWidth ?? source.width,
+          imageHeight: source.prepared?.inputHeight ?? source.height,
           words,
+          preparation: source.prepared ? faintProvenance(source.prepared) : undefined,
         };
 
         attempts.push(attempt);
@@ -2208,7 +2217,10 @@ async function recognizeBestText(
     }
     }
 
-    await runAttemptsForSource(fullDocumentSource, [specs[0]], [0]);
+    const faint = await prepareFaintRegions(fullDocumentSource.image);
+    const faintSource: OcrImageSource = {name:fullDocumentSource.name,image:faint.color,width:faint.bounds.width,height:faint.bounds.height,bounds:faint.bounds,prepared:faint};
+    await runAttemptsForSource(faintSource, FAINT_VARIANTS.map(variant=>({variant,pageMode:{name:"sparse-text",value:Tesseract.PSM.SPARSE_TEXT}})), [0]);
+    if(needsMoreOcr()) await runAttemptsForSource(fullDocumentSource, [specs[0]], [0]);
 
     if (needsMoreOcr() && documentType === "remittance_stub") {
       const rowFocusedSpec = specs.find((spec) => spec.variant === "row-focused");
@@ -2357,6 +2369,7 @@ async function recognizeBestText(
       imageWidth: attempt.imageWidth,
       imageHeight: attempt.imageHeight,
       confidence: attempt.confidence,
+      preparation: attempt.preparation,
       score: Math.round(candidateStructureScore(attempt)),
       scoreBreakdown: opticalScore(attempt.text, attempt.confidence),
       validRows: structurallyValidRemittanceRows(attempt.text).length,
@@ -2469,7 +2482,7 @@ async function recognizeBestText(
       let skippedReason = "";
 
       for (const spec of diagnosticSpecs) {
-        if (Date.now() - startedAt > OCR_ROUTE_BUDGET_MS - 3_000) {
+        if (recognitionStopped || Date.now() - startedAt > OCR_ROUTE_BUDGET_MS - 3_000) {
           skippedReason = "Skipped remaining invoice-column OCR because route time budget was nearly exhausted.";
           break;
         }
@@ -2610,13 +2623,25 @@ async function recognizeBestText(
           : "no same-band invoice evidence found",
     }));
     const rowAssignments = geometricRows.flatMap((row, index) => [...attempts.flatMap(attempt => attempt.words), ...invoiceColumnWords].filter(word => /[0-9]/.test(word.text)).map(word => ({ row: index + 1, token: word.text, pass: passLabelForWord(word), bbox: word.bbox, ...rowAssignment(word.bbox, row, geometricRows) })));
+    // A reconstruction uses observed words from these passes; retain the actual
+    // highest-ranked physical recognition input, never a synthetic reconstruction.
+    const evidenceAttempt = attempts.find(a=>!/merge|reconstruction/.test(a.region));
+    const evidenceSource = evidenceAttempt?.preparation ? faintSource : regionSources.find(r=>r.name===evidenceAttempt?.region);
+    const evidenceImage = evidenceAttempt && evidenceSource
+      ? evidenceAttempt.preparation ? faintVariantImage(faint,evidenceAttempt.variant as FaintVariant)
+        : await preprocessForOcr(evidenceSource.image,evidenceAttempt.rotation,evidenceAttempt.variant)
+      : faint.gray;
+    const evidenceMeta = await sharp(evidenceImage).metadata();
+    const optical = {images:[{label:"Chosen OCR variant",mime:"image/png",base64:evidenceImage.toString("base64"),width:evidenceMeta.width!,height:evidenceMeta.height!,exifOrientation:null,rotation:evidenceAttempt?.rotation??0,source:evidenceAttempt?.region??"full-document",transformation:JSON.stringify({variant:evidenceAttempt?.variant??"local-gray",preparation:evidenceAttempt?.preparation,bounds:evidenceSource?.bounds})}],notes:[]};
     return {
+      optical,
       text: finalText,
       structuredRowEvidence,
       rawPasses: [...attempts, ...invoiceColumnPasses].filter(attempt => !/merged|reconstruction/.test(attempt.region)).map(attempt => ({ ...attempt, text: withoutMicrBandText(attempt.text) })),
       diagnostics: {
         detailedOcrDurationMs: Date.now()-startedAt,
         recoveryDurationMs,
+        opticalVariants: attempts.filter(a=>a.preparation).map(a=>({variant:a.variant,confidence:a.confidence,durationMs:a.durationMs,score:opticalScore(a.text,a.confidence),...a.preparation})),
         totalDurationMs: Date.now()-startedAt,
         documentType,
         retryStrategy,
@@ -2774,45 +2799,26 @@ async function evaluateCaptureSourceCandidate(
       height: sources.scene.height ?? 0,
     },
   };
-  const spec: OcrAttemptSpec = {
-    variant: "grayscale-normalized",
-    pageMode: { name: "sparse-text", value: psm.SPARSE_TEXT },
-  };
   stage = "preprocess";
-  const processedImage = await preprocessForOcr(source.image, 0, spec.variant);
-  const processedMetadata = await imageMetadata(processedImage);
-  stage = "set-psm";
-  await worker.setParameters({
-    tessedit_pageseg_mode: spec.pageMode.value,
+  const prepared=await prepareFaintRegions(source.image);
+  await worker.setParameters({tessedit_pageseg_mode:psm.SPARSE_TEXT,user_defined_dpi:"300"});
+  const startedAt=Date.now();
+  stage="ocr-recognize";
+  const variants=await recognizeFaintVariants(worker,prepared,5_000).catch(error=>{
+    if(error instanceof Error && error.message.includes("time budget"))throw captureSourceError("Capture source selection OCR timed out.","ocr-recognize");
+    throw error;
   });
-  const startedAt = Date.now();
-  let preflightTimeout: ReturnType<typeof setTimeout> | null = null;
-  stage = "ocr-recognize";
-  const result = await Promise.race([
-    worker.recognize(processedImage, {}, { text: true, blocks: true }),
-    new Promise<never>((_, reject) => {
-      preflightTimeout = setTimeout(
-        () =>
-          reject(
-            captureSourceError(
-              "Capture source selection OCR timed out.",
-              "ocr-recognize"
-            )
-          ),
-        5_000
-      );
-    }),
-  ]).finally(() => {
-    if (preflightTimeout) {
-      clearTimeout(preflightTimeout);
-    }
-  });
+  const chosen=variants.selected;
+  const spec:OcrAttemptSpec={variant:chosen.variant,pageMode:{name:"sparse-text",value:psm.SPARSE_TEXT}};
+  const result={data:chosen.data};
+  const processedMetadata={width:prepared.bounds.width,height:prepared.bounds.height};
+  const recognitionSource={...source,width:prepared.bounds.width,height:prepared.bounds.height,bounds:prepared.bounds};
   const confidence =
     typeof result.data.confidence === "number" ? result.data.confidence : 0;
   const text = result.data.text ?? "";
   const words = extractOcrWords(
     result.data,
-    source,
+    recognitionSource,
     processedMetadata.width ?? source.width ?? 0,
     processedMetadata.height ?? source.height ?? 0,
     spec,
@@ -2881,6 +2887,7 @@ async function evaluateCaptureSourceCandidate(
   return {
     id,
     label,
+    opticalVariants: variants.passes.map(p=>({variant:p.variant,confidence:p.data.confidence,score:p.score,durationMs:p.durationMs,...faintProvenance(prepared)})),
     selectedImageDataUrl: resolvedImage.selectedImageDataUrl,
     inputType: resolvedImage.inputType,
     imageMimeType: resolvedImage.mimeType,
@@ -3002,6 +3009,7 @@ async function selectCaptureSource(
         imageMimeType: evaluation.imageMimeType,
         imageByteSize: evaluation.imageByteSize,
         dimensions: evaluation.dimensions,
+        opticalVariants: evaluation.opticalVariants,
         quality: evaluation.quality,
         detectorConfidence: evaluation.detectorConfidence,
         detectorAreaRatio: evaluation.detectorAreaRatio,
@@ -3172,8 +3180,9 @@ async function runExtraction(request: Request) {
     const rawText = ocrResult.text;
     const parsedText = withoutMicrBandText(rawText);
 
-    if (!rawText) {
+    if (!rawText || !ocrResult.rawPasses.some(pass=>opticalScore(pass.text,pass.confidence).credible)) {
       return NextResponse.json({
+        optical:ocrResult.optical,
         rawText: "",
         stubText: "",
         lines: [],
@@ -3215,6 +3224,7 @@ async function runExtraction(request: Request) {
       extractedInvoiceNumbers.length === 0
     ) {
       return NextResponse.json({
+        optical:ocrResult.optical,
         rawText,
         stubText: "",
         lines: [],
@@ -3255,6 +3265,7 @@ async function runExtraction(request: Request) {
     ];
 
     return NextResponse.json({
+      optical:ocrResult.optical,
       ocrEngine: "tesseract.js",
       documentType,
       retryStrategy,

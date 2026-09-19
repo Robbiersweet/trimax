@@ -65,7 +65,7 @@ export async function normalizePhysicalStill(file: File) {
   c.setTransform(...orientationTransform(o, w, h));
   c.drawImage(raw, 0, 0);
   const output = document.createElement("canvas");
-  const scale = Math.min(1, 3200 / Math.max(canvas.width, canvas.height));
+  const scale = Math.min(1, 4600 / Math.max(canvas.width, canvas.height));
   output.width = Math.round(canvas.width * scale);
   output.height = Math.round(canvas.height * scale);
   output.getContext("2d")!.drawImage(canvas, 0, 0, output.width, output.height);

@@ -232,7 +232,8 @@ function boundedOptical(value: unknown) {
   };
   let budget = 11000000;
   const notes = [...(e.notes ?? [])];
-  const images = (e.images ?? []).slice(0, 3).sort((a,b)=>Number(b.label==="Final OCR input")-Number(a.label==="Final OCR input")).map((image) => {
+  const priority = (label:unknown) => {const index=["Chosen OCR variant","Original capture","Normalized image","Final OCR input","Orientation OCR variant"].indexOf(String(label));return index<0?99:index;};
+  const images = (e.images ?? []).slice().sort((a,b)=>priority(a.label)-priority(b.label)).slice(0,6).map((image) => {
     const b = typeof image.base64 === "string" ? image.base64 : "";
     if (
       !/^(image\/jpeg|image\/png)$/.test(String(image.mime)) ||

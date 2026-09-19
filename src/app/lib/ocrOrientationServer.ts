@@ -3,6 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import sharp from "sharp";
 import { createWorker, OEM, PSM } from "tesseract.js";
+import {
+  prepareFaintRegions,
+  directionEvidence,
+  faintProvenance,
+} from "./ocrFaint.ts";
 import { opticalScore } from "./ocrOptical.ts";
 export async function probeOrientation(input: Buffer) {
   const started = Date.now(),
@@ -13,7 +18,9 @@ export async function probeOrientation(input: Buffer) {
     .flatten({ background: "#fff" })
     .png()
     .toBuffer();
-  const cachePath=join(tmpdir(),"trimax-optical-tesseract");await mkdir(cachePath,{recursive:true});
+  const cachePath = join(tmpdir(), "trimax-optical-tesseract");
+  await mkdir(cachePath, { recursive: true });
+  const prepared = await prepareFaintRegions(normalized);
   const worker = await createWorker("eng", OEM.LSTM_ONLY, {
     cachePath,
     gzip: true,
@@ -24,30 +31,26 @@ export async function probeOrientation(input: Buffer) {
     durationMs: number;
     text: string;
     score: ReturnType<typeof opticalScore>;
+    direction: ReturnType<typeof directionEvidence>;
+    preparation: ReturnType<typeof faintProvenance>;
+    variant: string;
   }> = [];
   let timeout: ReturnType<typeof setTimeout> | undefined;
   try {
     await worker.setParameters({
       tessedit_pageseg_mode: PSM.SPARSE_TEXT,
       preserve_interword_spaces: "1",
+      user_defined_dpi: "300",
     });
     for (const rotation of [0, 90, 180, 270]) {
       if (Date.now() - started > 16000) break;
       const begin = Date.now();
-      const image = await sharp(normalized)
+      const image = await sharp(prepared.gray)
         .rotate(rotation)
-        .resize({
-          width: 1500,
-          height: 1500,
-          fit: "inside",
-          withoutEnlargement: true,
-        })
-        .grayscale()
-        .normalize()
         .png()
         .toBuffer();
       const result = await Promise.race([
-        worker.recognize(image),
+        worker.recognize(image, {}, { text: true, blocks: true }),
         new Promise<never>((_, reject) => {
           timeout = setTimeout(
             () => reject(Error("Orientation probe time budget exceeded")),
@@ -60,18 +63,29 @@ export async function probeOrientation(input: Buffer) {
         durationMs: Date.now() - begin,
         text: result.data.text,
         score: opticalScore(result.data.text, result.data.confidence),
+        direction: directionEvidence(result.data),
+        preparation: {
+          ...faintProvenance(prepared),
+          outputWidth:
+            rotation % 180 ? prepared.bounds.height : prepared.bounds.width,
+          outputHeight:
+            rotation % 180 ? prepared.bounds.width : prepared.bounds.height,
+        },
+        variant: "local-gray",
       });
     }
   } finally {
     await worker.terminate().catch(() => undefined);
   }
   const ranked = passes
-    .filter((p) => p.score.credible)
-    .sort((a, b) => b.score.score - a.score.score);
+    .filter((p) => p.direction.credible)
+    .sort((a, b) => b.direction.score - a.direction.score);
   // Do not infer an angle from noise or from a partially completed four-angle comparison.
   const selected = passes.length === 4 ? ranked[0] : undefined;
   const ambiguous =
-    selected && ranked[1] && ranked[1].score.score >= selected.score.score - 5;
+    selected &&
+    ranked[1] &&
+    ranked[1].direction.score >= selected.direction.score * 0.9;
   const angle = selected && !ambiguous ? selected.rotation : null;
   const image = await sharp(normalized)
     .rotate(angle ?? 0)
@@ -86,6 +100,30 @@ export async function probeOrientation(input: Buffer) {
     height: out.height!,
     probeDurationMs: Date.now() - started,
     passes,
+    optical:
+      angle === null
+        ? {
+            images: [
+              {
+                label: "Orientation OCR variant",
+                mime: "image/png",
+                base64: prepared.gray.toString("base64"),
+                width: prepared.bounds.width,
+                height: prepared.bounds.height,
+                exifOrientation: null,
+                rotation: 0,
+                source: "orientation-probe",
+                transformation: JSON.stringify({
+                  variant: "local-gray",
+                  ...faintProvenance(prepared),
+                }),
+              },
+            ],
+            notes: [
+              "Orientation unresolved; retained unrotated local-gray recognition region for inspection.",
+            ],
+          }
+        : undefined,
     image,
   };
 }

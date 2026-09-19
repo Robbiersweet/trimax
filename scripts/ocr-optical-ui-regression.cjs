@@ -7,5 +7,6 @@ module.exports=async function(loader,React,renderer){
  await renderer.act(async()=>{tree.root.findByType('details').props.onToggle({currentTarget:{open:true}});});assert.equal(reads,1);assert.equal(tree.root.findAllByType('img').length,1);
  await renderer.act(async()=>{tree.root.findAllByType('details')[0].props.onToggle({currentTarget:{open:false}});});assert.equal(tree.root.findAllByType('img').length,0);await renderer.act(async()=>tree.unmount());
  const {diagnosticPayload}=require('../src/app/lib/ocrHistory.ts');const p=diagnosticPayload({optical:{images:[{label:'bad',mime:'image/svg+xml',base64:'PHN2Zz4='}],notes:[]},imageDataUrl:'data:image/jpeg;base64,secret'});assert.equal(p.optical.images[0].base64,'');assert.equal(p.imageDataUrl,undefined);
+ const retained=diagnosticPayload({optical:{images:['Original capture','Normalized image','Final OCR input','Chosen OCR variant'].map(label=>({label,mime:'image/png',base64:'AAAA'})),notes:[]}});assert.equal(retained.optical.images.length,4);assert.equal(retained.optical.images[0].label,'Chosen OCR variant');
  console.log('Optical UI: lazy fetch, collapsed image exclusion, inspectable image, bounded raster-only retention passed.');
 };

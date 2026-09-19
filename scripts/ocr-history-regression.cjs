@@ -275,9 +275,12 @@ module.exports = async function historyRegression(load, React, renderer) {
   process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-public-key";
   const checkpoints = [];
+  let opticalReadFails=false;
+  const raster=label=>({label,mime:"image/png",base64:"AAAA",width:1,height:1});
   const server = load({
     "@supabase/supabase-js": {
       createClient: () => ({
+        from:()=>({select:()=>({eq:()=>({maybeSingle:async()=>{if(opticalReadFails)throw Error("read unavailable");return {data:{evidence:{images:[raster("Original capture")],notes:[]}},error:null};}})})}),
         rpc: async (name, args) => {
           checkpoints.push(args);
           return { error: null };
@@ -314,6 +317,15 @@ module.exports = async function historyRegression(load, React, renderer) {
     assert.equal(checkpoints[0].p_phase, 1);
     assert.equal(checkpoints[0].p_payload.response.rawText, "full evidence");
     assert.equal(checkpoints[0].p_summary.paymentCanApply, false);
+    const opticalRun=()=>server.checkpointOcr(request.clone(),async()=>Response.json({rawText:"faint evidence",optical:{images:[raster("Chosen OCR variant")],notes:[]}}));
+    const opticalResponse=await opticalRun();
+    assert.equal(opticalResponse.status,200);
+    assert.equal((await opticalResponse.json()).optical.images.length,1);
+    assert.deepEqual(checkpoints.at(-1).p_payload.optical.images.map(i=>i.label),["Chosen OCR variant","Original capture"]);
+    assert.equal(checkpoints.at(-1).p_payload.response.optical,undefined,"No duplicate image bytes in ordinary diagnostics");
+    opticalReadFails=true;
+    assert.equal((await opticalRun()).status,200,"Diagnostic read failure must not fail OCR");
+    assert.equal(checkpoints.at(-1).p_payload.optical,undefined,"Failed read must not overwrite original image retention");
   } finally {
     if (oldUrl === undefined) delete process.env.NEXT_PUBLIC_SUPABASE_URL;
     else process.env.NEXT_PUBLIC_SUPABASE_URL = oldUrl;

@@ -68,10 +68,36 @@ export async function checkpointOcr(
         .clone()
         .json()
         .catch(() => ({ error: "Response was not JSON" }));
+      const { optical, ...responseEvidence } = result;
+      let retainedOptical;
+      if (optical?.images?.length) {
+        try {
+          const { data, error } = await client
+            .from("ocr_attempt_optical")
+            .select("evidence")
+            .eq("attempt_id", history!.attemptId)
+            .maybeSingle();
+          // A diagnostic read failure must neither fail OCR nor overwrite earlier capture evidence.
+          if (!error)
+            retainedOptical = {
+              ...data?.evidence,
+              images: [...(data?.evidence?.images ?? []), ...optical.images],
+              notes: [
+                ...(data?.evidence?.notes ?? []),
+                ...(optical.notes ?? []),
+              ],
+            };
+        } catch {
+          console.warn(
+            "Earlier optical evidence unavailable; client will retain completed optical evidence.",
+          );
+        }
+      }
       await checkpoint(
         {
           ...body.debugContext,
-          response: result,
+          ...(retainedOptical ? { optical: retainedOptical } : {}),
+          response: responseEvidence,
           stage: "server-extraction",
           httpStatus: response.status,
         },

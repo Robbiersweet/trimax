@@ -311,6 +311,7 @@ type CaptureSourceSelectionResponse = {
 };
 
 type CheckStubOcrResponse = {
+  optical?: OpticalEvidence;
   evidence?: RemittanceEvidence;
   documentType?: RemittanceDocumentType;
   stubText?: string;
@@ -3453,6 +3454,7 @@ export default function BatchInvoicePayments({
       const summary=finishScan(history,attempt,result,performance.now()-startedAt,reasons);
       if(attemptVersion===ocrAttemptVersion.current)latestScan.current=summary;
       const opticalResponse=retainedResponse as CheckStubOcrResponse | null;
+      if(opticalResponse?.optical){opticalSnapshot.images.push(...opticalResponse.optical.images);opticalSnapshot.notes.push(...opticalResponse.optical.notes);delete opticalResponse.optical;}
       opticalSnapshot.timings={orientationProbeMs:(Array.isArray(opticalSnapshot.probe)?opticalSnapshot.probe:[]).reduce((n,p)=>n+Number(p.probeDurationMs??0),0),detailedOcrMs:performance.now()-startedAt,recoveryMs:Number((opticalResponse?.diagnostics as Record<string,unknown>|undefined)?.recoveryDurationMs??0),totalMs:performance.now()-(opticalSnapshot.startedAt??startedAt)};
       const saved = persist(summary,{optical:opticalSnapshot,response:retainedResponse,attempt,capture:captureSnapshot,preparation:prepDiagnosticLines,finalResult:result,reasons},2);
       void saved?.then(durable=>{ if(durable && attemptVersion===ocrAttemptVersion.current){latestScan.current=summary;setLastOcrDiagnosticLines([failureSummary(summary)]);setLastOcrRawText("");if(attempt)setActiveRemittanceAttempt(slimAttempt(attempt));} });
@@ -4276,9 +4278,9 @@ export default function BatchInvoicePayments({
     const original=opticalRef.current.images.find(i=>i.label==="Original capture");if(original&&original.source===source){original.width=normalized.metadata.rawWidth;original.height=normalized.metadata.rawHeight;}
     const form=new FormData();form.append("mode","orientation-probe");form.append("captureCandidates",JSON.stringify([{id:source,label:source,fileField:"candidate-0"}]));form.append("candidate-0",normalized.file);
     const response=await fetch("/api/payments/extract-check-stub",{method:"POST",body:form,signal:AbortSignal.timeout(25000)});
-    const result=await response.json(); const {imageDataUrl,...probe}=result;opticalRef.current.probe=[...(Array.isArray(opticalRef.current.probe)?opticalRef.current.probe:[]),{source,...probe}];
+    const result=await response.json(); const {imageDataUrl,optical,...probe}=result;if(optical?.images){opticalRef.current.images.push(...optical.images);opticalRef.current.notes.push(...(optical.notes??[]));}opticalRef.current.probe=[...(Array.isArray(opticalRef.current.probe)?opticalRef.current.probe:[]),{source,...probe}];
     const output=imageDataUrl?await dataUrlToImageFile(imageDataUrl,"trimax-oriented.jpg"):normalized.file;
-    opticalRef.current.images=opticalRef.current.images.filter(i=>i.label!=="Normalized image");
+    opticalRef.current.images=opticalRef.current.images.filter(i=>i.label!=="Normalized image"||i.source!==source);
     opticalRef.current.images.push(await opticalImage(output,"Normalized image",source,normalized.metadata.exifOrientation,result.rotation??0,normalized.metadata.transformation+"; document probe rotation "+(result.rotation??"unresolved")));
     if(!response.ok||!result.resolved)throw Error("Document orientation unresolved. Retake the photo or rotate it manually before retrying.");
     return output;
