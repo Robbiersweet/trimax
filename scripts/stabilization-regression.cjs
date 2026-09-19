@@ -1114,6 +1114,8 @@ async function duplicatePreflightAndViewRegression() {
 }
 
 async function main() {
+  require("./capture-gate-integration-regression.cjs")();
+  require("node:child_process").execFileSync(process.execPath,["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON","--experimental-strip-types","scripts/capture-readiness-regression.ts"],{stdio:"inherit"});
   require("node:child_process").execFileSync(process.execPath,["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON","--experimental-strip-types","scripts/ocr-optical-regression.ts"],{stdio:"inherit"});
   await require("./ocr-history-regression.cjs")(loader,React,renderer);
   await require("./ocr-debug-queue-regression.cjs")(loader,React,renderer);

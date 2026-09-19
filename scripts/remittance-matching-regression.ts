@@ -1502,9 +1502,9 @@ assert(
 );
 assert(
   paymentScreen.includes("const analyzeLiveCameraFrame = useCallback") &&
-    paymentScreen.includes("paperCoverage < minimumCoverage") &&
-    paymentScreen.includes('message: "Move closer"') &&
-    paymentScreen.includes("stableReadyCount >= 2") &&
+    paymentScreen.includes("measureCaptureFrame(") &&
+    paymentScreen.includes("captureReadiness(frame,captureGateMemory.current)") &&
+    paymentScreen.includes("setCameraQualityReady(result?.ready ?? false)") &&
     !paymentScreen.includes("disabled={!cameraReady || !cameraQualityReady}") &&
     paymentScreen.includes("Capture Remittance") &&
     paymentScreen.includes("Check Capture") &&
@@ -1659,9 +1659,9 @@ assert(
   "Payments OCR diagnostics must expose per-pass token summaries and text-region quality so good and bad physical reads can be compared."
 );
 assert(
-  paymentScreen.includes("Capture stub separately") &&
+  readFileSync(resolve(process.cwd(), "src/app/lib/captureReadiness.ts"), "utf8").includes("Capture stub separately") &&
     paymentScreen.includes('captureDocumentType === "full_check_stub"') &&
-    paymentScreen.includes("effectiveGuideShortEdge < 980") &&
+    paymentScreen.includes('frame.minimumGuideShortEdge = captureDocumentType === "full_check_stub" ? 980 : 0') &&
     paymentScreen.includes("guidanceForDocumentType(captureDocumentType)"),
   "Full Check + Stub capture must warn when invoice text resolution is too distant and suggest a stub close-up."
 );

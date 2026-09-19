@@ -491,7 +491,7 @@ assert(
   paymentScreen.includes("const minReadableEdge = 2400") &&
     !paymentScreen.includes("OCR image target: at least 3200px readable edge") &&
     paymentScreen.includes("Move closer - document is too distant.") &&
-    paymentScreen.includes("Move farther away - show the full remittance") &&
+    readFileSync(resolve(root, "src/app/lib/captureReadiness.ts"), "utf8").includes("Move farther away - show the full remittance") &&
     paymentScreen.includes("Use a higher-resolution photo.") &&
     paymentScreen.includes("Use Cropped Image Anyway") &&
     paymentScreen.includes("longestEdge >= 1800 && shortestEdge >= 650") &&

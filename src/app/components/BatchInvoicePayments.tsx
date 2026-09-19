@@ -1,5 +1,6 @@
 "use client";
 import { normalizePhysicalStill, opticalImage } from "../lib/ocrOpticalBrowser";
+import { captureReadiness, measureCaptureFrame, type GateMemory, type GateDecision } from "../lib/captureReadiness";
 import type { OpticalEvidence } from "../lib/ocrOptical";
 
 import { createRemittanceEvidence, emptyRemittanceEvidence, immutableSnapshot, resolveRemittanceAttempt, attemptAllowsApply, type RemittanceAttempt, type RemittanceEvidence, type ScanCapture } from "../lib/remittanceAttempt";
@@ -1552,6 +1553,9 @@ export default function BatchInvoicePayments({
   const [checkAmount, setCheckAmount] = useState(
     startingFocus ? formatMoney(startingFocus.total) : ""
   );
+  const captureGateMemory = useRef<GateMemory>({count:0,stable:0});
+  const captureGateTrace = useRef<GateDecision[]>([]);
+  const captureGateSession = useRef({frames:0,captured:false,businessId:""});
   const opticalRef = useRef<OpticalEvidence>({images:[],notes:[]});
   const [checkImagePreview, setCheckImagePreview] = useState("");
   const [checkImageName, setCheckImageName] = useState("");
@@ -2107,6 +2111,8 @@ export default function BatchInvoicePayments({
       }
 
       setCameraStatusMessage("Starting camera...");
+      captureGateTrace.current = [];
+      captureGateSession.current = {frames:0,captured:false,businessId:businessId ?? ""};
       cameraOpenedAtRef.current = performance.now();
       cameraReadyAtRef.current = 0;
       cameraInitialTrackSettingsRef.current = "pending";
@@ -2163,7 +2169,7 @@ export default function BatchInvoicePayments({
         }, 2500);
         setCameraReady(true);
         setCameraQualityReady(false);
-        setCameraStatusMessage("Move closer");
+        setCameraStatusMessage("Hold steady / improve detection");
       } catch {
         setCameraReady(false);
         setCameraQualityReady(false);
@@ -2179,7 +2185,7 @@ export default function BatchInvoicePayments({
       canceled = true;
       stopCameraCapture();
     };
-  }, [paymentEntryMode]);
+  }, [paymentEntryMode, businessId]);
 
   useEffect(() => {
     const captureActive = paymentEntryMode === "camera";
@@ -4091,185 +4097,46 @@ export default function BatchInvoicePayments({
   }, []);
 
   const analyzeLiveCameraFrame = useCallback(() => {
-    opticalRef.current={images:[],notes:[],startedAt:performance.now()};
-    sourceSelectionRef.current=[];
     const video = cameraVideoRef.current;
-
-    if (!video || video.videoWidth <= 0 || video.videoHeight <= 0) {
-      return null;
-    }
-
-    const { sourceX, sourceY, sourceWidth, sourceHeight } =
-      getVisibleCameraGuideSourceRect(video);
-    const scanWidth = 260;
-    const scale = Math.min(1, scanWidth / Math.max(sourceWidth, sourceHeight));
-    const width = Math.max(1, Math.round(sourceWidth * scale));
-    const height = Math.max(1, Math.round(sourceHeight * scale));
+    if (!video || video.videoWidth <= 0 || video.videoHeight <= 0) return null;
+    const rect = getVisibleCameraGuideSourceRect(video);
+    const scale = Math.min(1, 384 / Math.max(rect.visibleSourceWidth, rect.visibleSourceHeight));
+    const width = Math.max(1, Math.round(rect.visibleSourceWidth * scale));
+    const height = Math.max(1, Math.round(rect.visibleSourceHeight * scale));
     const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d", { willReadFrequently: true });
-
-    if (!context) {
-      return null;
-    }
-
-    canvas.width = width;
-    canvas.height = height;
-    context.drawImage(
-      video,
-      sourceX,
-      sourceY,
-      sourceWidth,
-      sourceHeight,
-      0,
-      0,
-      width,
-      height
-    );
-
-    const pixels = context.getImageData(0, 0, width, height).data;
-    const grayscale = new Float32Array(width * height);
-    let paperHits = 0;
-    let total = 0;
-    let totalSquared = 0;
-
-    for (let index = 0; index < width * height; index += 1) {
-      const offset = index * 4;
-      const red = pixels[offset] ?? 0;
-      const green = pixels[offset + 1] ?? red;
-      const blue = pixels[offset + 2] ?? red;
-      const brightness = red * 0.299 + green * 0.587 + blue * 0.114;
-      const chroma = Math.max(red, green, blue) - Math.min(red, green, blue);
-
-      grayscale[index] = brightness;
-      total += brightness;
-      totalSquared += brightness * brightness;
-
-      if ((brightness > 145 && chroma < 72) || brightness > 198) {
-        paperHits += 1;
-      }
-    }
-
-    const count = Math.max(width * height, 1);
-    const paperCoverage = paperHits / count;
-    const brightness = total / count;
-    const contrast = Math.sqrt(
-      Math.max(totalSquared / count - brightness * brightness, 0)
-    );
-    let edgeTotal = 0;
-    let edgeCount = 0;
-
-    for (let y = 1; y < height - 1; y += 1) {
-      for (let x = 1; x < width - 1; x += 1) {
-        const center = grayscale[y * width + x] ?? 0;
-        edgeTotal += Math.abs(
-          (grayscale[(y - 1) * width + x] ?? center) +
-            (grayscale[(y + 1) * width + x] ?? center) +
-            (grayscale[y * width + x - 1] ?? center) +
-            (grayscale[y * width + x + 1] ?? center) -
-            center * 4
-        );
-        edgeCount += 1;
-      }
-    }
-
-    const blurScore = edgeTotal / Math.max(edgeCount, 1);
-    const minimumCoverage =
-      captureDocumentType === "remittance_stub"
-        ? cameraGuideMode === "horizontal"
-          ? 0.58
-          : 0.64
-        : captureDocumentType === "full_check_stub"
-          ? 0.46
-          : 0.5;
-    const effectiveGuideShortEdge = Math.min(sourceWidth, sourceHeight);
-
-    if (
-      captureDocumentType === "full_check_stub" &&
-      effectiveGuideShortEdge < 980
-    ) {
-      return {
-        ready: false,
-        message: "Capture stub separately",
-      };
-    }
-
-    if (
-      captureDocumentType === "remittance_stub" &&
-      effectiveGuideShortEdge < 900 &&
-      paperCoverage < minimumCoverage
-    ) {
-      return {
-        ready: false,
-        message: "Move closer",
-      };
-    }
-
-    if (paperCoverage < minimumCoverage) {
-      return {
-        ready: false,
-        message: "Move closer",
-      };
-    }
-
-    if (paperCoverage > 0.94) {
-      return {
-        ready: false,
-        message: "Move farther away - show the full remittance",
-      };
-    }
-
-    if (brightness < 72) {
-      return {
-        ready: false,
-        message: "More light",
-      };
-    }
-
-    if (contrast < 20 || blurScore < 7.5) {
-      return {
-        ready: false,
-        message: "Hold steady",
-      };
-    }
-
-    return {
-      ready: true,
-      message: "Ready",
-    };
-  }, [cameraGuideMode, captureDocumentType, getVisibleCameraGuideSourceRect]);
+    canvas.width = width; canvas.height = height;
+    const context = canvas.getContext("2d", {willReadFrequently:true});
+    if (!context) return null;
+    context.drawImage(video, rect.visibleSourceX, rect.visibleSourceY, rect.visibleSourceWidth, rect.visibleSourceHeight, 0, 0, width, height);
+    const frame = measureCaptureFrame(context.getImageData(0,0,width,height).data, width, height,
+      {x:rect.visibleSourceX,y:rect.visibleSourceY,width:rect.visibleSourceWidth,height:rect.visibleSourceHeight},
+      {x:rect.sourceX,y:rect.sourceY,width:rect.sourceWidth,height:rect.sourceHeight}, video.videoWidth, video.videoHeight);
+    frame.minimumGuideShortEdge = captureDocumentType === "full_check_stub" ? 980 : 0;
+    const result = captureReadiness(frame,captureGateMemory.current);
+    captureGateSession.current.frames++;
+    captureGateTrace.current = [...captureGateTrace.current.slice(-11), result];
+    return result;
+  }, [getVisibleCameraGuideSourceRect, captureDocumentType]);
 
   useEffect(() => {
-    if (paymentEntryMode !== "camera" || !cameraReady) {
-      return;
-    }
-
-    let stableReadyCount = 0;
+    if (paymentEntryMode !== "camera" || !cameraReady || isCapturingFrame) return;
+    captureGateMemory.current = {count:0,stable:0};
     const interval = window.setInterval(() => {
       const result = analyzeLiveCameraFrame();
-
-      if (!result) {
-        setCameraQualityReady(false);
-        setCameraStatusMessage("Move closer");
-        stableReadyCount = 0;
-        return;
-      }
-
-      if (result.ready) {
-        stableReadyCount += 1;
-        setCameraQualityReady(stableReadyCount >= 2);
-        setCameraStatusMessage(stableReadyCount >= 2 ? "Ready" : "Hold steady");
-        return;
-      }
-
-      stableReadyCount = 0;
-      setCameraQualityReady(false);
-      setCameraStatusMessage(result.message);
-    }, 450);
-
+      setCameraQualityReady(result?.ready ?? false);
+      setCameraStatusMessage(result?.message ?? "Unable to detect document - waiting for camera");
+    },450);
     return () => window.clearInterval(interval);
-  }, [analyzeLiveCameraFrame, cameraReady, paymentEntryMode]);
+  }, [analyzeLiveCameraFrame, cameraReady, paymentEntryMode, isCapturingFrame, cameraGuideMode, captureDocumentType]);
 
   function stopCameraCapture() {
+    const gateSession = captureGateSession.current;
+    if (!gateSession.captured && gateSession.frames >= 6 && captureGateTrace.current.at(-1)?.ready === false && gateSession.businessId) {
+      gateSession.captured = true; // At most one compact record per abandoned framing session.
+      const id = crypto.randomUUID();
+      const summary = finishScan(scanSummary(id,id,null,"camera-framing",process.env.NEXT_PUBLIC_TRIMAX_BUILD??"local"),null,"failed",gateSession.frames*450,[captureGateTrace.current.at(-1)?.reason??"Capture framing abandoned"]);
+      void saveScan({businessId:gateSession.businessId,phase:2,summary,payload:{stage:"capture-framing",captureGate:structuredClone(captureGateTrace.current)}}).catch(()=>{});
+    }
     cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
     cameraStreamRef.current = null;
 
@@ -4311,7 +4178,7 @@ export default function BatchInvoicePayments({
     setCameraGuideMode(defaultGuideModeForDocumentType(documentType));
     setCameraQualityReady(false);
     setCameraStatusMessage(
-      documentType === "full_check_stub" ? "Capture stub separately" : "Move closer"
+      "Hold steady / improve detection"
     );
   }
 
@@ -4693,6 +4560,9 @@ export default function BatchInvoicePayments({
       return;
     }
 
+    captureGateSession.current.captured = true;
+    opticalRef.current = {images:[],notes:[],startedAt:performance.now()};
+    sourceSelectionRef.current = [];
     setIsCapturingFrame(true);
     setCameraFailureStage("");
     setCameraPipelineStages(["Capturing..."]);
@@ -4749,6 +4619,7 @@ export default function BatchInvoicePayments({
     const guideScaleX = viewportWidth > 0 ? visibleSourceWidth / viewportWidth : 0;
     const guideScaleY = viewportHeight > 0 ? visibleSourceHeight / viewportHeight : 0;
     const cameraCaptureDiagnosticLines = [
+      `Capture gate (native-video coordinates): ${JSON.stringify(captureGateTrace.current)}`,
       `Frame captured: native video ${video.videoWidth} x ${video.videoHeight}.`,
       `Camera native video: ${video.videoWidth} x ${video.videoHeight}.`,
       `Camera rendered video: ${renderedVideoWidth} x ${renderedVideoHeight}.`,
@@ -5180,7 +5051,7 @@ export default function BatchInvoicePayments({
     setCameraPipelineStages([]);
     setCameraFailureStage("");
     setCameraStatusMessage(
-      documentType === "full_check_stub" ? "Capture stub separately" : "Move closer"
+      "Hold steady / improve detection"
     );
   }
 
@@ -5590,7 +5461,7 @@ export default function BatchInvoicePayments({
                   current === "horizontal" ? "vertical" : "horizontal"
                 );
                 setCameraQualityReady(false);
-                setCameraStatusMessage("Move closer");
+                setCameraStatusMessage("Hold steady / improve detection");
               }}
               className="min-h-11 rounded-full border border-white/30 bg-black/70 px-3 py-2 text-xs font-black text-white shadow-xl backdrop-blur transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-sky-200 landscape:min-h-9 landscape:py-1.5"
             >
