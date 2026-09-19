@@ -1,6 +1,7 @@
 "use client";
 import {
   attemptPath,
+  debugTimestamp,
   debugQueuePath,
   diagnosticsAvailable,
 } from "../lib/ocrDebug";
@@ -193,7 +194,11 @@ export default function RecentScans({
               </h3>
               <dl className="grid grid-cols-2 gap-2 text-sm">
                 <dt>Scanned</dt>
-                <dd>{new Date(s.timestamp).toLocaleString()}</dd>
+                <dd>
+                  {standalone
+                    ? debugTimestamp(s.timestamp)
+                    : new Date(s.timestamp).toLocaleString()}
+                </dd>
                 <dt>Attempt</dt>
                 <dd className="break-all">{s.attemptId}</dd>
                 <dt>Build</dt>
@@ -322,7 +327,7 @@ export default function RecentScans({
                   : selected.pinned
                     ? "Pinned: full diagnostics stay until unpinned."
                     : selected.diagnostics_expires_at
-                      ? `Full diagnostics retained until ${new Date(selected.diagnostics_expires_at).toLocaleDateString()}.`
+                      ? `Full diagnostics retained until ${standalone ? debugTimestamp(selected.diagnostics_expires_at) : new Date(selected.diagnostics_expires_at).toLocaleDateString()}.`
                       : "Full diagnostics may be waiting to sync from this device."}
               </p>
               {selected.result !== "success" && (

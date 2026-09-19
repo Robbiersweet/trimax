@@ -84,3 +84,7 @@ export function safeDiagnosticView(value: unknown): unknown {
     }),
   );
 }
+
+export function debugTimestamp(value: string) {
+  return new Date(value).toISOString().replace("T", " ").replace("Z", " UTC");
+}

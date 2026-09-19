@@ -4,6 +4,7 @@ import Card from "../../components/Card";
 import { loadDebugQueue } from "../../lib/ocrDebugServer";
 import {
   attemptPath,
+  debugTimestamp,
   debugQueuePath,
   debugFilters,
   parseDebugFilter,
@@ -85,9 +86,7 @@ export default async function OcrDebugQueue({
                     {attempt.pinned ? " · Pinned" : ""}
                   </span>
                 </div>
-                <p className="text-sm">
-                  {new Date(attempt.created_at).toLocaleString()}
-                </p>
+                <p className="text-sm">{debugTimestamp(attempt.created_at)}</p>
                 <p className="break-all text-xs">Attempt {attempt.id}</p>
                 <p className="break-all text-xs">
                   Build {attempt.summary.build}

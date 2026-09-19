@@ -3,6 +3,7 @@ import { useState, type FormEvent } from "react";
 import { supabase } from "../lib/supabase";
 import {
   attemptPath,
+  debugTimestamp,
   debugStatuses,
   type DebugAttempt,
   type DebugStatus,
@@ -127,12 +128,10 @@ export default function OcrDebugMetadata({
           <div className="text-sm">
             Investigated:{" "}
             {dates.investigated_at
-              ? new Date(dates.investigated_at).toLocaleString()
+              ? debugTimestamp(dates.investigated_at)
               : "Not yet"}{" "}
             · Resolved:{" "}
-            {dates.resolved_at
-              ? new Date(dates.resolved_at).toLocaleString()
-              : "Not yet"}
+            {dates.resolved_at ? debugTimestamp(dates.resolved_at) : "Not yet"}
           </div>
           <button type="submit" disabled={busy} className={button}>
             {busy ? "Saving…" : "Save debug metadata"}
