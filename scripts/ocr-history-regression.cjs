@@ -213,8 +213,10 @@ module.exports = async function historyRegression(load, React, renderer) {
       return request;
     },
   };
+  let rejectId=null;
   const remote = {
     rpc: async (_name, args) => {
+      if (args.p_id===rejectId)return {error:{message:"one malformed payload"}};
       if (offline) return { error: { message: "offline" } };
       sent.push(args);
       return { error: null };
@@ -261,6 +263,10 @@ module.exports = async function historyRegression(load, React, renderer) {
       payload: { giant: "should not be stored" },
     });
     assert.equal(sent.at(-1).p_payload, null);
+    rejectId=crypto.randomUUID();
+    assert.equal(await restarted.saveScan({businessId:"workspace",phase:2,summary:{...summary,attemptId:rejectId},payload:{bad:true}}),"device");
+    assert.equal(await restarted.saveScan({businessId:"workspace",phase:2,summary:{...summary,attemptId:crypto.randomUUID()},payload:{good:true}}),"saved");
+    assert.equal((await restarted.pendingScans("workspace")).length,1,"Only rejected attempt stays queued");
   } finally {
     global.indexedDB = oldIndexedDB;
   }

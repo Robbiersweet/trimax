@@ -83,13 +83,19 @@ export function flushScans(businessId: string) {
           a.summary.timestamp.localeCompare(b.summary.timestamp) ||
           a.phase - b.phase,
       );
+      let failure: unknown = null;
       for (const write of writes) {
-        await send({ ...write, payload: await localPayload(write) });
-        await transaction([STORE, PAYLOAD], "readwrite", (tx) => {
-          tx.objectStore(PAYLOAD).delete(write.key);
-          return tx.objectStore(STORE).delete(write.key);
-        });
+        try {
+          await send({ ...write, payload: await localPayload(write) });
+          await transaction([STORE, PAYLOAD], "readwrite", (tx) => {
+            tx.objectStore(PAYLOAD).delete(write.key);
+            return tx.objectStore(STORE).delete(write.key);
+          });
+        } catch (error) {
+          failure = error;
+        }
       }
+      if (failure) throw failure;
     });
   flushing = next;
   return next;
@@ -121,7 +127,12 @@ export async function saveScan(write: ScanWrite): Promise<"saved" | "device"> {
     await flushScans(write.businessId);
     return "saved";
   } catch {
-    return "device";
+    // An unrelated failed record must not hide this attempt's acknowledged save.
+    return (await pendingScans(write.businessId)).some(
+      (item) => item.key === key,
+    )
+      ? "device"
+      : "saved";
   }
 }
 export async function recentScans(businessId: string, before?: string) {
