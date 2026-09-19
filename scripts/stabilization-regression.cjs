@@ -3,6 +3,9 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const ts = require("typescript");
+// React act() is a test-only API. Vercel invokes this harness with NODE_ENV=production.
+// Scope test mode to this process before React loads; the subsequent app build keeps production mode.
+process.env.NODE_ENV = "test";
 const React = require("react");
 const renderer = require("react-test-renderer");
 global.IS_REACT_ACT_ENVIRONMENT = true;
