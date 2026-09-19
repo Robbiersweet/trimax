@@ -14,6 +14,7 @@ import {
 } from "../lib/rolePermissions";
 import { loadWorkspaceAccess } from "../lib/workspaceAccess";
 import UserMenu from "./UserMenu";
+import { debugQueuePath } from "../lib/ocrDebug";
 
 type NavLink = {
   key: NavPermissionKey;
@@ -323,6 +324,11 @@ export default function Navigation() {
           description: "Apply payments",
           href: `/payments?business=${business}#batch-payment-tool`,
         },
+        {
+          label: "Recent OCR Scans",
+          description: "Scan history & diagnostics",
+          href: debugQueuePath(business),
+        },
       ],
       clients: [
         {
@@ -382,6 +388,11 @@ export default function Navigation() {
           label: "Payment Proof",
           description: "Checks + deposits",
           href: `/activity?business=${business}&type=payment`,
+        },
+        {
+          label: "OCR Proof",
+          description: "OCR attempts & evidence",
+          href: debugQueuePath(business),
         },
       ],
       settings: [
