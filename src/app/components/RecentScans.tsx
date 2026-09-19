@@ -1,4 +1,9 @@
 "use client";
+import {
+  attemptPath,
+  debugQueuePath,
+  diagnosticsAvailable,
+} from "../lib/ocrDebug";
 import type { RemittanceAttempt } from "../lib/remittanceAttempt";
 import { useEffect, useState, useRef } from "react";
 import { debugFile, failureSummary, type ScanRecord } from "../lib/ocrHistory";
@@ -14,15 +19,28 @@ type Props = {
   businessId: string;
   role: string | null | undefined;
   savedStatus: string;
+  businessSlug?: string;
+  initialAttempt?: ScanRecord;
+  standalone?: boolean;
 };
-export default function RecentScans({ businessId, role, savedStatus }: Props) {
-  const [open, setOpen] = useState(false),
+export default function RecentScans({
+  businessId,
+  role,
+  savedStatus,
+  businessSlug = "rnl-creations",
+  initialAttempt,
+  standalone = false,
+}: Props) {
+  const [open, setOpen] = useState(Boolean(initialAttempt)),
     [records, setRecords] = useState<ScanRecord[]>([]),
-    [selected, setSelected] = useState<ScanRecord | null>(null);
+    [selected, setSelected] = useState<ScanRecord | null>(
+      initialAttempt ?? null,
+    );
   const [payload, setPayload] = useState<unknown>(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [file, setFile] = useState<{ url: string; file: File } | null>(null);
+  const [rawOpen, setRawOpen] = useState(false);
   const selectionVersion = useRef(0);
   const allowed = role === "owner" || role === "admin";
   useEffect(() => {
@@ -117,21 +135,26 @@ export default function RecentScans({ businessId, role, savedStatus }: Props) {
     "rounded-lg border border-white/20 px-3 py-2 text-sm font-semibold hover:bg-white/10 disabled:opacity-50";
   return (
     <section className="my-3 rounded-xl border border-white/15 p-3 text-white">
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          className={button}
-          onClick={() => {
-            setOpen(!open);
-            if (!open) void load();
-          }}
-        >
-          Recent Scans
-        </button>
-        <span role="status" className="text-xs text-slate-300">
-          {savedStatus}
-        </span>
-      </div>
+      {!standalone && (
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            className={button}
+            onClick={() => {
+              setOpen(!open);
+              if (!open) void load();
+            }}
+          >
+            Recent Scans
+          </button>
+          <a className="text-sm underline" href={debugQueuePath(businessSlug)}>
+            OCR Debug Queue
+          </a>
+          <span role="status" className="text-xs text-slate-300">
+            {savedStatus}
+          </span>
+        </div>
+      )}
       {open && (
         <div className="mt-3 space-y-3">
           {error && (
@@ -141,18 +164,29 @@ export default function RecentScans({ businessId, role, savedStatus }: Props) {
           )}
           {selected && s ? (
             <div className="space-y-3">
-              <button
-                type="button"
-                className={button}
-                onClick={() => {
-                  selectionVersion.current++;
-                  setSelected(null);
-                  setPayload(null);
-                  setFile(null);
-                }}
-              >
-                Back to scans
-              </button>
+              {!standalone && (
+                <button
+                  type="button"
+                  className={button}
+                  onClick={() => {
+                    selectionVersion.current++;
+                    setSelected(null);
+                    setPayload(null);
+                    setRawOpen(false);
+                    setFile(null);
+                  }}
+                >
+                  Back to scans
+                </button>
+              )}
+              {!standalone && (
+                <a
+                  className="ml-3 text-sm underline"
+                  href={attemptPath(selected.id, businessSlug)}
+                >
+                  Open attempt page
+                </a>
+              )}
               <h3 className="font-bold">
                 {s.kind === "retry" ? "Retry Reading" : "Original Scan"} ·{" "}
                 {selected.result}
@@ -162,6 +196,12 @@ export default function RecentScans({ businessId, role, savedStatus }: Props) {
                 <dd>{new Date(s.timestamp).toLocaleString()}</dd>
                 <dt>Attempt</dt>
                 <dd className="break-all">{s.attemptId}</dd>
+                <dt>Build</dt>
+                <dd className="break-all">{s.build}</dd>
+                <dt>Duration</dt>
+                <dd>{s.durationMs} ms</dd>
+                <dt>Input</dt>
+                <dd>{s.inputSource}</dd>
                 <dt>Source</dt>
                 <dd>{s.selectedSource}</dd>
                 <dt>Check number</dt>
@@ -211,7 +251,9 @@ export default function RecentScans({ businessId, role, savedStatus }: Props) {
                     <button
                       type="button"
                       className={button}
-                      disabled={busy}
+                      disabled={
+                        busy || (standalone && !diagnosticsAvailable(selected))
+                      }
                       onClick={() => void createFile()}
                     >
                       Create Debug File
@@ -219,7 +261,11 @@ export default function RecentScans({ businessId, role, savedStatus }: Props) {
                     <button
                       type="button"
                       className={button}
-                      disabled={busy || selected.diagnostic_bytes === 0}
+                      disabled={
+                        busy ||
+                        selected.diagnostic_bytes === 0 ||
+                        (standalone && !diagnosticsAvailable(selected))
+                      }
                       onClick={() => {
                         void pinScan(selected.id, !selected.pinned)
                           .then(() => {
@@ -227,7 +273,7 @@ export default function RecentScans({ businessId, role, savedStatus }: Props) {
                               ...selected,
                               pinned: !selected.pinned,
                             });
-                            void load();
+                            if (!standalone) void load();
                           })
                           .catch((e) => setError(String(e)));
                       }}
@@ -311,13 +357,14 @@ export default function RecentScans({ businessId, role, savedStatus }: Props) {
                   </details>
                   <details
                     onToggle={(event) => {
+                      setRawOpen(event.currentTarget.open);
                       if (event.currentTarget.open) void details();
                     }}
                   >
                     <summary className="cursor-pointer font-semibold">
                       Raw diagnostics
                     </summary>
-                    {Boolean(payload) && (
+                    {rawOpen && Boolean(payload) && (
                       <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-words text-xs">
                         {JSON.stringify(payload, null, 2)}
                       </pre>
@@ -341,6 +388,7 @@ export default function RecentScans({ businessId, role, savedStatus }: Props) {
                     selectionVersion.current++;
                     setSelected(record);
                     setPayload(null);
+                    setRawOpen(false);
                     setFile(null);
                     setError("");
                   }}
@@ -407,7 +455,7 @@ function ObservationView({ payload }: { payload: unknown }) {
       };
     };
   };
-  const evidence = report.attempt?.evidence ?? report.response?.evidence;
+  const evidence = report.response?.evidence ?? report.attempt?.evidence;
   return (
     <div className="space-y-2 text-sm">
       {evidence?.physicalRows?.map((row) => (
@@ -463,8 +511,37 @@ function DecisionView({ payload }: { payload: unknown }) {
           {trace.resolutionReason ||
             trace.rejectionReason ||
             "See retained evidence"}
+          {trace.invoiceId ? ` · Record ${trace.invoiceId}` : ""}
+          {` · Matched ${trace.matchedAmount.toFixed(2)}`}
         </p>
       ))}
+      {attempt && (
+        <div className="space-y-2">
+          <p>
+            Duplicate decision: {attempt.duplicateResult.status} (
+            {attempt.duplicateResult.confidence})
+          </p>
+          {attempt.duplicateResult.reasons.map((reason, i) => (
+            <p key={i}>{reason}</p>
+          ))}
+          <p>
+            Resolved invoice IDs:{" "}
+            {attempt.reconciliationResult.reviewIds.join(", ") || "None"}
+          </p>
+          <p>
+            Resolved subtotal:{" "}
+            {attempt.reconciliationResult.resolvedTotal.toFixed(2)} · Document
+            total: {attempt.reconciliationResult.documentTotal ?? "Unknown"}
+          </p>
+          <p>
+            Eligible to apply:{" "}
+            {attempt.reconciliationResult.eligible ? "Yes" : "No"}
+          </p>
+          {attempt.reconciliationResult.blockers.map((reason, i) => (
+            <p key={i}>{reason}</p>
+          ))}
+        </div>
+      )}
       {report.reason && <p>{report.reason}</p>}
       {report.preparation?.map((line, i) => (
         <p key={i}>{line}</p>

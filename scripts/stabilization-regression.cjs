@@ -1115,6 +1115,7 @@ async function duplicatePreflightAndViewRegression() {
 
 async function main() {
   await require("./ocr-history-regression.cjs")(loader,React,renderer);
+  await require("./ocr-debug-queue-regression.cjs")(loader,React,renderer);
   await require("./ocr-structure-regression.cjs");
   await duplicatePreflightAndViewRegression();
   await contractHandoffRegression();

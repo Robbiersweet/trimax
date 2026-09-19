@@ -5506,12 +5506,12 @@ export default function BatchInvoicePayments({
   }
 
   if (payableInvoices.length === 0) {
-    return businessId ? <RecentScans businessId={businessId} role={workspaceRole} savedStatus={scanSavedStatus}/> : null;
+    return businessId ? <RecentScans businessId={businessId} businessSlug={businessSlug??undefined} role={workspaceRole} savedStatus={scanSavedStatus}/> : null;
   }
 
   return (
     <Card className="batch-payments-card border-green-500/30 bg-green-500/5">
-      {businessId && <RecentScans businessId={businessId} role={workspaceRole} savedStatus={scanSavedStatus}/> }
+      {businessId && <RecentScans businessId={businessId} businessSlug={businessSlug??undefined} role={workspaceRole} savedStatus={scanSavedStatus}/> }
       {toast ? <Toast type={toast.type} message={toast.message} /> : null}
       {typeof document !== "undefined" ? duplicateRemittanceModalView() : null}
 

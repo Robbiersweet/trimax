@@ -133,7 +133,7 @@ module.exports = async function historyRegression(load, React, renderer) {
     assert.equal(blobs, 0);
     await click("Create Debug File");
     assert.equal(blobs, 1);
-    assert.ok(root.root.findByType("a").props.download.endsWith(".txt"));
+    assert.ok(root.root.findAllByType("a").find(link=>link.props.download).props.download.endsWith(".txt"));
     await renderer.act(async () => root.unmount());
     await renderer.act(async () => {
       root = renderer.create(

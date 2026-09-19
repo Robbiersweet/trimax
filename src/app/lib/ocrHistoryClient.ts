@@ -1,3 +1,4 @@
+import { safeDiagnosticView } from "./ocrDebug";
 import { supabase } from "./supabase";
 import {
   diagnosticPayload,
@@ -155,7 +156,7 @@ export async function scanDiagnostics(businessId: string, id: string) {
     .sort((a, b) => b.phase - a.phase)[0];
   if (local) {
     const payload = await localPayload(local);
-    if (payload) return payload;
+    if (payload) return safeDiagnosticView(payload);
   }
   const { data, error } = await supabase
     .from("ocr_attempt_diagnostics")
@@ -167,7 +168,7 @@ export async function scanDiagnostics(businessId: string, id: string) {
     throw new Error(
       "Full diagnostics have expired or were not retained. The scan summary remains available.",
     );
-  return data.payload;
+  return safeDiagnosticView(data.payload);
 }
 export async function pinScan(id: string, pinned: boolean) {
   const { error } = await supabase.rpc("trimax_pin_ocr_attempt", {
