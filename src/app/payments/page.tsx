@@ -492,7 +492,7 @@ export default async function PaymentsPage({
 
   return (
     <AppShell>
-      <div className="space-y-6">
+      <div id="customer-payment-queue" className="scroll-mt-6 space-y-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-sm uppercase tracking-[0.3em] text-green-300">
