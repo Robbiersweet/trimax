@@ -1,0 +1,6 @@
+{
+  "A": {"invoices":["INV-0508","INV-0509","INV-0511","INV-0510","INV-0512"],"units":["P06","F02","M07","U09","G01"],"amounts":[1099,1099,1099,1099,1099],"total":5495},
+  "B": {"invoices":["INV-0513","INV-0514","INV-0515","INV-0518","INV-0519"],"units":["U05","H10","Q08","U03","A10"],"amounts":[1099,1099,1099,1099,1099],"total":5495,"check":"2797","date":"2026-08-19","uprightDimensions":[4032,3024],"paperCorners":[[705,917],[3447,938],[3442,2056],[711,2049]],"rowCenters":[1197,1242,1285,1336,1378],"annotation":"Approximate manual pixel annotation on the retained raw 4032x3024 original; paper corners ±15 px and row centers ±12 px. Geometry annotations are evaluation only."},
+  "C": {"invoices":["INV-0506","INV-0507"],"units":["D01","D01"],"amounts":[1300,952.95],"total":2252.95},
+  "D": {"invoices":["INV-0520","INV-0521","INV-0522","INV-0524","INV-0525"],"units":["B06","P01","P01","V10","V10"],"amounts":[1099,1300,458.4,1300,348.5],"total":4505.9}
+}
