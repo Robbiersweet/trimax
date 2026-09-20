@@ -6,7 +6,9 @@ const {recognizeFields}=require('../../src/app/lib/ocrV2/recognition/index.ts');
 const {fuseInvoiceObservations}=require('../../src/app/lib/ocrV2/fusion/index.ts');
 const {resolveOfflineDocument}=require('../../src/app/lib/ocrV2/resolver/index.ts');
 const {selectObservedHeader}=require('../../src/app/lib/remittanceAttempt.ts');
+const {recognizePaymentEvidence}=require('../../src/app/lib/ocrV2/recognition/paymentEvidence.ts');
 const root=process.argv[2],out=process.argv[3],wslRoot=process.argv[4];
+const paymentMode=process.argv.includes('--payment-evidence');
 const hash=b=>crypto.createHash('sha256').update(b).digest('hex');
 const read=f=>JSON.parse(fs.readFileSync(path.join(root,f),'utf8').replace(/^\uFEFF/,''));
 (async()=>{
@@ -18,8 +20,9 @@ const read=f=>JSON.parse(fs.readFileSync(path.join(root,f),'utf8').replace(/^\uF
   const normalized=await normalizeDocument(fs.readFileSync(source.original));const normalizedAt=performance.now();
   const geometry=await structuralLayout(normalized.documentColor);
   const rows=geometry.rows.map(r=>({...r,top:r.bounds.top,bottom:r.bounds.top+r.bounds.height,centerY:r.bounds.top+r.bounds.height/2,invoiceRegion:undefined}));
-  const fields=await recognizeFields(normalized.documentColor,{documentBounds:{left:0,top:0,width:geometry.sourceWidth,height:geometry.sourceHeight},rows,columns:{},footerRegion:geometry.totalCandidateRegion,totalCandidateRegion:geometry.totalCandidateRegion},source.id);
-  fs.writeFileSync(path.join(dest,'pipeline.json'),JSON.stringify({normalization:normalized.evidence,layout:geometry,fields},null,2));
+  const payment=paymentMode?await recognizePaymentEvidence(normalized.documentColor,geometry,source.id):null;
+  const fields=payment?{observations:[]}:await recognizeFields(normalized.documentColor,{documentBounds:{left:0,top:0,width:geometry.sourceWidth,height:geometry.sourceHeight},rows,columns:{},footerRegion:geometry.totalCandidateRegion,totalCandidateRegion:geometry.totalCandidateRegion},source.id);
+  fs.writeFileSync(path.join(dest,'pipeline.json'),JSON.stringify({normalization:normalized.evidence,layout:geometry,fields,payment},null,2));
   const inputs=[];
   for(let i=0;i<geometry.rows.length;i++){
    const file=`invoice-${i}.png`,bytes=await sharp(normalized.documentColor).extract(geometry.rows[i].invoiceRegion).png().toBuffer();fs.writeFileSync(path.join(dest,file),bytes);inputs.push({id:`${source.id}-${i}`,file,sha256:hash(bytes)});
@@ -36,8 +39,10 @@ const read=f=>JSON.parse(fs.readFileSync(path.join(root,f),'utf8').replace(/^\uF
   });
   const rawPasses=fields.observations.filter(o=>!o.rowId&&o.status==='completed').map(o=>({text:o.rawText,region:o.field,variant:o.variant,pageMode:o.configuration.psm,words:[]}));
   const header=selectObservedHeader(rawPasses,[]);
-  const result=resolveOfflineDocument({id:source.id,rows:evidenceRows,rawPasses,header:{payor:header.payor,checkNumber:header.checkNumber,checkDate:header.checkDate,total:header.documentTotal,provenance:'Fresh original-image replay; no benchmark truth'}},template.snapshot);
+  if(payment)evidenceRows.forEach(row=>{const ev=payment.rows.find(r=>r.rowId===row.rowId);row.amounts=ev.cents===null?[]:ev.observations.filter(o=>ev.provenance.includes(o.id)).map(o=>({cents:ev.cents,raw:o.raw,observationId:o.id,rowId:row.rowId}));});
+  const selectedHeader=payment?{payor:payment.payor,checkNumber:payment.checkNumber,checkDate:payment.checkDate,total:payment.authoritativeTotal===null?null:{amount:payment.authoritativeTotal/100,source:'explicit-document-total',payable:true},provenance:'Fresh Phase 5B optical payment evidence; no benchmark truth'}:{payor:header.payor,checkNumber:header.checkNumber,checkDate:header.checkDate,total:header.documentTotal,provenance:'Fresh original-image replay; no benchmark truth'};
+  const result=resolveOfflineDocument({id:source.id,rows:evidenceRows,rawPasses,header:selectedHeader},template.snapshot);
   fs.writeFileSync(path.join(dest,'result.json'),JSON.stringify(result,null,2));
-  const record={id:source.id,normalizationMs:normalizedAt-start,layoutFieldsAndCropsMs:fieldsAt-normalizedAt,recognitionIncludingWSLAndModelLoadMs:recognizedAt-fieldsAt,resolverMs:result.durationMs,completeMs:performance.now()-start,rows:evidenceRows.length,status:result.status};timings.push(record);console.log(JSON.stringify(record));fs.writeFileSync(path.join(out,'timings.json'),JSON.stringify(timings,null,2));
+  const record={id:source.id,normalizationMs:normalizedAt-start,layoutFieldsAndCropsMs:fieldsAt-normalizedAt,paymentEvidenceTimings:payment?.timings,recognitionIncludingWSLAndModelLoadMs:recognizedAt-fieldsAt,resolverMs:result.durationMs,completeMs:performance.now()-start,rows:evidenceRows.length,status:result.status};timings.push(record);console.log(JSON.stringify(record));fs.writeFileSync(path.join(out,'timings.json'),JSON.stringify(timings,null,2));
  }
 })().catch(e=>{console.error(e);process.exitCode=1;});
