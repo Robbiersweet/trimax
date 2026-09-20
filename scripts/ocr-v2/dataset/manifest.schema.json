@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Private OCR dataset manifest (runtime validation in core.cjs)",
+  "type": "object",
+  "required": ["schemaVersion", "version", "labelsPurpose", "seed", "codeCommit", "frozenHoldouts", "records"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "version": {"type": "string", "pattern": "^trimax-ocr-[a-z0-9-]+$"},
+    "labelsPurpose": {"const": "scoring-only"},
+    "manifestHash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "frozenHoldouts": {"type": "array", "items": {"type": "string"}},
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["fixtureId", "sourceDocumentId", "independentDocumentId", "captureId", "imageReference", "imageHash", "split", "verificationStatus", "verifiedTruth", "provenance"],
+        "properties": {
+          "fixtureId": {"type": "string", "pattern": "^[A-Za-z0-9_-]+$"},
+          "imageHash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+          "split": {"enum": ["train", "validation", "development", "holdout"]},
+          "verificationStatus": {"enum": ["verified", "requires-annotation"]},
+          "verifiedTruth": {"type": ["object", "null"]},
+          "trainingOptIn": {"type": "boolean"}
+        }
+      }
+    }
+  }
+}
