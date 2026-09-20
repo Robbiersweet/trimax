@@ -205,13 +205,15 @@ function loadRoute() {
       "fixture",
       JSON.stringify(preflight),
     );
-    assert.equal(preflight.evaluations[0].opticalVariants.length, 3);
+    assert(preflight.evaluations[0].opticalVariants.length >= 1);
+    assert.equal(preflight.evaluations[0].variantOutcomes.length,3);
     const detail = await post({
       imageDataUrl,
       documentType: "remittance_stub",
     });
     assert(!detail.error, detail.error);
-    assert.equal(detail.diagnostics.opticalVariants.length, 3);
+    assert(detail.diagnostics.opticalVariants.length >= 3);
+    console.log("LATENCY",JSON.stringify({preflightMs:preflight.durationMs,detailedMs:detail.diagnostics.detailedOcrDurationMs,recoveryMs:detail.diagnostics.targetedRecoveryDurationMs,passes:detail.evidence?.rawPasses?.length,progress:detail.diagnostics.evidenceProgress}));
     assert(
       detail.structuredRowEvidence.length >= 5,
       "Actual OCR must reach physical row reconstruction",
@@ -243,19 +245,9 @@ function loadRoute() {
     "Blank must not establish direction",
   );
   let timeoutCalls = 0;
-  await assert.rejects(
-    recognizeFaintVariants(
-      {
-        recognize: () => {
-          timeoutCalls++;
-          return new Promise(() => {});
-        },
-      },
-      prepared,
-      5,
-    ),
-    /time budget/,
-  );
+  const timedOut = await recognizeFaintVariants({recognize:()=>{timeoutCalls++;return new Promise(()=>{});},terminate:async()=>{}},prepared,5);
+  assert.equal(timedOut.passes.length,0);
+  assert.equal(timedOut.outcomes[0].status,"timed-out");
   assert.equal(
     timeoutCalls,
     1,

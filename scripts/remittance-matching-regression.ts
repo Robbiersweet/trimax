@@ -1592,7 +1592,9 @@ assert(
     ocrRoute.includes("stub-amount-column") &&
     ocrRoute.includes('"row-focused"') &&
     ocrRoute.includes("targetEdge = variant === \"row-focused\" ? 3600 : 2400") &&
-    ocrRoute.includes("rowSources"),
+    ocrRoute.includes("initial.evidence.filter(unresolved)") &&
+    ocrRoute.includes("cropImageRegion(sources.document.image,target.bounds)") &&
+    ocrRoute.includes("prepareFaintRegions(cropped)"),
   "OCR route must run targeted high-resolution remittance row and amount-column passes."
 );
 assert(
@@ -1624,7 +1626,7 @@ assert(
     ocrRoute.includes("geometricRowDetails") &&
     ocrRoute.includes("rowAcceptance") &&
     ocrRoute.includes("classifyGeometryWord") &&
-    ocrRoute.includes("{ text: true, blocks: true }") &&
+    readFileSync(resolve(root,"src/app/lib/ocrObservationCache.ts"),"utf8").includes("{ text: true, blocks: true }") &&
     ocrRoute.includes("structurallyUsefulRegionAttempts") &&
     ocrRoute.includes("--- OCR STRUCTURED REGION ---") &&
     ocrRoute.includes("--- OCR GEOMETRIC ROWS ---") &&

@@ -1,3 +1,4 @@
+import { observeOcr, withOcrObservations, ocrCacheStats } from "@/app/lib/ocrObservationCache";
 import { prepareFaintRegions, faintVariantImage, faintProvenance, recognizeFaintVariants, FAINT_VARIANTS, type FaintPreparation, type FaintVariant } from "@/app/lib/ocrFaint";
 import { probeOrientation } from "@/app/lib/ocrOrientationServer";
 import { opticalScore } from "@/app/lib/ocrOptical";
@@ -99,6 +100,7 @@ type CaptureSourceSelectionCandidate = {
 };
 
 type CaptureSourceEvaluation = {
+  variantOutcomes?: Awaited<ReturnType<typeof recognizeFaintVariants>>["outcomes"];
   id: string;
   label: string;
   selectedImageDataUrl: string;
@@ -133,6 +135,7 @@ type CaptureSourceEvaluation = {
 };
 
 type CaptureSourceFailure = {
+  variantOutcomes?: unknown;
   id: string;
   label: string;
   stage: string;
@@ -2046,6 +2049,17 @@ function ocrAttemptSpecs(
     : specs;
 }
 
+// Row crops have no document header/footer context. Keep their observations for
+// row resolution, but never pass their trailing body amounts to header selection.
+function documentHeaderObservations<T extends {region:string}>(passes:T[]) {
+  return passes.filter(pass=>!pass.region.startsWith("stub-row-recovery-"));
+}
+function unresolvedOcrRow(row: StructuredRemittanceRowEvidence) {
+  return row.normalizedInvoiceCandidates.length !== 1 ||
+    new Set(row.amountCandidates.filter(a=>a.selected).map(a=>a.value)).size !== 1;
+}
+function hasTargetableStructure(rowCount:number) { return rowCount >= 2; }
+
 async function recognizeBestText(
   originalImage: Buffer,
   documentType: RemittanceDocumentType,
@@ -2071,6 +2085,8 @@ async function recognizeBestText(
     });
 
     const attempts: OcrAttempt[] = [];
+    const evidenceProgress: Array<{stage:string;completedAtMs:number;score:ReturnType<typeof opticalScore>;newTokens:string[]}> = [];
+    const observedTokens = new Set<string>();
     const sources = await buildOcrSources(originalImage, documentType === "remittance_stub");
     markStage("document-normalized");
     const regionSources = await buildRegionSources(
@@ -2091,6 +2107,7 @@ async function recognizeBestText(
         height: sources.document.height ?? 0,
       },
     };
+    const recognitionSources = new Map<string,OcrImageSource>();
     let recognitionStopped = false;
     const enoughTimeForAnotherAttempt = () =>
       !recognitionStopped && Date.now() - startedAt < OCR_ROUTE_BUDGET_MS;
@@ -2120,6 +2137,7 @@ async function recognizeBestText(
       sourceSpecs: OcrAttemptSpec[],
       rotations: readonly OcrRotation[] = ROTATIONS
     ) {
+      recognitionSources.set(source.name,source);
       for (const spec of sourceSpecs) {
       for (const rotation of rotations) {
         if (!enoughTimeForAnotherAttempt()) {
@@ -2138,7 +2156,7 @@ async function recognizeBestText(
         const processedMetadata = await imageMetadata(image);
         markStage(`preprocessed:${attemptStage}`);
         const recognizeStartedAt = Date.now();
-        const recognition = worker.recognize(image, {}, { text: true, blocks: true });
+        const recognition = observeOcr(worker, image, spec.pageMode.name);
         let result;
 
         try {
@@ -2199,6 +2217,10 @@ async function recognizeBestText(
         };
 
         attempts.push(attempt);
+        const tokens = text.match(/\b(?:INV[^\s]*|\d[\d,.]*|TOTAL|CHECK)\b/gi) ?? [];
+        const newTokens=[...new Set(tokens)].filter(t=>!observedTokens.has(t));
+        newTokens.forEach(t=>observedTokens.add(t));
+        evidenceProgress.push({stage:attemptStage,completedAtMs:Date.now()-startedAt,score:opticalScore(text,confidence),newTokens});
 
         if (timeout) {
           clearTimeout(timeout);
@@ -2220,46 +2242,56 @@ async function recognizeBestText(
     const faint = await prepareFaintRegions(fullDocumentSource.image);
     const faintSource: OcrImageSource = {name:fullDocumentSource.name,image:faint.color,width:faint.bounds.width,height:faint.bounds.height,bounds:faint.bounds,prepared:faint};
     await runAttemptsForSource(faintSource, FAINT_VARIANTS.map(variant=>({variant,pageMode:{name:"sparse-text",value:Tesseract.PSM.SPARSE_TEXT}})), [0]);
-    if(needsMoreOcr()) await runAttemptsForSource(fullDocumentSource, [specs[0]], [0]);
-
-    if (needsMoreOcr() && documentType === "remittance_stub") {
-      const rowFocusedSpec = specs.find((spec) => spec.variant === "row-focused");
-      const rowSources = regionSources.filter((source) =>
-        /stub-(?:row|invoice|description|amount)/i.test(source.name)
-      );
-
-      if (rowFocusedSpec) {
-        for (const source of rowSources) {
-          await runAttemptsForSource(source, [rowFocusedSpec], [0]);
-          if (!needsMoreOcr()) {
-            break;
+    const recoveryStartedAt = Date.now();
+    const initialRows = buildGeometryRowSets(attempts, 0)[0]?.rows ?? [];
+    const structuredRecovery = hasTargetableStructure(initialRows.length);
+    const recoveryPlan: Array<{region:string;bounds:ImageBounds;reason:string}> = [];
+    const currentEvidence = () => {
+      const rows = buildGeometryRowSets(attempts, 0)[0]?.rows ?? [];
+      const evidence = buildStructuredRowEvidence(rows, attempts, sources.document.width ?? 0);
+      const header = selectRemittanceHeaderEvidence(documentHeaderObservations(attempts), evidence);
+      return {rows,evidence,header};
+    };
+    // Geometry identifies where to look; it never authorizes a match or total.
+    const unresolved = unresolvedOcrRow;
+    if (structuredRecovery) {
+      const initial = currentEvidence();
+      for (const row of initial.evidence.filter(unresolved)) {
+        if (row.y == null || row.height == null) continue;
+        const top=Math.max(0,Math.floor(row.y-row.height*1.2));
+        recoveryPlan.push({region:"stub-row-recovery-"+row.rowId,reason:"Unresolved invoice or amount",bounds:{left:0,top,width:sources.document.width!,height:Math.min(sources.document.height!-top,Math.ceil(row.height*2.4))}});
+      }
+      if (!initial.header.evidence || !initial.header.checkNumber) {
+        for (const source of regionSources.filter(s=>s.name === "stub-header" || (!initial.header.evidence && s.name === "stub-total-footer")))
+          {
+            const bounds={...source.bounds};
+            if(source.name === "stub-header") bounds.height=Math.min(bounds.height,Math.max(1,Math.floor(Math.min(...initialRows.map(r=>r.y-r.height)))));
+            if(source.name === "stub-total-footer") {const bottom=bounds.top+bounds.height;bounds.top=Math.max(bounds.top,Math.ceil(Math.max(...initialRows.map(r=>r.y+r.height))));bounds.height=Math.max(1,bottom-bounds.top);}
+            recoveryPlan.push({region:source.name,reason:"Missing authoritative total or header",bounds});
           }
+      }
+      for (const target of recoveryPlan) {
+        if (!enoughTimeForAnotherAttempt()) break;
+        const current=currentEvidence();
+        if(target.region === "stub-total-footer" && current.header.evidence) continue;
+        const cropped = await cropImageRegion(sources.document.image,target.bounds);
+        const prepared = await prepareFaintRegions(cropped);
+        const source:OcrImageSource={name:target.region,image:prepared.color,width:prepared.bounds.width,height:prepared.bounds.height,bounds:{...prepared.bounds,left:target.bounds.left+prepared.bounds.left,top:target.bounds.top+prepared.bounds.top},prepared};
+        for (const variant of ["local-gray","local-binary"] as const) {
+          await runAttemptsForSource(source,[{variant,pageMode:{name:"sparse-text",value:Tesseract.PSM.SPARSE_TEXT}}],[0]);
+          const now=currentEvidence();
+          if (target.region.startsWith("stub-row-recovery")) {
+            const row=now.evidence.find(r=>Math.abs((r.y ?? -Infinity)-(target.bounds.top+target.bounds.height/2))<=target.bounds.height/2);
+            if (row && !unresolved(row)) break;
+          } else if (now.header.evidence && now.header.checkNumber) break;
         }
       }
+    } else if (needsMoreOcr()) {
+      // Broad search is retained only when geometry cannot locate unresolved fields.
+      await runAttemptsForSource(fullDocumentSource,[specs[0]],[0]);
+      if(needsMoreOcr()) await runAttemptsForSource(fullDocumentSource,specs.slice(1),[0,180]);
+      if(needsMoreOcr()) await runAttemptsForSource(fullDocumentSource,[specs[0]],[90,270]);
     }
-
-    if (needsMoreOcr() && regionSources.length > 1) {
-      const fallbackSpecs = specs.filter((spec) =>
-        ["sparse-text", "single-block"].includes(spec.pageMode.name)
-      );
-
-      for (const source of regionSources.slice(1)) {
-        await runAttemptsForSource(source, fallbackSpecs, [0]);
-        if (!needsMoreOcr()) {
-          break;
-        }
-      }
-    }
-
-    const recoveryStartedAt=Date.now();
-    if (needsMoreOcr()) {
-      await runAttemptsForSource(fullDocumentSource, specs.slice(1), [0, 180]);
-    }
-
-    if (needsMoreOcr()) {
-      await runAttemptsForSource(fullDocumentSource, [specs[0]], [90, 270]);
-    }
-
     const recoveryDurationMs=Date.now()-recoveryStartedAt;
     attempts.sort(
       (left, right) =>
@@ -2397,7 +2429,7 @@ async function recognizeBestText(
       attempts,
       documentWidth
     );
-    const headerEvidence = selectRemittanceHeaderEvidence(attempts.map((attempt) => ({ ...attempt, text: withoutMicrBandText(attempt.text) })), structuredRowEvidence);
+    const headerEvidence = selectRemittanceHeaderEvidence(documentHeaderObservations(attempts).map((attempt) => ({ ...attempt, text: withoutMicrBandText(attempt.text) })), structuredRowEvidence);
     const explicitDocumentTotalEvidence = headerEvidence.evidence;
     const explicitDocumentTotal = explicitDocumentTotalEvidence?.amount ?? 0;
 
@@ -2411,6 +2443,7 @@ async function recognizeBestText(
     const invoiceColumnPasses: OcrAttempt[] = [];
     async function buildInvoiceColumnDiagnostics(): Promise<InvoiceColumnDiagnostics | null> {
       if (
+        structuredRecovery ||
         documentType !== "remittance_stub" ||
         documentWidth <= 0 ||
         documentHeight <= 0
@@ -2498,7 +2531,7 @@ async function recognizeBestText(
 
         try {
           const result = await Promise.race([
-            worker.recognize(processedImage, {}, { text: true, blocks: true }),
+            observeOcr(worker, processedImage, spec.pageMode.name),
             new Promise<never>((_, reject) => {
               diagnosticTimeout = setTimeout(
                 () => reject(new Error("Invoice-column diagnostic OCR timed out.")),
@@ -2626,9 +2659,9 @@ async function recognizeBestText(
     // A reconstruction uses observed words from these passes; retain the actual
     // highest-ranked physical recognition input, never a synthetic reconstruction.
     const evidenceAttempt = attempts.find(a=>!/merge|reconstruction/.test(a.region));
-    const evidenceSource = evidenceAttempt?.preparation ? faintSource : regionSources.find(r=>r.name===evidenceAttempt?.region);
+    const evidenceSource = recognitionSources.get(evidenceAttempt?.region ?? "") ?? regionSources.find(r=>r.name===evidenceAttempt?.region);
     const evidenceImage = evidenceAttempt && evidenceSource
-      ? evidenceAttempt.preparation ? faintVariantImage(faint,evidenceAttempt.variant as FaintVariant)
+      ? evidenceSource?.prepared ? faintVariantImage(evidenceSource.prepared,evidenceAttempt.variant as FaintVariant)
         : await preprocessForOcr(evidenceSource.image,evidenceAttempt.rotation,evidenceAttempt.variant)
       : faint.gray;
     const evidenceMeta = await sharp(evidenceImage).metadata();
@@ -2637,10 +2670,16 @@ async function recognizeBestText(
       optical,
       text: finalText,
       structuredRowEvidence,
-      rawPasses: [...attempts, ...invoiceColumnPasses].filter(attempt => !/merged|reconstruction/.test(attempt.region)).map(attempt => ({ ...attempt, text: withoutMicrBandText(attempt.text) })),
+      rawPasses: [...attempts, ...invoiceColumnPasses].filter(attempt => !/merge|reconstruction/.test(attempt.region)).map(attempt => ({ ...attempt, text: withoutMicrBandText(attempt.text) })),
       diagnostics: {
         detailedOcrDurationMs: Date.now()-startedAt,
         recoveryDurationMs,
+        targetedRecoveryDurationMs: structuredRecovery ? recoveryDurationMs : 0,
+        recoveryPlan,
+        recoveryMode: structuredRecovery ? "targeted" : "broad-insufficient-structure",
+        evidenceProgress,
+        observationCache: ocrCacheStats(),
+        bestUsefulEvidence: [...evidenceProgress].filter(p=>p.score.credible).sort((a,b)=>b.score.score-a.score.score)[0] ?? null,
         opticalVariants: attempts.filter(a=>a.preparation).map(a=>({variant:a.variant,confidence:a.confidence,durationMs:a.durationMs,score:opticalScore(a.text,a.confidence),...a.preparation})),
         totalDurationMs: Date.now()-startedAt,
         documentType,
@@ -2772,7 +2811,8 @@ async function evaluateCaptureSourceCandidate(
   candidate: CaptureSourceSelectionCandidate,
   index: number,
   worker: Awaited<ReturnType<typeof import("tesseract.js").createWorker>>,
-  psm: typeof import("tesseract.js").PSM
+  psm: typeof import("tesseract.js").PSM,
+  restartWorker?: () => Promise<import("tesseract.js").Worker>
 ): Promise<CaptureSourceEvaluation | null> {
   let stage = "resolve-image-input";
   const id = normalizeCandidateLabel(candidate.id, `candidate-${index + 1}`);
@@ -2804,11 +2844,12 @@ async function evaluateCaptureSourceCandidate(
   await worker.setParameters({tessedit_pageseg_mode:psm.SPARSE_TEXT,user_defined_dpi:"300"});
   const startedAt=Date.now();
   stage="ocr-recognize";
-  const variants=await recognizeFaintVariants(worker,prepared,5_000).catch(error=>{
+  const variants=await recognizeFaintVariants(worker,prepared,5_000,restartWorker).catch(error=>{
     if(error instanceof Error && error.message.includes("time budget"))throw captureSourceError("Capture source selection OCR timed out.","ocr-recognize");
     throw error;
   });
   const chosen=variants.selected;
+  if (!chosen) throw Object.assign(captureSourceError("No preflight variant completed.", "ocr-recognize"), { outcomes: variants.outcomes });
   const spec:OcrAttemptSpec={variant:chosen.variant,pageMode:{name:"sparse-text",value:psm.SPARSE_TEXT}};
   const result={data:chosen.data};
   const processedMetadata={width:prepared.bounds.width,height:prepared.bounds.height};
@@ -2844,7 +2885,7 @@ async function evaluateCaptureSourceCandidate(
     source.width ?? 0,
     source.height ?? 0
   );
-  if (!opticalScore(text, confidence).credible) throw captureSourceError("No credible remittance structure in candidate.", "ocr-usefulness");
+  if (!opticalScore(text, confidence).credible) throw Object.assign(captureSourceError("No credible remittance structure in candidate.", "ocr-usefulness"), {outcomes:variants.outcomes});
   const bounds = metrics.textRegionBounds;
   const textWidthCoverage =
     bounds && source.width
@@ -2887,6 +2928,7 @@ async function evaluateCaptureSourceCandidate(
   return {
     id,
     label,
+    variantOutcomes: variants.outcomes,
     opticalVariants: variants.passes.map(p=>({variant:p.variant,confidence:p.data.confidence,score:p.score,durationMs:p.durationMs,...faintProvenance(prepared)})),
     selectedImageDataUrl: resolvedImage.selectedImageDataUrl,
     inputType: resolvedImage.inputType,
@@ -2930,6 +2972,11 @@ async function selectCaptureSource(
   candidates: CaptureSourceSelectionCandidate[]
 ) {
   const Tesseract = await import("tesseract.js");
+    const makeWorker = async () => {
+      const worker=await Tesseract.createWorker("eng",Tesseract.OEM.LSTM_ONLY,{cachePath:"/tmp/tesseract-cache",gzip:true,logger:()=>undefined});
+      await worker.setParameters({preserve_interword_spaces:"1",user_defined_dpi:"300",tessedit_pageseg_mode:Tesseract.PSM.SPARSE_TEXT});
+      return worker;
+    };
     const evaluations: CaptureSourceEvaluation[] = [];
     const failures: CaptureSourceFailure[] = [];
     const startedAt = Date.now();
@@ -2952,12 +2999,13 @@ async function selectCaptureSource(
         const worker = await Tesseract.createWorker("eng", Tesseract.OEM.LSTM_ONLY, { cachePath: "/tmp/tesseract-cache", gzip: true, logger: () => undefined });
         try {
           await worker.setParameters({ preserve_interword_spaces: "1", user_defined_dpi: "300" });
-          return await evaluateCaptureSourceCandidate(candidate, index, worker, Tesseract.PSM);
+          return await evaluateCaptureSourceCandidate(candidate, index, worker, Tesseract.PSM, makeWorker);
         } finally { await worker.terminate().catch(() => undefined); }
       })().catch((error) => {
         failures.push({
           id,
           label,
+          variantOutcomes: error && typeof error === "object" && "outcomes" in error ? error.outcomes : undefined,
           stage:
             error instanceof Error && "stage" in error && typeof error.stage === "string"
               ? error.stage
@@ -3010,6 +3058,7 @@ async function selectCaptureSource(
         imageByteSize: evaluation.imageByteSize,
         dimensions: evaluation.dimensions,
         opticalVariants: evaluation.opticalVariants,
+        variantOutcomes: evaluation.variantOutcomes,
         quality: evaluation.quality,
         detectorConfidence: evaluation.detectorConfidence,
         detectorAreaRatio: evaluation.detectorAreaRatio,
@@ -3083,7 +3132,7 @@ async function parseExtractCheckStubRequest(request: Request) {
 }
 
 export async function POST(request: Request) {
-  return checkpointOcr(request, runExtraction);
+  return withOcrObservations(request.headers.get("x-ocr-observation-scope"), () => checkpointOcr(request, runExtraction));
 }
 
 async function runExtraction(request: Request) {
@@ -3198,7 +3247,7 @@ async function runExtraction(request: Request) {
     }
 
     const parsedExtraction = parseCheckStubText(parsedText);
-    const observedHeader = selectObservedHeader(ocrResult.rawPasses, ocrResult.structuredRowEvidence);
+    const observedHeader = selectObservedHeader(documentHeaderObservations(ocrResult.rawPasses), ocrResult.structuredRowEvidence);
     const totalEvidence = observedHeader.documentTotal ?? { amount: 0, source: "none" as const, payable: false, normalizationReason: "No reliable explicit document total was read." };
     const extraction = {
       ...parsedExtraction,

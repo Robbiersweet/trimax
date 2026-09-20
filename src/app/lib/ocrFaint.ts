@@ -1,3 +1,4 @@
+import { observeOcr } from "./ocrObservationCache.ts";
 import sharp from "sharp";
 import { opticalScore } from "./ocrOptical.ts";
 import type { Worker } from "tesseract.js";
@@ -240,37 +241,46 @@ export async function recognizeFaintVariants(
   worker: Worker,
   prepared: FaintPreparation,
   budgetMs: number,
+  restartWorker?: () => Promise<Worker>,
 ) {
+  const originalWorker = worker;
   const deadline = Date.now() + budgetMs;
   const passes = [];
-  for (const variant of FAINT_VARIANTS) {
+  const outcomes: Array<{variant: FaintVariant; status: "completed" | "no-useful-structure" | "timed-out" | "errored"; durationMs: number; reason?: string}> = [];
+  let stopped = false;
+  // Run the physically proven high-value variant first, retaining the same scoring.
+  for (const variant of ["local-gray", "local-binary", "native-color"] as const) {
     const remaining = deadline - Date.now();
-    if (remaining <= 0) throw Error("Optical variant time budget exceeded");
+    if (stopped || remaining <= 0) {
+      outcomes.push({variant,status:"timed-out",durationMs:0,reason:"Not started: candidate budget exhausted or worker terminated"});
+      continue;
+    }
     const start = Date.now();
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const result = await Promise.race([
-      worker.recognize(
-        faintVariantImage(prepared, variant),
-        {},
-        { text: true, blocks: true },
-      ),
-      new Promise<never>((_, reject) => {
-        timer = setTimeout(
-          () => reject(Error("Optical variant time budget exceeded")),
-          remaining,
-        );
-      }),
-    ]).finally(() => clearTimeout(timer));
-    passes.push({
-      variant,
-      data: result.data,
-      durationMs: Date.now() - start,
-      score: opticalScore(result.data.text, result.data.confidence),
-      ...faintProvenance(prepared),
-    });
+    try {
+      const result = await Promise.race([
+        observeOcr(worker, faintVariantImage(prepared, variant), "sparse-text"),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(Error("Optical variant time budget exceeded")), Math.min(3000, remaining));
+        }),
+      ]);
+      const score = opticalScore(result.data.text, result.data.confidence);
+      passes.push({variant,data:result.data,durationMs:Date.now()-start,score,...faintProvenance(prepared)});
+      outcomes.push({variant,status:score.credible?"completed":"no-useful-structure",durationMs:Date.now()-start});
+    } catch(error) {
+      const reason=error instanceof Error?error.message:String(error);
+      outcomes.push({variant,status:reason.includes("time budget")?"timed-out":"errored",durationMs:Date.now()-start,reason});
+      // A raced timeout does not cancel Tesseract. Terminate the worker explicitly.
+      await worker.terminate().catch(()=>undefined);
+      stopped=true;
+      if (restartWorker && Date.now() < deadline) {
+        try { worker=await restartWorker(); stopped=false; } catch { /* Completed siblings still survive worker startup failure. */ }
+      }
+    } finally { clearTimeout(timer); }
   }
-  const ranked = [...passes].sort((a, b) => b.score.score - a.score.score);
-  return { passes, selected: ranked[0] };
+  if (worker !== originalWorker) await worker.terminate().catch(()=>undefined);
+  const ranked = [...passes].sort((a,b)=>b.score.score-a.score.score);
+  return {passes,outcomes,selected:ranked[0]};
 }
 
 // Direction is optical evidence, not invoice matching. Confident horizontal word

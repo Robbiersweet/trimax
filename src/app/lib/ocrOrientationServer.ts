@@ -1,3 +1,4 @@
+import { observeOcr } from "./ocrObservationCache.ts";
 import { mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -50,7 +51,7 @@ export async function probeOrientation(input: Buffer) {
         .png()
         .toBuffer();
       const result = await Promise.race([
-        worker.recognize(image, {}, { text: true, blocks: true }),
+        observeOcr(worker, image, "sparse-text"),
         new Promise<never>((_, reject) => {
           timeout = setTimeout(
             () => reject(Error("Orientation probe time budget exceeded")),

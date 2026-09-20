@@ -1557,6 +1557,7 @@ export default function BatchInvoicePayments({
   const captureGateMemory = useRef<GateMemory>({count:0,stable:0});
   const captureGateTrace = useRef<GateDecision[]>([]);
   const captureGateSession = useRef({frames:0,captured:false,businessId:""});
+  const observationScopeRef = useRef<string>(crypto.randomUUID());
   const opticalRef = useRef<OpticalEvidence>({images:[],notes:[]});
   const [checkImagePreview, setCheckImagePreview] = useState("");
   const [checkImageName, setCheckImageName] = useState("");
@@ -3433,6 +3434,10 @@ export default function BatchInvoicePayments({
     const attemptId = crypto.randomUUID();
     const startedAt = performance.now();
     const parent = scanLineage.current;
+    if (parent) observationScopeRef.current=crypto.randomUUID();
+    const observationScope=observationScopeRef.current;
+    // Reserve a fresh namespace immediately for the next attempt, including uploads.
+    observationScopeRef.current=crypto.randomUUID();
     const history = scanSummary(attemptId,parent?.original??attemptId,parent?.last??null,preparedCaptureRef.current?.source??"unknown",process.env.NEXT_PUBLIC_TRIMAX_BUILD??"local");
     history.inputSource=lastOcrSourceType;
     scanLineage.current = {original:history.originalId,last:attemptId};
@@ -3505,6 +3510,7 @@ export default function BatchInvoicePayments({
       const response = await fetch("/api/payments/extract-check-stub", {
         method: "POST",
         headers: {
+          "x-ocr-observation-scope": observationScope,
           "Content-Type": "application/json",
           ...(sessionData.session?.access_token?{Authorization:`Bearer ${sessionData.session.access_token}`} : {}),
         },
@@ -4202,7 +4208,7 @@ export default function BatchInvoicePayments({
           imageMimeType: candidate.file.type, imageByteSize: candidate.file.size }]));
         formData.append("candidate-0", candidate.file, candidate.file.name);
         stage = "http-request";
-        const response = await fetch("/api/payments/extract-check-stub", { method: "POST", body: formData });
+        const response = await fetch("/api/payments/extract-check-stub", { method: "POST", headers:{"x-ocr-observation-scope":observationScopeRef.current}, body: formData });
         stage = "http-response-" + response.status;
         const body = await response.text();
         if (!response.ok) throw new Error(body.slice(0, 500) || response.statusText);
@@ -4277,7 +4283,7 @@ export default function BatchInvoicePayments({
     opticalRef.current.notes.push(JSON.stringify(normalized.metadata));
     const original=opticalRef.current.images.find(i=>i.label==="Original capture");if(original&&original.source===source){original.width=normalized.metadata.rawWidth;original.height=normalized.metadata.rawHeight;}
     const form=new FormData();form.append("mode","orientation-probe");form.append("captureCandidates",JSON.stringify([{id:source,label:source,fileField:"candidate-0"}]));form.append("candidate-0",normalized.file);
-    const response=await fetch("/api/payments/extract-check-stub",{method:"POST",body:form,signal:AbortSignal.timeout(25000)});
+    const response=await fetch("/api/payments/extract-check-stub",{method:"POST",headers:{"x-ocr-observation-scope":observationScopeRef.current},body:form,signal:AbortSignal.timeout(25000)});
     const result=await response.json(); const {imageDataUrl,optical,...probe}=result;if(optical?.images){opticalRef.current.images.push(...optical.images);opticalRef.current.notes.push(...(optical.notes??[]));}opticalRef.current.probe=[...(Array.isArray(opticalRef.current.probe)?opticalRef.current.probe:[]),{source,...probe}];
     const output=imageDataUrl?await dataUrlToImageFile(imageDataUrl,"trimax-oriented.jpg"):normalized.file;
     opticalRef.current.images=opticalRef.current.images.filter(i=>i.label!=="Normalized image"||i.source!==source);
@@ -4563,6 +4569,7 @@ export default function BatchInvoicePayments({
     }
 
     captureGateSession.current.captured = true;
+    observationScopeRef.current = crypto.randomUUID();
     opticalRef.current = {images:[],notes:[],startedAt:performance.now()};
     sourceSelectionRef.current = [];
     setIsCapturingFrame(true);

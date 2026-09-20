@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   findDuplicateRemittance,
+  findRemittanceImageHints,
   type DuplicateRemittanceActivity,
 } from "../src/app/lib/duplicateRemittance.ts";
 
@@ -111,6 +112,8 @@ assert.equal(
   "The regression fixture proves prior-remittance amount/invoice evidence would reproduce the observed duplicate modal."
 );
 
+assert(findRemittanceImageHints(remittanceAFingerprint,remittanceAActivities).length > 0, "The same image must remain discoverable for audit without authorizing a duplicate decision.");
+
 const sameRemittanceScannedAgain = findDuplicateRemittance(
   {
     amount: null,
@@ -125,8 +128,8 @@ const sameRemittanceScannedAgain = findDuplicateRemittance(
 
 assert.equal(
   sameRemittanceScannedAgain.status,
-  "active",
-  "Image fingerprint evidence must still detect the same already-applied remittance when scanned again."
+  "none",
+  "An image fingerprint alone discovers candidates; it cannot establish a duplicate payment."
 );
 
 assert(

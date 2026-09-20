@@ -11,7 +11,7 @@ function compile(source, bindings = {}) {
 const structure = compile(fs.readFileSync('src/app/lib/ocrStructure.ts', 'utf8'));
 const matching = compile(fs.readFileSync('src/app/lib/remittanceMatching.ts', 'utf8'));
 const routeText = fs.readFileSync('src/app/api/payments/extract-check-stub/route.ts', 'utf8');
-const route = compile(routeText.replace(/import[\s\S]*?from\s+"[^"]+";/g, '') + '\nexports.test = { buildStructuredRowEvidence, sameBandAmountCandidates, mergeStructuredAmountCandidates };', { ...structure, ...matching });
+const route = compile(routeText.replace(/import[\s\S]*?from\s+"[^"]+";/g, '') + '\nexports.test = { buildStructuredRowEvidence, sameBandAmountCandidates, mergeStructuredAmountCandidates, unresolvedOcrRow, hasTargetableStructure, documentHeaderObservations };', { ...structure, ...matching });
 const box = (y, x0 = 100, x1 = 180) => ({ x0, x1, y0: y - 8, y1: y + 8 });
 const word = (text, y, region = 'document', confidence = 90, bbox = box(y)) => ({ text, confidence, bbox, region, variant: 'grayscale', pageMode: 'sparse', rotation: 0 });
 const numbers = ['0513','0514','0515','0518','0519'];
@@ -21,6 +21,14 @@ const column = numbers.map((n,i) => word('1NV'+n.replace(/0/g,'O').replace(/5/g,
 const attempts = [{ words:[...rows.flatMap(r=>r.words),...column] }];
 const evidence = route.test.buildStructuredRowEvidence(rows,attempts,800);
 assert.equal(evidence.length,5);
+assert.equal(route.test.hasTargetableStructure(0),false);
+assert.equal(route.test.hasTargetableStructure(1),false);
+assert.equal(route.test.hasTargetableStructure(5),true);
+assert.equal(route.test.unresolvedOcrRow(evidence[0]),false);
+assert.equal(route.test.unresolvedOcrRow({...evidence[0],normalizedInvoiceCandidates:[]}),true);
+assert.equal(route.test.unresolvedOcrRow({...evidence[0],amountCandidates:[]}),true);
+assert.equal(route.test.unresolvedOcrRow({...evidence[0],normalizedInvoiceCandidates:['INV-0513','INV-0518']}),true);
+
 evidence.forEach((r,i)=> {
   assert.deepEqual(r.normalizedInvoiceCandidates,['INV-'+numbers[i]]);
   assert.equal(r.invoiceEvidenceByPass.length,1);
@@ -39,6 +47,12 @@ const joined = route.test.sameBandAmountCandidates(rows[0],[word('1,',100,'docum
 assert(joined.some(a=>a.value===1099));
 const header = matching.selectRemittanceHeaderEvidence([{text:'INV0513 U05 29\nINV0514 H10 1099\nINV0515 Q08 1099',region:'document',variant:'one',confidence:90}]);
 assert.equal(header.evidence,null);
+const bodyRecovery=['local-gray','local-binary'].map(variant=>({text:'INV0513 U05 Painting service apartment interior walls ceilings and doors complete\n1,099.00',region:'stub-row-recovery-row-1',variant,pageMode:'sparse-text',confidence:90}));
+assert(matching.selectRemittanceHeaderEvidence(bodyRecovery).evidence,'Reproduce why isolated row crops must not vote on a document footer');
+assert.equal(matching.selectRemittanceHeaderEvidence(route.test.documentHeaderObservations(bodyRecovery)).evidence,null);
+const realFooter={text:'TOTAL $5,495.00',region:'stub-total-footer',variant:'local-gray',pageMode:'sparse-text',confidence:90};
+assert.equal(matching.selectRemittanceHeaderEvidence(route.test.documentHeaderObservations([...bodyRecovery,realFooter])).evidence.amount,5495);
+
 assert.equal(header.checkNumber,'');
 assert(routeText.includes('observedHeader.documentTotal ?? { amount: 0, source: "none"'));
 const invoices=numbers.map((n,i)=>({id:n,displayId:'INV-'+n,customerName:'North Creek Apartments',projectTitle:units[i]+' Paint',invoiceAmount:1099,amountPaid:0,status:'sent'}));
@@ -57,7 +71,7 @@ async function sourceRegression(){
   const end=component.indexOf('  async function buildImageCaptureStillComparison(',start);
   let calls=0;
   let allFail=false;
-  const select=compile(component.slice(start,end)+'\nexports.select=selectProductionCaptureSource;', {...structure,fetch:async()=>{
+  const select=compile(component.slice(start,end)+'\nexports.select=selectProductionCaptureSource;', {...structure,observationScopeRef:{current:"regression-scope"},fetch:async()=>{
     const index=calls++;
     if(allFail || index===1) throw new Error('synthetic still crop failure');
     return {ok:true,status:200,text:async()=>JSON.stringify({evaluations:[{id:index===0?'canvas':'still-full',completenessScore:index===0?20:80,invoiceTokens:index===0?2:5,rowCount:index===0?2:5,explicitTotal:index===0?0:5495}]})};

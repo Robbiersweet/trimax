@@ -26,8 +26,8 @@ assert(
 assert(
   payments.includes("const formData = new FormData()") &&
     payments.includes("formData.append(\"mode\", \"capture-source-selection\")") &&
-    payments.includes("formData.append(\"captureCandidates\", JSON.stringify(payloadCandidates))") &&
-    payments.includes("formData.append(`candidate-${index}`, candidate.file, candidate.file.name)") &&
+    payments.includes("formData.append(\"captureCandidates\", JSON.stringify([{ ...candidate") &&
+    payments.includes("formData.append(\"candidate-0\", candidate.file, candidate.file.name)") &&
     !payments.includes("imageDataUrl: await fileToDataUrl(candidate.file)"),
   "Production capture-source selection must send candidate files directly instead of forcing large stills through data URLs."
 );
@@ -52,7 +52,7 @@ assert(
 );
 
 assert(
-  route.includes("const evaluation = await evaluateCaptureSourceCandidate(") &&
+  route.includes("return await evaluateCaptureSourceCandidate(candidate, index, worker, Tesseract.PSM, makeWorker)") &&
     route.includes(").catch((error) => {") &&
     route.includes("failures.push({") &&
     route.includes("return null;") &&

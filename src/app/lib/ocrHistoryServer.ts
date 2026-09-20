@@ -36,8 +36,9 @@ export async function checkpointOcr(
           auth: { persistSession: false, autoRefreshToken: false },
         })
       : null;
+  const persistenceFailures: Array<{attemptId:string;stage:string;code:string;message:string}> = [];
   async function checkpoint(payload: unknown, reason: string) {
-    if (!client || !history) return;
+    if (!client || !history) return false;
     try {
       const summary = {
         ...history,
@@ -55,10 +56,14 @@ export async function checkpointOcr(
         p_summary: summary,
         p_payload: diagnosticPayload(payload),
       });
-      if (error)
-        console.warn("OCR history checkpoint unavailable:", error.code);
-    } catch {
-      console.warn("OCR history checkpoint unavailable");
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      const detail=error as {code?:string;message?:string};
+      const failure={attemptId:history.attemptId,stage:"server-checkpoint",code:detail?.code||"transport-or-abort",message:detail?.message||String(error)};
+      persistenceFailures.push(failure);
+      console.error("OCR history checkpoint failed",failure);
+      return false;
     }
   }
   try {
@@ -69,8 +74,14 @@ export async function checkpointOcr(
         .json()
         .catch(() => ({ error: "Response was not JSON" }));
       const { optical, ...responseEvidence } = result;
+      // Commit the OCR result before reading or uploading multi-megabyte optical data.
+      // A failed optional image write can no longer roll back the completed response.
+      const corePayload={...body.debugContext,response:responseEvidence,stage:"server-extraction",httpStatus:response.status};
+      let persisted=await checkpoint(corePayload,"OCR response retained; client review completion not yet confirmed.");
+      if(!persisted) persisted=await checkpoint({...corePayload,persistenceFailures},"OCR response retained after checkpoint retry.");
+      if(!persisted) await checkpoint({...body.debugContext,stage:"server-persistence-failed",persistenceFailures},"Server OCR completed but response persistence failed; inspect runtime diagnostics.");
       let retainedOptical;
-      if (optical?.images?.length) {
+      if (persisted && optical?.images?.length) {
         try {
           const { data, error } = await client
             .from("ocr_attempt_optical")
@@ -93,7 +104,7 @@ export async function checkpointOcr(
           );
         }
       }
-      await checkpoint(
+      if (persisted && retainedOptical) { const imageSaved = await checkpoint(
         {
           ...body.debugContext,
           ...(retainedOptical ? { optical: retainedOptical } : {}),
@@ -103,6 +114,8 @@ export async function checkpointOcr(
         },
         "OCR response retained; client review completion not yet confirmed.",
       );
+      if (!imageSaved) await checkpoint({...corePayload,persistenceFailures},"OCR response retained; optional optical checkpoint failed.");
+      }
     }
     return response;
   } catch (error) {
