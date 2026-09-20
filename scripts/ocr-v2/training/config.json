@@ -1,0 +1,13 @@
+{
+  "modelName": "trimax_invoice",
+  "modelVersion": "trimax-invoice-v1",
+  "datasetVersion": "trimax-invoice-dataset-v1",
+  "benchmarkVersion": "ocr-v2-phase3c-v1",
+  "status": "not-trained-insufficient-independent-real-data",
+  "proposedBase": "tessdata_best/eng (float LSTM; exact revision/hash required before training)",
+  "selection": "validation-only exact token accuracy, then validation CER; never Fixture B",
+  "checkpointEvaluation": "every 100 iterations; stop after 5 validations without improvement",
+  "maximumPilotIterations": 2000,
+  "splitUnit": "source document, including recaptures and derivatives",
+  "prohibited": ["holdout augmentation into train", "default English model overwrite", "production integration"]
+}
