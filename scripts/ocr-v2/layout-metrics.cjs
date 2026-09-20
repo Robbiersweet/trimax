@@ -1,0 +1,10 @@
+/* Independent benchmark scoring; never imported by layout detection. */
+exports.iou = (a, b) => { if (!a || !b)
+    return 0; const intersection = Math.max(0, Math.min(a.left + a.width, b.left + b.width) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.top + a.height, b.top + b.height) - Math.max(a.top, b.top)); return intersection / (a.width * a.height + b.width * b.height - intersection); };
+exports.measureLayout = function (layout, truth) {
+    const iou = exports.iou, rowOverlaps = truth.rows.map((r, i) => iou(r.bounds, layout.rows[i]?.bounds));
+    const matches = truth.rows.map(r => layout.rows.filter(x => iou(r.bounds, x.bounds) >= .5));
+    const used = new Set(matches.flat().map(x => x.id)), missedRows = matches.filter(x => !x.length).length, extraRows = layout.rows.length - used.size;
+    const p = truth.knownTotalPoint, total = layout.totalCandidateRegion;
+    return { normalizedDocumentBoundsOverlap: iou(layout.documentBounds, truth.documentBounds), expectedRows: truth.rows.length, detectedRows: layout.rows.length, rowOverlaps, rowOrderingCorrect: rowOverlaps.length === layout.rows.length && matches.every((m, i) => m.length === 1 && m[0].id === layout.rows[i].id), missedRows, extraRows, rowPrecision: layout.rows.length ? used.size / layout.rows.length : 0, rowRecall: (truth.rows.length - missedRows) / truth.rows.length, adjacentRowOverlap: layout.rows.some((r, i) => i > 0 && r.top < layout.rows[i - 1].bottom), invoiceOverlap: iou(layout.columns.invoice, truth.columns.invoice), amountOverlap: iou(layout.columns.amount, truth.columns.amount), dateOverlap: iou(layout.columns.date, truth.columns.date), descriptionOverlap: iou(layout.columns.description, truth.columns.description), headerOverlap: iou(layout.headerRegion, truth.headerRegion), footerOverlap: iou(layout.footerRegion, truth.footerRegion), totalSearchOverlap: iou(total, truth.totalCandidateRegion), knownTotalLocationIncluded: Boolean(total && p.x >= total.left && p.x < total.left + total.width && p.y >= total.top && p.y < total.top + total.height) };
+};

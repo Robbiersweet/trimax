@@ -1,4 +1,7 @@
-# Trimax OCR v2 — Phase 1 only
+# Trimax OCR v2 — inactive development
+
+Phase 2 now adds an equally inactive [pixel layout module](layout/README.md).
+The Phase 1 implementation and its historical benchmark below are unchanged.
 
 This module is inactive. No route or UI imports it. It accepts one still-image
 buffer and returns optical images plus typed evidence; it cannot select invoices,
@@ -102,12 +105,13 @@ an offline harness; no real payment or production attempt is written.
 
 Only one original physical remittance is available locally. This cannot establish
 generalization or a release success rate across customers, lighting or devices.
-V2 currently has **no layout engine, specialized field recognition, fusion, resolver
-adapter, native capture integration or production activation**. Phase 1 must stop.
+Phase 2 adds the isolated layout engine described above. V2 still has **no
+specialized field recognition, fusion, resolver adapter, native capture integration
+or production activation**. Each phase stops for review.
 
-Next: annotate physical row bands/columns independently, detect text-density bands
-and repeated column alignment, separate header/footer from body, and measure row
-precision/recall and boundary overlap before writing specialized field OCR.
+The Phase 2 layout module independently detects text-density bands and repeated
+column alignment, separates header/footer from body, and measures row precision,
+recall and boundary overlap against private annotations before field OCR is added.
 Keep ambiguous regions unresolved; do not use known invoice records to invent
 geometry or tokens. Continue to the existing resolver only in Phase 5.
 
