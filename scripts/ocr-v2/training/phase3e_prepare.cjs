@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Offline CommonJS crop preparation. */
 // Frozen crop preparation only. No labels are consumed by recognition adapters.
 const fs = require('node:fs/promises');
 const path = require('node:path');
