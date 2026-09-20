@@ -1,5 +1,10 @@
 # Phase 3C — private dataset and training preparation
 
+Historical Phase 3C record below. The resumed Phase 3C-2 pilot is complete;
+see [PILOT.md](PILOT.md) for the broader harvest, WSL toolchain, trained model,
+sealed holdout result and offline alternative benchmark. The old document-count
+gate below was not a prerequisite for the explicitly authorized experimental pilot.
+
 Status: dataset preparation complete for available evidence; native model
 training blocked by zero independent real training/validation documents.
 Authenticated OCR history and pinned-case inventory completed. No production changes.
