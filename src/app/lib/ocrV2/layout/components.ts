@@ -1,7 +1,7 @@
 import sharp from "sharp";
 import type { TextComponent, TextBand } from "./types.ts";
 export function median(values: number[]) { const sorted = values.slice().sort((a, b) => a - b); return sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0; }
-export async function textComponents(input: Buffer, maximumEdge = 3200) {
+export async function textComponents(input: Buffer, maximumEdge = 3200, options: { minimumContrast?: number } = {}) {
     const meta = await sharp(input).metadata(), sourceWidth = meta.width!, sourceHeight = meta.height!;
     const image = await sharp(input).flatten({ background: 'white' }).resize({ width: maximumEdge, height: maximumEdge, fit: 'inside', withoutEnlargement: true }).grayscale().blur(.5).raw().toBuffer({ resolveWithObject: true });
     const { width, height } = image.info;
@@ -9,7 +9,7 @@ export async function textComponents(input: Buffer, maximumEdge = 3200) {
     const samples: number[] = [];
     for (let i = 0; i < image.data.length; i += 31)
         samples.push(Math.abs(background[i] - image.data[i]));
-    const threshold = Math.max(2, Math.min(6, median(samples) * 1.8));
+    const threshold = Math.max(options.minimumContrast ?? 2, Math.min(6, median(samples) * 1.8));
     const ink = new Uint8Array(width * height);
     for (let i = 0; i < ink.length; i++)
         ink[i] = background[i] - image.data[i] >= threshold ? 1 : 0;
