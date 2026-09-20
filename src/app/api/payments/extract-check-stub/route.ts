@@ -100,6 +100,7 @@ type CaptureSourceSelectionCandidate = {
 };
 
 type CaptureSourceEvaluation = {
+  usable?: boolean;
   variantOutcomes?: Awaited<ReturnType<typeof recognizeFaintVariants>>["outcomes"];
   id: string;
   label: string;
@@ -2928,6 +2929,7 @@ async function evaluateCaptureSourceCandidate(
   return {
     id,
     label,
+    usable: chosen.score.credible,
     variantOutcomes: variants.outcomes,
     opticalVariants: variants.passes.map(p=>({variant:p.variant,confidence:p.data.confidence,score:p.score,durationMs:p.durationMs,...faintProvenance(prepared)})),
     selectedImageDataUrl: resolvedImage.selectedImageDataUrl,
@@ -3058,6 +3060,7 @@ async function selectCaptureSource(
         imageByteSize: evaluation.imageByteSize,
         dimensions: evaluation.dimensions,
         opticalVariants: evaluation.opticalVariants,
+        usable: evaluation.usable,
         variantOutcomes: evaluation.variantOutcomes,
         quality: evaluation.quality,
         detectorConfidence: evaluation.detectorConfidence,

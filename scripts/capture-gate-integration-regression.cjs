@@ -8,8 +8,15 @@ module.exports=function(){
   const session={current:{frames:8,captured:false,businessId:"test-business"}};
   const bindings={captureGateSession:session,captureGateTrace:trace,crypto,process,
     scanSummary:(id)=>({attemptId:id}),finishScan:base=>base,saveScan:write=>{writes.push(write);return Promise.resolve("saved");},
-    cameraStreamRef:{current:null},cameraVideoRef:{current:null},setCameraReady:()=>{},setCameraQualityReady:()=>{},setIsCapturingFrame:()=>{},setCameraVideoPlayStatus:()=>{}};
-  const stop=compile(source.slice(source.indexOf("  function stopCameraCapture()"),source.indexOf("  function handleCameraModeSelection("))+"\nreturn stopCameraCapture;",bindings);
+    cameraLifecycleRef:{current:{}},cameraStreamRef:{current:null},cameraVideoRef:{current:null},setCameraReady:()=>{},setCameraQualityReady:()=>{},setIsCapturingFrame:()=>{},setCameraVideoPlayStatus:()=>{}};
+  const stop=compile(source.slice(source.indexOf("  function stopCameraCapture("),source.indexOf("  function handleCameraModeSelection("))+"\nreturn stopCameraCapture;",bindings);
+  let stopped = false;
+  bindings.cameraStreamRef.current = { getTracks: () => [{ stop: () => { stopped = true; } }] };
+  bindings.cameraLifecycleRef.current.stillAcquiredAt = new Date().toISOString();
+  stop(true);
+  assert(stopped);
+  assert(bindings.cameraLifecycleRef.current.streamStoppedAt);
+  assert(bindings.cameraLifecycleRef.current.afterStillMs < 100);
   stop();stop();assert.equal(writes.length,1);assert.equal(writes[0].payload.stage,"capture-framing");assert.equal(writes[0].businessId,"test-business");
   trace.current[0].reason="changed";assert.equal(writes[0].payload.captureGate[0].reason,"Document exceeds guide size");
   session.current={frames:20,captured:true,businessId:"test-business"};stop();assert.equal(writes.length,1);

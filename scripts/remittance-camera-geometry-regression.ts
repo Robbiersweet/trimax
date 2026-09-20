@@ -366,7 +366,7 @@ assert(
     paymentScreen.includes("imageCaptureConstructor()") &&
     paymentScreen.includes("ImageCapture constructor available:") &&
     paymentScreen.includes("ImageCapture takePhoto available:") &&
-    paymentScreen.includes("capture.takePhoto()") &&
+    paymentScreen.includes("capture.takePhoto.bind(capture)") && paymentScreen.includes("acquireStillAndRelease(") &&
     paymentScreen.includes("Canvas fallback reason:") &&
     paymentScreen.includes("ImageCapture still returned: MIME") &&
     paymentScreen.includes("ImageCapture EXIF/orientation metadata:") &&

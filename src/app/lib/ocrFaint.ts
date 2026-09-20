@@ -246,13 +246,13 @@ export async function recognizeFaintVariants(
   const originalWorker = worker;
   const deadline = Date.now() + budgetMs;
   const passes = [];
-  const outcomes: Array<{variant: FaintVariant; status: "completed" | "no-useful-structure" | "timed-out" | "errored"; durationMs: number; reason?: string}> = [];
+  const outcomes: Array<{variant: FaintVariant; status: "completed" | "no-useful-structure" | "timed-out" | "errored" | "not-started"; started: boolean; startedAt: string | null; finishedAt: string | null; durationMs: number; reason?: string}> = [];
   let stopped = false;
   // Run the physically proven high-value variant first, retaining the same scoring.
   for (const variant of ["local-gray", "local-binary", "native-color"] as const) {
     const remaining = deadline - Date.now();
     if (stopped || remaining <= 0) {
-      outcomes.push({variant,status:"timed-out",durationMs:0,reason:"Not started: candidate budget exhausted or worker terminated"});
+      outcomes.push({variant,status:"not-started",started:false,startedAt:null,finishedAt:null,durationMs:0,reason:"Candidate budget exhausted or worker terminated"});
       continue;
     }
     const start = Date.now();
@@ -261,15 +261,15 @@ export async function recognizeFaintVariants(
       const result = await Promise.race([
         observeOcr(worker, faintVariantImage(prepared, variant), "sparse-text"),
         new Promise<never>((_, reject) => {
-          timer = setTimeout(() => reject(Error("Optical variant time budget exceeded")), Math.min(3000, remaining));
+          timer = setTimeout(() => reject(Error("Optical variant time budget exceeded")), remaining);
         }),
       ]);
       const score = opticalScore(result.data.text, result.data.confidence);
       passes.push({variant,data:result.data,durationMs:Date.now()-start,score,...faintProvenance(prepared)});
-      outcomes.push({variant,status:score.credible?"completed":"no-useful-structure",durationMs:Date.now()-start});
+      outcomes.push({variant,status:score.credible?"completed":"no-useful-structure",started:true,startedAt:new Date(start).toISOString(),finishedAt:new Date().toISOString(),durationMs:Date.now()-start});
     } catch(error) {
       const reason=error instanceof Error?error.message:String(error);
-      outcomes.push({variant,status:reason.includes("time budget")?"timed-out":"errored",durationMs:Date.now()-start,reason});
+      outcomes.push({variant,status:reason.includes("time budget")?"timed-out":"errored",started:true,startedAt:new Date(start).toISOString(),finishedAt:new Date().toISOString(),durationMs:Date.now()-start,reason});
       // A raced timeout does not cancel Tesseract. Terminate the worker explicitly.
       await worker.terminate().catch(()=>undefined);
       stopped=true;

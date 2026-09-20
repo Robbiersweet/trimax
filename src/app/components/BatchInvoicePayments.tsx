@@ -1,10 +1,11 @@
 "use client";
+import { acquireStillAndRelease, type CameraLifecycle } from "../lib/cameraArtifacts";
 import { normalizePhysicalStill, opticalImage } from "../lib/ocrOpticalBrowser";
 import { captureReadiness, measureCaptureFrame, type GateMemory, type GateDecision } from "../lib/captureReadiness";
 import type { OpticalEvidence } from "../lib/ocrOptical";
 
 import { createRemittanceEvidence, emptyRemittanceEvidence, immutableSnapshot, resolveRemittanceAttempt, attemptAllowsApply, type RemittanceAttempt, type RemittanceEvidence, type ScanCapture } from "../lib/remittanceAttempt";
-import { rankSourceEvaluations } from "@/app/lib/ocrStructure";
+import { selectPhysicalSource } from "@/app/lib/ocrStructure";
 
 import {
   MouseEvent,
@@ -283,8 +284,11 @@ type CaptureSourceSelectionResponse = {
     inputType?: string;
     expectedInput?: string;
     actualInput?: string;
+    variantOutcomes?: unknown;
   }>;
   evaluations?: Array<{
+    usable?: boolean;
+    variantOutcomes?: unknown;
     id?: string;
     label?: string;
     inputType?: string;
@@ -1579,6 +1583,7 @@ export default function BatchInvoicePayments({
   const deviceCameraLabelRef = useRef<HTMLLabelElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const cameraOpenedAtRef = useRef(0);
+  const cameraLifecycleRef = useRef<CameraLifecycle>({});
   const cameraReadyAtRef = useRef(0);
   const cameraInitialTrackSettingsRef = useRef("not-started");
   const cameraReadyTrackSettingsRef = useRef("not-ready");
@@ -2116,6 +2121,7 @@ export default function BatchInvoicePayments({
       captureGateTrace.current = [];
       captureGateSession.current = {frames:0,captured:false,businessId:businessId ?? ""};
       cameraOpenedAtRef.current = performance.now();
+      cameraLifecycleRef.current = { streamRequestedAt: new Date().toISOString() };
       cameraReadyAtRef.current = 0;
       cameraInitialTrackSettingsRef.current = "pending";
       cameraReadyTrackSettingsRef.current = "pending";
@@ -2139,6 +2145,7 @@ export default function BatchInvoicePayments({
         }
 
         cameraStreamRef.current = stream;
+        cameraLifecycleRef.current.streamStartedAt = new Date().toISOString();
         const track = stream.getVideoTracks()[0] ?? null;
 
         cameraInitialTrackSettingsRef.current =
@@ -4137,7 +4144,7 @@ export default function BatchInvoicePayments({
     return () => window.clearInterval(interval);
   }, [analyzeLiveCameraFrame, cameraReady, paymentEntryMode, isCapturingFrame, cameraGuideMode, captureDocumentType]);
 
-  function stopCameraCapture() {
+  function stopCameraCapture(keepProcessing = false) {
     const gateSession = captureGateSession.current;
     if (!gateSession.captured && gateSession.frames >= 6 && captureGateTrace.current.at(-1)?.ready === false && gateSession.businessId) {
       gateSession.captured = true; // At most one compact record per abandoned framing session.
@@ -4145,7 +4152,12 @@ export default function BatchInvoicePayments({
       const summary = finishScan(scanSummary(id,id,null,"camera-framing",process.env.NEXT_PUBLIC_TRIMAX_BUILD??"local"),null,"failed",gateSession.frames*450,[captureGateTrace.current.at(-1)?.reason??"Capture framing abandoned"]);
       void saveScan({businessId:gateSession.businessId,phase:2,summary,payload:{stage:"capture-framing",captureGate:structuredClone(captureGateTrace.current)}}).catch(()=>{});
     }
-    cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+    if (cameraStreamRef.current) {
+      cameraStreamRef.current.getTracks().forEach((track) => track.stop());
+      const lifecycle = cameraLifecycleRef.current;
+      lifecycle.streamStoppedAt = new Date().toISOString();
+      if (lifecycle.stillAcquiredAt) lifecycle.afterStillMs = Date.parse(lifecycle.streamStoppedAt) - Date.parse(lifecycle.stillAcquiredAt);
+    }
     cameraStreamRef.current = null;
 
     if (cameraVideoRef.current) {
@@ -4154,7 +4166,7 @@ export default function BatchInvoicePayments({
 
     setCameraReady(false);
     setCameraQualityReady(false);
-    setIsCapturingFrame(false);
+    if (!keepProcessing) setIsCapturingFrame(false);
     setCameraVideoPlayStatus("not-started");
   }
 
@@ -4199,7 +4211,9 @@ export default function BatchInvoicePayments({
     sources: ScanCapture["sources"];
   }> {
     const started = Date.now();
-    const results = await Promise.all(candidates.map(async (candidate) => {
+    const results: CaptureSourceSelectionResponse[] = [];
+    for (const candidate of candidates) {
+      results.push(await (async () => {
       let stage = "prepare-request";
       try {
         const formData = new FormData();
@@ -4218,14 +4232,15 @@ export default function BatchInvoicePayments({
         return { failures: [{ id: candidate.id, label: candidate.label, stage,
           error: error instanceof Error ? error.message : String(error) }] } as CaptureSourceSelectionResponse;
       }
-    }));
+      })());
+    }
     const evaluations = results.flatMap(result => result.evaluations ?? []);
-    const selected = rankSourceEvaluations(evaluations)[0];
+    const selected = selectPhysicalSource(evaluations);
     const result: CaptureSourceSelectionResponse = {
       evaluations, failures: results.flatMap(result => result.failures ?? []),
       selectedCandidateId: selected?.id, preflightStarted: true,
       fallbackOccurred: !selected, durationMs: Date.now() - started,
-      selectionReason: selected ? "Best successful candidate by header and row coverage, then OCR usefulness."
+      selectionReason: selected ? "Usable high-resolution still preferred; existing completeness ranking within source class."
         : "Every candidate evaluation failed; canvas retained for review OCR.",
     };
     const failureLines =
@@ -4263,7 +4278,7 @@ export default function BatchInvoicePayments({
 
     return {
       selectedCandidate,
-      sources: [...evaluations.map(evaluation => ({ id: evaluation.id ?? "unknown", status: "success" as const, metrics: { ...evaluation, selected: evaluation.id === selected?.id } })), ...results.flatMap(result => result.failures ?? []).map(failure => ({ id: failure.id ?? "unknown", status: "failure" as const, stage: failure.stage, error: failure.error }))],
+      sources: [...evaluations.map(evaluation => ({ id: evaluation.id ?? "unknown", status: "success" as const, metrics: { ...evaluation, selected: evaluation.id === selected?.id } })), ...results.flatMap(result => result.failures ?? []).map(failure => ({ id: failure.id ?? "unknown", status: "failure" as const, stage: failure.stage, error: failure.error, metrics: { variantOutcomes: failure.variantOutcomes } }))],
       reason,
       diagnosticLines: [
         `Capture source preflight: ${result.preflightStarted === false ? "not started" : "started"}.`,
@@ -4312,6 +4327,7 @@ export default function BatchInvoicePayments({
       diagnosticLines.push("ImageCapture takePhoto available: no.");
       diagnosticLines.push("Camera capture selected for production OCR: canvas-video-frame.");
       diagnosticLines.push("Canvas fallback reason: no active camera video track.");
+      stopCameraCapture(true);
       return {
         diagnosticLines,
         stageLines,
@@ -4325,6 +4341,7 @@ export default function BatchInvoicePayments({
       diagnosticLines.push("ImageCapture takePhoto available: no.");
       diagnosticLines.push("Camera capture selected for production OCR: canvas-video-frame.");
       diagnosticLines.push("Canvas fallback reason: ImageCapture constructor unavailable at runtime.");
+      stopCameraCapture(true);
       return {
         diagnosticLines,
         stageLines,
@@ -4344,6 +4361,7 @@ export default function BatchInvoicePayments({
       diagnosticLines.push("ImageCapture takePhoto available: no.");
       diagnosticLines.push("Camera capture selected for production OCR: canvas-video-frame.");
       diagnosticLines.push(`Canvas fallback reason: ImageCapture constructor failed (${reason}).`);
+      stopCameraCapture(true);
       return {
         diagnosticLines,
         stageLines,
@@ -4361,6 +4379,7 @@ export default function BatchInvoicePayments({
     if (!takePhotoAvailable || !capture.takePhoto) {
       diagnosticLines.push("Camera capture selected for production OCR: canvas-video-frame.");
       diagnosticLines.push("Canvas fallback reason: takePhoto unavailable on active camera track.");
+      stopCameraCapture(true);
       return {
         diagnosticLines,
         stageLines,
@@ -4372,10 +4391,11 @@ export default function BatchInvoicePayments({
 
     try {
       stageLines.push("ImageCapture still requested");
-      const stillBlob = await promiseWithTimeout(
-        capture.takePhoto(),
-        7000,
-        "ImageCapture takePhoto timed out."
+      const takePhoto = capture.takePhoto.bind(capture);
+      const stillBlob = await acquireStillAndRelease(
+        () => promiseWithTimeout(takePhoto(), 7000, "ImageCapture takePhoto timed out."),
+        () => stopCameraCapture(true),
+        cameraLifecycleRef.current,
       );
       const rawDimensions = await readJpegPixelDimensions(stillBlob);
       const exifPresence = await detectExifPresence(stillBlob);
@@ -4512,6 +4532,7 @@ export default function BatchInvoicePayments({
         `ImageCapture still measured: ${normalizedWidth}x${normalizedHeight}, crop ${stillSuggestion.effectiveWidth}x${stillSuggestion.effectiveHeight}`
       );
 
+      stopCameraCapture(true);
       return {
         diagnosticLines,
         stageLines,
@@ -4527,6 +4548,7 @@ export default function BatchInvoicePayments({
 
       diagnosticLines.push("Camera capture selected for production OCR: canvas-video-frame.");
       diagnosticLines.push(`Canvas fallback reason: ${reason}.`);
+      stopCameraCapture(true);
       return {
         diagnosticLines,
         stageLines,
@@ -4679,6 +4701,7 @@ export default function BatchInvoicePayments({
         `trimax-remittance-${Date.now()}.jpg`,
         { type: "image/jpeg" }
       );
+      cameraLifecycleRef.current.fallbackFrameAcquiredAt = new Date().toISOString();
       const stillComparison = await buildImageCaptureStillComparison(
         track,
         file
@@ -4700,6 +4723,7 @@ export default function BatchInvoicePayments({
         captureIntent,
         [
           ...cameraCaptureDiagnosticLines,
+          `Camera lifecycle: ${JSON.stringify(cameraLifecycleRef.current)}.`,
           `Normalized JPG saved: ${canvas.width} x ${canvas.height}, ${blob.size} bytes.`,
           `Capture mechanism used for production OCR: ${productionMechanism}.`,
           `Production capture selection reason: ${stillComparison.productionReason}.`,
@@ -4712,6 +4736,8 @@ export default function BatchInvoicePayments({
         ]
       );
     } catch (error) {
+      stopCameraCapture();
+      cameraCaptureDiagnosticLines.push(`Camera lifecycle: ${JSON.stringify(cameraLifecycleRef.current)}.`);
       retainPreparationFailure(error instanceof Error?error.message:"Camera preparation failed",cameraCaptureDiagnosticLines,"camera",ocrAttemptVersion.current);
       setCameraFailureStage("save-normalized-crop");
       setCameraStatusMessage(

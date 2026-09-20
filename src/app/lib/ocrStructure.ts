@@ -30,6 +30,14 @@ export function rankSourceEvaluations<T extends { completenessScore?: number; in
     (b.invoiceTokens ?? 0) - (a.invoiceTokens ?? 0) || (b.words ?? 0) - (a.words ?? 0));
 }
 
+// Preserve the native still whenever its completed OCR supplies useful evidence.
+// This affects capture selection only, never invoice or monetary authority.
+export function selectPhysicalSource<T extends { id?: string; usable?: boolean; completenessScore?: number; invoiceTokens?: number; rowCount?: number; explicitTotal?: number; words?: number }>(values: T[]) {
+  const useful = values.filter(value => value.usable === true);
+  const stills = useful.filter(value => value.id === "still-full" || value.id === "still-crop");
+  return rankSourceEvaluations(stills.length ? stills : useful)[0];
+}
+
 export function rankRowAmounts<T extends { raw: string; value: number; score?: number; confidence?: number; bbox?: Partial<WordBox> }>(values: T[]) {
   const fragment = (value: T) => values.some(other => {
     if (other === value || !value.bbox || !other.bbox || !/^\$?\s*\d{1,3}(?:,\d{3})+\.\d{2}$/.test(other.raw.trim())) return false;

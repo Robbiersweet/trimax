@@ -30,6 +30,10 @@ function load(file, adapters = {}, cache = new Map()) {
   assert.equal(partial.passes.length,1);
   assert.equal(partial.outcomes[1].status,"timed-out");
   assert.equal(terminated,1,"Timeout must terminate CPU work, not just race its promise");
+  const slow=await recognizeFaintVariants({recognize:async()=>{await new Promise(resolve=>setTimeout(resolve,3100));return useful;},terminate:async()=>{}},prepared,3500);
+  assert.equal(slow.outcomes[0].status,"completed","Cold recognition beyond three seconds must retain its result");
+  assert(slow.outcomes[0].startedAt && slow.outcomes[0].finishedAt);
+  assert.equal(slow.outcomes[2].status,"not-started");
   const failed=await recognizeFaintVariants({recognize:async()=>{throw Error("worker failed");},terminate:async()=>{}},prepared,30);
   assert.equal(failed.selected,undefined);
   const recovered=await recognizeFaintVariants({recognize:async()=>{throw Error("worker failed");},terminate:async()=>{}},prepared,500,async()=>({recognize:async()=>useful,terminate:async()=>{}}));

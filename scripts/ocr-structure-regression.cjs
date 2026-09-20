@@ -74,7 +74,7 @@ async function sourceRegression(){
   const select=compile(component.slice(start,end)+'\nexports.select=selectProductionCaptureSource;', {...structure,observationScopeRef:{current:"regression-scope"},fetch:async()=>{
     const index=calls++;
     if(allFail || index===1) throw new Error('synthetic still crop failure');
-    return {ok:true,status:200,text:async()=>JSON.stringify({evaluations:[{id:index===0?'canvas':'still-full',completenessScore:index===0?20:80,invoiceTokens:index===0?2:5,rowCount:index===0?2:5,explicitTotal:index===0?0:5495}]})};
+    return {ok:true,status:200,text:async()=>JSON.stringify({evaluations:[{usable:true,id:index===0?'canvas':'still-full',completenessScore:index===0?20:80,invoiceTokens:index===0?2:5,rowCount:index===0?2:5,explicitTotal:index===0?0:5495}]})};
   }}).select;
   const candidates=['canvas','still-crop','still-full'].map(id=>({id,label:id,file:new File(['image'],'test.jpg',{type:'image/jpeg'})}));
   const result=await select(candidates);

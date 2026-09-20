@@ -1,0 +1,25 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { acquireStillAndRelease, type CameraLifecycle } from "../src/app/lib/cameraArtifacts.ts";
+import { selectPhysicalSource } from "../src/app/lib/ocrStructure.ts";
+
+const lifecycle: CameraLifecycle = { fallbackFrameAcquiredAt: new Date().toISOString() };
+const events: string[] = [];
+const blob = await acquireStillAndRelease(async () => { events.push("acquired"); return "still"; }, () => events.push("stop"), lifecycle);
+events.push("normalize", "orient", "preflight", "detailed");
+assert.equal(blob, "still");
+assert.deepEqual(events.slice(0, 3), ["acquired", "stop", "normalize"]);
+assert(lifecycle.stillAcquiredAt && lifecycle.stillRequestedAt);
+let released = false;
+await assert.rejects(acquireStillAndRelease(async () => { throw Error("camera failed"); }, () => { released = true; }, {}), /camera failed/);
+assert(released, "Acquisition failure must release camera before fallback processing");
+const source = readFileSync("src/app/components/BatchInvoicePayments.tsx", "utf8");
+assert(source.indexOf("await acquireStillAndRelease(") < source.indexOf("await readJpegPixelDimensions(stillBlob)"));
+assert(source.includes("Camera lifecycle: ${JSON.stringify(cameraLifecycleRef.current)}"));
+assert(source.includes("metrics: { variantOutcomes: failure.variantOutcomes }"));
+assert(!source.includes("Promise.all(candidates.map"), "Candidate OCR must not compete concurrently");
+const canvas = { id: "canvas", usable: true, completenessScore: 9999 };
+assert.equal(selectPhysicalSource([canvas, { id: "still-full", usable: true, completenessScore: 10 }])?.id, "still-full");
+assert.equal(selectPhysicalSource([canvas, { id: "still-full", usable: false }])?.id, "canvas");
+assert.equal(selectPhysicalSource([{ id: "still-full", usable: false }]), undefined);
+console.log("Camera lifecycle and source preservation passed: release before processing, failure release, durable timings/outcomes, useful still preference, genuine fallback.");
