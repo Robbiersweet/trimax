@@ -73,6 +73,9 @@ async function benchmark() {
     const { normalizeDocument } = require('../../../src/app/lib/ocrV2/documentNormalization.ts');
     const { structuralLayout } = require('../../../src/app/lib/ocrV2/layout/generalized.ts');
     const { recognizePaymentEvidence } = require('../../../src/app/lib/ocrV2/recognition/paymentEvidence.ts');
+    const { recognizeDocumentTotal } = require('../../../src/app/lib/ocrV2/recognition/documentTotalAuthority.ts');
+    const { loadRetainedPaymentFields } = require('../retained-payment-fields.cjs');
+    const phase5cEnabled = args.includes('--phase5c');
     const { fuseInvoiceObservations } = require('../../../src/app/lib/ocrV2/fusion/index.ts');
     const { resolveOfflineDocument } = require('../../../src/app/lib/ocrV2/resolver/index.ts');
     const snapshots = read(config.snapshotFile), pipelines = [], inputs = [];
@@ -95,7 +98,9 @@ async function benchmark() {
         }
         await crop('header', layout.headerRegion);
         await crop('footer', layout.totalCandidateRegion);
-        const payment = await recognizePaymentEvidence(normalized.documentColor, layout, item.fixtureId), pipeline = { id: item.fixtureId, sourceHash: c.hash(normalized.documentColor), normalization: normalized.evidence, layout, crops, payment, preRecognitionMs: performance.now() - begin };
+        const phase5b = await recognizePaymentEvidence(normalized.documentColor, layout, item.fixtureId);
+        const phase5c = phase5cEnabled ? await recognizeDocumentTotal(normalized.documentColor, layout, phase5b, loadRetainedPaymentFields(config, config.phase5cRetainedFile, item.fixtureId, normalized.documentColor)) : null;
+        const payment = phase5c?.evidence ?? phase5b, pipeline = { id: item.fixtureId, sourceHash: c.hash(normalized.documentColor), normalization: normalized.evidence, layout, crops, payment, phase5c, preRecognitionMs: performance.now() - begin };
         pipelines.push(pipeline);
         write(path.join(dir, 'pipeline.json'), pipeline);
         console.log('Processed', item.fixtureId, layout.rows.length, 'rows');
@@ -139,7 +144,7 @@ async function benchmark() {
     report.modelMetrics = Object.fromEntries(['generic', 'pilot', 'ppocr', 'svtr', 'parseq', 'fusion'].map(name => { const rows = scorecards.flatMap(r => r.models?.[name] || []), sum = key => rows.reduce((s, r) => s + r[key], 0), characters = sum('characters'), edits = sum('cost'); return [name, { exact: rows.filter(r => r.exact).length, count: rows.length, cer: edits / characters, characterAccuracy: Math.max(0, 1 - edits / characters), insertions: sum('insertions'), deletions: sum('deletions'), substitutions: sum('substitutions'), recognitionMs: sum('ms') }]; }));
     write(path.join(out, 'report.json'), report);
     console.log(JSON.stringify(report.aggregate));
-    if (args[2])
+    if (args[2] && !args[2].startsWith('--'))
         gate(read(args[2]), report);
 }
 function gate(base, next) { require('./gate.cjs')(base, next); console.log('Offline regression gate PASS'); }
