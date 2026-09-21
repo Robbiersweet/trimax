@@ -75,7 +75,12 @@ async function benchmark() {
     const { recognizePaymentEvidence } = require('../../../src/app/lib/ocrV2/recognition/paymentEvidence.ts');
     const { recognizeDocumentTotal } = require('../../../src/app/lib/ocrV2/recognition/documentTotalAuthority.ts');
     const { loadRetainedPaymentFields } = require('../retained-payment-fields.cjs');
-    const phase5cEnabled = args.includes('--phase5c');
+    const phase5dEnabled = args.includes('--phase5d'), phase5cEnabled = args.includes('--phase5c') || phase5dEnabled;
+    const { EvidenceLedger } = require('../../../src/app/lib/ocrV2/recognition/evidenceLedger.ts');
+    const { recognizeDocumentIdentity } = require('../../../src/app/lib/ocrV2/recognition/documentIdentity.ts');
+    const { preservePaymentEvidence } = require('../../../src/app/lib/ocrV2/recognition/preservePaymentEvidence.ts');
+    const { loadIdentityRetained, appendFrozenInvoiceEvidence } = require('../identity-retained.cjs');
+    const ledgers = new Map();
     const { fuseInvoiceObservations } = require('../../../src/app/lib/ocrV2/fusion/index.ts');
     const { resolveOfflineDocument } = require('../../../src/app/lib/ocrV2/resolver/index.ts');
     const snapshots = read(config.snapshotFile), pipelines = [], inputs = [];
@@ -100,7 +105,16 @@ async function benchmark() {
         await crop('footer', layout.totalCandidateRegion);
         const phase5b = await recognizePaymentEvidence(normalized.documentColor, layout, item.fixtureId);
         const phase5c = phase5cEnabled ? await recognizeDocumentTotal(normalized.documentColor, layout, phase5b, loadRetainedPaymentFields(config, config.phase5cRetainedFile, item.fixtureId, normalized.documentColor)) : null;
-        const payment = phase5c?.evidence ?? phase5b, pipeline = { id: item.fixtureId, sourceHash: c.hash(normalized.documentColor), normalization: normalized.evidence, layout, crops, payment, phase5c, preRecognitionMs: performance.now() - begin };
+        let phase5d = null;
+        if (phase5dEnabled) {
+            const phaseStart = performance.now(), ledger = new EvidenceLedger(path.basename(out) + ':' + item.fixtureId, item.fixtureId, c.hash(normalized.documentColor));
+            ledgers.set(item.fixtureId, ledger);
+            const replay = await preservePaymentEvidence(normalized.documentColor, layout, phase5c.evidence, loadIdentityRetained(config, config.researchRoot, item.fixtureId, normalized.documentColor, phase5c), ledger);
+            const identity = await recognizeDocumentIdentity(normalized.documentColor, layout, item.fixtureId, ledger);
+            replay.evidence.payor = identity.payor;
+            phase5d = { replay, identity, ledger: ledger.snapshot(), incrementalMs: performance.now() - phaseStart };
+        }
+        const payment = phase5d?.replay.evidence ?? phase5c?.evidence ?? phase5b, pipeline = { id: item.fixtureId, sourceHash: c.hash(normalized.documentColor), normalization: normalized.evidence, layout, crops, payment, phase5c, phase5d, preRecognitionMs: performance.now() - begin };
         pipelines.push(pipeline);
         write(path.join(dir, 'pipeline.json'), pipeline);
         console.log('Processed', item.fixtureId, layout.rows.length, 'rows');
@@ -115,6 +129,7 @@ async function benchmark() {
     for (const p of pipelines) {
         const rows = p.layout.rows.map((row, i) => { const rowId = p.id + '-' + i, obs = recognition.observations.filter(x => x.id === rowId && ['svtr', 'parseq', 'ppocr'].includes(x.recognizer)).map(o => ({ id: o.recognizer + ':' + rowId, fieldType: 'invoice', scope: 'row', rowId, recognizer: { svtr: 'svtrv2', parseq: 'parseq', ppocr: 'ppocrv5' }[o.recognizer], rawText: o.raw, sequenceConfidence: null, characterConfidences: null, confidenceCalibrated: false, cropReference: { documentId: p.id, rowId, sourceImageSha256: p.sourceHash, baseCropSha256: o.sha256, sha256: o.sha256, path: o.file, variant: 'native' }, durationMs: o.ms, visualWarnings: [] })); const ev = p.payment.rows.find(r => r.rowId === rowId); const fusionStart=performance.now(),fusion=fuseInvoiceObservations(obs),fusionMs=performance.now()-fusionStart; return { rowId, fusion, fusionMs, geometry: { ...row.bounds, coordinateSpace: p.layout.coordinateSpace, sourceHash: p.sourceHash }, amounts: ev?.cents == null ? [] : ev.observations.filter(o => ev.provenance.includes(o.id)).map(o => ({ cents: ev.cents, raw: o.raw, observationId: o.id, rowId })), units: [], accountCandidates: [] }; });
         const payment = p.payment, snapshot = snapshots.find(x => x.document.id === p.id)?.snapshot;
+        if (phase5dEnabled) { const ledger = ledgers.get(p.id); appendFrozenInvoiceEvidence(ledger, { id: p.id, rows }); p.phase5d.ledger = ledger.snapshot(); write(path.join(out, p.id, 'pipeline.json'), p); }
         const resolved = snapshot ? resolveOfflineDocument({ id: p.id, rows, rawPasses: [], header: { payor: payment.payor, checkNumber: payment.checkNumber, checkDate: payment.checkDate, total: payment.authoritativeTotal == null ? null : { amount: payment.authoritativeTotal / 100, source: 'explicit-document-total', payable: true }, provenance: 'Offline optical evidence only' } }, snapshot) : null;
         decisions.push({ id: p.id, rows, resolved });
     }
