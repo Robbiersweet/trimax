@@ -72,7 +72,14 @@ async function send(write: ScanWrite) {
     p_summary: write.summary,
     p_payload: write.payload,
   });
-  if (error) throw new Error(error.message);
+  if (error && write.phase===2) {
+    // Terminal metadata must survive an oversized/invalid optional diagnostic payload.
+    const {error:terminalError}=await supabase.rpc('trimax_save_ocr_attempt',{
+      p_business:write.businessId,p_id:write.summary.attemptId,p_original:write.summary.originalId,p_parent:write.summary.parentId,p_phase:2,p_summary:write.summary,
+      p_payload:{stage:'terminal-diagnostics-fallback',diagnosticPersistenceError:error.message,canonicalCapture:(write.payload as Record<string,unknown>|null)?.canonicalCapture,transport:(write.payload as Record<string,unknown>|null)?.transport,shadowHandoff:(write.payload as Record<string,unknown>|null)?.shadowHandoff,finishedAt:new Date().toISOString()}
+    });
+    if(terminalError)throw Error(terminalError.message);
+  } else if (error) throw new Error(error.message);
 }
 let flushing = Promise.resolve();
 export function flushScans(businessId: string) {

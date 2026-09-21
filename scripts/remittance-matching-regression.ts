@@ -1370,7 +1370,7 @@ assert(
 assert(
   paymentScreen.includes('type OcrRetryStrategy = "standard" | "alternate"') &&
     paymentScreen.includes("retryStrategy: OcrRetryStrategy = \"standard\"") &&
-    paymentScreen.includes("JSON.stringify({ imageDataUrl, documentType, retryStrategy, attemptId, businessId, history, debugContext:") &&
+    paymentScreen.includes("JSON.stringify({ ...canonicalRequest(canonical), documentType, retryStrategy, attemptId, businessId, history, debugContext:") &&
     paymentScreen.includes("Retry strategy:") &&
     paymentScreen.includes('"alternate"'),
   "Retry Reading must reuse the saved crop while requesting a distinct local OCR preprocessing strategy."

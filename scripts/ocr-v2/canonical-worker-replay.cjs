@@ -1,0 +1,21 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Local mock transport exercises real isolated model worker. */
+const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),http=require('node:http'),cp=require('node:child_process'),crypto=require('node:crypto'),assert=require('node:assert/strict'),sharp=require('sharp');
+(async()=>{
+ // Exercise the same app-redirected LocalAppData path used by the production worker.
+ const smokeBase=path.join(process.env.LOCALAPPDATA||os.tmpdir(),'Trimax','shadow-smoke');fs.mkdirSync(smokeBase,{recursive:true});
+ const root=fs.mkdtempSync(path.join(smokeBase,'run-'));
+ const physicalRoot=fs.realpathSync.native(root);
+ console.log(JSON.stringify({logicalRoot:root,physicalRoot}));
+ const svg='<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="700"><rect width="100%" height="100%" fill="white"/><g font-family="Arial" font-size="32" fill="black"><text x="50" y="90">Customer: Example Holdings</text><text x="50" y="230">Invoice</text><text x="500" y="230">Unit</text><text x="1000" y="230">Amount</text><text x="50" y="310">INV-8701</text><text x="500" y="310">K20</text><text x="1000" y="310">$120.00</text><text x="50" y="390">INV-8702</text><text x="500" y="390">K21</text><text x="1000" y="390">$210.00</text><text x="720" y="520">Grand Total:</text><text x="1000" y="520">$330.00</text></g></svg>';
+ const image=process.argv[2]?fs.readFileSync(process.argv[2]):await sharp(Buffer.from(svg)).png().toBuffer(),hash=crypto.createHash('sha256').update(image).digest('hex');
+ let completed=null,requests=[];
+ const job={legacy_attempt_id:crypto.randomUUID(),shadow_attempt_id:crypto.randomUUID(),capture_session_id:crypto.randomUUID(),lease:crypto.randomUUID(),source_hash:hash};
+ const server=http.createServer(async(req,res)=>{let body='';for await(const part of req)body+=part;requests.push(req.url);res.setHeader('Content-Type','application/json');if(req.url.endsWith('trimax_claim_ocr_shadow'))res.end(JSON.stringify({job,input:{snapshot:{label:'Synthetic smoke only',provenance:['mock transport'],invoices:[],activities:[],receivedDate:'2026-01-01'}},optical:{images:[{base64:image.toString('base64')}]}}));else{completed=JSON.parse(body);res.statusCode=204;res.end();}});
+ await new Promise(r=>server.listen(0,'127.0.0.1',r));
+ const config=path.join(root,'config.json');fs.writeFileSync(config,JSON.stringify({supabaseUrl:'http://127.0.0.1:'+server.address().port,anonKey:'synthetic',workerKey:'synthetic',businessId:crypto.randomUUID(),privateRoot:root,python:'/home/robbi/trimax-ocr/benchmark-venv/bin/python',wslDistribution:'Ubuntu'}));
+ try{await new Promise((resolve,reject)=>{const child=cp.spawn(process.execPath,['--experimental-strip-types','scripts/ocr-v2/shadow-worker.cjs',config,'--once'],{stdio:'inherit',windowsHide:true});child.on('error',reject);child.on('exit',c=>c===0?resolve():reject(Error('Worker exit '+c)));});
+ assert(!fs.existsSync(path.join(root,job.shadow_attempt_id,job.lease)),'Transient crops must still be cleaned');
+ assert(completed,'Worker never completed');assert.equal(completed.p_error,null,completed.p_error);assert.equal(completed.p_result.paymentCanApply,false);assert.equal(completed.p_result.sourceImageHash,hash);if(!process.argv[2]){assert.equal(completed.p_result.model.table.rows.length,2);assert.equal(completed.p_result.document.rows.length,2);}else fs.writeFileSync(process.argv[3],JSON.stringify(completed.p_result));if(!process.argv[2])assert(completed.p_result.models.weights);assert.equal(completed.p_result.resolver.status,'review-required');assert.deepEqual(requests,['/rest/v1/rpc/trimax_claim_ocr_shadow','/rest/v1/rpc/trimax_complete_ocr_shadow']);
+ console.log(JSON.stringify({result:'PASS real WSL model worker through mock queue',timings:completed.p_result.timings,rows:completed.p_result.document.rows.map(r=>({id:r.rowId,candidates:r.fusion.candidates.map(c=>c.value)})),privateEvidence:root}));
+ }finally{server.close();}
+})().catch(e=>{console.error(e);process.exitCode=1;});

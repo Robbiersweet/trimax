@@ -257,6 +257,7 @@ export default async function PaymentsPage({
 }: {
   searchParams?: Promise<{
     business?: string;
+    replayAttempt?: string;
     customer?: string;
     invoiceIds?: string;
     paymentClient?: string;
@@ -549,6 +550,7 @@ export default async function PaymentsPage({
 
         <div id="batch-payment-tool" className="scroll-mt-6">
           <BatchInvoicePayments
+            retainedAttemptId={resolvedSearchParams.replayAttempt}
             businessId={business?.id}
             businessSlug={businessSlug}
             initialCustomer={focusedCustomer}

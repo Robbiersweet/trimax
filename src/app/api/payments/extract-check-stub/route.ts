@@ -1,3 +1,4 @@
+import { readCanonicalCapture } from "@/app/lib/ocrCanonicalServer";
 import { observeOcr, withOcrObservations, ocrCacheStats } from "@/app/lib/ocrObservationCache";
 import { prepareFaintRegions, faintVariantImage, faintProvenance, recognizeFaintVariants, FAINT_VARIANTS, type FaintPreparation, type FaintVariant } from "@/app/lib/ocrFaint";
 import { probeOrientation } from "@/app/lib/ocrOrientationServer";
@@ -3127,6 +3128,9 @@ async function parseExtractCheckStubRequest(request: Request) {
   return (await request.json().catch(() => null)) as {
     attemptId?: unknown;
     imageDataUrl?: unknown;
+    canonicalReference?: unknown;
+    sourceImageHash?: unknown;
+    businessId?: unknown;
     documentType?: unknown;
     retryStrategy?: unknown;
     mode?: unknown;
@@ -3140,7 +3144,11 @@ export async function POST(request: Request) {
 
 async function runExtraction(request: Request) {
   const body = await parseExtractCheckStubRequest(request);
-  const imageDataUrl = body?.imageDataUrl;
+  let imageDataUrl = body?.imageDataUrl;
+  if(body?.canonicalReference) {
+    try { imageDataUrl=await readCanonicalCapture(request,body.canonicalReference,body.sourceImageHash,body.businessId); }
+    catch(error) { return NextResponse.json({error:error instanceof Error?error.message:'Canonical image unavailable',stage:'canonical-image-read',ocrStarted:false},{status:403}); }
+  }
   const documentType = normalizeDocumentType(body?.documentType);
   const retryStrategy = normalizeRetryStrategy(body?.retryStrategy);
 

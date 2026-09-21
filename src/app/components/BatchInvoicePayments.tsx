@@ -1,4 +1,7 @@
 "use client";
+import { storeCanonicalCapture } from "../lib/ocrCanonicalClient";
+import { canonicalRequest, transportFailure, type CanonicalCapture, type TransportFailure } from "../lib/ocrCanonical";
+
 import { acquireStillAndRelease, type CameraLifecycle } from "../lib/cameraArtifacts";
 import { normalizePhysicalStill, opticalImage } from "../lib/ocrOpticalBrowser";
 import { captureReadiness, measureCaptureFrame, type GateMemory, type GateDecision } from "../lib/captureReadiness";
@@ -22,8 +25,8 @@ import { useRouter } from "next/navigation";
 import Card from "./Card";
 import RecentScans from "./RecentScans";
 import { scanSummary, finishScan, failureSummary, debugFile, slimAttempt, type ScanSummary, type ScanResult } from "../lib/ocrHistory";
-import { saveScan, scanDiagnostics } from "../lib/ocrHistoryClient";
-import { enqueueShadow, loadShadowFlags } from "../lib/ocrV2/shadow/client";
+import { saveScan, scanDiagnostics, scanOptical } from "../lib/ocrHistoryClient";
+import { loadShadowFlags } from "../lib/ocrV2/shadow/client";
 import { DISABLED_SHADOW, shadowAllowed, type CaptureTimings } from "../lib/ocrV2/shadow/contract";
 import DateInputField from "./DateInputField";
 import Toast from "./Toast";
@@ -68,6 +71,7 @@ type BatchInvoice = {
 };
 
 type BatchInvoicePaymentsProps = {
+  retainedAttemptId?: string;
   invoices: BatchInvoice[];
   businessId?: string | null;
   businessSlug?: string | null;
@@ -1536,6 +1540,7 @@ function initialInvoiceFocus(
 }
 
 export default function BatchInvoicePayments({
+  retainedAttemptId,
   invoices,
   businessId,
   businessSlug,
@@ -3447,7 +3452,8 @@ export default function BatchInvoicePayments({
     intent: CaptureIntent = captureIntent,
     retryStrategy: OcrRetryStrategy = "standard",
     prepDiagnosticLines: string[] = lastOcrPrepDiagnosticLines,
-    currentDocumentFingerprint = remittanceDocumentFingerprint
+    currentDocumentFingerprint = remittanceDocumentFingerprint,
+    retainedReference?: string
   ) {
     const attemptVersion = ++ocrAttemptVersion.current;
     const attemptId = crypto.randomUUID();
@@ -3462,10 +3468,11 @@ export default function BatchInvoicePayments({
     scanLineage.current = {original:history.originalId,last:attemptId};
     latestScan.current = history;
     const captureSnapshot = preparedCaptureRef.current ? immutableSnapshot(preparedCaptureRef.current) : null;
-    const opticalSnapshot = structuredClone(opticalRef.current);
     const shadowEnabledForAttempt = shadowFlags.businessId === businessId && shadowAllowed(shadowFlags, workspaceRole);
     const shadowCaptureTimings = {...captureTimings.current};
-    const shadowSnapshot = shadowEnabledForAttempt ? {label:'Read-only workspace snapshot before legacy resolution',provenance:['Same-capture pre-review invoice/activity state'],invoices:structuredClone(invoiceRecords),activities:structuredClone(paymentActivities),receivedDate} : null;
+    const shadowSnapshot = shadowEnabledForAttempt && intent !== "check_details" && documentType !== "check_only" ? {label:'Read-only workspace snapshot before legacy resolution',provenance:['Same-capture pre-review invoice/activity state'],invoices:structuredClone(invoiceRecords),activities:structuredClone(paymentActivities),receivedDate} : null;
+    let canonical: CanonicalCapture | null = null;
+    let failure: TransportFailure | null = null;
     let retainedResponse: unknown = null;
     let completed = false;
     const persist = (summary:ScanSummary,payload:unknown,phase:0|2) => {
@@ -3473,27 +3480,23 @@ export default function BatchInvoicePayments({
       return saveScan({businessId,summary,payload,phase}).then(status=>{
         if (latestScan.current?.attemptId !== attemptId || (phase===0 && latestScan.current.result!=="processing")) return true;
         setScanSavedStatus(status==='saved' ? (phase===2 ? "Attempt saved ✓"+(summary.result==='success'?"":" · Diagnostics retained for 30 days") : "Scan started · saving evidence") : "Saved on this device · waiting to sync");
-        return true;
+        return status === "saved";
       }).catch(()=>{if(latestScan.current?.attemptId===attemptId)setScanSavedStatus("Attempt could not be saved. Keep this page open and use Copy Full Diagnostics.");return false;});
     };
     const complete = (result:ScanResult,attempt:RemittanceAttempt|null,reasons:string[]=[]) => {
       if(completed)return;completed=true;
-      const summary=finishScan(history,attempt,result,performance.now()-startedAt,reasons);
+      let summary: ScanSummary;
+      try { summary=finishScan(history,attempt,result,performance.now()-startedAt,reasons); }
+      catch(error) { summary={...history,result:'failed',paymentCanApply:false,durationMs:performance.now()-startedAt,reasons:[...reasons,'Terminal summary failed: '+String(error)]}; }
+      if(failure)Object.assign(summary,{failureStage:failure.stage,errorClass:failure.errorClass,httpStatus:failure.httpStatus});
+      if(canonical)Object.assign(summary,{sourceImageHash:canonical.sha256,canonicalReference:canonical.reference});
       if(attemptVersion===ocrAttemptVersion.current)latestScan.current=summary;
-      const opticalResponse=retainedResponse as CheckStubOcrResponse | null;
-      if(opticalResponse?.optical){opticalSnapshot.images.push(...opticalResponse.optical.images);opticalSnapshot.notes.push(...opticalResponse.optical.notes);delete opticalResponse.optical;}
-      opticalSnapshot.timings={orientationProbeMs:(Array.isArray(opticalSnapshot.probe)?opticalSnapshot.probe:[]).reduce((n,p)=>n+Number(p.probeDurationMs??0),0),detailedOcrMs:performance.now()-startedAt,recoveryMs:Number((opticalResponse?.diagnostics as Record<string,unknown>|undefined)?.recoveryDurationMs??0),totalMs:performance.now()-(opticalSnapshot.startedAt??startedAt)};
-      const saved = persist(summary,{optical:opticalSnapshot,response:retainedResponse,attempt,capture:captureSnapshot,preparation:prepDiagnosticLines,finalResult:result,reasons},2);
-      // Scheduling is detached and only starts after legacy has completed. V2 has
-      // no callback into payment fields, selections, status, or reconciliation.
-      if (shadowSnapshot && businessId && intent !== 'check_details' && documentType !== 'check_only') {
-        const legacyObserved={summary,rows:attempt?.evidence.physicalRows??[],header:attempt?.evidence.headerEvidence??null,resolved:attempt?.resolverResult.resolvedMatches??[]};
-        const legacyCompletedAt=Date.now();
-        void saved?.then(durable => { if(durable)void enqueueShadow({businessId,legacy:summary,legacyObserved,imageDataUrl,snapshot:shadowSnapshot,captureTimings:{...shadowCaptureTimings,legacyCompletedAt}}); });
-      }
+      if(retainedResponse && typeof retainedResponse==='object')delete (retainedResponse as CheckStubOcrResponse).optical;
+      // Terminal evidence is small and independent of optional multi-megabyte optical artifacts.
+      const saved = persist(summary,{response:retainedResponse,attempt,capture:captureSnapshot,preparation:prepDiagnosticLines,canonicalCapture:canonical,transport:failure,shadowHandoff:canonical?.shadowQueued??false,finishedAt:new Date().toISOString(),finalResult:result,reasons},2);
       void saved?.then(durable=>{ if(durable && attemptVersion===ocrAttemptVersion.current){latestScan.current=summary;setLastOcrDiagnosticLines([failureSummary(summary)]);setLastOcrRawText("");if(attempt)setActiveRemittanceAttempt(slimAttempt(attempt));} });
     };
-    persist(history,{optical:opticalSnapshot,preparation:prepDiagnosticLines,capture:preparedCaptureRef.current},0);
+    const initialSave = persist(history,{preparation:prepDiagnosticLines,capture:preparedCaptureRef.current},0);
     if (imageDataUrl.length > 19_500_000) {
       setCheckOcrStatus("manual");
       setCheckOcrMessage(
@@ -3504,9 +3507,15 @@ export default function BatchInvoicePayments({
     }
 
     const databaseSnapshot = { invoices: structuredClone(invoiceRecords), activities: structuredClone(paymentActivities), role: workspaceRole ?? "", receivedDate };
-    const recordAttemptFailure = (reason: string) => { const failedAttempt = resolveRemittanceAttempt(
-      emptyRemittanceEvidence(attemptId, captureSnapshot ? structuredClone(captureSnapshot) as ScanCapture : null, reason),
-      databaseSnapshot.invoices, databaseSnapshot.activities, { role: databaseSnapshot.role, receivedDate: databaseSnapshot.receivedDate, fingerprint: currentDocumentFingerprint }); setActiveRemittanceAttempt(failedAttempt); if(!reason.startsWith("OCR request pending"))complete("failed",failedAttempt,[reason]); };
+    const recordAttemptFailure = (reason: string) => {
+      try {
+        const failedAttempt=resolveRemittanceAttempt(emptyRemittanceEvidence(attemptId,captureSnapshot?structuredClone(captureSnapshot) as ScanCapture:null,reason),databaseSnapshot.invoices,databaseSnapshot.activities,{role:databaseSnapshot.role,receivedDate:databaseSnapshot.receivedDate,fingerprint:currentDocumentFingerprint});
+        setActiveRemittanceAttempt(failedAttempt);
+        if(!reason.startsWith('OCR request pending'))complete('failed',failedAttempt,[reason]);
+      } catch(error) {
+        if(!reason.startsWith('OCR request pending'))complete('failed',null,[reason,'Failure diagnostics could not be resolved: '+String(error)]);
+      }
+    };
     recordAttemptFailure("OCR request pending; no values are authoritative.");
     setDuplicateRemittanceModal(null);
     setDuplicateOverrideClearedKey("");
@@ -3535,6 +3544,13 @@ export default function BatchInvoicePayments({
     const requestStartedAt = performance.now();
 
     try {
+      if(!await initialSave)throw Error('Attempt identity could not be saved');
+      try {
+        canonical=await storeCanonicalCapture({attemptId,imageDataUrl,metadata:{...captureSnapshot?.image,originalPreparation:prepDiagnosticLines,rotation:0,retainedReference},snapshot:shadowSnapshot,captureTimings:shadowCaptureTimings});
+      } catch(error) {
+        failure=transportFailure(null,error instanceof Error?error.message:String(error),'canonical-upload');
+        throw error;
+      }
       const {data:sessionData}=await supabase.auth.getSession().catch(()=>({data:{session:null}}));
       const response = await fetch("/api/payments/extract-check-stub", {
         method: "POST",
@@ -3543,7 +3559,7 @@ export default function BatchInvoicePayments({
           "Content-Type": "application/json",
           ...(sessionData.session?.access_token?{Authorization:`Bearer ${sessionData.session.access_token}`} : {}),
         },
-        body: JSON.stringify({ imageDataUrl, documentType, retryStrategy, attemptId, businessId, history, debugContext:{capture:captureSnapshot,preparation:prepDiagnosticLines} }),
+        body: JSON.stringify({ ...canonicalRequest(canonical), documentType, retryStrategy, attemptId, businessId, history, debugContext:{capture:captureSnapshot,preparation:prepDiagnosticLines,canonicalCapture:canonical} }),
       });
       const data = (await response.json().catch(() => ({}))) as CheckStubOcrResponse;
       retainedResponse=data;
@@ -3566,6 +3582,7 @@ export default function BatchInvoicePayments({
       setLastOcrRawText(data.rawText?.trim() || data.stubText?.trim() || "");
 
       if (!response.ok) {
+        failure=transportFailure(response.status,data.error??`OCR HTTP ${response.status}`);
         recordAttemptFailure(data.error ?? `OCR HTTP ${response.status}`);
         setCameraFailureStage("ocr-request");
         setCheckOcrStatus(response.status === 503 ? "manual" : "error");
@@ -3577,6 +3594,7 @@ export default function BatchInvoicePayments({
       }
 
       if (!data.stubText?.trim()) {
+        failure={stage:"ocr-recognition",errorClass:"OCRNoStructure",httpStatus:response.status,ocrStarted:true,message:"No readable structured OCR response."};
         recordAttemptFailure("No readable structured OCR response.");
         setCameraFailureStage("ocr-parse");
         if (data.rawText?.trim()) {
@@ -3637,6 +3655,7 @@ export default function BatchInvoicePayments({
       );
     } catch (error) {
       if (attemptVersion !== ocrAttemptVersion.current) { complete("failed",null,[error instanceof Error?error.message:"OCR request failed."]); return; }
+      failure??=transportFailure(null,error instanceof Error?error.message:'OCR request failed.');
       recordAttemptFailure(error instanceof Error ? error.message : "OCR request failed.");
       setCameraFailureStage("ocr-request");
       setCheckOcrStatus("error");
@@ -5133,6 +5152,7 @@ export default function BatchInvoicePayments({
   }
 
   async function applyBatchPayment() {
+    if(retainedAttemptId) { setCheckOcrMessage("Diagnostic replay cannot apply payments."); return; }
     if (!paymentCanApply) {
       setToast({ type: "error", message: "Review the payment and resolve reconciliation issues before applying." });
       return;
@@ -5486,6 +5506,20 @@ export default function BatchInvoicePayments({
 
   return (
     <Card className="batch-payments-card border-green-500/30 bg-green-500/5">
+      {retainedAttemptId && ['owner','admin'].includes(workspaceRole??'') && <button type="button" disabled={checkOcrStatus==='reading'} className="rounded border px-3 py-2 text-sm" onClick={async()=>{
+        try {
+          const {data:original,error}=await supabase.from('ocr_attempts').select('id,business_id,original_id,summary').eq('id',retainedAttemptId).eq('business_id',businessId!).single();
+          if(error||!original)throw Error('Retained attempt unavailable');
+          const optical=await scanOptical(retainedAttemptId);
+          const image=optical?.images?.find((item:{label:string;base64?:string})=>['Final OCR input','Canonical OCR input'].includes(item.label)&&item.base64);
+          if(!image)throw Error('Retained canonical image unavailable');
+          const imageDataUrl='data:'+image.mime+';base64,'+image.base64;
+          preparedCaptureRef.current={source:'retained-still-replay',image:{width:image.width,height:image.height,bytes:Math.floor(image.base64.length*3/4),mime:image.mime},quality:{},sources:[],selectionReason:'Exact retained physical pixels; diagnostic replay only'};
+          scanLineage.current={original:original.original_id,last:original.id};
+          setCheckImagePreview(imageDataUrl);setPaymentEntryMode('photo');
+          await extractCheckStubFromPhoto(imageDataUrl,'remittance_stub','primary','standard',['Diagnostic replay of retained attempt '+original.id+'; no new physical capture.'],'',retainedAttemptId);
+        } catch(error) { setCheckOcrMessage(String(error)); }
+      }}>Replay retained image — no payment</button>}
       <input ref={nativeStillInput} type="file" accept="image/*" capture="environment" className="sr-only" aria-label="Take remittance still photo" onChange={event => { captureCheckImage(event.target.files?.[0],'camera',captureDocumentType,captureIntent); event.currentTarget.value=''; }} />
       {businessId && <RecentScans businessId={businessId} businessSlug={businessSlug??undefined} role={workspaceRole} savedStatus={scanSavedStatus}/> }
       {toast ? <Toast type={toast.type} message={toast.message} /> : null}
