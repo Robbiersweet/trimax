@@ -75,7 +75,8 @@ async function benchmark() {
     const { recognizePaymentEvidence } = require('../../../src/app/lib/ocrV2/recognition/paymentEvidence.ts');
     const { recognizeDocumentTotal } = require('../../../src/app/lib/ocrV2/recognition/documentTotalAuthority.ts');
     const { loadRetainedPaymentFields } = require('../retained-payment-fields.cjs');
-    const phase5dEnabled = args.includes('--phase5d'), phase5cEnabled = args.includes('--phase5c') || phase5dEnabled;
+    const phase5eEnabled = args.includes('--phase5e'), phase5dEnabled = args.includes('--phase5d') || phase5eEnabled, phase5cEnabled = args.includes('--phase5c') || phase5dEnabled;
+    const { replayDocumentSemantics } = require('../../../src/app/lib/ocrV2/semantics/replay.ts');
     const { EvidenceLedger } = require('../../../src/app/lib/ocrV2/recognition/evidenceLedger.ts');
     const { recognizeDocumentIdentity } = require('../../../src/app/lib/ocrV2/recognition/documentIdentity.ts');
     const { preservePaymentEvidence } = require('../../../src/app/lib/ocrV2/recognition/preservePaymentEvidence.ts');
@@ -114,7 +115,10 @@ async function benchmark() {
             replay.evidence.payor = identity.payor;
             phase5d = { replay, identity, ledger: ledger.snapshot(), incrementalMs: performance.now() - phaseStart };
         }
-        const payment = phase5d?.replay.evidence ?? phase5c?.evidence ?? phase5b, pipeline = { id: item.fixtureId, sourceHash: c.hash(normalized.documentColor), normalization: normalized.evidence, layout, crops, payment, phase5c, phase5d, preRecognitionMs: performance.now() - begin };
+        const phase5e = phase5eEnabled ? replayDocumentSemantics(layout, phase5d.replay, phase5d.identity, phase5d.ledger) : null;
+        const payment = structuredClone(phase5d?.replay.evidence ?? phase5c?.evidence ?? phase5b);
+        if (phase5e) { payment.payor = phase5e.identity.value; payment.authoritativeTotal = phase5e.total.cents; }
+        const pipeline = { id: item.fixtureId, sourceHash: c.hash(normalized.documentColor), normalization: normalized.evidence, layout, crops, payment, phase5c, phase5d, phase5e, preRecognitionMs: performance.now() - begin };
         pipelines.push(pipeline);
         write(path.join(dir, 'pipeline.json'), pipeline);
         console.log('Processed', item.fixtureId, layout.rows.length, 'rows');

@@ -130,3 +130,6 @@ provenance and splits by physical document, not by augmented variants. Tesseract
 training would additionally need compatible LSTM training tools, line ground truth,
 font/language assets and independent validation. First measure segmentation plus
 the standard engine; no training is started in Phase 1.
+# Phase 5E candidate boundary
+
+The vendor-neutral offline entry is [semantics/index.ts](semantics/index.ts). Earlier layout/payment/identity crop adapters are frozen research compatibility paths, not universal templates for unseen documents. See [the semantic contract](semantics/README.md). Production remains unchanged.
