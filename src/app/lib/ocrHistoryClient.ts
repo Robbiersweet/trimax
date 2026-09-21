@@ -150,6 +150,11 @@ export async function recentScans(businessId: string, before?: string) {
   if (error) throw new Error(error.message);
   return (data ?? []) as ScanRecord[];
 }
+export async function pairedScanSummary(id: string) {
+  const {data,error}=await supabase.from('ocr_attempts').select('summary').eq('id',id).maybeSingle();
+  if(error)throw Error('Paired scan unavailable');
+  return data?.summary ?? null;
+}
 export async function scanDiagnostics(businessId: string, id: string) {
   const local = (await pendingScans(businessId).catch(() => []))
     .filter((write) => write.summary.attemptId === id && write.payloadBytes > 0)

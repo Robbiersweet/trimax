@@ -4,6 +4,8 @@ import AppShell from "../../../components/AppShell";
 import Card from "../../../components/Card";
 import RecentScans from "../../../components/RecentScans";
 import OcrDebugMetadata from "../../../components/OcrDebugMetadata";
+import OcrShadowComparison from '../../../components/OcrShadowComparison';
+import OcrShadowTruth from '../../../components/OcrShadowTruth';
 import { loadDebugAttempt } from "../../../lib/ocrDebugServer";
 import {
   attemptPath,
@@ -35,6 +37,8 @@ export default async function OcrAttemptDetail({
           <h1 className="text-3xl font-bold">OCR attempt</h1>
           <p className="mt-2 break-all text-sm">{attempt.id}</p>
         </header>
+        <OcrShadowComparison summary={attempt.summary} businessSlug={business.slug}/>
+        {attempt.summary.ocrEngine==='v2-shadow' && attempt.result!=='processing' && attempt.summary.legacyAttemptId && attempt.summary.sourceImageHash && <OcrShadowTruth legacyId={attempt.summary.legacyAttemptId} sourceHash={attempt.summary.sourceImageHash}/>}
         <Link
           className="inline-block underline"
           href={debugQueuePath(business.slug)}

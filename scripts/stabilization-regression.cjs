@@ -1035,6 +1035,7 @@ async function retryStateRegression() {
     fetch: async (_url, options) => { calls.push(JSON.parse(options.body)); return new Promise(resolve => pending.push(resolve)); },
     loadExtractedRemittance: (data) => { state.PaymentReference = data.checkNumber; state.ExtractedPaymentAmount = data.totalAmount; const observed=require("../src/app/lib/remittanceAttempt.ts").resolveRemittanceAttempt(require("../src/app/lib/remittanceAttempt.ts").emptyRemittanceEvidence("mock",null,"test"),[],[],{role:"owner",receivedDate:"2026-09-17",fingerprint:""}); return { match: { issues: [] }, reviewMatches: [{ amountDue: data.totalAmount }], reconciledReview: { isComplete: true }, historicalDuplicateCheck: { status: "none" }, attempt: {...observed,reconciliationResult:{...observed.reconciliationResult,eligible:true,blockers:[]}} }; },
   };
+  Object.assign(bindings,{shadowFlags:{enabled:false,nativeStill:false,businessId:'test-workspace'},shadowAllowed:()=>false,captureTimings:{current:{}},enqueueShadow:()=>{throw Error('Disabled shadow must not run');}});
   for (const name of new Set(functionSource.match(/set[A-Z][A-Za-z]+/g))) bindings[name] = value => { state[name.slice(3)] = value; };
   const compiled = ts.transpileModule(functionSource + "\nreturn extractCheckStubFromPhoto;", { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
   const read = new Function(...Object.keys(bindings), compiled)(...Object.values(bindings));

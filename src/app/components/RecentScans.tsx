@@ -1,5 +1,6 @@
 "use client";
 import OpticalEvidenceView from "./OpticalEvidenceView";
+import OcrShadowComparison from './OcrShadowComparison';
 import {
   attemptPath,
   debugTimestamp,
@@ -193,6 +194,7 @@ export default function RecentScans({
                 {s.kind === "retry" ? "Retry Reading" : "Original Scan"} ·{" "}
                 {selected.result}
               </h3>
+              <OcrShadowComparison summary={s} businessSlug={businessSlug}/>
               <dl className="grid grid-cols-2 gap-2 text-sm">
                 <dt>Scanned</dt>
                 <dd>
@@ -401,7 +403,7 @@ export default function RecentScans({
                   }}
                 >
                   <span className="font-semibold">
-                    {record.parent_id ? "↳ Retry" : "Original Scan"} ·{" "}
+                    {record.summary.ocrEngine === 'v2-shadow' ? 'V2 shadow · diagnostic only' : record.parent_id ? "↳ Retry" : "Original Scan"} ·{" "}
                     {record.result}
                     {record.pinned ? " · Pinned" : ""}
                   </span>

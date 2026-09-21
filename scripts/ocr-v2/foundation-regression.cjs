@@ -47,7 +47,8 @@ const { normalizeDocument, lightingVariants } = require('../../src/app/lib/ocrV2
     assert(weak > 100);
     assert(preserved / weak > .95, 'Contrast normalization must retain faint stroke pixels');
     await assert.rejects(() => normalizeDocument(Buffer.from('not an image')));
-    // V2 must remain unreachable from routes and UI. Existing unreleased edits stay separate.
+    // Phase 6 permits only inert contracts and detached queue submission in UI.
+    // Recognition/fusion/resolution must remain outside production request paths.
     function scan(dir) { for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
         const file = path.join(dir, item.name);
         if (file.includes(path.join('lib', 'ocrV2')))
@@ -55,7 +56,8 @@ const { normalizeDocument, lightingVariants } = require('../../src/app/lib/ocrV2
         if (item.isDirectory())
             scan(file);
         else if (/\.[tj]sx?$/.test(file))
-            assert(!/from\s+["'][^"']*ocrV2\//.test(fs.readFileSync(file, 'utf8')), 'Production import of inactive v2: ' + file);
+            for (const match of fs.readFileSync(file, 'utf8').matchAll(/from\s+["']([^"']*ocrV2\/[^"']+)["']/g))
+                assert(/ocrV2\/shadow\/(?:contract|client)$/.test(match[1]), 'Production import of v2 inference: ' + file);
     } }
     scan('src/app');
     console.log('OCR v2 Phase 1: contour geometry, projective mapping, uncertainty fallback, EXIF 1–8 pixel accuracy, original immutability, faint strokes, invalid input and production isolation passed.');

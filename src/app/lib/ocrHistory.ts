@@ -8,6 +8,15 @@ export type ScanResult =
   | "duplicate"
   | "apply blocked";
 export type ScanSummary = {
+  ocrEngine?: 'legacy' | 'v2-shadow';
+  captureSessionId?: string;
+  legacyAttemptId?: string;
+  shadowAttemptId?: string;
+  sourceImageHash?: string;
+  sameInputBytes?: boolean;
+  identity?: string | null;
+  amountRows?: number;
+  resolverStatus?: string;
   attemptId: string;
   timestamp: string;
   build: string;
@@ -57,6 +66,8 @@ export function scanSummary(
   build: string,
 ): ScanSummary {
   return {
+    ocrEngine: 'legacy',
+    captureSessionId: id,
     attemptId: id,
     originalId: original,
     parentId: parent,
@@ -90,6 +101,8 @@ export function finishScan(
     proof = attempt?.reconciliationResult;
   return {
     ...base,
+    identity: evidence?.headerEvidence.payor ?? null,
+    amountRows: evidence?.physicalRows.filter(row=>row.amountCandidates.some(value=>value.selected)).length ?? 0,
     rowNotes: evidence?.physicalRows
       .slice(0, 20)
       .map((row) =>

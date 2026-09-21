@@ -23,6 +23,8 @@ import Card from "./Card";
 import RecentScans from "./RecentScans";
 import { scanSummary, finishScan, failureSummary, debugFile, slimAttempt, type ScanSummary, type ScanResult } from "../lib/ocrHistory";
 import { saveScan, scanDiagnostics } from "../lib/ocrHistoryClient";
+import { enqueueShadow, loadShadowFlags } from "../lib/ocrV2/shadow/client";
+import { DISABLED_SHADOW, shadowAllowed, type CaptureTimings } from "../lib/ocrV2/shadow/contract";
 import DateInputField from "./DateInputField";
 import Toast from "./Toast";
 import {
@@ -1651,6 +1653,16 @@ export default function BatchInvoicePayments({
   const [paymentReviewNotice, setPaymentReviewNotice] = useState("");
   const [ocrReconciliationVerified, setOcrReconciliationVerified] = useState(false);
   const ocrAttemptVersion = useRef(0);
+  const [shadowFlags, setShadowFlags] = useState({...DISABLED_SHADOW,businessId:''});
+  const nativeStillInput = useRef<HTMLInputElement>(null);
+  const captureTimings = useRef<CaptureTimings>({captureOpenedAt:null,stillReturnedAt:null,previewPaintOpportunityAt:null,cameraIndicatorMs:null});
+  useEffect(() => {
+    let current = true;
+    if (!businessId || !['owner','admin'].includes(workspaceRole ?? '')) return;
+    const refresh = () => { void loadShadowFlags(businessId).then(flags => { if(current)setShadowFlags({...flags,businessId}); }); };
+    refresh(); window.addEventListener('focus',refresh);
+    return () => { current=false; window.removeEventListener('focus',refresh); };
+  },[businessId,workspaceRole]);
   const scanLineage = useRef<{original:string;last:string}|null>(null);
   const latestScan = useRef<ScanSummary|null>(null);
   const [scanSavedStatus,setScanSavedStatus] = useState("");
@@ -3451,6 +3463,9 @@ export default function BatchInvoicePayments({
     latestScan.current = history;
     const captureSnapshot = preparedCaptureRef.current ? immutableSnapshot(preparedCaptureRef.current) : null;
     const opticalSnapshot = structuredClone(opticalRef.current);
+    const shadowEnabledForAttempt = shadowFlags.businessId === businessId && shadowAllowed(shadowFlags, workspaceRole);
+    const shadowCaptureTimings = {...captureTimings.current};
+    const shadowSnapshot = shadowEnabledForAttempt ? {label:'Read-only workspace snapshot before legacy resolution',provenance:['Same-capture pre-review invoice/activity state'],invoices:structuredClone(invoiceRecords),activities:structuredClone(paymentActivities),receivedDate} : null;
     let retainedResponse: unknown = null;
     let completed = false;
     const persist = (summary:ScanSummary,payload:unknown,phase:0|2) => {
@@ -3469,6 +3484,13 @@ export default function BatchInvoicePayments({
       if(opticalResponse?.optical){opticalSnapshot.images.push(...opticalResponse.optical.images);opticalSnapshot.notes.push(...opticalResponse.optical.notes);delete opticalResponse.optical;}
       opticalSnapshot.timings={orientationProbeMs:(Array.isArray(opticalSnapshot.probe)?opticalSnapshot.probe:[]).reduce((n,p)=>n+Number(p.probeDurationMs??0),0),detailedOcrMs:performance.now()-startedAt,recoveryMs:Number((opticalResponse?.diagnostics as Record<string,unknown>|undefined)?.recoveryDurationMs??0),totalMs:performance.now()-(opticalSnapshot.startedAt??startedAt)};
       const saved = persist(summary,{optical:opticalSnapshot,response:retainedResponse,attempt,capture:captureSnapshot,preparation:prepDiagnosticLines,finalResult:result,reasons},2);
+      // Scheduling is detached and only starts after legacy has completed. V2 has
+      // no callback into payment fields, selections, status, or reconciliation.
+      if (shadowSnapshot && businessId && intent !== 'check_details' && documentType !== 'check_only') {
+        const legacyObserved={summary,rows:attempt?.evidence.physicalRows??[],header:attempt?.evidence.headerEvidence??null,resolved:attempt?.resolverResult.resolvedMatches??[]};
+        const legacyCompletedAt=Date.now();
+        void saved?.then(durable => { if(durable)void enqueueShadow({businessId,legacy:summary,legacyObserved,imageDataUrl,snapshot:shadowSnapshot,captureTimings:{...shadowCaptureTimings,legacyCompletedAt}}); });
+      }
       void saved?.then(durable=>{ if(durable && attemptVersion===ocrAttemptVersion.current){latestScan.current=summary;setLastOcrDiagnosticLines([failureSummary(summary)]);setLastOcrRawText("");if(attempt)setActiveRemittanceAttempt(slimAttempt(attempt));} });
     };
     persist(history,{optical:opticalSnapshot,preparation:prepDiagnosticLines,capture:preparedCaptureRef.current},0);
@@ -4918,6 +4940,8 @@ export default function BatchInvoicePayments({
     intent: CaptureIntent = captureIntent,
     sourceDiagnosticLines: string[] = []
   ) {
+    if (!file) return;
+    captureTimings.current = {...captureTimings.current,captureOpenedAt:source==='camera'?captureTimings.current.captureOpenedAt:null,stillReturnedAt:Date.now(),previewPaintOpportunityAt:null};
     if(source !== "camera")opticalRef.current={images:[],notes:[]};
     scanLineage.current = null;
     latestScan.current = null;
@@ -4972,6 +4996,18 @@ export default function BatchInvoicePayments({
     setIsTightlyFramedRemittance(false);
     setCaptureQualityMessage("");
     setCaptureQualityDetails("");
+    if (shadowFlags.businessId === businessId && shadowAllowed(shadowFlags,workspaceRole) && shadowFlags.nativeStill) {
+      setCheckOcrStatus('reading');
+      setCheckOcrMessage('Processing remittance…');
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        if(captureVersion !== ocrAttemptVersion.current)return;
+        captureTimings.current.previewPaintOpportunityAt=Date.now();
+        // Use the existing legacy preparation/extraction and safety path. Both
+        // engines will receive its exact resulting still, not a live video frame.
+        void readPreparedRemittanceFromFile(file,{left:0,top:0,right:100,bottom:100},0,documentType,intent,'standard',true,source,['Owner/admin native still intake; camera UI ended before preparation.']);
+      }));
+      return;
+    }
     void imageElementFromFile(file).then((image) => {
       if (captureVersion !== ocrAttemptVersion.current) return;
       const width = image.naturalWidth || image.width || 4;
@@ -5063,6 +5099,12 @@ export default function BatchInvoicePayments({
     documentType: RemittanceDocumentType = captureDocumentType,
     intent: CaptureIntent = "primary"
   ) {
+    if (shadowFlags.businessId === businessId && shadowAllowed(shadowFlags,workspaceRole) && shadowFlags.nativeStill) {
+      setCaptureDocumentType(documentType); setCaptureIntent(intent);
+      captureTimings.current={captureOpenedAt:Date.now(),stillReturnedAt:null,previewPaintOpportunityAt:null,cameraIndicatorMs:null};
+      nativeStillInput.current?.click();
+      return;
+    }
     if (intent === "primary") {
       clearCurrentRemittanceReviewState();
       setRemittanceStubText("");
@@ -5444,6 +5486,7 @@ export default function BatchInvoicePayments({
 
   return (
     <Card className="batch-payments-card border-green-500/30 bg-green-500/5">
+      <input ref={nativeStillInput} type="file" accept="image/*" capture="environment" className="sr-only" aria-label="Take remittance still photo" onChange={event => { captureCheckImage(event.target.files?.[0],'camera',captureDocumentType,captureIntent); event.currentTarget.value=''; }} />
       {businessId && <RecentScans businessId={businessId} businessSlug={businessSlug??undefined} role={workspaceRole} savedStatus={scanSavedStatus}/> }
       {toast ? <Toast type={toast.type} message={toast.message} /> : null}
       {typeof document !== "undefined" ? duplicateRemittanceModalView() : null}

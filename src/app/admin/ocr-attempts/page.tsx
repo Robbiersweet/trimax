@@ -1,6 +1,7 @@
 import Link from "next/link";
 import AppShell from "../../components/AppShell";
 import Card from "../../components/Card";
+import OcrShadowControls from '../../components/OcrShadowControls';
 import { loadDebugQueue } from "../../lib/ocrDebugServer";
 import {
   attemptPath,
@@ -42,6 +43,7 @@ export default async function OcrDebugQueue({
             are changed here.
           </p>
         </header>
+        <OcrShadowControls businessId={business.id}/>
         <Link
           href={`/payments?business=${encodeURIComponent(business.slug)}`}
           className="inline-block underline"
@@ -78,6 +80,7 @@ export default async function OcrDebugQueue({
               >
                 <div className="flex flex-wrap justify-between gap-2">
                   <strong>
+                    {attempt.summary.ocrEngine === 'v2-shadow' ? 'V2 shadow · ' : 'Legacy · '}
                     {attempt.result} ·{" "}
                     {attempt.parent_id ? "Retry" : "Original Scan"}
                   </strong>

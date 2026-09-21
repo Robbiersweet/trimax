@@ -1,0 +1,36 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Deterministic shadow isolation regression. */
+const assert=require('node:assert/strict'),fs=require('node:fs'),sharp=require('sharp'),crypto=require('node:crypto');
+const {shadowAllowed,DISABLED_SHADOW,isolateShadow,assertUnverifiedInput}=require('../../src/app/lib/ocrV2/shadow/contract.ts');
+const {invoiceCell,runShadowPipeline}=require('../../src/app/lib/ocrV2/shadow/pipeline.ts');
+const {validateVerifiedTruth}=require('../../src/app/lib/ocrV2/shadow/acceptance.ts');
+(async()=>{
+ for(const role of ['owner','admin','staff','customer',null])assert.equal(shadowAllowed(DISABLED_SHADOW,role),false);
+ assert.equal(shadowAllowed({enabled:true,nativeStill:true},'owner'),true);
+ assert.equal(shadowAllowed({enabled:true,nativeStill:true},'admin'),true);
+ assert.equal(shadowAllowed({enabled:true,nativeStill:true},'staff'),false);
+ const payment={amount:123,invoiceIds:['unchanged'],status:'legacy-review'},before=structuredClone(payment),errors=[];
+ assert.equal(await isolateShadow(async()=>{throw Error('Worker offline');},m=>errors.push(m)),undefined);
+ assert.deepEqual(payment,before);assert.deepEqual(errors,['Worker offline']);
+ let finish;const waiting=isolateShadow(()=>new Promise(resolve=>{finish=resolve;}),()=>{});
+ let legacyFinished=false;await Promise.resolve().then(()=>{legacyFinished=true;});assert(legacyFinished);finish('shadow');await waiting;
+ assert.throws(()=>assertUnverifiedInput({attemptId:'x',verifiedTruth:{invoice:'forbidden'}}));
+ const truth={businessTruthVerified:true,freshUnseenConfirmed:true,independentDocumentId:'test',verifiedBy:'human',verifiedAt:'2026-01-02',finalPaymentResult:'verified',sourceImageHash:'hash',rows:[{invoiceRecordId:'one',invoiceNumber:'INV-1',unit:'U1',amountCents:100}],totalCents:100};
+ const frozen={sourceImageHash:'hash',frozenAt:'2026-01-01'};
+ assert.deepEqual(validateVerifiedTruth(truth,frozen,[]),truth);
+ assert.throws(()=>validateVerifiedTruth(truth,frozen,['hash']),/Historical/);
+ assert.throws(()=>validateVerifiedTruth({...truth,verifiedAt:'2025-01-01'},frozen,[]),/follow frozen/);
+ assert.throws(()=>validateVerifiedTruth({...truth,totalCents:101},frozen,[]),/reconcile/);
+ const model={table:{supported:true,columns:[{type:'row_amount',bounds:{left:10,top:10,width:100,height:20}},{type:'invoice_number',bounds:{left:250,top:10,width:100,height:20}},{type:'unit',bounds:{left:500,top:10,width:100,height:20}}]}};
+ assert.deepEqual(invoiceCell(model,{left:10,top:100,width:600,height:20},800,300),{left:230,top:100,width:250,height:20});
+ assert.equal(invoiceCell({...model,table:{...model.table,supported:false}},{left:10,top:100,width:600,height:20},800,300),null);
+ const image=await sharp({create:{width:16,height:16,channels:3,background:'white'}}).png().toBuffer();
+ const input={attemptId:'test',captureSessionId:'session',sourceImageHash:crypto.createHash('sha256').update(image).digest('hex'),build:'test',snapshot:{label:'test',provenance:['synthetic'],invoices:[],activities:[],receivedDate:'2026-01-01'}};
+ await assert.rejects(runShadowPipeline(image,{...input,sourceImageHash:'bad'},async()=>{throw Error('must not call');}),/hash mismatch/);
+ const original=structuredClone(input),result=await runShadowPipeline(image,input,async()=>{throw Error('Unknown layout must not invoke invoice models');});
+ assert.deepEqual(input,original);assert.equal(result.paymentCanApply,false);assert.equal(result.ocrEngine,'v2-shadow');assert.equal(result.model.template.id,'unknown_review');assert.equal(result.resolver.status,'review-required');assert.deepEqual(result.resolver.automaticInvoiceIds,[]);
+ const batch=fs.readFileSync('src/app/components/BatchInvoicePayments.tsx','utf8');
+ assert(batch.includes('void saved?.then(durable'));assert(!batch.includes('await enqueueShadow'));
+ assert(batch.includes('capture="environment"'));assert(batch.includes('snapshot:shadowSnapshot'));
+ const route=fs.readFileSync('src/app/api/payments/extract-check-stub/route.ts','utf8');assert(!route.includes('shadow'));
+ console.log('PASS shadow default-off, role gate, rollback, failure isolation, nonblocking completion, input truth exclusion, shared hash integrity, semantic cell geometry, unknown fallback, no payment authority, immutable snapshot, native intake');
+})().catch(e=>{console.error(e);process.exitCode=1;});
