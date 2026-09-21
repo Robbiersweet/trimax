@@ -1,5 +1,6 @@
 // Values are visual observations only. No customer records, fixture IDs or expected answers.
 import type { Bounds } from '../types.ts';
+import { mapSemanticTable } from './tableGeometry.ts';
 import { headerMoney } from '../recognition/documentTotalAuthority.ts';
 import { recognizeLabel, normalizeOrganization } from './labels.ts';
 import type { DocumentSemanticModel, SemanticObservation, SemanticLabel, SemanticField, SemanticRow } from './model.ts';
@@ -37,25 +38,10 @@ export function interpretDocument(input: {
     }
   }
   const labelsMs = performance.now() - labelStart, structureStart = performance.now();
-  // Any column order. A table requires invoice and amount labels on one line,
-  // or externally validated row/column geometry from an earlier optical stage.
-  const invoice = labels.filter(l => l.type === 'invoice_number').find(l => labels.some(a => a.type === 'row_amount' && sameLine(l.bounds, a.bounds)));
-  const heading = invoice ? labels.filter(l => l.observationId === invoice.observationId && sameLine(l.bounds, invoice.bounds)) : [];
-  const uniqueColumns = [...new Map(heading.map(l => [l.type, { type: l.type, bounds: l.bounds }])).values()].sort((a, b) => a.bounds.left - b.bounds.left);
-  const columns = uniqueColumns.length ? uniqueColumns : input.columns ?? [];
-  const rows: SemanticRow[] = input.rows ? structuredClone(input.rows) : [];
-  if (!rows.length && invoice) {
-    const o = observations.find(o => o.id === invoice.observationId)!;
-    const amount = heading.find(l => l.type === 'row_amount')!;
-    const valueWords = o.words.filter(w => w.bounds.top > bottom(invoice.bounds) && /^[\w-]*\d[\w-]*$/.test(w.text) && Math.abs(w.bounds.left - invoice.bounds.left) < invoice.bounds.height * 3);
-    for (const word of valueWords) {
-      const money = o.words.find(w => sameLine(w.bounds, word.bounds) && headerMoney(w.text) !== null && Math.abs(right(w.bounds) - right(amount.bounds)) < amount.bounds.height * 8);
-      if (!money || labels.some(l => ['document_total', 'subtotal', 'balance'].includes(l.type) && sameLine(l.bounds, word.bounds))) continue;
-      if (rows.some(r => sameLine(r.bounds, word.bounds))) continue;
-      const lineWords = o.words.filter(w => sameLine(w.bounds, word.bounds));
-      rows.push({ id: `semantic-row-${rows.length}`, bounds: union(lineWords.map(w => w.bounds)), amountRegion: money.bounds, amountCents: headerMoney(money.text) });
-    }
-  }
+  const mapped = mapSemanticTable(observations, labels);
+  const heading = mapped.heading;
+  const columns = mapped.columns.length ? mapped.columns : input.columns ?? [];
+  const rows: SemanticRow[] = input.rows ? structuredClone(input.rows) : mapped.rows;
   const supported = rows.length > 0 && columns.some(c => c.type === 'invoice_number') && columns.some(c => c.type === 'row_amount');
   const first = rows.length ? Math.min(...rows.map(r => r.bounds.top)) : Infinity, last = rows.length ? Math.max(...rows.map(r => bottom(r.bounds))) : -Infinity;
   const outsideRows = (b: Bounds) => !rows.some(r => overlaps(b, r.bounds));
@@ -88,7 +74,7 @@ export function interpretDocument(input: {
     const next = columns.filter(c => c.bounds.left > col.bounds.left).sort((a, b) => a.bounds.left - b.bounds.left)[0];
     const ws = o.words.filter(w => overlaps(w.bounds, row.bounds) && w.bounds.left >= col.bounds.left - col.bounds.height && (!next || right(w.bounds) < next.bounds.left));
     const label = labels.find(l => l.type === col.type && overlaps(l.bounds, col.bounds));
-    if (ws.length && label) { const raw = ws.sort((a, b) => a.bounds.left - b.bounds.left).map(w => w.text).join(' '); fields.push({ type: col.type, value: raw, normalized: identityTypes.has(col.type) ? normalizeOrganization(raw).key : raw, cents: col.type === 'row_amount' ? headerMoney(raw) ?? undefined : undefined, bounds: union(ws.map(w => w.bounds)), observationId: o.id, runKey: o.runKey, confidence: Math.min(...ws.map(w => w.confidence)), labelIds: [label.id], rowId: row.id }); }
+    if (ws.length && (label || ('semanticConfidence' in col && col.semanticConfidence === 'provisional-geometry' && col.type === 'row_amount'))) { const raw = ws.sort((a, b) => a.bounds.left - b.bounds.left).map(w => w.text).join(' '); fields.push({ type: col.type, value: raw, normalized: identityTypes.has(col.type) ? normalizeOrganization(raw).key : raw, cents: col.type === 'row_amount' ? headerMoney(raw) ?? undefined : undefined, bounds: union(ws.map(w => w.bounds)), observationId: o.id, runKey: o.runKey, confidence: Math.min(...ws.map(w => w.confidence)), labelIds: label ? [label.id] : [], rowId: row.id }); }
   }
   fields.forEach(f => f.labelIds.forEach(id => relations.push({ from: id, to: f.observationId, relation: f.rowId ? 'column-value' : 'adjacent-value' })));
   const structureMs = performance.now() - structureStart, identityStart = performance.now();
@@ -132,5 +118,5 @@ export function interpretDocument(input: {
   const separateCheck = check && labels.some(l => l.type === 'payee_name' && Math.abs(l.bounds.top - check.bounds.top) < (first - check.bounds.top)) && first - bottom(check.bounds) > Math.max(...rows.map(r => r.bounds.height)) * 8;
   const classId = !supported ? 'unknown_review' : separateCheck ? 'check_stub_tabular_v1' : totals.some(t => t.bounds.top >= last) ? 'tabular_footer_total_v1' : totals.some(t => bottom(t.bounds) <= first) ? 'tabular_header_total_pair_v1' : detachedLabels.length && finalValues.length ? 'tabular_header_total_footer_value_v1' : 'tabular_metadata_v1';
   const reviewReasons = [...(!supported ? ['Insufficient semantic table mapping; no columns or rows invented'] : []), ...(identityValue ? [] : [identity.reason]), ...(cents === null ? [total.reason] : [])];
-  return { version: 'phase5e-semantics-1', sourceHash: input.sourceHash, documentType: classId, table: { supported, headerPosition: heading.length ? union(heading.map(l => l.bounds)) : null, columns, rows }, headers: fields.filter(f => bottom(f.bounds) <= first), labels, metadataFields: fields.filter(f => !f.rowId), rowFields: fields.filter(f => f.rowId), totals, identityFields, spatialRelationships: relations, template: { id: classId, invoiceColumnOrder: columns.map(c => c.type), amountColumnPosition: columns.findIndex(c => c.type === 'row_amount'), totalLabelPosition: [...new Set(totalLabelPosition)].join(',') || 'unresolved', totalValuePosition: [...new Set(totalValuePosition)].join(',') || 'unresolved', identityFieldPosition: [...new Set(identityFields.map(f => f.rowId ? 'table-column' : position(f.bounds)))].join(',') || 'unresolved' }, identity, total, reviewRequired: !!reviewReasons.length, reviewReasons, timings: { labelsMs, structureMs, identityMs, totalMs: performance.now() - totalStart, evidenceReuseMs, completeMs: performance.now() - started } };
+  return { version: 'phase6-semantics-2', sourceHash: input.sourceHash, documentType: classId, table: { supported, headerPosition: heading.length ? union(heading.map(l => l.bounds)) : null, columns, rows }, headers: fields.filter(f => bottom(f.bounds) <= first), labels, metadataFields: fields.filter(f => !f.rowId), rowFields: fields.filter(f => f.rowId), totals, identityFields, spatialRelationships: relations, template: { id: classId, invoiceColumnOrder: columns.map(c => c.type), amountColumnPosition: columns.findIndex(c => c.type === 'row_amount'), totalLabelPosition: [...new Set(totalLabelPosition)].join(',') || 'unresolved', totalValuePosition: [...new Set(totalValuePosition)].join(',') || 'unresolved', identityFieldPosition: [...new Set(identityFields.map(f => f.rowId ? 'table-column' : position(f.bounds)))].join(',') || 'unresolved' }, identity, total, reviewRequired: !!reviewReasons.length, reviewReasons, timings: { labelsMs, structureMs, identityMs, totalMs: performance.now() - totalStart, evidenceReuseMs, completeMs: performance.now() - started } };
 }

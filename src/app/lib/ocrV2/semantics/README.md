@@ -45,3 +45,9 @@ Other frozen Phase 1–5D numeric constants (connected-component filters, glyph/
 ## Limits
 
 Five rendered fictional structures test general semantics, not physical multi-vendor acceptance. The eight real documents share a business ecosystem. Real review cases remain review when optical information is insufficient. Phase 6 may evaluate integration/shadow behavior; this module is not a production deployment or payment authorization.
+
+## Native still table mapping
+
+Aligned labels from verified passes on the same normalized image are merged before column construction. Repeated invoice-token bands preserve unreadable amount cells. Without an Amount label, only a single repeated decimal-money alignment can provisionally supply that column; bare numbers, dates, and competing alignments remain unresolved. Label references, geometry observations, and semantic certainty are recorded separately. No monetary value or business authority comes from geometry.
+
+Private image regression: `node --experimental-strip-types scripts/ocr-v2/native-layout-regression.cjs PRIVATE_MANIFEST PRIVATE_OUTPUT`. The manifest binds `file`, `sha256`, and `expectedRows`; image bytes and output stay outside Git. Recognition expectations are not inputs to layout.

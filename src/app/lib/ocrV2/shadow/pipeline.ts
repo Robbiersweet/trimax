@@ -38,7 +38,7 @@ export async function runShadowPipeline(original: Buffer, input: ShadowInput,
   const semantics = await recognizeSemanticPage(normalized.documentColor, ledger), model = semantics.model;
   const size = await sharp(normalized.documentColor).metadata(), crops: InvoiceCrop[] = [];
   for (const row of model.table.rows) {
-    const bounds = invoiceCell(model, row.bounds, size.width!, size.height!);
+    const bounds = row.invoiceRegion ?? invoiceCell(model, row.bounds, size.width!, size.height!);
     if (!bounds) continue;
     const bytes = await sharp(normalized.documentColor).extract(bounds).png().toBuffer();
     crops.push({ rowId: row.id, bounds, bytes, sha256: hash(bytes) });

@@ -14,6 +14,24 @@ if(layout===1)add('$330.00',980,440);else if(layout!==3&&layout!==5)add('Grand T
 result.push({layout,words});}return result;}
 function observation(words,variant='native'){return{id:variant,runKey:variant,sourceHash:'source',cropHash:'crop',recognizer:'test-optical-provider',variant,raw:words.map(w=>w.text).join(' '),confidence:96,region:{left:0,top:0,width:1400,height:550},words,verified:true};}
 let count=0;function test(name,fn){fn();count++;console.log('PASS',name);}
+test('Amount label from a sibling optical pass survives final mapping',()=>{
+ const f=fixtures()[1],native=f.words.filter(w=>w.text!=='Amount'),gray=f.words.map(w=>({...w,text:w.text==='Amount'?'Amoun':w.text}));
+ const m=interpretDocument({sourceHash:'source',observations:[observation(native),observation(gray,'grayscale')]});
+ assert.equal(m.table.rows.length,2);const amount=m.table.columns.find(c=>c.type==='row_amount');assert(amount);assert(amount.labelEvidence.length);assert.equal(amount.semanticConfidence,'label-supported');
+});
+test('Weak absent amount header uses repeated monetary geometry without inventing values',()=>{
+ const words=fixtures()[1].words.filter(w=>w.text!=='Amount');const m=interpretDocument({sourceHash:'source',observations:[observation(words)]});
+ const amount=m.table.columns.find(c=>c.type==='row_amount');assert(amount);assert.equal(amount.semanticConfidence,'provisional-geometry');assert.deepEqual(amount.labelEvidence,[]);assert(amount.geometryEvidence.length>=2);assert.equal(m.table.rows.length,2);assert(m.rowFields.some(f=>f.type==='row_amount'));assert(m.reviewRequired);
+});
+test('Bare numeric accounts and dates cannot establish missing amount semantics',()=>{
+ for(const text of ['123456','02/10/2026']){const words=fixtures()[1].words.filter(w=>w.text!=='Amount').map(w=>({...w,text:w.text.startsWith('$')?text:w.text}));const m=interpretDocument({sourceHash:'source',observations:[observation(words)]});assert(!m.table.columns.some(c=>c.type==='row_amount'));assert.equal(m.documentType,'unknown_review');}
+});
+test('Competing unlabeled monetary columns remain unresolved',()=>{
+ const words=fixtures()[1].words.filter(w=>w.text!=='Amount');words.push(...words.filter(w=>w.text.startsWith('$')).map(w=>({...w,bounds:{...w.bounds,left:w.bounds.left-220}})));const m=interpretDocument({sourceHash:'source',observations:[observation(words)]});assert(!m.table.columns.some(c=>c.type==='row_amount'));
+});
+test('Known columns preserve unreadable amounts and isolate invoice cells',()=>{
+ const words=fixtures()[1].words.filter(w=>!w.text.startsWith('$'));words.push({text:'14',confidence:90,bounds:{left:40,top:490,width:28,height:26}});const m=interpretDocument({sourceHash:'source',observations:[observation(words)]});assert.equal(m.table.rows.length,2);assert(m.table.rows.every(r=>r.invoiceRegion&&r.amountRegion&&r.amountCents===null));assert(m.table.rows[0].bounds.top+m.table.rows[0].bounds.height<=m.table.rows[1].bounds.top);assert.equal(m.total.cents,null);
+});
 for(const fixture of fixtures())test('Layout '+fixture.layout+' vendor-neutral mapping and authority',()=>{const m=interpretDocument({sourceHash:'source',observations:[observation(fixture.words),observation(fixture.words,'grayscale')]});assert.equal(m.table.rows.length,2,JSON.stringify(m));assert.equal(m.total.cents,33000,JSON.stringify(m.total));assert(m.identity.value);assert.equal(m.reviewRequired,false);if(fixture.layout===4)assert.equal(m.table.columns[0].type,'row_amount');});
 test('Minor label noise supported; protected semantics cannot become TOTAL/PAYER',()=>{assert.equal(recognizeLabel('Propeity').type,'property_name');assert.equal(recognizeLabel('TOIAL').type,'document_total');assert.equal(recognizeLabel('SUBTOTAL').type,'subtotal');assert.equal(recognizeLabel('PAYEE').type,'payee_name');assert.equal(recognizeLabel('TOTALS'),null);assert.equal(recognizeLabel('Balance').type,'balance');});
 test('Organization normalization preserves spelling and legal identity',()=>{assert.equal(normalizeOrganization('  ACME,   Holdings. ').key,'acme holdings');assert.equal(normalizeOrganization('Acne Holdings').key,'acne holdings');});
