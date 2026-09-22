@@ -8,6 +8,7 @@ export type EvidenceObservation = {
   raw: string; normalized: string[]; confidence: number;
   words?: Array<{ text: string; bounds: Bounds; confidence: number }>;
   durationMs?: number;
+  organizationIdentity?: { consensusStem: string | null; descriptorEvidence: unknown; authorityReason: string; competingCandidates: unknown; confidenceCalibrated: false };
   provenance: { valid: boolean; reason: string; reference: string };
   timestamp: string; stage: string;
 };

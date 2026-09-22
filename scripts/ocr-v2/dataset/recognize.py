@@ -7,7 +7,7 @@ from phase3e_benchmark import Adapter
 root = Path(sys.argv[1])
 inputs = json.loads((root / 'inputs.json').read_text())
 allowed = {'id', 'documentId', 'file', 'sha256'}
-assert all(set(row) == allowed or (set(row) == allowed | {'field'} and row['field'] in ('row_amount', 'total')) for row in inputs), 'Unexpected inference fields'
+assert all(set(row) == allowed or (set(row) == allowed | {'field'} and row['field'] in ('row_amount', 'total', 'organization')) for row in inputs), 'Unexpected inference fields'
 assert not (root / 'recognition.json').exists(), 'Fresh inference directory required'
 observations, models = [], {}
 for name in ['generic', 'pilot', 'ppocr', 'svtr', 'parseq']:

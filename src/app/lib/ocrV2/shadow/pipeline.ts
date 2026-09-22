@@ -13,12 +13,14 @@ import type { Bounds } from '../types.ts';
 import { normalizePaymentDate } from '../recognition/paymentEvidence.ts';
 import { recognizeSemanticMoney } from '../recognition/semanticMoney.ts';
 import { fuseMoneyObservations, normalizeVisualMoney, type MatureMoneyObservation } from '../recognition/matureMoney.ts';
+import { fuseOrganizationIdentity, type OrganizationObservation } from '../recognition/organizationIdentity.ts';
 import { deriveResidualAmount } from '../recognition/residualAmount.ts';
 
 const hash = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 export type InvoiceCrop = { rowId: string; bounds: Bounds; bytes: Buffer; sha256: string };
 export type MoneyCrop = InvoiceCrop & { field: 'row_amount' | 'total' };
-export type ModelBatch = { observations: RecognizerObservation[]; moneyObservations?: MatureMoneyObservation[]; modelTimings?: Record<string, unknown>; versions: Record<string, unknown> };
+export type OrganizationCrop = InvoiceCrop & { regionType: OrganizationObservation['regionType'] };
+export type ModelBatch = { organizationObservations?: OrganizationObservation[]; observations: RecognizerObservation[]; moneyObservations?: MatureMoneyObservation[]; modelTimings?: Record<string, unknown>; versions: Record<string, unknown> };
 export type ShadowInput = { attemptId: string; captureSessionId: string; sourceImageHash: string; build: string; snapshot: OfflineSnapshot };
 
 // Derive invoice cell bounds only from the detected semantic column and row.
@@ -35,7 +37,7 @@ export function invoiceCell(model: DocumentSemanticModel, row: Bounds, width: nu
 }
 
 export async function runShadowPipeline(original: Buffer, input: ShadowInput,
-  recognize: (crops: InvoiceCrop[], documentId: string, sourceHash: string, moneyCrops: MoneyCrop[]) => Promise<ModelBatch>) {
+  recognize: (crops: InvoiceCrop[], documentId: string, sourceHash: string, moneyCrops: MoneyCrop[], organizationCrops: OrganizationCrop[]) => Promise<ModelBatch>) {
   assertUnverifiedInput(input);
   if (hash(original) !== input.sourceImageHash) throw Error('Canonical capture hash mismatch');
   const started = performance.now(), normalized = await normalizeDocument(original);
@@ -56,8 +58,20 @@ export async function runShadowPipeline(original: Buffer, input: ShadowInput,
     const bytes = await sharp(normalized.documentColor).extract(region.bounds).flatten({ background: 'white' }).png().toBuffer();
     moneyCrops.push({ ...region, bytes, sha256: hash(bytes) });
   }
+  const organizationCrops: OrganizationCrop[] = [];
+  const identityColumn = model.table.columns.find(c => ['property_name','customer_name','payor_name'].includes(c.type) && c.semanticConfidence === 'label-supported');
+  if (identityColumn) {
+    const next = model.table.columns.filter(c => c.bounds.left > identityColumn.bounds.left).sort((a,b) => a.bounds.left-b.bounds.left)[0];
+    if (next) for (const row of model.table.rows) {
+      const left = Math.max(0, Math.min(row.bounds.left, identityColumn.bounds.left)-12);
+      const bounds = { left, top: row.bounds.top, width: next.bounds.left-left-8, height: row.bounds.height };
+      if (bounds.width <= 0 || bounds.top < 0 || bounds.top+bounds.height > size.height!) continue;
+      const bytes = await sharp(normalized.documentColor).extract(bounds).png().toBuffer();
+      organizationCrops.push({ rowId: row.id, bounds, bytes, sha256: hash(bytes), regionType: identityColumn.type as OrganizationObservation['regionType'] });
+    }
+  }
   const recognitionStart = performance.now();
-  const batch: ModelBatch = crops.length ? await recognize(crops, input.attemptId, sourceHash, moneyCrops) : { observations: [], versions: { status: 'not-run-no-supported-invoice-cells' } };
+  const batch: ModelBatch = crops.length ? await recognize(crops, input.attemptId, sourceHash, moneyCrops, organizationCrops) : { observations: [], versions: { status: 'not-run-no-supported-invoice-cells' } };
   const recognitionMs = performance.now() - recognitionStart;
   for (const o of batch.observations) {
     const crop = crops.find(c => c.rowId === o.rowId);
@@ -76,6 +90,22 @@ export async function runShadowPipeline(original: Buffer, input: ShadowInput,
     return { rowId: crop.rowId, field: crop.field, bounds: crop.bounds, cropHash: crop.sha256, ...decision };
   }) : null;
   if (batch.moneyObservations?.some(o => !moneyCrops.some(c => c.rowId === o.rowId && c.field === o.field))) throw Error('Unexpected monetary field output');
+  const identityStart = performance.now();
+  const identityObservations = batch.organizationObservations ?? [];
+  for (const o of identityObservations) {
+    const crop = organizationCrops.find(c => c.rowId === o.sourceRegion);
+    if (!crop || o.documentId !== input.attemptId || o.sourceImageHash !== sourceHash || o.cropHash !== crop.sha256 || JSON.stringify(o.geometry) !== JSON.stringify(crop.bounds) || o.regionType !== crop.regionType) throw Error('Organization output does not belong to labeled canonical pixels');
+  }
+  const organizationIdentity = fuseOrganizationIdentity(identityObservations, { documentId: input.attemptId, sourceImageHash: sourceHash });
+  for (const o of organizationIdentity.observations) ledger.append({ field: 'organization-identity', documentId: input.attemptId, rowId: o.sourceRegion,
+    sourceHash, cropHash: o.cropHash, region: o.geometry, recognizer: o.recognizer, variant: 'native', configuration: organizationIdentity.version,
+    organizationIdentity: { consensusStem: organizationIdentity.consensusStem, descriptorEvidence: organizationIdentity.descriptorEvidence, authorityReason: organizationIdentity.reason, competingCandidates: organizationIdentity.competingCandidates, confidenceCalibrated: false },
+    raw: o.rawText, normalized: [o.normalizedText], confidence: o.confidence ?? 0, durationMs: o.durationMs,
+    provenance: { valid: true, reason: 'Visual labeled identity crop; uncalibrated scores are not authority probabilities', reference: o.id }, stage: 'phase6-organization-identity', timestamp: new Date().toISOString() });
+  const identityValue = organizationIdentity.authority === 'authoritative' ? organizationIdentity.value : model.identity.value;
+  const identityConflict = identityValue && model.identity.value && identityValue !== model.identity.value;
+  const acceptedIdentity = identityConflict ? null : identityValue;
+  const identityMs = performance.now()-identityStart;
   const missingRows: string[] = [];
   const rows: OfflineDocument['rows'] = [];
   for (const row of model.table.rows) {
@@ -92,7 +122,7 @@ export async function runShadowPipeline(original: Buffer, input: ShadowInput,
     const fields = model.metadataFields.filter(f => f.type === type && f.confidence >= 85);
     const values = [...new Set(fields.map(f => type === 'check_date' ? normalizePaymentDate(f.value.trim()) : /^\d+$/.test(f.value.trim()) ? f.value.trim() : null))]; return values.length === 1 ? values[0] : null;
   };
-  const document: ResidualDocument = { id: input.attemptId, rows, rawPasses: [], header: { payor: model.identity.value, checkNumber: header('check_number'), checkDate: header('check_date'),
+  const document: ResidualDocument = { id: input.attemptId, rows, rawPasses: [], header: { payor: acceptedIdentity, checkNumber: header('check_number'), checkDate: header('check_date'),
     total: monetary.authority.cents == null ? null : { amount: monetary.authority.cents/100, source: 'explicit-document-total', payable: true }, provenance: 'Same-capture vendor-neutral visual evidence; no verified answers' } };
   const anchors=model.table.columns.find(c=>c.type==='invoice_number')?.geometryEvidence ?? [];
   const residual=deriveResidualAmount({documentId:input.attemptId,sourceHash,
@@ -111,7 +141,7 @@ export async function runShadowPipeline(original: Buffer, input: ShadowInput,
   const arithmeticReconciliation={subtotal:arithmeticSubtotal,total:monetary.authority.cents,
     difference:arithmeticSubtotal===null||monetary.authority.cents===null?null:arithmeticSubtotal-monetary.authority.cents,
     evidenceClass:'observed-plus-derived-arithmetic',paymentAuthority:false};
-  const blockers = [...model.reviewReasons.filter(reason => reason !== model.total.reason), ...(monetary.authority.cents === null ? [monetary.authority.reason] : []),
+  const blockers = [...model.reviewReasons.filter(reason => reason !== model.total.reason && !(acceptedIdentity && reason === model.identity.reason)), ...(monetary.authority.cents === null ? [monetary.authority.reason] : []),
     ...(matureMoney ? matureMoney.filter(r => r.field === 'row_amount' && r.cents === null && residual.evidence?.rowId!==r.rowId).map(r => `Unresolved monetary evidence for ${r.rowId}: ${r.reason}`)
       : monetary.rows.filter(r => r.cents === null && residual.evidence?.rowId!==r.rowId).map(r => `Unresolved monetary evidence for ${r.rowId}: ${r.rejectionReason}`)),
     ...missingRows.map(id => `Incomplete recognizer evidence for ${id}`), ...new Set(resolved.audit.flatMap(a => a.blockers))];
@@ -125,17 +155,17 @@ export async function runShadowPipeline(original: Buffer, input: ShadowInput,
     candidates: [...new Set([...model.total.candidates, ...monetary.authority.allFooterCandidates.map(c => c.cents)])],
     provenance: [...new Set([...model.total.provenance, ...monetary.authority.labels.map(l => l.observationId), ...monetary.authority.supportedFooter.flatMap(c => c.observations)])],
     observedSubtotal: monetary.authority.subtotal };
-  const semanticReasons = [...model.reviewReasons.filter(reason => reason !== model.total.reason), ...(total.cents === null ? [total.reason] : [])];
-  const diagnosticModel = { ...model, total, reviewReasons: semanticReasons, reviewRequired: semanticReasons.length > 0 };
+  const semanticReasons = [...model.reviewReasons.filter(reason => reason !== model.total.reason && !(acceptedIdentity && reason === model.identity.reason)), ...(total.cents === null ? [total.reason] : [])];
+  const diagnosticModel = { ...model, identity: acceptedIdentity ? { ...model.identity, value: acceptedIdentity, reason: organizationIdentity.reason, provenance: organizationIdentity.candidates.find(c => c.stem === acceptedIdentity)?.provenance ?? model.identity.provenance } : model.identity, total, reviewReasons: semanticReasons, reviewRequired: semanticReasons.length > 0 };
   return { version: SHADOW_VERSION, ocrEngine: 'v2-shadow' as const, paymentCanApply: false as const,
     captureSessionId: input.captureSessionId, sourceImageHash: input.sourceImageHash, normalizedImageHash: sourceHash,
-    build: input.build, models: { ...batch.versions, money: matureMoney ? 'mature-money-consensus-1' : monetary.version }, semanticVersion: model.version, layoutVersion: model.version,
-    benchmarkVersion: 'trimax-ocr-real-v2', normalization: normalized.evidence, model: diagnosticModel, pageOnlyTotal: model.total, document,
+    build: input.build, models: { ...batch.versions, organization: organizationIdentity.version, money: matureMoney ? 'mature-money-consensus-1' : monetary.version }, semanticVersion: model.version, layoutVersion: model.version,
+    benchmarkVersion: 'trimax-ocr-real-v2', normalization: normalized.evidence, model: diagnosticModel, pageOnlyIdentity: model.identity, pageOnlyTotal: model.total, document,
     // Business snapshot is available to the resolver only; do not duplicate it into results.
     resolver: { status: automatic ? 'automatic' : 'review-required', automaticInvoiceIds: automatic ? resolved.automaticInvoiceIds : [], counts: resolved.counts, audit: resolved.audit,
       candidateAudit:resolved.rows.map(r=>({rowId:r.rowId,provisionalInvoiceId:r.provisionalInvoiceId,alternatives:r.alternatives})) },
-    reviewBlockers: blockers, monetary, matureMoney, residual, arithmeticReconciliation, modelTimings: batch.modelTimings, ledger: ledger.snapshot(),
-    timings: { normalizationMs: normalized.evidence.metrics.completeMs, semanticsMs: semantics.durationMs, moneyMs: monetary.durationMs,
+    reviewBlockers: blockers, organizationIdentity, monetary, matureMoney, residual, arithmeticReconciliation, modelTimings: batch.modelTimings, ledger: ledger.snapshot(),
+    timings: { identityFusionMs: identityMs, identityRecognitionMs: identityObservations.reduce((n,o)=>n+o.durationMs,0), normalizationMs: normalized.evidence.metrics.completeMs, semanticsMs: semantics.durationMs, moneyMs: monetary.durationMs,
       matureMoneyMs: batch.moneyObservations?.reduce((n,o) => n + o.durationMs, 0) ?? 0, recognitionMs, resolverMs: resolved.durationMs, totalMs: performance.now()-started },
   };
 }
