@@ -77,6 +77,12 @@ const {PGlite}=require(path.join(process.argv[2],'node_modules/@electric-sql/pgl
  const injectedArgs=[interrupted,physicalHash,storeArgs[2],'{}',interruptedShadow,storeArgs[5],'{}'];
  const storedInterrupted=(await db.query('select trimax_store_ocr_capture($1,$2,$3,$4,$5,$6,$7) as capture',injectedArgs)).rows[0].capture;
  assert.equal(storedInterrupted.reference,interrupted);
+ // Actual legacy optical replacement: derivative first, original marker omitted.
+ await db.query('update ocr_attempt_optical set evidence=$2 where attempt_id=$1',[interrupted,JSON.stringify({images:[{label:'Chosen OCR variant',base64:Buffer.from('derivative').toString('base64')}]})]);
+ const preserved=(await db.query('select evidence from ocr_attempt_optical where attempt_id=$1',[interrupted])).rows[0].evidence;
+ assert.equal(preserved.canonicalHash,physicalHash);assert.equal(preserved.images[0].sha256,physicalHash);assert.equal(preserved.images.length,2);
+ assert.equal((await db.query('select trimax_store_ocr_capture($1,$2,$3,$4,$5,$6,$7) as capture',injectedArgs)).rows[0].capture.storedBytes,physical.length);
+
  assert.equal((await db.query('select debug_worthy from ocr_debug_queue where id=$1',[interrupted])).rows[0].debug_worthy,true);
  await db.exec(`create function inject_cancel() returns trigger language plpgsql as $$begin raise exception 'canceling statement due to statement timeout' using errcode='57014'; end$$; create trigger test_cancel before insert on ocr_shadow_jobs for each row execute function inject_cancel();`);
  await assert.rejects(db.query('select trimax_resume_ocr_handoff($1)',[interrupted]),e=>e.code==='57014');

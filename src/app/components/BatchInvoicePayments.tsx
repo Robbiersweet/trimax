@@ -5541,7 +5541,7 @@ export default function BatchInvoicePayments({
           const {data:original,error}=await supabase.from('ocr_attempts').select('id,business_id,original_id,summary').eq('id',retainedAttemptId).eq('business_id',businessId!).single();
           if(error||!original)throw Error('Retained attempt unavailable');
           const optical=await scanOptical(original.summary.canonicalReference??retainedAttemptId);
-          const image=optical?.images?.find((item:{label:string;base64?:string})=>['Final OCR input','Canonical OCR input'].includes(item.label)&&item.base64);
+          const image=optical?.images?.find((item:{label:string;base64?:string;sha256?:string})=>item.label==='Canonical OCR input'&&item.sha256===original.summary.sourceImageHash&&item.base64)??(!original.summary.canonicalReference?optical?.images?.find((item:{label:string;base64?:string})=>item.label==='Final OCR input'&&item.base64):null);
           if(!image)throw Error('Retained canonical image unavailable');
           const imageDataUrl='data:'+image.mime+';base64,'+image.base64;
           preparedCaptureRef.current={source:'retained-still-replay',image:{width:image.width,height:image.height,bytes:Math.floor(image.base64.length*3/4),mime:image.mime},quality:{},sources:[],selectionReason:'Exact retained physical pixels; diagnostic replay only'};

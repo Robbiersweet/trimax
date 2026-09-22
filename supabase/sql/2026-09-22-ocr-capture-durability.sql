@@ -7,7 +7,7 @@ begin
  if auth.uid() is null or a.id is null or a.created_by<>auth.uid() or not public.trimax_is_business_admin(a.business_id) then raise exception 'Owner/admin attempt required'; end if;
  -- Lost upload response: return the same retained acknowledgement.
  if a.summary->>'sourceImageHash'=p_hash and a.summary->>'canonicalReference' is not null then
- select evidence->'images'->0->>'base64' into bytes from public.ocr_attempt_optical where attempt_id=(a.summary->>'canonicalReference')::uuid;
+ select i->>'base64' into bytes from public.ocr_attempt_optical o,lateral jsonb_array_elements(o.evidence->'images') i where o.attempt_id=(a.summary->>'canonicalReference')::uuid and i->>'sha256'=p_hash limit 1;
  if bytes is not null and (a.pinned or a.diagnostics_expires_at>now()) then
  return jsonb_build_object('reference',a.summary->>'canonicalReference','sha256',p_hash,'storedBytes',octet_length(decode(bytes,'base64')),'shadowQueued',exists(select 1 from public.ocr_shadow_jobs where legacy_attempt_id=p_attempt));
  end if;
@@ -66,7 +66,7 @@ begin
  image_reference:=coalesce(image_reference,p_shadow);
  end if;
  if jsonb_typeof(p_snapshot) is distinct from 'object' or octet_length(p_snapshot::text)>4000000 then raise exception 'Invalid read-only snapshot'; end if;
- s := a.summary || jsonb_build_object('attemptId',p_shadow,'originalId',p_shadow,'parentId',null,'kind','scan','result','processing',
+ s := (a.summary-'captureState'-'shadowHandoffState'-'canonicalReference') || jsonb_build_object('attemptId',p_shadow,'originalId',p_shadow,'parentId',null,'kind','scan','result','processing',
  'ocrEngine','v2-shadow','captureSessionId',p_session,'legacyAttemptId',p_legacy,'shadowAttemptId',p_shadow,
  'sourceImageHash',p_hash,'sameInputBytes',true,'captureTimings',p_capture,'paymentCanApply',false,
  'rowsDetected',0,'invoicesResolved',0,'reconciled',false,'documentTotal',null,'checkNumber',null,'checkDate',null,
@@ -167,3 +167,20 @@ select a.id,a.business_id,a.created_at,a.original_id,a.parent_id,a.result,a.summ
  (a.result='success' and (coalesce((a.summary->>'reconciled')::boolean,false)=false or coalesce((a.summary->>'paymentCanApply')::boolean,false)=false or
  coalesce((a.summary->>'invoicesResolved')::integer,0)<coalesce((a.summary->>'rowsDetected')::integer,0)))) as debug_worthy
 from public.ocr_attempts a left join public.ocr_attempt_debug d on d.attempt_id=a.id;
+
+-- Optional OCR optical writes cannot replace the acknowledged authoritative input.
+create or replace function public.trimax_preserve_canonical_optical() returns trigger language plpgsql set search_path=public as $$
+declare canonical jsonb; extras jsonb; merged jsonb; h text;
+begin
+ select summary->>'sourceImageHash' into h from public.ocr_attempts where id=old.attempt_id and summary->>'canonicalReference'=id::text;
+ if h is null then return new; end if;
+ select i into canonical from jsonb_array_elements(old.evidence->'images') i where i->>'sha256'=h and i->>'label'='Canonical OCR input' limit 1;
+ if canonical is null then return new; end if;
+ select coalesce(jsonb_agg(i),'[]'::jsonb) into extras from (select distinct value as i from jsonb_array_elements(coalesce(new.evidence->'images','[]')) where value is distinct from canonical) values_without_canonical;
+ merged:=new.evidence||jsonb_build_object('canonicalHash',h,'images',jsonb_build_array(canonical)||extras);
+ -- Preserve the acknowledged input if optional evidence exceeds the existing byte limit.
+ new.evidence:=case when octet_length(merged::text)<=12582912 then merged else old.evidence end;
+ return new;
+end $$;
+drop trigger if exists preserve_canonical_optical on public.ocr_attempt_optical;
+create trigger preserve_canonical_optical before update on public.ocr_attempt_optical for each row execute function public.trimax_preserve_canonical_optical();
