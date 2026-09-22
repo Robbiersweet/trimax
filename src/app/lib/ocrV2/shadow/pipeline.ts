@@ -9,7 +9,8 @@ import { resolveOfflineDocument, type OfflineDocument, type OfflineSnapshot } fr
 import { assertUnverifiedInput, SHADOW_VERSION } from './contract.ts';
 import type { DocumentSemanticModel } from '../semantics/model.ts';
 import type { Bounds } from '../types.ts';
-import { decideMoney, normalizePaymentDate, type PaymentObservation } from '../recognition/paymentEvidence.ts';
+import { normalizePaymentDate } from '../recognition/paymentEvidence.ts';
+import { recognizeSemanticMoney } from '../recognition/semanticMoney.ts';
 
 const hash = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 export type InvoiceCrop = { rowId: string; bounds: Bounds; bytes: Buffer; sha256: string };
@@ -36,6 +37,7 @@ export async function runShadowPipeline(original: Buffer, input: ShadowInput,
   const started = performance.now(), normalized = await normalizeDocument(original);
   const sourceHash = hash(normalized.documentColor), ledger = new EvidenceLedger(input.attemptId, input.attemptId, sourceHash);
   const semantics = await recognizeSemanticPage(normalized.documentColor, ledger), model = semantics.model;
+  const monetary = await recognizeSemanticMoney(normalized.documentColor, model, semantics.observations, ledger);
   const size = await sharp(normalized.documentColor).metadata(), crops: InvoiceCrop[] = [];
   for (const row of model.table.rows) {
     const bounds = row.invoiceRegion ?? invoiceCell(model, row.bounds, size.width!, size.height!);
@@ -56,12 +58,8 @@ export async function runShadowPipeline(original: Buffer, input: ShadowInput,
   for (const row of model.table.rows) {
     const observations = batch.observations.filter(o => o.rowId === row.id);
     if (!['svtrv2','parseq','ppocrv5'].every(name => observations.some(o => o.recognizer === name))) { missingRows.push(row.id); continue; }
-    // A single weak money observation cannot become authoritative merely because
-    // a model found an invoice. Keep conflicts and low confidence in review.
-    const amounts = model.rowFields.filter(f => f.rowId === row.id && f.type === 'row_amount' && f.cents != null);
-    const moneyObservations: PaymentObservation[] = amounts.map(f => ({ id: `${f.observationId}:${row.id}:amount`, scope: 'row', rowId: row.id, field: 'amount', variant: semantics.observations.find(o => o.id === f.observationId)!.variant,
-      raw: f.value, bounds: f.bounds, sourceHash, cropHash: sourceHash, durationMs: 0, confidence: f.confidence, money: [f.cents!], words: [] }));
-    const money = decideMoney(moneyObservations);
+    const money = monetary.rows.find(r => r.rowId === row.id)!;
+    const moneyObservations = money.observations;
     rows.push({ rowId: row.id, fusion: fuseInvoiceObservations(observations), geometry: { ...row.bounds, sourceHash, coordinateSpace: 'normalized-still-pixels' },
       amounts: money.cents === null ? [] : moneyObservations.filter(o => money.provenance.includes(o.id)).map(o => ({ cents: money.cents!, raw: o.raw, observationId: o.id, rowId: row.id })),
       units: model.rowFields.filter(f => f.rowId === row.id && f.type === 'unit' && f.confidence >= 85).map(f => ({ value: f.value, observationId: f.observationId, rowId: row.id })), accountCandidates: [] });
@@ -71,19 +69,21 @@ export async function runShadowPipeline(original: Buffer, input: ShadowInput,
     const values = [...new Set(fields.map(f => type === 'check_date' ? normalizePaymentDate(f.value.trim()) : /^\d+$/.test(f.value.trim()) ? f.value.trim() : null))]; return values.length === 1 ? values[0] : null;
   };
   const document: OfflineDocument = { id: input.attemptId, rows, rawPasses: [], header: { payor: model.identity.value, checkNumber: header('check_number'), checkDate: header('check_date'),
-    total: model.total.cents == null ? null : { amount: model.total.cents/100, source: 'explicit-document-total', payable: true }, provenance: 'Same-capture vendor-neutral visual evidence; no verified answers' } };
+    total: monetary.authority.cents == null ? null : { amount: monetary.authority.cents/100, source: 'explicit-document-total', payable: true }, provenance: 'Same-capture vendor-neutral visual evidence; no verified answers' } };
   const resolved = resolveOfflineDocument(document, input.snapshot);
-  const blockers = [...model.reviewReasons, ...missingRows.map(id => `Incomplete recognizer evidence for ${id}`), ...new Set(resolved.audit.flatMap(a => a.blockers))];
+  const blockers = [...model.reviewReasons.filter(reason => reason !== model.total.reason), ...(monetary.authority.cents === null ? [monetary.authority.reason] : []),
+    ...monetary.rows.filter(r => r.cents === null).map(r => `Unresolved monetary evidence for ${r.rowId}: ${r.rejectionReason}`),
+    ...missingRows.map(id => `Incomplete recognizer evidence for ${id}`), ...new Set(resolved.audit.flatMap(a => a.blockers))];
   if (!rows.length) blockers.push('No supported physical rows');
   if (resolved.status !== 'resolved') blockers.push(`Resolver: ${resolved.status}`);
   const automatic = blockers.length === 0 && resolved.status === 'resolved';
   return { version: SHADOW_VERSION, ocrEngine: 'v2-shadow' as const, paymentCanApply: false as const,
     captureSessionId: input.captureSessionId, sourceImageHash: input.sourceImageHash, normalizedImageHash: sourceHash,
-    build: input.build, models: batch.versions, semanticVersion: model.version, layoutVersion: model.version,
+    build: input.build, models: { ...batch.versions, money: monetary.version }, semanticVersion: model.version, layoutVersion: model.version,
     benchmarkVersion: 'trimax-ocr-real-v2', normalization: normalized.evidence, model, document,
     // Business snapshot is available to the resolver only; do not duplicate it into results.
     resolver: { status: automatic ? 'automatic' : 'review-required', automaticInvoiceIds: automatic ? resolved.automaticInvoiceIds : [], counts: resolved.counts, audit: resolved.audit },
-    reviewBlockers: blockers, ledger: ledger.snapshot(),
-    timings: { normalizationMs: normalized.evidence.metrics.completeMs, semanticsMs: semantics.durationMs, recognitionMs, resolverMs: resolved.durationMs, totalMs: performance.now()-started },
+    reviewBlockers: blockers, monetary, ledger: ledger.snapshot(),
+    timings: { normalizationMs: normalized.evidence.metrics.completeMs, semanticsMs: semantics.durationMs, moneyMs: monetary.durationMs, recognitionMs, resolverMs: resolved.durationMs, totalMs: performance.now()-started },
   };
 }
