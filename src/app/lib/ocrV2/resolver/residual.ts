@@ -19,7 +19,8 @@ export function resolveDocumentWithResidual(document: ResidualDocument,snapshot:
     }
   }
   // Separate arithmetic evidence is projected for matching only; raw OCR amounts stay untouched.
-  const amountsFor=(row: OfflineRow)=>derived?.rowId===row.rowId ? [{cents:derived.derivedAmount,raw:'Derived: document total minus confirmed rows',observationId:'derived:'+row.rowId,rowId:row.rowId}] : row.amounts;
+  // A zero residual is valid arithmetic, but is not positive collectible payment evidence.
+  const amountsFor=(row: OfflineRow)=>derived?.rowId===row.rowId ? derived.derivedAmount===0 ? [] : [{cents:derived.derivedAmount,raw:'Derived: document total minus confirmed rows',observationId:'derived:'+row.rowId,rowId:row.rowId}] : row.amounts;
   const projected = { ...document, rows:document.rows.map(row=>({...row,amounts:amountsFor(row)})) };
   const result=resolveOfflineDocument(projected,snapshot,limit);
   return {...result,document:structuredClone(document),rows:result.rows.map(row=>({...row,evidence:document.rows.find(r=>r.rowId===row.rowId)!,alternatives:row.alternatives.map(a=>({...a,
