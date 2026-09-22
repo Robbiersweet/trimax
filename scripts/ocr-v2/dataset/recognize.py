@@ -7,7 +7,7 @@ from phase3e_benchmark import Adapter
 root = Path(sys.argv[1])
 inputs = json.loads((root / 'inputs.json').read_text())
 allowed = {'id', 'documentId', 'file', 'sha256'}
-assert all(set(row) == allowed for row in inputs), 'Unexpected inference fields'
+assert all(set(row) == allowed or (set(row) == allowed | {'field'} and row['field'] in ('row_amount', 'total')) for row in inputs), 'Unexpected inference fields'
 assert not (root / 'recognition.json').exists(), 'Fresh inference directory required'
 observations, models = [], {}
 for name in ['generic', 'pilot', 'ppocr', 'svtr', 'parseq']:
@@ -15,6 +15,8 @@ for name in ['generic', 'pilot', 'ppocr', 'svtr', 'parseq']:
     adapter = Adapter(name, 'cuda' if name in ('svtr', 'parseq') else 'cpu')
     models[name] = {'initMs': (time.perf_counter() - started) * 1000, 'status': 'available'}
     for row in inputs:
+        if 'field' in row and name not in ('ppocr', 'svtr', 'parseq'):
+            continue
         file = (root / row['file']).resolve()
         assert file.is_relative_to(root.resolve())
         assert hashlib.sha256(file.read_bytes()).hexdigest() == row['sha256']

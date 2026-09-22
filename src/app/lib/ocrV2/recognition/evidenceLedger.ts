@@ -7,6 +7,7 @@ export type EvidenceObservation = {
   region: Bounds; recognizer: string; variant: string; configuration: string;
   raw: string; normalized: string[]; confidence: number;
   words?: Array<{ text: string; bounds: Bounds; confidence: number }>;
+  durationMs?: number;
   provenance: { valid: boolean; reason: string; reference: string };
   timestamp: string; stage: string;
 };

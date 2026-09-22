@@ -22,12 +22,16 @@ async function once(){
   const optical=claim.optical?.images?.find(i=>i.base64&&hash(Buffer.from(i.base64,'base64'))===job.source_hash);
   if(!optical)throw Error('Canonical capture unavailable or hash mismatch');
   const original=Buffer.from(optical.base64,'base64');
-  const result=await runShadowPipeline(original,{attemptId:id,captureSessionId:job.capture_session_id,sourceImageHash:job.source_hash,build:cp.execFileSync('git',['rev-parse','HEAD'],{cwd:repository,encoding:'utf8'}).trim(),snapshot:claim.input.snapshot},async(crops,documentId,sourceHash)=>{
+  const result=await runShadowPipeline(original,{attemptId:id,captureSessionId:job.capture_session_id,sourceImageHash:job.source_hash,build:cp.execFileSync('git',['rev-parse','HEAD'],{cwd:repository,encoding:'utf8'}).trim(),snapshot:claim.input.snapshot},async(crops,documentId,sourceHash,moneyCrops)=>{
    const inputs=crops.map((crop,i)=>{const file='crop-'+i+'.png';fs.writeFileSync(path.join(dir,file),crop.bytes);return{id:crop.rowId,documentId,file,sha256:crop.sha256};});
+   for(const [i,crop] of moneyCrops.entries()){const file='money-'+i+'.png';fs.writeFileSync(path.join(dir,file),crop.bytes);inputs.push({id:crop.rowId,documentId,file,sha256:crop.sha256,field:crop.field});}
    fs.writeFileSync(path.join(dir,'inputs.json'),JSON.stringify(inputs));
    await new Promise((resolve,reject)=>{const child=cp.spawn('wsl',['-d',config.wslDistribution||'Ubuntu','--','env','HF_HUB_OFFLINE=1',config.python,toWSL(path.join(__dirname,'dataset/recognize.py')),toWSL(dir)],{windowsHide:true,stdio:['ignore','ignore','pipe']});let error='';child.stderr.on('data',b=>{error=(error+b.toString()).slice(-8000);});const timeout=setTimeout(()=>{child.kill();reject(Error('Recognizer exceeded worker budget'));},600000);child.on('error',reject);child.on('exit',code=>{clearTimeout(timeout);if(code===0)resolve();else{fs.writeFileSync(path.join(dir,'worker-error.txt'),error);reject(Error('WSL model worker exited '+code+': '+error.slice(-1700)));}});});
    const data=JSON.parse(fs.readFileSync(path.join(dir,'recognition.json'),'utf8'));
-   return{versions:data.versions,observations:data.observations.filter(o=>['svtr','parseq','ppocr'].includes(o.recognizer)).map(o=>({id:o.recognizer+':'+o.id,fieldType:'invoice',scope:'row',rowId:o.id,recognizer:{svtr:'svtrv2',parseq:'parseq',ppocr:'ppocrv5'}[o.recognizer],rawText:o.raw,sequenceConfidence:null,characterConfidences:null,confidenceCalibrated:false,cropReference:{documentId,rowId:o.id,sourceImageSha256:sourceHash,baseCropSha256:o.sha256,sha256:o.sha256,path:o.file,variant:'native'},durationMs:o.ms,visualWarnings:[]}))};
+   const names={svtr:'svtrv2',parseq:'parseq',ppocr:'ppocrv5'};
+   return{versions:data.versions,modelTimings:data.models,
+    moneyObservations:data.observations.filter(o=>o.field&&names[o.recognizer]).map(o=>({id:'money:'+o.recognizer+':'+o.field+':'+o.id,rowId:o.id,field:o.field,documentId,sourceHash,cropHash:o.sha256,recognizer:names[o.recognizer],raw:o.raw,confidence:null,confidenceCalibrated:false,durationMs:o.ms})),
+    observations:data.observations.filter(o=>!o.field&&names[o.recognizer]).map(o=>({id:o.recognizer+':'+o.id,fieldType:'invoice',scope:'row',rowId:o.id,recognizer:names[o.recognizer],rawText:o.raw,sequenceConfidence:null,characterConfidences:null,confidenceCalibrated:false,cropReference:{documentId,rowId:o.id,sourceImageSha256:sourceHash,baseCropSha256:o.sha256,sha256:o.sha256,path:o.file,variant:'native'},durationMs:o.ms,visualWarnings:[]}))};
   });
   fs.writeFileSync(path.join(dir,'result.json'),JSON.stringify(result));
   await rpc('trimax_complete_ocr_shadow',{p_legacy:job.legacy_attempt_id,p_lease:job.lease,p_result:result,p_error:null});

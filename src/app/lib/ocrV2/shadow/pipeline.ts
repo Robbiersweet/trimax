@@ -11,10 +11,12 @@ import type { DocumentSemanticModel } from '../semantics/model.ts';
 import type { Bounds } from '../types.ts';
 import { normalizePaymentDate } from '../recognition/paymentEvidence.ts';
 import { recognizeSemanticMoney } from '../recognition/semanticMoney.ts';
+import { fuseMoneyObservations, normalizeVisualMoney, type MatureMoneyObservation } from '../recognition/matureMoney.ts';
 
 const hash = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 export type InvoiceCrop = { rowId: string; bounds: Bounds; bytes: Buffer; sha256: string };
-export type ModelBatch = { observations: RecognizerObservation[]; versions: Record<string, unknown> };
+export type MoneyCrop = InvoiceCrop & { field: 'row_amount' | 'total' };
+export type ModelBatch = { observations: RecognizerObservation[]; moneyObservations?: MatureMoneyObservation[]; modelTimings?: Record<string, unknown>; versions: Record<string, unknown> };
 export type ShadowInput = { attemptId: string; captureSessionId: string; sourceImageHash: string; build: string; snapshot: OfflineSnapshot };
 
 // Derive invoice cell bounds only from the detected semantic column and row.
@@ -31,7 +33,7 @@ export function invoiceCell(model: DocumentSemanticModel, row: Bounds, width: nu
 }
 
 export async function runShadowPipeline(original: Buffer, input: ShadowInput,
-  recognize: (crops: InvoiceCrop[], documentId: string, sourceHash: string) => Promise<ModelBatch>) {
+  recognize: (crops: InvoiceCrop[], documentId: string, sourceHash: string, moneyCrops: MoneyCrop[]) => Promise<ModelBatch>) {
   assertUnverifiedInput(input);
   if (hash(original) !== input.sourceImageHash) throw Error('Canonical capture hash mismatch');
   const started = performance.now(), normalized = await normalizeDocument(original);
@@ -45,20 +47,40 @@ export async function runShadowPipeline(original: Buffer, input: ShadowInput,
     const bytes = await sharp(normalized.documentColor).extract(bounds).png().toBuffer();
     crops.push({ rowId: row.id, bounds, bytes, sha256: hash(bytes) });
   }
+  const moneyCrops: MoneyCrop[] = [];
+  const moneyRegions = [...monetary.regions.filter(r => r.bounds).map(r => ({ rowId: r.rowId, field: 'row_amount' as const, bounds: r.bounds! })),
+    ...(monetary.totalBounds ? [{ rowId: 'document-total', field: 'total' as const, bounds: monetary.totalBounds }] : [])];
+  for (const region of moneyRegions) {
+    const bytes = await sharp(normalized.documentColor).extract(region.bounds).flatten({ background: 'white' }).png().toBuffer();
+    moneyCrops.push({ ...region, bytes, sha256: hash(bytes) });
+  }
   const recognitionStart = performance.now();
-  const batch = crops.length ? await recognize(crops, input.attemptId, sourceHash) : { observations: [], versions: { status: 'not-run-no-supported-invoice-cells' } };
+  const batch: ModelBatch = crops.length ? await recognize(crops, input.attemptId, sourceHash, moneyCrops) : { observations: [], versions: { status: 'not-run-no-supported-invoice-cells' } };
   const recognitionMs = performance.now() - recognitionStart;
   for (const o of batch.observations) {
     const crop = crops.find(c => c.rowId === o.rowId);
     if (!crop || o.cropReference.sha256 !== crop.sha256 || o.cropReference.sourceImageSha256 !== sourceHash || o.cropReference.documentId !== input.attemptId)
       throw Error('Model output does not belong to canonical row pixels');
   }
+  const matureMoney = batch.moneyObservations ? moneyCrops.map(crop => {
+    const expected = { rowId: crop.rowId, field: crop.field, documentId: input.attemptId, sourceHash, cropHash: crop.sha256 };
+    const own = batch.moneyObservations!.filter(o => o.rowId === crop.rowId && o.field === crop.field);
+    const decision = fuseMoneyObservations(own, expected);
+    for (const o of own) ledger.append({ field: o.field, documentId: input.attemptId, rowId: o.field === 'row_amount' ? o.rowId : undefined,
+      sourceHash, cropHash: crop.sha256, region: crop.bounds, recognizer: o.recognizer, variant: 'native',
+      configuration: `mature-money-consensus-1:${hash(Buffer.from(JSON.stringify(batch.versions)))}`, raw: o.raw,
+      normalized: normalizeVisualMoney(o.raw) === null ? [] : [String(normalizeVisualMoney(o.raw))], confidence: o.confidence ?? 0, durationMs: o.durationMs,
+      provenance: { valid: true, reason: 'Uncalibrated sequence recognizer on exact same physical money crop; no business hints', reference: o.id }, stage: 'phase6-mature-money', timestamp: new Date().toISOString() });
+    return { rowId: crop.rowId, field: crop.field, bounds: crop.bounds, cropHash: crop.sha256, ...decision };
+  }) : null;
+  if (batch.moneyObservations?.some(o => !moneyCrops.some(c => c.rowId === o.rowId && c.field === o.field))) throw Error('Unexpected monetary field output');
   const missingRows: string[] = [];
   const rows: OfflineDocument['rows'] = [];
   for (const row of model.table.rows) {
     const observations = batch.observations.filter(o => o.rowId === row.id);
     if (!['svtrv2','parseq','ppocrv5'].every(name => observations.some(o => o.recognizer === name))) { missingRows.push(row.id); continue; }
-    const money = monetary.rows.find(r => r.rowId === row.id)!;
+    const money = matureMoney ? matureMoney.find(r => r.rowId === row.id && r.field === 'row_amount')! : monetary.rows.find(r => r.rowId === row.id)!;
+    if (!money) { missingRows.push(row.id); continue; }
     const moneyObservations = money.observations;
     rows.push({ rowId: row.id, fusion: fuseInvoiceObservations(observations), geometry: { ...row.bounds, sourceHash, coordinateSpace: 'normalized-still-pixels' },
       amounts: money.cents === null ? [] : moneyObservations.filter(o => money.provenance.includes(o.id)).map(o => ({ cents: money.cents!, raw: o.raw, observationId: o.id, rowId: row.id })),
@@ -72,7 +94,8 @@ export async function runShadowPipeline(original: Buffer, input: ShadowInput,
     total: monetary.authority.cents == null ? null : { amount: monetary.authority.cents/100, source: 'explicit-document-total', payable: true }, provenance: 'Same-capture vendor-neutral visual evidence; no verified answers' } };
   const resolved = resolveOfflineDocument(document, input.snapshot);
   const blockers = [...model.reviewReasons.filter(reason => reason !== model.total.reason), ...(monetary.authority.cents === null ? [monetary.authority.reason] : []),
-    ...monetary.rows.filter(r => r.cents === null).map(r => `Unresolved monetary evidence for ${r.rowId}: ${r.rejectionReason}`),
+    ...(matureMoney ? matureMoney.filter(r => r.field === 'row_amount' && r.cents === null).map(r => `Unresolved monetary evidence for ${r.rowId}: ${r.reason}`)
+      : monetary.rows.filter(r => r.cents === null).map(r => `Unresolved monetary evidence for ${r.rowId}: ${r.rejectionReason}`)),
     ...missingRows.map(id => `Incomplete recognizer evidence for ${id}`), ...new Set(resolved.audit.flatMap(a => a.blockers))];
   if (!rows.length) blockers.push('No supported physical rows');
   if (resolved.status !== 'resolved') blockers.push(`Resolver: ${resolved.status}`);
@@ -88,11 +111,12 @@ export async function runShadowPipeline(original: Buffer, input: ShadowInput,
   const diagnosticModel = { ...model, total, reviewReasons: semanticReasons, reviewRequired: semanticReasons.length > 0 };
   return { version: SHADOW_VERSION, ocrEngine: 'v2-shadow' as const, paymentCanApply: false as const,
     captureSessionId: input.captureSessionId, sourceImageHash: input.sourceImageHash, normalizedImageHash: sourceHash,
-    build: input.build, models: { ...batch.versions, money: monetary.version }, semanticVersion: model.version, layoutVersion: model.version,
+    build: input.build, models: { ...batch.versions, money: matureMoney ? 'mature-money-consensus-1' : monetary.version }, semanticVersion: model.version, layoutVersion: model.version,
     benchmarkVersion: 'trimax-ocr-real-v2', normalization: normalized.evidence, model: diagnosticModel, pageOnlyTotal: model.total, document,
     // Business snapshot is available to the resolver only; do not duplicate it into results.
     resolver: { status: automatic ? 'automatic' : 'review-required', automaticInvoiceIds: automatic ? resolved.automaticInvoiceIds : [], counts: resolved.counts, audit: resolved.audit },
-    reviewBlockers: blockers, monetary, ledger: ledger.snapshot(),
-    timings: { normalizationMs: normalized.evidence.metrics.completeMs, semanticsMs: semantics.durationMs, moneyMs: monetary.durationMs, recognitionMs, resolverMs: resolved.durationMs, totalMs: performance.now()-started },
+    reviewBlockers: blockers, monetary, matureMoney, modelTimings: batch.modelTimings, ledger: ledger.snapshot(),
+    timings: { normalizationMs: normalized.evidence.metrics.completeMs, semanticsMs: semantics.durationMs, moneyMs: monetary.durationMs,
+      matureMoneyMs: batch.moneyObservations?.reduce((n,o) => n + o.durationMs, 0) ?? 0, recognitionMs, resolverMs: resolved.durationMs, totalMs: performance.now()-started },
   };
 }
