@@ -31,6 +31,8 @@ console.log('PASS monetary confidence, ambiguity, no digit repair');
  if(output.monetary.authority.cents!==null)assert.equal(output.monetary.authority.cents,manifest.totalCents);
  assert.equal(output.document.rows.filter(r=>r.amounts.length).length,accepted.length);
  assert.equal(output.document.header.total?.amount,output.monetary.authority.cents/100);
+ assert.equal(output.model.total.cents,output.document.header.total.amount*100,'Durable comparison and resolver total agree');
+ assert(output.pageOnlyTotal,'Earlier page-only total evidence retained');
  assert.deepEqual(output.document.rows.map(r=>r.fusion),prior.document.rows.map(r=>r.fusion),'Invoice fusion unchanged');
  assert.equal(output.document.header.checkDate,prior.document.header.checkDate,'Date acceptance unchanged');
  assert.equal(output.document.header.payor,prior.document.header.payor,'Identity unchanged');

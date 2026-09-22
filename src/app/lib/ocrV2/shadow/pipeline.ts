@@ -77,10 +77,19 @@ export async function runShadowPipeline(original: Buffer, input: ShadowInput,
   if (!rows.length) blockers.push('No supported physical rows');
   if (resolved.status !== 'resolved') blockers.push(`Resolver: ${resolved.status}`);
   const automatic = blockers.length === 0 && resolved.status === 'resolved';
+  // The durable comparison summary reads model.total, while the resolver reads
+  // document.header.total. Project the same authority into both, retaining the
+  // earlier page-only observation for inspection rather than losing it.
+  const total = { ...model.total, cents: monetary.authority.cents, reason: monetary.authority.reason,
+    candidates: [...new Set([...model.total.candidates, ...monetary.authority.allFooterCandidates.map(c => c.cents)])],
+    provenance: [...new Set([...model.total.provenance, ...monetary.authority.labels.map(l => l.observationId), ...monetary.authority.supportedFooter.flatMap(c => c.observations)])],
+    observedSubtotal: monetary.authority.subtotal };
+  const semanticReasons = [...model.reviewReasons.filter(reason => reason !== model.total.reason), ...(total.cents === null ? [total.reason] : [])];
+  const diagnosticModel = { ...model, total, reviewReasons: semanticReasons, reviewRequired: semanticReasons.length > 0 };
   return { version: SHADOW_VERSION, ocrEngine: 'v2-shadow' as const, paymentCanApply: false as const,
     captureSessionId: input.captureSessionId, sourceImageHash: input.sourceImageHash, normalizedImageHash: sourceHash,
     build: input.build, models: { ...batch.versions, money: monetary.version }, semanticVersion: model.version, layoutVersion: model.version,
-    benchmarkVersion: 'trimax-ocr-real-v2', normalization: normalized.evidence, model, document,
+    benchmarkVersion: 'trimax-ocr-real-v2', normalization: normalized.evidence, model: diagnosticModel, pageOnlyTotal: model.total, document,
     // Business snapshot is available to the resolver only; do not duplicate it into results.
     resolver: { status: automatic ? 'automatic' : 'review-required', automaticInvoiceIds: automatic ? resolved.automaticInvoiceIds : [], counts: resolved.counts, audit: resolved.audit },
     reviewBlockers: blockers, monetary, ledger: ledger.snapshot(),
