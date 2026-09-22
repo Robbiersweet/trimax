@@ -1,5 +1,5 @@
 "use client";
-import { storeCanonicalCapture } from "../lib/ocrCanonicalClient";
+import { storeCanonicalCapture, resumeCaptureHandoff } from "../lib/ocrCanonicalClient";
 import { canonicalRequest, transportFailure, type CanonicalCapture, type TransportFailure } from "../lib/ocrCanonical";
 
 import { acquireStillAndRelease, type CameraLifecycle } from "../lib/cameraArtifacts";
@@ -1699,6 +1699,9 @@ export default function BatchInvoicePayments({
   const [checkOcrStatus, setCheckOcrStatus] = useState<CheckOcrStatus>("idle");
   const [paymentEntryMode, setPaymentEntryMode] =
     useState<PaymentEntryMode>("choice");
+  // Session-only recovery retains the same photo and attempt; never writes image bytes to device storage.
+  const [captureRetry, setCaptureRetry] = useState<(() => Promise<void>) | null>(null);
+  const captureRetryBusy = useRef(false);
   const [checkOcrMessage, setCheckOcrMessage] = useState(
     "Upload a remittance stub or enter the payment manually."
   );
@@ -3453,17 +3456,19 @@ export default function BatchInvoicePayments({
     retryStrategy: OcrRetryStrategy = "standard",
     prepDiagnosticLines: string[] = lastOcrPrepDiagnosticLines,
     currentDocumentFingerprint = remittanceDocumentFingerprint,
-    retainedReference?: string
+    retainedReference?: string,
+    resume?: {history:ScanSummary;canonical:CanonicalCapture|null}
   ) {
     const attemptVersion = ++ocrAttemptVersion.current;
-    const attemptId = crypto.randomUUID();
+    const attemptId = resume?.history.attemptId ?? crypto.randomUUID();
+    setCaptureRetry(null);
     const startedAt = performance.now();
     const parent = scanLineage.current;
     if (parent) observationScopeRef.current=crypto.randomUUID();
     const observationScope=observationScopeRef.current;
     // Reserve a fresh namespace immediately for the next attempt, including uploads.
     observationScopeRef.current=crypto.randomUUID();
-    const history = scanSummary(attemptId,parent?.original??attemptId,parent?.last??null,preparedCaptureRef.current?.source??"unknown",process.env.NEXT_PUBLIC_TRIMAX_BUILD??"local");
+    const history = resume?.history ?? scanSummary(attemptId,parent?.original??attemptId,parent?.last??null,preparedCaptureRef.current?.source??"unknown",process.env.NEXT_PUBLIC_TRIMAX_BUILD??"local");
     history.inputSource=lastOcrSourceType;
     scanLineage.current = {original:history.originalId,last:attemptId};
     latestScan.current = history;
@@ -3471,7 +3476,7 @@ export default function BatchInvoicePayments({
     const shadowEnabledForAttempt = shadowFlags.businessId === businessId && shadowAllowed(shadowFlags, workspaceRole);
     const shadowCaptureTimings = {...captureTimings.current};
     const shadowSnapshot = shadowEnabledForAttempt && intent !== "check_details" && documentType !== "check_only" ? {label:'Read-only workspace snapshot before legacy resolution',provenance:['Same-capture pre-review invoice/activity state'],invoices:structuredClone(invoiceRecords),activities:structuredClone(paymentActivities),receivedDate} : null;
-    let canonical: CanonicalCapture | null = null;
+    let canonical: CanonicalCapture | null = resume?.canonical ?? null;
     let failure: TransportFailure | null = null;
     let retainedResponse: unknown = null;
     let completed = false;
@@ -3488,6 +3493,7 @@ export default function BatchInvoicePayments({
       let summary: ScanSummary;
       try { summary=finishScan(history,attempt,result,performance.now()-startedAt,reasons); }
       catch(error) { summary={...history,result:'failed',paymentCanApply:false,durationMs:performance.now()-startedAt,reasons:[...reasons,'Terminal summary failed: '+String(error)]}; }
+      summary.captureState=result==='failed'?'failed':'review';
       if(failure)Object.assign(summary,{failureStage:failure.stage,errorClass:failure.errorClass,httpStatus:failure.httpStatus});
       if(canonical)Object.assign(summary,{sourceImageHash:canonical.sha256,canonicalReference:canonical.reference});
       if(attemptVersion===ocrAttemptVersion.current)latestScan.current=summary;
@@ -3496,7 +3502,8 @@ export default function BatchInvoicePayments({
       const saved = persist(summary,{response:retainedResponse,attempt,capture:captureSnapshot,preparation:prepDiagnosticLines,canonicalCapture:canonical,transport:failure,shadowHandoff:canonical?.shadowQueued??false,finishedAt:new Date().toISOString(),finalResult:result,reasons},2);
       void saved?.then(durable=>{ if(durable && attemptVersion===ocrAttemptVersion.current){latestScan.current=summary;setLastOcrDiagnosticLines([failureSummary(summary)]);setLastOcrRawText("");if(attempt)setActiveRemittanceAttempt(slimAttempt(attempt));} });
     };
-    const initialSave = persist(history,{preparation:prepDiagnosticLines,capture:preparedCaptureRef.current},0);
+    history.captureState=canonical?'image_stored':'capture_local';
+    const initialSave = canonical ? Promise.resolve(true) : persist(history,{preparation:prepDiagnosticLines,capture:preparedCaptureRef.current},0);
     if (imageDataUrl.length > 19_500_000) {
       setCheckOcrStatus("manual");
       setCheckOcrMessage(
@@ -3536,21 +3543,28 @@ export default function BatchInvoicePayments({
       setPaymentReviewNotice("");
     }
     setCheckOcrStatus("reading");
-    setCheckOcrMessage("Reading the remittance stub from the image...");
+    setCheckOcrMessage("Saving captured photo...");
     setLastOcrDiagnosticLines([]);
     setLastOcrRawText("");
     appendCameraStage("Upload started");
-    appendCameraStage("OCR started");
+
     const requestStartedAt = performance.now();
 
     try {
-      if(!await initialSave)throw Error('Attempt identity could not be saved');
+      if(!await initialSave){failure=transportFailure(null,'Attempt identity could not be saved','capture-registration');throw Error(failure.message);}
       try {
-        canonical=await storeCanonicalCapture({attemptId,imageDataUrl,metadata:{...captureSnapshot?.image,originalPreparation:prepDiagnosticLines,rotation:0,retainedReference},snapshot:shadowSnapshot,captureTimings:shadowCaptureTimings});
+        canonical=canonical ?? await storeCanonicalCapture({attemptId,imageDataUrl,metadata:{...captureSnapshot?.image,originalPreparation:prepDiagnosticLines,rotation:0,retainedReference},snapshot:shadowSnapshot,captureTimings:shadowCaptureTimings});
       } catch(error) {
         failure=transportFailure(null,error instanceof Error?error.message:String(error),'canonical-upload');
         throw error;
       }
+      history.captureState='processing';
+      setCheckOcrMessage('Processing remittance...');
+      // Detached, independent commit. Shadow downtime must never delay or fail legacy OCR.
+      if(shadowSnapshot) void resumeCaptureHandoff(attemptId).then(result=>{
+        if(canonical)canonical.shadowQueued=result.queued;
+      }).catch(()=>{ if(attemptVersion===ocrAttemptVersion.current)setScanSavedStatus('Capture saved — shadow processing pending. Retry from Recent Scans.'); });
+      appendCameraStage("OCR started");
       const {data:sessionData}=await supabase.auth.getSession().catch(()=>({data:{session:null}}));
       const response = await fetch("/api/payments/extract-check-stub", {
         method: "POST",
@@ -3656,6 +3670,20 @@ export default function BatchInvoicePayments({
     } catch (error) {
       if (attemptVersion !== ocrAttemptVersion.current) { complete("failed",null,[error instanceof Error?error.message:"OCR request failed."]); return; }
       failure??=transportFailure(null,error instanceof Error?error.message:'OCR request failed.');
+      if(!canonical || failure.stage==='canonical-upload') {
+        history.captureState='transport_failed';
+        history.reasons=['Photo captured, upload interrupted — Retry'];
+        void persist(history,{stage:'transport_failed',transport:failure,preparation:prepDiagnosticLines},0);
+        setCheckOcrStatus('error');
+        setCheckOcrMessage('Photo captured, upload interrupted — Retry. Keep this page open; your photo is still available.');
+        setCaptureRetry(()=>async()=>{
+          if(captureRetryBusy.current || attemptVersion!==ocrAttemptVersion.current)return;
+          captureRetryBusy.current=true;
+          try { await extractCheckStubFromPhoto(imageDataUrl,documentType,intent,retryStrategy,prepDiagnosticLines,currentDocumentFingerprint,retainedReference,{history,canonical}); }
+          finally {captureRetryBusy.current=false;}
+        });
+        return;
+      }
       recordAttemptFailure(error instanceof Error ? error.message : "OCR request failed.");
       setCameraFailureStage("ocr-request");
       setCheckOcrStatus("error");
@@ -3688,6 +3716,7 @@ export default function BatchInvoicePayments({
     sourceType: OcrSourceType = lastOcrSourceType,
     sourceDiagnosticLines: string[] = lastCameraCaptureDiagnosticLines
   ) {
+    setCaptureRetry(null);
     const preparationVersion = ++ocrAttemptVersion.current;
     setActiveRemittanceAttempt(null);
     setSelectedIds([]);
@@ -4965,6 +4994,7 @@ export default function BatchInvoicePayments({
     scanLineage.current = null;
     latestScan.current = null;
     setScanSavedStatus("");
+    setCaptureRetry(null);
     const captureVersion = ++ocrAttemptVersion.current;
     setActiveRemittanceAttempt(null);
     setOcrReconciliationVerified(false);
@@ -5510,14 +5540,14 @@ export default function BatchInvoicePayments({
         try {
           const {data:original,error}=await supabase.from('ocr_attempts').select('id,business_id,original_id,summary').eq('id',retainedAttemptId).eq('business_id',businessId!).single();
           if(error||!original)throw Error('Retained attempt unavailable');
-          const optical=await scanOptical(retainedAttemptId);
+          const optical=await scanOptical(original.summary.canonicalReference??retainedAttemptId);
           const image=optical?.images?.find((item:{label:string;base64?:string})=>['Final OCR input','Canonical OCR input'].includes(item.label)&&item.base64);
           if(!image)throw Error('Retained canonical image unavailable');
           const imageDataUrl='data:'+image.mime+';base64,'+image.base64;
           preparedCaptureRef.current={source:'retained-still-replay',image:{width:image.width,height:image.height,bytes:Math.floor(image.base64.length*3/4),mime:image.mime},quality:{},sources:[],selectionReason:'Exact retained physical pixels; diagnostic replay only'};
           scanLineage.current={original:original.original_id,last:original.id};
           setCheckImagePreview(imageDataUrl);setPaymentEntryMode('photo');
-          await extractCheckStubFromPhoto(imageDataUrl,'remittance_stub','primary','standard',['Diagnostic replay of retained attempt '+original.id+'; no new physical capture.'],'',retainedAttemptId);
+          await extractCheckStubFromPhoto(imageDataUrl,'remittance_stub','primary','standard',['Diagnostic replay of retained attempt '+original.id+'; no new physical capture.'],'',original.summary.canonicalReference??retainedAttemptId,['image_stored','processing'].includes(original.summary.captureState)?{history:original.summary,canonical:{reference:original.summary.canonicalReference,sha256:original.summary.sourceImageHash,storedBytes:Math.floor(image.base64.length*3/4),shadowQueued:false,uploadDurationMs:0}}:undefined);
         } catch(error) { setCheckOcrMessage(String(error)); }
       }}>Replay retained image — no payment</button>}
       <input ref={nativeStillInput} type="file" accept="image/*" capture="environment" className="sr-only" aria-label="Take remittance still photo" onChange={event => { captureCheckImage(event.target.files?.[0],'camera',captureDocumentType,captureIntent); event.currentTarget.value=''; }} />
@@ -6203,6 +6233,7 @@ export default function BatchInvoicePayments({
                       <button
                         type="button"
                         onClick={() => {
+                          if(captureRetry) { void captureRetry(); return; }
                           if (checkImageFile) {
                             void readPreparedRemittanceFromFile(
                               checkImageFile,
@@ -6214,10 +6245,10 @@ export default function BatchInvoicePayments({
                             );
                           }
                         }}
-                        disabled={!checkImageFile || isPreparingCrop}
+                        disabled={(!checkImageFile && !captureRetry) || isPreparingCrop}
                         className="rounded-full border border-amber-100/50 px-3 py-1.5 text-xs font-semibold text-amber-50 transition hover:bg-white/10 disabled:opacity-50"
                       >
-                        Retry Reading
+                        {captureRetry ? 'Retry Upload' : 'Retry Reading'}
                       </button>
                       <button
                         type="button"

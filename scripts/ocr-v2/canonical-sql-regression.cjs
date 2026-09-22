@@ -2,7 +2,8 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const {PGlite}=require(path.join(process.argv[2],'node_modules/@electric-sql/pglite'));
 (async()=>{
- const db=new PGlite();
+ const dataDir=fs.mkdtempSync(path.join(require('node:os').tmpdir(),'trimax-capture-durability-'));
+ let db=new PGlite(dataDir);
  await db.exec(`create role anon;create role authenticated;create schema auth;create schema extensions;
  create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('test.uid',true),'')::uuid$$;
  create function extensions.digest(v bytea,algorithm text) returns bytea language sql immutable as $$select sha256(v)$$;
@@ -14,6 +15,8 @@ const {PGlite}=require(path.join(process.argv[2],'node_modules/@electric-sql/pgl
  create table ocr_attempt_optical(attempt_id uuid primary key references ocr_attempt_diagnostics(attempt_id) on delete cascade,evidence jsonb);`);
  await db.exec(fs.readFileSync('supabase/sql/2026-09-21-ocr-shadow.sql','utf8'));
  await db.exec(fs.readFileSync('supabase/sql/2026-09-21-ocr-canonical-transport.sql','utf8'));
+ await db.exec('create table ocr_attempt_debug(attempt_id uuid,status text,note text,regression_id text,investigated_at timestamptz,resolved_at timestamptz,updated_at timestamptz)');
+ await db.exec(fs.readFileSync('supabase/sql/2026-09-22-ocr-capture-durability.sql','utf8'));
  const business=crypto.randomUUID(),user=crypto.randomUUID(),legacy=crypto.randomUUID(),shadow=crypto.randomUUID(),session=crypto.randomUUID(),key='test-worker-key',hash=crypto.createHash('sha256').update('test-image').digest('hex');
  await db.query('insert into businesses values($1)',[business]);await db.query("insert into members values($1,$2,'owner')",[business,user]);
  await db.query("select set_config('test.uid',$1,false)",[user]);
@@ -60,7 +63,7 @@ const {PGlite}=require(path.join(process.argv[2],'node_modules/@electric-sql/pgl
  await db.query("insert into ocr_attempts(id,business_id,original_id,phase,result,summary) values($1,$2,$1,0,'processing','{}')",[fresh,business]);
  const storeArgs=[fresh,physicalHash,'data:image/jpeg;base64,'+physical.toString('base64'),JSON.stringify({width:3024,height:4032}),paired,JSON.stringify({invoices:[],activities:[],receivedDate:'2026-09-21'}),'{}'];
  const store=()=>db.query('select trimax_store_ocr_capture($1,$2,$3,$4,$5,$6,$7) as capture',storeArgs);
- const stored=(await store()).rows[0].capture; assert.equal(stored.shadowQueued,true); assert.equal(stored.storedBytes,physical.length);
+ const stored=(await store()).rows[0].capture; assert.equal(stored.shadowQueued,false); await db.query('select trimax_resume_ocr_handoff($1)',[fresh]); assert.equal(stored.storedBytes,physical.length);
  await store();assert.equal((await db.query('select count(*)::int as n from ocr_shadow_jobs where legacy_attempt_id=$1',[fresh])).rows[0].n,1);
  await db.query("update ocr_attempts set phase=2,result='failed',summary='{\"result\":\"failed\"}' where id=$1",[fresh]);
  assert.equal((await db.query('select summary from ocr_attempts where id=$1',[fresh])).rows[0].summary.shadowAttemptId,paired);
@@ -68,6 +71,30 @@ const {PGlite}=require(path.join(process.argv[2],'node_modules/@electric-sql/pgl
  assert.equal(physicalClaim.job.source_hash,physicalHash); assert.equal(physicalClaim.optical.images[0].base64,physical.toString('base64'));
  await db.query('select trimax_complete_ocr_shadow($1,$2,$3,$4,null,$5)',[business,key,fresh,physicalClaim.job.lease,'Injected v2 failure']);
  assert.equal((await db.query('select result from ocr_attempts where id=$1',[fresh])).rows[0].result,'failed');
+ // Deterministic interruption suite on the real SQL implementation.
+ const interrupted=crypto.randomUUID(),interruptedShadow=crypto.randomUUID();
+ await db.query("insert into ocr_attempts(id,business_id,original_id,phase,result,summary) values($1,$2,$1,0,'processing','{}')",[interrupted,business]);
+ const injectedArgs=[interrupted,physicalHash,storeArgs[2],'{}',interruptedShadow,storeArgs[5],'{}'];
+ const storedInterrupted=(await db.query('select trimax_store_ocr_capture($1,$2,$3,$4,$5,$6,$7) as capture',injectedArgs)).rows[0].capture;
+ assert.equal(storedInterrupted.reference,interrupted);
+ assert.equal((await db.query('select debug_worthy from ocr_debug_queue where id=$1',[interrupted])).rows[0].debug_worthy,true);
+ await db.exec(`create function inject_cancel() returns trigger language plpgsql as $$begin raise exception 'canceling statement due to statement timeout' using errcode='57014'; end$$; create trigger test_cancel before insert on ocr_shadow_jobs for each row execute function inject_cancel();`);
+ await assert.rejects(db.query('select trimax_resume_ocr_handoff($1)',[interrupted]),e=>e.code==='57014');
+ assert.equal((await db.query('select evidence from ocr_attempt_optical where attempt_id=$1',[interrupted])).rows[0].evidence.canonicalHash,physicalHash);
+ assert.equal((await db.query('select count(*)::int as n from ocr_attempts where id=$1',[interruptedShadow])).rows[0].n,0);
+ assert.equal((await db.query('select summary from ocr_attempts where id=$1',[interrupted])).rows[0].summary.shadowHandoffState,'handoff_pending');
+ await db.exec('drop trigger test_cancel on ocr_shadow_jobs');
+ // Lost enqueue response: same identity, one job, no image reupload.
+ await db.query('select trimax_resume_ocr_handoff($1)',[interrupted]);
+ await db.query('select trimax_resume_ocr_handoff($1)',[interrupted]);
+ assert.equal((await db.query('select count(*)::int as n from ocr_shadow_jobs where legacy_attempt_id=$1',[interrupted])).rows[0].n,1);
+ // Worker offline: queue does not delete pixels. A new DB instance reopens persisted state below.
+ assert.equal((await db.query('select state from ocr_shadow_jobs where legacy_attempt_id=$1',[interrupted])).rows[0].state,'queued');
+ await db.query("update ocr_attempt_diagnostics set payload='{\"terminal\":true}' where attempt_id=$1",[interrupted]);
+ assert((await db.query('select payload from ocr_attempt_diagnostics where attempt_id=$1',[interrupted])).rows[0].payload.captureHandoff.snapshot);
+ await db.query('select trimax_save_ocr_attempt($1,$2,$2,null,2,$3,null)',[business,interrupted,JSON.stringify({result:'success'})]);
+ assert.equal((await db.query('select count(*)::int as n from ocr_attempt_optical where attempt_id=$1',[interrupted])).rows[0].n,1);
+ console.log('PASS canonical commit survives SQLSTATE 57014; handoff retry, lost response dedup, offline worker, terminal retention');
  const bad=crypto.randomUUID();await db.query("insert into ocr_attempts(id,business_id,original_id,phase,result,summary) values($1,$2,$1,0,'processing','{}')",[bad,business]);
  storeArgs[0]=bad;storeArgs[1]='0'.repeat(64);storeArgs[4]=crypto.randomUUID();await assert.rejects(store(),/hash mismatch/);
  assert.equal((await db.query('select count(*)::int as n from ocr_shadow_jobs where legacy_attempt_id=$1',[bad])).rows[0].n,0);
@@ -78,7 +105,10 @@ const {PGlite}=require(path.join(process.argv[2],'node_modules/@electric-sql/pgl
  assert.equal(reused.reference,fresh);assert.equal((await db.query('select count(*)::int as n from ocr_attempt_optical where attempt_id=$1',[replay])).rows[0].n,0);
  const isolated=crypto.randomUUID(),isolatedShadow=crypto.randomUUID();await db.query("insert into ocr_attempts(id,business_id,original_id,phase,result,summary) values($1,$2,$1,0,'processing','{}')",[isolated,business]);
  const badSnapshot=(await db.query('select trimax_store_ocr_capture($1,$2,$3,$4,$5,$6) as capture',[isolated,physicalHash,'data:image/jpeg;base64,'+physical.toString('base64'),'{}',isolatedShadow,'[]'])).rows[0].capture;
- assert.equal(badSnapshot.shadowQueued,false);assert.equal((await db.query('select result from ocr_attempts where id=$1',[isolatedShadow])).rows[0].result,'failed');assert.equal((await db.query('select summary from ocr_attempts where id=$1',[isolated])).rows[0].summary.shadowAttemptId,isolatedShadow);
+ assert.equal(badSnapshot.shadowQueued,false);assert.equal((await db.query('select count(*)::int as n from ocr_shadow_jobs where legacy_attempt_id=$1',[isolated])).rows[0].n,0);
  await db.exec('set role anon');await assert.rejects(db.query('select trimax_store_ocr_capture($1,$2,null,$3,null,null)',[replay,physicalHash,'{}']),/permission denied/);await assert.rejects(db.query('select * from ocr_shadow_jobs'),/permission denied/);await assert.rejects(db.query('select * from ocr_shadow_flags'),/permission denied/);
- await db.close();console.log('PASS SQL default-off, admin authorization, immutable pair, hash-bound source, scoped credential, null credential rejection, lease isolation, kill switch, forced non-authority, frozen completion, anon table denial');
+ await db.close();db=new PGlite(dataDir);
+ assert.equal((await db.query('select evidence from ocr_attempt_optical where attempt_id=$1',[interrupted])).rows[0].evidence.canonicalHash,physicalHash);
+ assert.equal((await db.query('select count(*)::int as n from ocr_shadow_jobs where legacy_attempt_id=$1',[interrupted])).rows[0].n,1);
+ await db.close();console.log('PASS database reopen: durable image/job survive process restart');console.log('PASS SQL default-off, admin authorization, immutable pair, hash-bound source, scoped credential, null credential rejection, lease isolation, kill switch, forced non-authority, frozen completion, anon table denial');
 })().catch(e=>{console.error(e);process.exitCode=1;});

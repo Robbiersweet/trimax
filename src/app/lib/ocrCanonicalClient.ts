@@ -10,6 +10,17 @@ export async function storeCanonicalCapture(input:{attemptId:string;imageDataUrl
  const metadata={...input.metadata,originalWidth:original?Number(original[1]):null,originalHeight:original?Number(original[2]):null,originalBytes:original?Number(original[3]):null};
  const hash=await imageSha256(await blob.arrayBuffer());
  const {data,error}=await supabase.rpc('trimax_store_ocr_capture',{p_attempt:input.attemptId,p_hash:hash,p_image:input.metadata.retainedReference?null:input.imageDataUrl,p_metadata:{...metadata,mime:blob.type,storedBytes:blob.size},p_shadow:input.snapshot?crypto.randomUUID():null,p_snapshot:input.snapshot,p_capture:input.captureTimings});
- if(error)throw Error(error.message);
+ if(error)throw new CaptureTransportError(error.message,error.code);
  return {...data,uploadDurationMs:Math.round(performance.now()-started)};
+}
+
+/** Retriable transport failures never imply recognition failure. No image bytes in errors. */
+export class CaptureTransportError extends Error {
+ readonly retriable=true;
+ constructor(message:string,readonly code?:string){super(message);this.name='CaptureTransportError';}
+}
+export async function resumeCaptureHandoff(attemptId:string):Promise<{queued:boolean;state:string}> {
+ const {data,error}=await supabase.rpc('trimax_resume_ocr_handoff',{p_attempt:attemptId});
+ if(error)throw new CaptureTransportError(error.message,error.code);
+ return data;
 }

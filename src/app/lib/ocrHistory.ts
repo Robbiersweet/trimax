@@ -8,6 +8,9 @@ export type ScanResult =
   | "duplicate"
   | "apply blocked";
 export type ScanSummary = {
+  canonicalReference?: string;
+  captureState?: 'capture_local'|'uploading'|'image_stored'|'processing'|'review'|'failed'|'transport_failed';
+  shadowHandoffState?: 'disabled'|'handoff_pending'|'queued';
   ocrEngine?: 'legacy' | 'v2-shadow';
   captureSessionId?: string;
   legacyAttemptId?: string;

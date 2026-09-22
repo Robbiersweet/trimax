@@ -112,7 +112,7 @@ export default async function OcrDebugQueue({
                     : "Needs reconciliation review"}
                 </p>
                 <p className="text-sm text-amber-200">
-                  {attempt.summary.reasons[0] ?? "No blockers recorded."}
+                  {attempt.summary.captureState==='image_stored'?'Capture saved — processing pending':attempt.summary.shadowHandoffState==='handoff_pending'?'Capture saved — shadow processing pending':attempt.summary.reasons[0] ?? "No blockers recorded."}
                 </p>
               </Link>
             </Card>

@@ -1,4 +1,6 @@
 "use client";
+import OcrCaptureRecovery from './OcrCaptureRecovery';
+
 import OpticalEvidenceView from "./OpticalEvidenceView";
 import OcrShadowComparison from './OcrShadowComparison';
 import OcrDerivedAmountView from './OcrDerivedAmountView';
@@ -195,6 +197,7 @@ export default function RecentScans({
                 {s.kind === "retry" ? "Retry Reading" : "Original Scan"} ·{" "}
                 {selected.result}
               </h3>
+              <OcrCaptureRecovery summary={s} businessSlug={businessSlug}/>
               <OcrShadowComparison summary={s} businessSlug={businessSlug}/>
               <dl className="grid grid-cols-2 gap-2 text-sm">
                 <dt>Scanned</dt>

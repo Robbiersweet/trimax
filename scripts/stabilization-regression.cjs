@@ -1029,7 +1029,7 @@ async function retryStateRegression() {
   const pending = [];
   const calls = [];
   const historyWrites=[];
-  const bindings = { observationScopeRef:{current:crypto.randomUUID()}, opticalRef:{current:{images:[],notes:[]}}, ...require("../src/app/lib/remittanceAttempt.ts"), ...require("../src/app/lib/ocrHistory.ts"), businessId:"test-workspace",lastOcrSourceType:"existing",process,scanLineage:{current:null},latestScan:{current:null},supabase:{auth:{getSession:async()=>({data:{session:null}})}},saveScan:async write=>{historyWrites.push(write);return 'saved';}, performance, crypto, preparedCaptureRef: {current:null}, immutableSnapshot: value => structuredClone(value), invoiceRecords: [], paymentActivities: [], workspaceRole: "owner", receivedDate: "2026-09-17", ocrAttemptVersion: { current: 0 },
+  const bindings = { captureRetryBusy:{current:false},resumeCaptureHandoff:async()=>({queued:true}),observationScopeRef:{current:crypto.randomUUID()}, opticalRef:{current:{images:[],notes:[]}}, ...require("../src/app/lib/remittanceAttempt.ts"), ...require("../src/app/lib/ocrHistory.ts"), businessId:"test-workspace",lastOcrSourceType:"existing",process,scanLineage:{current:null},latestScan:{current:null},supabase:{auth:{getSession:async()=>({data:{session:null}})}},saveScan:async write=>{historyWrites.push(write);return 'saved';}, performance, crypto, preparedCaptureRef: {current:null}, immutableSnapshot: value => structuredClone(value), invoiceRecords: [], paymentActivities: [], workspaceRole: "owner", receivedDate: "2026-09-17", ocrAttemptVersion: { current: 0 },
     appendCameraStage: () => {}, ocrDiagnosticLines: () => [], remittanceReviewDiagnosticLines: () => [],
     ocrFailureMessage: () => "Incomplete", loadCheckDetailsFromExtraction: () => {},
     fetch: async (_url, options) => { calls.push(JSON.parse(options.body)); return new Promise(resolve => pending.push(resolve)); },
@@ -1077,7 +1077,27 @@ async function retryStateRegression() {
   const failedUploadBindings={...bindings,storeCanonicalCapture:async()=>{throw Error('Upload offline');}};
   const failedUpload=new Function(...Object.keys(failedUploadBindings),compiled)(...Object.values(failedUploadBindings));
   const requestCount=calls.length;await failedUpload('image','remittance_stub','primary','standard',[],'');
-  assert.equal(calls.length,requestCount);assert.equal(historyWrites.filter(write=>write.phase===2).at(-1).payload.transport.stage,'canonical-upload');
+  assert.equal(calls.length,requestCount);assert.equal(historyWrites.at(-1).phase,0);assert.equal(historyWrites.at(-1).payload.transport.stage,'canonical-upload');assert.equal(historyWrites.at(-1).summary.captureState,'transport_failed');assert.equal(typeof state.CaptureRetry,'function');
+  // Actual UI upload retry: same file and ID, no OCR before acknowledgement.
+  for(const fault of ['57014','Postgres restart','503','520','521']) {
+    const attempts=[],images=[];let available=false;
+    const injected={...bindings,storeCanonicalCapture:async input=>{attempts.push(input.attemptId);images.push(input.imageDataUrl);if(!available)throw Error(fault);return {reference:input.attemptId,sha256:'test-hash',storedBytes:1,shadowQueued:false,uploadDurationMs:1};}};
+    const run=new Function(...Object.keys(injected),compiled)(...Object.values(injected));
+    const before=calls.length;
+    await run('same-session-private-photo','remittance_stub','primary','standard',[],'');
+    assert.equal(calls.length,before);assert(state.CheckOcrMessage.includes('upload interrupted'));
+    available=true;
+    const retry=state.CaptureRetry()();
+    await new Promise(setImmediate);
+    pending.shift()({ok:false,status:503,json:async()=>({error:'Injected OCR unavailable after durable upload'})});
+    await retry;
+    assert.equal(attempts.length,2);assert.equal(attempts[0],attempts[1]);assert.deepEqual(images,['same-session-private-photo','same-session-private-photo']);
+  }
+  const detachedBindings={...bindings,shadowAllowed:()=>true,resumeCaptureHandoff:()=>new Promise(()=>{})};
+  const detached=new Function(...Object.keys(detachedBindings),compiled)(...Object.values(detachedBindings));
+  const detachedRun=detached('photo','remittance_stub','primary','standard',[],'');await new Promise(setImmediate);
+  pending.shift()({ok:false,status:503,json:async()=>({error:'test'})});await detachedRun;
+  console.log('Capture durability UI: 57014/restart/503/520/521 retain photo and attempt; hung shadow cannot block legacy.');
   console.log("Actual Retry Reading request flow: incomplete -> retry, cleared fields, isolated request and stale response rejection passed.");
 }
 
