@@ -321,6 +321,8 @@ type CaptureSourceSelectionResponse = {
 };
 
 type CheckStubOcrResponse = {
+  ocrStarted?: boolean;
+  stage?: string;
   optical?: OpticalEvidence;
   evidence?: RemittanceEvidence;
   documentType?: RemittanceDocumentType;
@@ -3596,7 +3598,7 @@ export default function BatchInvoicePayments({
       setLastOcrRawText(data.rawText?.trim() || data.stubText?.trim() || "");
 
       if (!response.ok) {
-        failure=transportFailure(response.status,data.error??`OCR HTTP ${response.status}`);
+        failure=transportFailure(response.status,data.error??`OCR HTTP ${response.status}`,data.stage??'ocr-request',data.ocrStarted===true);
         recordAttemptFailure(data.error ?? `OCR HTTP ${response.status}`);
         setCameraFailureStage("ocr-request");
         setCheckOcrStatus(response.status === 503 ? "manual" : "error");

@@ -7,6 +7,7 @@ import { createWorker, OEM, PSM } from 'tesseract.js';
 import { normalizeDocument } from '../documentNormalization.ts';
 import { interpretDocument } from './interpret.ts';
 import { EvidenceLedger } from '../recognition/evidenceLedger.ts';
+import { textComponents } from '../layout/components.ts';
 import type { SemanticObservation } from './model.ts';
 export { interpretDocument } from './interpret.ts';
 export { recognizeLabel, normalizeOrganization } from './labels.ts';
@@ -15,6 +16,8 @@ const hash = (b: Buffer) => createHash('sha256').update(b).digest('hex');
 export async function recognizeSemanticPage(image: Buffer, ledger: EvidenceLedger, retained: SemanticObservation[] = []) {
   const started = performance.now(), sourceHash = hash(image), meta = await sharp(image).metadata();
   if (sourceHash !== ledger.sourceHash) throw Error('Semantic page/ledger source mismatch');
+  const pixels=await textComponents(image, 3200, { minimumContrast: 10 });
+  const physicalComponents=pixels.components.map((c,i)=>({id:`pixel-${i}`,bounds:{left:c.left*pixels.scaleX,top:c.top*pixels.scaleY,width:c.width*pixels.scaleX,height:c.height*pixels.scaleY},pixels:c.pixels,provenance:`pixels:${sourceHash}`}));
   const observations = [...retained.filter(o => o.sourceHash === sourceHash && o.verified)];
   let passes = 0;
   if (!observations.length) {
@@ -30,7 +33,7 @@ export async function recognizeSemanticPage(image: Buffer, ledger: EvidenceLedge
       }
     } finally { await worker.terminate(); }
   }
-  return { model: interpretDocument({ sourceHash, observations }), observations, ledger: ledger.snapshot(), passes, durationMs: performance.now() - started };
+  return { model: interpretDocument({ sourceHash, observations, physicalComponents }), observations, physicalComponents, ledger: ledger.snapshot(), passes, durationMs: performance.now() - started };
 }
 export async function analyzeUnseenDocument(original: Buffer, attemptId: string, documentId: string) {
   const start = performance.now(), normalized = await normalizeDocument(original), ledger = new EvidenceLedger(attemptId, documentId, hash(normalized.documentColor));

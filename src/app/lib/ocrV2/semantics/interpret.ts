@@ -1,6 +1,7 @@
 // Values are visual observations only. No customer records, fixture IDs or expected answers.
 import type { Bounds } from '../types.ts';
 import { mapSemanticTable } from './tableGeometry.ts';
+import { owns, type RowComponent } from './physicalRows.ts';
 import { headerMoney } from '../recognition/documentTotalAuthority.ts';
 import { recognizeLabel, normalizeOrganization } from './labels.ts';
 import type { DocumentSemanticModel, SemanticObservation, SemanticLabel, SemanticField, SemanticRow } from './model.ts';
@@ -11,6 +12,7 @@ const union = (boxes: Bounds[]): Bounds => { const left = Math.min(...boxes.map(
 const identityTypes = new Set(['property_name', 'customer_name', 'payor_name']);
 export function interpretDocument(input: {
   sourceHash: string; observations: SemanticObservation[]; rows?: SemanticRow[];
+  physicalComponents?: RowComponent[];
   columns?: Array<{ type: SemanticField['type']; bounds: Bounds }>;
   preservedTotal?: { cents: number; provenance: string[] }; // Previously validated Phase 5C authority, not a numeric guess.
 }): DocumentSemanticModel {
@@ -38,7 +40,7 @@ export function interpretDocument(input: {
     }
   }
   const labelsMs = performance.now() - labelStart, structureStart = performance.now();
-  const mapped = mapSemanticTable(observations, labels);
+  const mapped = mapSemanticTable(observations, labels, input.physicalComponents);
   const heading = mapped.heading;
   const columns = mapped.columns.length ? mapped.columns : input.columns ?? [];
   const rows: SemanticRow[] = input.rows ? structuredClone(input.rows) : mapped.rows;
@@ -72,7 +74,7 @@ export function interpretDocument(input: {
   // observation, never a replacement for the frozen invoice recognition/fusion.
   for (const col of columns) for (const row of rows) for (const o of observations) {
     const next = columns.filter(c => c.bounds.left > col.bounds.left).sort((a, b) => a.bounds.left - b.bounds.left)[0];
-    const ws = o.words.filter(w => overlaps(w.bounds, row.bounds) && w.bounds.left >= col.bounds.left - col.bounds.height && (!next || right(w.bounds) < next.bounds.left));
+    const ws = o.words.filter(w => (row.physical?owns(row.physical,w.bounds):overlaps(w.bounds,row.bounds)) && w.bounds.left >= col.bounds.left - col.bounds.height && (!next || right(w.bounds) < next.bounds.left));
     const label = labels.find(l => l.type === col.type && overlaps(l.bounds, col.bounds));
     if (ws.length && (label || ('semanticConfidence' in col && col.semanticConfidence === 'provisional-geometry' && col.type === 'row_amount'))) { const raw = ws.sort((a, b) => a.bounds.left - b.bounds.left).map(w => w.text).join(' '); fields.push({ type: col.type, value: raw, normalized: identityTypes.has(col.type) ? normalizeOrganization(raw).key : raw, cents: col.type === 'row_amount' ? headerMoney(raw) ?? undefined : undefined, bounds: union(ws.map(w => w.bounds)), observationId: o.id, runKey: o.runKey, confidence: Math.min(...ws.map(w => w.confidence)), labelIds: label ? [label.id] : [], rowId: row.id }); }
   }
@@ -118,5 +120,5 @@ export function interpretDocument(input: {
   const separateCheck = check && labels.some(l => l.type === 'payee_name' && Math.abs(l.bounds.top - check.bounds.top) < (first - check.bounds.top)) && first - bottom(check.bounds) > Math.max(...rows.map(r => r.bounds.height)) * 8;
   const classId = !supported ? 'unknown_review' : separateCheck ? 'check_stub_tabular_v1' : totals.some(t => t.bounds.top >= last) ? 'tabular_footer_total_v1' : totals.some(t => bottom(t.bounds) <= first) ? 'tabular_header_total_pair_v1' : detachedLabels.length && finalValues.length ? 'tabular_header_total_footer_value_v1' : 'tabular_metadata_v1';
   const reviewReasons = [...(!supported ? ['Insufficient semantic table mapping; no columns or rows invented'] : []), ...(identityValue ? [] : [identity.reason]), ...(cents === null ? [total.reason] : [])];
-  return { version: 'phase6-semantics-2', sourceHash: input.sourceHash, documentType: classId, table: { supported, headerPosition: heading.length ? union(heading.map(l => l.bounds)) : null, columns, rows }, headers: fields.filter(f => bottom(f.bounds) <= first), labels, metadataFields: fields.filter(f => !f.rowId), rowFields: fields.filter(f => f.rowId), totals, identityFields, spatialRelationships: relations, template: { id: classId, invoiceColumnOrder: columns.map(c => c.type), amountColumnPosition: columns.findIndex(c => c.type === 'row_amount'), totalLabelPosition: [...new Set(totalLabelPosition)].join(',') || 'unresolved', totalValuePosition: [...new Set(totalValuePosition)].join(',') || 'unresolved', identityFieldPosition: [...new Set(identityFields.map(f => f.rowId ? 'table-column' : position(f.bounds)))].join(',') || 'unresolved' }, identity, total, reviewRequired: !!reviewReasons.length, reviewReasons, timings: { labelsMs, structureMs, identityMs, totalMs: performance.now() - totalStart, evidenceReuseMs, completeMs: performance.now() - started } };
+  return { version: 'phase6-semantics-2', sourceHash: input.sourceHash, documentType: classId, table: { supported, headerPosition: heading.length ? union(heading.map(l => l.bounds)) : null, columns, rows, headerGeometry: mapped.headerGeometry, physicalGeometry: mapped.physicalGeometry }, headers: fields.filter(f => bottom(f.bounds) <= first), labels, metadataFields: fields.filter(f => !f.rowId), rowFields: fields.filter(f => f.rowId), totals, identityFields, spatialRelationships: relations, template: { id: classId, invoiceColumnOrder: columns.map(c => c.type), amountColumnPosition: columns.findIndex(c => c.type === 'row_amount'), totalLabelPosition: [...new Set(totalLabelPosition)].join(',') || 'unresolved', totalValuePosition: [...new Set(totalValuePosition)].join(',') || 'unresolved', identityFieldPosition: [...new Set(identityFields.map(f => f.rowId ? 'table-column' : position(f.bounds)))].join(',') || 'unresolved' }, identity, total, reviewRequired: !!reviewReasons.length, reviewReasons, timings: { labelsMs, structureMs, identityMs, totalMs: performance.now() - totalStart, evidenceReuseMs, completeMs: performance.now() - started } };
 }

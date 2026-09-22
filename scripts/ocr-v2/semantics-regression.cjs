@@ -14,6 +14,12 @@ if(layout===1)add('$330.00',980,440);else if(layout!==3&&layout!==5)add('Grand T
 result.push({layout,words});}return result;}
 function observation(words,variant='native'){return{id:variant,runKey:variant,sourceHash:'source',cropHash:'crop',recognizer:'test-optical-provider',variant,raw:words.map(w=>w.text).join(' '),confidence:96,region:{left:0,top:0,width:1400,height:550},words,verified:true};}
 let count=0;function test(name,fn){fn();count++;console.log('PASS',name);}
+test('Sloped optical headings retain labeled Amount and physical row regions',()=>{
+ for(const slope of [.035,-.025]){const words=fixtures()[1].words.map(w=>({...w,bounds:{...w.bounds,top:w.bounds.top+slope*w.bounds.left}}));
+ const m=interpretDocument({sourceHash:'source',observations:[observation(words),observation(words,'gray')]});
+ assert.equal(m.table.rows.length,2);assert(m.table.columns.some(c=>c.type==='row_amount'&&c.semanticConfidence==='label-supported'));assert.equal(m.table.headerGeometry.method,'independent-label-baseline-fit');
+ }
+});
 test('Amount label from a sibling optical pass survives final mapping',()=>{
  const f=fixtures()[1],native=f.words.filter(w=>w.text!=='Amount'),gray=f.words.map(w=>({...w,text:w.text==='Amount'?'Amoun':w.text}));
  const m=interpretDocument({sourceHash:'source',observations:[observation(native),observation(gray,'grayscale')]});

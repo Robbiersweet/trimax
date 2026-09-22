@@ -1,0 +1,9 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Private corpus geometry audit; annotations never enter inference. */
+const fs=require('node:fs'),path=require('node:path');
+const {interpretDocument}=require('../../src/app/lib/ocrV2/semantics/interpret.ts');
+const {analyzeUnseenDocument}=require('../../src/app/lib/ocrV2/semantics/index.ts');
+(async()=>{const manifest=JSON.parse(fs.readFileSync(process.argv[2])),out=process.argv[3];fs.mkdirSync(out,{recursive:true});const summary=[];
+for(const r of manifest.records){const target=path.join(out,r.fixtureId+'.json');let result;if(fs.existsSync(target))result=JSON.parse(fs.readFileSync(target));else{result=await analyzeUnseenDocument(fs.readFileSync(r.imageReference),'private-row-audit',r.fixtureId);fs.writeFileSync(target,JSON.stringify(result));}result.model=interpretDocument({sourceHash:result.model.sourceHash,observations:result.observations,physicalComponents:result.physicalComponents});fs.writeFileSync(target,JSON.stringify(result));const rows=result.model.table.rows;const ids=rows.flatMap(r=>r.physical.supportingComponentIds);const item={document:r.fixtureId,expected:r.verifiedTruth.rows.length,detected:rows.length,duplicateComponentOwnership:ids.length-new Set(ids).size,extra:Math.max(0,rows.length-r.verifiedTruth.rows.length),missing:Math.max(0,r.verifiedTruth.rows.length-rows.length),normalization:result.normalization,rows:rows.map(r=>r.physical)};summary.push(item);fs.writeFileSync(path.join(out,'summary.json'),JSON.stringify(summary,null,2));console.log(JSON.stringify({document:item.document,expected:item.expected,detected:item.detected,overlap:item.duplicateComponentOwnership}));}
+if(summary.some(s=>s.expected!==s.detected||s.duplicateComponentOwnership))process.exitCode=1;
+})().catch(e=>{console.error(e);process.exitCode=1;});
+

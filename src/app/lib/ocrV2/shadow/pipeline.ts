@@ -64,7 +64,7 @@ export async function runShadowPipeline(original: Buffer, input: ShadowInput,
     const next = model.table.columns.filter(c => c.bounds.left > identityColumn.bounds.left).sort((a,b) => a.bounds.left-b.bounds.left)[0];
     if (next) for (const row of model.table.rows) {
       const left = Math.max(0, Math.min(row.bounds.left, identityColumn.bounds.left)-12);
-      const bounds = { left, top: row.bounds.top, width: next.bounds.left-left-8, height: row.bounds.height };
+      const bounds = row.physical?.columnRegions[identityColumn.type] ?? { left, top: row.bounds.top, width: next.bounds.left-left-8, height: row.bounds.height };
       if (bounds.width <= 0 || bounds.top < 0 || bounds.top+bounds.height > size.height!) continue;
       const bytes = await sharp(normalized.documentColor).extract(bounds).png().toBuffer();
       organizationCrops.push({ rowId: row.id, bounds, bytes, sha256: hash(bytes), regionType: identityColumn.type as OrganizationObservation['regionType'] });
@@ -158,6 +158,7 @@ export async function runShadowPipeline(original: Buffer, input: ShadowInput,
   const semanticReasons = [...model.reviewReasons.filter(reason => reason !== model.total.reason && !(acceptedIdentity && reason === model.identity.reason)), ...(total.cents === null ? [total.reason] : [])];
   const diagnosticModel = { ...model, identity: acceptedIdentity ? { ...model.identity, value: acceptedIdentity, reason: organizationIdentity.reason, provenance: organizationIdentity.candidates.find(c => c.stem === acceptedIdentity)?.provenance ?? model.identity.provenance } : model.identity, total, reviewReasons: semanticReasons, reviewRequired: semanticReasons.length > 0 };
   return { version: SHADOW_VERSION, ocrEngine: 'v2-shadow' as const, paymentCanApply: false as const,
+    physicalRows: model.table.rows.map(row=>({id:row.id,geometry:row.physical??row.bounds,invoiceStatus:rows.find(r=>r.rowId===row.id)?.fusion.confidence??'UNKNOWN',amountStatus:(matureMoney?.find(r=>r.rowId===row.id&&r.field==='row_amount')??monetary.rows.find(r=>r.rowId===row.id))?.cents==null?'UNKNOWN':'observed',specializedInvoiceInvoked:crops.some(c=>c.rowId===row.id),specializedMoneyInvoked:moneyCrops.some(c=>c.rowId===row.id)})),
     captureSessionId: input.captureSessionId, sourceImageHash: input.sourceImageHash, normalizedImageHash: sourceHash,
     build: input.build, models: { ...batch.versions, organization: organizationIdentity.version, money: matureMoney ? 'mature-money-consensus-1' : monetary.version }, semanticVersion: model.version, layoutVersion: model.version,
     benchmarkVersion: 'trimax-ocr-real-v2', normalization: normalized.evidence, model: diagnosticModel, pageOnlyIdentity: model.identity, pageOnlyTotal: model.total, document,

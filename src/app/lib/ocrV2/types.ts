@@ -33,14 +33,8 @@ export type DocumentGeometry = {
     perspectiveTransform: number[] | null;
     reason: string;
 };
-export type OrientationObservation = {
-    rotation: number;
-    score: number;
-    credible: boolean;
-    durationMs: number;
-    status: "completed" | "failed";
-    error?: string;
-};
+import type { OrientationObservation } from "../ocrStillDirection.ts";
+export type { OrientationObservation } from "../ocrStillDirection.ts";
 export type OcrV2Foundation = {
     engine: "v2";
     version: "phase1-optical-1";
