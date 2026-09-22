@@ -1,6 +1,7 @@
 "use client";
 import OpticalEvidenceView from "./OpticalEvidenceView";
 import OcrShadowComparison from './OcrShadowComparison';
+import OcrDerivedAmountView from './OcrDerivedAmountView';
 import {
   attemptPath,
   debugTimestamp,
@@ -344,7 +345,7 @@ export default function RecentScans({
                       What Trimax saw
                     </summary>
                     {payload ? (
-                      <ObservationView payload={payload} />
+                      <><OcrDerivedAmountView payload={payload} /><ObservationView payload={payload} /></>
                     ) : (
                       <p className="text-sm">
                         {busy

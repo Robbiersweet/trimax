@@ -21,7 +21,7 @@ export default function OcrShadowComparison({summary,businessSlug}:{summary:Scan
       {(['rowsDetected','invoicesResolved','documentTotal','durationMs'] as const).map(key=><tr key={key}><th>{({rowsDetected:'Rows',invoicesResolved:'Resolved invoices',documentTotal:'Total',durationMs:'OCR time (ms)'})[key]}</th><td>{legacy?.[key]??'Unknown'}</td><td>{shadow?.[key]??'Pending'}</td></tr>)}
       <tr><th>Result</th><td>{legacy?.result??'Unknown'}</td><td>{shadow?.result??'Pending'}</td></tr>
       <tr><th>Identity</th><td>{legacy?.identity??'See legacy details'}</td><td>{shadow?.identity??'Unknown'}</td></tr>
-      <tr><th>Amount rows</th><td>{legacy?.amountRows??'See legacy details'}</td><td>{shadow?.amountRows??'Pending'}</td></tr>
+      <tr><th>OCR amount rows</th><td>{legacy?.amountRows??'See legacy details'}</td><td>{shadow?.amountRows??'Pending'}</td></tr>
       <tr><th>Reconciliation</th><td>{legacy?.reconciled?'Exact / eligible':'Review'}</td><td>{shadow?.reconciled?'Exact / diagnostic only':'Review'}</td></tr>
     </tbody></table>
     <p className="break-all text-xs">Shared source SHA-256: {summary.sourceImageHash??'Unavailable'}</p>

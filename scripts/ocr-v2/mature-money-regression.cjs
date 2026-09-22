@@ -44,7 +44,9 @@ console.log('PASS mature monetary formatting, distinct votes, ambiguity and pixe
  const prior=JSON.parse(fs.readFileSync(path.join(dir,fixture.pairedEvidence))).find(x=>x.payload.result).payload.result;
  const batchDir=path.join(root,'integrated-'+Date.now());fs.mkdirSync(batchDir);
  const toWSL=f=>{const p=fs.realpathSync.native(f);return '/mnt/'+p[0].toLowerCase()+'/'+p.slice(3).replaceAll('\\','/');};
- const output=await runShadowPipeline(image,{attemptId:prior.ledger.documentId,captureSessionId:prior.captureSessionId,sourceImageHash:fixture.sha256,build:'private-mature-money-gate',snapshot:{label:'No business hints',provenance:[],receivedDate:'2026-09-22',invoices:[],activities:[]}},async(crops,documentId,sourceHash,moneyCrops)=>{
+ const saved=process.argv[4]?JSON.parse(fs.readFileSync(process.argv[4])).find(p=>p.payload.attempt)?.payload.attempt.corroboration:null;
+ const snapshot={label:saved?'Retained production snapshot, resolver only':'No business hints',provenance:[],receivedDate:saved?.context.receivedDate??'2026-09-22',invoices:saved?.invoices??[],activities:saved?.activities??[]};
+ const output=await runShadowPipeline(image,{attemptId:prior.ledger.documentId,captureSessionId:prior.captureSessionId,sourceImageHash:fixture.sha256,build:'private-mature-money-gate',snapshot},async(crops,documentId,sourceHash,moneyCrops)=>{
   const native=JSON.parse(fs.readFileSync(path.join(root,'native','inputs.json')));
   const inputs=crops.map((crop,i)=>{const file='crop-'+i+'.png';fs.writeFileSync(path.join(batchDir,file),crop.bytes);return{id:crop.rowId,documentId,file,sha256:crop.sha256};});
   for(const [i,crop]of moneyCrops.entries()){assert(native.some(n=>n.sha256===crop.sha256&&n.field===crop.field),'Benchmark and pipeline money pixels differ');const file='money-'+i+'.png';fs.writeFileSync(path.join(batchDir,file),crop.bytes);inputs.push({id:crop.rowId,documentId,file,sha256:crop.sha256,field:crop.field});}
@@ -67,7 +69,11 @@ console.log('PASS mature monetary formatting, distinct votes, ambiguity and pixe
  assert.deepEqual(output.document.rows.map(r=>r.fusion),prior.document.rows.map(r=>r.fusion));
  for(const key of ['checkDate','payor','checkNumber'])assert.deepEqual(output.document.header[key],prior.document.header[key]);
  assert.equal(output.paymentCanApply,false);assert.equal(output.resolver.status,'review-required');assert.equal(output.resolver.automaticInvoiceIds.length,0);
- assert.equal(output.ledger.entries.filter(e=>e.stage==='phase6-mature-money').length,18);
+  assert.equal(output.ledger.entries.filter(e=>e.stage==='phase6-mature-money').length,18);
+  assert.equal(output.residual.evidence?.derivedAmount,fixture.amountsCents[0],'Exact residual established separately');
+  assert.equal(output.document.rows[0].amounts.length,0,'Derived value must not masquerade as OCR');
+  assert.equal(output.matureMoney[0].cents,null,'OCR acceptance unchanged');
+  assert.equal(output.arithmeticReconciliation.difference,0);
  assert(output.ledger.entries.some(e=>e.recognizer.includes('tesseract')),'Original Tesseract evidence retained');
  fs.writeFileSync(path.join(root,'integrated-result.json'),JSON.stringify(output,null,2));
  console.log(JSON.stringify({gate:'PASS retained combined production-worker pipeline',accepted:4,wrongAccepted:0,total:output.monetary.authority.cents,timings:output.timings,models:output.modelTimings}));

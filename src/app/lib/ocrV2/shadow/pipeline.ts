@@ -5,13 +5,15 @@ import { normalizeDocument } from '../documentNormalization.ts';
 import { recognizeSemanticPage } from '../semantics/index.ts';
 import { EvidenceLedger } from '../recognition/evidenceLedger.ts';
 import { fuseInvoiceObservations, type RecognizerObservation } from '../fusion/index.ts';
-import { resolveOfflineDocument, type OfflineDocument, type OfflineSnapshot } from '../resolver/index.ts';
+import type { OfflineDocument, OfflineSnapshot } from '../resolver/index.ts';
+import { resolveDocumentWithResidual, type ResidualDocument } from '../resolver/residual.ts';
 import { assertUnverifiedInput, SHADOW_VERSION } from './contract.ts';
 import type { DocumentSemanticModel } from '../semantics/model.ts';
 import type { Bounds } from '../types.ts';
 import { normalizePaymentDate } from '../recognition/paymentEvidence.ts';
 import { recognizeSemanticMoney } from '../recognition/semanticMoney.ts';
 import { fuseMoneyObservations, normalizeVisualMoney, type MatureMoneyObservation } from '../recognition/matureMoney.ts';
+import { deriveResidualAmount } from '../recognition/residualAmount.ts';
 
 const hash = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 export type InvoiceCrop = { rowId: string; bounds: Bounds; bytes: Buffer; sha256: string };
@@ -90,12 +92,28 @@ export async function runShadowPipeline(original: Buffer, input: ShadowInput,
     const fields = model.metadataFields.filter(f => f.type === type && f.confidence >= 85);
     const values = [...new Set(fields.map(f => type === 'check_date' ? normalizePaymentDate(f.value.trim()) : /^\d+$/.test(f.value.trim()) ? f.value.trim() : null))]; return values.length === 1 ? values[0] : null;
   };
-  const document: OfflineDocument = { id: input.attemptId, rows, rawPasses: [], header: { payor: model.identity.value, checkNumber: header('check_number'), checkDate: header('check_date'),
+  const document: ResidualDocument = { id: input.attemptId, rows, rawPasses: [], header: { payor: model.identity.value, checkNumber: header('check_number'), checkDate: header('check_date'),
     total: monetary.authority.cents == null ? null : { amount: monetary.authority.cents/100, source: 'explicit-document-total', payable: true }, provenance: 'Same-capture vendor-neutral visual evidence; no verified answers' } };
-  const resolved = resolveOfflineDocument(document, input.snapshot);
+  const anchors=model.table.columns.find(c=>c.type==='invoice_number')?.geometryEvidence ?? [];
+  const residual=deriveResidualAmount({documentId:input.attemptId,sourceHash,
+    authoritativeTotal:{cents:monetary.authority.cents,provenance:[...model.total.provenance,...monetary.authority.supportedFooter.flatMap(v=>v.observations),...monetary.authority.labels.map(l=>l.observationId)]},
+    rows:model.table.rows.map(row=>{
+      const money=matureMoney?.find(r=>r.rowId===row.id&&r.field==='row_amount') ?? monetary.rows.find(r=>r.rowId===row.id);
+      return {rowId:row.id,bounds:row.bounds,ownership:monetary.regions.find(r=>r.rowId===row.id)?.ownership??null,
+        cropHash:moneyCrops.find(c=>c.rowId===row.id&&c.field==='row_amount')?.sha256??'',cents:money?.cents??null,authoritative:money?.cents!=null,provenance:money?.provenance??[]};
+    }),
+    passes:semantics.observations.filter(o=>o.verified&&o.sourceHash===sourceHash).map(o=>({observationId:o.id,anchors:anchors.filter(a=>a.observationId===o.id&&a.kind==='repeated-invoice-token').map(a=>a.bounds)}))});
+  if(residual.evidence)document.residualEvidence=residual;
+  const resolved = resolveDocumentWithResidual(document, input.snapshot);
+  const established=rows.map(row=>residual.evidence?.rowId===row.rowId?residual.evidence.derivedAmount:[...new Set(row.amounts.map(a=>a.cents))].length===1?row.amounts[0].cents:null);
+  const complete=rows.length===model.table.rows.length&&rows.length>0&&established.every(c=>c!==null);
+  const arithmeticSubtotal=complete?established.reduce<number>((sum,c)=>sum+c!,0):null;
+  const arithmeticReconciliation={subtotal:arithmeticSubtotal,total:monetary.authority.cents,
+    difference:arithmeticSubtotal===null||monetary.authority.cents===null?null:arithmeticSubtotal-monetary.authority.cents,
+    evidenceClass:'observed-plus-derived-arithmetic',paymentAuthority:false};
   const blockers = [...model.reviewReasons.filter(reason => reason !== model.total.reason), ...(monetary.authority.cents === null ? [monetary.authority.reason] : []),
-    ...(matureMoney ? matureMoney.filter(r => r.field === 'row_amount' && r.cents === null).map(r => `Unresolved monetary evidence for ${r.rowId}: ${r.reason}`)
-      : monetary.rows.filter(r => r.cents === null).map(r => `Unresolved monetary evidence for ${r.rowId}: ${r.rejectionReason}`)),
+    ...(matureMoney ? matureMoney.filter(r => r.field === 'row_amount' && r.cents === null && residual.evidence?.rowId!==r.rowId).map(r => `Unresolved monetary evidence for ${r.rowId}: ${r.reason}`)
+      : monetary.rows.filter(r => r.cents === null && residual.evidence?.rowId!==r.rowId).map(r => `Unresolved monetary evidence for ${r.rowId}: ${r.rejectionReason}`)),
     ...missingRows.map(id => `Incomplete recognizer evidence for ${id}`), ...new Set(resolved.audit.flatMap(a => a.blockers))];
   if (!rows.length) blockers.push('No supported physical rows');
   if (resolved.status !== 'resolved') blockers.push(`Resolver: ${resolved.status}`);
@@ -114,8 +132,9 @@ export async function runShadowPipeline(original: Buffer, input: ShadowInput,
     build: input.build, models: { ...batch.versions, money: matureMoney ? 'mature-money-consensus-1' : monetary.version }, semanticVersion: model.version, layoutVersion: model.version,
     benchmarkVersion: 'trimax-ocr-real-v2', normalization: normalized.evidence, model: diagnosticModel, pageOnlyTotal: model.total, document,
     // Business snapshot is available to the resolver only; do not duplicate it into results.
-    resolver: { status: automatic ? 'automatic' : 'review-required', automaticInvoiceIds: automatic ? resolved.automaticInvoiceIds : [], counts: resolved.counts, audit: resolved.audit },
-    reviewBlockers: blockers, monetary, matureMoney, modelTimings: batch.modelTimings, ledger: ledger.snapshot(),
+    resolver: { status: automatic ? 'automatic' : 'review-required', automaticInvoiceIds: automatic ? resolved.automaticInvoiceIds : [], counts: resolved.counts, audit: resolved.audit,
+      candidateAudit:resolved.rows.map(r=>({rowId:r.rowId,provisionalInvoiceId:r.provisionalInvoiceId,alternatives:r.alternatives})) },
+    reviewBlockers: blockers, monetary, matureMoney, residual, arithmeticReconciliation, modelTimings: batch.modelTimings, ledger: ledger.snapshot(),
     timings: { normalizationMs: normalized.evidence.metrics.completeMs, semanticsMs: semantics.durationMs, moneyMs: monetary.durationMs,
       matureMoneyMs: batch.moneyObservations?.reduce((n,o) => n + o.durationMs, 0) ?? 0, recognitionMs, resolverMs: resolved.durationMs, totalMs: performance.now()-started },
   };
