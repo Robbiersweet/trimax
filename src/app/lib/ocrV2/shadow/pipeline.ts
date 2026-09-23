@@ -11,8 +11,8 @@ import { assertUnverifiedInput, SHADOW_VERSION } from './contract.ts';
 import type { DocumentSemanticModel } from '../semantics/model.ts';
 import type { Bounds } from '../types.ts';
 import { normalizePaymentDate } from '../recognition/paymentEvidence.ts';
-import { recognizeSemanticMoney } from '../recognition/semanticMoney.ts';
-import { fuseMoneyObservations, normalizeVisualMoney, type MatureMoneyObservation } from '../recognition/matureMoney.ts';
+import { prepareMoneyFields, completeMoneyFields } from '../../documentFields/moneyService.ts';
+import { type MatureMoneyObservation } from '../recognition/matureMoney.ts';
 import { fuseOrganizationIdentity, type OrganizationObservation } from '../recognition/organizationIdentity.ts';
 import { deriveResidualAmount } from '../recognition/residualAmount.ts';
 
@@ -43,7 +43,8 @@ export async function runShadowPipeline(original: Buffer, input: ShadowInput,
   const started = performance.now(), normalized = await normalizeDocument(original);
   const sourceHash = hash(normalized.documentColor), ledger = new EvidenceLedger(input.attemptId, input.attemptId, sourceHash);
   const semantics = await recognizeSemanticPage(normalized.documentColor, ledger), model = semantics.model;
-  const monetary = await recognizeSemanticMoney(normalized.documentColor, model, semantics.observations, ledger);
+  const preparedMoney = await prepareMoneyFields(normalized.documentColor, model, semantics.observations, ledger);
+  const monetary = preparedMoney.monetary;
   const size = await sharp(normalized.documentColor).metadata(), crops: InvoiceCrop[] = [];
   for (const row of model.table.rows) {
     const bounds = row.invoiceRegion ?? invoiceCell(model, row.bounds, size.width!, size.height!);
@@ -51,13 +52,7 @@ export async function runShadowPipeline(original: Buffer, input: ShadowInput,
     const bytes = await sharp(normalized.documentColor).extract(bounds).png().toBuffer();
     crops.push({ rowId: row.id, bounds, bytes, sha256: hash(bytes) });
   }
-  const moneyCrops: MoneyCrop[] = [];
-  const moneyRegions = [...monetary.regions.filter(r => r.bounds).map(r => ({ rowId: r.rowId, field: 'row_amount' as const, bounds: r.bounds! })),
-    ...(monetary.totalBounds ? [{ rowId: 'document-total', field: 'total' as const, bounds: monetary.totalBounds }] : [])];
-  for (const region of moneyRegions) {
-    const bytes = await sharp(normalized.documentColor).extract(region.bounds).flatten({ background: 'white' }).png().toBuffer();
-    moneyCrops.push({ ...region, bytes, sha256: hash(bytes) });
-  }
+  const moneyCrops: MoneyCrop[] = preparedMoney.crops;
   const organizationCrops: OrganizationCrop[] = [];
   const identityColumn = model.table.columns.find(c => ['property_name','customer_name','payor_name'].includes(c.type) && c.semanticConfidence === 'label-supported');
   if (identityColumn) {
@@ -78,18 +73,7 @@ export async function runShadowPipeline(original: Buffer, input: ShadowInput,
     if (!crop || o.cropReference.sha256 !== crop.sha256 || o.cropReference.sourceImageSha256 !== sourceHash || o.cropReference.documentId !== input.attemptId)
       throw Error('Model output does not belong to canonical row pixels');
   }
-  const matureMoney = batch.moneyObservations ? moneyCrops.map(crop => {
-    const expected = { rowId: crop.rowId, field: crop.field, documentId: input.attemptId, sourceHash, cropHash: crop.sha256 };
-    const own = batch.moneyObservations!.filter(o => o.rowId === crop.rowId && o.field === crop.field);
-    const decision = fuseMoneyObservations(own, expected);
-    for (const o of own) ledger.append({ field: o.field, documentId: input.attemptId, rowId: o.field === 'row_amount' ? o.rowId : undefined,
-      sourceHash, cropHash: crop.sha256, region: crop.bounds, recognizer: o.recognizer, variant: 'native',
-      configuration: `mature-money-consensus-1:${hash(Buffer.from(JSON.stringify(batch.versions)))}`, raw: o.raw,
-      normalized: normalizeVisualMoney(o.raw) === null ? [] : [String(normalizeVisualMoney(o.raw))], confidence: o.confidence ?? 0, durationMs: o.durationMs,
-      provenance: { valid: true, reason: 'Uncalibrated sequence recognizer on exact same physical money crop; no business hints', reference: o.id }, stage: 'phase6-mature-money', timestamp: new Date().toISOString() });
-    return { rowId: crop.rowId, field: crop.field, bounds: crop.bounds, cropHash: crop.sha256, ...decision };
-  }) : null;
-  if (batch.moneyObservations?.some(o => !moneyCrops.some(c => c.rowId === o.rowId && c.field === o.field))) throw Error('Unexpected monetary field output');
+  const matureMoney = batch.moneyObservations ? completeMoneyFields(moneyCrops,batch.moneyObservations,batch.versions,ledger) : null;
   const identityStart = performance.now();
   const identityObservations = batch.organizationObservations ?? [];
   for (const o of identityObservations) {
@@ -165,6 +149,7 @@ export async function runShadowPipeline(original: Buffer, input: ShadowInput,
     // Business snapshot is available to the resolver only; do not duplicate it into results.
     resolver: { status: automatic ? 'automatic' : 'review-required', automaticInvoiceIds: automatic ? resolved.automaticInvoiceIds : [], counts: resolved.counts, audit: resolved.audit,
       candidateAudit:resolved.rows.map(r=>({rowId:r.rowId,provisionalInvoiceId:r.provisionalInvoiceId,alternatives:r.alternatives})) },
+    sharedMoney: matureMoney ? {version:'shared-money-1' as const,captureSessionId:input.captureSessionId,canonicalHash:input.sourceImageHash,normalizedHash:sourceHash,normalization:normalized.evidence,rows:model.table.rows.map(r=>({id:r.id,bounds:r.bounds})),fields:matureMoney,monetary} : null,
     reviewBlockers: blockers, organizationIdentity, monetary, matureMoney, residual, arithmeticReconciliation, modelTimings: batch.modelTimings, ledger: ledger.snapshot(),
     timings: { identityFusionMs: identityMs, identityRecognitionMs: identityObservations.reduce((n,o)=>n+o.durationMs,0), normalizationMs: normalized.evidence.metrics.completeMs, semanticsMs: semantics.durationMs, moneyMs: monetary.durationMs,
       matureMoneyMs: batch.moneyObservations?.reduce((n,o) => n + o.durationMs, 0) ?? 0, recognitionMs, resolverMs: resolved.durationMs, totalMs: performance.now()-started },

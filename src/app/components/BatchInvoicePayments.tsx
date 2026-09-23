@@ -24,8 +24,9 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Card from "./Card";
 import RecentScans from "./RecentScans";
+import { legacyMoneyEvidence, type SharedMoneyEvidence } from "../lib/documentFields/moneyContract";
 import { scanSummary, finishScan, failureSummary, debugFile, slimAttempt, type ScanSummary, type ScanResult } from "../lib/ocrHistory";
-import { saveScan, scanDiagnostics, scanOptical } from "../lib/ocrHistoryClient";
+import { saveScan, scanDiagnostics, scanOptical, pairedScanSummary } from "../lib/ocrHistoryClient";
 import { loadShadowFlags } from "../lib/ocrV2/shadow/client";
 import { DISABLED_SHADOW, shadowAllowed, type CaptureTimings } from "../lib/ocrV2/shadow/contract";
 import DateInputField from "./DateInputField";
@@ -1674,6 +1675,34 @@ export default function BatchInvoicePayments({
   const latestScan = useRef<ScanSummary|null>(null);
   const [scanSavedStatus,setScanSavedStatus] = useState("");
   const [activeRemittanceAttempt, setActiveRemittanceAttempt] = useState<RemittanceAttempt | null>(null);
+  const [sharedMoneyStatus,setSharedMoneyStatus]=useState('');
+  const [sharedMoneyLoading,setSharedMoneyLoading]=useState(false);
+  async function reviewSharedMoney(){
+    const history=latestScan.current,version=ocrAttemptVersion.current;
+    if(!history||!businessId||!activeRemittanceAttempt||!['owner','admin'].includes(workspaceRole??'')||!shadowAllowed(shadowFlags,workspaceRole))return;
+    setSharedMoneyLoading(true);setSharedMoneyStatus('Loading saved amount evidence…');
+    try{
+      const summary=await pairedScanSummary(history.attemptId);
+      if(!summary?.shadowAttemptId)throw Error('Amount evidence is not available yet. Legacy review remains available.');
+      const [legacy,shadow]=await Promise.all([scanDiagnostics(businessId,history.attemptId),scanDiagnostics(businessId,summary.shadowAttemptId)]);
+      const payload=legacy as {response?:CheckStubOcrResponse;[key:string]:unknown};
+      const shared=(shadow as {result?:{sharedMoney?:SharedMoneyEvidence}})?.result?.sharedMoney;
+      if(!shared||!history.sourceImageHash)throw Error('Shared amount evidence is unavailable or still processing.');
+      const diagnostics=payload.response?.diagnostics as unknown as {documentWidth:number;documentHeight:number;orientation:{rotation:number}};
+      const evidence=legacyMoneyEvidence(activeRemittanceAttempt.evidence,shared,{captureSessionId:history.attemptId,canonicalHash:history.sourceImageHash,rotation:diagnostics.orientation.rotation,width:diagnostics.documentWidth,height:diagnostics.documentHeight});
+      const context={...activeRemittanceAttempt.corroboration.context,role:workspaceRole??'',receivedDate};
+      const updated=resolveRemittanceAttempt(evidence,invoiceRecords,paymentActivities,context);
+      if(version!==ocrAttemptVersion.current||latestScan.current?.attemptId!==history.attemptId)return;
+      setActiveRemittanceAttempt(updated);
+      setOcrReconciliationVerified(false);
+      const count=evidence.physicalRows.filter(r=>r.amountCandidates.some(a=>a.selected)).length;
+      setSharedMoneyStatus(`${count}/${evidence.physicalRows.length} row amounts supported. ${evidence.headerEvidence.documentTotal?.payable?'Document total supported.':'Document total still needs review.'} Review invoice selections before applying any payment.`);
+      const revised=finishScan(history,updated,'review',history.durationMs??0,['Shared visual monetary evidence reviewed; existing payment checks remain required.']);
+      latestScan.current=revised;
+      await saveScan({businessId,phase:2,summary:revised,payload:{...payload,attempt:updated,sharedMonetaryEvidence:shared}});
+    }catch(error){if(version===ocrAttemptVersion.current)setSharedMoneyStatus(error instanceof Error?error.message:String(error));}
+    finally{if(version===ocrAttemptVersion.current)setSharedMoneyLoading(false);}
+  }
   const sourceSelectionRef = useRef<ScanCapture["sources"]>([]);
   const preparedCaptureRef = useRef<ScanCapture | null>(null);
   const [completedPaymentSummary, setCompletedPaymentSummary] =
@@ -3462,6 +3491,7 @@ export default function BatchInvoicePayments({
     resume?: {history:ScanSummary;canonical:CanonicalCapture|null}
   ) {
     const attemptVersion = ++ocrAttemptVersion.current;
+    setSharedMoneyStatus("");setSharedMoneyLoading(false);
     const attemptId = resume?.history.attemptId ?? crypto.randomUUID();
     setCaptureRetry(null);
     const startedAt = performance.now();
@@ -6299,7 +6329,12 @@ export default function BatchInvoicePayments({
                   </div>
                 ) : null}
 
-                {checkOcrStatus !== "reading" &&
+                {checkOcrStatus !== "reading" && activeRemittanceAttempt && shadowFlags.businessId===businessId && shadowAllowed(shadowFlags,workspaceRole) && (
+            <div className="mt-3 rounded-xl border border-slate-300/30 p-3 text-sm">
+              <button type="button" disabled={sharedMoneyLoading} onClick={()=>void reviewSharedMoney()} className="rounded-full border px-3 py-2 font-semibold disabled:opacity-50">{sharedMoneyLoading?'Loading amount evidence…':'Review specialized amount evidence'}</button>
+              <p className="mt-2">{sharedMoneyStatus||'Use saved visual amount evidence from this photo. Invoice selection and payment checks remain separate.'}</p>
+            </div>
+          )}          {checkOcrStatus !== "reading" &&
                 lastOcrDiagnosticLines.length > 0 ? (
                   <details className="mt-3 rounded-xl border border-sky-300/25 bg-sky-300/10 px-3 py-2 text-xs text-sky-50">
                     <summary className="cursor-pointer font-black">

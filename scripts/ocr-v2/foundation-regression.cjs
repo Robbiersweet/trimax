@@ -47,8 +47,8 @@ const { normalizeDocument, lightingVariants } = require('../../src/app/lib/ocrV2
     assert(weak > 100);
     assert(preserved / weak > .95, 'Contrast normalization must retain faint stroke pixels');
     await assert.rejects(() => normalizeDocument(Buffer.from('not an image')));
-    // Phase 6 permits only inert contracts and detached queue submission in UI.
-    // Recognition/fusion/resolution must remain outside production request paths.
+    // Shared visual money is the sole additional boundary. V2 business authority
+    // remains isolated; the model service is only invoked by the worker.
     function scan(dir) { for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
         const file = path.join(dir, item.name);
         if (file.includes(path.join('lib', 'ocrV2')))
@@ -56,8 +56,10 @@ const { normalizeDocument, lightingVariants } = require('../../src/app/lib/ocrV2
         if (item.isDirectory())
             scan(file);
         else if (/\.[tj]sx?$/.test(file))
-            for (const match of fs.readFileSync(file, 'utf8').matchAll(/from\s+["']([^"']*ocrV2\/[^"']+)["']/g))
-                assert(/ocrV2\/shadow\/(?:contract|client)$/.test(match[1]), 'Production import of v2 inference: ' + file);
+            for (const match of fs.readFileSync(file, 'utf8').replace(/import type[\s\S]*?;/g,'').matchAll(/from\s+["']([^"']*ocrV2\/[^"']+)["']/g))
+                assert(/ocrV2\/shadow\/(?:contract|client)$/.test(match[1]) ||
+                  (file.endsWith(path.join('documentFields','moneyContract.ts')) && /ocrV2\/recognition\/matureMoney\.ts$/.test(match[1])) ||
+                  (file.endsWith(path.join('documentFields','moneyService.ts')) && /ocrV2\/recognition\/(?:evidenceLedger|semanticMoney|matureMoney)\.ts$/.test(match[1])), 'Production import of v2 inference: ' + file);
     } }
     scan('src/app');
     console.log('OCR v2 Phase 1: contour geometry, projective mapping, uncertainty fallback, EXIF 1–8 pixel accuracy, original immutability, faint strokes, invalid input and production isolation passed.');
