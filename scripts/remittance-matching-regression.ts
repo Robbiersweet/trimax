@@ -1370,7 +1370,7 @@ assert(
 assert(
   paymentScreen.includes('type OcrRetryStrategy = "standard" | "alternate"') &&
     paymentScreen.includes("retryStrategy: OcrRetryStrategy = \"standard\"") &&
-    paymentScreen.includes("JSON.stringify({ ...canonicalRequest(canonical), documentType, retryStrategy, attemptId, businessId, history, debugContext:") &&
+    paymentScreen.includes("waitForLegacyJob({attemptId,documentType,retryStrategy") &&
     paymentScreen.includes("Retry strategy:") &&
     paymentScreen.includes('"alternate"'),
   "Retry Reading must reuse the saved crop while requesting a distinct local OCR preprocessing strategy."
@@ -1378,7 +1378,8 @@ assert(
 assert(
   paymentScreen.includes("OCR pipeline details") &&
     paymentScreen.includes("Raw OCR text") &&
-    paymentScreen.includes("OCR request duration") &&
+    paymentScreen.includes("Initial enqueue request:") &&
+    paymentScreen.includes("Background OCR wait in this view:") &&
     paymentScreen.includes("Parsed invoice numbers:") &&
     paymentScreen.includes("Parsed line amounts:") &&
     paymentScreen.includes("Matched invoices:") &&

@@ -1035,7 +1035,7 @@ async function retryStateRegression() {
     fetch: async (_url, options) => { calls.push(JSON.parse(options.body)); return new Promise(resolve => pending.push(resolve)); },
     loadExtractedRemittance: (data) => { state.PaymentReference = data.checkNumber; state.ExtractedPaymentAmount = data.totalAmount; const observed=require("../src/app/lib/remittanceAttempt.ts").resolveRemittanceAttempt(require("../src/app/lib/remittanceAttempt.ts").emptyRemittanceEvidence("mock",null,"test"),[],[],{role:"owner",receivedDate:"2026-09-17",fingerprint:""}); return { match: { issues: [] }, reviewMatches: [{ amountDue: data.totalAmount }], reconciledReview: { isComplete: true }, historicalDuplicateCheck: { status: "none" }, attempt: {...observed,reconciliationResult:{...observed.reconciliationResult,eligible:true,blockers:[]}} }; },
   };
-  Object.assign(bindings,{...require('../src/app/lib/ocrCanonical.ts'),storeCanonicalCapture:async input=>({reference:input.attemptId,sha256:'test-hash',storedBytes:1,shadowQueued:false,uploadDurationMs:1}),shadowFlags:{enabled:false,nativeStill:false,businessId:'test-workspace'},shadowAllowed:()=>false,captureTimings:{current:{}},enqueueShadow:()=>{throw Error('Disabled shadow must not run');}});
+  Object.assign(bindings,{retainedAttemptId:null,resumedDiagnosticReplay:{current:false},waitForLegacyJob:async input=>{calls.push(input);return new Promise(resolve=>pending.push(resolve));},...require('../src/app/lib/ocrCanonical.ts'),storeCanonicalCapture:async input=>({reference:input.attemptId,sha256:'test-hash',storedBytes:1,shadowQueued:false,uploadDurationMs:1}),shadowFlags:{enabled:false,nativeStill:false,businessId:'test-workspace'},shadowAllowed:()=>false,captureTimings:{current:{}},enqueueShadow:()=>{throw Error('Disabled shadow must not run');}});
   for (const name of new Set(functionSource.match(/set[A-Z][A-Za-z]+/g))) bindings[name] = value => { state[name.slice(3)] = value; };
   const compiled = ts.transpileModule(functionSource + "\nreturn extractCheckStubFromPhoto;", { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
   const read = new Function(...Object.keys(bindings), compiled)(...Object.values(bindings));
@@ -1054,7 +1054,7 @@ async function retryStateRegression() {
   assert.equal(state.PaymentReference, "2797");
   assert.equal(state.ExtractedPaymentAmount, 5495);
   assert.equal(state.CheckOcrStatus, "ready");
-  assert.deepEqual(calls.map(call => Object.keys(call).sort()), [ ["attemptId", "businessId", "canonicalReference", "debugContext", "documentType", "history", "retryStrategy", "sourceImageHash"], ["attemptId", "businessId", "canonicalReference", "debugContext", "documentType", "history", "retryStrategy", "sourceImageHash"] ]);
+  assert.deepEqual(calls.map(call => Object.keys(call).sort()), [ ["attemptId", "diagnosticReplay", "documentType", "retryStrategy"], ["attemptId", "diagnosticReplay", "documentType", "retryStrategy"] ]);
   assert.equal(calls[1].retryStrategy, "alternate");
   assert.notEqual(calls[0].attemptId, calls[1].attemptId);
   const old = read("old-image", "remittance_stub", "primary", "standard", [], "old");
@@ -1067,9 +1067,9 @@ async function retryStateRegression() {
   await old;
   assert.equal(state.PaymentReference, "3124");
   assert.equal(state.ExtractedPaymentAmount, 220);
-  assert.equal(historyWrites.filter(write=>write.phase===2).length,4);
+  assert.equal(historyWrites.filter(write=>write.phase===2).length,3);
   assert.equal(historyWrites.filter(write=>write.phase===2)[1].summary.parentId,calls[0].attemptId);
-  assert.equal(historyWrites.filter(write=>write.phase===2)[3].summary.result,'review');
+  assert(!historyWrites.some(write=>write.phase===2&&write.summary.attemptId===calls[2].attemptId),'Replaced browser view must not terminate the old background attempt');
   const rejected=read('retained-image','remittance_stub','primary','standard',[],'');
   await new Promise(setImmediate);pending.shift()({ok:false,status:413,json:async()=>({})});await rejected;
   const failureWrite=historyWrites.filter(write=>write.phase===2).at(-1);

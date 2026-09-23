@@ -1,6 +1,8 @@
 "use client";
 import { storeCanonicalCapture, resumeCaptureHandoff } from "../lib/ocrCanonicalClient";
-import { canonicalRequest, transportFailure, type CanonicalCapture, type TransportFailure } from "../lib/ocrCanonical";
+import LegacyOcrJobs from "./LegacyOcrJobs";
+import { waitForLegacyJob } from "../lib/ocrLegacyJobClient";
+import { transportFailure, type CanonicalCapture, type TransportFailure } from "../lib/ocrCanonical";
 
 import { acquireStillAndRelease, type CameraLifecycle } from "../lib/cameraArtifacts";
 import { normalizePhysicalStill, opticalImage } from "../lib/ocrOpticalBrowser";
@@ -1635,6 +1637,7 @@ export default function BatchInvoicePayments({
   const [lastActualCaptureTap, setLastActualCaptureTap] =
     useState<CameraActualTapSnapshot>(null);
   const [cameraPipelineStages, setCameraPipelineStages] = useState<string[]>([]);
+  const resumedDiagnosticReplay = useRef(false);
   const [cameraFailureStage, setCameraFailureStage] = useState("");
   const [cameraVideoPlayStatus, setCameraVideoPlayStatus] =
     useState("not-started");
@@ -1661,6 +1664,7 @@ export default function BatchInvoicePayments({
   const [paymentReviewNotice, setPaymentReviewNotice] = useState("");
   const [ocrReconciliationVerified, setOcrReconciliationVerified] = useState(false);
   const ocrAttemptVersion = useRef(0);
+  useEffect(()=>()=>{ocrAttemptVersion.current++;},[]);
   const [shadowFlags, setShadowFlags] = useState({...DISABLED_SHADOW,businessId:''});
   const nativeStillInput = useRef<HTMLInputElement>(null);
   const captureTimings = useRef<CaptureTimings>({captureOpenedAt:null,stillReturnedAt:null,previewPaintOpportunityAt:null,cameraIndicatorMs:null});
@@ -3495,7 +3499,6 @@ export default function BatchInvoicePayments({
     const startedAt = performance.now();
     const parent = scanLineage.current;
     if (parent) observationScopeRef.current=crypto.randomUUID();
-    const observationScope=observationScopeRef.current;
     // Reserve a fresh namespace immediately for the next attempt, including uploads.
     observationScopeRef.current=crypto.randomUUID();
     const history = resume?.history ?? scanSummary(attemptId,parent?.original??attemptId,parent?.last??null,preparedCaptureRef.current?.source??"unknown",process.env.NEXT_PUBLIC_TRIMAX_BUILD??"local");
@@ -3595,19 +3598,10 @@ export default function BatchInvoicePayments({
         if(canonical)canonical.shadowQueued=result.queued;
       }).catch(()=>{ if(attemptVersion===ocrAttemptVersion.current)setScanSavedStatus('Capture saved — shadow processing pending. Retry from Recent Scans.'); });
       appendCameraStage("OCR started");
-      const {data:sessionData}=await supabase.auth.getSession().catch(()=>({data:{session:null}}));
-      const response = await fetch("/api/payments/extract-check-stub", {
-        method: "POST",
-        headers: {
-          "x-ocr-observation-scope": observationScope,
-          "Content-Type": "application/json",
-          ...(sessionData.session?.access_token?{Authorization:`Bearer ${sessionData.session.access_token}`} : {}),
-        },
-        body: JSON.stringify({ ...canonicalRequest(canonical), documentType, retryStrategy, attemptId, businessId, history, debugContext:{capture:captureSnapshot,preparation:prepDiagnosticLines,canonicalCapture:canonical} }),
-      });
+      const response = await waitForLegacyJob({attemptId,documentType,retryStrategy,diagnosticReplay:Boolean(retainedAttemptId||resumedDiagnosticReplay.current)},()=>attemptVersion===ocrAttemptVersion.current,message=>{if(attemptVersion===ocrAttemptVersion.current)setCheckOcrMessage(message);});
       const data = (await response.json().catch(() => ({}))) as CheckStubOcrResponse;
       retainedResponse=data;
-      if (attemptVersion !== ocrAttemptVersion.current) { complete("review",null,["Response arrived after this scan was replaced. Review was not completed."]); return; }
+      if (attemptVersion !== ocrAttemptVersion.current) return;
       const requestDuration = Math.max(
         0,
         Math.round(performance.now() - requestStartedAt)
@@ -3618,7 +3612,9 @@ export default function BatchInvoicePayments({
         `Attempt ID: ${attemptId}.`,
         `OCR request prepared: yes.`,
         `OCR request completed: ${response.ok ? "yes" : "no"} (${response.status}).`,
-        `OCR request duration: ${requestDuration}ms.`,
+        `Initial enqueue request: ${response.headers?.get('x-ocr-enqueue-ms')??'unavailable'}ms.`,
+        `Background OCR wait in this view: ${requestDuration}ms.`,
+        `Background job timestamps: ${response.headers?.get('x-ocr-job-timings')??'unavailable'}.`,
         ...ocrDiagnosticLines(data),
       ];
 
@@ -3698,7 +3694,7 @@ export default function BatchInvoicePayments({
           : ocrFailureMessage(data)
       );
     } catch (error) {
-      if (attemptVersion !== ocrAttemptVersion.current) { complete("failed",null,[error instanceof Error?error.message:"OCR request failed."]); return; }
+      if (attemptVersion !== ocrAttemptVersion.current) return;
       failure??=transportFailure(null,error instanceof Error?error.message:'OCR request failed.');
       if(!canonical || failure.stage==='canonical-upload') {
         history.captureState='transport_failed';
@@ -3714,14 +3710,10 @@ export default function BatchInvoicePayments({
         });
         return;
       }
-      recordAttemptFailure(error instanceof Error ? error.message : "OCR request failed.");
-      setCameraFailureStage("ocr-request");
-      setCheckOcrStatus("error");
-      setCheckOcrMessage(
-        error instanceof Error
-          ? error.message
-          : "Could not read this remittance. Adjust crop or enter manually."
-      );
+      // Network failures do not terminate an independently running durable job.
+      setCheckOcrStatus('error');
+      setCheckOcrMessage('Capture saved — processing status unavailable. Open the saved scan to resume.');
+      setCaptureRetry(()=>async()=>{await extractCheckStubFromPhoto(imageDataUrl,documentType,intent,retryStrategy,prepDiagnosticLines,currentDocumentFingerprint,retainedReference,{history,canonical});});
     }
   }
 
@@ -5212,7 +5204,7 @@ export default function BatchInvoicePayments({
   }
 
   async function applyBatchPayment() {
-    if(retainedAttemptId) { setCheckOcrMessage("Diagnostic replay cannot apply payments."); return; }
+    if(retainedAttemptId || resumedDiagnosticReplay.current) { setCheckOcrMessage("Diagnostic replay cannot apply payments."); return; }
     if (!paymentCanApply) {
       setToast({ type: "error", message: "Review the payment and resolve reconciliation issues before applying." });
       return;
@@ -5580,6 +5572,18 @@ export default function BatchInvoicePayments({
           await extractCheckStubFromPhoto(imageDataUrl,'remittance_stub','primary','standard',['Diagnostic replay of retained attempt '+original.id+'; no new physical capture.'],'',original.summary.canonicalReference??retainedAttemptId,['image_stored','processing'].includes(original.summary.captureState)?{history:original.summary,canonical:{reference:original.summary.canonicalReference,sha256:original.summary.sourceImageHash,storedBytes:Math.floor(image.base64.length*3/4),shadowQueued:false,uploadDurationMs:0}}:undefined);
         } catch(error) { setCheckOcrMessage(String(error)); }
       }}>Replay retained image — no payment</button>}
+      {businessId && ['owner','admin'].includes(workspaceRole??'') && <LegacyOcrJobs businessId={businessId} onResume={async job=>{
+        try {
+          resumedDiagnosticReplay.current=Boolean(job.input.diagnosticReplay);
+          const history=job.summary;
+          const optical=await scanOptical(history.canonicalReference!);
+          const image=optical?.images?.find((item:{sha256?:string;base64?:string})=>item.sha256===history.sourceImageHash&&item.base64);
+          if(!image)throw Error('Saved image is unavailable or expired.');
+          const imageDataUrl='data:'+image.mime+';base64,'+image.base64;
+          setCheckImagePreview(imageDataUrl);setPaymentEntryMode('photo');
+          await extractCheckStubFromPhoto(imageDataUrl,job.input.documentType,job.input.documentType==='check_only'?'check_details':'primary',job.input.retryStrategy,[],'',history.canonicalReference,{history,canonical:{reference:history.canonicalReference!,sha256:history.sourceImageHash!,storedBytes:Math.floor(image.base64.length*3/4),shadowQueued:true,uploadDurationMs:0}});
+        }catch(error){setCheckOcrMessage(String(error));}
+      }}/> }
       <input ref={nativeStillInput} type="file" accept="image/*" capture="environment" className="sr-only" aria-label="Take remittance still photo" onChange={event => { captureCheckImage(event.target.files?.[0],'camera',captureDocumentType,captureIntent); event.currentTarget.value=''; }} />
       {businessId && <RecentScans businessId={businessId} businessSlug={businessSlug??undefined} role={workspaceRole} savedStatus={scanSavedStatus}/> }
       {toast ? <Toast type={toast.type} message={toast.message} /> : null}

@@ -15,6 +15,6 @@ const {canonicalRequest,transportFailure}=require('../../src/app/lib/ocrCanonica
  const send=new Function('supabase',ts.transpileModule(history.slice(start,end)+';return send;',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText)({rpc:async(name,args)=>{calls.push(args);return {error:calls.length===1?{message:'Optional payload rejected'}:null};}});
  await send({businessId:'b',phase:2,summary:{attemptId:'a',originalId:'a',parentId:null,result:'failed'},payload:{canonicalCapture:capture,transport:transportFailure(413,'rejected')}});
  assert.equal(calls.length,2);assert.equal(calls[1].p_phase,2);assert.equal(calls[1].p_payload.transport.httpStatus,413);
- assert(source.includes('if(retainedAttemptId)'));assert(!source.includes('JSON.stringify({ imageDataUrl, documentType, retryStrategy, attemptId'));
+ assert(source.includes('if(retainedAttemptId || resumedDiagnosticReplay.current)'));assert(!source.includes('JSON.stringify({ imageDataUrl, documentType, retryStrategy, attemptId'));
  console.log('PASS reference-only request, exact HTTP 413 evidence, terminal persistence despite summary failure, diagnostic fallback, no payment replay');
 })().catch(e=>{console.error(e);process.exitCode=1;});

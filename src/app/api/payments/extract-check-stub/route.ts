@@ -6,6 +6,7 @@ import { orientLegacyStill } from "@/app/lib/ocrLegacyOrientation";
 import { legacyBootstrapImage, legacyRecognitionDeadline, legacyWorkerSession, legacyPassFailure } from "@/app/lib/ocrLegacyPass";
 import { opticalScore } from "@/app/lib/ocrOptical";
 import { checkpointOcr } from "@/app/lib/ocrHistoryServer";
+import { legacyProgress } from "@/app/lib/ocrLegacyProgress";
 import { createRemittanceEvidence, selectObservedHeader } from "@/app/lib/remittanceAttempt";
 import { rowAssignment, normalizeInvoiceColumnToken, rankSourceEvaluations, rankRowAmounts } from "@/app/lib/ocrStructure";
 import { NextResponse } from "next/server";
@@ -2081,6 +2082,7 @@ async function recognizeBestText(
   const detailedCosts={worker:lifecycle.metrics,sourcePreparationMs:0,regionPreparationMs:0,faintPreparationMs:0,totalMs:0};
   try {
   const oriented = await orientLegacyStill(originalImage,lifecycle.direction);
+  await legacyProgress('orientation_complete', oriented.evidence);
   markStage("orientation-selected");
   const passTimings: Array<{stage:string;variant:string;rotation:number;sourceRotation:number;durationMs:number;startedAt:string;status:string;error?:string;preparationMs:number;recognitionMs:number;extractionMs:number;workingWidth?:number;workingHeight?:number;workerMs?:number;cleanupMs?:number;role?:string;completedEvidencePreserved?:boolean}> = [];
   let worker = await lifecycle.acquire();
@@ -2244,6 +2246,7 @@ async function recognizeBestText(
 
         completedPass.extractionMs=performance.now()-extractionStart;
         attempts.push(attempt);
+        await legacyProgress('pass_complete', attempt);
         const tokens = text.match(/\b(?:INV[^\s]*|\d[\d,.]*|TOTAL|CHECK)\b/gi) ?? [];
         const newTokens=[...new Set(tokens)].filter(t=>!observedTokens.has(t));
         newTokens.forEach(t=>observedTokens.add(t));
@@ -3268,6 +3271,7 @@ async function runExtraction(request: Request) {
       retryStrategy
     );
     const rawText = ocrResult.text;
+    await legacyProgress('ocr_complete', { rawPasses: ocrResult.rawPasses, structuredRowEvidence: ocrResult.structuredRowEvidence, diagnostics: ocrResult.diagnostics });
     const parsedText = withoutMicrBandText(rawText);
 
     if (!rawText || !ocrResult.rawPasses.some(pass=>opticalScore(pass.text,pass.confidence).credible)) {
