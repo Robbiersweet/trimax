@@ -2198,7 +2198,7 @@ async function recognizeBestText(
           }
 
           throw Object.assign(error instanceof Error ? error : new Error(String(error)), {
-            ocrStarted:true, stage:'ocr-recognition', diagnostics:{stageTimings,passTimings,orientation:oriented.evidence,completedObservations:attempts,timeoutMs:OCR_ATTEMPT_TIMEOUT_MS}
+            ocrStarted:true, stage:'ocr-recognition', diagnostics:{stageTimings,passTimings,orientation:oriented.evidence,orientationProbeStarted:true,detailedOcrStarted:true,completedObservations:attempts,timeoutMs:OCR_ATTEMPT_TIMEOUT_MS}
           });
         }
 
@@ -2719,6 +2719,8 @@ async function recognizeBestText(
         stageTimings,
         passTimings,
         orientation: oriented.evidence,
+        orientationProbeStarted: true,
+        detailedOcrStarted: passTimings.length > 0,
         selectedSummary: redactedTextSummary(selected?.text ?? ""),
         regionSummaries: regionBestAttempts.map((attempt) =>
           redactedTextSummary(attempt.text)
@@ -3360,7 +3362,7 @@ async function runExtraction(request: Request) {
 
     return NextResponse.json(
       {
-        ...(error instanceof Error && 'ocrStarted' in error ? {ocrStarted:error.ocrStarted,stage:'ocr-recognition',diagnostics:'diagnostics' in error?error.diagnostics:undefined} : {}),
+        ...(error instanceof Error && 'ocrStarted' in error ? {ocrStarted:error.ocrStarted,stage:'stage' in error?error.stage:'ocr-recognition',diagnostics:'diagnostics' in error?error.diagnostics:undefined} : {}),
         error:
           error instanceof Error
             ? error.message
