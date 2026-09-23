@@ -1,0 +1,26 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Structural authority safety cases. */
+const assert=require('node:assert/strict');
+const {localizeDocumentTotal}=require('../../src/app/lib/ocrV2/recognition/totalLocalization.ts');
+const {decideDocumentTotal}=require('../../src/app/lib/ocrV2/recognition/documentTotalAuthority.ts');
+const word=(text,left,top,width=80)=>({text,confidence:92,bounds:{left,top,width,height:20}});
+const model={sourceHash:'pixels',table:{supported:true,columns:[{type:'row_amount',semanticConfidence:'label-supported'}],rows:[{id:'a',bounds:{left:0,top:100,width:450,height:30},amountRegion:{left:320,top:100,width:100,height:30}},{id:'b',bounds:{left:0,top:160,width:450,height:30},amountRegion:{left:320,top:160,width:100,height:30}}]}};
+const page=words=>['native','gray'].map(variant=>({id:variant,variant,verified:true,sourceHash:'pixels',words}));
+const locate=words=>localizeDocumentTotal(model,page(words),12,500,400);
+const total=word('321.45',340,240);
+assert(locate([total]).finalField,'A unique aligned value');
+assert(locate([word('TOTAL',240,240),total]).finalField,'B adjacent label');
+assert(locate([word('TOTAL',20,20),total]).finalField,'C header label');
+assert.equal(locate([total,word('400.00',340,285)]).bounds,undefined,'D competing footer');
+assert.equal(locate([word('100.00',340,165)]).bounds,undefined,'E body amount');
+const subtotal=word('SUBTOTAL',220,215),subvalue=word('300.00',340,215),grand=word('GRAND TOTAL',180,265,130),grandvalue=word('321.45',340,265);
+assert.equal(locate([subtotal,subvalue,grand,grandvalue]).selected.bounds.top,265,'F semantic distinction');
+assert.equal(locate([]).bounds,undefined,'G no field');
+assert.equal(locate([word('300.00',50,240)]).bounds,undefined);
+assert.equal(locate([word('invoice',220,240),total]).bounds,undefined);
+assert.equal(localizeDocumentTotal(model,[{...page([total])[0],sourceHash:'other'}],12,500,400).bounds,undefined);
+const proof=locate([total]),layout={sourceWidth:500,sourceHeight:400,rows:model.table.rows,totalCandidateRegion:proof.bounds,totalLocalization:proof,diagnostics:{font:12}},evidence={sourceHash:'pixels',rows:[{cents:null},{cents:10000}]};
+const obs=variant=>({id:variant,variant,sourceHash:'pixels',scope:'document',field:'total',bounds:proof.bounds,confidence:94,money:[32145],words:[],raw:'321.45'});
+assert.equal(decideDocumentTotal(layout,evidence,[obs('native'),obs('contrast')]).cents,32145);
+assert.equal(decideDocumentTotal(layout,evidence,[obs('native')]).cents,null,'No single-pass structural authority');
+assert.equal(decideDocumentTotal(layout,{...evidence,rows:[{cents:10000},{cents:10000}]},[obs('native'),obs('contrast')]).cents,null,'Arithmetic only vetoes');
+console.log('PASS A–G total geometry, semantic distinction, source isolation, independent observation support, arithmetic veto');

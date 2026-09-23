@@ -6,6 +6,7 @@ import type { Bounds } from '../types.ts';
 import { inspectStructuralLines, type structuralLayout } from '../layout/generalized.ts';
 import { fieldVariant } from './index.ts';
 import { decideMoney, paymentMoney, type DocumentPaymentEvidence, type PaymentObservation } from './paymentEvidence.ts';
+import type { localizeDocumentTotal } from './totalLocalization.ts';
 
 type Layout = Awaited<ReturnType<typeof structuralLayout>>;
 type Label = { observationId: string; text: string; bounds: Bounds; confidence: number; variant: string; headerCents: number | null; valueBounds: Bounds | null };
@@ -43,7 +44,7 @@ export function totalLabels(observations: PaymentObservation[], layout: Layout):
     }));
 }
 
-export function decideDocumentTotal(layout: Layout, evidence: DocumentPaymentEvidence, observations: PaymentObservation[]) {
+export function decideDocumentTotal(layout: Layout & { totalLocalization?: ReturnType<typeof localizeDocumentTotal> }, evidence: DocumentPaymentEvidence, observations: PaymentObservation[]) {
     const start = performance.now();
     const scoped = observations.filter(o => o.sourceHash === evidence.sourceHash);
     const labels = totalLabels(scoped, layout), reliableLabels = labels.filter(l => l.confidence >= 40);
@@ -67,6 +68,10 @@ export function decideDocumentTotal(layout: Layout, evidence: DocumentPaymentEvi
     if (!geometry) reason = 'Footer candidate is not an isolated final amount-column field';
     else if (headerValues.length > 1) reason = 'Conflicting labeled header amounts';
     else if (sameRegionAuthority && (!headerValues.length || headerValues[0] === numeric.cents)) { cents = numeric.cents; reason = 'Explicit footer TOTAL labels and supported same-region value'; }
+    else if (layout.totalLocalization?.finalField && layout.totalLocalization.plausibleFields === 1 && numeric.cents !== null && !headerValues.some(v=>v!==numeric.cents)
+        && candidateRegion && layout.totalLocalization.selected && overlap(candidateRegion,layout.totalLocalization.selected.bounds)>=layout.totalLocalization.selected.bounds.width*layout.totalLocalization.selected.bounds.height*.8
+        && new Set(footer.filter(o=>o.confidence>=40&&o.money.length===1&&o.money[0]===numeric.cents).map(o=>o.variant)).size>=2
+        && layout.totalLocalization.selected?.observations.some(o=>o.cents===numeric.cents&&o.confidence>=85)) { cents=numeric.cents; reason='Unique final amount-column field corroborated by page and bounded field observations'; }
     else if (!reliableLabels.length) reason = 'No sufficiently reliable exact TOTAL label outside the body';
     else if (matches.length === 1) { cents = matches[0].cents; reason = 'Explicit header total agrees with independently supported isolated footer value'; }
     else if (!headerValues.length && repeatedLabel && numeric.cents !== null) { cents = numeric.cents; reason = 'Repeated explicit header TOTAL semantics plus supported final amount-column value'; }

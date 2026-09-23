@@ -9,6 +9,7 @@ import { EvidenceLedger } from './evidenceLedger.ts';
 import { fieldVariant } from './index.ts';
 import { decideMoney, paymentMoney, type PaymentObservation, type DocumentPaymentEvidence } from './paymentEvidence.ts';
 import { decideDocumentTotal } from './documentTotalAuthority.ts';
+import { localizeDocumentTotal } from './totalLocalization.ts';
 
 const hash = (b: Buffer) => createHash('sha256').update(b).digest('hex');
 const bottom = (b: Bounds) => b.top + b.height;
@@ -55,8 +56,9 @@ export async function recognizeSemanticMoney(image: Buffer, model: DocumentSeman
     && regions.every(r => Math.abs((l.left + l.width) * structure.scaleX - right(r.bounds!)) <= font * 2)
     && l.left * structure.scaleX >= Math.min(...regions.map(r => r.ownership!.left))) : [];
   const footer = footerCandidates.length === 1 ? footerCandidates[0] : null;
-  const totalBounds = footer ? { left: Math.max(0, Math.floor(footer.left * structure.scaleX - pad)), top: Math.max(last, Math.floor(footer.top * structure.scaleY - pad)),
-    width: Math.ceil(footer.width * structure.scaleX + pad * 2), height: Math.ceil(footer.height * structure.scaleY + pad * 2) } : undefined;
+  const totalLocalization = localizeDocumentTotal(model,page,font,meta.width!,meta.height!);
+  const totalBounds = totalLocalization.plausibleFields > 1 ? undefined : footer ? { left: Math.max(0, Math.floor(footer.left * structure.scaleX - pad)), top: Math.max(last, Math.floor(footer.top * structure.scaleY - pad)),
+    width: Math.ceil(footer.width * structure.scaleX + pad * 2), height: Math.ceil(footer.height * structure.scaleY + pad * 2) } : totalLocalization.bounds;
   const worker = await createWorker('eng', OEM.LSTM_ONLY, { logger: () => undefined });
   let passes = 0, reused = 0;
   const observations: PaymentObservation[] = [];
@@ -107,7 +109,7 @@ export async function recognizeSemanticMoney(image: Buffer, model: DocumentSeman
       headerEvidence: { observations: headers, checkCandidates: [], dateCandidates: [], payorCandidates: [] }, rows,
       totalEvidence: { ...decideMoney(totals), authority: 'unknown', labelEvidence: [], observations: totals, belowLastRow: true },
       timings: { rowAmountsMs: 0, footerMs: 0, headerMs: 0, completeMs: performance.now()-started, passCount: passes } };
-    const layout: Layout = { version: 'structural-layout-experiment-1', coordinateSpace: 'normalized-document-color', sourceWidth: meta.width!, sourceHeight: meta.height!,
+    const layout: Layout & { totalLocalization: ReturnType<typeof localizeDocumentTotal> } = { totalLocalization, version: 'structural-layout-experiment-1', coordinateSpace: 'normalized-document-color', sourceWidth: meta.width!, sourceHeight: meta.height!,
       rows: model.table.rows.map((r,i) => ({ id: r.id, bounds: r.bounds, amountRegion: regions[i].bounds ?? undefined, invoiceRegion: r.invoiceRegion, baseline: { intercept: bottom(r.bounds), slope: 0 } })),
       headerRegion: model.table.headerPosition ?? undefined, totalCandidateRegion: totalBounds,
       diagnostics: { font: structure.font, slope: structure.slope, headerCandidates: 0, threshold: structure.threshold, durationMs: 0, warnings: [] } };
@@ -118,6 +120,6 @@ export async function recognizeSemanticMoney(image: Buffer, model: DocumentSeman
       else if (authority.subtotal !== null && authority.subtotal !== model.total.cents) { authority.cents = null; authority.reason = 'Observed row subtotal conflicts with established total'; }
       else if (authority.cents === null && !authority.headerValues.some(v => v !== model.total.cents) && !authority.supportedFooter.some(v => v.cents !== model.total.cents)) { authority.cents = model.total.cents; authority.reason = 'Preserved established semantic total authority'; }
     }
-    return { version: 'semantic-money-1', regions, totalBounds, footerCandidateCount: footerCandidates.length, rows, authority, observations, reused, passes, durationMs: performance.now()-started };
+    return { version: 'semantic-money-1', totalLocalization, regions, totalBounds, footerCandidateCount: footerCandidates.length, rows, authority, observations, reused, passes, durationMs: performance.now()-started };
   } finally { await worker.terminate(); }
 }
