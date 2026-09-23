@@ -17,7 +17,12 @@ export async function waitForLegacyJob(input:{attemptId:string;documentType:stri
    if(response.status===401)throw Error('Sign in to resume your saved scan.');
    if(response.ok){
     const job=await response.json();
-    if(job.status==='review'||job.status==='failed')return new Response(JSON.stringify(job.response??{error:job.error}),{status:job.httpStatus??500,headers:{'Content-Type':'application/json','x-ocr-enqueue-ms':String(enqueueMs),'x-ocr-job-timings':JSON.stringify(job.timings??{})}});
+    if(job.status==='review'||job.status==='failed'){
+     const result=job.response??{error:job.error};
+     // Keep network timing with the durable review payload, not only a transient UI header.
+     const evidence={...result,diagnostics:{...result.diagnostics,backgroundJob:{timings:job.timings??{},enqueueRequestMs:enqueueMs}}};
+     return new Response(JSON.stringify(evidence),{status:job.httpStatus??500,headers:{'Content-Type':'application/json','x-ocr-enqueue-ms':String(enqueueMs),'x-ocr-job-timings':JSON.stringify(job.timings??{})}});
+    }
     status(job.status==='queued'?'Capture saved — waiting for processing…':'Processing remittance… You can leave and return to this saved scan.');
    }else status('Capture saved — reconnecting to processing status…');
   }catch{status('Capture saved — reconnecting to processing status…');}

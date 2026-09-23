@@ -22,7 +22,7 @@ async function clientTest(){
  const mockedFetch=async(url,options)=>{calls.push({url,options});if(options.method==='POST')return Response.json({status:'queued'},{status:202});polls++;elapsed+=2500;if(polls===2)throw Error('network interrupted');return Response.json(polls<30?{status:'running'}:{status:'review',httpStatus:200,response:{evidence:{rows:5}}});};
  new Function('require','module','exports','fetch','setTimeout',ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(()=>({supabase:{auth:{getSession:async()=>({data:{session:{access_token:'test'}}})}}}),mod,mod.exports,mockedFetch,fn=>{fn();});
  const response=await mod.exports.waitForLegacyJob({attemptId:crypto.randomUUID(),documentType:'remittance_stub',retryStrategy:'standard'},()=>true,()=>{});
- assert(elapsed>60000);assert.equal(calls.filter(c=>c.options.method==='POST').length,1);assert.equal((await response.json()).evidence.rows,5);assert(calls.filter(c=>c.options.method==='GET').every(c=>!c.options.body));
+ assert(elapsed>60000);assert.equal(calls.filter(c=>c.options.method==='POST').length,1);const result=await response.json();assert.equal(result.evidence.rows,5);assert(Number.isFinite(result.diagnostics.backgroundJob.enqueueRequestMs));assert(calls.filter(c=>c.options.method==='GET').every(c=>!c.options.body));
  // Reload resumes the same identity; the database contract makes POST idempotent.
  const id=calls[0].options.body;await mod.exports.waitForLegacyJob(JSON.parse(id),()=>true,()=>{});assert.equal(calls.filter(c=>c.options.method==='POST')[1].options.body,id);
 }
