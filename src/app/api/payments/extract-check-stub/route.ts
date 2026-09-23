@@ -3,6 +3,7 @@ import { observeOcr, withOcrObservations, ocrCacheStats } from "@/app/lib/ocrObs
 import { prepareFaintRegions, faintVariantImage, faintProvenance, recognizeFaintVariants, FAINT_VARIANTS, type FaintPreparation, type FaintVariant } from "@/app/lib/ocrFaint";
 import { probeOrientation } from "@/app/lib/ocrOrientationServer";
 import { orientLegacyStill } from "@/app/lib/ocrLegacyOrientation";
+import { legacyBootstrapImage, legacyRecognitionDeadline, legacyWorkerSession } from "@/app/lib/ocrLegacyPass";
 import { opticalScore } from "@/app/lib/ocrOptical";
 import { checkpointOcr } from "@/app/lib/ocrHistoryServer";
 import { createRemittanceEvidence, selectObservedHeader } from "@/app/lib/remittanceAttempt";
@@ -2074,18 +2075,16 @@ async function recognizeBestText(
   const markStage = (stage: string) => {
     stageTimings[stage] = Date.now() - startedAt;
   };
-  const oriented = await orientLegacyStill(originalImage);
-  markStage("orientation-selected");
-  const passTimings: Array<{stage:string;variant:string;rotation:number;sourceRotation:number;durationMs:number;startedAt:string;status:string;error?:string}> = [];
-  const worker = await Tesseract.createWorker("eng", Tesseract.OEM.LSTM_ONLY, {
-    cachePath: "/tmp/tesseract-cache",
-    gzip: true,
-    logger: () => undefined,
-  });
-  markStage("worker-created");
-  let timeout: ReturnType<typeof setTimeout> | null = null;
-
+  const lifecycle = legacyWorkerSession(()=>Tesseract.createWorker("eng", Tesseract.OEM.LSTM_ONLY, {
+    cachePath: "/tmp/tesseract-cache", gzip: true, logger: () => undefined,
+  }));
+  const detailedCosts={worker:lifecycle.metrics,sourcePreparationMs:0,regionPreparationMs:0,faintPreparationMs:0,totalMs:0};
   try {
+  const oriented = await orientLegacyStill(originalImage,lifecycle.direction);
+  markStage("orientation-selected");
+  const passTimings: Array<{stage:string;variant:string;rotation:number;sourceRotation:number;durationMs:number;startedAt:string;status:string;error?:string;preparationMs:number;recognitionMs:number;extractionMs:number;workingWidth?:number;workingHeight?:number}> = [];
+  const worker = await lifecycle.acquire();
+  markStage("worker-created");
     await worker.setParameters({
       preserve_interword_spaces: "1",
       user_defined_dpi: "300",
@@ -2094,14 +2093,18 @@ async function recognizeBestText(
     const attempts: OcrAttempt[] = [];
     const evidenceProgress: Array<{stage:string;completedAtMs:number;score:ReturnType<typeof opticalScore>;newTokens:string[]}> = [];
     const observedTokens = new Set<string>();
+    const sourcePreparationStart=performance.now();
     const sources = await buildOcrSources(oriented.image, documentType === "remittance_stub");
     const originalMetadata = await imageMetadata(originalImage);
     sources.original = {width:originalMetadata.width,height:originalMetadata.height,format:originalMetadata.format,orientation:originalMetadata.orientation};
+    detailedCosts.sourcePreparationMs=performance.now()-sourcePreparationStart;
     markStage("document-normalized");
+    const regionPreparationStart=performance.now();
     const regionSources = await buildRegionSources(
       sources.document.image,
       documentType
     );
+    detailedCosts.regionPreparationMs=performance.now()-regionPreparationStart;
     markStage("regions-built");
     const specs = ocrAttemptSpecs(Tesseract.PSM, retryStrategy);
     const fullDocumentSource = regionSources[0] ?? {
@@ -2154,43 +2157,31 @@ async function recognizeBestText(
           return;
         }
 
+        const preparationStart=performance.now();
         await worker.setParameters({
           tessedit_pageseg_mode: spec.pageMode.value,
         });
 
         const attemptStage = `${source.name}/${spec.variant}/${spec.pageMode.name}/${rotation}`;
-        const image = source.prepared && FAINT_VARIANTS.includes(spec.variant as FaintVariant)
+        const sourceImage = source.prepared && FAINT_VARIANTS.includes(spec.variant as FaintVariant)
           ? faintVariantImage(source.prepared, spec.variant as FaintVariant)
           : await preprocessForOcr(source.image, rotation, spec.variant);
+        const image=await legacyBootstrapImage(sourceImage,passTimings.length===0 && source.name==="full-document" && spec.variant==="native-color" && rotation===0);
         const processedMetadata = await imageMetadata(image);
+        const passCosts={preparationMs:performance.now()-preparationStart,recognitionMs:0,extractionMs:0,workingWidth:processedMetadata.width,workingHeight:processedMetadata.height};
         markStage(`preprocessed:${attemptStage}`);
         const recognizeStartedAt = Date.now();
-        const recognition = observeOcr(worker, image, spec.pageMode.name);
+        const recognizeStart=performance.now();
         let result;
 
         try {
-          result = await Promise.race([
-            recognition,
-            new Promise<never>((_, reject) => {
-              timeout = setTimeout(
-                () =>
-                  reject(
-                    new Error(
-                      `OCR timed out during ${source.name}. The saved photo can be retried or reviewed manually.`
-                    )
-                  ),
-                OCR_ATTEMPT_TIMEOUT_MS
-              );
-            }),
-          ]);
+          result = await legacyRecognitionDeadline(()=>observeOcr(worker,image,spec.pageMode.name),OCR_ATTEMPT_TIMEOUT_MS,
+            `OCR timed out during ${source.name}. The saved photo can be retried or reviewed manually.`);
         } catch (error) {
-          if (timeout) {
-            clearTimeout(timeout);
-            timeout = null;
-          }
+          passCosts.recognitionMs=performance.now()-recognizeStart;
 
           markStage(`timeout:${attemptStage}`);
-          passTimings.push({stage:source.name,variant:spec.variant,rotation,sourceRotation:oriented.evidence.rotation,startedAt:new Date(recognizeStartedAt).toISOString(),durationMs:Date.now()-recognizeStartedAt,status:error instanceof Error&&error.message.startsWith('OCR timed out')?'timed-out':'errored',error:error instanceof Error?error.message:String(error)});
+          passTimings.push({...passCosts,stage:source.name,variant:spec.variant,rotation,sourceRotation:oriented.evidence.rotation,startedAt:new Date(recognizeStartedAt).toISOString(),durationMs:Date.now()-recognizeStartedAt,status:error instanceof Error&&error.message.startsWith('OCR timed out')?'timed-out':'errored',error:error instanceof Error?error.message:String(error)});
           recognitionStopped = true;
 
           if (attempts.length > 0) {
@@ -2198,11 +2189,14 @@ async function recognizeBestText(
           }
 
           throw Object.assign(error instanceof Error ? error : new Error(String(error)), {
-            ocrStarted:true, stage:'ocr-recognition', diagnostics:{stageTimings,passTimings,orientation:oriented.evidence,orientationProbeStarted:true,detailedOcrStarted:true,completedObservations:attempts,timeoutMs:OCR_ATTEMPT_TIMEOUT_MS}
+            ocrStarted:true, stage:'ocr-recognition', diagnostics:{stageTimings,passTimings,detailedCosts,orientation:oriented.evidence,orientationProbeStarted:true,detailedOcrStarted:true,completedObservations:attempts,timeoutMs:OCR_ATTEMPT_TIMEOUT_MS}
           });
         }
 
-        passTimings.push({stage:source.name,variant:spec.variant,rotation,sourceRotation:oriented.evidence.rotation,startedAt:new Date(recognizeStartedAt).toISOString(),durationMs:Date.now()-recognizeStartedAt,status:'completed'});
+        passCosts.recognitionMs=performance.now()-recognizeStart;
+        const completedPass={...passCosts,stage:source.name,variant:spec.variant,rotation,sourceRotation:oriented.evidence.rotation,startedAt:new Date(recognizeStartedAt).toISOString(),durationMs:Date.now()-recognizeStartedAt,status:'completed'};
+        passTimings.push(completedPass);
+        const extractionStart=performance.now();
         const text = result.data.text.trim();
         const confidence =
           typeof result.data.confidence === "number" ? result.data.confidence : 0;
@@ -2229,16 +2223,13 @@ async function recognizeBestText(
           preparation: source.prepared ? faintProvenance(source.prepared) : undefined,
         };
 
+        completedPass.extractionMs=performance.now()-extractionStart;
         attempts.push(attempt);
         const tokens = text.match(/\b(?:INV[^\s]*|\d[\d,.]*|TOTAL|CHECK)\b/gi) ?? [];
         const newTokens=[...new Set(tokens)].filter(t=>!observedTokens.has(t));
         newTokens.forEach(t=>observedTokens.add(t));
         evidenceProgress.push({stage:attemptStage,completedAtMs:Date.now()-startedAt,score:opticalScore(text,confidence),newTokens});
 
-        if (timeout) {
-          clearTimeout(timeout);
-          timeout = null;
-        }
         markStage(`recognized:${attemptStage}`);
 
         if (
@@ -2252,7 +2243,9 @@ async function recognizeBestText(
     }
     }
 
+    const faintPreparationStart=performance.now();
     const faint = await prepareFaintRegions(fullDocumentSource.image);
+    detailedCosts.faintPreparationMs=performance.now()-faintPreparationStart;
     markStage('faint-regions-prepared');
     const faintSource: OcrImageSource = {name:fullDocumentSource.name,image:faint.color,width:faint.bounds.width,height:faint.bounds.height,bounds:faint.bounds,prepared:faint};
     await runAttemptsForSource(faintSource, FAINT_VARIANTS.map(variant=>({variant,pageMode:{name:"sparse-text",value:Tesseract.PSM.SPARSE_TEXT}})), [0]);
@@ -2718,6 +2711,7 @@ async function recognizeBestText(
         rowAssignments,
         stageTimings,
         passTimings,
+        detailedCosts,
         orientation: oriented.evidence,
         orientationProbeStarted: true,
         detailedOcrStarted: passTimings.length > 0,
@@ -2767,10 +2761,8 @@ async function recognizeBestText(
       },
     };
   } finally {
-    if (timeout) {
-      clearTimeout(timeout);
-    }
-    await worker.terminate().catch(() => undefined);
+    await lifecycle.close();
+    detailedCosts.totalMs=Date.now()-startedAt;
   }
 }
 

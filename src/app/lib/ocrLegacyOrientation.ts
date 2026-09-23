@@ -1,14 +1,15 @@
 import sharp from 'sharp';
 import { probeLegacyDirection } from './ocrLegacyDirection.ts';
+import type { DirectionWorker } from './ocrDocumentDirection.ts';
 
 /** Use independent bounded legacy direction candidates, before detailed legacy OCR.
  * The probe is disposable; the authoritative pixels are only losslessly rotated. */
-export async function orientLegacyStill(input: Buffer) {
+export async function orientLegacyStill(input: Buffer, factory?:()=>Promise<DirectionWorker>) {
   const start = Date.now();
   const metadata = await sharp(input).metadata();
   const normalized = await sharp(input).rotate().flatten({ background: 'white' }).png().toBuffer();
   const normalizationMs=Date.now()-start;
-  const direction = await probeLegacyDirection(normalized);
+  const direction = await probeLegacyDirection(normalized,factory);
   if (!direction.certain || direction.rotation === null) throw Object.assign(new Error('Document orientation remains uncertain; review the saved photo.'), {
     ocrStarted: direction.observations.some(o => o.recognitionStarted), stage: 'orientation-probe',
     diagnostics: { orientation: direction, orientationProbeStarted: true, detailedOcrStarted: false, passTimings: [] },

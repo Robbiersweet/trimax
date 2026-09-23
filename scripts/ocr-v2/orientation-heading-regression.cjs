@@ -52,6 +52,12 @@ function route(mock) {
   const result=await response.json();const report={httpStatus:response.status,durationMs:performance.now()-start,sourceHash:require('node:crypto').createHash('sha256').update(bytes).digest('hex'),result};
   fs.writeFileSync(process.argv[3],JSON.stringify(report,null,2));
   assert.equal(result.diagnostics.orientation.rotation,270);assert.equal(result.diagnostics.passTimings[0].sourceRotation,270);assert.equal(result.diagnostics.passTimings[0].rotation,0);
+  assert.equal(result.diagnostics.passTimings[0].status,'completed');assert.equal(result.diagnostics.detailedCosts.worker.created,1);assert.equal(result.diagnostics.detailedCosts.worker.reused,true);
+  // Optical truth for this opt-in retained photograph: all five body bands,
+  // not a header/total substituted for a missing body row. Scoring only.
+  const physicalCenters=[1117,1177,1244,1305,1367];
+  assert.equal(result.diagnostics.geometricRows.length,physicalCenters.length);
+  result.diagnostics.geometricRows.forEach((row,i)=>assert(Math.abs(row.y-physicalCenters[i])<25,'Retained physical row geometry must survive bootstrap resizing'));
   if(result.diagnostics.passTimings.some(p=>p.status==='timed-out')&&result.diagnostics.passTimings.some(p=>p.status==='completed')){assert.equal(response.status,200);assert(result.rawText);assert(result.diagnostics.candidateSummaries.length);}
   console.log(JSON.stringify({gate:'PASS retained first pass upright',status:response.status,durationMs:report.durationMs,passes:result.diagnostics.passTimings,orientation:result.diagnostics.orientation}));
  }
