@@ -31,5 +31,13 @@ export function legacyWorkerSession(make:()=>Promise<OpticalWorker>) {
     recognize:async(...args:Parameters<Worker['recognize']>)=>{lease.pending=true;try{return await w.recognize(...args);}catch(e){lease.failed=true;throw e;}finally{lease.pending=false;}},
     terminate:async()=>{if(state===lease&&(lease.pending||lease.failed))await retire();return {jobId:'legacy-orientation-release',data:null};},
   };};
-  return {acquire,direction,close,metrics};
+  return {acquire,direction,retire,close,metrics};
+}
+
+/** A failed supplemental observation cannot invalidate completed observations.
+ * Retire its worker before targeted recovery; never reuse an in-flight worker. */
+export async function legacyPassFailure(completedCount:number, retire:()=>Promise<void>, error:unknown) {
+  await retire();
+  if (completedCount === 0) throw error;
+  return 'supplemental-unavailable' as const;
 }

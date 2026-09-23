@@ -3,7 +3,7 @@ import { observeOcr, withOcrObservations, ocrCacheStats } from "@/app/lib/ocrObs
 import { prepareFaintRegions, faintVariantImage, faintProvenance, recognizeFaintVariants, FAINT_VARIANTS, type FaintPreparation, type FaintVariant } from "@/app/lib/ocrFaint";
 import { probeOrientation } from "@/app/lib/ocrOrientationServer";
 import { orientLegacyStill } from "@/app/lib/ocrLegacyOrientation";
-import { legacyBootstrapImage, legacyRecognitionDeadline, legacyWorkerSession } from "@/app/lib/ocrLegacyPass";
+import { legacyBootstrapImage, legacyRecognitionDeadline, legacyWorkerSession, legacyPassFailure } from "@/app/lib/ocrLegacyPass";
 import { opticalScore } from "@/app/lib/ocrOptical";
 import { checkpointOcr } from "@/app/lib/ocrHistoryServer";
 import { createRemittanceEvidence, selectObservedHeader } from "@/app/lib/remittanceAttempt";
@@ -2082,8 +2082,8 @@ async function recognizeBestText(
   try {
   const oriented = await orientLegacyStill(originalImage,lifecycle.direction);
   markStage("orientation-selected");
-  const passTimings: Array<{stage:string;variant:string;rotation:number;sourceRotation:number;durationMs:number;startedAt:string;status:string;error?:string;preparationMs:number;recognitionMs:number;extractionMs:number;workingWidth?:number;workingHeight?:number}> = [];
-  const worker = await lifecycle.acquire();
+  const passTimings: Array<{stage:string;variant:string;rotation:number;sourceRotation:number;durationMs:number;startedAt:string;status:string;error?:string;preparationMs:number;recognitionMs:number;extractionMs:number;workingWidth?:number;workingHeight?:number;workerMs?:number;cleanupMs?:number;role?:string;completedEvidencePreserved?:boolean}> = [];
+  let worker = await lifecycle.acquire();
   markStage("worker-created");
     await worker.setParameters({
       preserve_interword_spaces: "1",
@@ -2157,8 +2157,22 @@ async function recognizeBestText(
           return;
         }
 
+        const workerStart=performance.now();
+        try { worker = await lifecycle.acquire(); }
+        catch (error) {
+          if (!attempts.length) throw error;
+          recognitionStopped = true;
+          passTimings.push({stage:source.name,variant:spec.variant,rotation,sourceRotation:oriented.evidence.rotation,
+            startedAt:new Date().toISOString(),durationMs:0,status:'worker-unavailable',
+            error:error instanceof Error?error.message:String(error),workerMs:performance.now()-workerStart,
+            preparationMs:0,recognitionMs:0,extractionMs:0,role:'supplemental',completedEvidencePreserved:true});
+          return;
+        }
+        const workerMs=performance.now()-workerStart;
         const preparationStart=performance.now();
         await worker.setParameters({
+          preserve_interword_spaces: "1",
+          user_defined_dpi: "300",
           tessedit_pageseg_mode: spec.pageMode.value,
         });
 
@@ -2168,7 +2182,7 @@ async function recognizeBestText(
           : await preprocessForOcr(source.image, rotation, spec.variant);
         const image=await legacyBootstrapImage(sourceImage,passTimings.length===0 && source.name==="full-document" && spec.variant==="native-color" && rotation===0);
         const processedMetadata = await imageMetadata(image);
-        const passCosts={preparationMs:performance.now()-preparationStart,recognitionMs:0,extractionMs:0,workingWidth:processedMetadata.width,workingHeight:processedMetadata.height};
+        const passCosts={workerMs,cleanupMs:0,role:attempts.length ? "supplemental" : "bootstrap",completedEvidencePreserved:attempts.length>0,preparationMs:performance.now()-preparationStart,recognitionMs:0,extractionMs:0,workingWidth:processedMetadata.width,workingHeight:processedMetadata.height};
         markStage(`preprocessed:${attemptStage}`);
         const recognizeStartedAt = Date.now();
         const recognizeStart=performance.now();
@@ -2182,9 +2196,14 @@ async function recognizeBestText(
 
           markStage(`timeout:${attemptStage}`);
           passTimings.push({...passCosts,stage:source.name,variant:spec.variant,rotation,sourceRotation:oriented.evidence.rotation,startedAt:new Date(recognizeStartedAt).toISOString(),durationMs:Date.now()-recognizeStartedAt,status:error instanceof Error&&error.message.startsWith('OCR timed out')?'timed-out':'errored',error:error instanceof Error?error.message:String(error)});
-          recognitionStopped = true;
+          const cleanupStart=performance.now();
+          try { await legacyPassFailure(attempts.length, lifecycle.retire, error); }
+          catch { recognitionStopped = true; }
+          passCosts.cleanupMs=performance.now()-cleanupStart;
+          Object.assign(passTimings[passTimings.length-1],{cleanupMs:passCosts.cleanupMs,completedEvidencePreserved:attempts.length>0});
 
           if (attempts.length > 0) {
+            // Stop this source sweep, then recover only unresolved regions.
             return;
           }
 
@@ -2527,7 +2546,10 @@ async function recognizeBestText(
           break;
         }
 
+        worker = await lifecycle.acquire();
         await worker.setParameters({
+          preserve_interword_spaces: "1",
+          user_defined_dpi: "300",
           tessedit_pageseg_mode: spec.pageMode.value,
         });
 

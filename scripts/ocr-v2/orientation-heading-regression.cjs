@@ -25,7 +25,7 @@ function route(mock) {
   let source=fs.readFileSync(file,'utf8');if(file.endsWith('route.ts'))source+='\nexports.recognize=recognizeBestText;';
   const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,esModuleInterop:true}}).outputText;
   function req(spec){
-   if(mock&&spec==='tesseract.js')return {OEM:{LSTM_ONLY:1},PSM:{SPARSE_TEXT:11},createWorker:async()=>({setParameters:async()=>{},recognize:()=>{mock.started=true;return new Promise(()=>{});},terminate:async()=>{mock.terminated=true;}})};
+   if(mock&&spec==='tesseract.js')return {OEM:{LSTM_ONLY:1},PSM:{SPARSE_TEXT:11},createWorker:async()=>({setParameters:async()=>{},recognize:()=>{mock.started=true;mock.calls=(mock.calls||0)+1;if(mock.supplemental && mock.calls!==2)return Promise.resolve({data:{text:'PRESERVED FIRST OBSERVATION INV-1234',confidence:50,blocks:[]}});return new Promise(r=>{mock.late=r;});},terminate:async()=>{mock.terminated=true;}})};
    if(mock&&spec.includes('ocrLegacyOrientation'))return {orientLegacyStill:async image=>{mock.oriented=true;return {image,evidence:{rotation:270,certain:true}};}};
    if(!spec.startsWith('.')&&!spec.startsWith('@/'))return require(spec);
    const base=spec.startsWith('@/')?path.resolve('src',spec.slice(2)):path.resolve(path.dirname(file),spec);
@@ -44,6 +44,17 @@ function route(mock) {
  });assert(mock.terminated);
  const response=await route({}).POST(new Request('http://localhost/api/payments/extract-check-stub',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({imageDataUrl:'data:image/png;base64,'+image.toString('base64'),documentType:'remittance_stub'})}));
  const data=await response.json();assert.equal(response.status,422);assert.equal(data.ocrStarted,true);assert.equal(data.stage,'ocr-recognition');assert(data.diagnostics.passTimings.length);assert(!data.error.includes('brighter'));
+ const supplemental={supplemental:true};
+ const continued=await route(supplemental).recognize(image,'remittance_stub','standard');
+ assert(continued.diagnostics.passTimings[0].status==='completed');
+ assert(continued.diagnostics.passTimings[1].status==='timed-out');
+ assert(continued.diagnostics.passTimings[1].completedEvidencePreserved);
+ assert(continued.diagnostics.passTimings.slice(2).some(p=>p.status==='completed'),'Recovery must run after supplemental timeout');
+ const before=JSON.stringify(continued);supplemental.late({data:{text:'STALE LATE RESULT',confidence:100,blocks:[]}});await new Promise(r=>setImmediate(r));
+ assert.equal(JSON.stringify(continued),before,'Late timed-out result cannot overwrite returned evidence');
+ assert(before.includes('PRESERVED FIRST OBSERVATION'));
+ assert(supplemental.terminated);
+ console.log('PASS completed first observation survives optional timeout, worker retired, recovery resumes, late evidence ignored');
  console.log('PASS sloped/flat header, incompatible/neighbor exclusion, independent support, truthful diagnostics, real timer/error propagation');
  if(process.argv[2]){
   for(const file of process.argv.slice(2,4))assert(path.relative(process.cwd(),path.resolve(file)).startsWith('..'),'Retained photo and optical diagnostics must stay outside repository');
@@ -52,7 +63,7 @@ function route(mock) {
   const result=await response.json();const report={httpStatus:response.status,durationMs:performance.now()-start,sourceHash:require('node:crypto').createHash('sha256').update(bytes).digest('hex'),result};
   fs.writeFileSync(process.argv[3],JSON.stringify(report,null,2));
   assert.equal(result.diagnostics.orientation.rotation,270);assert.equal(result.diagnostics.passTimings[0].sourceRotation,270);assert.equal(result.diagnostics.passTimings[0].rotation,0);
-  assert.equal(result.diagnostics.passTimings[0].status,'completed');assert.equal(result.diagnostics.detailedCosts.worker.created,1);assert.equal(result.diagnostics.detailedCosts.worker.reused,true);
+  assert.equal(result.diagnostics.passTimings[0].status,'completed');assert(result.diagnostics.detailedCosts.worker.created>=1);assert.equal(result.diagnostics.detailedCosts.worker.reused,true);
   // Optical truth for this opt-in retained photograph: all five body bands,
   // not a header/total substituted for a missing body row. Scoring only.
   const physicalCenters=[1117,1177,1244,1305,1367];
