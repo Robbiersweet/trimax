@@ -1696,10 +1696,8 @@ export default function BatchInvoicePayments({
       setActiveRemittanceAttempt(updated);
       setOcrReconciliationVerified(false);
       const count=evidence.physicalRows.filter(r=>r.amountCandidates.some(a=>a.selected)).length;
-      setSharedMoneyStatus(`${count}/${evidence.physicalRows.length} row amounts supported. ${evidence.headerEvidence.documentTotal?.payable?'Document total supported.':'Document total still needs review.'} Review invoice selections before applying any payment.`);
-      const revised=finishScan(history,updated,'review',history.durationMs??0,['Shared visual monetary evidence reviewed; existing payment checks remain required.']);
-      latestScan.current=revised;
-      await saveScan({businessId,phase:2,summary:revised,payload:{...payload,attempt:updated,sharedMonetaryEvidence:shared}});
+      setSharedMoneyStatus(`${count}/${evidence.physicalRows.length} row amounts supported. ${evidence.headerEvidence.documentTotal?.payable?'Document total supported.':'Document total still needs review.'} Original scan history is preserved. Review invoice selections before applying any payment.`);
+      // Terminal scans remain immutable; the paired diagnostics retain the shared packet.
     }catch(error){if(version===ocrAttemptVersion.current)setSharedMoneyStatus(error instanceof Error?error.message:String(error));}
     finally{if(version===ocrAttemptVersion.current)setSharedMoneyLoading(false);}
   }
