@@ -11,7 +11,7 @@ async function workerTest(){
  // The processor has no HTTP request or browser owner; arbitrarily delayed completion is valid.
  if(process.argv.includes("--long")){const start=performance.now();await new Promise(r=>setTimeout(r,65000));assert(performance.now()-start>=65000);console.log("PASS real wall-clock background lifetime exceeded 65 seconds");}
  release();await running;
- const done=calls.find(c=>c.args.p_stage==='complete');assert.equal(done.args.p_status,200);assert.equal(done.args.p_payload.optical,undefined);assert.deepEqual(done.args.p_payload.evidence,{unchanged:true});
+ const done=calls.find(c=>c.args.p_stage==='complete');assert.equal(done.args.p_status,200);assert.equal(done.args.p_payload.optical,undefined);assert.equal(done.args.p_payload.rowsDetected,1);assert(done.args.p_payload.evidenceReference);
  assert(calls.every(c=>['trimax_claim_ocr_legacy','trimax_update_ocr_legacy'].includes(c.name)),'No payment or shadow writes');
  calls.length=0;engine.route.POST=async()=>{throw Error('Injected OCR failure');};await runJob({},rpc,engine);assert.equal(calls.find(c=>c.args.p_stage==='failed').args.p_payload.error,'Injected OCR failure');
  calls.length=0;job.source_hash='0'.repeat(64);await runJob({},rpc,engine);assert.match(calls.find(c=>c.args.p_stage==='failed').args.p_payload.error,/hash mismatch/);

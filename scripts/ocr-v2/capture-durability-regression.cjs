@@ -6,8 +6,12 @@ global.IS_REACT_ACT_ENVIRONMENT=true;
 function load(file,dependencies){const exports={};new Function('require','exports',ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText)(name=>dependencies[name]??require(name),exports);return exports;}
 (async()=>{
  const calls=[];let failure=null;
- const transport=load('src/app/lib/ocrCanonicalClient.ts',{'./supabase':{supabase:{rpc:async(name,args)=>{calls.push({name,args});return {data:name==='trimax_store_ocr_capture'?{reference:'a',sha256:args.p_hash,storedBytes:5,shadowQueued:false}:{queued:true},error:failure};}}},'./ocrCanonical':require('../../src/app/lib/ocrCanonical.ts')});
- const capture=await transport.storeCanonicalCapture({attemptId:'a',imageDataUrl:'data:image/png;base64,aW1hZ2U=',metadata:{},snapshot:{invoices:[],activities:[]},captureTimings:{}});
+ const canonical=require('../../src/app/lib/ocrCanonical.ts');
+ const objects=load('src/app/lib/ocrCanonicalObject.ts',{'./ocrCanonical':canonical});
+ const business='11111111-1111-1111-1111-111111111111',attempt='22222222-2222-2222-2222-222222222222';
+ const transport=load('src/app/lib/ocrCanonicalClient.ts',{'./ocrCanonicalObject':objects,'./supabase':{supabase:{from:()=>({select:()=>({eq:()=>({single:async()=>({data:{business_id:business}})})})}),storage:{from:()=>({upload:async()=>({error:null})})},rpc:async(name,args)=>{calls.push({name,args});return {data:name==='trimax_store_ocr_capture'?{reference:'a',sha256:args.p_hash,storedBytes:5,shadowQueued:false}:{queued:true},error:failure};}}},'./ocrCanonical':canonical});
+ const capture=await transport.storeCanonicalCapture({attemptId:attempt,imageDataUrl:'data:image/png;base64,aW1hZ2U=',metadata:{},snapshot:{invoices:[],activities:[]},captureTimings:{}});
+ assert.equal(calls[0].args.p_image,null);assert.equal(calls[0].args.p_snapshot,null);
  assert.equal(calls.length,1);assert.equal(calls[0].name,'trimax_store_ocr_capture');assert.equal(capture.reference,'a');
  await transport.resumeCaptureHandoff('a');assert.deepEqual(calls[1],{name:'trimax_resume_ocr_handoff',args:{p_attempt:'a'}});
  failure={message:'canceling statement due to statement timeout',code:'57014'};

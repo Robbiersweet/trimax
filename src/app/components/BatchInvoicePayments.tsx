@@ -3594,7 +3594,7 @@ export default function BatchInvoicePayments({
       history.captureState='processing';
       setCheckOcrMessage('Processing remittance...');
       // Detached, independent commit. Shadow downtime must never delay or fail legacy OCR.
-      if(shadowSnapshot) void resumeCaptureHandoff(attemptId).then(result=>{
+      if(shadowSnapshot) void resumeCaptureHandoff(attemptId,shadowSnapshot,shadowCaptureTimings).then(result=>{
         if(canonical)canonical.shadowQueued=result.queued;
       }).catch(()=>{ if(attemptVersion===ocrAttemptVersion.current)setScanSavedStatus('Capture saved — shadow processing pending. Retry from Recent Scans.'); });
       appendCameraStage("OCR started");

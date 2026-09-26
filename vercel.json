@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/ocr-retention",
+      "schedule": "45 13 * * *"
+    },
+    {
       "path": "/api/recurring-invoices/run",
       "schedule": "15 14 * * *"
     },

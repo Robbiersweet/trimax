@@ -6,7 +6,7 @@ import { orientLegacyStill } from "@/app/lib/ocrLegacyOrientation";
 import { legacyBootstrapImage, legacyRecognitionDeadline, legacyWorkerSession, legacyPassFailure } from "@/app/lib/ocrLegacyPass";
 import { opticalScore } from "@/app/lib/ocrOptical";
 import { checkpointOcr } from "@/app/lib/ocrHistoryServer";
-import { legacyProgress } from "@/app/lib/ocrLegacyProgress";
+import { legacyProgress, completedLegacyRecognition } from "@/app/lib/ocrLegacyProgress";
 import { createRemittanceEvidence, selectObservedHeader } from "@/app/lib/remittanceAttempt";
 import { rowAssignment, normalizeInvoiceColumnToken, rankSourceEvaluations, rankRowAmounts } from "@/app/lib/ocrStructure";
 import { NextResponse } from "next/server";
@@ -3265,13 +3265,13 @@ async function runExtraction(request: Request) {
 
   try {
     const originalImage = dataUrlToBuffer(imageDataUrl as string);
-    const ocrResult = await recognizeBestText(
+    const ocrResult = completedLegacyRecognition<Awaited<ReturnType<typeof recognizeBestText>>>() ?? await recognizeBestText(
       originalImage,
       documentType,
       retryStrategy
     );
     const rawText = ocrResult.text;
-    await legacyProgress('ocr_complete', { rawPasses: ocrResult.rawPasses, structuredRowEvidence: ocrResult.structuredRowEvidence, diagnostics: ocrResult.diagnostics });
+    await legacyProgress('ocr_complete', { text: ocrResult.text, rawPasses: ocrResult.rawPasses, structuredRowEvidence: ocrResult.structuredRowEvidence, diagnostics: ocrResult.diagnostics });
     const parsedText = withoutMicrBandText(rawText);
 
     if (!rawText || !ocrResult.rawPasses.some(pass=>opticalScore(pass.text,pass.confidence).credible)) {

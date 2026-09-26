@@ -9,7 +9,7 @@ export type ScanResult =
   | "apply blocked";
 export type ScanSummary = {
   canonicalReference?: string;
-  captureState?: 'capture_local'|'uploading'|'image_stored'|'processing'|'review'|'failed'|'transport_failed';
+  captureState?: 'capture_local'|'uploading'|'image_stored'|'processing'|'review'|'failed'|'transport_failed'|'completion_persistence_pending';
   shadowHandoffState?: 'disabled'|'handoff_pending'|'queued';
   ocrEngine?: 'legacy' | 'v2-shadow';
   captureSessionId?: string;

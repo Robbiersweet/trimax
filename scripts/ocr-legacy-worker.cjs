@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- Isolated Node worker loads the unchanged TypeScript extraction route. */
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),ts=require('typescript');
+const {saveEvidence,terminalSummary}=require('./ocr-legacy-evidence.cjs');
+const {readWorkerCanonical}=require('./ocr-canonical-object.cjs');
 function loadEngine(){
  const cache=new Map();
  function load(file){
@@ -18,12 +20,19 @@ async function runJob(config,rpc,engine){
  let lostLease=false;
  const heartbeat=setInterval(()=>{update('heartbeat').catch(()=>{lostLease=true;});},30000);
  try{
-  const image=claim.optical?.images?.find(i=>i.base64&&crypto.createHash('sha256').update(Buffer.from(i.base64,'base64')).digest('hex')===j.source_hash);
+  // A durable response needs only its bounded terminal acknowledgement after restart.
+  if(claim.recovery && j.evidence_manifest?.response_ready){
+   await update('complete',terminalSummary(claim.recovery.result,j.evidence_manifest.response_ready.hash),claim.recovery.status);
+   return true;
+  }
+  const image=await readWorkerCanonical(config,j,claim.optical,'legacy');
   if(!image||!['image/jpeg','image/png','image/webp'].includes(image.mime))throw Error('Canonical image unavailable or hash mismatch');
-  const response=await engine.progress.withLegacyProgress(async(stage,evidence)=>{if(lostLease)throw Error('Legacy lease heartbeat failed');await update(stage,evidence);},()=>engine.route.POST(new Request('http://legacy-worker/extract',{method:'POST',headers:{'Content-Type':'application/json','x-ocr-observation-scope':crypto.randomUUID()},body:JSON.stringify({...j.input,attemptId:j.attempt_id,imageDataUrl:'data:'+image.mime+';base64,'+image.base64})})));
+  if(claim.recovery && typeof claim.recovery.text!=='string')throw Error('Completed checkpoint lacks selected text; preserve evidence for recovery without repeating OCR');
+  const response=await engine.progress.withLegacyProgress(async(stage,evidence)=>{if(lostLease)throw Error('Legacy lease heartbeat failed');await saveEvidence(update,stage,evidence);},()=>engine.route.POST(new Request('http://legacy-worker/extract',{method:'POST',headers:{'Content-Type':'application/json','x-ocr-observation-scope':crypto.randomUUID()},body:JSON.stringify({...j.input,attemptId:j.attempt_id,imageDataUrl:'data:'+image.mime+';base64,'+image.base64})})),claim.recovery??undefined);
   const result=await response.json();delete result.optical; // Canonical image is already retained; never duplicate image bytes.
   if(lostLease)throw Error('Legacy lease lost before completion');
-  await update('complete',result,response.status);
+  const reference=await saveEvidence(update,'response_ready',{result,status:response.status});
+  await update('complete',terminalSummary(result,reference),response.status);
   console.log(JSON.stringify({attemptId:j.attempt_id,status:response.status,completedAt:new Date().toISOString()}));
  }catch(error){
   // A stale lease cannot overwrite the new owner's result. Persistence failure leaves the lease reclaimable.

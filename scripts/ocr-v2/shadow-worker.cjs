@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- Isolated private worker CLI, not Vercel. */
-const fs=require('node:fs'),path=require('node:path'),cp=require('node:child_process'),crypto=require('node:crypto');
+const fs=require('node:fs'),path=require('node:path'),cp=require('node:child_process');
 const {runShadowPipeline}=require('../../src/app/lib/ocrV2/shadow/pipeline.ts');
+const {readWorkerCanonical}=require('../ocr-canonical-object.cjs');
 const configFile=process.argv[2];
 if(!configFile)throw Error('Usage: node --experimental-strip-types scripts/ocr-v2/shadow-worker.cjs PRIVATE_CONFIG [--once]');
 const config=JSON.parse(fs.readFileSync(configFile,'utf8'));
 const repository=path.resolve(__dirname,'../..');
 for(const file of [configFile,config.privateRoot])if(path.resolve(file).toLowerCase().startsWith(repository.toLowerCase()+path.sep))throw Error('Worker credentials/data must be outside repository');
-const hash=b=>crypto.createHash('sha256').update(b).digest('hex');
 const toWSL=file=>{const full=fs.realpathSync.native(file);if(!/^[A-Za-z]:\\/.test(full))throw Error('Expected Windows path');return '/mnt/'+full[0].toLowerCase()+'/'+full.slice(3).replaceAll('\\','/');};
 async function rpc(name,args){
  const response=await fetch(config.supabaseUrl+'/rest/v1/rpc/'+name,{method:'POST',headers:{apikey:config.anonKey,'Content-Type':'application/json'},body:JSON.stringify({p_business:config.businessId,p_key:config.workerKey,...args}),signal:AbortSignal.timeout(30000)});
@@ -19,7 +19,7 @@ async function once(){
  // Fresh directory per lease prevents cached observations from masquerading as fresh inference.
  const dir=path.join(config.privateRoot,id,job.lease);fs.mkdirSync(dir,{recursive:true});
  try{
-  const optical=claim.optical?.images?.find(i=>i.base64&&hash(Buffer.from(i.base64,'base64'))===job.source_hash);
+  const optical=await readWorkerCanonical(config,job,claim.optical,'v2-shadow');
   if(!optical)throw Error('Canonical capture unavailable or hash mismatch');
   const original=Buffer.from(optical.base64,'base64');
   const result=await runShadowPipeline(original,{attemptId:id,captureSessionId:job.capture_session_id,sourceImageHash:job.source_hash,build:cp.execFileSync('git',['rev-parse','HEAD'],{cwd:repository,encoding:'utf8'}).trim(),snapshot:claim.input.snapshot},async(crops,documentId,sourceHash,moneyCrops,organizationCrops)=>{

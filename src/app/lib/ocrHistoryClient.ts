@@ -1,5 +1,6 @@
 import { safeDiagnosticView } from "./ocrDebug";
 import { supabase } from "./supabase";
+import { imageSha256 } from './ocrCanonical';
 import {
   diagnosticPayload,
   type ScanWrite,
@@ -63,6 +64,9 @@ async function localPayload(write: Queued) {
   );
 }
 async function send(write: ScanWrite) {
+  const payload=write.payload as Record<string,unknown>|null;
+  const response=payload?.response as {diagnostics?:{backgroundJob?:{evidenceReference?:string}}}|undefined;
+  const reference=response?.diagnostics?.backgroundJob?.evidenceReference;
   const { error } = await supabase.rpc("trimax_save_ocr_attempt", {
     p_business: write.businessId,
     p_id: write.summary.attemptId,
@@ -70,7 +74,8 @@ async function send(write: ScanWrite) {
     p_parent: write.summary.parentId,
     p_phase: write.phase,
     p_summary: write.summary,
-    p_payload: write.payload,
+    // Completed worker evidence is already durable. Do not upload it again from the browser.
+    p_payload: reference ? {stage:'legacy-review-observed',evidenceReference:reference,finishedAt:payload?.finishedAt,finalResult:payload?.finalResult,reasons:payload?.reasons} : write.payload,
   });
   if (error && write.phase===2) {
     // Terminal metadata must survive an oversized/invalid optional diagnostic payload.
@@ -184,7 +189,9 @@ export async function scanDiagnostics(businessId: string, id: string) {
     throw new Error(
       "Full diagnostics have expired or were not retained. The scan summary remains available.",
     );
-  return safeDiagnosticView(data.payload);
+  // Verbose legacy evidence is read on demand, never merged into persisted diagnostics.
+  const job=await supabase.rpc('trimax_ocr_legacy_status',{p_attempt:id});
+  return safeDiagnosticView(job.data?.response?{...data.payload,response:job.data.response,legacyJob:{timings:job.data.timings},transport:{...data.payload.transport,ocrStarted:Boolean(job.data.timings?.ocr_complete),completionState:job.data.status},stage:'legacy-background-complete'}:data.payload);
 }
 export async function pinScan(id: string, pinned: boolean) {
   const { error } = await supabase.rpc("trimax_pin_ocr_attempt", {
@@ -211,5 +218,17 @@ export async function scanOptical(id: string) {
     .eq("attempt_id", id)
     .maybeSingle();
   if (error) throw Error(error.message);
-  return data?.evidence ?? null;
+  if(!data?.evidence)return null;
+  const evidence={...data.evidence,images:[...(data.evidence.images??[])]};
+  for(let index=0;index<evidence.images.length;index++){
+    const image=evidence.images[index];
+    if(image.storageBucket!=='trimax-ocr-captures'||!image.objectPath)continue;
+    const object=await supabase.storage.from(image.storageBucket).download(image.objectPath);
+    if(object.error||!object.data)throw Error('Retained optical object unavailable');
+    const bytes=await object.data.arrayBuffer();
+    if(await imageSha256(bytes)!==image.sha256)throw Error('Retained optical hash mismatch');
+    const base64=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.onerror=()=>reject(reader.error);reader.readAsDataURL(object.data!);});
+    evidence.images[index]={...image,base64};
+  }
+  return evidence;
 }

@@ -11,8 +11,14 @@ export async function readCanonicalCapture(request:Request,reference:unknown,exp
  const {data,error}=await client.from('ocr_attempt_optical').select('evidence').eq('attempt_id',reference).maybeSingle();
  if(error||!data)throw Error('Canonical capture unavailable or expired');
  const image=data.evidence.images?.find((i:{sha256?:string;base64?:string})=>i.sha256===expectedHash || (i.base64 && createHash('sha256').update(Buffer.from(i.base64,'base64')).digest('hex')===expectedHash));
- if(!image?.base64||!['image/jpeg','image/png','image/webp'].includes(image.mime))throw Error('Canonical capture unavailable');
- const bytes=Buffer.from(image.base64,'base64');
+ if(!image||!['image/jpeg','image/png','image/webp'].includes(image.mime))throw Error('Canonical capture unavailable');
+ let bytes:Buffer;
+ if(image.storageBucket==='trimax-ocr-captures'&&typeof image.objectPath==='string'){
+  const object=await client.storage.from(image.storageBucket).download(image.objectPath);
+  if(object.error||!object.data)throw Error('Canonical object unavailable');
+  bytes=Buffer.from(await object.data.arrayBuffer());
+ }else if(image.base64)bytes=Buffer.from(image.base64,'base64');
+ else throw Error('Canonical capture unavailable');
  if(createHash('sha256').update(bytes).digest('hex')!==expectedHash)throw Error('Canonical image hash mismatch');
- return 'data:'+image.mime+';base64,'+image.base64;
+ return 'data:'+image.mime+';base64,'+bytes.toString('base64');
 }
