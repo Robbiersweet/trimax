@@ -42,7 +42,7 @@ export async function runShadowPipeline(original: Buffer, input: ShadowInput,
   if (hash(original) !== input.sourceImageHash) throw Error('Canonical capture hash mismatch');
   const started = performance.now(), normalized = await normalizeDocument(original);
   const sourceHash = hash(normalized.documentColor), ledger = new EvidenceLedger(input.attemptId, input.attemptId, sourceHash);
-  const semantics = await recognizeSemanticPage(normalized.documentColor, ledger), model = semantics.model;
+  const semantics = await recognizeSemanticPage(normalized.documentColor, ledger, [], normalized.variants['local-contrast']), model = semantics.model;
   const preparedMoney = await prepareMoneyFields(normalized.documentColor, model, semantics.observations, ledger);
   const monetary = preparedMoney.monetary;
   const size = await sharp(normalized.documentColor).metadata(), crops: InvoiceCrop[] = [];

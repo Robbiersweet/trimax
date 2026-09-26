@@ -9,7 +9,10 @@ const {normalizeDocument}=require('../../src/app/lib/ocrV2/documentNormalization
  assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'),fixture.sha256);
  const result=await analyzeUnseenDocument(bytes,'private-native-regression','private-native-regression');
  // Labels/expectations enter only after inference.
- const rows=result.model.table.rows;assert.equal(rows.length,fixture.expectedRows);assert.notEqual(result.model.documentType,'unknown_review');assert(result.normalization.documentGeometry.reliable);
+ const rows=result.model.table.rows;assert.equal(rows.length,fixture.expectedRows);assert.notEqual(result.model.documentType,'unknown_review');
+ if(fixture.expectedPaperIsolation === false) assert(!result.normalization.documentGeometry.reliable,'Unobserved paper sides must preserve the full frame');
+ else assert(result.normalization.documentGeometry.reliable);
+ if(fixture.expectedSemanticPasses !== undefined) assert.equal(result.passes,fixture.expectedSemanticPasses);
  assert(result.model.table.columns.some(c=>c.type==='invoice_number'));assert(result.model.table.columns.some(c=>c.type==='row_amount'));
  const normalized=await normalizeDocument(bytes);fs.mkdirSync(out,{recursive:true});fs.writeFileSync(path.join(out,'result.json'),JSON.stringify(result,null,2));fs.writeFileSync(path.join(out,'paper.png'),normalized.documentColor);
  for(let i=0;i<rows.length;i++){const r=rows[i];assert(r.invoiceRegion&&r.amountRegion);assert(r.invoiceRegion.left+r.invoiceRegion.width<r.amountRegion.left);if(i)assert(rows[i-1].bounds.top+rows[i-1].bounds.height<=r.bounds.top);for(const field of ['invoiceRegion','amountRegion']){assert(r[field].width>0&&r[field].height>0);await sharp(normalized.documentColor).extract(r[field]).png().toFile(path.join(out,`row-${i}-${field}.png`));}}

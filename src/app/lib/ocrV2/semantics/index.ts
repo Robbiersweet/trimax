@@ -4,7 +4,7 @@
 import sharp from 'sharp';
 import { createHash } from 'node:crypto';
 import { createWorker, OEM, PSM } from 'tesseract.js';
-import { normalizeDocument } from '../documentNormalization.ts';
+import { normalizeDocument, lightingVariants } from '../documentNormalization.ts';
 import { interpretDocument } from './interpret.ts';
 import { EvidenceLedger } from '../recognition/evidenceLedger.ts';
 import { textComponents } from '../layout/components.ts';
@@ -13,7 +13,7 @@ export { interpretDocument } from './interpret.ts';
 export { recognizeLabel, normalizeOrganization } from './labels.ts';
 export type { DocumentSemanticModel } from './model.ts';
 const hash = (b: Buffer) => createHash('sha256').update(b).digest('hex');
-export async function recognizeSemanticPage(image: Buffer, ledger: EvidenceLedger, retained: SemanticObservation[] = []) {
+export async function recognizeSemanticPage(image: Buffer, ledger: EvidenceLedger, retained: SemanticObservation[] = [], preparedContrast?: Buffer) {
   const started = performance.now(), sourceHash = hash(image), meta = await sharp(image).metadata();
   if (sourceHash !== ledger.sourceHash) throw Error('Semantic page/ledger source mismatch');
   const pixels=await textComponents(image, 3200, { minimumContrast: 10 });
@@ -24,12 +24,17 @@ export async function recognizeSemanticPage(image: Buffer, ledger: EvidenceLedge
     const worker = await createWorker('eng', OEM.LSTM_ONLY, { logger: () => undefined });
     try {
       await worker.setParameters({ tessedit_pageseg_mode: PSM.SPARSE_TEXT, tessedit_char_whitelist: '', user_defined_dpi: '300' });
-      for (const variant of ['native', 'grayscale']) {
-        let pixels = sharp(image); if (variant === 'grayscale') pixels = pixels.grayscale();
-        const { data } = await worker.recognize(await pixels.png().toBuffer(), {}, { text: true, blocks: true }); passes++;
+      for (const variant of ['native', 'grayscale', 'local-contrast']) {
+        // Native/color observations remain preferred. A bounded structural fallback
+        // handles uneven paper illumination only when they cannot map a table.
+        if (variant === 'local-contrast' && interpretDocument({sourceHash,observations,physicalComponents}).table.supported) break;
+        const bytes = variant === 'local-contrast' ? preparedContrast ?? (await lightingVariants(image))['local-contrast']
+          : await (variant === 'grayscale' ? sharp(image).grayscale() : sharp(image)).png().toBuffer();
+        const cropHash = hash(bytes);
+        const { data } = await worker.recognize(bytes, {}, { text: true, blocks: true }); passes++;
         const id = `${ledger.documentId}:semantic-page:${variant}`, region = { left: 0, top: 0, width: meta.width!, height: meta.height! };
-        const sequence = ledger.append({ field: 'semantic-page', documentId: ledger.documentId, sourceHash, cropHash: sourceHash, region, recognizer: 'tesseract.js-eng-lstm', variant, configuration: 'psm11-native-resolution', raw: data.text, normalized: [data.text.trim()], confidence: data.confidence, provenance: { valid: true, reason: 'Original normalized page pixels; no template or business data', reference: id }, stage: 'phase5e-semantic-page', timestamp: new Date().toISOString() });
-        observations.push({ id, runKey: ledger.snapshot().entries[sequence].runKey, sourceHash, cropHash: sourceHash, region, recognizer: 'tesseract.js-eng-lstm', variant, raw: data.text, confidence: data.confidence, verified: true, words: (data.blocks ?? []).flatMap(b => b.paragraphs.flatMap(p => p.lines.flatMap(l => l.words))).map(w => ({ text: w.text, confidence: w.confidence, bounds: { left: w.bbox.x0, top: w.bbox.y0, width: w.bbox.x1 - w.bbox.x0, height: w.bbox.y1 - w.bbox.y0 } })) });
+        const sequence = ledger.append({ field: 'semantic-page', documentId: ledger.documentId, sourceHash, cropHash, region, recognizer: 'tesseract.js-eng-lstm', variant, configuration: 'psm11-native-resolution', raw: data.text, normalized: [data.text.trim()], confidence: data.confidence, provenance: { valid: true, reason: 'Same normalized page geometry; non-destructive variant, no template or business data', reference: id }, stage: 'phase5e-semantic-page', timestamp: new Date().toISOString() });
+        observations.push({ id, runKey: ledger.snapshot().entries[sequence].runKey, sourceHash, cropHash, region, recognizer: 'tesseract.js-eng-lstm', variant, raw: data.text, confidence: data.confidence, verified: true, words: (data.blocks ?? []).flatMap(b => b.paragraphs.flatMap(p => p.lines.flatMap(l => l.words))).map(w => ({ text: w.text, confidence: w.confidence, bounds: { left: w.bbox.x0, top: w.bbox.y0, width: w.bbox.x1 - w.bbox.x0, height: w.bbox.y1 - w.bbox.y0 } })) });
       }
     } finally { await worker.terminate(); }
   }
