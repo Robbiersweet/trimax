@@ -3265,13 +3265,14 @@ async function runExtraction(request: Request) {
 
   try {
     const originalImage = dataUrlToBuffer(imageDataUrl as string);
-    const ocrResult = completedLegacyRecognition<Awaited<ReturnType<typeof recognizeBestText>>>() ?? await recognizeBestText(
+    const completed = completedLegacyRecognition<Awaited<ReturnType<typeof recognizeBestText>>>();
+    const ocrResult = completed ?? await recognizeBestText(
       originalImage,
       documentType,
       retryStrategy
     );
     const rawText = ocrResult.text;
-    await legacyProgress('ocr_complete', { text: ocrResult.text, rawPasses: ocrResult.rawPasses, structuredRowEvidence: ocrResult.structuredRowEvidence, diagnostics: ocrResult.diagnostics });
+    if (!completed) await legacyProgress('ocr_complete', { text: ocrResult.text, rawPasses: ocrResult.rawPasses, structuredRowEvidence: ocrResult.structuredRowEvidence, diagnostics: ocrResult.diagnostics });
     const parsedText = withoutMicrBandText(rawText);
 
     if (!rawText || !ocrResult.rawPasses.some(pass=>opticalScore(pass.text,pass.confidence).credible)) {
