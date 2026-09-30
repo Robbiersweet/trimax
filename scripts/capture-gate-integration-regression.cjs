@@ -3,18 +3,19 @@ const assert=require("node:assert/strict"),fs=require("node:fs"),ts=require("typ
 module.exports=function(){
   const source=fs.readFileSync("src/app/components/BatchInvoicePayments.tsx","utf8");
   const compile=(text,bindings)=>new Function(...Object.keys(bindings),ts.transpileModule(text,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText)(...Object.values(bindings));
-  const writes=[];
+  const writes=[],ui={};
   const trace={current:[{ready:false,reason:"Document exceeds guide size",frame:{document:{x:2,y:3,width:40,height:30}}}]};
   const session={current:{frames:8,captured:false,businessId:"test-business"}};
   const bindings={captureGateSession:session,captureGateTrace:trace,crypto,process,
     scanSummary:(id)=>({attemptId:id}),finishScan:base=>base,saveScan:write=>{writes.push(write);return Promise.resolve("saved");},
-    cameraLifecycleRef:{current:{}},cameraStreamRef:{current:null},cameraVideoRef:{current:null},setCameraReady:()=>{},setCameraQualityReady:()=>{},setIsCapturingFrame:()=>{},setCameraVideoPlayStatus:()=>{}};
+    cameraLifecycleRef:{current:{}},cameraStreamRef:{current:null},cameraVideoRef:{current:null},setCameraReady:()=>{},setCameraQualityReady:()=>{},setIsCapturingFrame:v=>{ui.capturing=v;},setPaymentEntryMode:v=>{ui.mode=v;},setCameraVideoPlayStatus:()=>{}};
   const stop=compile(source.slice(source.indexOf("  function stopCameraCapture("),source.indexOf("  function handleCameraModeSelection("))+"\nreturn stopCameraCapture;",bindings);
   let stopped = false;
   bindings.cameraStreamRef.current = { getTracks: () => [{ stop: () => { stopped = true; } }] };
   bindings.cameraLifecycleRef.current.stillAcquiredAt = new Date().toISOString();
   stop(true);
   assert(stopped);
+  assert.equal(ui.mode,'photo');assert.equal(ui.capturing,false);
   assert(bindings.cameraLifecycleRef.current.streamStoppedAt);
   assert(bindings.cameraLifecycleRef.current.afterStillMs < 100);
   stop();stop();assert.equal(writes.length,1);assert.equal(writes[0].payload.stage,"capture-framing");assert.equal(writes[0].businessId,"test-business");

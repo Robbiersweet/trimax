@@ -6,7 +6,7 @@ import type { OfflineSnapshot } from '../resolver';
 
 export async function loadShadowFlags(businessId: string): Promise<ShadowFlags> {
   const { data, error } = await supabase.from('ocr_shadow_flags').select('enabled,native_still').eq('business_id', businessId).maybeSingle();
-  return error || !data ? DISABLED_SHADOW : { enabled: data.enabled === true, nativeStill: data.native_still === true };
+  return error || !data ? {...DISABLED_SHADOW, readError: error?.message ?? 'Capture configuration unavailable'} : { enabled: data.enabled === true, nativeStill: data.native_still === true };
 }
 /** Detached from payment state. The server rechecks owner/admin + current flag.
  * No result from this function is used by the payment workflow. */

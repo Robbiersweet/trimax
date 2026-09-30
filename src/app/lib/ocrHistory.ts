@@ -8,6 +8,7 @@ export type ScanResult =
   | "duplicate"
   | "apply blocked";
 export type ScanSummary = {
+  captureUi?: import('./captureRouting').CaptureUiEvidence;
   canonicalReference?: string;
   captureState?: 'capture_local'|'uploading'|'image_stored'|'processing'|'review'|'failed'|'transport_failed'|'completion_persistence_pending';
   shadowHandoffState?: 'disabled'|'handoff_pending'|'queued';

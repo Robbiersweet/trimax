@@ -29,6 +29,7 @@ import RecentScans from "./RecentScans";
 import { legacyMoneyEvidence, type SharedMoneyEvidence } from "../lib/documentFields/moneyContract";
 import { scanSummary, finishScan, failureSummary, debugFile, slimAttempt, type ScanSummary, type ScanResult } from "../lib/ocrHistory";
 import { saveScan, scanDiagnostics, scanOptical, pairedScanSummary } from "../lib/ocrHistoryClient";
+import { selectCapture, type CaptureImplementation, type CaptureUiEvidence } from "../lib/captureRouting";
 import { loadShadowFlags } from "../lib/ocrV2/shadow/client";
 import { DISABLED_SHADOW, shadowAllowed, type CaptureTimings } from "../lib/ocrV2/shadow/contract";
 import DateInputField from "./DateInputField";
@@ -619,7 +620,6 @@ type DuplicateRemittanceModalState = {
 
 const trimaxBuildIdentifier = "remittance-diagnostics-v5-still-detector";
 
-const guidedCameraCropLabel = "guided-camera-crop";
 
 type CropDragTarget =
   | "move"
@@ -1666,12 +1666,13 @@ export default function BatchInvoicePayments({
   const ocrAttemptVersion = useRef(0);
   useEffect(()=>()=>{ocrAttemptVersion.current++;},[]);
   const [shadowFlags, setShadowFlags] = useState({...DISABLED_SHADOW,businessId:''});
+  const captureUi = useRef<CaptureUiEvidence | null>(null);
   const nativeStillInput = useRef<HTMLInputElement>(null);
   const captureTimings = useRef<CaptureTimings>({captureOpenedAt:null,stillReturnedAt:null,previewPaintOpportunityAt:null,cameraIndicatorMs:null});
   useEffect(() => {
     let current = true;
     if (!businessId || !['owner','admin'].includes(workspaceRole ?? '')) return;
-    const refresh = () => { void loadShadowFlags(businessId).then(flags => { if(current)setShadowFlags({...flags,businessId}); }); };
+    const refresh = () => { void loadShadowFlags(businessId).then(flags => { if(current)setShadowFlags({...flags,businessId}); }).catch(error=>{if(current)setShadowFlags({...DISABLED_SHADOW,businessId,readError:String(error)});}); };
     refresh(); window.addEventListener('focus',refresh);
     return () => { current=false; window.removeEventListener('focus',refresh); };
   },[businessId,workspaceRole]);
@@ -3503,6 +3504,7 @@ export default function BatchInvoicePayments({
     observationScopeRef.current=crypto.randomUUID();
     const history = resume?.history ?? scanSummary(attemptId,parent?.original??attemptId,parent?.last??null,preparedCaptureRef.current?.source??"unknown",process.env.NEXT_PUBLIC_TRIMAX_BUILD??"local");
     history.inputSource=lastOcrSourceType;
+    if (!history.captureUi && captureUi.current) history.captureUi=structuredClone(captureUi.current);
     scanLineage.current = {original:history.originalId,last:attemptId};
     latestScan.current = history;
     const captureSnapshot = preparedCaptureRef.current ? immutableSnapshot(preparedCaptureRef.current) : null;
@@ -3515,7 +3517,7 @@ export default function BatchInvoicePayments({
     let completed = false;
     const persist = (summary:ScanSummary,payload:unknown,phase:0|2) => {
       if (!businessId) { setScanSavedStatus("Attempt not saved: workspace unavailable."); return; }
-      return saveScan({businessId,summary,payload,phase}).then(status=>{
+      return saveScan({businessId,summary,payload:payload && typeof payload==='object' ? {...payload,captureUi:summary.captureUi} : payload,phase}).then(status=>{
         if (latestScan.current?.attemptId !== attemptId || (phase===0 && latestScan.current.result!=="processing")) return true;
         setScanSavedStatus(status==='saved' ? (phase===2 ? "Attempt saved ✓"+(summary.result==='success'?"":" · Diagnostics retained for 30 days") : "Scan started · saving evidence") : "Saved on this device · waiting to sync");
         return status === "saved";
@@ -3586,19 +3588,22 @@ export default function BatchInvoicePayments({
     try {
       if(!await initialSave){failure=transportFailure(null,'Attempt identity could not be saved','capture-registration');throw Error(failure.message);}
       try {
+        if(!canonical && history.captureUi)history.captureUi.canonicalUploadStartedAt=Date.now();
         canonical=canonical ?? await storeCanonicalCapture({attemptId,imageDataUrl,metadata:{...captureSnapshot?.image,originalPreparation:prepDiagnosticLines,rotation:0,retainedReference},snapshot:shadowSnapshot,captureTimings:shadowCaptureTimings});
       } catch(error) {
         failure=transportFailure(null,error instanceof Error?error.message:String(error),'canonical-upload');
         throw error;
       }
+      if(history.captureUi)history.captureUi.canonicalUploadAcknowledgedAt ??= Date.now();
       history.captureState='processing';
       setCheckOcrMessage('Processing remittance...');
       // Detached, independent commit. Shadow downtime must never delay or fail legacy OCR.
       if(shadowSnapshot) void resumeCaptureHandoff(attemptId,shadowSnapshot,shadowCaptureTimings).then(result=>{
         if(canonical)canonical.shadowQueued=result.queued;
+        if(result.queued && history.captureUi){history.captureUi.shadowJobQueuedAt=Date.now(); if(latestScan.current?.attemptId===attemptId && latestScan.current.result==='processing')void persist(history,{stage:'shadow-queued'},0); }
       }).catch(()=>{ if(attemptVersion===ocrAttemptVersion.current)setScanSavedStatus('Capture saved — shadow processing pending. Retry from Recent Scans.'); });
       appendCameraStage("OCR started");
-      const response = await waitForLegacyJob({attemptId,documentType,retryStrategy,diagnosticReplay:Boolean(retainedAttemptId||resumedDiagnosticReplay.current)},()=>attemptVersion===ocrAttemptVersion.current,message=>{if(attemptVersion===ocrAttemptVersion.current)setCheckOcrMessage(message);});
+      const response = await waitForLegacyJob({attemptId,documentType,retryStrategy,diagnosticReplay:Boolean(retainedAttemptId||resumedDiagnosticReplay.current)},()=>attemptVersion===ocrAttemptVersion.current,message=>{if(attemptVersion===ocrAttemptVersion.current)setCheckOcrMessage(message);},()=>{if(history.captureUi)history.captureUi.legacyJobQueuedAt=Date.now();void persist(history,{stage:'legacy-queued'},0);});
       const data = (await response.json().catch(() => ({}))) as CheckStubOcrResponse;
       retainedResponse=data;
       if (attemptVersion !== ocrAttemptVersion.current) return;
@@ -3721,6 +3726,7 @@ export default function BatchInvoicePayments({
     if(!businessId)return;
     const id=crypto.randomUUID(),parent=scanLineage.current;
     const summary=finishScan(scanSummary(id,parent?.original??id,parent?.last??null,source,process.env.NEXT_PUBLIC_TRIMAX_BUILD??"local"),null,"failed",0,[reason]);
+    if(version===ocrAttemptVersion.current && captureUi.current)summary.captureUi=structuredClone(captureUi.current);
     scanLineage.current={original:summary.originalId,last:id};latestScan.current=summary;
     void saveScan({businessId,phase:2,summary,payload:{optical:structuredClone(opticalRef.current),stage:"image-preparation",reason,preparation,sources:sourceSelectionRef.current}}).then(status=>{
       if(version===ocrAttemptVersion.current)setScanSavedStatus(status==='saved'?"Attempt saved ✓ · Diagnostics retained for 30 days":"Saved on this device · waiting to sync");
@@ -4258,7 +4264,8 @@ export default function BatchInvoicePayments({
 
     setCameraReady(false);
     setCameraQualityReady(false);
-    if (!keepProcessing) setIsCapturingFrame(false);
+    setIsCapturingFrame(false);
+    if(keepProcessing)setPaymentEntryMode('photo');
     setCameraVideoPlayStatus("not-started");
   }
 
@@ -4686,6 +4693,7 @@ export default function BatchInvoicePayments({
     observationScopeRef.current = crypto.randomUUID();
     opticalRef.current = {images:[],notes:[],startedAt:performance.now()};
     sourceSelectionRef.current = [];
+    beginCapture('custom-camera','Explicit historical custom capture handler');
     setIsCapturingFrame(true);
     setCameraFailureStage("");
     setCameraPipelineStages(["Capturing..."]);
@@ -4794,6 +4802,9 @@ export default function BatchInvoicePayments({
         { type: "image/jpeg" }
       );
       cameraLifecycleRef.current.fallbackFrameAcquiredAt = new Date().toISOString();
+      captureUi.current!.imageReturnedAt=Date.now();captureUi.current!.cameraUiEndedAt=Date.now();
+      setCheckImagePreview(URL.createObjectURL(file));setCheckImageFile(file);setCheckImageName(file.name);
+      setPaymentEntryMode('photo');setIsCapturingFrame(false);stopCameraCapture(true);
       const stillComparison = await buildImageCaptureStillComparison(
         track,
         file
@@ -4803,6 +4814,7 @@ export default function BatchInvoicePayments({
         ? "imagecapture-still"
         : "canvas-video-frame";
       const productionCrop = stillComparison.productionCropBox;
+      if(captureUi.current){captureUi.current.acquisitionMechanism=productionMechanism;captureUi.current.fallbackOccurred=!stillComparison.productionFile;captureUi.current.fallbackReason=stillComparison.productionFile?null:stillComparison.productionReason;}
 
       setCameraStatusMessage("Checking image...");
       appendCameraStage(`Normalized JPG saved: ${canvas.width}x${canvas.height}, ${blob.size} bytes`);
@@ -5011,6 +5023,13 @@ export default function BatchInvoicePayments({
     sourceDiagnosticLines: string[] = []
   ) {
     if (!file) return;
+    const implementation = source === 'existing' ? 'existing-photo' : captureUi.current?.selection.implementation ?? 'custom-camera';
+    if (!captureUi.current || captureUi.current.selection.implementation !== implementation) beginCapture(implementation,'Image intake without an opening event');
+    captureUi.current!.imageReturnedAt ??= Date.now();
+    stopCameraCapture();
+    setIsCapturingFrame(false);
+    setPaymentEntryMode('photo');
+    captureUi.current!.cameraUiEndedAt ??= Date.now();
     captureTimings.current = {...captureTimings.current,captureOpenedAt:source==='camera'?captureTimings.current.captureOpenedAt:null,stillReturnedAt:Date.now(),previewPaintOpportunityAt:null};
     if(source !== "camera")opticalRef.current={images:[],notes:[]};
     scanLineage.current = null;
@@ -5028,7 +5047,8 @@ export default function BatchInvoicePayments({
       URL.revokeObjectURL(checkImagePreview);
     }
 
-    setCheckImagePreview(URL.createObjectURL(file));
+    const previewUrl=URL.createObjectURL(file);
+    setCheckImagePreview(previewUrl);
     setCheckImageName(file.name);
     setCheckImageFile(file);
     setOcrImageFile(null);
@@ -5067,140 +5087,47 @@ export default function BatchInvoicePayments({
     setIsTightlyFramedRemittance(false);
     setCaptureQualityMessage("");
     setCaptureQualityDetails("");
-    if (shadowFlags.businessId === businessId && shadowAllowed(shadowFlags,workspaceRole) && shadowFlags.nativeStill) {
-      setCheckOcrStatus('reading');
-      setCheckOcrMessage('Processing remittance…');
-      requestAnimationFrame(() => requestAnimationFrame(() => {
-        if(captureVersion !== ocrAttemptVersion.current)return;
-        captureTimings.current.previewPaintOpportunityAt=Date.now();
-        // Use the existing legacy preparation/extraction and safety path. Both
-        // engines will receive its exact resulting still, not a live video frame.
-        void readPreparedRemittanceFromFile(file,{left:0,top:0,right:100,bottom:100},0,documentType,intent,'standard',true,source,['Owner/admin native still intake; camera UI ended before preparation.']);
-      }));
-      return;
-    }
-    void imageElementFromFile(file).then((image) => {
-      if (captureVersion !== ocrAttemptVersion.current) return;
-      const width = image.naturalWidth || image.width || 4;
-      const height = image.naturalHeight || image.height || 3;
-
-      setCropPreviewAspectRatio(width / height);
-    });
-    void detectDefaultCropBox(file).then((detectedSuggestion) => {
-      if (captureVersion !== ocrAttemptVersion.current) return;
-      // The production camera candidate was already compared as this exact frame.
-      const suggestion = source === "camera" && documentType === "remittance_stub"
-        ? { ...detectedSuggestion, cropBox: { left: 0, top: 0, right: 100, bottom: 100 }, effectiveWidth: detectedSuggestion.sourceWidth, effectiveHeight: detectedSuggestion.sourceHeight }
-        : detectedSuggestion;
-      setCropBox(suggestion.cropBox);
-      setIsTightlyFramedRemittance(suggestion.isTightlyFramed);
-      setLastQualityGate({
-        sourceWidth: suggestion.sourceWidth,
-        sourceHeight: suggestion.sourceHeight,
-        cropWidth: suggestion.effectiveWidth,
-        cropHeight: suggestion.effectiveHeight,
-        documentAreaRatio: suggestion.documentAreaRatio,
-        clipping: suggestion.clipping,
-        brightness: suggestion.quality.brightness,
-        contrast: suggestion.quality.contrast,
-        blurScore: suggestion.quality.blurScore,
-        guidance: suggestion.qualityMessages[0] ?? "Use Cropped Image.",
-        ocrPermitted: suggestion.qualityMessages.length === 0,
-      });
-      const cameraGuidedCropReady =
-        source === "camera" &&
-        documentType === "remittance_stub" &&
-        suggestion.qualityMessages.length === 0 &&
-        suggestion.quality.ok &&
-        Math.max(suggestion.effectiveWidth, suggestion.effectiveHeight) >= 1800 &&
-        Math.min(suggestion.effectiveWidth, suggestion.effectiveHeight) >= 650;
-      const shouldReadNow = suggestion.shouldAutoRead || cameraGuidedCropReady;
-
-      setCaptureQualityMessage(
-        suggestion.qualityMessages[0] ??
-          (shouldReadNow
-            ? "Document detected. Reading remittance..."
-            : suggestion.isTightlyFramed
-              ? "Document fills the image. Use as-is or adjust crop."
-              : "Document detected. Check the crop before reading.")
-      );
-      setCaptureQualityDetails(
-        `Detected crop: ${Math.max(
-          suggestion.effectiveWidth,
-          0
-        )} x ${Math.max(suggestion.effectiveHeight, 0)}.`
-      );
-
-      if (shouldReadNow) {
-        appendCameraStage(
-          `${guidedCameraCropLabel}: ${suggestion.effectiveWidth}x${suggestion.effectiveHeight}, manual crop skipped`
-        );
-        void readPreparedRemittanceFromFile(
-          file,
-          suggestion.cropBox,
-          0,
-          documentType,
-          intent,
-          "standard",
-          false,
-          source,
-          sourceDiagnosticLines
-        );
-      } else {
-        setCheckOcrStatus("idle");
-        const nextMessage =
-          suggestion.qualityMessages[0] ??
-          (source === "camera"
-            ? "Review the capture, then read it."
-            : "Use image as-is or adjust crop before reading.");
-
-        setCheckOcrMessage(nextMessage);
-
-        setPaymentEntryMode("crop");
-        setCameraStatusMessage(nextMessage);
-      }
-    });
-    setToast({
-      type: "success",
-      message: "Remittance image added.",
-    });
+    const acquiredEvidence = captureUi.current!;
+    setCheckOcrStatus('reading');
+    setCheckOcrMessage('Processing remittance…');
+    const prepareAfterPreview = () => requestAnimationFrame(() => requestAnimationFrame(() => {
+      if(captureVersion !== ocrAttemptVersion.current)return;
+      acquiredEvidence.previewPaintOpportunityAt=Date.now();
+      captureTimings.current.previewPaintOpportunityAt=acquiredEvidence.previewPaintOpportunityAt;
+      void readPreparedRemittanceFromFile(file,{left:0,top:0,right:100,bottom:100},0,documentType,intent,'standard',true,source,
+        [...sourceDiagnosticLines,'Capture implementation: '+acquiredEvidence.selection.implementation+'; camera UI ended before preparation.']);
+    }));
+    const previewImage = new Image();
+    previewImage.onload = () => { acquiredEvidence.previewImageLoadedAt=Date.now();prepareAfterPreview(); };
+    previewImage.onerror = () => { acquiredEvidence.previewError='Browser could not decode original preview; continuing existing image preparation';prepareAfterPreview(); };
+    previewImage.src=previewUrl;
   }
 
-  function openCameraCapture(
-    documentType: RemittanceDocumentType = captureDocumentType,
-    intent: CaptureIntent = "primary"
-  ) {
-    if (shadowFlags.businessId === businessId && shadowAllowed(shadowFlags,workspaceRole) && shadowFlags.nativeStill) {
-      setCaptureDocumentType(documentType); setCaptureIntent(intent);
-      captureTimings.current={captureOpenedAt:Date.now(),stillReturnedAt:null,previewPaintOpportunityAt:null,cameraIndicatorMs:null};
-      nativeStillInput.current?.click();
-      return;
+  function beginCapture(implementation: CaptureImplementation, reason: string) {
+    const now=Date.now();
+    captureUi.current={selection:selectCapture(implementation,{
+      nativeStillConfigured:shadowFlags.nativeStill,shadowConfigured:shadowFlags.enabled,
+      flagsLoaded:shadowFlags.businessId===businessId,roleLoaded:Boolean(workspaceRole),workspaceLoaded:Boolean(businessId),
+      shadowEligible:shadowFlags.businessId===businessId && shadowAllowed(shadowFlags,workspaceRole),flagReadError:shadowFlags.readError??null,
+    },reason,now),clientBuild:process.env.NEXT_PUBLIC_TRIMAX_BUILD??'local',fallbackOccurred:false,fallbackReason:null,
+      acquisitionMechanism:implementation==='native-still'?'file-input-capture-environment':implementation==='existing-photo'?'file-input-existing':'custom-camera',
+      takePhotoTappedAt:implementation==='native-still'?now:null,nativeCameraInvokedAt:null,imageReturnedAt:null,cameraUiEndedAt:null,
+      previewPaintOpportunityAt:null,previewImageLoadedAt:null,previewError:null,canonicalUploadStartedAt:null,canonicalUploadAcknowledgedAt:null,legacyJobQueuedAt:null,shadowJobQueuedAt:null};
+  }
+
+  function openCameraCapture(documentType: RemittanceDocumentType = captureDocumentType, intent: CaptureIntent = 'primary') {
+    beginCapture('native-still','Normal Take Photo always uses device still capture');
+    setCaptureDocumentType(documentType); setCaptureIntent(intent);
+    captureTimings.current={captureOpenedAt:Date.now(),stillReturnedAt:null,previewPaintOpportunityAt:null,cameraIndicatorMs:null};
+    try {
+      if(!nativeStillInput.current)throw Error('Device image picker is unavailable. Choose Existing Photo.');
+      captureUi.current!.nativeCameraInvokedAt=Date.now();
+      nativeStillInput.current.click();
+    } catch(error) {
+      captureUi.current!.fallbackReason=error instanceof Error?error.message:String(error);
+      setCheckOcrMessage('Device camera could not open. Choose Existing Photo.');
+      setCheckOcrStatus('error');
     }
-    if (intent === "primary") {
-      clearCurrentRemittanceReviewState();
-      setRemittanceStubText("");
-      setSelectedIds([]);
-      setReviewMatchedInvoices([]);
-      setExtractedPaymentAmount(null);
-      setPaymentReviewNotice("");
-      setCheckAmount("");
-      setPaymentReference("");
-      setCheckPayor("");
-      setCapturedCheckAmount("");
-      setCapturedCheckReference("");
-      setFiledPaymentImage(null);
-    }
-    setCaptureDocumentType(documentType);
-    setCaptureIntent(intent);
-    setCameraGuideMode(defaultGuideModeForDocumentType(documentType));
-    setCameraQualityReady(false);
-    setPaymentEntryMode("camera");
-    setCheckOcrStatus("idle");
-    setCameraPipelineStages([]);
-    setCameraFailureStage("");
-    setCameraStatusMessage(
-      "Hold steady / improve detection"
-    );
   }
 
   async function applyBatchPayment() {
@@ -5803,6 +5730,7 @@ export default function BatchInvoicePayments({
                 <input
                   type="file"
                   accept="image/*,.heic,.heif"
+                    onClick={() => beginCapture('native-still','Explicit device camera selected')}
                   capture="environment"
                   className="sr-only"
                   onChange={(event) => {
@@ -5822,6 +5750,7 @@ export default function BatchInvoicePayments({
                 <input
                   type="file"
                   accept="image/*,.heic,.heif"
+                    onClick={() => beginCapture('existing-photo','Choose Existing Photo selected')}
                   className="sr-only"
                   onChange={(event) => {
                     stopCameraCapture();
@@ -5956,6 +5885,9 @@ export default function BatchInvoicePayments({
                   </span>
                 </span>
               )}
+              <div className="mt-4 rounded-xl border-2 border-dashed border-sky-300/50 px-4 py-3 text-sm text-sky-100" aria-label="Remittance composition guide">
+                Include the full remittance and all four paper edges. This guide is advisory; your device camera opens separately.
+              </div>
               <div className="mt-4 flex flex-wrap justify-center gap-2">
                 <button
                   type="button"
@@ -5972,6 +5904,7 @@ export default function BatchInvoicePayments({
                   <input
                     type="file"
                     accept="image/*,.heic,.heif"
+                    onClick={() => beginCapture('existing-photo','Choose Existing Photo selected')}
                     className="sr-only"
                     onChange={(event) => {
                       captureCheckImage(event.target.files?.[0], "existing");
@@ -6225,6 +6158,7 @@ export default function BatchInvoicePayments({
                     <input
                       type="file"
                       accept="image/*,.heic,.heif"
+                    onClick={() => beginCapture('existing-photo','Choose Existing Photo selected')}
                       className="sr-only"
                       onChange={(event) => {
                         captureCheckImage(

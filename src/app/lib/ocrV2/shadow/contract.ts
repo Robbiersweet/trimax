@@ -1,6 +1,6 @@
 /** Diagnostics only. These types intentionally expose no payment-writing callback. */
 export const SHADOW_VERSION = 'phase6-shadow-1';
-export type ShadowFlags = { enabled: boolean; nativeStill: boolean };
+export type ShadowFlags = { enabled: boolean; nativeStill: boolean; readError?: string };
 export const DISABLED_SHADOW: ShadowFlags = { enabled: false, nativeStill: false };
 export function shadowAllowed(flags: ShadowFlags, role: string | null | undefined) {
   return flags.enabled === true && (role === 'owner' || role === 'admin');

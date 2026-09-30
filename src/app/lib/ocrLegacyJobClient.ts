@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 
 /** Polling never creates attempts or jobs. Only the initial idempotent POST enqueues. */
-export async function waitForLegacyJob(input:{attemptId:string;documentType:string;retryStrategy:string;diagnosticReplay?:boolean}, current:()=>boolean, status:(message:string)=>void) {
+export async function waitForLegacyJob(input:{attemptId:string;documentType:string;retryStrategy:string;diagnosticReplay?:boolean}, current:()=>boolean, status:(message:string)=>void, onQueued?:()=>void) {
  async function request(enqueue:boolean){
   const {data}=await supabase.auth.getSession();
   if(!data.session)throw Error('Sign in to resume your saved scan.');
@@ -11,6 +11,7 @@ export async function waitForLegacyJob(input:{attemptId:string;documentType:stri
  const queued=await request(true);
  const enqueueMs=Math.round(performance.now()-queuedAt);
  if(!queued.ok)throw Error((await queued.json()).error??'Capture saved — processing pending.');
+ onQueued?.();
  while(current()){
   try{
    const response=await request(false);

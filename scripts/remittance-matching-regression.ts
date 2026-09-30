@@ -1669,15 +1669,12 @@ assert(
   "Full Check + Stub capture must warn when invoice text resolution is too distant and suggest a stub close-up."
 );
 assert(
-  paymentScreen.includes("shouldAutoRead") &&
-    paymentScreen.includes("guided-camera-crop") &&
-    paymentScreen.includes("manual crop skipped") &&
-    paymentScreen.includes("Document detected. Reading remittance...") &&
-    paymentScreen.includes("Use image as-is or adjust crop before reading.") &&
+  paymentScreen.includes("Normal Take Photo always uses device still capture") &&
+    paymentScreen.includes('capture="environment"') &&
+    paymentScreen.includes("Capture implementation: ") &&
     paymentScreen.includes("readPreparedRemittanceFromFile(") &&
-    paymentScreen.includes("documentType") &&
-    paymentScreen.includes("intent"),
-  "Payments screen must auto-read only high-confidence captures and keep crop review available."
+    !paymentScreen.includes("Owner/admin native still intake"),
+  "Normal capture must use native still independently of OCR eligibility and preserve actual implementation."
 );
 assert(
   paymentScreen.includes("0.98") &&
