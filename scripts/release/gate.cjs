@@ -14,6 +14,7 @@ record('frozen-corpus-integrity',c.hash(fs.readFileSync(path.join(c.root,manifes
 const installation=c.read(path.join(c.root,'release/evidence/install-baseline.json'));record('clean-dependency-install',installation.standardResult.startsWith('PASS')?[]:[installation.standardResult]);
 const drift=c.read(path.join(c.root,'release/evidence/worker-state.json'));record('production-runtime-attestation',drift.classification.legacy.startsWith('A')&&drift.classification.v2.startsWith('A')?[]:['Existing production workers have no loaded-source attestation; preserved drift is not normalized by this task']);
 record('model-bundle',c.verifyModels(manifest,'v2-shadow',manifest.workerConfiguration));
+record('runtime-source-bundles',c.verifyRuntimeSources(manifest,'v2-shadow',manifest.workerConfiguration));
 run('live-database-attestation',process.execPath,['scripts/release/runtime-check.cjs']);
 const scripts=[
  'scripts/release/contract-regression.cjs','scripts/release/auth-flow-regression.cjs','scripts/release/startup-regression.cjs','scripts/release/sql-attestation-regression.cjs',
