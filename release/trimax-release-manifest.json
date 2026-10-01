@@ -11,17 +11,17 @@
   },
   "components": {
     "web": {
-      "commit": "28611a487dd1f64516a5900b2d9d8ee9fe3332d2"
+      "commit": "51898157a5f447819fb175defd7b61191cc05577"
     },
     "legacy": {
-      "commit": "28611a487dd1f64516a5900b2d9d8ee9fe3332d2"
+      "commit": "51898157a5f447819fb175defd7b61191cc05577"
     },
     "v2-shadow": {
-      "commit": "28611a487dd1f64516a5900b2d9d8ee9fe3332d2"
+      "commit": "51898157a5f447819fb175defd7b61191cc05577"
     }
   },
   "sourceBundle": {
-    "sha256": "ec4ab0c68b3ecc2b2fdba497dd91b827e9940d6da00364023c0f6d6f5438062d",
+    "sha256": "88a92017b615985075657996756d9c411b628ed68b67e04cd5dc3acdfe639ae0",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -213,8 +213,8 @@
       "scripts/release/auth-flow-regression.cjs": "4d7ede3411ef172daf752cf0f852f220a2f6ee55f5868efafddf977751716638",
       "scripts/release/authorize-build.cjs": "fd486ee8ed5cff24e9cb829d0f79f7066d05ef59dc6cb0a89556b8a4d5309f9c",
       "scripts/release/contract-regression.cjs": "0079759ba290d91a34d3a3b3b8f834804b77d2643c333ce32af35335175c883e",
-      "scripts/release/contract.cjs": "8af5ab2d73b33114f441d87f7e5261bfcd9e06ec740126906145bdf8faa81820",
-      "scripts/release/gate.cjs": "0530d848842c2b99fb413c7c69ecd56e848ffc59273be95739b23529db113019",
+      "scripts/release/contract.cjs": "602bbcbfb8789ecaca2672d16d6c940c7bad6ce08f7f62700a5eca498f84d266",
+      "scripts/release/gate.cjs": "00a497242cb5c17964932c2625022a458ec649daf0ed8210857a8ace35727375",
       "scripts/release/physical-acceptance.cjs": "f6466593e668069b6416fcfc85518f104e4dacc624858383c70a194233c9b5c3",
       "scripts/release/recognizer-adapter.cjs": "413fe4472660259a03e68683fbcd7f4d288596f41a2f4fb32bf8815e7be7dd51",
       "scripts/release/replay-document.cjs": "606299f436381920092dcb8d73e01cb57260d002102b6f4853add78e8b8a8d41",
@@ -310,7 +310,7 @@
       "src/app/components/QueueInvoiceAction.tsx": "13b05d9ac2f4db5aa3ccf0f72d8492ad8f67d95215806892c91bea27a1fa4d16",
       "src/app/components/QuickCommandCenter.tsx": "c5b4777e6f691da7fddca885c1fe819ca1568da2e02d9ffb73ae521d91bc1c41",
       "src/app/components/RecentScans.tsx": "5ea28f30c39de9670872d9fcaf0f758bace649bc1b29d50300366c07786caa45",
-      "src/app/components/ReleaseDiagnostics.tsx": "b205a01d26bf8aede3f5eecf8738c6c76e54bd9caf79d41d0255782984aa5817",
+      "src/app/components/ReleaseDiagnostics.tsx": "2b753593c400ce36611ec5a9033bc83c67288322bfa27c502587dbd05dfe2661",
       "src/app/components/RequestDepositButton.tsx": "d1270a44165db23b42848387b80b75f10819579c2e9c08b5f91683ea7d1e84e7",
       "src/app/components/ReverseTotalControl.tsx": "749611bb72de255fae488a8b90f5e1488ef25e5e3aaf07f25a58d7819221b7cd",
       "src/app/components/RoleVisible.tsx": "69e7eb4de7cacee6a5f0be80545fdb57d1e48a96988178711d761eee57e9bef5",
@@ -747,7 +747,7 @@
     "physicalAcceptance": "Only installed-iPhone production evidence for exact release may pass; replay cannot pass",
     "legacyModelCache": "/tmp/tesseract-cache actual resolved traineddata path needs explicit attestation; not silently assumed"
   },
-  "sealedAt": "2026-10-01T16:26:58.768Z",
+  "sealedAt": "2026-10-01T16:34:16.905Z",
   "testRuntime": {
     "pgliteVersion": "0.5.8",
     "pglitePackageSha256": "65dff2c93c707e526902eebfab246bcbf2df2eba1c6984a5b5e9a44177532b1c",
