@@ -33,7 +33,7 @@ async function validateStartup(config,engine){const manifest=read(path.join(root
  if(config.supabaseUrl!==`https://${manifest.supabaseProjectId}.supabase.co`)errors.push('Supabase project mismatch');
  if(config.businessId!==manifest.workerConfiguration.businessId)errors.push('Worker business scope mismatch');
  if(!config.workerKey||!config.anonKey)errors.push('Restricted credential missing');
- try{const role=JSON.parse(Buffer.from(config.anonKey.split('.')[1],'base64url').toString()).role;if(role!=='anon')errors.push('Worker API key must be anon, never service_role');}catch{errors.push('Worker anon key role cannot be verified');}
+ if(!config.anonKey?.startsWith('sb_publishable_'))try{const role=JSON.parse(Buffer.from(config.anonKey.split('.')[1],'base64url').toString()).role;if(role!=='anon')errors.push('Worker API key must be anon, never service_role');}catch{errors.push('Worker API key is neither a publishable key nor an anon JWT');}
  if(engine==='v2-shadow'&&(config.python!==manifest.workerConfiguration.python||config.wslDistribution!==manifest.workerConfiguration.wslDistribution))errors.push('Recognizer runtime configuration mismatch');
  errors.push(...verifyModels(manifest,engine,config));
  if(engine==='v2-shadow')try{const actual=JSON.parse(cp.execFileSync('wsl',['-d',config.wslDistribution,'--',config.python,'-c',"import importlib.metadata as m,json,sys; print(json.dumps({'python':sys.version.split()[0],'packages':{n:m.version(n) for n in ['torch','rapidocr','onnxruntime','transformers']}}))"],{encoding:'utf8',windowsHide:true,timeout:30000}));if(actual.python!==manifest.workerConfiguration.pythonVersion||digest(actual.packages)!==digest(manifest.workerConfiguration.packages))errors.push('Python/model package versions differ');}catch{errors.push('Python/model package versions unavailable');}
@@ -51,6 +51,8 @@ function scoreDocument(expected,observed){const failures=[];const truth=expected
  rows.forEach((row,i)=>{const t=truth.rows[i];if(!t){failures.push('Extra row');return;}if(row.fusion?.confidence?.confidentlySelected&&token(row.fusion.topCandidate)!==token(t.invoiceNumber))failures.push('Wrong accepted invoice row '+i);
  const values=[...new Set((row.amounts||[]).map(a=>a.cents))];if(values.some(x=>x!==t.amountCents))failures.push('Wrong accepted amount row '+i);});
  const total=observed.document?.header?.total?.amount;if(total!=null&&Math.round(total*100)!==truth.authoritativeTotalCents)failures.push('Wrong accepted total');
+ for(const key of ['checkNumber','checkDate','payor'])if(truth[key]!=null&&observed.document?.header?.[key]!=null&&observed.document.header[key]!==truth[key])failures.push('Wrong accepted '+key);
+ if(observed.residual?.evidence){const r=observed.residual.evidence;const i=rows.findIndex(row=>row.rowId===r.rowId);if(i<0||r.derivedAmount!==truth.rows[i]?.amountCents)failures.push('Wrong derived amount');}
  const ids=observed.resolver?.automaticInvoiceIds||[];if(new Set(ids).size!==ids.length)failures.push('Duplicate invoice IDs');
  if(ids.length&&ids.some((id,i)=>!truth.rows[i]?.invoiceRecordId||id!==truth.rows[i].invoiceRecordId))failures.push('Wrong or unverifiable automatic invoice IDs');
  const automatic=observed.resolver?.status==='automatic';

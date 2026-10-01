@@ -5,7 +5,7 @@ const manifest=c.read(path.join(c.root,'release/trimax-release-manifest.json')),
 const base=process.env.TRIMAX_RELEASE_OUTPUT_ROOT||path.join(process.env.LOCALAPPDATA||os.tmpdir(),'Trimax','release-gates');
 if(path.resolve(base).startsWith(c.root+path.sep))throw Error('Gate evidence must remain outside Git');
 const out=path.join(base,new Date().toISOString().replace(/[:.]/g,'-'));fs.mkdirSync(out,{recursive:true});
-const report={releaseId:manifest.releaseId,startedAt:new Date().toISOString(),sourceCommit:c.git(['rev-parse','HEAD']),sourceBundle:c.digest(c.sourceHashes()),out,checks:[],retained:[],physicalAcceptance:'PHYSICAL_ACCEPTANCE_PENDING',productionMutations:false};
+const report={releaseId:manifest.releaseId,startedAt:new Date().toISOString(),sourceCommit:c.git(['rev-parse','HEAD']),sourceBundle:c.digest(c.sourceHashes()),corpusHash:manifest.acceptance.sha256,out,checks:[],retained:[],physicalAcceptance:'PHYSICAL_ACCEPTANCE_PENDING',productionMutations:false};
 const save=()=>fs.writeFileSync(path.join(out,'gate-result.json'),JSON.stringify(report,null,2));
 function record(name,failures,extra={}){report.checks.push({name,status:failures.length?'FAIL':'PASS',failures,...extra});save();console.log(name,failures.length?'FAIL':'PASS');}
 function run(name,command,args,timeout=300000){const start=Date.now(),r=cp.spawnSync(command,args,{cwd:c.root,encoding:'utf8',windowsHide:true,timeout,maxBuffer:16000000,env:{...process.env,HF_HUB_OFFLINE:'1'}});fs.writeFileSync(path.join(out,name.replace(/[^a-z0-9-]/gi,'_')+'.log'),(r.stdout||'')+'\n'+(r.stderr||'')+'\n'+(r.error?.message||''));record(name,r.status===0?[]:[r.error?.message||'Exit '+r.status],{durationMs:Date.now()-start});return r;}
@@ -16,7 +16,7 @@ const drift=c.read(path.join(c.root,'release/evidence/worker-state.json'));recor
 record('model-bundle',c.verifyModels(manifest,'v2-shadow',manifest.workerConfiguration));
 run('live-database-attestation',process.execPath,['scripts/release/runtime-check.cjs']);
 const scripts=[
- 'scripts/release/contract-regression.cjs','scripts/release/auth-flow-regression.cjs','scripts/release/startup-regression.cjs',
+ 'scripts/release/contract-regression.cjs','scripts/release/auth-flow-regression.cjs','scripts/release/startup-regression.cjs','scripts/release/sql-attestation-regression.cjs',
  'scripts/ocr-v2/shadow-capture-regression.cjs','scripts/camera-lifecycle-regression.ts',
  'scripts/ocr-v2/capture-durability-regression.cjs','scripts/ocr-object-upload-regression.cjs','scripts/ocr-evidence-persistence-regression.cjs',
  'scripts/ocr-legacy-job-regression.cjs','scripts/ocr-v2/shadow-regression.cjs','scripts/ocr-v2/canonical-regression.cjs','scripts/ocr-v2/canonical-sql-regression.cjs','scripts/ocr-v2/shadow-sql-regression.cjs',
@@ -24,7 +24,9 @@ const scripts=[
  'scripts/ocr-v2/orientation-heading-regression.cjs','scripts/ocr-v2/legacy-direction-regression.cjs','scripts/ocr-v2/legacy-first-pass-regression.cjs','scripts/ocr-v2/physical-row-regression.cjs','scripts/ocr-v2/money-regression.cjs','scripts/ocr-v2/mature-money-regression.cjs','scripts/ocr-v2/shared-money-regression.cjs','scripts/ocr-v2/organization-identity-regression.cjs','scripts/ocr-v2/total-localization-regression.cjs','scripts/ocr-v2/residual-regression.cjs',
  'scripts/ocr-v2/dataset/regression.cjs','scripts/remittance-matching-regression.ts','scripts/remittance-contract-regression.ts','scripts/remittance-retry-regression.ts','scripts/duplicate-remittance-regression.ts','scripts/payment-application-regression.ts','scripts/payment-state-lifecycle-regression.ts','scripts/invoice-correction-regression.ts','scripts/split-source-relationship-regression.ts','scripts/split-invoice-send-regression.ts','scripts/tenant-isolation-hardening-regression.ts','scripts/business-read-isolation-regression.ts','scripts/owner-server-auth-regression.ts','scripts/account-management-regression.ts','scripts/stabilization-regression.cjs'
 ];
-for(const file of scripts)run(path.basename(file).replace(/\.(cjs|ts)$/,''),process.execPath,['--experimental-strip-types',file]);
+const sqlRuntime=process.env.TRIMAX_SQL_TEST_RUNTIME||path.join(process.env.LOCALAPPDATA,'Trimax','phase6-dbtest');
+try{const file=path.join(sqlRuntime,'node_modules/@electric-sql/pglite/package.json');record('sql-test-runtime',c.hash(fs.readFileSync(file))===manifest.testRuntime.pglitePackageSha256?[]:['PGlite runtime hash mismatch']);}catch{record('sql-test-runtime',['Pinned PGlite runtime unavailable']);}
+for(const file of scripts){const args=['--experimental-strip-types',file];if(['ocr-evidence-persistence-regression.cjs','canonical-sql-regression.cjs','shadow-sql-regression.cjs'].includes(path.basename(file))){args.push(sqlRuntime);if(file.endsWith('canonical-sql-regression.cjs'))args.push(corpus.documents.find(d=>d.id==='B').canonicalReference.path);}run(path.basename(file).replace(/\.(cjs|ts)$/,''),process.execPath,args);}
 const snapshots=c.read(corpus.snapshot.path);record('frozen-business-snapshot',c.hash(fs.readFileSync(corpus.snapshot.path))===corpus.snapshot.sha256?[]:['Business snapshot changed']);
 for(const doc of corpus.documents){const failures=[];const image=doc.canonicalReference.path;
  if(!fs.existsSync(image)||c.hash(fs.readFileSync(image))!==doc.canonicalSha256){report.retained.push({id:doc.id,status:'FAIL',failures:['Image missing/changed']});save();continue;}

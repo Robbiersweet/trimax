@@ -84,3 +84,12 @@ commits are permitted and must be reported. Production acceptance requires a rev
 manifest, code and retained gates, followed by actual installed-iPhone evidence. Do not
 remove compatibility paths, adjust OCR/authority rules, or change fixtures to turn a failing
 baseline green. A gate failure is a recorded baseline fact pending review.
+
+The candidate's `npm run build` has a `prebuild` guard requiring a matching PASS receipt
+through `TRIMAX_RELEASE_GATE_RESULT`. The gate itself calls the Next build binary directly
+to measure build success without a recursive prebuild dependency. A successful build alone
+does not authorize deployment. Existing Vercel settings and branch protection are not changed
+by this task; direct build-command overrides and administrator bypass are not claimed to be
+prevented. No current production enforcement is claimed until the candidate is reviewed and
+activated. The pinned private PGlite 0.5.8 test runtime is supplied through
+`TRIMAX_SQL_TEST_RUNTIME` (default `%LOCALAPPDATA%/Trimax/phase6-dbtest`).

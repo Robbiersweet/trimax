@@ -745,5 +745,11 @@
     "physicalAcceptance": "Only installed-iPhone production evidence for exact release may pass; replay cannot pass",
     "legacyModelCache": "/tmp/tesseract-cache actual resolved traineddata path needs explicit attestation; not silently assumed"
   },
-  "sealedAt": "2026-10-01T16:17:49.146Z"
+  "sealedAt": "2026-10-01T16:17:49.146Z",
+  "testRuntime": {
+    "pgliteVersion": "0.5.8",
+    "pglitePackageSha256": "65dff2c93c707e526902eebfab246bcbf2df2eba1c6984a5b5e9a44177532b1c",
+    "pathEnvironment": "TRIMAX_SQL_TEST_RUNTIME",
+    "defaultPath": "C:\\Users\\robbi\\AppData\\Local/Trimax/phase6-dbtest"
+  }
 }
