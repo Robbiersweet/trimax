@@ -11,22 +11,22 @@
   },
   "components": {
     "web": {
-      "commit": "cb00253905ad00f3696fb68b3e534e7c65d7403f"
+      "commit": "28611a487dd1f64516a5900b2d9d8ee9fe3332d2"
     },
     "legacy": {
-      "commit": "cb00253905ad00f3696fb68b3e534e7c65d7403f"
+      "commit": "28611a487dd1f64516a5900b2d9d8ee9fe3332d2"
     },
     "v2-shadow": {
-      "commit": "cb00253905ad00f3696fb68b3e534e7c65d7403f"
+      "commit": "28611a487dd1f64516a5900b2d9d8ee9fe3332d2"
     }
   },
   "sourceBundle": {
-    "sha256": "80f5a1a2b70439bffe8649c4d3969349955df5b527862610d472aa0f7d3e904a",
+    "sha256": "ec4ab0c68b3ecc2b2fdba497dd91b827e9940d6da00364023c0f6d6f5438062d",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
       "package-lock.json": "ae252081dd883a2242c7821acd7f30e3069d550cc117d5e5c1164ae8b71b758f",
-      "package.json": "43976786d685ab3cf177ddf8b17bb53bb348da8cd99f696939109a62f429d5e2",
+      "package.json": "8ab77d2233ddb49c139578747e90985d55636d1e6e3dae4cdc5d3f3329a89c50",
       "proxy.ts": "c07e9824217830ca636dac8141204cf2a422728fdc173f488ad61e86edbc8cce",
       "public/Brand/R&L Full Black.png": "dcdcc31d960673a1a31f4d6264b8809acc8dbd44df67adea83a938bcb33571bb",
       "public/Brand/R&L Full Orange.png": "24ebdfa94830f9735369586f4bc58dce082ff55e77f9dc75cfaf1ef92bbdf1cc",
@@ -211,13 +211,15 @@
       "scripts/queue-compact-toolbar-regression.ts": "31290b567851c074872fc5d4b7d332d7cbc1af517129c9f5e2c2d61ef7fdb5d5",
       "scripts/queue-workspace-polish-regression.ts": "40743a142f1bc2e14fc2aca23d743d2d8d2342016cfce592f1f6f22160cceb1d",
       "scripts/release/auth-flow-regression.cjs": "4d7ede3411ef172daf752cf0f852f220a2f6ee55f5868efafddf977751716638",
+      "scripts/release/authorize-build.cjs": "fd486ee8ed5cff24e9cb829d0f79f7066d05ef59dc6cb0a89556b8a4d5309f9c",
       "scripts/release/contract-regression.cjs": "0079759ba290d91a34d3a3b3b8f834804b77d2643c333ce32af35335175c883e",
-      "scripts/release/contract.cjs": "413280a73b5e7c87de359c75a462f74710c36bd3c61a5b651b762f97865a9290",
-      "scripts/release/gate.cjs": "89ac8d0a9fb50458729404809f55234c0a2910a79c6a1e0c31230e9bb024f143",
+      "scripts/release/contract.cjs": "8af5ab2d73b33114f441d87f7e5261bfcd9e06ec740126906145bdf8faa81820",
+      "scripts/release/gate.cjs": "0530d848842c2b99fb413c7c69ecd56e848ffc59273be95739b23529db113019",
       "scripts/release/physical-acceptance.cjs": "f6466593e668069b6416fcfc85518f104e4dacc624858383c70a194233c9b5c3",
       "scripts/release/recognizer-adapter.cjs": "413fe4472660259a03e68683fbcd7f4d288596f41a2f4fb32bf8815e7be7dd51",
       "scripts/release/replay-document.cjs": "606299f436381920092dcb8d73e01cb57260d002102b6f4853add78e8b8a8d41",
       "scripts/release/runtime-check.cjs": "256631b12bdbf03e8ad5ffb756c279b7d7cd94b31aec47cbeeadabf45a5f1068",
+      "scripts/release/sql-attestation-regression.cjs": "34f75ca690e7367ca5637c4cb01bb979b9d6e87055f5f178f9e37042485529f3",
       "scripts/release/startup-regression.cjs": "56c2e638dc8dbda6198a064d25f4a53a42a3fea09d23be341074c191333e2099",
       "scripts/remittance-camera-geometry-regression.ts": "aba66060df4eb16456e37a540c6b50455861dfdef394e3a539baec718e274868",
       "scripts/remittance-contract-regression.ts": "75e3bf300050abfcd6145eb5d912af9251fef904bc1c9be19c5bc5695d50cf77",
@@ -745,7 +747,7 @@
     "physicalAcceptance": "Only installed-iPhone production evidence for exact release may pass; replay cannot pass",
     "legacyModelCache": "/tmp/tesseract-cache actual resolved traineddata path needs explicit attestation; not silently assumed"
   },
-  "sealedAt": "2026-10-01T16:17:49.146Z",
+  "sealedAt": "2026-10-01T16:26:58.768Z",
   "testRuntime": {
     "pgliteVersion": "0.5.8",
     "pglitePackageSha256": "65dff2c93c707e526902eebfab246bcbf2df2eba1c6984a5b5e9a44177532b1c",
