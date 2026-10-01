@@ -30,6 +30,7 @@ async function runJob(config,rpc,engine){
   if(claim.recovery && typeof claim.recovery.text!=='string')throw Error('Completed checkpoint lacks selected text; preserve evidence for recovery without repeating OCR');
   const response=await engine.progress.withLegacyProgress(async(stage,evidence)=>{if(lostLease)throw Error('Legacy lease heartbeat failed');await saveEvidence(update,stage,evidence);},()=>engine.route.POST(new Request('http://legacy-worker/extract',{method:'POST',headers:{'Content-Type':'application/json','x-ocr-observation-scope':crypto.randomUUID()},body:JSON.stringify({...j.input,attemptId:j.attempt_id,imageDataUrl:'data:'+image.mime+';base64,'+image.base64})})),claim.recovery??undefined);
   const result=await response.json();delete result.optical; // Canonical image is already retained; never duplicate image bytes.
+  if(config.releaseAttestation)result.release=config.releaseAttestation;
   if(lostLease)throw Error('Legacy lease lost before completion');
   const reference=await saveEvidence(update,'response_ready',{result,status:response.status});
   await update('complete',terminalSummary(result,reference),response.status);
@@ -45,6 +46,8 @@ module.exports={loadEngine,runJob};
 if(require.main===module)(async()=>{
  const config=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
  const rpc=async(name,args)=>{const r=await fetch(config.supabaseUrl+'/rest/v1/rpc/'+name,{method:'POST',headers:{apikey:config.anonKey,'Content-Type':'application/json'},body:JSON.stringify({p_business:config.businessId,p_key:config.workerKey,...args}),signal:AbortSignal.timeout(20000)});if(!r.ok)throw Error('Legacy queue '+r.status+': '+(await r.text()).slice(0,500));return r.status===204?null:r.json();};
+ const {validateStartup}=require('./release/contract.cjs');
+ config.releaseAttestation=await validateStartup(config,'legacy');
  const engine=loadEngine();
- do{try{await runJob(config,rpc,engine);}catch(e){console.error(e.message);}if(process.argv.includes('--once'))break;await new Promise(r=>setTimeout(r,5000));}while(true);
+ do{config.releaseAttestation=await validateStartup(config,'legacy');try{await runJob(config,rpc,engine);}catch(e){console.error(e.message);}if(process.argv.includes('--once'))break;await new Promise(r=>setTimeout(r,5000));}while(true);
 })().catch(e=>{console.error(e.message);process.exitCode=1;});

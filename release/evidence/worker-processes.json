@@ -1,0 +1,16 @@
+[
+  {
+    "ProcessId": 32732,
+    "ParentProcessId": 19352,
+    "CreationDate": "2026-09-26T00:27:26.335586-07:00",
+    "ExecutablePath": "C:\\Program Files\\nodejs\\node.exe",
+    "CommandLine": "\"C:\\Program Files\\nodejs\\node.exe\" scripts/ocr-legacy-worker.cjs C:\\Users\\robbi\\AppData\\Local\\Trimax\\ocr-legacy-worker\\worker.json"
+  },
+  {
+    "ProcessId": 3824,
+    "ParentProcessId": 32464,
+    "CreationDate": "2026-09-26T00:55:02.328554-07:00",
+    "ExecutablePath": "C:\\Program Files\\nodejs\\node.exe",
+    "CommandLine": "\"C:\\Program Files\\nodejs\\node.exe\" --experimental-strip-types scripts/ocr-v2/shadow-worker.cjs C:\\Users\\robbi\\AppData\\Local\\Trimax\\ocr-shadow-worker\\worker.json"
+  }
+]

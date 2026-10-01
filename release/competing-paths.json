@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "paths": [
+    {"path":"src/app/components/BatchInvoicePayments.tsx: native still and Choose Existing", "status":"ACTIVE", "authority":"single-still intake"},
+    {"path":"src/app/components/BatchInvoicePayments.tsx: paymentEntryMode camera/getUserMedia portal", "status":"DEAD/UNREACHABLE", "authority":"no normal UI setter; retained historical code"},
+    {"path":"src/app/api/payments/extract-check-stub/route.ts", "status":"COMPATIBILITY", "authority":"HTTP handler also invoked by active local legacy worker"},
+    {"path":"scripts/ocr-legacy-worker.cjs", "status":"ACTIVE", "authority":"legacy review preparation, never payment application"},
+    {"path":"scripts/ocr-v2/shadow-worker.cjs", "status":"DIAGNOSTIC", "authority":"v2 shadow results only"},
+    {"path":"src/app/lib/ocrV2/documentFields/moneyService.ts", "status":"ACTIVE", "authority":"shared optical evidence, separate consumer authority"},
+    {"path":"src/app/lib/ocrV2/shadow/client.ts: inline image enqueue compatibility", "status":"COMPATIBILITY", "authority":"historical image transport, not normal canonical upload"},
+    {"path":"src/app/lib/ocrCanonicalClient.ts", "status":"ACTIVE", "authority":"canonical Storage upload/register/retry"},
+    {"path":"scripts/ocr-legacy-evidence.cjs", "status":"ACTIVE", "authority":"bounded terminal summaries and append-only checkpoints"},
+    {"path":"src/app/lib/ocrV2/layout/generalized.ts", "status":"COMPATIBILITY", "authority":"research pipeline and shared structural helpers; not a substitute for production semantic mapping"},
+    {"path":"scripts/ocr-v2/training/*", "status":"DIAGNOSTIC", "authority":"offline research, never acceptance truth"},
+    {"path":"src/proxy.ts", "status":"DEAD/UNREACHABLE", "authority":"empty matcher"}
+  ],
+  "removals": "None. DEPRECATED is reserved for a separately reviewed retirement decision; this inventory does not invent one."
+}

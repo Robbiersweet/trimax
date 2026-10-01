@@ -1,0 +1,51 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- One release gate; outputs private, never deploys or changes production. */
+const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),cp=require('node:child_process');
+const c=require('./contract.cjs');
+const manifest=c.read(path.join(c.root,'release/trimax-release-manifest.json')),corpus=c.read(path.join(c.root,manifest.acceptance.corpus));
+const base=process.env.TRIMAX_RELEASE_OUTPUT_ROOT||path.join(process.env.LOCALAPPDATA||os.tmpdir(),'Trimax','release-gates');
+if(path.resolve(base).startsWith(c.root+path.sep))throw Error('Gate evidence must remain outside Git');
+const out=path.join(base,new Date().toISOString().replace(/[:.]/g,'-'));fs.mkdirSync(out,{recursive:true});
+const report={releaseId:manifest.releaseId,startedAt:new Date().toISOString(),sourceCommit:c.git(['rev-parse','HEAD']),sourceBundle:c.digest(c.sourceHashes()),out,checks:[],retained:[],physicalAcceptance:'PHYSICAL_ACCEPTANCE_PENDING',productionMutations:false};
+const save=()=>fs.writeFileSync(path.join(out,'gate-result.json'),JSON.stringify(report,null,2));
+function record(name,failures,extra={}){report.checks.push({name,status:failures.length?'FAIL':'PASS',failures,...extra});save();console.log(name,failures.length?'FAIL':'PASS');}
+function run(name,command,args,timeout=300000){const start=Date.now(),r=cp.spawnSync(command,args,{cwd:c.root,encoding:'utf8',windowsHide:true,timeout,maxBuffer:16000000,env:{...process.env,HF_HUB_OFFLINE:'1'}});fs.writeFileSync(path.join(out,name.replace(/[^a-z0-9-]/gi,'_')+'.log'),(r.stdout||'')+'\n'+(r.stderr||'')+'\n'+(r.error?.message||''));record(name,r.status===0?[]:[r.error?.message||'Exit '+r.status],{durationMs:Date.now()-start});return r;}
+record('clean-manifest-source-start',c.localFailures(manifest));
+record('frozen-corpus-integrity',c.hash(fs.readFileSync(path.join(c.root,manifest.acceptance.corpus)))===manifest.acceptance.sha256?[]:['Corpus changed']);
+const installation=c.read(path.join(c.root,'release/evidence/install-baseline.json'));record('clean-dependency-install',installation.standardResult.startsWith('PASS')?[]:[installation.standardResult]);
+const drift=c.read(path.join(c.root,'release/evidence/worker-state.json'));record('production-runtime-attestation',drift.classification.legacy.startsWith('A')&&drift.classification.v2.startsWith('A')?[]:['Existing production workers have no loaded-source attestation; preserved drift is not normalized by this task']);
+record('model-bundle',c.verifyModels(manifest,'v2-shadow',manifest.workerConfiguration));
+run('live-database-attestation',process.execPath,['scripts/release/runtime-check.cjs']);
+const scripts=[
+ 'scripts/release/contract-regression.cjs','scripts/release/auth-flow-regression.cjs','scripts/release/startup-regression.cjs',
+ 'scripts/ocr-v2/shadow-capture-regression.cjs','scripts/camera-lifecycle-regression.ts',
+ 'scripts/ocr-v2/capture-durability-regression.cjs','scripts/ocr-object-upload-regression.cjs','scripts/ocr-evidence-persistence-regression.cjs',
+ 'scripts/ocr-legacy-job-regression.cjs','scripts/ocr-v2/shadow-regression.cjs','scripts/ocr-v2/canonical-regression.cjs','scripts/ocr-v2/canonical-sql-regression.cjs','scripts/ocr-v2/shadow-sql-regression.cjs',
+ 'scripts/ocr-v2/foundation-regression.cjs','scripts/ocr-v2/layout-regression.cjs','scripts/ocr-v2/field-regression.cjs','scripts/ocr-v2/invoice-study-regression.cjs','scripts/ocr-v2/fusion-regression.cjs','scripts/ocr-v2/resolver-regression.cjs','scripts/ocr-v2/payment-evidence-regression.cjs','scripts/ocr-v2/document-total-regression.cjs','scripts/ocr-v2/identity-regression.cjs','scripts/ocr-v2/semantics-regression.cjs',
+ 'scripts/ocr-v2/orientation-heading-regression.cjs','scripts/ocr-v2/legacy-direction-regression.cjs','scripts/ocr-v2/legacy-first-pass-regression.cjs','scripts/ocr-v2/physical-row-regression.cjs','scripts/ocr-v2/money-regression.cjs','scripts/ocr-v2/mature-money-regression.cjs','scripts/ocr-v2/shared-money-regression.cjs','scripts/ocr-v2/organization-identity-regression.cjs','scripts/ocr-v2/total-localization-regression.cjs','scripts/ocr-v2/residual-regression.cjs',
+ 'scripts/ocr-v2/dataset/regression.cjs','scripts/remittance-matching-regression.ts','scripts/remittance-contract-regression.ts','scripts/remittance-retry-regression.ts','scripts/duplicate-remittance-regression.ts','scripts/payment-application-regression.ts','scripts/payment-state-lifecycle-regression.ts','scripts/invoice-correction-regression.ts','scripts/split-source-relationship-regression.ts','scripts/split-invoice-send-regression.ts','scripts/tenant-isolation-hardening-regression.ts','scripts/business-read-isolation-regression.ts','scripts/owner-server-auth-regression.ts','scripts/account-management-regression.ts','scripts/stabilization-regression.cjs'
+];
+for(const file of scripts)run(path.basename(file).replace(/\.(cjs|ts)$/,''),process.execPath,['--experimental-strip-types',file]);
+const snapshots=c.read(corpus.snapshot.path);record('frozen-business-snapshot',c.hash(fs.readFileSync(corpus.snapshot.path))===corpus.snapshot.sha256?[]:['Business snapshot changed']);
+for(const doc of corpus.documents){const failures=[];const image=doc.canonicalReference.path;
+ if(!fs.existsSync(image)||c.hash(fs.readFileSync(image))!==doc.canonicalSha256){report.retained.push({id:doc.id,status:'FAIL',failures:['Image missing/changed']});save();continue;}
+ const snapshot=snapshots.find(s=>s.document.id===doc.id)?.snapshot;if(!snapshot){report.retained.push({id:doc.id,status:'FAIL',failures:['Frozen resolver snapshot missing']});save();continue;}
+ for(const engine of ['legacy','v2-shadow']){const input=path.join(out,doc.id+'-'+engine+'-input.json'),dir=path.join(out,doc.id+'-'+engine);fs.writeFileSync(input,JSON.stringify({id:doc.id,image,sha256:doc.canonicalSha256,snapshot,engine}));
+ const replay=run('retained-'+doc.id+'-'+engine,process.execPath,['--experimental-strip-types','scripts/release/replay-document.cjs',input,dir],900000);
+ if(replay.status!==0){failures.push(engine+' replay failed');continue;}const result=c.read(path.join(dir,'result.json'));
+ if(engine==='v2-shadow')failures.push(...c.scoreDocument(doc,result.result));
+ else {
+  // Legacy raw candidates are not accepted field evidence. Preserve the real response, and require a terminal result.
+  if(![200,422].includes(result.result.status))failures.push('Legacy nonterminal response');
+  const raw=result.result.result;if(raw.totalEvidence?.payable&&Math.round(raw.totalEvidence.amount*100)!==doc.truth.authoritativeTotalCents)failures.push('Wrong legacy authoritative total');
+  if(raw.paymentCanApply===true)failures.push('Legacy extraction unexpectedly applies payment');
+ }
+ }
+ report.retained.push({id:doc.id,status:failures.length?'FAIL':'PASS',failures});save();console.log('ACCEPTANCE',doc.id,failures.length?'FAIL':'PASS');
+}
+run('lint',process.execPath,['node_modules/eslint/bin/eslint.js','.']);
+run('typescript',process.execPath,['node_modules/typescript/bin/tsc','--noEmit']);
+run('production-build',process.execPath,['node_modules/next/dist/bin/next','build'],600000);
+record('clean-manifest-source-end',c.localFailures(manifest));
+report.codeGate=report.checks.filter(x=>!x.name.startsWith('retained-')).every(x=>x.status==='PASS')?'CODE_GATE_PASSED':'CODE_GATE_FAILED';
+report.retainedGate=report.retained.length===corpus.documents.length&&report.retained.every(x=>x.status==='PASS')?'RETAINED_REAL_GATE_PASSED':'RETAINED_REAL_GATE_FAILED';
+report.status=report.codeGate==='CODE_GATE_PASSED'&&report.retainedGate==='RETAINED_REAL_GATE_PASSED'?'PASS':'FAIL';report.finishedAt=new Date().toISOString();save();console.log(JSON.stringify({status:report.status,report:path.join(out,'gate-result.json'),physicalAcceptance:report.physicalAcceptance}));process.exitCode=report.status==='PASS'?0:1;

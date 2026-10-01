@@ -1,0 +1,3026 @@
+{
+  "schemaVersion": 1,
+  "id": "trimax-frozen-real-acceptance-20261001-v1",
+  "frozenAt": "2026-10-01T16:09:08.394Z",
+  "purpose": "scoring-only; never inference input",
+  "historicalExposure": "All documents are previously exposed retained evidence; not fresh physical acceptance",
+  "sourceTruth": {
+    "path": "C:\\Users\\robbi\\AppData\\Local/Trimax/ocr-v2-training/dataset-v1/manifest-v2.json",
+    "sha256": "5d9ce4c87e47559efd4157ef482ebcd9ef220dfd3c075632d9b2ac63f9d3b478",
+    "provenance": "Prior manually verified optical annotations and read-only business snapshots; A-D invoice sets and totals reaffirmed by user"
+  },
+  "historicalBaseline": {
+    "path": "C:\\Users\\robbi\\AppData\\Local/Trimax/ocr-v2-training/dataset-v1/capture2-final-gate/report.json",
+    "sha256": "0a041dbfc7402bf10fbb32ecdb76b681e023adcdbc65f6d7152263c1f4147253"
+  },
+  "snapshot": {
+    "path": "C:\\Users\\robbi\\AppData\\Local/Trimax/ocr-v2-training/phase5/resolver-evidence.json",
+    "sha256": "7a34c45c0389d2ad4db51a1b6a02b0be6ca614100631920e289edfd300501e73"
+  },
+  "documents": [
+    {
+      "id": "check2715",
+      "independentDocumentId": "check2715",
+      "canonicalReference": {
+        "kind": "private-retained-file",
+        "path": "C:\\Users\\robbi\\AppData\\Local\\Trimax\\ocr-v2-training\\pilot-v1\\harvest\\1d5e458e-419e-47e6-9e7d-e6b6aa0d6850-image.jpg.jpg",
+        "sourceAttachmentId": "5da9b332-eac6-4dfb-be75-cf978e943ec8",
+        "sourceAttemptId": null
+      },
+      "canonicalSha256": "03c4af1d93b7a5813c401743b5ad6db2bff5390a2d3ad146e7acd9ff00ac343b",
+      "documentIdentity": "check2715",
+      "expectedPhysicalRows": 2,
+      "truth": {
+        "provenance": "Prior manually verified optical annotations and read-only transaction snapshot; labels only",
+        "rows": [
+          {
+            "rowId": "check2715-0",
+            "invoiceNumber": "404",
+            "invoiceRecordId": null,
+            "unit": null,
+            "amountCents": 1102431
+          },
+          {
+            "rowId": "check2715-1",
+            "invoiceNumber": "402",
+            "invoiceRecordId": null,
+            "unit": null,
+            "amountCents": 109900
+          }
+        ],
+        "authoritativeTotalCents": 1212331,
+        "checkNumber": "2715",
+        "checkDate": null,
+        "payor": null
+      },
+      "expectation": "SAFELY_REQUIRE_REVIEW",
+      "expectationSource": "Frozen historical pre-task scorecard; expectations are not recalibrated from this run",
+      "historicalScorecard": {
+        "id": "check2715",
+        "rows": 2,
+        "models": {
+          "generic": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 3,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "404",
+              "ms": 68.06440999999985
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 3,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "402",
+              "ms": 70.10706799999954
+            }
+          ],
+          "pilot": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 3,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "404",
+              "ms": 98.64047299999967
+            },
+            {
+              "cost": 1,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 1,
+              "exact": false,
+              "characters": 3,
+              "cer": 0.3333333333333333,
+              "characterAccuracy": 0.6666666666666667,
+              "raw": "404",
+              "ms": 101.6740279999997
+            }
+          ],
+          "ppocr": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 3,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "404",
+              "ms": 14.26454300000124
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 3,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "402",
+              "ms": 16.491258000000286
+            }
+          ],
+          "svtr": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 3,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "404",
+              "ms": 18.77892599999953
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 3,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "402",
+              "ms": 26.071820000002077
+            }
+          ],
+          "parseq": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 3,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "404",
+              "ms": 11.916904000003115
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 3,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "402",
+              "ms": 16.704231000002068
+            }
+          ],
+          "fusion": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 3,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "404",
+              "ms": 0.0908999999955995
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 3,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "402",
+              "ms": 0.03419999999459833
+            }
+          ]
+        },
+        "invoiceExact": 2,
+        "amountExact": 2,
+        "wrongAutomatic": 0,
+        "fields": {
+          "amounts": [
+            {
+              "expected": 1102431,
+              "actual": 1102431,
+              "exact": true,
+              "ambiguity": "supported"
+            },
+            {
+              "expected": 109900,
+              "actual": 109900,
+              "exact": true,
+              "ambiguity": "supported"
+            }
+          ],
+          "authoritativeTotalCents": {
+            "expected": 1212331,
+            "actual": null,
+            "exact": false,
+            "missing": true,
+            "unlabeled": false
+          },
+          "checkNumber": {
+            "expected": "2715",
+            "actual": null,
+            "exact": false,
+            "missing": true,
+            "unlabeled": false
+          },
+          "checkDate": {
+            "expected": null,
+            "actual": null,
+            "exact": null,
+            "missing": true,
+            "unlabeled": true
+          },
+          "payor": {
+            "expected": null,
+            "actual": "North Creek Apartmen",
+            "exact": null,
+            "missing": false,
+            "unlabeled": true
+          }
+        },
+        "layout": {
+          "expectedRows": 2,
+          "detectedRows": 2,
+          "rows": [
+            {
+              "rowOverlap": 0.9964016536648784,
+              "invoiceCompleteness": 0.6107886205469029,
+              "amountCompleteness": 0.4748577718497787,
+              "contamination": false,
+              "missing": false
+            },
+            {
+              "rowOverlap": 0.9307583028886073,
+              "invoiceCompleteness": 0.6759064356929291,
+              "amountCompleteness": 0.375819092104433,
+              "contamination": false,
+              "missing": false
+            }
+          ],
+          "headerCoverage": null,
+          "footerCoverage": 0.6595264150986827
+        },
+        "resolverStatus": "inconsistent",
+        "automaticRows": 0,
+        "fullSuccess": false,
+        "processingMs": 15669.121761000004
+      },
+      "unknownFields": [
+        "payor/property",
+        "check2715-0:invoiceRecordId",
+        "check2715-1:invoiceRecordId",
+        "checkDate"
+      ],
+      "freshPhysicalAcceptance": false,
+      "trainingOptIn": false,
+      "sourceDimensions": [
+        4032,
+        3024
+      ],
+      "holdout": false
+    },
+    {
+      "id": "check2721",
+      "independentDocumentId": "check2721",
+      "canonicalReference": {
+        "kind": "private-retained-file",
+        "path": "C:\\Users\\robbi\\AppData\\Local\\Trimax\\ocr-v2-training\\pilot-v1\\harvest\\cf8bc6d1-3e9e-46b9-bda3-540ab32724d9-IMG_9960.jpeg.jpg",
+        "sourceAttachmentId": "ad398fd4-be0c-489d-8e7c-330df08fae1d",
+        "sourceAttemptId": null
+      },
+      "canonicalSha256": "2afb939154f4453d8724ef396cdb415a19af4b8734af8e52d7b299a262b80924",
+      "documentIdentity": "check2721",
+      "expectedPhysicalRows": 2,
+      "truth": {
+        "provenance": "Prior manually verified optical annotations and read-only transaction snapshot; labels only",
+        "rows": [
+          {
+            "rowId": "check2721-0",
+            "invoiceNumber": "INV0500",
+            "invoiceRecordId": "5bae2847-efc7-4444-8bad-40b09924421a",
+            "unit": null,
+            "amountCents": 109900
+          },
+          {
+            "rowId": "check2721-1",
+            "invoiceNumber": "INV0501",
+            "invoiceRecordId": "eea7399b-40a7-4ca4-8393-329b0402f052",
+            "unit": null,
+            "amountCents": 109900
+          }
+        ],
+        "authoritativeTotalCents": 219800,
+        "checkNumber": "2721",
+        "checkDate": "2026-07-07",
+        "payor": null
+      },
+      "expectation": "AUTOMATICALLY_RESOLVE",
+      "expectationSource": "Frozen historical pre-task scorecard; expectations are not recalibrated from this run",
+      "historicalScorecard": {
+        "id": "check2721",
+        "rows": 2,
+        "models": {
+          "generic": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0500",
+              "ms": 78.62555999999987
+            },
+            {
+              "cost": 3,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 3,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.42857142857142855,
+              "characterAccuracy": 0.5714285714285714,
+              "raw": "INVOSO1",
+              "ms": 70.03946100000036
+            }
+          ],
+          "pilot": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0500",
+              "ms": 109.94891200000012
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0501",
+              "ms": 109.60600999999848
+            }
+          ],
+          "ppocr": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0500",
+              "ms": 13.059956000001094
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0501",
+              "ms": 13.541923000000011
+            }
+          ],
+          "svtr": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0500",
+              "ms": 20.888144000000608
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0501",
+              "ms": 20.38418300000089
+            }
+          ],
+          "parseq": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0500",
+              "ms": 25.95843399999964
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0501",
+              "ms": 24.623480000002473
+            }
+          ],
+          "fusion": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV-0500",
+              "ms": 0.08320000000821892
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV-0501",
+              "ms": 0.042100000006030314
+            }
+          ]
+        },
+        "invoiceExact": 2,
+        "amountExact": 2,
+        "wrongAutomatic": 0,
+        "fields": {
+          "amounts": [
+            {
+              "expected": 109900,
+              "actual": 109900,
+              "exact": true,
+              "ambiguity": "supported"
+            },
+            {
+              "expected": 109900,
+              "actual": 109900,
+              "exact": true,
+              "ambiguity": "supported"
+            }
+          ],
+          "authoritativeTotalCents": {
+            "expected": 219800,
+            "actual": 219800,
+            "exact": true,
+            "missing": false,
+            "unlabeled": false
+          },
+          "checkNumber": {
+            "expected": "2721",
+            "actual": null,
+            "exact": false,
+            "missing": true,
+            "unlabeled": false
+          },
+          "checkDate": {
+            "expected": "2026-07-07",
+            "actual": "2026-07-07",
+            "exact": true,
+            "missing": false,
+            "unlabeled": false
+          },
+          "payor": {
+            "expected": null,
+            "actual": "North Creek Apartmen",
+            "exact": null,
+            "missing": false,
+            "unlabeled": true
+          }
+        },
+        "layout": {
+          "expectedRows": 2,
+          "detectedRows": 2,
+          "rows": [
+            {
+              "rowOverlap": 0.9626639724768827,
+              "invoiceCompleteness": 0.6972333808788167,
+              "amountCompleteness": 0.5777520752846763,
+              "contamination": false,
+              "missing": false
+            },
+            {
+              "rowOverlap": 0.9290900732061514,
+              "invoiceCompleteness": 0.7495258844447279,
+              "amountCompleteness": 0.5515369338215429,
+              "contamination": false,
+              "missing": false
+            }
+          ],
+          "headerCoverage": null,
+          "footerCoverage": 0.6095703055177455
+        },
+        "resolverStatus": "resolved",
+        "automaticRows": 2,
+        "fullSuccess": true,
+        "processingMs": 7797.435963000008
+      },
+      "unknownFields": [
+        "payor/property"
+      ],
+      "freshPhysicalAcceptance": false,
+      "trainingOptIn": false,
+      "sourceDimensions": [
+        4032,
+        3024
+      ],
+      "holdout": false
+    },
+    {
+      "id": "check2734",
+      "independentDocumentId": "check2734",
+      "canonicalReference": {
+        "kind": "private-retained-file",
+        "path": "C:\\Users\\robbi\\AppData\\Local\\Trimax\\ocr-v2-training\\pilot-v1\\harvest\\54d332a6-ad55-4c96-be73-81cdfd428e47-image.jpg.jpg",
+        "sourceAttachmentId": "a7ee0a87-c916-4d44-851e-1296303361a9",
+        "sourceAttemptId": null
+      },
+      "canonicalSha256": "f216eede07d8d48b7208b7afe2ffaa1a63c4d6e7997e905087bc5bf6f6e9ed77",
+      "documentIdentity": "check2734",
+      "expectedPhysicalRows": 2,
+      "truth": {
+        "provenance": "Prior manually verified optical annotations and read-only transaction snapshot; labels only",
+        "rows": [
+          {
+            "rowId": "check2734-0",
+            "invoiceNumber": "INV0502",
+            "invoiceRecordId": "6b33bb8c-7af0-49f2-9f42-f8084564da2d",
+            "unit": null,
+            "amountCents": 109900
+          },
+          {
+            "rowId": "check2734-1",
+            "invoiceNumber": "INV0503",
+            "invoiceRecordId": "82862232-6609-41a4-977d-8a477e0f64f0",
+            "unit": null,
+            "amountCents": 109900
+          }
+        ],
+        "authoritativeTotalCents": 219800,
+        "checkNumber": "2734",
+        "checkDate": "2026-07-10",
+        "payor": null
+      },
+      "expectation": "AUTOMATICALLY_RESOLVE",
+      "expectationSource": "Frozen historical pre-task scorecard; expectations are not recalibrated from this run",
+      "historicalScorecard": {
+        "id": "check2734",
+        "rows": 2,
+        "models": {
+          "generic": [
+            {
+              "cost": 2,
+              "insertions": 1,
+              "deletions": 0,
+              "substitutions": 1,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.2857142857142857,
+              "characterAccuracy": 0.7142857142857143,
+              "raw": "INVOS502",
+              "ms": 73.77402500000052
+            },
+            {
+              "cost": 1,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 1,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.14285714285714285,
+              "characterAccuracy": 0.8571428571428572,
+              "raw": "INVO503",
+              "ms": 71.97139099999994
+            }
+          ],
+          "pilot": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0502",
+              "ms": 129.2982269999996
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0503",
+              "ms": 105.12910100000106
+            }
+          ],
+          "ppocr": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0502",
+              "ms": 12.817840000000302
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0503",
+              "ms": 13.280504000000803
+            }
+          ],
+          "svtr": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0502",
+              "ms": 23.046005000001202
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0503",
+              "ms": 26.66288200000011
+            }
+          ],
+          "parseq": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0502",
+              "ms": 24.601705000002028
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0503",
+              "ms": 16.338937000000442
+            }
+          ],
+          "fusion": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV-0502",
+              "ms": 0.06720000000495929
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV-0503",
+              "ms": 0.036300000007031485
+            }
+          ]
+        },
+        "invoiceExact": 2,
+        "amountExact": 2,
+        "wrongAutomatic": 0,
+        "fields": {
+          "amounts": [
+            {
+              "expected": 109900,
+              "actual": 109900,
+              "exact": true,
+              "ambiguity": "supported"
+            },
+            {
+              "expected": 109900,
+              "actual": 109900,
+              "exact": true,
+              "ambiguity": "supported"
+            }
+          ],
+          "authoritativeTotalCents": {
+            "expected": 219800,
+            "actual": 219800,
+            "exact": true,
+            "missing": false,
+            "unlabeled": false
+          },
+          "checkNumber": {
+            "expected": "2734",
+            "actual": null,
+            "exact": false,
+            "missing": true,
+            "unlabeled": false
+          },
+          "checkDate": {
+            "expected": "2026-07-10",
+            "actual": null,
+            "exact": false,
+            "missing": true,
+            "unlabeled": false
+          },
+          "payor": {
+            "expected": null,
+            "actual": "North Creek Apartmen",
+            "exact": null,
+            "missing": false,
+            "unlabeled": true
+          }
+        },
+        "layout": {
+          "expectedRows": 2,
+          "detectedRows": 2,
+          "rows": [
+            {
+              "rowOverlap": 0.9241923881071186,
+              "invoiceCompleteness": 0.7048831523888625,
+              "amountCompleteness": 0.2983027252163,
+              "contamination": false,
+              "missing": false
+            },
+            {
+              "rowOverlap": 0.8923592294825127,
+              "invoiceCompleteness": 0.6984458633259505,
+              "amountCompleteness": 0.3006062211639163,
+              "contamination": false,
+              "missing": false
+            }
+          ],
+          "headerCoverage": null,
+          "footerCoverage": 0.5974340691137566
+        },
+        "resolverStatus": "resolved",
+        "automaticRows": 2,
+        "fullSuccess": true,
+        "processingMs": 13806.646217000003
+      },
+      "unknownFields": [
+        "payor/property"
+      ],
+      "freshPhysicalAcceptance": false,
+      "trainingOptIn": false,
+      "sourceDimensions": [
+        4032,
+        3024
+      ],
+      "holdout": false
+    },
+    {
+      "id": "check2743",
+      "independentDocumentId": "check2743",
+      "canonicalReference": {
+        "kind": "private-retained-file",
+        "path": "C:\\Users\\robbi\\AppData\\Local\\Trimax\\ocr-v2-training\\pilot-v1\\harvest\\5c887a57-1ea4-4188-9c21-cf361da68f6e-image.jpg.jpg",
+        "sourceAttachmentId": "2723fba8-6440-4cf9-bc2f-ee3d606ded46",
+        "sourceAttemptId": null
+      },
+      "canonicalSha256": "bc05e7692a0a78f7d62ec966b957f3a8eb71a6c4aa08582b4e66e483dd4c5a23",
+      "documentIdentity": "check2743",
+      "expectedPhysicalRows": 1,
+      "truth": {
+        "provenance": "Prior manually verified optical annotations and read-only transaction snapshot; labels only",
+        "rows": [
+          {
+            "rowId": "check2743-0",
+            "invoiceNumber": "INV0504",
+            "invoiceRecordId": "f0c5d28c-bc94-4ab5-9c11-8687e9e981db",
+            "unit": null,
+            "amountCents": 109900
+          }
+        ],
+        "authoritativeTotalCents": 109900,
+        "checkNumber": "2743",
+        "checkDate": "2026-07-13",
+        "payor": null
+      },
+      "expectation": "SAFELY_REQUIRE_REVIEW",
+      "expectationSource": "Frozen historical pre-task scorecard; expectations are not recalibrated from this run",
+      "historicalScorecard": {
+        "id": "check2743",
+        "rows": 1,
+        "models": {
+          "generic": [
+            {
+              "cost": 2,
+              "insertions": 1,
+              "deletions": 0,
+              "substitutions": 1,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.2857142857142857,
+              "characterAccuracy": 0.7142857142857143,
+              "raw": "INVOS504",
+              "ms": 74.24888000000074
+            }
+          ],
+          "pilot": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0504",
+              "ms": 108.60014900000081
+            }
+          ],
+          "ppocr": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0504",
+              "ms": 15.50202299999981
+            }
+          ],
+          "svtr": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0504",
+              "ms": 24.510877000000875
+            }
+          ],
+          "parseq": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0504",
+              "ms": 19.059052000002907
+            }
+          ],
+          "fusion": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV-0504",
+              "ms": 0.0669999999954598
+            }
+          ]
+        },
+        "invoiceExact": 1,
+        "amountExact": 1,
+        "wrongAutomatic": 0,
+        "fields": {
+          "amounts": [
+            {
+              "expected": 109900,
+              "actual": 109900,
+              "exact": true,
+              "ambiguity": "supported"
+            }
+          ],
+          "authoritativeTotalCents": {
+            "expected": 109900,
+            "actual": 109900,
+            "exact": true,
+            "missing": false,
+            "unlabeled": false
+          },
+          "checkNumber": {
+            "expected": "2743",
+            "actual": null,
+            "exact": false,
+            "missing": true,
+            "unlabeled": false
+          },
+          "checkDate": {
+            "expected": "2026-07-13",
+            "actual": null,
+            "exact": false,
+            "missing": true,
+            "unlabeled": false
+          },
+          "payor": {
+            "expected": null,
+            "actual": null,
+            "exact": null,
+            "missing": true,
+            "unlabeled": true
+          }
+        },
+        "layout": {
+          "expectedRows": 1,
+          "detectedRows": 1,
+          "rows": [
+            {
+              "rowOverlap": 0.9069298595949604,
+              "invoiceCompleteness": 0.7197416416963608,
+              "amountCompleteness": 0.44596108119173583,
+              "contamination": false,
+              "missing": false
+            }
+          ],
+          "headerCoverage": null,
+          "footerCoverage": 0.8320543462712215
+        },
+        "resolverStatus": "inconsistent",
+        "automaticRows": 0,
+        "fullSuccess": false,
+        "processingMs": 10483.578681
+      },
+      "unknownFields": [
+        "payor/property"
+      ],
+      "freshPhysicalAcceptance": false,
+      "trainingOptIn": false,
+      "sourceDimensions": [
+        4032,
+        3024
+      ],
+      "holdout": false
+    },
+    {
+      "id": "A",
+      "independentDocumentId": "A",
+      "canonicalReference": {
+        "kind": "private-retained-file",
+        "path": "C:\\Users\\robbi\\AppData\\Local\\Trimax\\ocr-v2-training\\pilot-v1\\harvest\\c1b32fa7-5dd7-42e8-b4ed-9ee593eaa82a-trimax-remittance-ocr-1787571026750.jpg.jpg",
+        "sourceAttachmentId": "9be86d64-c78f-4d55-9300-f83ef366bcb5",
+        "sourceAttemptId": null
+      },
+      "canonicalSha256": "09152d5911d776edc033682e8838d32b13557a45404225030e411d655bc84a34",
+      "documentIdentity": "A",
+      "expectedPhysicalRows": 5,
+      "truth": {
+        "provenance": "Prior manually verified optical annotations and read-only transaction snapshot; labels only",
+        "rows": [
+          {
+            "rowId": "A-0",
+            "invoiceNumber": "INV0508",
+            "invoiceRecordId": "60ae0559-f1af-47d7-a844-2d3d2dae55db",
+            "unit": null,
+            "amountCents": 109900
+          },
+          {
+            "rowId": "A-1",
+            "invoiceNumber": "INV0509",
+            "invoiceRecordId": "fdf7198a-e12b-4726-b5ef-61adf3dd5da4",
+            "unit": null,
+            "amountCents": 109900
+          },
+          {
+            "rowId": "A-2",
+            "invoiceNumber": "INV0511",
+            "invoiceRecordId": "2e2a8555-0eae-4f4c-88b0-0c22c1bb0279",
+            "unit": null,
+            "amountCents": 109900
+          },
+          {
+            "rowId": "A-3",
+            "invoiceNumber": "INV0510",
+            "invoiceRecordId": "adecfb92-bf0e-4ed0-9a48-8c6c3709d5b1",
+            "unit": null,
+            "amountCents": 109900
+          },
+          {
+            "rowId": "A-4",
+            "invoiceNumber": "INV0512",
+            "invoiceRecordId": "187e2014-9a44-486c-98df-4307a9fc7ea1",
+            "unit": null,
+            "amountCents": 109900
+          }
+        ],
+        "authoritativeTotalCents": 549500,
+        "checkNumber": "2769",
+        "checkDate": null,
+        "payor": null
+      },
+      "expectation": "SAFELY_REQUIRE_REVIEW",
+      "expectationSource": "Frozen historical pre-task scorecard; expectations are not recalibrated from this run",
+      "historicalScorecard": {
+        "id": "A",
+        "rows": 5,
+        "models": {
+          "generic": [
+            {
+              "cost": 3,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 3,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.42857142857142855,
+              "characterAccuracy": 0.5714285714285714,
+              "raw": "INVOSO8",
+              "ms": 96.7863630000001
+            },
+            {
+              "cost": 3,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 3,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.42857142857142855,
+              "characterAccuracy": 0.5714285714285714,
+              "raw": "INVOSO9",
+              "ms": 72.74878900000026
+            },
+            {
+              "cost": 2,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 2,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.2857142857142857,
+              "characterAccuracy": 0.7142857142857143,
+              "raw": "INVOS11",
+              "ms": 71.64446400000024
+            },
+            {
+              "cost": 3,
+              "insertions": 2,
+              "deletions": 0,
+              "substitutions": 1,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.42857142857142855,
+              "characterAccuracy": 0.5714285714285714,
+              "raw": "INVOS5S10",
+              "ms": 69.65967200000023
+            },
+            {
+              "cost": 2,
+              "insertions": 2,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.2857142857142857,
+              "characterAccuracy": 0.7142857142857143,
+              "raw": "INVO0O512",
+              "ms": 72.03530699999972
+            }
+          ],
+          "pilot": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0508",
+              "ms": 119.3267149999997
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0509",
+              "ms": 108.59899799999972
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0511",
+              "ms": 105.25881299999983
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0510",
+              "ms": 104.45792500000017
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0512",
+              "ms": 114.50394699999933
+            }
+          ],
+          "ppocr": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0508",
+              "ms": 21.663711999998725
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0509",
+              "ms": 13.67992299999976
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0511",
+              "ms": 13.18063099999911
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0510",
+              "ms": 12.705964000000236
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0512",
+              "ms": 13.739957000000302
+            }
+          ],
+          "svtr": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0508",
+              "ms": 714.7454990000028
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0509",
+              "ms": 20.248930000001053
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0511",
+              "ms": 22.219062999997874
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0510",
+              "ms": 19.92155399999973
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0512",
+              "ms": 21.977429999999742
+            }
+          ],
+          "parseq": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0508",
+              "ms": 721.6538849999985
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0509",
+              "ms": 20.08007100000242
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0511",
+              "ms": 31.94028400000093
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0510",
+              "ms": 23.44571000000073
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0512",
+              "ms": 15.84846799999795
+            }
+          ],
+          "fusion": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV-0508",
+              "ms": 0.9573999999993248
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV-0509",
+              "ms": 0.10439999999653082
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV-0511",
+              "ms": 0.08859999998821877
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV-0510",
+              "ms": 0.10850000000209548
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV-0512",
+              "ms": 0.09070000000065193
+            }
+          ]
+        },
+        "invoiceExact": 5,
+        "amountExact": 5,
+        "wrongAutomatic": 0,
+        "fields": {
+          "amounts": [
+            {
+              "expected": 109900,
+              "actual": 109900,
+              "exact": true,
+              "ambiguity": "supported"
+            },
+            {
+              "expected": 109900,
+              "actual": 109900,
+              "exact": true,
+              "ambiguity": "supported"
+            },
+            {
+              "expected": 109900,
+              "actual": 109900,
+              "exact": true,
+              "ambiguity": "supported"
+            },
+            {
+              "expected": 109900,
+              "actual": 109900,
+              "exact": true,
+              "ambiguity": "supported"
+            },
+            {
+              "expected": 109900,
+              "actual": 109900,
+              "exact": true,
+              "ambiguity": "supported"
+            }
+          ],
+          "authoritativeTotalCents": {
+            "expected": 549500,
+            "actual": 549500,
+            "exact": true,
+            "missing": false,
+            "unlabeled": false
+          },
+          "checkNumber": {
+            "expected": "2769",
+            "actual": "2769",
+            "exact": true,
+            "missing": false,
+            "unlabeled": false
+          },
+          "checkDate": {
+            "expected": null,
+            "actual": null,
+            "exact": null,
+            "missing": true,
+            "unlabeled": true
+          },
+          "payor": {
+            "expected": null,
+            "actual": null,
+            "exact": null,
+            "missing": true,
+            "unlabeled": true
+          }
+        },
+        "layout": {
+          "expectedRows": 5,
+          "detectedRows": 5,
+          "rows": [
+            {
+              "rowOverlap": 0.8691801619433198,
+              "invoiceCompleteness": 0.7247596153846148,
+              "amountCompleteness": 0.44299450549450553,
+              "contamination": false,
+              "missing": false
+            },
+            {
+              "rowOverlap": 0.8980699427614123,
+              "invoiceCompleteness": 0.7247596153846148,
+              "amountCompleteness": 0.46182266009852213,
+              "contamination": false,
+              "missing": false
+            },
+            {
+              "rowOverlap": 0.8104395604395604,
+              "invoiceCompleteness": 0.7307692307692302,
+              "amountCompleteness": 0.47831632653061223,
+              "contamination": false,
+              "missing": false
+            },
+            {
+              "rowOverlap": 0.8349875226860253,
+              "invoiceCompleteness": 0.7187499999999993,
+              "amountCompleteness": 0.4357711254262978,
+              "contamination": false,
+              "missing": false
+            },
+            {
+              "rowOverlap": 0.8646442495126696,
+              "invoiceCompleteness": 0.7187499999999993,
+              "amountCompleteness": 0.4884004884004884,
+              "contamination": false,
+              "missing": false
+            }
+          ],
+          "headerCoverage": null,
+          "footerCoverage": 0.5360704787234042
+        },
+        "resolverStatus": "inconsistent",
+        "automaticRows": 0,
+        "fullSuccess": false,
+        "processingMs": 8038.151574000001
+      },
+      "unknownFields": [
+        "payor/property",
+        "checkDate"
+      ],
+      "freshPhysicalAcceptance": false,
+      "trainingOptIn": false,
+      "sourceDimensions": [
+        2400,
+        998
+      ],
+      "holdout": false
+    },
+    {
+      "id": "D",
+      "independentDocumentId": "D",
+      "canonicalReference": {
+        "kind": "private-retained-file",
+        "path": "C:\\Users\\robbi\\AppData\\Local\\Trimax\\ocr-v2-training\\pilot-v1\\harvest\\4cbe7aed-cc56-4c7e-9271-f9adefa7ff49-trimax-remittance-ocr-1789102407812.jpg.jpg",
+        "sourceAttachmentId": "febbe0ca-bb74-4485-93f7-d5ae22a34bc7",
+        "sourceAttemptId": null
+      },
+      "canonicalSha256": "9ea8d286afc6b29322cb514ccf35914760ce9db25af8c1a39721fa82948854b8",
+      "documentIdentity": "D",
+      "expectedPhysicalRows": 5,
+      "truth": {
+        "provenance": "Prior manually verified optical annotations and read-only transaction snapshot; labels only",
+        "rows": [
+          {
+            "rowId": "D-0",
+            "invoiceNumber": "INV0520",
+            "invoiceRecordId": "7e4bd095-2dc6-4723-b6ff-38e5ef2eed02",
+            "unit": null,
+            "amountCents": 109900
+          },
+          {
+            "rowId": "D-1",
+            "invoiceNumber": "INV0521",
+            "invoiceRecordId": "19171cb2-cd38-43a0-aa62-f7cad82cff2e",
+            "unit": null,
+            "amountCents": 130000
+          },
+          {
+            "rowId": "D-2",
+            "invoiceNumber": "INV0522",
+            "invoiceRecordId": "c5a1ce10-aa95-4337-9ba8-967bf7a9c308",
+            "unit": null,
+            "amountCents": 45840
+          },
+          {
+            "rowId": "D-3",
+            "invoiceNumber": "INV0524",
+            "invoiceRecordId": "677f5a6a-b64c-43b4-95ee-d9d30ec8f21d",
+            "unit": null,
+            "amountCents": 130000
+          },
+          {
+            "rowId": "D-4",
+            "invoiceNumber": "INV0525",
+            "invoiceRecordId": "a8abab4f-365b-48dc-967b-6ff9ef8f00b1",
+            "unit": null,
+            "amountCents": 34850
+          }
+        ],
+        "authoritativeTotalCents": 450590,
+        "checkNumber": "2804",
+        "checkDate": "2026-08-25",
+        "payor": null
+      },
+      "expectation": "AUTOMATICALLY_RESOLVE",
+      "expectationSource": "Frozen historical pre-task scorecard; expectations are not recalibrated from this run",
+      "historicalScorecard": {
+        "id": "D",
+        "rows": 5,
+        "models": {
+          "generic": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0520",
+              "ms": 68.49067400000041
+            },
+            {
+              "cost": 2,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 2,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.2857142857142857,
+              "characterAccuracy": 0.7142857142857143,
+              "raw": "INVOS21",
+              "ms": 71.62576099999995
+            },
+            {
+              "cost": 1,
+              "insertions": 1,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.14285714285714285,
+              "characterAccuracy": 0.8571428571428572,
+              "raw": "INVO0522",
+              "ms": 66.19658400000006
+            },
+            {
+              "cost": 1,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 1,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.14285714285714285,
+              "characterAccuracy": 0.8571428571428572,
+              "raw": "INVO524",
+              "ms": 64.78082799999996
+            },
+            {
+              "cost": 1,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 1,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.14285714285714285,
+              "characterAccuracy": 0.8571428571428572,
+              "raw": "INVO525",
+              "ms": 68.66642199999973
+            }
+          ],
+          "pilot": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0520",
+              "ms": 108.94433499999856
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0521",
+              "ms": 103.47321299999912
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0522",
+              "ms": 108.24832199999967
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0524",
+              "ms": 108.75800200000008
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0525",
+              "ms": 108.60755000000033
+            }
+          ],
+          "ppocr": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0520",
+              "ms": 15.412487999999058
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0521",
+              "ms": 14.394854000000734
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0522",
+              "ms": 12.370302000000777
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0524",
+              "ms": 14.659737000000561
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0525",
+              "ms": 14.457347000000453
+            }
+          ],
+          "svtr": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0520",
+              "ms": 18.855407000000213
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0521",
+              "ms": 20.079415999997963
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0522",
+              "ms": 27.204198999999818
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0524",
+              "ms": 21.725596999999652
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0525",
+              "ms": 19.425712000000317
+            }
+          ],
+          "parseq": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0520",
+              "ms": 16.65455699999896
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0521",
+              "ms": 32.460051000001044
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0522",
+              "ms": 29.796442999998618
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0524",
+              "ms": 17.093855999998908
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0525",
+              "ms": 18.744212000001426
+            }
+          ],
+          "fusion": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV-0520",
+              "ms": 0.06379999998898711
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV-0521",
+              "ms": 0.03820000000996515
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV-0522",
+              "ms": 0.035499999998137355
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV-0524",
+              "ms": 0.07029999999213032
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV-0525",
+              "ms": 0.03629999999247957
+            }
+          ]
+        },
+        "invoiceExact": 5,
+        "amountExact": 5,
+        "wrongAutomatic": 0,
+        "fields": {
+          "amounts": [
+            {
+              "expected": 109900,
+              "actual": 109900,
+              "exact": true,
+              "ambiguity": "supported"
+            },
+            {
+              "expected": 130000,
+              "actual": 130000,
+              "exact": true,
+              "ambiguity": "supported"
+            },
+            {
+              "expected": 45840,
+              "actual": 45840,
+              "exact": true,
+              "ambiguity": "supported"
+            },
+            {
+              "expected": 130000,
+              "actual": 130000,
+              "exact": true,
+              "ambiguity": "supported"
+            },
+            {
+              "expected": 34850,
+              "actual": 34850,
+              "exact": true,
+              "ambiguity": "supported"
+            }
+          ],
+          "authoritativeTotalCents": {
+            "expected": 450590,
+            "actual": 450590,
+            "exact": true,
+            "missing": false,
+            "unlabeled": false
+          },
+          "checkNumber": {
+            "expected": "2804",
+            "actual": "2804",
+            "exact": true,
+            "missing": false,
+            "unlabeled": false
+          },
+          "checkDate": {
+            "expected": "2026-08-25",
+            "actual": null,
+            "exact": false,
+            "missing": true,
+            "unlabeled": false
+          },
+          "payor": {
+            "expected": null,
+            "actual": "North Creek Apartmen",
+            "exact": null,
+            "missing": false,
+            "unlabeled": true
+          }
+        },
+        "layout": {
+          "expectedRows": 5,
+          "detectedRows": 5,
+          "rows": [
+            {
+              "rowOverlap": 0.9963044876097875,
+              "invoiceCompleteness": 0.6984621564138624,
+              "amountCompleteness": 0.6304041553553994,
+              "contamination": false,
+              "missing": false
+            },
+            {
+              "rowOverlap": 0.9671260916516763,
+              "invoiceCompleteness": 0.680272545326963,
+              "amountCompleteness": 0.6135152523415041,
+              "contamination": false,
+              "missing": false
+            },
+            {
+              "rowOverlap": 0.9813137989524496,
+              "invoiceCompleteness": 0.6759311191101895,
+              "amountCompleteness": 0.47013191246843344,
+              "contamination": false,
+              "missing": false
+            },
+            {
+              "rowOverlap": 0.9360896394291262,
+              "invoiceCompleteness": 0.6465428095836596,
+              "amountCompleteness": 0.5813459132674177,
+              "contamination": false,
+              "missing": false
+            },
+            {
+              "rowOverlap": 0.9434211308456988,
+              "invoiceCompleteness": 0.6389730401074875,
+              "amountCompleteness": 0.4515196520041406,
+              "contamination": false,
+              "missing": false
+            }
+          ],
+          "headerCoverage": null,
+          "footerCoverage": 0.6252930642217607
+        },
+        "resolverStatus": "resolved",
+        "automaticRows": 5,
+        "fullSuccess": true,
+        "processingMs": 7851.3492689999985
+      },
+      "unknownFields": [
+        "payor/property"
+      ],
+      "freshPhysicalAcceptance": false,
+      "trainingOptIn": false,
+      "sourceDimensions": [
+        2918,
+        1213
+      ],
+      "holdout": false
+    },
+    {
+      "id": "B",
+      "independentDocumentId": "B",
+      "canonicalReference": {
+        "kind": "private-retained-file",
+        "path": "C:\\Users\\robbi\\AppData\\Local\\Trimax\\ocr-v2-private\\fixture-b-original.jpg",
+        "sourceAttachmentId": null,
+        "sourceAttemptId": null
+      },
+      "canonicalSha256": "30f2ad3b1356cfffcbf396081ccfa52ea97823fd26779fc6e0a4dcb2b4a8ff17",
+      "documentIdentity": "B",
+      "expectedPhysicalRows": 5,
+      "truth": {
+        "provenance": "Prior manually verified optical annotations and read-only transaction snapshot; labels only",
+        "rows": [
+          {
+            "rowId": "B-0",
+            "invoiceNumber": "INV0513",
+            "invoiceRecordId": "8ad87219-60c5-449d-ad02-14f2fd9a2ee1",
+            "unit": null,
+            "amountCents": 109900
+          },
+          {
+            "rowId": "B-1",
+            "invoiceNumber": "INV0514",
+            "invoiceRecordId": "febfbb51-6b66-4cd7-a168-8c3371024337",
+            "unit": null,
+            "amountCents": 109900
+          },
+          {
+            "rowId": "B-2",
+            "invoiceNumber": "INV0515",
+            "invoiceRecordId": "b369a015-cfef-46a2-9f27-15cc15aee5ee",
+            "unit": null,
+            "amountCents": 109900
+          },
+          {
+            "rowId": "B-3",
+            "invoiceNumber": "INV0518",
+            "invoiceRecordId": "d5def261-2c18-4f75-a076-55ecc46559eb",
+            "unit": null,
+            "amountCents": 109900
+          },
+          {
+            "rowId": "B-4",
+            "invoiceNumber": "INV0519",
+            "invoiceRecordId": "e5e8a133-145d-4061-ac60-3ee8a95eef97",
+            "unit": null,
+            "amountCents": 109900
+          }
+        ],
+        "authoritativeTotalCents": 549500,
+        "checkNumber": "2797",
+        "checkDate": "2026-08-19",
+        "payor": null
+      },
+      "expectation": "SAFELY_REQUIRE_REVIEW",
+      "expectationSource": "Frozen historical pre-task scorecard; expectations are not recalibrated from this run",
+      "historicalScorecard": {
+        "id": "B",
+        "rows": 5,
+        "models": {
+          "generic": [
+            {
+              "cost": 2,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 2,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.2857142857142857,
+              "characterAccuracy": 0.7142857142857143,
+              "raw": "INVUS13",
+              "ms": 75.7102999999999
+            },
+            {
+              "cost": 2,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 2,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.2857142857142857,
+              "characterAccuracy": 0.7142857142857143,
+              "raw": "INVGS14",
+              "ms": 73.04932999999991
+            },
+            {
+              "cost": 3,
+              "insertions": 1,
+              "deletions": 0,
+              "substitutions": 2,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.42857142857142855,
+              "characterAccuracy": 0.5714285714285714,
+              "raw": "INVOUS15",
+              "ms": 71.19016700000014
+            },
+            {
+              "cost": 5,
+              "insertions": 1,
+              "deletions": 0,
+              "substitutions": 4,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.7142857142857143,
+              "characterAccuracy": 0.2857142857142857,
+              "raw": "INVGALIA",
+              "ms": 68.54994799999936
+            },
+            {
+              "cost": 4,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 4,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.5714285714285714,
+              "characterAccuracy": 0.4285714285714286,
+              "raw": "INVGS 3S",
+              "ms": 67.60974300000022
+            }
+          ],
+          "pilot": [
+            {
+              "cost": 3,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 3,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.42857142857142855,
+              "characterAccuracy": 0.5714285714285714,
+              "raw": "INVU211",
+              "ms": 103.0924259999999
+            },
+            {
+              "cost": 2,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 2,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.2857142857142857,
+              "characterAccuracy": 0.7142857142857143,
+              "raw": "INVO9 14",
+              "ms": 109.05351700000043
+            },
+            {
+              "cost": 1,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 1,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.14285714285714285,
+              "characterAccuracy": 0.8571428571428572,
+              "raw": "INV0u15",
+              "ms": 107.57679999999948
+            },
+            {
+              "cost": 2,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 2,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.2857142857142857,
+              "characterAccuracy": 0.7142857142857143,
+              "raw": "INVU318",
+              "ms": 108.40955900000004
+            },
+            {
+              "cost": 2,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 2,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.2857142857142857,
+              "characterAccuracy": 0.7142857142857143,
+              "raw": "INV0015",
+              "ms": 106.43167399999953
+            }
+          ],
+          "ppocr": [
+            {
+              "cost": 2,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 2,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.2857142857142857,
+              "characterAccuracy": 0.7142857142857143,
+              "raw": "INVUS13",
+              "ms": 14.603740999998394
+            },
+            {
+              "cost": 2,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 2,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.2857142857142857,
+              "characterAccuracy": 0.7142857142857143,
+              "raw": "INVO914",
+              "ms": 13.960865999999683
+            },
+            {
+              "cost": 1,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 1,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.14285714285714285,
+              "characterAccuracy": 0.8571428571428572,
+              "raw": "INVO515",
+              "ms": 15.793291999999681
+            },
+            {
+              "cost": 3,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 3,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.42857142857142855,
+              "characterAccuracy": 0.5714285714285714,
+              "raw": "INVOSI8",
+              "ms": 12.237525999999832
+            },
+            {
+              "cost": 3,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 3,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.42857142857142855,
+              "characterAccuracy": 0.5714285714285714,
+              "raw": "INVOS1S",
+              "ms": 13.38271700000071
+            }
+          ],
+          "svtr": [
+            {
+              "cost": 1,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 1,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.14285714285714285,
+              "characterAccuracy": 0.8571428571428572,
+              "raw": "INV0313",
+              "ms": 20.958055000001252
+            },
+            {
+              "cost": 1,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 1,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.14285714285714285,
+              "characterAccuracy": 0.8571428571428572,
+              "raw": "INV0414",
+              "ms": 18.835210000002434
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0515",
+              "ms": 19.939189999998774
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0518",
+              "ms": 36.105854000002324
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0519",
+              "ms": 19.253622000000803
+            }
+          ],
+          "parseq": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0513",
+              "ms": 22.189762
+            },
+            {
+              "cost": 2,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 2,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.2857142857142857,
+              "characterAccuracy": 0.7142857142857143,
+              "raw": "INVON14",
+              "ms": 18.128030000003292
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0515",
+              "ms": 19.679999999997477
+            },
+            {
+              "cost": 1,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 1,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.14285714285714285,
+              "characterAccuracy": 0.8571428571428572,
+              "raw": "INVO518",
+              "ms": 16.894935999999916
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0519",
+              "ms": 18.48526899999925
+            }
+          ],
+          "fusion": [
+            {
+              "cost": 1,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 1,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.14285714285714285,
+              "characterAccuracy": 0.8571428571428572,
+              "raw": "INV-0313",
+              "ms": 0.2104000000108499
+            },
+            {
+              "cost": 1,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 1,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.14285714285714285,
+              "characterAccuracy": 0.8571428571428572,
+              "raw": "INV-0414",
+              "ms": 0.09740000001329463
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV-0515",
+              "ms": 0.07949999999254942
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV-0518",
+              "ms": 0.0692000000126427
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV-0519",
+              "ms": 0.05770000000484288
+            }
+          ]
+        },
+        "invoiceExact": 3,
+        "amountExact": 3,
+        "wrongAutomatic": 0,
+        "fields": {
+          "amounts": [
+            {
+              "expected": 109900,
+              "actual": 109900,
+              "exact": true,
+              "ambiguity": "supported"
+            },
+            {
+              "expected": 109900,
+              "actual": 109900,
+              "exact": true,
+              "ambiguity": "supported"
+            },
+            {
+              "expected": 109900,
+              "actual": null,
+              "exact": false,
+              "ambiguity": "conflicting"
+            },
+            {
+              "expected": 109900,
+              "actual": 109900,
+              "exact": true,
+              "ambiguity": "supported"
+            },
+            {
+              "expected": 109900,
+              "actual": null,
+              "exact": false,
+              "ambiguity": "conflicting"
+            }
+          ],
+          "authoritativeTotalCents": {
+            "expected": 549500,
+            "actual": null,
+            "exact": false,
+            "missing": true,
+            "unlabeled": false
+          },
+          "checkNumber": {
+            "expected": "2797",
+            "actual": null,
+            "exact": false,
+            "missing": true,
+            "unlabeled": false
+          },
+          "checkDate": {
+            "expected": "2026-08-19",
+            "actual": null,
+            "exact": false,
+            "missing": true,
+            "unlabeled": false
+          },
+          "payor": {
+            "expected": null,
+            "actual": null,
+            "exact": null,
+            "missing": true,
+            "unlabeled": true
+          }
+        },
+        "layout": {
+          "expectedRows": 5,
+          "detectedRows": 5,
+          "rows": [
+            {
+              "rowOverlap": 0.9547262464677354,
+              "invoiceCompleteness": 0.7614656138179366,
+              "amountCompleteness": 0.7133542299048835,
+              "contamination": false,
+              "missing": false
+            },
+            {
+              "rowOverlap": 0.9669041563186473,
+              "invoiceCompleteness": 0.7066400896230453,
+              "amountCompleteness": 0.7272658087140976,
+              "contamination": false,
+              "missing": false
+            },
+            {
+              "rowOverlap": 0.9361612911150161,
+              "invoiceCompleteness": 0.8122299880724657,
+              "amountCompleteness": 0.691737435059281,
+              "contamination": false,
+              "missing": false
+            },
+            {
+              "rowOverlap": 0.9826356702763686,
+              "invoiceCompleteness": 0.7563891763924837,
+              "amountCompleteness": 0.6856420984541265,
+              "contamination": false,
+              "missing": false
+            },
+            {
+              "rowOverlap": 0.9432604439763688,
+              "invoiceCompleteness": 0.7491950748925735,
+              "amountCompleteness": 0.6285052569162825,
+              "contamination": false,
+              "missing": false
+            }
+          ],
+          "headerCoverage": null,
+          "footerCoverage": 0.6365130192595753
+        },
+        "resolverStatus": "inconsistent",
+        "automaticRows": 0,
+        "fullSuccess": false,
+        "processingMs": 9626.661934000003
+      },
+      "unknownFields": [
+        "payor/property"
+      ],
+      "freshPhysicalAcceptance": false,
+      "trainingOptIn": false,
+      "sourceDimensions": [
+        4032,
+        3024
+      ],
+      "holdout": true
+    },
+    {
+      "id": "C",
+      "independentDocumentId": "C",
+      "canonicalReference": {
+        "kind": "private-retained-file",
+        "path": "C:\\Users\\robbi\\AppData\\Local\\Trimax\\ocr-v2-training\\pilot-v1\\harvest\\bbad8ed4-98e7-4fb9-81a4-baff0512eedd-trimax-remittance-ocr-1789120307585.jpg.jpg",
+        "sourceAttachmentId": "de1892ad-c5cb-4030-8ef0-55d98378e2fb",
+        "sourceAttemptId": null
+      },
+      "canonicalSha256": "36cba68eba828fcc0fbcfdf2c6e97c2f10aa5ed3c56a206b0b9358d2edb904fd",
+      "documentIdentity": "C",
+      "expectedPhysicalRows": 2,
+      "truth": {
+        "provenance": "Prior manually verified optical annotations and read-only transaction snapshot; labels only",
+        "rows": [
+          {
+            "rowId": "C-0",
+            "invoiceNumber": "INV0506",
+            "invoiceRecordId": "3561fccb-f64e-4bfa-988e-0e459736cd2e",
+            "unit": null,
+            "amountCents": 130000
+          },
+          {
+            "rowId": "C-1",
+            "invoiceNumber": "INV0507",
+            "invoiceRecordId": "c3b89f69-ee90-4b28-a4b5-3d7ca8212795",
+            "unit": null,
+            "amountCents": 95295
+          }
+        ],
+        "authoritativeTotalCents": 225295,
+        "checkNumber": "2758",
+        "checkDate": "2026-07-23",
+        "payor": null
+      },
+      "expectation": "AUTOMATICALLY_RESOLVE",
+      "expectationSource": "Frozen historical pre-task scorecard; expectations are not recalibrated from this run",
+      "historicalScorecard": {
+        "id": "C",
+        "rows": 2,
+        "models": {
+          "generic": [
+            {
+              "cost": 3,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 3,
+              "exact": false,
+              "characters": 7,
+              "cer": 0.42857142857142855,
+              "characterAccuracy": 0.5714285714285714,
+              "raw": "INVOSO6",
+              "ms": 70.68608099999985
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0507",
+              "ms": 69.70210600000027
+            }
+          ],
+          "pilot": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0506",
+              "ms": 105.80177000000023
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0507",
+              "ms": 107.09378099999967
+            }
+          ],
+          "ppocr": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0506",
+              "ms": 13.19174500000031
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0507",
+              "ms": 12.838831999999911
+            }
+          ],
+          "svtr": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0506",
+              "ms": 22.189207000000266
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0507",
+              "ms": 22.885367999997186
+            }
+          ],
+          "parseq": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0506",
+              "ms": 21.255530999997774
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV0507",
+              "ms": 45.24635299999957
+            }
+          ],
+          "fusion": [
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV-0506",
+              "ms": 0.06530000000202563
+            },
+            {
+              "cost": 0,
+              "insertions": 0,
+              "deletions": 0,
+              "substitutions": 0,
+              "exact": true,
+              "characters": 7,
+              "cer": 0,
+              "characterAccuracy": 1,
+              "raw": "INV-0507",
+              "ms": 0.036000000007334165
+            }
+          ]
+        },
+        "invoiceExact": 2,
+        "amountExact": 2,
+        "wrongAutomatic": 0,
+        "fields": {
+          "amounts": [
+            {
+              "expected": 130000,
+              "actual": 130000,
+              "exact": true,
+              "ambiguity": "supported"
+            },
+            {
+              "expected": 95295,
+              "actual": 95295,
+              "exact": true,
+              "ambiguity": "supported"
+            }
+          ],
+          "authoritativeTotalCents": {
+            "expected": 225295,
+            "actual": 225295,
+            "exact": true,
+            "missing": false,
+            "unlabeled": false
+          },
+          "checkNumber": {
+            "expected": "2758",
+            "actual": "2758",
+            "exact": true,
+            "missing": false,
+            "unlabeled": false
+          },
+          "checkDate": {
+            "expected": "2026-07-23",
+            "actual": "2026-07-23",
+            "exact": true,
+            "missing": false,
+            "unlabeled": false
+          },
+          "payor": {
+            "expected": null,
+            "actual": "North Creek Apartmen",
+            "exact": null,
+            "missing": false,
+            "unlabeled": true
+          }
+        },
+        "layout": {
+          "expectedRows": 2,
+          "detectedRows": 2,
+          "rows": [
+            {
+              "rowOverlap": 0.9295984888116579,
+              "invoiceCompleteness": 0.6712032508296343,
+              "amountCompleteness": 0.6015539087284415,
+              "contamination": false,
+              "missing": false
+            },
+            {
+              "rowOverlap": 0.9517317861643163,
+              "invoiceCompleteness": 0.6757384079298345,
+              "amountCompleteness": 0.4467681076521174,
+              "contamination": false,
+              "missing": false
+            }
+          ],
+          "headerCoverage": null,
+          "footerCoverage": 0.6539416494482548
+        },
+        "resolverStatus": "resolved",
+        "automaticRows": 2,
+        "fullSuccess": true,
+        "processingMs": 5307.911173999994
+      },
+      "unknownFields": [
+        "payor/property"
+      ],
+      "freshPhysicalAcceptance": false,
+      "trainingOptIn": false,
+      "sourceDimensions": [
+        2918,
+        1213
+      ],
+      "holdout": true
+    }
+  ]
+}

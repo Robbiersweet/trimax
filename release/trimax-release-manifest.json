@@ -1,0 +1,215 @@
+{
+  "schemaVersion": 1,
+  "releaseId": "trimax-release-contract-20261001-rc1",
+  "status": "CANDIDATE_NOT_DEPLOYED",
+  "createdAt": "2026-10-01T16:09:08.400Z",
+  "releaseTimestamp": null,
+  "baseProduction": {
+    "commit": "b5d0d51ab35a915292e54355d5c582a22876be11",
+    "vercelDeploymentId": "A6ZKcvjyxFE8483eBofsK9srxhHq",
+    "deployedAt": "2026-09-30T20:16:41Z"
+  },
+  "components": {
+    "web": {
+      "commit": null
+    },
+    "legacy": {
+      "commit": null
+    },
+    "v2-shadow": {
+      "commit": null
+    }
+  },
+  "sourceBundle": {
+    "sha256": null,
+    "files": {}
+  },
+  "modelBundle": {
+    "sha256": "f287d41e4fbdbcfe6976dad19336018e50b56c0906ff29514ba6723cea5f63b7"
+  },
+  "models": [
+    {
+      "name": "tesseract-native-eng",
+      "path": "/usr/share/tesseract-ocr/5/tessdata/eng.traineddata",
+      "sha256": "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2",
+      "version": "5.5.0",
+      "runtime": "wsl",
+      "engines": [
+        "v2-shadow"
+      ],
+      "verifiedAt": "2026-10-01T16:09:08.400Z"
+    },
+    {
+      "name": "trimax_invoice_pilot_v1",
+      "path": "/home/robbi/trimax-ocr/pilot-v1/trimax_invoice_pilot_v1.traineddata",
+      "sha256": "86a52e3e1a119394980bae6f9f5ff216a8805d9fc1d326b740be8c4cf29b86ec",
+      "version": "pilot-v1",
+      "runtime": "wsl",
+      "engines": [
+        "v2-shadow"
+      ],
+      "verifiedAt": "2026-10-01T16:09:08.400Z"
+    },
+    {
+      "name": "SVTRv2",
+      "path": "/home/robbi/trimax-ocr/phase3e/openocr_svtrv2_ch.pth",
+      "sha256": "3be361b72dc52e8d4f5569ae822d263b4e70671486bbaa45605711d17b8aec27",
+      "version": "OpenOCR SVTRv2 CH",
+      "runtime": "wsl",
+      "engines": [
+        "v2-shadow"
+      ],
+      "verifiedAt": "2026-10-01T16:09:08.400Z"
+    },
+    {
+      "name": "PARSeq",
+      "path": "/home/robbi/.cache/torch/hub/checkpoints/parseq-bb5792a6.pt",
+      "sha256": "bb5792a68e367476abca029cbf8699abc805f3d3dc7e57aae45c8ec4f7b7cd00",
+      "version": "bb5792a6",
+      "runtime": "wsl",
+      "engines": [
+        "v2-shadow"
+      ],
+      "verifiedAt": "2026-10-01T16:09:08.400Z"
+    },
+    {
+      "name": "PP-OCRv5",
+      "path": "/home/robbi/trimax-ocr/pilot-v1/modern-models/en_PP-OCRv5_rec_mobile.onnx",
+      "sha256": "c3461add59bb4323ecba96a492ab75e06dda42467c9e3d0c18db5d1d21924be8",
+      "version": "en mobile v5",
+      "runtime": "wsl",
+      "engines": [
+        "v2-shadow"
+      ],
+      "verifiedAt": "2026-10-01T16:09:08.400Z"
+    },
+    {
+      "name": "tesseract-js-eng-orientation",
+      "path": "C:\\Users\\robbi\\AppData\\Local\\Temp\\trimax-v2-tesseract\\eng.traineddata",
+      "sha256": "5dc5d8d640a212c9d6184921ba103b186f50e0fed9ee716c53e6b312b400d747",
+      "version": "tesseract.js 7.0.0 / exact traineddata hash",
+      "runtime": "node",
+      "engines": [
+        "legacy",
+        "v2-shadow"
+      ]
+    },
+    {
+      "name": "tesseract-js-eng-working-cache",
+      "path": "WORKTREE/eng.traineddata",
+      "sha256": "5dc5d8d640a212c9d6184921ba103b186f50e0fed9ee716c53e6b312b400d747",
+      "version": "tesseract.js 7.0.0 / exact traineddata hash",
+      "runtime": "node",
+      "engines": [
+        "v2-shadow"
+      ]
+    },
+    {
+      "name": "tesseract-js-legacy-full-pass-cache",
+      "path": "C:/tmp/tesseract-cache/eng.traineddata",
+      "sha256": "5dc5d8d640a212c9d6184921ba103b186f50e0fed9ee716c53e6b312b400d747",
+      "version": "Expected frozen English bundle; fallback cache file not currently present/attested",
+      "runtime": "node",
+      "engines": [
+        "legacy"
+      ]
+    }
+  ],
+  "database": {
+    "capturedAt": "2026-10-01T16:02:36.667559+00:00",
+    "algorithm": "catalog-v1; sorted C collation name=value; UTF8 SHA256; public tables/constraints/indexes/functions, public+storage RLS, public table grants; excludes only trimax_release_runtime itself",
+    "fingerprints": {
+      "rpc": {
+        "sha256": "d26d37d72ff5c6d835dfb0767893399ae1e205f5344193ddf3017dae69a0e1ed",
+        "entries": 37
+      },
+      "grants": {
+        "sha256": "a056ce17f8f9b68fc393a5be34fb0a38539a5c4a7f15b5c9f1db9877ef446ea7",
+        "entries": 917
+      },
+      "schema": {
+        "sha256": "efc506fa018ed86875375bbe51e479e746b9ca661943b2657eaf13e8f3a358f8",
+        "entries": 699
+      },
+      "policies": {
+        "sha256": "39550adf015ae539be77e3a765858bd84fb71bbe36fe401a1dd68c3ff0028864",
+        "entries": 74
+      },
+      "triggers": {
+        "sha256": "1189025c52ee6e7c3b8e69686784557aba68b0f29e6c2d2db8007cfb7475c549",
+        "entries": 8
+      }
+    },
+    "flags": [
+      {
+        "enabled": true,
+        "businessId": "f31adfa1-26ad-4e74-ad94-a4668d7ad57d",
+        "nativeStill": true
+      }
+    ],
+    "legacyEnabled": true,
+    "acceptanceTableRecords": 0
+  },
+  "workerConfiguration": {
+    "businessId": "f31adfa1-26ad-4e74-ad94-a4668d7ad57d",
+    "supabaseUrl": "https://gqknefosisnsjuzmhvts.supabase.co",
+    "wslDistribution": "Ubuntu",
+    "python": "/home/robbi/trimax-ocr/benchmark-venv/bin/python",
+    "legacyPollMs": 5000,
+    "shadowPollMs": 10000,
+    "legacyLeaseSeconds": 180,
+    "shadowLeaseSeconds": 900,
+    "legacyHeartbeatMs": 30000,
+    "recognitionTimeoutMs": 6000,
+    "modelProcessTimeoutMs": 600000,
+    "credentialScope": "ocr-only; canonical reads, snapshot reads, own leased diagnostic/job writes; no business writes",
+    "autostart": "Not configured; deferred infrastructure requirement",
+    "nodeVersion": "v24.15.0",
+    "pythonVersion": "3.12.14",
+    "packages": {
+      "torch": "2.14.0+cu130",
+      "rapidocr": "3.9.2",
+      "onnxruntime": "1.30.0",
+      "transformers": "4.57.6"
+    },
+    "requiredUnsetEnvironment": [
+      "TESSDATA_PREFIX",
+      "TORCH_HOME",
+      "HF_HOME",
+      "CUDA_VISIBLE_DEVICES",
+      "OMP_NUM_THREADS"
+    ],
+    "configHashes": {
+      "legacy": "f671d28b5323e71e2eef9608c3cce23c08e6d0241f21367f1734170383d272da",
+      "v2-shadow": "1e4c35571829ca979a029d2972d446ec7bc28e30a18bbd26fee8694b4e56ca94"
+    }
+  },
+  "serviceWorker": {
+    "path": "public/sw.js",
+    "sha256": "cbef97a011007c67e5c20d54bea593e507926a57fa5161f2c9ddf608e837cd85"
+  },
+  "supabaseProjectId": "gqknefosisnsjuzmhvts",
+  "vercelDeploymentId": null,
+  "acceptance": {
+    "corpus": "release/frozen-real-acceptance.json",
+    "sha256": "29f8a84ab995c246d2cedc9943ce391d56af55b09564dbe23329e357a7df6f7f",
+    "states": [
+      "CODE_GATE_PASSED",
+      "RETAINED_REAL_GATE_PASSED",
+      "PHYSICAL_ACCEPTANCE_PENDING",
+      "PHYSICAL_ACCEPTANCE_PASSED"
+    ],
+    "physicalStatus": "PHYSICAL_ACCEPTANCE_PENDING",
+    "physicalEvidence": null
+  },
+  "runtimeDrift": {
+    "detected": true,
+    "evidence": "release/evidence/worker-state.json",
+    "productionWorkersReplaced": false
+  },
+  "requirements": {
+    "liveDatabaseAttestation": "Candidate SQL is not installed; startup must fail closed until separately reviewed",
+    "physicalAcceptance": "Only installed-iPhone production evidence for exact release may pass; replay cannot pass",
+    "legacyModelCache": "/tmp/tesseract-cache actual resolved traineddata path needs explicit attestation; not silently assumed"
+  }
+}

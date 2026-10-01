@@ -1,0 +1,3 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Read-only validation, never claim a job. */
+const path=require('node:path');const {read,validateStartup}=require('./contract.cjs');
+(async()=>{for(const [engine,envName,directory] of [['legacy','TRIMAX_LEGACY_CONFIG','ocr-legacy-worker'],['v2-shadow','TRIMAX_SHADOW_CONFIG','ocr-shadow-worker']]){const file=process.env[envName]||path.join(process.env.LOCALAPPDATA,'Trimax',directory,'worker.json');await validateStartup(read(file),engine);console.log(engine+' release validation PASS');}})().catch(e=>{console.error(e.message);process.exitCode=1;});
