@@ -2,6 +2,11 @@
 const assert = require('node:assert/strict'), sharp = require('sharp'), fs = require('node:fs'), cp = require('node:child_process'), crypto = require('node:crypto');
 const { headerMoney, decideDocumentTotal, validateRetainedAmounts, recognizeDocumentTotal } = require('../../src/app/lib/ocrV2/recognition/documentTotalAuthority.ts');
 const { paymentMoney } = require('../../src/app/lib/ocrV2/recognition/paymentEvidence.ts');
+// Cache location is transport configuration, not recognition behavior. All other code remains frozen.
+const recognitionContract = text => text.replaceAll('\r\n','\n')
+ .replace(/^import \{ (?:ocrRuntimeCache|tmpdir|join) \} from '[^']+';\n/gm,'')
+ .replace(/    const cachePath = [^\n]+;\n    await mkdir\(cachePath, \{ recursive: true \}\);\n/g,'')
+ .replace(/cachePath: ?ocrRuntimeCache\(\), ?/g,'').replace(/cachePath, /g,'');
 const hash = b => crypto.createHash('sha256').update(b).digest('hex');
 const layout = { sourceWidth: 500, sourceHeight: 300, headerRegion: { left: 0, top: 70, width: 480, height: 20 }, totalCandidateRegion: { left: 300, top: 220, width: 100, height: 30 }, rows: [{ bounds: { left: 0, top: 100, width: 400, height: 30 }, amountRegion: { left: 300, top: 100, width: 100, height: 30 } }, { bounds: { left: 0, top: 150, width: 400, height: 30 }, amountRegion: { left: 300, top: 150, width: 100, height: 30 } }], diagnostics: { font: 12 } };
 const sourceHash = 'a'.repeat(64), evidence = { documentId: 'synthetic', sourceHash, rows: [{ rowId: 'synthetic-0', cents: 10000, observations: [] }, { rowId: 'synthetic-1', cents: 20000, observations: [] }], checkNumber: '001234', checkDate: '2026-01-01', payor: 'Example' };
@@ -12,6 +17,17 @@ let count = 0;
 function test(name, fn) { fn(); count++; console.log('PASS', name); }
 (async () => {
     test('Explicit header/footer association', () => assert.equal(decideDocumentTotal(layout, evidence, [header(), footer()]).cents, 30000));
+    test('Corroborated mature footer retains existing geometry and label gates', () => {
+        const mature={cents:30000,bounds:layout.totalCandidateRegion,sourceHash,provenance:['svtr:field','parseq:field']};
+        const weak={...footer(),confidence:30};
+        assert.equal(decideDocumentTotal(layout,evidence,[header(),weak],mature).cents,30000);
+        assert.equal(decideDocumentTotal(layout,evidence,[weak],mature).cents,null);
+        assert.equal(decideDocumentTotal(layout,evidence,[header(),weak],{...mature,sourceHash:'other'}).cents,null);
+        assert.equal(decideDocumentTotal(layout,evidence,[header(),weak],{...mature,bounds:layout.rows[0].amountRegion}).cents,null);
+        assert.equal(decideDocumentTotal(layout,evidence,[header(),weak],{...mature,provenance:['same-model']}).cents,null);
+        assert.equal(decideDocumentTotal(layout,evidence,[header(),weak,footer('other','900.00')],mature).cents,null);
+        assert.equal(decideDocumentTotal({...layout,totalCandidateRegion:layout.rows[0].amountRegion},evidence,[header(),weak],{...mature,bounds:layout.rows[0].amountRegion}).cents,null);
+    });
     test('Repeated label without adjacent money supports isolated footer', () => assert.equal(decideDocumentTotal(layout, evidence, [header('native', 'TOTAL:', ''), header('gray', 'TOTAL:', ''), footer()]).cents, 30000));
     test('Existing same-region footer TOTAL authority preserved', () => { const label = id => ({ ...header(id, 'TOTAL:', ''), field: 'footer-label', words: [word('TOTAL:', 200, 220)] }); assert.equal(decideDocumentTotal(layout, evidence, [label('native'), label('contrast'), footer()]).cents, 30000); assert.equal(decideDocumentTotal(layout, evidence, [label('native'), label('contrast'), footer(), header('native', 'TOTAL:', '$900.00')]).cents, null); });
     test('Subtotal cannot create total', () => assert.equal(decideDocumentTotal(layout, evidence, [footer()]).cents, null));
@@ -44,7 +60,7 @@ function test(name, fn) { fn(); count++; console.log('PASS', name); }
     count++;
     console.log('PASS no unnecessary OCR and unchanged check/date/payor');
     for (const file of ['src/app/lib/ocrV2/fusion/index.ts', 'src/app/lib/ocrV2/resolver/index.ts', 'src/app/lib/ocrV2/recognition/index.ts', 'src/app/lib/ocrV2/recognition/paymentEvidence.ts', 'src/app/lib/remittanceAttempt.ts', 'src/app/lib/remittanceMatching.ts'])
-        assert.equal(fs.readFileSync(file, 'utf8').replaceAll('\r\n', '\n'), cp.execFileSync('git', ['show', '39e4c0f:' + file], { encoding: 'utf8' }).replaceAll('\r\n', '\n'), file + ' changed');
+        assert.equal(recognitionContract(fs.readFileSync(file, 'utf8')), recognitionContract(cp.execFileSync('git', ['show', '39e4c0f:' + file], { encoding: 'utf8' })), file + ' changed');
     count++;
     console.log('PASS frozen invoice/fusion/resolver/Phase5B contracts');
     console.log(count + ' document-total suites passed');

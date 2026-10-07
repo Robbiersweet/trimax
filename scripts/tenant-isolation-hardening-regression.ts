@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 const root = process.cwd();
 
 function read(path: string) {
-  return readFileSync(resolve(root, path), "utf8");
+  return readFileSync(resolve(root, path), "utf8").replace(/\r\n/g, "\n");
 }
 
 const migration = read("supabase/sql/2026-08-10-tenant-isolation-hardening.sql");

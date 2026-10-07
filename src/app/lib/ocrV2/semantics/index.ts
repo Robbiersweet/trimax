@@ -1,3 +1,4 @@
+import { ocrRuntimeCache } from '../../ocrRuntimeCache.ts';
 /** Offline vendor-neutral candidate entry. Legacy research layouts are not called.
  * Existing trusted words can bypass OCR entirely. Unknown layouts return review.
  * Invoice recognition/fusion and business resolution remain separate consumers. */
@@ -21,13 +22,19 @@ export async function recognizeSemanticPage(image: Buffer, ledger: EvidenceLedge
   const observations = [...retained.filter(o => o.sourceHash === sourceHash && o.verified)];
   let passes = 0;
   if (!observations.length) {
-    const worker = await createWorker('eng', OEM.LSTM_ONLY, { logger: () => undefined });
+    const worker = await createWorker('eng', OEM.LSTM_ONLY, { cachePath: ocrRuntimeCache(), logger: () => undefined });
     try {
       await worker.setParameters({ tessedit_pageseg_mode: PSM.SPARSE_TEXT, tessedit_char_whitelist: '', user_defined_dpi: '300' });
       for (const variant of ['native', 'grayscale', 'local-contrast']) {
         // Native/color observations remain preferred. A bounded structural fallback
         // handles uneven paper illumination only when they cannot map a table.
-        if (variant === 'local-contrast' && interpretDocument({sourceHash,observations,physicalComponents}).table.supported) break;
+        if (variant === 'local-contrast') {
+          const mapped = interpretDocument({sourceHash,observations,physicalComponents});
+          // A mapped invoice table alone does not establish its document fields.
+          // Preserve the existing bounded third variant until those labels exist.
+          if (mapped.table.supported && mapped.table.columns.some(c => ['property_name','customer_name','payor_name'].includes(c.type))
+            && mapped.total.cents !== null) break;
+        }
         const bytes = variant === 'local-contrast' ? preparedContrast ?? (await lightingVariants(image))['local-contrast']
           : await (variant === 'grayscale' ? sharp(image).grayscale() : sharp(image)).png().toBuffer();
         const cropHash = hash(bytes);

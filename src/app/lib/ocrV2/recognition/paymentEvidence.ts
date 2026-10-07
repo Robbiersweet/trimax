@@ -1,3 +1,4 @@
+import { ocrRuntimeCache } from '../../ocrRuntimeCache.ts';
 // Offline Phase 5B. Optical fields only: no invoice records or benchmark answers.
 import sharp from 'sharp';
 import { createHash } from 'node:crypto';
@@ -62,7 +63,7 @@ export function paymentRegions(layout: Layout) {
 export async function recognizePaymentEvidence(image: Buffer, layout: Layout, documentId: string, retainedAmounts: PaymentObservation[] = []): Promise<DocumentPaymentEvidence> {
   const start=performance.now(),sourceHash=createHash('sha256').update(image).digest('hex'),regions=paymentRegions(layout);
   const meta=await sharp(image).metadata();if(meta.width!==layout.sourceWidth||meta.height!==layout.sourceHeight)throw Error('Image/layout coordinate mismatch');
-  const worker=await createWorker('eng',OEM.LSTM_ONLY,{logger:()=>undefined});let passCount=0;
+  const worker=await createWorker('eng',OEM.LSTM_ONLY,{cachePath:ocrRuntimeCache(),logger:()=>undefined});let passCount=0;
   let completed: DocumentPaymentEvidence | null = null;
   async function observe(field: PaymentObservation['field'],bounds: Bounds,variant: string,rowId?:string): Promise<PaymentObservation> {
     const began=performance.now(),crop=await sharp(image).extract(bounds).flatten({background:'white'}).png().toBuffer();

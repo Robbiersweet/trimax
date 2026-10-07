@@ -93,3 +93,17 @@ by this task; direct build-command overrides and administrator bypass are not cl
 prevented. No current production enforcement is claimed until the candidate is reviewed and
 activated. The pinned private PGlite 0.5.8 test runtime is supplied through
 `TRIMAX_SQL_TEST_RUNTIME` (default `%LOCALAPPDATA%/Trimax/phase6-dbtest`).
+
+## Candidate-only validation and deployment prerequisites
+
+A missing production attestation RPC (HTTP 404 / PGRST202) is explicitly recorded as
+`DEPLOYMENT_PREREQUISITE`, never PASS. Unchanged old production workers also remain a
+deployment prerequisite, not proof against the new candidate. Other failures, including
+credential denials, wrong hashes and network errors, remain FAIL. A complete release cannot
+be PASS while prerequisites remain. Local SQL validation is labeled LOCAL VALIDATION and
+does not imply PRODUCTION INSTALLED. No production SQL is installed by the release gate.
+
+The gate runs a real standard `npm ci`; it does not reuse a historical installation label.
+Tesseract cache files use `os.tmpdir()/trimax-ocr/tesseract-js-7/eng`, outside source, with
+the exact English traineddata hash pinned in the manifest. Cache provisioning must verify
+the pinned bytes before startup. Cache location changes do not change OCR parameters.

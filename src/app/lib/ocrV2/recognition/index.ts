@@ -1,8 +1,7 @@
+import { ocrRuntimeCache } from '../../ocrRuntimeCache.ts';
 import sharp from 'sharp';
 import { createWorker, OEM, PSM } from 'tesseract.js';
 import { mkdir } from 'node:fs/promises';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 import type { Bounds } from '../types.ts';
 import type { DocumentLayout } from '../layout/types.ts';
 import type { FieldCrop, FieldObservation, FieldType } from './types.ts';
@@ -52,7 +51,7 @@ export async function recognizeFields(source: Buffer, layout: DocumentLayout, im
     if (meta.width !== layout.documentBounds.width || meta.height !== layout.documentBounds.height)
         throw Error('Layout/source dimensions disagree');
     const crops = fieldCrops(layout), observations: FieldObservation[] = [];
-    const cachePath = join(tmpdir(), 'trimax-v2-tesseract');
+    const cachePath = ocrRuntimeCache();
     await mkdir(cachePath, { recursive: true });
     const worker = await createWorker('eng', OEM.LSTM_ONLY, { cachePath, gzip: true, logger: () => undefined });
     try {

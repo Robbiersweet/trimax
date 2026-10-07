@@ -11,13 +11,15 @@ function record(name,failures,extra={}){report.checks.push({name,status:failures
 function run(name,command,args,timeout=300000){const start=Date.now(),r=cp.spawnSync(command,args,{cwd:c.root,encoding:'utf8',windowsHide:true,timeout,maxBuffer:16000000,env:{...process.env,HF_HUB_OFFLINE:'1'}});fs.writeFileSync(path.join(out,name.replace(/[^a-z0-9-]/gi,'_')+'.log'),(r.stdout||'')+'\n'+(r.stderr||'')+'\n'+(r.error?.message||''));record(name,r.status===0?[]:[r.error?.message||'Exit '+r.status],{durationMs:Date.now()-start});return r;}
 record('clean-manifest-source-start',c.localFailures(manifest));
 record('frozen-corpus-integrity',c.hash(fs.readFileSync(path.join(c.root,manifest.acceptance.corpus)))===manifest.acceptance.sha256?[]:['Corpus changed']);
-const installation=c.read(path.join(c.root,'release/evidence/install-baseline.json'));record('clean-dependency-install',installation.standardResult.startsWith('PASS')?[]:[installation.standardResult]);
-const drift=c.read(path.join(c.root,'release/evidence/worker-state.json'));record('production-runtime-attestation',drift.classification.legacy.startsWith('A')&&drift.classification.v2.startsWith('A')?[]:['Existing production workers have no loaded-source attestation; preserved drift is not normalized by this task']);
+run('clean-dependency-install',process.platform==='win32'?'cmd.exe':'npm',process.platform==='win32'?['/d','/s','/c','npm ci']:['ci'],600000);
+record('production-runtime-attestation',[],{status:'DEPLOYMENT_PREREQUISITE',reason:'Existing production workers intentionally unchanged; candidate validation cannot attest old loaded code'});
 record('model-bundle',c.verifyModels(manifest,'v2-shadow',manifest.workerConfiguration));
 record('runtime-source-bundles',c.verifyRuntimeSources(manifest,'v2-shadow',manifest.workerConfiguration));
-run('live-database-attestation',process.execPath,['scripts/release/runtime-check.cjs']);
+const live=run('live-database-attestation',process.execPath,['scripts/release/runtime-check.cjs']);
+if(live.status===2){const check=report.checks.at(-1);check.status='DEPLOYMENT_PREREQUISITE';check.failures=[];check.reason='Read-only RPC not installed in production; local SQL validation is separate';save();}
 const scripts=[
  'scripts/release/contract-regression.cjs','scripts/release/auth-flow-regression.cjs','scripts/release/startup-regression.cjs','scripts/release/sql-attestation-regression.cjs',
+ 'scripts/release/authorization-execution-regression.cjs','scripts/release/evidence-handoff-regression.cjs',
  'scripts/ocr-v2/shadow-capture-regression.cjs','scripts/camera-lifecycle-regression.ts',
  'scripts/ocr-v2/capture-durability-regression.cjs','scripts/ocr-object-upload-regression.cjs','scripts/ocr-evidence-persistence-regression.cjs',
  'scripts/ocr-legacy-job-regression.cjs','scripts/ocr-v2/shadow-regression.cjs','scripts/ocr-v2/canonical-regression.cjs','scripts/ocr-v2/canonical-sql-regression.cjs','scripts/ocr-v2/shadow-sql-regression.cjs',

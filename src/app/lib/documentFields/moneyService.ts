@@ -6,6 +6,7 @@ import type { DocumentSemanticModel, SemanticObservation } from '../ocrV2/semant
 import { EvidenceLedger } from '../ocrV2/recognition/evidenceLedger.ts';
 import { recognizeSemanticMoney } from '../ocrV2/recognition/semanticMoney.ts';
 import { fuseMoneyObservations, normalizeVisualMoney, type MatureMoneyObservation } from '../ocrV2/recognition/matureMoney.ts';
+import { decideDocumentTotal } from '../ocrV2/recognition/documentTotalAuthority.ts';
 const hash=(b:Buffer)=>createHash('sha256').update(b).digest('hex');
 export type MoneyCrop={rowId:string;field:'row_amount'|'total';bounds:Bounds;bytes:Buffer;sha256:string};
 export async function prepareMoneyFields(image:Buffer,model:DocumentSemanticModel,page:SemanticObservation[],ledger:EvidenceLedger) {
@@ -24,4 +25,14 @@ export function completeMoneyFields(crops:MoneyCrop[],observations:MatureMoneyOb
   for(const o of own)ledger.append({field:o.field,documentId:ledger.documentId,rowId:o.field==='row_amount'?o.rowId:undefined,sourceHash:ledger.sourceHash,cropHash:crop.sha256,region:crop.bounds,recognizer:o.recognizer,variant:'native',configuration:`mature-money-consensus-1:${hash(Buffer.from(JSON.stringify(versions)))}`,raw:o.raw,normalized:normalizeVisualMoney(o.raw)===null?[]:[String(normalizeVisualMoney(o.raw))],confidence:o.confidence??0,durationMs:o.durationMs,provenance:{valid:true,reason:'Uncalibrated sequence recognizer on exact same physical money crop; no business hints',reference:o.id},stage:'phase6-mature-money',timestamp:new Date().toISOString()});
   return {rowId:crop.rowId,field:crop.field,bounds:crop.bounds,cropHash:crop.sha256,...decision};
  });
+}
+/** Complete the existing document-authority decision after the shared models finish. */
+export function completeMoneyAuthority(monetary: Awaited<ReturnType<typeof recognizeSemanticMoney>>, fields: ReturnType<typeof completeMoneyFields>) {
+ const total=fields.find(f=>f.field==='total');
+ if(total?.cents==null)return monetary.authority;
+ if(monetary.authority.cents!==null&&monetary.authority.cents!==total.cents)return {...monetary.authority,cents:null,reason:'Conflicting established and specialized total evidence'};
+ const input=monetary.authorityInput;
+ const decision=decideDocumentTotal(input.layout,input.evidence,input.observations,{cents:total.cents,bounds:total.bounds,sourceHash:input.evidence.sourceHash,provenance:total.provenance});
+ if(monetary.authority.cents!==null&&decision.cents!==null&&monetary.authority.cents!==decision.cents)return {...decision,cents:null,reason:'Conflicting established and specialized total evidence'};
+ return decision.cents!==null?decision:monetary.authority;
 }

@@ -22,7 +22,7 @@ function compareDatabase(expected,actual,engine,businessId){const errors=[];if(!
  if(digest(expected.flags)!==digest(actual?.flags))errors.push('Production feature flags differ');return errors;}
 function verifyModels(manifest,engine,config){const errors=[];for(const m of manifest.models.filter(m=>m.engines.includes(engine))){try{let actual;
  if(m.runtime==='wsl'){const output=cp.execFileSync('wsl',['-d',config.wslDistribution||'Ubuntu','--','sha256sum',m.path],{encoding:'utf8',timeout:30000,windowsHide:true});actual=output.trim().split(/\s+/)[0];}
- else{const file=m.path==='WORKTREE/eng.traineddata'?path.join(root,'eng.traineddata'):m.path;actual=hash(fs.readFileSync(file));}
+ else{const file=m.path==='RUNTIME_CACHE/eng.traineddata'?path.join(require('node:os').tmpdir(),'trimax-ocr','tesseract-js-7','eng','eng.traineddata'):m.path;actual=hash(fs.readFileSync(file));}
  if(actual!==m.sha256)errors.push('Model hash mismatch: '+m.name);
  }catch{errors.push('Model unavailable: '+m.name);}}return errors;}
 function verifyRuntimeSources(manifest,engine,config){const errors=[];
@@ -32,7 +32,7 @@ function verifyRuntimeSources(manifest,engine,config){const errors=[];
  if(digest(actual)!==digest(manifest.runtimeSources.wsl)||actual.some(r=>r.status))errors.push('WSL recognizer repository revision/source drift');}catch{errors.push('WSL recognizer source attestation unavailable');}
  if(digest({node:manifest.runtimeSources.node,wsl:manifest.runtimeSources.wsl})!==manifest.runtimeSources.sha256)errors.push('Runtime source bundle definition changed');return errors;
 }
-async function validateStartup(config,engine){const manifest=read(path.join(root,'release/trimax-release-manifest.json'));const errors=localFailures(manifest);
+function validateLocalRuntime(config,engine){const manifest=read(path.join(root,'release/trimax-release-manifest.json'));const errors=localFailures(manifest);
  const safeConfig=Object.fromEntries(Object.entries(config).filter(([key])=>!['anonKey','workerKey','releaseAttestation'].includes(key)));
  if(digest(safeConfig)!==manifest.workerConfiguration.configHashes?.[engine])errors.push('Worker configuration differs from frozen manifest');
  if(process.version!==manifest.workerConfiguration.nodeVersion)errors.push('Node version mismatch');
@@ -47,8 +47,12 @@ async function validateStartup(config,engine){const manifest=read(path.join(root
  if(engine==='v2-shadow')try{const actual=JSON.parse(cp.execFileSync('wsl',['-d',config.wslDistribution,'--',config.python,'-c',"import importlib.metadata as m,json,sys; print(json.dumps({'python':sys.version.split()[0],'packages':{n:m.version(n) for n in ['torch','rapidocr','onnxruntime','transformers']}}))"],{encoding:'utf8',windowsHide:true,timeout:30000}));if(actual.python!==manifest.workerConfiguration.pythonVersion||digest(actual.packages)!==digest(manifest.workerConfiguration.packages))errors.push('Python/model package versions differ');}catch{errors.push('Python/model package versions unavailable');}
  if(digest(manifest.models)!==manifest.modelBundle.sha256)errors.push('Model bundle definition changed');
  if(errors.length)throw Error('RUNTIME DRIFT DETECTED: '+errors.join('; '));
+ return manifest;
+}
+async function validateStartup(config,engine){const manifest=validateLocalRuntime(config,engine);
  const response=await fetch(config.supabaseUrl+'/rest/v1/rpc/trimax_release_runtime',{method:'POST',headers:{apikey:config.anonKey,'Content-Type':'application/json'},body:JSON.stringify({p_business:config.businessId,p_key:config.workerKey,p_engine:engine}),signal:AbortSignal.timeout(15000)});
- if(!response.ok)throw Error('RUNTIME DRIFT DETECTED: read-only database/credential attestation unavailable (HTTP '+response.status+')');
+ if(!response.ok){const detail=await response.json().catch(()=>({}));const error=Error('RUNTIME DRIFT DETECTED: read-only database/credential attestation unavailable (HTTP '+response.status+')');
+  if(response.status===404&&detail.code==='PGRST202')error.code='DEPLOYMENT_PREREQUISITE';throw error;}
  const observed=await response.json();const remoteErrors=compareDatabase(manifest.database,observed,engine,config.businessId);if(remoteErrors.length)throw Error('RUNTIME DRIFT DETECTED: '+remoteErrors.join('; '));
  return Object.freeze({releaseId:manifest.releaseId,engine,sourceCommit:manifest.components.web.commit,sourceBundle:manifest.sourceBundle.sha256,modelBundle:manifest.modelBundle.sha256,runtimeSources:manifest.runtimeSources.sha256,databaseFingerprint:manifest.database.fingerprints.schema.sha256,validatedAt:new Date().toISOString(),paymentWriteCapability:false});
 }
@@ -69,4 +73,4 @@ function scoreDocument(expected,observed){const failures=[];const truth=expected
  if(automatic&&(total==null||observed.arithmeticReconciliation?.difference!==0||ids.length!==truth.rows.length||observed.reviewBlockers?.length))failures.push('Automatic document lacks complete safe evidence');
  return failures;
 }
-module.exports={root,read,hash,digest,canonical,git,sourcePaths,sourceHashes,localFailures,compareDatabase,verifyModels,verifyRuntimeSources,validateStartup,scoreDocument};
+module.exports={root,read,hash,digest,canonical,git,sourcePaths,sourceHashes,localFailures,compareDatabase,verifyModels,verifyRuntimeSources,validateLocalRuntime,validateStartup,scoreDocument};
