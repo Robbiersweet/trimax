@@ -26,6 +26,14 @@ and public table grants. Only the read-only attestation function itself is exclu
 the function fingerprint; its source is pinned in the executable source bundle. A schema
 fingerprint is not a migration ledger. Re-freezing a fingerprint requires review.
 
+Catalog-v1's frozen digest joins sorted `name=value` entries with CRLF bytes
+`0D 0A`, encoded as UTF-8. SQL must express this as `chr(13)||chr(10)`;
+an editor's literal newline or an LF-only escape is not equivalent. The
+2026-10-08 attestation repair preserves all five original database hashes and
+coverage. Its regression independently hashes catalog rows in JavaScript,
+checks installation self-exclusion, caller contexts and SQL file newline
+invariance, and rejects the former LF-only serialization.
+
 Model weights are pinned by SHA-256 and version/path. Node package versions are pinned by
 the lockfile; WSL package versions and model paths are recorded separately. Missing model,
 credential-scope, configuration, database or source evidence means FAIL, never an assumed match.

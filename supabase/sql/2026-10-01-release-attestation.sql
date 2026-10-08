@@ -1,5 +1,7 @@
--- CANDIDATE ONLY. NOT APPLIED. Read-only attestation; no new tables or business-write grants.
+-- Read-only attestation; no new tables or business-write grants.
 -- Catalog algorithm v1 excludes only the release-attestation function itself to avoid a self-hash cycle.
+-- Frozen catalog-v1 baseline used CRLF between entries. Spell out bytes 0D 0A
+-- so editor/platform newline conversion cannot silently change the digest.
 create or replace function public.trimax_release_runtime(p_business uuid,p_engine text,p_key text default null)
 returns jsonb language plpgsql stable security definer set search_path=public,pg_catalog as $$
 declare answer jsonb;
@@ -22,7 +24,7 @@ begin
   union all select 'policies',schemaname||'.'||tablename||'.'||policyname,concat_ws('|',permissive,roles::text,cmd,qual,with_check) from pg_policies where schemaname in ('public','storage')
   union all select 'grants',table_schema||'.'||table_name||'.'||grantee||'.'||privilege_type,is_grantable from information_schema.role_table_grants where table_schema='public'
  ), hashes as (
-  select kind,count(*) entries,encode(sha256(convert_to(string_agg(name||'='||value,E'\n' order by name collate "C"),'UTF8')),'hex') hash from parts group by kind
+  select kind,count(*) entries,encode(sha256(convert_to(string_agg(name||'='||value,chr(13)||chr(10) order by name collate "C"),'UTF8')),'hex') hash from parts group by kind
  ) select jsonb_build_object('fingerprints',(select jsonb_object_agg(kind,jsonb_build_object('sha256',hash,'entries',entries)) from hashes),
  'flags',(select jsonb_agg(jsonb_build_object('businessId',business_id,'enabled',enabled,'nativeStill',native_still) order by business_id) from public.ocr_shadow_flags where business_id=p_business),
  'businessId',p_business,'engine',p_engine,'credentialScope','ocr-only','observedAt',now(),
