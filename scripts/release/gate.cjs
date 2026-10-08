@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- One release gate; outputs private, never deploys or changes production. */
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),cp=require('node:child_process');
 const c=require('./contract.cjs');
+const {evidenceMetrics}=require('./evidence-metrics.cjs');
 const manifest=c.read(path.join(c.root,'release/trimax-release-manifest.json')),corpus=c.read(path.join(c.root,manifest.acceptance.corpus));
 const base=process.env.TRIMAX_RELEASE_OUTPUT_ROOT||path.join(process.env.LOCALAPPDATA||os.tmpdir(),'Trimax','release-gates');
 if(path.resolve(base).startsWith(c.root+path.sep))throw Error('Gate evidence must remain outside Git');
@@ -19,7 +20,7 @@ const live=run('live-database-attestation',process.execPath,['scripts/release/ru
 if(live.status===2){const check=report.checks.at(-1);check.status='DEPLOYMENT_PREREQUISITE';check.failures=[];check.reason='Read-only RPC not installed in production; local SQL validation is separate';save();}
 const scripts=[
  'scripts/release/contract-regression.cjs','scripts/release/auth-flow-regression.cjs','scripts/release/startup-regression.cjs','scripts/release/sql-attestation-regression.cjs',
- 'scripts/release/authorization-execution-regression.cjs','scripts/release/evidence-handoff-regression.cjs',
+ 'scripts/release/authorization-execution-regression.cjs','scripts/release/evidence-handoff-regression.cjs','scripts/release/final-candidate-regression.cjs',
  'scripts/ocr-v2/shadow-capture-regression.cjs','scripts/camera-lifecycle-regression.ts',
  'scripts/ocr-v2/capture-durability-regression.cjs','scripts/ocr-object-upload-regression.cjs','scripts/ocr-evidence-persistence-regression.cjs',
  'scripts/ocr-legacy-job-regression.cjs','scripts/ocr-v2/shadow-regression.cjs','scripts/ocr-v2/canonical-regression.cjs','scripts/ocr-v2/canonical-sql-regression.cjs','scripts/ocr-v2/shadow-sql-regression.cjs',
@@ -31,13 +32,13 @@ const sqlRuntime=process.env.TRIMAX_SQL_TEST_RUNTIME||path.join(process.env.LOCA
 try{const file=path.join(sqlRuntime,'node_modules/@electric-sql/pglite/package.json');record('sql-test-runtime',c.hash(fs.readFileSync(file))===manifest.testRuntime.pglitePackageSha256?[]:['PGlite runtime hash mismatch']);}catch{record('sql-test-runtime',['Pinned PGlite runtime unavailable']);}
 for(const file of scripts){const args=['--experimental-strip-types',file];if(['ocr-evidence-persistence-regression.cjs','canonical-sql-regression.cjs','shadow-sql-regression.cjs'].includes(path.basename(file))){args.push(sqlRuntime);if(file.endsWith('canonical-sql-regression.cjs'))args.push(corpus.documents.find(d=>d.id==='B').canonicalReference.path);}run(path.basename(file).replace(/\.(cjs|ts)$/,''),process.execPath,args);}
 const snapshots=c.read(corpus.snapshot.path);record('frozen-business-snapshot',c.hash(fs.readFileSync(corpus.snapshot.path))===corpus.snapshot.sha256?[]:['Business snapshot changed']);
-for(const doc of corpus.documents){const failures=[];const image=doc.canonicalReference.path;
+for(const doc of corpus.documents){const failures=[];let metrics=null;const image=doc.canonicalReference.path;
  if(!fs.existsSync(image)||c.hash(fs.readFileSync(image))!==doc.canonicalSha256){report.retained.push({id:doc.id,status:'FAIL',failures:['Image missing/changed']});save();continue;}
  const snapshot=snapshots.find(s=>s.document.id===doc.id)?.snapshot;if(!snapshot){report.retained.push({id:doc.id,status:'FAIL',failures:['Frozen resolver snapshot missing']});save();continue;}
  for(const engine of ['legacy','v2-shadow']){const input=path.join(out,doc.id+'-'+engine+'-input.json'),dir=path.join(out,doc.id+'-'+engine);fs.writeFileSync(input,JSON.stringify({id:doc.id,image,sha256:doc.canonicalSha256,snapshot,engine}));
  const replay=run('retained-'+doc.id+'-'+engine,process.execPath,['--experimental-strip-types','scripts/release/replay-document.cjs',input,dir],900000);
  if(replay.status!==0){failures.push(engine+' replay failed');continue;}const result=c.read(path.join(dir,'result.json'));
- if(engine==='v2-shadow')failures.push(...c.scoreDocument(doc,result.result));
+ if(engine==='v2-shadow'){metrics=evidenceMetrics(doc,result.result);failures.push(...c.scoreDocument(doc,result.result),...metrics.failures);}
  else {
   // Legacy raw candidates are not accepted field evidence. Preserve the real response, and require a terminal result.
   if(![200,422].includes(result.result.status))failures.push('Legacy nonterminal response');
@@ -45,7 +46,7 @@ for(const doc of corpus.documents){const failures=[];const image=doc.canonicalRe
   if(raw.paymentCanApply===true)failures.push('Legacy extraction unexpectedly applies payment');
  }
  }
- report.retained.push({id:doc.id,status:failures.length?'FAIL':'PASS',failures});save();console.log('ACCEPTANCE',doc.id,failures.length?'FAIL':'PASS');
+ report.retained.push({id:doc.id,status:failures.length?'FAIL':'PASS',failures,metrics});save();console.log('ACCEPTANCE',doc.id,failures.length?'FAIL':'PASS');
 }
 run('lint',process.execPath,['node_modules/eslint/bin/eslint.js','.']);
 run('typescript',process.execPath,['node_modules/typescript/bin/tsc','--noEmit']);

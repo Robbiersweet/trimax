@@ -24,17 +24,32 @@ export function localizeDocumentTotal(model:DocumentSemanticModel,page:SemanticO
   const eligible=supported&&!rowOverlap&&aligned&&below&&gap<=rowHeight*4&&!neighboringBody;
   return [{text:w.text,cents:values[0],bounds:b,center:{x:b.left+b.width/2,y:b.top+b.height/2},observationId:o.id,variant:o.variant,confidence:w.confidence,axisDistance:right(b)-axis,finalRowDistance:gap,rowOverlap,aligned,below,label,subtotal,eligible,rejection:rowOverlap?'physical row overlap':!below?'above final row':!aligned?'outside amount-column projection':gap>rowHeight*4?'outside bounded table continuation':neighboringBody?'neighboring body text':!supported?'unsupported amount table':null}];
  }));
- const groups:Array<{bounds:Bounds;observations:typeof candidates}>=[];
+ const groups:Array<{bounds:Bounds;observations:typeof candidates;conflicting:boolean}>=[];
  for(const c of candidates.filter(c=>c.eligible)){
   const group=groups.find(g=>overlap(g.bounds,c.bounds)>=Math.min(area(g.bounds),area(c.bounds))*.6);
-  if(group)group.observations.push(c);else groups.push({bounds:c.bounds,observations:[c]});
+  if(group)group.observations.push(c);else groups.push({bounds:c.bounds,observations:[c],conflicting:false});
+ }
+ // Select a complete *observed* field, never synthesize a missing prefix. A
+ // shorter reading is compatible only when its box is contained by the longer
+ // reading, their right edges align, and all its digits/decimal are a suffix.
+ // Different complete values remain a conflict, even in the same physical box.
+ const digits=(text:string)=>text.replace(/[$£€,\s]/g,'');
+ for(const group of groups){
+  const ordered=group.observations.slice().sort((a,b)=>digits(b.text).length-digits(a.text).length||area(b.bounds)-area(a.bounds));
+  const full=ordered[0];
+  const compatible=ordered.every(c=>c.cents===full.cents || (
+   c.observationId!==full.observationId && digits(full.text).length>digits(c.text).length && digits(full.text).endsWith(digits(c.text))
+   && overlap(full.bounds,c.bounds)>=area(c.bounds)*.8 && full.bounds.left<c.bounds.left
+   && Math.abs(right(full.bounds)-right(c.bounds))<=Math.max(full.bounds.height,c.bounds.height)*.5));
+  group.conflicting=!compatible;
+  if(compatible)group.bounds={...full.bounds};
  }
  // Subtotal can be excluded only when a distinct, explicit final-total label exists.
  const labeled=groups.filter(g=>g.observations.some(c=>c.label.some(l=>l.confidence>=40))&&!g.observations.some(c=>c.subtotal));
  const plausible=labeled.length===1&&groups.every(g=>g===labeled[0]||g.observations.some(c=>c.subtotal))?labeled:groups;
- const chosen=plausible.length===1&&!plausible[0].observations.some(c=>c.subtotal)?plausible[0]:null;
+ const chosen=plausible.length===1&&!plausible[0].conflicting&&!plausible[0].observations.some(c=>c.subtotal)?plausible[0]:null;
  const pad=Math.max(2,Math.ceil(font*.2));
  const b=chosen?.bounds;
  const bounds=b?{left:Math.max(0,Math.floor(b.left-pad)),top:Math.max(Math.ceil(last),Math.floor(b.top-pad)),width:Math.min(width,Math.ceil(right(b)+pad))-Math.max(0,Math.floor(b.left-pad)),height:Math.min(height,Math.ceil(bottom(b)+pad))-Math.max(Math.ceil(last),Math.floor(b.top-pad))}:undefined;
- return {version:'document-total-localization-1',axis,lastRowBottom:last,candidates,plausibleFields:plausible.length,selected:chosen,bounds,finalField:supported&&!!chosen&&groups.every(g=>bottom(g.bounds)<=bottom(chosen.bounds)),reason:chosen?'Unique visual monetary field in amount-column continuation':plausible.length>1?'Competing footer monetary fields':'No isolated observed total field'};
+ return {version:'document-total-localization-1',axis,lastRowBottom:last,candidates,plausibleFields:plausible.length,conflictingField:plausible.some(g=>g.conflicting),selected:chosen,bounds,finalField:supported&&!!chosen&&groups.every(g=>bottom(g.bounds)<=bottom(chosen.bounds)),reason:chosen?'Unique visual monetary field in amount-column continuation':plausible.some(g=>g.conflicting)?'Conflicting complete observations of the same total field':plausible.length>1?'Competing footer monetary fields':'No isolated observed total field'};
 }

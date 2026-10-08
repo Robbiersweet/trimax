@@ -64,7 +64,7 @@ export async function recognizeSemanticMoney(image: Buffer, model: DocumentSeman
     && Math.max(0,Math.min((l.left+l.width)*structure.scaleX,amountRight)-Math.max(l.left*structure.scaleX,amountLeft)) > l.width*structure.scaleX/2) : [];
   const footer = footerCandidates.length === 1 ? footerCandidates[0] : null;
   const totalLocalization = localizeDocumentTotal(model,page,font,meta.width!,meta.height!);
-  const totalBounds = totalLocalization.plausibleFields > 1 ? undefined : totalLocalization.bounds ?? (footer ? { left: Math.max(0, Math.floor(footer.left * structure.scaleX - pad)), top: Math.max(last, Math.floor(footer.top * structure.scaleY - pad)),
+  const totalBounds = totalLocalization.plausibleFields > 1 || totalLocalization.conflictingField ? undefined : totalLocalization.bounds ?? (footer ? { left: Math.max(0, Math.floor(footer.left * structure.scaleX - pad)), top: Math.max(last, Math.floor(footer.top * structure.scaleY - pad)),
     width: Math.ceil(footer.width * structure.scaleX + pad * 2), height: Math.ceil(footer.height * structure.scaleY + pad * 2) } : undefined);
   const worker = await createWorker('eng', OEM.LSTM_ONLY, { cachePath: ocrRuntimeCache(), logger: () => undefined });
   let passes = 0, reused = 0;

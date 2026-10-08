@@ -107,3 +107,27 @@ The gate runs a real standard `npm ci`; it does not reuse a historical installat
 Tesseract cache files use `os.tmpdir()/trimax-ocr/tesseract-js-7/eng`, outside source, with
 the exact English traineddata hash pinned in the manifest. Cache provisioning must verify
 the pinned bytes before startup. Cache location changes do not change OCR parameters.
+
+## Optical evidence / authority boundary
+
+Shared `documentFields/moneyService.ts` prepares source-bound crops and completes mature
+numeric observations/consensus. It does not import or call the document-total decision
+layer. Its existing preparation adapter still carries the legacy semantic-money envelope
+(including the earlier Tesseract authority result); this task does not redesign that
+compatibility envelope. It must not make a new authority decision from mature consensus.
+
+`ocrV2/recognition/completeMoneyAuthority.ts` consumes that immutable optical result and
+calls the existing document-total authority contract. The shadow pipeline orchestrates
+these layers. A numeric consensus alone is not total/payment authority. The foundation
+allowlist remains unchanged; the new regression explicitly forbids decision-layer imports
+and completion logic in the shared service.
+
+Once primary observations establish complete physical cells, local-contrast observations
+can add aligned labels and row-attached evidence but cannot replace primary ownership
+bands or fitted geometry. Total localization can select the larger, actually observed
+same-field box only with source/overlap/right-edge and complete-token suffix evidence;
+conflicting complete observations remain rejected. Neither rule uses frozen truth.
+
+Gate scoring reports intermediate numeric consensuses separately from final authority.
+A wrong intermediate value that is rejected remains visible, with provenance and rejection
+reason. Wrong final authority, accepted row amounts, invoice tokens and record IDs fail.

@@ -76,7 +76,8 @@ export function decideDocumentTotal(layout: Layout & { totalLocalization?: Retur
     const sameRegionAuthority = new Set(explicitFooterLabels.map(o => o.variant)).size >= 2 && numeric.cents !== null;
     let cents: number | null = null;
     let reason = 'No supported document-level label/value association';
-    if (!geometry) reason = 'Footer candidate is not an isolated final amount-column field';
+    if (layout.totalLocalization?.conflictingField) reason = 'Conflicting complete observations of the same total field';
+    else if (!geometry) reason = 'Footer candidate is not an isolated final amount-column field';
     else if (headerValues.length > 1) reason = 'Conflicting labeled header amounts';
     else if (sameRegionAuthority && (!headerValues.length || headerValues[0] === numeric.cents)) { cents = numeric.cents; reason = 'Explicit footer TOTAL labels and supported same-region value'; }
     else if (layout.totalLocalization?.finalField && layout.totalLocalization.plausibleFields === 1 && numeric.cents !== null && !headerValues.some(v=>v!==numeric.cents)
