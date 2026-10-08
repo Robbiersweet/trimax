@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-release-contract-20261007-rc3",
+  "releaseId": "trimax-release-contract-20261007-rc4",
   "status": "CANDIDATE_NOT_DEPLOYED",
   "createdAt": "2026-10-01T16:09:08.400Z",
   "releaseTimestamp": null,
@@ -11,17 +11,17 @@
   },
   "components": {
     "web": {
-      "commit": "c770a4e1c1033c151e55602ffb84b28c05bf9c63"
+      "commit": "bf02a2a6748347e6c4c4c2fef6f5daa784cd69ea"
     },
     "legacy": {
-      "commit": "c770a4e1c1033c151e55602ffb84b28c05bf9c63"
+      "commit": "bf02a2a6748347e6c4c4c2fef6f5daa784cd69ea"
     },
     "v2-shadow": {
-      "commit": "c770a4e1c1033c151e55602ffb84b28c05bf9c63"
+      "commit": "bf02a2a6748347e6c4c4c2fef6f5daa784cd69ea"
     }
   },
   "sourceBundle": {
-    "sha256": "94ec80a4f9828f260fa8541c18766f5c9717e2609d332b50c10a79e0f8710f41",
+    "sha256": "f35636f5e78bd5ba1f9efb8adc1df910400ba0bf7e8f319c728e0a8b3a1c5ed4",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -212,18 +212,22 @@
       "scripts/queue-workspace-polish-regression.ts": "40743a142f1bc2e14fc2aca23d743d2d8d2342016cfce592f1f6f22160cceb1d",
       "scripts/release/auth-flow-regression.cjs": "4d7ede3411ef172daf752cf0f852f220a2f6ee55f5868efafddf977751716638",
       "scripts/release/authorization-execution-regression.cjs": "04df6de9929ae8bde95b621a843650f575acf23f9074a357ae6a705125ba67f5",
-      "scripts/release/authorize-build.cjs": "fd486ee8ed5cff24e9cb829d0f79f7066d05ef59dc6cb0a89556b8a4d5309f9c",
+      "scripts/release/authorize-build.cjs": "c870164bf98208e95be6674f13ba1aab535a5dff7128bbf7e5f2229c7b1606df",
       "scripts/release/contract-regression.cjs": "0079759ba290d91a34d3a3b3b8f834804b77d2643c333ce32af35335175c883e",
       "scripts/release/contract.cjs": "d3715884482351622e26a1ce26ec6e52a42712ca804115b1aa4e6b243a0db1c1",
       "scripts/release/evidence-handoff-regression.cjs": "65541a59c8934fbb36cebdd780f5bdee6499cf36ef1815469a618a193e498bcc",
       "scripts/release/evidence-metrics.cjs": "9e2673ab0a6a87ddf75ca6733934c55c6cf364ea1258cc04f24ab1787034e4e5",
       "scripts/release/final-candidate-regression.cjs": "edc0dbfa8f70d55607c65327a08ed25193380387dd4f1e850cf130ef992ca03f",
-      "scripts/release/gate.cjs": "c9b8ebb9dd5956d7ec2d734020cfa3485a9e6c0aa9c2131557cacb82705f4957",
+      "scripts/release/gate-checks.cjs": "06885815fc71e030c62c837bd3c8ebff5c794e7b67a22ffb739f4d35f0dd0437",
+      "scripts/release/gate-state-regression.cjs": "51f1d2c76eca73d122f20cc0f537b624074ebd4943f946dcba63857775e45d04",
+      "scripts/release/gate-state.cjs": "f56bdc9741b07b92c53bb487f21320080537fa90734721130612e8c1b52da839",
+      "scripts/release/gate.cjs": "902b68d20e48f91f3685561a3a6f38924e886bca4b7d8caa633eb402aa5c1920",
       "scripts/release/physical-acceptance.cjs": "f6466593e668069b6416fcfc85518f104e4dacc624858383c70a194233c9b5c3",
       "scripts/release/provision-cache.cjs": "bc081613e0524214f212142fb6991139c7aceaa81fb5b1ca353ad5dfd59f6d24",
       "scripts/release/recognizer-adapter.cjs": "413fe4472660259a03e68683fbcd7f4d288596f41a2f4fb32bf8815e7be7dd51",
       "scripts/release/replay-document.cjs": "606299f436381920092dcb8d73e01cb57260d002102b6f4853add78e8b8a8d41",
-      "scripts/release/runtime-check.cjs": "52ba23fb815a56306af521a979e90557d19a47d361bf1c5d66236d3b1cd91b25",
+      "scripts/release/runtime-check.cjs": "1db67509c547db8a2e7863713046353bfbe7660781452f2d183fb31fdeb02af7",
+      "scripts/release/runtime-evidence.cjs": "1ef1b9a3cad9bec9aae6aa670bd7d85e3bbea3315fe3ab99a853037bce487188",
       "scripts/release/sql-attestation-regression.cjs": "34f75ca690e7367ca5637c4cb01bb979b9d6e87055f5f178f9e37042485529f3",
       "scripts/release/startup-regression.cjs": "56c2e638dc8dbda6198a064d25f4a53a42a3fea09d23be341074c191333e2099",
       "scripts/remittance-camera-geometry-regression.ts": "aba66060df4eb16456e37a540c6b50455861dfdef394e3a539baec718e274868",
