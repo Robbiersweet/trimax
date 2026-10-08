@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-release-contract-20261007-rc4",
+  "releaseId": "trimax-release-contract-20261008-rc5",
   "status": "CANDIDATE_NOT_DEPLOYED",
   "createdAt": "2026-10-01T16:09:08.400Z",
   "releaseTimestamp": null,
@@ -11,17 +11,17 @@
   },
   "components": {
     "web": {
-      "commit": "bf02a2a6748347e6c4c4c2fef6f5daa784cd69ea"
+      "commit": "155353b42e2abfb5e7ab671f560bbb745100971e"
     },
     "legacy": {
-      "commit": "bf02a2a6748347e6c4c4c2fef6f5daa784cd69ea"
+      "commit": "155353b42e2abfb5e7ab671f560bbb745100971e"
     },
     "v2-shadow": {
-      "commit": "bf02a2a6748347e6c4c4c2fef6f5daa784cd69ea"
+      "commit": "155353b42e2abfb5e7ab671f560bbb745100971e"
     }
   },
   "sourceBundle": {
-    "sha256": "f35636f5e78bd5ba1f9efb8adc1df910400ba0bf7e8f319c728e0a8b3a1c5ed4",
+    "sha256": "f412373f1800ffadc6637d92bc7f7cfa5dbc33aa982b58db24a56dc7f83f6aed",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -228,7 +228,7 @@
       "scripts/release/replay-document.cjs": "606299f436381920092dcb8d73e01cb57260d002102b6f4853add78e8b8a8d41",
       "scripts/release/runtime-check.cjs": "1db67509c547db8a2e7863713046353bfbe7660781452f2d183fb31fdeb02af7",
       "scripts/release/runtime-evidence.cjs": "1ef1b9a3cad9bec9aae6aa670bd7d85e3bbea3315fe3ab99a853037bce487188",
-      "scripts/release/sql-attestation-regression.cjs": "34f75ca690e7367ca5637c4cb01bb979b9d6e87055f5f178f9e37042485529f3",
+      "scripts/release/sql-attestation-regression.cjs": "e817dacee224b2ae683859841313eb7424252f9f1d60857d449f75ad5e0d250c",
       "scripts/release/startup-regression.cjs": "56c2e638dc8dbda6198a064d25f4a53a42a3fea09d23be341074c191333e2099",
       "scripts/remittance-camera-geometry-regression.ts": "aba66060df4eb16456e37a540c6b50455861dfdef394e3a539baec718e274868",
       "scripts/remittance-contract-regression.ts": "75e3bf300050abfcd6145eb5d912af9251fef904bc1c9be19c5bc5695d50cf77",
@@ -566,7 +566,7 @@
       "supabase/sql/2026-09-23-ocr-legacy-jobs.sql": "78f5885342c7239c0815f4acf1a9ceca52eac67f893dd2f89681d9be58ee84b0",
       "supabase/sql/2026-09-26-ocr-evidence-persistence.sql": "92ad3cc388a7db2dda6bf4431fee375b3d7dfa221ebc752f6dda0b35cce45729",
       "supabase/sql/2026-09-26-ocr-object-storage.sql": "0cb04c4e63d134fc801d0fbf10b2f333204b1ed9a347a9612c39b9ab6c51e33d",
-      "supabase/sql/2026-10-01-release-attestation.sql": "fb46fe48e7c308bba0577d7939ff662d1a05cbe637d6e9e74b9a3a70ccfcb8bc",
+      "supabase/sql/2026-10-01-release-attestation.sql": "7c7e3ce675e8a8f570759629263724bbc9ceaaf7623e19873d4133e290f10871",
       "supabase/sql/README.md": "e3ac010eb016b07963eda46c3f2670d0e1aa78a51666deb38dfcb0f391c34684",
       "tsconfig.json": "f399e24188640b031f844ec7c0285e65450e697b2daa5790e1cb801818fcc955"
     }
