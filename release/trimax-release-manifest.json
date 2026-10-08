@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-release-contract-20261007-rc2",
+  "releaseId": "trimax-release-contract-20261007-rc3",
   "status": "CANDIDATE_NOT_DEPLOYED",
   "createdAt": "2026-10-01T16:09:08.400Z",
   "releaseTimestamp": null,
@@ -11,17 +11,17 @@
   },
   "components": {
     "web": {
-      "commit": "f508a721c7b5c78e1521d5faea710c175be38ecf"
+      "commit": "c770a4e1c1033c151e55602ffb84b28c05bf9c63"
     },
     "legacy": {
-      "commit": "f508a721c7b5c78e1521d5faea710c175be38ecf"
+      "commit": "c770a4e1c1033c151e55602ffb84b28c05bf9c63"
     },
     "v2-shadow": {
-      "commit": "f508a721c7b5c78e1521d5faea710c175be38ecf"
+      "commit": "c770a4e1c1033c151e55602ffb84b28c05bf9c63"
     }
   },
   "sourceBundle": {
-    "sha256": "02e490e6dede7e9a615ba02ed95225fbae337ea99d8efd6c96d293e7c8912776",
+    "sha256": "94ec80a4f9828f260fa8541c18766f5c9717e2609d332b50c10a79e0f8710f41",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -216,7 +216,9 @@
       "scripts/release/contract-regression.cjs": "0079759ba290d91a34d3a3b3b8f834804b77d2643c333ce32af35335175c883e",
       "scripts/release/contract.cjs": "d3715884482351622e26a1ce26ec6e52a42712ca804115b1aa4e6b243a0db1c1",
       "scripts/release/evidence-handoff-regression.cjs": "65541a59c8934fbb36cebdd780f5bdee6499cf36ef1815469a618a193e498bcc",
-      "scripts/release/gate.cjs": "9bc255e3de338c796a3672dd19acaf78e6606429cc70ee99b2846bba6b660960",
+      "scripts/release/evidence-metrics.cjs": "9e2673ab0a6a87ddf75ca6733934c55c6cf364ea1258cc04f24ab1787034e4e5",
+      "scripts/release/final-candidate-regression.cjs": "edc0dbfa8f70d55607c65327a08ed25193380387dd4f1e850cf130ef992ca03f",
+      "scripts/release/gate.cjs": "c9b8ebb9dd5956d7ec2d734020cfa3485a9e6c0aa9c2131557cacb82705f4957",
       "scripts/release/physical-acceptance.cjs": "f6466593e668069b6416fcfc85518f104e4dacc624858383c70a194233c9b5c3",
       "scripts/release/provision-cache.cjs": "bc081613e0524214f212142fb6991139c7aceaa81fb5b1ca353ad5dfd59f6d24",
       "scripts/release/recognizer-adapter.cjs": "413fe4472660259a03e68683fbcd7f4d288596f41a2f4fb32bf8815e7be7dd51",
@@ -368,7 +370,7 @@
       "src/app/lib/createQueueItem.ts": "12482a5c96c69e2c62c17f76e929abb55f1ea82b87ae872a96e0333e9b846207",
       "src/app/lib/documentDiscounts.ts": "9a8961dd8e6d4adfdbe1608e83de5e1acd6f209d5b0798ee2e57b526a4f68a10",
       "src/app/lib/documentFields/moneyContract.ts": "a97c30d89e94f6fe456fe5d1c694e5d56d942d40b95ae4bac8585b8ba31c4560",
-      "src/app/lib/documentFields/moneyService.ts": "8a0ed8d9e01837a2d135d70e6639db7341828fa30ba5f03cc002d14ee2dc8ee8",
+      "src/app/lib/documentFields/moneyService.ts": "932eeaeb02a252d21f058309b97e9055da4b304f368fbf52a36cb39c71a7ef73",
       "src/app/lib/documentNumbers.ts": "e6f0593f5230d2f2703427e2995ddfc2c6ec4710608f4864a8445264d32dd16c",
       "src/app/lib/documentTerms.ts": "7210f64a1a5717ef1c86605cca4320721fe9f2de4162751bbe64845110abf40f",
       "src/app/lib/duplicateRemittance.ts": "90550e1e0d0e272752cc7aadd762e293d476c3106348bba1c9c1e3ce4105abc9",
@@ -414,8 +416,9 @@
       "src/app/lib/ocrV2/layout/index.ts": "234a0684650cf9386fdf3612311b2c60e113785987f5dd1b55089444da7e9ae5",
       "src/app/lib/ocrV2/layout/types.ts": "3f8c1e5e20e5aef3601384da6590df66a72d84a8c72ec54ba28c1e412ba9a833",
       "src/app/lib/ocrV2/recognition/README.md": "21d35e1d313c871477bf69ef0c3936d05a239b8ee47b9985c90c2f4dda35d9b1",
+      "src/app/lib/ocrV2/recognition/completeMoneyAuthority.ts": "80183249c08ec8899f6f5febe37ac0a0a5218e473252b0d8d6769c08dcc380f3",
       "src/app/lib/ocrV2/recognition/documentIdentity.ts": "beefe48c094d3910cca998ec90c09d85fe29a5fd8d0cb09874a0ecb1498d67fb",
-      "src/app/lib/ocrV2/recognition/documentTotalAuthority.ts": "15a857eee68d21a494db30d4aa584e0256fc97d30aba1e0b8a8d879ded4d6f80",
+      "src/app/lib/ocrV2/recognition/documentTotalAuthority.ts": "17b418e82ce6da95ab4573d02f4c9f47909dd824a92f53129161a249993d80b0",
       "src/app/lib/ocrV2/recognition/evidenceLedger.ts": "22688c7f2a6de783747b2421737333aa7a298dc95d82db0d87189cd73ba1ffae",
       "src/app/lib/ocrV2/recognition/identityHandoff.ts": "66cffdf20257789e604d61351881583a937acfaf74880d0556be88625c1b33ac",
       "src/app/lib/ocrV2/recognition/index.ts": "994813e357b834735628f4e898a4a133cdcbb2cf58cfa70e936529cdcff3f2db",
@@ -425,15 +428,15 @@
       "src/app/lib/ocrV2/recognition/paymentEvidence.ts": "2dc2bd4c0e5e85163a34987ec0882b32f0dc314c1a084f5e65f706c86213cdeb",
       "src/app/lib/ocrV2/recognition/preservePaymentEvidence.ts": "8834319c7ea95bf735d4f4e60c41352a5753be058fcd5bdbb27568df5d6ec90d",
       "src/app/lib/ocrV2/recognition/residualAmount.ts": "f94674cfe227c6b9f439297cfbe8a17d9d870bb60ef76c96937a70b93265b4fc",
-      "src/app/lib/ocrV2/recognition/semanticMoney.ts": "84831cbe4a7c0f731f2b76169b33f0182933356914f469f0bee13adc3e5a4d1a",
-      "src/app/lib/ocrV2/recognition/totalLocalization.ts": "78e737fc70747674e1a354290139b3fc6bad499cae3283a29d8b24e9d348534e",
+      "src/app/lib/ocrV2/recognition/semanticMoney.ts": "3686f5e4238b46df41f04edc43bf922941832651cd15300d01f7cade10af2b8d",
+      "src/app/lib/ocrV2/recognition/totalLocalization.ts": "3d174859ed8c67d2250eff2ccab462d23fad7cb10bcbb6615cbe2b7c1062f7a4",
       "src/app/lib/ocrV2/recognition/types.ts": "61556867b81411adb38ee2eac9dba79314dcd7f466ea7a4127cd247519ca486d",
       "src/app/lib/ocrV2/resolver/index.ts": "28f6f03fa630918c51c9ac3e71e12041318564cb419817357f4dd7d3aa05e027",
       "src/app/lib/ocrV2/resolver/residual.ts": "326642725dad01e4d1e334997d2806da404ca459c08c498f0ff497d58d61ef51",
       "src/app/lib/ocrV2/semantics/README.md": "b67d7a20a06066f2ae6eae0d29195a69572e4eb58fffaa591c3e28d28bc58b6b",
       "src/app/lib/ocrV2/semantics/headerGeometry.ts": "92b97a7b593668cf073536571ca9888aad5dc7728b4177ef9112d990f31044fd",
       "src/app/lib/ocrV2/semantics/index.ts": "7a7ee4a9ba9ae9816442b13bba24ff51a0c4e9b88e6832dc4e6cc2945103cd61",
-      "src/app/lib/ocrV2/semantics/interpret.ts": "43b6e3beb71cc6f72664e82a594a970401b5b05617a4110ace9b3ba969c94df4",
+      "src/app/lib/ocrV2/semantics/interpret.ts": "b7bc9e87dc2cdf4c893d9c51e55aafa9338d5a957f171af7e9ff289ffb5290d8",
       "src/app/lib/ocrV2/semantics/labels.ts": "3bb5052eea07a5d54609d5508eeb1c859c49b10defc418d00fdc31cdc006a38a",
       "src/app/lib/ocrV2/semantics/model.ts": "6fb2ee3da890ee2751a2a8f10ea5501cbea28c003dfd9fde26cef5fd36bb7261",
       "src/app/lib/ocrV2/semantics/physicalRows.ts": "4ea078a4ac32e4c8e06ec00844c1a5f5a3b98ae8877eaee2cbbe15131a17bc1e",
@@ -442,7 +445,7 @@
       "src/app/lib/ocrV2/shadow/acceptance.ts": "4d7bc75288190b4743d8c357a90f9898687fc7822d1dc49b6b2ff3022f6f6bcf",
       "src/app/lib/ocrV2/shadow/client.ts": "ef1b3565b5a94dac334c680ac3eaa39e58c9277fd15fef257274cded0e3e9880",
       "src/app/lib/ocrV2/shadow/contract.ts": "7df7baa3680af0818bf2402a1241f456789e856ed77fdf3b708824f7e15e050b",
-      "src/app/lib/ocrV2/shadow/pipeline.ts": "9ba58588060a9e709619a00880475c99071834198a6e43e17647bdd51990754b",
+      "src/app/lib/ocrV2/shadow/pipeline.ts": "5e55afd46cf55e7c64e0d7cccf6f3937871d96b0d5f4e35c3163825048420e3c",
       "src/app/lib/ocrV2/types.ts": "444cac91be805673b8f6a90b0b16d7fd32a68e5f0ab7839625270cd2ca1d2cbd",
       "src/app/lib/outlookDrafts.ts": "bc667fa98601cd119a338a06bd6d8875af5ec0621b79ed8ca9d622190e2e5ba5",
       "src/app/lib/paymentTimeliness.ts": "ad152839f892c6f7c9be910248fb87c3b7734c47dd3f5059373c15da7527c618",
