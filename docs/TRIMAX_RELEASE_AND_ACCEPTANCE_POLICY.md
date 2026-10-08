@@ -32,7 +32,7 @@ credential-scope, configuration, database or source evidence means FAIL, never a
 
 ## Gates
 
-Run `npm run trimax:release-gate` from the release candidate. Output and private crops go to
+Run `npm run trimax:release-gate -- --mode=predeployment` from the release candidate; use `--mode=postdeployment` for final deployed verification. Output and private crops go to
 `%LOCALAPPDATA%/Trimax/release-gates`, never Git. Every test is attempted; an early failure
 does not suppress later evidence. Failures are recorded, not repaired by the gate.
 
@@ -85,7 +85,7 @@ manifest, code and retained gates, followed by actual installed-iPhone evidence.
 remove compatibility paths, adjust OCR/authority rules, or change fixtures to turn a failing
 baseline green. A gate failure is a recorded baseline fact pending review.
 
-The candidate's `npm run build` has a `prebuild` guard requiring a matching PASS receipt
+The candidate's `npm run build` has a `prebuild` guard requiring a matching POSTDEPLOYMENT PASS or PREDEPLOYMENT READY_FOR_CONTROLLED_DEPLOYMENT receipt
 through `TRIMAX_RELEASE_GATE_RESULT`. The gate itself calls the Next build binary directly
 to measure build success without a recursive prebuild dependency. A successful build alone
 does not authorize deployment. Existing Vercel settings and branch protection are not changed
@@ -131,3 +131,31 @@ conflicting complete observations remain rejected. Neither rule uses frozen trut
 Gate scoring reports intermediate numeric consensuses separately from final authority.
 A wrong intermediate value that is rejected remains visible, with provenance and rejection
 reason. Wrong final authority, accepted row amounts, invoice tokens and record IDs fail.
+
+## Evidence-driven rollout states
+
+The gate requires an explicit PREDEPLOYMENT or POSTDEPLOYMENT mode. PREDEPLOYMENT
+returns READY_FOR_CONTROLLED_DEPLOYMENT only when all required code checks and all
+frozen retained documents pass, with at most the runtime/database deployment prerequisites
+outstanding. Only these two named checks may have prerequisite status. Missing tests,
+duplicate checks, mismatches, network failures and credential denials fail. POSTDEPLOYMENT
+requires both attestations and every other check to PASS. Readiness authorizes the sealed
+controlled-deployment build; it is not final release PASS or physical acceptance.
+
+Build authorization re-evaluates the receipt rather than trusting its status string, checks
+all required check names and corpus members, exact source/release/corpus identities, completion
+and a clean source tree. A result from the wrong source or with an omitted failure is denied.
+
+The runtime probe uses the existing read-only RPC with each restricted engine credential.
+Only HTTP404/PGRST202 means the RPC is not installed. A successful RPC with no persisted
+worker release is a deployment prerequisite; an existing incompatible release is FAIL.
+Persisted legacyRelease/v2Release must match release, engine, commit, source, model and runtime
+bundles, schema hash and no-payment-write declaration. Project/business/scope/DB/flags are
+checked against the authenticated RPC and pinned local configuration. Existing validateStartup
+source, itself hash-bound, verifies actual models and sanitized config before emitting a worker
+record. No local startup result is substituted for a deployed record. This is completed-job
+provenance, not live process liveness; separate rollout worker health verification remains
+required. No worker or application behavior was modified for these gate states.
+
+The gate always reports PHYSICAL_ACCEPTANCE_PENDING. Only separately verified installed-iPhone
+evidence can establish physical acceptance; neither mode grants it.

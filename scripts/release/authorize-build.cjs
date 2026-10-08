@@ -1,7 +1,8 @@
-/* eslint-disable @typescript-eslint/no-require-imports -- Production npm build requires a matching completed gate receipt. */
+/* eslint-disable @typescript-eslint/no-require-imports -- Exact sealed receipt authorization; predeployment readiness is not final PASS. */
 const {read,localFailures,digest,sourceHashes}=require('./contract.cjs');
+const {authorize}=require('./gate-state.cjs');
 const manifest=read('release/trimax-release-manifest.json'),failures=localFailures(manifest);
 if(!process.env.TRIMAX_RELEASE_GATE_RESULT)failures.push('TRIMAX_RELEASE_GATE_RESULT is required for production build');
-else{const result=read(process.env.TRIMAX_RELEASE_GATE_RESULT);if(result.status!=='PASS'||result.releaseId!==manifest.releaseId||result.sourceBundle!==digest(sourceHashes())||result.corpusHash!==manifest.acceptance.sha256)failures.push('Gate receipt does not authorize this exact release');}
+else{const result=read(process.env.TRIMAX_RELEASE_GATE_RESULT);failures.push(...authorize(manifest,result,read(manifest.acceptance.corpus),digest(sourceHashes())));}
 if(failures.length)throw Error('Release build blocked: '+failures.join('; '));
-console.log('Exact release gate receipt verified; physical acceptance remains a separate production gate');
+console.log('Exact sealed release authorized for build; predeployment readiness is not final release PASS; physical acceptance remains separate');
