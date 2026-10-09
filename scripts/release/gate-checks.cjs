@@ -1,4 +1,5 @@
 const scripts=[
+ 'scripts/ocr-v2/direction-fallback-regression.cjs',
  'scripts/release/file-forensics-regression.cjs',
  'scripts/release/portability-regression.cjs',
  'scripts/release/gate-state-regression.cjs','scripts/release/contract-regression.cjs','scripts/release/auth-flow-regression.cjs','scripts/release/startup-regression.cjs','scripts/release/sql-attestation-regression.cjs',
