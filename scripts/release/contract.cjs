@@ -6,7 +6,7 @@ const digest=x=>hash(canonical(x));
 const read=p=>JSON.parse(fs.readFileSync(p,'utf8').replace(/^\uFEFF/,''));
 const root=path.resolve(__dirname,'../..');
 const git=(args,cwd=root)=>cp.execFileSync('git',args,{cwd,encoding:'utf8',windowsHide:true}).trim();
-const sourcePaths=['src','scripts','supabase','public','package.json','package-lock.json','next.config.ts','tsconfig.json','proxy.ts','eslint.config.mjs'];
+const sourcePaths=['src','scripts','supabase','public','package.json','package-lock.json','vercel.json','next.config.ts','tsconfig.json','proxy.ts','eslint.config.mjs'];
 // Explicit text contract: only UTF-8 source formats normalize CRLF. Binary assets
 // and model bytes are never decoded as text. BOMs and lone CR remain significant.
 const textExtensions=new Set(['.cjs','.css','.js','.json','.md','.mjs','.py','.sql','.svg','.ts','.tsx']);
@@ -14,9 +14,13 @@ function sourceBytes(file,bytes){if(!textExtensions.has(path.extname(file))&&pat
  const text=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(bytes);
  return Buffer.from(text.replace(/\r\n/g,'\n'),'utf8');}
 function sourceHashes(cwd=root){const files=git(['ls-files','--',...sourcePaths],cwd).split('\n').filter(Boolean);return Object.fromEntries(files.map(f=>[f,hash(sourceBytes(f,fs.readFileSync(path.join(cwd,f))))]));}
+function committedSourceHashes(cwd=root){const files=git(['ls-tree','-r','--name-only','HEAD','--',...sourcePaths],cwd).split('\n').filter(Boolean);
+ const packed=cp.execFileSync('git',['cat-file','--batch'],{cwd,input:files.map(f=>'HEAD:'+f).join('\n')+'\n',maxBuffer:100000000});let offset=0;const hashes={};
+ for(const file of files){const end=packed.indexOf(10,offset),header=packed.subarray(offset,end).toString(),match=header.match(/^[a-f0-9]+ blob (\d+)$/);if(!match)throw Error('Committed blob unavailable: '+file);const size=Number(match[1]);offset=end+1;hashes[file]=hash(sourceBytes(file,packed.subarray(offset,offset+size)));offset+=size+1;}return hashes;}
 function localFailures(manifest,cwd=root){const errors=[];if(git(['status','--porcelain','--untracked-files=all'],cwd))errors.push('Release worktree is dirty');
  if(!/^[a-f0-9]{40}$/.test(manifest.components.web.commit||''))errors.push('Unsealed component revision');
  for(const [name,c] of Object.entries(manifest.components))if(c.commit!==manifest.components.web.commit)errors.push(name+' revision differs from common executable revision');
+ if(digest(committedSourceHashes(cwd))!==manifest.sourceBundle.sha256)errors.push('Committed HEAD source bundle differs from manifest');
  if(digest(sourceHashes(cwd))!==manifest.sourceBundle.sha256)errors.push('Source bundle differs from manifest');
  if(hash(sourceBytes('public/sw.js',fs.readFileSync(path.join(cwd,'public/sw.js'))))!==manifest.serviceWorker.sha256)errors.push('Service worker hash mismatch');
  // Metadata-only sealing commits are permitted. Executable files must be byte-identical to the named commit.
@@ -79,4 +83,4 @@ function scoreDocument(expected,observed){const failures=[];const truth=expected
  if(automatic&&(total==null||observed.arithmeticReconciliation?.difference!==0||ids.length!==truth.rows.length||observed.reviewBlockers?.length))failures.push('Automatic document lacks complete safe evidence');
  return failures;
 }
-module.exports={root,read,hash,digest,canonical,git,sourcePaths,sourceBytes,sourceHashes,localFailures,compareDatabase,verifyModels,verifyRuntimeSources,validateLocalRuntime,validateStartup,scoreDocument};
+module.exports={root,read,hash,digest,canonical,git,sourcePaths,sourceBytes,sourceHashes,committedSourceHashes,localFailures,compareDatabase,verifyModels,verifyRuntimeSources,validateLocalRuntime,validateStartup,scoreDocument};

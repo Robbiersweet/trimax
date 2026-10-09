@@ -1,4 +1,5 @@
 const scripts=[
+ 'scripts/release/file-forensics-regression.cjs',
  'scripts/release/portability-regression.cjs',
  'scripts/release/gate-state-regression.cjs','scripts/release/contract-regression.cjs','scripts/release/auth-flow-regression.cjs','scripts/release/startup-regression.cjs','scripts/release/sql-attestation-regression.cjs',
  'scripts/release/authorization-execution-regression.cjs','scripts/release/evidence-handoff-regression.cjs','scripts/release/final-candidate-regression.cjs',

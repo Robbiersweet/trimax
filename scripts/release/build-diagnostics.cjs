@@ -12,7 +12,9 @@ const evidencePath=cwd=>path.join(os.tmpdir(),'trimax-build-diagnostics',c.hash(
 function record(stage,cwd=c.root){const current=snapshot(cwd),file=evidencePath(cwd);let prior=[];
  try{prior=JSON.parse(fs.readFileSync(file,'utf8'));}catch{ /* No earlier snapshot is explicitly unknown. */ }
  if(stage==='preinstall'||prior[0]?.head!==current.head)prior=[];
- const entry={stage,observedAt:new Date().toISOString(),...current};prior.push(entry);
+ const forensic=require('./file-forensics.cjs');
+ const fileComparisons=['package-lock.json','vercel.json'].map(file=>{try{return forensic.compare(file,cwd);}catch{return {path:file,error:'Committed or working file unavailable'};}});
+ const entry={stage,observedAt:new Date().toISOString(),...current,node:process.version,npmUserAgent:process.env.npm_config_user_agent||null,fileComparisons};prior.push(entry);
  fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,JSON.stringify(prior,null,2));
  const initial=prior[0];return {...entry,initialStage:initial.stage,initialCheckoutState:initial.stage==='preinstall'?'observed at npm preinstall (not before npm)':'unverified',differences:current.files.map(f=>({...f,firstObservedStage:prior.find(p=>p.files.some(x=>x.path===f.path&&x.status===f.status))?.stage})),evidenceFile:file};
 }

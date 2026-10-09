@@ -189,3 +189,24 @@ The explicit text list also includes files named .gitignore. Linux comparison
 identified scripts/ocr-v2/training/.gitignore as the only extensionless source
 entry converted by Git; it is text, not a binary asset. Other extensionless
 files remain raw bytes.
+
+## Committed baseline and two-file checkout forensics
+
+The sealed executable set explicitly includes package-lock.json AND vercel.json.
+Integrity compares committed HEAD blobs against the sealed bundle separately from
+working-file hashes and Git cleanliness. Metadata-only descendants cannot change
+either file. No npm/Vercel dirty-file exception is authorized: the rc7 mutation has
+not been reproduced locally and its remote modified bytes were not retained.
+
+Formatting-only JSON edits remain denied when Git reports them dirty. Parsed JSON
+semantic equality is diagnostic evidence, not build authorization. Existing strict
+UTF-8 CRLF-to-LF source hashing remains unchanged; dependency/configuration edits,
+unproven package-manager metadata rewrites and unrelated dirty files fail closed.
+
+Allowlisted build forensics compare HEAD and working package-lock.json/vercel.json:
+blob IDs, SHA-256, bytes, CRLF/LF, BOM, JSON-pointer changes and sanitized Git diff.
+Secrets accidentally present in these files are redacted. No arbitrary file or
+process environment dump is permitted. Preinstall remains a post-tool observation,
+not proof of a pristine checkout. npm user-agent is recorded to identify the actual
+package manager on a future separately authorized build. No deployment is performed
+merely to collect diagnostics in this forensic task.
