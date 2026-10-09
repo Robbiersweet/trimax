@@ -167,3 +167,20 @@ required. No worker or application behavior was modified for these gate states.
 
 The gate always reports PHYSICAL_ACCEPTANCE_PENDING. Only separately verified installed-iPhone
 evidence can establish physical acceptance; neither mode grants it.
+
+## Platform-stable build contract (rc6)
+
+Release text files with extensions .cjs, .css, .js, .json, .md, .mjs, .py, .sql,
+.svg, .ts and .tsx are decoded as strict UTF-8 and normalize CRLF to LF before
+hashing. BOM and lone CR remain significant. Other assets are hashed as raw bytes;
+model/runtime-package byte contracts remain unchanged. public/sw.js uses that
+same explicit text contract, rather than a Windows working-tree byte digest.
+No application or service-worker content is changed by this rule.
+
+All dirty files still fail closed. Build diagnostics print only file status,
+paths, revision and service-worker hash/byte metadata, never file contents or
+configuration secrets. npm preinstall, pretest, posttest and prebuild snapshots
+are stored outside the repository in os.tmpdir()/trimax-build-diagnostics.
+First-observed stage is evidence, not proof of the exact creating command.
+A missing initial-checkout snapshot is reported as unverified. These diagnostics
+do not whitelist generated files or bypass the manifest/receipt checks.
