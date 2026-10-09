@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-release-contract-20261009-rc9",
-  "status": "CANDIDATE_NOT_DEPLOYED",
+  "releaseId": "trimax-orientation-validation-20261009",
+  "status": "VALIDATION_ONLY_NOT_SEALED",
   "createdAt": "2026-10-01T16:09:08.400Z",
   "releaseTimestamp": null,
   "baseProduction": {
@@ -11,17 +11,17 @@
   },
   "components": {
     "web": {
-      "commit": "b9e4bb12852df0fb53084d5f237034e152f2148c"
+      "commit": "46a52cadc7f644f12bf5031f9fe73b6f7bf22123"
     },
     "legacy": {
-      "commit": "b9e4bb12852df0fb53084d5f237034e152f2148c"
+      "commit": "46a52cadc7f644f12bf5031f9fe73b6f7bf22123"
     },
     "v2-shadow": {
-      "commit": "b9e4bb12852df0fb53084d5f237034e152f2148c"
+      "commit": "46a52cadc7f644f12bf5031f9fe73b6f7bf22123"
     }
   },
   "sourceBundle": {
-    "sha256": "9914536ca189a9c39c47934ccc0abc91a2e26d63e97a78269059d5433c0e2c03",
+    "sha256": "3bceeeedfcf6f43095c76c4f30e03d67876f65de38a4be89304e00bb608ed915",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -55,6 +55,7 @@
       "scripts/estimate-list-loading-regression.ts": "e16e1f2f3df849ebfb9d8a722260bab33fc94064548319e7e2e58a0b34be25bd",
       "scripts/fixtures/faint-remittance.md": "a0d35fcfbf3a4022f8c7a12f395b261141fee040f9fce22c99cd4b4933c07ac4",
       "scripts/fixtures/faint-remittance.png": "7d17df080e11ec13030502ed7b2d04404a59dda549241d7ee62eeec9d53bde88",
+      "scripts/fixtures/orientation-health-reference.json": "708302a30ff86d23a2fc92e10c49147870db74148dd0e605855547e715f3a5c0",
       "scripts/fixtures/remittance/coverage.ts": "300cc6cc94a833630014560c1ffccb9e236f4324714eb5d64dec31ca4be810e7",
       "scripts/fixtures/remittance/golden.json": "85c6460cb58f1fe2fd811d8ea47010117953b3e443c5be8243f2f07f71218a31",
       "scripts/floating-back-navigation-regression.ts": "8218d847ce054ce0e9caceb4eba1297104ef87379fa0f062eb465835c8e0a588",
@@ -101,6 +102,8 @@
       "scripts/ocr-v2/dataset/manifest.schema.json": "b1715bdb8eea50e3619f88531822137d34d23f7c92cdba424547a6454cb1679a",
       "scripts/ocr-v2/dataset/recognize.py": "224ca359d4d243369d64cd81bc9cb1880839124d3e2d7df246cda2a01327a6ad",
       "scripts/ocr-v2/dataset/regression.cjs": "c5ff9ab481985e96891588917509b67ca6886e64b47068da5c22ef46e3910ef5",
+      "scripts/ocr-v2/direction-fallback-regression.cjs": "62930d6ffd19e069cfb4d771d8fb43b03de5afbe399164c7e48f4bb789a9e306",
+      "scripts/ocr-v2/direction-sampling-audit.cjs": "ed59ffd46245a03e806eb45ab20e22b3a16432ae799750243d576d1f8af5e732",
       "scripts/ocr-v2/document-total-benchmark.cjs": "e1944d5e7d012fbefe7b4acea6baa6750ee4b435787e0b9b95d9fd1ae717eb6a",
       "scripts/ocr-v2/document-total-regression.cjs": "0e5c589d241479ddd8c97764f9969ce504687f7609c010be9e404c49ab31eefd",
       "scripts/ocr-v2/field-benchmark.cjs": "ba5d26937b6529ea63137edb7fc7212068990743b118048bd36f9b3ec1aa9def",
@@ -221,7 +224,7 @@
       "scripts/release/file-forensics-regression.cjs": "a6da1ba822d17c1a31b7bd29d3cb49e95febca66f29c51b712ccdd9d608c1b26",
       "scripts/release/file-forensics.cjs": "25133a9f2167c801a05906be04068f3d85f54f3c462e085869df2d486c8bea30",
       "scripts/release/final-candidate-regression.cjs": "edc0dbfa8f70d55607c65327a08ed25193380387dd4f1e850cf130ef992ca03f",
-      "scripts/release/gate-checks.cjs": "901e0d11c779ca1cc60af2c2e21a7db31d940bb0a660df8b74b7418b0fa7f739",
+      "scripts/release/gate-checks.cjs": "4f572da8c45bd26d528a0b04e12b46a5936b2d21b4a35287d778d3fcf5913b9e",
       "scripts/release/gate-state-regression.cjs": "51f1d2c76eca73d122f20cc0f537b624074ebd4943f946dcba63857775e45d04",
       "scripts/release/gate-state.cjs": "f56bdc9741b07b92c53bb487f21320080537fa90734721130612e8c1b52da839",
       "scripts/release/gate.cjs": "902b68d20e48f91f3685561a3a6f38924e886bca4b7d8caa633eb402aa5c1920",
@@ -395,8 +398,8 @@
       "src/app/lib/ocrCanonicalServer.ts": "3356996580d99cf40ea606e768a9590f383b3a34244525f97e1bd08ef5e1296f",
       "src/app/lib/ocrDebug.ts": "62cdf0d98e77a75bdee03eba80379592a441ceb660ebd03d1bca99773b680755",
       "src/app/lib/ocrDebugServer.ts": "c4c94b3e45c7a4c160e991ba51b582f742550c908d7fede0620c8ccf39d96836",
-      "src/app/lib/ocrDirectionSamples.ts": "a1cf9f8f8ad47694d42acd57a1cb4cabfe83ec6cd7dcbba5b1d3e8bac917435d",
-      "src/app/lib/ocrDocumentDirection.ts": "b1f9c57f0b902070fc627c389cab665e6d7dc148102eff2a33d3e61c54c88a72",
+      "src/app/lib/ocrDirectionSamples.ts": "0bbf044bb8d82b13c67596cd5b2f4e18714666a47c927b9cf37fced239685e58",
+      "src/app/lib/ocrDocumentDirection.ts": "037f17749a90edf14f9d1c5b80f1ede034789f6666105ab3d528ac43294985cf",
       "src/app/lib/ocrFaint.ts": "f0db96890a0b405bd98afe31f57c091fd4461fc6c92f5e7539f05e5416e51a95",
       "src/app/lib/ocrHistory.ts": "a0b2d190749a9e203bc01218c5aa78c599e6569ed187cd1723657289b0fa4582",
       "src/app/lib/ocrHistoryClient.ts": "dd3b2f6a47b6794cb248c05d48f006a07bbb5d4b5b00b4f7595f4d10845b527d",
@@ -574,8 +577,7 @@
       "supabase/sql/README.md": "e3ac010eb016b07963eda46c3f2670d0e1aa78a51666deb38dfcb0f391c34684",
       "tsconfig.json": "f399e24188640b031f844ec7c0285e65450e697b2daa5790e1cb801818fcc955",
       "vercel.json": "471510cb78bbf804feac04290af8a0b5ae512751b1cf5d6d9b4472380fe74233"
-    },
-    "encoding": "explicit-utf8-lf-text-raw-binary-v2"
+    }
   },
   "modelBundle": {
     "sha256": "a85082f561fbf6b0ae367af5de30560cbc32b01af7508a8e8f10cbf502f10c30",
