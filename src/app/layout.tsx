@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
-import AuthGuard from "./components/AuthGuard";
+import RouteAccessBoundary from "./components/RouteAccessBoundary";
 import PwaRegistration from "./components/PwaRegistration";
 import "./globals.css";
 
@@ -93,7 +93,7 @@ export default async function RootLayout({
                 </main>
               }
             >
-              <AuthGuard>{children}</AuthGuard>
+              <RouteAccessBoundary>{children}</RouteAccessBoundary>
             </Suspense>
           </>
         )}
