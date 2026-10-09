@@ -10,7 +10,7 @@ const sourcePaths=['src','scripts','supabase','public','package.json','package-l
 // Explicit text contract: only UTF-8 source formats normalize CRLF. Binary assets
 // and model bytes are never decoded as text. BOMs and lone CR remain significant.
 const textExtensions=new Set(['.cjs','.css','.js','.json','.md','.mjs','.py','.sql','.svg','.ts','.tsx']);
-function sourceBytes(file,bytes){if(!textExtensions.has(path.extname(file)))return bytes;
+function sourceBytes(file,bytes){if(!textExtensions.has(path.extname(file))&&path.basename(file)!=='.gitignore')return bytes;
  const text=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(bytes);
  return Buffer.from(text.replace(/\r\n/g,'\n'),'utf8');}
 function sourceHashes(cwd=root){const files=git(['ls-files','--',...sourcePaths],cwd).split('\n').filter(Boolean);return Object.fromEntries(files.map(f=>[f,hash(sourceBytes(f,fs.readFileSync(path.join(cwd,f))))]));}

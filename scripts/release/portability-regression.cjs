@@ -11,6 +11,7 @@ const manifest={components:{web:{commit:git('rev-parse','HEAD')}},sourceBundle:{
 assert.deepEqual(c.localFailures(manifest,root),[]);
 write('public/sw.js','const version = 1;\r\n');assert.equal(c.digest(c.sourceHashes(root)),manifest.sourceBundle.sha256,'CRLF source hashes match');git('checkout','--','public/sw.js');assert.deepEqual(c.localFailures(manifest,root),[],'Clean CRLF checkout passes');
 assert.deepEqual(c.sourceBytes('public/icon.png',Buffer.from([255,0,13,10,128])),Buffer.from([255,0,13,10,128]),'binary bytes unchanged');
+assert.deepEqual(c.sourceBytes('scripts/training/.gitignore',Buffer.from('cache\r\n')),Buffer.from('cache\n'),'Explicit extensionless Git ignore text normalizes');
 write('public/sw.js','const version = 2;\r\n');assert(c.localFailures(manifest,root).includes('Service worker hash mismatch'));
 assert.equal(snapshot(root).files[0].path,'public/sw.js');git('checkout','--','public/sw.js');
 write('src/app.js','const app = 2;\n');assert(c.localFailures(manifest,root).includes('Source bundle differs from manifest'));git('checkout','--','src/app.js');

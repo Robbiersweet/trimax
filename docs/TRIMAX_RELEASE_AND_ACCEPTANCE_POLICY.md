@@ -184,3 +184,8 @@ are stored outside the repository in os.tmpdir()/trimax-build-diagnostics.
 First-observed stage is evidence, not proof of the exact creating command.
 A missing initial-checkout snapshot is reported as unverified. These diagnostics
 do not whitelist generated files or bypass the manifest/receipt checks.
+
+The explicit text list also includes files named .gitignore. Linux comparison
+identified scripts/ocr-v2/training/.gitignore as the only extensionless source
+entry converted by Git; it is text, not a binary asset. Other extensionless
+files remain raw bytes.
