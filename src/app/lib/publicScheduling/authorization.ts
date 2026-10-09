@@ -15,17 +15,19 @@ const supabaseVerifier:IntakeAuthVerifierFactory=async({url,key,token})=>{
 };
 /** Existing verified-user + business_users authorization, with a testable verifier
  * boundary. Request data can never select the verifier or workspace binding. */
-export async function authorizeIntake(request:Request,slug:string,environment:IntakeAuthEnvironment=process.env,verifierFactory:IntakeAuthVerifierFactory=supabaseVerifier){
+export async function getIntakeActor(request:Request,slug:string,environment:IntakeAuthEnvironment=process.env,verifierFactory:IntakeAuthVerifierFactory=supabaseVerifier){
  const token=request.headers.get('authorization')?.match(/^Bearer (.+)$/)?.[1];
- if(!token)return false;
+ if(!token)return null;
  const url=environment.NEXT_PUBLIC_SUPABASE_URL,key=environment.NEXT_PUBLIC_SUPABASE_ANON_KEY,bindings=environment.PUBLIC_SCHEDULING_DEV_WORKSPACE_BINDINGS;
- if(!url||!key||!bindings)return false;
- let mapping:Record<string,string>;try{mapping=JSON.parse(bindings);}catch{return false;}
- if(!mapping||typeof mapping!=='object'||Array.isArray(mapping))return false;
- const workspace=mapping[slug];if(typeof workspace!=='string'||! /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(workspace))return false;
+ if(!url||!key||!bindings)return null;
+ let mapping:Record<string,string>;try{mapping=JSON.parse(bindings);}catch{return null;}
+ if(!mapping||typeof mapping!=='object'||Array.isArray(mapping))return null;
+ const workspace=mapping[slug];if(typeof workspace!=='string'||! /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(workspace))return null;
  try{
   const verifier=await verifierFactory({url,key,token});
-  const user=await verifier.getUser(token);if(!user)return false;
-  return (await verifier.getMembershipRoles(workspace,user.id)).some(isIntakeRole);
- }catch{return false;}
+  const user=await verifier.getUser(token);if(!user)return null;
+  const roles=await verifier.getMembershipRoles(workspace,user.id);const role=roles.find(isIntakeRole);return typeof role==='string'?{id:user.id,role,workspace}:null;
+ }catch{return null;}
 }
+
+export async function authorizeIntake(request:Request,slug:string,environment:IntakeAuthEnvironment=process.env,verifierFactory:IntakeAuthVerifierFactory=supabaseVerifier){return !!await getIntakeActor(request,slug,environment,verifierFactory);}

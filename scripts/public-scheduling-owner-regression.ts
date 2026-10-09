@@ -1,0 +1,37 @@
+import assert from 'node:assert/strict';
+import {mkdtemp,rm,readFile} from 'node:fs/promises';
+import {join} from 'node:path';import {tmpdir} from 'node:os';
+import {readBoundedJson} from '../src/app/lib/publicScheduling/httpBody.ts';
+import {getPublicBusiness,validateRequest} from '../src/app/lib/publicScheduling/domain.ts';
+import {submitDevelopmentRequest,listDevelopmentRequests} from '../src/app/lib/publicScheduling/developmentStore.ts';
+import {updateDevelopmentRequest} from '../src/app/lib/publicScheduling/ownerWorkflow.ts';
+import {loadDevelopmentSettings,saveDevelopmentSettings,validateSettings} from '../src/app/lib/publicScheduling/settings.ts';
+const business=getPublicBusiness('rnl-creations')!,owner={id:'verified-owner',role:'owner'};
+const input=validateRequest({requestTypeId:'repair',customerName:'Synthetic',phone:'5551112222',email:'test@example.test',preferredContact:'email',address:'Test only',description:'Repair a door',preferredDate:'',timeWindowId:'',flexibility:'flexible',urgency:'routine',notes:'',consent:true},business);assert.ok(input.ok);if(!input.ok)throw Error();
+await assert.rejects(readBoundedJson(new Request('https://example.test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({note:'x'.repeat(100)})}),20),/too large/);
+assert.deepEqual(await readBoundedJson(new Request('https://example.test',{method:'POST',headers:{'Content-Type':'application/json'},body:'{"ok":true}'}),50),{ok:true});
+const directory=await mkdtemp(join(tmpdir(),'trimax-owner-test-'));
+try{
+ const saved=await submitDevelopmentRequest(business,input.value,'submit-key-123456789',directory);
+ const change={requestId:saved.id,expectedRevision:0,mutationId:'change-key-123456789',status:'reviewing',note:'Internal test note'};
+ await assert.rejects(updateDevelopmentRequest(business.businessId,{...owner,role:'member'},change,directory),/Owner/);
+ await assert.rejects(updateDevelopmentRequest('other-tenant',owner,change,directory),/not found/);
+ const updated=await updateDevelopmentRequest(business.businessId,owner,change,directory);assert.equal(updated.revision,1);assert.equal(updated.activity?.length,1);assert.equal(updated.internalNotes,'Internal test note');
+ assert.equal((await updateDevelopmentRequest(business.businessId,owner,change,directory)).revision,1);
+ await assert.rejects(updateDevelopmentRequest(business.businessId,owner,{...change,note:'Different'},directory),/different content/);
+ await assert.rejects(updateDevelopmentRequest(business.businessId,owner,{...change,mutationId:'another-key-1234567'},directory),/changed/);
+ const approved=await updateDevelopmentRequest(business.businessId,owner,{...change,mutationId:'approved-key-123456',expectedRevision:1,status:'approved',note:''},directory);assert.equal(approved.confirmationStatus,'unconfirmed');assert.equal(approved.activity?.length,2);
+ assert.equal((await listDevelopmentRequests('other',directory)).length,0);
+ const settings=await loadDevelopmentSettings(business.slug,directory);assert.equal(settings.revision,0);
+ const edited={...business,displayName:'Test Studio',accent:'ocean' as const};const result=await saveDevelopmentSettings(business.slug,owner,0,edited,directory);assert.equal(result.revision,1);assert.equal((await loadDevelopmentSettings(business.slug,directory)).business.displayName,'Test Studio');
+ await assert.rejects(saveDevelopmentSettings(business.slug,owner,0,edited,directory),/changed/);
+ await assert.rejects(saveDevelopmentSettings('other',owner,0,edited,directory),/Unknown/);
+ await assert.rejects(saveDevelopmentSettings(business.slug,{role:'member'},1,edited,directory),/Owner/);
+ assert.throws(()=>validateSettings({...edited,businessId:'injected'},business),/workspace/);
+ assert.throws(()=>validateSettings({...edited,slug:'demo'},business),/reserved/);
+ assert.throws(()=>validateSettings({...edited,logoUrl:'https://untrusted.test/track'},business),/approved local/);
+ assert.throws(()=>validateSettings({...edited,rules:{...edited.rules,ownerApprovalRequired:false}},business),/approval/);
+ const harness=await readFile('src/app/book/demo/page.tsx','utf8');assert.match(harness,/NODE_ENV==='production'/);assert.match(harness,/VISUAL_FIXTURE/);
+ const demo=await readFile('src/app/book/demo/workspace.tsx','utf8');assert.doesNotMatch(demo,/fetch\(|supabase|listDevelopmentRequests|authorizeIntake/);
+ console.log('Owner review/settings/fixture isolation regressions PASS');
+}finally{await rm(directory,{recursive:true,force:true});}

@@ -1,8 +1,9 @@
-import {getPublicBusiness,validateRequest} from '@/app/lib/publicScheduling/domain';
+import {validateRequest} from '@/app/lib/publicScheduling/domain';
 import {devStoreDirectory,submitDevelopmentRequest} from '@/app/lib/publicScheduling/developmentStore';
+import {resolvePublicBusiness} from '@/app/lib/publicScheduling/settings';
 export const runtime='nodejs';
 export async function POST(request:Request,context:{params:Promise<{slug:string}>}){
- const {slug}=await context.params,business=getPublicBusiness(slug);
+ const {slug}=await context.params,business=await resolvePublicBusiness(slug);
  if(!business?.enabled)return Response.json({error:'Business not available.'},{status:404});
  try{devStoreDirectory();}catch{return Response.json({error:'Online requests are not yet available. Please contact the business directly.'},{status:503});}
  const origin=request.headers.get('origin');
