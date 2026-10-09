@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-release-contract-20261008-rc5",
+  "releaseId": "trimax-release-contract-20261008-rc6",
   "status": "CANDIDATE_NOT_DEPLOYED",
   "createdAt": "2026-10-01T16:09:08.400Z",
   "releaseTimestamp": null,
@@ -11,36 +11,36 @@
   },
   "components": {
     "web": {
-      "commit": "155353b42e2abfb5e7ab671f560bbb745100971e"
+      "commit": "04addc80a75fcaa07318bfe431be1030e7ca7840"
     },
     "legacy": {
-      "commit": "155353b42e2abfb5e7ab671f560bbb745100971e"
+      "commit": "04addc80a75fcaa07318bfe431be1030e7ca7840"
     },
     "v2-shadow": {
-      "commit": "155353b42e2abfb5e7ab671f560bbb745100971e"
+      "commit": "04addc80a75fcaa07318bfe431be1030e7ca7840"
     }
   },
   "sourceBundle": {
-    "sha256": "f412373f1800ffadc6637d92bc7f7cfa5dbc33aa982b58db24a56dc7f83f6aed",
+    "sha256": "9222899454b94351f2e08139fcbd1edd97839d5d622ede9b392211d89aeae8db",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
       "package-lock.json": "0a3c6544b7116f8684cbb757427057ac79640e46c2061835c07164f71373b3cc",
-      "package.json": "555dd36308e5e2407cfc9b9fc80a676e72f21fd6c535bb65364a35039a6ee0c7",
+      "package.json": "17f26fc525eeadb5c74457b75a3abdfb4b44ac7caa93aafabc5c7e730e49f649",
       "proxy.ts": "c07e9824217830ca636dac8141204cf2a422728fdc173f488ad61e86edbc8cce",
-      "public/Brand/R&L Full Black.png": "dcdcc31d960673a1a31f4d6264b8809acc8dbd44df67adea83a938bcb33571bb",
-      "public/Brand/R&L Full Orange.png": "24ebdfa94830f9735369586f4bc58dce082ff55e77f9dc75cfaf1ef92bbdf1cc",
-      "public/Brand/R&L Multi Colors.png": "bd999b21071db504dbac1f29b5592ddc73faf6c52ac350c173306f81760a3eb6",
-      "public/Brand/rnl-full-black.png": "dcdcc31d960673a1a31f4d6264b8809acc8dbd44df67adea83a938bcb33571bb",
-      "public/Brand/rnl-full-orange.png": "24ebdfa94830f9735369586f4bc58dce082ff55e77f9dc75cfaf1ef92bbdf1cc",
-      "public/Brand/rnl-multi-colors.png": "bd999b21071db504dbac1f29b5592ddc73faf6c52ac350c173306f81760a3eb6",
-      "public/apple-touch-icon.png": "3d7a35112488e3684600d76e915ff76170ba2723f894f5acb141adea2b9407c1",
+      "public/Brand/R&L Full Black.png": "3745bd9aec6198d87a968e3f5c3402b87010925d881ddd03411a5caef2c40f65",
+      "public/Brand/R&L Full Orange.png": "2c1b88a1718f11f58eb4e59d812f6e47a52ad4c2005a6625eddb601f54fd3fb0",
+      "public/Brand/R&L Multi Colors.png": "725a5b5098d2c06295ff8dd1ab973adfd6b6525bcedec0b463304f6b029a339c",
+      "public/Brand/rnl-full-black.png": "3745bd9aec6198d87a968e3f5c3402b87010925d881ddd03411a5caef2c40f65",
+      "public/Brand/rnl-full-orange.png": "2c1b88a1718f11f58eb4e59d812f6e47a52ad4c2005a6625eddb601f54fd3fb0",
+      "public/Brand/rnl-multi-colors.png": "725a5b5098d2c06295ff8dd1ab973adfd6b6525bcedec0b463304f6b029a339c",
+      "public/apple-touch-icon.png": "ac60f552d73b7ba3dc7fe6907d3d4578d6d75059d0c56a7f5f431b611c96a17d",
       "public/file.svg": "2b67812c325c199a02536cdbeea0c593a72f707d323b72ee3e08dbab06753bd4",
       "public/globe.svg": "b614b9bf183925957661ac851498fe1d8029fd43a62fbfed86f9e2624a57e7cf",
       "public/next.svg": "55995dfad6ecb4945a1e856ddca03c5e16aa5bf13fd21b4df6a74ae79357bcfc",
       "public/sw.js": "dba6df014e916ca5ec28619d4cfe89f400c3b6a0f3bc37966bf8bf1c4874c21e",
-      "public/trimax-icon-192.png": "6a74b26411152e151a717bdbf1603d0db7667ac48107912fff722321e5f7e3da",
-      "public/trimax-icon-512.png": "40822359d58aae7cd267e792d30688c9fb5f2d7bfe981ea527ac662a55bc0096",
+      "public/trimax-icon-192.png": "9469f64bc950bd07b949f06f68eec9bb2be3e741b17144378f97cffe4c7ec472",
+      "public/trimax-icon-512.png": "843d964dcabcd1f26bcd96cca6c4fd305433b301e73d61144444497c8f57af0f",
       "public/vercel.svg": "f081337b2fee635b455b63275406a3e7f39d6a014e25ad90dab5a67e62a12ac4",
       "public/window.svg": "644768c4aaeb4767bce293344eeb0c125fb804a94d801440424072202d85e3a1",
       "scripts/account-management-regression.ts": "26119699454a3a80814fcb0afdfc1eeaaec65474e1153b0949ceddbe480a6264",
@@ -54,7 +54,7 @@
       "scripts/estimate-list-compact-actions-regression.ts": "c1a87fea1db26b9bca43592157ab22b822b7b7c9a4ea4822cbf3cf1553d29bf0",
       "scripts/estimate-list-loading-regression.ts": "e16e1f2f3df849ebfb9d8a722260bab33fc94064548319e7e2e58a0b34be25bd",
       "scripts/fixtures/faint-remittance.md": "a0d35fcfbf3a4022f8c7a12f395b261141fee040f9fce22c99cd4b4933c07ac4",
-      "scripts/fixtures/faint-remittance.png": "f0e1ff951fb12058b434e9ac6d328e7212b8d7ddc43413c080cda03268da93d2",
+      "scripts/fixtures/faint-remittance.png": "7d17df080e11ec13030502ed7b2d04404a59dda549241d7ee62eeec9d53bde88",
       "scripts/fixtures/remittance/coverage.ts": "300cc6cc94a833630014560c1ffccb9e236f4324714eb5d64dec31ca4be810e7",
       "scripts/fixtures/remittance/golden.json": "85c6460cb58f1fe2fd811d8ea47010117953b3e443c5be8243f2f07f71218a31",
       "scripts/floating-back-navigation-regression.ts": "8218d847ce054ce0e9caceb4eba1297104ef87379fa0f062eb465835c8e0a588",
@@ -164,7 +164,7 @@
       "scripts/ocr-v2/total-corpus-regression.cjs": "949d5fc244dc9f77bd4456f47fe5c118add1e48e7066fc102d3b533da2b0c2ca",
       "scripts/ocr-v2/total-localization-regression.cjs": "e30b72d511009464c9dcfc1ea1119078f8dfaf19ba45399519e4215cb2427719",
       "scripts/ocr-v2/total-localization-replay.cjs": "32908ae701340f6b2ef09724d1c557d6c0b0a92006e79abca5e5e55b82e76214",
-      "scripts/ocr-v2/training/.gitignore": "862263fa1f46c20f0d1e4dac5ffcc75abd55c08211b2c3864c5f8764b9d87793",
+      "scripts/ocr-v2/training/.gitignore": "01d8d0360f02a0c00e236a4eb2a1d8bdf83377acf442eaafad7a136bf14d6bb0",
       "scripts/ocr-v2/training/GENERALIZATION.md": "d235989b0c9ed9d0608b8991caac95f8d8a0b6e39dda9167db29887209eefe90",
       "scripts/ocr-v2/training/PHASE3D.md": "621abddefbd275e2e9f11aedcb0823d8d9cb69c990da2657fc72d391683d06e2",
       "scripts/ocr-v2/training/PHASE3E.md": "ad9a3c670d4e5af4d4564c4c6b2df420742d761d97239b6495240d9ee14aad7f",
@@ -212,17 +212,19 @@
       "scripts/queue-workspace-polish-regression.ts": "40743a142f1bc2e14fc2aca23d743d2d8d2342016cfce592f1f6f22160cceb1d",
       "scripts/release/auth-flow-regression.cjs": "4d7ede3411ef172daf752cf0f852f220a2f6ee55f5868efafddf977751716638",
       "scripts/release/authorization-execution-regression.cjs": "04df6de9929ae8bde95b621a843650f575acf23f9074a357ae6a705125ba67f5",
-      "scripts/release/authorize-build.cjs": "c870164bf98208e95be6674f13ba1aab535a5dff7128bbf7e5f2229c7b1606df",
+      "scripts/release/authorize-build.cjs": "88c7d10b41262c22f4415b3af851adc606441f18a57370a55c0049b29bed11b7",
+      "scripts/release/build-diagnostics.cjs": "7c6eeef5fbcda6900c707263d0e1e6398ae80a399891f0b7ff4de5e32d2c64e0",
       "scripts/release/contract-regression.cjs": "0079759ba290d91a34d3a3b3b8f834804b77d2643c333ce32af35335175c883e",
-      "scripts/release/contract.cjs": "d3715884482351622e26a1ce26ec6e52a42712ca804115b1aa4e6b243a0db1c1",
+      "scripts/release/contract.cjs": "20dcd918ef3c08ba1ad89b64eae28e1dc43c15fb73ea588882f9b77edc170a7c",
       "scripts/release/evidence-handoff-regression.cjs": "65541a59c8934fbb36cebdd780f5bdee6499cf36ef1815469a618a193e498bcc",
       "scripts/release/evidence-metrics.cjs": "9e2673ab0a6a87ddf75ca6733934c55c6cf364ea1258cc04f24ab1787034e4e5",
       "scripts/release/final-candidate-regression.cjs": "edc0dbfa8f70d55607c65327a08ed25193380387dd4f1e850cf130ef992ca03f",
-      "scripts/release/gate-checks.cjs": "06885815fc71e030c62c837bd3c8ebff5c794e7b67a22ffb739f4d35f0dd0437",
+      "scripts/release/gate-checks.cjs": "5687dab3870c923a0af5007cb7761855027f1debed2b57c11d4a1a95ff0e8c09",
       "scripts/release/gate-state-regression.cjs": "51f1d2c76eca73d122f20cc0f537b624074ebd4943f946dcba63857775e45d04",
       "scripts/release/gate-state.cjs": "f56bdc9741b07b92c53bb487f21320080537fa90734721130612e8c1b52da839",
       "scripts/release/gate.cjs": "902b68d20e48f91f3685561a3a6f38924e886bca4b7d8caa633eb402aa5c1920",
       "scripts/release/physical-acceptance.cjs": "f6466593e668069b6416fcfc85518f104e4dacc624858383c70a194233c9b5c3",
+      "scripts/release/portability-regression.cjs": "c0dc4624635cfd4666d4666d817db21585a6146e5415a7354fd19c59f8d14fe7",
       "scripts/release/provision-cache.cjs": "bc081613e0524214f212142fb6991139c7aceaa81fb5b1ca353ad5dfd59f6d24",
       "scripts/release/recognizer-adapter.cjs": "413fe4472660259a03e68683fbcd7f4d288596f41a2f4fb32bf8815e7be7dd51",
       "scripts/release/replay-document.cjs": "606299f436381920092dcb8d73e01cb57260d002102b6f4853add78e8b8a8d41",
@@ -347,7 +349,7 @@
       "src/app/estimates/[id]/print/page.tsx": "8ff3d19db6f8c3e236e58ddded1ccb5fda1abf4ee3ec5360dbd25d23f21b1608",
       "src/app/estimates/new/page.tsx": "6c920ff0cfc45413223c5c25916ff6333f1c37c88ea2875982e40a8a85fca4cb",
       "src/app/estimates/page.tsx": "b74f94910c2f56f6b9e87aced051f830698f2d0d0c0c7654e8cc5b8f6266bb86",
-      "src/app/favicon.ico": "7ee5c0eb17221a11ff38e4e15ddc51687abc6d633a514f2dd3516d8721ac3c2b",
+      "src/app/favicon.ico": "2b8ad2d33455a8f736fc3a8ebf8f0bdea8848ad4c0db48a2833bd0f9cd775932",
       "src/app/forgot-password/page.tsx": "ed72e30e4f161990113a13d562649a33c0918beb6074c66ca8284fc118155aa6",
       "src/app/globals.css": "11a63cd4baf5bdef2bc091dd0327643eaa746002acabf0c7fb79ea11d20a50d3",
       "src/app/imports/page.tsx": "1c5f6ab09b79b4f083b28da7efb2bbe102021cc7ebb92cbc07bf474d768521e9",
@@ -569,7 +571,8 @@
       "supabase/sql/2026-10-01-release-attestation.sql": "7c7e3ce675e8a8f570759629263724bbc9ceaaf7623e19873d4133e290f10871",
       "supabase/sql/README.md": "e3ac010eb016b07963eda46c3f2670d0e1aa78a51666deb38dfcb0f391c34684",
       "tsconfig.json": "f399e24188640b031f844ec7c0285e65450e697b2daa5790e1cb801818fcc955"
-    }
+    },
+    "encoding": "explicit-utf8-lf-text-raw-binary-v2"
   },
   "modelBundle": {
     "sha256": "a85082f561fbf6b0ae367af5de30560cbc32b01af7508a8e8f10cbf502f10c30",
@@ -738,7 +741,8 @@
   },
   "serviceWorker": {
     "path": "public/sw.js",
-    "sha256": "cbef97a011007c67e5c20d54bea593e507926a57fa5161f2c9ddf608e837cd85"
+    "sha256": "dba6df014e916ca5ec28619d4cfe89f400c3b6a0f3bc37966bf8bf1c4874c21e",
+    "encoding": "utf8-crlf-to-lf"
   },
   "supabaseProjectId": "gqknefosisnsjuzmhvts",
   "vercelDeploymentId": null,
