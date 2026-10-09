@@ -1,0 +1,68 @@
+{
+  "deploymentId": "H44vhMFixuseVsVtAbkjRJ4954nG",
+  "environment": "Preview",
+  "stage": "prebuild",
+  "observedAt": "2026-10-09T22:34:17.086Z",
+  "head": "c4f08b76c20da1d218d1a12e76648c57e0b9e15b",
+  "files": [],
+  "differences": [],
+  "node": "v24.21.0",
+  "npmUserAgent": "npm/11.19.0 node/v24.21.0 linux x64 workspaces/false ci/vercel",
+  "vercelCli": "62.7.0",
+  "fileComparisons": [
+    {
+      "path": "package-lock.json",
+      "gitBlob": "f9cdddd17069e3c545570dd17a7a90efadb1243a",
+      "attributes": "",
+      "committed": {
+        "sha256": "f59c4191dbab35152626d37ecd849e1c20d17564df0cf62d2dbac122dff062b9",
+        "bytes": 284120,
+        "crlf": 0,
+        "lf": 8243,
+        "bom": false
+      },
+      "working": {
+        "sha256": "f59c4191dbab35152626d37ecd849e1c20d17564df0cf62d2dbac122dff062b9",
+        "bytes": 284120,
+        "crlf": 0,
+        "lf": 8243,
+        "bom": false
+      },
+      "bytesEqual": true,
+      "semantic": {
+        "equal": true,
+        "changes": []
+      },
+      "gitDiff": "",
+      "sanitized": false
+    },
+    {
+      "path": "vercel.json",
+      "gitBlob": "819a96df83da939eded2e7a67d85147022b4e377",
+      "attributes": "",
+      "committed": {
+        "sha256": "471510cb78bbf804feac04290af8a0b5ae512751b1cf5d6d9b4472380fe74233",
+        "bytes": 357,
+        "crlf": 0,
+        "lf": 1,
+        "bom": false
+      },
+      "working": {
+        "sha256": "471510cb78bbf804feac04290af8a0b5ae512751b1cf5d6d9b4472380fe74233",
+        "bytes": 357,
+        "crlf": 0,
+        "lf": 1,
+        "bom": false
+      },
+      "bytesEqual": true,
+      "semantic": {
+        "equal": true,
+        "changes": []
+      },
+      "gitDiff": "",
+      "sanitized": false
+    }
+  ],
+  "collection": "Exact rendered Vercel Build Logs DOM; no clipboard use",
+  "authorization": "Exact sealed release authorized for build; predeployment readiness is not final release PASS; physical acceptance remains separate"
+}
