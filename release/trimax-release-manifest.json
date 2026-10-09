@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-release-contract-20261008-rc8",
+  "releaseId": "trimax-release-contract-20261009-rc9",
   "status": "CANDIDATE_NOT_DEPLOYED",
   "createdAt": "2026-10-01T16:09:08.400Z",
   "releaseTimestamp": null,
@@ -11,21 +11,21 @@
   },
   "components": {
     "web": {
-      "commit": "5bc2a6b1d1910d11af699dc3c2f5dd39bec2b91f"
+      "commit": "b9e4bb12852df0fb53084d5f237034e152f2148c"
     },
     "legacy": {
-      "commit": "5bc2a6b1d1910d11af699dc3c2f5dd39bec2b91f"
+      "commit": "b9e4bb12852df0fb53084d5f237034e152f2148c"
     },
     "v2-shadow": {
-      "commit": "5bc2a6b1d1910d11af699dc3c2f5dd39bec2b91f"
+      "commit": "b9e4bb12852df0fb53084d5f237034e152f2148c"
     }
   },
   "sourceBundle": {
-    "sha256": "544f1ca5b72267f10e838e3beb9a09c121ebcc85b29ff595206fa9169c120556",
+    "sha256": "9914536ca189a9c39c47934ccc0abc91a2e26d63e97a78269059d5433c0e2c03",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
-      "package-lock.json": "0a3c6544b7116f8684cbb757427057ac79640e46c2061835c07164f71373b3cc",
+      "package-lock.json": "f59c4191dbab35152626d37ecd849e1c20d17564df0cf62d2dbac122dff062b9",
       "package.json": "17f26fc525eeadb5c74457b75a3abdfb4b44ac7caa93aafabc5c7e730e49f649",
       "proxy.ts": "c07e9824217830ca636dac8141204cf2a422728fdc173f488ad61e86edbc8cce",
       "public/Brand/R&L Full Black.png": "3745bd9aec6198d87a968e3f5c3402b87010925d881ddd03411a5caef2c40f65",
@@ -573,7 +573,7 @@
       "supabase/sql/2026-10-01-release-attestation.sql": "7c7e3ce675e8a8f570759629263724bbc9ceaaf7623e19873d4133e290f10871",
       "supabase/sql/README.md": "e3ac010eb016b07963eda46c3f2670d0e1aa78a51666deb38dfcb0f391c34684",
       "tsconfig.json": "f399e24188640b031f844ec7c0285e65450e697b2daa5790e1cb801818fcc955",
-      "vercel.json": "d243baaeae38232c49073439e0207dd72886a94184f08fc028c214642b37a46d"
+      "vercel.json": "471510cb78bbf804feac04290af8a0b5ae512751b1cf5d6d9b4472380fe74233"
     },
     "encoding": "explicit-utf8-lf-text-raw-binary-v2"
   },
@@ -771,7 +771,7 @@
     "physicalAcceptance": "Only installed-iPhone production evidence for exact release may pass; replay cannot pass",
     "legacyModelCache": "/tmp/tesseract-cache actual resolved traineddata path needs explicit attestation; not silently assumed"
   },
-  "sealedAt": "2026-10-09T05:35:58.708Z",
+  "sealedAt": "2026-10-09T22:26:39.706Z",
   "testRuntime": {
     "pgliteVersion": "0.5.8",
     "pglitePackageSha256": "65dff2c93c707e526902eebfab246bcbf2df2eba1c6984a5b5e9a44177532b1c",
