@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-release-contract-20261008-rc7",
+  "releaseId": "trimax-release-contract-20261008-rc8",
   "status": "CANDIDATE_NOT_DEPLOYED",
   "createdAt": "2026-10-01T16:09:08.400Z",
   "releaseTimestamp": null,
@@ -11,17 +11,17 @@
   },
   "components": {
     "web": {
-      "commit": "70813dc3237cf078e21a369940df8fadd5981781"
+      "commit": "5bc2a6b1d1910d11af699dc3c2f5dd39bec2b91f"
     },
     "legacy": {
-      "commit": "70813dc3237cf078e21a369940df8fadd5981781"
+      "commit": "5bc2a6b1d1910d11af699dc3c2f5dd39bec2b91f"
     },
     "v2-shadow": {
-      "commit": "70813dc3237cf078e21a369940df8fadd5981781"
+      "commit": "5bc2a6b1d1910d11af699dc3c2f5dd39bec2b91f"
     }
   },
   "sourceBundle": {
-    "sha256": "cd3e12eac740f9e318b4d5d41f7608e488ecf14f8ed94e169bb352e62041020e",
+    "sha256": "544f1ca5b72267f10e838e3beb9a09c121ebcc85b29ff595206fa9169c120556",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -213,13 +213,15 @@
       "scripts/release/auth-flow-regression.cjs": "4d7ede3411ef172daf752cf0f852f220a2f6ee55f5868efafddf977751716638",
       "scripts/release/authorization-execution-regression.cjs": "04df6de9929ae8bde95b621a843650f575acf23f9074a357ae6a705125ba67f5",
       "scripts/release/authorize-build.cjs": "88c7d10b41262c22f4415b3af851adc606441f18a57370a55c0049b29bed11b7",
-      "scripts/release/build-diagnostics.cjs": "7c6eeef5fbcda6900c707263d0e1e6398ae80a399891f0b7ff4de5e32d2c64e0",
+      "scripts/release/build-diagnostics.cjs": "c0aef8fd7da629a1b672859a2b9a5728607f6e291dc56498d9eb2fe5de489b04",
       "scripts/release/contract-regression.cjs": "0079759ba290d91a34d3a3b3b8f834804b77d2643c333ce32af35335175c883e",
-      "scripts/release/contract.cjs": "665a9133e4ff7fb6b3858af01fbc5f3e7e2678de8c237151ff7eb0742edb24da",
+      "scripts/release/contract.cjs": "8c31ccb39c813f371db61b7e4c64e413ebec5a6528030666bcec741aeba1c8bb",
       "scripts/release/evidence-handoff-regression.cjs": "65541a59c8934fbb36cebdd780f5bdee6499cf36ef1815469a618a193e498bcc",
       "scripts/release/evidence-metrics.cjs": "9e2673ab0a6a87ddf75ca6733934c55c6cf364ea1258cc04f24ab1787034e4e5",
+      "scripts/release/file-forensics-regression.cjs": "a6da1ba822d17c1a31b7bd29d3cb49e95febca66f29c51b712ccdd9d608c1b26",
+      "scripts/release/file-forensics.cjs": "25133a9f2167c801a05906be04068f3d85f54f3c462e085869df2d486c8bea30",
       "scripts/release/final-candidate-regression.cjs": "edc0dbfa8f70d55607c65327a08ed25193380387dd4f1e850cf130ef992ca03f",
-      "scripts/release/gate-checks.cjs": "5687dab3870c923a0af5007cb7761855027f1debed2b57c11d4a1a95ff0e8c09",
+      "scripts/release/gate-checks.cjs": "901e0d11c779ca1cc60af2c2e21a7db31d940bb0a660df8b74b7418b0fa7f739",
       "scripts/release/gate-state-regression.cjs": "51f1d2c76eca73d122f20cc0f537b624074ebd4943f946dcba63857775e45d04",
       "scripts/release/gate-state.cjs": "f56bdc9741b07b92c53bb487f21320080537fa90734721130612e8c1b52da839",
       "scripts/release/gate.cjs": "902b68d20e48f91f3685561a3a6f38924e886bca4b7d8caa633eb402aa5c1920",
@@ -570,7 +572,8 @@
       "supabase/sql/2026-09-26-ocr-object-storage.sql": "0cb04c4e63d134fc801d0fbf10b2f333204b1ed9a347a9612c39b9ab6c51e33d",
       "supabase/sql/2026-10-01-release-attestation.sql": "7c7e3ce675e8a8f570759629263724bbc9ceaaf7623e19873d4133e290f10871",
       "supabase/sql/README.md": "e3ac010eb016b07963eda46c3f2670d0e1aa78a51666deb38dfcb0f391c34684",
-      "tsconfig.json": "f399e24188640b031f844ec7c0285e65450e697b2daa5790e1cb801818fcc955"
+      "tsconfig.json": "f399e24188640b031f844ec7c0285e65450e697b2daa5790e1cb801818fcc955",
+      "vercel.json": "d243baaeae38232c49073439e0207dd72886a94184f08fc028c214642b37a46d"
     },
     "encoding": "explicit-utf8-lf-text-raw-binary-v2"
   },
@@ -768,7 +771,7 @@
     "physicalAcceptance": "Only installed-iPhone production evidence for exact release may pass; replay cannot pass",
     "legacyModelCache": "/tmp/tesseract-cache actual resolved traineddata path needs explicit attestation; not silently assumed"
   },
-  "sealedAt": "2026-10-07T21:07:20.677Z",
+  "sealedAt": "2026-10-09T05:35:58.708Z",
   "testRuntime": {
     "pgliteVersion": "0.5.8",
     "pglitePackageSha256": "65dff2c93c707e526902eebfab246bcbf2df2eba1c6984a5b5e9a44177532b1c",
