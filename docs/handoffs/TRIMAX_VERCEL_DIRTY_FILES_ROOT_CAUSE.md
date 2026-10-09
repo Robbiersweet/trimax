@@ -240,3 +240,85 @@ Neither package-lock.json nor vercel.json was modified. The inclusion of vercel.
 in the seal changes integrity coverage only, not deployment configuration.
 
 STOP. WAIT FOR CHATGPT REVIEW. No additional task or deployment was begun.
+
+## Parallel work package — Workstream A fresh validation (2026-10-09 UTC)
+
+This workstream used only the existing release-candidate branch
+`codex/trimax-release-contract`, starting at
+`2baa0f33dfe5702d121a384e72108d7abcb7c40a`. No files from the separate
+public-scheduling worktree were copied or included. No executable change was
+justified by the new evidence; the existing rc8 strict contract remains unchanged.
+
+### Remote forensic limit reconfirmed
+
+The authenticated Vercel page for `BDQMpegnMByHo8azCNi67JrPVw4j` was read again.
+It still reports source `36fa59df8956afe2ef6988042136b1f03236e3fc`, Build Failed,
+2m36s, Vercel CLI 62.7.0, and the same two ` M` paths at preinstall. Its log
+also records restoration of cache from `A6ZKcvjyxFE8483eBofsK9srxhHq`.
+Cache restoration is an observed event, NOT proof that it caused either mutation.
+The retained diagnostic record has statuses and SW hashes, but no working
+package-lock/vercel bytes, JSON diff or exact npm version. Copy-all-log export
+returned no usable text and was not treated as new evidence. No remote build,
+redeployment, setting change or upload was made to obtain additional evidence.
+
+Consequently each remote file remains classification **E / UNKNOWN**. No exact
+changed JSON key/value can be supplied from this historical build. No evidence
+supports accepting a deterministic npm/Vercel transformation. Dependency changes,
+semantic vercel.json changes, unrelated source changes and wrong receipt/release/
+source bundle continue to FAIL. Both committed Git identity and working-file
+integrity are required; no dirty-file exemption was introduced.
+
+### Required commands and results
+
+1. `npm ci` in the clean Windows candidate: PASS; Git status remained empty.
+2. `npm run trimax:release-gate -- --mode=predeployment`: PASS,
+   **READY_FOR_CONTROLLED_DEPLOYMENT**, 2026-10-09T05:44:11Z–05:49:17Z.
+3. Fresh Linux clone from the exact candidate Git bundle:
+   `/home/robbi/trimax-guard-portability/parallel-a-rc8`.
+   Node **v24.21.0**, npm **11.19.0**. `npm ci`: PASS and clean.
+4. With the existing committed rc8 receipt, the exact Linux command passed:
+
+```sh
+TRIMAX_RELEASE_GATE_RESULT=release/evidence/checkout-forensics-result.json
+export TRIMAX_RELEASE_GATE_RESULT
+npm test && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/remittance-release-gate.ts && npm run build
+```
+
+Linux final Git status is empty. Both files are byte-identical to their committed
+Git blobs; JSON semantic comparison is equal, changes empty, raw Git diff empty.
+Their canonical hashes, lengths, newlines and BOM remain the baseline table above.
+No local install/test/remittance/build operation rewrote vercel.json or the lockfile.
+Vercel's exact npm version is still unverified; this run matches its observed Node
+version and does not claim an exact unobserved package-manager match.
+
+All eight frozen documents passed: check2715, check2721, check2734, check2743, A,
+D, B, C. Each has wrong authoritative totals **0**, wrong accepted row amounts
+**0**, wrong invoice tokens **0**, wrong record IDs **0**. Live DB attestation
+PASS: legacy 2026-10-09T05:44:36.978503Z, v2 05:44:39.020314Z. Deployed candidate
+worker attestation remains explicitly **DEPLOYMENT_PREREQUISITE**, not PASS.
+Lint, TypeScript, production build and clean-source start/end all PASS.
+Physical acceptance remains PENDING.
+
+Fresh receipt: `release/evidence/parallel-workstream-a-result.json`.
+Private complete receipt:
+`C:/Users/robbi/AppData/Local/Trimax/release-gates/2026-10-09T05-44-11-692Z/gate-result.json`.
+Windows logs/evidence, outside Git:
+`C:/Users/robbi/.codex/worktrees/trimax-release-candidate/parallel-a-npm-ci.log`,
+`parallel-a-full-gate.log`, `parallel-a-windows-files.json`.
+Linux logs/evidence, under `/home/robbi/trimax-guard-portability/`:
+`parallel-a-ci.log`, `parallel-a-sequence.log`, `parallel-a-after-ci.json`,
+`parallel-a-final-files.json`.
+
+### Final Workstream A disposition
+
+- Remote root cause: UNKNOWN; historical modified bytes are unavailable.
+- Local predeployment gate: READY_FOR_CONTROLLED_DEPLOYMENT, 8/8.
+- Exact Node Linux-equivalent command: PASS.
+- Ready for Vercel retry: **NO**; local PASS does not prove the remote mutation safe.
+- New files changed in this workstream: this report and the fresh acceptance receipt only.
+- Application/OCR/worker behavior changed: NO.
+- Workers started/restarted, production flags/schema changed, push/deploy: NO.
+- The subsequent local documentation/evidence commit is metadata-only and leaves
+  the sealed rc8 executable source bundle unchanged.
+
+STOP. WAIT FOR CHATGPT REVIEW.
