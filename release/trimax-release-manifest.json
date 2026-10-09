@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-release-contract-20261008-rc6",
+  "releaseId": "trimax-release-contract-20261008-rc7",
   "status": "CANDIDATE_NOT_DEPLOYED",
   "createdAt": "2026-10-01T16:09:08.400Z",
   "releaseTimestamp": null,
@@ -11,17 +11,17 @@
   },
   "components": {
     "web": {
-      "commit": "04addc80a75fcaa07318bfe431be1030e7ca7840"
+      "commit": "70813dc3237cf078e21a369940df8fadd5981781"
     },
     "legacy": {
-      "commit": "04addc80a75fcaa07318bfe431be1030e7ca7840"
+      "commit": "70813dc3237cf078e21a369940df8fadd5981781"
     },
     "v2-shadow": {
-      "commit": "04addc80a75fcaa07318bfe431be1030e7ca7840"
+      "commit": "70813dc3237cf078e21a369940df8fadd5981781"
     }
   },
   "sourceBundle": {
-    "sha256": "9222899454b94351f2e08139fcbd1edd97839d5d622ede9b392211d89aeae8db",
+    "sha256": "cd3e12eac740f9e318b4d5d41f7608e488ecf14f8ed94e169bb352e62041020e",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -164,7 +164,7 @@
       "scripts/ocr-v2/total-corpus-regression.cjs": "949d5fc244dc9f77bd4456f47fe5c118add1e48e7066fc102d3b533da2b0c2ca",
       "scripts/ocr-v2/total-localization-regression.cjs": "e30b72d511009464c9dcfc1ea1119078f8dfaf19ba45399519e4215cb2427719",
       "scripts/ocr-v2/total-localization-replay.cjs": "32908ae701340f6b2ef09724d1c557d6c0b0a92006e79abca5e5e55b82e76214",
-      "scripts/ocr-v2/training/.gitignore": "01d8d0360f02a0c00e236a4eb2a1d8bdf83377acf442eaafad7a136bf14d6bb0",
+      "scripts/ocr-v2/training/.gitignore": "862263fa1f46c20f0d1e4dac5ffcc75abd55c08211b2c3864c5f8764b9d87793",
       "scripts/ocr-v2/training/GENERALIZATION.md": "d235989b0c9ed9d0608b8991caac95f8d8a0b6e39dda9167db29887209eefe90",
       "scripts/ocr-v2/training/PHASE3D.md": "621abddefbd275e2e9f11aedcb0823d8d9cb69c990da2657fc72d391683d06e2",
       "scripts/ocr-v2/training/PHASE3E.md": "ad9a3c670d4e5af4d4564c4c6b2df420742d761d97239b6495240d9ee14aad7f",
@@ -215,7 +215,7 @@
       "scripts/release/authorize-build.cjs": "88c7d10b41262c22f4415b3af851adc606441f18a57370a55c0049b29bed11b7",
       "scripts/release/build-diagnostics.cjs": "7c6eeef5fbcda6900c707263d0e1e6398ae80a399891f0b7ff4de5e32d2c64e0",
       "scripts/release/contract-regression.cjs": "0079759ba290d91a34d3a3b3b8f834804b77d2643c333ce32af35335175c883e",
-      "scripts/release/contract.cjs": "20dcd918ef3c08ba1ad89b64eae28e1dc43c15fb73ea588882f9b77edc170a7c",
+      "scripts/release/contract.cjs": "665a9133e4ff7fb6b3858af01fbc5f3e7e2678de8c237151ff7eb0742edb24da",
       "scripts/release/evidence-handoff-regression.cjs": "65541a59c8934fbb36cebdd780f5bdee6499cf36ef1815469a618a193e498bcc",
       "scripts/release/evidence-metrics.cjs": "9e2673ab0a6a87ddf75ca6733934c55c6cf364ea1258cc04f24ab1787034e4e5",
       "scripts/release/final-candidate-regression.cjs": "edc0dbfa8f70d55607c65327a08ed25193380387dd4f1e850cf130ef992ca03f",
@@ -224,7 +224,7 @@
       "scripts/release/gate-state.cjs": "f56bdc9741b07b92c53bb487f21320080537fa90734721130612e8c1b52da839",
       "scripts/release/gate.cjs": "902b68d20e48f91f3685561a3a6f38924e886bca4b7d8caa633eb402aa5c1920",
       "scripts/release/physical-acceptance.cjs": "f6466593e668069b6416fcfc85518f104e4dacc624858383c70a194233c9b5c3",
-      "scripts/release/portability-regression.cjs": "c0dc4624635cfd4666d4666d817db21585a6146e5415a7354fd19c59f8d14fe7",
+      "scripts/release/portability-regression.cjs": "0a6b803e3baafab78e5feaa342629a7086292bbf8dff435f2b6e1653adbee656",
       "scripts/release/provision-cache.cjs": "bc081613e0524214f212142fb6991139c7aceaa81fb5b1ca353ad5dfd59f6d24",
       "scripts/release/recognizer-adapter.cjs": "413fe4472660259a03e68683fbcd7f4d288596f41a2f4fb32bf8815e7be7dd51",
       "scripts/release/replay-document.cjs": "606299f436381920092dcb8d73e01cb57260d002102b6f4853add78e8b8a8d41",
