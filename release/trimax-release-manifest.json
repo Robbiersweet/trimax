@@ -11,17 +11,17 @@
   },
   "components": {
     "web": {
-      "commit": "46a52cadc7f644f12bf5031f9fe73b6f7bf22123"
+      "commit": "720538d1dcf5642c334e06af842848e620e32580"
     },
     "legacy": {
-      "commit": "46a52cadc7f644f12bf5031f9fe73b6f7bf22123"
+      "commit": "720538d1dcf5642c334e06af842848e620e32580"
     },
     "v2-shadow": {
-      "commit": "46a52cadc7f644f12bf5031f9fe73b6f7bf22123"
+      "commit": "720538d1dcf5642c334e06af842848e620e32580"
     }
   },
   "sourceBundle": {
-    "sha256": "3bceeeedfcf6f43095c76c4f30e03d67876f65de38a4be89304e00bb608ed915",
+    "sha256": "7e4b7a17ea757d49f141e7dc70934a6b0ac32572550bfe42ac5c3d1eda02932a",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -224,19 +224,21 @@
       "scripts/release/file-forensics-regression.cjs": "a6da1ba822d17c1a31b7bd29d3cb49e95febca66f29c51b712ccdd9d608c1b26",
       "scripts/release/file-forensics.cjs": "25133a9f2167c801a05906be04068f3d85f54f3c462e085869df2d486c8bea30",
       "scripts/release/final-candidate-regression.cjs": "edc0dbfa8f70d55607c65327a08ed25193380387dd4f1e850cf130ef992ca03f",
-      "scripts/release/gate-checks.cjs": "4f572da8c45bd26d528a0b04e12b46a5936b2d21b4a35287d778d3fcf5913b9e",
+      "scripts/release/gate-checks.cjs": "cff3a6d6cdf500af1a253537f36cac237f18a93bed2038f5228c74a936663655",
       "scripts/release/gate-state-regression.cjs": "51f1d2c76eca73d122f20cc0f537b624074ebd4943f946dcba63857775e45d04",
       "scripts/release/gate-state.cjs": "f56bdc9741b07b92c53bb487f21320080537fa90734721130612e8c1b52da839",
-      "scripts/release/gate.cjs": "902b68d20e48f91f3685561a3a6f38924e886bca4b7d8caa633eb402aa5c1920",
+      "scripts/release/gate.cjs": "fd9d065007932504635900617ed3d7d11481a26e4dcc6131d0afbca39096e17d",
       "scripts/release/physical-acceptance.cjs": "f6466593e668069b6416fcfc85518f104e4dacc624858383c70a194233c9b5c3",
       "scripts/release/portability-regression.cjs": "0a6b803e3baafab78e5feaa342629a7086292bbf8dff435f2b6e1653adbee656",
       "scripts/release/provision-cache.cjs": "bc081613e0524214f212142fb6991139c7aceaa81fb5b1ca353ad5dfd59f6d24",
       "scripts/release/recognizer-adapter.cjs": "413fe4472660259a03e68683fbcd7f4d288596f41a2f4fb32bf8815e7be7dd51",
       "scripts/release/replay-document.cjs": "606299f436381920092dcb8d73e01cb57260d002102b6f4853add78e8b8a8d41",
-      "scripts/release/runtime-check.cjs": "1db67509c547db8a2e7863713046353bfbe7660781452f2d183fb31fdeb02af7",
-      "scripts/release/runtime-evidence.cjs": "1ef1b9a3cad9bec9aae6aa670bd7d85e3bbea3315fe3ab99a853037bce487188",
+      "scripts/release/runtime-check.cjs": "cfbe20c6651715fb52375da0e50f1bc648ec809b356898f575e3414613c46cf1",
+      "scripts/release/runtime-evidence.cjs": "eb5996e6446e35fc37e795723d1dbe2a1b7153676cbd5be728b191914ea53e2d",
       "scripts/release/sql-attestation-regression.cjs": "e817dacee224b2ae683859841313eb7424252f9f1d60857d449f75ad5e0d250c",
       "scripts/release/startup-regression.cjs": "56c2e638dc8dbda6198a064d25f4a53a42a3fea09d23be341074c191333e2099",
+      "scripts/release/upgrade-context.cjs": "973658ec9e5c37b7bc5e46c0b0b86d9c7bd32a4c2980571b5fd51f6513972399",
+      "scripts/release/upgrade-state-regression.cjs": "28120de7c21026b4fce768f4bc59c8a7d7318bd9ee3f30a36a1ef099f419eb0d",
       "scripts/remittance-camera-geometry-regression.ts": "aba66060df4eb16456e37a540c6b50455861dfdef394e3a539baec718e274868",
       "scripts/remittance-contract-regression.ts": "75e3bf300050abfcd6145eb5d912af9251fef904bc1c9be19c5bc5695d50cf77",
       "scripts/remittance-matching-regression.ts": "e4a7105d8af26516445b962d28a4e487eaa6841f52f784015a1b827277896503",
@@ -1507,5 +1509,17 @@
       }
     ],
     "sha256": "bccc49970c7db9510b64204809cbb282c6d22d5f651708a9e7a7fede7a550bbc"
+  },
+  "upgradeContext": {
+    "currentProductionRelease": {
+      "releaseId": "trimax-release-contract-20261009-rc9",
+      "manifestCommit": "772063e30e78558500423ee4ad9757af35598db7",
+      "manifestDigest": "f0a323988b29bbceb80b0d0c791c6b7bfee6baa317c8b80d833cf046324ca997",
+      "deploymentId": "6fwGZtR3K6fir2DmjNatoJS9xNcw",
+      "deploymentCommit": "c4f08b76c20da1d218d1a12e76648c57e0b9e15b"
+    },
+    "candidateReleaseId": "trimax-orientation-validation-20261009",
+    "applicationCommit": "46a52cadc7f644f12bf5031f9fe73b6f7bf22123",
+    "machineryCommit": "720538d1dcf5642c334e06af842848e620e32580"
   }
 }
