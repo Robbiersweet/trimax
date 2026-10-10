@@ -31,7 +31,7 @@ try{
  assert.throws(()=>validateSettings({...edited,slug:'demo'},business),/reserved/);
  assert.throws(()=>validateSettings({...edited,logoUrl:'https://untrusted.test/track'},business),/approved local/);
  assert.throws(()=>validateSettings({...edited,rules:{...edited.rules,ownerApprovalRequired:false}},business),/approval/);
- const harness=await readFile('src/app/book/demo/page.tsx','utf8');assert.match(harness,/NODE_ENV==='production'/);assert.match(harness,/VISUAL_FIXTURE/);
+ const harness=await readFile('src/app/book/demo/page.tsx','utf8');assert.match(harness,/schedulingVisualFixtureEnabled/);
  const demo=await readFile('src/app/book/demo/workspace.tsx','utf8');assert.doesNotMatch(demo,/fetch\(|supabase|listDevelopmentRequests|authorizeIntake/);
  console.log('Owner review/settings/fixture isolation regressions PASS');
 }finally{await rm(directory,{recursive:true,force:true});}

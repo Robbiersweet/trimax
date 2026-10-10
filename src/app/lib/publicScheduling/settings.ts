@@ -1,3 +1,4 @@
+import {schedulingDevelopmentEnabled} from './reviewEnvironment.ts';
 import { mkdir, readFile, writeFile, rename, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -31,7 +32,7 @@ export async function saveDevelopmentSettings(slug:string,actor:{role:string},ex
   try{const current=await loadDevelopmentSettings(slug,directory);if(current.revision!==expectedRevision)throw Error('Settings changed. Reload before saving.');const next={revision:current.revision+1,business};const temporary=file+'.tmp-'+randomUUID();await writeFile(temporary,JSON.stringify(next),{flag:'wx',mode:0o600});await rename(temporary,file);return next;}finally{await unlink(lock);}
 }
 export async function resolvePublicBusiness(slug:string){
-  if(process.env.NODE_ENV==='production'||process.env.PUBLIC_SCHEDULING_DEV_ADAPTER!=='enabled')return getPublicBusiness(slug);
+  if(!schedulingDevelopmentEnabled())return getPublicBusiness(slug);
   for(const configured of listPublicBusinesses()){const settings=await loadDevelopmentSettings(configured.slug);if(settings.business.slug===slug)return settings.business;}
   return null;
 }

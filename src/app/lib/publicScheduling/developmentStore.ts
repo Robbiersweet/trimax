@@ -1,10 +1,12 @@
+import {isSchedulingPreview,schedulingDevelopmentEnabled} from './reviewEnvironment.ts';
 import {createHash,randomUUID} from 'node:crypto';
 import {mkdir,readFile,writeFile,readdir,rename,unlink} from 'node:fs/promises';
 import {join,isAbsolute} from 'node:path';
 import {tmpdir} from 'node:os';
 import type {PublicBusiness,PublicServiceRequest,ServiceRequestInput} from './domain';
 export function devStoreDirectory(env:NodeJS.ProcessEnv=process.env){
- if(env.NODE_ENV==='production'||env.PUBLIC_SCHEDULING_DEV_ADAPTER!=='enabled')throw new Error('Public scheduling submission is not configured.');
+ if(!schedulingDevelopmentEnabled(env))throw new Error('Public scheduling submission is not configured.');
+ if(isSchedulingPreview(env))return join(tmpdir(),'trimax-scheduling-preview',env.VERCEL_DEPLOYMENT_ID||'isolated');
  const configured=env.PUBLIC_SCHEDULING_DEV_DIRECTORY;
  if(configured&&!isAbsolute(configured))throw new Error('Development storage requires an absolute directory.');
  return configured||join(tmpdir(),'trimax-public-scheduling-dev');
