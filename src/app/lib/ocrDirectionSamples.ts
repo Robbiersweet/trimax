@@ -33,16 +33,33 @@ export async function prepareDirectionSamples(input:Buffer) {
     for(const c of cs){const cy=c.top+c.height/2;let b=bands.find(b=>Math.abs(b.y-cy)<=Math.max(2,Math.min(c.height,12)*.5));if(!b){b={components:[],y:cy};bands.push(b);}b.components.push(c);b.y=b.components.reduce((s,c)=>s+c.top+c.height/2,0)/b.components.length;}
     const runs:Component[][]=[];
     for(const b of bands){let run:Component[]=[];for(const c of b.components.sort((a,b)=>a.left-b.left)){const prev=run.at(-1);if(prev&&c.left-prev.left-prev.width>Math.max(prev.height,c.height)*4){if(run.length>=8)runs.push(run);run=[];}run.push(c);}if(run.length>=8)runs.push(run);}
-    const regions=runs.sort((a,b)=>b.length-a.length).map(cs=>{
+    const selected=runs.sort((a,b)=>b.length-a.length).map(cs=>{
       const left=Math.max(0,Math.min(...cs.map(c=>c.left))-5),top=Math.max(0,Math.min(...cs.map(c=>c.top))-5);
       return {left,top,width:Math.min(1000,w-left,Math.max(...cs.map(c=>c.left+c.width))-left+5),height:Math.min(h-top,Math.max(...cs.map(c=>c.top+c.height))-top+5),components:cs.length};
     }).filter(b=>b.height<=35&&b.width>=80).slice(0,3);
+    // A ranked subset must not privilege one end of an ambiguous document.
+    // Include the antipodal source window for each strip, still at most six
+    // bounded strips. These are optical samples only, never document crops.
+    const regions=selected.flatMap(region=>[region,{...region,left:w-region.left-region.width,top:h-region.top-region.height,components:0}])
+      .filter((region,index,all)=>all.findIndex(other=>other.left===region.left&&other.top===region.top&&other.width===region.width&&other.height===region.height)===index);
     const strips=[];const rotated=await sharp(flat,{raw}).rotate(angle).png().toBuffer();
     for(const {left,top,width,height} of regions)strips.push(await sharp(rotated).extract({left,top,width,height}).png().toBuffer());
     const outWidth=Math.max(32,...regions.map(r=>r.width+20)),outHeight=Math.max(32,regions.reduce((s,r)=>s+r.height+16,16));
     let y=16;const composite=strips.map((input,i)=>{const top=y;y+=regions[i].height+16;return{input,left:10,top}});
     const image=await sharp({create:{width:outWidth,height:outHeight,channels:3,background:'white'}}).composite(composite).png().toBuffer();
-    axes.push({angle,image,regions,width:outWidth,height:outHeight});
+    axes.push({angle,image,regions,width:outWidth,height:outHeight,sampleSource:'text-bands'});
+  }
+  // Segmentation is an optimization, not evidence that the source is blank.
+  // Preserve actual source pixels when neither axis has a usable strip. The
+  // unchanged selector still requires credible, unambiguous OCR observations.
+  if(axes.every(axis=>axis.regions.length===0)) {
+    const preview=await sharp(input).flatten({background:'white'})
+      .resize({width:1800,height:1800,fit:'inside',withoutEnlargement:true}).png().toBuffer();
+    for(const axis of axes) {
+      const sample=await sharp(preview).rotate(axis.angle).png().toBuffer({resolveWithObject:true});
+      axis.image=sample.data;axis.width=sample.info.width;axis.height=sample.info.height;
+      axis.sampleSource='source-preview-no-bands';
+    }
   }
   return {axes,componentCount:components.length,sourceDimensions:{width,height},durationMs:performance.now()-start};
 }

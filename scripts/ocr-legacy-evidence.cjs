@@ -21,6 +21,7 @@ function terminalSummary(result, reference) {
     checkDate: String(result.checkDate || '').slice(0, 128),
     identity: String(result.payor || '').slice(0, 256),
     paymentCanApply: false,
+    ...(result.release ? {release: result.release} : {}),
     reasons: [result.error ? String(result.error).slice(0, 1000) : 'OCR complete — open payment review'],
   };
   if (Buffer.byteLength(JSON.stringify(summary)) > 4096) throw Error('Terminal summary exceeds bound');

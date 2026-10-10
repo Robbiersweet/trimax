@@ -1,0 +1,8 @@
+{
+  "standardCommand": "npm ci --ignore-scripts --no-audit --no-fund",
+  "standardResult": "FAIL EBADPLATFORM: Linux-only sharp direct dependencies on Windows",
+  "diagnosticContinuation": "npm ci --force --ignore-scripts --no-audit --no-fund",
+  "continuationResult": "440 packages installed; dependency definitions unchanged",
+  "node": "v24.15.0",
+  "platform": "win32"
+}

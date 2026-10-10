@@ -2,6 +2,7 @@ import Link from "next/link";
 import AppShell from "../../components/AppShell";
 import Card from "../../components/Card";
 import OcrShadowControls from '../../components/OcrShadowControls';
+import ReleaseDiagnostics from '../../components/ReleaseDiagnostics';
 import { loadDebugQueue } from "../../lib/ocrDebugServer";
 import {
   attemptPath,
@@ -44,6 +45,7 @@ export default async function OcrDebugQueue({
           </p>
         </header>
         <OcrShadowControls businessId={business.id}/>
+        <ReleaseDiagnostics businessId={business.id}/>
         <Link
           href={`/payments?business=${encodeURIComponent(business.slug)}`}
           className="inline-block underline"

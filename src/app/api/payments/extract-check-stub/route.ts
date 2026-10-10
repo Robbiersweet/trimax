@@ -1,3 +1,4 @@
+import { ocrRuntimeCache } from '../../../lib/ocrRuntimeCache';
 import { readCanonicalCapture } from "@/app/lib/ocrCanonicalServer";
 import { observeOcr, withOcrObservations, ocrCacheStats } from "@/app/lib/ocrObservationCache";
 import { prepareFaintRegions, faintVariantImage, faintProvenance, recognizeFaintVariants, FAINT_VARIANTS, type FaintPreparation, type FaintVariant } from "@/app/lib/ocrFaint";
@@ -2077,7 +2078,7 @@ async function recognizeBestText(
     stageTimings[stage] = Date.now() - startedAt;
   };
   const lifecycle = legacyWorkerSession(()=>Tesseract.createWorker("eng", Tesseract.OEM.LSTM_ONLY, {
-    cachePath: "/tmp/tesseract-cache", gzip: true, logger: () => undefined,
+    cachePath: ocrRuntimeCache(), gzip: true, logger: () => undefined,
   }));
   const detailedCosts={worker:lifecycle.metrics,sourcePreparationMs:0,regionPreparationMs:0,faintPreparationMs:0,totalMs:0};
   try {
@@ -3009,7 +3010,7 @@ async function selectCaptureSource(
 ) {
   const Tesseract = await import("tesseract.js");
     const makeWorker = async () => {
-      const worker=await Tesseract.createWorker("eng",Tesseract.OEM.LSTM_ONLY,{cachePath:"/tmp/tesseract-cache",gzip:true,logger:()=>undefined});
+      const worker=await Tesseract.createWorker("eng",Tesseract.OEM.LSTM_ONLY,{cachePath: ocrRuntimeCache(),gzip:true,logger:()=>undefined});
       await worker.setParameters({preserve_interword_spaces:"1",user_defined_dpi:"300",tessedit_pageseg_mode:Tesseract.PSM.SPARSE_TEXT});
       return worker;
     };
@@ -3032,7 +3033,7 @@ async function selectCaptureSource(
       const label = normalizeCandidateLabel(candidate.label, id);
 
       const evaluation = await (async () => {
-        const worker = await Tesseract.createWorker("eng", Tesseract.OEM.LSTM_ONLY, { cachePath: "/tmp/tesseract-cache", gzip: true, logger: () => undefined });
+        const worker = await Tesseract.createWorker("eng", Tesseract.OEM.LSTM_ONLY, { cachePath: ocrRuntimeCache(), gzip: true, logger: () => undefined });
         try {
           await worker.setParameters({ preserve_interword_spaces: "1", user_defined_dpi: "300" });
           return await evaluateCaptureSourceCandidate(candidate, index, worker, Tesseract.PSM, makeWorker);

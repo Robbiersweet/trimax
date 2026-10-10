@@ -1,0 +1,10 @@
+{
+  "sourceAttemptId": "270937f6-ea9d-415a-9ae0-7190ddaff691",
+  "sha256": "b937f6080217a8d8be36f9accdce589de29b84b45877788d852ac88a95956049",
+  "source": "ocr_attempt_optical canonical JPEG; private bytes outside Git",
+  "historicalBuild": "304f5ed31e3c01f72ebbaaf9e3a6509f4abbd12e",
+  "expectedRotation": 0,
+  "expectedText": ["INV-8701", "INV-8702", "$120.00", "$210.00", "Grand Total:", "$330.00"],
+  "paymentCanApply": false,
+  "expectation": "Optical recognition completes; synthetic invoice targets remain review-only. Not physical acceptance."
+}

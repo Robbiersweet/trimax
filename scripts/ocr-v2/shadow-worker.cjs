@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- Isolated private worker CLI, not Vercel. */
 const fs=require('node:fs'),path=require('node:path'),cp=require('node:child_process');
-const {runShadowPipeline}=require('../../src/app/lib/ocrV2/shadow/pipeline.ts');
+let runShadowPipeline;
 const {readWorkerCanonical}=require('../ocr-canonical-object.cjs');
 const configFile=process.argv[2];
 if(!configFile)throw Error('Usage: node --experimental-strip-types scripts/ocr-v2/shadow-worker.cjs PRIVATE_CONFIG [--once]');
@@ -35,6 +35,7 @@ async function once(){
     moneyObservations:data.observations.filter(o=>['row_amount','total'].includes(o.field)&&names[o.recognizer]).map(o=>({id:'money:'+o.recognizer+':'+o.field+':'+o.id,rowId:o.id,field:o.field,documentId,sourceHash,cropHash:o.sha256,recognizer:names[o.recognizer],raw:o.raw,confidence:null,confidenceCalibrated:false,durationMs:o.ms})),
     observations:data.observations.filter(o=>!o.field&&names[o.recognizer]).map(o=>({id:o.recognizer+':'+o.id,fieldType:'invoice',scope:'row',rowId:o.id,recognizer:names[o.recognizer],rawText:o.raw,sequenceConfidence:null,characterConfidences:null,confidenceCalibrated:false,cropReference:{documentId,rowId:o.id,sourceImageSha256:sourceHash,baseCropSha256:o.sha256,sha256:o.sha256,path:o.file,variant:'native'},durationMs:o.ms,visualWarnings:[]}))};
   });
+  result.release=config.releaseAttestation;
   fs.writeFileSync(path.join(dir,'result.json'),JSON.stringify(result));
   await rpc('trimax_complete_ocr_shadow',{p_legacy:job.legacy_attempt_id,p_lease:job.lease,p_result:result,p_error:null});
   console.log(new Date().toISOString(),id,'shadow completed');
@@ -48,4 +49,4 @@ async function once(){
  }
  return true;
 }
-(async()=>{do{try{await once();}catch(error){console.error(error.message);}if(process.argv.includes('--once'))break;await new Promise(r=>setTimeout(r,10000));}while(true);})().catch(()=>{process.exitCode=1;});
+(async()=>{const {validateStartup}=require('../release/contract.cjs');do{config.releaseAttestation=await validateStartup(config,'v2-shadow');if(!runShadowPipeline)({runShadowPipeline}=require('../../src/app/lib/ocrV2/shadow/pipeline.ts'));try{await once();}catch(error){console.error(error.message);}if(process.argv.includes('--once'))break;await new Promise(r=>setTimeout(r,10000));}while(true);})().catch(error=>{console.error(error.message);process.exitCode=1;});

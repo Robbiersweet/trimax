@@ -1,3 +1,4 @@
+import { ocrRuntimeCache } from '../../ocrRuntimeCache.ts';
 // Offline Phase 5D. No invoice records, expected names or benchmark labels enter here.
 import { createHash } from 'node:crypto';
 import sharp from 'sharp';
@@ -53,7 +54,7 @@ export async function recognizeDocumentIdentity(image: Buffer, layout: Layout, d
     return { left, top, width: Math.min(a.sourceWidth - left, Math.ceil((Math.max(...cs.map(c => c.left + c.width)) + 4) * a.scaleX) - left), height: Math.min(a.sourceHeight - top, Math.ceil((Math.max(...cs.map(c => c.top + c.height)) + 4) * a.scaleY) - top) };
   };
   const heading = extent(a.components.filter(c => c.left + c.width < right / a.scaleX && Math.abs(c.centerY - a.slope * (c.left + c.width / 2) - line.center) < a.font * .85));
-  const worker = await createWorker('eng', OEM.LSTM_ONLY, { logger: () => undefined });
+  const worker = await createWorker('eng', OEM.LSTM_ONLY, { cachePath: ocrRuntimeCache(), logger: () => undefined });
   async function observe(field: string, bounds: Bounds, variant: 'native' | 'local-contrast', rowId?: string) {
     const begin = performance.now(), prepared = await fieldVariant(image, { regionId: field, field: 'header', bounds, ownership: bounds }, variant);
     await worker.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_LINE, tessedit_char_whitelist: '', user_defined_dpi: '300' });

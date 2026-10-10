@@ -1,0 +1,13 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Label-free offline adapter to unchanged production recognizers. */
+const fs=require('node:fs'),path=require('node:path'),cp=require('node:child_process');
+const wsl=f=>{const p=fs.realpathSync.native(f);if(!/^[a-z]:\\/i.test(p))throw Error('Windows path required');return '/mnt/'+p[0].toLowerCase()+'/'+p.slice(3).replaceAll('\\','/');};
+module.exports=function adapter(root){return async(crops,documentId,sourceHash,moneyCrops,organizationCrops)=>{
+ const inputs=[];for(const [field,items] of [[null,crops],['money',moneyCrops],['organization',organizationCrops]])for(const crop of items){const file='crop-'+inputs.length+'.png';fs.writeFileSync(path.join(root,file),crop.bytes);inputs.push({id:crop.rowId,documentId,file,sha256:crop.sha256,...(field?{field:field==='money'?crop.field:field}:{})});}
+ fs.writeFileSync(path.join(root,'inputs.json'),JSON.stringify(inputs));
+ const output=cp.spawnSync('wsl',['-d','Ubuntu','--','env','HF_HUB_OFFLINE=1','/home/robbi/trimax-ocr/benchmark-venv/bin/python',wsl(path.resolve(__dirname,'../ocr-v2/dataset/recognize.py')),wsl(root)],{encoding:'utf8',timeout:600000,windowsHide:true,maxBuffer:8000000});fs.writeFileSync(path.join(root,'model.log'),output.stdout+'\n'+output.stderr);if(output.status!==0)throw Error('Recognizer subprocess failed; inspect private model.log');
+ const data=JSON.parse(fs.readFileSync(path.join(root,'recognition.json'))),names={svtr:'svtrv2',parseq:'parseq',ppocr:'ppocrv5'};
+ return{versions:data.versions,modelTimings:data.models,
+ organizationObservations:data.observations.filter(o=>o.field==='organization'&&names[o.recognizer]).map(o=>{const crop=organizationCrops.find(c=>c.rowId===o.id);return{id:'organization:'+o.recognizer+':'+o.id,documentId,sourceImageHash:sourceHash,cropHash:o.sha256,sourceRegion:o.id,geometry:crop.bounds,regionType:crop.regionType,recognizer:names[o.recognizer],rawText:o.raw,confidence:null,durationMs:o.ms};}),
+ moneyObservations:data.observations.filter(o=>['row_amount','total'].includes(o.field)&&names[o.recognizer]).map(o=>({id:'money:'+o.recognizer+':'+o.field+':'+o.id,rowId:o.id,field:o.field,documentId,sourceHash,cropHash:o.sha256,recognizer:names[o.recognizer],raw:o.raw,confidence:null,confidenceCalibrated:false,durationMs:o.ms})),
+ observations:data.observations.filter(o=>!o.field&&names[o.recognizer]).map(o=>({id:o.recognizer+':'+o.id,fieldType:'invoice',scope:'row',rowId:o.id,recognizer:names[o.recognizer],rawText:o.raw,sequenceConfidence:null,characterConfidences:null,confidenceCalibrated:false,cropReference:{documentId,rowId:o.id,sourceImageSha256:sourceHash,baseCropSha256:o.sha256,sha256:o.sha256,path:o.file,variant:'native'},durationMs:o.ms,visualWarnings:[]}))};
+};};

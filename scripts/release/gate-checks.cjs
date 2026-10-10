@@ -1,0 +1,15 @@
+const scripts=[
+ 'scripts/release/upgrade-state-regression.cjs',
+ 'scripts/ocr-v2/direction-fallback-regression.cjs',
+ 'scripts/release/file-forensics-regression.cjs',
+ 'scripts/release/portability-regression.cjs',
+ 'scripts/release/gate-state-regression.cjs','scripts/release/contract-regression.cjs','scripts/release/auth-flow-regression.cjs','scripts/release/startup-regression.cjs','scripts/release/sql-attestation-regression.cjs',
+ 'scripts/release/authorization-execution-regression.cjs','scripts/release/evidence-handoff-regression.cjs','scripts/release/final-candidate-regression.cjs',
+ 'scripts/ocr-v2/shadow-capture-regression.cjs','scripts/camera-lifecycle-regression.ts',
+ 'scripts/ocr-v2/capture-durability-regression.cjs','scripts/ocr-object-upload-regression.cjs','scripts/ocr-evidence-persistence-regression.cjs',
+ 'scripts/ocr-legacy-job-regression.cjs','scripts/ocr-v2/shadow-regression.cjs','scripts/ocr-v2/canonical-regression.cjs','scripts/ocr-v2/canonical-sql-regression.cjs','scripts/ocr-v2/shadow-sql-regression.cjs',
+ 'scripts/ocr-v2/foundation-regression.cjs','scripts/ocr-v2/layout-regression.cjs','scripts/ocr-v2/field-regression.cjs','scripts/ocr-v2/invoice-study-regression.cjs','scripts/ocr-v2/fusion-regression.cjs','scripts/ocr-v2/resolver-regression.cjs','scripts/ocr-v2/payment-evidence-regression.cjs','scripts/ocr-v2/document-total-regression.cjs','scripts/ocr-v2/identity-regression.cjs','scripts/ocr-v2/semantics-regression.cjs',
+ 'scripts/ocr-v2/orientation-heading-regression.cjs','scripts/ocr-v2/legacy-direction-regression.cjs','scripts/ocr-v2/legacy-first-pass-regression.cjs','scripts/ocr-v2/physical-row-regression.cjs','scripts/ocr-v2/money-regression.cjs','scripts/ocr-v2/mature-money-regression.cjs','scripts/ocr-v2/shared-money-regression.cjs','scripts/ocr-v2/organization-identity-regression.cjs','scripts/ocr-v2/total-localization-regression.cjs','scripts/ocr-v2/residual-regression.cjs',
+ 'scripts/ocr-v2/dataset/regression.cjs','scripts/remittance-matching-regression.ts','scripts/remittance-contract-regression.ts','scripts/remittance-retry-regression.ts','scripts/duplicate-remittance-regression.ts','scripts/payment-application-regression.ts','scripts/payment-state-lifecycle-regression.ts','scripts/invoice-correction-regression.ts','scripts/split-source-relationship-regression.ts','scripts/split-invoice-send-regression.ts','scripts/tenant-isolation-hardening-regression.ts','scripts/business-read-isolation-regression.ts','scripts/owner-server-auth-regression.ts','scripts/account-management-regression.ts','scripts/stabilization-regression.cjs'
+];
+module.exports=scripts;

@@ -1,3 +1,4 @@
+import { ocrRuntimeCache } from '../../ocrRuntimeCache.ts';
 // Offline Phase 5C. No invoice database, expected values, or production callers.
 import sharp from 'sharp';
 import { createHash } from 'node:crypto';
@@ -44,7 +45,7 @@ export function totalLabels(observations: PaymentObservation[], layout: Layout):
     }));
 }
 
-export function decideDocumentTotal(layout: Layout & { totalLocalization?: ReturnType<typeof localizeDocumentTotal> }, evidence: DocumentPaymentEvidence, observations: PaymentObservation[]) {
+export function decideDocumentTotal(layout: Layout & { totalLocalization?: ReturnType<typeof localizeDocumentTotal> }, evidence: DocumentPaymentEvidence, observations: PaymentObservation[], corroboratedFooter?: { cents: number; bounds: Bounds; sourceHash: string; provenance: string[] }) {
     const start = performance.now();
     const scoped = observations.filter(o => o.sourceHash === evidence.sourceHash);
     const labels = totalLabels(scoped, layout), reliableLabels = labels.filter(l => l.confidence >= 40);
@@ -58,6 +59,16 @@ export function decideDocumentTotal(layout: Layout & { totalLocalization?: Retur
     const footer = scoped.filter(o => o.scope === 'document' && o.field === 'total' && o.bounds.top >= last && candidateRegion && overlap(o.bounds, candidateRegion) >= candidateRegion.width * candidateRegion.height * .8 && !layout.rows.some(r => overlap(o.bounds, r.bounds) > 0));
     const numeric = decideMoney(footer);
     const supportedFooter = numeric.candidates.filter(candidate => decideMoney(footer.filter(o => o.money.length === 1 && o.money[0] === candidate.cents)).cents === candidate.cents);
+    // The shared mature-money contract already independently corroborates a complete
+    // value. Consume it on its exact field; do not turn uncalibrated scores into
+    // fabricated Tesseract confidence or bypass any label/geometry authority gate.
+    if (corroboratedFooter && corroboratedFooter.sourceHash === evidence.sourceHash && candidateRegion
+        && JSON.stringify(corroboratedFooter.bounds) === JSON.stringify(candidateRegion)
+        && corroboratedFooter.provenance.length >= 2
+        && !numeric.candidates.some(c => c.cents !== corroboratedFooter.cents)
+        && !supportedFooter.some(c => c.cents === corroboratedFooter.cents)) {
+      supportedFooter.push({ cents: corroboratedFooter.cents, observations: corroboratedFooter.provenance });
+    }
     const headerValues = [...new Set(reliableLabels.flatMap(l => l.headerCents === null ? [] : [l.headerCents]))];
     const matches = supportedFooter.filter(candidate => headerValues.includes(candidate.cents));
     const repeatedLabel = (reliableLabels.length > 0 && new Set(labels.filter(l => l.confidence >= 20).map(l => l.variant)).size >= 2) || reliableLabels.some(l => l.confidence >= 85);
@@ -65,7 +76,8 @@ export function decideDocumentTotal(layout: Layout & { totalLocalization?: Retur
     const sameRegionAuthority = new Set(explicitFooterLabels.map(o => o.variant)).size >= 2 && numeric.cents !== null;
     let cents: number | null = null;
     let reason = 'No supported document-level label/value association';
-    if (!geometry) reason = 'Footer candidate is not an isolated final amount-column field';
+    if (layout.totalLocalization?.conflictingField) reason = 'Conflicting complete observations of the same total field';
+    else if (!geometry) reason = 'Footer candidate is not an isolated final amount-column field';
     else if (headerValues.length > 1) reason = 'Conflicting labeled header amounts';
     else if (sameRegionAuthority && (!headerValues.length || headerValues[0] === numeric.cents)) { cents = numeric.cents; reason = 'Explicit footer TOTAL labels and supported same-region value'; }
     else if (layout.totalLocalization?.finalField && layout.totalLocalization.plausibleFields === 1 && numeric.cents !== null && !headerValues.some(v=>v!==numeric.cents)
@@ -118,7 +130,7 @@ export async function recognizeDocumentTotal(image: Buffer, layout: Layout, orig
         if (line) {
             const left = Math.max(0, Math.floor(line.left * structural.scaleX - font * .3)), top = Math.max(0, Math.floor(line.top * structural.scaleY - font * .3));
             const bounds = { left, top, width: Math.min(layout.sourceWidth - left, Math.ceil(line.width * structural.scaleX + font * .6)), height: Math.min((layout.headerRegion?.top ?? layout.sourceHeight) - top, Math.ceil(line.height * structural.scaleY + font * .6)) };
-            const worker = await createWorker('eng', OEM.LSTM_ONLY, { logger: () => undefined });
+            const worker = await createWorker('eng', OEM.LSTM_ONLY, { cachePath: ocrRuntimeCache(), logger: () => undefined });
             try {
                 const requests: Array<{ bounds: Bounds; variant: 'native' | 'local-contrast'; region: string }> = ['native', 'local-contrast'].map(variant => ({ bounds, variant: variant as 'native' | 'local-contrast', region: 'header-line' }));
                 for (const [index, request] of requests.entries()) {

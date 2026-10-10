@@ -12,9 +12,11 @@ import type { DocumentSemanticModel } from '../semantics/model.ts';
 import type { Bounds } from '../types.ts';
 import { normalizePaymentDate } from '../recognition/paymentEvidence.ts';
 import { prepareMoneyFields, completeMoneyFields } from '../../documentFields/moneyService.ts';
+import { completeMoneyAuthority } from '../recognition/completeMoneyAuthority.ts';
 import { type MatureMoneyObservation } from '../recognition/matureMoney.ts';
 import { fuseOrganizationIdentity, type OrganizationObservation } from '../recognition/organizationIdentity.ts';
 import { deriveResidualAmount } from '../recognition/residualAmount.ts';
+import { selectObservedIdentity } from '../recognition/identityHandoff.ts';
 
 const hash = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 export type InvoiceCrop = { rowId: string; bounds: Bounds; bytes: Buffer; sha256: string };
@@ -74,6 +76,7 @@ export async function runShadowPipeline(original: Buffer, input: ShadowInput,
       throw Error('Model output does not belong to canonical row pixels');
   }
   const matureMoney = batch.moneyObservations ? completeMoneyFields(moneyCrops,batch.moneyObservations,batch.versions,ledger) : null;
+  if (matureMoney) monetary.authority = completeMoneyAuthority(monetary,matureMoney);
   const identityStart = performance.now();
   const identityObservations = batch.organizationObservations ?? [];
   for (const o of identityObservations) {
@@ -86,9 +89,7 @@ export async function runShadowPipeline(original: Buffer, input: ShadowInput,
     organizationIdentity: { consensusStem: organizationIdentity.consensusStem, descriptorEvidence: organizationIdentity.descriptorEvidence, authorityReason: organizationIdentity.reason, competingCandidates: organizationIdentity.competingCandidates, confidenceCalibrated: false },
     raw: o.rawText, normalized: [o.normalizedText], confidence: o.confidence ?? 0, durationMs: o.durationMs,
     provenance: { valid: true, reason: 'Visual labeled identity crop; uncalibrated scores are not authority probabilities', reference: o.id }, stage: 'phase6-organization-identity', timestamp: new Date().toISOString() });
-  const identityValue = organizationIdentity.authority === 'authoritative' ? organizationIdentity.value : model.identity.value;
-  const identityConflict = identityValue && model.identity.value && identityValue !== model.identity.value;
-  const acceptedIdentity = identityConflict ? null : identityValue;
+  const acceptedIdentity = selectObservedIdentity(organizationIdentity, model.identity.value);
   const identityMs = performance.now()-identityStart;
   const missingRows: string[] = [];
   const rows: OfflineDocument['rows'] = [];

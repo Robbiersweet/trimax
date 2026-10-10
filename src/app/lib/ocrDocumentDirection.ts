@@ -68,5 +68,5 @@ export async function selectDocumentDirection(input:Buffer,options:{sampling:'te
   const complete=!options.requireAll||observations.every(o=>o.status==='completed');
   const certain=complete&&ranked.length>0&&(!ranked[1]||ranked[1].score<ranked[0].score*.9);
   return {startedAt,orientationProbeStarted:true,candidateBudgetMs:2000,rotation:certain?ranked[0].rotation:null,certain,observations,timings,workersCreated,durationMs:performance.now()-start,
-    sampling:{method:options.sampling,componentCount:prepared.componentCount,sourceDimensions:prepared.sourceDimensions,axes:prepared.axes.map(a=>({angle:a.angle,regions:a.regions,width:a.width,height:a.height}))}};
+    sampling:{method:options.sampling,componentCount:prepared.componentCount,sourceDimensions:prepared.sourceDimensions,axes:prepared.axes.map(a=>({angle:a.angle,regions:a.regions,width:a.width,height:a.height,...('sampleSource' in a?{sampleSource:a.sampleSource}:{})}))}};
 }

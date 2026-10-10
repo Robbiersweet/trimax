@@ -1,0 +1,41 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Generic evidence accumulation regressions, no real truth. */
+const assert=require('node:assert/strict'),fs=require('node:fs');
+const {interpretDocument}=require('../../src/app/lib/ocrV2/semantics/interpret.ts');
+const {localizeDocumentTotal}=require('../../src/app/lib/ocrV2/recognition/totalLocalization.ts');
+const {decideDocumentTotal}=require('../../src/app/lib/ocrV2/recognition/documentTotalAuthority.ts');
+const word=(text,x,y,w=80,h=20)=>({text,confidence:95,bounds:{left:x,top:y,width:w,height:h}});
+const obs=(variant,words)=>({id:variant,runKey:variant,variant,sourceHash:'image',cropHash:variant,verified:true,confidence:95,recognizer:'optical',raw:words.map(w=>w.text).join(' '),region:{left:0,top:0,width:900,height:600},words});
+const words=[word('Invoice',260,50),word('Date',450,50),word('Amount',720,50)];
+for(const y of [110,170,230])words.push(word('unreadable',270,y),word('01/02/2026',460,y),word('83.47',730,y));
+const primary=[obs('native',words),obs('grayscale',words)];
+const before=interpretDocument({sourceHash:'image',observations:primary});assert.equal(before.table.rows.length,3);
+const late=obs('local-contrast',[...words,word('Property',20,50),...words.filter(w=>w.bounds.top>70).map(w=>({...w,bounds:{...w.bounds,top:w.bounds.top+22,height:14}}))]);
+const after=interpretDocument({sourceHash:'image',observations:[...primary,late]});
+assert.deepEqual(after.table.rows,before.table.rows,'Auxiliary observations cannot remap physical bands/crops');
+assert.deepEqual(after.table.physicalGeometry,before.table.physicalGeometry);
+assert(after.table.columns.some(c=>c.type==='property_name'),'Late aligned labels remain usable');
+assert(after.rowFields.some(f=>f.observationId==='local-contrast'),'Late observations attach to existing rows');
+assert.deepEqual(interpretDocument({sourceHash:'image',observations:[...primary,late,late]}).table.rows,before.table.rows,'Duplicate pass cannot duplicate rows');
+const model={sourceHash:'image',table:{supported:true,columns:[{type:'row_amount',semanticConfidence:'label-supported'}],rows:[{id:'r',bounds:{left:0,top:100,width:900,height:30},amountRegion:{left:680,top:100,width:140,height:30}}]}};
+const narrow=word('287.36',750,186,70,20),full=word('4,287.36',720,180,102,32);
+for(const scale of [.5,1,4]){
+ const scaled=JSON.parse(JSON.stringify(model));const scaleBounds=b=>Object.fromEntries(Object.entries(b).map(([k,v])=>[k,v*scale]));scaled.table.rows.forEach(r=>{r.bounds=scaleBounds(r.bounds);r.amountRegion=scaleBounds(r.amountRegion);});
+ const observations=[obs('grayscale',[{...narrow,bounds:scaleBounds(narrow.bounds)}]),obs('local-contrast',[{...full,bounds:scaleBounds(full.bounds)}])];
+ const proof=localizeDocumentTotal(scaled,observations,20*scale,900*scale,600*scale);
+ assert.deepEqual(proof.selected.bounds,scaleBounds(full.bounds));assert.equal(proof.conflictingField,false);assert(proof.finalField);
+ const reversed=localizeDocumentTotal(scaled,observations.reverse(),20*scale,900*scale,600*scale);assert.deepEqual(reversed.bounds,proof.bounds,'Observation order independent');
+}
+const conflict=localizeDocumentTotal(model,[obs('native',[full]),obs('gray',[{...full,text:'4,987.36'}])],20,900,600);
+assert.equal(conflict.conflictingField,true);assert.equal(conflict.bounds,undefined);assert.equal(conflict.finalField,false);
+const layout={rows:model.table.rows,sourceWidth:900,sourceHeight:600,totalCandidateRegion:full.bounds,totalLocalization:conflict,diagnostics:{font:20}};
+assert.equal(decideDocumentTotal(layout,{sourceHash:'image',rows:[{cents:null}]},[]).cents,null);
+const foreign=localizeDocumentTotal(model,[obs('native',[narrow]),{...obs('contrast',[full]),sourceHash:'other'}],20,900,600);assert.deepEqual(foreign.selected.bounds,narrow.bounds,'Other-image evidence cannot expand bounds');
+const noncontained=localizeDocumentTotal(model,[obs('native',[narrow]),obs('contrast',[{...full,bounds:{...full.bounds,top:202}}])],20,900,600);assert.equal(noncontained.bounds,undefined,'Distinct fields do not merge by numeric suffix');
+const shared=fs.readFileSync('src/app/lib/documentFields/moneyService.ts','utf8');assert(!shared.includes('decideDocumentTotal'));assert(!shared.includes('completeMoneyAuthority'));
+console.log('PASS primary geometry freeze, supplemental labels/observations, duplicate isolation, complete-field localization, scale/order/source/conflict safety, authority dependency direction');
+const {evidenceMetrics}=require('./evidence-metrics.cjs');
+const truth={truth:{authoritativeTotalCents:123456,rows:[]}};
+const rejected=evidenceMetrics(truth,{document:{rows:[],header:{total:null}},matureMoney:[{field:'total',rowId:'document-total',cents:23456,provenance:['a','b']}],monetary:{authority:{cents:null,reason:'Conflicting evidence'}}});
+assert.equal(rejected.intermediateWrongNumericConsensuses.length,1);assert.equal(rejected.wrongAuthoritativeTotals,0);assert.equal(rejected.intermediateWrongNumericConsensuses[0].rejectionReason,'Conflicting evidence');
+const unsafe=evidenceMetrics(truth,{document:{rows:[],header:{total:{amount:234.56}}},matureMoney:[{field:'total',rowId:'document-total',cents:23456}]});assert.equal(unsafe.wrongAuthoritativeTotals,1);assert.equal(unsafe.failures.length,1);
+console.log('PASS intermediate wrong consensus remains visible and wrong authority fails scoring');

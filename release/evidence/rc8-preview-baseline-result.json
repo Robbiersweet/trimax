@@ -1,0 +1,1345 @@
+{
+  "mode": "PREDEPLOYMENT",
+  "releaseId": "trimax-release-contract-20261008-rc8",
+  "startedAt": "2026-10-09T05:44:11.692Z",
+  "sourceCommit": "2baa0f33dfe5702d121a384e72108d7abcb7c40a",
+  "sourceBundle": "544f1ca5b72267f10e838e3beb9a09c121ebcc85b29ff595206fa9169c120556",
+  "corpusHash": "29f8a84ab995c246d2cedc9943ce391d56af55b09564dbe23329e357a7df6f7f",
+  "out": "C:\\Users\\robbi\\AppData\\Local\\Trimax\\release-gates\\2026-10-09T05-44-11-692Z",
+  "checks": [
+    {
+      "name": "clean-manifest-source-start",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "frozen-corpus-integrity",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "clean-dependency-install",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 22246
+    },
+    {
+      "name": "model-bundle",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "runtime-source-bundles",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "production-runtime-attestation",
+      "status": "DEPLOYMENT_PREREQUISITE",
+      "failures": [],
+      "engines": [
+        {
+          "engine": "legacy",
+          "status": "DEPLOYMENT_PREREQUISITE",
+          "failures": [],
+          "reason": "No deployed candidate worker attestation has been recorded"
+        },
+        {
+          "engine": "v2-shadow",
+          "status": "DEPLOYMENT_PREREQUISITE",
+          "failures": [],
+          "reason": "No deployed candidate worker attestation has been recorded"
+        }
+      ]
+    },
+    {
+      "name": "live-database-attestation",
+      "status": "PASS",
+      "failures": [],
+      "engines": [
+        {
+          "engine": "legacy",
+          "status": "PASS",
+          "failures": [],
+          "observedAt": "2026-10-09T05:44:36.978503+00:00"
+        },
+        {
+          "engine": "v2-shadow",
+          "status": "PASS",
+          "failures": [],
+          "observedAt": "2026-10-09T05:44:39.020314+00:00"
+        }
+      ]
+    },
+    {
+      "name": "sql-test-runtime",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "file-forensics-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 4828
+    },
+    {
+      "name": "portability-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 3168
+    },
+    {
+      "name": "gate-state-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 78
+    },
+    {
+      "name": "contract-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 78
+    },
+    {
+      "name": "auth-flow-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 343
+    },
+    {
+      "name": "startup-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 3022
+    },
+    {
+      "name": "sql-attestation-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 1698
+    },
+    {
+      "name": "authorization-execution-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 1561
+    },
+    {
+      "name": "evidence-handoff-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 88
+    },
+    {
+      "name": "final-candidate-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 292
+    },
+    {
+      "name": "shadow-capture-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 327
+    },
+    {
+      "name": "camera-lifecycle-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 105
+    },
+    {
+      "name": "capture-durability-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 308
+    },
+    {
+      "name": "ocr-object-upload-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 413
+    },
+    {
+      "name": "ocr-evidence-persistence-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 1701
+    },
+    {
+      "name": "ocr-legacy-job-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 284
+    },
+    {
+      "name": "shadow-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 649
+    },
+    {
+      "name": "canonical-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 291
+    },
+    {
+      "name": "canonical-sql-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 3712
+    },
+    {
+      "name": "shadow-sql-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 1418
+    },
+    {
+      "name": "foundation-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 784
+    },
+    {
+      "name": "layout-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 1388
+    },
+    {
+      "name": "field-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 1573
+    },
+    {
+      "name": "invoice-study-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 765
+    },
+    {
+      "name": "fusion-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 109
+    },
+    {
+      "name": "resolver-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 169
+    },
+    {
+      "name": "payment-evidence-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 1423
+    },
+    {
+      "name": "document-total-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 397
+    },
+    {
+      "name": "identity-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 182
+    },
+    {
+      "name": "semantics-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 225
+    },
+    {
+      "name": "orientation-heading-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 3133
+    },
+    {
+      "name": "legacy-direction-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 2910
+    },
+    {
+      "name": "legacy-first-pass-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 377
+    },
+    {
+      "name": "physical-row-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 166
+    },
+    {
+      "name": "money-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 214
+    },
+    {
+      "name": "mature-money-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 88
+    },
+    {
+      "name": "shared-money-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 194
+    },
+    {
+      "name": "organization-identity-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 87
+    },
+    {
+      "name": "total-localization-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 163
+    },
+    {
+      "name": "residual-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 325
+    },
+    {
+      "name": "regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 84
+    },
+    {
+      "name": "remittance-matching-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 199
+    },
+    {
+      "name": "remittance-contract-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 152
+    },
+    {
+      "name": "remittance-retry-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 131
+    },
+    {
+      "name": "duplicate-remittance-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 121
+    },
+    {
+      "name": "payment-application-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 83
+    },
+    {
+      "name": "payment-state-lifecycle-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 96
+    },
+    {
+      "name": "invoice-correction-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 95
+    },
+    {
+      "name": "split-source-relationship-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 87
+    },
+    {
+      "name": "split-invoice-send-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 107
+    },
+    {
+      "name": "tenant-isolation-hardening-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 93
+    },
+    {
+      "name": "business-read-isolation-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 85
+    },
+    {
+      "name": "owner-server-auth-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 104
+    },
+    {
+      "name": "account-management-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 88
+    },
+    {
+      "name": "stabilization-regression",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 28613
+    },
+    {
+      "name": "frozen-business-snapshot",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "retained-check2715-legacy",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 1803
+    },
+    {
+      "name": "retained-check2715-v2-shadow",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 25911
+    },
+    {
+      "name": "retained-check2721-legacy",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 11156
+    },
+    {
+      "name": "retained-check2721-v2-shadow",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 21282
+    },
+    {
+      "name": "retained-check2734-legacy",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 1685
+    },
+    {
+      "name": "retained-check2734-v2-shadow",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 20331
+    },
+    {
+      "name": "retained-check2743-legacy",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 1476
+    },
+    {
+      "name": "retained-check2743-v2-shadow",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 18072
+    },
+    {
+      "name": "retained-A-legacy",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 4428
+    },
+    {
+      "name": "retained-A-v2-shadow",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 14747
+    },
+    {
+      "name": "retained-D-legacy",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 934
+    },
+    {
+      "name": "retained-D-v2-shadow",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 17702
+    },
+    {
+      "name": "retained-B-legacy",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 2122
+    },
+    {
+      "name": "retained-B-v2-shadow",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 18233
+    },
+    {
+      "name": "retained-C-legacy",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 4100
+    },
+    {
+      "name": "retained-C-v2-shadow",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 12657
+    },
+    {
+      "name": "lint",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 16898
+    },
+    {
+      "name": "typescript",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 1301
+    },
+    {
+      "name": "production-build",
+      "status": "PASS",
+      "failures": [],
+      "durationMs": 13857
+    },
+    {
+      "name": "clean-manifest-source-end",
+      "status": "PASS",
+      "failures": []
+    }
+  ],
+  "retained": [
+    {
+      "id": "check2715",
+      "status": "PASS",
+      "failures": [],
+      "metrics": {
+        "wrongAuthoritativeTotals": 0,
+        "wrongAcceptedRowAmounts": 0,
+        "wrongInvoiceTokens": 0,
+        "wrongRecordIds": 0,
+        "intermediateNumericEvidence": [
+          {
+            "stage": "mature-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-1",
+            "cents": 109900,
+            "expectedCents": 109900,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "money:svtr:row_amount:physical-row-1",
+              "money:parseq:row_amount:physical-row-1",
+              "money:ppocr:row_amount:physical-row-1"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "tesseract-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-1",
+            "cents": 109900,
+            "expectedCents": 109900,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "check2715:money:physical-row-1:native",
+              "check2715:money:physical-row-1:local-contrast"
+            ],
+            "rejectionReason": null
+          }
+        ],
+        "intermediateWrongNumericConsensuses": [],
+        "failures": []
+      }
+    },
+    {
+      "id": "check2721",
+      "status": "PASS",
+      "failures": [],
+      "metrics": {
+        "wrongAuthoritativeTotals": 0,
+        "wrongAcceptedRowAmounts": 0,
+        "wrongInvoiceTokens": 0,
+        "wrongRecordIds": 0,
+        "intermediateNumericEvidence": [
+          {
+            "stage": "mature-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-0",
+            "cents": 109900,
+            "expectedCents": 109900,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "money:svtr:row_amount:physical-row-0",
+              "money:parseq:row_amount:physical-row-0",
+              "money:ppocr:row_amount:physical-row-0"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "mature-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-1",
+            "cents": 109900,
+            "expectedCents": 109900,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "money:svtr:row_amount:physical-row-1",
+              "money:parseq:row_amount:physical-row-1",
+              "money:ppocr:row_amount:physical-row-1"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "mature-money-consensus",
+            "field": "total",
+            "rowId": "document-total",
+            "cents": 219800,
+            "expectedCents": 219800,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "money:svtr:total:document-total",
+              "money:parseq:total:document-total",
+              "money:ppocr:total:document-total"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "tesseract-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-0",
+            "cents": 109900,
+            "expectedCents": 109900,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "check2721:money:physical-row-0:native",
+              "check2721:money:physical-row-0:local-contrast"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "tesseract-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-1",
+            "cents": 109900,
+            "expectedCents": 109900,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "check2721:money:physical-row-1:native",
+              "check2721:money:physical-row-1:local-contrast"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "semantic-page-total",
+            "field": "total",
+            "rowId": "document-total",
+            "cents": 219800,
+            "expectedCents": 219800,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "check2721:semantic-page:native",
+              "check2721:semantic-page:grayscale",
+              "check2721:semantic-page:local-contrast"
+            ],
+            "rejectionReason": null
+          }
+        ],
+        "intermediateWrongNumericConsensuses": [],
+        "failures": []
+      }
+    },
+    {
+      "id": "check2734",
+      "status": "PASS",
+      "failures": [],
+      "metrics": {
+        "wrongAuthoritativeTotals": 0,
+        "wrongAcceptedRowAmounts": 0,
+        "wrongInvoiceTokens": 0,
+        "wrongRecordIds": 0,
+        "intermediateNumericEvidence": [
+          {
+            "stage": "mature-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-0",
+            "cents": 109900,
+            "expectedCents": 109900,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "money:svtr:row_amount:physical-row-0",
+              "money:parseq:row_amount:physical-row-0",
+              "money:ppocr:row_amount:physical-row-0"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "mature-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-1",
+            "cents": 109900,
+            "expectedCents": 109900,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "money:svtr:row_amount:physical-row-1",
+              "money:parseq:row_amount:physical-row-1",
+              "money:ppocr:row_amount:physical-row-1"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "mature-money-consensus",
+            "field": "total",
+            "rowId": "document-total",
+            "cents": 219800,
+            "expectedCents": 219800,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "money:svtr:total:document-total",
+              "money:parseq:total:document-total",
+              "money:ppocr:total:document-total"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "tesseract-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-0",
+            "cents": 109900,
+            "expectedCents": 109900,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "check2734:money:physical-row-0:native",
+              "check2734:money:physical-row-0:local-contrast"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "tesseract-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-1",
+            "cents": 109900,
+            "expectedCents": 109900,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "check2734:money:physical-row-1:native",
+              "check2734:money:physical-row-1:local-contrast"
+            ],
+            "rejectionReason": null
+          }
+        ],
+        "intermediateWrongNumericConsensuses": [],
+        "failures": []
+      }
+    },
+    {
+      "id": "check2743",
+      "status": "PASS",
+      "failures": [],
+      "metrics": {
+        "wrongAuthoritativeTotals": 0,
+        "wrongAcceptedRowAmounts": 0,
+        "wrongInvoiceTokens": 0,
+        "wrongRecordIds": 0,
+        "intermediateNumericEvidence": [
+          {
+            "stage": "mature-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-0",
+            "cents": 109900,
+            "expectedCents": 109900,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "money:svtr:row_amount:physical-row-0",
+              "money:parseq:row_amount:physical-row-0",
+              "money:ppocr:row_amount:physical-row-0"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "mature-money-consensus",
+            "field": "total",
+            "rowId": "document-total",
+            "cents": 109900,
+            "expectedCents": 109900,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "money:svtr:total:document-total",
+              "money:parseq:total:document-total",
+              "money:ppocr:total:document-total"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "semantic-page-total",
+            "field": "total",
+            "rowId": "document-total",
+            "cents": 109900,
+            "expectedCents": 109900,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "check2743:semantic-page:grayscale"
+            ],
+            "rejectionReason": null
+          }
+        ],
+        "intermediateWrongNumericConsensuses": [],
+        "failures": []
+      }
+    },
+    {
+      "id": "A",
+      "status": "PASS",
+      "failures": [],
+      "metrics": {
+        "wrongAuthoritativeTotals": 0,
+        "wrongAcceptedRowAmounts": 0,
+        "wrongInvoiceTokens": 0,
+        "wrongRecordIds": 0,
+        "intermediateNumericEvidence": [
+          {
+            "stage": "mature-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-0",
+            "cents": 109900,
+            "expectedCents": 109900,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "money:svtr:row_amount:physical-row-0",
+              "money:parseq:row_amount:physical-row-0",
+              "money:ppocr:row_amount:physical-row-0"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "mature-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-1",
+            "cents": 109900,
+            "expectedCents": 109900,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "money:svtr:row_amount:physical-row-1",
+              "money:parseq:row_amount:physical-row-1",
+              "money:ppocr:row_amount:physical-row-1"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "mature-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-2",
+            "cents": 109900,
+            "expectedCents": 109900,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "money:svtr:row_amount:physical-row-2",
+              "money:parseq:row_amount:physical-row-2",
+              "money:ppocr:row_amount:physical-row-2"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "mature-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-3",
+            "cents": 109900,
+            "expectedCents": 109900,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "money:svtr:row_amount:physical-row-3",
+              "money:parseq:row_amount:physical-row-3",
+              "money:ppocr:row_amount:physical-row-3"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "mature-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-4",
+            "cents": 109900,
+            "expectedCents": 109900,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "money:svtr:row_amount:physical-row-4",
+              "money:parseq:row_amount:physical-row-4",
+              "money:ppocr:row_amount:physical-row-4"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "tesseract-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-0",
+            "cents": 109900,
+            "expectedCents": 109900,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "A:money:physical-row-0:native",
+              "A:money:physical-row-0:local-contrast"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "tesseract-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-1",
+            "cents": 109900,
+            "expectedCents": 109900,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "A:money:physical-row-1:native",
+              "A:money:physical-row-1:local-contrast"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "tesseract-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-2",
+            "cents": 109900,
+            "expectedCents": 109900,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "A:money:physical-row-2:native",
+              "A:money:physical-row-2:local-contrast"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "tesseract-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-3",
+            "cents": 109900,
+            "expectedCents": 109900,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "A:money:physical-row-3:native",
+              "A:money:physical-row-3:local-contrast"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "tesseract-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-4",
+            "cents": 109900,
+            "expectedCents": 109900,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "A:money:physical-row-4:native",
+              "A:money:physical-row-4:local-contrast"
+            ],
+            "rejectionReason": null
+          }
+        ],
+        "intermediateWrongNumericConsensuses": [],
+        "failures": []
+      }
+    },
+    {
+      "id": "D",
+      "status": "PASS",
+      "failures": [],
+      "metrics": {
+        "wrongAuthoritativeTotals": 0,
+        "wrongAcceptedRowAmounts": 0,
+        "wrongInvoiceTokens": 0,
+        "wrongRecordIds": 0,
+        "intermediateNumericEvidence": [
+          {
+            "stage": "mature-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-0",
+            "cents": 109900,
+            "expectedCents": 109900,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "money:svtr:row_amount:physical-row-0",
+              "money:parseq:row_amount:physical-row-0",
+              "money:ppocr:row_amount:physical-row-0"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "mature-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-1",
+            "cents": 130000,
+            "expectedCents": 130000,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "money:svtr:row_amount:physical-row-1",
+              "money:parseq:row_amount:physical-row-1",
+              "money:ppocr:row_amount:physical-row-1"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "mature-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-2",
+            "cents": 45840,
+            "expectedCents": 45840,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "money:svtr:row_amount:physical-row-2",
+              "money:parseq:row_amount:physical-row-2",
+              "money:ppocr:row_amount:physical-row-2"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "mature-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-3",
+            "cents": 130000,
+            "expectedCents": 130000,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "money:svtr:row_amount:physical-row-3",
+              "money:parseq:row_amount:physical-row-3",
+              "money:ppocr:row_amount:physical-row-3"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "mature-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-4",
+            "cents": 34850,
+            "expectedCents": 34850,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "money:svtr:row_amount:physical-row-4",
+              "money:parseq:row_amount:physical-row-4",
+              "money:ppocr:row_amount:physical-row-4"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "mature-money-consensus",
+            "field": "total",
+            "rowId": "document-total",
+            "cents": 450590,
+            "expectedCents": 450590,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "money:svtr:total:document-total",
+              "money:parseq:total:document-total",
+              "money:ppocr:total:document-total"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "tesseract-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-0",
+            "cents": 109900,
+            "expectedCents": 109900,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "D:money:physical-row-0:native",
+              "D:money:physical-row-0:local-contrast"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "tesseract-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-1",
+            "cents": 130000,
+            "expectedCents": 130000,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "D:money:physical-row-1:native",
+              "D:money:physical-row-1:local-contrast"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "tesseract-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-2",
+            "cents": 45840,
+            "expectedCents": 45840,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "D:money:physical-row-2:native",
+              "D:money:physical-row-2:local-contrast"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "tesseract-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-3",
+            "cents": 130000,
+            "expectedCents": 130000,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "D:money:physical-row-3:native",
+              "D:money:physical-row-3:local-contrast"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "tesseract-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-4",
+            "cents": 34850,
+            "expectedCents": 34850,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "D:money:physical-row-4:native",
+              "D:money:physical-row-4:local-contrast"
+            ],
+            "rejectionReason": null
+          }
+        ],
+        "intermediateWrongNumericConsensuses": [],
+        "failures": []
+      }
+    },
+    {
+      "id": "B",
+      "status": "PASS",
+      "failures": [],
+      "metrics": {
+        "wrongAuthoritativeTotals": 0,
+        "wrongAcceptedRowAmounts": 0,
+        "wrongInvoiceTokens": 0,
+        "wrongRecordIds": 0,
+        "intermediateNumericEvidence": [
+          {
+            "stage": "mature-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-0",
+            "cents": 109900,
+            "expectedCents": 109900,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "money:svtr:row_amount:physical-row-0",
+              "money:ppocr:row_amount:physical-row-0"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "mature-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-1",
+            "cents": 109900,
+            "expectedCents": 109900,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "money:svtr:row_amount:physical-row-1",
+              "money:parseq:row_amount:physical-row-1",
+              "money:ppocr:row_amount:physical-row-1"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "mature-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-2",
+            "cents": 109900,
+            "expectedCents": 109900,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "money:svtr:row_amount:physical-row-2",
+              "money:ppocr:row_amount:physical-row-2"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "mature-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-4",
+            "cents": 109900,
+            "expectedCents": 109900,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "money:svtr:row_amount:physical-row-4",
+              "money:ppocr:row_amount:physical-row-4"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "tesseract-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-0",
+            "cents": 109900,
+            "expectedCents": 109900,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "B:money:physical-row-0:native",
+              "B:money:physical-row-0:local-contrast"
+            ],
+            "rejectionReason": null
+          }
+        ],
+        "intermediateWrongNumericConsensuses": [],
+        "failures": []
+      }
+    },
+    {
+      "id": "C",
+      "status": "PASS",
+      "failures": [],
+      "metrics": {
+        "wrongAuthoritativeTotals": 0,
+        "wrongAcceptedRowAmounts": 0,
+        "wrongInvoiceTokens": 0,
+        "wrongRecordIds": 0,
+        "intermediateNumericEvidence": [
+          {
+            "stage": "mature-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-0",
+            "cents": 130000,
+            "expectedCents": 130000,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "money:svtr:row_amount:physical-row-0",
+              "money:parseq:row_amount:physical-row-0",
+              "money:ppocr:row_amount:physical-row-0"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "mature-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-1",
+            "cents": 95295,
+            "expectedCents": 95295,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "money:svtr:row_amount:physical-row-1",
+              "money:parseq:row_amount:physical-row-1",
+              "money:ppocr:row_amount:physical-row-1"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "mature-money-consensus",
+            "field": "total",
+            "rowId": "document-total",
+            "cents": 225295,
+            "expectedCents": 225295,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "money:svtr:total:document-total",
+              "money:parseq:total:document-total",
+              "money:ppocr:total:document-total"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "tesseract-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-0",
+            "cents": 130000,
+            "expectedCents": 130000,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "C:money:physical-row-0:native",
+              "C:money:physical-row-0:local-contrast"
+            ],
+            "rejectionReason": null
+          },
+          {
+            "stage": "tesseract-money-consensus",
+            "field": "row_amount",
+            "rowId": "physical-row-1",
+            "cents": 95295,
+            "expectedCents": 95295,
+            "correct": true,
+            "acceptedDownstream": true,
+            "provenance": [
+              "C:money:physical-row-1:native",
+              "C:money:physical-row-1:local-contrast"
+            ],
+            "rejectionReason": null
+          }
+        ],
+        "intermediateWrongNumericConsensuses": [],
+        "failures": []
+      }
+    }
+  ],
+  "physicalAcceptance": "PHYSICAL_ACCEPTANCE_PENDING",
+  "productionMutations": false,
+  "status": "READY_FOR_CONTROLLED_DEPLOYMENT",
+  "codeGate": "CODE_GATE_PASSED",
+  "retainedGate": "RETAINED_REAL_GATE_PASSED",
+  "stateErrors": [],
+  "finishedAt": "2026-10-09T05:49:17.834Z"
+}

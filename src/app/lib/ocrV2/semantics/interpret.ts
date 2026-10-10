@@ -41,6 +41,28 @@ export function interpretDocument(input: {
   }
   const labelsMs = performance.now() - labelStart, structureStart = performance.now();
   const mapped = mapSemanticTable(observations, labels, input.physicalComponents);
+  // Contrast is supplemental once the primary observations establish complete
+  // physical cells. Re-fitting on its extra word boxes changes font/spacing and
+  // can split one row into two, then truncate the rest as a whitespace gap.
+  const primary = observations.filter(o => o.variant !== 'local-contrast');
+  if (primary.length && primary.length < observations.length) {
+    const primaryIds = new Set(primary.map(o => o.id));
+    const established = mapSemanticTable(primary, labels.filter(l => primaryIds.has(l.observationId)), input.physicalComponents);
+    if (established.rows.length && established.rows.every(r => r.invoiceRegion && r.amountRegion)
+      && established.columns.some(c => c.type === 'row_amount' && c.semanticConfidence === 'label-supported')) {
+      // New aligned semantic labels may describe existing cells, but cannot
+      // replace the fitted baseline, ownership bands or established crop bounds.
+      const geometry = established.headerGeometry!;
+      const additions = mapped.columns.filter(c => !established.columns.some(e => e.type === c.type)
+        && Math.abs(bottom(c.bounds) - geometry.slope * (c.bounds.left + c.bounds.width / 2) - geometry.intercept)
+          / Math.hypot(1, geometry.slope) < c.bounds.height * .6);
+      mapped.columns = [...established.columns, ...additions].sort((a,b) => a.bounds.left - b.bounds.left);
+      mapped.rows = established.rows;
+      mapped.headerGeometry = established.headerGeometry;
+      mapped.physicalGeometry = established.physicalGeometry;
+      mapped.heading = labels.filter(l => mapped.columns.some(c => c.labelEvidence?.includes(l.id)));
+    }
+  }
   const heading = mapped.heading;
   const columns = mapped.columns.length ? mapped.columns : input.columns ?? [];
   const rows: SemanticRow[] = input.rows ? structuredClone(input.rows) : mapped.rows;
