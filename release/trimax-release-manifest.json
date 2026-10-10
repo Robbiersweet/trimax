@@ -11,17 +11,17 @@
   },
   "components": {
     "web": {
-      "commit": "720538d1dcf5642c334e06af842848e620e32580"
+      "commit": "7a3b91182729ec2e165cf788f55445e438f27bd6"
     },
     "legacy": {
-      "commit": "720538d1dcf5642c334e06af842848e620e32580"
+      "commit": "7a3b91182729ec2e165cf788f55445e438f27bd6"
     },
     "v2-shadow": {
-      "commit": "720538d1dcf5642c334e06af842848e620e32580"
+      "commit": "7a3b91182729ec2e165cf788f55445e438f27bd6"
     }
   },
   "sourceBundle": {
-    "sha256": "7e4b7a17ea757d49f141e7dc70934a6b0ac32572550bfe42ac5c3d1eda02932a",
+    "sha256": "8b1adeddaf839822ec8143dae709a61c4900c89d5fe1c3401f88c7a23303f610",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -237,8 +237,8 @@
       "scripts/release/runtime-evidence.cjs": "eb5996e6446e35fc37e795723d1dbe2a1b7153676cbd5be728b191914ea53e2d",
       "scripts/release/sql-attestation-regression.cjs": "e817dacee224b2ae683859841313eb7424252f9f1d60857d449f75ad5e0d250c",
       "scripts/release/startup-regression.cjs": "56c2e638dc8dbda6198a064d25f4a53a42a3fea09d23be341074c191333e2099",
-      "scripts/release/upgrade-context.cjs": "973658ec9e5c37b7bc5e46c0b0b86d9c7bd32a4c2980571b5fd51f6513972399",
-      "scripts/release/upgrade-state-regression.cjs": "28120de7c21026b4fce768f4bc59c8a7d7318bd9ee3f30a36a1ef099f419eb0d",
+      "scripts/release/upgrade-context.cjs": "3f8c1a731178b9f21dd0f956191fc7df9a6703e1356413fe57edde9b44ac4f39",
+      "scripts/release/upgrade-state-regression.cjs": "711d3966f39660f8d9e520164a6a0690a2954eb47ab3a23f15f70dc323710593",
       "scripts/remittance-camera-geometry-regression.ts": "aba66060df4eb16456e37a540c6b50455861dfdef394e3a539baec718e274868",
       "scripts/remittance-contract-regression.ts": "75e3bf300050abfcd6145eb5d912af9251fef904bc1c9be19c5bc5695d50cf77",
       "scripts/remittance-matching-regression.ts": "e4a7105d8af26516445b962d28a4e487eaa6841f52f784015a1b827277896503",
@@ -1520,6 +1520,6 @@
     },
     "candidateReleaseId": "trimax-orientation-validation-20261009",
     "applicationCommit": "46a52cadc7f644f12bf5031f9fe73b6f7bf22123",
-    "machineryCommit": "720538d1dcf5642c334e06af842848e620e32580"
+    "machineryCommit": "7a3b91182729ec2e165cf788f55445e438f27bd6"
   }
 }
