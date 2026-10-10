@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-orientation-validation-20261009",
-  "status": "VALIDATION_ONLY_NOT_SEALED",
+  "releaseId": "trimax-release-contract-20261009-rc10",
+  "status": "SEALED_CONTROLLED_DEPLOYMENT_CANDIDATE",
   "createdAt": "2026-10-01T16:09:08.400Z",
   "releaseTimestamp": null,
   "baseProduction": {
-    "commit": "b5d0d51ab35a915292e54355d5c582a22876be11",
-    "vercelDeploymentId": "A6ZKcvjyxFE8483eBofsK9srxhHq",
-    "deployedAt": "2026-09-30T20:16:41Z"
+    "commit": "c4f08b76c20da1d218d1a12e76648c57e0b9e15b",
+    "vercelDeploymentId": "6fwGZtR3K6fir2DmjNatoJS9xNcw",
+    "deployedAt": "2026-10-09T23:04:38Z"
   },
   "components": {
     "web": {
@@ -771,11 +771,11 @@
     "productionWorkersReplaced": false
   },
   "requirements": {
-    "liveDatabaseAttestation": "Candidate SQL is not installed; startup must fail closed until separately reviewed",
+    "liveDatabaseAttestation": "Live read-only attestation must match pinned DB and restricted scopes in both gate modes",
     "physicalAcceptance": "Only installed-iPhone production evidence for exact release may pass; replay cannot pass",
-    "legacyModelCache": "/tmp/tesseract-cache actual resolved traineddata path needs explicit attestation; not silently assumed"
+    "legacyModelCache": "Pinned runtime cache verified by startup contract before claim"
   },
-  "sealedAt": "2026-10-09T22:26:39.706Z",
+  "sealedAt": "2026-10-10T00:51:09.402Z",
   "testRuntime": {
     "pgliteVersion": "0.5.8",
     "pglitePackageSha256": "65dff2c93c707e526902eebfab246bcbf2df2eba1c6984a5b5e9a44177532b1c",
@@ -1518,7 +1518,7 @@
       "deploymentId": "6fwGZtR3K6fir2DmjNatoJS9xNcw",
       "deploymentCommit": "c4f08b76c20da1d218d1a12e76648c57e0b9e15b"
     },
-    "candidateReleaseId": "trimax-orientation-validation-20261009",
+    "candidateReleaseId": "trimax-release-contract-20261009-rc10",
     "applicationCommit": "46a52cadc7f644f12bf5031f9fe73b6f7bf22123",
     "machineryCommit": "7a3b91182729ec2e165cf788f55445e438f27bd6"
   }
