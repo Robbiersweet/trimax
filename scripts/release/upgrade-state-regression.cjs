@@ -25,4 +25,13 @@ assert.deepEqual(verifyWeb(prior,web(prior)),[]);
 assert(verifyWeb(candidate,web(prior)).length);
 assert(verifyWeb(prior,{...web(prior),observedAt:'2000-01-01'}).length);
 assert(verifyWeb(prior,{...web(prior),method:'local-build'}).length);
+// Exercise platform-to-committed-manifest binding, not just identity strings.
+const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),c=require('./contract.cjs');
+const real=c.read(path.join(c.root,'release/trimax-release-manifest.json'));
+const approval=real.upgradeContext.currentProductionRelease;
+const platform={method:'authenticated-vercel-production-deployment',url:'https://vercel.com/trimax-s-projects/trimax/'+approval.deploymentId,observedAt:new Date().toISOString(),alias:'app.rnlcreations.com',state:'Ready',environment:'Production',latest:true,deploymentCommit:approval.deploymentCommit,deploymentId:approval.deploymentId};
+const dir=fs.mkdtempSync(path.join(os.tmpdir(),'trimax-upgrade-test-')),file=path.join(dir,'synthetic-web.json'),old=process.env.TRIMAX_SERVING_WEB_EVIDENCE;
+try{process.env.TRIMAX_SERVING_WEB_EVIDENCE=file;fs.writeFileSync(file,JSON.stringify(platform));assert.equal(require('./upgrade-context.cjs').load(real,'PREDEPLOYMENT').servingWeb.releaseId,approval.releaseId);
+ for(const patch of [{latest:false},{state:'Error'},{alias:'preview.example'},{deploymentCommit:'0'.repeat(40)},{observedAt:'2000-01-01'}]){fs.writeFileSync(file,JSON.stringify({...platform,...patch}));assert.throws(()=>require('./upgrade-context.cjs').load(real,'PREDEPLOYMENT'));}
+}finally{if(old===undefined)delete process.env.TRIMAX_SERVING_WEB_EVIDENCE;else process.env.TRIMAX_SERVING_WEB_EVIDENCE=old;fs.unlinkSync(file);fs.rmdirSync(dir);}
 console.log('PASS nine upgrade cases, strict postdeployment, prior approval/serving identity, stale web proof, configuration and cross-worker payment denial');
