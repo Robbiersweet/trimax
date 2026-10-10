@@ -19,7 +19,7 @@ run('clean-dependency-install',process.platform==='win32'?'cmd.exe':'npm',proces
 record('model-bundle',c.verifyModels(manifest,'v2-shadow',manifest.workerConfiguration));
 record('runtime-source-bundles',c.verifyRuntimeSources(manifest,'v2-shadow',manifest.workerConfiguration));
 const attestationFile=path.join(out,'runtime-attestation.json');
-const live=cp.spawnSync(process.execPath,['scripts/release/runtime-check.cjs',attestationFile],{cwd:c.root,encoding:'utf8',windowsHide:true,timeout:180000,maxBuffer:4000000});
+const live=cp.spawnSync(process.execPath,['scripts/release/runtime-check.cjs',attestationFile,gateMode],{cwd:c.root,encoding:'utf8',windowsHide:true,timeout:180000,maxBuffer:4000000});
 fs.writeFileSync(path.join(out,'runtime-attestation.log'),(live.stdout||'')+'\n'+(live.stderr||''));
 let attestation;try{if(![0,1,2].includes(live.status))throw Error('Attestation probe failed');attestation=c.read(attestationFile);}catch{attestation={database:{status:'FAIL',failures:['Attestation probe unavailable']},runtime:{status:'FAIL',failures:['Attestation probe unavailable']}};}
 for(const [name,key] of [['production-runtime-attestation','runtime'],['live-database-attestation','database']])record(name,attestation[key].failures,attestation[key]);

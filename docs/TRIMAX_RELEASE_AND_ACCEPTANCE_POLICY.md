@@ -210,3 +210,32 @@ process environment dump is permitted. Preinstall remains a post-tool observatio
 not proof of a pristine checkout. npm user-agent is recorded to identify the actual
 package manager on a future separately authorized build. No deployment is performed
 merely to collect diagnostics in this forensic task.
+
+## Controlled upgrade identity (rc10)
+
+CURRENT_DEPLOYED_RELEASE and CANDIDATE_RELEASE are separate, explicit identities.
+The candidate manifest records the approved prior manifest commit and its canonical
+JSON digest. The gate reads that committed manifest independently, checks that its
+seal did not change executable source, and compares persisted worker identity against
+that exact approved contract. It never accepts an arbitrary older release.
+
+TRIMAX_SERVING_WEB_EVIDENCE points to a private, fresh (maximum 30 minutes) authenticated
+production Release identity observation, captured from the current app URL by the
+rollout operator. It records observation time, method, URL, displayed release ID,
+web source commit, model bundle and database fingerprint. This is explicitly operator
+UI evidence, not an automated heartbeat, local build or worker record. The runtime
+receipt preserves that observation and its file hash. Missing, stale or mismatched
+web evidence fails closed. Refresh this observation before each full gate.
+
+PREDEPLOYMENT permits only an absent worker record or an exact approved prior worker
+consistent with the independently observed serving web as DEPLOYMENT_PREREQUISITE.
+Source/model/runtime/database/configuration mismatch, unknown release and any declared
+payment-write capability fail. Local candidate source/models/configuration are still
+validated separately. Existing hash-bound startup code validates configuration before
+emitting worker provenance; no new worker permission or processing behavior is added.
+
+POSTDEPLOYMENT requires the serving web and both recorded workers to match the candidate.
+An absent or prior worker and a missing RPC are FAIL after cutover. The predeployment
+exception does not apply. Separate live process and synthetic health checks remain
+required: persisted last-job provenance alone is not proof of a running process.
+The frozen corpus is pinned to its original LF bytes by a single-file .gitattributes rule.

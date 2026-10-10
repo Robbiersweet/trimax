@@ -1,1 +1,2 @@
 *.pdf binary
+release/frozen-real-acceptance.json text eol=lf
