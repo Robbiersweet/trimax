@@ -3,7 +3,7 @@ const fs=require('node:fs'),path=require('node:path');
 const c=require('./contract.cjs');
 function verifyWeb(manifest,observed,now=Date.now()){
  const errors=[];
- if(observed?.url!=='https://app.rnlcreations.com/admin/ocr-attempts?business=rnl-creations'||observed?.method!=='authenticated-release-diagnostics')errors.push('Missing authenticated serving-web observation');
+ if(!((observed?.url==='https://app.rnlcreations.com/admin/ocr-attempts?business=rnl-creations'&&observed?.method==='authenticated-release-diagnostics')||(observed?.method==='authenticated-vercel-production-deployment'&&observed?.committedManifestVerified===true)))errors.push('Missing authenticated serving-web observation');
  const age=now-Date.parse(observed?.observedAt);
  if(!Number.isFinite(age)||age< -60000||age>1800000)errors.push('Serving-web observation stale or invalid');
  const expected={releaseId:manifest.releaseId,sourceCommit:manifest.components.web.commit,modelBundle:manifest.modelBundle.sha256,databaseFingerprint:manifest.database.fingerprints.schema.sha256};
@@ -23,7 +23,14 @@ function load(manifest,mode){
  if(c.git(['diff',prior.components.web.commit,approved.manifestCommit,'--',...c.sourcePaths]))throw Error('Prior seal changed executable source');
  const proofFile=process.env.TRIMAX_SERVING_WEB_EVIDENCE;
  if(!proofFile||path.resolve(proofFile).startsWith(c.root+path.sep))throw Error('Fresh independent serving-web evidence required outside checkout');
- const servingWeb=c.read(proofFile),target=mode==='POSTDEPLOYMENT'?manifest:prior;
+ let servingWeb=c.read(proofFile);const target=mode==='POSTDEPLOYMENT'?manifest:prior;
+ if(servingWeb.method==='authenticated-vercel-production-deployment'){
+  if(servingWeb.alias!=='app.rnlcreations.com'||servingWeb.state!=='Ready'||servingWeb.environment!=='Production'||servingWeb.latest!==true||!/^https:\/\/vercel\.com\/trimax-s-projects\/trimax\/[A-Za-z0-9]+$/.test(servingWeb.url)||!/^([a-f0-9]{40})$/.test(servingWeb.deploymentCommit||''))throw Error('Invalid current Vercel deployment observation');
+  if(mode==='PREDEPLOYMENT'&&(servingWeb.deploymentCommit!==approved.deploymentCommit||servingWeb.deploymentId!==approved.deploymentId))throw Error('Serving deployment is not the approved prior deployment');
+  const deployedManifest=JSON.parse(c.git(['show',servingWeb.deploymentCommit+':release/trimax-release-manifest.json']));
+  if(c.digest(deployedManifest)!==c.digest(target)||c.git(['diff',target.components.web.commit,servingWeb.deploymentCommit,'--',...c.sourcePaths]))throw Error('Serving deployment source/manifest differs from expected release');
+  servingWeb={...servingWeb,platformObservation:servingWeb,committedManifestVerified:true,releaseId:deployedManifest.releaseId,sourceCommit:deployedManifest.components.web.commit,modelBundle:deployedManifest.modelBundle.sha256,databaseFingerprint:deployedManifest.database.fingerprints.schema.sha256};
+ }
  const errors=verifyWeb(target,servingWeb);
  if(errors.length)throw Error(errors.join('; '));
  // Preserve the exact operator observation in the private gate receipt. It is

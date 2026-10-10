@@ -239,3 +239,11 @@ An absent or prior worker and a missing RPC are FAIL after cutover. The predeplo
 exception does not apply. Separate live process and synthetic health checks remain
 required: persisted last-job provenance alone is not proof of a running process.
 The frozen corpus is pinned to its original LF bytes by a single-file .gitattributes rule.
+
+The serving-web evidence may alternatively be a fresh authenticated Vercel observation
+of the Ready, Latest Production deployment assigned to app.rnlcreations.com, including
+its full Git commit and deployment ID. The gate independently loads that commit's
+manifest and verifies exact expected manifest equality and no executable changes from
+its named source. The predeployment deployment ID/commit must also match the approved
+prior context. This platform evidence is labeled as such; it is not a fabricated app
+login or diagnostics click-through. Authenticated app checks remain required during rollout.
