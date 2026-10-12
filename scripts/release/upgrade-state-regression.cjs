@@ -25,6 +25,16 @@ assert.deepEqual(verifyWeb(prior,web(prior)),[]);
 assert(verifyWeb(candidate,web(prior)).length);
 assert(verifyWeb(prior,{...web(prior),observedAt:'2000-01-01'}).length);
 assert(verifyWeb(prior,{...web(prior),method:'local-build'}).length);
+// A coordinated schema transition accepts ONLY the exact independently pinned
+// prior database before deployment. Mixed/unknown fingerprints still fail.
+const migrated=structuredClone(candidate);for(const k of Object.keys(migrated.database.fingerprints))migrated.database.fingerprints[k].sha256='new-'+k;
+const classifyTransition=(b,ctx=pre)=>classify(migrated,'legacy',config,{status:200,body:b},ctx);
+assert.equal(classifyTransition(body('legacy')).database.status,'DEPLOYMENT_PREREQUISITE');
+assert.equal(classifyTransition(body('legacy')).runtime.status,'DEPLOYMENT_PREREQUISITE');
+assert.equal(classifyTransition(body('legacy'),{mode:'POSTDEPLOYMENT'}).database.status,'FAIL');
+for(const k of Object.keys(migrated.database.fingerprints)){const b=body('legacy');b.fingerprints=structuredClone(b.fingerprints);b.fingerprints[k].sha256='new-'+k;assert.equal(classifyTransition(b).database.status,'FAIL','mixed database '+k);}
+const migratedBody={...body('legacy'),...migrated.database,legacyRelease:record(migrated,'legacy'),v2Release:record(migrated,'v2-shadow')};
+assert.equal(classifyTransition(migratedBody,{mode:'POSTDEPLOYMENT'}).runtime.status,'PASS');
 // Exercise platform-to-committed-manifest binding, not just identity strings.
 const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),c=require('./contract.cjs');
 const real=c.read(path.join(c.root,'release/trimax-release-manifest.json'));

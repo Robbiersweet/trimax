@@ -9,13 +9,17 @@ function classify(manifest,engine,config,response,context={mode:'PREDEPLOYMENT'}
  if(response.status===404&&response.body?.code==='PGRST202')return{database:prerequisite('Reviewed attestation RPC is not installed'),runtime:prerequisite('Deployed attestation unavailable before RPC installation')};
  if(response.status!==200)return failure('Read-only attestation HTTP '+response.status);
  if(config.supabaseUrl!==`https://${manifest.supabaseProjectId}.supabase.co`||config.businessId!==manifest.workerConfiguration.businessId)return failure('Project/business differs from sealed contract');
- const actual=response.body,errors=compareDatabase(manifest.database,actual,engine,config.businessId);
+ const actual=response.body;
+ const approved=context.currentProductionRelease;
+ const deployed=actual[engine==='legacy'?'legacyRelease':'v2Release'];
+ const priorDatabase=context.mode==='PREDEPLOYMENT'&&approved&&deployed?.releaseId===approved.releaseId&&approved.releaseId!==manifest.releaseId;
+ if(priorDatabase&&(context.servingWeb?.releaseId!==approved.releaseId||context.servingWeb?.sourceCommit!==approved.components.web.commit))return failure('Serving web does not match approved prior release');
+ const errors=compareDatabase(priorDatabase?approved.database:manifest.database,actual,engine,config.businessId);
  if(errors.length)return failure(errors.join('; '));
- const database={status:'PASS',failures:[],observedAt:actual.observedAt};
+ const database={...(priorDatabase&&compareDatabase(manifest.database,actual,engine,config.businessId).length?prerequisite('Exact approved prior database; reviewed migration and candidate cutover pending'):{status:'PASS',failures:[]}),observedAt:actual.observedAt};
  if([actual.legacyRelease,actual.v2Release].some(r=>r?.paymentWriteCapability===true))return failure('Deployed worker declares payment-write capability');
  const safeConfig=Object.fromEntries(Object.entries(config).filter(([k])=>!['anonKey','workerKey','releaseAttestation'].includes(k)));
  if(manifest.workerConfiguration.configHashes?.[engine]&&digest(safeConfig)!==manifest.workerConfiguration.configHashes[engine])return failure('Worker configuration differs from candidate contract');
- const deployed=actual[engine==='legacy'?'legacyRelease':'v2Release'];
  if(deployed==null)return{database,runtime:prerequisite('No deployed candidate worker attestation has been recorded')};
  let expected=identity(manifest,engine),prior=false;
  if(context.mode==='PREDEPLOYMENT'&&deployed.releaseId!==manifest.releaseId&&context.currentProductionRelease){

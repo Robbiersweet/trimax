@@ -1,0 +1,24 @@
+{
+  "fingerprints": {
+    "schema": {
+      "entries": 841,
+      "sha256": "512c9b0aacea329370763dfc2108e8c1633db8d7e96034897bd91e9971279283"
+    },
+    "rpc": {
+      "entries": 41,
+      "sha256": "2d0249b45a2a39c42d9fed5ab056472edf052c12d6e29afd3a377008cd87d17e"
+    },
+    "triggers": {
+      "entries": 8,
+      "sha256": "1189025c52ee6e7c3b8e69686784557aba68b0f29e6c2d2db8007cfb7475c549"
+    },
+    "policies": {
+      "entries": 79,
+      "sha256": "7a9839dc666da38c2b9706519ae439f6c4afc8d8f85a93fc26c4aecbdf064013"
+    },
+    "grants": {
+      "entries": 992,
+      "sha256": "e56f4606b10240aec2b60c64b6e45b798046eb9083b731bcc73aad3ad0450568"
+    }
+  }
+}

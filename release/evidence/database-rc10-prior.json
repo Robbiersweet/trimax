@@ -1,0 +1,35 @@
+{
+  "capturedAt": "2026-10-01T16:02:36.667559+00:00",
+  "algorithm": "catalog-v1; sorted C collation name=value; UTF8 SHA256; public tables/constraints/indexes/functions, public+storage RLS, public table grants; excludes only trimax_release_runtime itself",
+  "fingerprints": {
+    "rpc": {
+      "sha256": "d26d37d72ff5c6d835dfb0767893399ae1e205f5344193ddf3017dae69a0e1ed",
+      "entries": 37
+    },
+    "grants": {
+      "sha256": "a056ce17f8f9b68fc393a5be34fb0a38539a5c4a7f15b5c9f1db9877ef446ea7",
+      "entries": 917
+    },
+    "schema": {
+      "sha256": "efc506fa018ed86875375bbe51e479e746b9ca661943b2657eaf13e8f3a358f8",
+      "entries": 699
+    },
+    "policies": {
+      "sha256": "39550adf015ae539be77e3a765858bd84fb71bbe36fe401a1dd68c3ff0028864",
+      "entries": 74
+    },
+    "triggers": {
+      "sha256": "1189025c52ee6e7c3b8e69686784557aba68b0f29e6c2d2db8007cfb7475c549",
+      "entries": 8
+    }
+  },
+  "flags": [
+    {
+      "enabled": true,
+      "businessId": "f31adfa1-26ad-4e74-ad94-a4668d7ad57d",
+      "nativeStill": true
+    }
+  ],
+  "legacyEnabled": true,
+  "acceptanceTableRecords": 0
+}
