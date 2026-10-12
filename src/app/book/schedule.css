@@ -33,3 +33,41 @@
   .schedule-start{width:100%;min-width:0;font-size:15px;min-height:52px}
   .schedule-hero-note{margin-top:9px}.schedule-footer-tagline{font-size:25px}
 }
+/* Target composition: one constrained badge / promise / headline / action group. */
+.scheduling-public[data-brand="rnl"] .schedule-brand{display:none}
+.schedule-hero-content{max-width:1200px;grid-template-columns:330px 300px;column-gap:12px;row-gap:0;padding:48px 40px 0;align-items:center}
+.schedule-logo-window{max-width:330px;align-self:end;margin-bottom:-6px}
+.schedule-tagline{font-size:40px;line-height:1.02;max-width:300px;justify-self:start;align-self:center;margin:0 0 6px;transform:rotate(-4deg)}
+.schedule-tagline span{display:block;white-space:nowrap}
+.schedule-tagline::after{height:8px;margin:12px auto 0;width:82%;border-radius:70% 25% 90% 40%}
+.schedule-hero-copy{max-width:642px}
+.schedule-hero h1{font-size:48px;line-height:.98;letter-spacing:-1.5px;margin:0 0 12px}
+.schedule-lead{max-width:530px;font-size:17px;line-height:1.3;margin-bottom:18px}
+.schedule-start{width:540px;min-height:70px;padding:14px 26px;justify-content:space-between;gap:14px;font-size:21px;color:#080808!important;border-radius:15px}
+.schedule-start svg{width:34px;height:34px;stroke:currentColor;fill:none;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.schedule-start svg:last-child{width:24px;height:24px}
+.schedule-hero-note{margin:7px 0 0;font-size:10px}
+.schedule-trust{max-width:1200px;margin:auto;justify-content:flex-start;gap:0;border:0;background:none;padding:20px 40px 24px}
+.schedule-trust li{width:214px;gap:14px;font-size:15px;text-transform:uppercase;line-height:1.15;padding:0 24px;border-right:1px solid #ffffff70}
+.schedule-trust li:first-child{padding-left:0}.schedule-trust li:last-child{border:0}
+.schedule-trust svg{width:45px;height:45px;flex-shrink:0;stroke-width:1.7}
+@media(max-width:800px){
+ .schedule-hero-content{grid-template-columns:44% 1fr;column-gap:10px;row-gap:0;padding:24px 20px 0}
+ .schedule-logo-window{max-width:none;width:100%;margin-bottom:-2px}
+ .schedule-tagline{font-size:clamp(21px,5.65vw,32px);max-width:100%;margin-bottom:0;line-height:1.02}
+ .schedule-tagline::after{height:5px;margin-top:9px}
+ .schedule-hero h1{font-size:clamp(26px,6.8vw,46px);line-height:.98;letter-spacing:-.8px;margin:4px 0 9px}
+ .schedule-lead{font-size:13px;max-width:310px;line-height:1.25;margin:0 0 13px}
+ .schedule-start{width:100%;min-height:54px;font-size:15px;letter-spacing:.4px;padding:12px 17px;border-radius:11px}
+ .schedule-start svg{width:27px;height:27px}.schedule-start svg:last-child{width:18px;height:18px}
+ .schedule-hero-note{font-size:9px;margin-top:6px}
+ .schedule-trust{padding:15px 20px 18px;max-width:none;justify-content:space-between}
+ .schedule-trust li{width:auto;flex:1;padding:0 9px;font-size:10px;gap:7px}
+ .schedule-trust svg{width:28px;height:28px}
+}
+.schedule-transition{max-width:1200px;margin:auto;padding:26px 40px 0}
+.schedule-transition .schedule-eyebrow{display:flex;align-items:center;gap:14px;margin-bottom:5px;color:var(--ink);letter-spacing:3px}
+.schedule-transition .schedule-eyebrow::before{content:"";width:35px;height:5px;background:var(--orange);border-radius:5px}
+.schedule-transition h2{font-size:38px;font-weight:800;line-height:1.05;letter-spacing:-1px;margin:0}
+.schedule-layout{padding-top:28px}
+@media(max-width:800px){.schedule-transition{padding:22px 20px 0}.schedule-transition h2{font-size:29px}.schedule-layout{padding-top:24px}}
