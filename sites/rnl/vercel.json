@@ -1,0 +1,1 @@
+{"framework":"nextjs","buildCommand":"npm run build","installCommand":"npm ci","git":{"deploymentEnabled":{"main":false,"codex/rnl-public-website":true}}}

@@ -1,0 +1,16 @@
+{
+  "name": "rnl-public-website",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "prepare:shared": "node scripts/prepare-shared.mjs",
+    "dev": "npm run prepare:shared && next dev --webpack -p 3108",
+    "build": "npm run prepare:shared && next build --webpack",
+    "start": "next start -p 3108",
+    "lint": "eslint app components lib scripts",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types scripts/regression.mjs"
+  },
+  "dependencies": {"next":"16.2.6","react":"19.2.4","react-dom":"19.2.4","server-only":"0.0.1"},
+  "devDependencies": {"typescript":"^5","@types/node":"^20","@types/react":"^19","@types/react-dom":"^19","eslint":"^9","eslint-config-next":"16.2.6"}
+}

@@ -1,0 +1,4 @@
+import {PageIntro,GalleryGrid,FinalCTA} from '../../components/Site';
+import {pageMetadata} from '../../lib/metadata';
+export const metadata=pageMetadata('Our Work','Explore the kinds of projects R&L Creations helps with. Our real-project photo gallery is coming soon.','/gallery');
+export default function Gallery(){return <><PageIntro eyebrow="OUR WORK" title="Built on the details."><p>Fences, fresh interiors and the repairs that make a space feel right. We’re gathering photographs of our work to share here.</p></PageIntro><section className="wrap section"><div className="gallery-notice"><strong>Project gallery coming soon.</strong><p>The spaces below are collection placeholders, not photographs of completed projects. Have a project in mind? Tell us about it.</p></div><GalleryGrid/></section><FinalCTA/></>;}

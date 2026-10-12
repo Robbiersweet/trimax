@@ -1,0 +1,6 @@
+'use client';
+import Link from 'next/link';
+import {usePathname} from 'next/navigation';
+import {useState,useRef} from 'react';
+import {navigation} from '../lib/content';
+export default function Header(){const [open,setOpen]=useState(false),button=useRef<HTMLButtonElement>(null),path=usePathname();return <header className="site-header" onKeyDown={e=>{if(e.key==='Escape'){setOpen(false);button.current?.focus();}}}><div className="header-inner"><Link className="wordmark" href="/" onClick={()=>setOpen(false)}>R<span>&</span>L CREATIONS<small>GENERAL CONTRACTING · EST. 2020</small></Link><button ref={button} className="menu-toggle" aria-expanded={open} aria-controls="site-navigation" onClick={()=>setOpen(!open)}>{open?'Close':'Menu'}<span aria-hidden="true">{open?'×':'☰'}</span></button><nav id="site-navigation" aria-label="Main navigation" className={open?'navigation open':'navigation'}>{navigation.filter(([name])=>name!=='Home').map(([name,href])=><Link key={href} href={href} aria-current={path===href?'page':undefined} onClick={()=>setOpen(false)}>{name}</Link>)}<Link className="nav-cta" href="/schedule" aria-current={path==='/schedule'?'page':undefined} onClick={()=>setOpen(false)}>Schedule service <span aria-hidden="true">↗</span></Link></nav></div></header>;}

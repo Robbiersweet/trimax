@@ -1,0 +1,7 @@
+node_modules/
+.next/
+.shared/
+public/branding/
+next-env.d.ts
+*.tsbuildinfo
+.vercel/
