@@ -1,0 +1,159 @@
+{
+  "observedAt": "2026-10-12T09:22:02.8583224Z",
+  "queries": [
+    {
+      "records": [
+        {
+          "Name": "rnlcreations.com",
+          "Type": 2,
+          "TTL": 85858,
+          "NameHost": "ns1.systemdns.com",
+          "IPAddress": null,
+          "NameExchange": null,
+          "Strings": null,
+          "PrimaryServer": null
+        },
+        {
+          "Name": "rnlcreations.com",
+          "Type": 2,
+          "TTL": 85858,
+          "NameHost": "ns2.systemdns.com",
+          "IPAddress": null,
+          "NameExchange": null,
+          "Strings": null,
+          "PrimaryServer": null
+        },
+        {
+          "Name": "rnlcreations.com",
+          "Type": 2,
+          "TTL": 85858,
+          "NameHost": "ns3.systemdns.com",
+          "IPAddress": null,
+          "NameExchange": null,
+          "Strings": null,
+          "PrimaryServer": null
+        }
+      ],
+      "name": "rnlcreations.com",
+      "type": "NS"
+    },
+    {
+      "records": [
+        {
+          "Name": "rnlcreations.com",
+          "Type": 6,
+          "TTL": 30,
+          "NameHost": null,
+          "IPAddress": null,
+          "NameExchange": null,
+          "Strings": null,
+          "PrimaryServer": "ns1.systemdns.com"
+        }
+      ],
+      "name": "rnlcreations.com",
+      "type": "A"
+    },
+    {
+      "records": [
+        {
+          "Name": "rnlcreations.com",
+          "Type": 6,
+          "TTL": 30,
+          "NameHost": null,
+          "IPAddress": null,
+          "NameExchange": null,
+          "Strings": null,
+          "PrimaryServer": "ns1.systemdns.com"
+        }
+      ],
+      "name": "rnlcreations.com",
+      "type": "AAAA"
+    },
+    {
+      "records": [
+        {
+          "Name": "www.rnlcreations.com",
+          "Type": 5,
+          "TTL": 300,
+          "NameHost": "zhs.zohosites.com",
+          "IPAddress": null,
+          "NameExchange": null,
+          "Strings": null,
+          "PrimaryServer": null
+        }
+      ],
+      "name": "www.rnlcreations.com",
+      "type": "CNAME"
+    },
+    {
+      "records": [
+        {
+          "Name": "app.rnlcreations.com",
+          "Type": 5,
+          "TTL": 180,
+          "NameHost": "cname.vercel-dns.com",
+          "IPAddress": null,
+          "NameExchange": null,
+          "Strings": null,
+          "PrimaryServer": null
+        }
+      ],
+      "name": "app.rnlcreations.com",
+      "type": "CNAME"
+    },
+    {
+      "records": [
+        {
+          "Name": "rnlcreations.com",
+          "Type": 15,
+          "TTL": 300,
+          "NameHost": null,
+          "IPAddress": null,
+          "NameExchange": "mx.zoho.com",
+          "Strings": null,
+          "PrimaryServer": null
+        },
+        {
+          "Name": "rnlcreations.com",
+          "Type": 15,
+          "TTL": 300,
+          "NameHost": null,
+          "IPAddress": null,
+          "NameExchange": "mx3.zoho.com",
+          "Strings": null,
+          "PrimaryServer": null
+        },
+        {
+          "Name": "rnlcreations.com",
+          "Type": 15,
+          "TTL": 300,
+          "NameHost": null,
+          "IPAddress": null,
+          "NameExchange": "mx2.zoho.com",
+          "Strings": null,
+          "PrimaryServer": null
+        }
+      ],
+      "name": "rnlcreations.com",
+      "type": "MX"
+    },
+    {
+      "records": [
+        {
+          "Name": "rnlcreations.com",
+          "Type": 16,
+          "TTL": 300,
+          "NameHost": null,
+          "IPAddress": null,
+          "NameExchange": null,
+          "Strings": [
+            "v=spf1 include:zoho.com ~all"
+          ],
+          "PrimaryServer": null
+        }
+      ],
+      "name": "rnlcreations.com",
+      "type": "TXT"
+    }
+  ]
+}
