@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "releaseId": "trimax-release-contract-20261012-rc11",
   "status": "SEALED_CONTROLLED_DEPLOYMENT_CANDIDATE",
-  "createdAt": "2026-10-12T07:52:57.070Z",
+  "createdAt": "2026-10-12T07:53:26.300Z",
   "releaseTimestamp": null,
   "baseProduction": {
     "commit": "9f8f48b851a249caa75c0dc5bdc632f134c1c1c3",
@@ -11,17 +11,17 @@
   },
   "components": {
     "web": {
-      "commit": "b30ebf7b5420034b45bbcaa433b37ffdc08438ac"
+      "commit": "9f15c4d101391f24426212f9960a8b07a8b1d760"
     },
     "legacy": {
-      "commit": "b30ebf7b5420034b45bbcaa433b37ffdc08438ac"
+      "commit": "9f15c4d101391f24426212f9960a8b07a8b1d760"
     },
     "v2-shadow": {
-      "commit": "b30ebf7b5420034b45bbcaa433b37ffdc08438ac"
+      "commit": "9f15c4d101391f24426212f9960a8b07a8b1d760"
     }
   },
   "sourceBundle": {
-    "sha256": "4f777de67e6cb6eccc59ba3996b7ca582afab358f92c6ce571f18281695cb5c9",
+    "sha256": "a46e28e473ac7f1007fa5c2c3ef316f96817a188e289a9b8346fcb53ea9d71de",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -295,7 +295,7 @@
       "src/app/book/TurnstileChallenge.tsx": "31ed159bfeb127d5704811144e42e44b5aaed77973d874356d66196ca7c34795",
       "src/app/book/[slug]/page.tsx": "0584364828b5d64da346a9f17994472a22ea85d764dd682864a6053d5447348a",
       "src/app/book/fonts/Allura-Regular.ttf": "9c142b2e515832c0dfc4ff8b8ea18f40314943bf937b72e2b23c4661bac14cc6",
-      "src/app/book/fonts/OFL-Allura.txt": "c8cb4c94a558b6cb82ac5dc981a73a0b8aee35a5c52c8a7832fc0280c289ad49",
+      "src/app/book/fonts/OFL-Allura.txt": "861e656ee1e966f1def79b0e14356fa6fc8086255a5063aac0dd19520f71c6dd",
       "src/app/book/page.tsx": "7a730a7e5509ff80147202c660f13c9209597067bdc2ad4dd23d8fc2ed7579c0",
       "src/app/book/schedule.css": "794774842881fedb8273f74b40629c15c0bb048c1df1f0544148d1819759df72",
       "src/app/clients/[id]/edit/page.tsx": "3ebcd65624d9e82fadf487ee3d0a1f091f4c7b95c0368096e661c5c43b30fd16",
