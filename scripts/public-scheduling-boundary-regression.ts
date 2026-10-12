@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { isPublicSchedulingPath } from '../src/app/lib/publicScheduling/routes.ts';
+for (const path of ['/book','/book/','/book/rnl-creations','/book/restoration-envy']) assert.equal(isPublicSchedulingPath(path),true,path);
+for (const path of ['/','/schedule','/admin/service-requests','/invoices','/clients','/queue','/book/admin/clients','/bookkeeping','/book/../admin','/book/%2fadmin']) assert.equal(isPublicSchedulingPath(path),false,path);
+const boundary=readFileSync('src/app/components/RouteAccessBoundary.tsx','utf8');
+assert.match(boundary,/isPublicSchedulingPath\(pathname\)/);assert.match(boundary,/return <EmployeeAccess>/);
+const submission=readFileSync('src/app/api/public-scheduling/[slug]/route.ts','utf8');
+assert.doesNotMatch(submission,/export async function GET/);assert.doesNotMatch(submission,/from\(['"](?:clients|invoices|jobs|payments)['"]\)/);
+const sql=readFileSync('supabase/migrations/20261009_public_scheduling_foundation.sql','utf8');
+assert.match(sql,/revoke all .* from anon,authenticated/);assert.doesNotMatch(sql,/grant.*to anon/i);assert.doesNotMatch(sql,/for insert/i);
+for(const table of ['public_scheduling_settings','public_service_request_types','public_service_requests','public_request_activity'])assert.ok(sql.includes(`alter table public.${table} enable row level security`));
+assert.match(sql,/foreign key\(business_id,request_type_id\)/);assert.match(sql,/unique\(business_id,idempotency_hash\)/);
+console.log('Public scheduling route/data boundaries PASS');

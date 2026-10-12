@@ -17,7 +17,8 @@
     "prebuild": "node scripts/release/authorize-build.cjs",
     "preinstall": "node scripts/release/build-diagnostics.cjs preinstall",
     "pretest": "node scripts/release/build-diagnostics.cjs pretest",
-    "posttest": "node scripts/release/build-diagnostics.cjs posttest"
+    "posttest": "node scripts/release/build-diagnostics.cjs posttest",
+    "test:public-scheduling": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/public-scheduling-regression.ts && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/public-scheduling-boundary-regression.ts && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/public-scheduling-authorization-regression.ts && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/public-scheduling-owner-regression.ts && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/public-scheduling-phase2-regression.ts && node --experimental-strip-types scripts/public-scheduling-production-regression.ts && node scripts/public-scheduling-challenge-ui-regression.cjs"
   },
   "dependencies": {
     "@sparticuz/chromium": "^149.0.0",
