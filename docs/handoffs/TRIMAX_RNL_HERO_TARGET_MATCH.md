@@ -49,3 +49,16 @@ Scheduling logic changed: NO.
 Production changed: NO.
 Production deployed: NO.
 Next action: WAIT FOR CHATGPT REVIEW.
+
+## Deployed receipt
+Application commit: 6d2364347ecc8a8149adeaafa0a6f1e6f199e993.
+Vercel Preview deployment: 4UjpsHWQ6pt1cV51W141pdg2Y8xi.
+Ready October 11, 2026 at 5:50:22 PM PDT; duration 3m51s.
+Immutable Preview: https://trimax-jvunfjajb-trimax-s-projects.vercel.app/book/rnl-creations
+
+Actual deployed screenshots inspected at 390×844, 430×932 and 1280×900 against Image 2. PASS for target-relative composition (not pixel identity).
+390px: content width 380px, hero height 442.16px versus previous deployed 570.34px; badge window 149.59px, CTA height 54px. No overflow or collisions. 430px: same paired three-line script, large badge and adjacent headline/trust relationship; no clipping. Desktop: content width 1270px, badge 330px, CTA 540×70px, complete responsive logo and loaded local script confirmed. Full-width background remains independent of constrained content.
+
+Only presentation/report files changed; no form or backend edits. Remote main remains 9f8f48b851a249caa75c0dc5bdc632f134c1c1c3. No Production deployment.
+Ready for Robbie review: YES. Robbie's visual approval remains pending.
+Next action: WAIT FOR CHATGPT REVIEW.
