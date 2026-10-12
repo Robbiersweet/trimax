@@ -1,26 +1,26 @@
 {
-  "capturedAt": "2026-10-01T16:02:36.667559+00:00",
+  "capturedAt": "2026-10-12T06:14:29.136Z",
   "algorithm": "catalog-v1; sorted C collation name=value; UTF8 SHA256; public tables/constraints/indexes/functions, public+storage RLS, public table grants; excludes only trimax_release_runtime itself",
   "fingerprints": {
-    "rpc": {
-      "sha256": "d26d37d72ff5c6d835dfb0767893399ae1e205f5344193ddf3017dae69a0e1ed",
-      "entries": 37
-    },
-    "grants": {
-      "sha256": "a056ce17f8f9b68fc393a5be34fb0a38539a5c4a7f15b5c9f1db9877ef446ea7",
-      "entries": 917
-    },
     "schema": {
-      "sha256": "efc506fa018ed86875375bbe51e479e746b9ca661943b2657eaf13e8f3a358f8",
-      "entries": 699
+      "entries": 841,
+      "sha256": "512c9b0aacea329370763dfc2108e8c1633db8d7e96034897bd91e9971279283"
     },
-    "policies": {
-      "sha256": "39550adf015ae539be77e3a765858bd84fb71bbe36fe401a1dd68c3ff0028864",
-      "entries": 74
+    "rpc": {
+      "entries": 41,
+      "sha256": "2d0249b45a2a39c42d9fed5ab056472edf052c12d6e29afd3a377008cd87d17e"
     },
     "triggers": {
-      "sha256": "1189025c52ee6e7c3b8e69686784557aba68b0f29e6c2d2db8007cfb7475c549",
-      "entries": 8
+      "entries": 8,
+      "sha256": "1189025c52ee6e7c3b8e69686784557aba68b0f29e6c2d2db8007cfb7475c549"
+    },
+    "policies": {
+      "entries": 79,
+      "sha256": "7a9839dc666da38c2b9706519ae439f6c4afc8d8f85a93fc26c4aecbdf064013"
+    },
+    "grants": {
+      "entries": 992,
+      "sha256": "e56f4606b10240aec2b60c64b6e45b798046eb9083b731bcc73aad3ad0450568"
     }
   },
   "flags": [
@@ -31,5 +31,6 @@
     }
   ],
   "legacyEnabled": true,
-  "acceptanceTableRecords": 0
+  "acceptanceTableRecords": 0,
+  "evidenceType": "DISPOSABLE_PRODUCTION_CATALOG_MIGRATION_PROJECTION"
 }
