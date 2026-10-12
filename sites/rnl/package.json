@@ -11,6 +11,18 @@
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types scripts/regression.mjs"
   },
-  "dependencies": {"next":"16.2.6","react":"19.2.4","react-dom":"19.2.4","server-only":"0.0.1"},
-  "devDependencies": {"typescript":"^5","@types/node":"^20","@types/react":"^19","@types/react-dom":"^19","eslint":"^9","eslint-config-next":"16.2.6"}
+  "dependencies": {
+    "next": "16.4.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "server-only": "0.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.0",
+    "typescript": "^5"
+  }
 }
