@@ -35,3 +35,13 @@ Scheduling logic changed: NO.
 Production changed: NO.
 Production deployed: NO.
 Next action: WAIT FOR CHATGPT REVIEW.
+
+## Deployed verification
+Application commit: 05aa71dcc1a88c5c9abbac958db9c8b98cacd1c5.
+Vercel Preview: 7V6FQEC9FSXh8Wms3MEcs2nHoHJF. Ready October 11, 2026, 6:08:14 PM PDT; 1m41s build.
+Immutable Preview: https://trimax-6fvmnr26x-trimax-s-projects.vercel.app/book/rnl-creations
+Deployed screenshots inspected at 390×844, 430×932 and 1280×900: PASS. Three connected-cursive lines, no clipping or overlap, unchanged hero composition. document.fonts.check confirms loaded local craftsmanScript (Allura source); desktop computed 42px. Document widths 380/1270 at 390/1280, no horizontal overflow. Same bundled font is delivered irrespective of OS. Actual iPhone Safari rendering remains for Robbie's review.
+Caveat removed: YES. Connected cursive: YES. Desktop: PASS. Mobile: PASS.
+Scheduling logic changed: NO. Production changed: NO. Production deployed: NO.
+Ready for Robbie review: YES.
+Next action: WAIT FOR CHATGPT REVIEW.
