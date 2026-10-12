@@ -54,7 +54,9 @@ stage='migrations';
 await db.exec(`alter default privileges for role postgres in schema public grant all on tables to postgres,anon,authenticated,service_role;
 alter default privileges for role postgres in schema public grant execute on functions to postgres,anon,authenticated,service_role;
 alter default privileges for role postgres in schema public grant all on sequences to postgres,anon,authenticated,service_role;`);
-for(const migration of ['20261012_public_function_acl_hardening.sql','20261009_public_scheduling_foundation.sql','20261010_public_scheduling_phase2.sql','20261011_public_scheduling_runtime.sql'])await db.exec(fs.readFileSync('supabase/migrations/'+migration,'utf8'));
+// Rehearse the proven Windows SQL-editor transport bytes, not checkout newline style.
+// Catalog-v1 remains byte-exact; do not normalize stored definitions or hashes.
+for(const migration of ['20261012_public_function_acl_hardening.sql','20261009_public_scheduling_foundation.sql','20261010_public_scheduling_phase2.sql','20261011_public_scheduling_runtime.sql'])await db.exec(fs.readFileSync('supabase/migrations/'+migration,'utf8').replace(/\r?\n/g,'\r\n'));
 stage='scope';
 const executable=(await db.query("select p.oid::regprocedure::text name from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and has_function_privilege('trimax_scheduling_intake',p.oid,'EXECUTE') order by 1")).rows.map(r=>r.name);
 const allowed=['trimax_public_request_status(text,text)','trimax_public_scheduling_config(text)','trimax_submit_public_service_request(text,jsonb,text,text)'];
@@ -68,6 +70,8 @@ const newRows=(await db.query(parts+' select * from parts')).rows;
 const fingerprints=Object.fromEntries(Object.entries(Object.groupBy(newRows,r=>r.kind)).map(([kind,items])=>{items.sort((a,b)=>Buffer.compare(Buffer.from(a.name),Buffer.from(b.name)));return [kind,{entries:items.length,sha256:crypto.createHash('sha256').update(items.map(x=>x.name+'='+x.value).join('\r\n')).digest('hex')}];}));
 fs.writeFileSync(path.join(base,'candidate-database.json'),JSON.stringify({fingerprints},null,2));
 assert.deepEqual(fingerprints,JSON.parse(fs.readFileSync('release/evidence/scheduling-database-expected.json','utf8')).fingerprints,'Reviewed post-migration fingerprints must reproduce exactly');
+const actualRpc=newRows.filter(r=>r.kind==='rpc').sort((a,b)=>Buffer.compare(Buffer.from(a.name),Buffer.from(b.name))).map(r=>({name:r.name,sha256:crypto.createHash('sha256').update(r.name+'='+r.value).digest('hex')}));
+assert.deepEqual(actualRpc,JSON.parse(fs.readFileSync('release/evidence/rc11-production-rpc-inputs.json','utf8')).entries,'All 41 production RPC inputs must match byte-for-byte');
 stage='trigger-invocation';
 // Transaction-local fixtures exercise the unchanged trigger bodies as a client
 // with NO EXECUTE grants; never touch production or retain synthetic rows.

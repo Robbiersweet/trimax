@@ -1,0 +1,170 @@
+{
+  "provenance": "Rollback-only production catalog CSV 2026-10-12T07:13Z; full private evidence retained; SHA256 over UTF8 name=value",
+  "inputNewlines": "CRLF for reviewed migration transport; existing stored definitions unchanged",
+  "entries": [
+    {
+      "name": "get_trimax_storage_health(requested_business_slug text)",
+      "sha256": "468ae66c5088c9ee536da91ae086661e72b4352eb0c27b22c04ae3c236c8d028"
+    },
+    {
+      "name": "set_job_session_totals()",
+      "sha256": "7b22100de5349cc1b82bfb4adc1e69908f174e9f4b28e4497a2000f1971e2339"
+    },
+    {
+      "name": "set_property_units_updated_at()",
+      "sha256": "795f2469ab01be8ebd70f4b896609278e0ecba1c860981eae83b924b1fd36f71"
+    },
+    {
+      "name": "set_updated_at()",
+      "sha256": "51629a5f6b567c88d111b8ae378c4d7002071dae8e614fd7b2e37dfaa3cc47af"
+    },
+    {
+      "name": "trimax_can_access_property(target_business_id uuid, target_property text)",
+      "sha256": "091f5b337caa6b7f381b3b840615cf14b21ecd4b49c645a22013e5e41bf10bdd"
+    },
+    {
+      "name": "trimax_can_create_property_queue(target_business_id uuid, target_property text)",
+      "sha256": "50fdbb6403d418cbc549091cca35397559e2ed7cf5afe6317a123cdadac4ab06"
+    },
+    {
+      "name": "trimax_can_manage_property_queue(target_business_id uuid, target_property text)",
+      "sha256": "7ba13408a355f17d0dbfb197979d8ccc2936f814daf25d6342df063c46f29387"
+    },
+    {
+      "name": "trimax_can_read_business(target_business_id uuid)",
+      "sha256": "ab5f395cd7353ce09ad9937b46fdedb0a0f4187d87ac8cf6cad81c35df8e4fb2"
+    },
+    {
+      "name": "trimax_claim_ocr_legacy(p_business uuid, p_key text)",
+      "sha256": "ea34176ae44ccef85628855f1d4087e3b2c80d0b04e7336004103ffdc31e19db"
+    },
+    {
+      "name": "trimax_claim_ocr_shadow(p_business uuid, p_key text)",
+      "sha256": "dd1b4ce9edcf6323f88ede7a89844c0ebddba64f3034833356129e4424b50712"
+    },
+    {
+      "name": "trimax_cleanup_ocr_diagnostics()",
+      "sha256": "e0dc5c0ceedbe5b6443d0604c64c2aae17b1a4584628b41d3785ff0a1a81aafb"
+    },
+    {
+      "name": "trimax_complete_ocr_shadow(p_business uuid, p_key text, p_legacy uuid, p_lease uuid, p_result jsonb, p_error text)",
+      "sha256": "7da0ae07160bb150f454930d9d68c17648c1cc632e4de8ceecbcb22c14dcc43f"
+    },
+    {
+      "name": "trimax_current_user_email()",
+      "sha256": "1d2b4fd4fad21c4d724a5dec4cae24f6d6357cde1689914912820e9cb7bd8c73"
+    },
+    {
+      "name": "trimax_enqueue_ocr_legacy(p_attempt uuid, p_input jsonb)",
+      "sha256": "5fe653cb3990aa0322a418b6ff5695cb9acff30e0e39b1427dd0317577858973"
+    },
+    {
+      "name": "trimax_enqueue_ocr_shadow(p_legacy uuid, p_shadow uuid, p_session uuid, p_hash text, p_image text, p_snapshot jsonb, p_capture jsonb, p_legacy_observed jsonb)",
+      "sha256": "981695fd041d1db46e02bc1ba64dd4cb6da7ef7d8f538f0e3743aa5a5e366f9e"
+    },
+    {
+      "name": "trimax_expired_ocr_objects()",
+      "sha256": "071d3393b963186f9b78d2bbc386fd33ed4c08ebbaf830362c61ac0fabee40a5"
+    },
+    {
+      "name": "trimax_has_business_access(target_business_id uuid)",
+      "sha256": "dbef7893e6c9257765a645051f8df4e3ee66f86479d467ab4231f1dff3250584"
+    },
+    {
+      "name": "trimax_has_business_role(target_business_id uuid, allowed_roles text[])",
+      "sha256": "326be34a9e674b4dedb42e150aadc7db08085a7e2a447c94230c38c5b9a9ef70"
+    },
+    {
+      "name": "trimax_is_business_admin(target_business_id uuid)",
+      "sha256": "21c654592772337d1ee861268d029994858ae2c5838182122879605c6df60716"
+    },
+    {
+      "name": "trimax_ocr_legacy_status(p_attempt uuid)",
+      "sha256": "cb15bb5cd86816f7f0454e25c464e72d015bcc00c2fc6bc9bfeb7fb73277b67d"
+    },
+    {
+      "name": "trimax_ocr_object_owner(p_path text, p_upload boolean)",
+      "sha256": "102241ab752ae9c30a879b087114d7a78c19eb87c8571a9b738596ada8de4f47"
+    },
+    {
+      "name": "trimax_ocr_object_worker(p_path text)",
+      "sha256": "689b83935abf79daf44348b1682785c4300c03bb0fc21bc2d9a186b91bc1494a"
+    },
+    {
+      "name": "trimax_pin_ocr_attempt(p_id uuid, p_pinned boolean)",
+      "sha256": "405ff69cfc3996a8a39f2edac30f377b7658000e235a5eae7a58a1eb3a083329"
+    },
+    {
+      "name": "trimax_prepare_ocr_handoff(p_attempt uuid, p_snapshot jsonb, p_capture jsonb)",
+      "sha256": "98807d4dc11ac779e58195207f8a5c8444aacdacb4900082631efcc1ee4de860"
+    },
+    {
+      "name": "trimax_preserve_canonical_optical()",
+      "sha256": "24f3fc388b4306c8e86bca291d50188bb994f9de11c070af50c1b511134422a2"
+    },
+    {
+      "name": "trimax_preserve_capture_handoff()",
+      "sha256": "68fb4382929232329849ccc0ced4a374657bf6e09f2f5b464a1133b1c4578e43"
+    },
+    {
+      "name": "trimax_preserve_capture_pair()",
+      "sha256": "ef7a50889994054013c43fd34e2b3cc1d83ca706ab4e7bd454bedbe0c0664ce8"
+    },
+    {
+      "name": "trimax_public_request_status(p_slug text, p_capability_hash text)",
+      "sha256": "29cdc9431162a463011dbce3bf89cca91d027c3ad7500e686fb67e9975846579"
+    },
+    {
+      "name": "trimax_public_scheduling_config(p_slug text)",
+      "sha256": "422e0af55a9143261a5e64e63562967ed67534a1ad7394de0f9ed0c5ed454279"
+    },
+    {
+      "name": "trimax_recent_ocr_legacy(p_business uuid)",
+      "sha256": "53604d3e97ffb5b12599f9ba648c201f278f457dd1420b2fdf1d9bc21d935874"
+    },
+    {
+      "name": "trimax_resume_ocr_handoff(p_attempt uuid)",
+      "sha256": "99ef8bd7978953e14e75dba1bcf3742e24bee2f403bc1f3f0e5fb0fad99f9bb0"
+    },
+    {
+      "name": "trimax_review_public_service_request(p_request_id uuid, p_revision integer, p_status text, p_internal_notes text, p_mutation_id text)",
+      "sha256": "f803af16d4008da73917a2e3c7db3355325a99ee56e916dfc5bd62cd7c9a761d"
+    },
+    {
+      "name": "trimax_save_ocr_attempt(p_business uuid, p_id uuid, p_original uuid, p_parent uuid, p_phase integer, p_summary jsonb, p_payload jsonb)",
+      "sha256": "e715037c71c28932a5a215bb17d2ed15e3ac7c8f75bdf6e0dc64d7c20d09ec42"
+    },
+    {
+      "name": "trimax_separate_ocr_optical()",
+      "sha256": "8142da7a04cf2f326d6a8403c4448bf14346737fd79ab07ad606f8a7de69bf05"
+    },
+    {
+      "name": "trimax_set_ocr_shadow(p_business uuid, p_enabled boolean, p_native boolean)",
+      "sha256": "9ed73cfab38782e4b6278a7838a6b156a238ddf3a80b3a91ad0f12f8ac0402e2"
+    },
+    {
+      "name": "trimax_store_ocr_capture(p_attempt uuid, p_hash text, p_image text, p_metadata jsonb, p_shadow uuid, p_snapshot jsonb, p_capture jsonb)",
+      "sha256": "9e492e9170ea14aab0d0803509dd6af71d026fb2132fdaf31b4b139edc30bc90"
+    },
+    {
+      "name": "trimax_submit_public_service_request(p_slug text, p_payload jsonb, p_idempotency_hash text, p_capability_hash text)",
+      "sha256": "33eae1b4f7b0c152436c2fd58d6708179f837750718cc6442f9b5c5541885082"
+    },
+    {
+      "name": "trimax_transfer_shadow_optical()",
+      "sha256": "7f109a60e93c31a0155967fe18460362e980ece52962aff7c432bb28f81d1554"
+    },
+    {
+      "name": "trimax_update_ocr_debug(p_id uuid, p_status text, p_note text, p_regression_id text)",
+      "sha256": "65cc22689949a00cbeb3632c59f6c70ed0bc8a40f3fe838f6172e8be9c8dcd65"
+    },
+    {
+      "name": "trimax_update_ocr_legacy(p_business uuid, p_key text, p_attempt uuid, p_lease uuid, p_stage text, p_payload jsonb, p_status integer)",
+      "sha256": "9752123a04c69cfe13af3f3c019548427586d18b6f3ad0894034038edd657375"
+    },
+    {
+      "name": "trimax_verify_shadow_truth(p_legacy uuid, p_truth jsonb)",
+      "sha256": "36cdbebd6f956d12fa6ae7e31ac515bd66c41996f85b77a6f1d37b4995be647c"
+    }
+  ]
+}
