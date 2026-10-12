@@ -6,7 +6,7 @@ import { resolvePublicBusiness } from "../../lib/publicScheduling/settings";
 import RequestForm from "../RequestForm";
 import "../schedule.css";
 
-const craftsmanScript = localFont({ src: "../fonts/Caveat.ttf", variable: "--font-craftsman-script", weight: "400 700", display: "swap" });
+const craftsmanScript = localFont({ src: "../fonts/Allura-Regular.ttf", variable: "--font-craftsman-script", weight: "400", display: "swap" });
 
 export const metadata = { title: "Request service | R&L Creations", description: "Tell us about your home project. Request a convenient time and we’ll confirm the details with you." };
 export default async function SchedulePage({ params }: { params: Promise<{ slug: string }> }) {

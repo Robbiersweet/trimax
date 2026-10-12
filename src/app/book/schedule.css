@@ -71,3 +71,6 @@
 .schedule-transition h2{font-size:38px;font-weight:800;line-height:1.05;letter-spacing:-1px;margin:0}
 .schedule-layout{padding-top:28px}
 @media(max-width:800px){.schedule-transition{padding:22px 20px 0}.schedule-transition h2{font-size:29px}.schedule-layout{padding-top:24px}}
+/* Allura's lighter connected strokes need slightly larger script-only metrics. */
+.schedule-tagline{font-size:42px;letter-spacing:0;line-height:1.02}
+@media(max-width:800px){.schedule-tagline{font-size:clamp(23px,6.2vw,35px);letter-spacing:0}}
