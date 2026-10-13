@@ -1,4 +1,4 @@
-export const site={name:'R&L Creations',origin:'https://rnlcreations.com',tagline:'Your home and its appearance is our reputation.',phone:'',email:'',serviceArea:'Tell us where your project is located. We’ll confirm whether we can help before making arrangements.'};
+export const site={name:'R&L Creations',origin:'https://rnlcreations.com',tagline:'Your home and its appearance is our reputation.',phone:'(425) 350-4898',phoneHref:'+14253504898',email:'Robbie@RNLCreations.com',serviceArea:'Tell us where your project is located. We’ll confirm whether we can help before making arrangements.'};
 export const navigation=[['Home','/'],['Services','/services'],['Our work','/gallery'],['About','/about'],['Property managers','/property-managers'],['Contact','/contact']] as const;
 export const services=[
   {id:'apartment-turns',name:'Apartment turns',line:'Ready for the next chapter.',description:'Painting, repairs and finishing touches between residents. Tell us about the unit, scope and timing so we can plan the work together.',examples:'Move-out repairs · Paint refreshes · Finish details',icon:'key'},

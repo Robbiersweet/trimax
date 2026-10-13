@@ -6,6 +6,7 @@ export const isPreview=()=>process.env.VERCEL_ENV!=='production';
 export async function publicScheduling(){
   // Preview never reads production configuration, even if credentials are accidentally present.
   const preview=isPreview();
+  if(!preview&&process.env.PUBLIC_SCHEDULING_PRODUCTION_ENABLED!=='enabled')return null;
   let business=preview?getPublicBusiness('rnl-creations'):null;
   let siteKey:string|undefined;
   if(!preview){try{const config=productionConfig();business=await productionBusiness('rnl-creations',restrictedRpc(config));siteKey=config.siteKey;}catch{/* Fail closed; no development fallback in production. */}}
