@@ -10,7 +10,7 @@ const provenance=JSON.parse(await read('.shared/provenance.json'));
 for(const [file,hash] of Object.entries(provenance)){check(createHash('sha256').update(await readFile(resolve(root,'src/app',file))).digest('hex')===hash,`shared source unchanged: ${file}`);}
 const handler=await read('app/api/public-scheduling/[slug]/route.ts');
 check(handler.indexOf("VERCEL_ENV!=='production'")<handler.indexOf('await context.params'),'preview closes before config/RPC work');
-check(handler.includes('return productionSubmission(request,slug)'),'production uses existing security boundary');
+check(handler.includes('return productionSubmission(request,slug,websiteSubmissionRuntime)'),'production uses existing security boundary');
 const {POST}=await import('../app/api/public-scheduling/[slug]/route.ts');
 const previous=process.env.VERCEL_ENV;process.env.VERCEL_ENV='preview';
 let touched=false;const params={then(){touched=true;throw Error('must not touch production in preview');}};

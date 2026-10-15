@@ -65,4 +65,15 @@ try{
  await assert.rejects(submit(payload,'one','d'.repeat(64),'e'.repeat(64)),/injected outbox failure/);
  await db.exec('reset role');assert.deepEqual(await counts(),before,'request and activity roll back atomically with outbox');
  console.log('Phase 2 disposable SQL RPC/RLS/idempotency/outbox/capability regression PASS');
+ // Option C compatibility: same existing RPC bodies, no inheritance of the intake/status role.
+ await db.exec(`CREATE ROLE direct_candidate NOLOGIN NOINHERIT; GRANT USAGE ON SCHEMA public TO direct_candidate;
+ GRANT EXECUTE ON FUNCTION trimax_public_scheduling_config(text),trimax_submit_public_service_request(text,jsonb,text,text) TO direct_candidate;
+ SET SESSION AUTHORIZATION direct_candidate;`);
+ assert.equal((await db.query("select trimax_public_scheduling_config('one') as value")).rows[0].value.slug,'one');
+ assert.equal((await submit()).rows[0].receipt.id,first.id);
+ await assert.rejects(status('one','b'.repeat(64)),/permission denied/);
+ await assert.rejects(review(4),/permission denied/);
+ for(const table of ['public_service_requests','public_scheduling_settings','public_request_activity','public_scheduling_outbox','businesses','business_users'])await assert.rejects(db.query('select * from '+table),/permission denied/);
+ await assert.rejects(db.exec('SET ROLE trimax_scheduling_intake'),/permission denied/);
+ console.log('Option C existing RPC compatibility and direct isolation PASS (local only)');
 }finally{await db.close();}

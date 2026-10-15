@@ -5,16 +5,19 @@ import {createSchedulingPersistence} from './productionAdapter.ts';
 import {submitProductionRequest} from './productionService.ts';
 import {trustedVercelIdentity} from './providers.ts';
 
-export async function productionSubmission(request:Request,slug:string){
+export type SubmissionRuntime={config:Pick<ReturnType<typeof productionConfig>,'origin'|'fingerprintSecret'|'providers'>;client:ReturnType<typeof restrictedRpc>};
+export function legacySubmissionRuntime():SubmissionRuntime {const config=productionConfig();return {config,client:restrictedRpc(config)};}
+// Injection seam for reviewed offline direct integration; live callers use the guarded default.
+export async function productionSubmission(request:Request,slug:string,loadRuntime:()=>SubmissionRuntime=legacySubmissionRuntime){
  const closed=()=>Response.json({error:'Online requests are unavailable. Your details are still here; please retry later.'},{status:503,headers:{'Cache-Control':'no-store'}});
- let config;try{config=productionConfig();}catch{return closed();}
+ let config,client;try{({config,client}=loadRuntime());}catch{return closed();}
  if(request.headers.get('origin')!==config.origin)return Response.json({error:'Origin not allowed.'},{status:403});
  if(!request.headers.get('content-type')?.startsWith('application/json'))return Response.json({error:'JSON required.'},{status:415});
  let input:unknown;try{input=await readBoundedJson(request,16384);}catch{return Response.json({error:'Invalid or oversized body.'},{status:400});}
  const key=request.headers.get('idempotency-key')??'';
  if(!/^[a-zA-Z0-9_-]{16,100}$/.test(key))return Response.json({error:'Invalid request key.'},{status:400});
  try{
-  const identity=trustedVercelIdentity(request),client=restrictedRpc(config);
+  const identity=trustedVercelIdentity(request);
   const business=await productionBusiness(slug,client);
   if(!business)return Response.json({error:'Business unavailable.'},{status:404});
   const validated=validateRequest(input,business);

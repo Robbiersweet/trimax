@@ -1,9 +1,11 @@
+import {assertSchedulingTransport} from './transportSelection.ts';
 import {createHmac} from 'node:crypto';
 import type {PublicBusiness} from './domain.ts';
 import type {SchedulingRpc} from './productionAdapter.ts';
 import {turnstileProvider,upstashProvider} from './providers.ts';
 
 export function productionConfig(env:Record<string,string|undefined>=process.env){
+ assertSchedulingTransport(env.SCHEDULING_TRANSPORT);
  if(env.PUBLIC_SCHEDULING_PRODUCTION_ENABLED!=='enabled'||env.VERCEL!=='1'||!['production','preview'].includes(env.VERCEL_ENV??''))throw Error('Scheduling disabled');
  const required=['NEXT_PUBLIC_TURNSTILE_SITE_KEY','TURNSTILE_SECRET_KEY','UPSTASH_REDIS_REST_URL','UPSTASH_REDIS_REST_TOKEN','SCHEDULING_FINGERPRINT_SECRET','SCHEDULING_INTAKE_JWT','PUBLIC_SCHEDULING_ORIGIN','NEXT_PUBLIC_SUPABASE_URL','NEXT_PUBLIC_SUPABASE_ANON_KEY'] as const;
  for(const name of required)if(!env[name])throw Error('Scheduling configuration unavailable');
@@ -19,11 +21,15 @@ export function productionConfig(env:Record<string,string|undefined>=process.env
  if(claims.role!=='trimax_scheduling_intake'||claims.ref!==database.hostname.split('.')[0]||!Number.isFinite(claims.exp)||claims.exp*1000<Date.now()+60000)throw Error('Restricted credential invalid or expired');
  return {origin:origin.origin,siteKey:env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!,url:database.origin,key:env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,jwt:env.SCHEDULING_INTAKE_JWT!,fingerprintSecret:env.SCHEDULING_FINGERPRINT_SECRET!,providers:{fingerprintSecret:env.SCHEDULING_FINGERPRINT_SECRET!,challenge:turnstileProvider(env.TURNSTILE_SECRET_KEY!,origin.hostname),rateLimit:upstashProvider(env.UPSTASH_REDIS_REST_URL!,env.UPSTASH_REDIS_REST_TOKEN!)}};
 }
-export function restrictedRpc(config:ReturnType<typeof productionConfig>,transport:typeof fetch=fetch):SchedulingRpc{
+export type RestrictedRpcConnection = {url:string;key:string;jwt?:string};
+// Credential injection is opt-in; existing static configuration remains unchanged.
+export function restrictedRpc(config:RestrictedRpcConnection,transport:typeof fetch=fetch,credential?:()=>Promise<string>):SchedulingRpc{
  const allowed=new Set(['trimax_public_scheduling_config','trimax_submit_public_service_request']);
  return {async rpc(name,args){
   if(!allowed.has(name))throw Error('RPC not allowed');
-  const response=await transport(`${config.url}/rest/v1/rpc/${name}`,{method:'POST',headers:{apikey:config.key,Authorization:`Bearer ${config.jwt}`,'Content-Type':'application/json'},body:JSON.stringify(args),signal:AbortSignal.timeout(8000),cache:'no-store'});
+  const jwt=credential?await credential():config.jwt;
+  if(!jwt)throw Error('Scheduling unavailable');
+  const response=await transport(`${config.url}/rest/v1/rpc/${name}`,{method:'POST',headers:{apikey:config.key,Authorization:`Bearer ${jwt}`,'Content-Type':'application/json'},body:JSON.stringify(args),signal:AbortSignal.timeout(8000),cache:'no-store'});
   if(!response.ok){const failure=await response.json().catch(()=>null);return {data:null,error:{message:failure?.message==='Idempotency conflict'?'Idempotency conflict':'Scheduling unavailable'}};}
   return {data:await response.json(),error:null};
  }};

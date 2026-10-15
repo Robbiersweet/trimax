@@ -1,0 +1,35 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Test the actual TSX using the installed compiler. */
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),Module=require('node:module');
+const ts=require('typescript'),React=require('react'),{create,act}=require('react-test-renderer');
+global.IS_REACT_ACT_ENVIRONMENT=true;global.requestAnimationFrame=callback=>callback();
+const filename=path.resolve('src/app/book/RequestForm.tsx');
+const loaded=new Module(filename,module);loaded.filename=filename;loaded.paths=module.paths;
+const originalRequire=loaded.require.bind(loaded);loaded.require=id=>id==='./TurnstileChallenge'?{default:()=>null}:originalRequire(id);
+loaded._compile(ts.transpileModule(fs.readFileSync(filename,'utf8'),{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,filename);
+(async()=>{
+ const business={slug:'synthetic',displayName:'Synthetic',requestTypes:[],rules:{windows:[],timeZone:'UTC',minimumLeadHours:24,maximumHorizonDays:30}};
+ let root,settle;const calls=[];
+ global.fetch=(url,options)=>{calls.push({url,...options});return new Promise((resolve,reject)=>{settle={resolve,reject};});};
+ await act(async()=>{root=create(React.createElement(loaded.exports.default,{business,restartHref:"/schedule"}));});
+ const submit=()=>root.root.findByType('form').props.onSubmit({preventDefault(){}});
+ await act(async()=>submit());await act(async()=>submit());
+ const consent=()=>root.root.findAllByType('input').find(x=>x.props.type==='checkbox');
+ await act(async()=>consent().props.onChange({target:{checked:true}}));
+ let pending;
+ await act(async()=>{pending=submit();submit();});
+ assert.equal(calls.length,1,'same-tick submit sends exactly once');
+ assert.equal(consent().props.disabled,true);
+ await act(async()=>consent().props.onChange({target:{checked:false}}));
+ assert.equal(consent().props.checked,true,'pending payload is immutable');
+ await act(async()=>{settle.reject(Error('Synthetic lost response'));await pending;});
+ assert.equal(root.root.findAll(x=>x.props.role==='alert').length,1);
+ await act(async()=>{pending=submit();});
+ assert.equal(calls.length,2);assert.deepEqual(calls[1],calls[0],'lost-response retry keeps exact payload and idempotency key');
+ await act(async()=>{settle.resolve({ok:true,json:async()=>({request:{reference:'SYNTHETIC-1',status:'pending_confirmation',submittedAt:'2026-10-14'}})});await pending;});
+ assert.equal(root.root.findAllByType('form').length,0);
+ assert.equal(root.root.findByType('a').props.href,'/schedule');
+ assert.equal(root.root.findByType('section').props['aria-live'],'polite');
+ assert.ok(JSON.stringify(root.toJSON()).includes('Your appointment is not yet confirmed.'));
+ await act(async()=>root.unmount());
+ console.log('Public form same-tick submit, immutable pending payload, retry identity, accessible error/receipt PASS');
+})().catch(error=>{console.error(error);process.exitCode=1;});

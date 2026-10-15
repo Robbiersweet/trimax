@@ -9,7 +9,7 @@ export default function TurnstileChallenge({siteKey,onToken}:{siteKey:string;onT
  useEffect(()=>{
   let cancelled=false,widget:string|undefined,script:HTMLScriptElement|undefined;
   const fail=()=>{if(!cancelled){callback.current('');setFailed(true);}};
-  const mount=()=>{if(cancelled||!container.current||!window.turnstile)return;clearTimeout(timer);widget=window.turnstile.render(container.current,{sitekey:siteKey,action:'public-scheduling',callback:(token:string)=>{if(!cancelled){setFailed(false);callback.current(token);}},'expired-callback':fail,'error-callback':fail});};
+  const mount=()=>{if(cancelled||!container.current||!window.turnstile)return;clearTimeout(timer);try{widget=window.turnstile.render(container.current,{sitekey:siteKey,action:'public-scheduling',callback:(token:string)=>{if(!cancelled){setFailed(false);callback.current(token);}},'expired-callback':fail,'error-callback':fail});}catch{fail();}};
   const timer=setTimeout(fail,10000);
   if(window.turnstile)mount();else{script=document.createElement('script');script.src='https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';script.async=true;script.onload=mount;script.onerror=fail;document.head.appendChild(script);}
   return ()=>{cancelled=true;clearTimeout(timer);script?.remove();if(widget)window.turnstile?.remove(widget);callback.current('');};
