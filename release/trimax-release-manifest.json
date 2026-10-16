@@ -745,7 +745,7 @@
       },
       "rpc": {
         "entries": 41,
-        "sha256": "5424c9497b7b2d9ecd305091edd9cf8cccc97f4d9bf3a055879d2d92ccd1fc24"
+        "sha256": "42e270d84cf1d1b8edf4ddafb5b9f595ac2bcbee6f8f6fdb76d638df8b185c32"
       },
       "schema": {
         "entries": 841,
@@ -1567,14 +1567,20 @@
   },
   "upgradeContext": {
     "currentProductionRelease": {
-      "releaseId": "trimax-release-contract-20261009-rc10",
-      "manifestCommit": "9f8f48b851a249caa75c0dc5bdc632f134c1c1c3",
-      "manifestDigest": "6c54d1c69b6fbc963be0bef6f37861104711a0766f6e8dc03961fa5fa9bfa2b1",
-      "deploymentId": "3nMutqnki5s54juRNKP9vsyfw9Ht",
-      "deploymentCommit": "9f8f48b851a249caa75c0dc5bdc632f134c1c1c3"
+      "releaseId": "trimax-release-contract-20261012-rc11",
+      "manifestCommit": "996bff1d7710ddbf4e8535c521b429e3a6209ae1",
+      "manifestDigest": "85c41776fbf29e8dc0230339232bb20be793822a05bc48f701dd842b70b2aee3",
+      "deploymentId": "ErVFWpcRupsr8irfJhFoanUavxzW",
+      "deploymentCommit": "996bff1d7710ddbf4e8535c521b429e3a6209ae1"
     },
     "candidateReleaseId": "trimax-release-contract-20261012-rc11",
     "applicationCommit": "7a3b91182729ec2e165cf788f55445e438f27bd6",
     "machineryCommit": "bda2718b332542040f477fb537f0f0aa3ca6ecd1"
+  },
+  "contractRevision": {
+    "id": "rc11-scheduling-execute-grants-20261016",
+    "priorManifestDigest": "85c41776fbf29e8dc0230339232bb20be793822a05bc48f701dd842b70b2aee3",
+    "reason": "Exactly two previously authorized scheduling EXECUTE grants; executable identity unchanged",
+    "rollback": "Keep intake disabled; old manifest cannot run against current legitimate ACLs. Do not revoke grants as rollback."
   }
 }
