@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "sourceCommit": "2d64c94e151a5e10724287f61c182b38b6ad5d33",
+  "sourceTree": "daa08b6814d6584852459a2ba4a985321fc1991a",
+  "baseRelease": "1dd6f982dc5e4fe934395b4dd8e87488b3ba0758",
+  "project": "rnl-public-website",
+  "root": "sites/rnl",
+  "productionDeploymentAuthorized": false,
+  "intakeEnabled": false,
+  "productionConfigurationChanges": [],
+  "rollbackDeployment": "6FDMG6VUsqDnj736WqZcJ6kvrNmJ",
+  "acceptance": "NOT RUN; separate approval required",
+  "internalTrimaxChanges": "NONE"
+}
