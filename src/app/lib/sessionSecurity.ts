@@ -77,6 +77,18 @@ export function clearSecureBrowserSession() {
   window.localStorage.removeItem(LAST_ACTIVITY_AT_KEY);
 }
 
+/** A tab that has never authenticated must not revoke another tab's session.
+ * It remains locked until this tab completes the normal login flow. Genuine
+ * expiry/manual lock still clears shared state and revokes Auth as before. */
+export async function expireSecureBrowserSession(
+  reason: string,
+  signOut: () => Promise<unknown>
+) {
+  if (reason === "new-browser-session") return;
+  clearSecureBrowserSession();
+  await signOut();
+}
+
 export function getSessionSecurityStatus(): SessionSecurityStatus {
   if (typeof window === "undefined") {
     return { valid: true };

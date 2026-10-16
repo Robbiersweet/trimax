@@ -28,7 +28,7 @@ import {
   preferredWorkspaceSlug,
 } from "../lib/workspaceAccess";
 import {
-  clearSecureBrowserSession,
+  expireSecureBrowserSession,
   getSessionSecurityStatus,
   recordSecureActivity,
 } from "../lib/sessionSecurity";
@@ -116,8 +116,7 @@ export default function AuthGuard({
   const [maintenanceBlocked, setMaintenanceBlocked] = useState(false);
 
   const expireSession = useCallback(async (reason: string) => {
-    clearSecureBrowserSession();
-    await supabase.auth.signOut();
+    await expireSecureBrowserSession(reason, () => supabase.auth.signOut());
     setLoading(false);
     router.replace(`/login?security=${reason}`);
   }, [router]);
@@ -200,6 +199,12 @@ export default function AuthGuard({
         const status = getSessionSecurityStatus();
 
         if (!status.valid) {
+          // Permit only the login UI in an unverified tab. Do not adopt the
+          // shared Auth cookie as proof of this tab's secure login marker.
+          if (status.reason === "new-browser-session" && isLoginPage) {
+            setLoading(false);
+            return;
+          }
           await expireSession(status.reason);
           return;
         }
