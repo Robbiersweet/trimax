@@ -32,3 +32,7 @@ Branch codex/rnl-scheduling-minimum-rc, base e94f321090150db37d6bd0680246a648f89
 6. Compare protected state and required runtime health. Failures keep/return intake disabled; preserve requests; use approved role/grant/session containment when necessary. Promote public availability only after explicit go/no-go acceptance. No installed-iPhone OCR acceptance is inferred.
 
 Credential/pooler acceptance, aggregate serverless budget, release seal, actual provider/owner acceptance and explicit public activation remain blocked. Real notification delivery remains separately unverified and disabled; manual owner inbox operation requires acceptance if chosen for minimum launch. No production mutations, deployments, customer submissions, credential changes or notifications occurred in this task.
+
+## Local follow-up: shared page/submission transport boundary
+
+The public page loader now uses the same guarded transport selector as POST, removing a JWT-only configuration dependency from the disabled Option C candidate. Preview remains independent; direct source approval remains false. The page/route regression covers disabled direct, unknown transport, disabled activation and preview with zero network. Both files are SHA-256 identical to the active checkout files validated on 2026-10-15 (targeted regression, TypeScript, changed-file lint and website build PASS); unchanged suites were not repeated. This is a source-only candidate follow-up, not deployment/release authorization. Previous clean commit remains in history. No credentials or hosted changes included.

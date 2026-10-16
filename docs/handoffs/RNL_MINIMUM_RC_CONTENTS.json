@@ -19,6 +19,7 @@
     "src/app/lib/publicScheduling/productionHandler.ts",
     "src/app/lib/publicScheduling/productionRuntime.ts",
     "sites/rnl/lib/submissionRuntime.ts",
+    "sites/rnl/lib/scheduling.ts",
     "sites/rnl/lib/credentialLifecycle/directRuntimeCandidate.ts",
     "sites/rnl/lib/credentialLifecycle/directIntegrationReview.ts",
     "sites/rnl/scripts/submission-runtime-regression.mjs",
@@ -56,3 +57,4 @@
     "src/app/lib/publicScheduling/transportSelection.ts"
   ]
 }
+

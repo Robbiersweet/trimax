@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {websiteSubmissionRuntime} from '../lib/submissionRuntime.ts';
+import {publicScheduling} from '../lib/scheduling.ts';
 import {POST} from '../app/api/public-scheduling/[slug]/route.ts';
 const names=['SCHEDULING_TRANSPORT','VERCEL','VERCEL_ENV','PUBLIC_SCHEDULING_PRODUCTION_ENABLED'];
 const previous=Object.fromEntries(names.map(name=>[name,process.env[name]]));
@@ -11,12 +12,21 @@ try{
  const request=()=>new Request('https://rnlcreations.com/api/public-scheduling/rnl-creations',{method:'POST'});
  process.env.SCHEDULING_TRANSPORT='direct-postgres';
  assert.throws(()=>websiteSubmissionRuntime(),/DIRECT_RELEASE_NOT_APPROVED/);
+ assert.equal(await publicScheduling(),null);
  assert.equal((await POST(request(),{params:Promise.resolve({slug:'rnl-creations'})})).status,503);
  process.env.SCHEDULING_TRANSPORT='typo';
  assert.throws(()=>websiteSubmissionRuntime(),/UNKNOWN_SCHEDULING_TRANSPORT/);
  assert.equal((await POST(request(),{params:Promise.resolve({slug:'rnl-creations'})})).status,503);
+ process.env.SCHEDULING_TRANSPORT='typo';
+ assert.throws(()=>websiteSubmissionRuntime(),/UNKNOWN_SCHEDULING_TRANSPORT/);
+ assert.equal(await publicScheduling(),null);
  delete process.env.PUBLIC_SCHEDULING_PRODUCTION_ENABLED;
  assert.equal((await POST(request(),{params:Promise.resolve({slug:'rnl-creations'})})).status,503);
+ assert.equal(await publicScheduling(),null);
+ process.env.VERCEL_ENV='preview';
+ assert.equal((await publicScheduling()).preview,true);
  assert.equal(network,0);
  console.log('PASS actual website route: disabled direct selection, unknown transport, activation guard, zero network and no JWT fallback');
 }finally{globalThis.fetch=originalFetch;for(const [name,value]of Object.entries(previous)){if(value===undefined)delete process.env[name];else process.env[name]=value;}}
+
+
