@@ -14,5 +14,5 @@ export async function enforceProductionAbuse(input:{businessSlug:string;challeng
   const challenge=await providers.challenge.verify({token:input.challengeToken,action:'public-scheduling',businessSlug:input.businessSlug,requestFingerprint:fingerprint});
   if(!challenge.verified)reportSchedulingFailure('challenge_rejected');
   return challenge.verified?{allowed:true,fingerprint} as const:{allowed:false,reason:'challenge_rejected'} as const;
- }catch(error){reportSchedulingFailure(error instanceof SchedulingProviderError?error.code:'abuse_unknown',error instanceof SchedulingProviderError?error.status:undefined);return {allowed:false,reason:'abuse_protection_unavailable'} as const;}
+ }catch(error){reportSchedulingFailure(error instanceof SchedulingProviderError?error.code:'abuse_unknown',error instanceof SchedulingProviderError?error.status:undefined,error instanceof SchedulingProviderError?error.providerCode:undefined);return {allowed:false,reason:'abuse_protection_unavailable'} as const;}
 }

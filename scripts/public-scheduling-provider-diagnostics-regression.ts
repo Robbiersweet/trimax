@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {upstashProvider,turnstileProvider} from '../src/app/lib/publicScheduling/providers.ts';
 import {enforceProductionAbuse} from '../src/app/lib/publicScheduling/abuseProtection.ts';
+import {reportSchedulingFailure} from '../src/app/lib/publicScheduling/diagnostics.ts';
 const secret='DO_NOT_LOG_PROVIDER_SECRET_OR_BODY';
 const input={businessSlug:'rnl-creations',challengeToken:secret,trustedClientIdentity:'192.0.2.41'};
 const logs:string[]=[];const original=console.warn;
@@ -38,6 +39,17 @@ try{
  logs.length=0;
  assert.equal((await enforceProductionAbuse(input,{fingerprintSecret:secret,rateLimit:{consume:async()=>({allowed:true})},challenge:successChallenge})).allowed,true);
  assert.equal(logs.length,0);
+ for(const codes of [['invalid-input-secret'],[secret,'bad-request'],[secret],secret,null]){
+  logs.length=0;
+  const transport=async()=>Response.json({success:false,'error-codes':codes,secret,token:secret},{status:400});
+  const result=await enforceProductionAbuse(input,{fingerprintSecret:secret,rateLimit:{consume:async()=>({allowed:true})},challenge:turnstileProvider(secret,'test.invalid',transport)});
+  assert.equal(result.allowed,false);assert.equal(result.reason,'abuse_protection_unavailable');
+  const expected=Array.isArray(codes)?codes.find(v=>v==='invalid-input-secret'||v==='bad-request'):undefined;
+  assert.deepEqual(JSON.parse(logs[0]),{event:'scheduling_failure',code:'challenge_http',status:400,...(expected?{providerCode:expected}:{})});
+  assert.ok(!logs.join('').includes(secret));
+ }
+ logs.length=0;reportSchedulingFailure('challenge_http',400,secret);reportSchedulingFailure('rate_http',401,'invalid-input-secret');
+ assert.ok(logs.every(line=>!line.includes('providerCode')&&!line.includes(secret)));
  console.warn=()=>{throw Error('logger failure');};
  assert.equal((await enforceProductionAbuse(input)).allowed,false);
 }finally{console.warn=original;}

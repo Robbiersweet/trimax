@@ -1,5 +1,5 @@
 import {isIP} from 'node:net';
-import {SchedulingProviderError} from './diagnostics.ts';
+import {SchedulingProviderError,safeChallengeCode} from './diagnostics.ts';
 import type {ChallengeProvider, SharedRateLimitProvider} from './abuseProtection.ts';
 
 type Transport = typeof fetch;
@@ -8,7 +8,12 @@ export function turnstileProvider(secret:string, hostname:string, transport:Tran
   if(!secret||!hostname||!token||token.length>2048)return {verified:false};
   let response:Response;
   try{response=await transport('https://challenges.cloudflare.com/turnstile/v0/siteverify',{method:'POST',body:new URLSearchParams({secret,response:token}),signal:AbortSignal.timeout(5000),cache:'no-store'});}catch{throw new SchedulingProviderError('challenge_network');}
-  if(!response.ok)throw new SchedulingProviderError('challenge_http',response.status);
+  if(!response.ok){
+   // Keep failure closed. Retain only one documented enum, never the response body.
+   let providerCode:string|undefined;
+   try{const failure=await response.json();const codes=failure?.['error-codes'];if(Array.isArray(codes))providerCode=codes.map(safeChallengeCode).find(Boolean);}catch{/* HTTP status remains sufficient when no safe code is available. */}
+   throw new SchedulingProviderError('challenge_http',response.status,providerCode);
+  }
   let result;try{result=await response.json();if(!result||typeof result!=='object')throw Error();}catch{throw new SchedulingProviderError('challenge_response');}
   return {verified:result.success===true&&result.hostname===hostname&&result.action===action};
  }};
