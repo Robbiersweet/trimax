@@ -1,5 +1,5 @@
 {
-  "provenance": "Read-only production comparison 2026-10-16: all 41 complete definition+ACL inputs match rc11 except exactly two approved scheduling_web EXECUTE grants; no definition changes",
+  "provenance": "Rollback-only production catalog CSV 2026-10-12T07:13Z; full private evidence retained; SHA256 over UTF8 name=value",
   "inputNewlines": "CRLF for reviewed migration transport; existing stored definitions unchanged",
   "entries": [
     {
@@ -116,7 +116,7 @@
     },
     {
       "name": "trimax_public_scheduling_config(p_slug text)",
-      "sha256": "010d01af3bfbe280b429e87c21ec5b52c21f4ad1d2357d1814172e46ca6d602b"
+      "sha256": "422e0af55a9143261a5e64e63562967ed67534a1ad7394de0f9ed0c5ed454279"
     },
     {
       "name": "trimax_recent_ocr_legacy(p_business uuid)",
@@ -148,7 +148,7 @@
     },
     {
       "name": "trimax_submit_public_service_request(p_slug text, p_payload jsonb, p_idempotency_hash text, p_capability_hash text)",
-      "sha256": "0f97c270c27b612b293989c43e63c1a37315a2d48e59ba56eec4d9af336679e5"
+      "sha256": "33eae1b4f7b0c152436c2fd58d6708179f837750718cc6442f9b5c5541885082"
     },
     {
       "name": "trimax_transfer_shadow_optical()",
