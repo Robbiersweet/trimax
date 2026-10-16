@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "scope": "separate rnl-public-website only; not an internal Trimax release",
+  "sourceCommit": "76fc686de64a4db778d330a1c83be88f602835d4",
+  "sourceTree": "4c0fdba852a7e50137bc490ceeaa7167d5bc8cae",
+  "project": "rnl-public-website",
+  "supabaseProject": "gqknefosisnsjuzmhvts",
+  "intakeEnabled": false,
+  "deploymentAuthorized": false,
+  "environment": {
+    "SCHEDULING_TRANSPORT": "direct-postgres",
+    "SCHEDULING_DB_CA_PEM": "contents of supabase-root.crt",
+    "SCHEDULING_DB_PASSWORD": "existing Secret / Production; never export",
+    "PUBLIC_SCHEDULING_PRODUCTION_ENABLED": "UNSET"
+  },
+  "caSha256": "700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7",
+  "rpcFingerprints": {
+    "config": "f69dc86bbb8e6e52734d1a827f00a072",
+    "submit": "0db669b3aae0e94adefef068f7510dd1"
+  },
+  "budget": {
+    "idleTransactions": 0,
+    "databaseRole": 1,
+    "capacityObserved": "2026-10-16T08:48:37.559881Z",
+    "maxConnections": 60,
+    "roleSessions": 0,
+    "clients": 7,
+    "processInFlight": 1,
+    "processPool": 1
+  },
+  "acceptance": "PENDING: deployed secret authentication, provider challenge, one synthetic submission, owner receipt, protected runtime checks"
+}
