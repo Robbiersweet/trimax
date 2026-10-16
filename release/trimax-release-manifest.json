@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-release-contract-20261012-rc11",
+  "releaseId": "trimax-release-contract-20261016-rc11-session-isolation",
   "status": "SEALED_CONTROLLED_DEPLOYMENT_CANDIDATE",
   "createdAt": "2026-10-12T07:53:26.300Z",
   "releaseTimestamp": null,
@@ -1574,7 +1574,7 @@
       "deploymentId": "BahpsZbpCZcjVYYoLDMSnXvuER2Z",
       "deploymentCommit": "91afa7bd18968677dd212fa469a2b27af8f50aea"
     },
-    "candidateReleaseId": "trimax-release-contract-20261012-rc11",
+    "candidateReleaseId": "trimax-release-contract-20261016-rc11-session-isolation",
     "applicationCommit": "662a53e75d4af219485cf1eb252f992305be5ffb",
     "machineryCommit": "bda2718b332542040f477fb537f0f0aa3ca6ecd1"
   },
