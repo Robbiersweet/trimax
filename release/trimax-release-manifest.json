@@ -11,17 +11,17 @@
   },
   "components": {
     "web": {
-      "commit": "9f15c4d101391f24426212f9960a8b07a8b1d760"
+      "commit": "662a53e75d4af219485cf1eb252f992305be5ffb"
     },
     "legacy": {
-      "commit": "9f15c4d101391f24426212f9960a8b07a8b1d760"
+      "commit": "662a53e75d4af219485cf1eb252f992305be5ffb"
     },
     "v2-shadow": {
-      "commit": "9f15c4d101391f24426212f9960a8b07a8b1d760"
+      "commit": "662a53e75d4af219485cf1eb252f992305be5ffb"
     }
   },
   "sourceBundle": {
-    "sha256": "a46e28e473ac7f1007fa5c2c3ef316f96817a188e289a9b8346fcb53ea9d71de",
+    "sha256": "6b58ac39595958d7f06a44f7d2339469db327b0e0b2c4b894d72b9c8548cc24d",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -264,6 +264,7 @@
       "scripts/reverse-total-regression.ts": "1d228ce9b8fdb2f49a5838f4de9d781874351a96c1661186242bd2e691ee5e04",
       "scripts/service-duplicate-cleanup-regression.ts": "cb12dbb4a373decfac6e47f30fadc6aeae871466944405724e8197b69c46586c",
       "scripts/services-workspace-polish-regression.ts": "c8ed449b850c76a6a44fc029fa9ddf932f5cf553a0af79d64d9959390a2d9701",
+      "scripts/session-tab-isolation-regression.ts": "144f7ae36ec32b8092d0a07dc012899030362364f4f95ff9ee91d7e29912ad48",
       "scripts/split-invoice-send-regression.ts": "a030f1bd265a7791cd21b5664af094cd64cbb09ce43a000ce9064cd861815527",
       "scripts/split-source-relationship-regression.ts": "3e66f4141541fbb83e0645cc0a5f6d07e9e508b5cb49edf99ea88c75dce1200d",
       "scripts/stabilization-regression.cjs": "9b897693447411548e325c3778c2d47498c8fc84caff43578b3e16653c25bdeb",
@@ -304,7 +305,7 @@
       "src/app/clients/page.tsx": "9be7d15e68f6657d24c6cd106c3f4401cdd80d29d29c065efb6a2fb261f7e11b",
       "src/app/components/ActiveJobSessionDock.tsx": "a4d5dcb81f50fb9ffb0b9e1796e89c1fc4ed4dc4753878db0ae717099f4154ca",
       "src/app/components/AppShell.tsx": "b4358a4c5a82735d1871ef0bc8e7e3bbb30b3770b577d51b0343552155c489af",
-      "src/app/components/AuthGuard.tsx": "786c4538a89cba9637224928e88b5eacc49bfd2fb87fe88af90d3cb6dd774101",
+      "src/app/components/AuthGuard.tsx": "3c50661e8dbb922617a9c7ad703fe2ce84ebc98b43255585077de2afa8f6c614",
       "src/app/components/BackButton.tsx": "87360394e36c2e90d4a33135d5539d0176e75d8cc2448783c5c859783ee1059c",
       "src/app/components/BatchInvoicePayments.tsx": "dbcfcb17d861a1984089815f5af5b120fcf2567af3c6edad738054a446f27341",
       "src/app/components/Button.tsx": "68f87a76cee881a6b148ec30af54746d8a0fbe11a153b3ccf0134a62504deb97",
@@ -526,7 +527,7 @@
       "src/app/lib/savedServicePresentation.ts": "4f5b64cf759fbece8318597ac1b877819e52a15d0ed213970a1879c3a2e845f9",
       "src/app/lib/serviceAnalytics.ts": "1bf60659b9967af9a07c157724261f43114c9b7f44e4739e1c52a64da2bae68c",
       "src/app/lib/serviceDuplicateCleanup.ts": "4b22464608d28082b5303b0148f693c030801c177a0845c7e4011c7b6887d5af",
-      "src/app/lib/sessionSecurity.ts": "09f47d7847c714a46c841bf20ff0eecf7d8e460781a0c3ab558bc76078aa1c43",
+      "src/app/lib/sessionSecurity.ts": "edc187e1962f1bc9bf36f42802676546fa609f0114a8849efa56d691066bb1a8",
       "src/app/lib/splitInvoiceRelationships.ts": "20b9d8321a6c1b54426e48f1543256edcd1aa553d5a2fc070dc595951bde5b09",
       "src/app/lib/splitInvoices.ts": "e29b4bc39259692ee30430f630580851fb4aeece2927d9d660b2818bc6076e09",
       "src/app/lib/supabase.ts": "acc5b28abec1303a26b73c0ff4036327c126f31d00e9e0e00bca6b9aa0b0de6f",
@@ -1568,19 +1569,19 @@
   "upgradeContext": {
     "currentProductionRelease": {
       "releaseId": "trimax-release-contract-20261012-rc11",
-      "manifestCommit": "996bff1d7710ddbf4e8535c521b429e3a6209ae1",
-      "manifestDigest": "85c41776fbf29e8dc0230339232bb20be793822a05bc48f701dd842b70b2aee3",
-      "deploymentId": "ErVFWpcRupsr8irfJhFoanUavxzW",
-      "deploymentCommit": "996bff1d7710ddbf4e8535c521b429e3a6209ae1"
+      "manifestCommit": "91afa7bd18968677dd212fa469a2b27af8f50aea",
+      "manifestDigest": "975f0fbde9819994fe9fa3c050037965061579c907e38a43b85c0683a33b60a3",
+      "deploymentId": "BahpsZbpCZcjVYYoLDMSnXvuER2Z",
+      "deploymentCommit": "91afa7bd18968677dd212fa469a2b27af8f50aea"
     },
     "candidateReleaseId": "trimax-release-contract-20261012-rc11",
-    "applicationCommit": "7a3b91182729ec2e165cf788f55445e438f27bd6",
+    "applicationCommit": "662a53e75d4af219485cf1eb252f992305be5ffb",
     "machineryCommit": "bda2718b332542040f477fb537f0f0aa3ca6ecd1"
   },
   "contractRevision": {
-    "id": "rc11-scheduling-execute-grants-20261016",
-    "priorManifestDigest": "85c41776fbf29e8dc0230339232bb20be793822a05bc48f701dd842b70b2aee3",
-    "reason": "Exactly two previously authorized scheduling EXECUTE grants; executable identity unchanged",
-    "rollback": "Keep intake disabled; old manifest cannot run against current legitimate ACLs. Do not revoke grants as rollback."
+    "id": "rc11-session-tab-isolation-20261016",
+    "priorManifestDigest": "975f0fbde9819994fe9fa3c050037965061579c907e38a43b85c0683a33b60a3",
+    "reason": "Approved cross-tab session invalidation correction only; database/model/runtime/worker configuration unchanged",
+    "rollback": "Restore prior sealed web and worker release 91afa7bd18968677dd212fa469a2b27af8f50aea; keep scheduling disabled"
   }
 }
