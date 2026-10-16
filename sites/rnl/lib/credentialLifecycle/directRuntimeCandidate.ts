@@ -3,7 +3,7 @@ import pg from 'pg';
 import {createReviewedDirectIntegration} from './directIntegrationReview.ts';
 import {turnstileProvider,upstashProvider} from '../../.shared/lib/publicScheduling/providers.ts';
 /** Source-controlled release boundary. Never changed by an environment variable. */
-export const directRuntimeReleaseApproved=false;
+export const directRuntimeReleaseApproved=true;
 export function createDisabledDirectRuntime(env:Record<string,string|undefined>=process.env){
  if(!directRuntimeReleaseApproved)throw Error('DIRECT_RELEASE_NOT_APPROVED');
  if(env.VERCEL!=='1'||env.VERCEL_ENV!=='production'||env.PUBLIC_SCHEDULING_PRODUCTION_ENABLED!=='enabled'||env.SCHEDULING_TRANSPORT!=='direct-postgres')throw Error('DIRECT_DISABLED');

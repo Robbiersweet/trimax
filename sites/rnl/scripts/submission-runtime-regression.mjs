@@ -11,7 +11,7 @@ try{
  process.env.VERCEL='1';process.env.VERCEL_ENV='production';process.env.PUBLIC_SCHEDULING_PRODUCTION_ENABLED='enabled';
  const request=()=>new Request('https://rnlcreations.com/api/public-scheduling/rnl-creations',{method:'POST'});
  process.env.SCHEDULING_TRANSPORT='direct-postgres';
- assert.throws(()=>websiteSubmissionRuntime(),/DIRECT_RELEASE_NOT_APPROVED/);
+ assert.throws(()=>websiteSubmissionRuntime(),/DIRECT_CONFIGURATION_REJECTED/);
  assert.equal(await publicScheduling(),null);
  assert.equal((await POST(request(),{params:Promise.resolve({slug:'rnl-creations'})})).status,503);
  process.env.SCHEDULING_TRANSPORT='typo';

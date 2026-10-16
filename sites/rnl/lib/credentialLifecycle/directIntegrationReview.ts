@@ -7,7 +7,7 @@ interface Pool {connect():Promise<Client>;end():Promise<void>;on(event:'error',h
 interface Driver {Pool:new(options:Record<string,unknown>)=>Pool}
 export type ReviewedDirectConfig={mode:'offline-review';project:'gqknefosisnsjuzmhvts';host:string;verifiedHost:string;port:5432|6543;role:'trimax_scheduling_web';database:'postgres';password:string;ca:string};
 export const scopeSql=`SELECT current_user AS role,session_user AS session_role,
- (SELECT rolcanlogin AND NOT rolsuper AND NOT rolbypassrls AND NOT rolinherit AND NOT rolcreaterole AND NOT rolcreatedb AND NOT rolreplication AND (rolvaliduntil IS NULL OR rolvaliduntil>now()) FROM pg_roles WHERE rolname=current_user) AS safe_role,
+ (SELECT rolcanlogin AND rolconnlimit=1 AND NOT rolsuper AND NOT rolbypassrls AND NOT rolinherit AND NOT rolcreaterole AND NOT rolcreatedb AND NOT rolreplication AND (rolvaliduntil IS NULL OR rolvaliduntil>now()) FROM pg_roles WHERE rolname=current_user) AS safe_role,
  NOT EXISTS(SELECT 1 FROM pg_auth_members WHERE member=(SELECT oid FROM pg_roles WHERE rolname=current_user)) AS no_memberships,
  has_function_privilege(current_user,'public.trimax_public_scheduling_config(text)','EXECUTE') AND has_function_privilege(current_user,'public.trimax_submit_public_service_request(text,jsonb,text,text)','EXECUTE') AS required_rpcs,
  NOT EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname NOT IN ('pg_catalog','information_schema') AND n.nspname NOT LIKE 'pg_%' AND has_schema_privilege(current_user,n.oid,'USAGE') AND has_function_privilege(current_user,p.oid,'EXECUTE') AND p.oid NOT IN ('public.trimax_public_scheduling_config(text)'::regprocedure,'public.trimax_submit_public_service_request(text,jsonb,text,text)'::regprocedure)) AS no_other_rpcs,
@@ -16,12 +16,12 @@ export const scopeSql=`SELECT current_user AS role,session_user AS session_role,
  * must come from separately verified provider configuration; no production role exists yet. */
 export function createReviewedDirectIntegration(driver:Driver,config:ReviewedDirectConfig,diagnostic:(code:string)=>void=()=>{}){
  if(config.mode!=='offline-review'||config.project!=='gqknefosisnsjuzmhvts'||config.role!=='trimax_scheduling_web'||config.database!=='postgres'||config.host!=='aws-1-us-west-2.pooler.supabase.com'||config.port!==6543||config.host!==config.verifiedHost||!/^aws-[a-z0-9-]+\.pooler\.supabase\.com$/.test(config.host)||![5432,6543].includes(config.port)||!config.ca||config.password.length<24)throw Error('DIRECT_CONFIGURATION_REJECTED');
- const pool=new driver.Pool({host:config.host,port:config.port,user:config.role+'.'+config.project,database:config.database,password:config.password,ssl:{rejectUnauthorized:true,ca:config.ca},max:2,connectionTimeoutMillis:5000,idleTimeoutMillis:10000,maxLifetimeSeconds:60,query_timeout:10000,allowExitOnIdle:true,application_name:'trimax-scheduling-reviewed'});
+ const pool=new driver.Pool({host:config.host,port:config.port,user:config.role+'.'+config.project,database:config.database,password:config.password,ssl:{rejectUnauthorized:true,ca:config.ca},max:1,connectionTimeoutMillis:5000,idleTimeoutMillis:10000,maxLifetimeSeconds:60,query_timeout:10000,allowExitOnIdle:true,application_name:'trimax-scheduling-reviewed'});
  let stopped=false,inFlight=0;const report=(code:string)=>{try{diagnostic(code);}catch{/* diagnostics cannot replace cleanup */}};
  pool.on('error',()=>report('DIRECT_POOL_UNAVAILABLE'));
  const unavailable=()=>({data:null,error:{message:'Scheduling unavailable'}});
  const rpc:SchedulingRpc={async rpc(name,args){
-  if(stopped||inFlight>=2)return unavailable();
+  if(stopped||inFlight>=1)return unavailable();
   const configCall=name==='trimax_public_scheduling_config';if(!configCall&&name!=='trimax_submit_public_service_request')throw Error('RPC_NOT_ALLOWED');
   const keys=configCall?['p_slug']:['p_slug','p_payload','p_idempotency_hash','p_capability_hash'];
   if(Object.keys(args).length!==keys.length||Object.keys(args).some(k=>!keys.includes(k))||typeof args.p_slug!=='string'||!/^[-a-z0-9]{1,60}$/.test(args.p_slug))throw Error('INVALID_ARGUMENTS');
