@@ -1,0 +1,17 @@
+{
+  "sourceCommit": "c5ab977a514b05d8dc38b06a046b151ea4966334",
+  "base": "9f4c17276f0d5c474f327e97880f72335c728b33",
+  "project": "gqknefosisnsjuzmhvts",
+  "productionApplied": false,
+  "files": {
+    "scripts/scheduling-notifications-sql-regression.cjs": "a78fe06c9982c6dc023eb645720f71c12ddbb7c6ea9b064dcefe866580b4fef7",
+    "scripts/scheduling-notifications-ui-regression.cjs": "f9f4300413abf8388d6019b883c1ecfd0348c3c18c1ea5bc433807d6020b429d",
+    "src/app/admin/service-requests/components/OwnerWorkspace.tsx": "cea29dc8e02d92598d4e07bc5bd356b1f8e20e9609afeadf1c54de8ad7da3405",
+    "src/app/admin/service-requests/page.tsx": "3e99a7b479cff71dc1bc7168d6d9b41a8765c2b38f3f29b684936a1b4e0945e3",
+    "src/app/api/public-scheduling/intake/route.ts": "be986ff6302e57605331bec10ab32a4c93b4396500c3a147df8c313a2a74a538",
+    "src/app/components/Navigation.tsx": "de20b841d7c24c56e28b89f0348b80da62dbe981363756fb1339a7ec73c394d3",
+    "src/app/components/SchedulingNotifications.tsx": "c7779f027d0f021705c147b5c1a76830e7221fcb1c183c174ecb819d376da428",
+    "supabase/migrations/20261017_scheduling_owner_notifications.rollback.sql": "6efe9862428340dc7ec876cb97dcbca98aaa20a01b3044c1eb82dd464e2b0f78",
+    "supabase/migrations/20261017_scheduling_owner_notifications.sql": "752ce25eb52452d6fecb12c6b6def867e409fcd760f12b7b82f53873413ccc91"
+  }
+}
