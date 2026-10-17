@@ -21,3 +21,7 @@ All 30 image URLs return HTTP 200 and decode to their manifest dimensions. Deskt
 ## Deployment
 
 Preview deployment details are recorded after the branch build is Ready. Production requires separate explicit approval.
+
+Ready Preview: 4eFk6mjADvjJSVtFPagruxwP8ePN, source 41c0ba871dd29d0bc83406d6d228ac526fd90438.
+URL: https://rnl-public-website-cefd4m81j-trimax-s-projects.vercel.app/gallery
+Authenticated deployed-browser verification: all 30 supporting images loaded, eight disclosures opened, no broken images or horizontal overflow. Scheduling retains the preview-disabled notice and unchanged submission guard. Existing Vercel protection remains enabled; owner sign-in may be required. Screenshot: rnl-portfolio-photos-preview.png.
