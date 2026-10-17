@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-release-contract-20261016-rc11-session-isolation",
+  "releaseId": "trimax-release-contract-20261017-rc11-notifications",
   "status": "SEALED_CONTROLLED_DEPLOYMENT_CANDIDATE",
   "createdAt": "2026-10-12T07:53:26.300Z",
   "releaseTimestamp": null,
@@ -11,17 +11,17 @@
   },
   "components": {
     "web": {
-      "commit": "662a53e75d4af219485cf1eb252f992305be5ffb"
+      "commit": "c6205c13e8e8fded7914789020a3095b0e0a4639"
     },
     "legacy": {
-      "commit": "662a53e75d4af219485cf1eb252f992305be5ffb"
+      "commit": "c6205c13e8e8fded7914789020a3095b0e0a4639"
     },
     "v2-shadow": {
-      "commit": "662a53e75d4af219485cf1eb252f992305be5ffb"
+      "commit": "c6205c13e8e8fded7914789020a3095b0e0a4639"
     }
   },
   "sourceBundle": {
-    "sha256": "6b58ac39595958d7f06a44f7d2339469db327b0e0b2c4b894d72b9c8548cc24d",
+    "sha256": "765b1a1078815b71793c5d749d0999422e6e870d93c0a78edd1dd415473f68b8",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -262,6 +262,8 @@
       "scripts/remittance-release-gate.ts": "21944edbe46796c2b87e595dad18d2c49eb9fb72f2c9558b80f6880ceb4cdf32",
       "scripts/remittance-retry-regression.ts": "6a768fef914bc295d09ececbb7216648d08ebc3b69b6ef07e1c1dbcfe078ec9d",
       "scripts/reverse-total-regression.ts": "1d228ce9b8fdb2f49a5838f4de9d781874351a96c1661186242bd2e691ee5e04",
+      "scripts/scheduling-notifications-sql-regression.cjs": "50c29b03e3d451046ca531b73471129413b7624a476046fb5c7ba9f6763cb1a8",
+      "scripts/scheduling-notifications-ui-regression.cjs": "276a63d5a9a90f02e7cebfb0dc0fba140bf2d778d1868179a7f1e2fcd6cf2bfb",
       "scripts/service-duplicate-cleanup-regression.ts": "cb12dbb4a373decfac6e47f30fadc6aeae871466944405724e8197b69c46586c",
       "scripts/services-workspace-polish-regression.ts": "c8ed449b850c76a6a44fc029fa9ddf932f5cf553a0af79d64d9959390a2d9701",
       "scripts/session-tab-isolation-regression.ts": "144f7ae36ec32b8092d0a07dc012899030362364f4f95ff9ee91d7e29912ad48",
@@ -272,9 +274,9 @@
       "src/app/activity/page.tsx": "7585c6dbf8e056c8df7b87ca122f8defb95c625ae03758958b38c923bbc8baf2",
       "src/app/admin/ocr-attempts/[attemptId]/page.tsx": "47b7930a27ffcec419ae723006d4ef899aa4e22f15e36d0bc34cf493f4dc5253",
       "src/app/admin/ocr-attempts/page.tsx": "43d6b53dad0f26564fba589ca221eb79eaba16451f9165221d128c2ab7920b27",
-      "src/app/admin/service-requests/components/OwnerWorkspace.tsx": "069f5e1b5ffe22e47bd3a256b21a817719cb11a385f46e4b63b5a2b6a63dbb70",
+      "src/app/admin/service-requests/components/OwnerWorkspace.tsx": "733f24b64ea14cd032af2a53d2fe16dfeb02cba40056ab2f7e954dc41d82b27d",
       "src/app/admin/service-requests/components/owner.css": "afd09e8d243d7909cda59e03d94a8e5a192ab686b5fb7dc8cac5c4845e4b4a1c",
-      "src/app/admin/service-requests/page.tsx": "afe7b0c6ae5e7463dc7e929cfe4494522de4a25d8d586c6301d6272d67e851c1",
+      "src/app/admin/service-requests/page.tsx": "3e99a7b479cff71dc1bc7168d6d9b41a8765c2b38f3f29b684936a1b4e0945e3",
       "src/app/api/access-requests/route.ts": "be8e1bd81f9ed7e0833594de01d69179b231256229e6c0d1951032bb9cbd645c",
       "src/app/api/estimates/[id]/send-email/route.ts": "fc187489ea8f6193e0b659802f24fcdc3015715f1cf895756cd8e19c38fb1748",
       "src/app/api/invoices/[id]/send-email/route.ts": "68d2d5bbc3b5fecda80ad250d39d021705d01268af4924909fc276320715cf18",
@@ -285,7 +287,7 @@
       "src/app/api/payments/extract-check-stub/route.ts": "e86853cf9fdad673c629a0b7d572da7de2b640ba3982b94f8f8ca54b8b0e51bf",
       "src/app/api/payments/ocr-jobs/route.ts": "20654cb307aa2d04afad5a80276bf6e75bc829d09726afba1574a93787d9b67e",
       "src/app/api/public-scheduling/[slug]/route.ts": "9749cfd93818e29a0a979da083b7880204496e44a1861b0e67b84f8f51fd2c88",
-      "src/app/api/public-scheduling/intake/route.ts": "e469cd3671809c52a421324709084e8805005d2123f5d77ce91217d495625d92",
+      "src/app/api/public-scheduling/intake/route.ts": "3a80f34d12df0ac1f91d44c37808bb6d0fa78c3b3e0dbbccee4d8e1fc192f466",
       "src/app/api/public-scheduling/review/route.ts": "c4d4af9850905c363ce7caeef843935556e13d610c296a0a0af5b46fefb87db3",
       "src/app/api/public-scheduling/settings/route.ts": "6f58d3a53c9d432d756428ed9a936134e088f1c283e17f06a38401245d5dfbd8",
       "src/app/api/push/queue-created/route.ts": "19e60a688ee2c9f23db484a7df77576213f141111ed73d5693fa455c0c445877",
@@ -338,7 +340,7 @@
       "src/app/components/LogoutButton.tsx": "1a5259f98c2a5a6d229b966f9e12a3b69a93bf5d6626bac622db5b03e7178775",
       "src/app/components/MarkCompletedButton.tsx": "ad814f44dfe6cb7a714adee95576c9f49c0f9df86d3d17a957edcf813ec04234",
       "src/app/components/MarkScheduledButton.tsx": "202c93b6e9e5e8804928cdf9951f7f28b27d59bbe97e628e87711a9ac2cf43eb",
-      "src/app/components/Navigation.tsx": "1afd9b521bb153f574c6f187192bbdb07c284682b92ef3a7c37b48ab29210cc9",
+      "src/app/components/Navigation.tsx": "37fcc49e5ad776f03590f4425e0e0e9ac306282ac56a046fe766bdc49c93dd39",
       "src/app/components/NavigationHistoryTracker.tsx": "afd34af190e47b7ed294fb56080c9f075e5836ebcb9394289abbe9e02baed661",
       "src/app/components/OcrCaptureRecovery.tsx": "13c2cec71d98cad5f98d6efcc167804b46ab5194e297dd294d210419dfebf953",
       "src/app/components/OcrDebugMetadata.tsx": "5e88f5259d68b5faec0be10c224d5a26343f96716c500901a8bf1586aafe094d",
@@ -364,6 +366,7 @@
       "src/app/components/ReverseTotalControl.tsx": "749611bb72de255fae488a8b90f5e1488ef25e5e3aaf07f25a58d7819221b7cd",
       "src/app/components/RoleVisible.tsx": "69e7eb4de7cacee6a5f0be80545fdb57d1e48a96988178711d761eee57e9bef5",
       "src/app/components/RouteAccessBoundary.tsx": "59dcc979387329a6be84b757edf82f7099831adaf7d94e5b412e4d02ca029949",
+      "src/app/components/SchedulingNotifications.tsx": "3aea083333ae337f6b24ebaa65b0c6677eade72ab2dd51ee72a59077d1a6e9b1",
       "src/app/components/SecureSessionBadge.tsx": "d3ad76fdc3d9aa5edc7cffd3139202bfd98474e90320abb89971a9c7b8902cc9",
       "src/app/components/SplitInvoicePlanner.tsx": "3f90146c3b77c2aeffb6a715be7ef2c2e67242d75fc0cf6f1ce838b6fbc6c2af",
       "src/app/components/SplitInvoiceRelationshipDisplay.tsx": "3b7cd9bebd733e2b3b6eedf65a33a7ab2a23eca2f11b303fa7da46169df025e7",
@@ -573,6 +576,8 @@
       "supabase/migrations/20261010_public_scheduling_phase2.sql": "24887d03dbf1975df3c8643ac10af3dae0a4e2d18072dbe43a5ed5b8297b5f59",
       "supabase/migrations/20261011_public_scheduling_runtime.sql": "c97b1da22dfb3f4fde45c250f03a91dbf457b45aeea2e7d1f192ba7e094dc3e4",
       "supabase/migrations/20261012_public_function_acl_hardening.sql": "7dd81bdfcb98ad965027184e5b92a01c199e5d39cb221bb328eaab45e76afb92",
+      "supabase/migrations/20261017_scheduling_owner_notifications.rollback.sql": "63288a12867604f28ac8fd61f185417ae1965f1eba849305ef98a37e2769d485",
+      "supabase/migrations/20261017_scheduling_owner_notifications.sql": "1065227a13a82622f388d4e88af62a4c63a3d2b7cc35290ce53a9b28ad3b38d3",
       "supabase/sql/2026-05-24-business-users.sql": "1c6caf132eb207b9cdcea52b25fb552e4c18e7f22f4949117e14b8ccc8ea2165",
       "supabase/sql/2026-05-24-seed-business-users.sql": "0f4cb6e000f5b1a6d48c27e1521bf010f94a638b4f2a932f1c64c1a59318df28",
       "supabase/sql/2026-05-25-allow-pending-business-invites.sql": "c27c4bb32ff1e09e48e7f9858b3a8087d815d63a8331ecb1310f7c1e01d76a1f",
@@ -1568,20 +1573,20 @@
   },
   "upgradeContext": {
     "currentProductionRelease": {
-      "releaseId": "trimax-release-contract-20261012-rc11",
-      "manifestCommit": "91afa7bd18968677dd212fa469a2b27af8f50aea",
-      "manifestDigest": "975f0fbde9819994fe9fa3c050037965061579c907e38a43b85c0683a33b60a3",
-      "deploymentId": "BahpsZbpCZcjVYYoLDMSnXvuER2Z",
-      "deploymentCommit": "91afa7bd18968677dd212fa469a2b27af8f50aea"
+      "releaseId": "trimax-release-contract-20261016-rc11-session-isolation",
+      "manifestCommit": "9f4c17276f0d5c474f327e97880f72335c728b33",
+      "manifestDigest": "ac5f483bda095ece49b9bb70e378ee2b380a0ead65bac733141ffcf0e521e756",
+      "deploymentId": "3bfLP43bcvnYuLndikywkSQLDVEY",
+      "deploymentCommit": "9f4c17276f0d5c474f327e97880f72335c728b33"
     },
-    "candidateReleaseId": "trimax-release-contract-20261016-rc11-session-isolation",
-    "applicationCommit": "662a53e75d4af219485cf1eb252f992305be5ffb",
+    "candidateReleaseId": "trimax-release-contract-20261017-rc11-notifications",
+    "applicationCommit": "c6205c13e8e8fded7914789020a3095b0e0a4639",
     "machineryCommit": "bda2718b332542040f477fb537f0f0aa3ca6ecd1"
   },
   "contractRevision": {
-    "id": "rc11-session-tab-isolation-20261016",
-    "priorManifestDigest": "975f0fbde9819994fe9fa3c050037965061579c907e38a43b85c0683a33b60a3",
-    "reason": "Approved cross-tab session invalidation correction only; database/model/runtime/worker configuration unchanged",
-    "rollback": "Restore prior sealed web and worker release 91afa7bd18968677dd212fa469a2b27af8f50aea; keep scheduling disabled"
+    "id": "notifications-preflight",
+    "priorManifestDigest": "ac5f483bda095ece49b9bb70e378ee2b380a0ead65bac733141ffcf0e521e756",
+    "reason": "Approved in-app notifications source; current production database baseline retained pending coordinated migration",
+    "rollback": "No database migration yet; current production remains unchanged"
   }
 }
