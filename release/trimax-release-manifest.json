@@ -738,28 +738,28 @@
     }
   ],
   "database": {
-    "capturedAt": "2026-10-12T06:14:29.136Z",
+    "capturedAt": "2026-10-17T07:30:35.634Z",
     "algorithm": "catalog-v1; sorted C collation name=value; UTF8 SHA256; public tables/constraints/indexes/functions, public+storage RLS, public table grants; excludes only trimax_release_runtime itself",
     "fingerprints": {
-      "grants": {
-        "entries": 992,
-        "sha256": "e56f4606b10240aec2b60c64b6e45b798046eb9083b731bcc73aad3ad0450568"
-      },
-      "policies": {
-        "entries": 79,
-        "sha256": "7a9839dc666da38c2b9706519ae439f6c4afc8d8f85a93fc26c4aecbdf064013"
-      },
       "rpc": {
-        "entries": 41,
-        "sha256": "42e270d84cf1d1b8edf4ddafb5b9f595ac2bcbee6f8f6fdb76d638df8b185c32"
+        "sha256": "ec7b367ee11f597b1a7d94a39864ec96497a9136d8455b63e9320c5c9752a044",
+        "entries": 42
+      },
+      "grants": {
+        "sha256": "6fd0a259109a6736a447eb06e9c9750c91a5082b98be594b0ac565cd28bf4cd7",
+        "entries": 1000
       },
       "schema": {
-        "entries": 841,
-        "sha256": "512c9b0aacea329370763dfc2108e8c1633db8d7e96034897bd91e9971279283"
+        "sha256": "748efe0a4e65b2a0c9fcea41ee6de135eda86144a55fbb9b4548393484eed5ef",
+        "entries": 856
+      },
+      "policies": {
+        "sha256": "3b84cfce7458daf00ab80492a52688e5f58d3b38bd56afc3b9938a80883bfc1f",
+        "entries": 81
       },
       "triggers": {
-        "entries": 8,
-        "sha256": "1189025c52ee6e7c3b8e69686784557aba68b0f29e6c2d2db8007cfb7475c549"
+        "sha256": "7873f0b1d9870f2a9648687cfc7111c913cb7278b93e85b1c51edd7aac108950",
+        "entries": 9
       }
     },
     "flags": [
@@ -771,7 +771,7 @@
     ],
     "legacyEnabled": true,
     "acceptanceTableRecords": 0,
-    "evidenceType": "DISPOSABLE_PRODUCTION_CATALOG_MIGRATION_PROJECTION"
+    "evidenceType": "PRODUCTION_ROLLBACK_ONLY_EXACT_MIGRATION_REHEARSAL"
   },
   "workerConfiguration": {
     "businessId": "f31adfa1-26ad-4e74-ad94-a4668d7ad57d",
@@ -1584,9 +1584,9 @@
     "machineryCommit": "bda2718b332542040f477fb537f0f0aa3ca6ecd1"
   },
   "contractRevision": {
-    "id": "notifications-preflight",
+    "id": "notifications-reviewed-migration",
     "priorManifestDigest": "ac5f483bda095ece49b9bb70e378ee2b380a0ead65bac733141ffcf0e521e756",
-    "reason": "Approved in-app notifications source; current production database baseline retained pending coordinated migration",
-    "rollback": "No database migration yet; current production remains unchanged"
+    "reason": "Exact approved notification migration rehearsed in production transaction and rolled back; fingerprints projected for coordinated web/worker cutover. Existing 41 RPC definitions preserved.",
+    "rollback": "Remove notification trigger using reviewed rollback SQL, preserve audit rows, and reseal remaining catalog before restoring workers. No blind prior manifest reuse."
   }
 }

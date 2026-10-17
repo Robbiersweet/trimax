@@ -40,3 +40,13 @@ Migration: supabase/migrations/20261017_scheduling_owner_notifications.sql (SHA2
 Recurring added service cost: none; polling uses existing Supabase request/database capacity. No paid dependency. Current recipient membership controls visibility; alerts are not reassigned to future owners. No external owner delivery promised.
 
 Next mandatory action: approve this bounded migration/coordinated release/one-request acceptance package. Resume from this worktree and manifest; do not repeat unchanged passing development tests or touch the public scheduling deployment.
+
+## Approved release execution checkpoint — 2026-10-17
+
+User approved the prepared migration, coordinated production release, and exactly one synthetic acceptance request. Migration bytes remain unchanged (SHA-256 752ce25eb52452d6fecb12c6b6def867e409fcd760f12b7b82f53873413ccc91). Full gate found only a CJS test-file lint annotation omission, corrected in executable c6205c13e8e8fded7914789020a3095b0e0a4639; no application or SQL scope changed. Original approval package is retained unchanged.
+
+Protected PREDEPLOYMENT gate completed READY_FOR_CONTROLLED_DEPLOYMENT: all code/security/business checks, retained OCR corpus, lint, TypeScript and production build passed. Actual receipt is release/evidence/rc11-predeployment-result.json. It was run with the exact prior production database contract; subsequent metadata-only fingerprint projection uses the same source and reviewed migration. Candidate database/runtime cutover remains a prerequisite, not completed acceptance. Physical iPhone acceptance remains pending.
+
+Authenticated production catalog preflight: one registered R&L owner/admin; notification objects absent; existing creator default ACLs covered by explicit object revokes. Exact migration rehearsal passed all assertions and was rolled back. Independent read confirmed table and function absent afterward. Five projected catalog fingerprints are sealed in the manifest. Both old workers were running, neither job queue had queued/running jobs, and five protected business hashes matched the established baseline. Public request count remains one; no new synthetic submission occurred.
+
+Next: final read-only runtime preflight and build authorization, then action-time SQL permission confirmation if required by connected-browser policy. Commit only the exact migration, audit projected hashes, deploy the sealed internal release, coordinate both workers through existing startup procedures, verify persisted nonpayment runtime, and execute the single approved notification acceptance. Public marketing deployment, intake activation and credentials remain unchanged.
