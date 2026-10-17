@@ -17,3 +17,7 @@ All 27 assets HTTP 200 and decode. All seven filters return expected counts (8/4
 
 ## Deployment
 New branch Preview only. Ready URL and deployment verification recorded after Vercel finishes. Existing Vercel sign-in protection is retained.
+
+Ready Preview: 7jhnKZG1qgKvG9S2Y7tATrhjRipe, source c949e86ca95c8289c654344239312c55a930bc27.
+URL: https://rnl-public-website-kl10sbh9u-trimax-s-projects.vercel.app/gallery
+Vercel confirms Ready / Preview. Authenticated deployed-browser checks: eight cards, specialty filter, before/after navigation and all 19 full photos loaded successfully; no broken images or horizontal overflow. Screenshot: rnl-dark-portfolio-preview.png. Production overview still shows original deployment 6cLBYLrEF8m87MpTDYnJsYvwq2Dc and commit 34fa3b4. Existing preview sign-in protection remains unchanged. No functional blockers; ideal illuminated RFID/keypad photo remains unavailable.
