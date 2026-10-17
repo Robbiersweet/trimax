@@ -5,7 +5,7 @@ import {devStoreDirectory,listDevelopmentRequests} from '@/app/lib/publicSchedul
 import {authorizeIntake} from '@/app/lib/publicScheduling/authorization';
 export const runtime='nodejs';
 export async function GET(request:Request){
- if(!schedulingDevelopmentEnabled()){try{const owner=await productionOwner(request,new URL(request.url).searchParams.get('business')||'');return Response.json({requests:await owner.list()},{headers:{'Cache-Control':'no-store'}});}catch{return Response.json({error:'Owner access or storage unavailable.'},{status:403});}}
+ if(!schedulingDevelopmentEnabled()){try{const owner=await productionOwner(request,new URL(request.url).searchParams.get('business')||'');const target=new URL(request.url).searchParams.get('request');const requests=await owner.list();if(target&&!requests.some(r=>r.id===target))requests.push(...await owner.list(target));return Response.json({requests},{headers:{'Cache-Control':'no-store'}});}catch{return Response.json({error:'Owner access or storage unavailable.'},{status:403});}}
  const business=getPublicBusiness(new URL(request.url).searchParams.get('business')||'');
  if(!business)return Response.json({error:'Not found.'},{status:404});
  try{devStoreDirectory();}catch{return Response.json({error:'Development intake is not enabled.'},{status:503});}

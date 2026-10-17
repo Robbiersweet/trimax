@@ -13,6 +13,7 @@ import {
   canAccessNavItem,
 } from "../lib/rolePermissions";
 import { loadWorkspaceAccess } from "../lib/workspaceAccess";
+import SchedulingNotifications from './SchedulingNotifications';
 import UserMenu from "./UserMenu";
 import { debugQueuePath } from "../lib/ocrDebug";
 
@@ -488,6 +489,7 @@ export default function Navigation() {
         </button>
       </div>
 
+      <SchedulingNotifications key={business} business={business} />
       <div className="app-sidebar-current mt-3 rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-300 lg:hidden">
         <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
           Current
