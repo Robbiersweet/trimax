@@ -10,6 +10,5 @@ export const collections = [
 {id:'cabinet-upgrades',title:'A new chapter for existing cabinets',description:'Cabinet refinishing and upgrades as part of apartment renovation work.',detail:'Cabinet refinishing · Interior upgrades',image:null,alt:''},
 {id:'fireplace',title:'From beige to a bold focal point',description:'A fireplace resurfacing project transformed a beige finish into a black marble-effect surface.',detail:'Surface refinishing · Marble-effect finish',image:null,alt:''}]},
 {id:'specialty',label:'Commercial & specialty',location:'Made for the job',intro:'Thoughtful solutions for spaces and projects with a purpose of their own.',projects:[
-{id:'trailer-plumbing',title:'Behind the counter, on the road',description:'Plumbing work for a mobile shaved-ice trailer.',detail:'Mobile business · Specialty installation',image:null,alt:''},
-{id:'custom-carpentry',title:'Built around the space',description:'Custom carpentry and cabinetry, with repairs and installations tailored to the project.',detail:'Carpentry · Cabinetry · Repairs',image:null,alt:''}]}
+{id:'trailer-plumbing',title:'Behind the counter, on the road',description:'Plumbing work for a mobile shaved-ice trailer.',detail:'Mobile business · Specialty installation',image:null,alt:''}]}
 ] satisfies {id:string;label:string;location:string;intro:string;projects:Project[]}[];
