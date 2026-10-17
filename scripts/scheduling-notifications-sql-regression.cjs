@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Node CJS harness for isolated SQL security tests. */
 const assert=require('node:assert/strict');const fs=require('node:fs');const path=require('node:path');
 const {PGlite}=require(path.join(process.env.LOCALAPPDATA,'Trimax/phase6-dbtest/node_modules/@electric-sql/pglite'));
 (async()=>{const db=new PGlite();let checks=0;const check=(v)=>{assert.ok(v);checks++};
