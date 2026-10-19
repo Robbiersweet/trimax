@@ -1,11 +1,11 @@
 {
   "mode": "PREDEPLOYMENT",
-  "releaseId": "trimax-service-workflow-20261018-preview",
-  "startedAt": "2026-10-19T00:22:29.747Z",
-  "sourceCommit": "72b6d8e80a34974ebb1a3ffd5c6b34bdc43742d0",
-  "sourceBundle": "1384cbf6e3ea202ba57b2a4c47797e5e75226912dca11cb0a59c205de9fe1036",
+  "releaseId": "trimax-service-workflow-20261018-rc1",
+  "startedAt": "2026-10-19T03:14:22.182Z",
+  "sourceCommit": "4375d97c4380018f633f6530c27759675c836eaa",
+  "sourceBundle": "a883237d2a5a60005f015460c84d1d4d870c86bb748189bc1e733acde3a16abb",
   "corpusHash": "29f8a84ab995c246d2cedc9943ce391d56af55b09564dbe23329e357a7df6f7f",
-  "out": "C:\\Users\\robbi\\AppData\\Local\\Trimax\\release-gates\\2026-10-19T00-22-29-746Z",
+  "out": "C:\\Users\\robbi\\AppData\\Local\\Trimax\\release-gates\\2026-10-19T03-14-22-181Z",
   "checks": [
     {
       "name": "clean-manifest-source-start",
@@ -21,7 +21,7 @@
       "name": "clean-dependency-install",
       "status": "PASS",
       "failures": [],
-      "durationMs": 29227
+      "durationMs": 20301
     },
     {
       "name": "model-bundle",
@@ -78,20 +78,22 @@
     },
     {
       "name": "live-database-attestation",
-      "status": "PASS",
+      "status": "DEPLOYMENT_PREREQUISITE",
       "failures": [],
       "engines": [
         {
           "engine": "legacy",
-          "status": "PASS",
+          "status": "DEPLOYMENT_PREREQUISITE",
           "failures": [],
-          "observedAt": "2026-10-19T00:23:06.684524+00:00"
+          "reason": "Exact approved prior database; reviewed migration and candidate cutover pending",
+          "observedAt": "2026-10-19T03:14:48.562391+00:00"
         },
         {
           "engine": "v2-shadow",
-          "status": "PASS",
+          "status": "DEPLOYMENT_PREREQUISITE",
           "failures": [],
-          "observedAt": "2026-10-19T00:23:09.707999+00:00"
+          "reason": "Exact approved prior database; reviewed migration and candidate cutover pending",
+          "observedAt": "2026-10-19T03:14:51.799288+00:00"
         }
       ]
     },
@@ -104,415 +106,415 @@
       "name": "service-workflow-sql-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 1297
+      "durationMs": 1323
     },
     {
       "name": "service-workflow-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 121
+      "durationMs": 119
     },
     {
       "name": "scheduling-notifications-ui-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 420
+      "durationMs": 242
     },
     {
       "name": "public-scheduling-authorization-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 117
+      "durationMs": 108
     },
     {
       "name": "public-scheduling-boundary-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 86
+      "durationMs": 88
     },
     {
       "name": "public-scheduling-challenge-ui-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 229
+      "durationMs": 222
     },
     {
       "name": "public-scheduling-owner-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 151
+      "durationMs": 134
     },
     {
       "name": "public-scheduling-phase2-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 103
+      "durationMs": 102
     },
     {
       "name": "public-scheduling-production-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 421
+      "durationMs": 280
     },
     {
       "name": "public-scheduling-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 139
+      "durationMs": 116
     },
     {
       "name": "public-function-catalog-replay",
       "status": "PASS",
       "failures": [],
-      "durationMs": 1065
+      "durationMs": 1025
     },
     {
       "name": "public-function-manager-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 1213
+      "durationMs": 1133
     },
     {
       "name": "public-scheduling-schema-regression.mjs",
       "status": "PASS",
       "failures": [],
-      "durationMs": 1218
+      "durationMs": 1114
     },
     {
       "name": "public-scheduling-phase2-sql-regression.mjs",
       "status": "PASS",
       "failures": [],
-      "durationMs": 1330
+      "durationMs": 1165
     },
     {
       "name": "job-session-integrity-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 244
+      "durationMs": 113
     },
     {
       "name": "job-session-crew-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 104
+      "durationMs": 93
     },
     {
       "name": "upgrade-state-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 1891
+      "durationMs": 969
     },
     {
       "name": "direction-fallback-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 8949
+      "durationMs": 8123
     },
     {
       "name": "file-forensics-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 6907
+      "durationMs": 6771
     },
     {
       "name": "portability-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 4180
+      "durationMs": 3524
     },
     {
       "name": "gate-state-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 76
+      "durationMs": 205
     },
     {
       "name": "contract-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 76
+      "durationMs": 71
     },
     {
       "name": "auth-flow-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 292
+      "durationMs": 406
     },
     {
       "name": "startup-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 5222
+      "durationMs": 4502
     },
     {
       "name": "sql-attestation-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 1304
+      "durationMs": 1172
     },
     {
       "name": "authorization-execution-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 1384
+      "durationMs": 1262
     },
     {
       "name": "evidence-handoff-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 96
+      "durationMs": 90
     },
     {
       "name": "final-candidate-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 180
+      "durationMs": 173
     },
     {
       "name": "shadow-capture-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 293
+      "durationMs": 281
     },
     {
       "name": "camera-lifecycle-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 95
+      "durationMs": 89
     },
     {
       "name": "capture-durability-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 306
+      "durationMs": 267
     },
     {
       "name": "ocr-object-upload-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 334
+      "durationMs": 327
     },
     {
       "name": "ocr-evidence-persistence-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 1386
+      "durationMs": 1345
     },
     {
       "name": "ocr-legacy-job-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 220
+      "durationMs": 353
     },
     {
       "name": "shadow-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 483
+      "durationMs": 460
     },
     {
       "name": "canonical-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 238
+      "durationMs": 218
     },
     {
       "name": "canonical-sql-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 2954
+      "durationMs": 2858
     },
     {
       "name": "shadow-sql-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 1211
+      "durationMs": 1142
     },
     {
       "name": "foundation-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 674
+      "durationMs": 545
     },
     {
       "name": "layout-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 1166
+      "durationMs": 1082
     },
     {
       "name": "field-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 1335
+      "durationMs": 1249
     },
     {
       "name": "invoice-study-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 805
+      "durationMs": 633
     },
     {
       "name": "fusion-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 111
+      "durationMs": 122
     },
     {
       "name": "resolver-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 165
+      "durationMs": 157
     },
     {
       "name": "payment-evidence-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 1467
+      "durationMs": 1545
     },
     {
       "name": "document-total-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 436
+      "durationMs": 539
     },
     {
       "name": "identity-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 188
+      "durationMs": 178
     },
     {
       "name": "semantics-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 225
+      "durationMs": 215
     },
     {
       "name": "orientation-heading-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 2760
+      "durationMs": 2504
     },
     {
       "name": "legacy-direction-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 2711
+      "durationMs": 2837
     },
     {
       "name": "legacy-first-pass-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 361
+      "durationMs": 363
     },
     {
       "name": "physical-row-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 178
+      "durationMs": 172
     },
     {
       "name": "money-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 207
+      "durationMs": 201
     },
     {
       "name": "mature-money-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 91
+      "durationMs": 86
     },
     {
       "name": "shared-money-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 180
+      "durationMs": 173
     },
     {
       "name": "organization-identity-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 88
+      "durationMs": 223
     },
     {
       "name": "total-localization-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 303
+      "durationMs": 149
     },
     {
       "name": "residual-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 300
+      "durationMs": 296
     },
     {
       "name": "regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 117
+      "durationMs": 76
     },
     {
       "name": "remittance-matching-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 232
+      "durationMs": 198
     },
     {
       "name": "remittance-contract-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 190
+      "durationMs": 184
     },
     {
       "name": "remittance-retry-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 120
+      "durationMs": 252
     },
     {
       "name": "duplicate-remittance-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 133
+      "durationMs": 115
     },
     {
       "name": "payment-application-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 95
+      "durationMs": 84
     },
     {
       "name": "payment-state-lifecycle-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 106
+      "durationMs": 100
     },
     {
       "name": "invoice-correction-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 104
+      "durationMs": 86
     },
     {
       "name": "split-source-relationship-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 98
+      "durationMs": 93
     },
     {
       "name": "split-invoice-send-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 101
+      "durationMs": 217
     },
     {
       "name": "tenant-isolation-hardening-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 91
+      "durationMs": 99
     },
     {
       "name": "business-read-isolation-regression",
@@ -524,19 +526,19 @@
       "name": "owner-server-auth-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 87
+      "durationMs": 95
     },
     {
       "name": "account-management-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 101
+      "durationMs": 89
     },
     {
       "name": "stabilization-regression",
       "status": "PASS",
       "failures": [],
-      "durationMs": 27118
+      "durationMs": 27328
     },
     {
       "name": "frozen-business-snapshot",
@@ -547,115 +549,115 @@
       "name": "retained-check2715-legacy",
       "status": "PASS",
       "failures": [],
-      "durationMs": 20430
+      "durationMs": 20303
     },
     {
       "name": "retained-check2715-v2-shadow",
       "status": "PASS",
       "failures": [],
-      "durationMs": 31086
+      "durationMs": 30714
     },
     {
       "name": "retained-check2721-legacy",
       "status": "PASS",
       "failures": [],
-      "durationMs": 11560
+      "durationMs": 11678
     },
     {
       "name": "retained-check2721-v2-shadow",
       "status": "PASS",
       "failures": [],
-      "durationMs": 23071
+      "durationMs": 22443
     },
     {
       "name": "retained-check2734-legacy",
       "status": "PASS",
       "failures": [],
-      "durationMs": 1965
+      "durationMs": 1863
     },
     {
       "name": "retained-check2734-v2-shadow",
       "status": "PASS",
       "failures": [],
-      "durationMs": 29783
+      "durationMs": 28858
     },
     {
       "name": "retained-check2743-legacy",
       "status": "PASS",
       "failures": [],
-      "durationMs": 1823
+      "durationMs": 1624
     },
     {
       "name": "retained-check2743-v2-shadow",
       "status": "PASS",
       "failures": [],
-      "durationMs": 19937
+      "durationMs": 19595
     },
     {
       "name": "retained-A-legacy",
       "status": "PASS",
       "failures": [],
-      "durationMs": 4596
+      "durationMs": 4511
     },
     {
       "name": "retained-A-v2-shadow",
       "status": "PASS",
       "failures": [],
-      "durationMs": 15356
+      "durationMs": 15359
     },
     {
       "name": "retained-D-legacy",
       "status": "PASS",
       "failures": [],
-      "durationMs": 5672
+      "durationMs": 5840
     },
     {
       "name": "retained-D-v2-shadow",
       "status": "PASS",
       "failures": [],
-      "durationMs": 16473
+      "durationMs": 16143
     },
     {
       "name": "retained-B-legacy",
       "status": "PASS",
       "failures": [],
-      "durationMs": 2245
+      "durationMs": 2055
     },
     {
       "name": "retained-B-v2-shadow",
       "status": "PASS",
       "failures": [],
-      "durationMs": 19189
+      "durationMs": 18307
     },
     {
       "name": "retained-C-legacy",
       "status": "PASS",
       "failures": [],
-      "durationMs": 4248
+      "durationMs": 4181
     },
     {
       "name": "retained-C-v2-shadow",
       "status": "PASS",
       "failures": [],
-      "durationMs": 13124
+      "durationMs": 13002
     },
     {
       "name": "lint",
       "status": "PASS",
       "failures": [],
-      "durationMs": 21294
+      "durationMs": 20289
     },
     {
       "name": "typescript",
       "status": "PASS",
       "failures": [],
-      "durationMs": 8487
+      "durationMs": 2131
     },
     {
       "name": "production-build",
       "status": "PASS",
       "failures": [],
-      "durationMs": 16576
+      "durationMs": 17069
     },
     {
       "name": "clean-manifest-source-end",
@@ -1473,5 +1475,5 @@
   "codeGate": "CODE_GATE_PASSED",
   "retainedGate": "RETAINED_REAL_GATE_PASSED",
   "stateErrors": [],
-  "finishedAt": "2026-10-19T00:29:07.449Z"
+  "finishedAt": "2026-10-19T03:20:33.902Z"
 }
