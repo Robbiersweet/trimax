@@ -11,17 +11,17 @@
   },
   "components": {
     "web": {
-      "commit": "335f36d9c9df00d88547b0bedefa19bff7dc6d42"
+      "commit": "006e7fc31034c0f75fc21d511359c4a4437cd900"
     },
     "legacy": {
-      "commit": "335f36d9c9df00d88547b0bedefa19bff7dc6d42"
+      "commit": "006e7fc31034c0f75fc21d511359c4a4437cd900"
     },
     "v2-shadow": {
-      "commit": "335f36d9c9df00d88547b0bedefa19bff7dc6d42"
+      "commit": "006e7fc31034c0f75fc21d511359c4a4437cd900"
     }
   },
   "sourceBundle": {
-    "sha256": "4e125f1b8a68154565d998a223e44444fcc9e0d901bf41421c4bff05439f98bd",
+    "sha256": "1384cbf6e3ea202ba57b2a4c47797e5e75226912dca11cb0a59c205de9fe1036",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -650,7 +650,7 @@
       "supabase/sql/2026-10-01-release-attestation.sql": "7c7e3ce675e8a8f570759629263724bbc9ceaaf7623e19873d4133e290f10871",
       "supabase/sql/README.md": "e3ac010eb016b07963eda46c3f2670d0e1aa78a51666deb38dfcb0f391c34684",
       "tsconfig.json": "f399e24188640b031f844ec7c0285e65450e697b2daa5790e1cb801818fcc955",
-      "vercel.json": "4321552c0e9bc41c3a38d1f7e54d1e714e3a99ea12ed8506fbfaa386aeb49af7"
+      "vercel.json": "471510cb78bbf804feac04290af8a0b5ae512751b1cf5d6d9b4472380fe74233"
     }
   },
   "modelBundle": {
@@ -848,7 +848,7 @@
     "physicalAcceptance": "Only installed-iPhone production evidence for exact release may pass; replay cannot pass",
     "legacyModelCache": "Pinned runtime cache verified by startup contract before claim"
   },
-  "sealedAt": "2026-10-19T00:13:30.830Z",
+  "sealedAt": "2026-10-19T00:22:28.936Z",
   "testRuntime": {
     "pgliteVersion": "0.5.8",
     "pglitePackageSha256": "65dff2c93c707e526902eebfab246bcbf2df2eba1c6984a5b5e9a44177532b1c",
@@ -1592,7 +1592,7 @@
       "deploymentCommit": "4e3d786e12092c5ffde86d8324cd6c23ce6670cf"
     },
     "candidateReleaseId": "trimax-service-workflow-20261018-preview",
-    "applicationCommit": "335f36d9c9df00d88547b0bedefa19bff7dc6d42",
+    "applicationCommit": "006e7fc31034c0f75fc21d511359c4a4437cd900",
     "machineryCommit": "bda2718b332542040f477fb537f0f0aa3ca6ecd1"
   },
   "contractRevision": {
