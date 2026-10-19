@@ -1,7 +1,15 @@
 # Service workflow — active checkpoint
 
 ## Outcome and authorization
-Core implementation and safe release preparation are complete. Production is unchanged. The candidate is READY_FOR_CONTROLLED_DEPLOYMENT, not production-accepted. The latest user request explicitly reserves production migrations/deployments/outbound activation and paid changes for applicable authorization. No new production approval or real test-recipient authorization was supplied.
+Production is unchanged. The recorded local gate says READY_FOR_CONTROLLED_DEPLOYMENT, but overall rollout readiness is HOLD pending hosted integration verification and rehearsed post-migration worker recovery. The latest user authorizes safe rollout preparation only, explicitly not production migrations or deployment. Do not convert the local gate result into overall readiness or request unconditional production approval before the remaining checks pass.
+
+## Latest safe preflight — 2026-10-19 03:59 UTC
+- Vercel session remains signed out. Google previously required sign-in; GitHub OAuth also requires sign-in. Git credential-manager access verifies GitHub status only, not protected Vercel previews. The page's Vercel plugin tool only opens a public plugin information page, not an authenticated connector.
+- User action requested: sign into Vercel in the Codex browser using Continue with Google (last used), with the account belonging to trimax-s-projects; reply signed in. Login tab retained. No credentials or security controls changed.
+- Authenticated Supabase aggregate-only READ ONLY transaction: 3 requests, 47 clients, 36 Queue items; zero unsupported urgency/channel values, request/type tenant mismatches, invalid time zones or candidate columns already present. One missing persistent owner notice would be backfilled. Delivery cron job count zero. No customer details exported and no business rows written.
+- Remote rollback tags reconfirmed at the exact commits below; candidate local source integrity failures are empty. Existing schema rehearsal and full regression evidence remain valid for unchanged executable source. These checks do not guarantee every existing feature or prove a hosted transaction.
+- Restoring Vercel login permits hosted UI checks only: marketing Preview intentionally rejects submission, internal workflow Preview uses synthetic in-memory records and protected mutation endpoints reject writes. Actual persisted hosted submission -> notices -> client -> Queue -> calendar verification requires an isolated test database/auth environment. Never enable these previews against production to satisfy this check.
+- Post-migration worker rollback is not yet rehearsed/sealed. Retained web deployments/tags are recovery checkpoints, not sufficient proof of complete coordinated rollback. SMS remains excluded from dispatcher channels and must not block core work.
 
 ## Exact candidate
 - Main checkout: C:/Users/robbi/.codex/worktrees/service-request-workflow/trimax; branch codex/service-request-workflow.
