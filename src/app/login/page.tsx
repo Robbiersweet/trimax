@@ -9,6 +9,7 @@ import Button from "../components/Button";
 import InputField from "../components/InputField";
 import Toast from "../components/Toast";
 import { supabase } from "../lib/supabase";
+import { safeLoginReturn } from "../lib/loginReturn";
 import {
   sessionSecurityMessage,
   startSecureBrowserSession,
@@ -75,7 +76,7 @@ function LoginPageContent() {
     );
 
     window.location.replace(
-      `/?business=${nextBusinessSlug}`
+      safeLoginReturn(searchParams.get("next")) ?? `/?business=${nextBusinessSlug}`
     );
   }
 

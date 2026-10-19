@@ -5,7 +5,7 @@ const scripts=[
  'scripts/public-function-catalog-replay.cjs','scripts/public-function-manager-regression.cjs',
  'scripts/public-scheduling-schema-regression.mjs','scripts/public-scheduling-phase2-sql-regression.mjs',
  'scripts/job-session-integrity-regression.ts','scripts/job-session-crew-regression.ts',
- 'scripts/release/upgrade-state-regression.cjs',
+ 'scripts/release/upgrade-state-regression.cjs','scripts/login-return-regression.cjs',
  'scripts/ocr-v2/direction-fallback-regression.cjs',
  'scripts/release/file-forensics-regression.cjs',
  'scripts/release/portability-regression.cjs',

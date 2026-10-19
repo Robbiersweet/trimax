@@ -7,6 +7,7 @@ import {
   useSearchParams,
 } from "next/navigation";
 import { supabase } from "../lib/supabase";
+import { loginUrl, safeLoginReturn } from "../lib/loginReturn";
 import {
   defaultMaintenanceSettings,
   loadMaintenanceSettings,
@@ -118,8 +119,8 @@ export default function AuthGuard({
   const expireSession = useCallback(async (reason: string) => {
     await expireSecureBrowserSession(reason, () => supabase.auth.signOut());
     setLoading(false);
-    router.replace(`/login?security=${reason}`);
-  }, [router]);
+    router.replace(loginUrl(pathname, searchParams.toString(), reason));
+  }, [router, pathname, searchParams]);
 
   useEffect(() => {
     const activityEvents = [
@@ -186,7 +187,7 @@ export default function AuthGuard({
       const isPublicPage = isPublicAuthPath(pathname);
 
       if (!session && !isPublicPage) {
-        router.push("/login");
+        router.replace(loginUrl(pathname, searchParams.toString()));
         return;
       }
 
@@ -257,6 +258,7 @@ export default function AuthGuard({
           pathname.startsWith("/request-access"))
       ) {
         router.push(
+          (isLoginPage ? safeLoginReturn(searchParams.get("next")) : null) ??
           `/?business=${defaultBusinessSlug}`
         );
         return;
