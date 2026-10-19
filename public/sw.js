@@ -32,6 +32,7 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.registration.showNotification(payload.title, {
       body: payload.body,
+      ...(typeof payload.tag === "string" ? { tag: payload.tag } : {}),
       icon: "/trimax-icon-192.png",
       badge: "/trimax-icon-192.png",
       data: {

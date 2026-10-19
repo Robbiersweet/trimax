@@ -1,0 +1,70 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {PGlite}=require(path.join(process.env.LOCALAPPDATA,'Trimax/phase6-dbtest/node_modules/@electric-sql/pglite'));
+(async()=>{const db=new PGlite();let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};
+try{
+ await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;create role trimax_scheduling_web;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('test.uid',true),'')::uuid$$;grant usage on schema auth to authenticated;grant execute on function auth.uid() to authenticated;create table businesses(id uuid primary key);create table business_users(business_id uuid,user_id uuid,role text);grant select on business_users to authenticated;
+ create table clients(id uuid primary key default gen_random_uuid(),business_id uuid,created_by_user_id uuid,name text not null,contact_name text,email text,phone text,service_address text);
+ create table push_subscriptions(id uuid primary key,business_id uuid,user_id uuid,status text);
+ create table queue_items(id text primary key,business_id uuid,created_by_user_id uuid,property text not null,unit text not null,status text,priority text,notes text,scheduled_date date,completed_date date);`);
+ for(const name of ['20261009_public_scheduling_foundation.sql','20261010_public_scheduling_phase2.sql','20261017_scheduling_owner_notifications.sql','20261018_service_request_workflow.sql','20261018_service_request_delivery.sql','20261018_request_urgency.sql'])await db.exec(fs.readFileSync('supabase/migrations/'+name,'utf8'));
+ const uid=n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`,business=uid(1),owner=uid(2),outsider=uid(3);
+ await db.query('insert into businesses values($1),($2)',[business,uid(4)]);
+ await db.query('insert into auth.users values($1),($2)',[owner,outsider]);
+ await db.query("insert into business_users values($1,$2,'owner'),($3,$4,'owner')",[business,owner,uid(4),outsider]);
+ await db.query("insert into public_scheduling_settings(business_id,public_slug,display_name,enabled) values($1,'test','Synthetic',true)",[business]);
+ await db.query("insert into public_service_request_types(business_id,public_key,public_label,internal_label) values($1,'repair','Repair','Repair')",[business]);
+ await db.query("insert into push_subscriptions values($1,$2,$3,'active'),($4,$5,$6,'active')",[uid(70),business,owner,uid(71),uid(4),outsider]);
+ const payload={requestTypeId:'repair',customerName:'Synthetic Customer',phone:'5555550100',email:'synthetic@example.invalid',preferredContact:'email',address:'Synthetic address',description:'Synthetic repair',preferredDate:'',timeWindowId:'',flexibility:'flexible',urgency:'time_sensitive',notes:'Access note',consent:true};
+ async function submit(n,extra={}){return (await db.query('select trimax_submit_public_service_request($1,$2,$3,$4) r',['test',JSON.stringify({...payload,...extra}),String(n).padStart(64,'0'),String(n+100).padStart(64,'0')])).rows[0].r;}
+ const first=await submit(1);eq((await submit(1)).id,first.id);eq((await db.query('select count(*)::int n from scheduling_owner_notifications')).rows[0].n,1);
+ async function as(user,fn){await db.exec(`set role authenticated;set test.uid='${user}'`);try{return await fn();}finally{await db.exec('reset role');}}
+ const call=(id,revision,action,key,client=null,start=null,minutes=null)=>db.query('select trimax_service_request_workflow($1,$2,$3,$4,$5,$6,$7) r',[id,revision,key,action,client,start,minutes]);
+ const fail=async(fn,re)=>{await assert.rejects(fn,re);checks++};
+ await fail(()=>as(outsider,()=>call(first.id,1,'convert','outsider-attempt-0001')),/Not authorized/);
+ await fail(()=>as(owner,()=>call(first.id,1,'convert','unapproved-attempt-1')),/Approve/);
+ await as(owner,()=>db.query('select trimax_review_public_service_request($1,1,$2,$3,$4)',[first.id,'approved','Synthetic internal note','approval-test-000001']));
+ eq((await db.query('select count(*)::int n from queue_items')).rows[0].n,0);
+ const conversion=(await as(owner,()=>call(first.id,2,'convert','conversion-test-0001'))).rows[0].r;
+ eq((await as(owner,()=>call(first.id,2,'convert','conversion-test-0001'))).rows[0].r,conversion);
+ await fail(()=>as(owner,()=>call(first.id,2,'schedule','conversion-test-0001',null,'2030-01-07T17:00:00Z',60)),/Mutation conflict/);
+ await as(owner,()=>call(first.id,3,'convert','conversion-repeat-02'));
+ eq((await db.query('select count(*)::int n from queue_items')).rows[0].n,1);eq((await db.query('select count(*)::int n from clients')).rows[0].n,1);
+ const q=(await db.query('select * from queue_items')).rows[0];assert.match(q.notes,/Synthetic repair/);assert.match(q.notes,/Preferred contact: email/);assert.match(q.notes,/Urgency: time_sensitive/);checks+=3;
+ const second=await submit(2);await as(owner,()=>call(second.id,1,'approve_schedule','schedule-second-0001',null,'2030-01-07T17:00:00Z',60));
+ eq((await db.query('select count(*)::int n from clients')).rows[0].n,1);
+ await fail(()=>as(owner,()=>call(first.id,4,'schedule','schedule-conflict-01',null,'2030-01-07T17:30:00Z',60)),/Schedule conflict/);
+ await as(owner,()=>call(first.id,4,'schedule','schedule-first-00001',null,'2030-01-07T18:00:00Z',60));
+ eq((await db.query('select scheduled_date::text d from queue_items where id=$1',[q.id])).rows[0].d,'2030-01-07');
+ await as(owner,()=>call(first.id,5,'schedule','reschedule-first-001',null,'2030-01-08T18:00:00Z',90));
+ await as(owner,()=>call(first.id,6,'cancel_appointment','cancel-first-0000001'));
+ const cancelled=(await db.query('select * from queue_items where id=$1',[q.id])).rows[0];eq(cancelled.scheduled_date,null);eq(cancelled.completed_date,null);
+ const history=(await db.query('select event_type from public_request_activity where request_id=$1',[first.id])).rows.map(r=>r.event_type);for(const event of ['client_created','queue_converted','appointment_scheduled','appointment_rescheduled','appointment_cancelled']){assert.ok(history.includes(event));checks++;}
+ const third=await submit(3,{email:'other@example.invalid',phone:'5555550101'});
+ await db.query('insert into clients(id,business_id,name) values($1,$2,$3)',[uid(50),uid(4),'Other workspace']);
+ await fail(()=>as(owner,()=>call(third.id,1,'approve_schedule','foreign-client-0001',uid(50),'2030-01-09T18:00:00Z',60)),/Client is not/);
+ eq((await db.query('select status from public_service_requests where id=$1',[third.id])).rows[0].status,'pending_confirmation');
+ await as(owner,()=>call(third.id,1,'approve_schedule','new-client-00000001',null,'2030-01-09T18:00:00Z',60));
+ eq((await db.query('select count(*)::int n from clients where business_id=$1',[business])).rows[0].n,2);
+ await db.exec('set role anon');await fail(()=>call(first.id,7,'convert','anonymous-attempt-1'),/permission denied/);await db.exec('reset role');
+ eq((await db.query("select count(*)::int n from public_scheduling_outbox where channel='push'")).rows[0].n,3);
+ eq((await db.query("select count(*)::int n from public_scheduling_outbox where channel='push' and recipient=$1",[uid(71)])).rows[0].n,0);
+ const messages=(await db.query("select * from public_scheduling_outbox where channel='email'")).rows;assert.ok(messages.some(m=>m.event_type==='approved'));assert.ok(messages.some(m=>m.event_type==='appointment_cancelled'));checks+=2;
+ for(const m of messages){assert.ok(m.consent_reference);assert.ok(!JSON.stringify(m.parameters).includes('Synthetic internal note'));checks+=2;}
+ await db.exec('set role authenticated');await fail(()=>db.query("select * from trimax_claim_request_delivery('push')"),/permission denied/);await db.exec('reset role;set role service_role');
+ const batch=(await db.query("select * from trimax_claim_request_delivery('push')")).rows;eq(batch.length,3);eq((await db.query("select * from trimax_claim_request_delivery('push')")).rows.length,0);
+ eq((await db.query('select trimax_finish_request_delivery($1,$2,$3,$4) ok',[batch[0].id,uid(99),'wrong-lease',null])).rows[0].ok,false);
+ eq((await db.query('select trimax_finish_request_delivery($1,$2,$3,$4) ok',[batch[0].id,batch[0].lease_token,'accepted',null])).rows[0].ok,true);
+ await db.query('select trimax_finish_request_delivery($1,$2,$3,$4)',[batch[1].id,batch[1].lease_token,null,'transient']);await db.exec('reset role');
+ eq((await db.query('select status from public_scheduling_outbox where id=$1',[batch[1].id])).rows[0].status,'retry');
+ eq((await db.query('select count(*)::int n from scheduling_owner_notifications')).rows[0].n,3);
+ await fail(()=>as(owner,()=>db.query('select trimax_review_public_service_request($1,2,$2,$3,$4)',[second.id,'rejected','','reject-booked-000001'])),/Cancel the appointment/);
+ await db.query("update queue_items set scheduled_date='2030-01-10' where source_request_id=$1",[second.id]);
+ eq((await db.query('select appointment_start from queue_items where source_request_id=$1',[second.id])).rows[0].appointment_start,null);
+ eq((await db.query("select count(*)::int n from public_request_activity where request_id=$1 and event_type='appointment_time_cleared'",[second.id])).rows[0].n,1);
+ eq((await db.query('select jsonb_array_length(delivery_history) n from public_scheduling_outbox where id=$1',[batch[1].id])).rows[0].n,1);
+ await db.query("update public_scheduling_outbox set attempts=5,lease_expires_at=now()-interval '1 minute' where id=$1",[batch[2].id]);
+ await db.exec("set role service_role;select * from trimax_claim_request_delivery('push');reset role");
+ eq((await db.query('select status from public_scheduling_outbox where id=$1',[batch[2].id])).rows[0].status,'dead_letter');
+ console.log(JSON.stringify({result:'PASS',checks,scope:'isolated PostgreSQL; no production writes'}));
+}finally{await db.close();}})().catch(e=>{console.error(e);process.exitCode=1});

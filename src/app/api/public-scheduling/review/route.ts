@@ -7,6 +7,7 @@ import { devStoreDirectory } from '@/app/lib/publicScheduling/developmentStore';
 import { updateDevelopmentRequest } from '@/app/lib/publicScheduling/ownerWorkflow';
 export const runtime='nodejs';
 export async function PATCH(request:Request){
+ if(process.env.VERCEL_ENV==='preview'&&!schedulingDevelopmentEnabled())return Response.json({error:'Live reviews are disabled in preview.'},{status:403});
  if(!schedulingDevelopmentEnabled()){try{const owner=await productionOwner(request,new URL(request.url).searchParams.get('business')||'');return Response.json({request:await owner.review(await readBoundedJson(request,8000))},{headers:{'Cache-Control':'no-store'}});}catch{return Response.json({error:'Owner access or storage unavailable.'},{status:403});}}
   try{devStoreDirectory();}catch{return Response.json({error:'Development workflow unavailable.'},{status:503});}
   const slug=new URL(request.url).searchParams.get('business')||'',business=getPublicBusiness(slug);

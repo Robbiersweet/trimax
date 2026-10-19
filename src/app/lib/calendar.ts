@@ -1,5 +1,8 @@
 type CalendarEventInput = {
   title: string;
+  start?: string | null;
+  end?: string | null;
+  id?: string;
   date: string | null;
   description?: string | null;
   location?: string | null;
@@ -57,7 +60,9 @@ export function calendarDataUri(input: CalendarEventInput) {
     .toISOString()
     .replace(/[-:]/g, "")
     .replace(/\.\d{3}Z$/, "Z");
-  const uid = `${date}-${cleanText(input.title).replace(/[^a-zA-Z0-9]/g, "")}@trimax`;
+  const timed = input.start && input.end && Date.parse(input.end)>Date.parse(input.start);
+  const stamp = (value: string) => new Date(value).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+  const uid = input.id ? `${input.id.replace(/[^a-zA-Z0-9-]/g, "")}@trimax` : `${date}-${cleanText(input.title).replace(/[^a-zA-Z0-9]/g, "")}@trimax`;
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
@@ -67,8 +72,8 @@ export function calendarDataUri(input: CalendarEventInput) {
     "BEGIN:VEVENT",
     `UID:${uid}`,
     `DTSTAMP:${now}`,
-    `DTSTART;VALUE=DATE:${date}`,
-    `DTEND;VALUE=DATE:${endDate}`,
+    timed ? `DTSTART:${stamp(input.start!)}` : `DTSTART;VALUE=DATE:${date}`,
+    timed ? `DTEND:${stamp(input.end!)}` : `DTEND;VALUE=DATE:${endDate}`,
     `SUMMARY:${cleanText(input.title)}`,
     input.location ? `LOCATION:${cleanText(input.location)}` : null,
     input.description

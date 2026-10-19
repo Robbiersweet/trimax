@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import {appointmentInstant,validateWorkflowChange} from '../src/app/lib/publicScheduling/workflow.ts';
+import {customerEmail,deliveryChannels,type Delivery} from '../src/app/lib/publicScheduling/delivery.ts';
+import {calendarDataUri} from '../src/app/lib/calendar.ts';
+assert.equal(appointmentInstant('2030-01-07','09:00','America/Los_Angeles'),'2030-01-07T17:00:00.000Z');
+assert.throws(()=>appointmentInstant('2027-03-14','02:30','America/Los_Angeles'),/unavailable/);
+assert.throws(()=>appointmentInstant('2027-11-07','01:30','America/Los_Angeles'),/ambiguous/);
+assert.throws(()=>appointmentInstant('2030-02-31','09:00','UTC'));
+const change={requestId:'00000000-0000-4000-8000-000000000001',expectedRevision:1,mutationId:'synthetic-mutation-01',action:'schedule',clientId:null,start:'2030-01-07T17:00:00.000Z',minutes:60};
+assert.equal(validateWorkflowChange(change).minutes,60);
+for(const patch of [{minutes:0},{minutes:721},{minutes:1.5},{clientId:'foreign'},{businessId:'injected'},{action:'delete'},{start:'2030-01-07T09:00'}])assert.throws(()=>validateWorkflowChange({...change,...patch}));
+const row:Delivery={id:'synthetic',business_id:'b',request_id:'r',channel:'email',audience:'customer',recipient:'synthetic@example.invalid',event_type:'approved',idempotency_key:'synthetic-email-01',lease_token:'lease',consent_reference:'synthetic-consent',parameters:{business:'R&L Creations',reference:'SYNTHETIC',start:'2030-01-07T17:00:00Z',end:'2030-01-07T18:00:00Z',timeZone:'America/Los_Angeles',internalNotes:'SECRET NOTE'}};
+for(const event of ['request_received','approved','appointment_scheduled','appointment_rescheduled','appointment_cancelled','declined']){const mail=customerEmail({...row,event_type:event});assert.ok(mail.subject.includes('R&L Creations'));assert.ok(!mail.text.includes('SECRET NOTE'));}
+assert.match(customerEmail(row).text,/no appointment is confirmed/);
+assert.throws(()=>customerEmail({...row,consent_reference:null}));
+assert.throws(()=>customerEmail({...row,event_type:'appointment_scheduled',parameters:{}}));
+const config={VERCEL_ENV:'production',SERVICE_REQUEST_DELIVERY_ENABLED:'enabled',NEXT_PUBLIC_VAPID_PUBLIC_KEY:'test',VAPID_PRIVATE_KEY:'test'};
+assert.deepEqual(deliveryChannels(config),['push']);
+assert.deepEqual(deliveryChannels({...config,VERCEL_ENV:'preview',RESEND_API_KEY:'test'}),[]);
+assert.deepEqual(deliveryChannels({...config,SERVICE_REQUEST_DELIVERY_ENABLED:undefined}),[]);
+assert.deepEqual(deliveryChannels({...config,SERVICE_REQUEST_EMAIL_ENABLED:'enabled',RESEND_API_KEY:'test',SERVICE_REQUEST_EMAIL_FROM:'test@example.invalid',SERVICE_REQUEST_EMAIL_BUSINESS_ID:'b'}),['push','email']);
+const untimed=decodeURIComponent(calendarDataUri({date:'2030-01-07',title:'Test'})!);assert.match(untimed,/DTSTART;VALUE=DATE:20300107/);
+const timed=decodeURIComponent(calendarDataUri({date:'2030-01-07',title:'Test',id:'job-1',start:'2030-01-07T17:00:00Z',end:'2030-01-07T18:00:00Z'})!);assert.match(timed,/DTSTART:20300107T170000Z/);assert.match(timed,/UID:job-1@trimax/);
+console.log('PASS workflow validation, timezone/DST, customer privacy/templates, preview delivery guard, channel independence, timed/all-day calendar');

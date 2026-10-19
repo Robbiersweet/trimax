@@ -4,7 +4,7 @@ export type PublicBusiness = { slug: string; businessId: string; displayName: st
 const initial: PublicBusiness = {slug:'rnl-creations',businessId:'dev:rnl-creations',displayName:'R&L Creations',description:'Thoughtful repairs, painting, and property care. Tell us what you need and we will help plan the next step.',phone:null,email:null,logoUrl:null,enabled:true,requestTypes:['Handyman / Repair','Painting','Carpentry','Apartment / Property Service','Estimate Request','Other'].map((label,i)=>({id:['repair','painting','carpentry','property','estimate','other'][i],publicLabel:label,internalLabel:label,description:'',active:true,displayOrder:i,estimatedDurationMinutes:null,schedulingEligible:true})),rules:{weekdays:[1,2,3,4,5],blockedDates:[],minimumLeadHours:24,maximumHorizonDays:90,timeZone:'America/Los_Angeles',businessHours:{start:'08:00',end:'17:00'},windows:[{id:'morning',label:'Morning · 8 am–12 pm',start:'08:00',end:'12:00'},{id:'afternoon',label:'Afternoon · 12–5 pm',start:'12:00',end:'17:00'}],ownerApprovalRequired:true,mode:'request-only'}};
 export function getPublicBusiness(slug:string): PublicBusiness | null { return slug === initial.slug ? structuredClone(initial) : null; }
 export function listPublicBusinesses() { return [structuredClone(initial)]; }
-export type ServiceRequestInput = {requestTypeId:string;customerName:string;phone:string;email:string;preferredContact:'phone'|'email'|'sms';address:string;description:string;preferredDate:string;timeWindowId:string;flexibility:'flexible'|'preferred'|'fixed';urgency:'routine'|'soon'|'urgent';notes:string;consent:boolean;website?:string};
+export type ServiceRequestInput = {requestTypeId:string;customerName:string;phone:string;email:string;preferredContact:'phone'|'email'|'sms';address:string;description:string;preferredDate:string;timeWindowId:string;flexibility:'flexible'|'preferred'|'fixed';urgency:'routine'|'soon'|'time_sensitive'|'urgent';notes:string;consent:boolean;website?:string};
 export type RequestStatus = 'pending_confirmation' | 'reviewing' | 'approved' | 'needs_information' | 'rejected' | 'cancelled';
 export type RequestActivity = {id:string;at:string;actor:string;event:string;from?:RequestStatus;to?:RequestStatus;note?:string};
 export type PublicServiceRequest = ServiceRequestInput & {id:string;businessId:string;businessSlug:string;reference:string;status:RequestStatus;revision?:number;activity?:RequestActivity[];submittedAt:string;source:'public-web';internalNotes:string;confirmationStatus:'unconfirmed';notificationStatus:'not_configured'};
@@ -22,7 +22,7 @@ export function validateRequest(input:unknown,business:PublicBusiness,now=new Da
  if(value.preferredContact==='email'&&!value.email)fields.email='Email is required for your contact preference.';
  if(['phone','sms'].includes(value.preferredContact)&&value.phone.replace(/\D/g,'').length<7)fields.phone='Phone is required for your contact preference.';
  if(!['flexible','preferred','fixed'].includes(value.flexibility))fields.flexibility='Choose your flexibility.';
- if(!['routine','soon','urgent'].includes(value.urgency))fields.urgency='Choose an urgency.';
+ if(!['routine','soon','time_sensitive','urgent'].includes(value.urgency))fields.urgency='Choose an urgency.';
  if(!value.consent)fields.consent='Please agree to be contacted about this request.';
  if(data.website)fields.website='Request could not be accepted.';
  if(value.timeWindowId&&!business.rules.windows.some(w=>w.id===value.timeWindowId))fields.timeWindowId='Choose an available time window.';

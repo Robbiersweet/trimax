@@ -27,6 +27,10 @@ type QueueScheduleItem = {
   flooring: string | null;
   ready_date: string | null;
   scheduled_date: string | null;
+  appointment_time_zone?: string | null;
+  appointment_start?: string | null;
+  appointment_end?: string | null;
+  source_request_id?: string | null;
   completed_date: string | null;
   notes: string | null;
 };
@@ -528,6 +532,7 @@ export default async function SchedulePage({
                 item.scheduled_date || item.ready_date || null;
               const calendarHref = calendarDataUri({
                 title: `Trimax: ${title}`,
+                start: item.appointment_start, end: item.appointment_end, id: item.appointment_start ? item.id : undefined,
                 date: eventDate,
                 location: item.property,
                 description: jobDescription(item),
@@ -562,6 +567,7 @@ export default async function SchedulePage({
                     </div>
 
                     <div className="flex flex-wrap gap-3 lg:justify-end">
+                      {item.source_request_id && <Link href={`/admin/service-requests?business=${encodeURIComponent(businessSlug)}&request=${item.source_request_id}`}>Manage appointment</Link>}
                       <Link href={`/queue/${item.id}${businessQuery}`}>
                         <Button variant="secondary">Open Job</Button>
                       </Link>
@@ -581,7 +587,7 @@ export default async function SchedulePage({
                   <div className="mt-5 grid gap-3 md:grid-cols-3">
                     <ScheduleFact
                       label="Scheduled"
-                      value={formatDate(item.scheduled_date)}
+                      value={item.appointment_start ? `${formatDate(item.scheduled_date)} · ${new Date(item.appointment_start).toLocaleTimeString("en-US",{timeZone:item.appointment_time_zone||"UTC",hour:"numeric",minute:"2-digit"})} ${item.appointment_time_zone||"UTC"}` : formatDate(item.scheduled_date)}
                       tone={item.scheduled_date ? "green" : "zinc"}
                     />
                     <ScheduleFact

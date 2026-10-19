@@ -4,7 +4,7 @@ import {useEffect,useState} from 'react';
 import {supabase} from '../lib/supabase';
 import {loadWorkspaceAccess} from '../lib/workspaceAccess';
 
-type Notice={id:string;request_id:string;customer_name:string;request_type:string;submitted_at:string;read_at:string|null};
+type Notice={id:string;request_id:string;customer_name:string;request_type:string;requested_date?:string|null;submitted_at:string;read_at:string|null};
 /** Caller JWT + database RLS; no intake credential or admin authority in the browser. */
 export default function SchedulingNotifications({business}:{business:string}){
  const [page,setPage]=useState(0);
@@ -19,12 +19,12 @@ export default function SchedulingNotifications({business}:{business:string}){
     if(!access){if(!cancelled&&epoch===authEpoch){setAllowed(false);setRows([]);setCount(0);}return;}
     const {data:{user}}=await supabase.auth.getUser();if(!user)throw Error();
     const [inbox,unread]=await Promise.all([
-     supabase.from('scheduling_owner_notifications').select('id,request_id,customer_name,request_type,submitted_at,read_at').eq('business_id',access.businessId).eq('recipient_id',user.id).order('submitted_at',{ascending:false}).range(page*50,page*50+49),
+     supabase.from('scheduling_owner_notifications').select('id,request_id,customer_name,request_type,requested_date,submitted_at,read_at').eq('business_id',access.businessId).eq('recipient_id',user.id).order('submitted_at',{ascending:false}).range(page*50,page*50+49),
      supabase.from('scheduling_owner_notifications').select('id',{count:'exact',head:true}).eq('business_id',access.businessId).eq('recipient_id',user.id).is('read_at',null)
     ]);
     if(inbox.error||unread.error)throw Error();
-    if(!cancelled){setAllowed(true);setRows(inbox.data??[]);setCount(unread.count??0);setError('');}
-   }catch{if(!cancelled){setRows([]);setCount(0);setError('Notifications unavailable. Check Service Requests.');}}
+    if(!cancelled&&epoch===authEpoch){setAllowed(true);setRows(inbox.data??[]);setCount(unread.count??0);setError('');}
+   }catch{if(!cancelled&&epoch===authEpoch){setRows([]);setCount(0);setError('Notifications unavailable. Check Service Requests.');}}
    finally{inFlight=false;}
   }
   void load();const timer=window.setInterval(()=>void load(),30000);
@@ -43,6 +43,6 @@ export default function SchedulingNotifications({business}:{business:string}){
  return <section className="relative my-3" aria-label="Scheduling notifications">
   <button className="rounded-xl border border-zinc-600 px-3 py-2 text-sm text-white" aria-expanded={open} onClick={()=>setOpen(!open)}>Notifications <span aria-live="polite">({count} unread)</span></button>
   {error&&<p role="status" className="text-sm text-amber-300">{error}</p>}
-  {open&&<div className="mt-2 max-h-96 overflow-auto rounded-xl border border-zinc-600 bg-zinc-950 p-3 text-white"><h2 className="font-semibold">Service request notifications</h2><p className="text-xs text-zinc-400">Page {page+1} · updates every 30 seconds</p>{rows.length===0?<p>No notifications yet.</p>:<ul>{rows.map(n=><li key={n.id} className="border-b border-zinc-700 py-3"><Link className="block underline" href={`/admin/service-requests?business=${encodeURIComponent(business)}&request=${encodeURIComponent(n.request_id)}`} onClick={()=>{void mark(n.id);setOpen(false);}}>{!n.read_at?'Unread · ':''}{n.customer_name} — {n.request_type}</Link><time className="block text-xs" dateTime={n.submitted_at}>{new Date(n.submitted_at).toLocaleString()}</time>{!n.read_at&&<button className="mt-2 text-sm underline" onClick={()=>void mark(n.id)}>Mark as read</button>}</li>)}</ul>}<div className="flex gap-4 pt-3"><button disabled={page===0} onClick={()=>setPage(n=>n-1)}>Newer</button><button disabled={rows.length<50} onClick={()=>setPage(n=>n+1)}>Older</button></div></div>}
+  {open&&<div className="mt-2 max-h-96 overflow-auto rounded-xl border border-zinc-600 bg-zinc-950 p-3 text-white"><h2 className="font-semibold">Service request notifications</h2><p className="text-xs text-zinc-400">Page {page+1} · updates every 30 seconds</p>{rows.length===0?<p>No notifications yet.</p>:<ul>{rows.map(n=><li key={n.id} className="border-b border-zinc-700 py-3"><Link className="block underline" href={`/admin/service-requests?business=${encodeURIComponent(business)}&request=${encodeURIComponent(n.request_id)}`} onClick={()=>{void mark(n.id);setOpen(false);}}>{!n.read_at?'Unread · ':''}{n.customer_name} — {n.request_type}</Link><p className="text-xs">Requested: {n.requested_date||'Flexible date'}</p><time className="block text-xs" dateTime={n.submitted_at}>{new Date(n.submitted_at).toLocaleString()}</time>{!n.read_at&&<button className="mt-2 text-sm underline" onClick={()=>void mark(n.id)}>Mark as read</button>}</li>)}</ul>}<div className="flex gap-4 pt-3"><button disabled={page===0} onClick={()=>setPage(n=>n-1)}>Newer</button><button disabled={rows.length<50} onClick={()=>setPage(n=>n+1)}>Older</button></div></div>}
  </section>;
 }
