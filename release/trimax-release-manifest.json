@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-service-workflow-20261018-preview",
+  "releaseId": "trimax-service-workflow-20261018-rc1",
   "status": "SEALED_CONTROLLED_DEPLOYMENT_CANDIDATE",
-  "createdAt": "2026-10-19T00:13:30.830Z",
+  "createdAt": "2026-10-19T03:14:21.473Z",
   "releaseTimestamp": null,
   "baseProduction": {
     "commit": "9f8f48b851a249caa75c0dc5bdc632f134c1c1c3",
@@ -11,17 +11,17 @@
   },
   "components": {
     "web": {
-      "commit": "006e7fc31034c0f75fc21d511359c4a4437cd900"
+      "commit": "13cc198c965062e1224e585f99c2c553e489f7a1"
     },
     "legacy": {
-      "commit": "006e7fc31034c0f75fc21d511359c4a4437cd900"
+      "commit": "13cc198c965062e1224e585f99c2c553e489f7a1"
     },
     "v2-shadow": {
-      "commit": "006e7fc31034c0f75fc21d511359c4a4437cd900"
+      "commit": "13cc198c965062e1224e585f99c2c553e489f7a1"
     }
   },
   "sourceBundle": {
-    "sha256": "1384cbf6e3ea202ba57b2a4c47797e5e75226912dca11cb0a59c205de9fe1036",
+    "sha256": "a883237d2a5a60005f015460c84d1d4d870c86bb748189bc1e733acde3a16abb",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -214,7 +214,7 @@
       "scripts/payment-timeliness-regression.ts": "92b739b72360bad34278d2d364fdf701e02b97c04026baca58d30ec6ffc7dd64",
       "scripts/pdf-readiness-regression.mjs": "34fd04950dfc1456fdf1e662a39ae301c7916425e15afb67c702363a8a961dd5",
       "scripts/provision-scheduling-token.mjs": "af00f4c55092336b540764e9484be82c315a480fdb17f026c0a18267eec253c4",
-      "scripts/public-function-catalog-replay.cjs": "de63b02997f2c9bcb038f6efacb1414915912c1b07d326ecc6d40b9c2d4b410d",
+      "scripts/public-function-catalog-replay.cjs": "8ee878c3a6246aa491b319f1438da09bdc2e8c931b9583ef61774477bb1eb9f3",
       "scripts/public-function-manager-regression.cjs": "efbfc03e32419c723d0685ede55865bbcc3a2648a31c3442201715b85bf230fb",
       "scripts/public-scheduling-authorization-regression.ts": "e7e35efefab4635bf5a71ffa59e19b5b3c5b8160e6fa152dbe1fc8c0f78fc689",
       "scripts/public-scheduling-boundary-regression.ts": "7a35eb304e2fe91d8f7e546d9b3b95c84e618442dc5940aa95f5144bee9ad761",
@@ -223,7 +223,7 @@
       "scripts/public-scheduling-phase2-regression.ts": "d196f2d481516b9c217e1dccb0a46950babefbb5925e54a57677b57488731636",
       "scripts/public-scheduling-phase2-sql-regression.mjs": "dea2b1de180ea2ca2fc55b7150ddadd37c398454f6a7cc80a5cc45cb54d06815",
       "scripts/public-scheduling-production-regression.ts": "fb43daff8d19505f2308306f28bcc5c3aae0a12efdfb232d80899cbdfa3e7146",
-      "scripts/public-scheduling-regression.ts": "92df7603be0d51f10e6d1997aa81fef8c74fe2b8bc1f3ba78570b83ecefcd81c",
+      "scripts/public-scheduling-regression.ts": "24e8c6841d04bc7c4d0361e8ec4462b1bbca6518979798b0db3052e20668a1f0",
       "scripts/public-scheduling-schema-regression.mjs": "52efaa8e4f220ad089bbc423b0e561a0e6c82b12c4a4a773447f065290e9a5ee",
       "scripts/public-scheduling-scope-audit.sql": "1e16e122a454ba0417a305a82a4a0298316fc93cbfc8619b9777190560e79f61",
       "scripts/public-scheduling-seed-rnl.sql": "e9a1dd34f3f6c753860f95b7fa0eb4799e3bbc9f8ed9ea0d7f4b88db6bb85ddd",
@@ -265,8 +265,9 @@
       "scripts/scheduling-notifications-sql-regression.cjs": "50c29b03e3d451046ca531b73471129413b7624a476046fb5c7ba9f6763cb1a8",
       "scripts/scheduling-notifications-ui-regression.cjs": "276a63d5a9a90f02e7cebfb0dc0fba140bf2d778d1868179a7f1e2fcd6cf2bfb",
       "scripts/service-duplicate-cleanup-regression.ts": "cb12dbb4a373decfac6e47f30fadc6aeae871466944405724e8197b69c46586c",
-      "scripts/service-workflow-regression.ts": "b63bfdfd98b7560359cc79035b6f63e6140d654c56886936f997f7bc19ff2022",
-      "scripts/service-workflow-sql-regression.cjs": "6cf3ff9906db825bbecd7c1f646987aa2705f8e1ee137aee08a2ae4cd7dc1fb2",
+      "scripts/service-workflow-catalog-replay.cjs": "91cfea74d372547adf843891912a4392825c40597b5e4a220396daba4b42376e",
+      "scripts/service-workflow-regression.ts": "b148ee98e977473d057d487fdd90cb9060591cdf24d7611ac95d6a8e496cb04c",
+      "scripts/service-workflow-sql-regression.cjs": "8049f214fd132adea8029fe7e74f4f6ba7634fd0efbe62a49c63346afabf43e6",
       "scripts/services-workspace-polish-regression.ts": "c8ed449b850c76a6a44fc029fa9ddf932f5cf553a0af79d64d9959390a2d9701",
       "scripts/session-tab-isolation-regression.ts": "144f7ae36ec32b8092d0a07dc012899030362364f4f95ff9ee91d7e29912ad48",
       "scripts/split-invoice-send-regression.ts": "a030f1bd265a7791cd21b5664af094cd64cbb09ce43a000ce9064cd861815527",
@@ -277,7 +278,7 @@
       "src/app/admin/ocr-attempts/[attemptId]/page.tsx": "47b7930a27ffcec419ae723006d4ef899aa4e22f15e36d0bc34cf493f4dc5253",
       "src/app/admin/ocr-attempts/page.tsx": "43d6b53dad0f26564fba589ca221eb79eaba16451f9165221d128c2ab7920b27",
       "src/app/admin/service-requests/components/OwnerWorkspace.tsx": "5dda7428981bd4133211ae530d7452ad472ad0173c0664bb64d91706cef52fab",
-      "src/app/admin/service-requests/components/WorkflowActions.tsx": "9be96a557ff44378bf9f967a7cf2bc8c68c5ea90d6276164272d7de14e4e8c2a",
+      "src/app/admin/service-requests/components/WorkflowActions.tsx": "4a42de7aad15eb33e5a31fd928d26db6d2582b5f96665b68647419ee3f5c535d",
       "src/app/admin/service-requests/components/owner.css": "92045317f886adee59b75b35afa6ec6f589ad1acd1f82f56d29a6e93aab2e589",
       "src/app/admin/service-requests/page.tsx": "bcdac0b54194809d40cc0bb6f79e8581ed0062de2b9160f06dbe609f3270a152",
       "src/app/api/access-requests/route.ts": "be8e1bd81f9ed7e0833594de01d69179b231256229e6c0d1951032bb9cbd645c",
@@ -290,7 +291,7 @@
       "src/app/api/payments/extract-check-stub/route.ts": "e86853cf9fdad673c629a0b7d572da7de2b640ba3982b94f8f8ca54b8b0e51bf",
       "src/app/api/payments/ocr-jobs/route.ts": "20654cb307aa2d04afad5a80276bf6e75bc829d09726afba1574a93787d9b67e",
       "src/app/api/public-scheduling/[slug]/route.ts": "9749cfd93818e29a0a979da083b7880204496e44a1861b0e67b84f8f51fd2c88",
-      "src/app/api/public-scheduling/deliver/route.ts": "8b1368ce48b8612518d9bb002e5662480162810d305cd7385779f69be70f315b",
+      "src/app/api/public-scheduling/deliver/route.ts": "9726ad374da19b1ea4856fcf317a8a3d0d6a62746974df69ae8fa2ed64d9bf11",
       "src/app/api/public-scheduling/intake/route.ts": "3a80f34d12df0ac1f91d44c37808bb6d0fa78c3b3e0dbbccee4d8e1fc192f466",
       "src/app/api/public-scheduling/review/route.ts": "5e7d88e1fcdd955259bdac2cdc7983638a1455d0abcb37b829438b4a16733b5d",
       "src/app/api/public-scheduling/settings/route.ts": "6f58d3a53c9d432d756428ed9a936134e088f1c283e17f06a38401245d5dfbd8",
@@ -299,7 +300,7 @@
       "src/app/api/queue-items/[id]/route.ts": "5cd257ffd7e62daeb7732e5694a9dc8f0393362cfb3d07d74e12c89ae7871f7f",
       "src/app/api/queue/send-tbd-reminders/route.ts": "efd0f4b5d05f4316c7780c2f9a62a56153966a6d6188e31ce734d8d8abff23f8",
       "src/app/api/recurring-invoices/run/route.ts": "e5d3822d8b6b11435ea3fa6c8f9289ff9d34e9658895f27e2ec7091e9c67d9d1",
-      "src/app/book/RequestForm.tsx": "7562e95f674fe7a91d307a1439e95a509a280f7709c7a73d612e3472005c081f",
+      "src/app/book/RequestForm.tsx": "36ade2c8a4709d2ceb21dd0695fbbe3af3ca1b9850ec16564e7643ded83102d9",
       "src/app/book/TurnstileChallenge.tsx": "31ed159bfeb127d5704811144e42e44b5aaed77973d874356d66196ca7c34795",
       "src/app/book/[slug]/page.tsx": "0584364828b5d64da346a9f17994472a22ea85d764dd682864a6053d5447348a",
       "src/app/book/fonts/Allura-Regular.ttf": "9c142b2e515832c0dfc4ff8b8ea18f40314943bf937b72e2b23c4661bac14cc6",
@@ -514,21 +515,22 @@
       "src/app/lib/publicScheduling/conversion.ts": "78bac275019c144d7fd79f3ee0f4831b0c88f0764860555c0a518d8bd54acd28",
       "src/app/lib/publicScheduling/delivery.ts": "f345dde6c72f425909fb722eea5211cea9e6e352359fe6be9ca14e5ff74f01f3",
       "src/app/lib/publicScheduling/developmentStore.ts": "f7551e3bfb18ab6813ab2f347cd5973cf26eb343756d680062e29e59141f32f2",
-      "src/app/lib/publicScheduling/domain.ts": "82ce32990df1460507d213bdfbeff18b6001048834f5ed2afe1573e0b5ec226a",
+      "src/app/lib/publicScheduling/dispatch.ts": "d6091ab20fa7e219d0afd5079ecf2d57aeda7f74255d774466945de61e26ea58",
+      "src/app/lib/publicScheduling/domain.ts": "b645830a68735827048ad7ee705a1e922decd0f73030cc0e144cf0d0fdaf55e4",
       "src/app/lib/publicScheduling/httpBody.ts": "8d48548bc924c40261429e1a4cf1a7dba2ddae7f057d0b119523da66cbd85400",
       "src/app/lib/publicScheduling/notifications.ts": "9054dd7b4d60f2c5a86dcc44efc214e05fa0cdc0f947985fd40d22dd1873e93d",
       "src/app/lib/publicScheduling/outbox.ts": "dd5c1354b712f517841c8235a51cef9303e3079c918851ecd71429f3f6e63dee",
       "src/app/lib/publicScheduling/ownerWorkflow.ts": "a065851c0d58c7faaf22aa81b265dc28ee5561412d9aaa11b9c370c70acf49ab",
       "src/app/lib/publicScheduling/productionAdapter.ts": "7569ab44173fbbb987130b426d1c1623aa59d94a61c81c027e0f9b0ef0411a6c",
       "src/app/lib/publicScheduling/productionHandler.ts": "7f27fb92962fc6dfffbecdd9a59082f75a4c5f8e4860a32a80c21e6a4cee616e",
-      "src/app/lib/publicScheduling/productionOwner.ts": "7aca70d788abb52c7292870271d3c2b31302f409cd083f903dcad2d8069bd576",
+      "src/app/lib/publicScheduling/productionOwner.ts": "0fc063dd8b088c82b5d523488ca8ec85395b371e1fc93300fc33baac61278ed4",
       "src/app/lib/publicScheduling/productionRuntime.ts": "46c98c4438c6c59d09e0a5b67e8bec148ff20f230337b5d6ad2898c6f5eb414b",
       "src/app/lib/publicScheduling/productionService.ts": "1ce8bd046cbbac1e48967affdfa52c3529480b74d409ad36f2b5f348ed47ea81",
       "src/app/lib/publicScheduling/providers.ts": "fd570ddd3a620751b24a0495ef88cadc13044ef42a7855c86e39b523334da0f5",
       "src/app/lib/publicScheduling/reviewEnvironment.ts": "edef431620f5e0e4323305b2c1aedded35ad18e199b3fc60f0f9c1b7ccbe5e89",
       "src/app/lib/publicScheduling/routes.ts": "0f6d4df22b2a6e114997562947b6b5146b87e46dc8f57895984d32cd2f3db389",
       "src/app/lib/publicScheduling/settings.ts": "e1a53866dd40d95e9744efaebdda92996fa4a6463ef8066161c0dfefa12f13a5",
-      "src/app/lib/publicScheduling/workflow.ts": "49f81584b241b803d9a1030136f76ecd10ea84d905948fc38a0a5788a5c12f19",
+      "src/app/lib/publicScheduling/workflow.ts": "78b914cae30a16366fb325fb6bc2b6d4bd82317b5141f76ea965a24656f5954f",
       "src/app/lib/queueAction.ts": "8b02f818d6cef91ccd70c454f3356c3fd197ebcaaf25668d392bdd73e6c7e8ec",
       "src/app/lib/queueTiming.ts": "ae19f6d156c3c60ffad1877db3c0ed31b77c419d3b998f56d34d30d2d8772337",
       "src/app/lib/remittanceAttempt.ts": "0420cb694638a8554b878cb67b70a742db2a745c6c976db62a4c7907e1f7f8cd",
@@ -587,9 +589,9 @@
       "supabase/migrations/20261012_public_function_acl_hardening.sql": "7dd81bdfcb98ad965027184e5b92a01c199e5d39cb221bb328eaab45e76afb92",
       "supabase/migrations/20261017_scheduling_owner_notifications.rollback.sql": "63288a12867604f28ac8fd61f185417ae1965f1eba849305ef98a37e2769d485",
       "supabase/migrations/20261017_scheduling_owner_notifications.sql": "1065227a13a82622f388d4e88af62a4c63a3d2b7cc35290ce53a9b28ad3b38d3",
-      "supabase/migrations/20261018_request_urgency.sql": "3048b1675169c86fbb7f1ef6f8cd5c33a079a97fecd74da8e6d918159eed2bce",
+      "supabase/migrations/20261018_request_urgency.sql": "2fcb42dc6a5ecd25b0fd8220419bd051d688816a07336689f3d79b991e9101c5",
       "supabase/migrations/20261018_service_request_delivery.sql": "c179f9f7f78cdacf3eb5717de4c1ce8db06f1a1ab824494e057c5fee54d10e1d",
-      "supabase/migrations/20261018_service_request_workflow.sql": "2dd14cdc7fd65e55eef77158cd983ea7fbd71e4b13078088ad7db663f0761062",
+      "supabase/migrations/20261018_service_request_workflow.sql": "7f9766c34c1aa48b486952a10a1897737f343dfd4c6183554e7bf1d39be7cb66",
       "supabase/sql/2026-05-24-business-users.sql": "1c6caf132eb207b9cdcea52b25fb552e4c18e7f22f4949117e14b8ccc8ea2165",
       "supabase/sql/2026-05-24-seed-business-users.sql": "0f4cb6e000f5b1a6d48c27e1521bf010f94a638b4f2a932f1c64c1a59318df28",
       "supabase/sql/2026-05-25-allow-pending-business-invites.sql": "c27c4bb32ff1e09e48e7f9858b3a8087d815d63a8331ecb1310f7c1e01d76a1f",
@@ -648,6 +650,7 @@
       "supabase/sql/2026-09-26-ocr-evidence-persistence.sql": "92ad3cc388a7db2dda6bf4431fee375b3d7dfa221ebc752f6dda0b35cce45729",
       "supabase/sql/2026-09-26-ocr-object-storage.sql": "0cb04c4e63d134fc801d0fbf10b2f333204b1ed9a347a9612c39b9ab6c51e33d",
       "supabase/sql/2026-10-01-release-attestation.sql": "7c7e3ce675e8a8f570759629263724bbc9ceaaf7623e19873d4133e290f10871",
+      "supabase/sql/2026-10-18-service-request-scheduler.sql": "3733c3de752b250e7ed20cff988cd8968d2678e53062213dd96f0bb80f46c207",
       "supabase/sql/README.md": "e3ac010eb016b07963eda46c3f2670d0e1aa78a51666deb38dfcb0f391c34684",
       "tsconfig.json": "f399e24188640b031f844ec7c0285e65450e697b2daa5790e1cb801818fcc955",
       "vercel.json": "471510cb78bbf804feac04290af8a0b5ae512751b1cf5d6d9b4472380fe74233"
@@ -750,28 +753,28 @@
     }
   ],
   "database": {
-    "capturedAt": "2026-10-17T07:30:35.634Z",
+    "capturedAt": "2026-10-19T03:14:21.576Z",
     "algorithm": "catalog-v1; sorted C collation name=value; UTF8 SHA256; public tables/constraints/indexes/functions, public+storage RLS, public table grants; excludes only trimax_release_runtime itself",
     "fingerprints": {
-      "rpc": {
-        "sha256": "ec7b367ee11f597b1a7d94a39864ec96497a9136d8455b63e9320c5c9752a044",
-        "entries": 42
-      },
-      "grants": {
-        "sha256": "6fd0a259109a6736a447eb06e9c9750c91a5082b98be594b0ac565cd28bf4cd7",
-        "entries": 1000
-      },
       "schema": {
-        "sha256": "748efe0a4e65b2a0c9fcea41ee6de135eda86144a55fbb9b4548393484eed5ef",
-        "entries": 856
+        "entries": 875,
+        "sha256": "f4e78a156d1acb4c5002ece22fb77e2cad26217167bfd9a94779646cc7c70c63"
       },
-      "policies": {
-        "sha256": "3b84cfce7458daf00ab80492a52688e5f58d3b38bd56afc3b9938a80883bfc1f",
-        "entries": 81
+      "rpc": {
+        "entries": 49,
+        "sha256": "b8d1f68167dd90404c058381dee1d9b39adde7bebecb6e9331c514226a682f1e"
       },
       "triggers": {
-        "sha256": "7873f0b1d9870f2a9648687cfc7111c913cb7278b93e85b1c51edd7aac108950",
-        "entries": 9
+        "entries": 13,
+        "sha256": "c35cfea25289bdf6e7f278e4d0e3628a2eec3c66d19c434b3aa53563e1fd1e5e"
+      },
+      "policies": {
+        "entries": 81,
+        "sha256": "3b84cfce7458daf00ab80492a52688e5f58d3b38bd56afc3b9938a80883bfc1f"
+      },
+      "grants": {
+        "entries": 1000,
+        "sha256": "6fd0a259109a6736a447eb06e9c9750c91a5082b98be594b0ac565cd28bf4cd7"
       }
     },
     "flags": [
@@ -783,7 +786,7 @@
     ],
     "legacyEnabled": true,
     "acceptanceTableRecords": 0,
-    "evidenceType": "PRODUCTION_ROLLBACK_ONLY_EXACT_MIGRATION_REHEARSAL"
+    "evidenceType": "DISPOSABLE_EXACT_BASELINE_MIGRATION_REHEARSAL"
   },
   "workerConfiguration": {
     "businessId": "f31adfa1-26ad-4e74-ad94-a4668d7ad57d",
@@ -1591,14 +1594,14 @@
       "deploymentId": "DbJBRGrnwsbdAC24egTmPahUN6LV",
       "deploymentCommit": "4e3d786e12092c5ffde86d8324cd6c23ce6670cf"
     },
-    "candidateReleaseId": "trimax-service-workflow-20261018-preview",
-    "applicationCommit": "006e7fc31034c0f75fc21d511359c4a4437cd900",
+    "candidateReleaseId": "trimax-service-workflow-20261018-rc1",
+    "applicationCommit": "13cc198c965062e1224e585f99c2c553e489f7a1",
     "machineryCommit": "bda2718b332542040f477fb537f0f0aa3ca6ecd1"
   },
   "contractRevision": {
-    "id": "service-workflow-preview-uninstalled-migrations",
+    "id": "service-workflow-projected-catalog",
     "priorManifestDigest": "619cbb3408f3383e1b408e463381ea70f3960ffc35b3424c13d258c36a160e2e",
-    "reason": "Preview source with isolated fixtures. Database fingerprints remain the verified production baseline; candidate migrations are not installed or projected.",
-    "rollback": "No production mutation. Retain production deployment DbJBRGrnwsbdAC24egTmPahUN6LV. Production rollout requires separate catalog projection and coordinated contract approval."
+    "reason": "Three uninstalled workflow/delivery/urgency migrations projected from the exact verified production baseline in disposable PostgreSQL. Scheduler activation is separately gated.",
+    "rollback": "Retain production deployment DbJBRGrnwsbdAC24egTmPahUN6LV and production worker contract. Before recovery disable new delivery flags and named scheduler. Keep additive database data; re-attest the rollback source against the retained additive schema before worker restart."
   }
 }
