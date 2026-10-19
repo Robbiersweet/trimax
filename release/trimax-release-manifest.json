@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-service-workflow-20261019-rc3",
+  "releaseId": "trimax-service-workflow-20261019-rc4-login-return",
   "status": "SEALED_CONTROLLED_DEPLOYMENT_CANDIDATE",
-  "createdAt": "2026-10-19T08:07:16.369Z",
+  "createdAt": "2026-10-19T09:04:09.662Z",
   "releaseTimestamp": null,
   "baseProduction": {
     "commit": "9f8f48b851a249caa75c0dc5bdc632f134c1c1c3",
@@ -11,17 +11,17 @@
   },
   "components": {
     "web": {
-      "commit": "c0445bfc68d6d12e2a6a9748297a10f014794ce6"
+      "commit": "96963d5df85993bcc4ec7f717facbe83ebaa20c7"
     },
     "legacy": {
-      "commit": "c0445bfc68d6d12e2a6a9748297a10f014794ce6"
+      "commit": "96963d5df85993bcc4ec7f717facbe83ebaa20c7"
     },
     "v2-shadow": {
-      "commit": "c0445bfc68d6d12e2a6a9748297a10f014794ce6"
+      "commit": "96963d5df85993bcc4ec7f717facbe83ebaa20c7"
     }
   },
   "sourceBundle": {
-    "sha256": "83ab05796391a006c3efcb789fd96b11a13bc090e6a4b5beb83916df082cb9d2",
+    "sha256": "534ddabd234a41fccb50f3a093533fe5a6bcbee0dc5cec13abe13beb514bc8c9",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -67,6 +67,7 @@
       "scripts/job-session-crew-regression.ts": "20dd3bb6fc1ab001b088eeb58b17f45c600ed406d582a3e982617672ab959aef",
       "scripts/job-session-integrity-regression.ts": "856bf47c592d6a1e4e9f30156de9ab6debd50791f78b54986569872465e704ba",
       "scripts/late-payment-reminder-send-regression.ts": "bc79e06ce165ba2ab8f5263ec615a9f33bd38ac6ba35a8ee01f4b796e9f6d53d",
+      "scripts/login-return-regression.cjs": "50f65d976a9b4baa8450ed8c0ad9e9ba0c51890e8e375c21e66b5b4f030bd021",
       "scripts/ocr-canonical-object.cjs": "56fc82d9392d86ae644b3925823210875519e3398d1e9cf4d374a993bfa59970",
       "scripts/ocr-cold-pipeline-regression.cjs": "17c9df1d8990902cc10373a1c9d422b63d4c65e4ab2eabaf5a885e3bc122e538",
       "scripts/ocr-debug-queue-regression.cjs": "84085964d4ee83a58dd0fa8c993482b8ca42c0a8827871f4cda846560fc737ee",
@@ -230,7 +231,7 @@
       "scripts/public-scheduling-seed-rnl.sql": "e9a1dd34f3f6c753860f95b7fa0eb4799e3bbc9f8ed9ea0d7f4b88db6bb85ddd",
       "scripts/queue-compact-toolbar-regression.ts": "31290b567851c074872fc5d4b7d332d7cbc1af517129c9f5e2c2d61ef7fdb5d5",
       "scripts/queue-workspace-polish-regression.ts": "40743a142f1bc2e14fc2aca23d743d2d8d2342016cfce592f1f6f22160cceb1d",
-      "scripts/release/auth-flow-regression.cjs": "4d7ede3411ef172daf752cf0f852f220a2f6ee55f5868efafddf977751716638",
+      "scripts/release/auth-flow-regression.cjs": "57e3c64112036cae7a5ff86ecf8c2dc862c75ad591900e57390a32f2dbe29cc8",
       "scripts/release/authorization-execution-regression.cjs": "04df6de9929ae8bde95b621a843650f575acf23f9074a357ae6a705125ba67f5",
       "scripts/release/authorize-build.cjs": "88c7d10b41262c22f4415b3af851adc606441f18a57370a55c0049b29bed11b7",
       "scripts/release/build-diagnostics.cjs": "c0aef8fd7da629a1b672859a2b9a5728607f6e291dc56498d9eb2fe5de489b04",
@@ -241,7 +242,7 @@
       "scripts/release/file-forensics-regression.cjs": "a6da1ba822d17c1a31b7bd29d3cb49e95febca66f29c51b712ccdd9d608c1b26",
       "scripts/release/file-forensics.cjs": "25133a9f2167c801a05906be04068f3d85f54f3c462e085869df2d486c8bea30",
       "scripts/release/final-candidate-regression.cjs": "edc0dbfa8f70d55607c65327a08ed25193380387dd4f1e850cf130ef992ca03f",
-      "scripts/release/gate-checks.cjs": "5f7a49d4ede023e117cfaa4ddb1b89837c9a9693a95066588d7cf198be6b77d5",
+      "scripts/release/gate-checks.cjs": "c66037fae27212809c9afa765ff1d87d821e4ec3f493bac88e9ad16bc359a2ab",
       "scripts/release/gate-state-regression.cjs": "51f1d2c76eca73d122f20cc0f537b624074ebd4943f946dcba63857775e45d04",
       "scripts/release/gate-state.cjs": "f56bdc9741b07b92c53bb487f21320080537fa90734721130612e8c1b52da839",
       "scripts/release/gate.cjs": "fd9d065007932504635900617ed3d7d11481a26e4dcc6131d0afbca39096e17d",
@@ -317,7 +318,7 @@
       "src/app/clients/page.tsx": "9be7d15e68f6657d24c6cd106c3f4401cdd80d29d29c065efb6a2fb261f7e11b",
       "src/app/components/ActiveJobSessionDock.tsx": "a4d5dcb81f50fb9ffb0b9e1796e89c1fc4ed4dc4753878db0ae717099f4154ca",
       "src/app/components/AppShell.tsx": "b4358a4c5a82735d1871ef0bc8e7e3bbb30b3770b577d51b0343552155c489af",
-      "src/app/components/AuthGuard.tsx": "3c50661e8dbb922617a9c7ad703fe2ce84ebc98b43255585077de2afa8f6c614",
+      "src/app/components/AuthGuard.tsx": "a2cbef8c661e46dceccf203705ad7575bf35aa1ac1725734a9f2b821fe8154c1",
       "src/app/components/BackButton.tsx": "87360394e36c2e90d4a33135d5539d0176e75d8cc2448783c5c859783ee1059c",
       "src/app/components/BatchInvoicePayments.tsx": "dbcfcb17d861a1984089815f5af5b120fcf2567af3c6edad738054a446f27341",
       "src/app/components/Button.tsx": "68f87a76cee881a6b148ec30af54746d8a0fbe11a153b3ccf0134a62504deb97",
@@ -438,6 +439,7 @@
       "src/app/lib/invoiceEmailSettings.ts": "3ebaf7deb6a876e2b5c9676c76222d0de2bc900a08dde7572ad0b7192525bdef",
       "src/app/lib/invoiceLifecycle.ts": "adfc76f46c26ff7f9ec7bf231e226e8eebec4db845a66cacdba422b501323f35",
       "src/app/lib/jobSessionLabor.ts": "1561ac43f587e55df4a7a67baab378810f2e4ede2498a08e6cfca22ac4060503",
+      "src/app/lib/loginReturn.ts": "fa6c306af2215a37860864d0bf6364a9449544b2c9101ff104288fbe50c29849",
       "src/app/lib/maintenanceMode.ts": "2caa1d8585706dae45460aef8538d4d5336a29b53c490ae5a69b2059b77e3cca",
       "src/app/lib/ocrCanonical.ts": "258aaa456b5ea1d3f73a0d655d05b04cc619577af4bbf4d845cff645a50a2978",
       "src/app/lib/ocrCanonicalClient.ts": "2059299a63282d4d749e213fe67d1abf3a3c85cda609e9a74bedfa528b7168a5",
@@ -551,7 +553,7 @@
       "src/app/lib/tbd.ts": "d355d3001455be4797b4d1575bc165db11309735a09c41e0eb3037224dc472e0",
       "src/app/lib/unitHistory.ts": "e5890af5c3776e123136e562d2fd9f8a99a2ac9449c68f8893f940c2fa9da9be",
       "src/app/lib/workspaceAccess.ts": "6d6334182d663536ac1123695bf2017f06373486cfa01ef54d0e72967d480b71",
-      "src/app/login/page.tsx": "07e206c4f2d5da62de4e191361d965b3f9fa64c04c1a41ea298f4a81a24fe1b0",
+      "src/app/login/page.tsx": "f72a4992a2a3144d081ff218572291ea381a57bdd326065ac618823f9c73cfe8",
       "src/app/manifest.ts": "7a70a588bc52215af58477c2bcfc67c143742493f01048b35b4898d6732d8954",
       "src/app/new-request/page.tsx": "74ef72e0d2c2cd9b2762c63202051620e326fbed774fec8140bf77d614524953",
       "src/app/page.tsx": "b7ee7c7c5bc3c33e031af3bc9833faa7520b447daf4c2bcca0d6de928a9767f3",
@@ -1592,20 +1594,20 @@
   },
   "upgradeContext": {
     "currentProductionRelease": {
-      "releaseId": "trimax-release-contract-20261017-rc11-notifications",
-      "manifestCommit": "4e3d786e12092c5ffde86d8324cd6c23ce6670cf",
-      "manifestDigest": "619cbb3408f3383e1b408e463381ea70f3960ffc35b3424c13d258c36a160e2e",
-      "deploymentId": "DbJBRGrnwsbdAC24egTmPahUN6LV",
-      "deploymentCommit": "4e3d786e12092c5ffde86d8324cd6c23ce6670cf"
+      "releaseId": "trimax-service-workflow-20261019-rc3",
+      "manifestCommit": "6782f0f5e2b8cb3db8b6554e42232d79fa34dc03",
+      "manifestDigest": "367e33548476342705f66fc48e531e3c50fa46496c9007264056c61c9dec4065",
+      "deploymentId": "BKhemYyB4BsrwbwnEku75okVKhxV",
+      "deploymentCommit": "6782f0f5e2b8cb3db8b6554e42232d79fa34dc03"
     },
-    "candidateReleaseId": "trimax-service-workflow-20261019-rc3",
-    "applicationCommit": "c0445bfc68d6d12e2a6a9748297a10f014794ce6",
+    "candidateReleaseId": "trimax-service-workflow-20261019-rc4-login-return",
+    "applicationCommit": "96963d5df85993bcc4ec7f717facbe83ebaa20c7",
     "machineryCommit": "bda2718b332542040f477fb537f0f0aa3ca6ecd1"
   },
   "contractRevision": {
-    "id": "service-workflow-projected-catalog",
-    "priorManifestDigest": "619cbb3408f3383e1b408e463381ea70f3960ffc35b3424c13d258c36a160e2e",
-    "reason": "Three uninstalled workflow/delivery/urgency migrations projected from the exact verified production baseline in disposable PostgreSQL. Scheduler activation is separately gated.",
-    "rollback": "Retain production deployment DbJBRGrnwsbdAC24egTmPahUN6LV and production worker contract. Before recovery disable new delivery flags and named scheduler. Keep additive database data; re-attest the rollback source against the retained additive schema before worker restart."
+    "id": "notification-login-return",
+    "priorManifestDigest": "367e33548476342705f66fc48e531e3c50fa46496c9007264056c61c9dec4065",
+    "reason": "Auth-only return destination repair; database, models, service worker and worker configuration unchanged.",
+    "rollback": "Retain rc3 production deployment and matching workers; database remains unchanged."
   }
 }
