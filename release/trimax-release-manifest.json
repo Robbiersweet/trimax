@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-service-workflow-20261019-rc2",
+  "releaseId": "trimax-service-workflow-20261019-rc3",
   "status": "SEALED_CONTROLLED_DEPLOYMENT_CANDIDATE",
-  "createdAt": "2026-10-19T07:34:30.578Z",
+  "createdAt": "2026-10-19T08:07:16.369Z",
   "releaseTimestamp": null,
   "baseProduction": {
     "commit": "9f8f48b851a249caa75c0dc5bdc632f134c1c1c3",
@@ -11,17 +11,17 @@
   },
   "components": {
     "web": {
-      "commit": "fd241a36bbf5c8bbb679f7c71c12fb6b1e6f9c11"
+      "commit": "c0445bfc68d6d12e2a6a9748297a10f014794ce6"
     },
     "legacy": {
-      "commit": "fd241a36bbf5c8bbb679f7c71c12fb6b1e6f9c11"
+      "commit": "c0445bfc68d6d12e2a6a9748297a10f014794ce6"
     },
     "v2-shadow": {
-      "commit": "fd241a36bbf5c8bbb679f7c71c12fb6b1e6f9c11"
+      "commit": "c0445bfc68d6d12e2a6a9748297a10f014794ce6"
     }
   },
   "sourceBundle": {
-    "sha256": "237eb2132bb946a609954352ecd8e28122a244a5bce9d1a22e8154fb3c94f779",
+    "sha256": "83ab05796391a006c3efcb789fd96b11a13bc090e6a4b5beb83916df082cb9d2",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -657,7 +657,7 @@
       "supabase/sql/2026-10-19-scheduler-provisioning-remove.sql": "7d3fee0ec6170f15b066fe882446b832c420e1a64ceb8b2aa68a9fda0446467f",
       "supabase/sql/README.md": "e3ac010eb016b07963eda46c3f2670d0e1aa78a51666deb38dfcb0f391c34684",
       "tsconfig.json": "f399e24188640b031f844ec7c0285e65450e697b2daa5790e1cb801818fcc955",
-      "vercel.json": "471510cb78bbf804feac04290af8a0b5ae512751b1cf5d6d9b4472380fe74233"
+      "vercel.json": "dd0dafc7204af5e053d507b4f7db1f7e42d2db001e4d0e9d3694f7e3e56308e4"
     }
   },
   "modelBundle": {
@@ -1598,8 +1598,8 @@
       "deploymentId": "DbJBRGrnwsbdAC24egTmPahUN6LV",
       "deploymentCommit": "4e3d786e12092c5ffde86d8324cd6c23ce6670cf"
     },
-    "candidateReleaseId": "trimax-service-workflow-20261019-rc2",
-    "applicationCommit": "fd241a36bbf5c8bbb679f7c71c12fb6b1e6f9c11",
+    "candidateReleaseId": "trimax-service-workflow-20261019-rc3",
+    "applicationCommit": "c0445bfc68d6d12e2a6a9748297a10f014794ce6",
     "machineryCommit": "bda2718b332542040f477fb537f0f0aa3ca6ecd1"
   },
   "contractRevision": {
