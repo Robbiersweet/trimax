@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-service-workflow-20261018-rc1",
+  "releaseId": "trimax-service-workflow-20261019-rc2",
   "status": "SEALED_CONTROLLED_DEPLOYMENT_CANDIDATE",
-  "createdAt": "2026-10-19T03:14:21.473Z",
+  "createdAt": "2026-10-19T07:34:30.578Z",
   "releaseTimestamp": null,
   "baseProduction": {
     "commit": "9f8f48b851a249caa75c0dc5bdc632f134c1c1c3",
@@ -11,17 +11,17 @@
   },
   "components": {
     "web": {
-      "commit": "13cc198c965062e1224e585f99c2c553e489f7a1"
+      "commit": "fd241a36bbf5c8bbb679f7c71c12fb6b1e6f9c11"
     },
     "legacy": {
-      "commit": "13cc198c965062e1224e585f99c2c553e489f7a1"
+      "commit": "fd241a36bbf5c8bbb679f7c71c12fb6b1e6f9c11"
     },
     "v2-shadow": {
-      "commit": "13cc198c965062e1224e585f99c2c553e489f7a1"
+      "commit": "fd241a36bbf5c8bbb679f7c71c12fb6b1e6f9c11"
     }
   },
   "sourceBundle": {
-    "sha256": "a883237d2a5a60005f015460c84d1d4d870c86bb748189bc1e733acde3a16abb",
+    "sha256": "237eb2132bb946a609954352ecd8e28122a244a5bce9d1a22e8154fb3c94f779",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -213,6 +213,7 @@
       "scripts/payment-state-lifecycle-regression.ts": "88f1ec8d51facaf9c25d94f18ab4c827db668b331cbe0f61d923855ce8bced04",
       "scripts/payment-timeliness-regression.ts": "92b739b72360bad34278d2d364fdf701e02b97c04026baca58d30ec6ffc7dd64",
       "scripts/pdf-readiness-regression.mjs": "34fd04950dfc1456fdf1e662a39ae301c7916425e15afb67c702363a8a961dd5",
+      "scripts/provision-request-scheduler.cjs": "66c4418d9800231114e195c0391e618994a7e2a6215f74deb99b36ea5ed866e6",
       "scripts/provision-scheduling-token.mjs": "af00f4c55092336b540764e9484be82c315a480fdb17f026c0a18267eec253c4",
       "scripts/public-function-catalog-replay.cjs": "8ee878c3a6246aa491b319f1438da09bdc2e8c931b9583ef61774477bb1eb9f3",
       "scripts/public-function-manager-regression.cjs": "efbfc03e32419c723d0685ede55865bbcc3a2648a31c3442201715b85bf230fb",
@@ -240,7 +241,7 @@
       "scripts/release/file-forensics-regression.cjs": "a6da1ba822d17c1a31b7bd29d3cb49e95febca66f29c51b712ccdd9d608c1b26",
       "scripts/release/file-forensics.cjs": "25133a9f2167c801a05906be04068f3d85f54f3c462e085869df2d486c8bea30",
       "scripts/release/final-candidate-regression.cjs": "edc0dbfa8f70d55607c65327a08ed25193380387dd4f1e850cf130ef992ca03f",
-      "scripts/release/gate-checks.cjs": "e89bc162ba29f0687f725a629f49a9b19987af9df992aae1b624699f72c5b2a3",
+      "scripts/release/gate-checks.cjs": "5f7a49d4ede023e117cfaa4ddb1b89837c9a9693a95066588d7cf198be6b77d5",
       "scripts/release/gate-state-regression.cjs": "51f1d2c76eca73d122f20cc0f537b624074ebd4943f946dcba63857775e45d04",
       "scripts/release/gate-state.cjs": "f56bdc9741b07b92c53bb487f21320080537fa90734721130612e8c1b52da839",
       "scripts/release/gate.cjs": "fd9d065007932504635900617ed3d7d11481a26e4dcc6131d0afbca39096e17d",
@@ -262,10 +263,11 @@
       "scripts/remittance-release-gate.ts": "21944edbe46796c2b87e595dad18d2c49eb9fb72f2c9558b80f6880ceb4cdf32",
       "scripts/remittance-retry-regression.ts": "6a768fef914bc295d09ececbb7216648d08ebc3b69b6ef07e1c1dbcfe078ec9d",
       "scripts/reverse-total-regression.ts": "1d228ce9b8fdb2f49a5838f4de9d781874351a96c1661186242bd2e691ee5e04",
+      "scripts/scheduler-provisioning-regression.cjs": "f96e0dc2543c0329d5538759285fe53cd599da41c11418127a29978c107cf126",
       "scripts/scheduling-notifications-sql-regression.cjs": "50c29b03e3d451046ca531b73471129413b7624a476046fb5c7ba9f6763cb1a8",
       "scripts/scheduling-notifications-ui-regression.cjs": "276a63d5a9a90f02e7cebfb0dc0fba140bf2d778d1868179a7f1e2fcd6cf2bfb",
       "scripts/service-duplicate-cleanup-regression.ts": "cb12dbb4a373decfac6e47f30fadc6aeae871466944405724e8197b69c46586c",
-      "scripts/service-workflow-catalog-replay.cjs": "91cfea74d372547adf843891912a4392825c40597b5e4a220396daba4b42376e",
+      "scripts/service-workflow-catalog-replay.cjs": "64a8339195e41616a5b466a019f1b620cd4bcf251e6adbd740be3e8c156400fb",
       "scripts/service-workflow-regression.ts": "b148ee98e977473d057d487fdd90cb9060591cdf24d7611ac95d6a8e496cb04c",
       "scripts/service-workflow-sql-regression.cjs": "8049f214fd132adea8029fe7e74f4f6ba7634fd0efbe62a49c63346afabf43e6",
       "scripts/services-workspace-polish-regression.ts": "c8ed449b850c76a6a44fc029fa9ddf932f5cf553a0af79d64d9959390a2d9701",
@@ -651,6 +653,8 @@
       "supabase/sql/2026-09-26-ocr-object-storage.sql": "0cb04c4e63d134fc801d0fbf10b2f333204b1ed9a347a9612c39b9ab6c51e33d",
       "supabase/sql/2026-10-01-release-attestation.sql": "7c7e3ce675e8a8f570759629263724bbc9ceaaf7623e19873d4133e290f10871",
       "supabase/sql/2026-10-18-service-request-scheduler.sql": "3733c3de752b250e7ed20cff988cd8968d2678e53062213dd96f0bb80f46c207",
+      "supabase/sql/2026-10-19-scheduler-provisioning-install.sql": "a2d3da5bc74e004318aaade01a1d6bf9e88211eb801c521b571966f2d04b980b",
+      "supabase/sql/2026-10-19-scheduler-provisioning-remove.sql": "7d3fee0ec6170f15b066fe882446b832c420e1a64ceb8b2aa68a9fda0446467f",
       "supabase/sql/README.md": "e3ac010eb016b07963eda46c3f2670d0e1aa78a51666deb38dfcb0f391c34684",
       "tsconfig.json": "f399e24188640b031f844ec7c0285e65450e697b2daa5790e1cb801818fcc955",
       "vercel.json": "471510cb78bbf804feac04290af8a0b5ae512751b1cf5d6d9b4472380fe74233"
@@ -1594,8 +1598,8 @@
       "deploymentId": "DbJBRGrnwsbdAC24egTmPahUN6LV",
       "deploymentCommit": "4e3d786e12092c5ffde86d8324cd6c23ce6670cf"
     },
-    "candidateReleaseId": "trimax-service-workflow-20261018-rc1",
-    "applicationCommit": "13cc198c965062e1224e585f99c2c553e489f7a1",
+    "candidateReleaseId": "trimax-service-workflow-20261019-rc2",
+    "applicationCommit": "fd241a36bbf5c8bbb679f7c71c12fb6b1e6f9c11",
     "machineryCommit": "bda2718b332542040f477fb537f0f0aa3ca6ecd1"
   },
   "contractRevision": {
