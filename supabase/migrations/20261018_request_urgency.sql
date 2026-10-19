@@ -22,7 +22,7 @@ begin
  if p_payload->>'preferredDate'<>'' then
   if p_payload->>'preferredDate' !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' then raise exception 'Invalid date'; end if;
   requested=(p_payload->>'preferredDate')::date;
-  if not kind.scheduling_eligible or requested<(now() at time zone settings.time_zone)::date+ceil(settings.minimum_lead_hours::numeric/24)::integer+1 or requested>(now() at time zone settings.time_zone)::date+settings.maximum_horizon_days or not extract(dow from requested)::integer=any(settings.available_weekdays) or requested=any(settings.blocked_dates) then raise exception 'Requested date unavailable'; end if;
+  if requested<(now() at time zone settings.time_zone)::date then raise exception 'Choose today or a future date'; end if;
  elsif p_payload->>'flexibility'='fixed' then raise exception 'Date required'; end if;
  payload_hash_value=encode(sha256(convert_to(p_payload::text,'UTF8')),'hex');
  -- Serialize only identical tenant/key submissions; no unrelated business lock.

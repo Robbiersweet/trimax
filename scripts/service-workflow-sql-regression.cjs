@@ -19,7 +19,7 @@ try{
  async function submit(n,extra={}){return (await db.query('select trimax_submit_public_service_request($1,$2,$3,$4) r',['test',JSON.stringify({...payload,...extra}),String(n).padStart(64,'0'),String(n+100).padStart(64,'0')])).rows[0].r;}
  const first=await submit(1);eq((await submit(1)).id,first.id);eq((await db.query('select count(*)::int n from scheduling_owner_notifications')).rows[0].n,1);
  async function as(user,fn){await db.exec(`set role authenticated;set test.uid='${user}'`);try{return await fn();}finally{await db.exec('reset role');}}
- const call=(id,revision,action,key,client=null,start=null,minutes=null)=>db.query('select trimax_service_request_workflow($1,$2,$3,$4,$5,$6,$7) r',[id,revision,key,action,client,start,minutes]);
+ const call=(id,revision,action,key,client=null,start=null,minutes=null,reason=null)=>db.query('select trimax_service_request_workflow($1,$2,$3,$4,$5,$6,$7,$8) r',[id,revision,key,action,client,start,minutes,reason]);
  const fail=async(fn,re)=>{await assert.rejects(fn,re);checks++};
  await fail(()=>as(outsider,()=>call(first.id,1,'convert','outsider-attempt-0001')),/Not authorized/);
  await fail(()=>as(owner,()=>call(first.id,1,'convert','unapproved-attempt-1')),/Approve/);
@@ -66,5 +66,27 @@ try{
  await db.query("update public_scheduling_outbox set attempts=5,lease_expires_at=now()-interval '1 minute' where id=$1",[batch[2].id]);
  await db.exec("set role service_role;select * from trimax_claim_request_delivery('push');reset role");
  eq((await db.query('select status from public_scheduling_outbox where id=$1',[batch[2].id])).rows[0].status,'dead_letter');
+ // Preference dates are not availability promises. These fixtures run after count assertions.
+ const today=(await db.query("select (now() at time zone 'America/Los_Angeles')::date::text d")).rows[0].d;
+ const future=(await db.query("select ((now() at time zone 'America/Los_Angeles')::date+400)::text d")).rows[0].d;
+ for(const [n,date] of [[80,today],[81,future],[82,'2030-01-06']])eq((await submit(n,{preferredDate:date})).status,'pending_confirmation');
+ await fail(()=>submit(83,{preferredDate:'2000-01-01'}),/Choose today/);
+ const override=await submit(84);
+ await as(owner,()=>call(override.id,1,'approve_schedule','override-test-000001',null,'2030-01-07T18:00:00Z',60));
+ const overlap=await submit(85);
+ await fail(()=>as(owner,()=>call(overlap.id,1,'approve_schedule','override-test-000002',null,'2030-01-07T18:30:00Z',60)),/Schedule conflict/);
+ await as(owner,()=>call(overlap.id,1,'approve_schedule','override-test-000003',null,'2030-01-07T18:30:00Z',60,'Separate crew assigned'));
+ eq((await db.query("select details->>'conflictReason' reason from public_request_activity where request_id=$1 and details ? 'conflictReason' order by created_at desc limit 1",[overlap.id])).rows[0].reason,'Separate crew assigned');
+ const sameDay=await submit(86);
+ const start=(await db.query("select now()+interval '1 minute' t")).rows[0].t;
+ await as(owner,()=>call(sameDay.id,1,'approve_schedule','same-day-test-000001',null,start,15));
+ eq((await db.query('select count(*)::int n from queue_items where source_request_id=$1 and appointment_start is not null',[sameDay.id])).rows[0].n,1);
+ // Execute the scheduler SQL against disposable extension stand-ins; no HTTP call is made.
+ await db.exec(`create schema vault;create table vault.decrypted_secrets(name text,decrypted_secret text);insert into vault.decrypted_secrets values('trimax_service_request_cron_secret','synthetic-test-token-not-a-secret');create schema cron;create table cron.job(jobid bigint,jobname text,schedule text,active boolean,command text);create function cron.schedule(text,text,text) returns bigint language plpgsql as $body$begin insert into cron.job values(1,$1,$2,true,$3);return 1;end$body$;create schema net;create table net.calls(url text,headers jsonb);create function net.http_get(url text,headers jsonb,timeout_milliseconds integer) returns bigint language plpgsql as $body$begin insert into net.calls values(url,headers);return 1;end$body$;`);
+ await db.exec(fs.readFileSync('supabase/sql/2026-10-18-service-request-scheduler.sql','utf8').replace(/^create extension[^\r\n]*[\r\n]*/gm,''));
+ const command=(await db.query('select command from cron.job')).rows[0].command;
+ await db.exec(command);eq((await db.query('select count(*)::int n from net.calls')).rows[0].n,1);
+ await db.exec("update public_scheduling_outbox set status='delivered';truncate net.calls");await db.exec(command);eq((await db.query('select count(*)::int n from net.calls')).rows[0].n,0);
+ await db.query("update public_scheduling_outbox set status='leased',lease_expires_at=now()-interval '1 minute' where id=$1",[batch[2].id]);await db.exec(command);eq((await db.query('select count(*)::int n from net.calls')).rows[0].n,1);
  console.log(JSON.stringify({result:'PASS',checks,scope:'isolated PostgreSQL; no production writes'}));
 }finally{await db.close();}})().catch(e=>{console.error(e);process.exitCode=1});

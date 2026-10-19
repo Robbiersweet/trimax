@@ -7,7 +7,7 @@ alter table public.queue_items add column appointment_start timestamptz;
 alter table public.queue_items add column appointment_end timestamptz;
 alter table public.queue_items add constraint request_appointment_interval check
  ((appointment_start is null and appointment_end is null) or
-  (appointment_start is not null and appointment_end > appointment_start));
+  (appointment_start is not null and appointment_end is not null and appointment_end > appointment_start));
 alter table public.public_service_requests add column client_id uuid references public.clients(id);
 alter table public.public_service_requests add column queue_item_id text unique references public.queue_items(id);
 alter table public.scheduling_owner_notifications add column requested_date date;
@@ -26,7 +26,7 @@ create trigger scheduling_notice_requested_date before insert on public.scheduli
  for each row execute function public.trimax_notice_requested_date();
 
 -- One atomic owner action. Existing Queue completion/invoice lifecycle is untouched.
-create function public.trimax_service_request_workflow(p_request_id uuid,p_revision integer,p_mutation_id text,p_action text,p_client_id uuid default null,p_start timestamptz default null,p_minutes integer default null)
+create function public.trimax_service_request_workflow(p_request_id uuid,p_revision integer,p_mutation_id text,p_action text,p_client_id uuid default null,p_start timestamptz default null,p_minutes integer default null,p_conflict_reason text default null)
 returns jsonb language plpgsql security definer set search_path=pg_catalog as $$
 declare r public.public_service_requests; q public.queue_items; actor uuid:=auth.uid();
  prior jsonb; result jsonb; fingerprint text; chosen uuid; matches integer; zone text; finish timestamptz; original_status text;
@@ -38,7 +38,7 @@ begin
  perform pg_advisory_xact_lock(hashtextextended('service-workflow:'||r.business_id::text,0));
  select * into r from public.public_service_requests where id=p_request_id for update;
  if p_mutation_id is null or p_mutation_id !~ '^[A-Za-z0-9_-]{16,100}$' or p_action is null or p_action not in ('convert','schedule','approve_schedule','cancel_appointment') then raise exception 'Invalid action'; end if;
- fingerprint=encode(sha256(convert_to(jsonb_build_object('revision',p_revision,'action',p_action,'client',p_client_id,'start',p_start,'minutes',p_minutes)::text,'UTF8')),'hex');
+ fingerprint=encode(sha256(convert_to(jsonb_build_object('revision',p_revision,'action',p_action,'client',p_client_id,'start',p_start,'minutes',p_minutes,'conflictReason',p_conflict_reason)::text,'UTF8')),'hex');
  select details into prior from public.public_request_activity where request_id=r.id and business_id=r.business_id and mutation_id=p_mutation_id;
  if found then
   if prior->>'hash' is distinct from fingerprint then raise exception 'Mutation conflict'; end if;
@@ -53,10 +53,11 @@ begin
   if p_start is null or not isfinite(p_start) or p_start<=now() or p_minutes is null or p_minutes<15 or p_minutes>720 then raise exception 'Choose a future start and duration of 15 to 720 minutes'; end if;
   select time_zone into zone from public.public_scheduling_settings where business_id=r.business_id;
   finish=p_start+make_interval(mins=>p_minutes);
+  if p_conflict_reason is not null and length(btrim(p_conflict_reason)) not between 5 and 500 then raise exception 'Provide a conflict override reason of 5 to 500 characters'; end if;
   -- Existing date-only work is a conflict requiring review rather than a guessed free slot.
   if exists(select 1 from public.queue_items x where x.business_id=r.business_id and x.id is distinct from r.queue_item_id and x.completed_date is null and (
     (x.appointment_start is not null and x.appointment_start<finish and x.appointment_end>p_start) or
-    (x.appointment_start is null and x.scheduled_date between (p_start at time zone zone)::date and ((finish-interval '1 second') at time zone zone)::date))) then raise exception 'Schedule conflict: review existing work and choose another time'; end if;
+    (x.appointment_start is null and x.scheduled_date between (p_start at time zone zone)::date and ((finish-interval '1 second') at time zone zone)::date))) and p_conflict_reason is null then raise exception 'Schedule conflict: review existing work, choose another time, or provide an override reason'; end if;
  end if;
  if r.queue_item_id is null then
   if p_client_id is not null then
@@ -93,11 +94,11 @@ begin
  result=jsonb_build_object('requestId',r.id,'clientId',r.client_id,'queueItemId',r.queue_item_id,'revision',r.revision);
  insert into public.public_request_activity(business_id,request_id,actor_id,event_type,mutation_id,details)
  values(r.business_id,r.id,actor,case when p_action='cancel_appointment' then 'appointment_cancelled' when p_action in ('schedule','approve_schedule') then case when q.appointment_start is null then 'appointment_scheduled' else 'appointment_rescheduled' end else 'queue_converted' end,p_mutation_id,
- jsonb_build_object('hash',fingerprint,'result',result,'action',p_action,'previousStart',q.appointment_start,'start',p_start,'minutes',p_minutes,'fromStatus',original_status,'toStatus','approved'));
+ jsonb_build_object('hash',fingerprint,'result',result,'action',p_action,'previousStart',q.appointment_start,'start',p_start,'minutes',p_minutes,'conflictReason',p_conflict_reason,'fromStatus',original_status,'toStatus','approved'));
  return result;
 end $$;
-revoke all on function public.trimax_service_request_workflow(uuid,integer,text,text,uuid,timestamptz,integer) from public,anon,service_role;
-grant execute on function public.trimax_service_request_workflow(uuid,integer,text,text,uuid,timestamptz,integer) to authenticated;
+revoke all on function public.trimax_service_request_workflow(uuid,integer,text,text,uuid,timestamptz,integer,text) from public,anon,service_role;
+grant execute on function public.trimax_service_request_workflow(uuid,integer,text,text,uuid,timestamptz,integer,text) to authenticated;
 
 -- Existing date-only Queue edits must never leave a contradictory timed appointment.
 create function public.trimax_request_queue_date_change() returns trigger

@@ -41,7 +41,7 @@ export async function productionOwner(request:Request,slug:string){
  }
  return {settings:{revision:0,business,production:true},list,workflowContext,async workflow(change:WorkflowChange){
   if(!(await list(change.requestId)).length)throw Error('Request not found');
-  const {data,error:failure}=await client.rpc('trimax_service_request_workflow',{p_request_id:change.requestId,p_revision:change.expectedRevision,p_mutation_id:change.mutationId,p_action:change.action,p_client_id:change.clientId,p_start:change.start,p_minutes:change.minutes});
+  const {data,error:failure}=await client.rpc('trimax_service_request_workflow',{p_request_id:change.requestId,p_revision:change.expectedRevision,p_mutation_id:change.mutationId,p_action:change.action,p_client_id:change.clientId,p_start:change.start,p_minutes:change.minutes,p_conflict_reason:change.conflictReason??null});
   if(failure)throw Error('Workflow rejected');
   return {receipt:data,request:(await list(change.requestId))[0],context:await workflowContext(change.requestId)};
  },async review(value:unknown){

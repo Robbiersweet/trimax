@@ -31,9 +31,7 @@ export function validateRequest(input:unknown,business:PublicBusiness,now=new Da
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:business.rules.timeZone,year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
   const diff=(date.getTime()-new Date(`${today}T00:00:00Z`).getTime())/86400000;
   // Conservative day-level lead rule: no window can precede the required lead time.
-  const minDays=Math.ceil(business.rules.minimumLeadHours/24)+1;
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(value.preferredDate)||!Number.isFinite(date.getTime())||date.toISOString().slice(0,10)!==value.preferredDate||diff<minDays||diff>business.rules.maximumHorizonDays||!business.rules.weekdays.includes(date.getUTCDay())||business.rules.blockedDates.includes(value.preferredDate))fields.preferredDate=`Choose an available weekday ${minDays}–${business.rules.maximumHorizonDays} days ahead.`;
-  if(!business.requestTypes.some(t=>t.id===value.requestTypeId&&t.schedulingEligible))fields.preferredDate='This service accepts requests without a date.';
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(value.preferredDate)||!Number.isFinite(date.getTime())||date.toISOString().slice(0,10)!==value.preferredDate||diff<0)fields.preferredDate='Choose today or a future date. Requested dates are preferences, not appointments.';
  } else if(value.flexibility==='fixed')fields.preferredDate='Choose a preferred date or flexible scheduling.';
  return Object.keys(fields).length?{ok:false,fields}:{ok:true,value};
 }

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {appointmentInstant,validateWorkflowChange} from '../src/app/lib/publicScheduling/workflow.ts';
 import {customerEmail,deliveryChannels,type Delivery} from '../src/app/lib/publicScheduling/delivery.ts';
+import {dispatchDeliveries} from '../src/app/lib/publicScheduling/dispatch.ts';
 import {calendarDataUri} from '../src/app/lib/calendar.ts';
 assert.equal(appointmentInstant('2030-01-07','09:00','America/Los_Angeles'),'2030-01-07T17:00:00.000Z');
 assert.throws(()=>appointmentInstant('2027-03-14','02:30','America/Los_Angeles'),/unavailable/);
@@ -9,6 +10,8 @@ assert.throws(()=>appointmentInstant('2030-02-31','09:00','UTC'));
 const change={requestId:'00000000-0000-4000-8000-000000000001',expectedRevision:1,mutationId:'synthetic-mutation-01',action:'schedule',clientId:null,start:'2030-01-07T17:00:00.000Z',minutes:60};
 assert.equal(validateWorkflowChange(change).minutes,60);
 for(const patch of [{minutes:0},{minutes:721},{minutes:1.5},{clientId:'foreign'},{businessId:'injected'},{action:'delete'},{start:'2030-01-07T09:00'}])assert.throws(()=>validateWorkflowChange({...change,...patch}));
+assert.equal(validateWorkflowChange({...change,conflictReason:'Two crews assigned'}).conflictReason,'Two crews assigned');
+for(const conflictReason of ['', 'x', 'x'.repeat(501), true])assert.throws(()=>validateWorkflowChange({...change,conflictReason}));
 const row:Delivery={id:'synthetic',business_id:'b',request_id:'r',channel:'email',audience:'customer',recipient:'synthetic@example.invalid',event_type:'approved',idempotency_key:'synthetic-email-01',lease_token:'lease',consent_reference:'synthetic-consent',parameters:{business:'R&L Creations',reference:'SYNTHETIC',start:'2030-01-07T17:00:00Z',end:'2030-01-07T18:00:00Z',timeZone:'America/Los_Angeles',internalNotes:'SECRET NOTE'}};
 for(const event of ['request_received','approved','appointment_scheduled','appointment_rescheduled','appointment_cancelled','declined']){const mail=customerEmail({...row,event_type:event});assert.ok(mail.subject.includes('R&L Creations'));assert.ok(!mail.text.includes('SECRET NOTE'));}
 assert.match(customerEmail(row).text,/no appointment is confirmed/);
@@ -22,3 +25,15 @@ assert.deepEqual(deliveryChannels({...config,SERVICE_REQUEST_EMAIL_ENABLED:'enab
 const untimed=decodeURIComponent(calendarDataUri({date:'2030-01-07',title:'Test'})!);assert.match(untimed,/DTSTART;VALUE=DATE:20300107/);
 const timed=decodeURIComponent(calendarDataUri({date:'2030-01-07',title:'Test',id:'job-1',start:'2030-01-07T17:00:00Z',end:'2030-01-07T18:00:00Z'})!);assert.match(timed,/DTSTART:20300107T170000Z/);assert.match(timed,/UID:job-1@trimax/);
 console.log('PASS workflow validation, timezone/DST, customer privacy/templates, preview delivery guard, channel independence, timed/all-day calendar');
+
+const sent:string[]=[],finished:string[]=[];
+const deliveryResult=await dispatchDeliveries(['push','email'],{
+ async claim(channel){return [{...row,id:channel,channel},{...row,id:channel+'-failed',channel}];},
+ async send(message){sent.push(message.id);if(message.id.endsWith('failed'))throw Error('provider down');return 'accepted';},
+ async finish(message,reference,error){finished.push(message.id);assert.equal(Boolean(reference),!message.id.endsWith('failed'));assert.equal(error,message.id.endsWith('failed')?'delivery_failed':null);return true;}
+});
+assert.deepEqual(deliveryResult,{accepted:2,failed:2});assert.equal(sent.length,4);assert.equal(finished.length,4);
+assert.deepEqual(await dispatchDeliveries(['push','email'],{async claim(channel){if(channel==='email')throw Error('database offline');return [row];},async send(){return 'accepted';},async finish(){return true;}}),{accepted:1,failed:1});
+assert.deepEqual(await dispatchDeliveries(['push'],{async claim(){return [row];},async send(){return 'accepted';},async finish(){throw Error('database offline');}}),{accepted:0,failed:1});
+assert.deepEqual(await dispatchDeliveries([],{async claim(){throw Error('must not claim');},async send(){throw Error('must not send');},async finish(){throw Error('must not finish');}}),{accepted:0,failed:0});
+console.log('PASS real dispatcher orchestration: provider failure isolation, independent channels, finish failure accounting, disabled dispatch');

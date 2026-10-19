@@ -72,6 +72,7 @@ fs.writeFileSync(path.join(base,'candidate-database.json'),JSON.stringify({finge
 assert.deepEqual(fingerprints,JSON.parse(fs.readFileSync('release/evidence/scheduling-database-expected.json','utf8')).fingerprints,'Reviewed post-migration fingerprints must reproduce exactly');
 const actualRpc=newRows.filter(r=>r.kind==='rpc').sort((a,b)=>Buffer.compare(Buffer.from(a.name),Buffer.from(b.name))).map(r=>({name:r.name,sha256:crypto.createHash('sha256').update(r.name+'='+r.value).digest('hex')}));
 assert.deepEqual(actualRpc,JSON.parse(fs.readFileSync('release/evidence/rc11-production-rpc-inputs.json','utf8')).entries,'All 41 production RPC inputs must match byte-for-byte');
+if(process.argv.includes('--workflow')){stage='service-workflow-projection';await require('./service-workflow-catalog-replay.cjs')(db,parts,base);}
 stage='trigger-invocation';
 // Transaction-local fixtures exercise the unchanged trigger bodies as a client
 // with NO EXECUTE grants; never touch production or retain synthetic rows.

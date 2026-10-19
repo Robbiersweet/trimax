@@ -1,0 +1,54 @@
+{
+  "fingerprints": {
+    "schema": {
+      "entries": 875,
+      "sha256": "f4e78a156d1acb4c5002ece22fb77e2cad26217167bfd9a94779646cc7c70c63"
+    },
+    "rpc": {
+      "entries": 49,
+      "sha256": "b8d1f68167dd90404c058381dee1d9b39adde7bebecb6e9331c514226a682f1e"
+    },
+    "triggers": {
+      "entries": 13,
+      "sha256": "c35cfea25289bdf6e7f278e4d0e3628a2eec3c66d19c434b3aa53563e1fd1e5e"
+    },
+    "policies": {
+      "entries": 81,
+      "sha256": "3b84cfce7458daf00ab80492a52688e5f58d3b38bd56afc3b9938a80883bfc1f"
+    },
+    "grants": {
+      "entries": 1000,
+      "sha256": "6fd0a259109a6736a447eb06e9c9750c91a5082b98be594b0ac565cd28bf4cd7"
+    }
+  },
+  "transport": "CRLF",
+  "migrations": [
+    "20261018_service_request_workflow.sql",
+    "20261018_service_request_delivery.sql",
+    "20261018_request_urgency.sql"
+  ],
+  "baseline": {
+    "rpc": {
+      "sha256": "ec7b367ee11f597b1a7d94a39864ec96497a9136d8455b63e9320c5c9752a044",
+      "entries": 42
+    },
+    "grants": {
+      "sha256": "6fd0a259109a6736a447eb06e9c9750c91a5082b98be594b0ac565cd28bf4cd7",
+      "entries": 1000
+    },
+    "schema": {
+      "sha256": "748efe0a4e65b2a0c9fcea41ee6de135eda86144a55fbb9b4548393484eed5ef",
+      "entries": 856
+    },
+    "policies": {
+      "sha256": "3b84cfce7458daf00ab80492a52688e5f58d3b38bd56afc3b9938a80883bfc1f",
+      "entries": 81
+    },
+    "triggers": {
+      "sha256": "7873f0b1d9870f2a9648687cfc7111c913cb7278b93e85b1c51edd7aac108950",
+      "entries": 9
+    }
+  },
+  "evidenceType": "DISPOSABLE_EXACT_BASELINE_MIGRATION_REHEARSAL",
+  "observedAt": "2026-10-19T03:14:01.809Z"
+}

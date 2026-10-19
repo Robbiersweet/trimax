@@ -1,3 +1,13 @@
+## October 18 continuation — current candidate (supersedes earlier limitations)
+
+- Public date preferences now accept today, tomorrow, weekends and dates beyond 90 days; past/invalid dates still fail. Both website and database validation changed together.
+- Owner scheduling accepts an explicit 5–500 character conflict reason, recorded with the mutation audit and idempotency hash. Default conflict rejection remains; same-day scheduling is verified.
+- Dispatcher now isolates channel/recipient failures and counts failed database acknowledgements. Provider acceptance still does not prove device delivery.
+- Disposable PostgreSQL: 70 checks, including intake-to-notification-to-client/Queue/appointment/outbox, override, same-day and scheduler due/idle/expired-lease behavior. Provider orchestration failures tested separately.
+- Exact catalog projection now reproduces all five current production fingerprints before applying the three candidate migrations. Original RC11 rehearsal needed the two already-existing restricted website RPC grants. No production schema was changed.
+- Scheduler prepared on existing Supabase Cron/Vault; pg_net availability verified read-only. Activation remains part of the single production rollout, with no plan purchase.
+- Installed iPhone background alert, actual inbox delivery, real pg_net invocation and production end-to-end acceptance remain unverified. Do not claim a usable production workflow until these pass.
+
 # Service request workflow — active checkpoint
 
 ## Objective and boundary
