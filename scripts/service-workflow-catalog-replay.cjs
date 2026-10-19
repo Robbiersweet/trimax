@@ -9,4 +9,10 @@ assert.deepEqual(await catalogHashes(),liveExpected,'Current production notifica
 for(const name of ['20261018_service_request_workflow.sql','20261018_service_request_delivery.sql','20261018_request_urgency.sql'])await db.exec(fs.readFileSync('supabase/migrations/'+name,'utf8').replace(/\r?\n/g,'\r\n'));
 fs.writeFileSync(path.join(base,'service-workflow-database.json'),JSON.stringify({fingerprints:await catalogHashes(),transport:'CRLF',migrations:['20261018_service_request_workflow.sql','20261018_service_request_delivery.sql','20261018_request_urgency.sql']},null,2));
 console.log('PASS current production baseline and candidate workflow catalog projection');
+const beforeProvisioning=await catalogHashes();
+await db.exec(fs.readFileSync('supabase/sql/2026-10-19-scheduler-provisioning-install.sql','utf8'));
+assert.equal((await db.query("select has_function_privilege('anon','public.trimax_provision_request_scheduler(text)','EXECUTE') as allowed")).rows[0].allowed,false);
+await db.exec(fs.readFileSync('supabase/sql/2026-10-19-scheduler-provisioning-remove.sql','utf8'));
+assert.deepEqual(await catalogHashes(),beforeProvisioning,'Temporary provisioning helper removal must restore every candidate fingerprint');
+console.log('PASS provisioning helper cleanup restores all five candidate fingerprints');
 };
