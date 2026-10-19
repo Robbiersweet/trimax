@@ -1,99 +1,52 @@
-## October 18 continuation — current candidate (supersedes earlier limitations)
+# Service workflow — active checkpoint
 
-- Public date preferences now accept today, tomorrow, weekends and dates beyond 90 days; past/invalid dates still fail. Both website and database validation changed together.
-- Owner scheduling accepts an explicit 5–500 character conflict reason, recorded with the mutation audit and idempotency hash. Default conflict rejection remains; same-day scheduling is verified.
-- Dispatcher now isolates channel/recipient failures and counts failed database acknowledgements. Provider acceptance still does not prove device delivery.
-- Disposable PostgreSQL: 70 checks, including intake-to-notification-to-client/Queue/appointment/outbox, override, same-day and scheduler due/idle/expired-lease behavior. Provider orchestration failures tested separately.
-- Exact catalog projection now reproduces all five current production fingerprints before applying the three candidate migrations. Original RC11 rehearsal needed the two already-existing restricted website RPC grants. No production schema was changed.
-- Scheduler prepared on existing Supabase Cron/Vault; pg_net availability verified read-only. Activation remains part of the single production rollout, with no plan purchase.
-- Installed iPhone background alert, actual inbox delivery, real pg_net invocation and production end-to-end acceptance remain unverified. Do not claim a usable production workflow until these pass.
+## Outcome and authorization
+Core implementation and safe release preparation are complete. Production is unchanged. The candidate is READY_FOR_CONTROLLED_DEPLOYMENT, not production-accepted. The latest user request explicitly reserves production migrations/deployments/outbound activation and paid changes for applicable authorization. No new production approval or real test-recipient authorization was supplied.
 
-# Service request workflow — active checkpoint
+## Exact candidate
+- Main checkout: C:/Users/robbi/.codex/worktrees/service-request-workflow/trimax; branch codex/service-request-workflow.
+- Executable revision: 13cc198 (full revision pinned in release/trimax-release-manifest.json).
+- Sealed release: trimax-service-workflow-20261018-rc1; deployed metadata revision f47edbf013992b3ee76147516cf79c37122f08b6.
+- Internal Preview deployment ATWgCrmMiDRVep382fa1zakDaSWH: https://trimax-d49v7lbd5-trimax-s-projects.vercel.app/book/workflow-preview.
+- Marketing checkout: C:/Users/robbi/.codex/worktrees/rnl-service-urgency/trimax; branch codex/rnl-service-urgency; site sites/rnl.
+- Marketing revision 7e0ca069a5cbbb2c38aa05e8705113a5cc769e18; Preview deployment F8kcxx4b8BwU4tsvxT9fwTnzXH7y: https://rnl-public-website-bb4gxzh1j-trimax-s-projects.vercel.app/schedule.
+- Both intended preview builds succeeded, verified through authenticated GitHub deployment/status API. Each branch also triggered the other Vercel project, which failed; those are not target deployments and were not promoted.
+- Vercel browser authentication expired. Hosted interaction of these latest revisions is pending sign-in; local production-built UI was verified. Do not label local UI checks as hosted verification.
 
-## Objective and boundary
-Complete October 18 request integration, isolated verification and preview. No production writes, migration installation, customer messages or production deployment authorized for this task. Preserve OCR/payments/invoices/Queue completion/Job Sessions and the live marketing portfolio.
+## Implemented and verified
+- Persistent owner alerts and direct request links; existing Queue VAPID subscription path reused for background delivery.
+- Approval without booking; existing/new client matching, duplicate-safe Queue conversion; timed appointments in the existing Queue calendar; reschedule/cancel preserves unfinished work.
+- Public preferred dates accept today, tomorrow, weekends and distant future dates. Invalid/past dates are rejected. Routine remains the default among four urgency choices.
+- Owner conflict override requires a reason, included in the mutation hash and audit. Ordinary conflicts still reject by default. Same-day appointments verified.
+- Six consent-gated customer email events, independent push/email dispatch, leases/backoff/dead-letter history; failed acknowledgements cannot count as success. Provider acceptance is not handset/inbox receipt.
+- Supabase scheduler SQL prepared at supabase/sql/2026-10-18-service-request-scheduler.sql. Cron 1.6.4 and Vault 0.3.1 are already installed; pg_net 0.20.0 is available, not installed. Due/idle/expired-lease behavior tested with isolated extension stand-ins. No scheduler activated or paid plan added.
+- Exact schema rehearsal reproduces all five current production fingerprints, then applies three candidate migrations using CRLF transport. The two existing restricted website RPC grants are included. See release/evidence/service-workflow-database-projection.json and run `node scripts/public-function-catalog-replay.cjs --workflow`.
+- Full predeployment gate: 100 PASS, 2 expected DEPLOYMENT_PREREQUISITE (known prior DB and worker release), all 8 retained OCR cases passed both pipelines, lint/TS/production build/clean seals passed. Receipt release/evidence/service-workflow-preview-result.json; private run %LOCALAPPDATA%/Trimax/release-gates/2026-10-19T03-14-22-181Z.
+- Disposable PostgreSQL: 70 workflow/scheduler checks. Real dispatcher orchestration tests cover provider, claim and acknowledgement failures independently.
+- Marketing production build and 78 boundary/routing/security/SEO checks passed.
+- Production-built local UI: same-day Sunday preference reaches review; approval, conversion, same-day scheduling and cancellation verified. At 390x844 no horizontal overflow. UI preview records are synthetic and do not persist to a database.
+- Local Preview guards: workflow POST403, review PATCH403, delivery unauthenticated GET401, public submission POST503. No customer requests created.
 
-## Workspace and release
-- Candidate: `C:/Users/robbi/.codex/worktrees/service-request-workflow/trimax`, branch `codex/service-request-workflow`.
-- Verified internal production: `4e3d786e12092c5ffde86d8324cd6c23ce6670cf`, Vercel `DbJBRGrnwsbdAC24egTmPahUN6LV`, `https://app.rnlcreations.com`.
-- Remote rollback tag verified: `rollback/trimax-service-workflow-20261018`, same commit.
-- Public marketing remains separately deployed at `c949e86ca95c8289c654344239312c55a930bc27`; preserve `rollback/rnl-marketing-20261017`.
+## Production and recovery checkpoints
+- Internal live https://app.rnlcreations.com remains deployment DbJBRGrnwsbdAC24egTmPahUN6LV; source 4e3d786e12092c5ffde86d8324cd6c23ce6670cf; immutable https://trimax-rgkyie9u5-trimax-s-projects.vercel.app.
+- Marketing live https://rnlcreations.com remains deployment 8vAGJgTusxopqctycxSxVk7AueXZ; immutable https://rnl-public-website-hb9u5dnx1-trimax-s-projects.vercel.app.
+- Remote rollback tags reverified: rollback/trimax-service-workflow-20261018 -> 4e3d786e12092c5ffde86d8324cd6c23ce6670cf; rollback/rnl-marketing-20261017 -> 34fa3b47f16890a9de09b253848ecf8a690f4e9b. Primary checkout unrelated edits untouched.
+- Web recovery: in Vercel team trimax-s-projects, promote the retained deployment for the matching project above; verify its domain and revision. Before recovery disable SERVICE_REQUEST_DELIVERY_ENABLED and unschedule only cron job trimax-service-request-delivery. Disable workflow actions if reverting internal web.
+- After migrations, old worker manifests will reject the additive catalog. Do not blindly restart old workers against it. Rehearse/reseal the retained executable revision against the retained additive schema and run the coordinated gate before worker restart. Keep request/client/Queue/audit data; do not drop columns or roll back customer writes to force an old fingerprint. No recovery is needed now because production was not changed.
 
-## Verified diagnosis
-Read-only production SQL on October 18: notification table exists; INSERT trigger enabled. October 18 request has exactly one stored notification for a current owner, already read. October 17 later request likewise has one read notification; earlier request has none. Previous migration deliberately omitted historical backfill. Two active push subscriptions belong to owners. Three in-app outbox events remain pending. Deployed source has no service-request push dispatcher, though Queue uses web-push/VAPID/subscriptions. Thus background push was never connected; database notification persistence works for the two later requests. Exact cause of the owner's visual observation is not established by this evidence. No physical-device acceptance yet.
+## One controlled rollout after approval
+1. Restore Vercel browser sign-in and verify latest preview revision/UI. Refresh production/runtime evidence and required freshness checks immediately before rollout.
+2. Obtain one explicit authorization covering the three candidate migrations, coordinated web/worker deployment, restricted scheduler activation/configuration, optional email activation and one owner-controlled synthetic acceptance request/recipient. Preserve rollback checkpoints above.
+3. Apply the three sealed migrations in order: 20261018_service_request_workflow.sql, 20261018_service_request_delivery.sql, 20261018_request_urgency.sql. Use exactly rehearsed CRLF bytes and compare all five post-migration fingerprints before cutover. No business-data reset.
+4. Deploy the sealed internal candidate and matching worker contract; enable SERVICE_REQUEST_WORKFLOW_ENABLED=enabled. Deploy only sites/rnl from the separate marketing candidate to its project. Production must not inherit SERVICE_REQUEST_PREVIEW or preview submission restrictions. Preserve existing intake credentials, origin/Turnstile/rate-limit configuration.
+5. For push, enable SERVICE_REQUEST_DELIVERY_ENABLED=enabled; provision the existing CRON_SECRET in Vault securely and activate the prepared named scheduler. Do not expose secrets in chat, screenshots, source or retained SQL history. Validate actual pg_net execution and dispatcher response.
+6. Email remains separately gated: verify the existing Resend sender/domain, set SERVICE_REQUEST_EMAIL_FROM and SERVICE_REQUEST_EMAIL_BUSINESS_ID, then enable SERVICE_REQUEST_EMAIL_ENABLED only within authorization. No real email sent yet.
+7. Run postdeployment gate and one approved end-to-end test: customer submission -> persistent alert -> owner review -> repeat conversion -> one linked client/Queue item -> schedule -> existing calendar -> reschedule/cancel -> customer email. Verify no unintended customer requests/messages or protected business changes.
+8. On the installed iPhone PWA, test both foreground persistent notice and locked/background OS push, tap its deep link, and confirm read state survives restart. Record actual device evidence; do not mark physical acceptance from browser fixtures or provider acceptance.
 
-## Completion report — October 18, 2026
+## SMS and remaining limits
+See SERVICE_WORKFLOW_DELIVERY_AND_SMS.md. Provider/number eligibility, registration, verified sender, explicit SMS opt-in/STOP handling and live provider integration remain prerequisites; SMS is not active and must not delay the core rollout. No number was purchased/ported and no paid registration started. Existing phone-contact preference is not treated as completed SMS enrollment.
 
-Implementation, isolated verification and preview deployment completed. Production remains unchanged. No production migrations, customer submissions/messages, paid services, SMS registration or worker switches occurred. Installed-iPhone acceptance remains pending; the production notification defect is not declared fixed.
-
-### Ready previews and identities
-
-- Internal: https://trimax-9hb5ffvk2-trimax-s-projects.vercel.app/book/workflow-preview
-- Vercel `trimax`, deployment `H281BunwgUTq4fWRnAewA53EKyAi`, Ready, Preview. Source `9feddfb0ac219fe79ebdd090ddaf2aab2f179ea2`; executable `006e7fc31034c0f75fc21d511359c4a4437cd900`.
-- Release `trimax-service-workflow-20261018-preview`; bundle SHA-256 `1384cbf6e3ea202ba57b2a4c47797e5e75226912dca11cb0a59c205de9fe1036`.
-- Public urgency form: https://rnl-public-website-4780tveir-trimax-s-projects.vercel.app/schedule
-- Vercel `rnl-public-website`, deployment `EqypParfDHbQs9Yzq9iseRSwSfPM`, Ready, Preview. Source `aa76c47c4204d7ba58e3b255642e5f17adecc5c6`, branch `codex/rnl-service-urgency`, based on the approved marketing site.
-
-Internal preview uses the real owner UI with synthetic in-memory fixtures, resets on reload, and makes no database writes or provider calls. It retains Vercel access protection. Queue/calendar links lead to authenticated routes; synthetic IDs are not persisted records. Public preview submissions are disabled. Neither preview proves production persistence or handset delivery.
-
-Only branch-specific Preview settings were added: `SERVICE_REQUEST_PREVIEW=enabled` and `TRIMAX_RELEASE_GATE_RESULT=release/evidence/service-workflow-preview-result.json`. Production settings were not changed. The initial automatic internal build correctly failed against the older inherited receipt; the redeployment above used the matching receipt and passed. The public branch also triggered an unrelated internal-project build that failed its guard; it is not the successful internal preview above.
-
-### Changes and status
-
-| Area | Status | Scope and limits |
-|---|---|---|
-| Request/owner notification uniqueness | Verified in isolated PostgreSQL | Duplicate submissions return the same request; persistent owner alert uniqueness and workspace isolation pass. Production persistence was inspected read-only. |
-| In-app notification UI | Verified in automated UI tests; physical acceptance pending | Requested date and stale-auth-response protection; preserved unread count, history, acknowledgement and request deep links. Candidate backfill restores missing persistent history without historical push/email. |
-| Background push | Implemented but awaiting activation and acceptance | Reuses existing Queue VAPID/subscriptions/web-push; validates owner/workspace at delivery; stable request tag. Scheduler and device acceptance pending. |
-| Approval/client/Queue | Verified in isolated SQL and hosted synthetic UI | Atomic owner RPC; email/normalized-phone match or new client, explicit ambiguous-match choice; unique request relationship and mutation replay; preserved original details. |
-| Scheduling | Verified in isolated SQL and hosted synthetic UI | Existing Queue/calendar, actual date/time/duration, timezone/DST validation, conflict checks, explicit Approve & Schedule, reschedule/cancel audit. Approval alone remains unbooked. |
-| Public urgency | Verified in preview | Four neutral labels, Routine default, no immediate-service guarantee; candidate migration supports time_sensitive. Not live. |
-| Customer email | Implemented but awaiting configuration/acceptance | Six templates using existing Resend; leases, retries, idempotency and attempt audit. No messages sent. |
-| SMS | Research/plan complete; sending not implemented | No purchase, port, campaign, credentials or activation. |
-| Provider delivery/bounce webhooks | Not implemented | UI labels Provider accepted, not delivered to a handset/inbox. |
-| Production and installed iPhone | Awaiting authorization/acceptance | Three candidate migrations remain uninstalled. |
-
-Conversion retains contact details, address, description, preferred contact, urgency and requested date in the linked request/Queue notes. Existing client details are not overwritten. Cancellation keeps unfinished Queue work open. Timed calendar exports were added while date-only behavior remains. Legacy date-only edits clear contradictory timestamps with an audit event; they do not send appointment email. Existing Queue completion, invoices/payments, Job Sessions, OCR authority and floating controls were preserved.
-
-The in-app path uses persistent records, 30-second polling and focus/visibility refresh independently of provider delivery; no realtime subscription claim is made. Channels have separate claims/failure handling. Resend uses persisted idempotency keys. A crash after push acceptance can still retry; a stable tag reduces duplicate display but does not guarantee exactly-once OS delivery. Templates exclude internal notes and unrelated customer information.
-
-### Test evidence
-
-- Full gate: **READY_FOR_CONTROLLED_DEPLOYMENT**, **CODE_GATE_PASSED**, **RETAINED_REAL_GATE_PASSED**, **PHYSICAL_ACCEPTANCE_PENDING**.
-- Receipt: `release/evidence/service-workflow-preview-result.json`; full private run `%LOCALAPPDATA%/Trimax/release-gates/2026-10-19T00-22-29-746Z`.
-- 101 checks PASS; one expected production-runtime DEPLOYMENT_PREREQUISITE records the prior serving release. This is not final production postdeployment PASS.
-- Eight retained OCR cases passed both existing pipelines. Queue, Job Sessions, invoices, payments, authorization/workspace isolation, lint, TypeScript, production build and clean source seals passed.
-- New isolated PostgreSQL suite: 60 checks including repeated request/conversion, existing/new/foreign client, approval without booking, conflict rejection, reschedule/cancel audit, owner isolation, leases/retry/dead-letter and email privacy.
-- Public website build and 78 boundary/routing/security/SEO checks passed; preview no-write checks passed.
-- Hosted synthetic UI: approve-only, conversion, scheduling, rescheduling, cancellation, combined approval/scheduling, decline and activity history passed. Desktop and 390x844 mobile inspected with no horizontal overflow. Fixtures are not database acceptance.
-- Local production build running with Preview environment: workflow POST403, review PATCH403, unauthenticated delivery GET401. External probes were intercepted by Vercel authentication; they are not claimed as hosted application-route acceptance.
-- Live marketing homepage, `/gallery`, `/schedule`, and Trimax homepage returned HTTP200; no requests created.
-- Earlier gate failed due to SQL test-runtime resolution and stale generated route types. Supplied runtime resolution, moved stale generated files outside the checkout, then reran the whole gate without weakening assertions.
-
-Screenshots outside Git: `C:/Users/robbi/.codex/worktrees/service-request-workflow/preview-deployment.png`, `workflow-desktop-preview.png`, `workflow-mobile-preview.png`; public `C:/Users/robbi/.codex/worktrees/rnl-service-urgency/urgency-preview.png`.
-
-### Remaining activation requirements
-
-1. Explicit production authorization, reviewed migration catalog projection and coordinated web/worker release. The candidate retains current production catalog fingerprints intentionally; do not simply promote this synthetic preview after installing migrations.
-2. Supported recurring scheduler for `/api/public-scheduling/deliver`. Vercel Hobby is daily-only. Use an approved existing external scheduler or owner-approved plan change. Persistent alerts and client/Queue/calendar work do not depend on this scheduler.
-3. Verify the R&L sender/domain, configure `SERVICE_REQUEST_EMAIL_FROM` and `SERVICE_REQUEST_EMAIL_BUSINESS_ID`, and explicitly activate delivery/email flags. Existing credential names were observed without revealing values; sender verification/live sending were not tested.
-4. Physical iPhone foreground/background acceptance and an approved test recipient. SMS is independently inactive.
-
-SMS recommendation: evaluate Telnyx hosted messaging for an eligible existing number while keeping voice service; otherwise consider a separately approved Twilio number. Plivo's current US onboarding minimum is unsuitable for low volume. Verified pricing, registration, consent/STOP, reminder invalidation, webhooks and two-way plan: [Delivery and SMS report](SERVICE_WORKFLOW_DELIVERY_AND_SMS.md). Number eligibility remains unverified.
-
-### One physical-device acceptance procedure
-
-After a separately approved coordinated rollout, sign into the installed iPhone PWA as the correct workspace owner and confirm notification permission. Submit one explicitly authorized synthetic request with a unique reference and owner-controlled contact details. Verify exactly one request/owner alert, unread update within the refresh interval, correct deep link, and acknowledgement surviving restart. Separately background/lock the phone and verify OS push and its deep link; an in-app alert does not substitute for this test.
-
-Approve without scheduling and confirm no appointment. Convert twice and confirm one matched/new client and one Queue item with preserved details. Schedule a future slot, open the existing calendar/Queue item, reschedule and cancel; check audit history and retained unfinished work. Test email states only with the approved recipient; missing SMS must not block the workflow. Record release/deployment, reference, timestamps, iOS version and actual pass/fail observations. Do not mark physical acceptance passed from this preview.
-
-### Exact continuation
-
-Review the previews and resolve production authorization/configuration. Prepare reviewed migration catalog projection and coordinated release contract against current production, rerun required gates for that final candidate, perform only the authorized rollout, and execute physical acceptance. Do not repeat completed provider research or treat fixture success as production acceptance.
-
-## Recovery
-Before a later authorized release, retain the exact Vercel production deployment above. Web recovery: promote that retained deployment in the Trimax project (not the marketing project). No database migration has been installed by this task, so no database rollback is currently necessary.
-
-Exact web recovery after any later authorized rollout: Vercel team `trimax-s-projects` → project `trimax` → deployment `DbJBRGrnwsbdAC24egTmPahUN6LV` → its production promotion/rollback action. Verify `app.rnlcreations.com` serves that deployment and commit `4e3d786e12092c5ffde86d8324cd6c23ce6670cf`. Retained immutable URL: https://trimax-rgkyie9u5-trimax-s-projects.vercel.app. Disable newly activated dispatcher flags/scheduler before recovery, and restore the coordinated worker contract if switched. A web rollback cannot undo database writes or sent messages; use reviewed data-preserving recovery, not deletion of clients, Queue items or audit history.
-
-Remote tags reverified: internal `rollback/trimax-service-workflow-20261018` → `4e3d786e12092c5ffde86d8324cd6c23ce6670cf`; public `rollback/rnl-marketing-20261017` → `34fa3b47f16890a9de09b253848ecf8a690f4e9b`. Public production remains deployment `8vAGJgTusxopqctycxSxVk7AueXZ`. No production recovery is needed for this preview-only task. Rollback tags are source checkpoints, not database backups.
+## Evidence and resume
+Local UI proof: C:/Users/robbi/.codex/worktrees/service-request-workflow/workflow-flexible-preview.png and workflow-flexible-mobile.png. No production, actual iPhone push, real email receipt or SMS acceptance is claimed.
+Resume from the sealed revisions and this checkpoint. Complete Vercel sign-in-dependent preview verification, then perform only the specifically authorized controlled rollout and physical acceptance. Do not repeat completed architecture/provider research or mistake predeployment readiness for the finished live business workflow.
