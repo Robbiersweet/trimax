@@ -67,7 +67,7 @@ function LoginPageContent() {
       return;
     }
 
-    startSecureBrowserSession();
+    startSecureBrowserSession(data.session.user.id);
 
     const access = await loadWorkspaceAccess();
     const nextBusinessSlug = preferredWorkspaceSlug(

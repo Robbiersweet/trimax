@@ -32,7 +32,13 @@ import {
   expireSecureBrowserSession,
   getSessionSecurityStatus,
   recordSecureActivity,
+  restoreSecureBrowserSession,
 } from "../lib/sessionSecurity";
+
+function definitiveAuthFailure(error: {name?: string; status?: number} | null) {
+  return !!error && (error.name === "AuthSessionMissingError" ||
+    typeof error.status === "number" && error.status >= 400 && error.status < 500 && ![408,429].includes(error.status));
+}
 
 type AuthGuardProps = {
   children: React.ReactNode;
@@ -112,13 +118,15 @@ export default function AuthGuard({
   const searchParams = useSearchParams();
 
   const [loading, setLoading] = useState(true);
+  const [authRevision, setAuthRevision] = useState(0);
+  const [sessionError, setSessionError] = useState(false);
   const [maintenanceSettings, setMaintenanceSettings] =
     useState<MaintenanceSettings>(defaultMaintenanceSettings());
   const [maintenanceBlocked, setMaintenanceBlocked] = useState(false);
 
   const expireSession = useCallback(async (reason: string) => {
     await expireSecureBrowserSession(reason, () => supabase.auth.signOut());
-    setLoading(false);
+    setLoading(true);
     router.replace(loginUrl(pathname, searchParams.toString(), reason));
   }, [router, pathname, searchParams]);
 
@@ -135,21 +143,14 @@ export default function AuthGuard({
       recordSecureActivity();
     }
 
-    async function checkSessionOnResume() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session) {
-        return;
-      }
-
-      const status = getSessionSecurityStatus();
-
-      if (!status.valid) {
-        await expireSession(status.reason);
-      }
+    let active = true;
+    function checkSessionOnResume() {
+      if (active && document.visibilityState !== "hidden") setAuthRevision(value => value + 1);
     }
+    // The callback must not await Supabase APIs while the auth client holds its lock.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      queueMicrotask(() => { if (active) setAuthRevision(value => value + 1); });
+    });
 
     for (const eventName of activityEvents) {
       window.addEventListener(eventName, recordActivity, {
@@ -164,6 +165,8 @@ export default function AuthGuard({
     );
 
     return () => {
+      active = false;
+      subscription.unsubscribe();
       for (const eventName of activityEvents) {
         window.removeEventListener(eventName, recordActivity);
       }
@@ -177,10 +180,20 @@ export default function AuthGuard({
   }, [expireSession]);
 
   useEffect(() => {
+    let current = true;
     async function checkAuth() {
+      try {
       const {
-        data: { session },
+        data: { session }, error,
       } = await supabase.auth.getSession();
+      if (!current) return;
+      if (error) {
+        if (!definitiveAuthFailure(error)) throw error;
+        if (!isPublicAuthPath(pathname)) router.replace(loginUrl(pathname, searchParams.toString()));
+        setLoading(false);
+        return;
+      }
+      setSessionError(false);
 
       const isLoginPage =
         pathname.startsWith("/login");
@@ -196,12 +209,24 @@ export default function AuthGuard({
         return;
       }
 
+      // Recovery handlers own their temporary Supabase auth flow. They never
+      // establish an application lease or grant protected workspace access.
+      if (pathname.startsWith("/reset-password") || pathname.startsWith("/forgot-password")) {
+        setLoading(false);
+        return;
+      }
+
       if (session) {
-        const status = getSessionSecurityStatus();
+        let status = getSessionSecurityStatus(session.user.id);
+        if (!status.valid && status.reason === "new-browser-session") {
+          const verified = await supabase.auth.getUser();
+          if (!current) return;
+          if (verified.error && !definitiveAuthFailure(verified.error)) throw verified.error;
+          if (!verified.error && verified.data.user?.id === session.user.id) status = restoreSecureBrowserSession(verified.data.user.id);
+        }
 
         if (!status.valid) {
-          // Permit only the login UI in an unverified tab. Do not adopt the
-          // shared Auth cookie as proof of this tab's secure login marker.
+          // Unverified/mismatched users still require the normal login flow.
           if (status.reason === "new-browser-session" && isLoginPage) {
             setLoading(false);
             return;
@@ -214,6 +239,7 @@ export default function AuthGuard({
       }
 
       const access = await loadWorkspaceAccess();
+      if (!current) return;
       const defaultBusinessSlug =
         preferredWorkspaceSlug(access);
       const selectedBusiness =
@@ -315,6 +341,7 @@ export default function AuthGuard({
         currentWorkspace?.role ?? "owner"
       );
       const maintenance = await loadMaintenanceSettings();
+      if (!current) return;
       const canUseAppDuringMaintenance =
         currentRole === "owner" || currentRole === "admin";
 
@@ -341,6 +368,7 @@ export default function AuthGuard({
       ) {
         const propertyAccess =
           await loadPropertyAccess();
+      if (!current) return;
         const allowedProperties =
           allowedPropertiesForBusiness(
             propertyAccess,
@@ -370,10 +398,18 @@ export default function AuthGuard({
       }
 
       setLoading(false);
+      } catch {
+        if (current) { setSessionError(true); setLoading(false); }
+      }
     }
 
-    checkAuth();
-  }, [expireSession, pathname, router, searchParams]);
+    void checkAuth();
+    return () => { current = false; };
+  }, [authRevision, expireSession, pathname, router, searchParams]);
+
+  if (sessionError) {
+    return <main className="flex min-h-screen items-center justify-center bg-zinc-950 p-6 text-white"><section role="alert"><p>Your session could not be verified. Check your connection and retry.</p><button type="button" className="mt-4 rounded border px-4 py-2" onClick={() => { setSessionError(false); setLoading(true); setAuthRevision(value => value + 1); }}>Retry</button></section></main>;
+  }
 
   if (loading) {
     return (

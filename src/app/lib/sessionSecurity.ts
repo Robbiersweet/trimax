@@ -1,6 +1,7 @@
 const ACTIVE_BROWSER_SESSION_KEY = "trimax.activeBrowserSession";
 const SESSION_STARTED_AT_KEY = "trimax.sessionStartedAt";
 const LAST_ACTIVITY_AT_KEY = "trimax.lastActivityAt";
+const SESSION_USER_KEY = "trimax.sessionUserId";
 
 export const SESSION_IDLE_TIMEOUT_MS = 45 * 60 * 1000;
 export const SESSION_ABSOLUTE_TIMEOUT_MS = 12 * 60 * 60 * 1000;
@@ -37,7 +38,7 @@ function readNumber(key: string) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-export function startSecureBrowserSession() {
+export function startSecureBrowserSession(userId?: string) {
   if (typeof window === "undefined") {
     return;
   }
@@ -45,6 +46,8 @@ export function startSecureBrowserSession() {
   const now = String(nowMs());
 
   window.sessionStorage.setItem(ACTIVE_BROWSER_SESSION_KEY, "true");
+  if (userId) window.localStorage.setItem(SESSION_USER_KEY, userId);
+  else window.localStorage.removeItem(SESSION_USER_KEY);
   window.localStorage.setItem(SESSION_STARTED_AT_KEY, now);
   window.localStorage.setItem(LAST_ACTIVITY_AT_KEY, now);
 }
@@ -61,6 +64,9 @@ export function recordSecureActivity() {
     return;
   }
 
+  // Input arriving after expiry must not revive an expired security lease.
+  if (!getSessionSecurityStatus().valid) return;
+
   window.localStorage.setItem(
     LAST_ACTIVITY_AT_KEY,
     String(nowMs())
@@ -75,10 +81,11 @@ export function clearSecureBrowserSession() {
   window.sessionStorage.removeItem(ACTIVE_BROWSER_SESSION_KEY);
   window.localStorage.removeItem(SESSION_STARTED_AT_KEY);
   window.localStorage.removeItem(LAST_ACTIVITY_AT_KEY);
+  window.localStorage.removeItem(SESSION_USER_KEY);
 }
 
-/** A tab that has never authenticated must not revoke another tab's session.
- * It remains locked until this tab completes the normal login flow. Genuine
+/** An unverified tab must not revoke another tab's session.
+ * It requires verified restoration of an existing lease or the normal login flow. Genuine
  * expiry/manual lock still clears shared state and revokes Auth as before. */
 export async function expireSecureBrowserSession(
   reason: string,
@@ -89,7 +96,7 @@ export async function expireSecureBrowserSession(
   await signOut();
 }
 
-export function getSessionSecurityStatus(): SessionSecurityStatus {
+export function getSessionSecurityStatus(authenticatedUserId?: string): SessionSecurityStatus {
   if (typeof window === "undefined") {
     return { valid: true };
   }
@@ -104,6 +111,12 @@ export function getSessionSecurityStatus(): SessionSecurityStatus {
     };
   }
 
+  const owner = window.localStorage.getItem(SESSION_USER_KEY);
+  if (authenticatedUserId && owner && owner !== authenticatedUserId) return {valid:false,reason:"new-browser-session"};
+  return persistedSessionStatus();
+}
+
+function persistedSessionStatus(): SessionSecurityStatus {
   const now = nowMs();
   const sessionStartedAt = readNumber(SESSION_STARTED_AT_KEY);
   const lastActivityAt = readNumber(LAST_ACTIVITY_AT_KEY);
@@ -131,6 +144,21 @@ export function getSessionSecurityStatus(): SessionSecurityStatus {
   return { valid: true };
 }
 
+/** Adopt an existing unexpired lease only after Supabase verifies the user.
+ * Restoring a tab never renews the idle or absolute security deadline. */
+export function restoreSecureBrowserSession(verifiedUserId: string): SessionSecurityStatus {
+  if (typeof window === "undefined" || !verifiedUserId) return {valid:false,reason:"new-browser-session"};
+  if (readNumber(SESSION_STARTED_AT_KEY) === null || readNumber(LAST_ACTIVITY_AT_KEY) === null) return {valid:false,reason:"new-browser-session"};
+  const owner = window.localStorage.getItem(SESSION_USER_KEY);
+  if (owner && owner !== verifiedUserId) return {valid:false,reason:"new-browser-session"};
+  const status = persistedSessionStatus();
+  if (!status.valid) return status;
+  window.sessionStorage.setItem(ACTIVE_BROWSER_SESSION_KEY, "true");
+  // Existing pre-upgrade leases can be bound once to the authenticated user.
+  if (!owner) window.localStorage.setItem(SESSION_USER_KEY, verifiedUserId);
+  return {valid:true};
+}
+
 export function getSessionSecuritySnapshot(): SessionSecuritySnapshot {
   if (typeof window === "undefined") {
     return {
@@ -145,7 +173,7 @@ export function getSessionSecuritySnapshot(): SessionSecuritySnapshot {
   const lastActivityAt = readNumber(LAST_ACTIVITY_AT_KEY);
   const hasSecureSession =
     window.sessionStorage.getItem(ACTIVE_BROWSER_SESSION_KEY) ===
-    "true";
+    "true" && getSessionSecurityStatus().valid;
 
   return {
     hasSecureSession,
@@ -173,7 +201,7 @@ export function sessionSecurityMessage(
   }
 
   if (reason === "new-browser-session") {
-    return "For security, Trimax signs you out when the app is reopened after the browser window was closed.";
+    return "Your saved secure session could not be restored. Sign in to continue.";
   }
 
   if (reason === "manual-lock") {

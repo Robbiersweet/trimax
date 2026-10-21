@@ -37,7 +37,7 @@ export default function SecureSessionBadge({
 
       if (!snapshot.hasSecureSession) {
         setLabel("Secure session");
-        setDetail("Locks on reopen");
+        setDetail("Sign-in required");
         return;
       }
 

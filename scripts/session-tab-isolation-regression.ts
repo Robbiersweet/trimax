@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {startSecureBrowserSession,getSessionSecurityStatus,clearSecureBrowserSession,expireSecureBrowserSession,SESSION_IDLE_TIMEOUT_MS,SESSION_ABSOLUTE_TIMEOUT_MS} from '../src/app/lib/sessionSecurity.ts';
+import {startSecureBrowserSession,restoreSecureBrowserSession,recordSecureActivity,getSessionSecurityStatus,clearSecureBrowserSession,expireSecureBrowserSession,SESSION_IDLE_TIMEOUT_MS,SESSION_ABSOLUTE_TIMEOUT_MS} from '../src/app/lib/sessionSecurity.ts';
 const storage=()=>{const values=new Map<string,string>();return {getItem:(k:string)=>values.get(k)??null,setItem:(k:string,v:string)=>values.set(k,v),removeItem:(k:string)=>values.delete(k)};};
 const shared=storage(),owner=storage(),stale=storage();
 const setTab=(sessionStorage:ReturnType<typeof storage>)=>Object.defineProperty(globalThis,'window',{configurable:true,value:{localStorage:shared,sessionStorage}});
@@ -26,8 +26,27 @@ try{
   assert.equal(owner.getItem('trimax.activeBrowserSession'),null);
  }
  assert.equal(revocations,3);
+
+ // A verified existing lease survives new tabs/reopen without extending either clock.
+ setTab(owner);startSecureBrowserSession('owner');
+ assert.deepEqual(getSessionSecurityStatus('other'),{valid:false,reason:'new-browser-session'},'An existing tab marker cannot adopt a different authenticated user');
+ const originalStart=shared.getItem('trimax.sessionStartedAt'),originalActivity=shared.getItem('trimax.lastActivityAt');
+ setTab(stale);stale.removeItem('trimax.activeBrowserSession');
+ assert.equal(restoreSecureBrowserSession('other').valid,false,'Wrong user cannot adopt a lease');
+ assert.equal(stale.getItem('trimax.activeBrowserSession'),null);
+ assert.equal(restoreSecureBrowserSession('owner').valid,true);
+ assert.equal(shared.getItem('trimax.sessionStartedAt'),originalStart);
+ assert.equal(shared.getItem('trimax.lastActivityAt'),originalActivity);
+ setTab(storage());assert.equal(restoreSecureBrowserSession('owner').valid,true,'Normal PWA/browser reopen');
+ shared.setItem('trimax.lastActivityAt',String(Date.now()-SESSION_IDLE_TIMEOUT_MS-1));
+ const expiredActivity=shared.getItem('trimax.lastActivityAt');recordSecureActivity();
+ assert.equal(shared.getItem('trimax.lastActivityAt'),expiredActivity,'Input must not revive an expired lease');
+ assert.deepEqual(restoreSecureBrowserSession('owner'),{valid:false,reason:'idle-timeout'});
+ clearSecureBrowserSession();assert.equal(restoreSecureBrowserSession('owner').valid,false,'Manual logout/lock cannot be restored');
+ startSecureBrowserSession();setTab(storage());assert.equal(restoreSecureBrowserSession('owner').valid,true,'Bind a valid pre-upgrade lease after verification');
+ assert.equal(shared.getItem('trimax.sessionUserId'),'owner');
  const guard=readFileSync(new URL('../src/app/components/AuthGuard.tsx',import.meta.url),'utf8');
  assert.ok(guard.includes('status.reason === "new-browser-session" && isLoginPage'));
  assert.ok(!guard.includes('startSecureBrowserSession'));
- console.log('PASS: old cross-tab invalidation reproduced; unverified tab stays locked; owner state preserved; idle/absolute/manual revocation retained');
+ console.log('PASS: old cross-tab invalidation reproduced; unverified tab stays locked; owner state preserved; verified reopen keeps original clocks; expired input cannot revive lease; idle/absolute/manual revocation retained');
 }finally{Reflect.deleteProperty(globalThis,'window');}
