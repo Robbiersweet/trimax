@@ -1,32 +1,32 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-check-number-20261021-rc2",
+  "releaseId": "trimax-payment-submit-20261021-rc1",
   "status": "SEALED_CONTROLLED_DEPLOYMENT_CANDIDATE",
-  "createdAt": "2026-10-21T13:48:40.428Z",
+  "createdAt": "2026-10-21T14:31:15.138Z",
   "releaseTimestamp": null,
   "baseProduction": {
-    "commit": "9170d315e2a007a4188b0025100fa194e4281975",
-    "vercelDeploymentId": "9vNo5eQWb9J9MhX7CfeuZ9sVzMmQ",
-    "deployedAt": "2026-10-21T13:41:56Z"
+    "commit": "f3133b1a6ad0818816e80bfa70b9274a5806de4e",
+    "vercelDeploymentId": "HnHr443PMCU2m5zquKGwDULbXJgD",
+    "deployedAt": "2026-10-21T14:00:17Z"
   },
   "components": {
     "web": {
-      "commit": "620e5e1ffbc2d45516ae3717008dfb51a2c6322a"
+      "commit": "6c1e267e809cf8e195f98e427034a6dba68635b6"
     },
     "legacy": {
-      "commit": "620e5e1ffbc2d45516ae3717008dfb51a2c6322a"
+      "commit": "6c1e267e809cf8e195f98e427034a6dba68635b6"
     },
     "v2-shadow": {
-      "commit": "620e5e1ffbc2d45516ae3717008dfb51a2c6322a"
+      "commit": "6c1e267e809cf8e195f98e427034a6dba68635b6"
     }
   },
   "sourceBundle": {
-    "sha256": "8d5f6980ee4d8b70a4c326098143fd7b5fa2c126231a39134cb7c595d9d47f68",
+    "sha256": "26caaf866f8804734777d73dd861684ab4ffe1e02330052fc25cdb769c61eaf0",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
       "package-lock.json": "f59c4191dbab35152626d37ecd849e1c20d17564df0cf62d2dbac122dff062b9",
-      "package.json": "716b694a5ed63b53901d45206031e7dbf7d9ef69dd9183d25adde3a75e061065",
+      "package.json": "43fbbeeae05e6b6605f8df9761d4c1e54bc0d4ce8a3e7afeeb7ffe74d90ae7fc",
       "proxy.ts": "c07e9824217830ca636dac8141204cf2a422728fdc173f488ad61e86edbc8cce",
       "public/Brand/R&L Full Black.png": "3745bd9aec6198d87a968e3f5c3402b87010925d881ddd03411a5caef2c40f65",
       "public/Brand/R&L Full Orange.png": "2c1b88a1718f11f58eb4e59d812f6e47a52ad4c2005a6625eddb601f54fd3fb0",
@@ -96,7 +96,7 @@
       "scripts/ocr-v2/PHASE5E.md": "ed644932a6b3309c96b9a8cb993104dc5d007ffff14a2f5cbaa783d0471eeff0",
       "scripts/ocr-v2/benchmark.cjs": "59f23eeebc7eb65e4d2eebebae70c69ef244deef7d18370eda47a49c389326f4",
       "scripts/ocr-v2/canonical-physical-replay.cjs": "f2fbbe21f2e33e5b10ebad9836450c70b0368c026d662d1f6618f962ab429dc4",
-      "scripts/ocr-v2/canonical-regression.cjs": "b6dc0f6acb00f4b7e0dbbef275fd1b3184d32021f3cb82f4a9c3a6bec5854dd9",
+      "scripts/ocr-v2/canonical-regression.cjs": "7fcd127b0386ca927f30b4bca17907f0be3b46e611b88e14b3c222529482d889",
       "scripts/ocr-v2/canonical-sql-regression.cjs": "77b1e78263b93958b4f10b057dc88a7386067a9cd7db0d58d282654d8b351671",
       "scripts/ocr-v2/canonical-worker-replay.cjs": "86ce6c4c89542b5b0bb3ddeef801bcd7ccb4ebb50542929c037d5e177d83f123",
       "scripts/ocr-v2/capture-durability-regression.cjs": "8a3294ac689642df8259ebdd6a4e1734481e789d42074878cb17862ef497ffb5",
@@ -215,6 +215,7 @@
       "scripts/owner-server-auth-regression.ts": "b295a70ecdc6e291e2a474afbd900075334cb940ca57bb191a9e41f67311f273",
       "scripts/payment-application-regression.ts": "5c225a32885471d7aa93afe306e28c911fc1c81158361222f11da1f2e8bd62f2",
       "scripts/payment-state-lifecycle-regression.ts": "88f1ec8d51facaf9c25d94f18ab4c827db668b331cbe0f61d923855ce8bced04",
+      "scripts/payment-submit-regression.cjs": "97bb0181469621cbc9412cb44a0906f7fcf95bcf07453a9433bf37c93acff1bb",
       "scripts/payment-timeliness-regression.ts": "92b739b72360bad34278d2d364fdf701e02b97c04026baca58d30ec6ffc7dd64",
       "scripts/pdf-readiness-regression.mjs": "34fd04950dfc1456fdf1e662a39ae301c7916425e15afb67c702363a8a961dd5",
       "scripts/provision-request-scheduler.cjs": "66c4418d9800231114e195c0391e618994a7e2a6215f74deb99b36ea5ed866e6",
@@ -245,7 +246,7 @@
       "scripts/release/file-forensics-regression.cjs": "a6da1ba822d17c1a31b7bd29d3cb49e95febca66f29c51b712ccdd9d608c1b26",
       "scripts/release/file-forensics.cjs": "25133a9f2167c801a05906be04068f3d85f54f3c462e085869df2d486c8bea30",
       "scripts/release/final-candidate-regression.cjs": "edc0dbfa8f70d55607c65327a08ed25193380387dd4f1e850cf130ef992ca03f",
-      "scripts/release/gate-checks.cjs": "7b01132680599ff2e0bbfc0d818f77e98b38a721a4d69cf197d0dedf59db4191",
+      "scripts/release/gate-checks.cjs": "3b5a210277c4842d10fe7b71e82509fd7fc493127a4e8c6ba3ab61f3a124e2db",
       "scripts/release/gate-state-regression.cjs": "51f1d2c76eca73d122f20cc0f537b624074ebd4943f946dcba63857775e45d04",
       "scripts/release/gate-state.cjs": "f56bdc9741b07b92c53bb487f21320080537fa90734721130612e8c1b52da839",
       "scripts/release/gate.cjs": "fd9d065007932504635900617ed3d7d11481a26e4dcc6131d0afbca39096e17d",
@@ -266,7 +267,7 @@
       "scripts/remittance-client-safety-regression.cjs": "978e0c490031a787f6c23d12bee9d3395ddb11bc6b4cd47e814e26ce926292cb",
       "scripts/remittance-contract-regression.ts": "75e3bf300050abfcd6145eb5d912af9251fef904bc1c9be19c5bc5695d50cf77",
       "scripts/remittance-deadline-regression.cjs": "e36bff5ead55bc02ff3bfaef98a4c9948a76f9de497e1ed1958b4e18eba5290e",
-      "scripts/remittance-intake-regression.cjs": "e548365910ecdb1062f50b60947a555324f16cba9dec7c6a60d5fe462ff58cee",
+      "scripts/remittance-intake-regression.cjs": "87a2a96dadae4286bc30c77d6774b6763731f1cc773b68e62dbfcb28cab99c6c",
       "scripts/remittance-matching-regression.ts": "3ff22cb6cd4c78f6744a6e5766f3d7c9901c6f9dd6c6ef6f28dec01a4686825f",
       "scripts/remittance-ocr-fixture-regression.ts": "2e90a200e8de9d64212a8f56092f3ef4e00522f2751463b33c827cad45991fa0",
       "scripts/remittance-release-gate.ts": "21944edbe46796c2b87e595dad18d2c49eb9fb72f2c9558b80f6880ceb4cdf32",
@@ -298,7 +299,7 @@
       "src/app/api/invoices/[id]/send-email/route.ts": "68d2d5bbc3b5fecda80ad250d39d021705d01268af4924909fc276320715cf18",
       "src/app/api/invoices/send-overdue-reminders/route.ts": "ccb176cf95d7e0d3341efb24d5ad646b05db429043b2b5c3dd16d078ebab1c7c",
       "src/app/api/ocr-retention/route.ts": "ba61d5de6ade820727a15828b9df895b0c5a18d72df289f881273f50335d4e17",
-      "src/app/api/payments/apply-batch/route.ts": "5cc17fba8f47cc7edbda8faf2271566f09aae54aba48cc889bc2b242859af425",
+      "src/app/api/payments/apply-batch/route.ts": "f7466eef82203ae540829c723318fb286cc3bc5405bbb28fbd1da68feb602852",
       "src/app/api/payments/duplicate-remittance-preflight/route.ts": "01661a87fa0c7a8b821b256f9e68e7ba48a68a9809755c5b1b23ed64e0f59528",
       "src/app/api/payments/extract-check-stub/route.ts": "e86853cf9fdad673c629a0b7d572da7de2b640ba3982b94f8f8ca54b8b0e51bf",
       "src/app/api/payments/ocr-jobs/route.ts": "20654cb307aa2d04afad5a80276bf6e75bc829d09726afba1574a93787d9b67e",
@@ -329,7 +330,7 @@
       "src/app/components/AppShell.tsx": "b4358a4c5a82735d1871ef0bc8e7e3bbb30b3770b577d51b0343552155c489af",
       "src/app/components/AuthGuard.tsx": "5d27be00447294b8eefafa4f37b66c4f1ddcd402c285c41433d84b33201023d1",
       "src/app/components/BackButton.tsx": "87360394e36c2e90d4a33135d5539d0176e75d8cc2448783c5c859783ee1059c",
-      "src/app/components/BatchInvoicePayments.tsx": "e244e05c964753a00a38e42df03ccbfc45c1baa8ac26c3f73fb6e4d2f814699f",
+      "src/app/components/BatchInvoicePayments.tsx": "6b3f419ba16921da835a999c4e11b78ce3a436d02ac81fdae2376961780f894f",
       "src/app/components/Button.tsx": "68f87a76cee881a6b148ec30af54746d8a0fbe11a153b3ccf0134a62504deb97",
       "src/app/components/Card.tsx": "6706fd0d306b77c27bf8f9f2558fdfc4f5a77b874404cba67b0f4980c96de207",
       "src/app/components/ClientSmartSearch.tsx": "6780c13e035f04c4bf532a23842cf8d220021a409362c1f2d01fc93cbb3c1278",
@@ -1606,21 +1607,21 @@
   },
   "upgradeContext": {
     "currentProductionRelease": {
-      "releaseId": "trimax-check-number-20261021-rc1",
-      "manifestCommit": "9170d315e2a007a4188b0025100fa194e4281975",
-      "manifestDigest": "5f9ef13b781b72094c232e730d8d8ded9eea07b5ab9dec4807fff1f248257e43",
-      "deploymentId": "9vNo5eQWb9J9MhX7CfeuZ9sVzMmQ",
-      "deploymentCommit": "9170d315e2a007a4188b0025100fa194e4281975"
+      "releaseId": "trimax-check-number-20261021-rc2",
+      "manifestCommit": "f3133b1a6ad0818816e80bfa70b9274a5806de4e",
+      "manifestDigest": "723bba5d377a9fa884d3a32f8681f22f81eb2b6a533ca84d32a4db51d113d16b",
+      "deploymentId": "HnHr443PMCU2m5zquKGwDULbXJgD",
+      "deploymentCommit": "f3133b1a6ad0818816e80bfa70b9274a5806de4e"
     },
-    "candidateReleaseId": "trimax-check-number-20261021-rc2",
-    "applicationCommit": "620e5e1ffbc2d45516ae3717008dfb51a2c6322a",
-    "machineryCommit": "620e5e1ffbc2d45516ae3717008dfb51a2c6322a"
+    "candidateReleaseId": "trimax-payment-submit-20261021-rc1",
+    "applicationCommit": "6c1e267e809cf8e195f98e427034a6dba68635b6",
+    "machineryCommit": "6c1e267e809cf8e195f98e427034a6dba68635b6"
   },
   "contractRevision": {
-    "id": "date-anchored-check-number-corroboration",
-    "priorManifestDigest": "5f9ef13b781b72094c232e730d8d8ded9eea07b5ab9dec4807fff1f248257e43",
-    "reason": "Exact physical gray CK#:717 confidence53 and binary CK¥:717 confidence38 contain identical printed digits in same bounds, independently anchored by DATE:10/01/2026 confidence88/90. Accept only corroborated unchanged digit strings with same-location full-image votes, standard label confidence50+, strong adjacent date anchors, no conflicting numbers. Normalize only label separator yen/hash. No client/money/date/payment/split/isolation changes.",
-    "rollback": "Restore9170d31 web and matched workers; preserve records and evidence."
+    "id": "saved-review-payment-submit-confirmation",
+    "priorManifestDigest": "723bba5d377a9fa884d3a32f8681f22f81eb2b6a533ca84d32a4db51d113d16b",
+    "reason": "Replace URL/diagnostic silent early return before loading/API with read-only validation through existing safeguarded endpoint and explicit live-review-bound human confirmation. No payment/upload on first tap. Server verifies saved source/business/completed state and owner/admin confirmation for diagnostic scans, records source in payment audit. Preserve collectible/split/reconciliation/duplicate/rollback and isolation checks. No OCR changes.",
+    "rollback": "Restore f3133b1 web and matched workers, preserve all records and scan evidence."
   },
   "captureWorkflow": "guided-live-camera-v1"
 }
