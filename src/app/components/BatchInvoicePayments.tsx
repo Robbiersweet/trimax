@@ -2331,7 +2331,9 @@ export default function BatchInvoicePayments({
       }
       // Network failures do not terminate an independently running durable job.
       setCheckOcrStatus('error');
-      setCheckOcrMessage('Capture saved — processing status unavailable. Open the saved scan to resume.');
+      setCheckOcrMessage(error instanceof Error && 'code' in error && error.code==='OCR_JOB_PENDING'
+        ? 'Capture saved — processing is still pending. Open the saved scan to resume.'
+        : 'Capture saved — processing status unavailable. Open the saved scan to resume.');
       setCaptureRetry({run:async()=>{await extractCheckStubFromPhotoEvent(imageDataUrl,documentType,intent,retryStrategy,prepDiagnosticLines,currentDocumentFingerprint,retainedReference,{history,canonical});}});
     }
   });

@@ -26,6 +26,6 @@ async function clientTest(){
  // Reload resumes the same identity; the database contract makes POST idempotent.
  elapsed=0;
  const id=calls[0].options.body;await mod.exports.waitForLegacyJob(JSON.parse(id),()=>true,()=>{});assert.equal(calls.filter(c=>c.options.method==='POST')[1].options.body,id);
- elapsed=0;polls=-1000;await assert.rejects(mod.exports.waitForLegacyJob(JSON.parse(id),()=>true,()=>{}),/couldn't finish/);assert(elapsed<=95000);
+ elapsed=0;polls=-1000;await assert.rejects(mod.exports.waitForLegacyJob(JSON.parse(id),()=>true,()=>{}),error=>/couldn't finish/.test(error.message)&&error.code==='OCR_JOB_PENDING'&&error.jobStatus==='running');assert(elapsed<=95000);
 }
 (async()=>{await workerTest();await clientTest();console.log('PASS: detached completion, >60s polling, network recovery, same-ID reload, per-stage checkpoint, hash validation, OCR failure, no payment/shadow writes');})().catch(e=>{console.error(e);process.exitCode=1;});

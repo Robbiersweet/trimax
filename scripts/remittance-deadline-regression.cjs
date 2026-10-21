@@ -15,6 +15,8 @@ async function main(){
   new Function('require','module','exports','fetch','setTimeout','clearTimeout','performance',compile(fs.readFileSync('src/app/lib/ocrLegacyJobClient.ts','utf8')))(()=>({supabase:{auth:{getSession:session}}}),mod,mod.exports,fetcher,time.setTimeout,time.clearTimeout,{now:time.now});
   const outcome=await settle(mod.exports.waitForLegacyJob({attemptId:'synthetic',documentType:'remittance_stub',retryStrategy:'standard'},()=>true,()=>{}),time);
   if(['success','failed'].includes(mode)){assert.equal(outcome.error,undefined);assert.equal(outcome.result.status,mode==='success'?200:422);}else{assert.match(outcome.error.message,/couldn't finish/);assert(time.now()<=90000);}
+  if(mode==='queued-forever'){assert.equal(outcome.error.code,'OCR_JOB_PENDING');assert.equal(outcome.error.jobStatus,'running');}
+  if(['auth-hang','request-hang','body-hang'].includes(mode))assert.equal(outcome.error.code,'OCR_STATUS_UNAVAILABLE');
   assert(posts<=1,'Polling cannot create more attempts/jobs');
  }
  const source=fs.readFileSync('src/app/components/BatchInvoicePayments.tsx','utf8');
