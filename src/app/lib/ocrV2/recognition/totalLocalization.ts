@@ -6,6 +6,13 @@ const bottom=(b:Bounds)=>b.top+b.height, right=(b:Bounds)=>b.left+b.width;
 const area=(b:Bounds)=>b.width*b.height;
 const overlap=(a:Bounds,b:Bounds)=>Math.max(0,Math.min(right(a),right(b))-Math.max(a.left,b.left))*Math.max(0,Math.min(bottom(a),bottom(b))-Math.max(a.top,b.top));
 const median=(v:number[])=>[...v].sort((a,b)=>a-b)[Math.floor(v.length/2)];
+/** Reuse source-bound, repeated row-word geometry to exclude background ink.
+ * This changes crop ownership only; it supplies no monetary value. */
+export function boundedAmountOwnership(owner:Bounds,proof:{axis:number;axisSource:string;axisRows:number;sourceHash:string},sourceHash:string,pad:number):Bounds {
+ if(proof.sourceHash!==sourceHash||proof.axisSource!=='observed-row-money'||proof.axisRows<2||!Number.isFinite(proof.axis)||proof.axis<=owner.left||!Number.isFinite(pad)||pad<0)return owner;
+ const edge=Math.min(right(owner),Math.ceil(proof.axis+pad));
+ return edge>owner.left?{...owner,width:edge-owner.left}:owner;
+}
 export function localizeDocumentTotal(model:DocumentSemanticModel,page:SemanticObservation[],font:number,width:number,height:number){
  const rows=model.table.rows, owners=rows.flatMap(r=>r.amountRegion?[r.amountRegion]:[]);
  const last=Math.max(...rows.map(r=>bottom(r.bounds)),...owners.map(bottom));

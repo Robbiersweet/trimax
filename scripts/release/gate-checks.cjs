@@ -1,4 +1,5 @@
 const scripts=[
+ 'scripts/second-physical-remittance-regression.cjs',
  'scripts/remittance-client-safety-regression.cjs',
  'scripts/auth-cookie-refresh-regression.cjs',
  'scripts/session-tab-isolation-regression.ts',

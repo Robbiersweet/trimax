@@ -10,7 +10,7 @@ import { EvidenceLedger } from './evidenceLedger.ts';
 import { fieldVariant } from './index.ts';
 import { decideMoney, paymentMoney, type PaymentObservation, type DocumentPaymentEvidence } from './paymentEvidence.ts';
 import { decideDocumentTotal } from './documentTotalAuthority.ts';
-import { localizeDocumentTotal } from './totalLocalization.ts';
+import { localizeDocumentTotal, boundedAmountOwnership } from './totalLocalization.ts';
 
 const hash = (b: Buffer) => createHash('sha256').update(b).digest('hex');
 const bottom = (b: Bounds) => b.top + b.height;
@@ -37,8 +37,9 @@ export async function recognizeSemanticMoney(image: Buffer, model: DocumentSeman
   const structure = await inspectStructuralLines(image);
   const font = structure.font * structure.scaleY;
   const pad = Math.max(2, Math.ceil(font * .2));
+  const totalLocalization = localizeDocumentTotal(model,page,font,meta.width!,meta.height!);
   const regions = model.table.rows.map(row => {
-    const owner = row.amountRegion;
+    const owner = row.amountRegion ? boundedAmountOwnership(row.amountRegion,totalLocalization,sourceHash,pad) : undefined;
     if (!owner) return { rowId: row.id, ownership: null, bounds: null };
     const cs = structure.components.filter(c => c.left * structure.scaleX >= owner.left && (c.left + c.width) * structure.scaleX <= right(owner)
       && c.top * structure.scaleY >= owner.top && (c.top + c.height) * structure.scaleY <= bottom(owner)
@@ -63,7 +64,6 @@ export async function recognizeSemanticMoney(image: Buffer, model: DocumentSeman
     && (l.left+l.width/2)*structure.scaleX <= amountRight
     && Math.max(0,Math.min((l.left+l.width)*structure.scaleX,amountRight)-Math.max(l.left*structure.scaleX,amountLeft)) > l.width*structure.scaleX/2) : [];
   const footer = footerCandidates.length === 1 ? footerCandidates[0] : null;
-  const totalLocalization = localizeDocumentTotal(model,page,font,meta.width!,meta.height!);
   const totalBounds = totalLocalization.plausibleFields > 1 || totalLocalization.conflictingField ? undefined : totalLocalization.bounds ?? (footer ? { left: Math.max(0, Math.floor(footer.left * structure.scaleX - pad)), top: Math.max(last, Math.floor(footer.top * structure.scaleY - pad)),
     width: Math.ceil(footer.width * structure.scaleX + pad * 2), height: Math.ceil(footer.height * structure.scaleY + pad * 2) } : undefined);
   const worker = await createWorker('eng', OEM.LSTM_ONLY, { cachePath: ocrRuntimeCache(), logger: () => undefined });

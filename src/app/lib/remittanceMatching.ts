@@ -496,6 +496,10 @@ function explicitTotalEvidenceCandidates(text: string): ExplicitTotalEvidenceCan
     ExplicitTotalEvidenceCandidate[]
   >((candidates, rawMatch) => {
       const raw = rawMatch[1] ?? "";
+      // A partial numeric prefix is not a total (e.g. OCR "54,58\n33").
+      // Keep the original text for review instead of accepting the first cents.
+      const remainder = text.slice((rawMatch.index ?? 0) + rawMatch[0].length);
+      if (/^[\d.,]/.test(remainder) || (/,[ \t]*\d{2}$/.test(raw) && /^\s{1,8}\d/.test(remainder))) return candidates;
       const normalized = normalizeSplitMoneyFragments(raw).replace(/\s+/g, "");
       const amount = parseMoney(normalized);
 
@@ -562,7 +566,13 @@ export function selectRemittanceHeaderEvidence(passes: RemittanceHeaderPass[], r
     const footer = Array.from(pass.text.matchAll(/^\s*\$?\s*(\d{1,3}(?:,\d{3})*\.\d{2})[ \t]*$/gm)).flatMap((match) => {
       const index = match.index ?? 0;
       if (index / Math.max(pass.text.length, 1) < 0.75) return [];
-      return explicitTotalEvidenceCandidates("TOTAL " + match[1]).map((candidate) => ({ ...candidate, index, labelled: false }));
+      return explicitTotalEvidenceCandidates("TOTAL " + match[1])
+        // Sparse OCR places body row amounts late in text. Repetition across
+        // passes does not turn an observed row field into a document footer.
+        .filter(candidate => !(rows.length > 1 &&
+          rows.some(row => Math.round((selectedStructuredRowAmount(row)?.value ?? 0) * 100) === Math.round(candidate.amount * 100)) &&
+          Math.round(rowSubtotal * 100) !== Math.round(candidate.amount * 100)))
+        .map((candidate) => ({ ...candidate, index, labelled: false }));
     });
     return [...labelled, ...footer].map((candidate) => ({
     ...candidate,

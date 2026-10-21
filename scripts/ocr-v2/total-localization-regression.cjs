@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- Structural authority safety cases. */
 const assert=require('node:assert/strict');
-const {localizeDocumentTotal}=require('../../src/app/lib/ocrV2/recognition/totalLocalization.ts');
+const {localizeDocumentTotal,boundedAmountOwnership}=require('../../src/app/lib/ocrV2/recognition/totalLocalization.ts');
 const {decideDocumentTotal}=require('../../src/app/lib/ocrV2/recognition/documentTotalAuthority.ts');
 const word=(text,left,top,width=80)=>({text,confidence:92,bounds:{left,top,width,height:20}});
 const model={sourceHash:'pixels',table:{supported:true,columns:[{type:'row_amount',semanticConfidence:'label-supported'}],rows:[{id:'a',bounds:{left:0,top:100,width:450,height:30},amountRegion:{left:320,top:100,width:100,height:30}},{id:'b',bounds:{left:0,top:160,width:450,height:30},amountRegion:{left:320,top:160,width:100,height:30}}]}};
@@ -58,3 +58,16 @@ assert.equal(decideDocumentTotal({...phoneLayout,totalLocalization:{...phone,sou
 assert.equal(decideDocumentTotal(phoneLayout,phoneEvidence,phoneObservations.slice(0,1)).cents,null,'Observed geometry cannot replace independent numerical evidence');
 assert.equal(decideDocumentTotal(phoneLayout,{...phoneEvidence,rows:[{cents:1},{cents:2}]},phoneObservations).cents,null,'Observed geometry cannot bypass exact-cent arithmetic veto');
 console.log('PASS retained iPhone localization-to-authority consistency with source/independent-evidence/arithmetic guards');
+
+// Second physical211c05ab: rows2–4 included wood to x3830/3988/3910.
+// A source-bound column edge from independent row words must bound their crops.
+const secondProof={axis:3376,axisSource:'observed-row-money',axisRows:3,sourceHash:'second-pixels'};
+for(const bounds of [{left:3194,top:765,width:636,height:40},{left:3193,top:814,width:795,height:40},{left:3193,top:858,width:717,height:49}]){
+ const clipped=boundedAmountOwnership(bounds,secondProof,'second-pixels',4);
+ assert.equal(clipped.left,bounds.left);assert.equal(clipped.top,bounds.top);assert.equal(clipped.height,bounds.height);assert.equal(clipped.left+clipped.width,3380);
+ assert.equal(boundedAmountOwnership(bounds,secondProof,'wrong-source',4),bounds);
+ assert.equal(boundedAmountOwnership(bounds,{...secondProof,axisRows:1},'second-pixels',4),bounds);
+ assert.equal(boundedAmountOwnership(bounds,{...secondProof,axisSource:'ownership-bounds'},'second-pixels',4),bounds);
+ assert.equal(boundedAmountOwnership(bounds,{...secondProof,axis:100},'second-pixels',4),bounds);
+}
+console.log('PASS second physical row crops bounded by repeated source-matched visual column; no values supplied or cross-source/single-row authority.');

@@ -1657,7 +1657,11 @@ export default function BatchInvoicePayments({
     return lines;
   }
 
-  function ocrFailureMessage(data: CheckStubOcrResponse) {
+  function ocrFailureMessage(data: CheckStubOcrResponse, attempt?: RemittanceAttempt) {
+    const resolvedRows = attempt?.resolverResult.resolvedMatches.length ?? 0;
+    if (resolvedRows > 0 && attempt?.reconciliationResult.blockers.length) {
+      return `${resolvedRows} invoice${resolvedRows === 1 ? "" : "s"} identified. ${attempt.reconciliationResult.blockers.join(" ")}`;
+    }
     const summary = data.diagnostics?.summary ?? [];
     const found = (label: string) =>
       summary.some((item) => item.toLowerCase().includes(label.toLowerCase()));
@@ -2306,7 +2310,7 @@ export default function BatchInvoicePayments({
       setCheckOcrMessage(
         hasConfidentReview
           ? "Remittance read. Review the payment before applying."
-          : ocrFailureMessage(data)
+          : ocrFailureMessage(data, attempt)
       );
     } catch (error) {
       if (attemptVersion !== ocrAttemptVersion.current) return;
