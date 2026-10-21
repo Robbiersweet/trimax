@@ -1366,7 +1366,7 @@ assert(
   paymentScreen.includes('type OcrRetryStrategy = "standard" | "alternate"') &&
     paymentScreen.includes("retryStrategy: OcrRetryStrategy = \"standard\"") &&
     paymentScreen.includes("waitForLegacyJob({attemptId,documentType,retryStrategy") &&
-    paymentScreen.includes("retryStrategy,lines,duplicate.fingerprint") &&
+    paymentScreen.includes("retryStrategy,lines,duplicatePreflight.fingerprint") &&
     paymentScreen.includes('"alternate"'),
   "Retry Reading must reuse the saved crop while requesting a distinct local OCR preprocessing strategy."
 );

@@ -2360,12 +2360,12 @@ export default function BatchInvoicePayments({
       setCheckImagePreview(imageDataUrl); setCheckImageName(file.name);
       setLastOcrPrepDiagnosticLines(lines);
       setPaymentEntryMode("photo");
-      const duplicate = await remittanceDeadline(runDuplicateRemittancePreflight(normalized.file,lines,
-        {checkNumber:"",amount:null,checkDate:"",receivedDate,payor:"",invoiceIds:[],invoiceNumbers:[]},
+      const duplicatePreflight = await remittanceDeadline(runDuplicateRemittancePreflight(normalized.file,lines,
+        { checkNumber: "", amount: null, checkDate: "", receivedDate, payor: "", invoiceIds: [], invoiceNumbers: [] },
         () => version === ocrAttemptVersion.current),15_000,"Could not check this remittance. Retry or enter manually.");
-      if (version !== ocrAttemptVersion.current || duplicate.stoppedOcr) return;
+      if (version !== ocrAttemptVersion.current || duplicatePreflight.stoppedOcr) return;
       setIsPreparingCrop(false);
-      await extractCheckStubFromPhoto(imageDataUrl,documentType,intent,retryStrategy,lines,duplicate.fingerprint);
+      await extractCheckStubFromPhoto(imageDataUrl,documentType,intent,retryStrategy,lines,duplicatePreflight.fingerprint);
     } catch (error) {
       if (version !== ocrAttemptVersion.current) return;
       const message = error instanceof Error ? error.message : "Could not prepare this remittance. Retake or enter manually.";
