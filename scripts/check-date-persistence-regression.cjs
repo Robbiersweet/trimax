@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- Retained Glen header date and durable-review boundary regression. */
 const assert=require('node:assert/strict'),fs=require('node:fs'),ts=require('typescript');
-const {selectObservedHeader,selectObservedCheckDate,createRemittanceEvidence,resolveRemittanceAttempt}=require('../src/app/lib/remittanceAttempt.ts');
+const {selectObservedHeader,selectObservedCheckDate,selectObservedCheckNumber,createRemittanceEvidence,resolveRemittanceAttempt}=require('../src/app/lib/remittanceAttempt.ts');
 const {finishScan,scanSummary,slimAttempt}=require('../src/app/lib/ocrHistory.ts');
 const word=(text,confidence,y0=566)=>({text,confidence,bbox:{x0:781,x1:1123,y0,y1:y0+32}});
 const rows=[0,1,2].map(i=>({rowId:'row-'+i,y:850+i*49,height:30,text:`INV-0${536+i} 1428.70`,rawInvoiceLikeTokens:[`INV0${536+i}`],normalizedInvoiceCandidates:[`INV-0${536+i}`],amountCandidates:[{value:1428.7,selected:true}],dateTokens:[],unitLikeTokens:[]}));
@@ -8,7 +8,7 @@ const rawHeader='DATE:10/01/2026 CK#:717 TOTAL:$4,286.10 BANK:JP-GlenAtNorthCree
 const route=fs.readFileSync('src/app/api/payments/extract-check-stub/route.ts','utf8'),tree=ts.createSourceFile('route.ts',route,99,true);let filter;function visit(n){if(ts.isFunctionDeclaration(n)&&n.name?.text==='withoutMicrBandText')filter=n.getText(tree);else ts.forEachChild(n,visit);}visit(tree);
 const withoutMicr=new Function(ts.transpileModule(filter+'\nreturn withoutMicrBandText',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText)();
 assert.equal(withoutMicr(rawHeader),'','Saved header line was removed before date authority');
-const passes=[['local-gray',90,566],['local-binary',80,565]].map(([variant,confidence,y])=>({region:'full-document',variant,pageMode:'sparse-text',text:withoutMicr(rawHeader)+'\nTOTAL: $4,286.10\nPAYOR: Glen at North Creek',words:[word('DATE:10/01/2026',confidence,y)],confidence}));
+const passes=[['local-gray',90,566],['local-binary',80,565]].map(([variant,confidence,y])=>({region:'full-document',variant,pageMode:'sparse-text',text:withoutMicr(rawHeader)+'\nTOTAL: $4,286.10\nPAYOR: Glen at North Creek',words:[word('DATE:10/01/2026',confidence,y),{...word('CK#:717',confidence,y),bbox:{x0:1200,x1:1400,y0:y,y1:y+32}}],confidence}));
 assert.equal(selectObservedCheckDate(passes,rows).value,'2026-10-01');
 assert.equal(selectObservedCheckDate([passes[0]],rows).value,null);
 assert.equal(selectObservedCheckDate(passes.map(p=>({...p,region:'stub-row-recovery-1'})),rows).value,null);
@@ -16,14 +16,22 @@ assert.equal(selectObservedCheckDate(passes.map(p=>({...p,words:[word('09/16/202
 assert.equal(selectObservedCheckDate(passes.map(p=>({...p,words:[word('DATE:10/01/2026',95,850)]})),rows).value,null);
 assert.equal(selectObservedCheckDate(passes.map(p=>({...p,words:[word('DATE:10/01/2026',20)]})),rows).value,null);
 assert.equal(selectObservedCheckDate(passes.map((p,i)=>({...p,words:[word(i?'DATE:10/02/2026':'DATE:10/01/2026',95)]})),rows).value,null);
-const header=selectObservedHeader(passes,rows);assert.equal(header.checkDate,'2026-10-01');
+const header=selectObservedHeader(passes,rows);assert.equal(header.checkDate,'2026-10-01');assert.equal(header.checkNumber,'717');
+assert.equal(selectObservedCheckNumber([passes[0]],rows).value,null);
+assert.equal(selectObservedCheckNumber(passes.map(p=>({...p,region:'stub-row-recovery-1'})),rows).value,null);
+assert.equal(selectObservedCheckNumber(passes.map(p=>({...p,words:[word('717',90)]})),rows).value,null);
+assert.equal(selectObservedCheckNumber(passes.map(p=>({...p,words:[word('CK#:717',90,850)]})),rows).value,null);
+assert.equal(selectObservedCheckNumber(passes.map(p=>({...p,words:[word('CK#:717',20)]})),rows).value,null);
+assert.equal(selectObservedHeader(passes.map((p,i)=>({...p,words:[word(i?'CK#:2721':'CK#:717',90)]})),rows).checkNumber,null);
+assert.equal(selectObservedHeader(passes.map(p=>({...p,text:p.text+'\nCHECK #: 2721'})),rows).checkNumber,null);
+assert.equal(selectObservedCheckNumber(passes.map(p=>({...p,words:[word('CK#:00717',90)]})),rows).value,'00717');
 const evidence=createRemittanceEvidence({attemptId:'glen-date',capture:{source:'camera',image:{width:4032,height:2160,bytes:1,mime:'image/jpeg'},quality:{},sources:[],selectionReason:'retained Glen test'},rawPasses:passes,headerEvidence:header,physicalRows:rows,assignments:[],diagnostics:[]});
 const invoices=rows.map((_,i)=>({id:'glen'+i,displayId:`INV-0${536+i}`,customerName:'Glen North Creek',projectTitle:'Glen',invoiceAmount:1428.7,amountPaid:0,status:'sent'}));
 const attempt=resolveRemittanceAttempt(evidence,[...invoices,{...invoices[0],id:'north',displayId:'INV-0539',customerName:'North Creek Apartments'}],[],{role:'owner',receivedDate:'2026-10-21',fingerprint:''});
 assert.equal(attempt.reconciliationResult.eligible,true);assert.equal(attempt.reconciliationResult.resolvedTotal,4286.1);assert.deepEqual([...attempt.reconciliationResult.reviewIds].sort(),invoices.map(i=>i.id));
 const summary=finishScan(scanSummary('glen-date','glen-date',null,'camera','test'),attempt,'success',10);
-assert.equal(summary.checkDate,'2026-10-01');assert.equal(JSON.parse(JSON.stringify(summary)).checkDate,'2026-10-01');
+assert.equal(summary.checkNumber,'717');assert.equal(JSON.parse(JSON.stringify(summary)).checkNumber,'717');assert.equal(slimAttempt(attempt).evidence.headerEvidence.checkNumber,'717');assert.equal(summary.checkDate,'2026-10-01');assert.equal(JSON.parse(JSON.stringify(summary)).checkDate,'2026-10-01');
 assert.equal(slimAttempt(attempt).evidence.headerEvidence.checkDate,'2026-10-01');
 const response=JSON.parse(JSON.stringify({checkDate:header.checkDate,evidence}));const resumed=resolveRemittanceAttempt(response.evidence,invoices,[],{role:'owner',receivedDate:'2026-10-21',fingerprint:''});
-assert.equal(resumed.evidence.headerEvidence.checkDate,'2026-10-01');assert.deepEqual(resumed.reconciliationResult.reviewIds,attempt.reconciliationResult.reviewIds);assert.equal(resumed.reconciliationResult.resolvedTotal,4286.1);
-console.log('PASS retained Glen date survives raw-word authority, serialization, summary, compaction and resumed review; same three Glen invoices/exact4286.10, no body-date inference');
+assert.equal(resumed.evidence.headerEvidence.checkNumber,'717');assert.equal(resumed.evidence.headerEvidence.checkDate,'2026-10-01');assert.deepEqual(resumed.reconciliationResult.reviewIds,attempt.reconciliationResult.reviewIds);assert.equal(resumed.reconciliationResult.resolvedTotal,4286.1);
+console.log('PASS retained Glen check number717 and date survive raw-word authority, serialization, summary, compaction and resumed review; same three Glen invoices/exact4286.10, no body-date inference');

@@ -1201,10 +1201,8 @@ export default function BatchInvoicePayments({
       setCheckAmount(paymentAmountText);
       setCapturedCheckAmount(paymentAmountText);
     }
-    if (extractedCheckNumber) {
-      setPaymentReference(extractedCheckNumber);
-      setCapturedCheckReference(extractedCheckNumber);
-    }
+    setPaymentReference(extractedCheckNumber);
+    setCapturedCheckReference(extractedCheckNumber);
     setCheckPayor(extractedPayor);
     setPaymentReviewNotice(
       [
@@ -3390,7 +3388,7 @@ export default function BatchInvoicePayments({
                 setPaymentReference(event.target.value);
                 setCapturedCheckReference(event.target.value);
               }}
-              placeholder="2721"
+              placeholder="Check number"
               className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-sky-500"
             />
           </div>
