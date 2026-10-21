@@ -14,7 +14,7 @@ test('known payor excludes foreign provisional invoice even with exact ID and am
  assert.equal(r.rows[0].provisionalInvoiceId,null);assert.equal(r.rows[0].alternatives[0].eligible,false);assert.equal(r.automaticInvoiceIds.length,0);
 });
 test('shared payor fragment retains full customer context for provisional alternatives',()=>{
- const r=run([row('r1',['INV-9002'])],[invoice('9001',{customerName:'North Creek Apartments'}),invoice('9002',{customerName:'Glen North Creek'})],{header:{payor:'North Creek',total:{amount:100,source:'explicit-document-total',payable:true}}});
+ const r=run([row('r1',['INV-9002'])],[invoice('9001',{customerName:'North Creek Apartments'}),invoice('9002',{customerName:'North Creek Estates'})],{header:{payor:'North Creek',total:{amount:100,source:'explicit-document-total',payable:true}}});
  assert.equal(r.rows[0].provisionalInvoiceId,null);assert.equal(r.rows[0].alternatives[0].eligible,false);assert.equal(r.automaticInvoiceIds.length,0);
 });
 test('single exact observed assignment',()=>assert.equal(run([row('r1',['INV-9001'])],[invoice('9001')]).status,'resolved'));

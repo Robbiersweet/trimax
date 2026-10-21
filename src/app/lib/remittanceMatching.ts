@@ -158,8 +158,9 @@ export function customerMatchesPayor(customerName: string, payor: string) {
   if (!normalizedCustomer) return false;
 
   return (
-    normalizedCustomer.includes(normalizedPayor) ||
-    normalizedPayor.includes(normalizedCustomer)
+    normalizedCustomer.startsWith(normalizedPayor) ||
+    (normalizedPayor.startsWith(normalizedCustomer) &&
+      /\s/.test(normalizedPayor.charAt(normalizedCustomer.length)))
   );
 }
 

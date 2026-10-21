@@ -30,8 +30,12 @@ for (const amount of [1099, 1098.99, 1099.01]) {
 for (const payor of ['North Creek', 'Creek']) {
   const result = run(pool, glen.displayId, payor);
   assert.equal(result.resolvedMatches.length, 0, 'A shared payor fragment cannot identify a client');
-  assert(result.issues.some(s => s.includes('more than one customer')));
 }
+assert.deepEqual(run(pool, north.displayId, 'North Creek').matches.map(i => i.id), ['north'], 'Observed leading stem identifies North Creek without admitting Glen');
+assert.deepEqual(run(pool, north.displayId, 'North Creek Apartmen').matches.map(i => i.id), ['north'], 'Observed truncated descriptor remains compatible');
+const sharedPrefix = run([...pool, invoice('estates', 'INV-0541', 'North Creek Estates')], north.displayId, 'North Creek');
+assert.equal(sharedPrefix.resolvedMatches.length, 0);
+assert(sharedPrefix.issues.some(s => s.includes('more than one customer')));
 for (const extra of [{ status: 'paid' }, { status: 'draft' }, { status: 'void' }, { status: 'sent', splitChildrenCount: 2 }, { amountPaid: 1099 }]) {
   assert.equal(run([{ ...north, ...extra }, glen], north.displayId).resolvedMatches.length, 0);
 }
