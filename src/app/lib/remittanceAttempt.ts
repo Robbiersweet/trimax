@@ -117,22 +117,27 @@ export function selectObservedCheckDate(passes: OcrPass[], rows: StructuredRemit
 
 export function selectObservedCheckNumber(passes: OcrPass[], rows: StructuredRemittanceRowEvidence[]) {
   const bodyTop=Math.min(...rows.filter(r=>r.y!=null&&r.height!=null).map(r=>r.y!-r.height!));
-  const observations:Array<{number:string;raw:string;pass:string;bounds:OcrObservation['bbox']}> = [];
+  const observations:Array<{number:string;raw:string;pass:string;bounds:OcrObservation['bbox'];confidence:number;dateAnchored:boolean;standardLabel:boolean}> = [];
   if(!Number.isFinite(bodyTop))return {value:null,observations};
   for(const pass of passes.filter(p=>p.region==='full-document')){
-    const words=pass.words.filter(w=>Number.isFinite(w.confidence)&&w.confidence>=70&&Object.values(w.bbox).every(Number.isFinite)&&w.bbox.y0>=0&&w.bbox.y1<bodyTop);
+    const words=pass.words.filter(w=>Number.isFinite(w.confidence)&&w.confidence>=35&&Object.values(w.bbox).every(Number.isFinite)&&w.bbox.y0>=0&&w.bbox.y1<bodyTop);
     for(const word of words){
       let raw=word.text;
       if(/^(?:CHECK|CHK|CK)(?:\s*(?:NO\.?|NUMBER))?\s*[#:]?\s*:?$/i.test(raw)){
         const next=words.filter(w=>w.bbox.x0>=word.bbox.x1&&w.bbox.x0-word.bbox.x1<100&&Math.abs((w.bbox.y0+w.bbox.y1-word.bbox.y0-word.bbox.y1)/2)<Math.max(word.bbox.y1-word.bbox.y0,w.bbox.y1-w.bbox.y0)).sort((a,b)=>a.bbox.x0-b.bbox.x0)[0];
         if(next)raw+=' '+next.text;
       }
-      const match=raw.match(/^(?:CHECK|CHK|CK)(?:\s*(?:NO\.?|NUMBER))?\s*[#:]?\s*:?\s*(\d{1,12})$/i);
-      if(match)observations.push({number:match[1],raw,pass:[pass.region,pass.variant,pass.pageMode].join(':'),bounds:word.bbox});
+      const match=raw.match(/^(?:CHECK|CHK|CK)(?:\s*(?:NO\.?|NUMBER))?\s*[#¥:]?\s*:?\s*(\d{1,12})$/i);
+      const dateAnchored=words.some(w=>w.confidence>=70&&/^DATE\s*:\s*\d{1,4}[/-]\d{1,2}[/-]\d{1,4}$/i.test(w.text)&&Boolean(parseCheckDate(w.text.replace(/^DATE\s*:\s*/i,'')))&&w.bbox.x1<word.bbox.x0&&word.bbox.x0-w.bbox.x1<150&&Math.abs(w.bbox.y0-word.bbox.y0)<Math.max(w.bbox.y1-w.bbox.y0,word.bbox.y1-word.bbox.y0));
+      if(match)observations.push({number:match[1],raw,pass:[pass.region,pass.variant,pass.pageMode].join(':'),bounds:word.bbox,confidence:word.confidence,dateAnchored,standardLabel:!raw.includes('¥')});
     }
   }
   const numbers=[...new Set(observations.map(o=>o.number))];
-  return {value:numbers.length===1&&new Set(observations.map(o=>o.pass)).size>=2?numbers[0]:null,observations};
+  const strong=observations.filter(o=>o.confidence>=70);
+  const anchored=observations.filter(o=>o.dateAnchored);
+  const sameLocation=anchored.length>=2&&anchored.every(o=>Math.abs(o.bounds.x0-anchored[0].bounds.x0)<50&&Math.abs(o.bounds.y0-anchored[0].bounds.y0)<30);
+  const corroborated=new Set(strong.map(o=>o.pass)).size>=2||(sameLocation&&new Set(anchored.map(o=>o.pass)).size>=2&&anchored.some(o=>o.confidence>=50&&o.standardLabel));
+  return {value:numbers.length===1&&corroborated?numbers[0]:null,observations};
 }
 
 export function selectObservedHeader(passes: OcrPass[], rows: StructuredRemittanceRowEvidence[]) {

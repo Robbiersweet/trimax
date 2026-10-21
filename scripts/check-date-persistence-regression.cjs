@@ -25,7 +25,17 @@ assert.equal(selectObservedCheckNumber(passes.map(p=>({...p,words:[word('CK#:717
 assert.equal(selectObservedHeader(passes.map((p,i)=>({...p,words:[word(i?'CK#:2721':'CK#:717',90)]})),rows).checkNumber,null);
 assert.equal(selectObservedHeader(passes.map(p=>({...p,text:p.text+'\nCHECK #: 2721'})),rows).checkNumber,null);
 assert.equal(selectObservedCheckNumber(passes.map(p=>({...p,words:[word('CK#:00717',90)]})),rows).value,'00717');
-const evidence=createRemittanceEvidence({attemptId:'glen-date',capture:{source:'camera',image:{width:4032,height:2160,bytes:1,mime:'image/jpeg'},quality:{},sources:[],selectionReason:'retained Glen test'},rawPasses:passes,headerEvidence:header,physicalRows:rows,assignments:[],diagnostics:[]});
+// Exact latest physical00f9477d header words: token confidence covers label and digits together.
+const actualPasses=[['local-gray',53,'CK#:717',88,1209,1370,590,618],['local-binary',38,'CK¥:717',90,1208,1371,590,619]].map(([variant,confidence,text,dateConfidence,x0,x1,y0,y1])=>({region:'full-document',variant,pageMode:'sparse-text',confidence:35,text:withoutMicr(rawHeader)+'\nTOTAL: $4,286.10\nPAYOR: Glen at North Creek',words:[{text:'DATE:10/01/2026',confidence:dateConfidence,bbox:{x0:variant==='local-gray'?810:809,x1:1159,y0:variant==='local-gray'?586:585,y1:620}},{text,confidence,bbox:{x0,x1,y0,y1}}]}));
+assert.equal(selectObservedHeader(actualPasses,rows).checkNumber,'717');
+assert.equal(selectObservedHeader(actualPasses,rows).checkDate,'2026-10-01');
+assert.equal(selectObservedCheckNumber([actualPasses[0]],rows).value,null);
+assert.equal(selectObservedCheckNumber(actualPasses.map(p=>({...p,words:p.words.slice(1)})),rows).value,null,'Weak labels require strong date anchors');
+assert.equal(selectObservedCheckNumber(actualPasses.map(p=>({...p,words:p.words.map(w=>w.text.startsWith('CK')?{...w,confidence:34}:w)})),rows).value,null);
+assert.equal(selectObservedCheckNumber(actualPasses.map(p=>({...p,words:p.words.map(w=>w.text.startsWith('CK')?{...w,confidence:38}:w)})),rows).value,null,'One standard label must exceed50');
+assert.equal(selectObservedCheckNumber(actualPasses.map((p,i)=>({...p,words:p.words.map(w=>i&&w.text.startsWith('CK')?{...w,bbox:{...w.bbox,x0:1600}}:w)})),rows).value,null,'Independent passes must point to same header location');
+assert.equal(selectObservedHeader(actualPasses.map((p,i)=>({...p,words:p.words.map(w=>i&&w.text.startsWith('CK')?{...w,text:'CK¥:718'}:w)})),rows).checkNumber,null);
+const evidence=createRemittanceEvidence({attemptId:'glen-date',capture:{source:'camera',image:{width:4032,height:2160,bytes:1,mime:'image/jpeg'},quality:{},sources:[],selectionReason:'retained Glen test'},rawPasses:actualPasses,headerEvidence:selectObservedHeader(actualPasses,rows),physicalRows:rows,assignments:[],diagnostics:[]});
 const invoices=rows.map((_,i)=>({id:'glen'+i,displayId:`INV-0${536+i}`,customerName:'Glen North Creek',projectTitle:'Glen',invoiceAmount:1428.7,amountPaid:0,status:'sent'}));
 const attempt=resolveRemittanceAttempt(evidence,[...invoices,{...invoices[0],id:'north',displayId:'INV-0539',customerName:'North Creek Apartments'}],[],{role:'owner',receivedDate:'2026-10-21',fingerprint:''});
 assert.equal(attempt.reconciliationResult.eligible,true);assert.equal(attempt.reconciliationResult.resolvedTotal,4286.1);assert.deepEqual([...attempt.reconciliationResult.reviewIds].sort(),invoices.map(i=>i.id));
