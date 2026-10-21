@@ -1,32 +1,32 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-remittance-shadow-20261021-rc2",
+  "releaseId": "trimax-auth-client-safety-20261021-rc1",
   "status": "SEALED_CONTROLLED_DEPLOYMENT_CANDIDATE",
-  "createdAt": "2026-10-21T07:40:25.449Z",
+  "createdAt": "2026-10-21T08:24:01.984Z",
   "releaseTimestamp": null,
   "baseProduction": {
-    "commit": "044d704137c9bba2152d6721b20bb80e852348a4",
-    "vercelDeploymentId": "CYn41r9bvv11KXSNYxmiuqNEKEpZ",
-    "deployedAt": "2026-10-21T07:35:54Z"
+    "commit": "bc4fdf8d7bd5890d65b43e34095cf7b9cc7b8584",
+    "vercelDeploymentId": "7L9gBVprGz2Ce18Ygi2CnW4vAjfg",
+    "deployedAt": "2026-10-21T07:49:56Z"
   },
   "components": {
     "web": {
-      "commit": "37aad7eed38b1de3f2ad766b45ab38099e80cc95"
+      "commit": "c3899098c961e8038d2c1f4bf974a096b2165dce"
     },
     "legacy": {
-      "commit": "37aad7eed38b1de3f2ad766b45ab38099e80cc95"
+      "commit": "c3899098c961e8038d2c1f4bf974a096b2165dce"
     },
     "v2-shadow": {
-      "commit": "37aad7eed38b1de3f2ad766b45ab38099e80cc95"
+      "commit": "c3899098c961e8038d2c1f4bf974a096b2165dce"
     }
   },
   "sourceBundle": {
-    "sha256": "a2c40cf00c60cae34fea4788ca3efaf5ce4ff7183fb4dd1d92aa9381fb766999",
+    "sha256": "2778f4654c7b3841688ca6d8ac63a24ab4a783bda12ee1fb668b2c0008209f2f",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
       "package-lock.json": "f59c4191dbab35152626d37ecd849e1c20d17564df0cf62d2dbac122dff062b9",
-      "package.json": "cfaa69ba1ddf7c23203d6a5181bac2bf09d04cd55e486dc3f3f6bbba4bd4bfe5",
+      "package.json": "1af9051d2329fb003b11e557f692259ff80e4f1e170cc56a298d5dd41da85a35",
       "proxy.ts": "c07e9824217830ca636dac8141204cf2a422728fdc173f488ad61e86edbc8cce",
       "public/Brand/R&L Full Black.png": "3745bd9aec6198d87a968e3f5c3402b87010925d881ddd03411a5caef2c40f65",
       "public/Brand/R&L Full Orange.png": "2c1b88a1718f11f58eb4e59d812f6e47a52ad4c2005a6625eddb601f54fd3fb0",
@@ -46,6 +46,7 @@
       "public/vercel.svg": "f081337b2fee635b455b63275406a3e7f39d6a014e25ad90dab5a67e62a12ac4",
       "public/window.svg": "644768c4aaeb4767bce293344eeb0c125fb804a94d801440424072202d85e3a1",
       "scripts/account-management-regression.ts": "26119699454a3a80814fcb0afdfc1eeaaec65474e1153b0949ceddbe480a6264",
+      "scripts/auth-cookie-refresh-regression.cjs": "9c6de241282900626139337c5ab0bd10c8beb75925cc28a9cf1cae86f5b5a4f8",
       "scripts/business-read-isolation-regression.ts": "36319d04f87c4d27ef15e171c2ef89ec6cb3b5314ca4c334e527d7da500b1be8",
       "scripts/camera-lifecycle-regression.ts": "2a881a1c73291c51ccd4574a149eb95089c98d7513242b36e14f861add05ce24",
       "scripts/capture-gate-integration-regression.cjs": "4634b41a575a02eb8fe3f4f3bb5d3562a77956d0782d66957c5ec2543c657629",
@@ -154,7 +155,7 @@
       "scripts/ocr-v2/residual-regression.cjs": "a360cd281bb5f6703266ad6bca520737606c483bfcfba0056e3afdc8133e5140",
       "scripts/ocr-v2/resolver-benchmark.cjs": "f176c4faad3fb8840aacae8741af15355200d97a048e5f7dd6e6890d85b08940",
       "scripts/ocr-v2/resolver-complete-replay.cjs": "4e5d208fa1a7ac36662c817fcd84ec86fdb7e638efd474dc8925414bb7fd6ffb",
-      "scripts/ocr-v2/resolver-regression.cjs": "e07b4ef0f0c6c045f4f51737605d097d362cfc0733516b59b0984d92fb68002a",
+      "scripts/ocr-v2/resolver-regression.cjs": "30b2a04ac20cb9c2d6e65603bbb949d81d43e312a7455d6e7ff62b982c9b9488",
       "scripts/ocr-v2/retained-payment-fields.cjs": "31fdee7dfb6d15ba7426164c5a8872557dd8c0e1698a66e7cb6715c1d24d7c65",
       "scripts/ocr-v2/retained-structure-gate.cjs": "ed5d0a8c3604b75d36183085f300745db7647112738378d93521f004a867b284",
       "scripts/ocr-v2/retained-total-regression.cjs": "439f85a774bd2a01b96705eb02a66f8baa818dd533637b557b555677e17d5536",
@@ -231,7 +232,7 @@
       "scripts/public-scheduling-seed-rnl.sql": "e9a1dd34f3f6c753860f95b7fa0eb4799e3bbc9f8ed9ea0d7f4b88db6bb85ddd",
       "scripts/queue-compact-toolbar-regression.ts": "31290b567851c074872fc5d4b7d332d7cbc1af517129c9f5e2c2d61ef7fdb5d5",
       "scripts/queue-workspace-polish-regression.ts": "73a85ddd6d1f6a888f216d075bdea530e00acbfc3f36312dedb8d131f2c70ec6",
-      "scripts/release/auth-flow-regression.cjs": "57e3c64112036cae7a5ff86ecf8c2dc862c75ad591900e57390a32f2dbe29cc8",
+      "scripts/release/auth-flow-regression.cjs": "d1e5b43419ec4e7c19606d83192cddb4617da447ef18ce53d400d7b76a0f0fff",
       "scripts/release/authorization-execution-regression.cjs": "04df6de9929ae8bde95b621a843650f575acf23f9074a357ae6a705125ba67f5",
       "scripts/release/authorize-build.cjs": "88c7d10b41262c22f4415b3af851adc606441f18a57370a55c0049b29bed11b7",
       "scripts/release/build-diagnostics.cjs": "c0aef8fd7da629a1b672859a2b9a5728607f6e291dc56498d9eb2fe5de489b04",
@@ -242,7 +243,7 @@
       "scripts/release/file-forensics-regression.cjs": "a6da1ba822d17c1a31b7bd29d3cb49e95febca66f29c51b712ccdd9d608c1b26",
       "scripts/release/file-forensics.cjs": "25133a9f2167c801a05906be04068f3d85f54f3c462e085869df2d486c8bea30",
       "scripts/release/final-candidate-regression.cjs": "edc0dbfa8f70d55607c65327a08ed25193380387dd4f1e850cf130ef992ca03f",
-      "scripts/release/gate-checks.cjs": "5588d6d5cf3c21bf671c8485265125b956839946b0ce8bae0285376ea303894e",
+      "scripts/release/gate-checks.cjs": "61ea135eed5c3143a565e359ae3fe63aeca67a231e2ff0881d7b05093aee32c7",
       "scripts/release/gate-state-regression.cjs": "51f1d2c76eca73d122f20cc0f537b624074ebd4943f946dcba63857775e45d04",
       "scripts/release/gate-state.cjs": "f56bdc9741b07b92c53bb487f21320080537fa90734721130612e8c1b52da839",
       "scripts/release/gate.cjs": "fd9d065007932504635900617ed3d7d11481a26e4dcc6131d0afbca39096e17d",
@@ -259,6 +260,7 @@
       "scripts/release/upgrade-state-regression.cjs": "259e27838e56080bafa85937543818ce37e6c0f062328e171b55e22c9ef08b2a",
       "scripts/remittance-camera-browser.cjs": "c0a3d2f0c103644c6a5b39ea257b1cf20c7fbcab74a8f8e8c89aa82d5cb93aef",
       "scripts/remittance-camera-geometry-regression.ts": "e4a9f18a735264cf1fafc0ff6d06efaf31226facf571d24c27da5ac440d72a37",
+      "scripts/remittance-client-safety-regression.cjs": "1343455691b044a64f4276f086928da9222ce80a389f6842bb36200fe7158e12",
       "scripts/remittance-contract-regression.ts": "75e3bf300050abfcd6145eb5d912af9251fef904bc1c9be19c5bc5695d50cf77",
       "scripts/remittance-deadline-regression.cjs": "630e43d1356572b744de7bfb9f68672366819da161d4e1f9e907a014f9e5c38e",
       "scripts/remittance-intake-regression.cjs": "08fb8d9a31c63f227cec5a95821225d32aa2ca0f58a1921eff6aea03caffb991",
@@ -275,7 +277,7 @@
       "scripts/service-workflow-regression.ts": "b148ee98e977473d057d487fdd90cb9060591cdf24d7611ac95d6a8e496cb04c",
       "scripts/service-workflow-sql-regression.cjs": "8049f214fd132adea8029fe7e74f4f6ba7634fd0efbe62a49c63346afabf43e6",
       "scripts/services-workspace-polish-regression.ts": "c8ed449b850c76a6a44fc029fa9ddf932f5cf553a0af79d64d9959390a2d9701",
-      "scripts/session-tab-isolation-regression.ts": "144f7ae36ec32b8092d0a07dc012899030362364f4f95ff9ee91d7e29912ad48",
+      "scripts/session-tab-isolation-regression.ts": "2e9606534b9482ff7d2f45c30d7b9a4a5bd85ee425cbeb4ca3c33c9fdaeb8d28",
       "scripts/split-invoice-send-regression.ts": "a030f1bd265a7791cd21b5664af094cd64cbb09ce43a000ce9064cd861815527",
       "scripts/split-source-relationship-regression.ts": "3e66f4141541fbb83e0645cc0a5f6d07e9e508b5cb49edf99ea88c75dce1200d",
       "scripts/stabilization-regression.cjs": "2245b0386b680b1e544ffe0faeada1f52b24aee215936f0995eb6f7785ff90e3",
@@ -321,7 +323,7 @@
       "src/app/clients/page.tsx": "9be7d15e68f6657d24c6cd106c3f4401cdd80d29d29c065efb6a2fb261f7e11b",
       "src/app/components/ActiveJobSessionDock.tsx": "a4d5dcb81f50fb9ffb0b9e1796e89c1fc4ed4dc4753878db0ae717099f4154ca",
       "src/app/components/AppShell.tsx": "b4358a4c5a82735d1871ef0bc8e7e3bbb30b3770b577d51b0343552155c489af",
-      "src/app/components/AuthGuard.tsx": "a2cbef8c661e46dceccf203705ad7575bf35aa1ac1725734a9f2b821fe8154c1",
+      "src/app/components/AuthGuard.tsx": "5d27be00447294b8eefafa4f37b66c4f1ddcd402c285c41433d84b33201023d1",
       "src/app/components/BackButton.tsx": "87360394e36c2e90d4a33135d5539d0176e75d8cc2448783c5c859783ee1059c",
       "src/app/components/BatchInvoicePayments.tsx": "cc81aff2377e1b0c9a9d59f56d0f8576455a804bf47454148c4012ba796a1f5b",
       "src/app/components/Button.tsx": "68f87a76cee881a6b148ec30af54746d8a0fbe11a153b3ccf0134a62504deb97",
@@ -382,7 +384,7 @@
       "src/app/components/RoleVisible.tsx": "69e7eb4de7cacee6a5f0be80545fdb57d1e48a96988178711d761eee57e9bef5",
       "src/app/components/RouteAccessBoundary.tsx": "59dcc979387329a6be84b757edf82f7099831adaf7d94e5b412e4d02ca029949",
       "src/app/components/SchedulingNotifications.tsx": "acc227ad4bc577bd5acd830c6a9baf9b34ae45ec9c5c2d74ac83ba4898081ccb",
-      "src/app/components/SecureSessionBadge.tsx": "d3ad76fdc3d9aa5edc7cffd3139202bfd98474e90320abb89971a9c7b8902cc9",
+      "src/app/components/SecureSessionBadge.tsx": "43f3538d53c576802a1cc851ca77a84a43144127d959ac44a673f9fc874ea592",
       "src/app/components/SplitInvoicePlanner.tsx": "3f90146c3b77c2aeffb6a715be7ef2c2e67242d75fc0cf6f1ce838b6fbc6c2af",
       "src/app/components/SplitInvoiceRelationshipDisplay.tsx": "3b7cd9bebd733e2b3b6eedf65a33a7ab2a23eca2f11b303fa7da46169df025e7",
       "src/app/components/StatusBadge.tsx": "d81b9950ce2ffd37898583e1b02caa8732e4bd936f393f1a5c393bf276c4f807",
@@ -495,7 +497,7 @@
       "src/app/lib/ocrV2/recognition/semanticMoney.ts": "3686f5e4238b46df41f04edc43bf922941832651cd15300d01f7cade10af2b8d",
       "src/app/lib/ocrV2/recognition/totalLocalization.ts": "475cdd9235d6a24c3e5299f6f0fcd91fdd07cd939997017b5b5d56e86ff5583f",
       "src/app/lib/ocrV2/recognition/types.ts": "61556867b81411adb38ee2eac9dba79314dcd7f466ea7a4127cd247519ca486d",
-      "src/app/lib/ocrV2/resolver/index.ts": "28f6f03fa630918c51c9ac3e71e12041318564cb419817357f4dd7d3aa05e027",
+      "src/app/lib/ocrV2/resolver/index.ts": "5e12efbf678e7ccc493d6f6ad207b4983e28c4ac2657e932575274ff1515161b",
       "src/app/lib/ocrV2/resolver/residual.ts": "326642725dad01e4d1e334997d2806da404ca459c08c498f0ff497d58d61ef51",
       "src/app/lib/ocrV2/semantics/README.md": "b67d7a20a06066f2ae6eae0d29195a69572e4eb58fffaa591c3e28d28bc58b6b",
       "src/app/lib/ocrV2/semantics/headerGeometry.ts": "92b97a7b593668cf073536571ca9888aad5dc7728b4177ef9112d990f31044fd",
@@ -544,13 +546,13 @@
       "src/app/lib/remittanceAttempt.ts": "0420cb694638a8554b878cb67b70a742db2a745c6c976db62a4c7907e1f7f8cd",
       "src/app/lib/remittanceDeadline.ts": "83f38cdc157d34dc1b70ed89e612a6c2b682e4cc20f3bc15d7a97a1c7f1920e2",
       "src/app/lib/remittanceDocumentFingerprint.ts": "b67dacf687a3431ddc16a79641f73ce7cb8522e3d1f5a52e5db498ac77e0cf89",
-      "src/app/lib/remittanceMatching.ts": "5f8920086610d97fe7c11e7f4ab53ed1309176b2cc410523a3763e13202af113",
+      "src/app/lib/remittanceMatching.ts": "2c9006700f7d44297753f36dfce0208b569322d913a0c0ab90201a3393ec348f",
       "src/app/lib/reverseDocumentTotals.ts": "0c9a2071596d56c9f660ca801129f4daa4dc007555c6ef79407981f296afa6e7",
       "src/app/lib/rolePermissions.ts": "99ed89b9f517dbb1576a991ac1a2e4089bcc85aa3dfa5e728f72f9cca5bedae5",
       "src/app/lib/savedServicePresentation.ts": "4f5b64cf759fbece8318597ac1b877819e52a15d0ed213970a1879c3a2e845f9",
       "src/app/lib/serviceAnalytics.ts": "1bf60659b9967af9a07c157724261f43114c9b7f44e4739e1c52a64da2bae68c",
       "src/app/lib/serviceDuplicateCleanup.ts": "4b22464608d28082b5303b0148f693c030801c177a0845c7e4011c7b6887d5af",
-      "src/app/lib/sessionSecurity.ts": "edc187e1962f1bc9bf36f42802676546fa609f0114a8849efa56d691066bb1a8",
+      "src/app/lib/sessionSecurity.ts": "4d6de72c838c371f3c0ed212e3b9b94b221114a8e1a915cfbfb994988a664078",
       "src/app/lib/splitInvoiceRelationships.ts": "20b9d8321a6c1b54426e48f1543256edcd1aa553d5a2fc070dc595951bde5b09",
       "src/app/lib/splitInvoices.ts": "e29b4bc39259692ee30430f630580851fb4aeece2927d9d660b2818bc6076e09",
       "src/app/lib/supabase.ts": "acc5b28abec1303a26b73c0ff4036327c126f31d00e9e0e00bca6b9aa0b0de6f",
@@ -559,7 +561,7 @@
       "src/app/lib/unitHistory.ts": "e5890af5c3776e123136e562d2fd9f8a99a2ac9449c68f8893f940c2fa9da9be",
       "src/app/lib/useRemittanceEvent.ts": "a7a4d74bf8e7dd957194830dff99cdc6af3a78e0eae869bd0dbc0e966039b8b2",
       "src/app/lib/workspaceAccess.ts": "6d6334182d663536ac1123695bf2017f06373486cfa01ef54d0e72967d480b71",
-      "src/app/login/page.tsx": "f72a4992a2a3144d081ff218572291ea381a57bdd326065ac618823f9c73cfe8",
+      "src/app/login/page.tsx": "dd709a37f471db722b752c21226ee621099a615f3578b3d381745a8e11e3c37a",
       "src/app/manifest.ts": "7a70a588bc52215af58477c2bcfc67c143742493f01048b35b4898d6732d8954",
       "src/app/new-request/page.tsx": "74ef72e0d2c2cd9b2762c63202051620e326fbed774fec8140bf77d614524953",
       "src/app/page.tsx": "b7ee7c7c5bc3c33e031af3bc9833faa7520b447daf4c2bcca0d6de928a9767f3",
@@ -592,7 +594,7 @@
       "src/app/utils/tax.ts": "dc918795a758e784b3d33e78b277afe696a2423d1d540c02a5e0f7ed67c4a17d",
       "src/app/utils/unitLabels.ts": "fbe888b20334d471cb170dc628130582a940cd990982b97f21116e5f846718fe",
       "src/app/utils/workflows.ts": "fbcb8536a53194aaa81093c3b034995568596d1dd7882a2f1342218dce4122c7",
-      "src/proxy.ts": "6a37ab2cb0ad96de4e12ffa383a3085a11b673cff7390dacddfbbe53a6503a5d",
+      "src/proxy.ts": "2dba351c812615cf20ec4ae71b1a776541e404fab797e15cb035f7de4a6d1df9",
       "supabase/migrations/20261009_public_scheduling_foundation.sql": "454ce09d612efe4c3953cc5c71afda1642d584be70f81caa6c8705131c56914b",
       "supabase/migrations/20261010_public_scheduling_phase2.sql": "24887d03dbf1975df3c8643ac10af3dae0a4e2d18072dbe43a5ed5b8297b5f59",
       "supabase/migrations/20261011_public_scheduling_runtime.sql": "c97b1da22dfb3f4fde45c250f03a91dbf457b45aeea2e7d1f192ba7e094dc3e4",
@@ -1600,21 +1602,21 @@
   },
   "upgradeContext": {
     "currentProductionRelease": {
-      "releaseId": "trimax-remittance-shadow-20261021-rc1",
-      "manifestCommit": "044d704137c9bba2152d6721b20bb80e852348a4",
-      "manifestDigest": "ae1494d55b6eda765a467bb59541bbb3fb2f8e35529478f925e800977bd5e268",
-      "deploymentId": "CYn41r9bvv11KXSNYxmiuqNEKEpZ",
-      "deploymentCommit": "044d704137c9bba2152d6721b20bb80e852348a4"
+      "releaseId": "trimax-remittance-shadow-20261021-rc2",
+      "manifestCommit": "bc4fdf8d7bd5890d65b43e34095cf7b9cc7b8584",
+      "manifestDigest": "63ec8b6cc69511d196778f819977091fe42d66a8c5864300dce146fd8cc3b74e",
+      "deploymentId": "7L9gBVprGz2Ce18Ygi2CnW4vAjfg",
+      "deploymentCommit": "bc4fdf8d7bd5890d65b43e34095cf7b9cc7b8584"
     },
-    "candidateReleaseId": "trimax-remittance-shadow-20261021-rc2",
-    "applicationCommit": "37aad7eed38b1de3f2ad766b45ab38099e80cc95",
-    "machineryCommit": "37aad7eed38b1de3f2ad766b45ab38099e80cc95"
+    "candidateReleaseId": "trimax-auth-client-safety-20261021-rc1",
+    "applicationCommit": "c3899098c961e8038d2c1f4bf974a096b2165dce",
+    "machineryCommit": "c3899098c961e8038d2c1f4bf974a096b2165dce"
   },
   "contractRevision": {
-    "id": "shadow-observed-amount-column",
-    "priorManifestDigest": "ae1494d55b6eda765a467bb59541bbb3fb2f8e35529478f925e800977bd5e268",
-    "reason": "Verified saved iPhone geometry: broad ownership/background ink pushed total axis beyond observed monetary words. Localize from consistent monetary word geometry across physical rows; source-bound observed column proof also consumed by downstream total authority; all independent numeric, identity and financial safeguards retained.",
-    "rollback": "Restore retained 044d web deployment and matching clean 044d workers; preserve all data and queue evidence."
+    "id": "verified-session-client-safety",
+    "priorManifestDigest": "63ec8b6cc69511d196778f819977091fe42d66a8c5864300dce146fd8cc3b74e",
+    "reason": "Restore only verified unexpired same-user session leases without changing45min/12h policy; persist verified refreshed SSR cookies. Exclude incompatible or ambiguous payor identities before invoice candidate resolution in legacy and v2. Amount never introduces invoices; global duplicate, split and exact-cent safeguards retained.",
+    "rollback": "Restore retained bc4fdf8 web deployment and matching clean bc4fdf8 workers; preserve all data and queue evidence."
   },
   "captureWorkflow": "guided-live-camera-v1"
 }
