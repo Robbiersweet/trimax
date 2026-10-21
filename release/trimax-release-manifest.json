@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "releaseId": "trimax-ocr-worker-recovery-20261021-rc1",
   "status": "SEALED_CONTROLLED_DEPLOYMENT_CANDIDATE",
-  "createdAt": "2026-10-21T10:43:47.688Z",
+  "createdAt": "2026-10-21T10:46:20.495Z",
   "releaseTimestamp": null,
   "baseProduction": {
     "commit": "1c029a73bbd1f67a95c1288023938c6dc8873294",
@@ -11,17 +11,17 @@
   },
   "components": {
     "web": {
-      "commit": "a62940b0dc424dec604138841ad42b6fbaf69d6a"
+      "commit": "b09f814267e86810551aa032f4131f032eacf938"
     },
     "legacy": {
-      "commit": "a62940b0dc424dec604138841ad42b6fbaf69d6a"
+      "commit": "b09f814267e86810551aa032f4131f032eacf938"
     },
     "v2-shadow": {
-      "commit": "a62940b0dc424dec604138841ad42b6fbaf69d6a"
+      "commit": "b09f814267e86810551aa032f4131f032eacf938"
     }
   },
   "sourceBundle": {
-    "sha256": "351f9614e773f72e30cb1d8bf580163a7bfe1182ffdc682d3d0bea0049c53c68",
+    "sha256": "5dbae2eef69df2f41cfff1a0082e108708efc91bf886b0a626fe7a4a15542d52",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -78,7 +78,7 @@
       "scripts/ocr-latency-benchmark.cjs": "da40e5ab91b24521c0b7af73e5c7cbe9f40a7f03a8a94a41581770752068ed03",
       "scripts/ocr-latency-regression.cjs": "1f170c45d821b8930e81cb74603cdf40e08cba3c824f11815195f58febef2fa7",
       "scripts/ocr-legacy-evidence.cjs": "23708e4c328cdc50aaf5a2e3004511e51b7ea2a377142cb6a8104b01791cfb16",
-      "scripts/ocr-legacy-job-regression.cjs": "ea1e5a1dcd376b3fa12eaf57bde91cf628d63f0f4fb8f717a9bdbb0f93ca26c0",
+      "scripts/ocr-legacy-job-regression.cjs": "061362c99ffcd5bc1cb357835e9d7f271ac7d9a4390d1bfd1135aa0a9280a9c4",
       "scripts/ocr-legacy-worker.cjs": "cd71848bd30ae18deeb410c29543e1cd7786c22673a9fb12429faeaaae1d0c77",
       "scripts/ocr-object-upload-regression.cjs": "6e1442bdc9770beb028d3a61aaa8bb4be6b863de80cfa05734b8855aaa5e3c2e",
       "scripts/ocr-optical-regression.ts": "80c5926c139d62e1b63a80dd3d5da35f5d3907e12abc8acbc0382e3b6dc4c52c",
@@ -263,7 +263,7 @@
       "scripts/remittance-camera-geometry-regression.ts": "e4a9f18a735264cf1fafc0ff6d06efaf31226facf571d24c27da5ac440d72a37",
       "scripts/remittance-client-safety-regression.cjs": "978e0c490031a787f6c23d12bee9d3395ddb11bc6b4cd47e814e26ce926292cb",
       "scripts/remittance-contract-regression.ts": "75e3bf300050abfcd6145eb5d912af9251fef904bc1c9be19c5bc5695d50cf77",
-      "scripts/remittance-deadline-regression.cjs": "630e43d1356572b744de7bfb9f68672366819da161d4e1f9e907a014f9e5c38e",
+      "scripts/remittance-deadline-regression.cjs": "e36bff5ead55bc02ff3bfaef98a4c9948a76f9de497e1ed1958b4e18eba5290e",
       "scripts/remittance-intake-regression.cjs": "6da52fd73ae4df6892a9d084aa8f3de0143c032149a5d553b50ea0e1909ebe04",
       "scripts/remittance-matching-regression.ts": "3ff22cb6cd4c78f6744a6e5766f3d7c9901c6f9dd6c6ef6f28dec01a4686825f",
       "scripts/remittance-ocr-fixture-regression.ts": "2e90a200e8de9d64212a8f56092f3ef4e00522f2751463b33c827cad45991fa0",
@@ -327,7 +327,7 @@
       "src/app/components/AppShell.tsx": "b4358a4c5a82735d1871ef0bc8e7e3bbb30b3770b577d51b0343552155c489af",
       "src/app/components/AuthGuard.tsx": "5d27be00447294b8eefafa4f37b66c4f1ddcd402c285c41433d84b33201023d1",
       "src/app/components/BackButton.tsx": "87360394e36c2e90d4a33135d5539d0176e75d8cc2448783c5c859783ee1059c",
-      "src/app/components/BatchInvoicePayments.tsx": "0871ba87fcddcbbf074a1d4aa3d883d703d5613ba38716ad115f2fe00de8db3d",
+      "src/app/components/BatchInvoicePayments.tsx": "51d7e8b35762aab1bef5c51f9c985f66570efb8a75e7a4eada0b2bb51f7bf625",
       "src/app/components/Button.tsx": "68f87a76cee881a6b148ec30af54746d8a0fbe11a153b3ccf0134a62504deb97",
       "src/app/components/Card.tsx": "6706fd0d306b77c27bf8f9f2558fdfc4f5a77b874404cba67b0f4980c96de207",
       "src/app/components/ClientSmartSearch.tsx": "6780c13e035f04c4bf532a23842cf8d220021a409362c1f2d01fc93cbb3c1278",
@@ -462,7 +462,7 @@
       "src/app/lib/ocrHistoryClient.ts": "dd3b2f6a47b6794cb248c05d48f006a07bbb5d4b5b00b4f7595f4d10845b527d",
       "src/app/lib/ocrHistoryServer.ts": "7a03c924a56afc1ad58b9c76875b42cc6eddea013d8ad664045ef330a8cf7114",
       "src/app/lib/ocrLegacyDirection.ts": "87150ee321dd8cba06a1540a3917929ff41c87dc681b00a1af05f375e7d78385",
-      "src/app/lib/ocrLegacyJobClient.ts": "27a1ee02163f748832d2b7d42a8cfc33db06f64c7b248a064c42a0b4fb673647",
+      "src/app/lib/ocrLegacyJobClient.ts": "c3e44427cbc213c52e3c11a9baa5f3c2fd772add153d4259bc12f9c723d707c5",
       "src/app/lib/ocrLegacyOrientation.ts": "18c66fa4160a1c3db6113c96acd369bdc645885e7088017b86c4a29306435b62",
       "src/app/lib/ocrLegacyPass.ts": "62b43451207fed99f0471aee518957e1ecc76adaa3e9b0c6826605a6386569aa",
       "src/app/lib/ocrLegacyProgress.ts": "dbf27034339f587a06cbd1453bdc6918d9468ec9319c8115da24f02235e91357",
@@ -1611,13 +1611,13 @@
       "deploymentCommit": "1c029a73bbd1f67a95c1288023938c6dc8873294"
     },
     "candidateReleaseId": "trimax-ocr-worker-recovery-20261021-rc1",
-    "applicationCommit": "a62940b0dc424dec604138841ad42b6fbaf69d6a",
-    "machineryCommit": "a62940b0dc424dec604138841ad42b6fbaf69d6a"
+    "applicationCommit": "b09f814267e86810551aa032f4131f032eacf938",
+    "machineryCommit": "b09f814267e86810551aa032f4131f032eacf938"
   },
   "contractRevision": {
     "id": "transient-attestation-worker-recovery",
     "priorManifestDigest": "db2e507ebc07a86ac17cbc700d25e265f9a1009965fb3c33a88fe86707ab1cb5",
-    "reason": "Retry only unavailable attestation transport while claiming no jobs. Revalidate full source/model/config/database before recovery; actual mismatch, credential denial and missing RPC remain fatal. No OCR or financial matching rules changed.",
+    "reason": "Retry only unavailable attestation transport while claiming no jobs. Revalidate full source/model/config/database before recovery; actual mismatch, credential denial and missing RPC remain fatal. No OCR or financial matching rules changed. Preserve last acknowledged queued/running status at browser deadline so pending processing is not reported as unavailable status.",
     "rollback": "Restore 1c029a7 web and matched 1c029a7 workers; preserve queue and capture data."
   },
   "captureWorkflow": "guided-live-camera-v1"
