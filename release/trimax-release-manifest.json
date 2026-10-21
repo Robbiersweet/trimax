@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-auth-client-safety-20261021-rc2",
+  "releaseId": "trimax-auth-client-safety-20261021-rc3",
   "status": "SEALED_CONTROLLED_DEPLOYMENT_CANDIDATE",
-  "createdAt": "2026-10-21T08:31:22.008Z",
+  "createdAt": "2026-10-21T08:39:15.722Z",
   "releaseTimestamp": null,
   "baseProduction": {
     "commit": "bc4fdf8d7bd5890d65b43e34095cf7b9cc7b8584",
@@ -11,17 +11,17 @@
   },
   "components": {
     "web": {
-      "commit": "68bc2b6056a993df51432400f0de02849c2bac0b"
+      "commit": "bc86ff1755a2f54a60962bb1acb9c2c3523eb92d"
     },
     "legacy": {
-      "commit": "68bc2b6056a993df51432400f0de02849c2bac0b"
+      "commit": "bc86ff1755a2f54a60962bb1acb9c2c3523eb92d"
     },
     "v2-shadow": {
-      "commit": "68bc2b6056a993df51432400f0de02849c2bac0b"
+      "commit": "bc86ff1755a2f54a60962bb1acb9c2c3523eb92d"
     }
   },
   "sourceBundle": {
-    "sha256": "66a35521f89a7e5ff653c81b2ca7e0d93cf549cf4831cf1d28fe1bdb1e63692b",
+    "sha256": "827aafff6024a09b7f920b8a939ad8bfbebe58fe6eee84f4c272e2afaf10d8d2",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -109,7 +109,7 @@
       "scripts/ocr-v2/direction-fallback-regression.cjs": "62930d6ffd19e069cfb4d771d8fb43b03de5afbe399164c7e48f4bb789a9e306",
       "scripts/ocr-v2/direction-sampling-audit.cjs": "ed59ffd46245a03e806eb45ab20e22b3a16432ae799750243d576d1f8af5e732",
       "scripts/ocr-v2/document-total-benchmark.cjs": "e1944d5e7d012fbefe7b4acea6baa6750ee4b435787e0b9b95d9fd1ae717eb6a",
-      "scripts/ocr-v2/document-total-regression.cjs": "0e5c589d241479ddd8c97764f9969ce504687f7609c010be9e404c49ab31eefd",
+      "scripts/ocr-v2/document-total-regression.cjs": "ab27338295675d0429331fc1d492df37a5c4094a3736f8067a6ae45a04cf073f",
       "scripts/ocr-v2/field-benchmark.cjs": "ba5d26937b6529ea63137edb7fc7212068990743b118048bd36f9b3ec1aa9def",
       "scripts/ocr-v2/field-metrics.cjs": "79477134a3e447033cdb4363d9105d779f9a59ccd2680326317cd9694d8db2ee",
       "scripts/ocr-v2/field-regression.cjs": "e697824e5ade16ff82cc5b73685aa1e4d286496608052b301badc1feeab62295",
@@ -148,7 +148,7 @@
       "scripts/ocr-v2/organization-retained.cjs": "4676d9c95054ac4bf2755a463a81b921e64883191c2f84309539b4a49057421d",
       "scripts/ocr-v2/orientation-heading-regression.cjs": "e94e48437960284255cb84ddd58efeba98c53c23d371448ea9612c32b422bc44",
       "scripts/ocr-v2/payment-evidence-benchmark.cjs": "d0a012d62992d369e256f805b556d424aae26864c9e79e2d74bbd950bbf093af",
-      "scripts/ocr-v2/payment-evidence-regression.cjs": "c792c3fc572e4f716c85af64c90f7758ee6097ab2532ef739ab29fa341bee348",
+      "scripts/ocr-v2/payment-evidence-regression.cjs": "eea3aaff46167c7f6a6373a0f05ba197cc10e6bc39783f7d57d01cf7798c0ba9",
       "scripts/ocr-v2/physical-row-corpus.cjs": "181613fbd39c52b441581f36db19723e43843ab075e3259c7ab3fd47a36a0be3",
       "scripts/ocr-v2/physical-row-overlay.cjs": "6c7b286cc77742f11f564e95a8733acf7e4d24de0f4aa54ddccc144386c02b37",
       "scripts/ocr-v2/physical-row-regression.cjs": "4981b3715509341b720afc8d99cb39189bf72943eba67081293b1dc2c50e075f",
@@ -1608,9 +1608,9 @@
       "deploymentId": "7L9gBVprGz2Ce18Ygi2CnW4vAjfg",
       "deploymentCommit": "bc4fdf8d7bd5890d65b43e34095cf7b9cc7b8584"
     },
-    "candidateReleaseId": "trimax-auth-client-safety-20261021-rc2",
-    "applicationCommit": "68bc2b6056a993df51432400f0de02849c2bac0b",
-    "machineryCommit": "68bc2b6056a993df51432400f0de02849c2bac0b"
+    "candidateReleaseId": "trimax-auth-client-safety-20261021-rc3",
+    "applicationCommit": "bc86ff1755a2f54a60962bb1acb9c2c3523eb92d",
+    "machineryCommit": "bc86ff1755a2f54a60962bb1acb9c2c3523eb92d"
   },
   "contractRevision": {
     "id": "verified-session-client-safety",
