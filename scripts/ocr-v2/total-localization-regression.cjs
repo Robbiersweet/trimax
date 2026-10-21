@@ -24,3 +24,26 @@ assert.equal(decideDocumentTotal(layout,evidence,[obs('native'),obs('contrast')]
 assert.equal(decideDocumentTotal(layout,evidence,[obs('native')]).cents,null,'No single-pass structural authority');
 assert.equal(decideDocumentTotal(layout,{...evidence,rows:[{cents:10000},{cents:10000}]},[obs('native'),obs('contrast')]).cents,null,'Arithmetic only vetoes');
 console.log('PASS A–G total geometry, semantic distinction, source isolation, independent observation support, arithmetic veto');
+
+// Saved iPhone attempt 9e393393 (2026-10-21): full-frame background ink
+// widened amount ownership to x4011; actual monetary word edges stay ~3470.
+const phoneRows=[
+ [760,44,3287,775,498,40],[805,49,3284,820,556,46],
+ [855,50,3282,871,729,45],[906,46,3280,922,751,41]
+].map(([top,height,left,ownerTop,width,ownerHeight],i)=>({id:'row-'+i,bounds:{left:0,top,width:4032,height},amountRegion:{left,top:ownerTop,width,height:ownerHeight}}));
+const phoneModel={...model,table:{...model.table,rows:phoneRows}};
+const phoneWords=[
+ ['1,089.00',3290,778,183,29,95],['1,099.00',3288,828,183,29,96],
+ ['1,291.33',3285,878,181,29,96],['1,099.00',3284,929,182,29,95],
+ ['4,588.33',3279,1009,182,48,93]
+].map(([text,left,top,width,height,confidence])=>({text,bounds:{left,top,width,height},confidence}));
+const phoneLocate=observations=>localizeDocumentTotal(phoneModel,observations,15,4032,2160);
+const phone=phoneLocate(page(phoneWords));
+assert(phone.finalField,'Observed row-money geometry must locate the real iPhone footer despite oversized ownership bounds');
+assert.equal(phone.selected.observations[0].cents,458833);
+assert(Math.abs(phone.axis-3470)<15);
+assert.equal(phoneLocate(page(phoneWords.slice(0,4))).bounds,undefined,'Row amounts never become a missing footer');
+assert.equal(phoneLocate(page([...phoneWords, {...phoneWords[4],text:'4,600.00',bounds:{...phoneWords[4].bounds,top:1090}}])).bounds,undefined,'Competing totals still block');
+assert.equal(phoneLocate(page(phoneWords).map(o=>({...o,sourceHash:'other'}))).bounds,undefined,'No cross-source axis support');
+assert.equal(phoneLocate(page(phoneWords.map(w=>({...w,bounds:{...w.bounds,left:50}})))).bounds,undefined,'Amounts outside the labeled ownership cannot move the axis');
+console.log('PASS retained iPhone amount-column contamination, missing/competing totals and source/ownership isolation');

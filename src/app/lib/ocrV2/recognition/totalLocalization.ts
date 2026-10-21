@@ -9,9 +9,22 @@ const median=(v:number[])=>[...v].sort((a,b)=>a-b)[Math.floor(v.length/2)];
 export function localizeDocumentTotal(model:DocumentSemanticModel,page:SemanticObservation[],font:number,width:number,height:number){
  const rows=model.table.rows, owners=rows.flatMap(r=>r.amountRegion?[r.amountRegion]:[]);
  const last=Math.max(...rows.map(r=>bottom(r.bounds)),...owners.map(bottom));
- const axis=median(owners.map(right)), rowHeight=Math.max(...rows.map(r=>r.bounds.height));
+ const rowHeight=Math.max(...rows.map(r=>r.bounds.height));
  const supported=model.table.supported&&owners.length===rows.length&&rows.length>0&&model.table.columns.some(c=>c.type==='row_amount'&&c.semanticConfidence==='label-supported');
  const observations=page.filter(o=>o.verified&&o.sourceHash===model.sourceHash);
+ // Ownership bounds can include background ink far beyond the printed column.
+ // Establish its edge from complete high-confidence monetary words in at least
+ // two physical rows. Values are never summed or used to choose a footer.
+ const observedEdges=rows.flatMap(row=>{
+  const owner=row.amountRegion;if(!owner)return [];
+  const edges=observations.flatMap(o=>o.words.filter(w=>w.confidence>=85&&paymentMoney(w.text).length===1
+   && w.bounds.top+w.bounds.height/2>=row.bounds.top&&w.bounds.top+w.bounds.height/2<=bottom(row.bounds)
+   && overlap(w.bounds,owner)>=area(w.bounds)*.8).map(w=>right(w.bounds)));
+  return edges.length&&Math.max(...edges)-Math.min(...edges)<=font*2?[median(edges)]:[];
+ });
+ const observedAxis=observedEdges.length>=Math.max(2,Math.ceil(rows.length/2))
+  &&Math.max(...observedEdges)-Math.min(...observedEdges)<=font*2;
+ const axis=median(observedAxis?observedEdges:owners.map(right));
  const candidates=observations.flatMap(o=>o.words.flatMap(w=>{
   const values=paymentMoney(w.text);if(values.length!==1)return [];
   const b=w.bounds, rowOverlap=rows.some(r=>overlap(b,r.bounds)>0)||owners.some(r=>overlap(b,r)>0);
@@ -51,5 +64,5 @@ export function localizeDocumentTotal(model:DocumentSemanticModel,page:SemanticO
  const pad=Math.max(2,Math.ceil(font*.2));
  const b=chosen?.bounds;
  const bounds=b?{left:Math.max(0,Math.floor(b.left-pad)),top:Math.max(Math.ceil(last),Math.floor(b.top-pad)),width:Math.min(width,Math.ceil(right(b)+pad))-Math.max(0,Math.floor(b.left-pad)),height:Math.min(height,Math.ceil(bottom(b)+pad))-Math.max(Math.ceil(last),Math.floor(b.top-pad))}:undefined;
- return {version:'document-total-localization-1',axis,lastRowBottom:last,candidates,plausibleFields:plausible.length,conflictingField:plausible.some(g=>g.conflicting),selected:chosen,bounds,finalField:supported&&!!chosen&&groups.every(g=>bottom(g.bounds)<=bottom(chosen.bounds)),reason:chosen?'Unique visual monetary field in amount-column continuation':plausible.some(g=>g.conflicting)?'Conflicting complete observations of the same total field':plausible.length>1?'Competing footer monetary fields':'No isolated observed total field'};
+ return {version:'document-total-localization-1',axis,axisSource:observedAxis?'observed-row-money':'ownership-bounds',axisRows:observedEdges.length,lastRowBottom:last,candidates,plausibleFields:plausible.length,conflictingField:plausible.some(g=>g.conflicting),selected:chosen,bounds,finalField:supported&&!!chosen&&groups.every(g=>bottom(g.bounds)<=bottom(chosen.bounds)),reason:chosen?'Unique visual monetary field in amount-column continuation':plausible.some(g=>g.conflicting)?'Conflicting complete observations of the same total field':plausible.length>1?'Competing footer monetary fields':'No isolated observed total field'};
 }
