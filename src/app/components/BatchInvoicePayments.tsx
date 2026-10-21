@@ -1222,9 +1222,7 @@ export default function BatchInvoicePayments({
         .join(" ")
     );
 
-    if (extractedDate) {
-      setCheckDate(extractedDate);
-    }
+    setCheckDate(extractedDate);
 
     if (historicalDuplicateCheck.status !== "none") {
       setDuplicateRemittanceModal({

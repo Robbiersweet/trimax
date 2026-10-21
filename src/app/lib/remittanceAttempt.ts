@@ -94,6 +94,27 @@ export function selectRepeatedPropertyIdentity(passes: OcrPass[], rows: Structur
   return {value:supported.length===1?supported[0].value:null,observations,candidates};
 }
 
+export function selectObservedCheckDate(passes: OcrPass[], rows: StructuredRemittanceRowEvidence[]) {
+  const bodyTop=Math.min(...rows.filter(r=>r.y!=null&&r.height!=null).map(r=>r.y!-r.height!));
+  const observations:Array<{date:string;raw:string;pass:string;bounds:OcrObservation['bbox']}> = [];
+  if(!Number.isFinite(bodyTop))return {value:null,observations};
+  for(const pass of passes.filter(p=>p.region==='full-document')){
+    const words=pass.words.filter(w=>Number.isFinite(w.confidence)&&w.confidence>=70&&Object.values(w.bbox).every(Number.isFinite)&&w.bbox.y0>=0&&w.bbox.y1<bodyTop);
+    for(const word of words){
+      let raw=word.text;
+      if(/^DATE\s*[:#]?$/i.test(raw)){
+        const next=words.filter(w=>w.bbox.x0>=word.bbox.x1&&w.bbox.x0-word.bbox.x1<100&&Math.abs((w.bbox.y0+w.bbox.y1-word.bbox.y0-word.bbox.y1)/2)<Math.max(word.bbox.y1-word.bbox.y0,w.bbox.y1-w.bbox.y0)).sort((a,b)=>a.bbox.x0-b.bbox.x0)[0];
+        if(next)raw+=' '+next.text;
+      }
+      const match=raw.match(/^(?:CHECK\s+|PAYMENT\s+)?DATE\s*[:#]?\s*(\d{1,4}[/-]\d{1,2}[/-]\d{1,4})$/i);
+      const date=match?parseCheckDate(match[1]):null;
+      if(date)observations.push({date,raw,pass:[pass.region,pass.variant,pass.pageMode].join(':'),bounds:word.bbox});
+    }
+  }
+  const dates=[...new Set(observations.map(o=>o.date))];
+  return {value:dates.length===1&&new Set(observations.map(o=>o.pass)).size>=2?dates[0]:null,observations};
+}
+
 export function selectObservedHeader(passes: OcrPass[], rows: StructuredRemittanceRowEvidence[]) {
   const candidates = selectRemittanceHeaderEvidence(passes, rows);
   const dates = new Set<string>();
@@ -109,9 +130,12 @@ export function selectObservedHeader(passes: OcrPass[], rows: StructuredRemittan
   }
   const rowSubtotal = rows.reduce((sum, row) => sum + (row.amountCandidates.find(amount => amount.selected)?.value ?? 0), 0);
   const propertyIdentity=selectRepeatedPropertyIdentity(passes,rows);
+  const checkDateEvidence=selectObservedCheckDate(passes,rows);
+  if(checkDateEvidence.value)dates.add(checkDateEvidence.value);
+  else if(new Set(checkDateEvidence.observations.map(o=>o.pass)).size>=2&&new Set(checkDateEvidence.observations.map(o=>o.date)).size>1)checkDateEvidence.observations.forEach(o=>dates.add(o.date));
   const tinyConflict = (candidates.evidence?.amount ?? 0) < rowSubtotal * 0.1 && (candidates.totalCandidates[0]?.agreement ?? 0) < 2;
   return { checkNumber: candidates.checkNumber || null, checkDate: dates.size === 1 ? [...dates][0] : null,
-    payor: payors.size === 1 ? [...payors][0] : payors.size===0?propertyIdentity.value:null, propertyIdentity, documentTotal: candidates.evidence?.payable && !tinyConflict ? candidates.evidence : null, candidates };
+    payor: payors.size === 1 ? [...payors][0] : payors.size===0?propertyIdentity.value:null, propertyIdentity, checkDateEvidence, documentTotal: candidates.evidence?.payable && !tinyConflict ? candidates.evidence : null, candidates };
 }
 
 export function emptyRemittanceEvidence(attemptId: string, capture: ScanCapture | null, reason: string) {
