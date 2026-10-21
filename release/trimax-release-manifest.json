@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "releaseId": "trimax-guided-remittance-20261020-rc1",
   "status": "SEALED_CONTROLLED_DEPLOYMENT_CANDIDATE",
-  "createdAt": "2026-10-21T05:55:50.846Z",
+  "createdAt": "2026-10-21T05:59:18.176Z",
   "releaseTimestamp": null,
   "baseProduction": {
     "commit": "4a3a577d9238423e088966e20be3150851ac9fdc",
@@ -11,17 +11,17 @@
   },
   "components": {
     "web": {
-      "commit": "f200c08106ca0109fa5fd412f99372a50b77f038"
+      "commit": "40d3b15834a0eabce0de51c9569c305554e771a6"
     },
     "legacy": {
-      "commit": "f200c08106ca0109fa5fd412f99372a50b77f038"
+      "commit": "40d3b15834a0eabce0de51c9569c305554e771a6"
     },
     "v2-shadow": {
-      "commit": "f200c08106ca0109fa5fd412f99372a50b77f038"
+      "commit": "40d3b15834a0eabce0de51c9569c305554e771a6"
     }
   },
   "sourceBundle": {
-    "sha256": "098706ed6bc14cbfc46a3e9060eb5cc39c34db0fac1c96efd89f3eff58ba5ba9",
+    "sha256": "a7cda8666c211c7736c6d4651f24f4b26b3e223c2a829d5235d2ed4bab96c1fe",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -262,7 +262,7 @@
       "scripts/remittance-contract-regression.ts": "75e3bf300050abfcd6145eb5d912af9251fef904bc1c9be19c5bc5695d50cf77",
       "scripts/remittance-deadline-regression.cjs": "ecabfaf48df7f28454f925da8b3bf16bd3c52b35eb7b181df1ed9913ed1acac2",
       "scripts/remittance-intake-regression.cjs": "2e1365414fca685410b24316e6d6db3c3f15be40eae30fd7efce04140eb7645d",
-      "scripts/remittance-matching-regression.ts": "be06b0e6215523983ab725ffd62ee730fde6a5bb920916c1c3071abaf4b0eabc",
+      "scripts/remittance-matching-regression.ts": "3ff22cb6cd4c78f6744a6e5766f3d7c9901c6f9dd6c6ef6f28dec01a4686825f",
       "scripts/remittance-ocr-fixture-regression.ts": "2e90a200e8de9d64212a8f56092f3ef4e00522f2751463b33c827cad45991fa0",
       "scripts/remittance-release-gate.ts": "21944edbe46796c2b87e595dad18d2c49eb9fb72f2c9558b80f6880ceb4cdf32",
       "scripts/remittance-retry-regression.ts": "6a768fef914bc295d09ececbb7216648d08ebc3b69b6ef07e1c1dbcfe078ec9d",
@@ -323,7 +323,7 @@
       "src/app/components/AppShell.tsx": "b4358a4c5a82735d1871ef0bc8e7e3bbb30b3770b577d51b0343552155c489af",
       "src/app/components/AuthGuard.tsx": "a2cbef8c661e46dceccf203705ad7575bf35aa1ac1725734a9f2b821fe8154c1",
       "src/app/components/BackButton.tsx": "87360394e36c2e90d4a33135d5539d0176e75d8cc2448783c5c859783ee1059c",
-      "src/app/components/BatchInvoicePayments.tsx": "332bc629edb0bc64e7257713cc6e6023e9a5f646cd206efe5da357c6e3d79ca2",
+      "src/app/components/BatchInvoicePayments.tsx": "ebffceb1cb3b239cc7055a1096306a2b25505a3d6fe6dd18fab8f447c2c3fca9",
       "src/app/components/Button.tsx": "68f87a76cee881a6b148ec30af54746d8a0fbe11a153b3ccf0134a62504deb97",
       "src/app/components/Card.tsx": "6706fd0d306b77c27bf8f9f2558fdfc4f5a77b874404cba67b0f4980c96de207",
       "src/app/components/ClientSmartSearch.tsx": "6780c13e035f04c4bf532a23842cf8d220021a409362c1f2d01fc93cbb3c1278",
@@ -1607,8 +1607,8 @@
       "deploymentCommit": "4a3a577d9238423e088966e20be3150851ac9fdc"
     },
     "candidateReleaseId": "trimax-guided-remittance-20261020-rc1",
-    "applicationCommit": "f200c08106ca0109fa5fd412f99372a50b77f038",
-    "machineryCommit": "f200c08106ca0109fa5fd412f99372a50b77f038"
+    "applicationCommit": "40d3b15834a0eabce0de51c9569c305554e771a6",
+    "machineryCommit": "40d3b15834a0eabce0de51c9569c305554e771a6"
   },
   "contractRevision": {
     "id": "guided-remittance-capture",
