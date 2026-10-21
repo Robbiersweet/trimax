@@ -19,7 +19,8 @@ async function run(){
  fs.writeFileSync(path.join(temp,'style.css'),css.css);
  const server=http.createServer((req,res)=>{const name=req.url==='/bundle.js'?'bundle.js':req.url==='/style.css'?'style.css':null;if(name){res.setHeader('Content-Type',name.endsWith('.css')?'text/css':'application/javascript');res.end(fs.readFileSync(path.join(temp,name)));}else{res.setHeader('Content-Type','text/html');res.end('<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="stylesheet" href="/style.css"><div id="root"></div><script src="/bundle.js"></script>');}});
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
- const browser=await require('puppeteer-core').launch({headless:true,executablePath:process.env.CHROME_PATH||'C:/Program Files/Google/Chrome/Application/chrome.exe',args:['--no-sandbox']});
+ const chromium=require('@sparticuz/chromium').default;
+ const browser=await require('puppeteer-core').launch({headless:true,executablePath:process.env.CHROME_PATH||(process.platform==='win32'?'C:/Program Files/Google/Chrome/Application/chrome.exe':await chromium.executablePath()),args:process.platform==='win32'?['--no-sandbox']:chromium.args});
  const failures=[];
  try{
   let page;
