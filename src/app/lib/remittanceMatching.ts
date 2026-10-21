@@ -153,7 +153,9 @@ export function customerMatchesPayor(customerName: string, payor: string) {
     return true;
   }
 
-  const normalizedCustomer = customerName.toLowerCase();
+  const normalizedCustomer = customerName.trim().toLowerCase();
+
+  if (!normalizedCustomer) return false;
 
   return (
     normalizedCustomer.includes(normalizedPayor) ||
@@ -1729,7 +1731,7 @@ export function findRemittanceMatches(
       }
     });
   });
-  const eligibleInvoiceNumberRecords = invoiceNumberRecords
+  const collectibleInvoiceNumberRecords = invoiceNumberRecords
     .filter(
       (record) =>
         record.invoiceNumber &&
@@ -1739,7 +1741,7 @@ export function findRemittanceMatches(
     );
   const duplicateTrimaxInvoiceNumbers = Array.from(
     new Set(
-      eligibleInvoiceNumberRecords
+      collectibleInvoiceNumberRecords
         .map((record) => record.invoiceNumber)
         .filter(
           (invoiceNumber, index, allNumbers) =>
@@ -1747,13 +1749,25 @@ export function findRemittanceMatches(
         )
     )
   );
+  const payor = payorOverride.trim() || extractLikelyPayor(stubText);
+  // Resolve identity against the whole business snapshot before invoice lookup.
+  // A shared fragment (e.g. "North Creek") cannot choose between properties.
+  const exactCustomer = invoiceNumberRecords.some(({ invoice }) =>
+    invoice.customerName.trim().toLowerCase() === payor.trim().toLowerCase());
+  const compatibleCustomers = new Set(invoiceNumberRecords
+    .filter(({ invoice }) => customerMatchesPayor(invoice.customerName, payor))
+    .filter(({ invoice }) => !exactCustomer || invoice.customerName.trim().toLowerCase() === payor.trim().toLowerCase())
+    .map(({ invoice }) => invoice.customerName.trim().toLowerCase()));
+  const payorCompatible = (invoice: RemittanceInvoiceRecord) => !payor.trim() ||
+    (compatibleCustomers.size === 1 && compatibleCustomers.has(invoice.customerName.trim().toLowerCase()));
+  const eligibleInvoiceNumberRecords = collectibleInvoiceNumberRecords
+    .filter(({ invoice }) => payorCompatible(invoice));
   const invoicesByNumber = new Map(
     eligibleInvoiceNumberRecords.map((record) => [
       record.invoiceNumber,
       record.invoice,
     ])
   );
-  const payor = payorOverride.trim() || extractLikelyPayor(stubText);
   const rowResolutions = lineItems.map((line, index) =>
     resolveRemittanceRowInvoice(
       line,
@@ -1847,7 +1861,8 @@ export function findRemittanceMatches(
           accepted: eligible,
           rejectionReason: eligible
             ? ""
-            : remittanceInvoiceRejectionReason(invoice) || resolution.reason,
+            : remittanceInvoiceRejectionReason(invoice) ||
+              (invoice && !payorCompatible(invoice) ? "Invoice customer is incompatible with or ambiguous for the remittance payor." : resolution.reason),
           matchedAmount: resolution.invoice?.amountDue ?? 0,
           resolutionReason: resolution.reason,
           unitEvidence: resolution.unitEvidence,
@@ -1890,7 +1905,8 @@ export function findRemittanceMatches(
           accepted: eligible,
           rejectionReason: eligible
             ? ""
-            : remittanceInvoiceRejectionReason(invoice),
+            : remittanceInvoiceRejectionReason(invoice) ||
+              (invoice && !payorCompatible(invoice) ? "Invoice customer is incompatible with or ambiguous for the remittance payor." : ""),
           matchedAmount: eligibleInvoice?.amountDue ?? 0,
           resolutionReason: eligible
             ? "exact eligible invoice candidate"
@@ -1925,6 +1941,7 @@ export function findRemittanceMatches(
     Math.round(matchedTotal * 100) === Math.round(totalAmount * 100);
   const rowAmountConflict = acceptedResolutionRows.some((row) => Math.round(row.line.amount * 100) !== Math.round(row.invoice.amountDue * 100));
   const issues = [
+    payor.trim() && compatibleCustomers.size > 1 ? "Payor identity matches more than one customer; review is required." : "",
     !totalEvidence.payable ? "Document total evidence requires review." : "",
     !allRowsResolved ? "One or more remittance rows could not be uniquely resolved." : "",
     rowAmountConflict && !exactInvoiceSetProof ? "Row amounts require an exact invoice-set and explicit document-total proof." : "",

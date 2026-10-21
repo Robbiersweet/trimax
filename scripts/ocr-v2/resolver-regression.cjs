@@ -9,6 +9,14 @@ function row(id,tokens,amount=10000){
 }
 function run(rows,records,extra={},snapshotExtra={},limit){return resolveOfflineDocument({id:'test',rows,rawPasses:[],header:{payor:'Example Apartments',checkNumber:'1234',checkDate:'2026-01-01',total:{amount:rows.length*100,source:'explicit-document-total',payable:true},provenance:'Synthetic labeled test evidence'},...extra},{label:'Synthetic regression',provenance:[],receivedDate:'2026-01-01',invoices:records,activities:[],...snapshotExtra},limit);}
 let suites=0;const test=(name,fn)=>{fn();suites++;console.log('PASS',name);};
+test('known payor excludes foreign provisional invoice even with exact ID and amount',()=>{
+ const r=run([row('r1',['INV-9002'])],[invoice('9001'),invoice('9002',{customerName:'Other Apartments'})]);
+ assert.equal(r.rows[0].provisionalInvoiceId,null);assert.equal(r.rows[0].alternatives[0].eligible,false);assert.equal(r.automaticInvoiceIds.length,0);
+});
+test('shared payor fragment retains full customer context for provisional alternatives',()=>{
+ const r=run([row('r1',['INV-9002'])],[invoice('9001',{customerName:'North Creek Apartments'}),invoice('9002',{customerName:'Glen North Creek'})],{header:{payor:'North Creek',total:{amount:100,source:'explicit-document-total',payable:true}}});
+ assert.equal(r.rows[0].provisionalInvoiceId,null);assert.equal(r.rows[0].alternatives[0].eligible,false);assert.equal(r.automaticInvoiceIds.length,0);
+});
 test('single exact observed assignment',()=>assert.equal(run([row('r1',['INV-9001'])],[invoice('9001')]).status,'resolved'));
 test('unobserved missing glyph cannot be assigned by elimination',()=>{const r=run([row('r1',['INV-9O01'])],[invoice('9001')]);assert.equal(r.automaticInvoiceIds.length,0);assert.equal(r.rows[0].alternatives.length,0);});
 test('alternate survives top candidate ineligible',()=>{const r=run([row('r1',['INV-9001','INV-9002'])],[invoice('9001',{status:'paid',amountPaid:100}),invoice('9002')]);assert.deepEqual(r.automaticInvoiceIds,['record-9002']);assert.equal(r.counts.beforeBusinessConstraints,2);assert.equal(r.counts.afterEligibility,1);});

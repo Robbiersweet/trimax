@@ -52,8 +52,10 @@ export function resolveOfflineDocument(document: OfflineDocument, snapshot: Offl
       if (candidate.rowId !== row.rowId || candidate.documentId !== document.id || !/^(?:INV-\d{4,}|\d+)$/.test(candidate.value)
         || !candidate.sourceObservations.length || candidate.sourceObservations.some(id => !row.fusion.observations.some(o => o.id === id && o.formatNormalizedText === candidate.value))) throw Error('Candidate lacks complete observed token provenance');
       const records = snapshot.invoices.filter(invoice => normalizeInvoiceNumber(invoice.displayId) === normalizeInvoiceNumber(candidate.value));
+      // Keep the business-wide identity/duplicate context while auditing each
+      // observed token. A single-record subset could hide an ambiguous payor.
+      const result = invoke([row], [candidate.value]);
       return records.map(invoice => {
-        const result = invoke([row], [candidate.value], [invoice]);
         const trace = result.resolverResult.matchTrace.find(t => t.invoiceId === invoice.id);
         const eligible = !!trace?.accepted && !!trace.eligible;
         const amountCompatible = !!trace && row.amounts.some(a => a.cents === cents(trace.amountDue));
