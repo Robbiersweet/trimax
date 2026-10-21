@@ -371,6 +371,8 @@ type DuplicatePreflightOutcome = {
 };
 
 type ApplyBatchPaymentResponse = {
+  validated?: boolean;
+  paymentApplied?: boolean;
   error?: string;
   code?: string;
   stage?: string;
@@ -727,6 +729,9 @@ export default function BatchInvoicePayments({
     startedFromInvoiceSelection ? "all" : startingFocus?.customerName ?? "all"
   );
   const [isSaving, setIsSaving] = useState(false);
+  const paymentSubmitBusy = useRef(false);
+  const [paymentConfirmation, setPaymentConfirmation] = useState<{key:string;checkNumber:string;payor:string;amount:number;invoiceNumbers:string[];savedDiagnostic:boolean}|null>(null);
+  const [isValidatingPayment, setIsValidatingPayment] = useState(false);
   const [toast, setToast] = useState<ToastState>(null);
 
   const invoiceRecords = useMemo<PayableInvoice[]>(
@@ -2215,7 +2220,7 @@ export default function BatchInvoicePayments({
         if(result.queued && history.captureUi){history.captureUi.shadowJobQueuedAt=Date.now(); if(latestScan.current?.attemptId===attemptId && latestScan.current.result==='processing')void persist(history,{stage:'shadow-queued'},0); }
       }).catch(()=>{ if(attemptVersion===ocrAttemptVersion.current)setScanSavedStatus('Capture saved — shadow processing pending. Retry from Recent Scans.'); });
       appendCameraStage("OCR started");
-      const response = await waitForLegacyJob({attemptId,documentType,retryStrategy,diagnosticReplay:Boolean(retainedAttemptId||resumedDiagnosticReplay.current)},()=>attemptVersion===ocrAttemptVersion.current,message=>{if(attemptVersion===ocrAttemptVersion.current)setCheckOcrMessage(message);},()=>{if(history.captureUi)history.captureUi.legacyJobQueuedAt=Date.now();void persist(history,{stage:'legacy-queued'},0);});
+      const response = await waitForLegacyJob({attemptId,documentType,retryStrategy,diagnosticReplay:resumedDiagnosticReplay.current},()=>attemptVersion===ocrAttemptVersion.current,message=>{if(attemptVersion===ocrAttemptVersion.current)setCheckOcrMessage(message);},()=>{if(history.captureUi)history.captureUi.legacyJobQueuedAt=Date.now();void persist(history,{stage:'legacy-queued'},0);});
       const data = (await response.json().catch(() => ({}))) as CheckStubOcrResponse;
       retainedResponse=data;
       if (attemptVersion !== ocrAttemptVersion.current) return;
@@ -2395,6 +2400,8 @@ export default function BatchInvoicePayments({
   // A new source owns a fresh review. Clear synchronously before camera,
   // normalization, duplicate preflight or any old asynchronous completion.
   function clearNewRemittanceReviewState() {
+    resumedDiagnosticReplay.current=false;
+    setPaymentConfirmation(null);
     ocrAttemptVersion.current++;
     setActiveRemittanceAttempt(null);
     setOcrReconciliationVerified(false);
@@ -2558,8 +2565,11 @@ export default function BatchInvoicePayments({
     setPaymentEntryMode("camera");
   });
 
-  async function applyBatchPayment() {
-    if(retainedAttemptId || resumedDiagnosticReplay.current) { setCheckOcrMessage("Diagnostic replay cannot apply payments."); return; }
+  async function applyBatchPayment(confirmedReviewKey?: string) {
+    if(paymentSubmitBusy.current)return;
+    const reviewKey=JSON.stringify({businessId,sourceAttemptId:latestScan.current?.attemptId??null,invoiceIds:[...selectedIds].sort(),checkAmount:enteredCheckAmount,paymentReference,checkDate,receivedDate,checkPayor,paymentType,internalNote,remittanceDocumentFingerprint,duplicateEvidenceKey,duplicateOverrideClearedKey,reversedDuplicateReviewedKey});
+    if(confirmedReviewKey!==undefined&&confirmedReviewKey!==reviewKey){setPaymentConfirmation(null);setToast({type:'error',message:'The payment review changed. Check the details and confirm again.'});return;}
+    const validationOnly=confirmedReviewKey===undefined;
     if (!paymentCanApply) {
       setToast({ type: "error", message: "Review the payment and resolve reconciliation issues before applying." });
       return;
@@ -2619,12 +2629,14 @@ export default function BatchInvoicePayments({
       return;
     }
 
+    paymentSubmitBusy.current=true;
     setIsSaving(true);
+    setIsValidatingPayment(validationOnly);
     setToast(null);
 
     try {
       await assertCanWriteDuringMaintenance(businessSlug);
-      const filedImage = await filePaymentImage();
+      const filedImage = validationOnly ? null : await filePaymentImage();
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -2641,6 +2653,9 @@ export default function BatchInvoicePayments({
         },
         body: JSON.stringify({
           businessId,
+          validateOnly: validationOnly,
+          sourceAttemptId: latestScan.current?.attemptId ?? null,
+          confirmSavedRemittance: !validationOnly,
           invoiceIds: selectedInvoices.map((invoice) => invoice.id),
           paymentDate: receivedDate,
           receivedDate,
@@ -2717,6 +2732,12 @@ export default function BatchInvoicePayments({
         );
       }
 
+      if(validationOnly){
+        if(result.validated!==true||result.paymentApplied!==false)throw Error('Payment validation did not return a safe confirmation. No payment was applied.');
+        setPaymentConfirmation({key:reviewKey,checkNumber:submittedPaymentReference,payor:submittedPayor,amount:enteredCheckAmount!,invoiceNumbers:selectedInvoices.map(invoice=>invoice.displayId||invoice.id),savedDiagnostic:resumedDiagnosticReplay.current});
+        return;
+      }
+      setPaymentConfirmation(null);
       setToast({
         type: "success",
         message: `Applied payment to ${result.appliedCount ?? selectedInvoices.length} invoice${
@@ -2758,6 +2779,8 @@ export default function BatchInvoicePayments({
             : "Unable to apply the batch payment. Refresh, sign in again if needed, then try once more.",
       });
     } finally {
+      paymentSubmitBusy.current=false;
+      setIsValidatingPayment(false);
       setIsSaving(false);
     }
   }
@@ -2921,6 +2944,8 @@ export default function BatchInvoicePayments({
           const image=optical?.images?.find((item:{label:string;base64?:string;sha256?:string})=>item.label==='Canonical OCR input'&&item.sha256===original.summary.sourceImageHash&&item.base64)??(!original.summary.canonicalReference?optical?.images?.find((item:{label:string;base64?:string})=>item.label==='Final OCR input'&&item.base64):null);
           if(!image)throw Error('Retained canonical image unavailable');
           const imageDataUrl='data:'+image.mime+';base64,'+image.base64;
+          resumedDiagnosticReplay.current=true;
+          setPaymentConfirmation(null);
           preparedCaptureRef.current={source:'retained-still-replay',image:{width:image.width,height:image.height,bytes:Math.floor(image.base64.length*3/4),mime:image.mime},quality:{},sources:[],selectionReason:'Exact retained physical pixels; diagnostic replay only'};
           scanLineage.current={original:original.original_id,last:original.id};
           setCheckImagePreview(imageDataUrl);setPaymentEntryMode('photo');
@@ -2930,6 +2955,7 @@ export default function BatchInvoicePayments({
       {businessId && ['owner','admin'].includes(workspaceRole??'') && <LegacyOcrJobs businessId={businessId} onResume={async job=>{
         try {
           resumedDiagnosticReplay.current=Boolean(job.input.diagnosticReplay);
+          setPaymentConfirmation(null);
           const history=job.summary;
           const optical=await scanOptical(history.canonicalReference!);
           const image=optical?.images?.find((item:{sha256?:string;base64?:string})=>item.sha256===history.sourceImageHash&&item.base64);
@@ -2941,6 +2967,19 @@ export default function BatchInvoicePayments({
       }}/> }
       {businessId && <RecentScans businessId={businessId} businessSlug={businessSlug??undefined} role={workspaceRole} savedStatus={scanSavedStatus}/> }
       {toast ? <Toast type={toast.type} message={toast.message} /> : null}
+      {paymentConfirmation && typeof document!=='undefined' && createPortal(
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 p-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="payment-confirmation-title" className="w-full max-w-md rounded-2xl bg-white p-6 text-slate-950 shadow-xl">
+            <h2 id="payment-confirmation-title" className="text-xl font-bold">Confirm this payment</h2>
+            <p role="status" className="mt-2">Server validation passed. No payment has been applied.</p>
+            <p className="mt-3">Check #{paymentConfirmation.checkNumber} · {paymentConfirmation.payor} · {formatMoney(paymentConfirmation.amount)}</p>
+            <p>{paymentConfirmation.invoiceNumbers.join(', ')}</p>
+            {paymentConfirmation.savedDiagnostic && <p className="mt-3">This is a retained saved scan. Confirming below records a real payment and keeps its scan history.</p>}
+            <button type="button" disabled={isSaving} onClick={()=>setPaymentConfirmation(null)} className="mt-4 rounded-xl border px-4 py-3">Cancel — keep unapplied</button>
+            <button type="button" disabled={isSaving} onClick={()=>void applyBatchPayment(paymentConfirmation.key)} className="mt-3 w-full rounded-xl bg-green-500 px-4 py-3 font-bold disabled:opacity-50">{isSaving?'Applying...':'Apply this real payment'}</button>
+          </div>
+        </div>,document.body)}
+
       {typeof document !== "undefined" ? duplicateRemittanceModalView() : null}
 
       {paymentEntryMode === "camera" && <RemittanceCamera onCancel={closeRemittanceCamera} onManual={enterRemittanceManually} onCapture={(file, source) => captureCheckImage(file, source)} />}
@@ -3422,13 +3461,13 @@ export default function BatchInvoicePayments({
           <div className="flex items-end">
             <button
               type="button"
-              onClick={applyBatchPayment}
+              onClick={() => void applyBatchPayment()}
               disabled={
                 !paymentCanApply
               }
               className="w-full rounded-2xl bg-green-500 px-5 py-3 font-semibold text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
             >
-              {isSaving ? "Applying..." : "Confirm and Apply Payment"}
+              {isSaving ? (isValidatingPayment ? "Checking payment..." : "Applying...") : "Confirm and Apply Payment"}
             </button>
           </div>
         </div>

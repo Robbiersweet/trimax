@@ -30,6 +30,7 @@ type Database = {
       business_users: GenericTable;
       invoice_line_items: GenericTable;
       invoices: GenericTable;
+      ocr_legacy_jobs: GenericTable;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -245,6 +246,9 @@ export async function POST(request: Request) {
     remittanceDocumentFingerprint?: string | null;
     duplicateOverrideConfirmed?: boolean;
     duplicateOverrideReason?: string;
+    validateOnly?: boolean;
+    sourceAttemptId?: string;
+    confirmSavedRemittance?: boolean;
   };
   const businessId = cleanString(body.businessId, 80);
   const invoiceIds = Array.from(
@@ -285,6 +289,19 @@ export async function POST(request: Request) {
       stage: "authorization",
       status: 401,
     });
+  }
+
+  const sourceAttemptId = cleanString(body.sourceAttemptId, 80);
+  let savedDiagnosticReview = false;
+  if (sourceAttemptId) {
+    const {data: sourceJob, error: sourceError} = await supabase.from('ocr_legacy_jobs')
+      .select('attempt_id, input, state').eq('business_id', businessId).eq('attempt_id', sourceAttemptId)
+      .maybeSingle<{attempt_id:string;input:{diagnosticReplay?:boolean};state:string}>();
+    if (sourceError || !sourceJob || sourceJob.state!=='review') return applyErrorResponse({message:'Saved remittance is unavailable in this workspace.',code:'invalid_saved_remittance',stage:'saved-remittance-validation',status:400});
+    savedDiagnosticReview = sourceJob.input.diagnosticReplay === true;
+    if (savedDiagnosticReview && (!['owner','admin'].includes(access.role??'') || (body.validateOnly !== true && body.confirmSavedRemittance !== true))) {
+      return applyErrorResponse({message:'An owner or admin must explicitly confirm this saved diagnostic remittance before applying payment.',code:'saved_remittance_confirmation_required',stage:'saved-remittance-confirmation',status:403});
+    }
   }
 
   const { data: invoiceData, error: invoiceError } = await supabase
@@ -506,6 +523,10 @@ export async function POST(request: Request) {
     );
   }
 
+  // All authorization, collectibility, split, amount and duplicate checks above
+  // are shared with application. This branch cannot upload, update or insert.
+  if (body.validateOnly === true) return NextResponse.json({validated:true,paymentApplied:false,selectedTotal,invoiceIds,sourceAttemptId:sourceAttemptId||null,requiresSavedRemittanceConfirmation:savedDiagnosticReview});
+
   const appliedInvoices = [];
   const invoiceRollbackSnapshots = invoices.map((invoice) => ({
     id: invoice.id,
@@ -668,6 +689,8 @@ export async function POST(request: Request) {
             checkDate,
             paymentType: cleanString(body.paymentType, 80),
             paymentReference,
+            sourceOcrAttemptId: sourceAttemptId || null,
+            savedDiagnosticReviewConfirmed: savedDiagnosticReview && body.confirmSavedRemittance === true,
             payor,
             internalNote: cleanString(body.internalNote, 1000),
             invoiceId: invoice.id,
