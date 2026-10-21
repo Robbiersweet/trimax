@@ -1,27 +1,27 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-auth-client-safety-20261021-rc3",
+  "releaseId": "trimax-remittance-isolation-20261021-rc1",
   "status": "SEALED_CONTROLLED_DEPLOYMENT_CANDIDATE",
-  "createdAt": "2026-10-21T08:39:15.722Z",
+  "createdAt": "2026-10-21T09:21:28.253Z",
   "releaseTimestamp": null,
   "baseProduction": {
-    "commit": "bc4fdf8d7bd5890d65b43e34095cf7b9cc7b8584",
-    "vercelDeploymentId": "7L9gBVprGz2Ce18Ygi2CnW4vAjfg",
-    "deployedAt": "2026-10-21T07:49:56Z"
+    "commit": "2094f6df8d8f9d9ee5d31cddd054dc1254b2adfe",
+    "vercelDeploymentId": "Dq6HdHYBaXVcS6RjC8GGEaiwd7mb",
+    "deployedAt": "2026-10-21T08:49:48Z"
   },
   "components": {
     "web": {
-      "commit": "bc86ff1755a2f54a60962bb1acb9c2c3523eb92d"
+      "commit": "35aee1fa55d1a0bc61bb6f28463dfe83363d8b60"
     },
     "legacy": {
-      "commit": "bc86ff1755a2f54a60962bb1acb9c2c3523eb92d"
+      "commit": "35aee1fa55d1a0bc61bb6f28463dfe83363d8b60"
     },
     "v2-shadow": {
-      "commit": "bc86ff1755a2f54a60962bb1acb9c2c3523eb92d"
+      "commit": "35aee1fa55d1a0bc61bb6f28463dfe83363d8b60"
     }
   },
   "sourceBundle": {
-    "sha256": "827aafff6024a09b7f920b8a939ad8bfbebe58fe6eee84f4c272e2afaf10d8d2",
+    "sha256": "c882101d465777f4bcf14e6fe7d29b5f425f4d71571521adeba9a8906155c511",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -263,7 +263,7 @@
       "scripts/remittance-client-safety-regression.cjs": "978e0c490031a787f6c23d12bee9d3395ddb11bc6b4cd47e814e26ce926292cb",
       "scripts/remittance-contract-regression.ts": "75e3bf300050abfcd6145eb5d912af9251fef904bc1c9be19c5bc5695d50cf77",
       "scripts/remittance-deadline-regression.cjs": "630e43d1356572b744de7bfb9f68672366819da161d4e1f9e907a014f9e5c38e",
-      "scripts/remittance-intake-regression.cjs": "08fb8d9a31c63f227cec5a95821225d32aa2ca0f58a1921eff6aea03caffb991",
+      "scripts/remittance-intake-regression.cjs": "6da52fd73ae4df6892a9d084aa8f3de0143c032149a5d553b50ea0e1909ebe04",
       "scripts/remittance-matching-regression.ts": "3ff22cb6cd4c78f6744a6e5766f3d7c9901c6f9dd6c6ef6f28dec01a4686825f",
       "scripts/remittance-ocr-fixture-regression.ts": "2e90a200e8de9d64212a8f56092f3ef4e00522f2751463b33c827cad45991fa0",
       "scripts/remittance-release-gate.ts": "21944edbe46796c2b87e595dad18d2c49eb9fb72f2c9558b80f6880ceb4cdf32",
@@ -325,7 +325,7 @@
       "src/app/components/AppShell.tsx": "b4358a4c5a82735d1871ef0bc8e7e3bbb30b3770b577d51b0343552155c489af",
       "src/app/components/AuthGuard.tsx": "5d27be00447294b8eefafa4f37b66c4f1ddcd402c285c41433d84b33201023d1",
       "src/app/components/BackButton.tsx": "87360394e36c2e90d4a33135d5539d0176e75d8cc2448783c5c859783ee1059c",
-      "src/app/components/BatchInvoicePayments.tsx": "cc81aff2377e1b0c9a9d59f56d0f8576455a804bf47454148c4012ba796a1f5b",
+      "src/app/components/BatchInvoicePayments.tsx": "1318818eda08162915118eb7a40099d16802a36b37f49799b9f654dcc450e0e4",
       "src/app/components/Button.tsx": "68f87a76cee881a6b148ec30af54746d8a0fbe11a153b3ccf0134a62504deb97",
       "src/app/components/Card.tsx": "6706fd0d306b77c27bf8f9f2558fdfc4f5a77b874404cba67b0f4980c96de207",
       "src/app/components/ClientSmartSearch.tsx": "6780c13e035f04c4bf532a23842cf8d220021a409362c1f2d01fc93cbb3c1278",
@@ -1602,21 +1602,21 @@
   },
   "upgradeContext": {
     "currentProductionRelease": {
-      "releaseId": "trimax-remittance-shadow-20261021-rc2",
-      "manifestCommit": "bc4fdf8d7bd5890d65b43e34095cf7b9cc7b8584",
-      "manifestDigest": "63ec8b6cc69511d196778f819977091fe42d66a8c5864300dce146fd8cc3b74e",
-      "deploymentId": "7L9gBVprGz2Ce18Ygi2CnW4vAjfg",
-      "deploymentCommit": "bc4fdf8d7bd5890d65b43e34095cf7b9cc7b8584"
+      "releaseId": "trimax-auth-client-safety-20261021-rc3",
+      "manifestCommit": "2094f6df8d8f9d9ee5d31cddd054dc1254b2adfe",
+      "manifestDigest": "8d2657b260dcea08cfdeeda74778fc5cb7cd384ad55f6af8a26ddd09f7ffb074",
+      "deploymentId": "Dq6HdHYBaXVcS6RjC8GGEaiwd7mb",
+      "deploymentCommit": "2094f6df8d8f9d9ee5d31cddd054dc1254b2adfe"
     },
-    "candidateReleaseId": "trimax-auth-client-safety-20261021-rc3",
-    "applicationCommit": "bc86ff1755a2f54a60962bb1acb9c2c3523eb92d",
-    "machineryCommit": "bc86ff1755a2f54a60962bb1acb9c2c3523eb92d"
+    "candidateReleaseId": "trimax-remittance-isolation-20261021-rc1",
+    "applicationCommit": "35aee1fa55d1a0bc61bb6f28463dfe83363d8b60",
+    "machineryCommit": "35aee1fa55d1a0bc61bb6f28463dfe83363d8b60"
   },
   "contractRevision": {
-    "id": "verified-session-client-safety",
-    "priorManifestDigest": "63ec8b6cc69511d196778f819977091fe42d66a8c5864300dce146fd8cc3b74e",
-    "reason": "Restore only verified unexpired same-user session leases without changing45min/12h policy; persist verified refreshed SSR cookies. Exclude incompatible or ambiguous payor identities before invoice candidate resolution in legacy and v2. Amount never introduces invoices; global duplicate, split and exact-cent safeguards retained.",
-    "rollback": "Restore retained bc4fdf8 web deployment and matching clean bc4fdf8 workers; preserve all data and queue evidence."
+    "id": "new-remittance-state-isolation",
+    "priorManifestDigest": "8d2657b260dcea08cfdeeda74778fc5cb7cd384ad55f6af8a26ddd09f7ffb074",
+    "reason": "Clear old invoice selections, allocations derived from selection, review, headers, attempt/source lineage and retry state at new-remittance opening and direct source intake; retain explicit same-remittance check-details semantics. Existing matching, client, split, duplicate and reconciliation functions unchanged.",
+    "rollback": "Restore retained2094f6d web deployment and matching clean2094f6d workers; preserve all data and queue evidence."
   },
   "captureWorkflow": "guided-live-camera-v1"
 }
