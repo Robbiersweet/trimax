@@ -60,9 +60,9 @@ function validateLocalRuntime(config,engine){const manifest=read(path.join(root,
  return manifest;
 }
 async function validateStartup(config,engine){const manifest=validateLocalRuntime(config,engine);
- const response=await fetch(config.supabaseUrl+'/rest/v1/rpc/trimax_release_runtime',{method:'POST',headers:{apikey:config.anonKey,'Content-Type':'application/json'},body:JSON.stringify({p_business:config.businessId,p_key:config.workerKey,p_engine:engine}),signal:AbortSignal.timeout(15000)});
+ let response;try{response=await fetch(config.supabaseUrl+'/rest/v1/rpc/trimax_release_runtime',{method:'POST',headers:{apikey:config.anonKey,'Content-Type':'application/json'},body:JSON.stringify({p_business:config.businessId,p_key:config.workerKey,p_engine:engine}),signal:AbortSignal.timeout(15000)});}catch{const error=Error('Read-only runtime attestation temporarily unreachable; no work claimed');error.code='ATTESTATION_TEMPORARILY_UNAVAILABLE';throw error;}
  if(!response.ok){const detail=await response.json().catch(()=>({}));const error=Error('RUNTIME DRIFT DETECTED: read-only database/credential attestation unavailable (HTTP '+response.status+')');
-  if(response.status===404&&detail.code==='PGRST202')error.code='DEPLOYMENT_PREREQUISITE';throw error;}
+  if(response.status===404&&detail.code==='PGRST202')error.code='DEPLOYMENT_PREREQUISITE';else if([408,429,500,502,503,504].includes(response.status))error.code='ATTESTATION_TEMPORARILY_UNAVAILABLE';throw error;}
  const observed=await response.json();const remoteErrors=compareDatabase(manifest.database,observed,engine,config.businessId);if(remoteErrors.length)throw Error('RUNTIME DRIFT DETECTED: '+remoteErrors.join('; '));
  return Object.freeze({releaseId:manifest.releaseId,engine,sourceCommit:manifest.components.web.commit,sourceBundle:manifest.sourceBundle.sha256,modelBundle:manifest.modelBundle.sha256,runtimeSources:manifest.runtimeSources.sha256,databaseFingerprint:manifest.database.fingerprints.schema.sha256,validatedAt:new Date().toISOString(),paymentWriteCapability:false});
 }

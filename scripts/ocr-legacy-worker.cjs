@@ -46,7 +46,7 @@ module.exports={loadEngine,runJob};
 if(require.main===module)(async()=>{
  const config=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
  const rpc=async(name,args)=>{const r=await fetch(config.supabaseUrl+'/rest/v1/rpc/'+name,{method:'POST',headers:{apikey:config.anonKey,'Content-Type':'application/json'},body:JSON.stringify({p_business:config.businessId,p_key:config.workerKey,...args}),signal:AbortSignal.timeout(20000)});if(!r.ok)throw Error('Legacy queue '+r.status+': '+(await r.text()).slice(0,500));return r.status===204?null:r.json();};
- const {validateStartup}=require('./release/contract.cjs');
+ const {validatedWorker:validateStartup}=require('./release/worker-validation.cjs');
  config.releaseAttestation=await validateStartup(config,'legacy');
  const engine=loadEngine();
  do{config.releaseAttestation=await validateStartup(config,'legacy');try{await runJob(config,rpc,engine);}catch(e){console.error(e.message);}if(process.argv.includes('--once'))break;await new Promise(r=>setTimeout(r,5000));}while(true);
