@@ -699,16 +699,23 @@ export default function BatchInvoicePayments({
   const [checkOcrMessage, setCheckOcrMessage] = useState(
     "Upload a remittance stub or enter the payment manually."
   );
+  const processingDeadlineAt = useRef(0);
+  const [processingEpoch, setProcessingEpoch] = useState(0);
+  function beginProcessingWindow() {
+    processingDeadlineAt.current = Date.now() + REMITTANCE_PROCESSING_LIMIT_MS;
+    setProcessingEpoch(value => value + 1);
+  }
   useEffect(() => {
-    if (checkOcrStatus !== "reading" && !isPreparingCrop) return;
+    if (checkOcrStatus !== "reading" && !isPreparingCrop) { processingDeadlineAt.current = 0; return; }
     const timer = window.setTimeout(() => {
+      processingDeadlineAt.current = 0;
       ocrAttemptVersion.current++;
       setIsPreparingCrop(false);
       setCheckOcrStatus("error");
       setCheckOcrMessage("Trimax couldn't finish reading this remittance. Your photo is preserved. Retry, retake, choose an existing photo, or enter manually.");
-    }, REMITTANCE_PROCESSING_LIMIT_MS);
+    }, Math.max(0, processingDeadlineAt.current - Date.now()));
     return () => window.clearTimeout(timer);
-  }, [checkOcrStatus, isPreparingCrop]);
+  }, [checkOcrStatus, isPreparingCrop, processingEpoch]);
   const [internalNote, setInternalNote] = useState(
     startedFromInvoiceSelection
       ? "Selected invoice batch payment"
@@ -2095,6 +2102,7 @@ export default function BatchInvoicePayments({
     retainedReference?: string,
     resume?: {history:ScanSummary;canonical:CanonicalCapture|null}
   ): Promise<void> {
+    if (checkOcrStatus !== "reading" || !processingDeadlineAt.current) beginProcessingWindow();
     const attemptVersion = ++ocrAttemptVersion.current;
     setSharedMoneyStatus("");setSharedMoneyLoading(false);
     const attemptId = resume?.history.attemptId ?? crypto.randomUUID();
@@ -2341,6 +2349,7 @@ export default function BatchInvoicePayments({
     retryStrategy: OcrRetryStrategy = "standard",
     sourceType: OcrSourceType = lastOcrSourceType, sourceDiagnosticLines: string[] = lastCameraCaptureDiagnosticLines
   ): Promise<void> {
+    if (checkOcrStatus !== "reading" || !processingDeadlineAt.current) beginProcessingWindow();
     const version = ++ocrAttemptVersion.current;
     setCaptureRetry(null); setIsPreparingCrop(true); setCheckOcrStatus("reading");
     setCheckOcrMessage("Preparing image");
@@ -2422,6 +2431,7 @@ export default function BatchInvoicePayments({
     sourceDiagnosticLines: string[] = []
   ): void {
     if (!file) return;
+    beginProcessingWindow();
     const capturedFile = file;
     const implementation = source === 'existing' ? 'existing-photo' : captureUi.current?.selection.implementation ?? 'custom-camera';
     if (!captureUi.current || captureUi.current.selection.implementation !== implementation) beginCapture(implementation,'Image intake without an opening event');
