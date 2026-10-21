@@ -2390,16 +2390,20 @@ export default function BatchInvoicePayments({
     setReversedDuplicateReviewedKey("");
   }
 
-  function resetCheckCaptureState() {
+  // A new source owns a fresh review. Clear synchronously before camera,
+  // normalization, duplicate preflight or any old asynchronous completion.
+  function clearNewRemittanceReviewState() {
     ocrAttemptVersion.current++;
     setActiveRemittanceAttempt(null);
     setOcrReconciliationVerified(false);
-    setCheckImageFile(null);
-    setCheckImageName("");
-
-    setIsPreparingCrop(false);
-    setFiledPaymentImage(null);
     clearCurrentRemittanceReviewState();
+    scanLineage.current = null;
+    latestScan.current = null;
+    preparedCaptureRef.current = null;
+    sourceSelectionRef.current = [];
+    observationScopeRef.current = crypto.randomUUID();
+    setCaptureRetry(null);
+    setScanSavedStatus("");
     setRemittanceStubText("");
     setSelectedIds([]);
     setExtractedPaymentAmount(null);
@@ -2407,6 +2411,12 @@ export default function BatchInvoicePayments({
     setCapturedCheckAmount("");
     setCapturedCheckReference("");
     setCheckPayor("");
+    setCheckAmount("");
+    setPaymentReference("");
+    setCheckDate("");
+    setInternalNote("");
+    setSharedMoneyStatus("");
+    setSharedMoneyLoading(false);
     setPaymentReviewNotice("");
     setCompletedPaymentSummary(null);
     setCheckOcrStatus("idle");
@@ -2415,6 +2425,18 @@ export default function BatchInvoicePayments({
     setLastOcrRawText("");
     setLastOcrSourceType("unknown");
     setLastCameraCaptureDiagnosticLines([]);
+  }
+
+  function resetCheckCaptureState() {
+    clearNewRemittanceReviewState();
+    if (checkImagePreview) URL.revokeObjectURL(checkImagePreview);
+    setCheckImagePreview("");
+    setCheckImageFile(null);
+    setCheckImageName("");
+    setOcrImageFile(null);
+    setIsPreparingCrop(false);
+    setFiledPaymentImage(null);
+    opticalRef.current = {images:[],notes:[]};
     setCaptureDocumentType("remittance_stub");
     setCaptureIntent("primary");
     setCheckOcrMessage(
@@ -2431,6 +2453,7 @@ export default function BatchInvoicePayments({
     sourceDiagnosticLines: string[] = []
   ): void {
     if (!file) return;
+    if (intent === "primary") clearNewRemittanceReviewState();
     beginProcessingWindow();
     const capturedFile = file;
     const implementation = source === 'existing' ? 'existing-photo' : captureUi.current?.selection.implementation ?? 'custom-camera';
@@ -2524,6 +2547,7 @@ export default function BatchInvoicePayments({
   }, []);
 
   const openCameraCapture = useRemittanceEvent(function openCameraCaptureEvent(documentType: RemittanceDocumentType = captureDocumentType, intent: CaptureIntent = 'primary'): void {
+    if (intent === 'primary') resetCheckCaptureState();
     ocrAttemptVersion.current++;
     setIsPreparingCrop(false);
     beginCapture('custom-camera','Guided live remittance camera');
@@ -3030,10 +3054,10 @@ export default function BatchInvoicePayments({
                   <input
                     type="file"
                     accept="image/*,.heic,.heif"
-                    onClick={() => beginCapture('existing-photo','Choose Existing Photo selected')}
+                    onClick={() => { resetCheckCaptureState(); beginCapture('existing-photo','Choose Existing Photo selected'); }}
                     className="sr-only"
                     onChange={(event) => {
-                      captureCheckImage(event.target.files?.[0], "existing");
+                      captureCheckImage(event.target.files?.[0], "existing", "remittance_stub", "primary");
                       event.currentTarget.value = "";
                     }}
                   />
