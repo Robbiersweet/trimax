@@ -1354,24 +1354,19 @@ assert(
   "Payments screen must load the extracted $2,198.00 total into the visible review amount."
 );
 assert(
-  paymentScreen.includes("const [ocrImageFile, setOcrImageFile]") &&
-    paymentScreen.includes("const paymentImageFile = ocrImageFile ?? checkImageFile") &&
-    paymentScreen.includes(".upload(storagePath, paymentImageFile") &&
-    paymentScreen.includes("const preparedFile = await dataUrlToImageFile") &&
-    paymentScreen.includes("const preparedImage = await imageElementFromFile(preparedFile)") &&
-    paymentScreen.includes("setOcrImageFile(preparedFile)") &&
-    paymentScreen.includes("setCheckImageFile(preparedFile)") &&
-    paymentScreen.includes("setCheckImagePreview(imageDataUrl)") &&
-    paymentScreen.includes("Saved preview and OCR input: same normalized crop.") &&
-    paymentScreen.includes("setCropBox({ left: 0, top: 0, right: 100, bottom: 100 })") &&
-    paymentScreen.includes("setCropRotation(0)"),
-  "Payments screen must use the same normalized cropped image for OCR, preview, retry, and payment-image upload."
+  paymentScreen.includes("const paymentImageFile = ocrImageFile ?? checkImageFile") &&
+  paymentScreen.includes(".upload(storagePath, paymentImageFile") &&
+  paymentScreen.includes("setOcrImageFile(normalized.file)") &&
+  paymentScreen.includes("setCheckImageFile(normalized.file)") &&
+  paymentScreen.includes("setCheckImagePreview(imageDataUrl)") &&
+  paymentScreen.includes("Saved preview and OCR input match"),
+  "Preview, OCR, retry and payment attachment must use the same complete normalized image."
 );
 assert(
   paymentScreen.includes('type OcrRetryStrategy = "standard" | "alternate"') &&
     paymentScreen.includes("retryStrategy: OcrRetryStrategy = \"standard\"") &&
     paymentScreen.includes("waitForLegacyJob({attemptId,documentType,retryStrategy") &&
-    paymentScreen.includes("Retry strategy:") &&
+    paymentScreen.includes("retryStrategy,lines,duplicate.fingerprint") &&
     paymentScreen.includes('"alternate"'),
   "Retry Reading must reuse the saved crop while requesting a distinct local OCR preprocessing strategy."
 );
@@ -1397,7 +1392,7 @@ assert(
     paymentScreen.includes("canShareOcrDiagnostics") &&
     paymentScreen.includes("shareOcrDiagnostics") &&
     paymentScreen.includes('checkOcrStatus !== "reading"') &&
-    paymentScreen.includes("Source type: ${sourceType}.") &&
+    paymentScreen.includes("'Source type: '+sourceType") &&
     paymentScreen.includes("setLastOcrSourceType(source)") &&
     paymentScreen.includes("lastCameraCaptureDiagnosticLines"),
   "OCR diagnostics must remain available after successful reads, include sourceType, and support one-tap copy/share without changing OCR behavior."
@@ -1432,147 +1427,13 @@ assert(
   paymentScreen.includes("Matched Invoices"),
   "Payments screen must show extracted invoice matches during review."
 );
-assert(
-    paymentScreen.includes('data-remittance-fullscreen-capture="true"') &&
-    paymentScreen.includes('import { createPortal } from "react-dom"') &&
-    paymentScreen.includes("createPortal(") &&
-    paymentScreen.includes("document.body") &&
-    paymentScreen.includes('className="fixed left-0 top-0 z-[2147483000]') &&
-    !paymentScreen.includes("cameraOverlayStyle") &&
-    paymentScreen.includes("window.visualViewport") &&
-    paymentScreen.includes("updateCameraVisualViewport") &&
-    paymentScreen.includes("h-[100dvh]") &&
-    paymentScreen.includes("landscape:grid-cols-[minmax(0,1fr)_13rem]") &&
-    paymentScreen.includes("landscape:row-span-3") &&
-    paymentScreen.includes("landscape:grid-cols-1") &&
-    paymentScreen.includes("Align the remittance inside the frame") &&
-    paymentScreen.includes("captureFromTrimaxCamera") &&
-    paymentScreen.includes("Use Device Camera"),
-  "Payments screen must open a full-viewport Trimax document frame before mobile camera OCR."
-);
-assert(
-  paymentScreen.includes("type RemittanceDocumentType") &&
-    paymentScreen.includes('"remittance_stub"') &&
-    paymentScreen.includes('"full_check_stub"') &&
-    paymentScreen.includes('"check_only"') &&
-    paymentScreen.includes('useState<RemittanceDocumentType>("remittance_stub")') &&
-    paymentScreen.includes('return "horizontal";'),
-  "Payments capture must expose Remittance Stub, Full Check + Stub, and Check Only modes with Remittance Stub using the wide guide by default."
-);
-assert(
-  paymentScreen.includes('captureDocumentType === "remittance_stub"') &&
-    paymentScreen.includes("h-[min(18dvh,22vw)]") &&
-    paymentScreen.includes("min-h-[12dvh]") &&
-    paymentScreen.includes("w-[min(96vw,160dvh)]") &&
-    paymentScreen.includes("landscape:h-[min(62%,54dvh)]") &&
-    paymentScreen.includes("landscape:w-[min(96%,150dvh)]") &&
-    paymentScreen.includes("Rotate Guide"),
-  "Remittance Stub camera guide must render a wide horizontal landscape frame by default while preserving Rotate Guide."
-);
-assert(
-  paymentScreen.includes("Add Check Photo") &&
-    paymentScreen.includes('"check_details"') &&
-    paymentScreen.includes("loadCheckDetailsFromExtraction") &&
-    paymentScreen.includes("Check photo used only for missing check details."),
-  "Payments capture must support an optional second check photo without discarding successful remittance fields."
-);
-assert(
-  paymentScreen.includes("trimax-remittance-capture-active") &&
-    paymentScreen.includes("document.body.style.overflow = \"hidden\"") &&
-    paymentScreen.includes("document.body.style.touchAction = \"none\"") &&
-    paymentScreen.includes("Escape"),
-  "Full-screen capture must lock page scrolling and support Escape/cancel cleanup."
-);
-assert(
-  paymentScreen.includes('data-remittance-document-frame="true"') &&
-    paymentScreen.includes('data-guide-mode={cameraGuideMode}') &&
-    paymentScreen.includes('useState<') &&
-    paymentScreen.includes('"horizontal" | "vertical"') &&
-    paymentScreen.includes("Rotate Guide") &&
-    paymentScreen.includes("env(safe-area-inset-top)") &&
-    paymentScreen.includes("env(safe-area-inset-bottom)") &&
-    paymentScreen.includes("landscape:h-") &&
-    paymentScreen.includes("landscape:w-"),
-  "Camera capture must respect iPhone safe areas and adapt the frame in portrait and landscape."
-);
-assert(
-  paymentScreen.includes("guidanceForDocumentType(captureDocumentType)") &&
-    paymentScreen.indexOf("guidanceForDocumentType(captureDocumentType)") >
-      paymentScreen.indexOf('data-remittance-document-frame="true"'),
-  "Camera instructions must sit outside the document frame instead of covering remittance text."
-);
-assert(
-  paymentScreen.includes("const analyzeLiveCameraFrame = useCallback") &&
-    paymentScreen.includes("measureCaptureFrame(") &&
-    paymentScreen.includes("captureReadiness(frame,captureGateMemory.current)") &&
-    paymentScreen.includes("setCameraQualityReady(result?.ready ?? false)") &&
-    !paymentScreen.includes("disabled={!cameraReady || !cameraQualityReady}") &&
-    paymentScreen.includes("Capture Remittance") &&
-    paymentScreen.includes("Check Capture") &&
-    paymentScreen.includes("Capturing remittance...") &&
-    paymentScreen.includes("Camera capture timed out. Try Use Device Camera.") &&
-    paymentScreen.includes("getVisibleCameraGuideSourceRect(video)") &&
-    paymentScreen.includes("cameraGuideRef") &&
-    paymentScreen.includes("cameraViewportRef") &&
-    paymentScreen.includes("handleCameraModeSelection") &&
-    paymentScreen.includes("event.preventDefault();") &&
-    paymentScreen.includes("event.stopPropagation();") &&
-    paymentScreen.includes("disabled={isCapturingFrame}") &&
-    paymentScreen.includes("relative z-40") &&
-    paymentScreen.includes("relative z-10") &&
-    paymentScreen.includes("sourceX") &&
-    paymentScreen.includes("sourceWidth") &&
-    paymentScreen.includes('setPaymentEntryMode("crop")') &&
-    paymentScreen.includes("Capturing...") &&
-    paymentScreen.includes("{cameraQualityReady ? \"Ready\" : cameraStatusMessage}"),
-  "Camera tap must submit the framed document crop or show a visible error while Ready still reports live quality."
-);
-assert(
-  paymentScreen.includes("async function captureFromTrimaxCamera(") &&
-    paymentScreen.includes("function handleCaptureButtonPointerDown") &&
-    paymentScreen.includes("function handleCaptureButtonClick") &&
-    paymentScreen.includes("lastCapturePointerAtRef") &&
-    paymentScreen.includes("if (isCapturingFrame)") &&
-    paymentScreen.includes("handleCameraModeSelection(event, mode.value)") &&
-    paymentScreen.includes("pointIsInsideRect") &&
-    paymentScreen.includes("captureVisibleButtonTap") &&
-    paymentScreen.includes("captureFromDocumentFrame") &&
-    paymentScreen.includes("handleDocumentFramePointerDown") &&
-    paymentScreen.includes("Tap document to capture") &&
-    paymentScreen.includes('data-camera-control="document-frame-capture"') &&
-    paymentScreen.includes("overlay-capture-visible-button") &&
-    paymentScreen.includes("onPointerDownCapture={handleCameraOverlayPointerDownCapture}") &&
-    paymentScreen.includes("onTouchStartCapture={handleCameraOverlayTouchStartCapture}") &&
-    paymentScreen.includes("onPointerDown={(event) => event.stopPropagation()}") &&
-    paymentScreen.includes("onPointerDown={handleCaptureButtonPointerDown}") &&
-    paymentScreen.includes("onClick={handleCaptureButtonClick}") &&
-    paymentScreen.includes("onTouchEnd={(event) => event.stopPropagation()}") &&
-    paymentScreen.includes("onTouchStart={(event) => event.stopPropagation()}"),
-  "Capture and document-mode taps must be isolated so Capture cannot trigger a mode change or duplicate capture."
-);
-assert(
-  paymentScreen.includes('return "horizontal";') &&
-    paymentScreen.includes("Fill the wide frame with the remittance rows.") &&
-    paymentScreen.includes("landscape:h-[min(62%,54dvh)]") &&
-    paymentScreen.includes("landscape:w-[min(96%,150dvh)]"),
-  "Remittance Stub capture must default to the wide horizontal landscape frame."
-);
-assert(
-  paymentScreen.includes("Choose Existing Photo") &&
-    paymentScreen.includes('captureCheckImage(event.target.files?.[0], "existing")') &&
-    paymentScreen.includes("Choose Existing"),
-  "Existing-photo workflow must remain available and use the same quality/crop path."
-);
-assert(
-  paymentScreen.includes("qualityMessageFromMetrics") &&
-    paymentScreen.includes("Move closer - document is too distant.") &&
-    paymentScreen.includes("Use a higher-resolution photo.") &&
-    paymentScreen.includes("Use Cropped Image Anyway") &&
-    paymentScreen.includes("Retake photo - image is blurry.") &&
-    paymentScreen.includes("More light needed.") &&
-    paymentScreen.includes("Use stronger lighting or a darker background."),
-  "Payments screen must give factual crop quality guidance and allow owner override before OCR."
-);
+const camera = readFileSync(resolve(root, "src/app/components/RemittanceCamera.tsx"), "utf8");
+assert(paymentScreen.includes('<RemittanceCamera ') && camera.includes('getUserMedia'), "Take Photo must use the real guided camera.");
+assert(!paymentScreen.includes('device camera opens separately') && !paymentScreen.includes('border-dashed'), "The initial card must not pretend to frame a camera.");
+assert(camera.includes('Rotate phone to landscape') && camera.includes('Document framing guide'), "Orientation and document placement must be explicit.");
+assert(paymentScreen.includes('normalizePhysicalStill(file)') && paymentScreen.includes('Full image preserved; no document crop'), "Normalize EXIF once and retain all paper edges.");
+assert(paymentScreen.includes('loadCheckDetailsFromExtraction') && paymentScreen.includes('Check photo used only for missing check details.'), "A supplemental check image must preserve remittance fields.");
+assert(paymentScreen.includes('Choose Existing Photo') && paymentScreen.includes('Enter Manually'), "Both recovery paths must remain available.");
 
 const ocrRoute = readFileSync(
   resolve(root, "src/app/api/payments/extract-check-stub/route.ts"),
@@ -1661,44 +1522,16 @@ assert(
     paymentScreen.includes("diagnostics.invoiceColumnDiagnostics"),
   "Payments OCR diagnostics must expose per-pass token summaries and text-region quality so good and bad physical reads can be compared."
 );
-assert(
-  readFileSync(resolve(process.cwd(), "src/app/lib/captureReadiness.ts"), "utf8").includes("Capture stub separately") &&
-    paymentScreen.includes('captureDocumentType === "full_check_stub"') &&
-    paymentScreen.includes('frame.minimumGuideShortEdge = captureDocumentType === "full_check_stub" ? 980 : 0') &&
-    paymentScreen.includes("guidanceForDocumentType(captureDocumentType)"),
-  "Full Check + Stub capture must warn when invoice text resolution is too distant and suggest a stub close-up."
-);
-assert(
-  paymentScreen.includes("Normal Take Photo always uses device still capture") &&
-    paymentScreen.includes('capture="environment"') &&
-    paymentScreen.includes("Capture implementation: ") &&
-    paymentScreen.includes("readPreparedRemittanceFromFile(") &&
-    !paymentScreen.includes("Owner/admin native still intake"),
-  "Normal capture must use native still independently of OCR eligibility and preserve actual implementation."
-);
-assert(
-  paymentScreen.includes("0.98") &&
-    paymentScreen.includes("const maxEdge = 4600") &&
-    paymentScreen.includes("const minReadableEdge = 2400") &&
-    paymentScreen.includes("OCR crop:") &&
-    paymentScreen.includes("cropBoxForRotation") &&
-    paymentScreen.includes("Document total not found. Enter the check amount") &&
-    paymentScreen.includes("ocrFailureMessage") &&
-    paymentScreen.includes("setPaymentReference(extractedCheckNumber)"),
-  "Payments screen must preserve OCR-quality image detail, transform rotated crop coordinates, keep good fields, and guide partial manual fallback."
-);
-assert(
-  paymentScreen.includes("beginCropDrag") &&
-    paymentScreen.includes('"top-left"') &&
-    paymentScreen.includes("cursor-nwse-resize") &&
-    !paymentScreen.includes('type="range"'),
-  "Manual crop must use draggable handles instead of edge sliders."
-);
+assert(camera.includes('width: { ideal: 4096 }') && camera.includes('height: { ideal: 2160 }') && camera.includes('context.drawImage(element, 0, 0)'), "Capture must preserve the full high-resolution source frame.");
+assert(paymentScreen.includes('Guided live remittance camera') && !paymentScreen.includes('capture="environment"'), "Normal Take Photo must use one in-app camera independently of shadow eligibility.");
+assert(paymentScreen.includes('normalizePhysicalStill(file)') && paymentScreen.includes('Document total not found. Enter the check amount') && paymentScreen.includes('setPaymentReference(extractedCheckNumber)'), "Keep recognized fields and actionable manual fallback after full-image preparation.");
+
+assert(!paymentScreen.includes('beginCropDrag') && !paymentScreen.includes('setPaymentEntryMode("crop")'), "The replaced capture flow must not retain the old crop workflow.");
 assert(
   paymentScreen.includes("resolveRemittanceAttempt") &&
     paymentScreen.includes("attempt.reconciliationResult.eligible") &&
     paymentScreen.includes("attempt.reconciliationResult.blockers") &&
-    paymentScreen.includes("Select Missing Invoice Manually"),
+    paymentScreen.includes("Enter Manually / Select Missing Invoice"),
   "Payments screen must reconcile OCR line amounts against real invoice balances and reject partial matches."
 );
 assert(

@@ -1022,14 +1022,14 @@ async function retryStateRegression() {
   const allowed = (overrides = {}) => { const values = { ...validGate, ...overrides }; return new Function(...Object.keys(values), "return (" + gate + ");")(...Object.values(values)); };
   assert.equal(allowed(), true);
   for (const overrides of [{ ocrReconciliationVerified: false }, { checkOcrStatus: "manual", isRemittanceReview: false }, { hasDuplicateSelectedInvoiceIds: true }, { selectedTotal: 4396 }, { isPreparingCrop: true }]) assert.equal(allowed(overrides), false);
-  const start = source.indexOf("  async function extractCheckStubFromPhoto(");
-  const end = source.indexOf("  async function readPreparedRemittanceFromFile", start);
+  const start = source.indexOf("  const extractCheckStubFromPhoto =");
+  const end = source.indexOf("  function retainPreparationFailure", start);
   const functionSource = source.slice(start, end);
   const state = { PaymentReference: "old-check", ExtractedPaymentAmount: 2.49, SelectedIds: ["old-invoice"] };
   const pending = [];
   const calls = [];
   const historyWrites=[];
-  const bindings = { captureRetryBusy:{current:false},resumeCaptureHandoff:async()=>({queued:true}),observationScopeRef:{current:crypto.randomUUID()}, opticalRef:{current:{images:[],notes:[]}}, ...require("../src/app/lib/remittanceAttempt.ts"), ...require("../src/app/lib/ocrHistory.ts"), businessId:"test-workspace",lastOcrSourceType:"existing",process,scanLineage:{current:null},latestScan:{current:null},supabase:{auth:{getSession:async()=>({data:{session:null}})}},saveScan:async write=>{historyWrites.push(write);return 'saved';}, performance, crypto, preparedCaptureRef: {current:null}, immutableSnapshot: value => structuredClone(value), invoiceRecords: [], paymentActivities: [], workspaceRole: "owner", receivedDate: "2026-09-17", ocrAttemptVersion: { current: 0 },
+  const bindings = { useRemittanceEvent: fn=>fn, remittanceDeadline: work=>work, captureRetryBusy:{current:false},resumeCaptureHandoff:async()=>({queued:true}),observationScopeRef:{current:crypto.randomUUID()}, opticalRef:{current:{images:[],notes:[]}}, ...require("../src/app/lib/remittanceAttempt.ts"), ...require("../src/app/lib/ocrHistory.ts"), businessId:"test-workspace",lastOcrSourceType:"existing",process,scanLineage:{current:null},latestScan:{current:null},supabase:{auth:{getSession:async()=>({data:{session:null}})}},saveScan:async write=>{historyWrites.push(write);return 'saved';}, performance, crypto, preparedCaptureRef: {current:null}, immutableSnapshot: value => structuredClone(value), invoiceRecords: [], paymentActivities: [], workspaceRole: "owner", receivedDate: "2026-09-17", ocrAttemptVersion: { current: 0 },
     appendCameraStage: () => {}, ocrDiagnosticLines: () => [], remittanceReviewDiagnosticLines: () => [],
     ocrFailureMessage: () => "Incomplete", loadCheckDetailsFromExtraction: () => {},
     fetch: async (_url, options) => { calls.push(JSON.parse(options.body)); return new Promise(resolve => pending.push(resolve)); },
@@ -1058,6 +1058,7 @@ async function retryStateRegression() {
   assert.equal(calls[1].retryStrategy, "alternate");
   assert.notEqual(calls[0].attemptId, calls[1].attemptId);
   const old = read("old-image", "remittance_stub", "primary", "standard", [], "old");
+  await new Promise(setImmediate);
   const latest = read("new-image", "remittance_stub", "primary", "alternate", [], "new");
   await new Promise(setImmediate);
   const staleResponse = pending.shift();
@@ -1077,7 +1078,7 @@ async function retryStateRegression() {
   const failedUploadBindings={...bindings,storeCanonicalCapture:async()=>{throw Error('Upload offline');}};
   const failedUpload=new Function(...Object.keys(failedUploadBindings),compiled)(...Object.values(failedUploadBindings));
   const requestCount=calls.length;await failedUpload('image','remittance_stub','primary','standard',[],'');
-  assert.equal(calls.length,requestCount);assert.equal(historyWrites.at(-1).phase,0);assert.equal(historyWrites.at(-1).payload.transport.stage,'canonical-upload');assert.equal(historyWrites.at(-1).summary.captureState,'transport_failed');assert.equal(typeof state.CaptureRetry,'function');
+  assert.equal(calls.length,requestCount);assert.equal(historyWrites.at(-1).phase,0);assert.equal(historyWrites.at(-1).payload.transport.stage,'canonical-upload');assert.equal(historyWrites.at(-1).summary.captureState,'transport_failed');assert.equal(typeof state.CaptureRetry.run,'function');
   // Actual UI upload retry: same file and ID, no OCR before acknowledgement.
   for(const fault of ['57014','Postgres restart','503','520','521']) {
     const attempts=[],images=[];let available=false;
@@ -1087,7 +1088,7 @@ async function retryStateRegression() {
     await run('same-session-private-photo','remittance_stub','primary','standard',[],'');
     assert.equal(calls.length,before);assert(state.CheckOcrMessage.includes('upload interrupted'));
     available=true;
-    const retry=state.CaptureRetry()();
+    const retry=state.CaptureRetry.run();
     await new Promise(setImmediate);
     pending.shift()({ok:false,status:503,json:async()=>({error:'Injected OCR unavailable after durable upload'})});
     await retry;
@@ -1104,7 +1105,7 @@ async function retryStateRegression() {
 async function duplicatePreflightAndViewRegression() {
   const source = fs.readFileSync("src/app/components/BatchInvoicePayments.tsx", "utf8");
   const compile = (text, bindings) => new Function("require", "exports", ...Object.keys(bindings), ts.transpileModule(text, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText)(require, {}, ...Object.values(bindings));
-  const preflightSource = source.slice(source.indexOf("  async function runDuplicateRemittancePreflight("), source.indexOf("  async function extractCheckStubFromPhoto("));
+  const preflightSource = source.slice(source.indexOf("  async function runDuplicateRemittancePreflight("), source.indexOf("  function beginCapture("));
   const writes = [];
   let responseStatus = "possible";
   const bindings = { businessId: "workspace", supabase: { auth: { getSession: async () => ({ data: { session: null } }) } },
@@ -1143,7 +1144,7 @@ async function duplicatePreflightAndViewRegression() {
 }
 
 async function main() {
-  require("./capture-gate-integration-regression.cjs")();
+  require("node:child_process").execFileSync(process.execPath,["scripts/remittance-intake-regression.cjs"],{stdio:"inherit"});
   require("node:child_process").execFileSync(process.execPath,["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON","--experimental-strip-types","scripts/capture-readiness-regression.ts"],{stdio:"inherit"});
   require("node:child_process").execFileSync(process.execPath,["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON","--experimental-strip-types","scripts/ocr-optical-regression.ts"],{stdio:"inherit"});
   require("node:child_process").execFileSync(process.execPath,["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON","scripts/ocr-latency-regression.cjs"],{stdio:"inherit"});

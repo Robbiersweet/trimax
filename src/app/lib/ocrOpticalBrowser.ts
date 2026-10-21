@@ -73,7 +73,7 @@ export async function normalizePhysicalStill(file: File) {
     output.toBlob(
       (b) => (b ? resolve(b) : reject(Error("JPEG encoding failed"))),
       "image/jpeg",
-      0.88,
+      0.95,
     ),
   );
   return {

@@ -10,7 +10,9 @@ export async function waitForLegacyJob(input:{attemptId:string;documentType:stri
   return bounded(fetch('/api/payments/ocr-jobs'+(enqueue?'':'?attemptId='+encodeURIComponent(input.attemptId)),{method:enqueue?'POST':'GET',headers:{Authorization:'Bearer '+data.session.access_token,'Content-Type':'application/json'},...(enqueue?{body:JSON.stringify(input)}:{}),signal:AbortSignal.timeout(12000),cache:'no-store'}),12000);
  }
  function bounded<T>(work:PromiseLike<T>,ms:number):Promise<T>{
-  return new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error(timeoutMessage)),Math.min(ms,Math.max(1,deadline-performance.now())));Promise.resolve(work).then(value=>{clearTimeout(timer);resolve(value);},error=>{clearTimeout(timer);reject(error);});});
+  const remaining=deadline-performance.now();
+  if(remaining<=0)return Promise.reject(Error(timeoutMessage));
+  return new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error(timeoutMessage)),Math.min(ms,remaining));Promise.resolve(work).then(value=>{clearTimeout(timer);resolve(value);},error=>{clearTimeout(timer);reject(error);});});
  }
  const queuedAt=performance.now();
  const queued=await request(true);
@@ -33,7 +35,7 @@ export async function waitForLegacyJob(input:{attemptId:string;documentType:stri
     status(job.status==='completion_persistence_pending'?'Preparing review':job.status==='queued'?'Waiting to read remittance':'Reading remittance');
    }else status('Capture saved — reconnecting to processing status…');
   }catch{status('Capture saved — reconnecting to processing status…');}
-  await new Promise(resolve=>setTimeout(resolve,2500));
+  await new Promise(resolve=>setTimeout(resolve,Math.min(2500,Math.max(0,deadline-performance.now()))));
  }
  throw Error('Scan view replaced; background processing continues.');
 }

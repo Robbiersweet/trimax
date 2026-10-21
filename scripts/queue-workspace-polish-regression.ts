@@ -16,7 +16,7 @@ function assert(condition: unknown, message: string) {
 }
 
 function assertIncludes(source: string, needle: string, message: string) {
-  assert(source.includes(needle), message);
+  assert(source.replaceAll("\r\n", "\n").includes(needle), message);
 }
 
 function assertMatches(source: string, pattern: RegExp, message: string) {

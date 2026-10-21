@@ -7,15 +7,13 @@ import LegacyOcrJobs from "./LegacyOcrJobs";
 import { waitForLegacyJob } from "../lib/ocrLegacyJobClient";
 import { transportFailure, type CanonicalCapture, type TransportFailure } from "../lib/ocrCanonical";
 
-
-import { opticalImage } from "../lib/ocrOpticalBrowser";
+import { normalizePhysicalStill } from "../lib/ocrOpticalBrowser";
 
 import type { OpticalEvidence } from "../lib/ocrOptical";
 
 import { createRemittanceEvidence, emptyRemittanceEvidence, immutableSnapshot, resolveRemittanceAttempt, attemptAllowsApply, type RemittanceAttempt, type RemittanceEvidence, type ScanCapture } from "../lib/remittanceAttempt";
 
-
-import { PointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Card from "./Card";
@@ -98,7 +96,6 @@ type CheckOcrStatus = "idle" | "reading" | "ready" | "manual" | "error";
 type PaymentEntryMode =
   | "choice"
   | "camera"
-  | "crop"
   | "photo"
   | "manual"
   | "complete";
@@ -111,45 +108,6 @@ type RemittanceDocumentType =
 type CaptureIntent = "primary" | "check_details";
 type OcrRetryStrategy = "standard" | "alternate";
 type OcrSourceType = "camera" | "existing" | "unknown";
-
-type CropBox = {
-  left: number;
-  top: number;
-  right: number;
-  bottom: number;
-};
-
-
-
-type ImageQualityReport = {
-  ok: boolean;
-  message: string;
-  brightness: number;
-  contrast: number;
-  blurScore: number;
-};
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 type CheckStubOcrResponse = {
   ocrStarted?: boolean;
@@ -445,16 +403,6 @@ type DuplicateRemittanceModalState = {
   intent: "active" | "reversed" | "possible";
 } | null;
 
-
-
-
-type CropDragTarget =
-  | "move"
-  | "top-left"
-  | "top-right"
-  | "bottom-left"
-  | "bottom-right";
-
 function formatMoney(value: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -510,18 +458,6 @@ function todayInputValue() {
   return `${year}-${month}-${day}`;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
 function fileToDataUrl(file: Blob) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -536,296 +472,6 @@ function fileToDataUrl(file: Blob) {
     reader.onerror = () => reject(new Error("The remittance image could not be read."));
     reader.readAsDataURL(file);
   });
-}
-
-async function imageElementFromFile(file: File) {
-  const imageUrl = URL.createObjectURL(file);
-  const image = new Image();
-
-  try {
-    await new Promise<void>((resolve, reject) => {
-      image.onload = () => resolve();
-      image.onerror = () => reject(new Error("That image format could not be previewed."));
-      image.src = imageUrl;
-    });
-
-    return image;
-  } finally {
-    URL.revokeObjectURL(imageUrl);
-  }
-}
-
-function canvasToJpegDataUrl(canvas: HTMLCanvasElement) {
-  return new Promise<string>((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) {
-          reject(new Error("The remittance image could not be prepared."));
-          return;
-        }
-
-        void fileToDataUrl(blob).then(resolve, reject);
-      },
-      "image/jpeg",
-      0.98
-    );
-  });
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-async function dataUrlToImageFile(dataUrl: string, fileName: string) {
-  const response = await fetch(dataUrl);
-  const blob = await response.blob();
-
-  return new File([blob], fileName, {
-    type: blob.type || "image/jpeg",
-  });
-}
-
-function cropBoxForRotation(cropBox: CropBox, rotation: number): CropBox {
-  const normalizedRotation = ((rotation % 360) + 360) % 360;
-
-  if (normalizedRotation === 90) {
-    return {
-      left: 100 - cropBox.bottom,
-      top: cropBox.left,
-      right: 100 - cropBox.top,
-      bottom: cropBox.right,
-    };
-  }
-
-  if (normalizedRotation === 180) {
-    return {
-      left: 100 - cropBox.right,
-      top: 100 - cropBox.bottom,
-      right: 100 - cropBox.left,
-      bottom: 100 - cropBox.top,
-    };
-  }
-
-  if (normalizedRotation === 270) {
-    return {
-      left: cropBox.top,
-      top: 100 - cropBox.right,
-      right: cropBox.bottom,
-      bottom: 100 - cropBox.left,
-    };
-  }
-
-  return cropBox;
-}
-
-function cropBoxAreaRatio(cropBox: CropBox) {
-  return (
-    (Math.max(cropBox.right - cropBox.left, 0) *
-      Math.max(cropBox.bottom - cropBox.top, 0)) /
-    10_000
-  );
-}
-
-function qualityMessageFromMetrics(
-  effectiveWidth: number,
-  effectiveHeight: number,
-  documentAreaRatio: number,
-  quality: ImageQualityReport
-) {
-  const messages: string[] = [];
-  const shortestEdge = Math.min(effectiveWidth, effectiveHeight);
-  const longestEdge = Math.max(effectiveWidth, effectiveHeight);
-  const completeDocumentLikely = documentAreaRatio >= 0.72;
-  const readableLongRemittance =
-    longestEdge >= 1800 && shortestEdge >= 650 && quality.ok;
-
-  if (documentAreaRatio < 0.22 && longestEdge < 1800) {
-    messages.push("Move closer - document is too distant.");
-  } else if (
-    !completeDocumentLikely &&
-    !readableLongRemittance &&
-    (longestEdge < 1500 || shortestEdge < 520)
-  ) {
-    messages.push("Use a higher-resolution photo.");
-  }
-
-  if (quality.blurScore < 8) {
-    messages.push("Retake photo - image is blurry.");
-  }
-
-  if (quality.brightness < 70) {
-    messages.push("More light needed.");
-  }
-
-  if (quality.contrast < 22) {
-    messages.push("Use stronger lighting or a darker background.");
-  }
-
-  return messages;
-}
-
-async function inspectImageQuality(
-  file: File,
-  cropBox: CropBox
-): Promise<ImageQualityReport> {
-  const image = await remittanceDeadline(imageElementFromFile(file), 12_000, "Photo could not be decoded. Choose a JPEG photo or enter manually.");
-  const naturalWidth = image.naturalWidth || image.width;
-  const naturalHeight = image.naturalHeight || image.height;
-  const sourceX = Math.round((cropBox.left / 100) * naturalWidth);
-  const sourceY = Math.round((cropBox.top / 100) * naturalHeight);
-  const sourceWidth = Math.max(
-    1,
-    Math.round(((cropBox.right - cropBox.left) / 100) * naturalWidth)
-  );
-  const sourceHeight = Math.max(
-    1,
-    Math.round(((cropBox.bottom - cropBox.top) / 100) * naturalHeight)
-  );
-  const scanWidth = 360;
-  const scale = Math.min(1, scanWidth / Math.max(sourceWidth, sourceHeight));
-  const width = Math.max(1, Math.round(sourceWidth * scale));
-  const height = Math.max(1, Math.round(sourceHeight * scale));
-  const canvas = document.createElement("canvas");
-  const context = canvas.getContext("2d", { willReadFrequently: true });
-
-  if (!context) {
-    throw new Error("Unable to inspect the remittance photo.");
-  }
-
-  canvas.width = width;
-  canvas.height = height;
-  context.drawImage(
-    image,
-    sourceX,
-    sourceY,
-    sourceWidth,
-    sourceHeight,
-    0,
-    0,
-    width,
-    height
-  );
-
-  const pixels = context.getImageData(0, 0, width, height).data;
-  let total = 0;
-  let totalSquared = 0;
-  const grayscale = new Float32Array(width * height);
-
-  for (let index = 0; index < width * height; index += 1) {
-    const offset = index * 4;
-    const red = pixels[offset] ?? 0;
-    const green = pixels[offset + 1] ?? red;
-    const blue = pixels[offset + 2] ?? red;
-    const value = red * 0.299 + green * 0.587 + blue * 0.114;
-
-    grayscale[index] = value;
-    total += value;
-    totalSquared += value * value;
-  }
-
-  const count = Math.max(width * height, 1);
-  const brightness = total / count;
-  const variance = Math.max(totalSquared / count - brightness * brightness, 0);
-  const contrast = Math.sqrt(variance);
-  let laplacianTotal = 0;
-  let laplacianCount = 0;
-
-  for (let y = 1; y < height - 1; y += 1) {
-    for (let x = 1; x < width - 1; x += 1) {
-      const center = grayscale[y * width + x] ?? 0;
-      const laplacian =
-        Math.abs(
-          (grayscale[(y - 1) * width + x] ?? center) +
-            (grayscale[(y + 1) * width + x] ?? center) +
-            (grayscale[y * width + x - 1] ?? center) +
-            (grayscale[y * width + x + 1] ?? center) -
-            center * 4
-        );
-
-      laplacianTotal += laplacian;
-      laplacianCount += 1;
-    }
-  }
-
-  const blurScore = laplacianTotal / Math.max(laplacianCount, 1);
-  const ok = brightness >= 70 && contrast >= 22 && blurScore >= 8;
-
-  return {
-    ok,
-    message: ok ? "Ready" : "Retake or adjust crop before reading.",
-    brightness,
-    contrast,
-    blurScore,
-  };
-}
-
-
-
-async function cropPhotoForOcr(file: File, cropBox: CropBox, rotation: number) {
-  const image = await imageElementFromFile(file);
-  const naturalWidth = image.naturalWidth || image.width;
-  const naturalHeight = image.naturalHeight || image.height;
-  const sourceCropBox = cropBoxForRotation(cropBox, rotation);
-  const sourceX = Math.round((sourceCropBox.left / 100) * naturalWidth);
-  const sourceY = Math.round((sourceCropBox.top / 100) * naturalHeight);
-  const sourceWidth = Math.max(
-    1,
-    Math.round(((sourceCropBox.right - sourceCropBox.left) / 100) * naturalWidth)
-  );
-  const sourceHeight = Math.max(
-    1,
-    Math.round(((sourceCropBox.bottom - sourceCropBox.top) / 100) * naturalHeight)
-  );
-  const normalizedRotation = ((rotation % 360) + 360) % 360;
-  const rotatedSideways = normalizedRotation === 90 || normalizedRotation === 270;
-  const maxEdge = 4600;
-  const minReadableEdge = 2400;
-  const scale = Math.min(
-    maxEdge / Math.max(sourceWidth, sourceHeight),
-    Math.max(1, minReadableEdge / Math.max(sourceWidth, sourceHeight))
-  );
-  const outputWidth = Math.max(
-    1,
-    Math.round((rotatedSideways ? sourceHeight : sourceWidth) * scale)
-  );
-  const outputHeight = Math.max(
-    1,
-    Math.round((rotatedSideways ? sourceWidth : sourceHeight) * scale)
-  );
-  const canvas = document.createElement("canvas");
-  const context = canvas.getContext("2d");
-
-  if (!context) {
-    throw new Error("The remittance crop could not be prepared.");
-  }
-
-  canvas.width = outputWidth;
-  canvas.height = outputHeight;
-  context.fillStyle = "#ffffff";
-  context.fillRect(0, 0, outputWidth, outputHeight);
-  context.translate(outputWidth / 2, outputHeight / 2);
-  context.rotate((normalizedRotation * Math.PI) / 180);
-  context.drawImage(
-    image,
-    sourceX,
-    sourceY,
-    sourceWidth,
-    sourceHeight,
-    -(sourceWidth * scale) / 2,
-    -(sourceHeight * scale) / 2,
-    sourceWidth * scale,
-    sourceHeight * scale
-  );
-
-  return canvasToJpegDataUrl(canvas);
 }
 
 function safeStorageFileName(fileName: string) {
@@ -949,60 +595,16 @@ export default function BatchInvoicePayments({
   const [checkAmount, setCheckAmount] = useState(
     startingFocus ? formatMoney(startingFocus.total) : ""
   );
-  
-  
-  
+
   const observationScopeRef = useRef<string>(crypto.randomUUID());
   const opticalRef = useRef<OpticalEvidence>({images:[],notes:[]});
   const [checkImagePreview, setCheckImagePreview] = useState("");
   const [checkImageName, setCheckImageName] = useState("");
   const [checkImageFile, setCheckImageFile] = useState<File | null>(null);
   const [ocrImageFile, setOcrImageFile] = useState<File | null>(null);
-  const [cropBox, setCropBox] = useState<CropBox>({
-    left: 8,
-    top: 8,
-    right: 92,
-    bottom: 92,
-  });
-  const cropFrameRef = useRef<HTMLDivElement | null>(null);
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  const cropDragRef = useRef<{
-    target: CropDragTarget;
-    startX: number;
-    startY: number;
-    startBox: CropBox;
-  } | null>(null);
-  const [cropRotation, setCropRotation] = useState(0);
-  const [cropPreviewAspectRatio, setCropPreviewAspectRatio] = useState(4 / 3);
-  const [isTightlyFramedRemittance, setIsTightlyFramedRemittance] =
-    useState(false);
-  const [captureQualityMessage, setCaptureQualityMessage] = useState("");
-  const [captureQualityDetails, setCaptureQualityDetails] = useState("");
-  
-  
-  
-  
-  
-  
 
-  
   const resumedDiagnosticReplay = useRef(false);
-  
-  
+
   const [captureDocumentType, setCaptureDocumentType] =
     useState<RemittanceDocumentType>("remittance_stub");
   const [captureIntent, setCaptureIntent] = useState<CaptureIntent>("primary");
@@ -1328,7 +930,9 @@ export default function BatchInvoicePayments({
     };
   }, [checkImagePreview]);
 
-  function appendCameraStage(stage: string) { setCheckOcrMessage(stage); }
+  function appendCameraStage(stage: string) {
+    setCheckOcrMessage(stage.includes("Upload") ? "Preparing image" : stage === "OCR started" ? "Reading remittance" : stage === "Matching completed" ? "Preparing review" : "Finding invoices");
+  }
 
   function toggleInvoice(invoiceId: string) {
     setSelectedIds((current) =>
@@ -2074,7 +1678,7 @@ export default function BatchInvoicePayments({
     );
 
     if ((hasCheckNumber || hasDate) && !hasTotal && confirmedInvoiceCount === 0) {
-      return "Check details were found, but the amount and remittance rows were not. Adjust crop around the invoice rows or enter the missing amount/invoices manually.";
+      return "Check details were found, but the amount and remittance rows were not. Retake with all invoice rows visible or enter the missing amount/invoices manually.";
     }
 
     if (!hasTotal && confirmedInvoiceCount > 0) {
@@ -2086,14 +1690,14 @@ export default function BatchInvoicePayments({
         return "Some text was detected, but invoice rows could not be confirmed. Invoice numbers or amounts are missing.";
       }
 
-      return "Check amount was found, but remittance invoice rows were not. Adjust crop around the invoice rows or select the missing invoices manually.";
+      return "Check amount was found, but remittance invoice rows were not. Retake with all invoice rows visible or select the missing invoices manually.";
     }
 
     if (hasInvoiceFragments && confirmedInvoiceCount === 0) {
       return "Some text was detected, but invoice rows could not be confirmed. Invoice numbers or amounts are missing.";
     }
 
-    return data.error ?? "Could not read this remittance. Adjust crop or enter manually.";
+    return data.error ?? "Could not read this remittance. Retake or enter manually.";
   }
 
   function buildOcrDiagnosticReport() {
@@ -2469,6 +2073,18 @@ export default function BatchInvoicePayments({
     }
   }
 
+  function beginCapture(implementation: CaptureImplementation, reason: string) {
+    const now=Date.now();
+    captureUi.current={selection:selectCapture(implementation,{
+      nativeStillConfigured:shadowFlags.nativeStill,shadowConfigured:shadowFlags.enabled,
+      flagsLoaded:shadowFlags.businessId===businessId,roleLoaded:Boolean(workspaceRole),workspaceLoaded:Boolean(businessId),
+      shadowEligible:shadowFlags.businessId===businessId && shadowAllowed(shadowFlags,workspaceRole),flagReadError:shadowFlags.readError??null,
+    },reason,now),clientBuild:process.env.NEXT_PUBLIC_TRIMAX_BUILD??'local',fallbackOccurred:false,fallbackReason:null,
+      acquisitionMechanism:implementation==='native-still'?'file-input-capture-environment':implementation==='existing-photo'?'file-input-existing':'custom-camera',
+      takePhotoTappedAt:implementation==='native-still'?now:null,nativeCameraInvokedAt:null,imageReturnedAt:null,cameraUiEndedAt:null,
+      previewPaintOpportunityAt:null,previewImageLoadedAt:null,previewError:null,canonicalUploadStartedAt:null,canonicalUploadAcknowledgedAt:null,legacyJobQueuedAt:null,shadowJobQueuedAt:null};
+  }
+
   const extractCheckStubFromPhoto = useRemittanceEvent(async function extractCheckStubFromPhotoEvent(
     imageDataUrl: string,
     documentType: RemittanceDocumentType = captureDocumentType,
@@ -2528,7 +2144,7 @@ export default function BatchInvoicePayments({
     if (imageDataUrl.length > 19_500_000) {
       setCheckOcrStatus("manual");
       setCheckOcrMessage(
-        "That crop is large. Adjust crop tighter or enter the payment manually."
+        "That photo is too large. Choose a smaller photo or enter the payment manually."
       );
       complete("failed",null,["Image exceeds OCR request size limit."]);
       return;
@@ -2696,7 +2312,7 @@ export default function BatchInvoicePayments({
         setCaptureRetry({run:async()=>{
           if(captureRetryBusy.current || attemptVersion!==ocrAttemptVersion.current)return;
           captureRetryBusy.current=true;
-          try { await extractCheckStubFromPhoto(imageDataUrl,documentType,intent,retryStrategy,prepDiagnosticLines,currentDocumentFingerprint,retainedReference,{history,canonical}); }
+          try { await extractCheckStubFromPhotoEvent(imageDataUrl,documentType,intent,retryStrategy,prepDiagnosticLines,currentDocumentFingerprint,retainedReference,{history,canonical}); }
           finally {captureRetryBusy.current=false;}
         }});
         return;
@@ -2704,7 +2320,7 @@ export default function BatchInvoicePayments({
       // Network failures do not terminate an independently running durable job.
       setCheckOcrStatus('error');
       setCheckOcrMessage('Capture saved — processing status unavailable. Open the saved scan to resume.');
-      setCaptureRetry({run:async()=>{await extractCheckStubFromPhoto(imageDataUrl,documentType,intent,retryStrategy,prepDiagnosticLines,currentDocumentFingerprint,retainedReference,{history,canonical});}});
+      setCaptureRetry({run:async()=>{await extractCheckStubFromPhotoEvent(imageDataUrl,documentType,intent,retryStrategy,prepDiagnosticLines,currentDocumentFingerprint,retainedReference,{history,canonical});}});
     }
   });
 
@@ -2719,181 +2335,44 @@ export default function BatchInvoicePayments({
     }).catch(()=>{if(version===ocrAttemptVersion.current)setScanSavedStatus("Attempt could not be saved. Keep this page open.");});
   }
 
-  const readPreparedRemittanceFromFile = useRemittanceEvent(async function readPreparedRemittanceFromFileEvent(
+  const readPreparedRemittanceFromFile = useRemittanceEvent(async function prepareRemittance(
     file: File,
-    nextCropBox: CropBox,
-    nextRotation: number,
-    documentType: RemittanceDocumentType = captureDocumentType,
-    intent: CaptureIntent = captureIntent,
+    documentType: RemittanceDocumentType = captureDocumentType, intent: CaptureIntent = captureIntent,
     retryStrategy: OcrRetryStrategy = "standard",
-    allowQualityOverride = false,
-    sourceType: OcrSourceType = lastOcrSourceType,
-    sourceDiagnosticLines: string[] = lastCameraCaptureDiagnosticLines
+    sourceType: OcrSourceType = lastOcrSourceType, sourceDiagnosticLines: string[] = lastCameraCaptureDiagnosticLines
   ): Promise<void> {
-    setCaptureRetry(null);
-    const preparationVersion = ++ocrAttemptVersion.current;
-    setActiveRemittanceAttempt(null);
-    setSelectedIds([]);
-    setReviewMatchedInvoices([]);
-    setExtractedPaymentAmount(null);
-    setCheckAmount("");
-    setCapturedCheckAmount("");
-    setPaymentReference("");
-    setCapturedCheckReference("");
-    setCheckPayor("");
-    setCheckDate("");
-    setPaymentReviewNotice("");
-    clearCurrentRemittanceReviewState();
+    const version = ++ocrAttemptVersion.current;
+    setCaptureRetry(null); setIsPreparingCrop(true); setCheckOcrStatus("reading");
+    setCheckOcrMessage("Preparing image");
     setOcrReconciliationVerified(false);
-    setIsPreparingCrop(true);
-
     try {
-      const image = await imageElementFromFile(file);
-      const naturalWidth = image.naturalWidth || image.width;
-      const naturalHeight = image.naturalHeight || image.height;
-      const effectiveWidth = Math.round(
-        ((nextCropBox.right - nextCropBox.left) / 100) * naturalWidth
-      );
-      const effectiveHeight = Math.round(
-        ((nextCropBox.bottom - nextCropBox.top) / 100) * naturalHeight
-      );
-      const quality = await remittanceDeadline(inspectImageQuality(file, nextCropBox), 12_000, "Could not prepare this photo. Retry or enter manually.");
-      const qualityMessages = qualityMessageFromMetrics(
-        effectiveWidth,
-        effectiveHeight,
-        cropBoxAreaRatio(nextCropBox),
-        quality
-      );
-      if (preparationVersion !== ocrAttemptVersion.current) return;
-      const ocrPermitted = qualityMessages.length === 0;
-      const initialPrepDiagnosticLines = [
-        `Source type: ${sourceType}.`,
-        ...(sourceType === "camera" ? sourceDiagnosticLines : []),
-        `Source image: ${naturalWidth} x ${naturalHeight}, ${file.size} bytes, ${file.name || "unnamed image"}, ${file.type || "unknown MIME type"}.`,
-        `Crop box: left ${nextCropBox.left.toFixed(1)}%, top ${nextCropBox.top.toFixed(1)}%, right ${nextCropBox.right.toFixed(1)}%, bottom ${nextCropBox.bottom.toFixed(1)}%, rotation ${nextRotation}deg.`,
-        `Crop dimensions: ${effectiveWidth} x ${effectiveHeight}.`,
-        `Final production OCR crop dimensions: ${effectiveWidth} x ${effectiveHeight}.`,
-        `Quality gate: ${ocrPermitted || allowQualityOverride ? "passed" : "blocked"}; brightness ${quality.brightness.toFixed(1)}, contrast ${quality.contrast.toFixed(1)}, sharpness ${quality.blurScore.toFixed(1)}, area ${(cropBoxAreaRatio(nextCropBox) * 100).toFixed(1)}%.`,
-        `Retry strategy: ${retryStrategy}; quality override: ${allowQualityOverride ? "yes" : "no"}.`,
-      ];
-
-      setLastOcrPrepDiagnosticLines(initialPrepDiagnosticLines);
-
-      setCaptureQualityDetails(
-        `OCR crop: ${effectiveWidth} x ${effectiveHeight}. Brightness ${quality.brightness.toFixed(
-          1
-        )}, contrast ${quality.contrast.toFixed(1)}, sharpness ${quality.blurScore.toFixed(
-          1
-        )}.`
-      );
-
-
-      if (qualityMessages.length > 0 && !allowQualityOverride) {
-        setPaymentEntryMode("crop");
-        setCheckOcrStatus("manual");
-        setCheckOcrMessage(qualityMessages[0]);
-        setCaptureQualityMessage(qualityMessages[0]);
-        retainPreparationFailure(qualityMessages[0],initialPrepDiagnosticLines,sourceType,preparationVersion);
-        setLastOcrDiagnosticLines([
-          ...initialPrepDiagnosticLines,
-          "OCR request prepared: no.",
-          "OCR started: no.",
-          `Failure stage: image-quality-gate (${qualityMessages[0]}).`,
-        ]);
-        return;
-      }
-
-      const imageDataUrl = await remittanceDeadline(cropPhotoForOcr(file, nextCropBox, nextRotation), 15_000, "Image preparation timed out. Retry or enter manually.");
-      const preparedFile = await dataUrlToImageFile(
-        imageDataUrl,
-        `trimax-remittance-ocr-${Date.now()}.jpg`
-      );
-      const preparedImage = await imageElementFromFile(preparedFile);
-      if (preparationVersion !== ocrAttemptVersion.current) return;
-      const preparedWidth = preparedImage.naturalWidth || preparedImage.width;
-      const preparedHeight = preparedImage.naturalHeight || preparedImage.height;
-      preparedCaptureRef.current = { source: sourceType === "camera" ? sourceSelectionRef.current.find(candidate => candidate.metrics?.selected)?.id ?? "canvas" : sourceType, image: { width: preparedWidth, height: preparedHeight, bytes: preparedFile.size, mime: preparedFile.type }, quality: { brightness: quality.brightness, contrast: quality.contrast, sharpness: quality.blurScore }, sources: sourceType === "camera" ? structuredClone(sourceSelectionRef.current) : [], selectionReason: sourceDiagnosticLines.find(line => line.startsWith("Selection reason:")) ?? "Existing photo or selected camera frame" };
-      const prepDiagnosticLines = [
-        ...initialPrepDiagnosticLines,
-        `Normalized OCR image: ${preparedWidth} x ${preparedHeight}, ${preparedFile.size} bytes.`,
-        "Saved preview and OCR input: same normalized crop.",
-      ];
-
-      setLastOcrPrepDiagnosticLines(prepDiagnosticLines);
-      appendCameraStage(
-        `OCR upload prepared: ${preparedFile.size} bytes, preview and OCR input use same normalized crop`
-      );
-      const normalizedRotation = ((nextRotation % 360) + 360) % 360;
-      const rotatedSideways =
-        normalizedRotation === 90 || normalizedRotation === 270;
-
-      if(sourceType === "camera"){opticalRef.current.images=opticalRef.current.images.filter(i=>i.label!=="Final OCR input");opticalRef.current.images.push(await opticalImage(preparedFile,"Final OCR input",preparedCaptureRef.current?.source??"camera",null,nextRotation,"Exact preview and OCR request JPEG"));}
-      setOcrImageFile(preparedFile);
-      setCheckImageFile(preparedFile);
-      setCheckImagePreview(imageDataUrl);
-      setCheckImageName(preparedFile.name);
-      setCropBox({ left: 0, top: 0, right: 100, bottom: 100 });
-      setCropRotation(0);
-      setCropPreviewAspectRatio(
-        rotatedSideways
-          ? effectiveHeight / Math.max(effectiveWidth, 1)
-          : effectiveWidth / Math.max(effectiveHeight, 1)
-      );
-      setCaptureQualityMessage("Document quality looks ready.");
-      setCaptureQualityDetails(
-        `Saved preview and OCR input match: ${preparedFile.name}, ${preparedFile.size} bytes, crop ${effectiveWidth} x ${effectiveHeight}.`
-      );
+      const normalized = await remittanceDeadline(normalizePhysicalStill(file), 20_000, "This photo could not be prepared. Choose a JPEG photo, retake, or enter manually.");
+      const imageDataUrl = await remittanceDeadline(fileToDataUrl(normalized.file), 8_000, "Could not read this photo. Retry or enter manually.");
+      if (version !== ocrAttemptVersion.current) return;
+      const metadata = normalized.metadata;
+      const lines = [...sourceDiagnosticLines,
+        'Source type: '+sourceType+'.',
+        'Source image: '+metadata.rawWidth+' x '+metadata.rawHeight+', '+file.size+' bytes.',
+        metadata.transformation, 'Full image preserved; no document crop or competing camera source.',
+        'Saved preview and OCR input match: '+metadata.width+' x '+metadata.height+'.'];
+      preparedCaptureRef.current = {source:sourceType,image:{width:metadata.width,height:metadata.height,bytes:normalized.file.size,mime:normalized.file.type},quality:{},sources:[],selectionReason:'Full-frame guided capture or existing photo; EXIF normalized once'};
+      setOcrImageFile(normalized.file); setCheckImageFile(normalized.file);
+      setCheckImagePreview(imageDataUrl); setCheckImageName(file.name);
+      setLastOcrPrepDiagnosticLines(lines);
       setPaymentEntryMode("photo");
-      const duplicatePreflight = await remittanceDeadline(runDuplicateRemittancePreflight(
-        preparedFile,
-        prepDiagnosticLines,
-        {
-          checkNumber: "",
-          amount: null,
-          checkDate: "",
-          receivedDate,
-          payor: "",
-          invoiceIds: [],
-          invoiceNumbers: [],
-        },
-        () => preparationVersion === ocrAttemptVersion.current
-      ), 15_000, "Could not check this remittance. Retry or enter manually.");
-
-      if (preparationVersion !== ocrAttemptVersion.current) return;
-      if (duplicatePreflight.stoppedOcr) {
-        return;
-      }
-
+      const duplicate = await remittanceDeadline(runDuplicateRemittancePreflight(normalized.file,lines,
+        {checkNumber:"",amount:null,checkDate:"",receivedDate,payor:"",invoiceIds:[],invoiceNumbers:[]},
+        () => version === ocrAttemptVersion.current),15_000,"Could not check this remittance. Retry or enter manually.");
+      if (version !== ocrAttemptVersion.current || duplicate.stoppedOcr) return;
       setIsPreparingCrop(false);
-      void extractCheckStubFromPhoto(
-        imageDataUrl,
-        documentType,
-        intent,
-        retryStrategy,
-        prepDiagnosticLines,
-        duplicatePreflight.fingerprint
-      );
+      await extractCheckStubFromPhoto(imageDataUrl,documentType,intent,retryStrategy,lines,duplicate.fingerprint);
     } catch (error) {
-      if (preparationVersion !== ocrAttemptVersion.current) return;
-      retainPreparationFailure(error instanceof Error?error.message:"Image preparation failed",sourceDiagnosticLines,sourceType,preparationVersion);
-      setCheckOcrStatus("error");
-      setCheckOcrMessage(
-        error instanceof Error
-          ? error.message
-          : "Could not read this remittance. Adjust crop or enter manually."
-      );
-    } finally {
-      if (preparationVersion === ocrAttemptVersion.current) setIsPreparingCrop(false);
-    }
+      if (version !== ocrAttemptVersion.current) return;
+      const message = error instanceof Error ? error.message : "Could not prepare this remittance. Retake or enter manually.";
+      retainPreparationFailure(message,sourceDiagnosticLines,sourceType,version);
+      setCheckOcrStatus("error"); setCheckOcrMessage(message);
+    } finally { if (version === ocrAttemptVersion.current) setIsPreparingCrop(false); }
   });
-
-  async function readCroppedRemittance() {
-    if (!checkImageFile) {
-      return;
-    }
-
-    await readPreparedRemittanceFromFile(checkImageFile, cropBox, cropRotation);
-  }
 
   function clearCurrentRemittanceReviewState() {
     setRemittanceDocumentFingerprint("");
@@ -2908,10 +2387,7 @@ export default function BatchInvoicePayments({
     setOcrReconciliationVerified(false);
     setCheckImageFile(null);
     setCheckImageName("");
-    setCropBox({ left: 8, top: 8, right: 92, bottom: 92 });
-    setCropRotation(0);
-    setCropPreviewAspectRatio(4 / 3);
-    setIsTightlyFramedRemittance(false);
+
     setIsPreparingCrop(false);
     setFiledPaymentImage(null);
     clearCurrentRemittanceReviewState();
@@ -2936,98 +2412,6 @@ export default function BatchInvoicePayments({
       "Upload a remittance stub or enter the payment manually."
     );
     setPaymentEntryMode("choice");
-  }
-
-  function constrainCropBox(next: CropBox): CropBox {
-    const minimumSize = 8;
-    const left = Math.max(0, Math.min(next.left, 100 - minimumSize));
-    const top = Math.max(0, Math.min(next.top, 100 - minimumSize));
-    const right = Math.min(100, Math.max(next.right, left + minimumSize));
-    const bottom = Math.min(100, Math.max(next.bottom, top + minimumSize));
-
-    return {
-      left: Math.min(left, right - minimumSize),
-      top: Math.min(top, bottom - minimumSize),
-      right,
-      bottom,
-    };
-  }
-
-  function beginCropDrag(
-    event: PointerEvent<HTMLButtonElement | HTMLDivElement>,
-    target: CropDragTarget
-  ) {
-    event.preventDefault();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    cropDragRef.current = {
-      target,
-      startX: event.clientX,
-      startY: event.clientY,
-      startBox: cropBox,
-    };
-  }
-
-  function updateCropDrag(event: PointerEvent<HTMLDivElement>) {
-    const drag = cropDragRef.current;
-    const frame = cropFrameRef.current;
-
-    if (!drag || !frame) {
-      return;
-    }
-
-    const rect = frame.getBoundingClientRect();
-    const deltaX = ((event.clientX - drag.startX) / rect.width) * 100;
-    const deltaY = ((event.clientY - drag.startY) / rect.height) * 100;
-    const start = drag.startBox;
-    const width = start.right - start.left;
-    const height = start.bottom - start.top;
-
-    if (drag.target === "move") {
-      const left = Math.max(0, Math.min(start.left + deltaX, 100 - width));
-      const top = Math.max(0, Math.min(start.top + deltaY, 100 - height));
-
-      setCropBox({
-        left,
-        top,
-        right: left + width,
-        bottom: top + height,
-      });
-      return;
-    }
-
-    setCropBox(
-      constrainCropBox({
-        left:
-          drag.target === "top-left" || drag.target === "bottom-left"
-            ? start.left + deltaX
-            : start.left,
-        top:
-          drag.target === "top-left" || drag.target === "top-right"
-            ? start.top + deltaY
-            : start.top,
-        right:
-          drag.target === "top-right" || drag.target === "bottom-right"
-            ? start.right + deltaX
-            : start.right,
-        bottom:
-          drag.target === "bottom-left" || drag.target === "bottom-right"
-            ? start.bottom + deltaY
-            : start.bottom,
-      })
-    );
-  }
-
-  function endCropDrag() {
-    cropDragRef.current = null;
-  }
-
-  function resetCropToSuggestion() {
-    setCropBox({ left: 8, top: 8, right: 92, bottom: 92 });
-    setCropRotation(0);
-    setIsTightlyFramedRemittance(false);
-    setCaptureQualityMessage("");
-    setCaptureQualityDetails("");
-    setCheckOcrMessage("Adjust the crop, then read it.");
   }
 
   const captureCheckImage = useRemittanceEvent(function captureCheckImageEvent(
@@ -3097,10 +2481,7 @@ export default function BatchInvoicePayments({
     setCompletedPaymentSummary(null);
     setCaptureDocumentType(documentType);
     setCaptureIntent(intent);
-    setCropRotation(0);
-    setIsTightlyFramedRemittance(false);
-    setCaptureQualityMessage("");
-    setCaptureQualityDetails("");
+
     const acquiredEvidence = captureUi.current!;
     setCheckOcrStatus('reading');
     setCheckOcrMessage('Processing remittance…');
@@ -3110,7 +2491,8 @@ export default function BatchInvoicePayments({
         await remittanceDeadline(new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))), 2_000, "Preview paused. Retry when Trimax is visible.");
         if (captureVersion !== ocrAttemptVersion.current) return;
         acquiredEvidence.previewPaintOpportunityAt = Date.now();
-        await readPreparedRemittanceFromFile(capturedFile,{left:0,top:0,right:100,bottom:100},0,documentType,intent,'standard',true,source,
+        captureTimings.current.previewPaintOpportunityAt = acquiredEvidence.previewPaintOpportunityAt;
+        await readPreparedRemittanceFromFile(capturedFile,documentType,intent,'standard',source,
           [...sourceDiagnosticLines,'Capture implementation: guided camera or existing photo; full image preserved.']);
       } catch (error) {
         if (captureVersion !== ocrAttemptVersion.current) return;
@@ -3121,18 +2503,6 @@ export default function BatchInvoicePayments({
     void prepareCapturedImage();
   });
 
-  function beginCapture(implementation: CaptureImplementation, reason: string) {
-    const now=Date.now();
-    captureUi.current={selection:selectCapture(implementation,{
-      nativeStillConfigured:shadowFlags.nativeStill,shadowConfigured:shadowFlags.enabled,
-      flagsLoaded:shadowFlags.businessId===businessId,roleLoaded:Boolean(workspaceRole),workspaceLoaded:Boolean(businessId),
-      shadowEligible:shadowFlags.businessId===businessId && shadowAllowed(shadowFlags,workspaceRole),flagReadError:shadowFlags.readError??null,
-    },reason,now),clientBuild:process.env.NEXT_PUBLIC_TRIMAX_BUILD??'local',fallbackOccurred:false,fallbackReason:null,
-      acquisitionMechanism:implementation==='native-still'?'file-input-capture-environment':implementation==='existing-photo'?'file-input-existing':'custom-camera',
-      takePhotoTappedAt:implementation==='native-still'?now:null,nativeCameraInvokedAt:null,imageReturnedAt:null,cameraUiEndedAt:null,
-      previewPaintOpportunityAt:null,previewImageLoadedAt:null,previewError:null,canonicalUploadStartedAt:null,canonicalUploadAcknowledgedAt:null,legacyJobQueuedAt:null,shadowJobQueuedAt:null};
-  }
-
   const closeRemittanceCamera = useCallback(() => setPaymentEntryMode("choice"), []);
   const enterRemittanceManually = useCallback(() => {
     ocrAttemptVersion.current++;
@@ -3140,6 +2510,7 @@ export default function BatchInvoicePayments({
     setCheckOcrStatus("manual");
     setPaymentEntryMode("manual");
     setCheckOcrMessage("Select invoices and review the payment before applying.");
+    setCaptureRetry(null);
   }, []);
 
   const openCameraCapture = useRemittanceEvent(function openCameraCaptureEvent(documentType: RemittanceDocumentType = captureDocumentType, intent: CaptureIntent = 'primary'): void {
@@ -3536,7 +2907,7 @@ export default function BatchInvoicePayments({
       {toast ? <Toast type={toast.type} message={toast.message} /> : null}
       {typeof document !== "undefined" ? duplicateRemittanceModalView() : null}
 
-      {paymentEntryMode === "camera" && <RemittanceCamera onCancel={closeRemittanceCamera} onManual={enterRemittanceManually} onCapture={file => captureCheckImage(file, "camera")} />}
+      {paymentEntryMode === "camera" && <RemittanceCamera onCancel={closeRemittanceCamera} onManual={enterRemittanceManually} onCapture={(file, source) => captureCheckImage(file, source)} />}
 
       {paymentEntryMode === "complete" ? (
         <div className="rounded-2xl border border-emerald-300/40 bg-emerald-500/10 p-4">
@@ -3632,9 +3003,7 @@ export default function BatchInvoicePayments({
                   </span>
                 </span>
               )}
-              <div className="mt-4 rounded-xl border-2 border-dashed border-sky-300/50 px-4 py-3 text-sm text-sky-100" aria-label="Remittance composition guide">
-                Include the full remittance and all four paper edges. This guide is advisory; your device camera opens separately.
-              </div>
+              <p className="mt-3 text-sm text-sky-100">Hold your phone in landscape. Include all four paper edges.</p>
               <div className="mt-4 flex flex-wrap justify-center gap-2">
                 <button
                   type="button"
@@ -3643,7 +3012,7 @@ export default function BatchInvoicePayments({
                   }}
                   className="check-camera-action inline-flex rounded-full bg-sky-500 px-4 py-2 text-sm font-black text-white transition hover:bg-sky-600"
                 >
-                  Take Photo
+                  {checkImagePreview ? "Retake Photo" : "Take Photo"}
                 </button>
 
                 <label className="inline-flex cursor-pointer rounded-full border border-sky-300/50 px-4 py-2 text-sm font-black text-sky-100 transition hover:border-sky-200 hover:bg-sky-500/10">
@@ -3675,36 +3044,7 @@ export default function BatchInvoicePayments({
                 ) : null}
               </div>
 
-              <button
-                type="button"
-                onClick={() => {
-                  if (checkImagePreview) {
-                    URL.revokeObjectURL(checkImagePreview);
-                    setCheckImagePreview("");
-                  }
-    setCheckImageFile(null);
-    setOcrImageFile(null);
-                  setCheckImageName("");
-    setFiledPaymentImage(null);
-    clearCurrentRemittanceReviewState();
-    setRemittanceStubText("");
-                  setReviewMatchedInvoices([]);
-                  setExtractedPaymentAmount(null);
-                  setPaymentReviewNotice("");
-                  setCompletedPaymentSummary(null);
-                  setCapturedCheckAmount("");
-                  setCapturedCheckReference("");
-                  setCheckPayor("");
-                  setCheckAmount("");
-                  setPaymentReference("");
-                  setPaymentEntryMode("manual");
-                  setCheckOcrStatus("manual");
-                  setCheckOcrMessage("Enter the amount, choose invoices, and apply the payment.");
-                }}
-                className="mt-3 rounded-full border border-emerald-300/50 px-4 py-2 text-sm font-semibold text-emerald-100 transition hover:border-emerald-200 hover:bg-emerald-500/10"
-              >
-                Enter Check Manually
-              </button>
+              <button type="button" onClick={enterRemittanceManually} className="mt-3 min-h-11 rounded-full border border-emerald-300/50 px-4 py-2 text-sm font-semibold text-emerald-100">Enter Manually</button>
 
               {checkImageFile ? (
                 <p className="mt-3 text-xs font-semibold text-sky-200">
@@ -3722,203 +3062,6 @@ export default function BatchInvoicePayments({
                 <p className="text-lg font-black text-white">
                   Upload Remittance or Enter Check Manually
                 </p>
-              </div>
-            ) : null}
-
-            {paymentEntryMode === "crop" ? (
-              <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="font-black text-white">
-                    {isTightlyFramedRemittance
-                      ? "Use Remittance Image"
-                      : "Crop Remittance"}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setCropRotation((current) => current - 90)
-                      }
-                      className="rounded-full border border-slate-400/40 px-3 py-1.5 text-xs font-semibold text-zinc-100 transition hover:bg-white/10"
-                    >
-                      Rotate Left
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setCropRotation((current) => current + 90)
-                      }
-                      className="rounded-full border border-slate-400/40 px-3 py-1.5 text-xs font-semibold text-zinc-100 transition hover:bg-white/10"
-                    >
-                      Rotate Right
-                    </button>
-                  </div>
-                </div>
-
-                {checkImagePreview ? (
-                  <div className="mt-4 overflow-hidden rounded-2xl border border-sky-400/30 bg-black">
-                    <div
-                      ref={cropFrameRef}
-                      className="relative mx-auto max-h-[52vh] w-full touch-none overflow-hidden"
-                      style={{ aspectRatio: cropPreviewAspectRatio }}
-                      onPointerMove={updateCropDrag}
-                      onPointerUp={endCropDrag}
-                      onPointerCancel={endCropDrag}
-                    >
-                      <div
-                        role="img"
-                        aria-label="Selected remittance crop"
-                        className="h-full w-full bg-contain bg-center bg-no-repeat"
-                        style={{
-                          backgroundImage: `url(${checkImagePreview})`,
-                          transform: `rotate(${cropRotation}deg)`,
-                        }}
-                      />
-                      <div
-                        className="absolute border-2 border-emerald-300 bg-emerald-300/10 shadow-[0_0_0_9999px_rgba(0,0,0,0.42)]"
-                        style={{
-                          left: `${cropBox.left}%`,
-                          top: `${cropBox.top}%`,
-                          width: `${cropBox.right - cropBox.left}%`,
-                          height: `${cropBox.bottom - cropBox.top}%`,
-                        }}
-                        onPointerDown={(event) => beginCropDrag(event, "move")}
-                      >
-                        {(
-                          [
-                            ["top-left", "-left-3 -top-3 cursor-nwse-resize"],
-                            ["top-right", "-right-3 -top-3 cursor-nesw-resize"],
-                            ["bottom-left", "-bottom-3 -left-3 cursor-nesw-resize"],
-                            ["bottom-right", "-bottom-3 -right-3 cursor-nwse-resize"],
-                          ] as const
-                        ).map(([target, positionClass]) => (
-                          <button
-                            key={target}
-                            type="button"
-                            aria-label={`Drag ${target.replace("-", " ")} crop handle`}
-                            onPointerDown={(event) => {
-                              event.stopPropagation();
-                              beginCropDrag(event, target);
-                            }}
-                            className={`absolute h-8 w-8 rounded-full border-2 border-black bg-emerald-300 shadow-lg ${positionClass}`}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ) : null}
-
-                <p className="mt-3 text-sm font-semibold text-sky-100">
-                  {checkOcrMessage}
-                </p>
-                {captureQualityMessage ? (
-                  <p className="mt-2 rounded-xl border border-sky-300/25 bg-sky-300/10 px-3 py-2 text-sm font-semibold text-sky-50">
-                    {captureQualityMessage}
-                  </p>
-                ) : null}
-                {captureQualityDetails ? (
-                  <p className="mt-2 text-xs font-semibold text-zinc-300">
-                    {captureQualityDetails}
-                  </p>
-                ) : null}
-
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={readCroppedRemittance}
-                    disabled={isPreparingCrop}
-                    className="rounded-full bg-emerald-500 px-4 py-2 text-sm font-black text-black transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-300"
-                  >
-                    {isPreparingCrop
-                      ? "Preparing..."
-                      : isTightlyFramedRemittance
-                        ? "Use Image As-Is"
-                        : "Use Cropped Image"}
-                  </button>
-                  {captureQualityMessage ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (checkImageFile) {
-                          void readPreparedRemittanceFromFile(
-                            checkImageFile,
-                            cropBox,
-                            cropRotation,
-                            captureDocumentType,
-                            captureIntent,
-                            "standard",
-                            true
-                          );
-                        }
-                      }}
-                      disabled={isPreparingCrop || !checkImageFile}
-                      className="rounded-full border border-amber-200/60 px-4 py-2 text-sm font-semibold text-amber-100 transition hover:bg-amber-300/10 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      Use Cropped Image Anyway
-                    </button>
-                  ) : null}
-                  {isTightlyFramedRemittance ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsTightlyFramedRemittance(false);
-                        setCheckOcrMessage("Adjust the crop, then read it.");
-                      }}
-                      className="rounded-full border border-slate-400/40 px-4 py-2 text-sm font-semibold text-zinc-100 transition hover:bg-white/10"
-                    >
-                      Adjust Crop
-                    </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={resetCropToSuggestion}
-                    className="rounded-full border border-slate-400/40 px-4 py-2 text-sm font-semibold text-zinc-100 transition hover:bg-white/10"
-                  >
-                    Reset
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (checkImagePreview) {
-                        URL.revokeObjectURL(checkImagePreview);
-                        setCheckImagePreview("");
-                      }
-                      setCheckImageFile(null);
-                      setOcrImageFile(null);
-                      setCheckImageName("");
-                      setCropBox({ left: 8, top: 8, right: 92, bottom: 92 });
-                      setCropRotation(0);
-                      setIsTightlyFramedRemittance(false);
-                      setLastOcrDiagnosticLines([]);
-                      setLastOcrPrepDiagnosticLines([]);
-                      setLastOcrRawText("");
-                      setLastOcrSourceType("unknown");
-                      setLastCameraCaptureDiagnosticLines([]);
-                      openCameraCapture(captureDocumentType, captureIntent);
-                    }}
-                    className="rounded-full border border-slate-400/40 px-4 py-2 text-sm font-semibold text-zinc-100 transition hover:bg-white/10"
-                  >
-                    Retake
-                  </button>
-                  <label className="inline-flex cursor-pointer rounded-full border border-slate-400/40 px-4 py-2 text-sm font-semibold text-zinc-100 transition hover:bg-white/10">
-                    Choose Existing Photo
-                    <input
-                      type="file"
-                      accept="image/*,.heic,.heif"
-                    onClick={() => beginCapture('existing-photo','Choose Existing Photo selected')}
-                      className="sr-only"
-                      onChange={(event) => {
-                        captureCheckImage(
-                          event.target.files?.[0],
-                          "existing",
-                          captureDocumentType,
-                          captureIntent
-                        );
-                        event.currentTarget.value = "";
-                      }}
-                    />
-                  </label>
-                </div>
               </div>
             ) : null}
 
@@ -3952,8 +3095,6 @@ export default function BatchInvoicePayments({
                           if (checkImageFile) {
                             void readPreparedRemittanceFromFile(
                               checkImageFile,
-                              cropBox,
-                              cropRotation,
                               captureDocumentType,
                               captureIntent,
                               "alternate"
@@ -3977,9 +3118,7 @@ export default function BatchInvoicePayments({
                       <button
                         type="button"
                         onClick={() => {
-                          setPaymentEntryMode("manual");
-                          setCheckOcrStatus("manual");
-                          setCheckOcrMessage("Select the missing invoice, verify the total, and apply the payment.");
+                          enterRemittanceManually();
                         }}
                         className="rounded-full border border-amber-100/50 px-3 py-1.5 text-xs font-semibold text-amber-50 transition hover:bg-white/10"
                       >
@@ -3989,12 +3128,12 @@ export default function BatchInvoicePayments({
                   </div>
                 ) : null}
 
-                {checkOcrStatus !== "reading" && activeRemittanceAttempt && shadowFlags.businessId===businessId && shadowAllowed(shadowFlags,workspaceRole) && (
+                {retainedAttemptId && checkOcrStatus !== "reading" && activeRemittanceAttempt && shadowFlags.businessId===businessId && shadowAllowed(shadowFlags,workspaceRole) && (
             <div className="mt-3 rounded-xl border border-slate-300/30 p-3 text-sm">
               <button type="button" disabled={sharedMoneyLoading} onClick={()=>void reviewSharedMoney()} className="rounded-full border px-3 py-2 font-semibold disabled:opacity-50">{sharedMoneyLoading?'Loading amount evidence…':'Review specialized amount evidence'}</button>
               <p className="mt-2">{sharedMoneyStatus||'Use saved visual amount evidence from this photo. Invoice selection and payment checks remain separate.'}</p>
             </div>
-          )}          {checkOcrStatus !== "reading" &&
+          )}          {retainedAttemptId && checkOcrStatus !== "reading" &&
                 lastOcrDiagnosticLines.length > 0 ? (
                   <details className="mt-3 rounded-xl border border-sky-300/25 bg-sky-300/10 px-3 py-2 text-xs text-sky-50">
                     <summary className="cursor-pointer font-black">
@@ -4102,14 +3241,6 @@ export default function BatchInvoicePayments({
                   </button>
                 ) : null}
 
-                {checkOcrStatus === "error" || checkOcrStatus === "manual" ? (
-                  <textarea
-                    value={remittanceStubText}
-                    onChange={(event) => setRemittanceStubText(event.target.value)}
-                    placeholder="Paste readable remittance text here if the image did not read cleanly."
-                    className="mt-4 min-h-24 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm leading-6 text-slate-950 outline-none transition focus:border-sky-500"
-                  />
-                ) : null}
               </div>
             ) : null}
           </div>

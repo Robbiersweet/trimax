@@ -19,11 +19,13 @@ async function workerTest(){
 async function clientTest(){
  const source=fs.readFileSync('src/app/lib/ocrLegacyJobClient.ts','utf8'),mod={exports:{}};
  const calls=[];let polls=0,elapsed=0;
- const mockedFetch=async(url,options)=>{calls.push({url,options});if(options.method==='POST')return Response.json({status:'queued'},{status:202});polls++;elapsed+=2500;if(polls===2)throw Error('network interrupted');return Response.json(polls<30?{status:'running'}:{status:'review',httpStatus:200,response:{evidence:{rows:5}}});};
- new Function('require','module','exports','fetch','setTimeout',ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(()=>({supabase:{auth:{getSession:async()=>({data:{session:{access_token:'test'}}})}}}),mod,mod.exports,mockedFetch,fn=>{fn();});
+ const mockedFetch=async(url,options)=>{calls.push({url,options});if(options.method==='POST')return Response.json({status:'queued'},{status:202});polls++;if(polls===2)throw Error('network interrupted');return Response.json(polls<30?{status:'running'}:{status:'review',httpStatus:200,response:{evidence:{rows:5}}});};
+ new Function('require','module','exports','fetch','setTimeout','clearTimeout','performance',ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(()=>({supabase:{auth:{getSession:async()=>({data:{session:{access_token:'test'}}})}}}),mod,mod.exports,mockedFetch,(fn,ms)=>{if(ms===2500){elapsed+=2500;fn();}return 1;},()=>{}, {now:()=>elapsed});
  const response=await mod.exports.waitForLegacyJob({attemptId:crypto.randomUUID(),documentType:'remittance_stub',retryStrategy:'standard'},()=>true,()=>{});
  assert(elapsed>60000);assert.equal(calls.filter(c=>c.options.method==='POST').length,1);const result=await response.json();assert.equal(result.evidence.rows,5);assert(Number.isFinite(result.diagnostics.backgroundJob.enqueueRequestMs));assert(calls.filter(c=>c.options.method==='GET').every(c=>!c.options.body));
  // Reload resumes the same identity; the database contract makes POST idempotent.
+ elapsed=0;
  const id=calls[0].options.body;await mod.exports.waitForLegacyJob(JSON.parse(id),()=>true,()=>{});assert.equal(calls.filter(c=>c.options.method==='POST')[1].options.body,id);
+ elapsed=0;polls=-1000;await assert.rejects(mod.exports.waitForLegacyJob(JSON.parse(id),()=>true,()=>{}),/couldn't finish/);assert(elapsed<=95000);
 }
 (async()=>{await workerTest();await clientTest();console.log('PASS: detached completion, >60s polling, network recovery, same-ID reload, per-stage checkpoint, hash validation, OCR failure, no payment/shadow writes');})().catch(e=>{console.error(e);process.exitCode=1;});

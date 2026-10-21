@@ -65,27 +65,5 @@ assert.equal(matching.findRemittanceMatches(invoices,'TOTAL $5,495.00','North Cr
 const unknown = matching.findRemittanceMatches(invoices,'body 2227','North Creek Apartments',evidence,{amount:0,source:'none',payable:false});
 assert.equal(unknown.confidence,'review');
 assert.equal(unknown.resolvedMatches.length,5);
-async function sourceRegression(){
-  const component=fs.readFileSync('src/app/components/BatchInvoicePayments.tsx','utf8');
-  const start=component.indexOf('  async function selectProductionCaptureSource(');
-  const end=component.indexOf('  async function buildImageCaptureStillComparison(',start);
-  let calls=0;
-  let allFail=false;
-  const select=compile(component.slice(start,end)+'\nexports.select=selectProductionCaptureSource;', {...structure,observationScopeRef:{current:"regression-scope"},fetch:async()=>{
-    const index=calls++;
-    if(allFail || index===1) throw new Error('synthetic still crop failure');
-    return {ok:true,status:200,text:async()=>JSON.stringify({evaluations:[{usable:true,id:index===0?'canvas':'still-full',completenessScore:index===0?20:80,invoiceTokens:index===0?2:5,rowCount:index===0?2:5,explicitTotal:index===0?0:5495}]})};
-  }}).select;
-  const candidates=['canvas','still-crop','still-full'].map(id=>({id,label:id,file:new File(['image'],'test.jpg',{type:'image/jpeg'})}));
-  const result=await select(candidates);
-  assert.equal(calls,3);assert.equal(result.selectedCandidate.id,'still-full');
-  assert(result.diagnosticLines.some(l=>l.includes('synthetic still crop failure')));
-  assert(result.diagnosticLines.some(l=>l.includes('Canvas evaluation')));
-  allFail=true;
-  const failed=await select(candidates);
-  assert.equal(failed.sources.filter(source=>source.status==='failure').length,3);
-  assert(failed.reason.includes('Every candidate evaluation failed'));
-  assert.equal(failed.selectedCandidate.id,'canvas');
-  console.log('Structural OCR regressions passed: isolated source failure, five exclusive rows, normalization/deduplication, unknown header, money fragments and exact reconciliation.');
-}
-module.exports=sourceRegression();
+console.log('Structural OCR regressions passed: five exclusive rows, normalization/deduplication, unknown header, money fragments, exact reconciliation. Camera source competition was removed; guided intake has separate rendered tests.');
+module.exports=Promise.resolve();

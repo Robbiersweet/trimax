@@ -1,4 +1,5 @@
 const scripts=[
+ 'scripts/remittance-camera-browser.cjs','scripts/remittance-intake-regression.cjs','scripts/remittance-deadline-regression.cjs',
  'scripts/scheduler-provisioning-regression.cjs',
  'scripts/service-workflow-sql-regression.cjs','scripts/service-workflow-regression.ts','scripts/scheduling-notifications-ui-regression.cjs',
 "scripts/public-scheduling-authorization-regression.ts","scripts/public-scheduling-boundary-regression.ts","scripts/public-scheduling-challenge-ui-regression.cjs","scripts/public-scheduling-owner-regression.ts","scripts/public-scheduling-phase2-regression.ts","scripts/public-scheduling-production-regression.ts","scripts/public-scheduling-regression.ts",

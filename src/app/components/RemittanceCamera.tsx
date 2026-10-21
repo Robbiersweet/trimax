@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { remittanceDeadline } from "../lib/remittanceDeadline";
 
-type Props = { onCapture: (file: File) => void; onCancel: () => void; onManual: () => void };
+type Props = { onCapture: (file: File, source: "camera" | "existing") => void; onCancel: () => void; onManual: () => void };
 
 /** The guide and video share their intrinsic aspect ratio. Capture keeps every source pixel. */
 export default function RemittanceCamera({ onCapture, onCancel, onManual }: Props) {
@@ -93,7 +93,7 @@ export default function RemittanceCamera({ onCapture, onCancel, onManual }: Prop
       context.drawImage(element, 0, 0);
       const blob = await remittanceDeadline(new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(Error("Photo could not be saved. Retry Camera.")), "image/jpeg", 0.95)), 8_000, "Photo could not be saved. Retry Camera.");
       if (!active.current) return;
-      stop(); onCapture(new File([blob], `remittance-${Date.now()}.jpg`, { type: "image/jpeg" }));
+      stop(); onCapture(new File([blob], `remittance-${Date.now()}.jpg`, { type: "image/jpeg" }), "camera");
     } catch (reason) { if (active.current) setError(reason instanceof Error ? reason.message : "Capture failed. Retry Camera."); }
     finally { capturing.current = false; if (active.current) setBusy(false); }
   }
@@ -114,7 +114,7 @@ export default function RemittanceCamera({ onCapture, onCancel, onManual }: Prop
       {error ? <p role="alert" className="text-sm text-amber-200">{error}</p> : <p role="status" className="text-sm">{busy ? "Saving photo…" : ready ? "Ready to capture" : "Opening camera…"}</p>}
       <button type="button" disabled={!ready || !landscape || busy} onClick={() => void capture()} className="min-h-12 rounded-full bg-white px-4 py-3 font-bold text-black disabled:opacity-40">{busy ? "Saving…" : "Capture"}</button>
       {error && <button type="button" disabled={busy} onClick={() => { setReady(false); setError(""); setGeneration(value => value + 1); }} className="min-h-11 rounded-xl border border-white/40">Retry Camera</button>}
-      <label className="flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-white/40 px-2 text-sm">Choose Existing Photo<input type="file" accept="image/*,.heic,.heif" className="sr-only" disabled={busy} onChange={event => { const file = event.target.files?.[0]; if (file) { stop(); onCapture(file); } }} /></label>
+      <label className="flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-white/40 px-2 text-sm">Choose Existing Photo<input type="file" accept="image/*,.heic,.heif" className="sr-only" disabled={busy} onChange={event => { const file = event.target.files?.[0]; if (file) { stop(); onCapture(file, "existing"); } }} /></label>
       <button type="button" onClick={onManual} className="min-h-11 text-sm underline">Enter Manually</button>
     </div>
   </div>, document.body);

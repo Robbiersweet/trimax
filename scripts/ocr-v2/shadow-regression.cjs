@@ -30,7 +30,7 @@ const {validateVerifiedTruth}=require('../../src/app/lib/ocrV2/shadow/acceptance
  assert.deepEqual(input,original);assert.equal(result.paymentCanApply,false);assert.equal(result.ocrEngine,'v2-shadow');assert.equal(result.model.template.id,'unknown_review');assert.equal(result.resolver.status,'review-required');assert.deepEqual(result.resolver.automaticInvoiceIds,[]);
  const batch=fs.readFileSync('src/app/components/BatchInvoicePayments.tsx','utf8');
  assert(batch.includes('void saved?.then(durable'));assert(!batch.includes('await enqueueShadow'));
- assert(batch.includes('capture="environment"'));assert(batch.includes('snapshot:shadowSnapshot'));
+ assert(batch.includes('<RemittanceCamera '));assert(batch.includes('snapshot:shadowSnapshot'));
  const route=fs.readFileSync('src/app/api/payments/extract-check-stub/route.ts','utf8');assert(!route.includes('shadow'));
  console.log('PASS shadow default-off, role gate, rollback, failure isolation, nonblocking completion, input truth exclusion, shared hash integrity, semantic cell geometry, unknown fallback, no payment authority, immutable snapshot, native intake');
 })().catch(e=>{console.error(e);process.exitCode=1;});
