@@ -46,7 +46,7 @@ export function fuseOrganizationIdentity(observations: OrganizationObservation[]
   const regions: typeof unique = [];
   for (const o of unique) if (!regions.some(r => r.cropHash === o.cropHash || overlap(r.geometry, o.geometry) > 0.1)) regions.push(o);
   const regionKey = (o: typeof unique[number]) => regions.findIndex(r => r.cropHash === o.cropHash || overlap(r.geometry, o.geometry) > 0.1);
-  const candidates = [...new Map(unique.filter(o => o.descriptorEvidence && o.stemKey.length >= 3 && /^[\p{L} ]+$/u.test(o.stem)).map(o => [`${o.stemKey}:${o.descriptorEvidence?.descriptorClass}`, o])).values()].map(seed => {
+  const candidates = [...new Map(unique.filter(o => (o.descriptorEvidence || o.tokenSequence.length >= 2 && !unique.some(other=>other.descriptorEvidence && organizationDistance(o.compact,other.compact)<=1)) && o.stemKey.length >= 3 && /^[\p{L} ]+$/u.test(o.stem)).map(o => [`${o.stemKey}:${o.descriptorEvidence?.descriptorClass}`, o])).values()].map(seed => {
     const votes = unique.filter(o => mature.has(o.recognizer) &&
       (o.stemKey === seed.stemKey && o.descriptorEvidence?.descriptorClass === seed.descriptorEvidence?.descriptorClass || o.compact === seed.compact));
     const engines = [...new Set(votes.map(o => o.recognizer))];

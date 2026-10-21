@@ -66,6 +66,34 @@ export function attemptAllowsApply(attempt: RemittanceAttempt | null, selectedId
   return same(selectedIds) && same(reviewIds) && Math.round(amount * 100) === Math.round((attempt.reconciliationResult.documentTotal ?? 0) * 100);
 }
 
+export function selectRepeatedPropertyIdentity(passes: OcrPass[], rows: StructuredRemittanceRowEvidence[]) {
+  const observations: Array<{text:string;rowId:string;pass:string;bounds:OcrObservation['bbox']}> = [];
+  for(const pass of passes.filter(p=>p.region==='full-document')){
+    const property=pass.words.find(w=>/^property$/i.test(w.text));
+    if(!property)continue;
+    const account=pass.words.find(w=>/^account$/i.test(w.text)&&w.bbox.x0>property.bbox.x1&&Math.abs(w.bbox.y0-property.bbox.y0)<40);
+    if(!account)continue;
+    for(const row of rows){
+      if(row.y==null||row.height==null)continue;
+      const words=pass.words.filter(w=>{
+        const y=(w.bbox.y0+w.bbox.y1)/2;
+        const nearest=rows.filter(r=>r.y!=null).slice().sort((a,b)=>Math.abs(a.y!-y)-Math.abs(b.y!-y))[0];
+        return nearest===row&&Math.abs(y-row.y!)<=row.height!&&w.bbox.y0>property.bbox.y1&&w.bbox.x0>=property.bbox.x0-20&&w.bbox.x1<account.bbox.x0-8;
+      }).sort((a,b)=>a.bbox.x0-b.bbox.x0);
+      const text=words.map(w=>w.text).join(' ').normalize('NFKC').replace(/\s+/g,' ').trim();
+      if(words.length<2||words.some(w=>w.confidence<60)||!/^\p{L}+(?:[ '-]+\p{L}+)+$/u.test(text))continue;
+      observations.push({text,rowId:row.rowId,pass:[pass.region,pass.variant,pass.pageMode].join(':'),bounds:{x0:Math.min(...words.map(w=>w.bbox.x0)),x1:Math.max(...words.map(w=>w.bbox.x1)),y0:Math.min(...words.map(w=>w.bbox.y0)),y1:Math.max(...words.map(w=>w.bbox.y1))}});
+    }
+  }
+  const candidates=[...new Set(observations.map(o=>o.text.toLowerCase()))].map(key=>{
+    const votes=observations.filter(o=>o.text.toLowerCase()===key);
+    const passes=[...new Set(votes.map(o=>o.pass))].filter(p=>new Set(votes.filter(o=>o.pass===p).map(o=>o.rowId)).size>=2);
+    return {value:votes[0].text,passes,rows:[...new Set(votes.map(o=>o.rowId))]};
+  });
+  const supported=candidates.filter(c=>c.passes.length>=2&&c.rows.length>=2);
+  return {value:supported.length===1?supported[0].value:null,observations,candidates};
+}
+
 export function selectObservedHeader(passes: OcrPass[], rows: StructuredRemittanceRowEvidence[]) {
   const candidates = selectRemittanceHeaderEvidence(passes, rows);
   const dates = new Set<string>();
@@ -80,9 +108,10 @@ export function selectObservedHeader(passes: OcrPass[], rows: StructuredRemittan
     }
   }
   const rowSubtotal = rows.reduce((sum, row) => sum + (row.amountCandidates.find(amount => amount.selected)?.value ?? 0), 0);
+  const propertyIdentity=selectRepeatedPropertyIdentity(passes,rows);
   const tinyConflict = (candidates.evidence?.amount ?? 0) < rowSubtotal * 0.1 && (candidates.totalCandidates[0]?.agreement ?? 0) < 2;
   return { checkNumber: candidates.checkNumber || null, checkDate: dates.size === 1 ? [...dates][0] : null,
-    payor: payors.size === 1 ? [...payors][0] : null, documentTotal: candidates.evidence?.payable && !tinyConflict ? candidates.evidence : null, candidates };
+    payor: payors.size === 1 ? [...payors][0] : payors.size===0?propertyIdentity.value:null, propertyIdentity, documentTotal: candidates.evidence?.payable && !tinyConflict ? candidates.evidence : null, candidates };
 }
 
 export function emptyRemittanceEvidence(attemptId: string, capture: ScanCapture | null, reason: string) {

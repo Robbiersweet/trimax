@@ -1,0 +1,23 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Reduced observed physical Glen evidence, no production writes. */
+const assert=require('node:assert/strict');
+const {selectRepeatedPropertyIdentity,selectObservedHeader}=require('../src/app/lib/remittanceAttempt.ts');
+const {findRemittanceMatches,customerMatchesPayor}=require('../src/app/lib/remittanceMatching.ts');
+const {fuseOrganizationIdentity}=require('../src/app/lib/ocrV2/recognition/organizationIdentity.ts');
+const word=(text,x0,x1,y0,y1,confidence=95)=>({text,bbox:{x0,x1,y0,y1},confidence});
+const rows=[841,887,938].map((y,i)=>({rowId:'row-'+i,y,height:29,text:`Glen at North Creek INV-0${536+i} Unit ${['126-C','229-C','230-C'][i]} 1,428.70`,rawInvoiceLikeTokens:[`INV0${536+i}`],normalizedInvoiceCandidates:[`INV-0${536+i}`],amountCandidates:[{value:1428.7,selected:true}],dateTokens:[],unitLikeTokens:[]}));
+const passes=['local-gray','native-color'].map(variant=>({region:'full-document',variant,pageMode:'sparse-text',confidence:95,text:'DATE:10/01/2026\nTOTAL: $4,286.10',words:[word('Property',720,904,722,772),word('Account',1219,1399,728,767),...rows.flatMap(r=>[word('Glen',717,811,r.y-24,r.y+4),word('at',830,870,r.y-24,r.y+4),word('North',890,1020,r.y-24,r.y+4),word('Creek',1040,1167,r.y-24,r.y+4)])]}));
+assert.equal(selectRepeatedPropertyIdentity(passes,rows).value,'Glen at North Creek');
+const header=selectObservedHeader(passes,rows);assert.equal(header.payor,'Glen at North Creek');assert.equal(header.documentTotal.amount,4286.1);
+assert.equal(selectRepeatedPropertyIdentity([passes[0]],rows).value,null);
+assert.equal(selectRepeatedPropertyIdentity(passes,[rows[0]]).value,null);
+assert.equal(selectRepeatedPropertyIdentity(passes.map(p=>({...p,words:p.words.filter(w=>w.text!=='Property')})),rows).value,null);
+const conflicting=[...passes,...passes.map(p=>({...p,variant:p.variant+'-other',words:p.words.map(w=>({...w,text:w.text==='Glen'?'Other':w.text}))}))];assert.equal(selectRepeatedPropertyIdentity(conflicting,rows).value,null);
+assert(customerMatchesPayor('Glen North Creek','Glen at North Creek'));assert(customerMatchesPayor('The Glen at North Creek','Glen at North Creek'));assert(!customerMatchesPayor('North Creek Apartments','Glen at North Creek'));assert(!customerMatchesPayor('Glen North Creek','North Creek'));
+const invoices=rows.map((r,i)=>({id:'glen-'+i,displayId:`INV-0${536+i}`,customerName:'Glen North Creek',projectTitle:r.text,invoiceAmount:1428.7,amountPaid:0,status:'sent'}));
+const north={...invoices[0],id:'north',displayId:'INV-0539',customerName:'North Creek Apartments'};
+const result=findRemittanceMatches([...invoices,north],rows.map(r=>r.text).join('\n')+'\nTOTAL: $4286.10',header.payor,rows,header.documentTotal);
+assert.deepEqual(result.resolvedMatches.map(r=>r.id).sort(),invoices.map(r=>r.id).sort());assert.equal(result.matchedTotal,4286.1);assert(!result.matchTrace.some(r=>r.invoiceId==='north'));
+const expected={documentId:'doc',sourceImageHash:'source'};
+const observations=rows.flatMap((r,i)=>['ppocrv5','svtrv2','parseq'].map(recognizer=>({...expected,id:i+recognizer,cropHash:'crop'+i,sourceRegion:r.rowId,geometry:{left:714,top:820+i*46,width:452,height:38},regionType:'property_name',recognizer,rawText:recognizer==='parseq'?'GlenatNorthCreek':'Glen at North Creek',confidence:null,durationMs:1})));
+assert.equal(fuseOrganizationIdentity(observations,expected).value,'glen at north creek');assert.equal(fuseOrganizationIdentity(observations.map(o=>({...o,sourceImageHash:'wrong'})),expected).value,null);
+console.log('PASS saved Glen descriptor-free visual identity, header geometry/pass/row independence, conflict rejection, unique client compatibility, three exact invoices, no North candidates, exact4286.10');

@@ -1205,7 +1205,7 @@ export default function BatchInvoicePayments({
       setPaymentReference(extractedCheckNumber);
       setCapturedCheckReference(extractedCheckNumber);
     }
-    setCheckPayor((current) => extractedPayor || current);
+    setCheckPayor(extractedPayor);
     setPaymentReviewNotice(
       [
         dedupedReview.duplicateIds.length > 0
@@ -3404,7 +3404,7 @@ export default function BatchInvoicePayments({
             <input
               value={checkPayor}
               onChange={(event) => setCheckPayor(event.target.value)}
-              placeholder="North Creek Apartments"
+              placeholder="Payor / property name"
               className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-sky-500"
             />
           </div>

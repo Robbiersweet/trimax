@@ -147,13 +147,14 @@ function isCollectibleRemittanceInvoiceStatus(value: string) {
 }
 
 export function customerMatchesPayor(customerName: string, payor: string) {
-  const normalizedPayor = payor.trim().toLowerCase();
+  const identityKey = (value: string) => value.normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N} ]/gu, ' ').replace(/\s+/g, ' ').trim().replace(/^the\s+/, '').replace(/\s+at\s+/g, ' ');
+  const normalizedPayor = identityKey(payor);
 
   if (!normalizedPayor) {
     return true;
   }
 
-  const normalizedCustomer = customerName.trim().toLowerCase();
+  const normalizedCustomer = identityKey(customerName);
 
   if (!normalizedCustomer) return false;
 
