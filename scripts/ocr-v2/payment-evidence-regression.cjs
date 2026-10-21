@@ -25,7 +25,7 @@ const observation=(id,raw,confidence=90)=>({id,variant:id,raw,money:paymentMoney
  // Explicit user-authorized client-safety revision; retain byte-for-byte pins
  // and all historical optical assertions. No mutable HEAD baseline.
  for(const file of ['src/app/lib/ocrV2/fusion/index.ts','src/app/lib/ocrV2/resolver/index.ts','src/app/lib/remittanceAttempt.ts','src/app/lib/remittanceMatching.ts']) {
-  const revision=['src/app/lib/ocrV2/resolver/index.ts','src/app/lib/remittanceMatching.ts'].includes(file)?'68bc2b6056a993df51432400f0de02849c2bac0b':'c11d0a0';
+  const revision=file==='src/app/lib/remittanceMatching.ts'?'35d7e37dfffaf9d1f3ed6a278b30f964ba3aecca':file==='src/app/lib/ocrV2/resolver/index.ts'?'68bc2b6056a993df51432400f0de02849c2bac0b':'c11d0a0';
   assert.equal(fs.readFileSync(file,'utf8').replaceAll('\r\n','\n'),cp.execFileSync('git',['show',revision+':'+file],{encoding:'utf8'}).replaceAll('\r\n','\n'),file+' must remain frozen');
  }
  console.log('Phase 5B formatting, conflict, geometry, explicit authority, subtotal rejection, row isolation, header fields, leading zeros, bounded passes and frozen business/invoice contracts passed.');
