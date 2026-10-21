@@ -1,27 +1,21 @@
 "use client";
+import { useRemittanceEvent } from "../lib/useRemittanceEvent";
+import RemittanceCamera from "./RemittanceCamera";
+import { remittanceDeadline, REMITTANCE_PROCESSING_LIMIT_MS } from "../lib/remittanceDeadline";
 import { storeCanonicalCapture, resumeCaptureHandoff } from "../lib/ocrCanonicalClient";
 import LegacyOcrJobs from "./LegacyOcrJobs";
 import { waitForLegacyJob } from "../lib/ocrLegacyJobClient";
 import { transportFailure, type CanonicalCapture, type TransportFailure } from "../lib/ocrCanonical";
 
-import { acquireStillAndRelease, type CameraLifecycle } from "../lib/cameraArtifacts";
-import { normalizePhysicalStill, opticalImage } from "../lib/ocrOpticalBrowser";
-import { captureReadiness, measureCaptureFrame, type GateMemory, type GateDecision } from "../lib/captureReadiness";
+
+import { opticalImage } from "../lib/ocrOpticalBrowser";
+
 import type { OpticalEvidence } from "../lib/ocrOptical";
 
 import { createRemittanceEvidence, emptyRemittanceEvidence, immutableSnapshot, resolveRemittanceAttempt, attemptAllowsApply, type RemittanceAttempt, type RemittanceEvidence, type ScanCapture } from "../lib/remittanceAttempt";
-import { selectPhysicalSource } from "@/app/lib/ocrStructure";
 
-import {
-  MouseEvent,
-  PointerEvent,
-  TouchEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+
+import { PointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Card from "./Card";
@@ -125,25 +119,7 @@ type CropBox = {
   bottom: number;
 };
 
-type CropSuggestion = {
-  cropBox: CropBox;
-  isTightlyFramed: boolean;
-  documentAreaRatio: number;
-  sourceWidth: number;
-  sourceHeight: number;
-  effectiveWidth: number;
-  effectiveHeight: number;
-  clipping: {
-    left: boolean;
-    top: boolean;
-    right: boolean;
-    bottom: boolean;
-  };
-  quality: ImageQualityReport;
-  confidence: "high" | "medium" | "low";
-  qualityMessages: string[];
-  shouldAutoRead: boolean;
-};
+
 
 type ImageQualityReport = {
   ok: boolean;
@@ -153,176 +129,27 @@ type ImageQualityReport = {
   blurScore: number;
 };
 
-type BrowserImageCapture = {
-  takePhoto?: () => Promise<Blob>;
-};
 
-type BrowserImageCaptureConstructor = new (
-  track: MediaStreamTrack
-) => BrowserImageCapture;
 
-type CameraVisualViewport = {
-  left: number;
-  top: number;
-  width: number;
-  height: number;
-};
 
-type CameraRectSnapshot = {
-  top: number;
-  left: number;
-  width: number;
-  height: number;
-  bottom: number;
-  right: number;
-};
 
-type CameraHitTestSnapshot = {
-  point: string;
-  x: number;
-  y: number;
-  element: string;
-};
 
-type CameraActualTapSnapshot = {
-  point: string;
-  x: number;
-  y: number;
-  element: string;
-  target?: string;
-  frame?: CameraRectSnapshot | null;
-  handler?: string;
-  captureStarted?: boolean;
-} | null;
 
-type CameraGeometryDiagnostics = {
-  runtime: {
-    displayMode: "standalone" | "browser";
-    build: string;
-    serviceWorkerController: string;
-  };
-  layoutViewport: { width: number; height: number };
-  visualViewport: CameraVisualViewport;
-  devicePixelRatio: number;
-  video: {
-    hasSrcObject: boolean;
-    activeTracks: number;
-    readyState: number;
-    videoWidth: number;
-    videoHeight: number;
-    playStatus: string;
-    computedStyle: Record<string, string>;
-  };
-  overlay: CameraRectSnapshot | null;
-  videoRect: CameraRectSnapshot | null;
-  preview: CameraRectSnapshot | null;
-  guide: CameraRectSnapshot | null;
-  capture: CameraRectSnapshot | null;
-  checkOnly: CameraRectSnapshot | null;
-  useDeviceCamera: CameraRectSnapshot | null;
-  hitTests: CameraHitTestSnapshot[];
-  lastActualTap: CameraActualTapSnapshot;
-  ancestorStyles: string[];
-  qualityGate: {
-    sourceWidth: number;
-    sourceHeight: number;
-    cropWidth: number;
-    cropHeight: number;
-    documentAreaRatio: number;
-    clipping: CropSuggestion["clipping"];
-    brightness: number;
-    contrast: number;
-    blurScore: number;
-    guidance: string;
-    ocrPermitted: boolean;
-  } | null;
-};
 
-type CameraSourceRect = {
-  sourceX: number;
-  sourceY: number;
-  sourceWidth: number;
-  sourceHeight: number;
-  viewportWidth: number;
-  viewportHeight: number;
-  guideLeft: number;
-  guideTop: number;
-  guideWidth: number;
-  guideHeight: number;
-  renderedVideoLeft: number;
-  renderedVideoTop: number;
-  renderedVideoWidth: number;
-  renderedVideoHeight: number;
-  visibleSourceX: number;
-  visibleSourceY: number;
-  visibleSourceWidth: number;
-  visibleSourceHeight: number;
-  scale: number;
-};
 
-type CameraStillComparisonResult = {
-  diagnosticLines: string[];
-  stageLines: string[];
-  productionFile: File | null;
-  productionCropBox: CropBox | null;
-  productionReason: string;
-};
 
-type CaptureSourceCandidate = {
-  id: string;
-  label: string;
-  file: File;
-  cropBox: CropBox;
-  detectorConfidence?: "high" | "medium" | "low" | "unknown";
-  detectorAreaRatio?: number;
-  detectorSource?: string;
-};
 
-type CaptureSourceSelectionResponse = {
-  preflightStarted?: boolean;
-  selectedCandidateId?: string;
-  selectedLabel?: string;
-  selectedImageDataUrl?: string;
-  selectionReason?: string;
-  durationMs?: number;
-  fallbackOccurred?: boolean;
-  failures?: Array<{
-    id?: string;
-    label?: string;
-    stage?: string;
-    error?: string;
-    inputType?: string;
-    expectedInput?: string;
-    actualInput?: string;
-    variantOutcomes?: unknown;
-  }>;
-  evaluations?: Array<{
-    usable?: boolean;
-    variantOutcomes?: unknown;
-    id?: string;
-    label?: string;
-    inputType?: string;
-    imageMimeType?: string;
-    imageByteSize?: number;
-    dimensions?: { width?: number; height?: number };
-    quality?: { sharpness?: number; contrast?: number };
-    detectorConfidence?: string;
-    detectorAreaRatio?: number;
-    words?: number;
-    highConfidenceWords?: number;
-    textWidthCoverage?: number;
-    textHeightCoverage?: number;
-    invoiceTokens?: number;
-    dateTokens?: number;
-    unitTokens?: number;
-    amountTokens?: number;
-    rowCount?: number;
-    explicitTotal?: number;
-    completenessScore?: number;
-    suspiciousIncomplete?: boolean;
-  }>;
-  error?: string;
-};
+
+
+
+
+
+
+
+
+
+
+
 
 type CheckStubOcrResponse = {
   ocrStarted?: boolean;
@@ -618,7 +445,7 @@ type DuplicateRemittanceModalState = {
   intent: "active" | "reversed" | "possible";
 } | null;
 
-const trimaxBuildIdentifier = "remittance-diagnostics-v5-still-detector";
+
 
 
 type CropDragTarget =
@@ -683,129 +510,17 @@ function todayInputValue() {
   return `${year}-${month}-${day}`;
 }
 
-const remittanceDocumentModes: Array<{
-  value: RemittanceDocumentType;
-  label: string;
-  help: string;
-}> = [
-  {
-    value: "remittance_stub",
-    label: "Remittance Stub",
-    help: "Best for invoice numbers and amounts.",
-  },
-  {
-    value: "full_check_stub",
-    label: "Full Check + Stub",
-    help: "Use when check details are not on the stub.",
-  },
-  {
-    value: "check_only",
-    label: "Check Only",
-    help: "Use for check details without invoice rows.",
-  },
-];
 
-function defaultGuideModeForDocumentType(
-  documentType: RemittanceDocumentType
-): "horizontal" | "vertical" {
-  void documentType;
-  return "horizontal";
-}
 
-function formatCameraDiagnosticValue(value: unknown): string {
-  if (value === undefined || value === null) {
-    return "unsupported";
-  }
 
-  if (Array.isArray(value)) {
-    return value.length > 0 ? value.map(String).join("|") : "none";
-  }
 
-  if (typeof value === "object") {
-    const record = value as Record<string, unknown>;
-    const min = record.min;
-    const max = record.max;
-    const step = record.step;
 
-    if (typeof min !== "undefined" || typeof max !== "undefined") {
-      return `${String(min ?? "?")}-${String(max ?? "?")}${
-        typeof step !== "undefined" ? ` step ${String(step)}` : ""
-      }`;
-    }
 
-    return JSON.stringify(record);
-  }
 
-  return String(value);
-}
 
-function formatCameraTrackSettings(track: MediaStreamTrack | null) {
-  if (!track) {
-    return "track=none";
-  }
 
-  const settings = track.getSettings() as Record<string, unknown>;
-  const keys = [
-    "width",
-    "height",
-    "aspectRatio",
-    "frameRate",
-    "facingMode",
-    "resizeMode",
-    "zoom",
-    "focusMode",
-    "exposureMode",
-    "whiteBalanceMode",
-  ];
 
-  return keys
-    .map((key) => `${key}=${formatCameraDiagnosticValue(settings[key])}`)
-    .join(", ");
-}
 
-function formatCameraTrackCapabilities(track: MediaStreamTrack | null) {
-  if (!track) {
-    return "track=none";
-  }
-
-  const maybeTrack = track as MediaStreamTrack & {
-    getCapabilities?: () => Record<string, unknown>;
-  };
-
-  if (typeof maybeTrack.getCapabilities !== "function") {
-    return "getCapabilities=unsupported";
-  }
-
-  const capabilities = maybeTrack.getCapabilities() as Record<string, unknown>;
-  const keys = [
-    "width",
-    "height",
-    "aspectRatio",
-    "frameRate",
-    "facingMode",
-    "resizeMode",
-    "zoom",
-    "focusMode",
-    "exposureMode",
-    "whiteBalanceMode",
-  ];
-
-  return keys
-    .map((key) => `${key}=${formatCameraDiagnosticValue(capabilities[key])}`)
-    .join(", ");
-}
-
-function guidanceForDocumentType(documentType: RemittanceDocumentType) {
-  if (documentType === "full_check_stub") {
-    return "Show the entire check and stub. For small text, capture the stub separately.";
-  }
-
-  if (documentType === "check_only") {
-    return "Align the check face inside the frame.";
-  }
-
-  return "Fill the wide frame with the remittance rows.";
-}
 
 function fileToDataUrl(file: Blob) {
   return new Promise<string>((resolve, reject) => {
@@ -857,174 +572,17 @@ function canvasToJpegDataUrl(canvas: HTMLCanvasElement) {
   });
 }
 
-function canvasToJpegBlob(canvas: HTMLCanvasElement, timeoutMs = 3500) {
-  return new Promise<Blob>((resolve, reject) => {
-    let finished = false;
-    const timeout = window.setTimeout(() => {
-      if (finished) {
-        return;
-      }
 
-      finished = true;
-      reject(new Error("Camera capture timed out. Try Use Device Camera."));
-    }, timeoutMs);
 
-    canvas.toBlob(
-      (blob) => {
-        if (finished) {
-          return;
-        }
 
-        finished = true;
-        window.clearTimeout(timeout);
 
-        if (!blob) {
-          reject(new Error("Camera capture could not be saved."));
-          return;
-        }
 
-        resolve(blob);
-      },
-      "image/jpeg",
-      0.98
-    );
-  });
-}
 
-function promiseWithTimeout<T>(
-  promise: Promise<T>,
-  timeoutMs: number,
-  timeoutMessage: string
-) {
-  return new Promise<T>((resolve, reject) => {
-    let finished = false;
-    const timeout = window.setTimeout(() => {
-      if (finished) {
-        return;
-      }
 
-      finished = true;
-      reject(new Error(timeoutMessage));
-    }, timeoutMs);
 
-    promise.then(
-      (value) => {
-        if (finished) {
-          return;
-        }
 
-        finished = true;
-        window.clearTimeout(timeout);
-        resolve(value);
-      },
-      (error) => {
-        if (finished) {
-          return;
-        }
 
-        finished = true;
-        window.clearTimeout(timeout);
-        reject(error);
-      }
-    );
-  });
-}
 
-function imageCaptureConstructor() {
-  const browserWindow = window as typeof window & {
-    ImageCapture?: BrowserImageCaptureConstructor;
-  };
-
-  return typeof browserWindow.ImageCapture === "function"
-    ? browserWindow.ImageCapture
-    : null;
-}
-
-function formatQualityComparisonMetrics(quality: ImageQualityReport) {
-  return `brightness ${quality.brightness.toFixed(1)}, contrast ${quality.contrast.toFixed(1)}, sharpness ${quality.blurScore.toFixed(1)}`;
-}
-
-async function detectExifPresence(blob: Blob) {
-  if (!/^image\/jpe?g$/i.test(blob.type || "")) {
-    return "not-detectable-non-jpeg";
-  }
-
-  try {
-    const bytes = new Uint8Array(await blob.slice(0, 65_536).arrayBuffer());
-    const signature = [69, 120, 105, 102, 0, 0];
-
-    for (let index = 0; index <= bytes.length - signature.length; index += 1) {
-      if (signature.every((value, offset) => bytes[index + offset] === value)) {
-        return "present";
-      }
-    }
-
-    return "absent";
-  } catch {
-    return "unknown";
-  }
-}
-
-async function readJpegPixelDimensions(blob: Blob) {
-  if (!/^image\/jpe?g$/i.test(blob.type || "")) {
-    return null;
-  }
-
-  try {
-    const bytes = new Uint8Array(await blob.slice(0, 262_144).arrayBuffer());
-
-    if (bytes[0] !== 0xff || bytes[1] !== 0xd8) {
-      return null;
-    }
-
-    let offset = 2;
-
-    while (offset + 9 < bytes.length) {
-      if (bytes[offset] !== 0xff) {
-        offset += 1;
-        continue;
-      }
-
-      const marker = bytes[offset + 1];
-      offset += 2;
-
-      while (marker === 0xff && offset < bytes.length) {
-        offset += 1;
-      }
-
-      if (marker === 0xd9 || marker === 0xda) {
-        break;
-      }
-
-      const length = ((bytes[offset] ?? 0) << 8) + (bytes[offset + 1] ?? 0);
-
-      if (length < 2 || offset + length > bytes.length) {
-        break;
-      }
-
-      const isStartOfFrame =
-        (marker >= 0xc0 && marker <= 0xc3) ||
-        (marker >= 0xc5 && marker <= 0xc7) ||
-        (marker >= 0xc9 && marker <= 0xcb) ||
-        (marker >= 0xcd && marker <= 0xcf);
-
-      if (isStartOfFrame && offset + 7 < bytes.length) {
-        const height = ((bytes[offset + 3] ?? 0) << 8) + (bytes[offset + 4] ?? 0);
-        const width = ((bytes[offset + 5] ?? 0) << 8) + (bytes[offset + 6] ?? 0);
-
-        if (width > 0 && height > 0) {
-          return { width, height };
-        }
-      }
-
-      offset += length;
-    }
-  } catch {
-    return null;
-  }
-
-  return null;
-}
 
 async function dataUrlToImageFile(dataUrl: string, fileName: string) {
   const response = await fetch(dataUrl);
@@ -1118,7 +676,7 @@ async function inspectImageQuality(
   file: File,
   cropBox: CropBox
 ): Promise<ImageQualityReport> {
-  const image = await imageElementFromFile(file);
+  const image = await remittanceDeadline(imageElementFromFile(file), 12_000, "Photo could not be decoded. Choose a JPEG photo or enter manually.");
   const naturalWidth = image.naturalWidth || image.width;
   const naturalHeight = image.naturalHeight || image.height;
   const sourceX = Math.round((cropBox.left / 100) * naturalWidth);
@@ -1209,186 +767,7 @@ async function inspectImageQuality(
   };
 }
 
-async function detectDefaultCropBox(file: File): Promise<CropSuggestion> {
-  const fullImageCrop = {
-    left: 0,
-    top: 0,
-    right: 100,
-    bottom: 100,
-  };
 
-  try {
-    const image = await imageElementFromFile(file);
-    const naturalWidth = image.naturalWidth || image.width;
-    const naturalHeight = image.naturalHeight || image.height;
-    const scanWidth = 420;
-    const scale = Math.min(1, scanWidth / Math.max(naturalWidth, naturalHeight));
-    const width = Math.max(1, Math.round(naturalWidth * scale));
-    const height = Math.max(1, Math.round(naturalHeight * scale));
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d", { willReadFrequently: true });
-
-    if (!context) {
-      throw new Error("Unable to inspect the remittance photo.");
-    }
-
-    canvas.width = width;
-    canvas.height = height;
-    context.drawImage(image, 0, 0, width, height);
-
-    const pixels = context.getImageData(0, 0, width, height).data;
-    let minX = width;
-    let minY = height;
-    let maxX = 0;
-    let maxY = 0;
-    let hits = 0;
-
-    for (let y = 0; y < height; y += 1) {
-      for (let x = 0; x < width; x += 1) {
-        const offset = (y * width + x) * 4;
-        const red = pixels[offset] ?? 0;
-        const green = pixels[offset + 1] ?? red;
-        const blue = pixels[offset + 2] ?? red;
-        const brightness = (red + green + blue) / 3;
-        const chroma = Math.max(red, green, blue) - Math.min(red, green, blue);
-        const looksLikePaper =
-          (brightness > 142 && chroma < 70) || brightness > 190;
-
-        if (looksLikePaper) {
-          minX = Math.min(minX, x);
-          minY = Math.min(minY, y);
-          maxX = Math.max(maxX, x);
-          maxY = Math.max(maxY, y);
-          hits += 1;
-        }
-      }
-    }
-
-    const paperPixelRatio = hits / (width * height);
-
-    if (hits < 500 || paperPixelRatio < 0.06) {
-      throw new Error("Use the center crop fallback.");
-    }
-
-    const boundsAreaRatio =
-      ((maxX - minX + 1) * (maxY - minY + 1)) / (width * height);
-    const clipping = {
-      left: minX <= width * 0.02,
-      top: minY <= height * 0.02,
-      right: maxX >= width * 0.98,
-      bottom: maxY >= height * 0.98,
-    };
-    const touchesEdges =
-      minX <= width * 0.04 &&
-      minY <= height * 0.04 &&
-      maxX >= width * 0.96 &&
-      maxY >= height * 0.96;
-    const isTightlyFramed =
-      paperPixelRatio > 0.72 || boundsAreaRatio > 0.78 || touchesEdges;
-    const padX = Math.round((maxX - minX) * 0.06);
-    const padY = Math.round((maxY - minY) * 0.06);
-    const cropBox = isTightlyFramed
-      ? fullImageCrop
-      : {
-          left: Math.max(0, Math.round(((minX - padX) / width) * 100)),
-          top: Math.max(0, Math.round(((minY - padY) / height) * 100)),
-          right: Math.min(100, Math.round(((maxX + padX) / width) * 100)),
-          bottom: Math.min(100, Math.round(((maxY + padY) / height) * 100)),
-        };
-    const effectiveWidth = Math.round(
-      ((cropBox.right - cropBox.left) / 100) * naturalWidth
-    );
-    const effectiveHeight = Math.round(
-      ((cropBox.bottom - cropBox.top) / 100) * naturalHeight
-    );
-    const quality = await inspectImageQuality(file, cropBox);
-    const documentAreaRatio = isTightlyFramed
-      ? 1
-      : Math.max(boundsAreaRatio, cropBoxAreaRatio(cropBox));
-    const qualityMessages = qualityMessageFromMetrics(
-      effectiveWidth,
-      effectiveHeight,
-      documentAreaRatio,
-      quality
-    );
-    const confidence =
-      qualityMessages.length === 0 && documentAreaRatio >= 0.42
-        ? "high"
-        : qualityMessages.length <= 1 && documentAreaRatio >= 0.28
-          ? "medium"
-          : "low";
-    const hasReadableRemittanceResolution =
-      Math.max(effectiveWidth, effectiveHeight) >= 1800 &&
-      Math.min(effectiveWidth, effectiveHeight) >= 650;
-    const shouldAutoRead =
-      confidence === "high" &&
-      hasReadableRemittanceResolution &&
-      quality.ok;
-
-    if (isTightlyFramed) {
-      return {
-        cropBox,
-        isTightlyFramed: true,
-        documentAreaRatio,
-        sourceWidth: naturalWidth,
-        sourceHeight: naturalHeight,
-        effectiveWidth,
-        effectiveHeight,
-        clipping,
-        quality,
-        confidence,
-        qualityMessages,
-        shouldAutoRead,
-      };
-    }
-
-    return {
-      cropBox,
-      isTightlyFramed: false,
-      documentAreaRatio,
-      sourceWidth: naturalWidth,
-      sourceHeight: naturalHeight,
-      effectiveWidth,
-      effectiveHeight,
-      clipping,
-      quality,
-      confidence,
-      qualityMessages,
-      shouldAutoRead,
-    };
-  } catch {
-    return {
-      cropBox: {
-        left: 8,
-        top: 8,
-        right: 92,
-        bottom: 92,
-      },
-      isTightlyFramed: false,
-      documentAreaRatio: 0.7,
-      sourceWidth: 0,
-      sourceHeight: 0,
-      effectiveWidth: 0,
-      effectiveHeight: 0,
-      clipping: {
-        left: false,
-        top: false,
-        right: false,
-        bottom: false,
-      },
-      quality: {
-        ok: false,
-        message: "Crop not inspected.",
-        brightness: 0,
-        contrast: 0,
-        blurScore: 0,
-      },
-      confidence: "low",
-      qualityMessages: ["Adjust crop around the remittance before reading."],
-      shouldAutoRead: false,
-    };
-  }
-}
 
 async function cropPhotoForOcr(file: File, cropBox: CropBox, rotation: number) {
   const image = await imageElementFromFile(file);
@@ -1570,9 +949,9 @@ export default function BatchInvoicePayments({
   const [checkAmount, setCheckAmount] = useState(
     startingFocus ? formatMoney(startingFocus.total) : ""
   );
-  const captureGateMemory = useRef<GateMemory>({count:0,stable:0});
-  const captureGateTrace = useRef<GateDecision[]>([]);
-  const captureGateSession = useRef({frames:0,captured:false,businessId:""});
+  
+  
+  
   const observationScopeRef = useRef<string>(crypto.randomUUID());
   const opticalRef = useRef<OpticalEvidence>({images:[],notes:[]});
   const [checkImagePreview, setCheckImagePreview] = useState("");
@@ -1586,21 +965,21 @@ export default function BatchInvoicePayments({
     bottom: 92,
   });
   const cropFrameRef = useRef<HTMLDivElement | null>(null);
-  const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
-  const cameraViewportRef = useRef<HTMLDivElement | null>(null);
-  const cameraGuideRef = useRef<HTMLDivElement | null>(null);
-  const cameraOverlayRef = useRef<HTMLDivElement | null>(null);
-  const captureButtonRef = useRef<HTMLButtonElement | null>(null);
-  const checkOnlyModeButtonRef = useRef<HTMLButtonElement | null>(null);
-  const deviceCameraLabelRef = useRef<HTMLLabelElement | null>(null);
-  const cameraStreamRef = useRef<MediaStream | null>(null);
-  const cameraOpenedAtRef = useRef(0);
-  const cameraLifecycleRef = useRef<CameraLifecycle>({});
-  const cameraReadyAtRef = useRef(0);
-  const cameraInitialTrackSettingsRef = useRef("not-started");
-  const cameraReadyTrackSettingsRef = useRef("not-ready");
-  const cameraSettledTrackSettingsRef = useRef("not-settled");
-  const lastCapturePointerAtRef = useRef(0);
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
   const cropDragRef = useRef<{
     target: CropDragTarget;
     startX: number;
@@ -1613,37 +992,17 @@ export default function BatchInvoicePayments({
     useState(false);
   const [captureQualityMessage, setCaptureQualityMessage] = useState("");
   const [captureQualityDetails, setCaptureQualityDetails] = useState("");
-  const [cameraStatusMessage, setCameraStatusMessage] = useState(
-    "Align the remittance inside the frame."
-  );
-  const [cameraReady, setCameraReady] = useState(false);
-  const [cameraQualityReady, setCameraQualityReady] = useState(false);
-  const [isCapturingFrame, setIsCapturingFrame] = useState(false);
-  const [cameraDiagnosticsEnabled] = useState(() => {
-    if (typeof window === "undefined") {
-      return false;
-    }
+  
+  
+  
+  
+  
+  
 
-    return (
-      new URLSearchParams(window.location.search).get("trimaxCameraDebug") ===
-        "1" ||
-      window.localStorage.getItem("trimax.cameraDiagnostics") === "1"
-    );
-  });
-  const [cameraGeometryDiagnostics, setCameraGeometryDiagnostics] =
-    useState<CameraGeometryDiagnostics | null>(null);
-  const [lastQualityGate, setLastQualityGate] =
-    useState<CameraGeometryDiagnostics["qualityGate"]>(null);
-  const [lastActualCaptureTap, setLastActualCaptureTap] =
-    useState<CameraActualTapSnapshot>(null);
-  const [cameraPipelineStages, setCameraPipelineStages] = useState<string[]>([]);
+  
   const resumedDiagnosticReplay = useRef(false);
-  const [cameraFailureStage, setCameraFailureStage] = useState("");
-  const [cameraVideoPlayStatus, setCameraVideoPlayStatus] =
-    useState("not-started");
-  const [cameraGuideMode, setCameraGuideMode] = useState<
-    "horizontal" | "vertical"
-  >("horizontal");
+  
+  
   const [captureDocumentType, setCaptureDocumentType] =
     useState<RemittanceDocumentType>("remittance_stub");
   const [captureIntent, setCaptureIntent] = useState<CaptureIntent>("primary");
@@ -1667,7 +1026,6 @@ export default function BatchInvoicePayments({
   useEffect(()=>()=>{ocrAttemptVersion.current++;},[]);
   const [shadowFlags, setShadowFlags] = useState({...DISABLED_SHADOW,businessId:''});
   const captureUi = useRef<CaptureUiEvidence | null>(null);
-  const nativeStillInput = useRef<HTMLInputElement>(null);
   const captureTimings = useRef<CaptureTimings>({captureOpenedAt:null,stillReturnedAt:null,previewPaintOpportunityAt:null,cameraIndicatorMs:null});
   useEffect(() => {
     let current = true;
@@ -1678,10 +1036,10 @@ export default function BatchInvoicePayments({
   },[businessId,workspaceRole]);
   const scanLineage = useRef<{original:string;last:string}|null>(null);
   const latestScan = useRef<ScanSummary|null>(null);
-  const [scanSavedStatus,setScanSavedStatus] = useState("");
+  const [scanSavedStatus, setScanSavedStatus] = useState("");
   const [activeRemittanceAttempt, setActiveRemittanceAttempt] = useState<RemittanceAttempt | null>(null);
-  const [sharedMoneyStatus,setSharedMoneyStatus]=useState('');
-  const [sharedMoneyLoading,setSharedMoneyLoading]=useState(false);
+  const [sharedMoneyStatus, setSharedMoneyStatus]=useState('');
+  const [sharedMoneyLoading, setSharedMoneyLoading]=useState(false);
   async function reviewSharedMoney(){
     const history=latestScan.current,version=ocrAttemptVersion.current;
     if(!history||!businessId||!activeRemittanceAttempt||!['owner','admin'].includes(workspaceRole??'')||!shadowAllowed(shadowFlags,workspaceRole))return;
@@ -1689,7 +1047,7 @@ export default function BatchInvoicePayments({
     try{
       const summary=await pairedScanSummary(history.attemptId);
       if(!summary?.shadowAttemptId)throw Error('Amount evidence is not available yet. Legacy review remains available.');
-      const [legacy,shadow]=await Promise.all([scanDiagnostics(businessId,history.attemptId),scanDiagnostics(businessId,summary.shadowAttemptId)]);
+      const [legacy, shadow]=await Promise.all([scanDiagnostics(businessId,history.attemptId),scanDiagnostics(businessId,summary.shadowAttemptId)]);
       const payload=legacy as {response?:CheckStubOcrResponse;[key:string]:unknown};
       const shared=(shadow as {result?:{sharedMoney?:SharedMoneyEvidence}})?.result?.sharedMoney;
       if(!shared||!history.sourceImageHash)throw Error('Shared amount evidence is unavailable or still processing.');
@@ -1734,11 +1092,21 @@ export default function BatchInvoicePayments({
   const [paymentEntryMode, setPaymentEntryMode] =
     useState<PaymentEntryMode>("choice");
   // Session-only recovery retains the same photo and attempt; never writes image bytes to device storage.
-  const [captureRetry, setCaptureRetry] = useState<(() => Promise<void>) | null>(null);
+  const [captureRetry, setCaptureRetry] = useState<{ run: () => Promise<void> } | null>(null);
   const captureRetryBusy = useRef(false);
   const [checkOcrMessage, setCheckOcrMessage] = useState(
     "Upload a remittance stub or enter the payment manually."
   );
+  useEffect(() => {
+    if (checkOcrStatus !== "reading" && !isPreparingCrop) return;
+    const timer = window.setTimeout(() => {
+      ocrAttemptVersion.current++;
+      setIsPreparingCrop(false);
+      setCheckOcrStatus("error");
+      setCheckOcrMessage("Trimax couldn't finish reading this remittance. Your photo is preserved. Retry, retake, choose an existing photo, or enter manually.");
+    }, REMITTANCE_PROCESSING_LIMIT_MS);
+    return () => window.clearTimeout(timer);
+  }, [checkOcrStatus, isPreparingCrop]);
   const [internalNote, setInternalNote] = useState(
     startedFromInvoiceSelection
       ? "Selected invoice batch payment"
@@ -1960,389 +1328,7 @@ export default function BatchInvoicePayments({
     };
   }, [checkImagePreview]);
 
-  function appendCameraStage(stage: string) {
-    setCameraPipelineStages((current) => [...current.slice(-7), stage]);
-  }
-
-  function pointIsInsideRect(
-    rect: DOMRect,
-    x: number,
-    y: number,
-    inset = 0
-  ) {
-    return (
-      x >= rect.left + inset &&
-      x <= rect.right - inset &&
-      y >= rect.top + inset &&
-      y <= rect.bottom - inset
-    );
-  }
-
-  function rectSnapshot(element: Element | null): CameraRectSnapshot | null {
-    if (!element) {
-      return null;
-    }
-
-    const rect = element.getBoundingClientRect();
-
-    return {
-      top: Math.round(rect.top),
-      left: Math.round(rect.left),
-      width: Math.round(rect.width),
-      height: Math.round(rect.height),
-      bottom: Math.round(rect.bottom),
-      right: Math.round(rect.right),
-    };
-  }
-
-  function describeElement(element: Element | null) {
-    if (!element) {
-      return "none";
-    }
-
-    const tag = element.tagName.toLowerCase();
-    const id = element.id ? `#${element.id}` : "";
-    const testId = element.getAttribute("data-camera-control")
-      ? `[data-camera-control="${element.getAttribute("data-camera-control")}"]`
-      : "";
-    const capture = element.getAttribute("data-camera-capture-button")
-      ? "[data-camera-capture-button]"
-      : "";
-    const classes =
-      typeof element.className === "string" && element.className.trim()
-        ? `.${element.className.trim().split(/\s+/).slice(0, 3).join(".")}`
-        : "";
-
-    return `${tag}${id}${testId}${capture}${classes}`;
-  }
-
-  const collectCameraGeometryDiagnostics = useCallback(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const viewport = window.visualViewport;
-    const video = cameraVideoRef.current;
-    const videoStyle = video ? window.getComputedStyle(video) : null;
-    const stream =
-      video?.srcObject instanceof MediaStream ? video.srcObject : null;
-    const visualViewport = {
-      left: Math.round(viewport?.offsetLeft ?? 0),
-      top: Math.round(viewport?.offsetTop ?? 0),
-      width: Math.round(viewport?.width ?? window.innerWidth),
-      height: Math.round(viewport?.height ?? window.innerHeight),
-    };
-    const captureRect = rectSnapshot(captureButtonRef.current);
-    const checkOnlyRect = rectSnapshot(checkOnlyModeButtonRef.current);
-    const deviceRect = rectSnapshot(deviceCameraLabelRef.current);
-    const hitPoints = [
-      captureRect
-        ? {
-            point: "capture-center",
-            x: captureRect.left + captureRect.width / 2,
-            y: captureRect.top + captureRect.height / 2,
-          }
-        : null,
-      captureRect
-        ? {
-            point: "capture-top-edge",
-            x: captureRect.left + captureRect.width / 2,
-            y: captureRect.top + 2,
-          }
-        : null,
-      captureRect
-        ? {
-            point: "capture-bottom-edge",
-            x: captureRect.left + captureRect.width / 2,
-            y: captureRect.bottom - 2,
-          }
-        : null,
-      captureRect
-        ? {
-            point: "below-visible-capture",
-            x: captureRect.left + captureRect.width / 2,
-            y: captureRect.bottom + Math.max(18, captureRect.height * 0.45),
-          }
-        : null,
-      checkOnlyRect
-        ? {
-            point: "check-only-center",
-            x: checkOnlyRect.left + checkOnlyRect.width / 2,
-            y: checkOnlyRect.top + checkOnlyRect.height / 2,
-          }
-        : null,
-      deviceRect
-        ? {
-            point: "use-device-camera-center",
-            x: deviceRect.left + deviceRect.width / 2,
-            y: deviceRect.top + deviceRect.height / 2,
-          }
-        : null,
-    ].filter((point): point is { point: string; x: number; y: number } =>
-      Boolean(point)
-    );
-    const hitTests = hitPoints.map((point) => ({
-      point: point.point,
-      x: Math.round(point.x),
-      y: Math.round(point.y),
-      element: describeElement(document.elementFromPoint(point.x, point.y)),
-    }));
-    const ancestorStyles: string[] = [];
-    let ancestor: HTMLElement | null = cameraOverlayRef.current;
-
-    while (ancestor && ancestorStyles.length < 8) {
-      const style = window.getComputedStyle(ancestor);
-
-      ancestorStyles.push(
-        `${describeElement(ancestor)} position=${style.position} transform=${style.transform} scale=${style.scale} translate=${style.translate} zoom=${style.zoom}`
-      );
-      ancestor = ancestor.parentElement;
-    }
-
-    setCameraGeometryDiagnostics({
-      runtime: {
-        displayMode: window.matchMedia("(display-mode: standalone)").matches
-          ? "standalone"
-          : "browser",
-        build: trimaxBuildIdentifier,
-        serviceWorkerController: navigator.serviceWorker?.controller
-          ? "controlled"
-          : "not-controlled",
-      },
-      layoutViewport: {
-        width: Math.round(window.innerWidth),
-        height: Math.round(window.innerHeight),
-      },
-      visualViewport,
-      devicePixelRatio: window.devicePixelRatio,
-      video: {
-        hasSrcObject: Boolean(stream),
-        activeTracks:
-          stream?.getVideoTracks().filter((track) => track.readyState === "live")
-            .length ?? 0,
-        readyState: video?.readyState ?? 0,
-        videoWidth: video?.videoWidth ?? 0,
-        videoHeight: video?.videoHeight ?? 0,
-        playStatus: cameraVideoPlayStatus,
-        computedStyle: {
-          display: videoStyle?.display ?? "",
-          visibility: videoStyle?.visibility ?? "",
-          opacity: videoStyle?.opacity ?? "",
-          filter: videoStyle?.filter ?? "",
-          mixBlendMode: videoStyle?.mixBlendMode ?? "",
-          objectFit: videoStyle?.objectFit ?? "",
-          background: videoStyle?.backgroundColor ?? "",
-          zIndex: videoStyle?.zIndex ?? "",
-          transform: videoStyle?.transform ?? "",
-        },
-      },
-      overlay: rectSnapshot(cameraOverlayRef.current),
-      videoRect: rectSnapshot(video),
-      preview: rectSnapshot(cameraViewportRef.current),
-      guide: rectSnapshot(cameraGuideRef.current),
-      capture: captureRect,
-      checkOnly: checkOnlyRect,
-      useDeviceCamera: deviceRect,
-      hitTests,
-      lastActualTap: lastActualCaptureTap,
-      ancestorStyles,
-      qualityGate: lastQualityGate,
-    });
-  }, [
-    cameraVideoPlayStatus,
-    lastActualCaptureTap,
-    lastQualityGate,
-  ]);
-
-  useEffect(() => {
-    if (paymentEntryMode !== "camera") {
-      stopCameraCapture();
-      return;
-    }
-
-    let canceled = false;
-
-    async function startCameraCapture() {
-      if (!navigator.mediaDevices?.getUserMedia) {
-        setCameraReady(false);
-        setCameraStatusMessage(
-          "Camera guide ready. Use the capture button below if live preview is unavailable."
-        );
-        return;
-      }
-
-      setCameraStatusMessage("Starting camera...");
-      captureGateTrace.current = [];
-      captureGateSession.current = {frames:0,captured:false,businessId:businessId ?? ""};
-      cameraOpenedAtRef.current = performance.now();
-      cameraLifecycleRef.current = { streamRequestedAt: new Date().toISOString() };
-      cameraReadyAtRef.current = 0;
-      cameraInitialTrackSettingsRef.current = "pending";
-      cameraReadyTrackSettingsRef.current = "pending";
-      cameraSettledTrackSettingsRef.current = "pending";
-
-      try {
-        const videoConstraints = {
-          facingMode: { ideal: "environment" },
-          width: { ideal: 4096 },
-          height: { ideal: 2160 },
-          resizeMode: { ideal: "none" },
-        } as MediaTrackConstraints;
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: false,
-          video: videoConstraints,
-        });
-
-        if (canceled) {
-          stream.getTracks().forEach((track) => track.stop());
-          return;
-        }
-
-        cameraStreamRef.current = stream;
-        cameraLifecycleRef.current.streamStartedAt = new Date().toISOString();
-        const track = stream.getVideoTracks()[0] ?? null;
-
-        cameraInitialTrackSettingsRef.current =
-          formatCameraTrackSettings(track);
-
-        if (cameraVideoRef.current) {
-          cameraVideoRef.current.srcObject = stream;
-          cameraVideoRef.current.setAttribute("playsinline", "true");
-          cameraVideoRef.current.setAttribute("webkit-playsinline", "true");
-
-          try {
-            await cameraVideoRef.current.play();
-            setCameraVideoPlayStatus("playing");
-          } catch (error) {
-            const message =
-              error instanceof Error ? error.message : "Video play rejected.";
-
-            setCameraVideoPlayStatus(`play-rejected: ${message}`);
-            setCameraStatusMessage(`Preview blocked: ${message}`);
-          }
-        }
-
-        cameraReadyAtRef.current = performance.now();
-        cameraReadyTrackSettingsRef.current = formatCameraTrackSettings(track);
-        window.setTimeout(() => {
-          if (cameraStreamRef.current === stream) {
-            cameraSettledTrackSettingsRef.current =
-              formatCameraTrackSettings(track);
-          }
-        }, 2500);
-        setCameraReady(true);
-        setCameraQualityReady(false);
-        setCameraStatusMessage("Hold steady / improve detection");
-      } catch {
-        setCameraReady(false);
-        setCameraQualityReady(false);
-        setCameraStatusMessage(
-          "Live camera unavailable. Use the capture button inside the guide."
-        );
-      }
-    }
-
-    void startCameraCapture();
-
-    return () => {
-      canceled = true;
-      stopCameraCapture();
-    };
-  }, [paymentEntryMode, businessId]);
-
-  useEffect(() => {
-    const captureActive = paymentEntryMode === "camera";
-
-    document.body.classList.toggle(
-      "trimax-remittance-capture-active",
-      captureActive
-    );
-    window.dispatchEvent(new Event("trimax-remittance-capture-mode"));
-
-    if (!captureActive) {
-      return;
-    }
-
-    const previousOverflow = document.body.style.overflow;
-    const previousTouchAction = document.body.style.touchAction;
-    const previousHtmlOverflow = document.documentElement.style.overflow;
-    const previousHtmlTouchAction = document.documentElement.style.touchAction;
-    document.body.style.overflow = "hidden";
-    document.body.style.touchAction = "none";
-    document.documentElement.style.overflow = "hidden";
-    document.documentElement.style.touchAction = "none";
-    let viewportFrame = 0;
-
-    function updateCameraVisualViewport() {
-      if (viewportFrame) {
-        window.cancelAnimationFrame(viewportFrame);
-      }
-
-      viewportFrame = window.requestAnimationFrame(() => {
-        if (cameraDiagnosticsEnabled) {
-          window.requestAnimationFrame(collectCameraGeometryDiagnostics);
-        }
-      });
-    }
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        stopCameraCapture();
-        setPaymentEntryMode("choice");
-        setCameraStatusMessage("Align the remittance inside the frame.");
-      }
-    }
-
-    updateCameraVisualViewport();
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("resize", updateCameraVisualViewport);
-    window.addEventListener("orientationchange", updateCameraVisualViewport);
-    window.visualViewport?.addEventListener("resize", updateCameraVisualViewport);
-    window.visualViewport?.addEventListener("scroll", updateCameraVisualViewport);
-
-    return () => {
-      if (viewportFrame) {
-        window.cancelAnimationFrame(viewportFrame);
-      }
-
-      document.body.style.overflow = previousOverflow;
-      document.body.style.touchAction = previousTouchAction;
-      document.documentElement.style.overflow = previousHtmlOverflow;
-      document.documentElement.style.touchAction = previousHtmlTouchAction;
-      document.body.classList.remove("trimax-remittance-capture-active");
-      window.dispatchEvent(new Event("trimax-remittance-capture-mode"));
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("resize", updateCameraVisualViewport);
-      window.removeEventListener("orientationchange", updateCameraVisualViewport);
-      window.visualViewport?.removeEventListener(
-        "resize",
-        updateCameraVisualViewport
-      );
-      window.visualViewport?.removeEventListener(
-        "scroll",
-        updateCameraVisualViewport
-      );
-    };
-  }, [
-    cameraDiagnosticsEnabled,
-    collectCameraGeometryDiagnostics,
-    paymentEntryMode,
-  ]);
-
-  useEffect(() => {
-    if (paymentEntryMode !== "camera" || !cameraDiagnosticsEnabled) {
-      return;
-    }
-
-    collectCameraGeometryDiagnostics();
-    const interval = window.setInterval(collectCameraGeometryDiagnostics, 750);
-
-    return () => window.clearInterval(interval);
-  }, [
-    cameraDiagnosticsEnabled,
-    collectCameraGeometryDiagnostics,
-    paymentEntryMode,
-  ]);
+  function appendCameraStage(stage: string) { setCheckOcrMessage(stage); }
 
   function toggleInvoice(invoiceId: string) {
     setSelectedIds((current) =>
@@ -2544,7 +1530,7 @@ export default function BatchInvoicePayments({
 
   function loadExtractedRemittance(
     data: CheckStubOcrResponse,
-    currentDocumentFingerprint = remittanceDocumentFingerprint,
+    currentDocumentFingerprint: string = remittanceDocumentFingerprint,
     attemptId = crypto.randomUUID(),
     capture = preparedCaptureRef.current,
     databaseSnapshot = { invoices: structuredClone(invoiceRecords), activities: structuredClone(paymentActivities), role: workspaceRole ?? "", receivedDate }
@@ -3483,16 +2469,16 @@ export default function BatchInvoicePayments({
     }
   }
 
-  async function extractCheckStubFromPhoto(
+  const extractCheckStubFromPhoto = useRemittanceEvent(async function extractCheckStubFromPhotoEvent(
     imageDataUrl: string,
     documentType: RemittanceDocumentType = captureDocumentType,
     intent: CaptureIntent = captureIntent,
     retryStrategy: OcrRetryStrategy = "standard",
     prepDiagnosticLines: string[] = lastOcrPrepDiagnosticLines,
-    currentDocumentFingerprint = remittanceDocumentFingerprint,
+    currentDocumentFingerprint: string = remittanceDocumentFingerprint,
     retainedReference?: string,
     resume?: {history:ScanSummary;canonical:CanonicalCapture|null}
-  ) {
+  ): Promise<void> {
     const attemptVersion = ++ocrAttemptVersion.current;
     setSharedMoneyStatus("");setSharedMoneyLoading(false);
     const attemptId = resume?.history.attemptId ?? crypto.randomUUID();
@@ -3578,7 +2564,7 @@ export default function BatchInvoicePayments({
       setPaymentReviewNotice("");
     }
     setCheckOcrStatus("reading");
-    setCheckOcrMessage("Saving captured photo...");
+    setCheckOcrMessage("Preparing image");
     setLastOcrDiagnosticLines([]);
     setLastOcrRawText("");
     appendCameraStage("Upload started");
@@ -3586,17 +2572,19 @@ export default function BatchInvoicePayments({
     const requestStartedAt = performance.now();
 
     try {
-      if(!await initialSave){failure=transportFailure(null,'Attempt identity could not be saved','capture-registration');throw Error(failure.message);}
+      if(!await remittanceDeadline(Promise.resolve(initialSave), 15_000, "Could not save the scan. Retry.")){failure=transportFailure(null,'Attempt identity could not be saved','capture-registration');throw Error(failure.message);}
+      if (attemptVersion !== ocrAttemptVersion.current) return;
       try {
         if(!canonical && history.captureUi)history.captureUi.canonicalUploadStartedAt=Date.now();
-        canonical=canonical ?? await storeCanonicalCapture({attemptId,imageDataUrl,metadata:{...captureSnapshot?.image,originalPreparation:prepDiagnosticLines,rotation:0,retainedReference},snapshot:shadowSnapshot,captureTimings:shadowCaptureTimings});
+        canonical=canonical ?? await remittanceDeadline(storeCanonicalCapture({attemptId,imageDataUrl,metadata:{...captureSnapshot?.image,originalPreparation:prepDiagnosticLines,rotation:0,retainedReference},snapshot:shadowSnapshot,captureTimings:shadowCaptureTimings}), 30_000, "Photo upload timed out. Retry.");
       } catch(error) {
         failure=transportFailure(null,error instanceof Error?error.message:String(error),'canonical-upload');
         throw error;
       }
+      if (attemptVersion !== ocrAttemptVersion.current) return;
       if(history.captureUi)history.captureUi.canonicalUploadAcknowledgedAt ??= Date.now();
       history.captureState='processing';
-      setCheckOcrMessage('Processing remittance...');
+      setCheckOcrMessage('Reading remittance');
       // Detached, independent commit. Shadow downtime must never delay or fail legacy OCR.
       if(shadowSnapshot) void resumeCaptureHandoff(attemptId,shadowSnapshot,shadowCaptureTimings).then(result=>{
         if(canonical)canonical.shadowQueued=result.queued;
@@ -3629,7 +2617,6 @@ export default function BatchInvoicePayments({
       if (!response.ok) {
         failure=transportFailure(response.status,data.error??`OCR HTTP ${response.status}`,data.stage??'ocr-request',data.ocrStarted===true);
         recordAttemptFailure(data.error ?? `OCR HTTP ${response.status}`);
-        setCameraFailureStage("ocr-request");
         setCheckOcrStatus(response.status === 503 ? "manual" : "error");
         setCheckOcrMessage(
           data.error ??
@@ -3641,7 +2628,6 @@ export default function BatchInvoicePayments({
       if (!data.stubText?.trim()) {
         failure={stage:"ocr-recognition",errorClass:"OCRNoStructure",httpStatus:response.status,ocrStarted:true,message:"No readable structured OCR response."};
         recordAttemptFailure("No readable structured OCR response.");
-        setCameraFailureStage("ocr-parse");
         if (data.rawText?.trim()) {
           setRemittanceStubText(data.rawText.trim());
         }
@@ -3667,6 +2653,7 @@ export default function BatchInvoicePayments({
         return;
       }
 
+      setCheckOcrMessage("Finding invoices");
       const { match, reviewMatches, reconciledReview, historicalDuplicateCheck, attempt } =
         loadExtractedRemittance(data, currentDocumentFingerprint, attemptId, captureSnapshot ? structuredClone(captureSnapshot) as ScanCapture : null, databaseSnapshot);
       setLastOcrDiagnosticLines([
@@ -3691,7 +2678,6 @@ export default function BatchInvoicePayments({
       setCheckOcrStatus(hasConfidentReview ? "ready" : "manual");
       appendCameraStage("Matching completed");
       if (!hasConfidentReview) {
-        setCameraFailureStage("matching-reconciliation");
       }
       setCheckOcrMessage(
         hasConfidentReview
@@ -3707,20 +2693,20 @@ export default function BatchInvoicePayments({
         void persist(history,{stage:'transport_failed',transport:failure,preparation:prepDiagnosticLines},0);
         setCheckOcrStatus('error');
         setCheckOcrMessage('Photo captured, upload interrupted — Retry. Keep this page open; your photo is still available.');
-        setCaptureRetry(()=>async()=>{
+        setCaptureRetry({run:async()=>{
           if(captureRetryBusy.current || attemptVersion!==ocrAttemptVersion.current)return;
           captureRetryBusy.current=true;
           try { await extractCheckStubFromPhoto(imageDataUrl,documentType,intent,retryStrategy,prepDiagnosticLines,currentDocumentFingerprint,retainedReference,{history,canonical}); }
           finally {captureRetryBusy.current=false;}
-        });
+        }});
         return;
       }
       // Network failures do not terminate an independently running durable job.
       setCheckOcrStatus('error');
       setCheckOcrMessage('Capture saved — processing status unavailable. Open the saved scan to resume.');
-      setCaptureRetry(()=>async()=>{await extractCheckStubFromPhoto(imageDataUrl,documentType,intent,retryStrategy,prepDiagnosticLines,currentDocumentFingerprint,retainedReference,{history,canonical});});
+      setCaptureRetry({run:async()=>{await extractCheckStubFromPhoto(imageDataUrl,documentType,intent,retryStrategy,prepDiagnosticLines,currentDocumentFingerprint,retainedReference,{history,canonical});}});
     }
-  }
+  });
 
   function retainPreparationFailure(reason:string,preparation:string[],source:string,version:number) {
     if(!businessId)return;
@@ -3733,7 +2719,7 @@ export default function BatchInvoicePayments({
     }).catch(()=>{if(version===ocrAttemptVersion.current)setScanSavedStatus("Attempt could not be saved. Keep this page open.");});
   }
 
-  async function readPreparedRemittanceFromFile(
+  const readPreparedRemittanceFromFile = useRemittanceEvent(async function readPreparedRemittanceFromFileEvent(
     file: File,
     nextCropBox: CropBox,
     nextRotation: number,
@@ -3743,7 +2729,7 @@ export default function BatchInvoicePayments({
     allowQualityOverride = false,
     sourceType: OcrSourceType = lastOcrSourceType,
     sourceDiagnosticLines: string[] = lastCameraCaptureDiagnosticLines
-  ) {
+  ): Promise<void> {
     setCaptureRetry(null);
     const preparationVersion = ++ocrAttemptVersion.current;
     setActiveRemittanceAttempt(null);
@@ -3771,7 +2757,7 @@ export default function BatchInvoicePayments({
       const effectiveHeight = Math.round(
         ((nextCropBox.bottom - nextCropBox.top) / 100) * naturalHeight
       );
-      const quality = await inspectImageQuality(file, nextCropBox);
+      const quality = await remittanceDeadline(inspectImageQuality(file, nextCropBox), 12_000, "Could not prepare this photo. Retry or enter manually.");
       const qualityMessages = qualityMessageFromMetrics(
         effectiveWidth,
         effectiveHeight,
@@ -3800,24 +2786,7 @@ export default function BatchInvoicePayments({
           1
         )}.`
       );
-      setLastQualityGate({
-        sourceWidth: naturalWidth,
-        sourceHeight: naturalHeight,
-        cropWidth: effectiveWidth,
-        cropHeight: effectiveHeight,
-        documentAreaRatio: cropBoxAreaRatio(nextCropBox),
-        clipping: {
-          left: nextCropBox.left <= 1,
-          top: nextCropBox.top <= 1,
-          right: nextCropBox.right >= 99,
-          bottom: nextCropBox.bottom >= 99,
-        },
-        brightness: quality.brightness,
-        contrast: quality.contrast,
-        blurScore: quality.blurScore,
-        guidance: qualityMessages[0] ?? "Use Cropped Image.",
-        ocrPermitted,
-      });
+
 
       if (qualityMessages.length > 0 && !allowQualityOverride) {
         setPaymentEntryMode("crop");
@@ -3834,11 +2803,7 @@ export default function BatchInvoicePayments({
         return;
       }
 
-      const imageDataUrl = await cropPhotoForOcr(
-        file,
-        nextCropBox,
-        nextRotation
-      );
+      const imageDataUrl = await remittanceDeadline(cropPhotoForOcr(file, nextCropBox, nextRotation), 15_000, "Image preparation timed out. Retry or enter manually.");
       const preparedFile = await dataUrlToImageFile(
         imageDataUrl,
         `trimax-remittance-ocr-${Date.now()}.jpg`
@@ -3879,7 +2844,7 @@ export default function BatchInvoicePayments({
         `Saved preview and OCR input match: ${preparedFile.name}, ${preparedFile.size} bytes, crop ${effectiveWidth} x ${effectiveHeight}.`
       );
       setPaymentEntryMode("photo");
-      const duplicatePreflight = await runDuplicateRemittancePreflight(
+      const duplicatePreflight = await remittanceDeadline(runDuplicateRemittancePreflight(
         preparedFile,
         prepDiagnosticLines,
         {
@@ -3892,7 +2857,7 @@ export default function BatchInvoicePayments({
           invoiceNumbers: [],
         },
         () => preparationVersion === ocrAttemptVersion.current
-      );
+      ), 15_000, "Could not check this remittance. Retry or enter manually.");
 
       if (preparationVersion !== ocrAttemptVersion.current) return;
       if (duplicatePreflight.stoppedOcr) {
@@ -3920,7 +2885,7 @@ export default function BatchInvoicePayments({
     } finally {
       if (preparationVersion === ocrAttemptVersion.current) setIsPreparingCrop(false);
     }
-  }
+  });
 
   async function readCroppedRemittance() {
     if (!checkImageFile) {
@@ -3967,7 +2932,6 @@ export default function BatchInvoicePayments({
     setLastCameraCaptureDiagnosticLines([]);
     setCaptureDocumentType("remittance_stub");
     setCaptureIntent("primary");
-    setCameraGuideMode("horizontal");
     setCheckOcrMessage(
       "Upload a remittance stub or enter the payment manually."
     );
@@ -4066,968 +3030,18 @@ export default function BatchInvoicePayments({
     setCheckOcrMessage("Adjust the crop, then read it.");
   }
 
-  const getVisibleCameraGuideSourceRect = useCallback((video: HTMLVideoElement): CameraSourceRect => {
-    const viewport = cameraViewportRef.current;
-    const guide = cameraGuideRef.current;
-
-    if (!viewport || !guide || video.videoWidth <= 0 || video.videoHeight <= 0) {
-      return {
-        sourceX: 0,
-        sourceY: 0,
-        sourceWidth: video.videoWidth,
-        sourceHeight: video.videoHeight,
-        viewportWidth: 0,
-        viewportHeight: 0,
-        guideLeft: 0,
-        guideTop: 0,
-        guideWidth: 0,
-        guideHeight: 0,
-        renderedVideoLeft: 0,
-        renderedVideoTop: 0,
-        renderedVideoWidth: video.videoWidth,
-        renderedVideoHeight: video.videoHeight,
-        visibleSourceX: 0,
-        visibleSourceY: 0,
-        visibleSourceWidth: video.videoWidth,
-        visibleSourceHeight: video.videoHeight,
-        scale: 1,
-      };
-    }
-
-    const viewportRect = viewport.getBoundingClientRect();
-    const guideRect = guide.getBoundingClientRect();
-
-    if (viewportRect.width <= 0 || viewportRect.height <= 0) {
-      return {
-        sourceX: 0,
-        sourceY: 0,
-        sourceWidth: video.videoWidth,
-        sourceHeight: video.videoHeight,
-        viewportWidth: 0,
-        viewportHeight: 0,
-        guideLeft: 0,
-        guideTop: 0,
-        guideWidth: 0,
-        guideHeight: 0,
-        renderedVideoLeft: 0,
-        renderedVideoTop: 0,
-        renderedVideoWidth: video.videoWidth,
-        renderedVideoHeight: video.videoHeight,
-        visibleSourceX: 0,
-        visibleSourceY: 0,
-        visibleSourceWidth: video.videoWidth,
-        visibleSourceHeight: video.videoHeight,
-        scale: 1,
-      };
-    }
-
-    const scale = Math.max(
-      viewportRect.width / video.videoWidth,
-      viewportRect.height / video.videoHeight
-    );
-    const renderedWidth = video.videoWidth * scale;
-    const renderedHeight = video.videoHeight * scale;
-    const renderedLeft = (viewportRect.width - renderedWidth) / 2;
-    const renderedTop = (viewportRect.height - renderedHeight) / 2;
-    const guideLeft = guideRect.left - viewportRect.left;
-    const guideTop = guideRect.top - viewportRect.top;
-    const guideWidth = guideRect.width;
-    const guideHeight = guideRect.height;
-    const visibleRawX = (0 - renderedLeft) / scale;
-    const visibleRawY = (0 - renderedTop) / scale;
-    const visibleRawRight = (viewportRect.width - renderedLeft) / scale;
-    const visibleRawBottom = (viewportRect.height - renderedTop) / scale;
-    const visibleSourceX = Math.max(
-      0,
-      Math.min(video.videoWidth - 1, Math.floor(visibleRawX))
-    );
-    const visibleSourceY = Math.max(
-      0,
-      Math.min(video.videoHeight - 1, Math.floor(visibleRawY))
-    );
-    const visibleSourceRight = Math.max(
-      visibleSourceX + 1,
-      Math.min(video.videoWidth, Math.ceil(visibleRawRight))
-    );
-    const visibleSourceBottom = Math.max(
-      visibleSourceY + 1,
-      Math.min(video.videoHeight, Math.ceil(visibleRawBottom))
-    );
-    const visibleSourceWidth = visibleSourceRight - visibleSourceX;
-    const visibleSourceHeight = visibleSourceBottom - visibleSourceY;
-    const guideRight = Math.max(0, Math.min(viewportRect.width, guideLeft + guideWidth));
-    const guideBottom = Math.max(0, Math.min(viewportRect.height, guideTop + guideHeight));
-    const clampedGuideLeft = Math.max(0, Math.min(viewportRect.width - 1, guideLeft));
-    const clampedGuideTop = Math.max(0, Math.min(viewportRect.height - 1, guideTop));
-    const rawX =
-      visibleSourceX + (clampedGuideLeft / viewportRect.width) * visibleSourceWidth;
-    const rawY =
-      visibleSourceY + (clampedGuideTop / viewportRect.height) * visibleSourceHeight;
-    const rawRight =
-      visibleSourceX + (guideRight / viewportRect.width) * visibleSourceWidth;
-    const rawBottom =
-      visibleSourceY + (guideBottom / viewportRect.height) * visibleSourceHeight;
-    const sourceX = Math.max(
-      visibleSourceX,
-      Math.min(visibleSourceRight - 1, Math.floor(rawX))
-    );
-    const sourceY = Math.max(
-      visibleSourceY,
-      Math.min(visibleSourceBottom - 1, Math.floor(rawY))
-    );
-    const sourceRight = Math.max(
-      sourceX + 1,
-      Math.min(visibleSourceRight, Math.ceil(rawRight))
-    );
-    const sourceBottom = Math.max(
-      sourceY + 1,
-      Math.min(visibleSourceBottom, Math.ceil(rawBottom))
-    );
-    const sourceWidth = sourceRight - sourceX;
-    const sourceHeight = sourceBottom - sourceY;
-
-    return {
-      sourceX,
-      sourceY,
-      sourceWidth,
-      sourceHeight,
-      viewportWidth: Math.round(viewportRect.width),
-      viewportHeight: Math.round(viewportRect.height),
-      guideLeft: Math.round(guideLeft),
-      guideTop: Math.round(guideTop),
-      guideWidth: Math.round(guideWidth),
-      guideHeight: Math.round(guideHeight),
-      renderedVideoLeft: Math.round(renderedLeft),
-      renderedVideoTop: Math.round(renderedTop),
-      renderedVideoWidth: Math.round(renderedWidth),
-      renderedVideoHeight: Math.round(renderedHeight),
-      visibleSourceX,
-      visibleSourceY,
-      visibleSourceWidth,
-      visibleSourceHeight,
-      scale,
-    };
-  }, []);
-
-  const analyzeLiveCameraFrame = useCallback(() => {
-    const video = cameraVideoRef.current;
-    if (!video || video.videoWidth <= 0 || video.videoHeight <= 0) return null;
-    const rect = getVisibleCameraGuideSourceRect(video);
-    const scale = Math.min(1, 384 / Math.max(rect.visibleSourceWidth, rect.visibleSourceHeight));
-    const width = Math.max(1, Math.round(rect.visibleSourceWidth * scale));
-    const height = Math.max(1, Math.round(rect.visibleSourceHeight * scale));
-    const canvas = document.createElement("canvas");
-    canvas.width = width; canvas.height = height;
-    const context = canvas.getContext("2d", {willReadFrequently:true});
-    if (!context) return null;
-    context.drawImage(video, rect.visibleSourceX, rect.visibleSourceY, rect.visibleSourceWidth, rect.visibleSourceHeight, 0, 0, width, height);
-    const frame = measureCaptureFrame(context.getImageData(0,0,width,height).data, width, height,
-      {x:rect.visibleSourceX,y:rect.visibleSourceY,width:rect.visibleSourceWidth,height:rect.visibleSourceHeight},
-      {x:rect.sourceX,y:rect.sourceY,width:rect.sourceWidth,height:rect.sourceHeight}, video.videoWidth, video.videoHeight);
-    frame.minimumGuideShortEdge = captureDocumentType === "full_check_stub" ? 980 : 0;
-    const result = captureReadiness(frame,captureGateMemory.current);
-    captureGateSession.current.frames++;
-    captureGateTrace.current = [...captureGateTrace.current.slice(-11), result];
-    return result;
-  }, [getVisibleCameraGuideSourceRect, captureDocumentType]);
-
-  useEffect(() => {
-    if (paymentEntryMode !== "camera" || !cameraReady || isCapturingFrame) return;
-    captureGateMemory.current = {count:0,stable:0};
-    const interval = window.setInterval(() => {
-      const result = analyzeLiveCameraFrame();
-      setCameraQualityReady(result?.ready ?? false);
-      setCameraStatusMessage(result?.message ?? "Unable to detect document - waiting for camera");
-    },450);
-    return () => window.clearInterval(interval);
-  }, [analyzeLiveCameraFrame, cameraReady, paymentEntryMode, isCapturingFrame, cameraGuideMode, captureDocumentType]);
-
-  function stopCameraCapture(keepProcessing = false) {
-    const gateSession = captureGateSession.current;
-    if (!gateSession.captured && gateSession.frames >= 6 && captureGateTrace.current.at(-1)?.ready === false && gateSession.businessId) {
-      gateSession.captured = true; // At most one compact record per abandoned framing session.
-      const id = crypto.randomUUID();
-      const summary = finishScan(scanSummary(id,id,null,"camera-framing",process.env.NEXT_PUBLIC_TRIMAX_BUILD??"local"),null,"failed",gateSession.frames*450,[captureGateTrace.current.at(-1)?.reason??"Capture framing abandoned"]);
-      void saveScan({businessId:gateSession.businessId,phase:2,summary,payload:{stage:"capture-framing",captureGate:structuredClone(captureGateTrace.current)}}).catch(()=>{});
-    }
-    if (cameraStreamRef.current) {
-      cameraStreamRef.current.getTracks().forEach((track) => track.stop());
-      const lifecycle = cameraLifecycleRef.current;
-      lifecycle.streamStoppedAt = new Date().toISOString();
-      if (lifecycle.stillAcquiredAt) lifecycle.afterStillMs = Date.parse(lifecycle.streamStoppedAt) - Date.parse(lifecycle.stillAcquiredAt);
-    }
-    cameraStreamRef.current = null;
-
-    if (cameraVideoRef.current) {
-      cameraVideoRef.current.srcObject = null;
-    }
-
-    setCameraReady(false);
-    setCameraQualityReady(false);
-    setIsCapturingFrame(false);
-    if(keepProcessing)setPaymentEntryMode('photo');
-    setCameraVideoPlayStatus("not-started");
-  }
-
-  function handleCameraModeSelection(
-    event: MouseEvent<HTMLButtonElement>,
-    documentType: RemittanceDocumentType
-  ) {
-    event.preventDefault();
-    event.stopPropagation();
-
-    if (isCapturingFrame) {
-      return;
-    }
-
-    if (
-      event.detail > 0 &&
-      !pointIsInsideRect(
-        event.currentTarget.getBoundingClientRect(),
-        event.clientX,
-        event.clientY,
-        2
-      )
-    ) {
-      setCameraStatusMessage("Tap the visible mode button to switch modes.");
-      return;
-    }
-
-    setCaptureDocumentType(documentType);
-    setCameraGuideMode(defaultGuideModeForDocumentType(documentType));
-    setCameraQualityReady(false);
-    setCameraStatusMessage(
-      "Hold steady / improve detection"
-    );
-  }
-
-  async function selectProductionCaptureSource(
-    candidates: CaptureSourceCandidate[]
-  ): Promise<{
-    selectedCandidate: CaptureSourceCandidate | null;
-    reason: string;
-    diagnosticLines: string[];
-    sources: ScanCapture["sources"];
-  }> {
-    const started = Date.now();
-    const results: CaptureSourceSelectionResponse[] = [];
-    for (const candidate of candidates) {
-      results.push(await (async () => {
-      let stage = "prepare-request";
-      try {
-        const formData = new FormData();
-        formData.append("mode", "capture-source-selection");
-        formData.append("captureCandidates", JSON.stringify([{ ...candidate, file: undefined,
-          imageMimeType: candidate.file.type, imageByteSize: candidate.file.size }]));
-        formData.append("candidate-0", candidate.file, candidate.file.name);
-        stage = "http-request";
-        const response = await fetch("/api/payments/extract-check-stub", { method: "POST", headers:{"x-ocr-observation-scope":observationScopeRef.current}, body: formData });
-        stage = "http-response-" + response.status;
-        const body = await response.text();
-        if (!response.ok) throw new Error(body.slice(0, 500) || response.statusText);
-        stage = "parse-response";
-        return JSON.parse(body) as CaptureSourceSelectionResponse;
-      } catch (error) {
-        return { failures: [{ id: candidate.id, label: candidate.label, stage,
-          error: error instanceof Error ? error.message : String(error) }] } as CaptureSourceSelectionResponse;
-      }
-      })());
-    }
-    const evaluations = results.flatMap(result => result.evaluations ?? []);
-    const selected = selectPhysicalSource(evaluations);
-    const result: CaptureSourceSelectionResponse = {
-      evaluations, failures: results.flatMap(result => result.failures ?? []),
-      selectedCandidateId: selected?.id, preflightStarted: true,
-      fallbackOccurred: !selected, durationMs: Date.now() - started,
-      selectionReason: selected ? "Usable high-resolution still preferred; existing completeness ranking within source class."
-        : "Every candidate evaluation failed; canvas retained for review OCR.",
-    };
-    const failureLines =
-      result.failures?.map(
-        (failure) =>
-          `${failure.label ?? failure.id ?? "candidate"} failed at ${failure.stage ?? "unknown"}: ${failure.error ?? "unknown error"}${failure.inputType ? ` inputType=${failure.inputType}` : ""}${failure.actualInput ? ` actual=${failure.actualInput}` : ""}${failure.expectedInput ? ` expected=${failure.expectedInput}` : ""}.`
-      ) ?? [];
-
-    const selectedCandidate =
-      candidates.find((candidate) => candidate.id === result.selectedCandidateId) ??
-      candidates[0] ??
-      null;
-    const evaluationLines =
-      result.evaluations?.map((evaluation) => {
-        const width = evaluation.dimensions?.width ?? 0;
-        const height = evaluation.dimensions?.height ?? 0;
-        const quality = evaluation.quality;
-        let prefix = `${evaluation.label ?? evaluation.id ?? "candidate"} evaluation`;
-
-        if (evaluation.id === "canvas") {
-          prefix = "Canvas evaluation";
-        } else if (evaluation.id === "still-crop") {
-          prefix = "Still crop evaluation";
-        } else if (evaluation.id === "still-full") {
-          prefix = "Still full evaluation";
-        }
-
-        return `${prefix}: ${evaluation.label ?? evaluation.id ?? "candidate"} candidate input=${evaluation.inputType ?? "unknown"}, mime=${evaluation.imageMimeType ?? "unknown"}, bytes=${evaluation.imageByteSize ?? 0}, dimensions=${width}x${height}, detector=${evaluation.detectorConfidence ?? "unknown"}, quality sharpness=${quality?.sharpness ?? 0}, contrast=${quality?.contrast ?? 0}, words=${evaluation.words ?? 0}, highConfidence=${evaluation.highConfidenceWords ?? 0}, textCoverage=${(((evaluation.textWidthCoverage ?? 0) * 100)).toFixed(1)}%x${(((evaluation.textHeightCoverage ?? 0) * 100)).toFixed(1)}%, invoiceTokens=${evaluation.invoiceTokens ?? 0}, dates=${evaluation.dateTokens ?? 0}, units=${evaluation.unitTokens ?? 0}, amounts=${evaluation.amountTokens ?? 0}, rows=${evaluation.rowCount ?? 0}, explicitTotal=${evaluation.explicitTotal ?? 0}, suspicious=${evaluation.suspiciousIncomplete ? "yes" : "no"}, completenessScore=${evaluation.completenessScore ?? 0}.`;
-      }) ?? [];
-    const selectedSource =
-      selectedCandidate?.id === "canvas" ? "canvas" : "imagecapture-still";
-    const reason =
-      result.selectionReason ||
-      `${selectedCandidate?.label ?? "canvas-video-frame"} selected by capture source preflight.`;
-
-    return {
-      selectedCandidate,
-      sources: [...evaluations.map(evaluation => ({ id: evaluation.id ?? "unknown", status: "success" as const, metrics: { ...evaluation, selected: evaluation.id === selected?.id } })), ...results.flatMap(result => result.failures ?? []).map(failure => ({ id: failure.id ?? "unknown", status: "failure" as const, stage: failure.stage, error: failure.error, metrics: { variantOutcomes: failure.variantOutcomes } }))],
-      reason,
-      diagnosticLines: [
-        `Capture source preflight: ${result.preflightStarted === false ? "not started" : "started"}.`,
-        ...evaluationLines,
-        ...failureLines,
-        `Capture source selection duration: ${result.durationMs ?? 0}ms.`,
-        `Selected source: ${selectedSource}.`,
-        `Production OCR source selected: ${selectedSource}.`,
-        `Fallback occurred: ${result.fallbackOccurred ? "yes" : "no"}.`,
-        `Selection reason: ${reason}`,
-      ],
-    };
-  }
-
-  async function orientPhysicalImage(file:File,source:string){
-    const normalized=await normalizePhysicalStill(file);
-    opticalRef.current.notes.push(JSON.stringify(normalized.metadata));
-    const original=opticalRef.current.images.find(i=>i.label==="Original capture");if(original&&original.source===source){original.width=normalized.metadata.rawWidth;original.height=normalized.metadata.rawHeight;}
-    const form=new FormData();form.append("mode","orientation-probe");form.append("captureCandidates",JSON.stringify([{id:source,label:source,fileField:"candidate-0"}]));form.append("candidate-0",normalized.file);
-    const response=await fetch("/api/payments/extract-check-stub",{method:"POST",headers:{"x-ocr-observation-scope":observationScopeRef.current},body:form,signal:AbortSignal.timeout(25000)});
-    const result=await response.json(); const {imageDataUrl,optical,...probe}=result;if(optical?.images){opticalRef.current.images.push(...optical.images);opticalRef.current.notes.push(...(optical.notes??[]));}opticalRef.current.probe=[...(Array.isArray(opticalRef.current.probe)?opticalRef.current.probe:[]),{source,...probe}];
-    const output=imageDataUrl?await dataUrlToImageFile(imageDataUrl,"trimax-oriented.jpg"):normalized.file;
-    opticalRef.current.images=opticalRef.current.images.filter(i=>i.label!=="Normalized image"||i.source!==source);
-    opticalRef.current.images.push(await opticalImage(output,"Normalized image",source,normalized.metadata.exifOrientation,result.rotation??0,normalized.metadata.transformation+"; document probe rotation "+(result.rotation??"unresolved")));
-    if(!response.ok||!result.resolved)throw Error("Document orientation unresolved. Retake the photo or rotate it manually before retrying.");
-    return output;
-  }
-
-  async function buildImageCaptureStillComparison(
-    track: MediaStreamTrack | null,
-    videoFile: File
-  ): Promise<CameraStillComparisonResult> {
-    sourceSelectionRef.current = [];
-    const diagnosticLines = [
-      "Production capture source selection: comparing canvas-video-frame and ImageCapture still evidence.",
-    ];
-    const stageLines: string[] = [];
-    const ImageCaptureCtor = imageCaptureConstructor();
-    const constructorAvailable = Boolean(ImageCaptureCtor);
-
-    diagnosticLines.push(
-      `ImageCapture constructor available: ${constructorAvailable ? "yes" : "no"}.`
-    );
-
-    if (!track) {
-      diagnosticLines.push("ImageCapture takePhoto available: no.");
-      diagnosticLines.push("Camera capture selected for production OCR: canvas-video-frame.");
-      diagnosticLines.push("Canvas fallback reason: no active camera video track.");
-      stopCameraCapture(true);
-      return {
-        diagnosticLines,
-        stageLines,
-        productionFile: null,
-        productionCropBox: null,
-        productionReason: "no active camera video track",
-      };
-    }
-
-    if (!ImageCaptureCtor) {
-      diagnosticLines.push("ImageCapture takePhoto available: no.");
-      diagnosticLines.push("Camera capture selected for production OCR: canvas-video-frame.");
-      diagnosticLines.push("Canvas fallback reason: ImageCapture constructor unavailable at runtime.");
-      stopCameraCapture(true);
-      return {
-        diagnosticLines,
-        stageLines,
-        productionFile: null,
-        productionCropBox: null,
-        productionReason: "ImageCapture constructor unavailable",
-      };
-    }
-
-    let capture: BrowserImageCapture;
-
-    try {
-      capture = new ImageCaptureCtor(track);
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : "unknown error";
-
-      diagnosticLines.push("ImageCapture takePhoto available: no.");
-      diagnosticLines.push("Camera capture selected for production OCR: canvas-video-frame.");
-      diagnosticLines.push(`Canvas fallback reason: ImageCapture constructor failed (${reason}).`);
-      stopCameraCapture(true);
-      return {
-        diagnosticLines,
-        stageLines,
-        productionFile: null,
-        productionCropBox: null,
-        productionReason: `ImageCapture constructor failed (${reason})`,
-      };
-    }
-
-    const takePhotoAvailable = typeof capture.takePhoto === "function";
-    diagnosticLines.push(
-      `ImageCapture takePhoto available: ${takePhotoAvailable ? "yes" : "no"}.`
-    );
-
-    if (!takePhotoAvailable || !capture.takePhoto) {
-      diagnosticLines.push("Camera capture selected for production OCR: canvas-video-frame.");
-      diagnosticLines.push("Canvas fallback reason: takePhoto unavailable on active camera track.");
-      stopCameraCapture(true);
-      return {
-        diagnosticLines,
-        stageLines,
-        productionFile: null,
-        productionCropBox: null,
-        productionReason: "takePhoto unavailable on active camera track",
-      };
-    }
-
-    try {
-      stageLines.push("ImageCapture still requested");
-      const takePhoto = capture.takePhoto.bind(capture);
-      const stillBlob = await acquireStillAndRelease(
-        () => promiseWithTimeout(takePhoto(), 7000, "ImageCapture takePhoto timed out."),
-        () => stopCameraCapture(true),
-        cameraLifecycleRef.current,
-      );
-      const rawDimensions = await readJpegPixelDimensions(stillBlob);
-      const exifPresence = await detectExifPresence(stillBlob);
-      const originalStillFile = new File(
-        [stillBlob],
-        `trimax-remittance-still-${Date.now()}.jpg`,
-        { type: stillBlob.type || "image/jpeg" }
-      );
-      opticalRef.current.images.push(await opticalImage(originalStillFile,"Original capture","imagecapture-still",null,0,"Original JPEG; numeric EXIF recorded in normalization notes"));
-      const stillFile = await orientPhysicalImage(originalStillFile,"imagecapture-still");
-      const stillImage = await imageElementFromFile(stillFile);
-      const normalizedWidth = stillImage.naturalWidth || stillImage.width;
-      const normalizedHeight = stillImage.naturalHeight || stillImage.height;
-      const stillSuggestion = await detectDefaultCropBox(stillFile);
-      const stillCropQuality = stillSuggestion.quality;
-      const videoQuality = await inspectImageQuality(videoFile, {
-        left: 0,
-        top: 0,
-        right: 100,
-        bottom: 100,
-      });
-      const rawDimensionText = rawDimensions
-        ? `${rawDimensions.width} x ${rawDimensions.height}`
-        : "unknown";
-      const stillCropBounds = stillSuggestion.cropBox;
-
-      diagnosticLines.push(
-        `ImageCapture still returned: MIME ${stillBlob.type || "unknown"}, raw dimensions ${rawDimensionText}, ${stillBlob.size} bytes.`
-      );
-      diagnosticLines.push(`ImageCapture EXIF/orientation metadata: ${exifPresence}.`);
-      diagnosticLines.push(
-        `ImageCapture still normalized dimensions: ${normalizedWidth} x ${normalizedHeight}.`
-      );
-      diagnosticLines.push(
-        `Still document detector result: confidence ${stillSuggestion.confidence}, auto-read ${stillSuggestion.shouldAutoRead ? "yes" : "no"}, area ${(stillSuggestion.documentAreaRatio * 100).toFixed(1)}%, quality ${stillSuggestion.qualityMessages.length === 0 ? "passed" : "blocked"}.`
-      );
-      diagnosticLines.push(
-        `Detected still crop bounds: left ${stillCropBounds.left.toFixed(1)}%, top ${stillCropBounds.top.toFixed(1)}%, right ${stillCropBounds.right.toFixed(1)}%, bottom ${stillCropBounds.bottom.toFixed(1)}%.`
-      );
-      diagnosticLines.push(
-        `Detected still crop dimensions: ${stillSuggestion.effectiveWidth} x ${stillSuggestion.effectiveHeight}.`
-      );
-      diagnosticLines.push(
-        `Detected still crop quality: ${formatQualityComparisonMetrics(stillCropQuality)}.`
-      );
-      diagnosticLines.push(
-        `Capture quality comparison: video-frame canvas ${formatQualityComparisonMetrics(videoQuality)}; ImageCapture still detected crop ${formatQualityComparisonMetrics(stillCropQuality)}.`
-      );
-
-      let stillCropFile: File | null = null;
-      let stillFullFile: File | null = null;
-
-      try {
-        const stillCropDataUrl = await cropPhotoForOcr(
-          stillFile,
-          stillSuggestion.cropBox,
-          0
-        );
-
-        stillCropFile = await dataUrlToImageFile(
-          stillCropDataUrl,
-          `trimax-remittance-still-crop-${Date.now()}.jpg`
-        );
-      } catch (error) {
-        diagnosticLines.push(
-          `imagecapture-still-crop preparation failed at cropPhotoForOcr: ${error instanceof Error ? error.message : "unknown error"}.`
-        );
-      }
-
-      try {
-        const stillFullDataUrl = await cropPhotoForOcr(
-          stillFile,
-          { left: 0, top: 0, right: 100, bottom: 100 },
-          0
-        );
-
-        stillFullFile = await dataUrlToImageFile(
-          stillFullDataUrl,
-          `trimax-remittance-still-full-${Date.now()}.jpg`
-        );
-      } catch (error) {
-        diagnosticLines.push(
-          `imagecapture-still-full preparation failed at cropPhotoForOcr: ${error instanceof Error ? error.message : "unknown error"}.`
-        );
-      }
-
-      const sourceCandidates: CaptureSourceCandidate[] = [
-        {
-          id: "canvas",
-          label: "canvas-video-frame",
-          file: videoFile,
-          cropBox: { left: 0, top: 0, right: 100, bottom: 100 },
-          detectorConfidence: "high",
-          detectorAreaRatio: 1,
-          detectorSource: "visible-guide",
-        },
-      ];
-
-      if (stillCropFile) {
-        sourceCandidates.push({
-          id: "still-crop",
-          label: "imagecapture-still-crop",
-          file: stillCropFile,
-          cropBox: stillSuggestion.cropBox,
-          detectorConfidence: stillSuggestion.confidence,
-          detectorAreaRatio: stillSuggestion.documentAreaRatio,
-          detectorSource: "still-detector-crop",
-        });
-      }
-
-      if (stillFullFile) {
-        sourceCandidates.push({
-          id: "still-full",
-          label: "imagecapture-still-full",
-          file: stillFullFile,
-          cropBox: { left: 0, top: 0, right: 100, bottom: 100 },
-          detectorConfidence: "medium",
-          detectorAreaRatio: 1,
-          detectorSource: "normalized-full-still",
-        });
-      }
-      const selection = await selectProductionCaptureSource(sourceCandidates);
-      sourceSelectionRef.current = selection.sources;
-      const productionFile =
-        selection.selectedCandidate?.id === "canvas"
-          ? null
-          : selection.selectedCandidate?.file ?? null;
-
-      diagnosticLines.push(...selection.diagnosticLines);
-      diagnosticLines.push(
-        `Camera capture selected for production OCR: ${productionFile ? "imagecapture-still" : "canvas-video-frame"}.`
-      );
-      stageLines.push(
-        `ImageCapture still measured: ${normalizedWidth}x${normalizedHeight}, crop ${stillSuggestion.effectiveWidth}x${stillSuggestion.effectiveHeight}`
-      );
-
-      stopCameraCapture(true);
-      return {
-        diagnosticLines,
-        stageLines,
-        productionFile,
-        productionCropBox:
-          selection.selectedCandidate?.id === "still-crop"
-            ? stillSuggestion.cropBox
-            : null,
-        productionReason: selection.reason,
-      };
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : "still capture failed";
-
-      diagnosticLines.push("Camera capture selected for production OCR: canvas-video-frame.");
-      diagnosticLines.push(`Canvas fallback reason: ${reason}.`);
-      stopCameraCapture(true);
-      return {
-        diagnosticLines,
-        stageLines,
-        productionFile: null,
-        productionCropBox: null,
-        productionReason: reason,
-      };
-    }
-  }
-
-  async function captureFromTrimaxCamera(
-    event?: { preventDefault: () => void; stopPropagation: () => void }
-  ) {
-    event?.preventDefault();
-    event?.stopPropagation();
-
-    if (isCapturingFrame) {
-      return;
-    }
-
-    const video = cameraVideoRef.current;
-
-    if (!video || video.videoWidth <= 0 || video.videoHeight <= 0) {
-      setCameraFailureStage("camera-ready");
-      setCameraStatusMessage(
-        "Camera is not ready. Use the capture button below or choose an existing photo."
-      );
-      return;
-    }
-
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d");
-
-    if (!context) {
-      setCameraFailureStage("capture-prepare");
-      setCameraStatusMessage("Camera capture could not be prepared.");
-      setCheckOcrStatus("error");
-      setCheckOcrMessage("Camera capture could not be prepared.");
-      return;
-    }
-
-    captureGateSession.current.captured = true;
-    observationScopeRef.current = crypto.randomUUID();
-    opticalRef.current = {images:[],notes:[],startedAt:performance.now()};
-    sourceSelectionRef.current = [];
-    beginCapture('custom-camera','Explicit historical custom capture handler');
-    setIsCapturingFrame(true);
-    setCameraFailureStage("");
-    setCameraPipelineStages(["Capturing..."]);
-    setCameraStatusMessage("Capturing...");
-    setCheckOcrStatus("reading");
-    setCheckOcrMessage("Capturing remittance...");
-    const {
-      sourceX,
-      sourceY,
-      sourceWidth,
-      sourceHeight,
-      viewportWidth,
-      viewportHeight,
-      guideLeft,
-      guideTop,
-      guideWidth,
-      guideHeight,
-      renderedVideoLeft,
-      renderedVideoTop,
-      renderedVideoWidth,
-      renderedVideoHeight,
-      visibleSourceX,
-      visibleSourceY,
-      visibleSourceWidth,
-      visibleSourceHeight,
-    } =
-      getVisibleCameraGuideSourceRect(video);
-    const track = cameraStreamRef.current?.getVideoTracks()[0] ?? null;
-    const now = performance.now();
-    const cameraOpenAge = cameraOpenedAtRef.current
-      ? Math.round(now - cameraOpenedAtRef.current)
-      : 0;
-    const cameraReadyAge = cameraReadyAtRef.current
-      ? Math.round(now - cameraReadyAtRef.current)
-      : 0;
-    const objectFit =
-      getComputedStyle(video).objectFit || "unknown";
-    const maxOutputEdge = 4600;
-    const outputScale = Math.min(
-      1,
-      maxOutputEdge / Math.max(sourceWidth, sourceHeight)
-    );
-    const outputWidth = Math.max(1, Math.round(sourceWidth * outputScale));
-    const outputHeight = Math.max(1, Math.round(sourceHeight * outputScale));
-    const sourceRight = sourceX + sourceWidth;
-    const sourceBottom = sourceY + sourceHeight;
-    const visibleSourceRight = visibleSourceX + visibleSourceWidth;
-    const visibleSourceBottom = visibleSourceY + visibleSourceHeight;
-    const guideContainmentPassed =
-      sourceX >= visibleSourceX &&
-      sourceY >= visibleSourceY &&
-      sourceRight <= visibleSourceRight &&
-      sourceBottom <= visibleSourceBottom;
-    const guideScaleX = viewportWidth > 0 ? visibleSourceWidth / viewportWidth : 0;
-    const guideScaleY = viewportHeight > 0 ? visibleSourceHeight / viewportHeight : 0;
-    const cameraCaptureDiagnosticLines = [
-      `Capture gate (native-video coordinates): ${JSON.stringify(captureGateTrace.current)}`,
-      `Frame captured: native video ${video.videoWidth} x ${video.videoHeight}.`,
-      `Camera native video: ${video.videoWidth} x ${video.videoHeight}.`,
-      `Camera rendered video: ${renderedVideoWidth} x ${renderedVideoHeight}.`,
-      `Camera viewport: ${viewportWidth} x ${viewportHeight}.`,
-      `Camera object-fit: ${objectFit}.`,
-      `Visible object-fit source region: left ${visibleSourceX}, top ${visibleSourceY}, width ${visibleSourceWidth}, height ${visibleSourceHeight}.`,
-      `Visible guide rectangle: left ${guideLeft}, top ${guideTop}, width ${guideWidth}, height ${guideHeight}.`,
-      `Mapped native source rectangle: left ${sourceX}, top ${sourceY}, width ${sourceWidth}, height ${sourceHeight}.`,
-      `Guide mapping containment: ${guideContainmentPassed ? "passed" : "failed"}.`,
-      `Guide mapping scale: x=${guideScaleX.toFixed(3)}, y=${guideScaleY.toFixed(3)}.`,
-      `Camera open age at capture: ${cameraOpenAge}ms.`,
-      `Camera ready age at capture: ${cameraReadyAge}ms.`,
-      `Camera track settings initial: ${cameraInitialTrackSettingsRef.current}.`,
-      `Camera track settings ready: ${cameraReadyTrackSettingsRef.current}.`,
-      `Camera track settings settled: ${cameraSettledTrackSettingsRef.current}.`,
-      `Camera track settings capture: ${formatCameraTrackSettings(track)}.`,
-      `Camera track capabilities: ${formatCameraTrackCapabilities(track)}.`,
-      `Live camera capture output: ${outputWidth} x ${outputHeight}, scale ${outputScale.toFixed(3)}.`,
-    ];
-
-    cameraCaptureDiagnosticLines.forEach(appendCameraStage);
-    appendCameraStage(
-      `Rendered video offset: left ${renderedVideoLeft}, top ${renderedVideoTop}.`
-    );
-    canvas.width = outputWidth;
-    canvas.height = outputHeight;
-    context.fillStyle = "#ffffff";
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    context.drawImage(
-      video,
-      sourceX,
-      sourceY,
-      sourceWidth,
-      sourceHeight,
-      0,
-      0,
-      canvas.width,
-      canvas.height
-    );
-    appendCameraStage(
-      `Crop created: ${canvas.width}x${canvas.height}, output scale ${outputScale.toFixed(3)}`
-    );
-    appendCameraStage("Image normalized");
-    try {
-      const blob = await canvasToJpegBlob(canvas, 3500);
-      const file = new File(
-        [blob],
-        `trimax-remittance-${Date.now()}.jpg`,
-        { type: "image/jpeg" }
-      );
-      cameraLifecycleRef.current.fallbackFrameAcquiredAt = new Date().toISOString();
-      captureUi.current!.imageReturnedAt=Date.now();captureUi.current!.cameraUiEndedAt=Date.now();
-      setCheckImagePreview(URL.createObjectURL(file));setCheckImageFile(file);setCheckImageName(file.name);
-      setPaymentEntryMode('photo');setIsCapturingFrame(false);stopCameraCapture(true);
-      const stillComparison = await buildImageCaptureStillComparison(
-        track,
-        file
-      );
-      const productionFile = stillComparison.productionFile ?? await orientPhysicalImage(file,"canvas-video-frame");
-      const productionMechanism = stillComparison.productionFile
-        ? "imagecapture-still"
-        : "canvas-video-frame";
-      const productionCrop = stillComparison.productionCropBox;
-      if(captureUi.current){captureUi.current.acquisitionMechanism=productionMechanism;captureUi.current.fallbackOccurred=!stillComparison.productionFile;captureUi.current.fallbackReason=stillComparison.productionFile?null:stillComparison.productionReason;}
-
-      setCameraStatusMessage("Checking image...");
-      appendCameraStage(`Normalized JPG saved: ${canvas.width}x${canvas.height}, ${blob.size} bytes`);
-      stillComparison.stageLines.forEach(appendCameraStage);
-      stopCameraCapture();
-      captureCheckImage(
-        productionFile,
-        "camera",
-        captureDocumentType,
-        captureIntent,
-        [
-          ...cameraCaptureDiagnosticLines,
-          `Camera lifecycle: ${JSON.stringify(cameraLifecycleRef.current)}.`,
-          `Normalized JPG saved: ${canvas.width} x ${canvas.height}, ${blob.size} bytes.`,
-          `Capture mechanism used for production OCR: ${productionMechanism}.`,
-          `Production capture selection reason: ${stillComparison.productionReason}.`,
-          ...(productionCrop
-            ? [
-                `Production still detector crop: left ${productionCrop.left.toFixed(1)}%, top ${productionCrop.top.toFixed(1)}%, right ${productionCrop.right.toFixed(1)}%, bottom ${productionCrop.bottom.toFixed(1)}%.`,
-              ]
-            : []),
-          ...stillComparison.diagnosticLines,
-        ]
-      );
-    } catch (error) {
-      stopCameraCapture();
-      cameraCaptureDiagnosticLines.push(`Camera lifecycle: ${JSON.stringify(cameraLifecycleRef.current)}.`);
-      retainPreparationFailure(error instanceof Error?error.message:"Camera preparation failed",cameraCaptureDiagnosticLines,"camera",ocrAttemptVersion.current);
-      setCameraFailureStage("save-normalized-crop");
-      setCameraStatusMessage(
-        error instanceof Error ? error.message : "Camera capture could not be saved."
-      );
-      setCheckOcrStatus("error");
-      setCheckOcrMessage(
-        error instanceof Error ? error.message : "Camera capture could not be saved."
-      );
-      setIsCapturingFrame(false);
-    }
-  }
-
-  function handleCaptureButtonPointerDown(event: PointerEvent<HTMLButtonElement>) {
-    event.preventDefault();
-    event.stopPropagation();
-    const element = document.elementFromPoint(event.clientX, event.clientY);
-
-    setLastActualCaptureTap({
-      point: "capture-pointer-down",
-      x: Math.round(event.clientX),
-      y: Math.round(event.clientY),
-      element: describeElement(element),
-    });
-    lastCapturePointerAtRef.current = Date.now();
-    event.currentTarget.setPointerCapture?.(event.pointerId);
-    void captureFromTrimaxCamera(event);
-  }
-
-  function captureFromDocumentFrame(
-    x: number,
-    y: number,
-    event: {
-      preventDefault: () => void;
-      stopPropagation: () => void;
-      target: EventTarget | null;
-    },
-    pointerId?: number
-  ) {
-    const frame = cameraGuideRef.current;
-
-    if (!frame || isCapturingFrame) {
-      return false;
-    }
-
-    if (!pointIsInsideRect(frame.getBoundingClientRect(), x, y)) {
-      return false;
-    }
-
-    const element = document.elementFromPoint(x, y);
-    const now = Date.now();
-
-    event.preventDefault();
-    event.stopPropagation();
-
-    if (now - lastCapturePointerAtRef.current < 500) {
-      return true;
-    }
-
-    setLastActualCaptureTap({
-      point: "document-frame-pointer-down",
-      x: Math.round(x),
-      y: Math.round(y),
-      element: describeElement(element),
-      target: describeElement(event.target instanceof Element ? event.target : null),
-      frame: rectSnapshot(frame),
-      handler: "document-frame-capture",
-      captureStarted: true,
-    });
-    lastCapturePointerAtRef.current = now;
-    if (typeof pointerId === "number") {
-      frame.setPointerCapture?.(pointerId);
-    }
-    void captureFromTrimaxCamera(event);
-
-    return true;
-  }
-
-  function handleDocumentFramePointerDown(event: PointerEvent<HTMLDivElement>) {
-    if (event.button !== 0) {
-      return;
-    }
-
-    captureFromDocumentFrame(
-      event.clientX,
-      event.clientY,
-      event,
-      event.pointerId
-    );
-  }
-
-  function handleDocumentFrameTouchStart(event: TouchEvent<HTMLDivElement>) {
-    const touch = event.changedTouches[0];
-
-    if (!touch) {
-      return;
-    }
-
-    captureFromDocumentFrame(touch.clientX, touch.clientY, event);
-  }
-
-  function captureVisibleButtonTap(
-    x: number,
-    y: number,
-    event: { preventDefault: () => void; stopPropagation: () => void }
-  ) {
-    const captureButton = captureButtonRef.current;
-
-    if (!captureButton || isCapturingFrame) {
-      return false;
-    }
-
-    if (!pointIsInsideRect(captureButton.getBoundingClientRect(), x, y)) {
-      return false;
-    }
-
-    const element = document.elementFromPoint(x, y);
-    const now = Date.now();
-
-    event.preventDefault();
-    event.stopPropagation();
-
-    if (now - lastCapturePointerAtRef.current < 500) {
-      return true;
-    }
-
-    setLastActualCaptureTap({
-      point: "overlay-capture-visible-button",
-      x: Math.round(x),
-      y: Math.round(y),
-      element: describeElement(element),
-    });
-    lastCapturePointerAtRef.current = now;
-    void captureFromTrimaxCamera(event);
-
-    return true;
-  }
-
-  function handleCameraOverlayPointerDownCapture(
-    event: PointerEvent<HTMLDivElement>
-  ) {
-    if (event.button !== 0) {
-      return;
-    }
-
-    if (captureVisibleButtonTap(event.clientX, event.clientY, event)) {
-      event.currentTarget.setPointerCapture?.(event.pointerId);
-    }
-  }
-
-  function handleCameraOverlayTouchStartCapture(
-    event: TouchEvent<HTMLDivElement>
-  ) {
-    const touch = event.changedTouches[0];
-
-    if (!touch) {
-      return;
-    }
-
-    captureVisibleButtonTap(touch.clientX, touch.clientY, event);
-  }
-
-  function handleCaptureButtonClick(event: MouseEvent<HTMLButtonElement>) {
-    event.preventDefault();
-    event.stopPropagation();
-
-    if (Date.now() - lastCapturePointerAtRef.current < 500) {
-      return;
-    }
-
-    void captureFromTrimaxCamera(event);
-  }
-
-  function captureCheckImage(
+  const captureCheckImage = useRemittanceEvent(function captureCheckImageEvent(
     file: File | undefined,
     source: "camera" | "existing" = "existing",
     documentType: RemittanceDocumentType = captureDocumentType,
     intent: CaptureIntent = captureIntent,
     sourceDiagnosticLines: string[] = []
-  ) {
+  ): void {
     if (!file) return;
+    const capturedFile = file;
     const implementation = source === 'existing' ? 'existing-photo' : captureUi.current?.selection.implementation ?? 'custom-camera';
     if (!captureUi.current || captureUi.current.selection.implementation !== implementation) beginCapture(implementation,'Image intake without an opening event');
     captureUi.current!.imageReturnedAt ??= Date.now();
-    stopCameraCapture();
-    setIsCapturingFrame(false);
     setPaymentEntryMode('photo');
     captureUi.current!.cameraUiEndedAt ??= Date.now();
     captureTimings.current = {...captureTimings.current,captureOpenedAt:source==='camera'?captureTimings.current.captureOpenedAt:null,stillReturnedAt:Date.now(),previewPaintOpportunityAt:null};
@@ -5090,18 +3104,22 @@ export default function BatchInvoicePayments({
     const acquiredEvidence = captureUi.current!;
     setCheckOcrStatus('reading');
     setCheckOcrMessage('Processing remittance…');
-    const prepareAfterPreview = () => requestAnimationFrame(() => requestAnimationFrame(() => {
-      if(captureVersion !== ocrAttemptVersion.current)return;
-      acquiredEvidence.previewPaintOpportunityAt=Date.now();
-      captureTimings.current.previewPaintOpportunityAt=acquiredEvidence.previewPaintOpportunityAt;
-      void readPreparedRemittanceFromFile(file,{left:0,top:0,right:100,bottom:100},0,documentType,intent,'standard',true,source,
-        [...sourceDiagnosticLines,'Capture implementation: '+acquiredEvidence.selection.implementation+'; camera UI ended before preparation.']);
-    }));
-    const previewImage = new Image();
-    previewImage.onload = () => { acquiredEvidence.previewImageLoadedAt=Date.now();prepareAfterPreview(); };
-    previewImage.onerror = () => { acquiredEvidence.previewError='Browser could not decode original preview; continuing existing image preparation';prepareAfterPreview(); };
-    previewImage.src=previewUrl;
-  }
+    setIsPreparingCrop(true);
+    async function prepareCapturedImage() {
+      try {
+        await remittanceDeadline(new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))), 2_000, "Preview paused. Retry when Trimax is visible.");
+        if (captureVersion !== ocrAttemptVersion.current) return;
+        acquiredEvidence.previewPaintOpportunityAt = Date.now();
+        await readPreparedRemittanceFromFile(capturedFile,{left:0,top:0,right:100,bottom:100},0,documentType,intent,'standard',true,source,
+          [...sourceDiagnosticLines,'Capture implementation: guided camera or existing photo; full image preserved.']);
+      } catch (error) {
+        if (captureVersion !== ocrAttemptVersion.current) return;
+        setIsPreparingCrop(false); setCheckOcrStatus("error");
+        setCheckOcrMessage(error instanceof Error ? error.message : "Could not prepare image. Retry or enter manually.");
+      }
+    }
+    void prepareCapturedImage();
+  });
 
   function beginCapture(implementation: CaptureImplementation, reason: string) {
     const now=Date.now();
@@ -5115,20 +3133,23 @@ export default function BatchInvoicePayments({
       previewPaintOpportunityAt:null,previewImageLoadedAt:null,previewError:null,canonicalUploadStartedAt:null,canonicalUploadAcknowledgedAt:null,legacyJobQueuedAt:null,shadowJobQueuedAt:null};
   }
 
-  function openCameraCapture(documentType: RemittanceDocumentType = captureDocumentType, intent: CaptureIntent = 'primary') {
-    beginCapture('native-still','Normal Take Photo always uses device still capture');
+  const closeRemittanceCamera = useCallback(() => setPaymentEntryMode("choice"), []);
+  const enterRemittanceManually = useCallback(() => {
+    ocrAttemptVersion.current++;
+    setIsPreparingCrop(false);
+    setCheckOcrStatus("manual");
+    setPaymentEntryMode("manual");
+    setCheckOcrMessage("Select invoices and review the payment before applying.");
+  }, []);
+
+  const openCameraCapture = useRemittanceEvent(function openCameraCaptureEvent(documentType: RemittanceDocumentType = captureDocumentType, intent: CaptureIntent = 'primary'): void {
+    ocrAttemptVersion.current++;
+    setIsPreparingCrop(false);
+    beginCapture('custom-camera','Guided live remittance camera');
     setCaptureDocumentType(documentType); setCaptureIntent(intent);
     captureTimings.current={captureOpenedAt:Date.now(),stillReturnedAt:null,previewPaintOpportunityAt:null,cameraIndicatorMs:null};
-    try {
-      if(!nativeStillInput.current)throw Error('Device image picker is unavailable. Choose Existing Photo.');
-      captureUi.current!.nativeCameraInvokedAt=Date.now();
-      nativeStillInput.current.click();
-    } catch(error) {
-      captureUi.current!.fallbackReason=error instanceof Error?error.message:String(error);
-      setCheckOcrMessage('Device camera could not open. Choose Existing Photo.');
-      setCheckOcrStatus('error');
-    }
-  }
+    setPaymentEntryMode("camera");
+  });
 
   async function applyBatchPayment() {
     if(retainedAttemptId || resumedDiagnosticReplay.current) { setCheckOcrMessage("Diagnostic replay cannot apply payments."); return; }
@@ -5511,285 +3532,11 @@ export default function BatchInvoicePayments({
           await extractCheckStubFromPhoto(imageDataUrl,job.input.documentType,job.input.documentType==='check_only'?'check_details':'primary',job.input.retryStrategy,[],'',history.canonicalReference,{history,canonical:{reference:history.canonicalReference!,sha256:history.sourceImageHash!,storedBytes:Math.floor(image.base64.length*3/4),shadowQueued:true,uploadDurationMs:0}});
         }catch(error){setCheckOcrMessage(String(error));}
       }}/> }
-      <input ref={nativeStillInput} type="file" accept="image/*" capture="environment" className="sr-only" aria-label="Take remittance still photo" onChange={event => { captureCheckImage(event.target.files?.[0],'camera',captureDocumentType,captureIntent); event.currentTarget.value=''; }} />
       {businessId && <RecentScans businessId={businessId} businessSlug={businessSlug??undefined} role={workspaceRole} savedStatus={scanSavedStatus}/> }
       {toast ? <Toast type={toast.type} message={toast.message} /> : null}
       {typeof document !== "undefined" ? duplicateRemittanceModalView() : null}
 
-      {typeof document !== "undefined" && paymentEntryMode === "camera" ? createPortal(
-        <div
-          ref={cameraOverlayRef}
-          aria-label="Remittance camera"
-          aria-modal="true"
-          className="fixed left-0 top-0 z-[2147483000] flex h-[100dvh] w-screen flex-col overflow-hidden bg-black text-white landscape:grid landscape:grid-cols-[minmax(0,1fr)_13rem] landscape:grid-rows-[auto_minmax(0,1fr)_auto] landscape:gap-2 landscape:p-2"
-          data-remittance-fullscreen-capture="true"
-          data-camera-overlay-root="true"
-          onPointerDownCapture={handleCameraOverlayPointerDownCapture}
-          onTouchStartCapture={handleCameraOverlayTouchStartCapture}
-          role="dialog"
-        >
-          <div
-            className="grid shrink-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-4 pb-2 pt-[calc(env(safe-area-inset-top)+0.75rem)] landscape:col-start-2 landscape:row-start-1 landscape:grid-cols-1 landscape:px-0 landscape:pb-1 landscape:pt-[max(env(safe-area-inset-top),0.25rem)]"
-            data-camera-safe-area-top="true"
-          >
-            <button
-              type="button"
-              autoFocus
-              onClick={() => {
-                stopCameraCapture();
-                setPaymentEntryMode("choice");
-                setCameraStatusMessage("Align the remittance inside the frame.");
-              }}
-              className="min-h-11 rounded-full border border-white/30 bg-black/70 px-4 py-2 text-sm font-black text-white shadow-xl backdrop-blur transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-sky-200 landscape:min-h-9 landscape:px-3 landscape:py-1.5 landscape:text-xs"
-            >
-              Cancel
-            </button>
-            <div
-              className={`min-w-0 justify-self-center rounded-full px-3 py-2 text-center text-sm font-black shadow-xl backdrop-blur landscape:w-full landscape:py-1.5 landscape:text-xs ${
-                cameraQualityReady
-                  ? "bg-emerald-400 text-black"
-                  : "bg-black/70 text-sky-100"
-              }`}
-              aria-live="polite"
-            >
-              {cameraQualityReady ? "Ready" : cameraStatusMessage}
-            </div>
-            <button
-              type="button"
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                setCameraGuideMode((current) =>
-                  current === "horizontal" ? "vertical" : "horizontal"
-                );
-                setCameraQualityReady(false);
-                setCameraStatusMessage("Hold steady / improve detection");
-              }}
-              className="min-h-11 rounded-full border border-white/30 bg-black/70 px-3 py-2 text-xs font-black text-white shadow-xl backdrop-blur transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-sky-200 landscape:min-h-9 landscape:py-1.5"
-            >
-              Rotate Guide
-            </button>
-          </div>
-          <div className="shrink-0 px-4 pb-2 landscape:col-start-2 landscape:row-start-2 landscape:px-0 landscape:pb-1">
-            <div className="mx-auto grid max-w-xl grid-cols-3 gap-1.5 rounded-2xl bg-black/55 p-1.5 backdrop-blur landscape:grid-cols-1">
-              {remittanceDocumentModes.map((mode) => (
-                <button
-                  key={mode.value}
-                  ref={mode.value === "check_only" ? checkOnlyModeButtonRef : undefined}
-                  type="button"
-                  disabled={isCapturingFrame}
-                  onPointerDown={(event) => event.stopPropagation()}
-                  onPointerUp={(event) => event.stopPropagation()}
-                  onTouchStart={(event) => event.stopPropagation()}
-                  onTouchEnd={(event) => event.stopPropagation()}
-                  onClick={(event) => handleCameraModeSelection(event, mode.value)}
-                  className={`relative z-10 min-h-10 rounded-xl px-2 py-2 text-xs font-black transition disabled:cursor-not-allowed disabled:opacity-60 landscape:min-h-9 landscape:py-1.5 ${
-                    captureDocumentType === mode.value
-                      ? "bg-emerald-300 text-black"
-                      : "bg-white/10 text-zinc-100"
-                  }`}
-                  title={mode.help}
-                  data-camera-control={mode.value}
-                >
-                  {mode.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div
-            ref={cameraViewportRef}
-            className="relative min-h-0 flex-1 overflow-hidden landscape:col-start-1 landscape:row-span-3 landscape:row-start-1 landscape:rounded-2xl"
-          >
-            <video
-              ref={cameraVideoRef}
-              muted
-              playsInline
-              autoPlay
-              disablePictureInPicture
-              data-camera-visible-video="true"
-              onLoadedMetadata={(event) => {
-                const video = event.currentTarget;
-
-                video.setAttribute("playsinline", "true");
-                video.setAttribute("webkit-playsinline", "true");
-                void video
-                  .play()
-                  .then(() => setCameraVideoPlayStatus("playing"))
-                  .catch((error: unknown) => {
-                    const message =
-                      error instanceof Error
-                        ? error.message
-                        : "Video play rejected.";
-
-                    setCameraVideoPlayStatus(`play-rejected: ${message}`);
-                    setCameraStatusMessage(`Preview blocked: ${message}`);
-                  });
-              }}
-              onCanPlay={() => {
-                setCameraVideoPlayStatus((current) =>
-                  current.startsWith("play-rejected") ? current : "can-play"
-                );
-              }}
-              className="absolute inset-0 z-0 h-full w-full bg-black object-cover opacity-100 [filter:none] [mix-blend-mode:normal]"
-              style={{
-                WebkitTransform: "translateZ(0)",
-                transform: "translateZ(0)",
-                WebkitBackfaceVisibility: "hidden",
-                backfaceVisibility: "hidden",
-              }}
-            />
-            <div
-              className="pointer-events-none absolute inset-0 z-10 bg-black/20"
-              data-camera-transparent-dim-layer="true"
-            />
-            <div
-              ref={cameraGuideRef}
-              role="button"
-              tabIndex={0}
-              aria-label="Tap document frame to capture remittance"
-              onPointerDown={handleDocumentFramePointerDown}
-              onTouchStart={handleDocumentFrameTouchStart}
-              data-camera-control="document-frame-capture"
-              className={`absolute left-1/2 top-1/2 z-20 max-h-[88%] max-w-[96%] -translate-x-1/2 -translate-y-1/2 cursor-pointer touch-manipulation rounded-[1.35rem] border-[3px] border-emerald-300 bg-transparent shadow-[0_0_0_9999px_rgba(0,0,0,0.45),0_0_36px_rgba(110,231,183,0.35)] focus:outline-none focus:ring-2 focus:ring-emerald-100 ${
-                cameraGuideMode === "horizontal"
-                  ? captureDocumentType === "full_check_stub"
-                    ? "h-[min(50dvh,54vw)] min-h-[30dvh] w-[min(94vw,128dvh)] landscape:h-[min(64dvh,52vw)]"
-                    : captureDocumentType === "check_only"
-                      ? "h-[min(36dvh,38vw)] min-h-[24dvh] w-[min(92vw,118dvh)] landscape:h-[min(50dvh,40vw)]"
-                      : "h-[min(18dvh,22vw)] min-h-[12dvh] w-[min(96vw,160dvh)] landscape:h-[min(62%,54dvh)] landscape:w-[min(96%,150dvh)]"
-                  : captureDocumentType === "remittance_stub"
-                    ? "h-[min(72dvh,88%)] min-h-[48dvh] w-[min(94vw,78dvh)] landscape:h-[min(88%,88dvh)] landscape:min-h-0 landscape:w-[min(42vw,58dvh)]"
-                    : "h-[min(72dvh,128vw)] min-h-[48dvh] w-[min(70vw,64dvh)] landscape:h-[min(72dvh,88vw)] landscape:w-[min(45vw,64dvh)]"
-              }`}
-              data-remittance-document-frame="true"
-              data-guide-mode={cameraGuideMode}
-            >
-              <span className="pointer-events-none absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-emerald-100/30" />
-              <span className="pointer-events-none absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-emerald-100/30" />
-              <span className="pointer-events-none absolute -left-1 -top-1 h-8 w-8 rounded-tl-[1.35rem] border-l-4 border-t-4 border-white" />
-              <span className="pointer-events-none absolute -right-1 -top-1 h-8 w-8 rounded-tr-[1.35rem] border-r-4 border-t-4 border-white" />
-              <span className="pointer-events-none absolute -bottom-1 -left-1 h-8 w-8 rounded-bl-[1.35rem] border-b-4 border-l-4 border-white" />
-              <span className="pointer-events-none absolute -bottom-1 -right-1 h-8 w-8 rounded-br-[1.35rem] border-b-4 border-r-4 border-white" />
-              <span className="pointer-events-none absolute left-1/2 top-1/2 rounded-full border border-white/25 bg-black/55 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-white/90 shadow-lg backdrop-blur -translate-x-1/2 -translate-y-1/2">
-                Tap document to capture
-              </span>
-            </div>
-          </div>
-
-          <div
-            className="relative z-30 shrink-0 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 landscape:col-start-2 landscape:row-start-3 landscape:px-0 landscape:pb-[max(env(safe-area-inset-bottom),0.25rem)] landscape:pt-1"
-            data-camera-safe-area-bottom="true"
-          >
-            <p className="mb-3 text-center text-sm font-semibold text-sky-100 landscape:mb-2 landscape:text-xs">
-              {guidanceForDocumentType(captureDocumentType)}
-            </p>
-            {cameraDiagnosticsEnabled ? (
-              <p className="mb-2 rounded-full border border-cyan-300/40 bg-cyan-950/60 px-3 py-1 text-center text-[10px] font-black uppercase tracking-[0.16em] text-cyan-100">
-                Diagnostics Active
-              </p>
-            ) : null}
-            <div className="mx-auto grid max-w-lg grid-cols-2 gap-2 landscape:grid-cols-1">
-              <button
-                ref={captureButtonRef}
-                type="button"
-                disabled={isCapturingFrame}
-                onPointerDown={handleCaptureButtonPointerDown}
-                onPointerUp={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                }}
-                onTouchStart={(event) => event.stopPropagation()}
-                onTouchEnd={(event) => event.stopPropagation()}
-                onClick={handleCaptureButtonClick}
-                data-camera-capture-button="true"
-                data-camera-control="capture"
-                className={`relative z-40 col-span-2 min-h-14 rounded-full px-6 py-3 text-base font-black shadow-2xl shadow-emerald-950/40 transition disabled:cursor-wait disabled:opacity-80 landscape:col-span-1 landscape:min-h-10 landscape:px-4 landscape:py-2 landscape:text-sm ${
-                  cameraReady && cameraQualityReady
-                    ? "bg-emerald-400 text-black hover:bg-emerald-300"
-                    : "bg-amber-300 text-black hover:bg-amber-200"
-                }`}
-              >
-                {isCapturingFrame
-                  ? "Capturing..."
-                  : cameraReady && cameraQualityReady
-                    ? captureDocumentType === "remittance_stub"
-                      ? "Capture Remittance"
-                      : "Capture"
-                    : captureDocumentType === "remittance_stub"
-                      ? "Capture Remittance"
-                      : "Check Capture"}
-              </button>
-              <label
-                ref={deviceCameraLabelRef}
-                data-camera-control="device-camera"
-                className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-full border border-sky-200/50 bg-black/70 px-4 py-2 text-center text-sm font-black text-sky-50 backdrop-blur transition hover:bg-white/10 landscape:min-h-9 landscape:px-3 landscape:py-1.5 landscape:text-xs"
-              >
-                Use Device Camera
-                <input
-                  type="file"
-                  accept="image/*,.heic,.heif"
-                    onClick={() => beginCapture('native-still','Explicit device camera selected')}
-                  capture="environment"
-                  className="sr-only"
-                  onChange={(event) => {
-                    stopCameraCapture();
-                    captureCheckImage(
-                      event.target.files?.[0],
-                      "camera",
-                      captureDocumentType,
-                      captureIntent
-                    );
-                    event.currentTarget.value = "";
-                  }}
-                />
-              </label>
-              <label className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-full border border-white/25 bg-black/70 px-4 py-2 text-center text-sm font-bold text-zinc-50 backdrop-blur transition hover:bg-white/10 landscape:min-h-9 landscape:px-3 landscape:py-1.5 landscape:text-xs">
-                Choose Existing
-                <input
-                  type="file"
-                  accept="image/*,.heic,.heif"
-                    onClick={() => beginCapture('existing-photo','Choose Existing Photo selected')}
-                  className="sr-only"
-                  onChange={(event) => {
-                    stopCameraCapture();
-                    captureCheckImage(
-                      event.target.files?.[0],
-                      "existing",
-                      captureDocumentType,
-                      captureIntent
-                    );
-                    event.currentTarget.value = "";
-                  }}
-                />
-              </label>
-            </div>
-            {cameraPipelineStages.length > 0 ? (
-              <div className="mt-2 rounded-xl border border-white/15 bg-black/70 px-2 py-1.5 text-[10px] font-semibold text-sky-50">
-                <p>{cameraPipelineStages.at(-1)}</p>
-                {cameraFailureStage ? (
-                  <p className="text-amber-200">Failed at: {cameraFailureStage}</p>
-                ) : null}
-              </div>
-            ) : null}
-            {cameraDiagnosticsEnabled && cameraGeometryDiagnostics ? (
-              <details
-                open
-                className="mt-2 max-h-40 overflow-auto rounded-xl border border-cyan-300/35 bg-cyan-950/80 px-2 py-1.5 text-[10px] text-cyan-50"
-              >
-                <summary className="cursor-pointer font-black">
-                  Camera geometry
-                </summary>
-                <pre className="mt-1 whitespace-pre-wrap break-words">
-                  {JSON.stringify(cameraGeometryDiagnostics, null, 2)}
-                </pre>
-              </details>
-            ) : null}
-          </div>
-        </div>,
-        document.body
-      ) : null}
+      {paymentEntryMode === "camera" && <RemittanceCamera onCancel={closeRemittanceCamera} onManual={enterRemittanceManually} onCapture={file => captureCheckImage(file, "camera")} />}
 
       {paymentEntryMode === "complete" ? (
         <div className="rounded-2xl border border-emerald-300/40 bg-emerald-500/10 p-4">
@@ -5860,7 +3607,7 @@ export default function BatchInvoicePayments({
               Record one payment
             </h3>
 
-            <div className="check-photo-dropzone mt-4 flex min-h-44 flex-col items-center justify-center rounded-2xl border border-dashed border-sky-400/50 bg-black/30 p-4 text-center">
+            <div className="check-photo-dropzone mt-4 flex min-h-44 flex-col items-center justify-center rounded-2xl border border-sky-400/30 bg-black/30 p-4 text-center">
               {checkImagePreview ? (
                 <span className="grid gap-3">
                   <span
@@ -6154,7 +3901,7 @@ export default function BatchInvoicePayments({
                     Retake
                   </button>
                   <label className="inline-flex cursor-pointer rounded-full border border-slate-400/40 px-4 py-2 text-sm font-semibold text-zinc-100 transition hover:bg-white/10">
-                    Choose Another
+                    Choose Existing Photo
                     <input
                       type="file"
                       accept="image/*,.heic,.heif"
@@ -6189,7 +3936,7 @@ export default function BatchInvoicePayments({
                   {checkOcrStatus === "reading" ? (
                     <span className="inline-flex items-center gap-2 text-sm font-semibold text-sky-200">
                       <span className="h-3 w-3 animate-spin rounded-full border-2 border-sky-200 border-t-transparent" />
-                      Reading
+                      {checkOcrMessage}
                     </span>
                   ) : null}
                 </div>
@@ -6201,7 +3948,7 @@ export default function BatchInvoicePayments({
                       <button
                         type="button"
                         onClick={() => {
-                          if(captureRetry) { void captureRetry(); return; }
+                          if(captureRetry) { void captureRetry.run(); return; }
                           if (checkImageFile) {
                             void readPreparedRemittanceFromFile(
                               checkImageFile,
@@ -6216,39 +3963,16 @@ export default function BatchInvoicePayments({
                         disabled={(!checkImageFile && !captureRetry) || isPreparingCrop}
                         className="rounded-full border border-amber-100/50 px-3 py-1.5 text-xs font-semibold text-amber-50 transition hover:bg-white/10 disabled:opacity-50"
                       >
-                        {captureRetry ? 'Retry Upload' : 'Retry Reading'}
+                        Retry
                       </button>
                       <button
                         type="button"
                         onClick={() => {
-                          setPaymentEntryMode("crop");
-                          setCheckOcrStatus("idle");
-                          setCheckOcrMessage("Adjust the crop, then read it again.");
+                          openCameraCapture();
                         }}
                         className="rounded-full border border-amber-100/50 px-3 py-1.5 text-xs font-semibold text-amber-50 transition hover:bg-white/10"
                       >
-                        Adjust Crop
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPaymentEntryMode("crop");
-                          setCropRotation((current) => current + 90);
-                          setCheckOcrStatus("idle");
-                          setCheckOcrMessage("Rotate the crop, then read it again.");
-                        }}
-                        className="rounded-full border border-amber-100/50 px-3 py-1.5 text-xs font-semibold text-amber-50 transition hover:bg-white/10"
-                      >
-                        Rotate
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          openCameraCapture("check_only", "check_details");
-                        }}
-                        className="rounded-full border border-amber-100/50 px-3 py-1.5 text-xs font-semibold text-amber-50 transition hover:bg-white/10"
-                      >
-                        Add Check Photo
+                        Retake Photo
                       </button>
                       <button
                         type="button"
@@ -6259,7 +3983,7 @@ export default function BatchInvoicePayments({
                         }}
                         className="rounded-full border border-amber-100/50 px-3 py-1.5 text-xs font-semibold text-amber-50 transition hover:bg-white/10"
                       >
-                        Select Missing Invoice Manually
+                        Enter Manually / Select Missing Invoice
                       </button>
                     </div>
                   </div>

@@ -2,10 +2,15 @@ import { supabase } from './supabase';
 
 /** Polling never creates attempts or jobs. Only the initial idempotent POST enqueues. */
 export async function waitForLegacyJob(input:{attemptId:string;documentType:string;retryStrategy:string;diagnosticReplay?:boolean}, current:()=>boolean, status:(message:string)=>void, onQueued?:()=>void) {
+ const deadline=performance.now()+90_000;
+ const timeoutMessage="Trimax couldn't finish reading this remittance. Retry your saved scan or enter manually.";
  async function request(enqueue:boolean){
-  const {data}=await supabase.auth.getSession();
+  const {data}=await bounded(supabase.auth.getSession(),12000);
   if(!data.session)throw Error('Sign in to resume your saved scan.');
-  return fetch('/api/payments/ocr-jobs'+(enqueue?'':'?attemptId='+encodeURIComponent(input.attemptId)),{method:enqueue?'POST':'GET',headers:{Authorization:'Bearer '+data.session.access_token,'Content-Type':'application/json'},...(enqueue?{body:JSON.stringify(input)}:{}),signal:AbortSignal.timeout(12000),cache:'no-store'});
+  return bounded(fetch('/api/payments/ocr-jobs'+(enqueue?'':'?attemptId='+encodeURIComponent(input.attemptId)),{method:enqueue?'POST':'GET',headers:{Authorization:'Bearer '+data.session.access_token,'Content-Type':'application/json'},...(enqueue?{body:JSON.stringify(input)}:{}),signal:AbortSignal.timeout(12000),cache:'no-store'}),12000);
+ }
+ function bounded<T>(work:PromiseLike<T>,ms:number):Promise<T>{
+  return new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error(timeoutMessage)),Math.min(ms,Math.max(1,deadline-performance.now())));Promise.resolve(work).then(value=>{clearTimeout(timer);resolve(value);},error=>{clearTimeout(timer);reject(error);});});
  }
  const queuedAt=performance.now();
  const queued=await request(true);
@@ -13,18 +18,19 @@ export async function waitForLegacyJob(input:{attemptId:string;documentType:stri
  if(!queued.ok)throw Error((await queued.json()).error??'Capture saved — processing pending.');
  onQueued?.();
  while(current()){
+  if(performance.now()>=deadline)throw Error(timeoutMessage);
   try{
    const response=await request(false);
    if(response.status===401)throw Error('Sign in to resume your saved scan.');
    if(response.ok){
-    const job=await response.json();
+    const job=await bounded(response.json(),12000);
     if(job.status==='review'||job.status==='failed'){
      const result=job.response??{error:job.error};
      // Keep network timing with the durable review payload, not only a transient UI header.
      const evidence={...result,diagnostics:{...result.diagnostics,backgroundJob:{timings:job.timings??{},enqueueRequestMs:enqueueMs,evidenceReference:job.summary?.evidenceReference??null}}};
      return new Response(JSON.stringify(evidence),{status:job.httpStatus??500,headers:{'Content-Type':'application/json','x-ocr-enqueue-ms':String(enqueueMs),'x-ocr-job-timings':JSON.stringify(job.timings??{})}});
     }
-    status(job.status==='completion_persistence_pending'?'OCR completed — saving review result…':job.status==='queued'?'Capture saved — waiting for processing…':'Processing remittance… You can leave and return to this saved scan.');
+    status(job.status==='completion_persistence_pending'?'Preparing review':job.status==='queued'?'Waiting to read remittance':'Reading remittance');
    }else status('Capture saved — reconnecting to processing status…');
   }catch{status('Capture saved — reconnecting to processing status…');}
   await new Promise(resolve=>setTimeout(resolve,2500));
