@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-auth-client-safety-20261021-rc1",
+  "releaseId": "trimax-auth-client-safety-20261021-rc2",
   "status": "SEALED_CONTROLLED_DEPLOYMENT_CANDIDATE",
-  "createdAt": "2026-10-21T08:24:01.984Z",
+  "createdAt": "2026-10-21T08:31:22.008Z",
   "releaseTimestamp": null,
   "baseProduction": {
     "commit": "bc4fdf8d7bd5890d65b43e34095cf7b9cc7b8584",
@@ -11,17 +11,17 @@
   },
   "components": {
     "web": {
-      "commit": "c3899098c961e8038d2c1f4bf974a096b2165dce"
+      "commit": "68bc2b6056a993df51432400f0de02849c2bac0b"
     },
     "legacy": {
-      "commit": "c3899098c961e8038d2c1f4bf974a096b2165dce"
+      "commit": "68bc2b6056a993df51432400f0de02849c2bac0b"
     },
     "v2-shadow": {
-      "commit": "c3899098c961e8038d2c1f4bf974a096b2165dce"
+      "commit": "68bc2b6056a993df51432400f0de02849c2bac0b"
     }
   },
   "sourceBundle": {
-    "sha256": "2778f4654c7b3841688ca6d8ac63a24ab4a783bda12ee1fb668b2c0008209f2f",
+    "sha256": "66a35521f89a7e5ff653c81b2ca7e0d93cf549cf4831cf1d28fe1bdb1e63692b",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -155,7 +155,7 @@
       "scripts/ocr-v2/residual-regression.cjs": "a360cd281bb5f6703266ad6bca520737606c483bfcfba0056e3afdc8133e5140",
       "scripts/ocr-v2/resolver-benchmark.cjs": "f176c4faad3fb8840aacae8741af15355200d97a048e5f7dd6e6890d85b08940",
       "scripts/ocr-v2/resolver-complete-replay.cjs": "4e5d208fa1a7ac36662c817fcd84ec86fdb7e638efd474dc8925414bb7fd6ffb",
-      "scripts/ocr-v2/resolver-regression.cjs": "30b2a04ac20cb9c2d6e65603bbb949d81d43e312a7455d6e7ff62b982c9b9488",
+      "scripts/ocr-v2/resolver-regression.cjs": "9f35b7d1fc87de30f0b1cdf04f89d76349fd152746b6108ec412561ca686a4e7",
       "scripts/ocr-v2/retained-payment-fields.cjs": "31fdee7dfb6d15ba7426164c5a8872557dd8c0e1698a66e7cb6715c1d24d7c65",
       "scripts/ocr-v2/retained-structure-gate.cjs": "ed5d0a8c3604b75d36183085f300745db7647112738378d93521f004a867b284",
       "scripts/ocr-v2/retained-total-regression.cjs": "439f85a774bd2a01b96705eb02a66f8baa818dd533637b557b555677e17d5536",
@@ -260,7 +260,7 @@
       "scripts/release/upgrade-state-regression.cjs": "259e27838e56080bafa85937543818ce37e6c0f062328e171b55e22c9ef08b2a",
       "scripts/remittance-camera-browser.cjs": "c0a3d2f0c103644c6a5b39ea257b1cf20c7fbcab74a8f8e8c89aa82d5cb93aef",
       "scripts/remittance-camera-geometry-regression.ts": "e4a9f18a735264cf1fafc0ff6d06efaf31226facf571d24c27da5ac440d72a37",
-      "scripts/remittance-client-safety-regression.cjs": "1343455691b044a64f4276f086928da9222ce80a389f6842bb36200fe7158e12",
+      "scripts/remittance-client-safety-regression.cjs": "978e0c490031a787f6c23d12bee9d3395ddb11bc6b4cd47e814e26ce926292cb",
       "scripts/remittance-contract-regression.ts": "75e3bf300050abfcd6145eb5d912af9251fef904bc1c9be19c5bc5695d50cf77",
       "scripts/remittance-deadline-regression.cjs": "630e43d1356572b744de7bfb9f68672366819da161d4e1f9e907a014f9e5c38e",
       "scripts/remittance-intake-regression.cjs": "08fb8d9a31c63f227cec5a95821225d32aa2ca0f58a1921eff6aea03caffb991",
@@ -546,7 +546,7 @@
       "src/app/lib/remittanceAttempt.ts": "0420cb694638a8554b878cb67b70a742db2a745c6c976db62a4c7907e1f7f8cd",
       "src/app/lib/remittanceDeadline.ts": "83f38cdc157d34dc1b70ed89e612a6c2b682e4cc20f3bc15d7a97a1c7f1920e2",
       "src/app/lib/remittanceDocumentFingerprint.ts": "b67dacf687a3431ddc16a79641f73ce7cb8522e3d1f5a52e5db498ac77e0cf89",
-      "src/app/lib/remittanceMatching.ts": "2c9006700f7d44297753f36dfce0208b569322d913a0c0ab90201a3393ec348f",
+      "src/app/lib/remittanceMatching.ts": "f50a585107a205a5b3c6f4cf93d88c5c907d50aa7e268cba03768dbb8f3f227a",
       "src/app/lib/reverseDocumentTotals.ts": "0c9a2071596d56c9f660ca801129f4daa4dc007555c6ef79407981f296afa6e7",
       "src/app/lib/rolePermissions.ts": "99ed89b9f517dbb1576a991ac1a2e4089bcc85aa3dfa5e728f72f9cca5bedae5",
       "src/app/lib/savedServicePresentation.ts": "4f5b64cf759fbece8318597ac1b877819e52a15d0ed213970a1879c3a2e845f9",
@@ -1608,9 +1608,9 @@
       "deploymentId": "7L9gBVprGz2Ce18Ygi2CnW4vAjfg",
       "deploymentCommit": "bc4fdf8d7bd5890d65b43e34095cf7b9cc7b8584"
     },
-    "candidateReleaseId": "trimax-auth-client-safety-20261021-rc1",
-    "applicationCommit": "c3899098c961e8038d2c1f4bf974a096b2165dce",
-    "machineryCommit": "c3899098c961e8038d2c1f4bf974a096b2165dce"
+    "candidateReleaseId": "trimax-auth-client-safety-20261021-rc2",
+    "applicationCommit": "68bc2b6056a993df51432400f0de02849c2bac0b",
+    "machineryCommit": "68bc2b6056a993df51432400f0de02849c2bac0b"
   },
   "contractRevision": {
     "id": "verified-session-client-safety",
