@@ -59,8 +59,12 @@ function test(name, fn) { fn(); count++; console.log('PASS', name); }
         assert.equal(revised.evidence[field], original[field]);
     count++;
     console.log('PASS no unnecessary OCR and unchanged check/date/payor');
-    for (const file of ['src/app/lib/ocrV2/fusion/index.ts', 'src/app/lib/ocrV2/resolver/index.ts', 'src/app/lib/ocrV2/recognition/index.ts', 'src/app/lib/ocrV2/recognition/paymentEvidence.ts', 'src/app/lib/remittanceAttempt.ts', 'src/app/lib/remittanceMatching.ts'])
-        assert.equal(recognitionContract(fs.readFileSync(file, 'utf8')), recognitionContract(cp.execFileSync('git', ['show', '39e4c0f:' + file], { encoding: 'utf8' })), file + ' changed');
+    // Pin only the explicitly authorized client-safety revision; other frozen
+    // recognition/fusion contracts and all optical assertions stay unchanged.
+    for (const file of ['src/app/lib/ocrV2/fusion/index.ts', 'src/app/lib/ocrV2/resolver/index.ts', 'src/app/lib/ocrV2/recognition/index.ts', 'src/app/lib/ocrV2/recognition/paymentEvidence.ts', 'src/app/lib/remittanceAttempt.ts', 'src/app/lib/remittanceMatching.ts']) {
+        const revision = ['src/app/lib/ocrV2/resolver/index.ts', 'src/app/lib/remittanceMatching.ts'].includes(file) ? '68bc2b6056a993df51432400f0de02849c2bac0b' : '39e4c0f';
+        assert.equal(recognitionContract(fs.readFileSync(file, 'utf8')), recognitionContract(cp.execFileSync('git', ['show', revision + ':' + file], { encoding: 'utf8' })), file + ' changed');
+    }
     count++;
     console.log('PASS frozen invoice/fusion/resolver/Phase5B contracts');
     console.log(count + ' document-total suites passed');

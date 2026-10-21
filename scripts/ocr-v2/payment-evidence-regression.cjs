@@ -22,6 +22,11 @@ const observation=(id,raw,confidence=90)=>({id,variant:id,raw,money:paymentMoney
   assert(result.rows[0].observations.every(o=>o.scope==='row'&&o.rowId==='synthetic-0'));
   assert(result.timings.passCount<=13);console.log('PASS optical',label||'unlabeled footer');
  }
- for(const file of ['src/app/lib/ocrV2/fusion/index.ts','src/app/lib/ocrV2/resolver/index.ts','src/app/lib/remittanceAttempt.ts','src/app/lib/remittanceMatching.ts'])assert.equal(fs.readFileSync(file,'utf8').replaceAll('\r\n','\n'),cp.execFileSync('git',['show','c11d0a0:'+file],{encoding:'utf8'}).replaceAll('\r\n','\n'),file+' must remain frozen');
+ // Explicit user-authorized client-safety revision; retain byte-for-byte pins
+ // and all historical optical assertions. No mutable HEAD baseline.
+ for(const file of ['src/app/lib/ocrV2/fusion/index.ts','src/app/lib/ocrV2/resolver/index.ts','src/app/lib/remittanceAttempt.ts','src/app/lib/remittanceMatching.ts']) {
+  const revision=['src/app/lib/ocrV2/resolver/index.ts','src/app/lib/remittanceMatching.ts'].includes(file)?'68bc2b6056a993df51432400f0de02849c2bac0b':'c11d0a0';
+  assert.equal(fs.readFileSync(file,'utf8').replaceAll('\r\n','\n'),cp.execFileSync('git',['show',revision+':'+file],{encoding:'utf8'}).replaceAll('\r\n','\n'),file+' must remain frozen');
+ }
  console.log('Phase 5B formatting, conflict, geometry, explicit authority, subtotal rejection, row isolation, header fields, leading zeros, bounded passes and frozen business/invoice contracts passed.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
