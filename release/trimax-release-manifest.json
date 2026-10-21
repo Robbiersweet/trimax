@@ -1,27 +1,27 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-remittance-shadow-20261021-rc1",
+  "releaseId": "trimax-remittance-shadow-20261021-rc2",
   "status": "SEALED_CONTROLLED_DEPLOYMENT_CANDIDATE",
-  "createdAt": "2026-10-21T07:26:21.030Z",
+  "createdAt": "2026-10-21T07:40:25.449Z",
   "releaseTimestamp": null,
   "baseProduction": {
-    "commit": "f54ce089901ecb8c980e9708485e92065a1e5d99",
-    "vercelDeploymentId": "6JXRA5yxcx9V3fh8STVh955SbBwr",
-    "deployedAt": "2026-10-21T06:24:19Z"
+    "commit": "044d704137c9bba2152d6721b20bb80e852348a4",
+    "vercelDeploymentId": "CYn41r9bvv11KXSNYxmiuqNEKEpZ",
+    "deployedAt": "2026-10-21T07:35:54Z"
   },
   "components": {
     "web": {
-      "commit": "011512df2a9a91676311d1883d2ee17451f3a070"
+      "commit": "37aad7eed38b1de3f2ad766b45ab38099e80cc95"
     },
     "legacy": {
-      "commit": "011512df2a9a91676311d1883d2ee17451f3a070"
+      "commit": "37aad7eed38b1de3f2ad766b45ab38099e80cc95"
     },
     "v2-shadow": {
-      "commit": "011512df2a9a91676311d1883d2ee17451f3a070"
+      "commit": "37aad7eed38b1de3f2ad766b45ab38099e80cc95"
     }
   },
   "sourceBundle": {
-    "sha256": "df002257648d255524303303557a0d3634d885300751cd6e73c9a9e37e6473a4",
+    "sha256": "a2c40cf00c60cae34fea4788ca3efaf5ce4ff7183fb4dd1d92aa9381fb766999",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -168,7 +168,7 @@
       "scripts/ocr-v2/shadow-worker.cjs": "feaff07ba286ac1857fc5fb95017264cb13d8006ded4faa4c01c81ec5abbe649",
       "scripts/ocr-v2/shared-money-regression.cjs": "9ab288119352c3e7ac119e92fe41969fcd5eb046c5af44d50c37ae5529cf0a60",
       "scripts/ocr-v2/total-corpus-regression.cjs": "949d5fc244dc9f77bd4456f47fe5c118add1e48e7066fc102d3b533da2b0c2ca",
-      "scripts/ocr-v2/total-localization-regression.cjs": "6694c0bb428f15c9fffea987d191893da61286df7d3076e1d706f9a78f3a90c4",
+      "scripts/ocr-v2/total-localization-regression.cjs": "e7a107cc65b2d161de6e3eb8849e3a4ce9e1a7e0bf3bcb94c1d46b23a9ee56de",
       "scripts/ocr-v2/total-localization-replay.cjs": "32908ae701340f6b2ef09724d1c557d6c0b0a92006e79abca5e5e55b82e76214",
       "scripts/ocr-v2/training/.gitignore": "862263fa1f46c20f0d1e4dac5ffcc75abd55c08211b2c3864c5f8764b9d87793",
       "scripts/ocr-v2/training/GENERALIZATION.md": "d235989b0c9ed9d0608b8991caac95f8d8a0b6e39dda9167db29887209eefe90",
@@ -482,7 +482,7 @@
       "src/app/lib/ocrV2/recognition/README.md": "21d35e1d313c871477bf69ef0c3936d05a239b8ee47b9985c90c2f4dda35d9b1",
       "src/app/lib/ocrV2/recognition/completeMoneyAuthority.ts": "80183249c08ec8899f6f5febe37ac0a0a5218e473252b0d8d6769c08dcc380f3",
       "src/app/lib/ocrV2/recognition/documentIdentity.ts": "beefe48c094d3910cca998ec90c09d85fe29a5fd8d0cb09874a0ecb1498d67fb",
-      "src/app/lib/ocrV2/recognition/documentTotalAuthority.ts": "17b418e82ce6da95ab4573d02f4c9f47909dd824a92f53129161a249993d80b0",
+      "src/app/lib/ocrV2/recognition/documentTotalAuthority.ts": "6228e4d842e98d004532cdd6b2162c8e3ec587148ef8f42eea67c108953c3aab",
       "src/app/lib/ocrV2/recognition/evidenceLedger.ts": "22688c7f2a6de783747b2421737333aa7a298dc95d82db0d87189cd73ba1ffae",
       "src/app/lib/ocrV2/recognition/identityHandoff.ts": "66cffdf20257789e604d61351881583a937acfaf74880d0556be88625c1b33ac",
       "src/app/lib/ocrV2/recognition/index.ts": "994813e357b834735628f4e898a4a133cdcbb2cf58cfa70e936529cdcff3f2db",
@@ -493,7 +493,7 @@
       "src/app/lib/ocrV2/recognition/preservePaymentEvidence.ts": "8834319c7ea95bf735d4f4e60c41352a5753be058fcd5bdbb27568df5d6ec90d",
       "src/app/lib/ocrV2/recognition/residualAmount.ts": "f94674cfe227c6b9f439297cfbe8a17d9d870bb60ef76c96937a70b93265b4fc",
       "src/app/lib/ocrV2/recognition/semanticMoney.ts": "3686f5e4238b46df41f04edc43bf922941832651cd15300d01f7cade10af2b8d",
-      "src/app/lib/ocrV2/recognition/totalLocalization.ts": "8219aa5a183610b2555f97563eedfefc36992ccd2c842e1fb1e67bc4e62b9d8e",
+      "src/app/lib/ocrV2/recognition/totalLocalization.ts": "475cdd9235d6a24c3e5299f6f0fcd91fdd07cd939997017b5b5d56e86ff5583f",
       "src/app/lib/ocrV2/recognition/types.ts": "61556867b81411adb38ee2eac9dba79314dcd7f466ea7a4127cd247519ca486d",
       "src/app/lib/ocrV2/resolver/index.ts": "28f6f03fa630918c51c9ac3e71e12041318564cb419817357f4dd7d3aa05e027",
       "src/app/lib/ocrV2/resolver/residual.ts": "326642725dad01e4d1e334997d2806da404ca459c08c498f0ff497d58d61ef51",
@@ -1600,21 +1600,21 @@
   },
   "upgradeContext": {
     "currentProductionRelease": {
-      "releaseId": "trimax-guided-remittance-20261020-rc1",
-      "manifestCommit": "f54ce089901ecb8c980e9708485e92065a1e5d99",
-      "manifestDigest": "e8b29355d3fed4ab378e03c86a9db0b19a4014e5d1ddc445420ae0e69ce2cc26",
-      "deploymentId": "6JXRA5yxcx9V3fh8STVh955SbBwr",
-      "deploymentCommit": "f54ce089901ecb8c980e9708485e92065a1e5d99"
+      "releaseId": "trimax-remittance-shadow-20261021-rc1",
+      "manifestCommit": "044d704137c9bba2152d6721b20bb80e852348a4",
+      "manifestDigest": "ae1494d55b6eda765a467bb59541bbb3fb2f8e35529478f925e800977bd5e268",
+      "deploymentId": "CYn41r9bvv11KXSNYxmiuqNEKEpZ",
+      "deploymentCommit": "044d704137c9bba2152d6721b20bb80e852348a4"
     },
-    "candidateReleaseId": "trimax-remittance-shadow-20261021-rc1",
-    "applicationCommit": "011512df2a9a91676311d1883d2ee17451f3a070",
-    "machineryCommit": "011512df2a9a91676311d1883d2ee17451f3a070"
+    "candidateReleaseId": "trimax-remittance-shadow-20261021-rc2",
+    "applicationCommit": "37aad7eed38b1de3f2ad766b45ab38099e80cc95",
+    "machineryCommit": "37aad7eed38b1de3f2ad766b45ab38099e80cc95"
   },
   "contractRevision": {
     "id": "shadow-observed-amount-column",
-    "priorManifestDigest": "e8b29355d3fed4ab378e03c86a9db0b19a4014e5d1ddc445420ae0e69ce2cc26",
-    "reason": "Verified saved iPhone geometry: broad ownership/background ink pushed total axis beyond observed monetary words. Localize from consistent monetary word geometry across physical rows; all independent authority, identity and financial safeguards retained.",
-    "rollback": "Restore retained f54 web deployment and matching clean f54 workers; preserve all data and queue evidence."
+    "priorManifestDigest": "ae1494d55b6eda765a467bb59541bbb3fb2f8e35529478f925e800977bd5e268",
+    "reason": "Verified saved iPhone geometry: broad ownership/background ink pushed total axis beyond observed monetary words. Localize from consistent monetary word geometry across physical rows; source-bound observed column proof also consumed by downstream total authority; all independent numeric, identity and financial safeguards retained.",
+    "rollback": "Restore retained 044d web deployment and matching clean 044d workers; preserve all data and queue evidence."
   },
   "captureWorkflow": "guided-live-camera-v1"
 }
