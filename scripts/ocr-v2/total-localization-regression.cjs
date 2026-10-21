@@ -47,3 +47,14 @@ assert.equal(phoneLocate(page([...phoneWords, {...phoneWords[4],text:'4,600.00',
 assert.equal(phoneLocate(page(phoneWords).map(o=>({...o,sourceHash:'other'}))).bounds,undefined,'No cross-source axis support');
 assert.equal(phoneLocate(page(phoneWords.map(w=>({...w,bounds:{...w.bounds,left:50}})))).bounds,undefined,'Amounts outside the labeled ownership cannot move the axis');
 console.log('PASS retained iPhone amount-column contamination, missing/competing totals and source/ownership isolation');
+
+// The downstream authority must consume the same proven visual column, rather
+// than recomputing its edge from background-contaminated field crop bounds.
+const phoneLayout={sourceWidth:4032,sourceHeight:2160,rows:phoneRows,diagnostics:{font:15},totalCandidateRegion:phone.bounds,totalLocalization:phone};
+const phoneEvidence={sourceHash:'pixels',rows:[109900,109900,129133,109900].map(cents=>({cents}))};
+const phoneObservations=['native','contrast'].map(variant=>({id:variant,variant,sourceHash:'pixels',scope:'document',field:'total',bounds:phone.bounds,confidence:94,money:[458833],words:[],raw:'4,588.33'}));
+assert.equal(decideDocumentTotal(phoneLayout,phoneEvidence,phoneObservations).cents,458833,'Retained iPhone complete localization-to-authority regression');
+assert.equal(decideDocumentTotal({...phoneLayout,totalLocalization:{...phone,sourceHash:'other'}},phoneEvidence,phoneObservations).cents,null,'Cross-source column proof cannot authorize a total');
+assert.equal(decideDocumentTotal(phoneLayout,phoneEvidence,phoneObservations.slice(0,1)).cents,null,'Observed geometry cannot replace independent numerical evidence');
+assert.equal(decideDocumentTotal(phoneLayout,{...phoneEvidence,rows:[{cents:1},{cents:2}]},phoneObservations).cents,null,'Observed geometry cannot bypass exact-cent arithmetic veto');
+console.log('PASS retained iPhone localization-to-authority consistency with source/independent-evidence/arithmetic guards');

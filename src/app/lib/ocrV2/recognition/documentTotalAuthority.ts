@@ -52,8 +52,19 @@ export function decideDocumentTotal(layout: Layout & { totalLocalization?: Retur
     const last = Math.max(...layout.rows.map(r => bottom(r.bounds))), regions = layout.rows.flatMap(r => r.amountRegion ? [r.amountRegion] : []);
     const font = layout.diagnostics.font * layout.sourceWidth / Math.min(layout.sourceWidth, 2400);
     const candidateRegion = layout.totalCandidateRegion;
+    const localization = layout.totalLocalization;
+    // Reuse the source-bound, multi-row visual column proof. Crop ownership may
+    // include background ink; it is not a second independent printed-column edge.
+    const observedColumn = localization?.sourceHash === evidence.sourceHash
+        && localization.axisSource === 'observed-row-money' && localization.axisRows >= Math.max(2, Math.ceil(layout.rows.length / 2))
+        && localization.finalField && localization.selected && candidateRegion
+        && Number.isFinite(localization.axis)
+        && overlap(candidateRegion, localization.selected.bounds) >= localization.selected.bounds.width * localization.selected.bounds.height * .8;
+    const aligned = candidateRegion && (observedColumn
+        ? Math.abs(localization!.axis - right(candidateRegion)) <= font * 2
+        : regions.every(r => Math.abs(right(r) - right(candidateRegion)) <= font * 2));
     const geometry = !!candidateRegion && candidateRegion.top >= last && !layout.rows.some(r => overlap(candidateRegion, r.bounds) > 0)
-        && regions.length === layout.rows.length && regions.every(r => Math.abs(right(r) - right(candidateRegion)) <= font * 2)
+        && regions.length === layout.rows.length && aligned
         && candidateRegion.top - last <= Math.max(...layout.rows.map(r => r.bounds.height)) * 4;
     // An OCR field name alone cannot turn a body crop into a document total.
     const footer = scoped.filter(o => o.scope === 'document' && o.field === 'total' && o.bounds.top >= last && candidateRegion && overlap(o.bounds, candidateRegion) >= candidateRegion.width * candidateRegion.height * .8 && !layout.rows.some(r => overlap(o.bounds, r.bounds) > 0));
