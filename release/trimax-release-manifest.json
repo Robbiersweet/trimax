@@ -1,32 +1,32 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-payment-submit-20261021-rc1",
+  "releaseId": "trimax-invoice-cent-20261021-rc1",
   "status": "SEALED_CONTROLLED_DEPLOYMENT_CANDIDATE",
-  "createdAt": "2026-10-21T14:31:15.138Z",
+  "createdAt": "2026-10-22T05:47:19.132Z",
   "releaseTimestamp": null,
   "baseProduction": {
-    "commit": "f3133b1a6ad0818816e80bfa70b9274a5806de4e",
-    "vercelDeploymentId": "HnHr443PMCU2m5zquKGwDULbXJgD",
-    "deployedAt": "2026-10-21T14:00:17Z"
+    "commit": "e965fa33c6a2215380cb99a20f5b22be8c0587dd",
+    "vercelDeploymentId": "E7pG1Xe6kvQ4VTEAe7BFE8V4iRVj",
+    "deployedAt": "2026-10-21T14:53:26Z"
   },
   "components": {
     "web": {
-      "commit": "6c1e267e809cf8e195f98e427034a6dba68635b6"
+      "commit": "8fb2d22b101c7809befbfb7e72dd472f68d3489e"
     },
     "legacy": {
-      "commit": "6c1e267e809cf8e195f98e427034a6dba68635b6"
+      "commit": "8fb2d22b101c7809befbfb7e72dd472f68d3489e"
     },
     "v2-shadow": {
-      "commit": "6c1e267e809cf8e195f98e427034a6dba68635b6"
+      "commit": "8fb2d22b101c7809befbfb7e72dd472f68d3489e"
     }
   },
   "sourceBundle": {
-    "sha256": "26caaf866f8804734777d73dd861684ab4ffe1e02330052fc25cdb769c61eaf0",
+    "sha256": "2a142d2048f66492ec854ef9dd9a9d621eb50f723ae3334a209a9d52732c58a2",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
       "package-lock.json": "f59c4191dbab35152626d37ecd849e1c20d17564df0cf62d2dbac122dff062b9",
-      "package.json": "43fbbeeae05e6b6605f8df9761d4c1e54bc0d4ce8a3e7afeeb7ffe74d90ae7fc",
+      "package.json": "ba3d6ee9d5a6fe11c0f70ac303db2ad55d532bb11d52739aa8a95cc5af1caf60",
       "proxy.ts": "c07e9824217830ca636dac8141204cf2a422728fdc173f488ad61e86edbc8cce",
       "public/Brand/R&L Full Black.png": "3745bd9aec6198d87a968e3f5c3402b87010925d881ddd03411a5caef2c40f65",
       "public/Brand/R&L Full Orange.png": "2c1b88a1718f11f58eb4e59d812f6e47a52ad4c2005a6625eddb601f54fd3fb0",
@@ -65,6 +65,7 @@
       "scripts/floating-back-navigation-regression.ts": "8218d847ce054ce0e9caceb4eba1297104ef87379fa0f062eb465835c8e0a588",
       "scripts/generate_role_guides.py": "60baf7d8d0bdcb376ca03d80be15276a8e12e3227592ad2bf8dc5bfe79e678e5",
       "scripts/glen-payor-regression.cjs": "be066cd288764d3e2e2d285edd4af3a5f8c6ffea184451280687c229c2a473e6",
+      "scripts/invoice-cent-regression.ts": "0e46f12fccbf5618d591e029cd4574198a2199eeb64b3e9165ff49eaafd821e3",
       "scripts/invoice-correction-regression.ts": "d637ec393a9ae331676b88d5d4e9db9d4c96e326977b103d39e15aebf8e4c873",
       "scripts/invoice-detail-declutter-regression.ts": "d1a397c3325ead5c2ed2fb3e8d3c9131e0978955c2db73e3957d4029b88e6c44",
       "scripts/job-session-crew-regression.ts": "20dd3bb6fc1ab001b088eeb58b17f45c600ed406d582a3e982617672ab959aef",
@@ -246,7 +247,7 @@
       "scripts/release/file-forensics-regression.cjs": "a6da1ba822d17c1a31b7bd29d3cb49e95febca66f29c51b712ccdd9d608c1b26",
       "scripts/release/file-forensics.cjs": "25133a9f2167c801a05906be04068f3d85f54f3c462e085869df2d486c8bea30",
       "scripts/release/final-candidate-regression.cjs": "edc0dbfa8f70d55607c65327a08ed25193380387dd4f1e850cf130ef992ca03f",
-      "scripts/release/gate-checks.cjs": "3b5a210277c4842d10fe7b71e82509fd7fc493127a4e8c6ba3ab61f3a124e2db",
+      "scripts/release/gate-checks.cjs": "5bd406a967ba8b1a0d676d167f3fb9ab9257bd5366657bbc02257227acdcea5d",
       "scripts/release/gate-state-regression.cjs": "51f1d2c76eca73d122f20cc0f537b624074ebd4943f946dcba63857775e45d04",
       "scripts/release/gate-state.cjs": "f56bdc9741b07b92c53bb487f21320080537fa90734721130612e8c1b52da839",
       "scripts/release/gate.cjs": "fd9d065007932504635900617ed3d7d11481a26e4dcc6131d0afbca39096e17d",
@@ -334,7 +335,7 @@
       "src/app/components/Button.tsx": "68f87a76cee881a6b148ec30af54746d8a0fbe11a153b3ccf0134a62504deb97",
       "src/app/components/Card.tsx": "6706fd0d306b77c27bf8f9f2558fdfc4f5a77b874404cba67b0f4980c96de207",
       "src/app/components/ClientSmartSearch.tsx": "6780c13e035f04c4bf532a23842cf8d220021a409362c1f2d01fc93cbb3c1278",
-      "src/app/components/ConvertEstimateToInvoiceButton.tsx": "c19e4e8795439bbcfe8daa6b819bd42ca9d16832e48c9c6ee035122181a31c6f",
+      "src/app/components/ConvertEstimateToInvoiceButton.tsx": "c77e4f11983ec753f531ca735e3304e55b4ba8e7648eabde478fcc8aed53a880",
       "src/app/components/CopyManagerBriefButton.tsx": "61edbc348a5d2949928dffd9a01d39c02e7107aa563361aa5eedd792c04c39f3",
       "src/app/components/CopyProofSummaryButton.tsx": "f9b22ef6b924092a336716aacbb6c3f34d75c64e3e241eb7dec261777366ee8e",
       "src/app/components/CorrectInvoiceButton.tsx": "7f1f1a9773bc34e7c7777f245d7d3de5606aea96a3a4a5a7f8dc5ea46e4259d4",
@@ -417,7 +418,7 @@
       "src/app/forgot-password/page.tsx": "ed72e30e4f161990113a13d562649a33c0918beb6074c66ca8284fc118155aa6",
       "src/app/globals.css": "11a63cd4baf5bdef2bc091dd0327643eaa746002acabf0c7fb79ea11d20a50d3",
       "src/app/imports/page.tsx": "1c5f6ab09b79b4f083b28da7efb2bbe102021cc7ebb92cbc07bf474d768521e9",
-      "src/app/invoices/[id]/edit/page.tsx": "853ac087d4709680b963e6613fec9ef7e6150626b44cde686f540e0b418b6e07",
+      "src/app/invoices/[id]/edit/page.tsx": "cc010371556759e95c36337ec3f92953ed0fb906ccd0bfdd65fbb00fb6c69c8e",
       "src/app/invoices/[id]/error.tsx": "1f8dcb4db98edea4f131eaca0b8c217fb60054949fd7e57f280a5f0b6620dcf9",
       "src/app/invoices/[id]/exports/5stars-boa/route.ts": "5ad201611ac08a9b01859e2f825fa7db2da63792bb158bf5117447162a21ce2e",
       "src/app/invoices/[id]/page.tsx": "b0e20766d8cdc62a665921f3b5344c03fad145f3ac4da43676a0613d957f1caf",
@@ -425,7 +426,7 @@
       "src/app/invoices/[id]/print/page.tsx": "30b92736f0a4f629db766c0e6eaf94a163ccc0de22d23aacf04d070ebc8f9685",
       "src/app/invoices/batch-payment/page.tsx": "e7b469d92ee87e0b51770c7c4cfd6ca589f689627113ca7579386eb64dc96982",
       "src/app/invoices/batch-send/page.tsx": "a6c7427b671c844246d285b96ac6d540a9d7b59fa956dcfebdb76e28f8e7e43a",
-      "src/app/invoices/new/page.tsx": "175835081aab8f60731deed588e12de4a4a1284e316555fbdfd84b1639012ba4",
+      "src/app/invoices/new/page.tsx": "ac667b4d81f39c5c968f25c520bfff1e0c04d7c2742821fffabb8de5857ef4fd",
       "src/app/invoices/page.tsx": "27215a205876a5d8e73e9a63c12e2de60a78adfde03b84f7a412ccf4ff4f96f8",
       "src/app/job-sessions/page.tsx": "1a6e829e37311d624d561d5e23f605bf6394c91e21d384c48267a5df1b856caf",
       "src/app/layout.tsx": "307661f331bc8e30bb262bee9196d32dff2d60af8c11042ee4ef15ba69981f0f",
@@ -449,6 +450,7 @@
       "src/app/lib/invoiceEligibility.ts": "faf3defd87c399c3414695b955bf46cd26c9dc6d434d915708e13eb72cc95b18",
       "src/app/lib/invoiceEmailSettings.ts": "3ebaf7deb6a876e2b5c9676c76222d0de2bc900a08dde7572ad0b7192525bdef",
       "src/app/lib/invoiceLifecycle.ts": "adfc76f46c26ff7f9ec7bf231e226e8eebec4db845a66cacdba422b501323f35",
+      "src/app/lib/invoiceMoney.ts": "e88ebbe2f1a944be6a4171dab9d2f4d0aaf7153c786b6dc5c9e46347fce2323b",
       "src/app/lib/jobSessionLabor.ts": "1561ac43f587e55df4a7a67baab378810f2e4ede2498a08e6cfca22ac4060503",
       "src/app/lib/loginReturn.ts": "fa6c306af2215a37860864d0bf6364a9449544b2c9101ff104288fbe50c29849",
       "src/app/lib/maintenanceMode.ts": "2caa1d8585706dae45460aef8538d4d5336a29b53c490ae5a69b2059b77e3cca",
@@ -1607,21 +1609,21 @@
   },
   "upgradeContext": {
     "currentProductionRelease": {
-      "releaseId": "trimax-check-number-20261021-rc2",
-      "manifestCommit": "f3133b1a6ad0818816e80bfa70b9274a5806de4e",
-      "manifestDigest": "723bba5d377a9fa884d3a32f8681f22f81eb2b6a533ca84d32a4db51d113d16b",
-      "deploymentId": "HnHr443PMCU2m5zquKGwDULbXJgD",
-      "deploymentCommit": "f3133b1a6ad0818816e80bfa70b9274a5806de4e"
+      "releaseId": "trimax-payment-submit-20261021-rc1",
+      "manifestCommit": "e965fa33c6a2215380cb99a20f5b22be8c0587dd",
+      "manifestDigest": "946c0a07937e9e9230b26c834c035240709433e1ba599dfac2cc0718897832bb",
+      "deploymentId": "E7pG1Xe6kvQ4VTEAe7BFE8V4iRVj",
+      "deploymentCommit": "e965fa33c6a2215380cb99a20f5b22be8c0587dd"
     },
-    "candidateReleaseId": "trimax-payment-submit-20261021-rc1",
-    "applicationCommit": "6c1e267e809cf8e195f98e427034a6dba68635b6",
-    "machineryCommit": "6c1e267e809cf8e195f98e427034a6dba68635b6"
+    "candidateReleaseId": "trimax-invoice-cent-20261021-rc1",
+    "applicationCommit": "8fb2d22b101c7809befbfb7e72dd472f68d3489e",
+    "machineryCommit": "8fb2d22b101c7809befbfb7e72dd472f68d3489e"
   },
   "contractRevision": {
-    "id": "saved-review-payment-submit-confirmation",
-    "priorManifestDigest": "723bba5d377a9fa884d3a32f8681f22f81eb2b6a533ca84d32a4db51d113d16b",
-    "reason": "Replace URL/diagnostic silent early return before loading/API with read-only validation through existing safeguarded endpoint and explicit live-review-bound human confirmation. No payment/upload on first tap. Server verifies saved source/business/completed state and owner/admin confirmation for diagnostic scans, records source in payment audit. Preserve collectible/split/reconciliation/duplicate/rollback and isolation checks. No OCR changes.",
-    "rollback": "Restore f3133b1 web and matched workers, preserve all records and scan evidence."
+    "id": "invoice-half-cent-persistence",
+    "priorManifestDigest": "946c0a07937e9e9230b26c834c035240709433e1ba599dfac2cc0718897832bb",
+    "reason": "Retained North Creek check2836 proves INV0526 printed/OCR324.21 vs stored324.20. Match customer-facing decimal currency rounding in invoice creation/conversion/edit and audit before amount. No OCR, matching, payment, eligibility, schema, or guard changes. Correct only verified unpaid invoice through existing audited edit after deploy.",
+    "rollback": "Restore e965fa3 web and matched workers; preserve invoice correction audit and all financial records."
   },
   "captureWorkflow": "guided-live-camera-v1"
 }
