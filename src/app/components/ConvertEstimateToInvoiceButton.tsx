@@ -1,5 +1,7 @@
 "use client";
 
+import { formatStoredInvoiceAmount } from "../lib/invoiceMoney";
+
 import { useState } from "react";
 import { detectClientIdentityConflict } from "../lib/clientIdentity";
 import { useRouter } from "next/navigation";
@@ -68,7 +70,7 @@ function toNumber(value: number | string | null) {
 }
 
 function formatCurrency(amount: number) {
-  return `$${amount.toFixed(2)}`;
+  return formatStoredInvoiceAmount(amount);
 }
 
 export default function ConvertEstimateToInvoiceButton({

@@ -1,5 +1,7 @@
 "use client";
 
+import { formatStoredInvoiceAmount } from "../../../lib/invoiceMoney";
+
 import { useEffect, useMemo, useState } from "react";
 import {
   useParams,
@@ -103,7 +105,7 @@ type LineItem = {
 };
 
 function formatCurrency(amount: number) {
-  return `$${amount.toFixed(2)}`;
+  return formatStoredInvoiceAmount(amount);
 }
 
 function parseCurrency(value: string | null) {
@@ -152,6 +154,7 @@ export default function EditInvoicePage() {
     useState<string | null>(null);
   const [invoiceSplitParentId, setInvoiceSplitParentId] =
     useState<string | null>(null);
+  const [previousInvoiceAmount, setPreviousInvoiceAmount] = useState<string | null>(null);
   const [invoiceStatus, setInvoiceStatus] = useState<string | null>(null);
   const [serviceItems, setServiceItems] =
     useState<ServiceItem[]>([]);
@@ -434,6 +437,7 @@ export default function EditInvoicePage() {
       setInvoiceClientId(invoice.client_id ?? null);
       setInvoiceSplitParentId(invoice.split_parent_invoice_id ?? null);
       setInvoiceStatus(invoice.status ?? null);
+      setPreviousInvoiceAmount(invoice.invoice_amount);
       setCustomerName(invoice.customer_name ?? "");
       setProjectTitle(invoice.project_title ?? "");
       setIssueDate(invoice.issue_date ?? "");
@@ -973,6 +977,8 @@ export default function EditInvoicePage() {
         customerName,
         projectTitle,
         amount: formatCurrency(invoiceTotal),
+        previousAmount: previousInvoiceAmount,
+        amountRounding: "customer-facing-decimal-currency",
         lineItemCount: saveLineItems.length,
         discountAmount: formatCurrency(discountAmount),
         discountLabel: discountLabel.trim() || null,

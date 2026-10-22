@@ -1,5 +1,7 @@
 "use client";
 
+import { formatStoredInvoiceAmount } from "../../lib/invoiceMoney";
+
 import {
   Suspense,
   useCallback,
@@ -72,7 +74,7 @@ type LineItem = {
 };
 
 function formatCurrency(amount: number) {
-  return `$${amount.toFixed(2)}`;
+  return formatStoredInvoiceAmount(amount);
 }
 
 function getLineTotal(item: LineItem) {

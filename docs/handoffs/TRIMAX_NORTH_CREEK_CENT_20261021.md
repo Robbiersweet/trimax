@@ -1,0 +1,25 @@
+# North Creek check2836 exact-cent investigation — 2026-10-21
+
+Status: evidence investigation, not repaired/released. No production/source changes or payment applied. Current user reports check4334.05, five selected4334.04, exact-cent block. Existing production sessions were already expired at entry; all production tabs at Login with empty fields. One async request asks the user to restore existing app.rnlcreations.com tab, no preview/new context/logout/storage clear. Owner-only latest attempt/current balances/line items/audit are pending that restoration.
+
+Prior verified report docs/handoffs/TRIMAX_THIRD_PHYSICAL_PROCESSING_20261021.md already records this discrepancy before later Glen/header/submit fixes. Original physical99cc9ead-30e0-4f7b-b304-c21aff77caf0, check2836/date09/17/2026/sourceSHA256fd0838bbbd5e1c7dbec6d5b4fae60fa1534242ded1a2caa8398f46d67070b17a. Printed and independent OCR row amounts324.21/712.84/1099/1099/1099 sum4334.05. Previously stored invoice0526 amount324.20 caused selected4334.04. This was processing/resume acceptance, not exact-payment acceptance. Do not call it a newly introduced OCR regression or change ledger from remittance alone.
+
+| Invoice | Record ID | Printed | Prior OCR/normalized | Previously observed balance/selected |
+|---|---|---:|---:|---:|
+| INV-0526 | 207e6c25-0d16-4526-b928-228575f09c31 |324.21|324.21|324.20|
+| INV-0527 | 2d5ecbf1-ee69-41ea-977f-64984b9c4e98 |712.84|712.84|712.84|
+| INV-0528 | 878bbd86-93b0-4861-965f-d990258a6f90 |1099.00|1099.00|1099.00|
+| INV-0529 | e7460269-5dc0-46d5-aa36-9cbbb744e2e9 |1099.00|1099.00|1099.00|
+| INV-0530 | 7edfa189-5032-4084-8214-af987d946da5 |1099.00|1099.00|1099.00|
+
+Current data must be freshly checked. No assumption which side is incorrect. Invoice collection currently reads saved invoice_amount minus amount_paid (or deposit amount) directly; selected total sums these balances. Invoice new/edit computes line-item products plus tax then formats with toFixed(2). Matcher already compares row cents using integer rounding and blocks a row balance conflict. No verified software arithmetic loss yet. Need invoice0526 line items/tax/original sent invoice/import/correction history to locate first divergence and justify any repair. Preserve no payment on mismatch, split/collectibility/duplicate/audit/tenant protections; no inferred cent adjustment.
+
+
+Potential boundary found in source (not yet proven against live record): src/app/invoices/[id]/print/page.tsx recomputes subtotal from invoice_line_items.line_total, adds effective tax, and displays that total. Invoice detail similarly recomputes. src/app/lib/invoiceEligibility.ts instead collects stored invoice_amount minus amount_paid. Imports separately persist header amount and line items/tax. Inspect current INV-0526 line items, tax and original import/sent invoice before selecting a correction. Existing production tab14 remains Login on latest check; no second sign-in request issued.
+
+## Authenticated current evidence and verified cause
+User restored same production session. Latest exact physical legacy 57e10466-cef5-4d1d-b9f9-3e30fabae86b / shadow f911fe12-d8d1-4b3e-a4d7-00eafd089c9a, camera 2026-10-21T20:19:08, SHA256 e7fdde0ef76b8c19e125d6be8e72adb9741ae8411db456d4c008572428021e84, 4032x2160/1391924 bytes. Viewed retained pixels: Sep17/check2836/4334.05 and row amounts 324.21/712.84/1099/1099/1099. Full-document local-binary sparse-text structured rows preserve those exact amounts. Resumed FACT/NORMALIZATION/CORROBORATION/FINAL_RESOLUTION confirms row subtotal4334.05 vs resolved4334.04, same five IDs as table, no duplicate, no payment. Current job snapshot stores invoice0526=324.20, paid0, sent, no split children. Live invoice0526 detail shows one Fire Place Resurfacing qty1/unit295/line295, taxable Everett9.9%, displayed tax29.21/total324.21, original sent proof Aug19 customer PDF matched print. Synthetic creation proof computes current total and is not independent historical header evidence.
+
+Exact source divergence reproduced: tax=295*(9.9/100)=29.205000000000002; total295+tax=324.205. Existing create/conversion/edit persistence formatter total.toFixed(2) =>324.20, while customer-facing Intl USD =>324.21. Selection correctly consumes stored324.20; integer cent reconciliation correctly blocks. No OCR or client/matcher change required. Repair replaces only invoice persistence formatter with identical decimal Intl rounding, adds previousAmount/currentAmount audit fields on edit, targeted regression, required gate registration. Current invoice correction will use existing audited edit/save after deployment with unchanged financial inputs; no guessed ledger adjustment, payment, broad backfill, or guard relaxation.
+
+Current serving production is same e965fa3 source but newer normal redeployment E7pG1Xe6kvQ4VTEAe7BFE8V4iRVj (Ready/Latest/Current alias app.rnlcreations.com at 2026-10-21T14:53:26Z), freshly observed in Vercel. Prior checkpoint's8RJR deployment now stale.
