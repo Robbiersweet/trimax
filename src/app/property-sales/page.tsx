@@ -1,3 +1,5 @@
+import { sumMoney as canonicalSumMoney } from "../lib/money.ts";
+import { roundMoney as canonicalRoundMoney } from "../lib/money.ts";
 import Link from "next/link";
 import { type CSSProperties } from "react";
 import AppShell from "../components/AppShell";
@@ -359,7 +361,7 @@ function formatMoney(value: number) {
     style: "currency",
     currency: "USD",
     maximumFractionDigits: 2,
-  }).format(value);
+  }).format(canonicalRoundMoney(value));
 }
 
 function formatDate(value: string | null | undefined) {
@@ -700,22 +702,18 @@ export default async function PropertySalesPage({
       ? completionDays.reduce((total, value) => total + value, 0) /
         completionDays.length
       : null;
-  const billedThisMonth = invoices
+  const billedThisMonth = canonicalSumMoney(invoices
     .filter((invoice) => {
       const dateValue = invoice.issue_date ?? invoice.created_at;
       return dateValue && monthKey(new Date(dateValue)) === currentMonth;
-    })
-    .reduce((total, invoice) => total + parseMoney(invoice.invoice_amount), 0);
+    }).map((invoice) => parseMoney(invoice.invoice_amount)));
   const totalLaborMinutes = sessions.reduce(
     (total, session) => total + (session.total_minutes ?? 0),
     0
   );
   const revenuePerLaborHour =
     totalLaborMinutes > 0
-      ? invoices.reduce(
-          (total, invoice) => total + parseMoney(invoice.invoice_amount),
-          0
-        ) /
+      ? canonicalSumMoney(invoices.map((invoice) => parseMoney(invoice.invoice_amount))) /
         (totalLaborMinutes / 60)
       : null;
   const unitHistory = buildUnitHistory(queueItems, estimates, invoices, sessions);
@@ -784,10 +782,7 @@ export default async function PropertySalesPage({
       detail:
         invoices.length > 0
           ? `${formatMoney(
-              invoices.reduce(
-                (total, invoice) => total + parseMoney(invoice.invoice_amount),
-                0
-              )
+              canonicalSumMoney(invoices.map((invoice) => parseMoney(invoice.invoice_amount)))
             )} stays visible while the turn board waits for linked queue work.`
           : "Invoices will appear here once this property has billable work.",
     },

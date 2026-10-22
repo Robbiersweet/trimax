@@ -1,4 +1,7 @@
 const scripts=[
+ 'scripts/discounts-and-services-regression.ts',
+ 'scripts/reverse-total-regression.ts',
+ 'scripts/canonical-money-regression.cjs',
  'scripts/invoice-cent-regression.ts',
  'scripts/payment-submit-regression.cjs',
  'scripts/check-date-persistence-regression.cjs',

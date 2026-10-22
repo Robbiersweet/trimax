@@ -1,3 +1,4 @@
+import { roundMoney, multiplyMoney, sumMoney } from "../../../../lib/money.ts";
 import { createSupabaseServerClient } from "../../../../lib/supabaseServer";
 
 type Invoice = {
@@ -26,10 +27,6 @@ type Business = {
   id: string;
   slug: string | null;
 };
-
-function toNumber(value: number | string | null) {
-  return Number(value) || 0;
-}
 
 function parseCurrency(value: string | null) {
   return Number(value?.replace(/[^0-9.]/g, "") ?? 0) || 0;
@@ -91,7 +88,7 @@ function formatPlainMoney(amount: number) {
   return new Intl.NumberFormat("en-US", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
-  }).format(amount);
+  }).format(roundMoney(amount));
 }
 
 function inferScheduledServices(description: string) {
@@ -148,10 +145,7 @@ function buildRows(
       item.description ||
       invoice.project_title ||
       "BOA Cleaning";
-    const amount =
-      toNumber(item.line_total) ||
-      toNumber(item.quantity) * toNumber(item.unit_price) ||
-      toNumber(item.unit_price);
+    const amount = item.line_total != null ? roundMoney(item.line_total) : multiplyMoney(item.quantity, item.unit_price);
 
     return {
       accountName: cleanFiveStarsAccountName(description),
@@ -195,10 +189,7 @@ function looksLikeFiveStarsBoaInvoice(
 function spreadsheetHtml(invoice: Invoice, lineItems: InvoiceLineItem[]) {
   const servicePeriod = getServicePeriod(invoice.issue_date);
   const rows = buildRows(invoice, lineItems, servicePeriod);
-  const total = rows.reduce(
-    (sum, row) => sum + row.amountThisMonth,
-    0
-  );
+  const total = sumMoney(rows.map(row => row.amountThisMonth));
   const blankRows = Array.from({
     length: Math.max(10, 16 - rows.length),
   });

@@ -1,4 +1,6 @@
 "use client";
+import { roundMoney as canonicalRoundMoney } from "../lib/money.ts";
+
 
 import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState } from "react";
@@ -120,7 +122,7 @@ function formatMoney(value: unknown) {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: "USD",
-    }).format(value);
+    }).format(canonicalRoundMoney(value));
   }
 
   if (typeof value === "string" && value.trim().length > 0) {

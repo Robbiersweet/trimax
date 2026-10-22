@@ -1,3 +1,5 @@
+import { roundMoney } from "../../../lib/money";
+import { percentMoney, sumMoney } from "../../../lib/money";
 import Image from "next/image";
 import { headers } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
@@ -100,7 +102,7 @@ function formatCurrency(amount: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-  }).format(safeAmount);
+  }).format(roundMoney(safeAmount));
 }
 
 export default async function EstimatePrintPage({
@@ -185,11 +187,7 @@ export default async function EstimatePrintPage({
   const lineItems =
     (lineItemData ?? []) as EstimateLineItem[];
 
-  const subtotalFromLineItems = lineItems.reduce(
-    (total, item) =>
-      total + toNumber(item.line_total),
-    0
-  );
+  const subtotalFromLineItems = sumMoney(lineItems.map(item => toNumber(item.line_total)));
 
   const subtotal =
     subtotalFromLineItems > 0
@@ -200,8 +198,8 @@ export default async function EstimatePrintPage({
     taxMode: estimate.tax_mode,
     taxRate: estimate.tax_rate,
   });
-  const taxAmount = subtotal * (taxRate / 100);
-  const total = subtotal + taxAmount;
+  const taxAmount = percentMoney(subtotal, taxRate);
+  const total = sumMoney([subtotal, taxAmount]);
 
   const companyName =
     business?.name || "R&L Creations";

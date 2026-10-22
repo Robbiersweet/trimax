@@ -52,7 +52,7 @@ assert(
 );
 
 assert(
-  !page.includes("filteredEstimates.map") &&
+  !page.includes("{filteredEstimates.map") &&
     !page.includes("estimate-next-action") &&
     !page.includes("estimate-readiness-panel") &&
     !page.includes("style={{ width: `${readiness.score}%` }}"),

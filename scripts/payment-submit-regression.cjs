@@ -20,6 +20,7 @@ async function run(){
  let res=await request({validateOnly:true});assert.equal(res.status,200);assert.deepEqual((await res.json()).paymentApplied,false);assert.equal(writes.length,0);assert(reads.filter(r=>['invoices','ocr_legacy_jobs','activity_logs'].includes(r.table)).every(r=>r.filters.some(([k,v])=>k==='business_id'&&v==='business')));
  res=await request({validateOnly:false});assert.equal(res.status,403);assert.equal(writes.length,0);
  for(const scenario of [{foreign:true},{paid:true},{split:true},{role:'tech'}]){res=await request({validateOnly:true},scenario);assert(res.status>=400,JSON.stringify(scenario));assert.equal(writes.length,0);}
+ for(const penny of [4286.09,4286.11]){res=await request({validateOnly:true,checkAmount:penny});assert.equal(res.status,400);assert.equal(writes.length,0);}
  res=await request({validateOnly:true,checkAmount:4286});assert.equal(res.status,400);assert.equal(writes.length,0);
  res=await request({confirmSavedRemittance:true});assert.equal(res.status,200);assert.equal(writes.filter(w=>w.table==='invoices'&&w.operation==='update').length,3);const audits=writes.filter(w=>w.table==='activity_logs'&&w.operation==='insert');assert.equal(audits.length,3);assert(audits.every(w=>w.payload.details.sourceOcrAttemptId==='saved-glen'&&w.payload.details.savedDiagnosticReviewConfirmed===true));
  assert(screen.includes('onClick={() => void applyBatchPayment()}'));assert(screen.includes('role="dialog"'));assert(screen.includes('Cancel — keep unapplied'));assert(!screen.includes('diagnosticReplay:Boolean(retainedAttemptId||'));

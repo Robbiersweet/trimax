@@ -1,3 +1,4 @@
+import { subtractMoney, multiplyMoney } from "./money.ts";
 export type PaymentTimelinessInvoiceLineItem = {
   description?: string | null;
   quantity?: string | number | null;
@@ -113,7 +114,7 @@ function hasMeaningfulLineItems(lineItems: PaymentTimelinessInvoiceLineItem[]) {
     const description = cleanString(item.description);
     const savedLineTotal = moneyNumber(item.line_total);
     const calculatedLineTotal =
-      moneyNumber(item.quantity) * moneyNumber(item.unit_price);
+      multiplyMoney(item.quantity, item.unit_price);
 
     return Boolean(description) && Math.max(savedLineTotal, calculatedLineTotal) > 0;
   });
@@ -133,7 +134,7 @@ function collectionAmountDue(invoice: PaymentTimelinessInvoiceBase) {
 
   const invoiceAmount = moneyNumber(invoice.invoice_amount);
   const amountPaid = moneyNumber(invoice.amount_paid);
-  const fullAmountDue = Math.max(invoiceAmount - amountPaid, 0);
+  const fullAmountDue = Math.max(subtractMoney(invoiceAmount, amountPaid), 0);
 
   return hasActiveDepositRequest(invoice)
     ? Math.max(moneyNumber(invoice.deposit_requested_amount) - amountPaid, 0)

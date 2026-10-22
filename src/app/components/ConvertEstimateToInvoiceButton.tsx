@@ -1,5 +1,8 @@
 "use client";
 
+import { percentMoney, sumMoney } from "../lib/money";
+
+
 import { formatStoredInvoiceAmount } from "../lib/invoiceMoney";
 
 import { useState } from "react";
@@ -185,11 +188,7 @@ export default function ConvertEstimateToInvoiceButton({
     const estimateLineItems =
       (estimateLineItemData ?? []) as EstimateLineItem[];
 
-    const subtotal = estimateLineItems.reduce(
-      (total, item) =>
-        total + toNumber(item.line_total),
-      0
-    );
+    const subtotal = sumMoney(estimateLineItems.map(item => toNumber(item.line_total)));
 
     const fallbackSubtotal =
       subtotal > 0
@@ -203,9 +202,9 @@ export default function ConvertEstimateToInvoiceButton({
       taxRate: estimate.tax_rate,
     });
     const taxAmount =
-      fallbackSubtotal * (taxRate / 100);
+      percentMoney(fallbackSubtotal, taxRate);
     const invoiceTotal =
-      fallbackSubtotal + taxAmount;
+      sumMoney([fallbackSubtotal, taxAmount]);
     const invoiceTerms = resolveInvoiceTerms(estimate.terms);
     const smartInvoiceDates = getSmartInvoiceDates({
       customerName: estimate.customer_name ?? customerName,

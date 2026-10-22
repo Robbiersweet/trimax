@@ -1,4 +1,11 @@
 "use client";
+import { sumMoney as canonicalSumMoney } from "../lib/money.ts";
+
+import { sumMoney, taxRateForAmounts, roundDecimalSum, moneyCents } from "../lib/money.ts";
+
+
+import { roundMoney as canonicalRoundMoney, formatMoney as canonicalFormatMoney } from "../lib/money.ts";
+
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -66,9 +73,12 @@ type InvoiceImportRow = {
   notes: string;
   lineItems: InvoiceImportLineItem[];
   sourceRowNumbers: number[];
+  moneyReviewReason?: string;
 };
 
 type InvoiceImportLineItem = {
+  taxParts?: string[];
+  sourceTotal?: string;
   description: string;
   quantity: number;
   unitPrice: number;
@@ -171,12 +181,10 @@ function moneyValue(value: string) {
 }
 
 function roundMoney(value: number) {
-  return Math.round((value + Number.EPSILON) * 100) / 100;
+  return canonicalRoundMoney(value);
 }
 
-function roundRate(value: number) {
-  return Math.round((value + Number.EPSILON) * 10000) / 10000;
-}
+
 
 function dateValue(value: string) {
   const trimmed = value.trim();
@@ -306,9 +314,8 @@ function mapInvoiceLineItem(row: CsvRow): InvoiceImportLineItem {
   const lineSubtotal = moneyValue(
     field(row, ["Line Subtotal", "Subtotal", "Amount"])
   );
-  const taxAmount =
-    moneyValue(field(row, ["Tax 1 Amount"])) +
-    moneyValue(field(row, ["Tax 2 Amount"]));
+  const taxParts = [field(row, ["Tax 1 Amount"]) || "0", field(row, ["Tax 2 Amount"]) || "0"];
+  const taxAmount = roundDecimalSum(taxParts);
 
   return {
     description:
@@ -316,7 +323,9 @@ function mapInvoiceLineItem(row: CsvRow): InvoiceImportLineItem {
       "FreshBooks line item",
     quantity: moneyValue(field(row, ["Quantity", "Qty"])) || 1,
     unitPrice: moneyValue(field(row, ["Rate", "Unit Price", "Price"])),
-    lineTotal: lineSubtotal,
+    lineTotal: roundMoney(lineSubtotal),
+    taxParts,
+    sourceTotal: field(row, ["Line Total"]) || undefined,
     taxLabel: [
       field(row, ["Tax 1 Type"]),
       field(row, ["Tax 2 Type"]),
@@ -359,19 +368,15 @@ function mapInvoiceRows(rows: CsvRow[]): InvoiceImportRow[] {
       existingInvoice.lineItems.push(lineItem);
       existingInvoice.sourceRowNumbers.push(index + 1);
       existingInvoice.subtotal = roundMoney(
-        existingInvoice.subtotal + lineItem.lineTotal
+        sumMoney([existingInvoice.subtotal, lineItem.lineTotal])
       );
-      existingInvoice.taxAmount = roundMoney(
-        existingInvoice.taxAmount + lineItem.taxAmount
-      );
+      existingInvoice.taxAmount = roundDecimalSum(existingInvoice.lineItems.flatMap(item => item.taxParts ?? [String(item.taxAmount)]));
       existingInvoice.amount = roundMoney(
-        existingInvoice.subtotal + existingInvoice.taxAmount
+        sumMoney([existingInvoice.subtotal, existingInvoice.taxAmount])
       );
       existingInvoice.taxRate =
         existingInvoice.subtotal > 0
-          ? roundRate(
-              (existingInvoice.taxAmount / existingInvoice.subtotal) * 100
-            )
+          ? taxRateForAmounts(existingInvoice.subtotal, existingInvoice.taxAmount)
           : 0;
       existingInvoice.taxLabel = Array.from(
         new Set(
@@ -390,7 +395,7 @@ function mapInvoiceRows(rows: CsvRow[]): InvoiceImportRow[] {
 
     const subtotal = roundMoney(lineItem.lineTotal);
     const taxAmount = roundMoney(lineItem.taxAmount);
-    const amount = roundMoney(subtotal + taxAmount);
+    const amount = sumMoney([subtotal, taxAmount]);
     const status = statusLabel(field(row, ["Status", "Invoice Status"]));
 
     groupedInvoices.set(groupKey, {
@@ -420,7 +425,7 @@ function mapInvoiceRows(rows: CsvRow[]): InvoiceImportRow[] {
       taxAmount,
       taxLabel: lineItem.taxLabel,
       taxRate:
-        subtotal > 0 ? roundRate((taxAmount / subtotal) * 100) : 0,
+        subtotal > 0 ? taxRateForAmounts(subtotal, taxAmount) : 0,
       status,
       reference: freshBooksNumber
         ? `FreshBooks ${freshBooksNumber}`
@@ -433,7 +438,7 @@ function mapInvoiceRows(rows: CsvRow[]): InvoiceImportRow[] {
 
   return Array.from(groupedInvoices.values()).filter(
     (row) => row.customerName && row.amount > 0
-  );
+  ).map(row => ({...row, moneyReviewReason: row.lineItems.every(item => item.sourceTotal !== undefined) && moneyCents(roundDecimalSum(row.lineItems.map(item => item.sourceTotal))) !== moneyCents(row.amount) ? "Imported amounts do not reconcile. Review the source invoice before importing." : undefined}));
 }
 
 function getFreshBooksInvoiceDisplayId(freshBooksNumber: string) {
@@ -444,7 +449,7 @@ function formatMoney(value: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-  }).format(value);
+  }).format(canonicalRoundMoney(value));
 }
 
 function findMatchingClient(existingClients: Client[], row: ClientImportRow) {
@@ -522,10 +527,7 @@ function ImportsPageContent() {
   const splitTargetAmount = Number(business?.split_warning_amount) || 0;
   const invoicePreviewRows = importType === "invoices" ? invoiceRows : [];
   const clientPreviewRows = importType === "clients" ? clientRows : [];
-  const previewInvoiceTotal = invoicePreviewRows.reduce(
-    (total, row) => total + row.amount,
-    0
-  );
+  const previewInvoiceTotal = canonicalSumMoney(invoicePreviewRows.map((row) => row.amount));
   const previewInvoiceLineCount = invoicePreviewRows.reduce(
     (total, row) => total + row.lineItems.length,
     0
@@ -696,10 +698,7 @@ function ImportsPageContent() {
           {
             label: "Open Balance",
             value: formatMoney(
-              invoicePreviewRows.reduce(
-                (total, row) => total + Math.max(row.amount - row.amountPaid, 0),
-                0
-              )
+              canonicalSumMoney(invoicePreviewRows.map((row) => Math.max(row.amount - row.amountPaid, 0)))
             ),
             detail: "Potential collectible balance from this file.",
             tone: "emerald",
@@ -1061,6 +1060,11 @@ function ImportsPageContent() {
     const importRows: Record<string, unknown>[] = [];
 
     for (const [index, row] of invoiceRows.entries()) {
+      if(row.moneyReviewReason){
+        errorCount += 1;
+        importRows.push({business_id:business.id,row_number:index+1,import_type:"invoices",raw_data:row.sourceRowNumbers.map(n=>rawRows[n-1]??{}),mapped_data:row,status:"error",target_table:"invoices",error_message:row.moneyReviewReason});
+        continue;
+      }
       const client = await findOrCreateClient(clients, row.customerName);
 
       if (!client) {
@@ -1152,14 +1156,14 @@ function ImportsPageContent() {
           display_id: displayId,
           customer_name: row.customerName,
           project_title: row.projectTitle,
-          invoice_amount: `$${row.amount.toFixed(2)}`,
+          invoice_amount: canonicalFormatMoney(row.amount),
           issue_date: row.issueDate || null,
           due_date: row.dueDate || null,
           reference: row.reference,
           tax_mode: row.taxAmount > 0 ? "taxable" : "no_tax",
           tax_label: row.taxLabel || null,
           tax_rate: row.taxRate,
-          amount_paid: row.amountPaid,
+          amount_paid: roundMoney(row.amountPaid),
           split_warning_enabled: shouldCreateSplitInvoices,
           split_target_amount: shouldCreateSplitInvoices
             ? splitTargetAmount

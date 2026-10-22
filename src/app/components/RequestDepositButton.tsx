@@ -1,4 +1,8 @@
 "use client";
+import { roundMoney as canonicalRoundMoney } from "../lib/money.ts";
+
+import { percentMoney } from "../lib/money.ts";
+
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -22,7 +26,7 @@ function money(value: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-  }).format(safeValue);
+  }).format(canonicalRoundMoney(safeValue));
 }
 
 function toAmount(value: string) {
@@ -65,7 +69,7 @@ export default function RequestDepositButton({
       ? Math.min(Math.max(parsedPercent, 0), 100)
       : 0;
 
-    return Math.round(invoiceTotal * safePercent) / 100;
+    return percentMoney(invoiceTotal, safePercent);
   }, [depositMode, fixedAmount, invoiceTotal, percent]);
 
   async function saveDepositRequest() {

@@ -1,3 +1,4 @@
+import { roundMoney as canonicalRoundMoney } from "../lib/money.ts";
 import Link from "next/link";
 import AppShell from "../components/AppShell";
 import BatchInvoicePayments from "../components/BatchInvoicePayments";
@@ -72,7 +73,7 @@ function formatMoney(value: string | number | null | undefined) {
     currency: "USD",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(parseMoney(value));
+  }).format(canonicalRoundMoney(parseMoney(value)));
 }
 
 function formatDate(value: string | null | undefined) {

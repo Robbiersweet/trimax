@@ -1,3 +1,4 @@
+import { moneyCents, sumMoney } from "./money.ts";
 import { findRemittanceMatches, type RemittanceInvoiceRecord, type RemittanceHeaderPass, type StructuredRemittanceRowEvidence, type RemittanceTotalEvidence, selectRemittanceHeaderEvidence, parseCheckDate, extractUnitCodeCandidates } from "./remittanceMatching.ts";
 import { findDuplicateRemittance, type DuplicateRemittanceActivity } from "./duplicateRemittance.ts";
 
@@ -63,7 +64,7 @@ export function attemptAllowsApply(attempt: RemittanceAttempt | null, selectedId
   if (!attempt?.reconciliationResult.eligible || duplicateConflict || amount === null) return false;
   const expected = attempt.reconciliationResult.reviewIds;
   const same = (ids: string[]) => new Set(ids).size === ids.length && ids.length === expected.length && ids.every(id => expected.includes(id));
-  return same(selectedIds) && same(reviewIds) && Math.round(amount * 100) === Math.round((attempt.reconciliationResult.documentTotal ?? 0) * 100);
+  return same(selectedIds) && same(reviewIds) && moneyCents(amount) === moneyCents(attempt.reconciliationResult.documentTotal ?? 0);
 }
 
 export function selectRepeatedPropertyIdentity(passes: OcrPass[], rows: StructuredRemittanceRowEvidence[]) {
@@ -153,7 +154,7 @@ export function selectObservedHeader(passes: OcrPass[], rows: StructuredRemittan
       if (payor) payors.add(payor[1].trim());
     }
   }
-  const rowSubtotal = rows.reduce((sum, row) => sum + (row.amountCandidates.find(amount => amount.selected)?.value ?? 0), 0);
+  const rowSubtotal = sumMoney(rows.map(row => row.amountCandidates.find(amount => amount.selected)?.value ?? 0));
   const propertyIdentity=selectRepeatedPropertyIdentity(passes,rows);
   const checkDateEvidence=selectObservedCheckDate(passes,rows);
   const checkNumberEvidence=selectObservedCheckNumber(passes,rows);

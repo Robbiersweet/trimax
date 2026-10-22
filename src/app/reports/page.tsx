@@ -1,3 +1,5 @@
+import { subtractMoney as canonicalSubtractMoney } from "../lib/money.ts";
+import { sumMoney as canonicalSumMoney } from "../lib/money.ts";
 import Link from "next/link";
 import AppShell from "../components/AppShell";
 import Button from "../components/Button";
@@ -373,7 +375,7 @@ function invoicePaidAmount(invoice: Invoice) {
 
 function invoiceOpenAmount(invoice: Invoice) {
   return Math.max(
-    parseMoney(invoice.invoice_amount) - invoicePaidAmount(invoice),
+    canonicalSubtractMoney(parseMoney(invoice.invoice_amount), invoicePaidAmount(invoice)),
     0
   );
 }
@@ -764,25 +766,13 @@ export default async function ReportsPage({
     isInRange(invoice.created_at, range, customStartDate, customEndDate)
   );
 
-  const estimatedRevenue = filteredEstimates.reduce(
-    (total, estimate) => total + parseMoney(estimate.estimate_amount),
-    0
-  );
+  const estimatedRevenue = canonicalSumMoney(filteredEstimates.map((estimate) => parseMoney(estimate.estimate_amount)));
 
-  const invoicedRevenue = filteredInvoices.reduce(
-    (total, invoice) => total + parseMoney(invoice.invoice_amount),
-    0
-  );
+  const invoicedRevenue = canonicalSumMoney(filteredInvoices.map((invoice) => parseMoney(invoice.invoice_amount)));
 
-  const paymentsCollected = filteredInvoices.reduce(
-    (total, invoice) => total + invoicePaidAmount(invoice),
-    0
-  );
+  const paymentsCollected = canonicalSumMoney(filteredInvoices.map((invoice) => invoicePaidAmount(invoice)));
 
-  const openReceivables = filteredInvoices.reduce(
-    (total, invoice) => total + invoiceOpenAmount(invoice),
-    0
-  );
+  const openReceivables = canonicalSumMoney(filteredInvoices.map((invoice) => invoiceOpenAmount(invoice)));
   const collectionRate =
     invoicedRevenue > 0
       ? Math.round((paymentsCollected / invoicedRevenue) * 100)
@@ -867,7 +857,7 @@ export default async function ReportsPage({
     }>())
   )
     .map(([, value]) => value)
-    .sort((first, second) => second.invoiceTotal - first.invoiceTotal);
+    .sort((first, second) => canonicalSubtractMoney(second.invoiceTotal, first.invoiceTotal));
   const strongestClient = clientRevenueBreakdown[0] ?? null;
   const cashHealthCards = [
     {

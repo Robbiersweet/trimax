@@ -1,3 +1,4 @@
+import { moneyFixed, moneyCents } from "./money.ts";
 export type DuplicateRemittanceRole =
   | "owner"
   | "admin"
@@ -108,14 +109,14 @@ function sameMoney(left: unknown, right: unknown) {
   const first = moneyNumber(left);
   const second = moneyNumber(right);
 
-  return first > 0 && second > 0 && Math.abs(first - second) < 0.01;
+  return first > 0 && second > 0 && moneyCents(first) === moneyCents(second);
 }
 
 function nearMoney(left: unknown, right: unknown) {
   const first = moneyNumber(left);
   const second = moneyNumber(right);
 
-  return first > 0 && second > 0 && Math.abs(first - second) <= 0.1;
+  return first > 0 && second > 0 && Math.abs(moneyCents(first) - moneyCents(second)) <= 10;
 }
 
 function sameDateOrMissing(left: unknown, right: unknown) {
@@ -217,7 +218,7 @@ function groupPaymentActivities(
         : [
             "payment",
             checkNumber || "no-check",
-            amount.toFixed(2),
+            moneyFixed(amount),
             normalizedPayor(payor) || "no-payor",
             checkDate || "no-check-date",
             receivedDate || "no-received-date",

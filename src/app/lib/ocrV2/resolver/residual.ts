@@ -1,3 +1,4 @@
+import { moneyFixed } from "../../money.ts";
 /** Validated arithmetic adapter; the frozen business resolver remains unchanged. */
 import { resolveOfflineDocument, type OfflineDocument, type OfflineSnapshot, type OfflineRow } from './index.ts';
 import { deriveResidualAmount, type ResidualEvaluation } from '../recognition/residualAmount.ts';
@@ -26,6 +27,6 @@ export function resolveDocumentWithResidual(document: ResidualDocument,snapshot:
   return {...result,document:structuredClone(document),rows:result.rows.map(row=>({...row,evidence:document.rows.find(r=>r.rowId===row.rowId)!,alternatives:row.alternatives.map(a=>({...a,
     amountEvidenceClass:derived?.rowId===row.rowId?'derived-arithmetic':'ocr-recognized',
     trace:derived?.rowId===row.rowId&&a.trace?{...a.trace,ocrRowAmount:null,derivedRowAmount:derived.derivedAmount/100,
-      amountEvidence:'Derived document arithmetic: '+(derived.derivedAmount/100).toFixed(2)}:a.trace,
+      amountEvidence:'Derived document arithmetic: '+moneyFixed(derived.derivedAmount/100)}:a.trace,
     recordState:snapshot.invoices.find(i=>i.id===a.invoiceId)?.status??null}))}))};
 }

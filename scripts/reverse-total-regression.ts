@@ -1,3 +1,4 @@
+import { multiplyMoney, sumMoney } from "../src/app/lib/money.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -53,13 +54,7 @@ function assertReverseTotal({
         }
       : item
   );
-  const subtotal = adjustedItems.reduce((sum, item) => {
-    return (
-      sum +
-      (Number(item.quantity) || 0) *
-        (Number(item.unitPrice) || 0)
-    );
-  }, 0);
+  const subtotal = sumMoney(adjustedItems.map(item => multiplyMoney(item.quantity,item.unitPrice)));
   const totals = calculateDiscountedDocumentTotals({
     lineSubtotal: subtotal,
     taxRate,
@@ -103,7 +98,7 @@ assertReverseTotal({
 
 const reopenedEstimateBlankPrice = assertReverseTotal({
   label: "Reopened estimate blank selected unit price",
-  desiredTotal: 712.85,
+  desiredTotal: 712.84,
   taxRate: 9.9,
   lineItems: [
     {
@@ -117,7 +112,7 @@ const reopenedEstimateBlankPrice = assertReverseTotal({
 
 assert.equal(
   cents(reopenedEstimateBlankPrice?.totals.total ?? 0),
-  71285,
+  71284,
   "existing estimate edit should reverse calculate from a blank selected price"
 );
 
@@ -128,7 +123,7 @@ const savedLineAfterReopen = {
 };
 const reopenedAgain = assertReverseTotal({
   label: "Reopened estimate persisted calculated line",
-  desiredTotal: 712.85,
+  desiredTotal: 712.84,
   taxRate: 9.9,
   lineItems: [savedLineAfterReopen],
   selectedLineIndex: 0,
@@ -136,13 +131,13 @@ const reopenedAgain = assertReverseTotal({
 
 assert.equal(
   cents(reopenedAgain?.totals.total ?? 0),
-  71285,
+  71284,
   "saved calculated line should reopen at the same final total"
 );
 
 const reopenedInvoiceBlankPrice = assertReverseTotal({
   label: "Reopened invoice blank selected unit price",
-  desiredTotal: 712.85,
+  desiredTotal: 712.84,
   taxRate: 9.9,
   lineItems: [
     {
@@ -156,7 +151,7 @@ const reopenedInvoiceBlankPrice = assertReverseTotal({
 
 assert.equal(
   cents(reopenedInvoiceBlankPrice?.totals.total ?? 0),
-  71285,
+  71284,
   "existing invoice edit should reverse calculate from a blank selected price"
 );
 
@@ -271,3 +266,5 @@ assert(
 );
 
 console.log("reverse total regression passed");
+
+assert.equal(reverseCalculateFinalTotal({desiredTotal:712.85,taxRate:9.9,lineItems:[{description:"Cent tax boundary",quantity:1,unitPrice:""}],selectedLineIndex:0}).ok,false,"Reject an unreachable cent total rather than introduce fractional-cent subtotal/tax.");

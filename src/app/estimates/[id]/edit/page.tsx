@@ -1,5 +1,8 @@
 "use client";
 
+import { multiplyMoney, formatMoney, sumMoney } from "../../../lib/money";
+
+
 import { useEffect, useMemo, useState } from "react";
 import {
   useParams,
@@ -115,7 +118,7 @@ type LineItem = {
 };
 
 function formatCurrency(amount: number) {
-  return `$${amount.toFixed(2)}`;
+  return formatMoney(amount);
 }
 
 function parseCurrency(value: string | null) {
@@ -131,10 +134,7 @@ function toNumber(value: number | string | null) {
 }
 
 function getLineTotal(item: LineItem) {
-  const quantity = Number(item.quantity) || 0;
-  const unitPrice = Number(item.unitPrice) || 0;
-
-  return quantity * unitPrice;
+  return multiplyMoney(item.quantity, item.unitPrice);
 }
 
 function toLineItem(item: SavedLineItem): LineItem {
@@ -248,10 +248,7 @@ export default function EditEstimatePage() {
   }, [serviceItems, serviceSearch]);
 
   const subtotal = useMemo(() => {
-    return lineItems.reduce(
-      (total, item) => total + getLineTotal(item),
-      0
-    );
+    return sumMoney(lineItems.map(getLineTotal));
   }, [lineItems]);
 
   const documentTotals = useMemo(() => {

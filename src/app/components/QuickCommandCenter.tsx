@@ -1,4 +1,8 @@
 "use client";
+import { sumMoney as canonicalSumMoney } from "../lib/money.ts";
+
+import { roundMoney as canonicalRoundMoney } from "../lib/money.ts";
+
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -413,7 +417,7 @@ function formatMoney(value: string | number | null | undefined) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-  }).format(numberValue(value));
+  }).format(canonicalRoundMoney(numberValue(value)));
 }
 
 function invoiceDueAmount(invoice: SmartInvoiceRecord) {
@@ -1143,10 +1147,7 @@ function buildSmartCommands({
   }
 
   if (openInvoices.length > 0) {
-    const openTotal = openInvoices.reduce(
-      (total, invoice) => total + invoiceDueAmount(invoice),
-      0
-    );
+    const openTotal = canonicalSumMoney(openInvoices.map((invoice) => invoiceDueAmount(invoice)));
 
     commands.push({
       title: "Collect open revenue",

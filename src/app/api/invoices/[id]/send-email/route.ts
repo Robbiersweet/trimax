@@ -1,3 +1,5 @@
+import { sumMoney } from "../../../../lib/money.ts";
+import { roundMoney as canonicalRoundMoney } from "../../../../lib/money.ts";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import {
@@ -160,7 +162,7 @@ function formatCurrency(value: number) {
   return new Intl.NumberFormat("en-US", {
     currency: "USD",
     style: "currency",
-  }).format(Number.isFinite(value) ? value : 0);
+  }).format(canonicalRoundMoney(Number.isFinite(value) ? value : 0));
 }
 
 type SendPipelineStage =
@@ -321,7 +323,7 @@ function buildSplitGroupSummary(invoices: InvoiceRow[]) {
         ? `Split ${item.split_sequence} of ${item.split_count}`
         : null,
   }));
-  const combinedTotal = lines.reduce((sum, item) => sum + item.amount, 0);
+  const combinedTotal = sumMoney(lines.map(item => item.amount));
 
   return { lines, combinedTotal };
 }

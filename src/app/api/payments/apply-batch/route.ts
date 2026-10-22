@@ -1,3 +1,4 @@
+import { moneyCents, sumMoney } from "../../../lib/money.ts";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import {
@@ -385,13 +386,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const selectedTotal = invoices.reduce(
-    (total, invoice) => total + invoiceCollectionAmountDue(invoice),
-    0
-  );
+  const selectedTotal = sumMoney(invoices.map(invoiceCollectionAmountDue));
   const remittanceTotal = moneyNumber(body.remittanceStubTotal ?? null);
 
-  if (Math.abs(selectedTotal - checkAmount) >= 0.01) {
+  if (moneyCents(selectedTotal) !== moneyCents(checkAmount)) {
     return NextResponse.json(
       {
         error:
@@ -404,7 +402,7 @@ export async function POST(request: Request) {
   if (
     body.remittanceStubMatched &&
     remittanceTotal > 0 &&
-    Math.abs(selectedTotal - remittanceTotal) >= 0.01
+    moneyCents(selectedTotal) !== moneyCents(remittanceTotal)
   ) {
     return NextResponse.json(
       {
@@ -628,9 +626,9 @@ export async function POST(request: Request) {
       const invoiceAmount = moneyNumber(invoice.invoice_amount);
       const amountPaid = moneyNumber(invoice.amount_paid);
       const amountDue = invoiceCollectionAmountDue(invoice);
-      const nextAmountPaid = Math.min(invoiceAmount, amountPaid + amountDue);
+      const nextAmountPaid = Math.min(invoiceAmount, sumMoney([amountPaid, amountDue]));
       const isFullyPaid =
-        invoiceAmount > 0 && nextAmountPaid >= invoiceAmount - 0.01;
+        invoiceAmount > 0 && moneyCents(nextAmountPaid) >= moneyCents(invoiceAmount);
       const isDepositRequest =
         String(invoice.deposit_status ?? "none").toLowerCase() === "requested" &&
         moneyNumber(invoice.deposit_requested_amount) > 0;

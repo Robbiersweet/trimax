@@ -1,4 +1,9 @@
 "use client";
+import { roundMoney } from "../../../lib/money.ts";
+
+
+import { multiplyMoney, subtractMoney, sumMoney } from "../../../lib/money";
+
 
 import { formatStoredInvoiceAmount } from "../../../lib/invoiceMoney";
 
@@ -121,10 +126,7 @@ function toNumber(value: number | string | null) {
 }
 
 function getLineTotal(item: LineItem) {
-  const quantity = Number(item.quantity) || 0;
-  const unitPrice = Number(item.unitPrice) || 0;
-
-  return quantity * unitPrice;
+  return multiplyMoney(item.quantity, item.unitPrice);
 }
 
 function toLineItem(item: SavedLineItem): LineItem {
@@ -221,10 +223,7 @@ export default function EditInvoicePage() {
   }, [serviceItems, serviceSearch]);
 
   const subtotal = useMemo(() => {
-    return lineItems.reduce(
-      (total, item) => total + getLineTotal(item),
-      0
-    );
+    return sumMoney(lineItems.map(getLineTotal));
   }, [lineItems]);
 
   const documentTotals = useMemo(() => {
@@ -264,7 +263,7 @@ export default function EditInvoicePage() {
     [lineItems]
   );
   const amountDue =
-    invoiceTotal - (Number(amountPaid) || 0);
+    subtractMoney(invoiceTotal, amountPaid);
   const [splitWarningAmount, setSplitWarningAmount] =
     useState(0);
   const effectiveSplitTargetAmount =
@@ -823,7 +822,7 @@ export default function EditInvoicePage() {
         tax_rate: getEffectiveTaxRate({ taxMode, taxRate }),
         tax_number:
           taxMode === "taxable" ? taxNumber.trim() || null : null,
-        amount_paid: Number(amountPaid) || 0,
+        amount_paid: roundMoney(Number(amountPaid) || 0),
         split_warning_enabled: effectiveSplitWarningEnabled,
         split_target_amount:
           effectiveSplitWarningEnabled &&

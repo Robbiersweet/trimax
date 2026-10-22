@@ -1,3 +1,5 @@
+import { moneyFixed } from "../lib/money.ts";
+import { sumMoney as canonicalSumMoney } from "../lib/money.ts";
 import Link from "next/link";
 import QueueInvoiceAction from "../components/QueueInvoiceAction";
 import { resolveQueueAction as primaryQueueAction, type QueueDocument, type QueueClient } from "../lib/queueAction";
@@ -1737,7 +1739,7 @@ export default async function QueuePage({
                       sendSplitGroup: splitChildren.length > 0 || Boolean(linkedInvoice.split_parent_invoice_id),
                       splitGroupCount: actionContext.packageInvoices.length,
                       splitGroupItems: actionContext.packageInvoices.map(invoice => ({ documentNumber: invoice.display_id ?? "Invoice", amountLabel: invoice.invoice_amount?.toString() ?? "" })),
-                      splitGroupCombinedTotal: splitChildren.length ? "$" + splitChildren.reduce((sum, invoice) => sum + moneyNumber(invoice.invoice_amount), 0).toFixed(2) : undefined,
+                      splitGroupCombinedTotal: splitChildren.length ? "$" + moneyFixed(canonicalSumMoney(splitChildren.map((invoice) => moneyNumber(invoice.invoice_amount)))) : undefined,
                     }} /> : <Link href={primaryAction.href} title={primaryAction.blockedReason ?? undefined} className="rounded-2xl bg-sky-500 px-4 py-3 text-center text-sm font-black text-white transition hover:bg-sky-400 md:justify-self-end">{primaryAction.label}</Link>}
                   </div>
 

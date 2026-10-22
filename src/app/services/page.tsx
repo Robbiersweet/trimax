@@ -1,4 +1,6 @@
 "use client";
+import { formatMoney as canonicalFormatMoney } from "../lib/money.ts";
+
 
 import {
   Suspense,
@@ -65,7 +67,7 @@ type ServiceStarter = {
 };
 
 function formatCurrency(value: number | string | null) {
-  return `$${(Number(value) || 0).toFixed(2)}`;
+  return canonicalFormatMoney(Number(value) || 0);
 }
 
 function isMissingTierColumnError(error: { message?: string } | null) {

@@ -1,3 +1,5 @@
+import { roundMoney } from "./money.ts";
+import { subtractMoney } from "./money.ts";
 export type InvoiceLifecycleRecord = {
   status?: string | null;
   amount_paid?: string | number | null;
@@ -17,12 +19,12 @@ export function invoiceStatusKey(value: string | null | undefined) {
 
 export function moneyNumber(value: string | number | null | undefined) {
   if (typeof value === "number") {
-    return Number.isFinite(value) ? value : 0;
+    return Number.isFinite(value) ? roundMoney(value) : 0;
   }
 
   const parsed = Number(String(value ?? "0").replace(/[^0-9.-]+/g, ""));
 
-  return Number.isFinite(parsed) ? parsed : 0;
+  return Number.isFinite(parsed) ? roundMoney(parsed) : 0;
 }
 
 export function isNonCollectibleInvoiceStatus(
@@ -57,7 +59,7 @@ export function invoiceAmountDue(invoice: InvoiceLifecycleRecord) {
   }
 
   return Math.max(
-    moneyNumber(invoice.invoice_amount) - moneyNumber(invoice.amount_paid),
+    subtractMoney(moneyNumber(invoice.invoice_amount), moneyNumber(invoice.amount_paid)),
     0
   );
 }

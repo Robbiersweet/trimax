@@ -1,3 +1,4 @@
+import { roundMoney as canonicalRoundMoney } from "../../lib/money.ts";
 import Link from "next/link";
 import AppShell from "../../components/AppShell";
 import Card from "../../components/Card";
@@ -187,7 +188,7 @@ function formatMoney(value: string | number | null | undefined) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-  }).format(Number.isFinite(amount) ? amount : 0);
+  }).format(canonicalRoundMoney(Number.isFinite(amount) ? amount : 0));
 }
 
 function moneyNumber(value: string | number | null | undefined) {

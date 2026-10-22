@@ -1,3 +1,4 @@
+import { formatMoney, moneyCents, percentCents } from "./money.ts";
 import { getNextDocumentDisplayId } from "./documentNumbers";
 import { logActivity } from "./activityLog";
 import {
@@ -46,7 +47,7 @@ function centsToDollars(cents: number) {
 }
 
 function formatCurrency(amount: number) {
-  return `$${amount.toFixed(2)}`;
+  return formatMoney(amount);
 }
 
 function displayNumber(value: string) {
@@ -54,7 +55,7 @@ function displayNumber(value: string) {
 }
 
 function getTaxCents(subtotalCents: number, taxRate: number) {
-  return Math.round(subtotalCents * ((Number(taxRate) || 0) / 100));
+  return percentCents(subtotalCents, taxRate);
 }
 
 function getMaxSubtotalCentsForGrandTotal(
@@ -87,8 +88,8 @@ export function buildSplitInvoicePlan({
   targetAmount: number;
   taxRate: number;
 }) {
-  const subtotalCents = Math.round(subtotalAmount * 100);
-  const targetCents = Math.round(targetAmount * 100);
+  const subtotalCents = moneyCents(subtotalAmount);
+  const targetCents = moneyCents(targetAmount);
   const totalTaxCents = getTaxCents(subtotalCents, taxRate);
 
   if (

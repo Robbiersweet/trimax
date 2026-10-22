@@ -1,3 +1,4 @@
+import { multiplyMoney, percentMoney, sumMoney, roundMoney } from "../../../lib/money.ts";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
@@ -214,7 +215,7 @@ function shouldPauseAfterRun(
 }
 
 function lineTotal(item: RecurringLineItem) {
-  return (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0);
+  return multiplyMoney(item.quantity, item.unitPrice);
 }
 
 function formatCurrency(value: number) {
@@ -223,7 +224,7 @@ function formatCurrency(value: number) {
     currency: "USD",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(value);
+  }).format(roundMoney(value));
 }
 
 function parseDocumentNumber(displayId: string | null) {
@@ -320,12 +321,9 @@ async function createInvoiceFromTemplate(
 
   const issueDate = new Date(`${issueDateInput}T00:00:00`);
   const dueDate = addDays(issueDate, Number(template.due_days) || 0);
-  const subtotal = templateLineItems.reduce(
-    (total, item) => total + lineTotal(item),
-    0
-  );
-  const taxAmount = subtotal * ((Number(template.tax_rate) || 0) / 100);
-  const total = subtotal + taxAmount;
+  const subtotal = sumMoney(templateLineItems.map(lineTotal));
+  const taxAmount = percentMoney(subtotal, Number(template.tax_rate) || 0);
+  const total = sumMoney([subtotal, taxAmount]);
   const displayId = await getNextInvoiceDisplayId(supabase, template.business_id);
   const amount = formatCurrency(total);
   const subject =

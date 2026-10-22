@@ -1,3 +1,4 @@
+import { sumMoney } from "./money.ts";
 export type CorrectionInvoiceSummary = {
   id?: string | null;
   displayId?: string | null;
@@ -202,10 +203,7 @@ export function buildCorrectionAuditDetails({
   const replacementInvoiceIds = replacementInvoices
     .map((invoice) => invoice.id)
     .filter((id): id is string => Boolean(id));
-  const replacementCombinedTotal = replacementInvoices.reduce(
-    (sum, invoice) => sum + moneyNumber(invoice.amount),
-    0
-  );
+  const replacementCombinedTotal = sumMoney(replacementInvoices.map(invoice => moneyNumber(invoice.amount)));
 
   return {
     originalInvoiceId: original.id ?? null,

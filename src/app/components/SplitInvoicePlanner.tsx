@@ -1,4 +1,8 @@
 "use client";
+import { sumMoney as canonicalSumMoney } from "../lib/money.ts";
+
+import { moneyFixed } from "../lib/money.ts";
+
 
 import { useMemo, useState } from "react";
 import Button from "./Button";
@@ -22,7 +26,7 @@ type SplitInvoicePlannerProps = {
 };
 
 function formatCurrency(amount: number) {
-  return `$${amount.toFixed(2)}`;
+  return `$${moneyFixed(amount)}`;
 }
 
 export default function SplitInvoicePlanner({
@@ -58,18 +62,9 @@ export default function SplitInvoicePlanner({
       }),
     [effectiveTaxRate, subtotalAmount, targetAmount]
   );
-  const plannedTotal = splitPlan.reduce(
-    (total, item) => total + item.subtotalAmount,
-    0
-  );
-  const plannedTaxTotal = splitPlan.reduce(
-    (total, item) => total + item.taxAmount,
-    0
-  );
-  const plannedGrandTotal = splitPlan.reduce(
-    (total, item) => total + item.totalAmount,
-    0
-  );
+  const plannedTotal = canonicalSumMoney(splitPlan.map((item) => item.subtotalAmount));
+  const plannedTaxTotal = canonicalSumMoney(splitPlan.map((item) => item.taxAmount));
+  const plannedGrandTotal = canonicalSumMoney(splitPlan.map((item) => item.totalAmount));
 
   if (splitPlan.length === 0) {
     return null;

@@ -1,3 +1,5 @@
+import { sumMoney as canonicalSumMoney } from "../../../lib/money.ts";
+import { moneyFixed, moneyCents, multiplyMoney } from "../../../lib/money.ts";
 import { ocrRuntimeCache } from '../../../lib/ocrRuntimeCache';
 import { readCanonicalCapture } from "@/app/lib/ocrCanonicalServer";
 import { observeOcr, withOcrObservations, ocrCacheStats } from "@/app/lib/ocrObservationCache";
@@ -776,13 +778,12 @@ function scoreOcrText(text: string, confidence: number) {
   const hasPropertyName = /north\s+creek/i.test(scoringText);
   const hasApartments = /apartments?/i.test(scoringText);
   const explicitTotal = hasExplicitRemittanceTotal(scoringText);
-  const referencedLineTotal = parsed.lines
-    .filter(isStructurallyUsefulRow)
-    .reduce((total, line) => total + line.amount, 0);
+  const referencedLineTotal = canonicalSumMoney(parsed.lines
+    .filter(isStructurallyUsefulRow).map((line) => line.amount));
   const linesReconcile =
     parsed.totalAmount > 0 &&
     referencedLineTotal > 0 &&
-    Math.abs(referencedLineTotal - parsed.totalAmount) < 0.01;
+    moneyCents(referencedLineTotal) === moneyCents(parsed.totalAmount);
   const hasMultipleRemittanceRows =
     structurallyValidRows.length > 1;
   const noInvoicesDespiteAmounts =
@@ -842,11 +843,11 @@ function candidateStructureScore(attempt: OcrAttempt) {
   const text = withoutMicrBandText(attempt.text);
   const parsed = parseCheckStubText(text);
   const validRows = parsed.lines.filter(isStructurallyUsefulRow);
-  const lineTotal = validRows.reduce((total, line) => total + line.amount, 0);
+  const lineTotal = canonicalSumMoney(validRows.map((line) => line.amount));
   const reconciles =
     parsed.totalAmount > 0 &&
     lineTotal > 0 &&
-    Math.abs(lineTotal - parsed.totalAmount) < 0.01;
+    moneyCents(lineTotal) === moneyCents(parsed.totalAmount);
   const checkNumberNearLabel = /\b(?:CK|CHK|CHECK)\s*#?\s*:?\s*\d{3,5}\b/i.test(
     text.replace(/[Oo]/g, "0")
   );
@@ -878,7 +879,7 @@ function impliedRemittanceRowCount(text: string) {
   }
 
   const amountCounts = rowAmounts.reduce((counts, amount) => {
-    const key = amount.toFixed(2);
+    const key = moneyFixed(amount);
 
     counts.set(key, (counts.get(key) ?? 0) + 1);
     return counts;
@@ -898,7 +899,7 @@ function impliedRemittanceRowCount(text: string) {
 
   return impliedCount >= dominant.count &&
     impliedCount <= 30 &&
-    Math.abs(impliedCount * dominant.amount - parsed.totalAmount) < 0.01
+    moneyCents(multiplyMoney(impliedCount, dominant.amount)) === moneyCents(parsed.totalAmount)
     ? impliedCount
     : 0;
 }
@@ -1365,14 +1366,11 @@ function geometryRowSetScore(
   expectedRowCount: number
 ) {
   const acceptedRows = rows.filter((row) => rowAcceptance(row).accepted);
-  const rowTotal = acceptedRows.reduce(
-    (total, row) => total + rowAcceptance(row).amount,
-    0
-  );
+  const rowTotal = canonicalSumMoney(acceptedRows.map((row) => rowAcceptance(row).amount));
   const parsed = parseCheckStubText(withoutMicrBandText(attempt.text));
   const totalAmount = parsed.totalAmount;
   const reconciles =
-    totalAmount > 0 && rowTotal > 0 && Math.abs(rowTotal - totalAmount) < 0.01;
+    totalAmount > 0 && rowTotal > 0 && moneyCents(rowTotal) === moneyCents(totalAmount);
   const completeness =
     expectedRowCount > 0
       ? Math.min(acceptedRows.length / expectedRowCount, 1) * 260
@@ -1589,14 +1587,14 @@ function sameBandAmountCandidates(row: GeometricRow, words: OcrWord[]) {
   const countByValue = new Map<string, number>();
 
   candidates.forEach((candidate) => {
-    const key = candidate.value.toFixed(2);
+    const key = moneyFixed(candidate.value);
 
     countByValue.set(key, (countByValue.get(key) ?? 0) + 1);
   });
 
   return candidates.map((candidate) => ({
     ...candidate,
-    score: candidate.score + (countByValue.get(candidate.value.toFixed(2)) ?? 0) * 18,
+    score: candidate.score + (countByValue.get(moneyFixed(candidate.value)) ?? 0) * 18,
   }));
 }
 
@@ -1618,7 +1616,7 @@ function mergeStructuredAmountCandidates(
   >();
 
   [...primaryCandidates, ...crossPassCandidates].forEach((candidate) => {
-    const key = `${candidate.value.toFixed(2)}|${candidate.raw}`;
+    const key = `${moneyFixed(candidate.value)}|${candidate.raw}`;
     const existing = merged.get(key);
     const candidateScore = candidate.score ?? 0;
     const existingScore = existing?.score ?? Number.NEGATIVE_INFINITY;
@@ -1641,7 +1639,7 @@ function mergeStructuredAmountCandidates(
 
   return ranked.map((candidate) => ({
     ...candidate,
-    selected: selectedValue > 0 && Math.abs(candidate.value - selectedValue) < 0.01,
+    selected: selectedValue > 0 && moneyCents(candidate.value) === moneyCents(selectedValue),
   }));
 }
 
@@ -1861,7 +1859,7 @@ function geometryAmountCandidateConfidence(row: GeometricRow, value: number) {
     const token = normalizeGeometryToken(word.text);
     const tokenValue = extractMoneyCandidates(token)[0]?.value ?? 0;
 
-    return tokenValue > 0 && Math.abs(tokenValue - value) < 0.01;
+    return tokenValue > 0 && moneyCents(tokenValue) === moneyCents(value);
   });
 
   if (matchingWords.length === 0) {
@@ -1904,7 +1902,7 @@ function geometryAmountCandidates(row: GeometricRow) {
       const token = normalizeGeometryToken(word.text);
       const value = extractMoneyCandidates(token)[0]?.value ?? 0;
 
-      return value > 0 && Math.abs(value - candidate.value) < 0.01;
+      return value > 0 && moneyCents(value) === moneyCents(candidate.value);
     });
     const x0 =
       matchingWords.length > 0
@@ -1927,9 +1925,9 @@ function geometryAmountCandidates(row: GeometricRow) {
       normalized: candidate.normalized,
       value: candidate.value,
       score: candidate.score,
-      selected: Math.abs(candidate.value - selectedValue) < 0.01,
+      selected: moneyCents(candidate.value) === moneyCents(selectedValue),
       reason:
-        Math.abs(candidate.value - selectedValue) < 0.01
+        moneyCents(candidate.value) === moneyCents(selectedValue)
           ? "selected by score, then OCR confidence, then row position"
           : candidate.score === selectedCandidate?.score &&
               confidence !== undefined &&
@@ -2006,13 +2004,12 @@ function shouldAcceptFirstPass(attempt: OcrAttempt) {
   const hasInvoice = parsed.lines.some(
     (line) => line.invoiceNumbers.length > 0 && line.amount > 0
   );
-  const referencedLineTotal = parsed.lines
-    .filter((line) => line.invoiceNumbers.length > 0 && line.amount > 0)
-    .reduce((total, line) => total + line.amount, 0);
+  const referencedLineTotal = canonicalSumMoney(parsed.lines
+    .filter((line) => line.invoiceNumbers.length > 0 && line.amount > 0).map((line) => line.amount));
   const invoiceLinesReconcile =
     parsed.totalAmount <= 0 ||
     referencedLineTotal <= 0 ||
-    Math.abs(referencedLineTotal - parsed.totalAmount) < 0.01;
+    moneyCents(referencedLineTotal) === moneyCents(parsed.totalAmount);
 
   return (
     attempt.score >= GOOD_OCR_SCORE &&
@@ -2682,7 +2679,7 @@ async function recognizeBestText(
       unitEvidence: row.unitLikeTokens,
       amountEvidence: row.amountCandidates
         .filter((candidate) => candidate.selected)
-        .map((candidate) => candidate.normalized ?? `$${candidate.value.toFixed(2)}`),
+        .map((candidate) => candidate.normalized ?? `$${moneyFixed(candidate.value)}`),
       resolutionHint:
         row.normalizedInvoiceCandidates.length > 0
           ? "structured row carries same-band invoice evidence to resolver"
@@ -3303,7 +3300,7 @@ async function runExtraction(request: Request) {
       checkDate: observedHeader.checkDate ?? "",
       payor: observedHeader.payor ?? "",
       stubText: [
-        totalEvidence.amount > 0 ? `TOTAL: $${totalEvidence.amount.toFixed(2)}` : "",
+        totalEvidence.amount > 0 ? `TOTAL: $${moneyFixed(totalEvidence.amount)}` : "",
         observedHeader.checkNumber ? `CK#: ${observedHeader.checkNumber}` : "",
         parsedText,
       ].filter(Boolean).join("\n"),

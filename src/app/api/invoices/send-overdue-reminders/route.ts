@@ -1,3 +1,4 @@
+import { subtractMoney as canonicalSubtractMoney } from "../../../lib/money.ts";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import {
@@ -282,7 +283,7 @@ export async function POST(request: Request) {
     const candidateInvoices = (invoices ?? []).filter((invoice) => {
       const status = String(invoice.status ?? "").toLowerCase();
       const amountDue =
-        parseMoney(invoice.invoice_amount) - parseMoney(invoice.amount_paid);
+        canonicalSubtractMoney(parseMoney(invoice.invoice_amount), parseMoney(invoice.amount_paid));
 
       return amountDue > 0 && status !== "paid" && status !== "draft";
     });
@@ -390,7 +391,7 @@ export async function POST(request: Request) {
       }
 
       const amountDue =
-        parseMoney(invoice.invoice_amount) - parseMoney(invoice.amount_paid);
+        canonicalSubtractMoney(parseMoney(invoice.invoice_amount), parseMoney(invoice.amount_paid));
       const dueDate = formatDate(invoice.due_date);
       const variables = {
         businessName: business.name ?? "Trimax",

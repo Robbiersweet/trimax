@@ -1,3 +1,6 @@
+import { subtractMoney as canonicalSubtractMoney } from "../../../lib/money.ts";
+import { roundMoney } from "../../../lib/money";
+import { percentMoney, sumMoney, subtractMoney, multiplyMoney } from "../../../lib/money";
 import Image from "next/image";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
@@ -150,7 +153,7 @@ function formatCurrency(amount: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-  }).format(safeAmount);
+  }).format(roundMoney(safeAmount));
 }
 
 function formatDate(value: string | null) {
@@ -261,11 +264,7 @@ export default async function InvoicePrintPage({
   const lineItems =
     (lineItemData ?? []) as InvoiceLineItem[];
 
-  const subtotalFromLineItems = lineItems.reduce(
-    (total, item) =>
-      total + toNumber(item.line_total),
-    0
-  );
+  const subtotalFromLineItems = sumMoney(lineItems.map(item => toNumber(item.line_total)));
 
   const subtotal =
     subtotalFromLineItems > 0
@@ -276,10 +275,10 @@ export default async function InvoicePrintPage({
     taxMode: invoice.tax_mode,
     taxRate: invoice.tax_rate,
   });
-  const taxAmount = subtotal * (taxRate / 100);
-  const total = subtotal + taxAmount;
+  const taxAmount = percentMoney(subtotal, taxRate);
+  const total = sumMoney([subtotal, taxAmount]);
   const amountPaid = toNumber(invoice.amount_paid);
-  const amountDue = Math.max(total - amountPaid, 0);
+  const amountDue = Math.max(subtractMoney(total, amountPaid), 0);
   const depositRequestedAmount = toNumber(
     invoice.deposit_requested_amount
   );
@@ -287,7 +286,7 @@ export default async function InvoicePrintPage({
   const hasDepositRequest =
     depositStatus === "requested" && depositRequestedAmount > 0;
   const depositDueNow = hasDepositRequest
-    ? Math.max(depositRequestedAmount - amountPaid, 0)
+    ? Math.max(canonicalSubtractMoney(depositRequestedAmount, amountPaid), 0)
     : 0;
   const customerFacingAmountDue = hasDepositRequest
     ? depositDueNow
@@ -296,7 +295,7 @@ export default async function InvoicePrintPage({
     ? "Deposit Due (USD)"
     : "Amount Due (USD)";
   const balanceAfterDepositRequest = Math.max(
-    total - depositRequestedAmount,
+    canonicalSubtractMoney(total, depositRequestedAmount),
     0
   );
   const displayReference = maybeCanonicalApartmentUnitLabel(invoice.reference);
@@ -789,10 +788,7 @@ function FiveStarsBoaPrintPage({
     lineItems,
     servicePeriod
   );
-  const total = rows.reduce(
-    (sum, row) => sum + row.amountThisMonth,
-    0
-  );
+  const total = sumMoney(rows.map(row => row.amountThisMonth));
   const blankRowCount = Math.max(10, 16 - rows.length);
 
   return (
@@ -1076,10 +1072,7 @@ function buildFiveStarsRows(
       item.description ||
       invoice.project_title ||
       "BOA Cleaning";
-    const amount =
-      toNumber(item.line_total) ||
-      toNumber(item.quantity) * toNumber(item.unit_price) ||
-      toNumber(item.unit_price);
+    const amount = item.line_total != null ? roundMoney(item.line_total) : multiplyMoney(item.quantity, item.unit_price);
 
     return {
       accountName: cleanFiveStarsAccountName(description),

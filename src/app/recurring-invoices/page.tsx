@@ -1,4 +1,8 @@
 "use client";
+import { sumMoney as canonicalSumMoney } from "../lib/money.ts";
+
+import { multiplyMoney, percentMoney, sumMoney, roundMoney } from "../lib/money.ts";
+
 
 import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState } from "react";
@@ -121,7 +125,7 @@ function formatCurrency(value: number) {
     currency: "USD",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(value);
+  }).format(roundMoney(value));
 }
 
 function formatDate(value: string | null) {
@@ -314,7 +318,7 @@ function shouldPauseAfterRun(
 }
 
 function lineTotal(item: RecurringLineItem) {
-  return (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0);
+  return multiplyMoney(item.quantity, item.unitPrice);
 }
 
 function defaultEmailSubject(displayId: string, customerName: string) {
@@ -408,7 +412,7 @@ function RecurringInvoicesPageContent() {
   ]);
 
   const templateTotal = useMemo(
-    () => lineItems.reduce((total, item) => total + lineTotal(item), 0),
+    () => sumMoney(lineItems.map(lineTotal)),
     [lineItems]
   );
   const activeTemplates = templates.filter((template) => template.is_active);
@@ -435,36 +439,12 @@ function RecurringInvoicesPageContent() {
         (daysUntilDate(first.next_run_date) ?? 9999) -
         (daysUntilDate(second.next_run_date) ?? 9999)
     )[0];
-  const recurringMonthlyTotal = activeTemplates.reduce(
-    (total, template) =>
-      total +
-      (template.line_items ?? []).reduce(
-        (subtotal, item) => subtotal + lineTotal(item),
-        0
-      ),
-    0
-  );
-  const dueDraftTotal = dueTemplates.reduce(
-    (total, template) =>
-      total +
-      (template.line_items ?? []).reduce(
-        (subtotal, item) => subtotal + lineTotal(item),
-        0
-      ),
-    0
-  );
+  const recurringMonthlyTotal = canonicalSumMoney(activeTemplates.map((template) => sumMoney((template.line_items ?? []).map(lineTotal))));
+  const dueDraftTotal = canonicalSumMoney(dueTemplates.map((template) => sumMoney((template.line_items ?? []).map(lineTotal))));
   const templatesWithErrors = activeTemplates.filter((template) =>
     Boolean(template.last_error)
   );
-  const pausedMonthlyTotal = pausedTemplates.reduce(
-    (total, template) =>
-      total +
-      (template.line_items ?? []).reduce(
-        (subtotal, item) => subtotal + lineTotal(item),
-        0
-      ),
-    0
-  );
+  const pausedMonthlyTotal = canonicalSumMoney(pausedTemplates.map((template) => sumMoney((template.line_items ?? []).map(lineTotal))));
   const templatesMissingRunDate = autoCreateTemplates.filter(
     (template) => !template.next_run_date
   );
@@ -1039,12 +1019,9 @@ function RecurringInvoicesPageContent() {
         nextRunDate,
         nextOccurrences
       );
-      const subtotal = templateLineItems.reduce(
-        (total, item) => total + lineTotal(item),
-        0
-      );
-      const taxAmount = subtotal * ((Number(template.tax_rate) || 0) / 100);
-      const total = subtotal + taxAmount;
+      const subtotal = sumMoney(templateLineItems.map(lineTotal));
+      const taxAmount = percentMoney(subtotal, Number(template.tax_rate) || 0);
+      const total = sumMoney([subtotal, taxAmount]);
 
       const subject =
         template.email_subject?.trim() ||
@@ -2108,13 +2085,10 @@ function RecurringInvoicesPageContent() {
           ) : (
             <div className="mt-5 grid gap-4">
               {templates.map((template) => {
-                const subtotal = (template.line_items ?? []).reduce(
-                  (total, item) => total + lineTotal(item),
-                  0
-                );
+                const subtotal = sumMoney((template.line_items ?? []).map(lineTotal));
                 const taxAmount =
-                  subtotal * ((Number(template.tax_rate) || 0) / 100);
-                const total = subtotal + taxAmount;
+                  percentMoney(subtotal, Number(template.tax_rate) || 0);
+                const total = sumMoney([subtotal, taxAmount]);
                 const scheduleStatus = scheduleStatusLabel(template);
                 const scheduleDays = daysUntilDate(template.next_run_date);
                 const scheduleTone = !template.is_active

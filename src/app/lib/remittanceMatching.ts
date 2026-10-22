@@ -1,3 +1,4 @@
+import { moneyCents, roundMoney, moneyFixed, subtractMoney, sumMoney } from "./money.ts";
 export type RemittanceInvoiceRecord = {
   id: string;
   displayId: string;
@@ -124,7 +125,7 @@ export type ParsedCheckStub = {
 export function parseMoney(value: string) {
   const parsed = Number(normalizeSplitMoneyFragments(value).replace(/[^0-9.-]/g, ""));
 
-  return Number.isFinite(parsed) ? parsed : 0;
+  return Number.isFinite(parsed) ? roundMoney(parsed) : 0;
 }
 
 function isCollectibleRemittanceInvoiceStatus(value: string) {
@@ -183,7 +184,7 @@ export function extractMoneyCandidates(text: string) {
     .map((match) => {
       const raw = match[0];
       const value = parseMoney(raw);
-      const normalized = `$${value.toFixed(2)}`;
+      const normalized = `$${moneyFixed(value)}`;
       const hasCommaThousands = /\d{1,3}(?:,\d{3})+/.test(raw);
       const hasTwoDecimals = /\.\d{2}\b/.test(raw);
       const hasOneDecimal = /\.\d\b/.test(raw);
@@ -513,7 +514,7 @@ function explicitTotalEvidenceCandidates(text: string): ExplicitTotalEvidenceCan
         source: "explicit-document-total",
         payable: true,
         raw,
-        normalized: `$${amount.toFixed(2)}`,
+        normalized: `$${moneyFixed(amount)}`,
         normalizationReason:
           normalized !== raw.replace(/\s+/g, "")
             ? "final separator followed by exactly two digits treated as cents in explicit monetary total"
@@ -561,7 +562,7 @@ export type RemittanceHeaderPass = {
 // Only independent OCR passes vote; synthetic merges would count the same evidence twice.
 export function selectRemittanceHeaderEvidence(passes: RemittanceHeaderPass[], rows: StructuredRemittanceRowEvidence[] = []) {
   const independent = passes.filter((pass) => !/merge|reconstruction/.test(pass.region));
-  const rowSubtotal = rows.reduce((sum, row) => sum + (selectedStructuredRowAmount(row)?.value ?? 0), 0);
+  const rowSubtotal = sumMoney(rows.map(row => selectedStructuredRowAmount(row)?.value ?? 0));
   const candidates = independent.flatMap((pass) => {
     const labelled = explicitTotalEvidenceCandidates(pass.text).map((candidate) => ({ ...candidate, labelled: true }));
     const footer = Array.from(pass.text.matchAll(/^\s*\$?\s*(\d{1,3}(?:,\d{3})*\.\d{2})[ \t]*$/gm)).flatMap((match) => {
@@ -571,8 +572,8 @@ export function selectRemittanceHeaderEvidence(passes: RemittanceHeaderPass[], r
         // Sparse OCR places body row amounts late in text. Repetition across
         // passes does not turn an observed row field into a document footer.
         .filter(candidate => !(rows.length > 1 &&
-          rows.some(row => Math.round((selectedStructuredRowAmount(row)?.value ?? 0) * 100) === Math.round(candidate.amount * 100)) &&
-          Math.round(rowSubtotal * 100) !== Math.round(candidate.amount * 100)))
+          rows.some(row => moneyCents(selectedStructuredRowAmount(row)?.value ?? 0) === moneyCents(candidate.amount)) &&
+          moneyCents(rowSubtotal) !== moneyCents(candidate.amount)))
         .map((candidate) => ({ ...candidate, index, labelled: false }));
     });
     return [...labelled, ...footer].map((candidate) => ({
@@ -586,7 +587,7 @@ export function selectRemittanceHeaderEvidence(passes: RemittanceHeaderPass[], r
   });
   const totals = candidates.map((candidate) => {
     const agreement = new Set(candidates.filter((other) => other.amount === candidate.amount).map((other) => other.passKey)).size;
-    const subtotalAgreement = rows.length > 1 && Math.round(rowSubtotal * 100) === Math.round(candidate.amount * 100);
+    const subtotalAgreement = rows.length > 1 && moneyCents(rowSubtotal) === moneyCents(candidate.amount);
     const completeMoney = /\d[,.]\d{2}\b/.test((candidate.raw ?? "").replace(/\s/g, ""));
     const score = (candidate.labelled ? 25 : 0) + (completeMoney ? 40 : 0) + Math.min(agreement, 4) * 60 +
       (subtotalAgreement ? 120 : 0) + (candidate.textPosition > 0.75 ? 15 : 0) +
@@ -822,25 +823,22 @@ export function extractRemittanceTotalEvidence(
 ): RemittanceTotalEvidence {
   const explicitTotal = findExplicitTotalEvidence(text);
   const values = extractMoneyValues(text);
-  const structuredLineTotal = structuredRows
-    .map((row) => selectedStructuredRowAmount(row)?.value ?? 0)
-    .filter((value) => value > 0)
-    .reduce((total, value) => total + value, 0);
-  const roundedStructuredLineTotal = Number(structuredLineTotal.toFixed(2));
+  const structuredLineTotal = sumMoney(structuredRows.map(row => selectedStructuredRowAmount(row)?.value ?? 0).filter(value => value > 0));
+  const roundedStructuredLineTotal = roundMoney(structuredLineTotal);
 
   if (
     explicitTotal &&
     structuredRows.length > 1 &&
     roundedStructuredLineTotal > 0 &&
-    Math.abs(explicitTotal.amount - roundedStructuredLineTotal) > 0 &&
-    Math.abs(explicitTotal.amount - roundedStructuredLineTotal) <= 0.1
+    Math.abs(moneyCents(explicitTotal.amount) - moneyCents(roundedStructuredLineTotal)) > 0 &&
+    Math.abs(moneyCents(explicitTotal.amount) - moneyCents(roundedStructuredLineTotal)) <= 10
   ) {
     return {
       amount: roundedStructuredLineTotal,
       source: "geometry-supported-total",
       payable: true,
       raw: explicitTotal.raw,
-      normalized: `$${roundedStructuredLineTotal.toFixed(2)}`,
+      normalized: `$${moneyFixed(roundedStructuredLineTotal)}`,
       normalizationReason:
         "structured row amount consensus overrode a nearby malformed explicit total candidate",
     };
@@ -860,9 +858,7 @@ export function extractRemittanceTotalEvidence(
 
   const remittanceText = remittanceRegionText(text);
   const remittanceLines = parseRemittanceLines(remittanceText);
-  const referencedLineTotal = remittanceLines
-    .filter((line) => line.invoiceNumbers.length > 0)
-    .reduce((total, line) => total + line.amount, 0);
+  const referencedLineTotal = sumMoney(remittanceLines.filter(line => line.invoiceNumbers.length > 0).map(line => line.amount));
   const largestVisibleAmount = values.length > 0 ? Math.max(...values) : 0;
 
   if (
@@ -879,7 +875,7 @@ export function extractRemittanceTotalEvidence(
 
   if (remittanceLines.length > 1 && referencedLineTotal > 0) {
     return {
-      amount: Number(referencedLineTotal.toFixed(2)),
+      amount: roundMoney(referencedLineTotal),
       source: "row-subtotal",
       payable: true,
     };
@@ -1109,7 +1105,7 @@ function combineSplitRemittanceRows(lines: string[]) {
 function amountDueForInvoice(invoice: RemittanceInvoiceRecord) {
   return typeof invoice.collectionAmountDue === "number"
     ? Math.max(invoice.collectionAmountDue, 0)
-    : Math.max(invoice.invoiceAmount - invoice.amountPaid, 0);
+    : Math.max(subtractMoney(invoice.invoiceAmount, invoice.amountPaid), 0);
 }
 
 function remittanceInvoiceRole(invoice: RemittanceInvoiceRecord | null | undefined) {
@@ -1513,9 +1509,9 @@ function resolveRemittanceRowInvoice(
   const selectedEvidenceAmount = evidence ? selectedStructuredRowAmount(evidence) : null;
   const rowAmount = selectedEvidenceAmount?.value ?? line.amount;
   const amountEvidence =
-    rowAmount > 0 ? `$${rowAmount.toFixed(2)}` : "none";
+    rowAmount > 0 ? `$${moneyFixed(rowAmount)}` : "none";
   const resolutionLine =
-    selectedEvidenceAmount && Math.abs(selectedEvidenceAmount.value - line.amount) >= 0.01
+    selectedEvidenceAmount && moneyCents(selectedEvidenceAmount.value) !== moneyCents(line.amount)
       ? { ...line, amount: selectedEvidenceAmount.value }
       : line;
 
@@ -1664,7 +1660,7 @@ export function parseCheckStubText(rawText: string): ParsedCheckStub {
   const header = [
     checkDate ? `DATE: ${checkDate}` : "",
     checkNumber ? `CK#: ${checkNumber}` : "",
-    totalAmount > 0 ? `TOTAL: $${totalAmount.toFixed(2)}` : "",
+    totalAmount > 0 ? `TOTAL: $${moneyFixed(totalAmount)}` : "",
     payor ? `PAYOR: ${payor}` : "",
     payee ? `PAYEE: ${payee}` : "",
   ]
@@ -1924,7 +1920,7 @@ export function findRemittanceMatches(
             ? "exact eligible invoice candidate"
             : "exact invoice candidate is not collectible",
           unitEvidence: row ? extractUnitCodeCandidates(row.text).join(", ") : "",
-          amountEvidence: row?.amount ? `$${row.amount.toFixed(2)}` : "none",
+          amountEvidence: row?.amount ? `$${moneyFixed(row.amount)}` : "none",
           candidateInvoiceNumbers: eligible ? [invoiceNumber] : [],
           documentTotalReconciliationRequired: totalAmount > 0,
           unitCandidates: row ? extractUnitCodeCandidates(row.text) : [],
@@ -1935,11 +1931,8 @@ export function findRemittanceMatches(
         };
       }),
   ];
-  const matchedTotal = matches.reduce(
-    (total, invoice) => total + invoice.amountDue,
-    0
-  );
-  const lineTotal = lineItems.reduce((total, line) => total + line.amount, 0);
+  const matchedTotal = sumMoney(matches.map(invoice => invoice.amountDue));
+  const lineTotal = sumMoney(lineItems.map(line => line.amount));
   const customerNames = Array.from(
     new Set(matches.map((invoice) => invoice.customerName))
   );
@@ -1950,8 +1943,8 @@ export function findRemittanceMatches(
   const allRowsResolved = rowResolutions.length > 0 && rowResolutions.every((row) => Boolean(row.invoice));
   const exactInvoiceSetProof = allRowsResolved && duplicateResolvedInvoiceIds.length === 0 &&
     totalEvidence.source === "explicit-document-total" && totalEvidence.payable && totalAmount > 0 &&
-    Math.round(matchedTotal * 100) === Math.round(totalAmount * 100);
-  const rowAmountConflict = acceptedResolutionRows.some((row) => Math.round(row.line.amount * 100) !== Math.round(row.invoice.amountDue * 100));
+    moneyCents(matchedTotal) === moneyCents(totalAmount);
+  const rowAmountConflict = acceptedResolutionRows.some((row) => moneyCents(row.line.amount) !== moneyCents(row.invoice.amountDue));
   const issues = [
     payor.trim() && compatibleCustomers.size > 1 ? "Payor identity matches more than one customer; review is required." : "",
     !totalEvidence.payable ? "Document total evidence requires review." : "",
@@ -1993,7 +1986,7 @@ export function findRemittanceMatches(
       ? "Referenced invoice customer does not match the payor read from the stub."
       : "",
     totalAmount > 0 &&
-    Math.abs(matchedTotal - totalAmount) >= 0.01
+    moneyCents(matchedTotal) !== moneyCents(totalAmount)
       ? "Referenced invoice balances do not reconcile to the check total."
       : "",
     totalAmount <= 0 ? "Check total could not be confidently read from the stub." : "",

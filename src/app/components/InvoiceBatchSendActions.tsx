@@ -1,4 +1,8 @@
 "use client";
+import { sumMoney as canonicalSumMoney } from "../lib/money.ts";
+
+import { roundMoney as canonicalRoundMoney } from "../lib/money.ts";
+
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -72,7 +76,7 @@ function formatMoney(value: number) {
     currency: "USD",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(value);
+  }).format(canonicalRoundMoney(value));
 }
 
 function invoiceStatusKey(status: string | null | undefined) {
@@ -158,10 +162,7 @@ function groupSelection(
       groupMembers
         .map((invoice) => extractCorrectionOriginalDisplayId(invoice.notes))
         .find(Boolean) ?? null;
-    const combinedTotal = (isSplitGroup ? splitChildren : groupInvoices).reduce(
-      (sum, invoice) => sum + invoice.invoiceAmount,
-      0
-    );
+    const combinedTotal = canonicalSumMoney((isSplitGroup ? splitChildren : groupInvoices).map((invoice) => invoice.invoiceAmount));
     const groupProject =
       selectedPrimary.projectTitle ||
       groupMembers.find((invoice) => invoice.projectTitle)?.projectTitle ||

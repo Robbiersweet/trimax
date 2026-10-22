@@ -1,3 +1,4 @@
+import { moneyCents } from "./money.ts";
 export type ServiceCleanupItem = {
   id: string;
   business_id?: string | null;
@@ -46,7 +47,7 @@ function normalizeQuantity(value: string | number | null | undefined) {
 }
 
 function normalizePriceCents(value: string | number | null | undefined) {
-  return Math.round((Number(value) || 0) * 100);
+  return moneyCents(Number(value) || 0);
 }
 
 export function serviceIdentityKey(service: ServiceCleanupItem) {

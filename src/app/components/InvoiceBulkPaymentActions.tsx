@@ -1,4 +1,10 @@
 "use client";
+import { sumMoney as canonicalSumMoney } from "../lib/money.ts";
+
+import { roundMoney as canonicalRoundMoney } from "../lib/money.ts";
+
+import { subtractMoney } from "../lib/money.ts";
+
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -39,7 +45,7 @@ function formatMoney(value: number) {
     currency: "USD",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(value);
+  }).format(canonicalRoundMoney(value));
 }
 
 function formatDate(value?: string | null) {
@@ -95,7 +101,7 @@ export default function InvoiceBulkPaymentActions({
           const amountDue =
             typeof invoice.collectionAmountDue === "number"
               ? Math.max(invoice.collectionAmountDue, 0)
-              : Math.max(invoice.invoiceAmount - invoice.amountPaid, 0);
+              : Math.max(subtractMoney(invoice.invoiceAmount, invoice.amountPaid), 0);
 
           return {
             ...invoice,
@@ -124,10 +130,7 @@ export default function InvoiceBulkPaymentActions({
   const selectedInvoices = payableInvoices.filter((invoice) =>
     selectedIds.includes(invoice.id)
   );
-  const selectedTotal = selectedInvoices.reduce(
-    (total, invoice) => total + invoice.amountDue,
-    0
-  );
+  const selectedTotal = canonicalSumMoney(selectedInvoices.map((invoice) => invoice.amountDue));
   const overdueInvoices = payableInvoices.filter(
     (invoice) =>
       invoice.isOverdue

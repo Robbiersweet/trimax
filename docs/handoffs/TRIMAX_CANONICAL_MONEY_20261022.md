@@ -1,0 +1,35 @@
+# Canonical Trimax money and production audit — 2026-10-22
+
+Status: source implemented; full release/deployment verification pending. No payment applied. User explicitly authorizes system-wide money refactor, production audit, evidence-backed audited corrections, and deployment; preserve historical records, audits, payment/split/tenant guards.
+
+## Rule and source repair
+Canonical USD representation is safe integer cents, with BigInt decimal/rational intermediates. Decimal ties round half away from zero (324.205=>324.21; -1.005=>-1.01). Extend quantity by decimal unit rate exactly and round each booked line once; sum line cents. Discounts round once before tax. Document tax rounds once from taxable subtotal/rate; grand total adds integer subtotal/tax cents. Stored fields retain existing string/numeric schema through dollar adapters; balances, allocations, equality and remittance reconciliation use integer-cent helpers. No epsilon/EPSILON or ad hoc toFixed money policy. Already-integer optical observations and historical frozen truth remain unchanged.
+
+Root causes: binary toFixed storage versus Intl customer display; raw fractional tax/line sums rounded at different boundaries; four-decimal weighted import tax rates; floating epsilon reconciliation/fully-paid checks. The former INV0526 fix addressed serialization but not all calculation paths.
+
+Shared src/app/lib/money.ts implements decimal parsing, safe cents, exact multiplication/percent, booked sums/subtraction, fixed currency formatting, document-boundary raw-decimal sum, and verified rate reconstruction from authoritative imported tax cents. invoiceMoney.ts is a compatibility adapter. Creation/edit/conversion/recurring, discounts/reverse totals, split plans, invoice details/PDF/export, imports, lifecycle/collectibility/deposit, payment API/UI, remittance, duplicate comparisons, email/report/dashboard money summaries and currency helpers share this contract. ES2020 target enables existing modern browser/Node BigInt without new packages.
+
+Import raw tax observations retain precision until the document boundary. Reconstructed storage rate must reproduce authoritative tax cents, otherwise fail for review; competing supplied source grand totals block invoice/client writes and retain an import error. Existing saved imported line amounts remain authoritative; do not recompute historical discounted lines from undiscounted unit rates. Reverse-total search now saves/replays the exact candidate unit rate through the canonical line calculator; totals mathematically unreachable under cent lines/tax (e.g.712.85 at9.9% with one adjustable line) fail clearly, never force fractional-cent tax.
+
+## Read-only production audit and exact classification
+Existing signed-in Supabase owner session/projectgqknefosisnsjuzmhvts; query scoped to businesses where owner16e09e21-eb12-4962-9c4f-4feae89741d9 hasowner/admin membership.272invoices, all with lines. TWO header-to-calculated pennies plus ONE additional paid legacy-PDF/source penny: THREE distinct penny findings. Four apparent quantity/unit-vs-line differences were compared to retained original import_rows raw_data/mapped_data; all explained by original5/10/25/50percent discounts, zero unexplained line differences. No broad financial backfill.
+
+|Invoice|Before ledger|Before reconstructed PDF|Original/source intent|Action|
+|---|---:|---:|---|---|
+|INV-0541|1126.47 unpaid|1126.48|Native sent PDF; unchanged1025line+9.9%tax=1126.48|Audited header1126.48|
+|INV-0172|49412.50 unpaid Draft|49412.51|Original16CSVrows: subtotal48655,tax757.50,total49412.50; weighted rate truncated1.5569|Audited weighted-rate precision repair; header49412.50unchanged|
+|INV-0246|4249.82 Paid/paid4249.82|4249.81|OriginalCSVsubtotal3866.975,tax382.830525,rounded source4249.81; old incremental importer mapped subtotal3866.98/tax382.84/total4249.82|Accounting review flag; no financial/history mutation|
+
+Valid imported-discount comparisons, not penny corrections: INV0255=10%discount, INV0368=25%, INV0401=50%. INV0246 source5%discount explains quantity/unit difference but not permission to rewrite its Paid history. Canonical display from saved line cents/current saved weighted rate matches ledger4249.82; historical source difference stays explicitly flagged.
+
+## Atomic corrections and review flag
+Existing owner SQL administration, no credentials/grants/schema/RLS changes. Exact-row transactions tested and rolled back before commit. Invoice and line locks, owner/business/client identity, old amount/rate/status/paid/deposit/split guards, exact single native line/send proof and retained original CSV totals; compare-and-set writes. Before/after JSON comparison permits only requested field plus automatic updated_at; mandatory audit inserts in same transaction. No line/split/status/paid updates and no payment calls.
+
+INV0541 id9f21669a-450f-4f7e-8a89-b19789091977: header1126.47=>1126.48; audit96f0dc16-bfd6-400e-b16f-67b3096f7b95/actioninvoice.money_rounding_corrected/repairIdcanonical-money-20261022-native0541. Existing line0d5c2dc3-e375-4019-98df-f957e57a7e64/qty1/unit1025/line1025, original send674997fc-05af-437c-8443-23ace21fe00e, clientNorthCreek, statusSent/paid0/deposit0/splitnone retained.
+
+INV0172 id4e4a9631-cf42-49c1-a632-75ce07a9b8d3: weighted tax_rate1.5569=>1.5568800739903401 (database JSON1.55688007399034), verified tax757.50; header49412.50/Draft/paid0/16lines retained. Auditc88d8010-e8ef-4d50-b9b4-d5052eddd26c/actioninvoice.import_tax_rounding_corrected/repairIdcanonical-money-20261022-import0172 stores before/after and original import-row IDs/rawDataMd5. This is aggregate imported tax metadata, not a newly inferred legal tax rate.
+
+INV0246 idb32dd1e4-cfdc-45c0-b91d-75a79350ad87: audit7b8be1ab-a0b4-4827-94ac-6ccbbd55b985/actioninvoice.money_review_required/repairIdcanonical-money-20261022-review0246, reviewRequiredtrue. Financial row untouched: Paid, stored4249.82/paid4249.82 and original saved fractional line209.475 remain. Review original source/payment before any correction.
+
+## Validation and release remaining
+Targeted canonical regression executes actual decimal helpers,20,000positive/negative half-cent cases, floating limits, exact line/subtotal/tax/discount, real split planner, actual CSV mapping with fractional tax and competing source guard; payment-submit regression executes real safeguarded API and rejects both one-cent directions with zero writes; reverse-total regressions recompute saved candidate using canonical lines. Existing isolated-source test adapters now load actual shared dependencies, assertions preserved. paymentCanApply reviewed AST hash changes only float-epsilon to cents; application/loader hashes otherwise frozen. Immutable optical financial-adapter baseline pins must reference reviewed source commit, never mutableHEAD; historical optical truth and authority tests unchanged. Fullnpmtest/lint/TypeScript, fullPRE(all8frozenbothengines)/build, normalpush/deploy/matchedworkers, fullPOST and owner production invoice/PDF/retainedGlen+North/safe-submit remain release work until actual evidence is recorded.

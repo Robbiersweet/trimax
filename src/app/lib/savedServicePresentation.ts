@@ -1,3 +1,4 @@
+import { moneyCents } from "./money.ts";
 export type SavedServiceLike = {
   id: string;
   name: string;
@@ -16,7 +17,7 @@ function normalizeServiceText(value: string | null | undefined) {
 }
 
 function normalizePrice(value: string | number | null | undefined) {
-  return Math.round((Number(value) || 0) * 100);
+  return moneyCents(Number(value) || 0);
 }
 
 export function savedServiceDisplayKey(service: SavedServiceLike) {

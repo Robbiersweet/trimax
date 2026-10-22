@@ -1,5 +1,8 @@
 "use client";
 
+import { multiplyMoney, formatMoney, percentMoney, sumMoney } from "../../lib/money";
+
+
 import {
   Suspense,
   useCallback,
@@ -105,14 +108,11 @@ type QueueItem = {
 };
 
 function formatCurrency(amount: number) {
-  return `$${amount.toFixed(2)}`;
+  return formatMoney(amount);
 }
 
 function getLineTotal(item: LineItem) {
-  const quantity = Number(item.quantity) || 0;
-  const unitPrice = Number(item.unitPrice) || 0;
-
-  return quantity * unitPrice;
+  return multiplyMoney(item.quantity, item.unitPrice);
 }
 
 function toNumber(value: number | string | null | undefined) {
@@ -468,10 +468,7 @@ function NewEstimatePageContent() {
     useState("");
 
   const subtotal = useMemo(() => {
-    return lineItems.reduce(
-      (total, item) => total + getLineTotal(item),
-      0
-    );
+    return sumMoney(lineItems.map(getLineTotal));
   }, [lineItems]);
 
   const taxAmount = useMemo(() => {
@@ -480,10 +477,10 @@ function NewEstimatePageContent() {
       taxRate,
     });
 
-    return subtotal * (effectiveTaxRate / 100);
+    return percentMoney(subtotal, effectiveTaxRate);
   }, [subtotal, taxMode, taxRate]);
 
-  const estimateTotal = subtotal + taxAmount;
+  const estimateTotal = sumMoney([subtotal, taxAmount]);
   const safeReverseAdjustLineIndex = Math.min(
     reverseAdjustLineIndex,
     Math.max(0, lineItems.length - 1)

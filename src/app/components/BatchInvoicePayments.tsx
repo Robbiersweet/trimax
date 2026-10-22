@@ -1,4 +1,8 @@
 "use client";
+import { roundMoney as canonicalRoundMoney } from "../lib/money.ts";
+
+import { sumMoney, subtractMoney, moneyCents } from "../lib/money.ts";
+
 import { useRemittanceEvent } from "../lib/useRemittanceEvent";
 import RemittanceCamera from "./RemittanceCamera";
 import { remittanceDeadline, REMITTANCE_PROCESSING_LIMIT_MS } from "../lib/remittanceDeadline";
@@ -411,7 +415,7 @@ function formatMoney(value: number) {
     currency: "USD",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(value);
+  }).format(canonicalRoundMoney(value));
 }
 
 function formatDate(value?: string | null) {
@@ -502,7 +506,7 @@ function initialCustomerFocus(
       amountDue:
         typeof invoice.collectionAmountDue === "number"
           ? Math.max(invoice.collectionAmountDue, 0)
-          : Math.max(invoice.invoiceAmount - invoice.amountPaid, 0),
+          : Math.max(subtractMoney(invoice.invoiceAmount, invoice.amountPaid), 0),
     }))
     .filter(
       (invoice) =>
@@ -519,10 +523,7 @@ function initialCustomerFocus(
   return {
     customerName: matchingInvoices[0].customerName,
     invoiceIds: matchingInvoices.map((invoice) => invoice.id),
-    total: matchingInvoices.reduce(
-      (total, invoice) => total + invoice.amountDue,
-      0
-    ),
+    total: sumMoney(matchingInvoices.map(invoice => invoice.amountDue)),
   };
 }
 
@@ -541,7 +542,7 @@ function initialInvoiceFocus(
       amountDue:
         typeof invoice.collectionAmountDue === "number"
           ? Math.max(invoice.collectionAmountDue, 0)
-          : Math.max(invoice.invoiceAmount - invoice.amountPaid, 0),
+          : Math.max(subtractMoney(invoice.invoiceAmount, invoice.amountPaid), 0),
     }))
     .filter(
       (invoice) =>
@@ -564,10 +565,7 @@ function initialInvoiceFocus(
         ? customerNames[0]
         : `${customerNames.length} customers`,
     invoiceIds: matchingInvoices.map((invoice) => invoice.id),
-    total: matchingInvoices.reduce(
-      (total, invoice) => total + invoice.amountDue,
-      0
-    ),
+    total: sumMoney(matchingInvoices.map(invoice => invoice.amountDue)),
   };
 }
 
@@ -741,7 +739,7 @@ export default function BatchInvoicePayments({
           const amountDue =
             typeof invoice.collectionAmountDue === "number"
               ? Math.max(invoice.collectionAmountDue, 0)
-              : Math.max(invoice.invoiceAmount - invoice.amountPaid, 0);
+              : Math.max(subtractMoney(invoice.invoiceAmount, invoice.amountPaid), 0);
 
           return {
             ...invoice,
@@ -781,10 +779,7 @@ export default function BatchInvoicePayments({
     selectedIds.includes(invoice.id)
   );
 
-  const selectedTotal = selectedInvoices.reduce(
-    (total, invoice) => total + invoice.amountDue,
-    0
-  );
+  const selectedTotal = sumMoney(selectedInvoices.map(invoice => invoice.amountDue));
 
   const selectedCustomerGroups = new Map<
     string,
@@ -802,7 +797,7 @@ export default function BatchInvoicePayments({
     selectedCustomerGroups.set(customerName, {
       customerName,
       count: current.count + 1,
-      total: current.total + invoice.amountDue,
+      total: sumMoney([current.total, invoice.amountDue]),
     });
   });
 
@@ -812,15 +807,9 @@ export default function BatchInvoicePayments({
     first.customerName.localeCompare(second.customerName)
   );
 
-  const visibleTotal = visibleInvoices.reduce(
-    (total, invoice) => total + invoice.amountDue,
-    0
-  );
+  const visibleTotal = sumMoney(visibleInvoices.map(invoice => invoice.amountDue));
 
-  const openBalance = payableInvoices.reduce(
-    (total, invoice) => total + invoice.amountDue,
-    0
-  );
+  const openBalance = sumMoney(payableInvoices.map(invoice => invoice.amountDue));
 
   const isRemittanceReview =
     paymentEntryMode === "photo" && checkOcrStatus === "ready";
@@ -836,12 +825,12 @@ export default function BatchInvoicePayments({
   const checkDifference =
     enteredCheckAmount === null
       ? 0
-      : Number((enteredCheckAmount - selectedTotal).toFixed(2));
+      : subtractMoney(enteredCheckAmount, selectedTotal);
   const checkAmountMatches =
-    enteredCheckAmount === null || Math.abs(checkDifference) < 0.01;
+    enteredCheckAmount === null || moneyCents(checkDifference) === 0;
   const checkDifferenceLabel =
     checkDifference > 0 ? "unassigned" : "over-selected";
-  const selectedRemainingBalance = Math.max(openBalance - selectedTotal, 0);
+  const selectedRemainingBalance = Math.max(subtractMoney(openBalance, selectedTotal), 0);
   const allVisibleSelected =
     visibleInvoices.length > 0 &&
     visibleInvoices.every((invoice) => selectedIds.includes(invoice.id));
@@ -867,10 +856,7 @@ export default function BatchInvoicePayments({
     Array.from(selectedInvoiceIdSet).every((invoiceId) =>
       reviewInvoiceIdSet.has(invoiceId)
     );
-  const reviewMatchedTotal = reviewMatchedInvoices.reduce(
-    (total, invoice) => total + invoice.amountDue,
-    0
-  );
+  const reviewMatchedTotal = sumMoney(reviewMatchedInvoices.map(invoice => invoice.amountDue));
   const hasRemittanceStub = remittanceStubText.trim().length > 0;
   const duplicateEvidenceKey = [
     paymentReference.trim() || capturedCheckReference.trim(),
@@ -928,8 +914,8 @@ export default function BatchInvoicePayments({
         !isPreparingCrop &&
         extractedPaymentAmount !== null &&
         extractedPaymentAmount > 0 &&
-        Math.abs(selectedTotal - extractedPaymentAmount) < 0.01 &&
-        Math.abs(reviewMatchedTotal - extractedPaymentAmount) < 0.01 &&
+        moneyCents(selectedTotal) === moneyCents(extractedPaymentAmount) &&
+        moneyCents(reviewMatchedTotal) === moneyCents(extractedPaymentAmount) &&
         !hasDuplicateSelectedInvoiceIds &&
         !hasDuplicateReviewInvoiceIds &&
         selectedReviewSetsMatch));
@@ -971,10 +957,7 @@ export default function BatchInvoicePayments({
     note: string
   ) {
     const invoiceIds = invoiceList.map((invoice) => invoice.id);
-    const invoiceTotal = invoiceList.reduce(
-      (total, invoice) => total + invoice.amountDue,
-      0
-    );
+    const invoiceTotal = sumMoney(invoiceList.map(invoice => invoice.amountDue));
 
     setSelectedIds(invoiceIds);
     setCheckAmount(invoiceIds.length > 0 ? formatMoney(invoiceTotal) : "");
@@ -1620,10 +1603,7 @@ export default function BatchInvoicePayments({
     reconciledReview: { matches: ReviewMatchedInvoice[]; notice: string; invoiceTotal: number; isComplete: boolean },
     match: ReturnType<typeof findRemittanceMatches>
   ) {
-    const matchedTotal = reviewMatches.reduce(
-      (total, invoice) => total + (invoice.remittanceAmount ?? invoice.amountDue),
-      0
-    );
+    const matchedTotal = sumMoney(reviewMatches.map(invoice => invoice.remittanceAmount ?? invoice.amountDue));
 
     const lines = [
       `Explicit document total: ${match.totalAmount > 0 ? formatMoney(match.totalAmount) : "not found"}.`,
@@ -1716,10 +1696,7 @@ export default function BatchInvoicePayments({
     const uniqueReviewMatchedInvoices = uniqueReviewMatchesById(
       reviewMatchedInvoices
     );
-    const matchedTotal = uniqueReviewMatchedInvoices.matches.reduce(
-      (total, invoice) => total + (invoice.remittanceAmount ?? invoice.amountDue),
-      0
-    );
+    const matchedTotal = sumMoney(uniqueReviewMatchedInvoices.matches.map(invoice => invoice.remittanceAmount ?? invoice.amountDue));
     const uniqueResolvedInvoiceIds = uniqueReviewMatchedInvoices.matches.map(
       (invoice) => invoice.id
     );

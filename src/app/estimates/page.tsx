@@ -1,3 +1,5 @@
+import { sumMoney as canonicalSumMoney } from "../lib/money.ts";
+import { roundMoney as canonicalRoundMoney } from "../lib/money.ts";
 import Link from "next/link";
 import AppShell from "../components/AppShell";
 import Card from "../components/Card";
@@ -72,7 +74,7 @@ function formatMoney(value: string | number | null) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-  }).format(parsed);
+  }).format(canonicalRoundMoney(parsed));
 }
 
 function getStatusKey(status: string | null) {
@@ -552,18 +554,9 @@ export default async function EstimatesPage({
       parseEstimateAmount(right.estimate_amount) -
       parseEstimateAmount(left.estimate_amount)
   )[0];
-  const totalEstimateValue = estimates.reduce(
-    (total, estimate) => total + parseEstimateAmount(estimate.estimate_amount),
-    0
-  );
-  const readyForInvoiceValue = approvedReadyForInvoice.reduce(
-    (total, estimate) => total + parseEstimateAmount(estimate.estimate_amount),
-    0
-  );
-  const filteredEstimateValue = filteredEstimates.reduce(
-    (total, estimate) => total + parseEstimateAmount(estimate.estimate_amount),
-    0
-  );
+  const totalEstimateValue = canonicalSumMoney(estimates.map((estimate) => parseEstimateAmount(estimate.estimate_amount)));
+  const readyForInvoiceValue = canonicalSumMoney(approvedReadyForInvoice.map((estimate) => parseEstimateAmount(estimate.estimate_amount)));
+  const filteredEstimateValue = canonicalSumMoney(filteredEstimates.map((estimate) => parseEstimateAmount(estimate.estimate_amount)));
   const conversionRate = estimates.length
     ? Math.round((convertedEstimates.length / estimates.length) * 100)
     : 0;
@@ -628,10 +621,7 @@ export default async function EstimatesPage({
       href: `/estimates${businessQuery}&status=converted${estimateResultsAnchor}`,
     },
   ];
-  const openEstimateValue = openEstimates.reduce(
-    (total, estimate) => total + parseEstimateAmount(estimate.estimate_amount),
-    0
-  );
+  const openEstimateValue = canonicalSumMoney(openEstimates.map((estimate) => parseEstimateAmount(estimate.estimate_amount)));
   const proposalReadinessCards = [
     {
       label: "Win Pipeline",

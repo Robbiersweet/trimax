@@ -1,3 +1,4 @@
+import { moneyCents, percentCents, percentMoney, sumMoney, roundMoney, subtractMoney } from "./money.ts";
 export type DiscountType = "fixed" | "percentage";
 
 export type DiscountDraft = {
@@ -18,7 +19,7 @@ export type DiscountTotals = {
 export const discountLinePrefix = "Discount";
 
 function toCents(value: number) {
-  return Math.round((Number(value) || 0) * 100);
+  return moneyCents(value);
 }
 
 function centsToNumber(cents: number) {
@@ -49,7 +50,7 @@ export function calculateDiscountAmount({
   const rawValue = Math.max(0, numberValue(discount.value));
   const discountCents =
     discount.type === "percentage"
-      ? Math.round(subtotalCents * (Math.min(rawValue, 100) / 100))
+      ? percentCents(subtotalCents, Math.min(rawValue, 100))
       : toCents(rawValue);
 
   return centsToNumber(Math.min(subtotalCents, Math.max(0, discountCents)));
@@ -59,17 +60,16 @@ export function calculateDiscountedDocumentTotals({
   lineSubtotal,
   taxRate,
   discount,
-  roundLineSubtotalToCents = true,
+
 }: {
   lineSubtotal: number;
   taxRate: number;
   discount: DiscountDraft;
+  /** Legacy caller option retained for compatibility; all subtotals are cents. */
   roundLineSubtotalToCents?: boolean;
 }): DiscountTotals {
   const normalizedSubtotal = Math.max(0, Number(lineSubtotal) || 0);
-  const subtotal = roundLineSubtotalToCents
-    ? centsToNumber(toCents(normalizedSubtotal))
-    : normalizedSubtotal;
+  const subtotal = roundMoney(normalizedSubtotal);
   const discountCents = toCents(
     calculateDiscountAmount({
       subtotal,
@@ -77,15 +77,15 @@ export function calculateDiscountedDocumentTotals({
     })
   );
   const discountAmount = centsToNumber(discountCents);
-  const taxableSubtotal = Math.max(0, subtotal - discountAmount);
-  const taxAmount = taxableSubtotal * ((Number(taxRate) || 0) / 100);
+  const taxableSubtotal = Math.max(0, subtractMoney(subtotal, discountAmount));
+  const taxAmount = percentMoney(taxableSubtotal, taxRate);
 
   return {
     lineSubtotal: subtotal,
     discountAmount,
     taxableSubtotal,
     taxAmount,
-    total: taxableSubtotal + taxAmount,
+    total: sumMoney([taxableSubtotal, taxAmount]),
   };
 }
 

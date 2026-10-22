@@ -1,3 +1,7 @@
+import { subtractMoney as canonicalSubtractMoney } from "../../lib/money.ts";
+import { sumMoney as canonicalSumMoney } from "../../lib/money.ts";
+import { roundMoney } from "../../lib/money";
+import { percentMoney, sumMoney, subtractMoney, multiplyMoney } from "../../lib/money";
 import Link from "next/link";
 import AppShell from "../../components/AppShell";
 import Card from "../../components/Card";
@@ -139,7 +143,7 @@ function money(value: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-  }).format(safeValue);
+  }).format(roundMoney(safeValue));
 }
 
 function numberValue(value: number | string | null | undefined) {
@@ -990,14 +994,14 @@ export default async function InvoiceDetailPage({
 
   const items = lineItems ?? [];
 
-  const subtotalFromLines = items.reduce((sum, item) => {
+  const subtotalFromLines = sumMoney(items.map((item) => {
     const quantity = numberValue(item.quantity);
     const unitPrice = numberValue(item.unit_price);
     const savedLineTotal = numberValue(item.line_total);
-    const calculatedLineTotal = quantity * unitPrice;
+    const calculatedLineTotal = multiplyMoney(quantity, unitPrice);
 
-    return sum + (savedLineTotal || calculatedLineTotal);
-  }, 0);
+    return item.line_total != null ? savedLineTotal : calculatedLineTotal;
+  }));
 
   const fallbackSubtotal = numberValue(invoice.invoice_amount);
   const subtotal = items.length > 0 ? subtotalFromLines : fallbackSubtotal;
@@ -1005,8 +1009,8 @@ export default async function InvoiceDetailPage({
     taxMode: invoice.tax_mode,
     taxRate: invoice.tax_rate,
   });
-  const taxAmount = subtotal * (taxRate / 100);
-  const invoiceTotal = subtotal + taxAmount;
+  const taxAmount = percentMoney(subtotal, taxRate);
+  const invoiceTotal = sumMoney([subtotal, taxAmount]);
   const amountPaid = numberValue(invoice.amount_paid);
   const status = invoice.status || "Draft";
   const normalizedStatus = invoiceStatusKey(status);
@@ -1031,7 +1035,7 @@ export default async function InvoiceDetailPage({
     : null;
   const amountDue = isNonCollectibleInvoice
     ? 0
-    : Math.max(invoiceTotal - amountPaid, 0);
+    : Math.max(subtractMoney(invoiceTotal, amountPaid), 0);
   const isFullyPaid =
     !isNonCollectibleInvoice &&
     !isIncompleteDraftInvoice &&
@@ -1050,7 +1054,7 @@ export default async function InvoiceDetailPage({
     depositStatus === "requested" && depositRequestedAmount > 0;
   const hasInferredDepositCollection = isPartiallyPaid && amountPaid > 0;
   const depositDueNow = hasDepositRequest
-    ? Math.max(depositRequestedAmount - amountPaid, 0)
+    ? Math.max(canonicalSubtractMoney(depositRequestedAmount, amountPaid), 0)
     : 0;
   const customerFacingAmountDue = hasDepositRequest
     ? depositDueNow
@@ -1065,7 +1069,7 @@ export default async function InvoiceDetailPage({
         ? "Remaining Balance"
         : "Amount Due";
   const balanceAfterDepositRequest = Math.max(
-    invoiceTotal - depositRequestedAmount,
+    canonicalSubtractMoney(invoiceTotal, depositRequestedAmount),
     0
   );
   const customerName = invoice.customer_name || "Customer";
@@ -1121,10 +1125,7 @@ export default async function InvoiceDetailPage({
     hasSplitInvoiceGroup
       ? splitRelatedInvoices.length
       : 0;
-  const splitGroupCombinedTotal = splitRelatedInvoices.reduce(
-    (sum, relatedInvoice) => sum + numberValue(relatedInvoice.invoice_amount),
-    0
-  );
+  const splitGroupCombinedTotal = canonicalSumMoney(splitRelatedInvoices.map((relatedInvoice) => numberValue(relatedInvoice.invoice_amount)));
   const splitGroupSentCount = splitRelatedInvoices.filter(
     (relatedInvoice) => relatedInvoice.status?.toLowerCase() === "sent"
   ).length;
@@ -2204,7 +2205,7 @@ export default async function InvoiceDetailPage({
                   const quantity = numberValue(item.quantity);
                   const unitPrice = numberValue(item.unit_price);
                   const savedLineTotal = numberValue(item.line_total);
-                  const lineTotal = savedLineTotal || quantity * unitPrice;
+                  const lineTotal = item.line_total != null ? savedLineTotal : multiplyMoney(quantity, unitPrice);
 
                   return (
                     <div

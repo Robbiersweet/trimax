@@ -1,3 +1,4 @@
+import { formatMoney, percentMoney, sumMoney } from "../../lib/money";
 import Link from "next/link";
 import AppShell from "../../components/AppShell";
 import Card from "../../components/Card";
@@ -99,7 +100,7 @@ function parseCurrency(value: number | string | null) {
 
 function formatCurrency(amount: number) {
   const safeAmount = Number.isFinite(amount) ? amount : 0;
-  return `$${safeAmount.toFixed(2)}`;
+  return formatMoney(safeAmount);
 }
 
 function formatActivityDate(value: string | null) {
@@ -247,11 +248,7 @@ export default async function EstimateDetailsPage({
   const lineItems =
     (lineItemData ?? []) as EstimateLineItem[];
 
-  const subtotalFromLineItems = lineItems.reduce(
-    (total, item) =>
-      total + toNumber(item.line_total),
-    0
-  );
+  const subtotalFromLineItems = sumMoney(lineItems.map(item => toNumber(item.line_total)));
 
   const subtotal =
     subtotalFromLineItems > 0
@@ -262,8 +259,8 @@ export default async function EstimateDetailsPage({
     taxMode: estimate.tax_mode,
     taxRate: estimate.tax_rate,
   });
-  const taxAmount = subtotal * (taxRate / 100);
-  const estimateTotal = subtotal + taxAmount;
+  const taxAmount = percentMoney(subtotal, taxRate);
+  const estimateTotal = sumMoney([subtotal, taxAmount]);
 
   const effectiveSplitTargetAmount =
     toNumber(estimate.split_target_amount) ||

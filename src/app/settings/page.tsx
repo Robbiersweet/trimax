@@ -1,4 +1,6 @@
 "use client";
+import { formatMoney as canonicalFormatMoney } from "../lib/money.ts";
+
 
 import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
@@ -189,7 +191,7 @@ function formatCurrency(value: string) {
     return "No default set";
   }
 
-  return `$${amount.toFixed(2)}`;
+  return canonicalFormatMoney(amount);
 }
 
 function formatRole(value: string) {

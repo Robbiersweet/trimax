@@ -1,3 +1,6 @@
+import { subtractMoney as canonicalSubtractMoney } from "../../lib/money.ts";
+import { sumMoney as canonicalSumMoney } from "../../lib/money.ts";
+import { roundMoney as canonicalRoundMoney } from "../../lib/money.ts";
 import Link from "next/link";
 import AppShell from "../../components/AppShell";
 import Card from "../../components/Card";
@@ -74,7 +77,7 @@ function formatMoney(value: string | number | null) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-  }).format(parseMoney(value));
+  }).format(canonicalRoundMoney(parseMoney(value)));
 }
 
 function formatDate(value: string | null) {
@@ -209,16 +212,13 @@ export default async function ClientDetailsPage({
     return (
       total +
       Math.max(
-        parseMoney(invoice.invoice_amount) - parseMoney(invoice.amount_paid),
+        canonicalSubtractMoney(parseMoney(invoice.invoice_amount), parseMoney(invoice.amount_paid)),
         0
       )
     );
   }, 0);
 
-  const estimateTotal = estimates.reduce(
-    (total, estimate) => total + parseMoney(estimate.estimate_amount),
-    0
-  );
+  const estimateTotal = canonicalSumMoney(estimates.map((estimate) => parseMoney(estimate.estimate_amount)));
   const contactReadiness = [
     {
       label: "Email",
@@ -288,7 +288,7 @@ export default async function ClientDetailsPage({
     })),
     ...invoices.map((invoice) => {
       const amountDue = Math.max(
-        parseMoney(invoice.invoice_amount) - parseMoney(invoice.amount_paid),
+        canonicalSubtractMoney(parseMoney(invoice.invoice_amount), parseMoney(invoice.amount_paid)),
         0
       );
 
@@ -814,8 +814,7 @@ export default async function ClientDetailsPage({
               {invoices.length > 0 ? (
                 invoices.map((invoice) => {
                   const amountDue = Math.max(
-                    parseMoney(invoice.invoice_amount) -
-                      parseMoney(invoice.amount_paid),
+                    canonicalSubtractMoney(parseMoney(invoice.invoice_amount), parseMoney(invoice.amount_paid)),
                     0
                   );
 

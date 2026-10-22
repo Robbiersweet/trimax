@@ -1,3 +1,4 @@
+import { moneyFixed } from "../../lib/money.ts";
 import Link from "next/link";
 import AppShell from "../../components/AppShell";
 import Card from "../../components/Card";
@@ -104,7 +105,7 @@ export default async function OcrDebugQueue({
                   Check {attempt.summary.checkNumber ?? "unknown"} · Total{" "}
                   {attempt.summary.documentTotal == null
                     ? "unknown"
-                    : `$${attempt.summary.documentTotal.toFixed(2)}`}
+                    : `$${moneyFixed(attempt.summary.documentTotal)}`}
                 </p>
                 <p className="text-sm">
                   {attempt.summary.invoicesResolved}/

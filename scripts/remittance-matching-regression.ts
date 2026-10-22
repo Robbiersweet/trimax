@@ -1288,7 +1288,7 @@ assert(
   "Server-side payment validation must reject zero-dollar OCR/application attempts."
 );
 assert(
-  applyBatchRoute.includes("selectedTotal - remittanceTotal") &&
+  applyBatchRoute.includes("moneyCents(selectedTotal) !== moneyCents(remittanceTotal)") &&
     applyBatchRoute.includes("The remittance total does not match the selected collectible invoices."),
   "Server-side payment validation must reject remittance selections that do not reconcile."
 );

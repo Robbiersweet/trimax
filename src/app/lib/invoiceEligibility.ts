@@ -1,3 +1,4 @@
+import { subtractMoney, multiplyMoney } from "./money.ts";
 import {
   invoiceWasSent,
   invoiceStatusKey,
@@ -49,10 +50,10 @@ export function invoiceCollectionAmountDue(invoice: InvoiceEligibilityRecord) {
 
   const invoiceAmount = moneyNumber(invoice.invoice_amount);
   const amountPaid = moneyNumber(invoice.amount_paid);
-  const fullAmountDue = Math.max(invoiceAmount - amountPaid, 0);
+  const fullAmountDue = Math.max(subtractMoney(invoiceAmount, amountPaid), 0);
 
   return hasActiveDepositRequest(invoice)
-    ? Math.max(moneyNumber(invoice.deposit_requested_amount) - amountPaid, 0)
+    ? Math.max(subtractMoney(moneyNumber(invoice.deposit_requested_amount), amountPaid), 0)
     : fullAmountDue;
 }
 
@@ -63,7 +64,7 @@ export function hasMeaningfulInvoiceLineItems(
     const description = String(item.description ?? "").trim();
     const savedLineTotal = moneyNumber(item.line_total);
     const calculatedLineTotal =
-      moneyNumber(item.quantity) * moneyNumber(item.unit_price);
+      multiplyMoney(item.quantity, item.unit_price);
 
     return Boolean(description) && Math.max(savedLineTotal, calculatedLineTotal) > 0;
   });

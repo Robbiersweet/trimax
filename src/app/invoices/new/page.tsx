@@ -1,4 +1,9 @@
 "use client";
+import { roundMoney } from "../../lib/money.ts";
+
+
+import { multiplyMoney, percentMoney, sumMoney, subtractMoney } from "../../lib/money";
+
 
 import { formatStoredInvoiceAmount } from "../../lib/invoiceMoney";
 
@@ -78,10 +83,7 @@ function formatCurrency(amount: number) {
 }
 
 function getLineTotal(item: LineItem) {
-  const quantity = Number(item.quantity) || 0;
-  const unitPrice = Number(item.unitPrice) || 0;
-
-  return quantity * unitPrice;
+  return multiplyMoney(item.quantity, item.unitPrice);
 }
 
 function toNumber(value: number | string | null | undefined) {
@@ -205,10 +207,7 @@ function NewInvoicePageContent() {
     useState("");
 
   const subtotal = useMemo(() => {
-    return lineItems.reduce(
-      (total, item) => total + getLineTotal(item),
-      0
-    );
+    return sumMoney(lineItems.map(getLineTotal));
   }, [lineItems]);
 
   const taxAmount = useMemo(() => {
@@ -217,10 +216,10 @@ function NewInvoicePageContent() {
       taxRate,
     });
 
-    return subtotal * (effectiveTaxRate / 100);
+    return percentMoney(subtotal, effectiveTaxRate);
   }, [subtotal, taxMode, taxRate]);
 
-  const invoiceTotal = subtotal + taxAmount;
+  const invoiceTotal = sumMoney([subtotal, taxAmount]);
   const safeReverseAdjustLineIndex = Math.min(
     reverseAdjustLineIndex,
     Math.max(0, lineItems.length - 1)
@@ -236,7 +235,7 @@ function NewInvoicePageContent() {
     [lineItems]
   );
   const amountDue =
-    invoiceTotal - (Number(amountPaid) || 0);
+    subtractMoney(invoiceTotal, amountPaid);
   const readyLineItems = lineItems.filter(
     (item) => item.description.trim() && getLineTotal(item) > 0
   );
@@ -785,7 +784,7 @@ function NewInvoicePageContent() {
         tax_rate: getEffectiveTaxRate({ taxMode, taxRate }),
         tax_number:
           taxMode === "taxable" ? taxNumber.trim() || null : null,
-        amount_paid: Number(amountPaid) || 0,
+        amount_paid: roundMoney(Number(amountPaid) || 0),
         split_warning_enabled: effectiveSplitWarningEnabled,
         split_target_amount:
           effectiveSplitWarningEnabled &&

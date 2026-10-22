@@ -1,3 +1,4 @@
+import { sumMoney as canonicalSumMoney } from "./lib/money.ts";
 import Link from "next/link";
 import AppShell from "./components/AppShell";
 import Card from "./components/Card";
@@ -677,25 +678,12 @@ export default async function DashboardPage({
     );
 
   const outstandingRevenueTotal =
-    workingYearOpenInvoicesWithAmounts.reduce(
-      (total, invoice) =>
-        total + invoice.amountDue,
-      0
-    );
+    canonicalSumMoney(workingYearOpenInvoicesWithAmounts.map((invoice) => invoice.amountDue));
 
-  const invoicedRevenueTotal = workingYearInvoices.reduce(
-    (total, invoice) =>
-      total + parseMoney(invoice.invoice_amount),
-    0
-  );
+  const invoicedRevenueTotal = canonicalSumMoney(workingYearInvoices.map((invoice) => parseMoney(invoice.invoice_amount)));
 
-  const ytdRevenueTotal = workingYearInvoices
-    .filter((invoice) => invoice.status === "Paid")
-    .reduce(
-      (total, invoice) =>
-        total + parseMoney(invoice.invoice_amount),
-      0
-    );
+  const ytdRevenueTotal = canonicalSumMoney(workingYearInvoices
+    .filter((invoice) => invoice.status === "Paid").map((invoice) => parseMoney(invoice.invoice_amount)));
 
   const outstandingRevenue = formatMoney(
     outstandingRevenueTotal
@@ -732,17 +720,11 @@ export default async function DashboardPage({
           String(second.display_id ?? "")
         )
     );
-  const pastDueTotal = pastDueInvoices.reduce(
-    (total, invoice) => total + invoice.amountDue,
-    0
-  );
+  const pastDueTotal = canonicalSumMoney(pastDueInvoices.map((invoice) => invoice.amountDue));
   const depositRequestInvoices = workingYearOpenInvoicesWithAmounts
     .filter(hasActiveDepositRequest)
     .sort((first, second) => second.amountDue - first.amountDue);
-  const depositRequestTotal = depositRequestInvoices.reduce(
-    (total, invoice) => total + invoice.amountDue,
-    0
-  );
+  const depositRequestTotal = canonicalSumMoney(depositRequestInvoices.map((invoice) => invoice.amountDue));
   const largestOpenInvoice =
     [...workingYearOpenInvoicesWithAmounts].sort(
       (first, second) => second.amountDue - first.amountDue

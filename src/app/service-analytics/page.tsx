@@ -1,3 +1,4 @@
+import { roundMoney as canonicalRoundMoney } from "../lib/money.ts";
 import Link from "next/link";
 import AppShell from "../components/AppShell";
 import Button from "../components/Button";
@@ -19,7 +20,7 @@ function formatMoney(value: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-  }).format(value || 0);
+  }).format(canonicalRoundMoney(value || 0));
 }
 
 function priceSpreadPercent(lowest: number, highest: number) {

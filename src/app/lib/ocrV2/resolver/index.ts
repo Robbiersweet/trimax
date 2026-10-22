@@ -1,3 +1,4 @@
+import { moneyCents } from "../../money.ts";
 // Offline research only. No database client, payment writer, or production UI imports.
 import { createRemittanceEvidence, resolveRemittanceAttempt, type OcrPass } from '../../remittanceAttempt.ts';
 import { normalizeInvoiceNumber, type RemittanceInvoiceRecord, type RemittanceTotalEvidence } from '../../remittanceMatching.ts';
@@ -29,7 +30,7 @@ export function resolveOfflineDocument(document: OfflineDocument, snapshot: Offl
   const start = performance.now();
   if (new Set(document.rows.map(r => r.rowId)).size !== document.rows.length) throw Error('Duplicate physical row ID');
   if (new Set(snapshot.invoices.map(r => r.id)).size !== snapshot.invoices.length) throw Error('Duplicate snapshot record ID');
-  const cents = (n: number) => Math.round(n * 100);
+  const cents = moneyCents;
   const invoke = (rows: OfflineRow[], tokens: string[], invoices = snapshot.invoices) => resolveRemittanceAttempt(
     createRemittanceEvidence({ attemptId: document.id,
       capture: { source: 'offline-v2-still', image: { width: 0, height: 0, bytes: 0, mime: 'image/png' }, quality: {}, sources: [{ id: 'retained-still', status: 'success' }], selectionReason: 'Frozen optical evidence' },

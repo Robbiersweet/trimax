@@ -7,7 +7,7 @@ const source = process.env.TRIMAX_MATCHER_BASELINE
   : fs.readFileSync('src/app/lib/remittanceMatching.ts', 'utf8');
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
 const matching = {};
-new Function('exports', 'require', compiled)(matching, require);
+new Function('exports', 'require', compiled)(matching, spec=>spec==='./money.ts'?require('../src/app/lib/money.ts'):require(spec));
 const invoice = (id, displayId, customerName, extra = {}) => ({ id, displayId, customerName, projectTitle: 'Unit A01', invoiceAmount: 1099, amountPaid: 0, status: 'sent', ...extra });
 const north = invoice('north', 'INV-0539', 'North Creek Apartments');
 const glen = invoice('glen', 'INV-0533', 'Glen North Creek');

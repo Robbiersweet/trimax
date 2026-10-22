@@ -1,210 +1,67 @@
-import {
-  calculateDiscountedDocumentTotals,
-  type DiscountDraft,
-} from "./documentDiscounts.ts";
-
+import { moneyCents, multiplyMoney, sumMoney } from "./money.ts";
+import { calculateDiscountedDocumentTotals, type DiscountDraft } from "./documentDiscounts.ts";
 export type ReverseTotalLineItem = {
-  description: string;
-  quantity: string | number;
-  unitPrice: string | number;
+    description: string;
+    quantity: string | number;
+    unitPrice: string | number;
 };
-
-export type ReverseTotalResult =
-  | {
-      ok: true;
-      selectedLineIndex: number;
-      unitPrice: string;
-      lineTotal: number;
-      subtotal: number;
-      taxAmount: number;
-      discountAmount: number;
-      total: number;
-    }
-  | {
-      ok: false;
-      message: string;
-    };
-
-const defaultDiscount: DiscountDraft = {
-  enabled: false,
-  type: "fixed",
-  value: 0,
-  label: "",
+export type ReverseTotalResult = {
+    ok: true;
+    selectedLineIndex: number;
+    unitPrice: string;
+    lineTotal: number;
+    subtotal: number;
+    taxAmount: number;
+    discountAmount: number;
+    total: number;
+} | {
+    ok: false;
+    message: string;
 };
-
-function toCents(value: number) {
-  return Math.round((Number(value) || 0) * 100);
-}
-
-function lineTotalUnits(item: ReverseTotalLineItem) {
-  const quantity = Number(item.quantity) || 0;
-  const unitPrice = Number(item.unitPrice) || 0;
-
-  return Math.round(quantity * unitPrice * 10_000);
-}
-
-function formatUnitPrice(value: number) {
-  const fixed = value.toFixed(4);
-
-  return fixed.replace(/\.?0+$/, "");
-}
-
-function calculateTotalCents({
-  subtotalUnits,
-  taxRate,
-  discount,
-}: {
-  subtotalUnits: number;
-  taxRate: number;
-  discount: DiscountDraft;
-}) {
-  const totals = calculateDiscountedDocumentTotals({
-    lineSubtotal: subtotalUnits / 10_000,
-    taxRate,
-    discount,
-    roundLineSubtotalToCents: false,
-  });
-
-  return {
-    totals,
-    totalCents: toCents(totals.total),
-  };
-}
-
-export function reverseCalculateFinalTotal({
-  desiredTotal,
-  lineItems,
-  selectedLineIndex,
-  taxRate,
-  discount = defaultDiscount,
-}: {
-  desiredTotal: string | number;
-  lineItems: ReverseTotalLineItem[];
-  selectedLineIndex: number;
-  taxRate: number;
-  discount?: DiscountDraft;
+// Search the exact four-decimal unit rate that will actually be saved. Every
+// trial extends and rounds the line with the same calculator as the editor.
+export function reverseCalculateFinalTotal({ desiredTotal, lineItems, selectedLineIndex, taxRate, discount = { enabled: false, type: "fixed", value: 0 } }: {
+    desiredTotal: string | number;
+    lineItems: ReverseTotalLineItem[];
+    selectedLineIndex: number;
+    taxRate: number;
+    discount?: DiscountDraft;
 }): ReverseTotalResult {
-  const targetCents = toCents(Number(desiredTotal));
-
-  if (targetCents <= 0) {
-    return {
-      ok: false,
-      message: "Enter a final total greater than $0.00.",
-    };
-  }
-
-  if (!lineItems.length) {
-    return {
-      ok: false,
-      message: "Add a line item before reverse calculating.",
-    };
-  }
-
-  const selectedItem = lineItems[selectedLineIndex];
-
-  if (!selectedItem) {
-    return {
-      ok: false,
-      message: "Choose the line item Trimax should adjust.",
-    };
-  }
-
-  const selectedQuantity = Number(selectedItem.quantity) || 0;
-
-  if (selectedQuantity <= 0) {
-    return {
-      ok: false,
-      message: "The adjustable line needs a quantity greater than zero.",
-    };
-  }
-
-  const otherSubtotalUnits = lineItems.reduce((total, item, index) => {
-    return index === selectedLineIndex ? total : total + lineTotalUnits(item);
-  }, 0);
-  const normalizedTaxRate = Math.max(0, Number(taxRate) || 0);
-  const normalizedDiscount: DiscountDraft = {
-    ...discount,
-    value: discount.value ?? 0,
-  };
-
-  let high = Math.max(targetCents * 100, otherSubtotalUnits, 10_000);
-  let highTotal = calculateTotalCents({
-    subtotalUnits: otherSubtotalUnits + high,
-    taxRate: normalizedTaxRate,
-    discount: normalizedDiscount,
-  }).totalCents;
-
-  while (highTotal < targetCents && high < 1_000_000_000) {
-    high *= 2;
-    highTotal = calculateTotalCents({
-      subtotalUnits: otherSubtotalUnits + high,
-      taxRate: normalizedTaxRate,
-      discount: normalizedDiscount,
-    }).totalCents;
-  }
-
-  if (highTotal < targetCents) {
-    return {
-      ok: false,
-      message: "That total is outside the supported price range.",
-    };
-  }
-
-  let low = 0;
-
-  while (low < high) {
-    const mid = Math.floor((low + high) / 2);
-    const midTotal = calculateTotalCents({
-      subtotalUnits: otherSubtotalUnits + mid,
-      taxRate: normalizedTaxRate,
-      discount: normalizedDiscount,
-    }).totalCents;
-
-    if (midTotal < targetCents) {
-      low = mid + 1;
-    } else {
-      high = mid;
+    const fail = (message: string): ReverseTotalResult => ({ ok: false, message });
+    let target: number;
+    try {
+        target = moneyCents(desiredTotal);
     }
-  }
-
-  const candidateWindow = Array.from(
-    { length: 20_001 },
-    (_, index) => Math.max(0, low - 10_000 + index)
-  );
-  const matchingLineTotalUnits = candidateWindow.find((candidateUnits) => {
-    return (
-      calculateTotalCents({
-        subtotalUnits: otherSubtotalUnits + candidateUnits,
-        taxRate: normalizedTaxRate,
-        discount: normalizedDiscount,
-      }).totalCents === targetCents
-    );
-  });
-
-  if (matchingLineTotalUnits === undefined) {
-    return {
-      ok: false,
-      message:
-        "Trimax could not land exactly on that final total with the selected line.",
-    };
-  }
-
-  const { totals } = calculateTotalCents({
-    subtotalUnits: otherSubtotalUnits + matchingLineTotalUnits,
-    taxRate: normalizedTaxRate,
-    discount: normalizedDiscount,
-  });
-
-  return {
-    ok: true,
-    selectedLineIndex,
-    unitPrice: formatUnitPrice(
-      matchingLineTotalUnits / 10_000 / selectedQuantity
-    ),
-    lineTotal: matchingLineTotalUnits / 10_000,
-    subtotal: totals.lineSubtotal,
-    taxAmount: totals.taxAmount,
-    discountAmount: totals.discountAmount,
-    total: totals.total,
-  };
+    catch {
+        return fail("Enter a valid final total.");
+    }
+    if (target <= 0)
+        return fail("Enter a final total greater than $0.00.");
+    if (!lineItems.length)
+        return fail("Add a line item before reverse calculating.");
+    const selected = lineItems[selectedLineIndex];
+    if (!selected)
+        return fail("Choose the line item Trimax should adjust.");
+    if (!Number.isFinite(Number(selected.quantity)) || Number(selected.quantity) <= 0)
+        return fail("The adjustable line needs a quantity greater than zero.");
+    const other = sumMoney(lineItems.filter((_, i) => i !== selectedLineIndex).map(item => multiplyMoney(item.quantity, item.unitPrice)));
+    const rate = (units: number) => { const whole = Math.floor(units / 10000), fraction = String(units % 10000).padStart(4, "0"); return (whole + "." + fraction).replace(/\.?0+$/, ""); };
+    const evaluate = (units: number) => { const lineTotal = multiplyMoney(selected.quantity, rate(units)); const totals = calculateDiscountedDocumentTotals({ lineSubtotal: sumMoney([other, lineTotal]), taxRate, discount }); return { lineTotal, totals, cents: moneyCents(totals.total) }; };
+    let high = Math.max(target * 100, 10000);
+    while (evaluate(high).cents < target && high < 1000000000)
+        high *= 2;
+    if (evaluate(high).cents < target)
+        return fail("That total is outside the supported price range.");
+    let low = 0;
+    while (low < high) {
+        const mid = Math.floor((low + high) / 2);
+        if (evaluate(mid).cents < target)
+            low = mid + 1;
+        else
+            high = mid;
+    }
+    const result = evaluate(low);
+    if (result.cents !== target)
+        return fail("Trimax could not land exactly on that final total with the selected line.");
+    return { ok: true, selectedLineIndex, unitPrice: rate(low), lineTotal: result.lineTotal, subtotal: result.totals.lineSubtotal, taxAmount: result.totals.taxAmount, discountAmount: result.totals.discountAmount, total: result.totals.total };
 }

@@ -1,3 +1,5 @@
+import { subtractMoney } from "./money.ts";
+import { moneyFixed } from "./money.ts";
 import { immutableSnapshot } from "./remittanceAttempt.ts";
 import type { RemittanceAttempt, ScanCapture } from "./remittanceAttempt.ts";
 export type ScanResult =
@@ -140,7 +142,7 @@ export function finishScan(
     difference:
       proof?.documentTotal == null
         ? null
-        : Math.round((proof.documentTotal - proof.resolvedTotal) * 100) / 100,
+        : subtractMoney(proof.documentTotal, proof.resolvedTotal),
     reasons: [...new Set([...reasons, ...(proof?.blockers ?? [])])]
       .slice(0, 8)
       .map((reason) => reason.slice(0, 400)),
@@ -163,7 +165,7 @@ export function diagnosticPayload(value: unknown): unknown {
 }
 export function failureSummary(summary: ScanSummary) {
   const money = (n: number | null) =>
-    n == null ? "UNKNOWN" : `$${n.toFixed(2)}`;
+    n == null ? "UNKNOWN" : `$${moneyFixed(n)}`;
   return [
     "TRIMAX OCR FAILURE REPORT",
     `Attempt: ${summary.attemptId}`,

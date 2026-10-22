@@ -1,4 +1,6 @@
 "use client";
+import { formatMoney as canonicalFormatMoney } from "../../../lib/money.ts";
+
 
 import { useEffect, useState } from "react";
 import {
@@ -61,7 +63,7 @@ function toNumber(value: number | string | null | undefined) {
 }
 
 function formatCurrency(value: number | string | null | undefined) {
-  return `$${toNumber(value).toFixed(2)}`;
+  return canonicalFormatMoney(toNumber(value));
 }
 
 function isMissingCommercialSettingsColumnError(error: { message?: string } | null) {

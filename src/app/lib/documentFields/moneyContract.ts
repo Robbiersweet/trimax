@@ -1,3 +1,4 @@
+import { moneyCents, moneyFixed } from "../money.ts";
 /** Neutral field packet. Contains visual evidence only, never a resolver decision. */
 import type { OcrV2Foundation, Bounds } from '../ocrV2/types.ts';
 import type { completeMoneyFields, prepareMoneyFields } from './moneyService.ts';
@@ -23,15 +24,15 @@ export function legacyMoneyEvidence(evidence:Immutable<RemittanceEvidence>,packe
   const owner=matches[0];used.add(owner.id);
   const field=shared.fields.find(f=>f.rowId===owner.id&&f.field==='row_amount');
   if(!field||field.cents===null)continue;
-  const previous=row.amountCandidates.filter(c=>c.selected).map(c=>Math.round(c.value*100));
+  const previous=row.amountCandidates.filter(c=>c.selected).map(c=>moneyCents(c.value));
   const conflict=previous.some(c=>c!==field.cents);
   if(conflict)row.amountCandidates.forEach(c=>{c.selected=false;});
   const raw=field.observations.filter(o=>field.provenance.includes(o.id)).map(o=>o.raw).join(' | ');
-  if(!row.amountCandidates.some(c=>c.raw===raw&&c.bbox?.x0===field.bounds.left&&c.bbox?.y0===field.bounds.top&&Math.round(c.value*100)===field.cents))row.amountCandidates.push({raw,normalized:(field.cents/100).toFixed(2),value:field.cents/100,selected:!conflict,bbox:{x0:field.bounds.left,y0:field.bounds.top,x1:field.bounds.left+field.bounds.width,y1:field.bounds.top+field.bounds.height}});
+  if(!row.amountCandidates.some(c=>c.raw===raw&&c.bbox?.x0===field.bounds.left&&c.bbox?.y0===field.bounds.top&&moneyCents(c.value)===field.cents))row.amountCandidates.push({raw,normalized:moneyFixed(field.cents/100),value:field.cents/100,selected:!conflict,bbox:{x0:field.bounds.left,y0:field.bounds.top,x1:field.bounds.left+field.bounds.width,y1:field.bounds.top+field.bounds.height}});
  }
  if(used.size!==shared.rows.length)throw Error('Incomplete shared physical row mapping');
  const total=shared.monetary.authority.cents;
- if(total!==null){const old=copy.headerEvidence.documentTotal;copy.headerEvidence.documentTotal=old&&Math.round(old.amount*100)!==total?null:{amount:total/100,source:'explicit-document-total',payable:true};}
+ if(total!==null){const old=copy.headerEvidence.documentTotal;copy.headerEvidence.documentTotal=old&&moneyCents(old.amount)!==total?null:{amount:total/100,source:'explicit-document-total',payable:true};}
  // Keep complete provenance with the evidence snapshot, not just projected values.
  return immutableSnapshot({...copy,sharedMonetaryEvidence:shared});
 }

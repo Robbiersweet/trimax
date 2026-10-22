@@ -1,4 +1,6 @@
 "use client";
+import { moneyFixed } from "../lib/money.ts";
+
 import OcrCaptureRecovery from './OcrCaptureRecovery';
 
 import OpticalEvidenceView from "./OpticalEvidenceView";
@@ -224,7 +226,7 @@ export default function RecentScans({
                 <dd>
                   {s.documentTotal == null
                     ? "Unknown"
-                    : `$${s.documentTotal.toFixed(2)}`}
+                    : `$${moneyFixed(s.documentTotal)}`}
                 </dd>
                 <dt>Invoices resolved</dt>
                 <dd>
@@ -417,7 +419,7 @@ export default function RecentScans({
                     {record.summary.rowsDetected} invoices ·{" "}
                     {record.summary.documentTotal == null
                       ? "Total unknown"
-                      : `$${record.summary.documentTotal.toFixed(2)}`}
+                      : `$${moneyFixed(record.summary.documentTotal)}`}
                   </span>
                   {record.parent_id && (
                     <span className="text-xs text-slate-400">
@@ -525,7 +527,7 @@ function DecisionView({ payload }: { payload: unknown }) {
             trace.rejectionReason ||
             "See retained evidence"}
           {trace.invoiceId ? ` · Record ${trace.invoiceId}` : ""}
-          {` · Matched ${trace.matchedAmount.toFixed(2)}`}
+          {` · Matched ${moneyFixed(trace.matchedAmount)}`}
         </p>
       ))}
       {attempt && (
@@ -543,7 +545,7 @@ function DecisionView({ payload }: { payload: unknown }) {
           </p>
           <p>
             Resolved subtotal:{" "}
-            {attempt.reconciliationResult.resolvedTotal.toFixed(2)} · Document
+            {moneyFixed(attempt.reconciliationResult.resolvedTotal)} · Document
             total: {attempt.reconciliationResult.documentTotal ?? "Unknown"}
           </p>
           <p>

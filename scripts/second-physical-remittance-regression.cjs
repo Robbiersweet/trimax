@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- Saved physical OCR evidence, not invented image recognition. */
 const assert=require('node:assert/strict'),fs=require('node:fs'),ts=require('typescript');
 const source=process.env.TRIMAX_MATCHER_BASELINE?require('node:child_process').execFileSync('git',['show',process.env.TRIMAX_MATCHER_BASELINE+':src/app/lib/remittanceMatching.ts'],{encoding:'utf8'}):fs.readFileSync('src/app/lib/remittanceMatching.ts','utf8');
-const compile=text=>{const out={};new Function('exports','require',ts.transpileModule(text,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(out,require);return out;};
+const compile=text=>{const out={};new Function('exports','require',ts.transpileModule(text,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(out,spec=>spec==='./money.ts'?require('../src/app/lib/money.ts'):require(spec));return out;};
 const m=compile(source);
 // Original legacy7e5ae0eb, source2e627560...: four actual observed row fields.
 // Image independently inspected: header/footer4588.33; no check2721/1099 total.
