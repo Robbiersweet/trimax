@@ -59,10 +59,10 @@ function test(name, fn) { fn(); count++; console.log('PASS', name); }
         assert.equal(revised.evidence[field], original[field]);
     count++;
     console.log('PASS no unnecessary OCR and unchanged check/date/payor');
-    // Pin only the explicitly authorized client-safety revision; other frozen
+    // Pin the reviewed canonical-money financial adapters; other frozen
     // recognition/fusion contracts and all optical assertions stay unchanged.
     for (const file of ['src/app/lib/ocrV2/fusion/index.ts', 'src/app/lib/ocrV2/resolver/index.ts', 'src/app/lib/ocrV2/recognition/index.ts', 'src/app/lib/ocrV2/recognition/paymentEvidence.ts', 'src/app/lib/remittanceAttempt.ts', 'src/app/lib/remittanceMatching.ts']) {
-        const revision = file === 'src/app/lib/remittanceMatching.ts' ? '971688c96c5a7d0841b52cdbb38aa010cb2b9646' : file === 'src/app/lib/remittanceAttempt.ts' ? '2172396a0ab1269cb76974a9ac63ee8bd307c886' : file === 'src/app/lib/ocrV2/resolver/index.ts' ? '68bc2b6056a993df51432400f0de02849c2bac0b' : '39e4c0f';
+        const revision = file === 'src/app/lib/remittanceMatching.ts' ? '5e8f08ec8fecc99fdd47031c3e240c8f8c7154b2' : file === 'src/app/lib/remittanceAttempt.ts' ? '5e8f08ec8fecc99fdd47031c3e240c8f8c7154b2' : file === 'src/app/lib/ocrV2/resolver/index.ts' ? '5e8f08ec8fecc99fdd47031c3e240c8f8c7154b2' : '39e4c0f';
         assert.equal(recognitionContract(fs.readFileSync(file, 'utf8')), recognitionContract(cp.execFileSync('git', ['show', revision + ':' + file], { encoding: 'utf8' })), file + ' changed');
     }
     count++;

@@ -22,10 +22,10 @@ const observation=(id,raw,confidence=90)=>({id,variant:id,raw,money:paymentMoney
   assert(result.rows[0].observations.every(o=>o.scope==='row'&&o.rowId==='synthetic-0'));
   assert(result.timings.passCount<=13);console.log('PASS optical',label||'unlabeled footer');
  }
- // Explicit user-authorized client-safety revision; retain byte-for-byte pins
+ // Explicit user-authorized canonical-money adapters; retain immutable pins
  // and all historical optical assertions. No mutable HEAD baseline.
  for(const file of ['src/app/lib/ocrV2/fusion/index.ts','src/app/lib/ocrV2/resolver/index.ts','src/app/lib/remittanceAttempt.ts','src/app/lib/remittanceMatching.ts']) {
-  const revision=file === 'src/app/lib/remittanceMatching.ts' ? '971688c96c5a7d0841b52cdbb38aa010cb2b9646' : file === 'src/app/lib/remittanceAttempt.ts' ? '2172396a0ab1269cb76974a9ac63ee8bd307c886':file==='src/app/lib/ocrV2/resolver/index.ts'?'68bc2b6056a993df51432400f0de02849c2bac0b':'c11d0a0';
+  const revision=file === 'src/app/lib/remittanceMatching.ts' ? '5e8f08ec8fecc99fdd47031c3e240c8f8c7154b2' : file === 'src/app/lib/remittanceAttempt.ts' ? '5e8f08ec8fecc99fdd47031c3e240c8f8c7154b2':file==='src/app/lib/ocrV2/resolver/index.ts'?'5e8f08ec8fecc99fdd47031c3e240c8f8c7154b2':'c11d0a0';
   assert.equal(fs.readFileSync(file,'utf8').replaceAll('\r\n','\n'),cp.execFileSync('git',['show',revision+':'+file],{encoding:'utf8'}).replaceAll('\r\n','\n'),file+' must remain frozen');
  }
  console.log('Phase 5B formatting, conflict, geometry, explicit authority, subtotal rejection, row isolation, header fields, leading zeros, bounded passes and frozen business/invoice contracts passed.');
