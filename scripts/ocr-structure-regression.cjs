@@ -11,7 +11,7 @@ function compile(source, bindings = {}) {
 const structure = compile(fs.readFileSync('src/app/lib/ocrStructure.ts', 'utf8'));
 const matching = compile(fs.readFileSync('src/app/lib/remittanceMatching.ts', 'utf8'));
 const routeText = fs.readFileSync('src/app/api/payments/extract-check-stub/route.ts', 'utf8');
-const route = compile(routeText.replace(/import[\s\S]*?from\s+"[^"]+";/g, '') + '\nexports.test = { buildStructuredRowEvidence, sameBandAmountCandidates, mergeStructuredAmountCandidates, unresolvedOcrRow, hasTargetableStructure, documentHeaderObservations };', { ...require('../src/app/lib/money.ts'), ...structure, ...matching });
+const route = compile(routeText.replace(/import[\s\S]*?from\s+"[^"]+";/g, '') + '\nexports.test = { buildStructuredRowEvidence, sameBandAmountCandidates, mergeStructuredAmountCandidates, unresolvedOcrRow, hasTargetableStructure, documentHeaderObservations };', { ...require('../src/app/lib/money.ts'), ...require('../src/app/lib/documentFields/rowAmountOwnership.ts'), ...require('../src/app/lib/documentFields/tableHeaderOwnership.ts'), ...structure, ...matching });
 const box = (y, x0 = 100, x1 = 180) => ({ x0, x1, y0: y - 8, y1: y + 8 });
 const word = (text, y, region = 'document', confidence = 90, bbox = box(y)) => ({ text, confidence, bbox, region, variant: 'grayscale', pageMode: 'sparse', rotation: 0 });
 const numbers = ['0513','0514','0515','0518','0519'];

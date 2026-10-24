@@ -1,7 +1,9 @@
+import {ownedRowAmountRegions,ownedRowAmountConsensus,type OwnedAmountProof} from '../../../lib/documentFields/rowAmountOwnership.ts';
+import {measuredTableHeader} from "../../../lib/documentFields/tableHeaderOwnership.ts";
 import {createHash} from 'node:crypto';
 import {compareOpticalViews} from '../../../lib/documentFields/opticalViews.ts';
 import { detectDocumentGeometry, rectifyDocument } from "../../../lib/documentFields/documentGeometry.ts";
-import { paymentHeaderLine, paymentHeaderPixelFields, propertyRowRegions, prepareOwnedPaymentField, withoutMicrBandText } from "../../../lib/documentFields/paymentHeaderLine.ts";
+import { paymentHeaderLine, paymentHeaderPixelFields, paymentHeaderFields, propertyRowRegions, prepareOwnedPaymentField, withoutMicrBandText } from "../../../lib/documentFields/paymentHeaderLine.ts";
 import { sumMoney as canonicalSumMoney } from "../../../lib/money.ts";
 import { moneyFixed, moneyCents, multiplyMoney } from "../../../lib/money.ts";
 import { ocrRuntimeCache } from '../../../lib/ocrRuntimeCache';
@@ -90,6 +92,7 @@ type OcrAttempt = {
 };
 
 type OcrImageSource = {
+  ownedRowId?:string;
   prepared?: FaintPreparation;
   name: string;
   image: Buffer;
@@ -158,6 +161,7 @@ type CaptureSourceFailure = {
 };
 
 type OcrWord = {
+  ownedAmount?:OwnedAmountProof;
   text: string;
   confidence: number;
   bbox: {
@@ -1072,6 +1076,9 @@ function scoreGeometryRow(text: string) {
 }
 
 function reconstructRowsFromOcrGeometry(words: OcrWord[]): GeometricRow[] {
+  const tableHeader=measuredTableHeader(words);
+  if(tableHeader)words=words.filter(w=>wordCenterY(w)>tableHeader.slope*(w.bbox.x0+w.bbox.x1)/2+tableHeader.intercept+tableHeader.font*.45);
+
   const usefulWords = words
     .filter((word) => {
       const text = normalizeGeometryToken(word.text);
@@ -1656,6 +1663,7 @@ function buildStructuredRowEvidence(
         documentWidth
       );
       const sameBandWords = assignedWords;
+      const ownedAmount=ownedRowAmountConsensus(assignedWords,'ocr-row-'+(index+1));
       const amountCandidates = mergeStructuredAmountCandidates(
         geometryAmountCandidates(row),
         sameBandAmountCandidates(row, assignedWords)
@@ -1667,7 +1675,7 @@ function buildStructuredRowEvidence(
           value: candidate.value,
           score: candidate.score,
           confidence: candidate.confidence,
-          selected: candidate.selected,
+          selected: ownedAmount.conflict?false:ownedAmount.value!==null?moneyCents(candidate.value)===moneyCents(ownedAmount.value):candidate.selected,
           bbox: candidate.bbox,
         }));
       const rawInvoiceTokens = Array.from(
@@ -2225,6 +2233,10 @@ async function recognizeBestText(
           spec,
           rotation
         );
+        if(source.ownedRowId){
+          const proof:OwnedAmountProof={canonicalHash:createHash('sha256').update(originalImage).digest('hex'),normalizedHash:createHash('sha256').update(sources.document.image).digest('hex'),cropHash:createHash('sha256').update(image).digest('hex'),rowId:source.ownedRowId,bounds:source.bounds};
+          words.forEach(word=>{word.ownedAmount=proof;});
+        }
         const attempt = {
           region: source.name,
           variant: spec.variant,
@@ -2279,7 +2291,9 @@ async function recognizeBestText(
       await runAttemptsForSource(headerSource, FAINT_VARIANTS.map(variant => ({ variant, pageMode: { name: 'single-line', value: Tesseract.PSM.SINGLE_LINE } })), [0]);
     }
     const fieldBounds = await paymentHeaderPixelFields(sources.document.image,attempts.filter(a => a.region === 'full-document' || a.region === 'payment-header-line').flatMap(a => a.words), firstInvoiceTop, sources.document.width!, sources.document.height!);
-    for (const [index, bounds] of fieldBounds.entries()) {
+        let headerFollowed=false;
+    for(let index=0;index<fieldBounds.length;index++) {
+      const bounds=fieldBounds[index];
       const image = await cropImageRegion(sources.document.image, bounds);
       const prepared = await prepareOwnedPaymentField(image);
       const source: OcrImageSource = { name: 'payment-header-field-' + index, image: prepared.color, width: prepared.bounds.width, height: prepared.bounds.height, bounds: { ...prepared.bounds, left: bounds.left + prepared.bounds.left, top: bounds.top + prepared.bounds.top }, prepared };
@@ -2288,6 +2302,11 @@ async function recognizeBestText(
         const scaled=await prepareOwnedPaymentField(image,scale);
         const scaledSource:OcrImageSource={...source,name:source.name+'-scale-'+scale,image:scaled.color,prepared:scaled};
         await runAttemptsForSource(scaledSource,[{variant:'native-color',pageMode:{name:'single-line',value:Tesseract.PSM.SINGLE_LINE}}],[0]);
+      }
+      if(index===fieldBounds.length-1&&!headerFollowed){
+        headerFollowed=true;
+        const seed=attempts.filter(a=>a.region.startsWith('payment-header-field-')).flatMap(a=>a.words);
+        fieldBounds.push(...paymentHeaderFields(seed,firstInvoiceTop,sources.document.width!,sources.document.height!).filter(b=>!fieldBounds.some(q=>JSON.stringify(q)===JSON.stringify(b))).slice(0,12));
       }
     }
     if (!selectRepeatedPropertyIdentity(attempts, headerEvidenceRows).value) {
@@ -2485,6 +2504,14 @@ async function recognizeBestText(
       attempts,
       documentWidth
     );
+    for(const cell of ownedRowAmountRegions(structuredRowEvidence,attempts.filter(a=>a.region==='full-document').flatMap(a=>a.words),documentWidth,documentHeight)){
+      const image=await cropImageRegion(sources.document.image,cell.bounds),prepared=await prepareOwnedPaymentField(image);
+      const source:OcrImageSource={name:'payment-row-amount-'+cell.rowId,ownedRowId:cell.rowId,image:prepared.color,width:cell.bounds.width,height:cell.bounds.height,bounds:cell.bounds,prepared};
+      await runAttemptsForSource(source,FAINT_VARIANTS.map(variant=>({variant,pageMode:{name:'single-line',value:Tesseract.PSM.SINGLE_LINE}})),[0]);
+      const scale2=await prepareOwnedPaymentField(image,2);
+      await runAttemptsForSource({...source,name:source.name+'-scale-2',image:scale2.color,prepared:scale2},[{variant:'native-color',pageMode:{name:'single-line',value:Tesseract.PSM.SINGLE_LINE}}],[0]);
+    }
+    structuredRowEvidence=buildStructuredRowEvidence(geometricRows,attempts,documentWidth);
     const headerEvidence = selectRemittanceHeaderEvidence(documentHeaderObservations(attempts).map((attempt) => ({ ...attempt, text: withoutMicrBandText(attempt.text) })), structuredRowEvidence);
     const explicitDocumentTotalEvidence = headerEvidence.evidence;
     const explicitDocumentTotal = explicitDocumentTotalEvidence?.amount ?? 0;
@@ -3315,7 +3342,7 @@ async function runExtraction(request: Request) {
         if(opticallyComplete(alternate)&&compatibility.compatible)ocrResult=alternate;
         if(!compatibility.compatible){ocrResult={...native,diagnostics:{...native.diagnostics,opticalViewConflict:compatibility.conflicts}};}
 
-        ocrResult.diagnostics.recognitionViews={nativeComplete:opticallyComplete(native),rectifiedComplete:opticallyComplete(alternate),selected:ocrResult.diagnostics.recognitionView,alternateHeader:selectObservedHeader(documentHeaderObservations(alternate.rawPasses),alternate.structuredRowEvidence)};
+        ocrResult.diagnostics.recognitionViews={nativeComplete:opticallyComplete(native),rectifiedComplete:opticallyComplete(alternate),selected:ocrResult.diagnostics.recognitionView,alternateHeader:selectObservedHeader(documentHeaderObservations(alternate.rawPasses),alternate.structuredRowEvidence),alternateRows:alternate.structuredRowEvidence,alternateDiagnostics:{normalizedHash:alternate.diagnostics.normalizedHash,documentGeometry:alternate.diagnostics.documentGeometry}};
       } catch(error) { ocrResult.diagnostics.recognitionViews={nativeComplete:false,rectifiedFailure:error instanceof Error?error.message:String(error)}; }
     }
     const rawText = ocrResult.text;

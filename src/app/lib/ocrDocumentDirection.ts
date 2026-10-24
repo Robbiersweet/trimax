@@ -22,7 +22,7 @@ async function bounded<T>(promise:Promise<T>,ms:number,message:string){let timer
 /** Shared optical preparation only. No invoice resolution or payment decisions.
  * V2 retains its page-preview inputs and complete-comparison acceptance contract.
  * Legacy samples bounded text bands to avoid segmenting the photographed desk. */
-export async function selectDocumentDirection(input:Buffer,options:{sampling:'text-bands'|'page-preview';requireAll?:boolean},factory?:()=>Promise<DirectionWorker>){
+export async function selectDocumentDirection(input:Buffer,options:{sampling:'text-bands'|'page-preview';requireAll?:boolean;requireStructuredAnchors?:boolean},factory?:()=>Promise<DirectionWorker>){
   const start=performance.now(),startedAt=new Date().toISOString(),timings=costs();
   const measured=async<T>(key:keyof Costs,fn:()=>Promise<T>,local?:Costs)=>{const t=performance.now();try{return await fn();}finally{const ms=performance.now()-t;timings[key]+=ms;if(local)local[key]+=ms;}};
   const prepared=await measured('imageProcessingMs',async()=>{
@@ -58,6 +58,14 @@ export async function selectDocumentDirection(input:Buffer,options:{sampling:'te
         await measured('scoringMs',async()=>{
           Object.assign(o,directionEvidence(result.data));o.rawText=result.data.text;
           o.signals={headers:(o.rawText.match(/\b(invoice|amount|date|total|property|account|description|check)\b/gi)??[]).length,money:(o.rawText.match(/\b\d[\d,]*\.\d{2}\b/g)??[]).length,dates:(o.rawText.match(/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/g)??[]).length};
+          if(options.requireStructuredAnchors){
+            const invoices=(o.rawText.match(/(?:\b[I1L|]?NV(?:OICE)?[.#:-]?\s*[0-9OSIl|]{3,8}\b)/gi)??[]).length;
+            const dates=[...o.rawText.matchAll(/\b(\d{1,2})[/-](\d{1,2})[/-](\d{2}|\d{4})\b/g)].filter(m=>Number(m[1])>=1&&Number(m[1])<=12&&Number(m[2])>=1&&Number(m[2])<=31).length;
+            const anchored=invoices>=1&&dates>=1||o.signals.headers>=2&&(o.signals.money>=1||dates>=1);
+            o.credible=anchored&&o.words>=2&&o.lines>=1;
+            o.score+=Math.min(invoices,4)*25+Math.min(dates,4)*25;
+          }
+
         },o.costs);
         o.status='completed';
       }catch(error){o.status=error instanceof DirectionTimeout?'timed-out':'errored';o.error=error instanceof Error?error.message:String(error);await release(o.costs);}

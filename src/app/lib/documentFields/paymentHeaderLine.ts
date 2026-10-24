@@ -1,6 +1,7 @@
 import sharp from 'sharp';
 import type { FaintPreparation } from '../ocrFaint.ts';
 import {textComponents} from './visualComponents.ts';
+import {detectDocumentGeometry,documentEdgeMargin} from './documentGeometry.ts';
 /** Optical localization only. No monetary normalization or invoice data. */
 type Word = { text: string; confidence: number; bbox: { x0: number; y0: number; x1: number; y1: number } };
 const median = (values: number[]) => values.slice().sort((a,b) => a-b)[Math.floor(values.length/2)];
@@ -26,12 +27,13 @@ export async function prepareOwnedPaymentField(input:Buffer,requestedScale?:numb
 }
 export function paymentHeaderFields(words:Word[],firstInvoiceTop:number,width:number,height:number){
   const before=words.filter(w=>w.bbox.y1<firstInvoiceTop&&w.confidence>=0),out:Array<{left:number;top:number;width:number;height:number}>=[];
-  for(const anchor of before.filter(w=>fieldLabel(w.text)&&/[:#&¥.]/.test(w.text)).sort((a,b)=>Number(/[:#&¥]\s*\$?\s*\d/.test(b.text))-Number(/[:#&¥]\s*\$?\s*\d/.test(a.text)))){
+  for(const anchor of before.filter(w=>fieldLabel(w.text)&&(/[:#&¥.]/.test(w.text)||/^(?:DATE|CK|CHK|CHECK|TOTAL)$/i.test(w.text.trim()))).sort((a,b)=>Number(/[:#&¥]\s*\$?\s*\d/.test(b.text))-Number(/[:#&¥]\s*\$?\s*\d/.test(a.text)))){
     const h=anchor.bbox.y1-anchor.bbox.y0;
     if(!(h>0))continue;
     const rightWords=before.filter(w=>w!==anchor&&w.bbox.x0>=anchor.bbox.x1-2&&w.bbox.x0-anchor.bbox.x1<h*18&&Math.abs((w.bbox.y0+w.bbox.y1-anchor.bbox.y0-anchor.bbox.y1)/2)<h*.7).sort((a,b)=>a.bbox.x0-b.bbox.x0);
-    const stop=rightWords.find(w=>fieldLabel(w.text)||/^(?:BANK|ROUTING|ACCOUNT)\s*:/i.test(w.text));
-    const values=/[:#&¥]\s*\$?\s*\d/.test(anchor.text)?[]:rightWords.filter(w=>(!stop||w.bbox.x0<stop.bbox.x0)&&/^[\d$.,/\s*:+%-]+$/.test(w.text));
+    const stop=rightWords.find(w=>/^(?:DATE|CK|CHK|CHECK|TOTAL)(?:\s*[:#]|$)/i.test(w.text.trim())||/^(?:BANK|ROUTING|ACCOUNT|PAYEE|PAYOR)(?:\s*[:#]|\b)/i.test(w.text));
+    let values=/[:#&¥]\s*\$?\s*\d/.test(anchor.text)?[]:rightWords.filter(w=>!stop||w.bbox.x0<stop.bbox.x0);
+    if(/^DATE(?:[:#]|$)/i.test(anchor.text)){const complete=values.findIndex(w=>/^\d{1,2}[/-]\d{1,2}[/-]\d{4}$/.test(w.text.trim()));if(complete>=0)values=values.slice(0,complete+1);else if(!/\d/.test(anchor.text))continue;}
     const pieces=[anchor,...values],left=Math.max(0,Math.floor(anchor.bbox.x0-h*.25)),top=Math.max(0,Math.floor(Math.min(...pieces.map(w=>w.bbox.y0))-h*.25));
     const right=Math.min(width,Math.ceil(Math.max(...pieces.map(w=>w.bbox.x1))+h*.25)),bottom=Math.min(height,Math.ceil(Math.max(...pieces.map(w=>w.bbox.y1))+h*.25));
     const bounds={left,top,width:right-left,height:bottom-top};
@@ -56,7 +58,29 @@ export async function paymentHeaderPixelFields(image:Buffer,words:Word[],firstIn
       if(bottom-top<bounds.height*.9&&bottom>top)out.push({...bounds,top,height:bottom-top});
     }
   }
-  return out.slice(0,20);
+  // Page OCR can miss every header label. Physical glyph baselines remain a
+  // localization source; labels and values are still required after rereading.
+  if(Number.isFinite(firstInvoiceTop)){
+    const geometry=await detectDocumentGeometry(image),margin=documentEdgeMargin(width,height),paper=geometry.bounds;
+    const components=pixels.components.map(c=>({left:c.left*pixels.scaleX,top:c.top*pixels.scaleY,width:c.width*pixels.scaleX,height:c.height*pixels.scaleY})).filter(c=>c.top+c.height<firstInvoiceTop&&(!geometry.reliable||(c.left>=paper.left-margin&&c.left+c.width<=paper.left+paper.width+margin&&c.top>=paper.top-margin)));
+    const heights=components.map(c=>c.height).sort((a,b)=>a-b),glyph=heights[Math.floor(heights.length*.85)],lines:Array<typeof components>=[];
+    const slope=geometry.reliable?Math.tan(geometry.angle*Math.PI/180):0;
+    const baseline=(c:typeof components[number])=>c.top+c.height/2-slope*(c.left+c.width/2);
+    for(const c of components.filter(c=>glyph>0&&c.height>=glyph*.2&&c.height<=glyph*1.8).sort((a,b)=>baseline(a)-baseline(b))){
+      const line=lines.find(l=>Math.abs(median(l.map(baseline))-baseline(c))<glyph*.75);if(line)line.push(c);else lines.push([c]);
+    }
+    for(const line of lines){
+      const clusters:Array<typeof components>=[];
+      for(const c of line.sort((a,b)=>a.left-b.left)){const cluster=clusters.at(-1),last=cluster?.at(-1);if(last&&c.left-last.left-last.width<=glyph*1.3)cluster!.push(c);else clusters.push([c]);}
+      for(const cluster of clusters.filter(c=>c.length>=2)){
+        const pad=glyph*.35,left=Math.max(0,Math.floor(Math.min(...cluster.map(c=>c.left))-pad)),top=Math.max(0,Math.floor(Math.min(...cluster.map(c=>c.top))-pad));
+        const right=Math.min(width,Math.ceil(Math.max(...cluster.map(c=>c.left+c.width))+pad)),bottom=Math.min(firstInvoiceTop,height,Math.ceil(Math.max(...cluster.map(c=>c.top+c.height))+pad));
+        if(right-left<glyph*1.25||bottom<=top||out.some(b=>Math.abs(b.left-left)<glyph&&Math.abs(b.top-top)<glyph&&Math.abs(b.width-(right-left))<glyph))continue;
+        out.push({left,top,width:right-left,height:bottom-top});
+      }
+    }
+  }
+  return out.slice(0,40);
 }
 export function propertyRowRegions(words:Word[],rows:Array<{y?:number;height?:number}>,width:number,height:number){
   const pairs=words.filter(w=>/^property$/i.test(w.text)).flatMap(property=>{

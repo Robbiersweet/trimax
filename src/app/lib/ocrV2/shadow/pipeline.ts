@@ -40,10 +40,10 @@ export function invoiceCell(model: DocumentSemanticModel, row: Bounds, width: nu
 }
 
 export async function runShadowPipeline(original: Buffer, input: ShadowInput,
-  recognize: (crops: InvoiceCrop[], documentId: string, sourceHash: string, moneyCrops: MoneyCrop[], organizationCrops: OrganizationCrop[]) => Promise<ModelBatch>) {
+  recognize: (crops: InvoiceCrop[], documentId: string, sourceHash: string, moneyCrops: MoneyCrop[], organizationCrops: OrganizationCrop[]) => Promise<ModelBatch>, view:'rectified'|'native-paper'='rectified') {
   assertUnverifiedInput(input);
   if (hash(original) !== input.sourceImageHash) throw Error('Canonical capture hash mismatch');
-  const started = performance.now(), normalized = await normalizeDocument(original);
+  const started = performance.now(), normalized = await normalizeDocument(original,view);
   const sourceHash = hash(normalized.documentColor), ledger = new EvidenceLedger(input.attemptId, input.attemptId, sourceHash);
   const semantics = await recognizeSemanticPage(normalized.documentColor, ledger, [], normalized.variants['local-contrast']), model = semantics.model;
   const preparedMoney = await prepareMoneyFields(normalized.documentColor, model, semantics.observations, ledger);
@@ -106,7 +106,7 @@ export async function runShadowPipeline(original: Buffer, input: ShadowInput,
   }
   let localizedMetadata=await recognizeLocalizedPaymentMetadata(normalized.documentColor,semantics.observations.flatMap(o=>o.words.map(w=>({text:w.text,confidence:w.confidence,bbox:{x0:w.bounds.left,y0:w.bounds.top,x1:w.bounds.left+w.bounds.width,y1:w.bounds.top+w.bounds.height}}))),Math.min(...model.table.rows.map(r=>r.bounds.top)));
   const metadataViews:Array<unknown>=[{normalization:normalized.evidence,metadata:localizedMetadata}];
-  if(!localizedMetadata.checkDate||!localizedMetadata.checkNumber){
+  if(view!=='native-paper'&&(!localizedMetadata.checkDate||!localizedMetadata.checkNumber)){
     const native=await normalizeDocument(original,'native-paper'),nativeHash=hash(native.documentColor),nativeLedger=new EvidenceLedger(input.attemptId,input.attemptId,nativeHash);
     const nativeSemantics=await recognizeSemanticPage(native.documentColor,nativeLedger,[],native.variants['local-contrast']);
     const alternate=await recognizeLocalizedPaymentMetadata(native.documentColor,nativeSemantics.observations.flatMap(o=>o.words.map(w=>({text:w.text,confidence:w.confidence,bbox:{x0:w.bounds.left,y0:w.bounds.top,x1:w.bounds.left+w.bounds.width,y1:w.bounds.top+w.bounds.height}}))),Math.min(...nativeSemantics.model.table.rows.map(r=>r.bounds.top)));

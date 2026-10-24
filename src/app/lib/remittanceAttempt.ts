@@ -151,7 +151,7 @@ export function selectObservedHeader(passes: OcrPass[], rows: StructuredRemittan
     for (const line of pass.text.split(/\r?\n/)) {
       if (/\b[I1L|]?NV/i.test(line) && !/\b(?:CHECK|CK#|TOTAL)\b/i.test(line)) continue;
       const date = line.match(/\b(?:CHECK\s+DATE|PAYMENT\s+DATE|DATE)\s*[:#]?\s*(\d{4}[/-]\d{1,2}[/-]\d{1,2}|\d{1,2}[/-]\d{1,2}[/-](?:\d{4}|\d{2}))(?![\p{L}\p{N}])/iu);
-      if (date) { const parsed = parseCheckDate(date[1]); if (parsed) dates.add(parsed); }
+      if (date && (pass.confidence ?? 0) >= 70) { const parsed = parseCheckDate(date[1]); if (parsed) dates.add(parsed); }
       const payor = line.match(/^\s*(?:PAYOR|CUSTOMER|PROPERTY)\s*:\s*(.+)$/i);
       if (payor) payors.add(payor[1].trim());
     }

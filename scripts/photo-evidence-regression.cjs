@@ -1,13 +1,24 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- Synthetic adversarial evidence, never production truth. */
 const assert=require('node:assert/strict'),sharp=require('sharp');
 const {withoutMicrBandText,paymentHeaderFields,prepareOwnedPaymentField}=require('../src/app/lib/documentFields/paymentHeaderLine.ts');
-const {normalizedPaymentMetadata,paymentMetadataConsensus,combinePaymentMetadataViews,resolvePaymentMetadataField}=require('../src/app/lib/documentFields/paymentMetadata.ts');
+const {normalizedPaymentMetadata,paymentMetadataConsensus,splitPaymentMetadataObservations,combinePaymentMetadataViews,resolvePaymentMetadataField}=require('../src/app/lib/documentFields/paymentMetadata.ts');
 const {compareOpticalViews}=require('../src/app/lib/documentFields/opticalViews.ts');
+const {ownedRowAmountRegions,ownedRowAmountConsensus}=require('../src/app/lib/documentFields/rowAmountOwnership.ts');
+const {measuredTableHeader}=require('../src/app/lib/documentFields/tableHeaderOwnership.ts');
+const {selectDocumentDirection}=require('../src/app/lib/ocrDocumentDirection.ts');
 const {rankRowAmounts}=require('../src/app/lib/ocrStructure.ts');
 const {selectObservedHeader}=require('../src/app/lib/remittanceAttempt.ts');
 const {selectRemittanceHeaderEvidence}=require('../src/app/lib/remittanceMatching.ts');
 assert.equal(withoutMicrBandText('DATE:11/03/2027 CK#:1942 TOTAL:$7,389.24 BANK:example'),'DATE:11/03/2027 CK#:1942 TOTAL:$7,389.24');
 assert.equal(withoutMicrBandText('⑆123456789⑆ 1234567890'),'');
+const amountWord=(text,variant='gray',confidence=95)=>({text,confidence,region:'payment-row-amount-r1',variant,pageMode:'single-line',ownedAmount:{canonicalHash:'a'.repeat(64),normalizedHash:'b'.repeat(64),cropHash:(variant==='gray'?'c':'d').repeat(64),rowId:'r1',bounds:{left:1,top:1,width:60,height:20}}});
+assert.equal(ownedRowAmountConsensus([amountWord('73.89'),amountWord('73.89','native')],'r1').value,73.89);
+assert.equal(ownedRowAmountConsensus([amountWord('73.89'),amountWord('73.88','native')],'r1').value,null,'Contradictory complete owned-cell evidence blocks selection');
+assert.equal(ownedRowAmountConsensus([amountWord('73.89'),{...amountWord('73.88','native'),region:'full-document'}],'r1').value,null,'A page observation cannot corroborate an owned cell');
+assert.equal(ownedRowAmountConsensus([amountWord('73.89'),{...amountWord('73.89','native'),ownedAmount:amountWord('73.89').ownedAmount}],'r1').value,null,'Different names cannot double-count identical prepared pixels');
+assert.equal(ownedRowAmountConsensus([amountWord('73.89'),amountWord('73.89','native')],'other-row').value,null,'Wrong row ownership cannot establish amount');
+const regions=ownedRowAmountRegions([{rowId:'r1',y:80,height:20,amountCandidates:[{raw:'73.88',bbox:{x0:280,y0:70,x1:330,y1:90}}]},{rowId:'r2',y:105,height:20,amountCandidates:[]}],[{text:'Amount',confidence:95,bbox:{x0:270,y0:30,x1:330,y1:50}},{text:'Invoice',confidence:95,bbox:{x0:130,y0:30,x1:190,y1:50}},{text:'Property',confidence:95,bbox:{x0:10,y0:30,x1:70,y1:50}}],400,200);
+assert.equal(regions.length,1);assert(regions[0].bounds.top<=64&&regions[0].bounds.top+regions[0].bounds.height<=92,'Font-relative margin remains inside neighboring row midlines');
 const pass=(text,variant='gray')=>({text,region:'full-document',variant,pageMode:'sparse-text',words:[],confidence:90});
 assert.equal(selectRemittanceHeaderEvidence([pass('CK#:1942 TOTAL:$73.89'),pass('2027','binary')]).checkNumber,'1942');
 assert.equal(selectRemittanceHeaderEvidence([pass('CK#:194¢')]).checkNumber,'','Never accept a numeric prefix from a corrupt complete check token');
@@ -15,6 +26,7 @@ assert.equal(selectRemittanceHeaderEvidence([pass('2027')]).checkNumber,'','A ye
 assert.equal(selectRemittanceHeaderEvidence([pass('CK#:1942\nCK#:1842'),pass('CK#:1942\nCK#:1842','binary')]).checkNumber,'');
 const ranked=rankRowAmounts([{raw:'73.88',value:73.88,score:150,confidence:25},{raw:'73.89',value:73.89,score:50,confidence:95}]);
 assert.equal(ranked[0].value,73.89,'Repeated reconstructed low-confidence text cannot outrank a strong complete physical amount');
+assert.equal(selectObservedHeader([{...pass('DATE:11/03/2027'),confidence:31}],[]).checkDate,null,'A solitary low-confidence page date is provisional rather than accepted identity');
 assert.equal(selectObservedHeader([],[]).documentTotal,null,'Arithmetic cannot invent document total authority');
 assert.deepEqual(normalizedPaymentMetadata('DATE:11/03/2027'),{field:'checkDate',value:'2027-11-03'});
 for(const text of ['DATE:11/03/202¢','DATE:02/29/2027','CK#:194¢','CK#:19O2','TOTAL:$73.89'])assert.equal(normalizedPaymentMetadata(text),null);
@@ -22,6 +34,12 @@ assert.deepEqual(normalizedPaymentMetadata('CK§:1942'),{field:'checkNumber',val
 const observed=(value,variant)=>({id:variant,sourceHash:'a'.repeat(64),cropHash:variant,bounds:{left:1,top:1,width:100,height:20},variant,raw:'CK#:'+value,confidence:90,field:'checkNumber',value});
 assert.equal(paymentMetadataConsensus([observed('1942','native'),observed('1942','gray')]).checkNumber,'1942');
 assert.equal(paymentMetadataConsensus([observed('1942','native'),observed('1842','gray')]).checkNumber,null);
+const split=(raw,x,y,variant)=>({...observed(null,variant),raw,field:null,value:null,bounds:{left:x,top:y,width:raw.length*10,height:20}});
+const splitSources=[split('CK#',10,10,'label-native'),split('CK#',10,10,'label-gray'),split('1942',50,12,'value-native'),split('1942',50,12,'value-gray')];
+assert.equal(paymentMetadataConsensus(splitPaymentMetadataObservations(splitSources)).checkNumber,'1942','Exact adjacent labelled cells retain source identity when joined line OCR is degraded');
+assert.equal(splitPaymentMetadataObservations([...splitSources.slice(0,2),split('1942',50,70,'different-line')]).length,0,'An unrelated invoice/account row cannot supply header digits');
+assert.equal(paymentMetadataConsensus(splitPaymentMetadataObservations([...splitSources,split('1842',50,12,'competing-value')])).checkNumber,null,'Strong adjacent value conflicts remain blocked');
+assert.equal(splitPaymentMetadataObservations([...splitSources.slice(0,2),{...splitSources[2],sourceHash:'b'.repeat(64)}]).length,0,'Never join different normalized sources');
 const conflict=combinePaymentMetadataViews({checkNumber:'1942',checkDate:null,conflicts:{checkNumber:false,checkDate:false}},{checkNumber:'1842',checkDate:null,conflicts:{checkNumber:false,checkDate:false}});
 assert.equal(resolvePaymentMetadataField(conflict,'checkNumber',['1942']),null,'Page fallback must not erase a localized cross-view conflict');
 const row=(amount)=>({rowId:'row',normalizedInvoiceCandidates:['INV-1942'],amountCandidates:[{raw:amount.toFixed(2),value:amount,confidence:95,selected:true}]});
@@ -35,9 +53,19 @@ const withInvoice=(number)=>({...view(73.89),rows:[{...row(73.89),invoiceEvidenc
 assert(!compareOpticalViews(withInvoice('INV-1942'),withInvoice('INV-1842')).compatible,'Disjoint strong invoice identities cannot silently replace one another');
 assert.throws(()=>compareOpticalViews(view(73.89),{...view(73.89),canonicalHash:'c'.repeat(64)}),/binding/);
 (async()=>{
+ const caption=(text,x,y=100)=>({text,confidence:95,bbox:{x0:x,y0:y,x1:x+60,y1:y+15}});
+ const table=measuredTableHeader([caption('Property',5),caption('Invoice',150),caption('Amount',300),caption('TOTAL:73.89',300,20)]);
+ assert(table&&table.intercept>=100&&table.intercept<=120,'Table header derives from measured column captions, never payment TOTAL');
+ assert.equal(measuredTableHeader([caption('Invoice',150),caption('Amount',300)]),null,'Two unrelated words do not establish table ownership');
  const image=await sharp({create:{width:320,height:40,channels:3,background:'white'}}).png().toBuffer(),prepared=await prepareOwnedPaymentField(image);
  assert.deepEqual(prepared.bounds,{left:0,top:0,width:320,height:40},'Owned field preserves every source pixel');
  const words=[{text:'DAIE:11/03/2027',confidence:0,bbox:{x0:10,y0:10,x1:180,y1:30}},{text:'TOIAL:$73.89',confidence:0,bbox:{x0:200,y0:10,x1:310,y1:30}}];
  assert(paymentHeaderFields(words,100,320,100).length>=2,'Imperfect labels localize actual pixels without repairing any value');
+ const doc=(text,names)=>({text,blocks:[{paragraphs:[{lines:names.map((line,y)=>({words:line.map((text,x)=>({text,confidence:90,bbox:{x0:x*150,y0:y*30,x1:x*150+130,y1:y*30+20}}))}))}]}]});
+ const upright=doc('North Creek Apartmen Paint Service INV0529 - 08/19/2027 INV0528 - 08/19/2027',[['North','Creek','Apartmen'],['Paint','Service']]);
+ const inverted=doc('apartment gibberish service woods blurred lines',[['apartment','gibberish'],['service','woods'],['blurred','lines']]);
+ let turn=0;const oriented=await selectDocumentDirection(image,{sampling:'page-preview',requireAll:true,requireStructuredAnchors:true},async()=>({setParameters:async()=>{},terminate:async()=>{},recognize:async()=>({data:[upright,doc('',[]),inverted,doc('',[])][turn++]})}));
+ assert.equal(oriented.rotation,0,'Measured invoice/date anchors beat a generic-word-count upside-down false positive');
+ assert.equal(oriented.observations[2].credible,false);
  console.log('PASS dense-header/MICR ownership, complete check tokens, measured field crops, confidence ordering, exact metadata, source binding and conflicting optical views');
 })().catch(e=>{console.error(e);process.exitCode=1});
