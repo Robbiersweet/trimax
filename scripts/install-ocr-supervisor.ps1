@@ -13,11 +13,14 @@ foreach ($folder in @('ocr-legacy-worker','ocr-shadow-worker')) {
 # the named-pipe mutex makes minute/logon triggers idempotent.
 $launcherPath=Join-Path $resolvedRuntime 'scripts/start-ocr-supervisor.ps1'
 $action=New-ScheduledTaskAction -Execute (Get-Command powershell.exe).Source -Argument "-NoProfile -NonInteractive -WindowStyle Hidden -File `"$launcherPath`" -PrivateRoot `"$resolvedPrivate`"" -WorkingDirectory $resolvedRuntime
-$startup=New-ScheduledTaskTrigger -AtLogOn -User ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name)
+$startup=New-ScheduledTaskTrigger -AtStartup
+$logon=New-ScheduledTaskTrigger -AtLogOn -User ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name)
 $repeat=New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 1)
 $settings=New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -MultipleInstances IgnoreNew -ExecutionTimeLimit ([TimeSpan]::Zero)
-$principal=New-ScheduledTaskPrincipal -UserId ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType Interactive -RunLevel Limited
-Register-ScheduledTask -TaskName 'Trimax OCR Supervisor' -Action $action -Trigger @($startup,$repeat) -Settings $settings -Principal $principal -Description 'Runs the sealed restricted OCR workers; database watchdog handles host downtime.' -Force | Out-Null
+# Same Windows user, no saved password or privilege elevation; boot/logoff recovery
+# cannot depend on an interactive desktop. Fail registration if S4U is unavailable.
+$principal=New-ScheduledTaskPrincipal -UserId ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType S4U -RunLevel Limited
+Register-ScheduledTask -TaskName 'Trimax OCR Supervisor' -Action $action -Trigger @($startup,$logon,$repeat) -Settings $settings -Principal $principal -Description 'Runs the sealed restricted OCR workers; database watchdog handles host downtime.' -Force | Out-Null
 $startedAt=(Get-Date).ToUniversalTime()
 Start-ScheduledTask -TaskName 'Trimax OCR Supervisor'
 $healthPath=Join-Path $resolvedPrivate 'ocr-supervisor/supervisor-health.json'

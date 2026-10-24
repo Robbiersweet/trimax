@@ -1,4 +1,4 @@
-// Release: guided-remittance-capture-20261020. Triggers the existing installed-PWA update flow.
+// Release: durable-remittance-jobs-20261023. Triggers the existing installed-PWA update flow.
 const DEFAULT_NOTIFICATION_URL = "/";
 
 self.addEventListener("install", () => {
