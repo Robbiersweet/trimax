@@ -30,9 +30,13 @@ function scoreFinancial(doc,engine,result){
  const actual=resolve(engine,result,retained.snapshot),expected=doc.truth.rows.map(r=>r.invoiceRecordId);
  const wrongClientIds=actual.eligibleIds.filter(id=>retained.snapshot.invoices.find(i=>i.id===id)?.customerName!==doc.truth.clientName);
  const correct=same(actual.ids,expected)&&same([...new Set(actual.eligibleIds)],expected);
+ const selectedAllocations=actual.ids.map(id=>{const invoice=retained.snapshot.invoices.find(i=>i.id===id),printed=doc.truth.rows.find(r=>r.invoiceRecordId===id);return {invoiceId:id,selectedCents:moneyCents(invoice.collectionAmountDue??invoice.invoiceAmount-invoice.amountPaid),printedCents:printed?.cents??null};});
+ const allocationsMatch=selectedAllocations.length===expected.length&&selectedAllocations.every(a=>a.selectedCents===a.printedCents);
+ const pipelineIds=actual.pipelineAutomaticInvoiceIds??[];
+ const pipelineSafe=engine==='legacy'||(actual.pipelineStatus==='automatic'?same(pipelineIds,expected):actual.pipelineStatus==='review-required'&&pipelineIds.length===0);
  const currentPaid=expected.every(id=>{const i=current.snapshot.invoices.find(i=>i.id===id);return i&&moneyCents(i.collectionAmountDue??i.invoiceAmount-i.amountPaid)===0;});
  const paidGuard=currentPaid?resolve(engine,result,current.snapshot):null;
- const fields={matchedInvoiceRecords:correct?'PASS':'FAIL',clientIsolation:wrongClientIds.length?'FAIL':'PASS',selectedTotal:actual.totalCents===doc.truth.total?'PASS':'FAIL',financialReconciliation:actual.totalCents===doc.truth.total&&actual.eligible?(actual.reviewRequired?'PASS_CORRECT_RECORDS_REVIEW_REQUIRED':'PASS'):'FAIL',alreadyPaidCollectibleGuard:!paidGuard||(!paidGuard.eligible&&!paidGuard.ids.some(id=>expected.includes(id)))?'PASS':'FAIL'};
- return {fields,financial:{snapshot:retained.source,currentSnapshot:current.source,...actual,wrongClientIds,currentPaidGuard:paidGuard,fingerprintScope:'Not available in isolated image replay; no fingerprint invented',paymentApplied:false}};
+ const fields={matchedInvoiceRecords:correct&&pipelineSafe?'PASS':'FAIL',clientIsolation:wrongClientIds.length?'FAIL':'PASS',selectedRowAmounts:allocationsMatch?'PASS':'FAIL',selectedTotal:actual.totalCents===doc.truth.total?'PASS':'FAIL',financialReconciliation:pipelineSafe&&actual.totalCents===doc.truth.total&&actual.eligible?(actual.reviewRequired?'PASS_CORRECT_RECORDS_REVIEW_REQUIRED':'PASS'):'FAIL',alreadyPaidCollectibleGuard:!paidGuard?'NOT_APPLICABLE_CURRENTLY_UNPAID':!paidGuard.eligible&&!paidGuard.ids.some(id=>expected.includes(id))?'PASS':'FAIL'};
+ return {fields,financial:{snapshot:retained.source,currentSnapshot:current.source,...actual,selectedAllocations,pipelineSafe,wrongClientIds,currentPaidGuard:paidGuard,fingerprintScope:'Not available in isolated image replay; no fingerprint invented',paymentApplied:false}};
 }
 module.exports={loadSnapshot,scoreFinancial};
