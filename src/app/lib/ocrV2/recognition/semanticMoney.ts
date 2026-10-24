@@ -1,3 +1,5 @@
+import {textComponents} from '../../documentFields/visualComponents.ts';
+import {glyphOwnedMoneyBounds} from '../../documentFields/moneyGlyphOwnership.ts';
 import { ocrRuntimeCache } from '../../ocrRuntimeCache.ts';
 /** Bounded optical money recognition. No invoice snapshot or expected values. */
 import sharp from 'sharp';
@@ -64,8 +66,10 @@ export async function recognizeSemanticMoney(image: Buffer, model: DocumentSeman
     && (l.left+l.width/2)*structure.scaleX <= amountRight
     && Math.max(0,Math.min((l.left+l.width)*structure.scaleX,amountRight)-Math.max(l.left*structure.scaleX,amountLeft)) > l.width*structure.scaleX/2) : [];
   const footer = footerCandidates.length === 1 ? footerCandidates[0] : null;
-  const totalBounds = totalLocalization.plausibleFields > 1 || totalLocalization.conflictingField ? undefined : totalLocalization.bounds ?? (footer ? { left: Math.max(0, Math.floor(footer.left * structure.scaleX - pad)), top: Math.max(last, Math.floor(footer.top * structure.scaleY - pad)),
+  const totalOwnershipBounds = totalLocalization.plausibleFields > 1 || totalLocalization.conflictingField ? undefined : totalLocalization.bounds ?? (footer ? { left: Math.max(0, Math.floor(footer.left * structure.scaleX - pad)), top: Math.max(last, Math.floor(footer.top * structure.scaleY - pad)),
     width: Math.ceil(footer.width * structure.scaleX + pad * 2), height: Math.ceil(footer.height * structure.scaleY + pad * 2) } : undefined);
+  const moneyInk=totalOwnershipBounds?await textComponents(image,3200,{retainPunctuationAndRules:true}):null;
+  const totalBounds=totalOwnershipBounds&&moneyInk?glyphOwnedMoneyBounds(totalOwnershipBounds,moneyInk.components,moneyInk.scaleX,moneyInk.scaleY,font):undefined;
   const worker = await createWorker('eng', OEM.LSTM_ONLY, { cachePath: ocrRuntimeCache(), logger: () => undefined });
   let passes = 0, reused = 0;
   const observations: PaymentObservation[] = [];
@@ -127,6 +131,6 @@ export async function recognizeSemanticMoney(image: Buffer, model: DocumentSeman
       else if (authority.subtotal !== null && authority.subtotal !== model.total.cents) { authority.cents = null; authority.reason = 'Observed row subtotal conflicts with established total'; }
       else if (authority.cents === null && !authority.headerValues.some(v => v !== model.total.cents) && !authority.supportedFooter.some(v => v.cents !== model.total.cents)) { authority.cents = model.total.cents; authority.reason = 'Preserved established semantic total authority'; }
     }
-    return { version: 'semantic-money-1', totalLocalization, regions, totalBounds, footerCandidateCount: footerCandidates.length, rows, authority, authorityInput: { layout, evidence, observations: [...headers, ...totals] }, observations, reused, passes, durationMs: performance.now()-started };
+    return { version: 'semantic-money-1', totalLocalization, regions, totalOwnershipBounds, totalBounds, footerCandidateCount: footerCandidates.length, rows, authority, authorityInput: { layout, evidence, observations: [...headers, ...totals] }, observations, reused, passes, durationMs: performance.now()-started };
   } finally { await worker.terminate(); }
 }

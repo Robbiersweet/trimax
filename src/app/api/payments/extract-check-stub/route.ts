@@ -1,5 +1,5 @@
 import {ownedRowAmountRegions,ownedRowAmountConsensus,type OwnedAmountProof} from '../../../lib/documentFields/rowAmountOwnership.ts';
-import {measuredTableHeader} from "../../../lib/documentFields/tableHeaderOwnership.ts";
+import {measuredTableHeader,measuredTableBodySupport} from "../../../lib/documentFields/tableHeaderOwnership.ts";
 import {createHash} from 'node:crypto';
 import {compareOpticalViews} from '../../../lib/documentFields/opticalViews.ts';
 import { detectDocumentGeometry, rectifyDocument } from "../../../lib/documentFields/documentGeometry.ts";
@@ -1378,6 +1378,7 @@ function geometryRowSetScore(
 
   return (
     candidateStructureScore(attempt) +
+    measuredTableBodySupport(rows,attempt.words)*200 +
     rows.length * 30 +
     acceptedRows.length * 85 +
     completeness +

@@ -5,7 +5,7 @@ const hash=b=>crypto.createHash('sha256').update(b).digest('hex');
 const textHash=file=>hash(fs.readFileSync(file,'utf8').replaceAll('\r\n','\n'));
 const privateRoot=process.env.TRIMAX_PHOTO_CORPUS_ROOT||path.join(process.env.LOCALAPPDATA||require('node:os').tmpdir(),'Trimax','photo-robustness-20261022');
 const corpus=require('../release/physical-photo-regression.json');
-function applicationHash(){const files=cp.execFileSync('git',['ls-files','src/app','scripts/release/recognizer-adapter.cjs','scripts/ocr-v2/dataset/recognize.py'],{encoding:'utf8'}).trim().split(/\r?\n/).sort();return hash(files.map(f=>f+'='+hash(fs.readFileSync(f).toString('utf8').replaceAll('\r\n','\n'))).join('\n'));}
+function applicationHash(){const files=cp.execFileSync('git',['ls-files','--cached','--others','--exclude-standard','src/app','scripts/release/recognizer-adapter.cjs','scripts/ocr-v2/dataset/recognize.py'],{encoding:'utf8'}).trim().split(/\r?\n/).sort();return hash(files.map(f=>f+'='+hash(fs.readFileSync(f).toString('utf8').replaceAll('\r\n','\n'))).join('\n'));}
 function score(doc,engine,result){
  const digits=s=>String(s).replace(/\D/g,'').replace(/^0+/,''), expected=doc.truth;
  let check,date,payor,total,rows;
@@ -53,9 +53,9 @@ async function variant(file,name,target){let s=sharp(file),m=await s.metadata();
    for(const engine of (process.argv.includes('--legacy-only')?['legacy']:['legacy','v2-shadow'])){
     jobs.push({capture:doc.id,variant:name,run:async()=>{
     const input=path.join(out,id+'-'+engine+'-input.json'),dir=path.join(out,id+'-'+engine);fs.writeFileSync(input,JSON.stringify({id,image:file,sha256,snapshot,engine}));
-    const r=await new Promise(resolve=>{const child=cp.spawn(process.execPath,['--experimental-strip-types','scripts/release/replay-document.cjs',input,dir],{windowsHide:true,stdio:['ignore','pipe','pipe']});let stdout='',stderr='';child.stdout.on('data',b=>{stdout=(stdout+b).slice(-4000000);});child.stderr.on('data',b=>{stderr=(stderr+b).slice(-4000000);});const timer=setTimeout(()=>child.kill(),900000);child.on('error',e=>{clearTimeout(timer);resolve({status:null,stdout,stderr:stderr+'\n'+e.message});});child.on('exit',status=>{clearTimeout(timer);resolve({status,stdout,stderr});});});fs.writeFileSync(dir+'.log',r.stdout+'\n'+r.stderr);
-    let result;try{if(r.status!==0)throw Error('Replay exit '+r.status);result=score({...doc,truth:{...doc.truth,payor:new RegExp(doc.truth.payorPattern,'i')}},engine,JSON.parse(fs.readFileSync(path.join(dir,'result.json'))).result);}catch(e){result={status:'FAIL',error:e.message};}
-    report.results.push({capture:doc.id,variant:name,engine,sha256,...result});save();console.log(JSON.stringify({capture:doc.id,variant:name,engine,...result}));if(process.argv.includes('--fail-fast')&&result.status==='FAIL'){stop=true;}
+    const replayStartedAt=Date.now();const r=await new Promise(resolve=>{const child=cp.spawn(process.execPath,['--experimental-strip-types','scripts/release/replay-document.cjs',input,dir],{windowsHide:true,stdio:['ignore','pipe','pipe']});let stdout='',stderr='';child.stdout.on('data',b=>{stdout=(stdout+b).slice(-4000000);});child.stderr.on('data',b=>{stderr=(stderr+b).slice(-4000000);});const timer=setTimeout(()=>child.kill(),900000);child.on('error',e=>{clearTimeout(timer);resolve({status:null,stdout,stderr:stderr+'\n'+e.message});});child.on('exit',status=>{clearTimeout(timer);resolve({status,stdout,stderr});});});fs.writeFileSync(dir+'.log',r.stdout+'\n'+r.stderr);
+    let result;try{if(r.status!==0)throw Error('Replay exit '+r.status);const evidence=JSON.parse(fs.readFileSync(path.join(dir,'result.json'))).result;result=score({...doc,truth:{...doc.truth,payor:new RegExp(doc.truth.payorPattern,'i')}},engine,evidence);result.processingStages=engine==='legacy'?(evidence.result?.diagnostics?.stageTimings??{}):(evidence.timings??{});}catch(e){result={status:'FAIL',error:e.message};}
+    report.results.push({capture:doc.id,variant:name,engine,sha256,processingDurationMs:Date.now()-replayStartedAt,...result});save();console.log(JSON.stringify({capture:doc.id,variant:name,engine,...result}));if(process.argv.includes('--fail-fast')&&result.status==='FAIL'){stop=true;}
     }});
    }
   }

@@ -1,7 +1,7 @@
 import sharp from "sharp";
 import type { TextComponent, TextBand } from "../ocrV2/layout/types.ts";
 export function median(values: number[]) { const sorted = values.slice().sort((a, b) => a - b); return sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0; }
-export async function textComponents(input: Buffer, maximumEdge = 3200, options: { minimumContrast?: number } = {}) {
+export async function textComponents(input: Buffer, maximumEdge = 3200, options: { minimumContrast?: number; retainPunctuationAndRules?:boolean } = {}) {
     const meta = await sharp(input).metadata(), sourceWidth = meta.width!, sourceHeight = meta.height!;
     const image = await sharp(input).flatten({ background: 'white' }).resize({ width: maximumEdge, height: maximumEdge, fit: 'inside', withoutEnlargement: true }).grayscale().blur(.5).raw().toBuffer({ resolveWithObject: true });
     const { width, height } = image.info;
@@ -40,7 +40,7 @@ export async function textComponents(input: Buffer, maximumEdge = 3200, options:
         }
         const w = x1 - x0 + 1, h = y1 - y0 + 1;
         // Glyph-scale components; long rules, page edges and large creases are not text.
-        if (h >= Math.max(3, height * .004) && h <= height * .09 && w >= 1 && w <= h * 5 && tail >= 5 && tail / (w * h) > .08 && x0 > 1 && y0 > 1 && x1 < width - 2 && y1 < height - 2)
+        if (h >= (options.retainPunctuationAndRules?1:Math.max(3, height * .004)) && h <= height * .09 && w >= 1 && (options.retainPunctuationAndRules||w <= h * 5) && tail >= (options.retainPunctuationAndRules?3:5) && tail / (w * h) > .08 && x0 > 1 && y0 > 1 && x1 < width - 2 && y1 < height - 2)
             components.push({ left: x0, top: y0, width: w, height: h, pixels: tail, centerY: (y0 + y1) / 2 });
     }
     return { components, width, height, sourceWidth, sourceHeight, scaleX: sourceWidth / width, scaleY: sourceHeight / height, threshold };

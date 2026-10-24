@@ -8,7 +8,7 @@ type Word={text:string;confidence:number;bbox:{x0:number;y0:number;x1:number;y1:
 export function normalizedPaymentMetadata(text:string):{field:'checkNumber'|'checkDate';value:string}|null{
   const check=text.trim().match(/^(?:CK|CHK|CHECK)(?:\s*(?:NO\.?|NUMBER))?\s*[^A-Za-z0-9\s]{1,5}\s*(\d{1,12})$/i);
   if(check)return {field:'checkNumber',value:check[1]};
-  const date=text.trim().match(/^(?:(?:CHECK|PAYMENT)\s+)?DATE\s*[:#]\s*(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/i);
+  const date=text.trim().match(/^(?:(?:CHECK|PAYMENT)\s+)?DATE(?:\s*[:#]\s*|\s+)(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/i);
   if(!date)return null;
   const month=Number(date[1]),day=Number(date[2]),year=Number(date[3]),d=new Date(Date.UTC(year,month-1,day));
   return year>=1900&&year<=2100&&d.getUTCFullYear()===year&&d.getUTCMonth()===month-1&&d.getUTCDate()===day?{field:'checkDate',value:`${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`}:null;
