@@ -1,32 +1,31 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-canonical-money-20261022-rc1",
+  "releaseId": "trimax-ocr-job-lifecycle-20261023-rc1",
   "status": "SEALED_CONTROLLED_DEPLOYMENT_CANDIDATE",
-  "createdAt": "2026-10-22T08:07:19.291Z",
+  "createdAt": "2026-10-24T01:38:42.381Z",
   "releaseTimestamp": null,
   "baseProduction": {
-    "commit": "3f39f392c00c6be9a0bd85780445e4cab47338b1",
-    "vercelDeploymentId": "7FrgyDY6XWL8UeYZ91zoLUA5Xgjp",
-    "deployedAt": "2026-10-22T05:59:21Z"
+    "commit": "eae8c497b2948794c1908619e7d8e9283725dad4",
+    "vercelDeploymentId": "5wU8vLSGkp6zhnJZrXKSSTyQbVyF"
   },
   "components": {
     "web": {
-      "commit": "8d14453bfcd00e7f0bb5a3d46a0641b6a9fd497d"
+      "commit": "e28196c99a592a46ef9ade0fc86825288fe6ddef"
     },
     "legacy": {
-      "commit": "8d14453bfcd00e7f0bb5a3d46a0641b6a9fd497d"
+      "commit": "e28196c99a592a46ef9ade0fc86825288fe6ddef"
     },
     "v2-shadow": {
-      "commit": "8d14453bfcd00e7f0bb5a3d46a0641b6a9fd497d"
+      "commit": "e28196c99a592a46ef9ade0fc86825288fe6ddef"
     }
   },
   "sourceBundle": {
-    "sha256": "823cece5378dffbc686be1b0bcd6762019777ea9699caef188b9d8002274ed6c",
+    "sha256": "ee67767652d20317dc45d50be8601abb1d3f685994724e0a22ac78eded23e701",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
       "package-lock.json": "f59c4191dbab35152626d37ecd849e1c20d17564df0cf62d2dbac122dff062b9",
-      "package.json": "3c19230a8ad4e6bc100c72b6e458c639a06d688cd1f9d423dff9ecd7445e3045",
+      "package.json": "d387614a81a97727cc2f06b117802e6a183ad728db9c1ad94ee6f80504a43c43",
       "proxy.ts": "c07e9824217830ca636dac8141204cf2a422728fdc173f488ad61e86edbc8cce",
       "public/Brand/R&L Full Black.png": "3745bd9aec6198d87a968e3f5c3402b87010925d881ddd03411a5caef2c40f65",
       "public/Brand/R&L Full Orange.png": "2c1b88a1718f11f58eb4e59d812f6e47a52ad4c2005a6625eddb601f54fd3fb0",
@@ -40,7 +39,7 @@
       "public/file.svg": "2b67812c325c199a02536cdbeea0c593a72f707d323b72ee3e08dbab06753bd4",
       "public/globe.svg": "b614b9bf183925957661ac851498fe1d8029fd43a62fbfed86f9e2624a57e7cf",
       "public/next.svg": "55995dfad6ecb4945a1e856ddca03c5e16aa5bf13fd21b4df6a74ae79357bcfc",
-      "public/sw.js": "4258042b9aab1b219014a2cfaec54e9980a1ef7a57c4848d959733f5a5da052b",
+      "public/sw.js": "8bce08c452320b73e7840c1f32b96eb8d154ac28e0b75e00a288f0ce1b84b1f8",
       "public/trimax-icon-192.png": "9469f64bc950bd07b949f06f68eec9bb2be3e741b17144378f97cffe4c7ec472",
       "public/trimax-icon-512.png": "843d964dcabcd1f26bcd96cca6c4fd305433b301e73d61144444497c8f57af0f",
       "public/vercel.svg": "f081337b2fee635b455b63275406a3e7f39d6a014e25ad90dab5a67e62a12ac4",
@@ -66,6 +65,7 @@
       "scripts/floating-back-navigation-regression.ts": "8218d847ce054ce0e9caceb4eba1297104ef87379fa0f062eb465835c8e0a588",
       "scripts/generate_role_guides.py": "60baf7d8d0bdcb376ca03d80be15276a8e12e3227592ad2bf8dc5bfe79e678e5",
       "scripts/glen-payor-regression.cjs": "be066cd288764d3e2e2d285edd4af3a5f8c6ffea184451280687c229c2a473e6",
+      "scripts/install-ocr-supervisor.ps1": "7c295e68e7c9b95036412b44cf423d677519f9e0a5107beb1278cc244d65848e",
       "scripts/invoice-cent-regression.ts": "0e46f12fccbf5618d591e029cd4574198a2199eeb64b3e9165ff49eaafd821e3",
       "scripts/invoice-correction-regression.ts": "d637ec393a9ae331676b88d5d4e9db9d4c96e326977b103d39e15aebf8e4c873",
       "scripts/invoice-detail-declutter-regression.ts": "d1a397c3325ead5c2ed2fb3e8d3c9131e0978955c2db73e3957d4029b88e6c44",
@@ -83,7 +83,8 @@
       "scripts/ocr-latency-regression.cjs": "1f170c45d821b8930e81cb74603cdf40e08cba3c824f11815195f58febef2fa7",
       "scripts/ocr-legacy-evidence.cjs": "23708e4c328cdc50aaf5a2e3004511e51b7ea2a377142cb6a8104b01791cfb16",
       "scripts/ocr-legacy-job-regression.cjs": "061362c99ffcd5bc1cb357835e9d7f271ac7d9a4390d1bfd1135aa0a9280a9c4",
-      "scripts/ocr-legacy-worker.cjs": "cd71848bd30ae18deeb410c29543e1cd7786c22673a9fb12429faeaaae1d0c77",
+      "scripts/ocr-legacy-worker.cjs": "6a715bd32cd31bc171b786946ae81f4c031c4a5cb3ef1bc7ee072b5b8a9a1b40",
+      "scripts/ocr-lifecycle-regression.cjs": "a4c509c7074d73e54929a9059126180bb438940c14e5391f1baf4a2628f17a91",
       "scripts/ocr-object-upload-regression.cjs": "6e1442bdc9770beb028d3a61aaa8bb4be6b863de80cfa05734b8855aaa5e3c2e",
       "scripts/ocr-optical-regression.ts": "80c5926c139d62e1b63a80dd3d5da35f5d3907e12abc8acbc0382e3b6dc4c52c",
       "scripts/ocr-optical-ui-regression.cjs": "98cc6f8042396e6652c944d2433dbe390916e56c3e3c72d863ce6434e999b611",
@@ -170,7 +171,7 @@
       "scripts/ocr-v2/shadow-regression.cjs": "2258aaa144eb49fe93a7f2b2071d2148006704e70cf241395f16b59fb282e9af",
       "scripts/ocr-v2/shadow-sql-regression.cjs": "1f9b8e879c70c60185085e626a29db46a6bc3c1c1e58af5082be22b6c9158f06",
       "scripts/ocr-v2/shadow-worker-smoke.cjs": "902ade420c95235177ae625d4489152207db71dad7063a89bea0fef6b34f725b",
-      "scripts/ocr-v2/shadow-worker.cjs": "15c9a5bb3211c22d6ad608310c9587765960281cc814ee3bf073c4ab035a1738",
+      "scripts/ocr-v2/shadow-worker.cjs": "e447f31eaff810e6fea700bcefb16a1d4fe287a9ab3eca9ca829b9c05058c4aa",
       "scripts/ocr-v2/shared-money-regression.cjs": "9ab288119352c3e7ac119e92fe41969fcd5eb046c5af44d50c37ae5529cf0a60",
       "scripts/ocr-v2/total-corpus-regression.cjs": "949d5fc244dc9f77bd4456f47fe5c118add1e48e7066fc102d3b533da2b0c2ca",
       "scripts/ocr-v2/total-localization-regression.cjs": "390ec24e0d73808600b8c6a6234c3cde6442a277b96b924c1aef6764db9c78c0",
@@ -214,6 +215,8 @@
       "scripts/ocr-v2/training/verified_collection.py": "d76abf339883e310ac37b4f70aebf9324006d617201cb0e4a7c56b8b66cbbf07",
       "scripts/ocr-v2/variant-ablation.cjs": "41956e6aaeb44369450b6c75c7cf1fb39ca8bd723780fd396406498600d5f03f",
       "scripts/ocr-v2/visuals.cjs": "5fa713cf3714c9bd082cbc8859953e3d6a09a1ffd95dc7742b32c0fc7425ece6",
+      "scripts/ocr-worker-health.cjs": "abd54cc6766521ac7909fee66840b56abc1250210f2ed31d9dbf20b7376ffa37",
+      "scripts/ocr-worker-supervisor.cjs": "fb8237456894ab1f8c488ede113f1585970f002242c2fa39a31eba2d7a8c6626",
       "scripts/owner-server-auth-regression.ts": "b295a70ecdc6e291e2a474afbd900075334cb940ca57bb191a9e41f67311f273",
       "scripts/payment-application-regression.ts": "5c225a32885471d7aa93afe306e28c911fc1c81158361222f11da1f2e8bd62f2",
       "scripts/payment-state-lifecycle-regression.ts": "88f1ec8d51facaf9c25d94f18ab4c827db668b331cbe0f61d923855ce8bced04",
@@ -248,10 +251,10 @@
       "scripts/release/file-forensics-regression.cjs": "a6da1ba822d17c1a31b7bd29d3cb49e95febca66f29c51b712ccdd9d608c1b26",
       "scripts/release/file-forensics.cjs": "25133a9f2167c801a05906be04068f3d85f54f3c462e085869df2d486c8bea30",
       "scripts/release/final-candidate-regression.cjs": "edc0dbfa8f70d55607c65327a08ed25193380387dd4f1e850cf130ef992ca03f",
-      "scripts/release/gate-checks.cjs": "29a42925c844baf139ae7da04f3d66ea637402fd7f61414b1c138cbcf17c60cc",
+      "scripts/release/gate-checks.cjs": "6b4e29121d60583c3cf14a5c6088847b8b521f1d3be2d01949f9e115f2b76a9d",
       "scripts/release/gate-state-regression.cjs": "51f1d2c76eca73d122f20cc0f537b624074ebd4943f946dcba63857775e45d04",
       "scripts/release/gate-state.cjs": "f56bdc9741b07b92c53bb487f21320080537fa90734721130612e8c1b52da839",
-      "scripts/release/gate.cjs": "fd9d065007932504635900617ed3d7d11481a26e4dcc6131d0afbca39096e17d",
+      "scripts/release/gate.cjs": "228232de653ef9c0c5a96ea24a9bfb0220a06eed1a0a516222d523b67d778c45",
       "scripts/release/physical-acceptance.cjs": "71e4a9df0609730faddbb0e9afef8b69fe198a795f09df1ee97128f78d642a7e",
       "scripts/release/portability-regression.cjs": "0a6b803e3baafab78e5feaa342629a7086292bbf8dff435f2b6e1653adbee656",
       "scripts/release/provision-cache.cjs": "bc081613e0524214f212142fb6991139c7aceaa81fb5b1ca353ad5dfd59f6d24",
@@ -268,7 +271,7 @@
       "scripts/remittance-camera-geometry-regression.ts": "e4a9f18a735264cf1fafc0ff6d06efaf31226facf571d24c27da5ac440d72a37",
       "scripts/remittance-client-safety-regression.cjs": "63595f724d6c510def2821730d4b76e0d9c5bdd4c71c29f1fcf22dad5b8d8c60",
       "scripts/remittance-contract-regression.ts": "75e3bf300050abfcd6145eb5d912af9251fef904bc1c9be19c5bc5695d50cf77",
-      "scripts/remittance-deadline-regression.cjs": "e36bff5ead55bc02ff3bfaef98a4c9948a76f9de497e1ed1958b4e18eba5290e",
+      "scripts/remittance-deadline-regression.cjs": "c55b3c02d5bd6fb8f8a41b36fe4202a2c8795bb5eb8562cf30d54a1f60f665f2",
       "scripts/remittance-intake-regression.cjs": "fd9f8aff6fae7b1500fc62b985b6cd740ad027cfd856e6b2322a829a0282b5fa",
       "scripts/remittance-matching-regression.ts": "d20447b958fe5fe91dadf60608419850b870e956058d230b2d147d6c9a782c66",
       "scripts/remittance-ocr-fixture-regression.ts": "2e90a200e8de9d64212a8f56092f3ef4e00522f2751463b33c827cad45991fa0",
@@ -288,6 +291,7 @@
       "scripts/split-invoice-send-regression.ts": "a030f1bd265a7791cd21b5664af094cd64cbb09ce43a000ce9064cd861815527",
       "scripts/split-source-relationship-regression.ts": "3e66f4141541fbb83e0645cc0a5f6d07e9e508b5cb49edf99ea88c75dce1200d",
       "scripts/stabilization-regression.cjs": "78c08bf0f014b7079b714164f5a58591d56ac1b7ca1e531d70c24bb9a1129831",
+      "scripts/start-ocr-supervisor.ps1": "1c0b14c757d211cfa54b271c6011504c7d524d4410203e646fd95611dd4dd1b7",
       "scripts/tenant-isolation-hardening-regression.ts": "fb3bf2d7f46325e44263458cdaf9ebc93cbc5f5453d4191e74393db8d5a8e501",
       "src/app/activity/page.tsx": "d3d1a01cc89209ee2c76962e551aa3f06de698e4abb877bab2666418117d3ca7",
       "src/app/admin/ocr-attempts/[attemptId]/page.tsx": "47b7930a27ffcec419ae723006d4ef899aa4e22f15e36d0bc34cf493f4dc5253",
@@ -332,7 +336,7 @@
       "src/app/components/AppShell.tsx": "b4358a4c5a82735d1871ef0bc8e7e3bbb30b3770b577d51b0343552155c489af",
       "src/app/components/AuthGuard.tsx": "5d27be00447294b8eefafa4f37b66c4f1ddcd402c285c41433d84b33201023d1",
       "src/app/components/BackButton.tsx": "87360394e36c2e90d4a33135d5539d0176e75d8cc2448783c5c859783ee1059c",
-      "src/app/components/BatchInvoicePayments.tsx": "25f3c5a3de8801ab6ad82f9f425281069d2b4173acebc49c8aa122fcc2f5a174",
+      "src/app/components/BatchInvoicePayments.tsx": "8fabbb60a059446ff42ba64a1ab7ca1fc6d1bcb5c3a9ca6e3d00e0107395b2d6",
       "src/app/components/Button.tsx": "68f87a76cee881a6b148ec30af54746d8a0fbe11a153b3ccf0134a62504deb97",
       "src/app/components/Card.tsx": "6706fd0d306b77c27bf8f9f2558fdfc4f5a77b874404cba67b0f4980c96de207",
       "src/app/components/ClientSmartSearch.tsx": "6780c13e035f04c4bf532a23842cf8d220021a409362c1f2d01fc93cbb3c1278",
@@ -469,7 +473,7 @@
       "src/app/lib/ocrHistoryClient.ts": "dd3b2f6a47b6794cb248c05d48f006a07bbb5d4b5b00b4f7595f4d10845b527d",
       "src/app/lib/ocrHistoryServer.ts": "7a03c924a56afc1ad58b9c76875b42cc6eddea013d8ad664045ef330a8cf7114",
       "src/app/lib/ocrLegacyDirection.ts": "87150ee321dd8cba06a1540a3917929ff41c87dc681b00a1af05f375e7d78385",
-      "src/app/lib/ocrLegacyJobClient.ts": "c3e44427cbc213c52e3c11a9baa5f3c2fd772add153d4259bc12f9c723d707c5",
+      "src/app/lib/ocrLegacyJobClient.ts": "0befb9da663c462b286cd1b2178d79067a37e6c068125bf3dd138505f092d9b2",
       "src/app/lib/ocrLegacyOrientation.ts": "18c66fa4160a1c3db6113c96acd369bdc645885e7088017b86c4a29306435b62",
       "src/app/lib/ocrLegacyPass.ts": "62b43451207fed99f0471aee518957e1ecc76adaa3e9b0c6826605a6386569aa",
       "src/app/lib/ocrLegacyProgress.ts": "dbf27034339f587a06cbd1453bdc6918d9468ec9319c8115da24f02235e91357",
@@ -674,6 +678,8 @@
       "supabase/sql/2026-10-18-service-request-scheduler.sql": "3733c3de752b250e7ed20cff988cd8968d2678e53062213dd96f0bb80f46c207",
       "supabase/sql/2026-10-19-scheduler-provisioning-install.sql": "a2d3da5bc74e004318aaade01a1d6bf9e88211eb801c521b571966f2d04b980b",
       "supabase/sql/2026-10-19-scheduler-provisioning-remove.sql": "7d3fee0ec6170f15b066fe882446b832c420e1a64ceb8b2aa68a9fda0446467f",
+      "supabase/sql/2026-10-23-ocr-job-lifecycle.sql": "6c5f637e2b7fdff92ee99aee7f45450e77dc55f6b89e8f326d5ab56ec8241d16",
+      "supabase/sql/2026-10-23-ocr-job-watchdog-schedule.sql": "0b33178f7aa9b555e75d4a98f435f263cff48666f810c21f1034f0f4bc170571",
       "supabase/sql/README.md": "e3ac010eb016b07963eda46c3f2670d0e1aa78a51666deb38dfcb0f391c34684",
       "tsconfig.json": "3a134da0f9f609ce947455552bb788567797c0d6ba5042056b6f71d42ee52916",
       "vercel.json": "dd0dafc7204af5e053d507b4f7db1f7e42d2db001e4d0e9d3694f7e3e56308e4"
@@ -776,28 +782,28 @@
     }
   ],
   "database": {
-    "capturedAt": "2026-10-19T03:14:21.576Z",
+    "capturedAt": "2026-10-24T01:28:03.702Z",
     "algorithm": "catalog-v1; sorted C collation name=value; UTF8 SHA256; public tables/constraints/indexes/functions, public+storage RLS, public table grants; excludes only trimax_release_runtime itself",
     "fingerprints": {
-      "schema": {
-        "entries": 875,
-        "sha256": "f4e78a156d1acb4c5002ece22fb77e2cad26217167bfd9a94779646cc7c70c63"
-      },
       "rpc": {
-        "entries": 49,
-        "sha256": "b8d1f68167dd90404c058381dee1d9b39adde7bebecb6e9331c514226a682f1e"
-      },
-      "triggers": {
-        "entries": 13,
-        "sha256": "c35cfea25289bdf6e7f278e4d0e3628a2eec3c66d19c434b3aa53563e1fd1e5e"
-      },
-      "policies": {
-        "entries": 81,
-        "sha256": "3b84cfce7458daf00ab80492a52688e5f58d3b38bd56afc3b9938a80883bfc1f"
+        "sha256": "2d87af4a6c3f6d30e4775907ccfb797faa3917c0599db0138ba60c1900cf0ec4",
+        "entries": 52
       },
       "grants": {
-        "entries": 1000,
-        "sha256": "6fd0a259109a6736a447eb06e9c9750c91a5082b98be594b0ac565cd28bf4cd7"
+        "sha256": "68c1e22e09077e040fd81451819c5dc3ec12c8c377d78d706dbea0007deb1e47",
+        "entries": 1014
+      },
+      "schema": {
+        "sha256": "2c889492d0b90aed1c83e36a20464df87bd3c1041e7b409ef6ab0f94bd2ab72b",
+        "entries": 883
+      },
+      "policies": {
+        "sha256": "3b84cfce7458daf00ab80492a52688e5f58d3b38bd56afc3b9938a80883bfc1f",
+        "entries": 81
+      },
+      "triggers": {
+        "sha256": "c35cfea25289bdf6e7f278e4d0e3628a2eec3c66d19c434b3aa53563e1fd1e5e",
+        "entries": 13
       }
     },
     "flags": [
@@ -809,7 +815,13 @@
     ],
     "legacyEnabled": true,
     "acceptanceTableRecords": 0,
-    "evidenceType": "DISPOSABLE_EXACT_BASELINE_MIGRATION_REHEARSAL"
+    "evidenceType": "REVIEWED_PRODUCTION_TRANSACTIONAL_SCHEMA_PREVIEW_ROLLED_BACK",
+    "migration": {
+      "path": "supabase/sql/2026-10-23-ocr-job-lifecycle.sql",
+      "sha256": "6c5f637e2b7fdff92ee99aee7f45450e77dc55f6b89e8f326d5ab56ec8241d16",
+      "schedulerPath": "supabase/sql/2026-10-23-ocr-job-watchdog-schedule.sql",
+      "installed": false
+    }
   },
   "workerConfiguration": {
     "businessId": "f31adfa1-26ad-4e74-ad94-a4668d7ad57d",
@@ -847,7 +859,7 @@
   },
   "serviceWorker": {
     "path": "public/sw.js",
-    "sha256": "4258042b9aab1b219014a2cfaec54e9980a1ef7a57c4848d959733f5a5da052b",
+    "sha256": "8bce08c452320b73e7840c1f32b96eb8d154ac28e0b75e00a288f0ce1b84b1f8",
     "encoding": "utf8-crlf-to-lf"
   },
   "supabaseProjectId": "gqknefosisnsjuzmhvts",
@@ -1611,21 +1623,21 @@
   },
   "upgradeContext": {
     "currentProductionRelease": {
-      "releaseId": "trimax-invoice-cent-20261021-rc1",
-      "manifestCommit": "3f39f392c00c6be9a0bd85780445e4cab47338b1",
-      "manifestDigest": "558756a05d11b8caa61a1b41318ca43192ba5a0dccc740f07520e2307c9248b6",
-      "deploymentId": "7FrgyDY6XWL8UeYZ91zoLUA5Xgjp",
-      "deploymentCommit": "3f39f392c00c6be9a0bd85780445e4cab47338b1"
+      "releaseId": "trimax-canonical-money-20261022-rc1",
+      "manifestCommit": "eae8c497b2948794c1908619e7d8e9283725dad4",
+      "manifestDigest": "ccc3bfc1dbeffadc959f0cf226315255a16697067087497c3a99668b29870fa1",
+      "deploymentId": "5wU8vLSGkp6zhnJZrXKSSTyQbVyF",
+      "deploymentCommit": "eae8c497b2948794c1908619e7d8e9283725dad4"
     },
-    "candidateReleaseId": "trimax-canonical-money-20261022-rc1",
-    "applicationCommit": "8d14453bfcd00e7f0bb5a3d46a0641b6a9fd497d",
-    "machineryCommit": "8d14453bfcd00e7f0bb5a3d46a0641b6a9fd497d"
+    "candidateReleaseId": "trimax-ocr-job-lifecycle-20261023-rc1",
+    "applicationCommit": "e28196c99a592a46ef9ade0fc86825288fe6ddef",
+    "machineryCommit": "e28196c99a592a46ef9ade0fc86825288fe6ddef"
   },
   "contractRevision": {
-    "id": "canonical-decimal-money-cents",
-    "priorManifestDigest": "558756a05d11b8caa61a1b41318ca43192ba5a0dccc740f07520e2307c9248b6",
-    "reason": "Permanent decimal half-away integer-cent money contract across line/subtotal/discount/document-tax/grand-total, persistence/collectibility/payment allocation and reconciliation/PDF/import/recurring/split/reverse flows. Exact cent comparisons replace epsilon checks. Explicit document tax aggregation and validated import rate preserve source tax cents. Historical paid records preserved; three penny findings individually classified, two source-proven record corrections audited atomically and one paid-history review flag. Optical authority/client/tenant/split/duplicate protections and frozen truth remain intact.",
-    "rollback": "Restore 3f39f39 web and matched workers. Preserve all financial records and the audited INV0541/INV0172 corrections plus INV0246 review flag; never roll back or bulk rewrite payment history."
+    "id": "durable-ocr-job-lifecycle",
+    "priorManifestDigest": "ccc3bfc1dbeffadc959f0cf226315255a16697067087497c3a99668b29870fa1",
+    "reason": "Independent database watchdog bounds queued/orphaned/running/persistence jobs; existing lease fencing and durable response recovery retained. Validated worker health, supervised native boot/crash/hang recovery without saved password, same restricted credentials and model/config scope, and accurate PWA polling/resume. Transactional production rehearsal reviewed: schema +8 entries, RPC +3, grants +14 confined to new operational health table; financial records, policies and triggers unchanged.",
+    "rollback": "Stop candidate workers and unschedule trimax-ocr-watchdog; restore the reviewed legacy claim/status definitions and remove only new lifecycle functions/health table, verify original complete database fingerprints, then restore eae8c49 web and matched native workers. Preserve all existing attempts, captures, evidence, terminal outcomes and financial/audit records. Never roll back or reapply payments."
   },
   "captureWorkflow": "guided-live-camera-v1"
 }
