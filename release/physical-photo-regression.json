@@ -1,0 +1,239 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Scoring-only private physical corpus; no truth enters inference",
+  "documents": [
+    {
+      "id": "north-failed",
+      "file": "north-failed.jpg",
+      "sha256": "9e0856a8ba7d69a97782b050a89c06638073bd3d29cdeaad16ee7395985806d6",
+      "truth": {
+        "check": "2836",
+        "date": "2026-09-17",
+        "payorPattern": "^North Creek Apartmen(?:t(?:s)?)?$",
+        "total": 433405,
+        "rows": [
+          {
+            "number": "0526",
+            "cents": 32421
+          },
+          {
+            "number": "0527",
+            "cents": 71284
+          },
+          {
+            "number": "0528",
+            "cents": 109900
+          },
+          {
+            "number": "0529",
+            "cents": 109900
+          },
+          {
+            "number": "0530",
+            "cents": 109900
+          }
+        ]
+      },
+      "sourceAttemptId": "71db2f5f-c91c-4037-9dbf-e25dba5727f3",
+      "truthProvenance": "User verified paper values and retained-image visual inspection; scoring only"
+    },
+    {
+      "id": "north-success",
+      "file": "north-success.jpg",
+      "sha256": "e7fdde0ef76b8c19e125d6be8e72adb9741ae8411db456d4c008572428021e84",
+      "truth": {
+        "check": "2836",
+        "date": "2026-09-17",
+        "payorPattern": "^North Creek Apartmen(?:t(?:s)?)?$",
+        "total": 433405,
+        "rows": [
+          {
+            "number": "0526",
+            "cents": 32421
+          },
+          {
+            "number": "0527",
+            "cents": 71284
+          },
+          {
+            "number": "0528",
+            "cents": 109900
+          },
+          {
+            "number": "0529",
+            "cents": 109900
+          },
+          {
+            "number": "0530",
+            "cents": 109900
+          }
+        ]
+      },
+      "sourceAttemptId": "57e10466-cef5-4d1d-b9f9-3e30fabae86b",
+      "truthProvenance": "User verified paper values and retained-image visual inspection; scoring only"
+    },
+    {
+      "id": "north-second",
+      "file": "north-second.jpg",
+      "sha256": "24aed1a1834c419ee17d3d63317304ae08dbf6cdf85e5b58159ad844ad320771",
+      "truth": {
+        "check": "2836",
+        "date": "2026-09-17",
+        "payorPattern": "^North Creek Apartmen(?:t(?:s)?)?$",
+        "total": 433405,
+        "rows": [
+          {
+            "number": "0526",
+            "cents": 32421
+          },
+          {
+            "number": "0527",
+            "cents": 71284
+          },
+          {
+            "number": "0528",
+            "cents": 109900
+          },
+          {
+            "number": "0529",
+            "cents": 109900
+          },
+          {
+            "number": "0530",
+            "cents": 109900
+          }
+        ]
+      },
+      "sourceAttemptId": "b7967cf2-c4ac-4ca5-8fd7-00d1e660d3ff",
+      "truthProvenance": "User verified paper values and retained-image visual inspection; scoring only"
+    },
+    {
+      "id": "north-other",
+      "file": "north-other.jpg",
+      "sha256": "bdd0957127c2e0a13926db8c25f231fe7b8820059b4c86e558fc27ac15150425",
+      "truth": {
+        "check": "2862",
+        "date": "2026-10-14",
+        "payorPattern": "^North Creek Apartmen(?:t(?:s)?)?$",
+        "total": 458833,
+        "rows": [
+          {
+            "number": "0539",
+            "cents": 109900
+          },
+          {
+            "number": "0534",
+            "cents": 109900
+          },
+          {
+            "number": "0535",
+            "cents": 129133
+          },
+          {
+            "number": "0540",
+            "cents": 109900
+          }
+        ]
+      },
+      "sourceAttemptId": "b00b8051-f8db-4216-920e-ba98f2372b54",
+      "truthProvenance": "User verified paper values and retained-image visual inspection; scoring only"
+    },
+    {
+      "id": "glen",
+      "file": "glen.jpg",
+      "sha256": "ffbb389fa4d083c757ac9e8ce96839820107bf727970ef9b833ac308ffd880e7",
+      "truth": {
+        "check": "717",
+        "date": "2026-10-01",
+        "payorPattern": "Glen.*North Creek",
+        "total": 428610,
+        "rows": [
+          {
+            "number": "0536",
+            "cents": 142870
+          },
+          {
+            "number": "0537",
+            "cents": 142870
+          },
+          {
+            "number": "0538",
+            "cents": 142870
+          }
+        ]
+      },
+      "sourceAttemptId": "00f9477d-d335-4fbc-a4ff-bf8353e9a5c4",
+      "truthProvenance": "User verified paper values and retained-image visual inspection; scoring only"
+    },
+    {
+      "id": "morning-0922",
+      "file": "morning-0922.jpg",
+      "sha256": "22763b36058e72ec282d6d8330b745fea7bf657248f55fe7d0889c407878a7ed",
+      "truth": {
+        "check": "2836",
+        "date": "2026-09-17",
+        "payorPattern": "^North Creek Apartmen(?:t(?:s)?)?$",
+        "total": 433405,
+        "rows": [
+          {
+            "number": "0526",
+            "cents": 32421
+          },
+          {
+            "number": "0527",
+            "cents": 71284
+          },
+          {
+            "number": "0528",
+            "cents": 109900
+          },
+          {
+            "number": "0529",
+            "cents": 109900
+          },
+          {
+            "number": "0530",
+            "cents": 109900
+          }
+        ]
+      },
+      "sourceAttemptId": "3b8f31f8-b587-4c6e-8e9a-a84463914d13",
+      "truthProvenance": "Same user-verified check2836; independently inspected retained image; scoring only"
+    },
+    {
+      "id": "morning-0924",
+      "file": "morning-0924.jpg",
+      "sha256": "004d64625a460c86a6c5847a6b6484075a5ed8192308d8c73b611dcc5851ed3d",
+      "truth": {
+        "check": "2836",
+        "date": "2026-09-17",
+        "payorPattern": "^North Creek Apartmen(?:t(?:s)?)?$",
+        "total": 433405,
+        "rows": [
+          {
+            "number": "0526",
+            "cents": 32421
+          },
+          {
+            "number": "0527",
+            "cents": 71284
+          },
+          {
+            "number": "0528",
+            "cents": 109900
+          },
+          {
+            "number": "0529",
+            "cents": 109900
+          },
+          {
+            "number": "0530",
+            "cents": 109900
+          }
+        ]
+      },
+      "sourceAttemptId": "3798915f-7afe-4403-a43d-e80e3487622f",
+      "truthProvenance": "Same user-verified check2836; independently inspected retained image; scoring only"
+    }
+  ]
+}

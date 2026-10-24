@@ -69,10 +69,12 @@ export function attemptAllowsApply(attempt: RemittanceAttempt | null, selectedId
 
 export function selectRepeatedPropertyIdentity(passes: OcrPass[], rows: StructuredRemittanceRowEvidence[]) {
   const observations: Array<{text:string;rowId:string;pass:string;bounds:OcrObservation['bbox']}> = [];
-  for(const pass of passes.filter(p=>p.region==='full-document')){
-    const property=pass.words.find(w=>/^property$/i.test(w.text));
+  const titleWords=passes.filter(p=>p.region==='full-document').flatMap(p=>p.words);
+  for(const pass of passes.filter(p=>p.region==='full-document'||p.region.startsWith('payment-property-row-'))){
+    const anchors=pass.region==='full-document'?pass.words:titleWords;
+    const property=anchors.find(w=>/^property$/i.test(w.text)&&anchors.some(a=>/^account$/i.test(a.text)&&a.bbox.x0>w.bbox.x1&&Math.abs(a.bbox.y0-w.bbox.y0)<40));
     if(!property)continue;
-    const account=pass.words.find(w=>/^account$/i.test(w.text)&&w.bbox.x0>property.bbox.x1&&Math.abs(w.bbox.y0-property.bbox.y0)<40);
+    const account=anchors.find(w=>/^account$/i.test(w.text)&&w.bbox.x0>property.bbox.x1&&Math.abs(w.bbox.y0-property.bbox.y0)<40);
     if(!account)continue;
     for(const row of rows){
       if(row.y==null||row.height==null)continue;
@@ -83,7 +85,7 @@ export function selectRepeatedPropertyIdentity(passes: OcrPass[], rows: Structur
       }).sort((a,b)=>a.bbox.x0-b.bbox.x0);
       const text=words.map(w=>w.text).join(' ').normalize('NFKC').replace(/\s+/g,' ').trim();
       if(words.length<2||words.some(w=>w.confidence<60)||!/^\p{L}+(?:[ '-]+\p{L}+)+$/u.test(text))continue;
-      observations.push({text,rowId:row.rowId,pass:[pass.region,pass.variant,pass.pageMode].join(':'),bounds:{x0:Math.min(...words.map(w=>w.bbox.x0)),x1:Math.max(...words.map(w=>w.bbox.x1)),y0:Math.min(...words.map(w=>w.bbox.y0)),y1:Math.max(...words.map(w=>w.bbox.y1))}});
+      observations.push({text,rowId:row.rowId,pass:[pass.region.replace(/payment-property-row-\d+$/,'payment-property-row'),pass.variant,pass.pageMode].join(':'),bounds:{x0:Math.min(...words.map(w=>w.bbox.x0)),x1:Math.max(...words.map(w=>w.bbox.x1)),y0:Math.min(...words.map(w=>w.bbox.y0)),y1:Math.max(...words.map(w=>w.bbox.y1))}});
     }
   }
   const candidates=[...new Set(observations.map(o=>o.text.toLowerCase()))].map(key=>{
@@ -99,7 +101,7 @@ export function selectObservedCheckDate(passes: OcrPass[], rows: StructuredRemit
   const bodyTop=Math.min(...rows.filter(r=>r.y!=null&&r.height!=null).map(r=>r.y!-r.height!));
   const observations:Array<{date:string;raw:string;pass:string;bounds:OcrObservation['bbox']}> = [];
   if(!Number.isFinite(bodyTop))return {value:null,observations};
-  for(const pass of passes.filter(p=>p.region==='full-document')){
+  for(const pass of passes.filter(p=>p.region==='full-document'||p.region==='stub-header'||p.region.startsWith('payment-header-field-'))){
     const words=pass.words.filter(w=>Number.isFinite(w.confidence)&&w.confidence>=70&&Object.values(w.bbox).every(Number.isFinite)&&w.bbox.y0>=0&&w.bbox.y1<bodyTop);
     for(const word of words){
       let raw=word.text;
@@ -148,7 +150,7 @@ export function selectObservedHeader(passes: OcrPass[], rows: StructuredRemittan
   for (const pass of passes.filter(pass => !/merged|reconstruction/.test(pass.region))) {
     for (const line of pass.text.split(/\r?\n/)) {
       if (/\b[I1L|]?NV/i.test(line) && !/\b(?:CHECK|CK#|TOTAL)\b/i.test(line)) continue;
-      const date = line.match(/\b(?:CHECK\s+DATE|PAYMENT\s+DATE|DATE)\s*[:#]?\s*(\d{1,4}[/-]\d{1,2}[/-]\d{1,4})/i);
+      const date = line.match(/\b(?:CHECK\s+DATE|PAYMENT\s+DATE|DATE)\s*[:#]?\s*(\d{4}[/-]\d{1,2}[/-]\d{1,2}|\d{1,2}[/-]\d{1,2}[/-](?:\d{4}|\d{2}))(?![\p{L}\p{N}])/iu);
       if (date) { const parsed = parseCheckDate(date[1]); if (parsed) dates.add(parsed); }
       const payor = line.match(/^\s*(?:PAYOR|CUSTOMER|PROPERTY)\s*:\s*(.+)$/i);
       if (payor) payors.add(payor[1].trim());
@@ -159,8 +161,12 @@ export function selectObservedHeader(passes: OcrPass[], rows: StructuredRemittan
   const checkDateEvidence=selectObservedCheckDate(passes,rows);
   const checkNumberEvidence=selectObservedCheckNumber(passes,rows);
   const checkNumbers=new Set([candidates.checkNumber,checkNumberEvidence.value].filter((n):n is string=>Boolean(n)));
-  const conflictingCheckWords=new Set(checkNumberEvidence.observations.map(o=>o.number)).size>1;
-  if(checkDateEvidence.value)dates.add(checkDateEvidence.value);
+  const labelledCheckCandidates=candidates.checkCandidates.filter(c=>c.labelled);
+  const repeatedCheckValues=[...new Set(labelledCheckCandidates.map(c=>c.value))].filter(value=>new Set(labelledCheckCandidates.filter(c=>c.value===value).map(c=>[c.region,c.variant,c.pageMode].join(':'))).size>=2);
+  const conflictingCheckWords=new Set(checkNumberEvidence.observations.map(o=>o.number)).size>1||repeatedCheckValues.length>1;
+  // Repeated strong label+value observations of the physical header outrank
+  // uncalibrated page text; a competing strong date keeps value unavailable.
+  if(checkDateEvidence.value){dates.clear();dates.add(checkDateEvidence.value);}
   else if(new Set(checkDateEvidence.observations.map(o=>o.pass)).size>=2&&new Set(checkDateEvidence.observations.map(o=>o.date)).size>1)checkDateEvidence.observations.forEach(o=>dates.add(o.date));
   const tinyConflict = (candidates.evidence?.amount ?? 0) < rowSubtotal * 0.1 && (candidates.totalCandidates[0]?.agreement ?? 0) < 2;
   return { checkNumber: !conflictingCheckWords&&checkNumbers.size===1?[...checkNumbers][0]:null, checkDate: dates.size === 1 ? [...dates][0] : null,

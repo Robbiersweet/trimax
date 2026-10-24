@@ -1,3 +1,4 @@
+import {detectDocumentGeometry,documentEdgeMargin} from "./documentFields/documentGeometry.ts";
 import { observeOcr } from "./ocrObservationCache.ts";
 import sharp from "sharp";
 import { opticalScore } from "./ocrOptical.ts";
@@ -88,14 +89,18 @@ export async function prepareFaintRegions(
       box = { left: x0, top: y0, width: x1 - x0 + 1, height: y1 - y0 + 1 };
     }
   }
-  // Include a safety margin. The full audit image is always kept separately.
-  const left = Math.max(0, Math.floor((box.left * iw) / sw) - 12),
-    top = Math.max(0, Math.floor((box.top * ih) / sh) - 12);
+  // A bright desk reflection can join the luminance component to the paper.
+  // Prefer independently validated paper contours; uncertain edges preserve fallback.
+  const geometry=await detectDocumentGeometry(source);
+  if(geometry.reliable){const b=geometry.bounds;box={left:b.left*sw/iw,top:b.top*sh/ih,width:b.width*sw/iw,height:b.height*sh/ih};}
+  const margin=geometry.reliable?documentEdgeMargin(iw,ih):12;
+  const left = Math.max(0, Math.floor((box.left * iw) / sw) - margin),
+    top = Math.max(0, Math.floor((box.top * ih) / sh) - margin);
   const right = Math.min(
       iw,
-      Math.ceil(((box.left + box.width) * iw) / sw) + 12,
+      Math.ceil(((box.left + box.width) * iw) / sw) + margin,
     ),
-    bottom = Math.min(ih, Math.ceil(((box.top + box.height) * ih) / sh) + 12);
+    bottom = Math.min(ih, Math.ceil(((box.top + box.height) * ih) / sh) + margin);
   const bounds = { left, top, width: right - left, height: bottom - top };
   const color = await sharp(source).extract(bounds).png().toBuffer();
   const g = await sharp(color)
@@ -190,10 +195,12 @@ export async function prepareFaintRegions(
             Math.min(height, ty1 + padding + 1) - Math.max(0, ty0 - padding),
         }
       : { left: 0, top: 0, width, height };
+  const scale=Math.max(1,Math.min(3,estimatedCharacterHeight?36/estimatedCharacterHeight:1,Math.sqrt(24000000/(roi.width*roi.height))));
+  const resize={width:Math.round(roi.width*scale),height:Math.round(roi.height*scale),fit:'fill' as const};
   return {
-    color: await sharp(color).extract(roi).png().toBuffer(),
-    gray: await sharp(flat, { raw }).extract(roi).png().toBuffer(),
-    binary: await sharp(binary, { raw }).extract(roi).png().toBuffer(),
+    color: await sharp(color).extract(roi).resize(resize).png().toBuffer(),
+    gray: await sharp(flat, { raw }).extract(roi).resize(resize).png().toBuffer(),
+    binary: await sharp(binary, { raw }).extract(roi).resize(resize).png().toBuffer(),
     bounds: {
       left: bounds.left + roi.left,
       top: bounds.top + roi.top,
@@ -203,7 +210,7 @@ export async function prepareFaintRegions(
     inputWidth: iw,
     inputHeight: ih,
     estimatedCharacterHeight,
-    scale: 1,
+    scale,
   };
 }
 

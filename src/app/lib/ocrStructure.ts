@@ -46,6 +46,7 @@ export function rankRowAmounts<T extends { raw: string; value: number; score?: n
       Number(box.x0) >= Number(full.x0) - 2 && Number(box.x1) <= Number(full.x1) + 2 &&
       value.raw.replace(/\D/g, "").length < other.raw.replace(/\D/g, "").length && value.value < other.value;
   });
-  return values.map(value => ({ ...value, score: (value.score ?? 0) - (fragment(value) ? 1000 : 0) }))
+  const strong = (value:T) => (value.confidence ?? 0) >= 85 && /^\$?\s*(?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2}$/.test(value.raw.trim()) && !fragment(value);
+  return values.map(value => ({ ...value, score: (value.score ?? 0) - (fragment(value) ? 1000 : 0) + (strong(value) ? 1000 : 0) }))
     .sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || (b.confidence ?? 0) - (a.confidence ?? 0));
 }

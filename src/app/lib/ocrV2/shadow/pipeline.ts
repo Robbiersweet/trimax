@@ -1,3 +1,4 @@
+import {recognizeLocalizedPaymentMetadata,combinePaymentMetadataViews,resolvePaymentMetadataField} from '../../documentFields/paymentMetadata.ts';
 /** Runs on the isolated model worker, never imported by a production payment route. */
 import sharp from 'sharp';
 import { createHash } from 'node:crypto';
@@ -103,9 +104,19 @@ export async function runShadowPipeline(original: Buffer, input: ShadowInput,
       amounts: money.cents === null ? [] : moneyObservations.filter(o => money.provenance.includes(o.id)).map(o => ({ cents: money.cents!, raw: o.raw, observationId: o.id, rowId: row.id })),
       units: model.rowFields.filter(f => f.rowId === row.id && f.type === 'unit' && f.confidence >= 85).map(f => ({ value: f.value, observationId: f.observationId, rowId: row.id })), accountCandidates: [] });
   }
+  let localizedMetadata=await recognizeLocalizedPaymentMetadata(normalized.documentColor,semantics.observations.flatMap(o=>o.words.map(w=>({text:w.text,confidence:w.confidence,bbox:{x0:w.bounds.left,y0:w.bounds.top,x1:w.bounds.left+w.bounds.width,y1:w.bounds.top+w.bounds.height}}))),Math.min(...model.table.rows.map(r=>r.bounds.top)));
+  const metadataViews:Array<unknown>=[{normalization:normalized.evidence,metadata:localizedMetadata}];
+  if(!localizedMetadata.checkDate||!localizedMetadata.checkNumber){
+    const native=await normalizeDocument(original,'native-paper'),nativeHash=hash(native.documentColor),nativeLedger=new EvidenceLedger(input.attemptId,input.attemptId,nativeHash);
+    const nativeSemantics=await recognizeSemanticPage(native.documentColor,nativeLedger,[],native.variants['local-contrast']);
+    const alternate=await recognizeLocalizedPaymentMetadata(native.documentColor,nativeSemantics.observations.flatMap(o=>o.words.map(w=>({text:w.text,confidence:w.confidence,bbox:{x0:w.bounds.left,y0:w.bounds.top,x1:w.bounds.left+w.bounds.width,y1:w.bounds.top+w.bounds.height}}))),Math.min(...nativeSemantics.model.table.rows.map(r=>r.bounds.top)));
+    metadataViews.push({normalization:native.evidence,metadata:alternate});
+    localizedMetadata={...localizedMetadata,...combinePaymentMetadataViews({...localizedMetadata,canonicalHash:input.sourceImageHash},{...alternate,canonicalHash:input.sourceImageHash})};
+  }
   const header = (type: 'check_number' | 'check_date') => {
     const fields = model.metadataFields.filter(f => f.type === type && f.confidence >= 85);
-    const values = [...new Set(fields.map(f => type === 'check_date' ? normalizePaymentDate(f.value.trim()) : /^\d+$/.test(f.value.trim()) ? f.value.trim() : null))]; return values.length === 1 ? values[0] : null;
+    const values = [...new Set(fields.map(f => type === 'check_date' ? normalizePaymentDate(f.value.trim()) : /^\d+$/.test(f.value.trim()) ? f.value.trim() : null).filter((v):v is string=>v!==null))];
+    return resolvePaymentMetadataField(localizedMetadata,type==='check_date'?'checkDate':'checkNumber',values);
   };
   const document: ResidualDocument = { id: input.attemptId, rows, rawPasses: [], header: { payor: acceptedIdentity, checkNumber: header('check_number'), checkDate: header('check_date'),
     total: monetary.authority.cents == null ? null : { amount: monetary.authority.cents/100, source: 'explicit-document-total', payable: true }, provenance: 'Same-capture vendor-neutral visual evidence; no verified answers' } };
@@ -130,6 +141,7 @@ export async function runShadowPipeline(original: Buffer, input: ShadowInput,
     ...(matureMoney ? matureMoney.filter(r => r.field === 'row_amount' && r.cents === null && residual.evidence?.rowId!==r.rowId).map(r => `Unresolved monetary evidence for ${r.rowId}: ${r.reason}`)
       : monetary.rows.filter(r => r.cents === null && residual.evidence?.rowId!==r.rowId).map(r => `Unresolved monetary evidence for ${r.rowId}: ${r.rejectionReason}`)),
     ...missingRows.map(id => `Incomplete recognizer evidence for ${id}`), ...new Set(resolved.audit.flatMap(a => a.blockers))];
+  if (Object.values(localizedMetadata.conflicts).some(Boolean))blockers.push('Conflicting independently observed payment metadata across optical views.');
   if (!rows.length) blockers.push('No supported physical rows');
   if (resolved.status !== 'resolved') blockers.push(`Resolver: ${resolved.status}`);
   const automatic = blockers.length === 0 && resolved.status === 'resolved';
@@ -151,7 +163,7 @@ export async function runShadowPipeline(original: Buffer, input: ShadowInput,
     resolver: { status: automatic ? 'automatic' : 'review-required', automaticInvoiceIds: automatic ? resolved.automaticInvoiceIds : [], counts: resolved.counts, audit: resolved.audit,
       candidateAudit:resolved.rows.map(r=>({rowId:r.rowId,provisionalInvoiceId:r.provisionalInvoiceId,alternatives:r.alternatives})) },
     sharedMoney: matureMoney ? {version:'shared-money-1' as const,captureSessionId:input.captureSessionId,canonicalHash:input.sourceImageHash,normalizedHash:sourceHash,normalization:normalized.evidence,rows:model.table.rows.map(r=>({id:r.id,bounds:r.bounds})),fields:matureMoney,monetary} : null,
-    reviewBlockers: blockers, organizationIdentity, monetary, matureMoney, residual, arithmeticReconciliation, modelTimings: batch.modelTimings, ledger: ledger.snapshot(),
+    reviewBlockers: blockers, metadataViews, localizedMetadata, organizationIdentity, monetary, matureMoney, residual, arithmeticReconciliation, modelTimings: batch.modelTimings, ledger: ledger.snapshot(),
     timings: { identityFusionMs: identityMs, identityRecognitionMs: identityObservations.reduce((n,o)=>n+o.durationMs,0), normalizationMs: normalized.evidence.metrics.completeMs, semanticsMs: semantics.durationMs, moneyMs: monetary.durationMs,
       matureMoneyMs: batch.moneyObservations?.reduce((n,o) => n + o.durationMs, 0) ?? 0, recognitionMs, resolverMs: resolved.durationMs, totalMs: performance.now()-started },
   };

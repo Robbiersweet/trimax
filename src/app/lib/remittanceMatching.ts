@@ -277,7 +277,7 @@ function isBankingNoiseLine(text: string) {
     "transit",
   ].filter((word) => normalized.includes(word)).length;
   const micrLike =
-    /[⑆⑈⑉]|(?:\b\d{7,12}\b.*\b\d{4,12}\b)|(?:\b\d{2,4}[- ]\d{2,4}[- ]\d{3,6}\b)/.test(
+    /[\u2446\u2448\u2449]|(?:\b\d{7,12}\b.*\b\d{4,12}\b)|(?:\b\d{2,4}[- ]\d{2,4}[- ]\d{3,6}\b)/.test(
       text
     );
 
@@ -350,6 +350,7 @@ type CheckNumberCandidate = {
   value: string;
   index: number;
   score: number;
+  labelled?: boolean;
 };
 
 function checkNumberCandidatesFromText(text: string, baseScore: number) {
@@ -366,6 +367,9 @@ function checkNumberCandidatesFromText(text: string, baseScore: number) {
     const separator = match[1] ?? "";
     const token = match[2] ?? "";
     const tail = normalizedText.slice((match.index ?? 0) + match[0].length);
+    // A non-digit glyph glued to a check token is missing optical evidence,
+    // never a license to accept its numeric prefix (e.g. CK#:123¢ -> 123).
+    if (tail && !/^\s/.test(tail)) continue;
     const adjacentDigit = tail.match(/^[ \t]+(\d)(?=[ \t]*(?:$|\b(?:DATE|T[O0]TAL|AM[O0]UNT)\b))/im)?.[1];
     const value = token.length === 3 && adjacentDigit ? token + adjacentDigit : token;
 
@@ -380,6 +384,7 @@ function checkNumberCandidatesFromText(text: string, baseScore: number) {
       value,
       index: match.index ?? 0,
       score: baseScore + value.length * 8,
+      labelled: true,
     });
   }
 
@@ -409,6 +414,7 @@ function checkNumberCandidatesFromText(text: string, baseScore: number) {
 }
 
 function selectBestCheckNumberCandidate(candidates: CheckNumberCandidate[]) {
+  if (candidates.some(c => c.labelled) && candidates.some(c => !c.labelled)) return selectBestCheckNumberCandidate(candidates.filter(c => c.labelled));
   if (candidates.length === 0) {
     return "";
   }
@@ -462,10 +468,7 @@ function selectBestCheckNumberCandidate(candidates: CheckNumberCandidate[]) {
   );
 
   if (distinctValues.length > 1 && !hasCompatiblePair) {
-    return (
-      candidates.slice().sort((left, right) => left.index - right.index)[0]
-        ?.value ?? ""
-    );
+    return "";
   }
 
   return scored[0]?.value ?? "";
@@ -603,7 +606,13 @@ export function selectRemittanceHeaderEvidence(passes: RemittanceHeaderPass[], r
     normalizationReason: conflictingStrong ? "conflicting explicit totals require review" : "explicit label, independent pass agreement and row subtotal evidence",
   } : null;
   const checkCandidates = independent.flatMap((pass) => checkNumberCandidatesFromText(checkRegionText(pass.text), 80).map((candidate) => ({ ...candidate, region: pass.region, variant: pass.variant, pageMode: pass.pageMode })));
-  return { evidence, totalCandidates: totals, checkNumber: selectBestCheckNumberCandidate(checkCandidates), checkCandidates };
+  const labelledChecks = checkCandidates.filter(c => c.labelled);
+  const votes = [...new Set(labelledChecks.map(c => c.value))].map(value => ({ value,
+    passes: new Set(labelledChecks.filter(c => c.value === value).map(c => [c.region,c.variant,c.pageMode].join(':'))).size }));
+  const corroborated = votes.filter(c => c.passes >= 2);
+  const checkNumber = corroborated.length === 1 ? corroborated[0].value : corroborated.length > 1 ? '' :
+    votes.length === 1 ? votes[0].value : ''; // Unlabelled years/row/account fragments never establish check identity.
+  return { evidence, totalCandidates: totals, checkNumber, checkCandidates };
 }
 
 function cleanPayorCandidate(value: string) {
