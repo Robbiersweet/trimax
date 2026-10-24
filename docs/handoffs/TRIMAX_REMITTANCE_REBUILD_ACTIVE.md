@@ -8,7 +8,9 @@ Restored only existing clean sealed eae8c49 runtime checkout `remittance-rebuild
 
 Candidate: restricted health heartbeat; crash/hang supervisor+verifiedinstaller; mandatory independent DBcron reaper30min/3expiredclaims with stale writer fencing/evidence retention/orphan accounting; explicit status+polling. SQL/scheduler NOT installed; fingerprints/seal NOT finalized; no candidate deployment. No financial/OCR/matching changes. Full evidence `docs/handoffs/TRIMAX_OCR_JOB_LIFECYCLE_20261023.md`.
 
-Validation private `.../development-gates/report.json`:16/16frozen8×2PASS, fullnpm/lint/TSC/buildPASS, initial2SQL missing testmodule env then correct pinned-PGlite rerunsPASS. `supplemental-report.json` latestresults must be checked for completion. Real SQL lifecycle, real process restart, latest deadline casesPASS. Formal PRE/POST pending; no fabricated receipt.
+Validation private `.../development-gates/report.json`:16/16frozen8×2PASS, fullnpm/lint/TSC/buildPASS, initial2SQL missing testmodule env then correct pinned-PGlite rerunsPASS. `supplemental-report.json` FINISHED: all7checksPASS, including latestfullnpm/lint/TSC and realSQL lifecycle/realprocessrestart/latestdeadline. No offline tests remain running. Formal PRE/POST pending; no fabricated receipt.
+
+Source repair committed and PUSHED as ea8df59 on origin/codex/remittance-job-recovery. Production main/runtime unchanged. This checkpoint update is metadata only, not a finalized release seal. Do not switch production to this unsealed branch or treat feature push as production deployment.
 
 Blockers: no browser-control tool for EXISTING authenticated production tab; async request asks capability, NOT login. No auth/session/cookies touched. Need legitimate host-visible supervisor installation (native scheduler script lookup fails), reviewed scoped SQL/pgcron+actualDBfingerprint, candidate seal, full genuine PRE/deploy/POST. User explicitly authorizes code/test/commit/push/deploy/recovery, NOT payment or security bypass.
 
