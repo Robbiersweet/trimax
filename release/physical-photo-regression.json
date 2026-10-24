@@ -14,28 +14,44 @@
         "rows": [
           {
             "number": "0526",
-            "cents": 32421
+            "cents": 32421,
+            "invoiceRecordId": "207e6c25-0d16-4526-b928-228575f09c31"
           },
           {
             "number": "0527",
-            "cents": 71284
+            "cents": 71284,
+            "invoiceRecordId": "2d5ecbf1-ee69-41ea-977f-64984b9c4e98"
           },
           {
             "number": "0528",
-            "cents": 109900
+            "cents": 109900,
+            "invoiceRecordId": "878bbd86-93b0-4861-965f-d990258a6f90"
           },
           {
             "number": "0529",
-            "cents": 109900
+            "cents": 109900,
+            "invoiceRecordId": "e7460269-5dc0-46d5-aa36-9cbbb744e2e9"
           },
           {
             "number": "0530",
-            "cents": 109900
+            "cents": 109900,
+            "invoiceRecordId": "7edfa189-5032-4084-8214-af987d946da5"
           }
-        ]
+        ],
+        "clientName": "North Creek Apartments"
       },
       "sourceAttemptId": "71db2f5f-c91c-4037-9dbf-e25dba5727f3",
-      "truthProvenance": "User verified paper values and retained-image visual inspection; scoring only"
+      "truthProvenance": "User verified paper values and retained-image visual inspection; scoring only",
+      "snapshot": {
+        "path": "C:\\Users\\robbi\\AppData\\Local\\Trimax\\history-robustness-20261023\\financial-snapshot-north.json",
+        "sha256": "2a42f8329600807129d55dde33dfbfd29d64d982a6a2e43230079602ebfa4699",
+        "sourceAttemptId": "c496104d-8b20-461e-8243-c73f1947d609"
+      },
+      "currentSnapshot": {
+        "path": "C:\\Users\\robbi\\AppData\\Local\\Trimax\\history-robustness-20261023\\financial-snapshot-current.json",
+        "sha256": "8d10810d70d45f0ec4f046d0e8a74fd1858c1c512340621df59eab76f9828af9",
+        "sourceAttemptId": "71db2f5f-c91c-4037-9dbf-e25dba5727f3"
+      }
     },
     {
       "id": "north-success",
@@ -49,28 +65,44 @@
         "rows": [
           {
             "number": "0526",
-            "cents": 32421
+            "cents": 32421,
+            "invoiceRecordId": "207e6c25-0d16-4526-b928-228575f09c31"
           },
           {
             "number": "0527",
-            "cents": 71284
+            "cents": 71284,
+            "invoiceRecordId": "2d5ecbf1-ee69-41ea-977f-64984b9c4e98"
           },
           {
             "number": "0528",
-            "cents": 109900
+            "cents": 109900,
+            "invoiceRecordId": "878bbd86-93b0-4861-965f-d990258a6f90"
           },
           {
             "number": "0529",
-            "cents": 109900
+            "cents": 109900,
+            "invoiceRecordId": "e7460269-5dc0-46d5-aa36-9cbbb744e2e9"
           },
           {
             "number": "0530",
-            "cents": 109900
+            "cents": 109900,
+            "invoiceRecordId": "7edfa189-5032-4084-8214-af987d946da5"
           }
-        ]
+        ],
+        "clientName": "North Creek Apartments"
       },
       "sourceAttemptId": "57e10466-cef5-4d1d-b9f9-3e30fabae86b",
-      "truthProvenance": "User verified paper values and retained-image visual inspection; scoring only"
+      "truthProvenance": "User verified paper values and retained-image visual inspection; scoring only",
+      "snapshot": {
+        "path": "C:\\Users\\robbi\\AppData\\Local\\Trimax\\history-robustness-20261023\\financial-snapshot-north.json",
+        "sha256": "2a42f8329600807129d55dde33dfbfd29d64d982a6a2e43230079602ebfa4699",
+        "sourceAttemptId": "c496104d-8b20-461e-8243-c73f1947d609"
+      },
+      "currentSnapshot": {
+        "path": "C:\\Users\\robbi\\AppData\\Local\\Trimax\\history-robustness-20261023\\financial-snapshot-current.json",
+        "sha256": "8d10810d70d45f0ec4f046d0e8a74fd1858c1c512340621df59eab76f9828af9",
+        "sourceAttemptId": "71db2f5f-c91c-4037-9dbf-e25dba5727f3"
+      }
     },
     {
       "id": "north-second",
@@ -84,28 +116,44 @@
         "rows": [
           {
             "number": "0526",
-            "cents": 32421
+            "cents": 32421,
+            "invoiceRecordId": "207e6c25-0d16-4526-b928-228575f09c31"
           },
           {
             "number": "0527",
-            "cents": 71284
+            "cents": 71284,
+            "invoiceRecordId": "2d5ecbf1-ee69-41ea-977f-64984b9c4e98"
           },
           {
             "number": "0528",
-            "cents": 109900
+            "cents": 109900,
+            "invoiceRecordId": "878bbd86-93b0-4861-965f-d990258a6f90"
           },
           {
             "number": "0529",
-            "cents": 109900
+            "cents": 109900,
+            "invoiceRecordId": "e7460269-5dc0-46d5-aa36-9cbbb744e2e9"
           },
           {
             "number": "0530",
-            "cents": 109900
+            "cents": 109900,
+            "invoiceRecordId": "7edfa189-5032-4084-8214-af987d946da5"
           }
-        ]
+        ],
+        "clientName": "North Creek Apartments"
       },
       "sourceAttemptId": "b7967cf2-c4ac-4ca5-8fd7-00d1e660d3ff",
-      "truthProvenance": "User verified paper values and retained-image visual inspection; scoring only"
+      "truthProvenance": "User verified paper values and retained-image visual inspection; scoring only",
+      "snapshot": {
+        "path": "C:\\Users\\robbi\\AppData\\Local\\Trimax\\history-robustness-20261023\\financial-snapshot-north.json",
+        "sha256": "2a42f8329600807129d55dde33dfbfd29d64d982a6a2e43230079602ebfa4699",
+        "sourceAttemptId": "c496104d-8b20-461e-8243-c73f1947d609"
+      },
+      "currentSnapshot": {
+        "path": "C:\\Users\\robbi\\AppData\\Local\\Trimax\\history-robustness-20261023\\financial-snapshot-current.json",
+        "sha256": "8d10810d70d45f0ec4f046d0e8a74fd1858c1c512340621df59eab76f9828af9",
+        "sourceAttemptId": "71db2f5f-c91c-4037-9dbf-e25dba5727f3"
+      }
     },
     {
       "id": "north-other",
@@ -119,24 +167,39 @@
         "rows": [
           {
             "number": "0539",
-            "cents": 109900
+            "cents": 109900,
+            "invoiceRecordId": "3d2c0a48-e351-4042-90ea-be16650038e9"
           },
           {
             "number": "0534",
-            "cents": 109900
+            "cents": 109900,
+            "invoiceRecordId": "d51a9694-a367-4af7-9fd5-eb77da991dc9"
           },
           {
             "number": "0535",
-            "cents": 129133
+            "cents": 129133,
+            "invoiceRecordId": "e238036a-6ede-4759-bfc8-c480663f6e2b"
           },
           {
             "number": "0540",
-            "cents": 109900
+            "cents": 109900,
+            "invoiceRecordId": "7de980c3-439a-4ca7-b72c-bd13deb09fc4"
           }
-        ]
+        ],
+        "clientName": "North Creek Apartments"
       },
       "sourceAttemptId": "b00b8051-f8db-4216-920e-ba98f2372b54",
-      "truthProvenance": "User verified paper values and retained-image visual inspection; scoring only"
+      "truthProvenance": "User verified paper values and retained-image visual inspection; scoring only",
+      "snapshot": {
+        "path": "C:\\Users\\robbi\\AppData\\Local\\Trimax\\history-robustness-20261023\\financial-snapshot-current.json",
+        "sha256": "8d10810d70d45f0ec4f046d0e8a74fd1858c1c512340621df59eab76f9828af9",
+        "sourceAttemptId": "71db2f5f-c91c-4037-9dbf-e25dba5727f3"
+      },
+      "currentSnapshot": {
+        "path": "C:\\Users\\robbi\\AppData\\Local\\Trimax\\history-robustness-20261023\\financial-snapshot-current.json",
+        "sha256": "8d10810d70d45f0ec4f046d0e8a74fd1858c1c512340621df59eab76f9828af9",
+        "sourceAttemptId": "71db2f5f-c91c-4037-9dbf-e25dba5727f3"
+      }
     },
     {
       "id": "glen",
@@ -150,20 +213,34 @@
         "rows": [
           {
             "number": "0536",
-            "cents": 142870
+            "cents": 142870,
+            "invoiceRecordId": "933530c3-eebe-4fbb-80b8-43b9c5a25791"
           },
           {
             "number": "0537",
-            "cents": 142870
+            "cents": 142870,
+            "invoiceRecordId": "b49bfbe3-a53a-4a10-bcf0-f988e9cdd0b5"
           },
           {
             "number": "0538",
-            "cents": 142870
+            "cents": 142870,
+            "invoiceRecordId": "61c1dc45-1dbd-4023-ae24-e3f1d94662b7"
           }
-        ]
+        ],
+        "clientName": "Glen North Creek"
       },
       "sourceAttemptId": "00f9477d-d335-4fbc-a4ff-bf8353e9a5c4",
-      "truthProvenance": "User verified paper values and retained-image visual inspection; scoring only"
+      "truthProvenance": "User verified paper values and retained-image visual inspection; scoring only",
+      "snapshot": {
+        "path": "C:\\Users\\robbi\\AppData\\Local\\Trimax\\history-robustness-20261023\\financial-snapshot-glen.json",
+        "sha256": "d065494d562fe5ea181f8d5d1f65b41fe83bb8bee59d691e3cd4be9bb3207967",
+        "sourceAttemptId": "29652ae1-ce95-46f4-8700-4a03877c6dbe"
+      },
+      "currentSnapshot": {
+        "path": "C:\\Users\\robbi\\AppData\\Local\\Trimax\\history-robustness-20261023\\financial-snapshot-current.json",
+        "sha256": "8d10810d70d45f0ec4f046d0e8a74fd1858c1c512340621df59eab76f9828af9",
+        "sourceAttemptId": "71db2f5f-c91c-4037-9dbf-e25dba5727f3"
+      }
     },
     {
       "id": "morning-0922",
@@ -177,28 +254,44 @@
         "rows": [
           {
             "number": "0526",
-            "cents": 32421
+            "cents": 32421,
+            "invoiceRecordId": "207e6c25-0d16-4526-b928-228575f09c31"
           },
           {
             "number": "0527",
-            "cents": 71284
+            "cents": 71284,
+            "invoiceRecordId": "2d5ecbf1-ee69-41ea-977f-64984b9c4e98"
           },
           {
             "number": "0528",
-            "cents": 109900
+            "cents": 109900,
+            "invoiceRecordId": "878bbd86-93b0-4861-965f-d990258a6f90"
           },
           {
             "number": "0529",
-            "cents": 109900
+            "cents": 109900,
+            "invoiceRecordId": "e7460269-5dc0-46d5-aa36-9cbbb744e2e9"
           },
           {
             "number": "0530",
-            "cents": 109900
+            "cents": 109900,
+            "invoiceRecordId": "7edfa189-5032-4084-8214-af987d946da5"
           }
-        ]
+        ],
+        "clientName": "North Creek Apartments"
       },
       "sourceAttemptId": "3b8f31f8-b587-4c6e-8e9a-a84463914d13",
-      "truthProvenance": "Same user-verified check2836; independently inspected retained image; scoring only"
+      "truthProvenance": "Same user-verified check2836; independently inspected retained image; scoring only",
+      "snapshot": {
+        "path": "C:\\Users\\robbi\\AppData\\Local\\Trimax\\history-robustness-20261023\\financial-snapshot-north.json",
+        "sha256": "2a42f8329600807129d55dde33dfbfd29d64d982a6a2e43230079602ebfa4699",
+        "sourceAttemptId": "c496104d-8b20-461e-8243-c73f1947d609"
+      },
+      "currentSnapshot": {
+        "path": "C:\\Users\\robbi\\AppData\\Local\\Trimax\\history-robustness-20261023\\financial-snapshot-current.json",
+        "sha256": "8d10810d70d45f0ec4f046d0e8a74fd1858c1c512340621df59eab76f9828af9",
+        "sourceAttemptId": "71db2f5f-c91c-4037-9dbf-e25dba5727f3"
+      }
     },
     {
       "id": "morning-0924",
@@ -212,28 +305,45 @@
         "rows": [
           {
             "number": "0526",
-            "cents": 32421
+            "cents": 32421,
+            "invoiceRecordId": "207e6c25-0d16-4526-b928-228575f09c31"
           },
           {
             "number": "0527",
-            "cents": 71284
+            "cents": 71284,
+            "invoiceRecordId": "2d5ecbf1-ee69-41ea-977f-64984b9c4e98"
           },
           {
             "number": "0528",
-            "cents": 109900
+            "cents": 109900,
+            "invoiceRecordId": "878bbd86-93b0-4861-965f-d990258a6f90"
           },
           {
             "number": "0529",
-            "cents": 109900
+            "cents": 109900,
+            "invoiceRecordId": "e7460269-5dc0-46d5-aa36-9cbbb744e2e9"
           },
           {
             "number": "0530",
-            "cents": 109900
+            "cents": 109900,
+            "invoiceRecordId": "7edfa189-5032-4084-8214-af987d946da5"
           }
-        ]
+        ],
+        "clientName": "North Creek Apartments"
       },
       "sourceAttemptId": "3798915f-7afe-4403-a43d-e80e3487622f",
-      "truthProvenance": "Same user-verified check2836; independently inspected retained image; scoring only"
+      "truthProvenance": "Same user-verified check2836; independently inspected retained image; scoring only",
+      "snapshot": {
+        "path": "C:\\Users\\robbi\\AppData\\Local\\Trimax\\history-robustness-20261023\\financial-snapshot-north.json",
+        "sha256": "2a42f8329600807129d55dde33dfbfd29d64d982a6a2e43230079602ebfa4699",
+        "sourceAttemptId": "c496104d-8b20-461e-8243-c73f1947d609"
+      },
+      "currentSnapshot": {
+        "path": "C:\\Users\\robbi\\AppData\\Local\\Trimax\\history-robustness-20261023\\financial-snapshot-current.json",
+        "sha256": "8d10810d70d45f0ec4f046d0e8a74fd1858c1c512340621df59eab76f9828af9",
+        "sourceAttemptId": "71db2f5f-c91c-4037-9dbf-e25dba5727f3"
+      }
     }
-  ]
+  ],
+  "financialValidation": "Actual production resolver with unmodified retained prepayment snapshots; current paid snapshot separately verifies collectible blocking. All truth is scoring-only."
 }
