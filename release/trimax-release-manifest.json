@@ -1,26 +1,26 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-saved-remittance-history-20261023-rc1",
+  "releaseId": "trimax-saved-remittance-history-20261023-rc2",
   "status": "SEALED_CONTROLLED_DEPLOYMENT_CANDIDATE",
-  "createdAt": "2026-10-24T04:20:46.749Z",
-  "releaseTimestamp": "2026-10-24T04:20:46.749Z",
+  "createdAt": "2026-10-24T04:36:35.629Z",
+  "releaseTimestamp": "2026-10-24T04:36:35.629Z",
   "baseProduction": {
-    "commit": "4432439bcee110d14a9def3d7257698ae133e54b",
-    "vercelDeploymentId": "5hsxXQvDjVRFDPcMEYj2QaagjYRE"
+    "commit": "19308c20b5461f3ad099854c5fc235d9cb61a97e",
+    "vercelDeploymentId": "3P7aZko1Muk2XBJAXa4PEwrE9sPY"
   },
   "components": {
     "web": {
-      "commit": "29d084da2edafda0a4e568b0c3a6285205ee1def"
+      "commit": "6f6d7f1959e3fbbab9de14d89415e13a6a26f941"
     },
     "legacy": {
-      "commit": "29d084da2edafda0a4e568b0c3a6285205ee1def"
+      "commit": "6f6d7f1959e3fbbab9de14d89415e13a6a26f941"
     },
     "v2-shadow": {
-      "commit": "29d084da2edafda0a4e568b0c3a6285205ee1def"
+      "commit": "6f6d7f1959e3fbbab9de14d89415e13a6a26f941"
     }
   },
   "sourceBundle": {
-    "sha256": "0a738363b17b8db84c7c65a01189dbc741563c79b51849f795ff19471888809a",
+    "sha256": "f8a4f1f48739795cd43cd8cc86fce21c9b6a40246803e7b93236ecef49dbbcf3",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -279,7 +279,7 @@
       "scripts/remittance-retry-regression.ts": "6a768fef914bc295d09ececbb7216648d08ebc3b69b6ef07e1c1dbcfe078ec9d",
       "scripts/reverse-total-regression.ts": "62c57f48dd4ae0ce1c497ee3441aa1197df590870f1de6103d4657638a0fd953",
       "scripts/saved-remittance-payment-regression.cjs": "c0a1f3896a6c811dc1bf2d9eb5ab47d6312da9f12bc1f7630e724c28497eb52a",
-      "scripts/saved-remittance-reopen-regression.cjs": "3026c1863123fef20c931cb45b08fd7141d406191b0f9c10a79bd90f11764f6e",
+      "scripts/saved-remittance-reopen-regression.cjs": "0752f1eee945f3304bc93795ca39a952cdf5d91d8fc54bef0e72512595f40522",
       "scripts/scheduler-provisioning-regression.cjs": "f96e0dc2543c0329d5538759285fe53cd599da41c11418127a29978c107cf126",
       "scripts/scheduling-notifications-sql-regression.cjs": "50c29b03e3d451046ca531b73471129413b7624a476046fb5c7ba9f6763cb1a8",
       "scripts/scheduling-notifications-ui-regression.cjs": "276a63d5a9a90f02e7cebfb0dc0fba140bf2d778d1868179a7f1e2fcd6cf2bfb",
@@ -311,7 +311,7 @@
       "src/app/api/payments/duplicate-remittance-preflight/route.ts": "01661a87fa0c7a8b821b256f9e68e7ba48a68a9809755c5b1b23ed64e0f59528",
       "src/app/api/payments/extract-check-stub/route.ts": "a73ab0fe1038a22b827a9582e78381b5af0f450e9d8677fc4e916a4b2b34a2ca",
       "src/app/api/payments/ocr-jobs/route.ts": "20654cb307aa2d04afad5a80276bf6e75bc829d09726afba1574a93787d9b67e",
-      "src/app/api/payments/saved-remittance/route.ts": "7c8e944d40fa5cd783e371607602edad76cd103428caf33d9a6d53b821ca76a6",
+      "src/app/api/payments/saved-remittance/route.ts": "f23ad2a26e0496a96b6321a757c87fda55ae92fa19498eba561faba7e7ed8001",
       "src/app/api/public-scheduling/[slug]/route.ts": "9749cfd93818e29a0a979da083b7880204496e44a1861b0e67b84f8f51fd2c88",
       "src/app/api/public-scheduling/deliver/route.ts": "9726ad374da19b1ea4856fcf317a8a3d0d6a62746974df69ae8fa2ed64d9bf11",
       "src/app/api/public-scheduling/intake/route.ts": "3a80f34d12df0ac1f91d44c37808bb6d0fa78c3b3e0dbbccee4d8e1fc192f466",
@@ -893,7 +893,7 @@
     "physicalAcceptance": "Only installed-iPhone production evidence for exact release may pass; replay cannot pass",
     "legacyModelCache": "Pinned runtime cache verified by startup contract before claim"
   },
-  "sealedAt": "2026-10-24T04:20:46.749Z",
+  "sealedAt": "2026-10-24T04:36:35.629Z",
   "testRuntime": {
     "pgliteVersion": "0.5.8",
     "pglitePackageSha256": "65dff2c93c707e526902eebfab246bcbf2df2eba1c6984a5b5e9a44177532b1c",
@@ -1630,19 +1630,19 @@
   },
   "upgradeContext": {
     "currentProductionRelease": {
-      "releaseId": "trimax-ocr-job-lifecycle-20261023-rc1",
-      "manifestCommit": "4432439bcee110d14a9def3d7257698ae133e54b",
-      "manifestDigest": "00c67d871618576449b16b8fddf3207c17d7d39bfd9703aee6ed8b9b88900593",
-      "deploymentId": "5hsxXQvDjVRFDPcMEYj2QaagjYRE",
-      "deploymentCommit": "4432439bcee110d14a9def3d7257698ae133e54b"
+      "releaseId": "trimax-saved-remittance-history-20261023-rc1",
+      "manifestCommit": "19308c20b5461f3ad099854c5fc235d9cb61a97e",
+      "manifestDigest": "91fce457094c4039ddec818eec849805a8ee9f58409c2f25a1d51a29b720b9d6",
+      "deploymentId": "3P7aZko1Muk2XBJAXa4PEwrE9sPY",
+      "deploymentCommit": "19308c20b5461f3ad099854c5fc235d9cb61a97e"
     },
-    "candidateReleaseId": "trimax-saved-remittance-history-20261023-rc1",
-    "applicationCommit": "29d084da2edafda0a4e568b0c3a6285205ee1def",
-    "machineryCommit": "29d084da2edafda0a4e568b0c3a6285205ee1def"
+    "candidateReleaseId": "trimax-saved-remittance-history-20261023-rc2",
+    "applicationCommit": "6f6d7f1959e3fbbab9de14d89415e13a6a26f941",
+    "machineryCommit": "6f6d7f1959e3fbbab9de14d89415e13a6a26f941"
   },
   "contractRevision": {
     "id": "saved-remittance-authoritative-history",
-    "priorManifestDigest": "00c67d871618576449b16b8fddf3207c17d7d39bfd9703aee6ed8b9b88900593",
+    "priorManifestDigest": "91fce457094c4039ddec818eec849805a8ee9f58409c2f25a1d51a29b720b9d6",
     "reason": "Read-only payment/audit history and exact retained-object/hash linkage precede saved OCR review; complete historical allocations are shown without consulting current balances. Already-applied/ambiguous source attempts are blocked by the existing safeguarded payment API before collectible lookup. No financial records, database schema, worker lifecycle, OCR inference, model, runtime or credential configuration changes.",
     "rollback": "Restore production build4432439 and matching native workers/source. No database migration or historical payment correction is required; preserve all attempts, captures, audit and invoice/payment records. Never reapply payments."
   },
