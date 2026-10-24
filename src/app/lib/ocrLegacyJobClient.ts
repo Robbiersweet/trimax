@@ -5,7 +5,8 @@ export async function waitForLegacyJob(input:{attemptId:string;documentType:stri
  const deadline=performance.now()+90_000;
  const timeoutMessage="Trimax couldn't finish reading this remittance. Retry your saved scan or enter manually.";
  let lastJobStatus:string|null=null;
- function timeoutError(){return Object.assign(Error(timeoutMessage),{code:lastJobStatus&&['queued','running','completion_persistence_pending'].includes(lastJobStatus)?'OCR_JOB_PENDING':'OCR_STATUS_UNAVAILABLE',jobStatus:lastJobStatus});}
+ let workerUnavailable=false;
+ function timeoutError(){return Object.assign(Error(workerUnavailable?'Capture saved — OCR worker unavailable. Recovery is pending; reopen this saved scan to check its status.':lastJobStatus==='recoverable_stalled'?'Capture saved — processing was interrupted. This same job is waiting for recovery.':timeoutMessage),{code:lastJobStatus&&['queued','running','completion_persistence_pending','recoverable_stalled'].includes(lastJobStatus)?'OCR_JOB_PENDING':'OCR_STATUS_UNAVAILABLE',jobStatus:lastJobStatus,workerUnavailable});}
  async function request(enqueue:boolean){
   const {data}=await bounded(supabase.auth.getSession(),12000);
   if(!data.session)throw Error('Sign in to resume your saved scan.');
@@ -28,14 +29,15 @@ export async function waitForLegacyJob(input:{attemptId:string;documentType:stri
    if(response.status===401)throw Error('Sign in to resume your saved scan.');
    if(response.ok){
     const job=await bounded(response.json(),12000);
-    lastJobStatus=job.status;
+    lastJobStatus=job.processingState??job.status;
+    workerUnavailable=job.workerHealth?.healthy===false;
     if(job.status==='review'||job.status==='failed'){
      const result=job.response??{error:job.error};
      // Keep network timing with the durable review payload, not only a transient UI header.
      const evidence={...result,diagnostics:{...result.diagnostics,backgroundJob:{timings:job.timings??{},enqueueRequestMs:enqueueMs,evidenceReference:job.summary?.evidenceReference??null}}};
      return new Response(JSON.stringify(evidence),{status:job.httpStatus??500,headers:{'Content-Type':'application/json','x-ocr-enqueue-ms':String(enqueueMs),'x-ocr-job-timings':JSON.stringify(job.timings??{})}});
     }
-    status(job.status==='completion_persistence_pending'?'Preparing review':job.status==='queued'?'Waiting to read remittance':'Reading remittance');
+    status(job.processingState==='recoverable_stalled'?'Processing interrupted — recovering this saved scan':job.workerHealth?.healthy===false?'OCR worker unavailable — saved scan retained; recovery pending':job.status==='completion_persistence_pending'?'Preparing review':job.status==='queued'?'Waiting to read remittance':'Reading remittance');
    }else status('Capture saved — reconnecting to processing status…');
   }catch{status('Capture saved — reconnecting to processing status…');}
   await new Promise(resolve=>setTimeout(resolve,Math.min(2500,Math.max(0,deadline-performance.now()))));

@@ -1,3 +1,4 @@
 *.pdf binary
+*.ps1 text eol=lf
 release/frozen-real-acceptance.json text eol=lf
 src/app/book/fonts/OFL-Allura.txt text eol=lf
