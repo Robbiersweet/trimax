@@ -19,7 +19,16 @@ export async function GET(request: Request) {
     if (user.error || !user.data.user) return json({error: 'Sign in required.'}, 401);
     const access = await client.rpc('trimax_is_business_admin', {target_business_id: businessId});
     if (access.error || access.data !== true) return json({error: 'Owner/admin workspace access required.'}, 403);
-    return json(await loadSavedRemittancePayment(client, businessId, attemptId));
+    // Durable job ancestry is deliberately RPC/worker-only under authenticated
+    // RLS. Read it on the server only AFTER verifying this user's workspace
+    // admin access; the loader scopes every ancestry/audit read to businessId.
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!serviceKey) throw Error('Saved history server configuration unavailable.');
+    const historyClient = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey, {
+      global: {fetch: (input, init) => fetch(input, {...init, signal: AbortSignal.timeout(10000)})},
+      auth: {persistSession: false, autoRefreshToken: false},
+    });
+    return json(await loadSavedRemittancePayment(historyClient, businessId, attemptId));
   } catch {
     return json({error: 'Payment history could not be verified. Your saved scan is retained; reopen it to retry.'}, 503);
   }

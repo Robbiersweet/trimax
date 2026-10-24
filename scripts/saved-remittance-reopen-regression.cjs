@@ -2,9 +2,10 @@
 const assert = require('node:assert/strict'), fs = require('node:fs'), path = require('node:path'), ts = require('typescript');
 process.env.NEXT_PUBLIC_SUPABASE_URL='https://isolated.invalid';
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY='isolated-test';
+process.env.SUPABASE_SERVICE_ROLE_KEY='isolated-server-test';
 const business = '11111111-1111-1111-1111-111111111111', original = '22222222-2222-2222-2222-222222222222', replay = '33333333-3333-3333-3333-333333333333';
 const audits = ['a','b','c'].map((id,i)=>({id:`audit${i}`,business_id:business,action:'invoice.batch_payment_applied',entity_id:id,entity_label:`INV-053${i+6}`,created_at:'2026-10-22T10:00:00Z',details:{businessId:business,sourceOcrAttemptId:original,paymentAttachmentId:'attachment',paymentReference:'717',checkDate:'2026-10-01',receivedDate:'2026-10-22',payor:'Glen at North Creek',checkAmount:4286.1,amountApplied:1428.7,batchInvoiceCount:3,paymentOutcome:'paid'}}));
-let scenario = {}, reads = [];
+let scenario = {}, reads = [], clientRoles = [];
 function query(table) {
   const filters = []; let selection = '', bounds, cap;
   const q = {select(s){selection=s;return q;},eq(k,v){filters.push([k,v]);return q;},order(){return q;},range(a,b){bounds=[a,b];return q;},limit(n){cap=n;return q;},
@@ -29,7 +30,7 @@ const fake = {from:query,auth:{getUser:async()=>({data:{user:scenario.signedOut?
 function modules() {
   const cache=new Map();
   function load(file){if(cache.has(file))return cache.get(file).exports;const m={exports:{}};cache.set(file,m);const js=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:99,esModuleInterop:true,jsx:ts.JsxEmit.ReactJSX}}).outputText;
-    const req=spec=>{if(spec==='@supabase/supabase-js')return {createClient:()=>fake};if(!spec.startsWith('.'))return require(spec);const base=path.resolve(path.dirname(file),spec);const target=[base,base+'.ts',base+'.tsx',base+'/index.ts'].find(x=>fs.existsSync(x)&&fs.statSync(x).isFile());assert(target,spec);return load(target);};new Function('require','module','exports',js)(req,m,m.exports);return m.exports;}
+    const req=spec=>{if(spec==='@supabase/supabase-js')return {createClient:(_url,key)=>{clientRoles.push(key);return key==='isolated-server-test'?fake:{...fake,from(){throw Error('Authenticated role has no durable-job SELECT grant');}};}};if(!spec.startsWith('.'))return require(spec);const base=path.resolve(path.dirname(file),spec);const target=[base,base+'.ts',base+'.tsx',base+'/index.ts'].find(x=>fs.existsSync(x)&&fs.statSync(x).isFile());assert(target,spec);return load(target);};new Function('require','module','exports',js)(req,m,m.exports);return m.exports;}
   return load;
 }
 const load=modules(), loader=load(path.resolve('src/app/lib/savedRemittancePaymentServer.ts')).loadSavedRemittancePayment;
@@ -60,12 +61,14 @@ async function main(){
   for(const errorTable of ['ocr_attempts','ocr_legacy_jobs','activity_logs','ocr_attempt_diagnostics']){scenario={errorTable,activities:[]};await assert.rejects(()=>loader(fake,business,replay));}
   scenario={familyOverflow:true};await assert.rejects(()=>loader(fake,business,replay));
   scenario={sourceMismatch:true};await assert.rejects(()=>loader(fake,business,replay),/canonical source/);
-  async function request(options={},auth=true,search=`businessId=${business}&attemptId=${replay}`){scenario=options;reads=[];return get(new Request('https://production.invalid/api/payments/saved-remittance?'+search,{headers:auth?{authorization:'Bearer isolated'}:{}}));}
+  async function request(options={},auth=true,search=`businessId=${business}&attemptId=${replay}`){scenario=options;reads=[];clientRoles=[];return get(new Request('https://production.invalid/api/payments/saved-remittance?'+search,{headers:auth?{authorization:'Bearer isolated'}:{}}));}
   let res=await request({},false);assert.equal(res.status,401);assert.equal(reads.length,0);
   res=await request({},true,'businessId=bad&attemptId=bad');assert.equal(res.status,400);
   res=await request({signedOut:true});assert.equal(res.status,401);assert.equal(reads.length,0);
   res=await request({denied:true});assert.equal(res.status,403);assert.equal(reads.length,0);
+  assert.deepEqual(clientRoles,['isolated-test'],'Denied users cannot construct the privileged history reader.');
   res=await request();assert.equal(res.status,200);assert.equal(res.headers.get('cache-control'),'no-store');assert.equal((await res.json()).status,'applied');
+  assert.deepEqual(clientRoles,['isolated-test','isolated-server-test'],'Verified owner lookup uses the existing server credential for worker-only ancestry, without expanding table grants.');
   res=await request({errorTable:'activity_logs'});assert.equal(res.status,503);assert.match((await res.json()).error,/retained/);
   for(const status of ['applied','ambiguous']){const ui=reopen({savedRemittancePayment:async()=>({status,attemptId:replay})});await ui.run(job);assert.equal(ui.state.setSavedPaymentHistory.status,status);assert.deepEqual(ui.state.setSelectedIds,[]);assert.equal(ui.opticalCalls.length,0);assert.equal(ui.ocrCalls.length,0);assert.equal(ui.state.setPaymentConfirmation,null);}
   for(const status of ['none','reversed']){const ui=reopen({savedRemittancePayment:async()=>({status,attemptId:replay})});await ui.run(job);assert.equal(ui.opticalCalls.length,1);assert.equal(ui.ocrCalls.length,1);assert.equal(ui.ocrCalls[0][7].history,job.summary);}
