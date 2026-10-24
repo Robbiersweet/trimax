@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "releaseId": "trimax-remittance-optical-robustness-20261024-rc6",
+  "sourceCommit": "f1e48bf983082bf7845c08309cd1ac6c053d445d",
+  "deploymentCommit": "885d01f18b1811de7f2be8fe33ec9d8858056d20",
+  "origin": "https://app.rnlcreations.com",
+  "observedAt": "2026-10-24T09:27:55.904611+00:00",
+  "assertions": {
+    "matchingReleaseIdentities": true,
+    "paidHistoryReadOnly": true,
+    "unpaidReviewAndResumeReconciled": true,
+    "retainedJobsTerminalAndSingleClaim": true,
+    "financialRecordsUnchanged": true,
+    "paymentAppliedDuringVerification": false
+  },
+  "privateEvidenceSha256": {
+    "owner-release": "c61206f42fe8198db4d3b71be5a3955f24235e96c29bdc9e8b54663231ece54f",
+    "paid-history-a": "95cf38a5959475a293a357af8e1555761813c4bd595f16881289512bcd1ee968",
+    "paid-history-b": "2797abe29b43318092d9fa738896f40dfd10f12a3499199572f5d709d32d8588",
+    "unpaid-resume": "ee2cde7fd98ff9cada87b649303fd1cba6fdaf2a0f4928a94b791b595456752d",
+    "durable-jobs": "e76d91800153635ef54e97fe138f404d4f1089f5d07cc970f222d50cf9b6b000",
+    "financial-integrity": "1d9e9798cf657e884fa27a079140b17c0a063185edbb023aceafd83e72c67ab5",
+    "deployment-ready": "443a95515259f9be27c29b6e8730cb4a7e56c5d6ba7de75e9e59526a6973dac9"
+  },
+  "physicalAcceptance": "PHYSICAL_ACCEPTANCE_PENDING"
+}

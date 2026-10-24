@@ -1,0 +1,708 @@
+{
+  "schemaVersion": 2,
+  "mode": "POSTDEPLOYMENT",
+  "releaseId": "trimax-remittance-optical-robustness-20261024-rc6",
+  "sourceBundle": "f52d7e17e9ebcd533a600094cf75ab6463cf2880118519d307db0dd9db49ee42",
+  "corpusHash": "29f8a84ab995c246d2cedc9943ce391d56af55b09564dbe23329e357a7df6f7f",
+  "startedAt": "2026-10-24T09:06:31.618Z",
+  "finishedAt": "2026-10-24T09:27:03.928Z",
+  "checks": [
+    {
+      "name": "clean-manifest-source-start",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "frozen-corpus-integrity",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "clean-dependency-install",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "model-bundle",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "runtime-source-bundles",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "production-runtime-attestation",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "live-database-attestation",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "sql-test-runtime",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "ocr-lifecycle-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "discounts-and-services-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "reverse-total-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "canonical-money-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "invoice-cent-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "payment-submit-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "saved-remittance-payment-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "saved-remittance-reopen-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "check-date-persistence-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "glen-payor-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "second-physical-remittance-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "remittance-client-safety-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "auth-cookie-refresh-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "session-tab-isolation-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "remittance-camera-browser",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "remittance-intake-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "remittance-deadline-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "scheduler-provisioning-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "service-workflow-sql-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "service-workflow-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "scheduling-notifications-ui-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "public-scheduling-authorization-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "public-scheduling-boundary-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "public-scheduling-challenge-ui-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "public-scheduling-owner-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "public-scheduling-phase2-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "public-scheduling-production-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "public-scheduling-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "public-function-catalog-replay",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "public-function-manager-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "public-scheduling-schema-regression.mjs",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "public-scheduling-phase2-sql-regression.mjs",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "job-session-integrity-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "job-session-crew-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "upgrade-state-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "login-return-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "direction-fallback-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "file-forensics-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "portability-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "gate-state-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "contract-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "auth-flow-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "startup-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "sql-attestation-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "authorization-execution-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "evidence-handoff-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "final-candidate-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "shadow-capture-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "camera-lifecycle-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "capture-durability-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "ocr-object-upload-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "ocr-evidence-persistence-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "ocr-legacy-job-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "shadow-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "canonical-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "canonical-sql-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "shadow-sql-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "foundation-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "layout-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "field-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "invoice-study-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "fusion-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "resolver-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "payment-evidence-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "document-total-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "identity-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "semantics-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "orientation-heading-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "legacy-direction-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "legacy-first-pass-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "physical-row-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "money-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "mature-money-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "shared-money-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "organization-identity-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "total-localization-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "residual-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "remittance-matching-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "remittance-contract-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "remittance-retry-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "duplicate-remittance-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "payment-application-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "payment-state-lifecycle-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "invoice-correction-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "split-source-relationship-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "split-invoice-send-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "tenant-isolation-hardening-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "business-read-isolation-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "owner-server-auth-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "account-management-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "stabilization-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "table-caption-ownership-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "complementary-row-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "pixel-localization-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "legacy-mature-fallback-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "photo-evidence-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "photo-corpus-financial-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "photo-corpus-acceptance",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "photo-corpus-privacy-regression",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "frozen-business-snapshot",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "retained-check2715-legacy",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "retained-check2715-v2-shadow",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "retained-check2721-legacy",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "retained-check2721-v2-shadow",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "retained-check2734-legacy",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "retained-check2734-v2-shadow",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "retained-check2743-legacy",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "retained-check2743-v2-shadow",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "retained-A-legacy",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "retained-A-v2-shadow",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "retained-D-legacy",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "retained-D-v2-shadow",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "retained-B-legacy",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "retained-B-v2-shadow",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "retained-C-legacy",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "retained-C-v2-shadow",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "lint",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "typescript",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "production-build",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "name": "clean-manifest-source-end",
+      "status": "PASS",
+      "failures": []
+    }
+  ],
+  "retained": [
+    {
+      "id": "check2715",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "id": "check2721",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "id": "check2734",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "id": "check2743",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "id": "A",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "id": "D",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "id": "B",
+      "status": "PASS",
+      "failures": []
+    },
+    {
+      "id": "C",
+      "status": "PASS",
+      "failures": []
+    }
+  ],
+  "status": "PASS",
+  "codeGate": "CODE_GATE_PASSED",
+  "retainedGate": "RETAINED_REAL_GATE_PASSED",
+  "physicalAcceptance": "PHYSICAL_ACCEPTANCE_PENDING",
+  "stateErrors": [],
+  "privateEvidence": {
+    "kind": "sha256-bound-full-gate-json",
+    "sha256": "dcebb97993bc88b701c82d40c6563a2c9106f674eb829d53c678bc327cc22d39",
+    "bytes": 48397
+  }
+}
