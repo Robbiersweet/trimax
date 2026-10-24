@@ -231,7 +231,8 @@ module.exports = async function debugQueueRegression(loader, React, renderer) {
     },
     pinScan: async () => {},
   };
-  const moduleLoader = loader({ "../lib/ocrHistoryClient": clientStub });
+  const moduleLoader = loader({ "../lib/ocrHistoryClient": clientStub,
+    "../lib/savedRemittancePaymentClient": {savedRemittancePayment: async () => ({status:'none'})} });
   const RecentScans = moduleLoader(
     "src/app/components/RecentScans.tsx",
   ).default;

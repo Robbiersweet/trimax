@@ -16,6 +16,7 @@ import {
   type DuplicateRemittanceActivity,
 } from "../../../lib/duplicateRemittance";
 import { createRemittanceDocumentFingerprint } from "../../../lib/remittanceDocumentFingerprint";
+import {loadSavedRemittancePayment} from '../../../lib/savedRemittancePaymentServer';
 
 type GenericTable = {
   Row: Record<string, unknown>;
@@ -32,6 +33,8 @@ type Database = {
       invoice_line_items: GenericTable;
       invoices: GenericTable;
       ocr_legacy_jobs: GenericTable;
+      ocr_attempts: GenericTable;
+      ocr_attempt_diagnostics: GenericTable;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -295,6 +298,16 @@ export async function POST(request: Request) {
   const sourceAttemptId = cleanString(body.sourceAttemptId, 80);
   let savedDiagnosticReview = false;
   if (sourceAttemptId) {
+    try {
+      const history = await loadSavedRemittancePayment(supabase, businessId, sourceAttemptId);
+      if (history.status === 'applied' || history.status === 'ambiguous') return applyErrorResponse({
+        message: history.status === 'applied' ? 'Payment already applied. No action is required.' : 'Saved remittance payment history needs review before another application.',
+        code: history.status === 'applied' ? 'saved_remittance_already_applied' : 'saved_remittance_history_ambiguous',
+        stage: 'saved-remittance-history', status: 409,
+      });
+    } catch {
+      return applyErrorResponse({message: 'Payment history could not be verified. No payment was applied.', code: 'saved_remittance_history_unavailable', stage: 'saved-remittance-history', status: 503});
+    }
     const {data: sourceJob, error: sourceError} = await supabase.from('ocr_legacy_jobs')
       .select('attempt_id, input, state').eq('business_id', businessId).eq('attempt_id', sourceAttemptId)
       .maybeSingle<{attempt_id:string;input:{diagnosticReplay?:boolean};state:string}>();

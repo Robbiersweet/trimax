@@ -551,6 +551,7 @@ export default async function PaymentsPage({
 
         <div id="batch-payment-tool" className="scroll-mt-6">
           <BatchInvoicePayments
+            key={business?.id ?? businessSlug}
             retainedAttemptId={resolvedSearchParams.replayAttempt}
             businessId={business?.id}
             businessSlug={businessSlug}

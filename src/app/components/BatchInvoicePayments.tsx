@@ -8,6 +8,9 @@ import RemittanceCamera from "./RemittanceCamera";
 import { remittanceDeadline, REMITTANCE_PROCESSING_LIMIT_MS } from "../lib/remittanceDeadline";
 import { storeCanonicalCapture, resumeCaptureHandoff } from "../lib/ocrCanonicalClient";
 import LegacyOcrJobs from "./LegacyOcrJobs";
+import type {SavedLegacyJob} from "./LegacyOcrJobs";
+import {SavedRemittancePaymentView} from "./SavedRemittancePaymentView";
+import {savedRemittancePayment, type SavedRemittanceLookup} from "../lib/savedRemittancePaymentClient";
 import { waitForLegacyJob } from "../lib/ocrLegacyJobClient";
 import { transportFailure, type CanonicalCapture, type TransportFailure } from "../lib/ocrCanonical";
 
@@ -604,6 +607,9 @@ export default function BatchInvoicePayments({
   const [ocrImageFile, setOcrImageFile] = useState<File | null>(null);
 
   const resumedDiagnosticReplay = useRef(false);
+  const retainedReplayBusy = useRef(false);
+  const [isOpeningRetainedScan, setIsOpeningRetainedScan] = useState(false);
+  const [savedPaymentHistory, setSavedPaymentHistory] = useState<SavedRemittanceLookup | null>(null);
 
   const [captureDocumentType, setCaptureDocumentType] =
     useState<RemittanceDocumentType>("remittance_stub");
@@ -897,10 +903,10 @@ export default function BatchInvoicePayments({
     ]
   );
   const showPaymentReview =
-    paymentEntryMode === "manual" ||
+    !['applied', 'ambiguous'].includes(savedPaymentHistory?.status ?? '') && (paymentEntryMode === "manual" ||
     (paymentEntryMode === "photo" &&
       checkOcrStatus !== "reading" &&
-      checkOcrStatus !== "idle");
+      checkOcrStatus !== "idle"));
   const showManualInvoiceBrowser = paymentEntryMode === "manual";
   const paymentCanApply =
     !isSaving &&
@@ -2377,6 +2383,7 @@ export default function BatchInvoicePayments({
   // A new source owns a fresh review. Clear synchronously before camera,
   // normalization, duplicate preflight or any old asynchronous completion.
   function clearNewRemittanceReviewState() {
+    setSavedPaymentHistory(null);
     resumedDiagnosticReplay.current=false;
     setPaymentConfirmation(null);
     ocrAttemptVersion.current++;
@@ -2907,17 +2914,73 @@ export default function BatchInvoicePayments({
     );
   }
 
+  async function openSavedRemittance(job: SavedLegacyJob) {
+    resetCheckCaptureState();
+    const version = ocrAttemptVersion.current;
+    setScanSavedStatus('Checking saved payment history…');
+    try {
+      const history = await savedRemittancePayment(businessId!, job.attemptId);
+      if (version !== ocrAttemptVersion.current) return;
+      setSavedPaymentHistory(history);
+      if (history.status === 'applied' || history.status === 'ambiguous') {
+        setScanSavedStatus(history.status === 'applied' ? 'Payment already applied — no action required.' : 'Payment history needs review — application blocked.');
+        return;
+      }
+      resumedDiagnosticReplay.current = Boolean(job.input.diagnosticReplay);
+      const summary = job.summary;
+      const optical = await remittanceDeadline(scanOptical(summary.canonicalReference!), 15000, 'Saved image lookup timed out. Reopen this saved scan to retry.');
+      if (version !== ocrAttemptVersion.current) return;
+      const image = optical?.images?.find((item: {sha256?: string; base64?: string}) => item.sha256 === summary.sourceImageHash && item.base64);
+      if (!image) throw Error('Saved image is unavailable or expired.');
+      const imageDataUrl = 'data:' + image.mime + ';base64,' + image.base64;
+      setCheckImagePreview(imageDataUrl); setPaymentEntryMode('photo');
+      await extractCheckStubFromPhoto(imageDataUrl, job.input.documentType, job.input.documentType === 'check_only' ? 'check_details' : 'primary', job.input.retryStrategy, [], '', summary.canonicalReference,
+        {history: summary, canonical: {reference: summary.canonicalReference!, sha256: summary.sourceImageHash!, storedBytes: Math.floor(image.base64.length * 3 / 4), shadowQueued: true, uploadDurationMs: 0}});
+    } catch (error) {
+      if (version !== ocrAttemptVersion.current) return;
+      const message = error instanceof Error ? error.message : 'Saved scan could not be reopened.';
+      setScanSavedStatus(message); setToast({type: 'error', message});
+    }
+  }
+  function savedScanReview() {
+    return <>{businessId && ['owner','admin'].includes(workspaceRole ?? '') && <LegacyOcrJobs businessId={businessId} onResume={openSavedRemittance}/>}
+      {savedPaymentHistory && <SavedRemittancePaymentView key={savedPaymentHistory.attemptId} history={savedPaymentHistory}/>}</>;
+  }
+  const showRetainedHistory = useRemittanceEvent((history: SavedRemittanceLookup, version: number) => {
+    if (version !== ocrAttemptVersion.current || !['applied','ambiguous'].includes(history.status)) return;
+    resetCheckCaptureState(); setSavedPaymentHistory(history);
+    setScanSavedStatus(history.status === 'applied' ? 'Payment already applied — no action required.' : 'Payment history needs review — application blocked.');
+  });
+  useEffect(() => {
+    if (!retainedAttemptId || !businessId || !['owner','admin'].includes(workspaceRole ?? '')) return;
+    let current = true;
+    const version = ocrAttemptVersion.current;
+    void savedRemittancePayment(businessId, retainedAttemptId).then(history => {if (current) showRetainedHistory(history, version);})
+      .catch(() => {if (current && version === ocrAttemptVersion.current) setScanSavedStatus('Payment history could not be verified. Reopen this saved scan to retry.');});
+    return () => {current = false;};
+  }, [retainedAttemptId, businessId, workspaceRole, showRetainedHistory]);
   if (payableInvoices.length === 0) {
-    return businessId ? <RecentScans businessId={businessId} businessSlug={businessSlug??undefined} role={workspaceRole} savedStatus={scanSavedStatus}/> : null;
+    return businessId ? <>{savedScanReview()}<RecentScans businessId={businessId} businessSlug={businessSlug??undefined} role={workspaceRole} savedStatus={scanSavedStatus}/></> : null;
   }
 
   return (
     <Card className="batch-payments-card border-green-500/30 bg-green-500/5">
-      {retainedAttemptId && ['owner','admin'].includes(workspaceRole??'') && <button type="button" disabled={checkOcrStatus==='reading'} className="rounded border px-3 py-2 text-sm" onClick={async()=>{
+      {retainedAttemptId && ['owner','admin'].includes(workspaceRole??'') && <button type="button" disabled={checkOcrStatus==='reading' || isOpeningRetainedScan} className="rounded border px-3 py-2 text-sm" onClick={async()=>{
+        if (retainedReplayBusy.current) return;
+        retainedReplayBusy.current = true; setIsOpeningRetainedScan(true);
+        const version = ocrAttemptVersion.current;
         try {
+          const paymentHistory = await savedRemittancePayment(businessId!, retainedAttemptId);
+          if (version !== ocrAttemptVersion.current) return;
+          if (paymentHistory.status === 'applied' || paymentHistory.status === 'ambiguous') {
+            resetCheckCaptureState(); setSavedPaymentHistory(paymentHistory);
+            setScanSavedStatus(paymentHistory.status === 'applied' ? 'Payment already applied — no action required.' : 'Payment history needs review — application blocked.');
+            return;
+          }
           const {data:original,error}=await supabase.from('ocr_attempts').select('id,business_id,original_id,summary').eq('id',retainedAttemptId).eq('business_id',businessId!).single();
           if(error||!original)throw Error('Retained attempt unavailable');
           const optical=await scanOptical(original.summary.canonicalReference??retainedAttemptId);
+          if (version !== ocrAttemptVersion.current) return;
           const image=optical?.images?.find((item:{label:string;base64?:string;sha256?:string})=>item.label==='Canonical OCR input'&&item.sha256===original.summary.sourceImageHash&&item.base64)??(!original.summary.canonicalReference?optical?.images?.find((item:{label:string;base64?:string})=>item.label==='Final OCR input'&&item.base64):null);
           if(!image)throw Error('Retained canonical image unavailable');
           const imageDataUrl='data:'+image.mime+';base64,'+image.base64;
@@ -2927,21 +2990,10 @@ export default function BatchInvoicePayments({
           scanLineage.current={original:original.original_id,last:original.id};
           setCheckImagePreview(imageDataUrl);setPaymentEntryMode('photo');
           await extractCheckStubFromPhoto(imageDataUrl,'remittance_stub','primary','standard',['Diagnostic replay of retained attempt '+original.id+'; no new physical capture.'],'',original.summary.canonicalReference??retainedAttemptId,['image_stored','processing'].includes(original.summary.captureState)?{history:original.summary,canonical:{reference:original.summary.canonicalReference,sha256:original.summary.sourceImageHash,storedBytes:Math.floor(image.base64.length*3/4),shadowQueued:false,uploadDurationMs:0}}:undefined);
-        } catch(error) { setCheckOcrMessage(String(error)); }
-      }}>Replay retained image — no payment</button>}
-      {businessId && ['owner','admin'].includes(workspaceRole??'') && <LegacyOcrJobs businessId={businessId} onResume={async job=>{
-        try {
-          resumedDiagnosticReplay.current=Boolean(job.input.diagnosticReplay);
-          setPaymentConfirmation(null);
-          const history=job.summary;
-          const optical=await scanOptical(history.canonicalReference!);
-          const image=optical?.images?.find((item:{sha256?:string;base64?:string})=>item.sha256===history.sourceImageHash&&item.base64);
-          if(!image)throw Error('Saved image is unavailable or expired.');
-          const imageDataUrl='data:'+image.mime+';base64,'+image.base64;
-          setCheckImagePreview(imageDataUrl);setPaymentEntryMode('photo');
-          await extractCheckStubFromPhoto(imageDataUrl,job.input.documentType,job.input.documentType==='check_only'?'check_details':'primary',job.input.retryStrategy,[],'',history.canonicalReference,{history,canonical:{reference:history.canonicalReference!,sha256:history.sourceImageHash!,storedBytes:Math.floor(image.base64.length*3/4),shadowQueued:true,uploadDurationMs:0}});
-        }catch(error){setCheckOcrMessage(String(error));}
-      }}/> }
+        } catch(error) { if (version === ocrAttemptVersion.current) {setScanSavedStatus(String(error)); setToast({type:'error', message:String(error)});} }
+        finally {retainedReplayBusy.current = false; setIsOpeningRetainedScan(false);}
+      }}>{isOpeningRetainedScan ? 'Opening retained scan…' : 'Replay retained image — no payment'}</button>}
+      {savedScanReview()}
       {businessId && <RecentScans businessId={businessId} businessSlug={businessSlug??undefined} role={workspaceRole} savedStatus={scanSavedStatus}/> }
       {toast ? <Toast type={toast.type} message={toast.message} /> : null}
       {paymentConfirmation && typeof document!=='undefined' && createPortal(

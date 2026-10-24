@@ -2,6 +2,7 @@
 import { moneyFixed } from "../lib/money.ts";
 
 import OcrCaptureRecovery from './OcrCaptureRecovery';
+import SavedRemittancePaymentStatus from './SavedRemittancePaymentView';
 
 import OpticalEvidenceView from "./OpticalEvidenceView";
 import OcrShadowComparison from './OcrShadowComparison';
@@ -200,6 +201,7 @@ export default function RecentScans({
                 {selected.result}
               </h3>
               <OcrCaptureRecovery summary={s} businessSlug={businessSlug}/>
+              <SavedRemittancePaymentStatus businessId={businessId} attemptId={s.attemptId}/>
               <OcrShadowComparison summary={s} businessSlug={businessSlug}/>
               <dl className="grid grid-cols-2 gap-2 text-sm">
                 <dt>Scanned</dt>

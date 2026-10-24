@@ -48,11 +48,12 @@ function loader(stubs = {}) {
         [base, base + ".ts", base + ".tsx"].find((p) => fs.existsSync(p)),
       );
     }
-    new Function("require", "module", "exports", source)(
-      localRequire,
-      loadedModule,
-      loadedModule.exports,
-    );
+    try {
+      new Function("require", "module", "exports", source)(localRequire, loadedModule, loadedModule.exports);
+    } catch (error) {
+      error.message = `While loading ${file}: ${error.message}`;
+      throw error;
+    }
     return loadedModule.exports;
   }
   return load;
@@ -1120,7 +1121,13 @@ async function duplicatePreflightAndViewRegression() {
     assert.equal(result.fingerprint.length, 256);
     assert.ok(writes.every(([name]) => ["setRemittanceDocumentFingerprint", "setLastOcrPrepDiagnosticLines", "setLastOcrDiagnosticLines"].includes(name)));
   }
-  const modalSource = source.slice(source.indexOf("  function duplicatePaymentHref()"), source.indexOf("  if (payableInvoices.length === 0)"));
+  const modalNames = new Set(['duplicatePaymentHref','closeDuplicateModal','continueAfterPossibleDuplicateReview','reviewReversedPayment','duplicateRemittanceModalView']);
+  const modalParts = [];
+  const modalAst = ts.createSourceFile('screen.tsx', source, 99, true, ts.ScriptKind.TSX);
+  function collectModal(node) { if (ts.isFunctionDeclaration(node) && modalNames.has(node.name?.text)) modalParts.push(node.getText(modalAst)); else ts.forEachChild(node, collectModal); }
+  collectModal(modalAst);
+  assert.equal(modalParts.length, modalNames.size);
+  const modalSource = modalParts.join('\n');
   const events = [];
   const modal = compile(modalSource + "\nreturn duplicateRemittanceModalView;", {
     businessSlug: "rnl-creations", duplicateRemittanceModal: { intent: "possible", result: { canOverride: true, payment: { checkNumber: "", amount: 2252.95, invoiceNumbers: ["INV-0506", "INV-0507"], invoiceCount: 2 } } },

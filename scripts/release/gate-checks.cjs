@@ -5,6 +5,8 @@ const scripts=[
  'scripts/canonical-money-regression.cjs',
  'scripts/invoice-cent-regression.ts',
  'scripts/payment-submit-regression.cjs',
+ 'scripts/saved-remittance-payment-regression.cjs',
+ 'scripts/saved-remittance-reopen-regression.cjs',
  'scripts/check-date-persistence-regression.cjs',
  'scripts/glen-payor-regression.cjs',
  'scripts/second-physical-remittance-regression.cjs',
