@@ -7,6 +7,21 @@ const recognitionContract = text => text.replaceAll('\r\n','\n')
  .replace(/^import \{ (?:ocrRuntimeCache|tmpdir|join) \} from '[^']+';\n/gm,'')
  .replace(/    const cachePath = [^\n]+;\n    await mkdir\(cachePath, \{ recursive: true \}\);\n/g,'')
  .replace(/cachePath: ?ocrRuntimeCache\(\), ?/g,'').replace(/cachePath, /g,'');
+// These exact optical declarations are the reviewed photo-robustness repair.
+// Keep every other declaration AND import pinned, including collectible/client
+// filtering, split resolution, duplicate checks and payment/reconciliation gates.
+const reviewedOpticalDeclarations = {
+ 'src/app/lib/remittanceAttempt.ts': new Set(['selectRepeatedPropertyIdentity','selectObservedCheckDate','selectObservedHeader']),
+ 'src/app/lib/remittanceMatching.ts': new Set(['isBankingNoiseLine','checkNumberCandidatesFromText','selectBestCheckNumberCandidate','selectRemittanceHeaderEvidence','CheckNumberCandidate']),
+};
+function frozenFinancialContract(text,file){
+ const allowed=reviewedOpticalDeclarations[file];if(!allowed)return recognitionContract(text);
+ const ts=require('typescript'),ast=ts.createSourceFile(file,text,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);
+ return recognitionContract(ast.statements.map(statement=>{
+  if((ts.isFunctionDeclaration(statement)||ts.isTypeAliasDeclaration(statement))&&allowed.has(statement.name?.text))return '\n/* reviewed optical declaration '+statement.name.text+' */';
+  return statement.getFullText(ast);
+ }).join(''));
+}
 const hash = b => crypto.createHash('sha256').update(b).digest('hex');
 const layout = { sourceWidth: 500, sourceHeight: 300, headerRegion: { left: 0, top: 70, width: 480, height: 20 }, totalCandidateRegion: { left: 300, top: 220, width: 100, height: 30 }, rows: [{ bounds: { left: 0, top: 100, width: 400, height: 30 }, amountRegion: { left: 300, top: 100, width: 100, height: 30 } }, { bounds: { left: 0, top: 150, width: 400, height: 30 }, amountRegion: { left: 300, top: 150, width: 100, height: 30 } }], diagnostics: { font: 12 } };
 const sourceHash = 'a'.repeat(64), evidence = { documentId: 'synthetic', sourceHash, rows: [{ rowId: 'synthetic-0', cents: 10000, observations: [] }, { rowId: 'synthetic-1', cents: 20000, observations: [] }], checkNumber: '001234', checkDate: '2026-01-01', payor: 'Example' };
@@ -63,7 +78,13 @@ function test(name, fn) { fn(); count++; console.log('PASS', name); }
     // recognition/fusion contracts and all optical assertions stay unchanged.
     for (const file of ['src/app/lib/ocrV2/fusion/index.ts', 'src/app/lib/ocrV2/resolver/index.ts', 'src/app/lib/ocrV2/recognition/index.ts', 'src/app/lib/ocrV2/recognition/paymentEvidence.ts', 'src/app/lib/remittanceAttempt.ts', 'src/app/lib/remittanceMatching.ts']) {
         const revision = file === 'src/app/lib/remittanceMatching.ts' ? '5e8f08ec8fecc99fdd47031c3e240c8f8c7154b2' : file === 'src/app/lib/remittanceAttempt.ts' ? '5e8f08ec8fecc99fdd47031c3e240c8f8c7154b2' : file === 'src/app/lib/ocrV2/resolver/index.ts' ? '5e8f08ec8fecc99fdd47031c3e240c8f8c7154b2' : '39e4c0f';
-        assert.equal(recognitionContract(fs.readFileSync(file, 'utf8')), recognitionContract(cp.execFileSync('git', ['show', revision + ':' + file], { encoding: 'utf8' })), file + ' changed');
+        const current=fs.readFileSync(file,'utf8'),baseline=cp.execFileSync('git',['show',revision+':'+file],{encoding:'utf8'});
+        assert.equal(frozenFinancialContract(current,file),frozenFinancialContract(baseline,file),file+' frozen financial/recognition boundary changed');
+        if(reviewedOpticalDeclarations[file]){
+            const financialName=file.endsWith('remittanceAttempt.ts')?'attemptAllowsApply':'findRemittanceMatches';
+            assert.notEqual(frozenFinancialContract(current.replace('function '+financialName+'(', 'function altered'+financialName+'('),file),frozenFinancialContract(baseline,file),'Financial declarations must never disappear behind an optical exception');
+            assert.notEqual(frozenFinancialContract(current.replace(/^import /m,'import /* changed binding */ '),file),frozenFinancialContract(baseline,file),'Imports remain frozen');
+        }
     }
     count++;
     console.log('PASS frozen invoice/fusion/resolver/Phase5B contracts');
