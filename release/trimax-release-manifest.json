@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "releaseId": "trimax-saved-remittance-history-20261023-rc2",
   "status": "SEALED_CONTROLLED_DEPLOYMENT_CANDIDATE",
-  "createdAt": "2026-10-24T04:36:35.629Z",
-  "releaseTimestamp": "2026-10-24T04:36:35.629Z",
+  "createdAt": "2026-10-24T04:39:58.827Z",
+  "releaseTimestamp": "2026-10-24T04:39:58.827Z",
   "baseProduction": {
-    "commit": "19308c20b5461f3ad099854c5fc235d9cb61a97e",
-    "vercelDeploymentId": "3P7aZko1Muk2XBJAXa4PEwrE9sPY"
+    "commit": "4432439bcee110d14a9def3d7257698ae133e54b",
+    "vercelDeploymentId": "5hsxXQvDjVRFDPcMEYj2QaagjYRE"
   },
   "components": {
     "web": {
@@ -893,7 +893,7 @@
     "physicalAcceptance": "Only installed-iPhone production evidence for exact release may pass; replay cannot pass",
     "legacyModelCache": "Pinned runtime cache verified by startup contract before claim"
   },
-  "sealedAt": "2026-10-24T04:36:35.629Z",
+  "sealedAt": "2026-10-24T04:39:58.827Z",
   "testRuntime": {
     "pgliteVersion": "0.5.8",
     "pglitePackageSha256": "65dff2c93c707e526902eebfab246bcbf2df2eba1c6984a5b5e9a44177532b1c",
@@ -1630,11 +1630,11 @@
   },
   "upgradeContext": {
     "currentProductionRelease": {
-      "releaseId": "trimax-saved-remittance-history-20261023-rc1",
-      "manifestCommit": "19308c20b5461f3ad099854c5fc235d9cb61a97e",
-      "manifestDigest": "91fce457094c4039ddec818eec849805a8ee9f58409c2f25a1d51a29b720b9d6",
-      "deploymentId": "3P7aZko1Muk2XBJAXa4PEwrE9sPY",
-      "deploymentCommit": "19308c20b5461f3ad099854c5fc235d9cb61a97e"
+      "releaseId": "trimax-ocr-job-lifecycle-20261023-rc1",
+      "manifestCommit": "4432439bcee110d14a9def3d7257698ae133e54b",
+      "manifestDigest": "00c67d871618576449b16b8fddf3207c17d7d39bfd9703aee6ed8b9b88900593",
+      "deploymentId": "5hsxXQvDjVRFDPcMEYj2QaagjYRE",
+      "deploymentCommit": "4432439bcee110d14a9def3d7257698ae133e54b"
     },
     "candidateReleaseId": "trimax-saved-remittance-history-20261023-rc2",
     "applicationCommit": "6f6d7f1959e3fbbab9de14d89415e13a6a26f941",
@@ -1642,7 +1642,7 @@
   },
   "contractRevision": {
     "id": "saved-remittance-authoritative-history",
-    "priorManifestDigest": "91fce457094c4039ddec818eec849805a8ee9f58409c2f25a1d51a29b720b9d6",
+    "priorManifestDigest": "00c67d871618576449b16b8fddf3207c17d7d39bfd9703aee6ed8b9b88900593",
     "reason": "Read-only payment/audit history and exact retained-object/hash linkage precede saved OCR review; complete historical allocations are shown without consulting current balances. Already-applied/ambiguous source attempts are blocked by the existing safeguarded payment API before collectible lookup. No financial records, database schema, worker lifecycle, OCR inference, model, runtime or credential configuration changes.",
     "rollback": "Restore production build4432439 and matching native workers/source. No database migration or historical payment correction is required; preserve all attempts, captures, audit and invoice/payment records. Never reapply payments."
   },
