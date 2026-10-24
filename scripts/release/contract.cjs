@@ -30,14 +30,22 @@ function localFailures(manifest,cwd=root){const errors=[];if(git(['status','--po
 function compareDatabase(expected,actual,engine,businessId){const errors=[];if(!actual||actual.businessId!==businessId||actual.engine!==engine||actual.credentialScope!=='ocr-only')errors.push('Credential scope not attested');
  for(const kind of ['schema','rpc','triggers','policies','grants'])if(expected.fingerprints[kind]?.sha256!==actual?.fingerprints?.[kind]?.sha256)errors.push('Database '+kind+' fingerprint mismatch');
  if(digest(expected.flags)!==digest(actual?.flags))errors.push('Production feature flags differ');return errors;}
-function verifyModels(manifest,engine,config){const errors=[];for(const m of manifest.models.filter(m=>m.engines.includes(engine))){try{let actual;
+const requiresMatureRuntime=(config,engine)=>engine==='v2-shadow'||engine==='legacy'&&config.matureFallbackEnabled===true;
+function matureRuntimeConfigurationFailures(manifest,engine,config){
+ if(!requiresMatureRuntime(config,engine))return [];
+ const errors=[];
+ if(config.python!==manifest.workerConfiguration.python||config.wslDistribution!==manifest.workerConfiguration.wslDistribution)errors.push('Recognizer runtime configuration mismatch');
+ if(engine==='legacy'&&manifest.models.some(m=>m.engines.includes('v2-shadow')&&!m.engines.includes('legacy')))errors.push('Legacy mature fallback model attestation incomplete');
+ return errors;
+}
+function verifyModels(manifest,engine,config){const errors=matureRuntimeConfigurationFailures(manifest,engine,config);for(const m of manifest.models.filter(m=>m.engines.includes(engine))){try{let actual;
  if(m.runtime==='wsl'){const output=cp.execFileSync('wsl',['-d',config.wslDistribution||'Ubuntu','--','sha256sum',m.path],{encoding:'utf8',timeout:30000,windowsHide:true});actual=output.trim().split(/\s+/)[0];}
  else{const file=m.path==='RUNTIME_CACHE/eng.traineddata'?path.join(require('node:os').tmpdir(),'trimax-ocr','tesseract-js-7','eng','eng.traineddata'):m.path;actual=hash(fs.readFileSync(file));}
  if(actual!==m.sha256)errors.push('Model hash mismatch: '+m.name);
  }catch{errors.push('Model unavailable: '+m.name);}}return errors;}
 function verifyRuntimeSources(manifest,engine,config){const errors=[];
  for(const [name,expected] of Object.entries(manifest.runtimeSources.node)){try{const base=path.join(root,'node_modules',name),files={};const visit=dir=>{for(const e of fs.readdirSync(dir,{withFileTypes:true})){const file=path.join(dir,e.name);if(e.isDirectory())visit(file);else if(e.isFile())files[path.relative(base,file).replaceAll('\\','/')]=hash(fs.readFileSync(file));}};visit(base);if(digest(files)!==digest(expected.files))errors.push('Node OCR dependency source mismatch: '+name);}catch{errors.push('Node OCR dependency unavailable: '+name);}}
- if(engine==='v2-shadow')try{const script="import json,pathlib,hashlib,subprocess,sys\nitems=[]\nfor root in json.loads(sys.argv[1]):\n p=pathlib.Path(root)\n files={str(f.relative_to(p)):hashlib.sha256(f.read_bytes()).hexdigest() for f in sorted(p.rglob('*')) if f.is_file() and '.git' not in f.parts and '__pycache__' not in f.parts and f.suffix in ('.py','.yaml','.yml','.json','.txt')}\n def git(*a): return subprocess.check_output(['git','-C',root,*a],text=True).strip()\n items.append({'path':root,'commit':git('rev-parse','HEAD'),'status':git('status','--porcelain'),'sourceHashes':files})\nprint(json.dumps(items))";
+ if(requiresMatureRuntime(config,engine))try{const script="import json,pathlib,hashlib,subprocess,sys\nitems=[]\nfor root in json.loads(sys.argv[1]):\n p=pathlib.Path(root)\n files={str(f.relative_to(p)):hashlib.sha256(f.read_bytes()).hexdigest() for f in sorted(p.rglob('*')) if f.is_file() and '.git' not in f.parts and '__pycache__' not in f.parts and f.suffix in ('.py','.yaml','.yml','.json','.txt')}\n def git(*a): return subprocess.check_output(['git','-C',root,*a],text=True).strip()\n items.append({'path':root,'commit':git('rev-parse','HEAD'),'status':git('status','--porcelain'),'sourceHashes':files})\nprint(json.dumps(items))";
  const actual=JSON.parse(cp.execFileSync('wsl',['-d',config.wslDistribution,'--',config.python,'-c',script,JSON.stringify(manifest.runtimeSources.wsl.map(r=>r.path))],{encoding:'utf8',windowsHide:true,timeout:30000,maxBuffer:10000000}));
  if(digest(actual)!==digest(manifest.runtimeSources.wsl)||actual.some(r=>r.status))errors.push('WSL recognizer repository revision/source drift');}catch{errors.push('WSL recognizer source attestation unavailable');}
  if(digest({node:manifest.runtimeSources.node,wsl:manifest.runtimeSources.wsl})!==manifest.runtimeSources.sha256)errors.push('Runtime source bundle definition changed');return errors;
@@ -51,10 +59,9 @@ function validateLocalRuntime(config,engine){const manifest=read(path.join(root,
  if(config.businessId!==manifest.workerConfiguration.businessId)errors.push('Worker business scope mismatch');
  if(!config.workerKey||!config.anonKey)errors.push('Restricted credential missing');
  if(!config.anonKey?.startsWith('sb_publishable_'))try{const role=JSON.parse(Buffer.from(config.anonKey.split('.')[1],'base64url').toString()).role;if(role!=='anon')errors.push('Worker API key must be anon, never service_role');}catch{errors.push('Worker API key is neither a publishable key nor an anon JWT');}
- if(engine==='v2-shadow'&&(config.python!==manifest.workerConfiguration.python||config.wslDistribution!==manifest.workerConfiguration.wslDistribution))errors.push('Recognizer runtime configuration mismatch');
  errors.push(...verifyModels(manifest,engine,config));
  errors.push(...verifyRuntimeSources(manifest,engine,config));
- if(engine==='v2-shadow')try{const actual=JSON.parse(cp.execFileSync('wsl',['-d',config.wslDistribution,'--',config.python,'-c',"import importlib.metadata as m,json,sys; print(json.dumps({'python':sys.version.split()[0],'packages':{n:m.version(n) for n in ['torch','rapidocr','onnxruntime','transformers']}}))"],{encoding:'utf8',windowsHide:true,timeout:30000}));if(actual.python!==manifest.workerConfiguration.pythonVersion||digest(actual.packages)!==digest(manifest.workerConfiguration.packages))errors.push('Python/model package versions differ');}catch{errors.push('Python/model package versions unavailable');}
+ if(requiresMatureRuntime(config,engine))try{const actual=JSON.parse(cp.execFileSync('wsl',['-d',config.wslDistribution,'--',config.python,'-c',"import importlib.metadata as m,json,sys; print(json.dumps({'python':sys.version.split()[0],'packages':{n:m.version(n) for n in ['torch','rapidocr','onnxruntime','transformers']}}))"],{encoding:'utf8',windowsHide:true,timeout:30000}));if(actual.python!==manifest.workerConfiguration.pythonVersion||digest(actual.packages)!==digest(manifest.workerConfiguration.packages))errors.push('Python/model package versions differ');}catch{errors.push('Python/model package versions unavailable');}
  if(digest(manifest.models)!==manifest.modelBundle.sha256)errors.push('Model bundle definition changed');
  if(errors.length)throw Error('RUNTIME DRIFT DETECTED: '+errors.join('; '));
  return manifest;
@@ -83,4 +90,4 @@ function scoreDocument(expected,observed){const failures=[];const truth=expected
  if(automatic&&(total==null||observed.arithmeticReconciliation?.difference!==0||ids.length!==truth.rows.length||observed.reviewBlockers?.length))failures.push('Automatic document lacks complete safe evidence');
  return failures;
 }
-module.exports={root,read,hash,digest,canonical,git,sourcePaths,sourceBytes,sourceHashes,committedSourceHashes,localFailures,compareDatabase,verifyModels,verifyRuntimeSources,validateLocalRuntime,validateStartup,scoreDocument};
+module.exports={requiresMatureRuntime,matureRuntimeConfigurationFailures,root,read,hash,digest,canonical,git,sourcePaths,sourceBytes,sourceHashes,committedSourceHashes,localFailures,compareDatabase,verifyModels,verifyRuntimeSources,validateLocalRuntime,validateStartup,scoreDocument};

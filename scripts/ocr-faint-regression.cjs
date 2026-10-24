@@ -53,7 +53,10 @@ function loadRoute() {
 (async () => {
   const input = fs.readFileSync("scripts/fixtures/faint-remittance.png");
   const prepared = await prepareFaintRegions(input);
-  assert.equal(prepared.scale, 1);
+  assert(prepared.scale >= 1 && prepared.scale <= 3, "Recognition scale is bounded and source coordinates remain native");
+  const processed = await sharp(prepared.color).metadata();
+  assert.equal(processed.width, Math.round(prepared.bounds.width * prepared.scale));
+  assert.equal(processed.height, Math.round(prepared.bounds.height * prepared.scale));
   assert.equal(prepared.inputWidth, 2918);
   assert(prepared.estimatedCharacterHeight >= 8);
   const worker = await createWorker("eng", OEM.LSTM_ONLY, {
@@ -101,10 +104,10 @@ function loadRoute() {
       .toBuffer();
     const newInk = await sharp(prepared.binary)
       .extract({
-        left: 800 - prepared.bounds.left,
-        top: 282 - prepared.bounds.top,
-        width: 200,
-        height: 380,
+        left: Math.round((800 - prepared.bounds.left) * prepared.scale),
+        top: Math.round((282 - prepared.bounds.top) * prepared.scale),
+        width: Math.round(200 * prepared.scale),
+        height: Math.round(380 * prepared.scale),
       })
       .grayscale()
       .raw()
@@ -164,8 +167,8 @@ function loadRoute() {
         height: prepared.bounds.height,
         bounds: prepared.bounds,
       },
-      prepared.bounds.width,
-      prepared.bounds.height,
+      processed.width,
+      processed.height,
       {
         variant: chosen.variant,
         pageMode: { name: "sparse-text", value: PSM.SPARSE_TEXT },

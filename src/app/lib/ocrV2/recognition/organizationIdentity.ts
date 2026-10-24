@@ -57,13 +57,15 @@ export function fuseOrganizationIdentity(observations: OrganizationObservation[]
   const supported = candidates.filter(c => c.stemKey.length >= 6 && c.supportedEngines.length >= 2 && c.regions.length >= 2);
   const winner = supported.length === 1 ? supported[0] : null;
   // A second independently supported stem always blocks. A one-engine isolated
-  // glyph disagreement stays visible, but cannot override two agreeing engines.
-  const competing = winner ? candidates.filter(c => c.stemKey !== winner.stemKey && (c.engines.length >= 2 || organizationDistance(c.stemKey, winner.stemKey) > 1)) : candidates;
+  // glyph disagreement stays visible, but cannot override two independently
+  // repeated engines. A union of two models and two regions is insufficient
+  // when only one model actually repeats the rival across those regions.
+  const competing = winner ? supported.filter(c => c.stemKey !== winner.stemKey) : candidates;
   const unexplained = winner ? unique.filter(o => mature.has(o.recognizer) && !o.compact.startsWith(winner.stemKey) &&
     !(o.descriptorEvidence && organizationDistance(o.stemKey, winner.stemKey) <= 1)) : [];
   const unexplainedConflict = [...new Set(unexplained.map(o => o.compact))].some(key => {
     const own = unexplained.filter(o => o.compact === key);
-    return new Set(own.map(o => o.recognizer)).size >= 2 && new Set(own.map(regionKey)).size >= 2;
+    return [...new Set(own.map(o => o.recognizer))].filter(engine => new Set(own.filter(o => o.recognizer === engine).map(regionKey)).size >= 2).length >= 2;
   });
   const authoritative = !!winner && !contradictoryRerun && !competing.length && !unexplainedConflict;
   return { version: 'organization-consensus-1', authority: authoritative ? 'authoritative' as const : candidates.length ? 'ambiguous' as const : 'unknown' as const,

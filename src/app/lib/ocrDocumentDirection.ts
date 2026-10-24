@@ -11,7 +11,7 @@ type Costs = { initializationMs:number; configurationMs:number; imageProcessingM
 type Observation = {
   rotation:number; started:boolean; recognitionStarted:boolean;
   status:'completed'|'timed-out'|'errored'; durationMs:number; score:number;
-  credible:boolean; words:number; unique:number; lines:number; rawText:string;
+  credible:boolean; ordinaryTextCredible:boolean; structuredAnchored:boolean; words:number; unique:number; lines:number; rawText:string;
   signals:{headers:number;money:number;dates:number}; error?:string;
   sampleDimensions?:{width:number;height:number}; costs:Costs;
 };
@@ -22,7 +22,7 @@ async function bounded<T>(promise:Promise<T>,ms:number,message:string){let timer
 /** Shared optical preparation only. No invoice resolution or payment decisions.
  * V2 retains its page-preview inputs and complete-comparison acceptance contract.
  * Legacy samples bounded text bands to avoid segmenting the photographed desk. */
-export async function selectDocumentDirection(input:Buffer,options:{sampling:'text-bands'|'page-preview';requireAll?:boolean},factory?:()=>Promise<DirectionWorker>){
+export async function selectDocumentDirection(input:Buffer,options:{sampling:'text-bands'|'page-preview';requireAll?:boolean;requireStructuredAnchors?:boolean},factory?:()=>Promise<DirectionWorker>){
   const start=performance.now(),startedAt=new Date().toISOString(),timings=costs();
   const measured=async<T>(key:keyof Costs,fn:()=>Promise<T>,local?:Costs)=>{const t=performance.now();try{return await fn();}finally{const ms=performance.now()-t;timings[key]+=ms;if(local)local[key]+=ms;}};
   const prepared=await measured('imageProcessingMs',async()=>{
@@ -39,7 +39,7 @@ export async function selectDocumentDirection(input:Buffer,options:{sampling:'te
   try{
     for(const rotation of [0,90,180,270]){
       const begin=performance.now();
-      const o:Observation={rotation,started:true,recognitionStarted:false,status:'errored',durationMs:0,score:0,credible:false,words:0,unique:0,lines:0,rawText:'',signals:{headers:0,money:0,dates:0},costs:costs()};
+      const o:Observation={rotation,started:true,recognitionStarted:false,status:'errored',durationMs:0,score:0,credible:false,ordinaryTextCredible:false,structuredAnchored:false,words:0,unique:0,lines:0,rawText:'',signals:{headers:0,money:0,dates:0},costs:costs()};
       try{
         if(initializationError)throw Error(initializationError);
         if(!worker){
@@ -56,17 +56,33 @@ export async function selectDocumentDirection(input:Buffer,options:{sampling:'te
         o.recognitionStarted=true;
         const result=await measured('recognitionMs',()=>bounded(worker!.recognize(image,{}, {text:true,blocks:true}),2000,'Orientation observation exceeded 2 seconds'),o.costs);
         await measured('scoringMs',async()=>{
-          Object.assign(o,directionEvidence(result.data));o.rawText=result.data.text;
+          Object.assign(o,directionEvidence(result.data));o.ordinaryTextCredible=o.credible;o.rawText=result.data.text;
           o.signals={headers:(o.rawText.match(/\b(invoice|amount|date|total|property|account|description|check)\b/gi)??[]).length,money:(o.rawText.match(/\b\d[\d,]*\.\d{2}\b/g)??[]).length,dates:(o.rawText.match(/\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/g)??[]).length};
+          if(options.requireStructuredAnchors){
+            const invoices=(o.rawText.match(/(?:\b[I1L|]?NV(?:OICE)?[.#:-]?\s*[0-9OSIl|]{3,8}\b)/gi)??[]).length;
+            const dates=[...o.rawText.matchAll(/\b(\d{1,2})[/-](\d{1,2})[/-](\d{2}|\d{4})\b/g)].filter(m=>Number(m[1])>=1&&Number(m[1])<=12&&Number(m[2])>=1&&Number(m[2])<=31).length;
+            const anchored=invoices>=1&&dates>=1||o.signals.headers>=2&&(o.signals.money>=1||dates>=1);
+            o.structuredAnchored=anchored&&o.words>=2&&o.lines>=1;
+            o.credible=o.ordinaryTextCredible||o.structuredAnchored;
+            o.score+=Math.min(invoices,4)*25+Math.min(dates,4)*25;
+          }
+
         },o.costs);
         o.status='completed';
       }catch(error){o.status=error instanceof DirectionTimeout?'timed-out':'errored';o.error=error instanceof Error?error.message:String(error);await release(o.costs);}
       finally{o.durationMs=performance.now()-begin;observations.push(o);}
     }
   }finally{await release();}
-  const ranked=observations.filter(o=>o.status==='completed'&&o.credible).sort((a,b)=>b.score-a.score);
+  const completed=observations.filter(o=>o.status==='completed'&&o.credible);
+  // Structured document evidence outranks a correlated upside-down prose read.
+  // When no document anchors exist, ordinary confident multiline text still
+  // establishes optical direction; it grants no invoice or payment authority.
+  const anchored=options.requireStructuredAnchors?completed.filter(o=>o.structuredAnchored):[];
+  if(anchored.length)for(const observation of completed)if(!observation.structuredAnchored)observation.credible=false;
+  const ranked=(anchored.length?anchored:completed).sort((a,b)=>b.score-a.score);
+  const selectionBasis=anchored.length?'structured-direction-anchors':ranked.length?'generic-optical-text':'insufficient-optical-evidence';
   const complete=!options.requireAll||observations.every(o=>o.status==='completed');
   const certain=complete&&ranked.length>0&&(!ranked[1]||ranked[1].score<ranked[0].score*.9);
-  return {startedAt,orientationProbeStarted:true,candidateBudgetMs:2000,rotation:certain?ranked[0].rotation:null,certain,observations,timings,workersCreated,durationMs:performance.now()-start,
+  return {startedAt,orientationProbeStarted:true,candidateBudgetMs:2000,rotation:certain?ranked[0].rotation:null,certain,selectionBasis,observations,timings,workersCreated,durationMs:performance.now()-start,
     sampling:{method:options.sampling,componentCount:prepared.componentCount,sourceDimensions:prepared.sourceDimensions,axes:prepared.axes.map(a=>({angle:a.angle,regions:a.regions,width:a.width,height:a.height,...('sampleSource' in a?{sampleSource:a.sampleSource}:{})}))}};
 }

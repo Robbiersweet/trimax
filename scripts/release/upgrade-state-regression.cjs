@@ -45,3 +45,21 @@ try{process.env.TRIMAX_SERVING_WEB_EVIDENCE=file;fs.writeFileSync(file,JSON.stri
  for(const patch of [{latest:false},{state:'Error'},{alias:'preview.example'},{deploymentCommit:'0'.repeat(40)},{observedAt:'2000-01-01'}]){fs.writeFileSync(file,JSON.stringify({...platform,...patch}));assert.throws(()=>require('./upgrade-context.cjs').load(real,'PREDEPLOYMENT'));}
 }finally{if(old===undefined)delete process.env.TRIMAX_SERVING_WEB_EVIDENCE;else process.env.TRIMAX_SERVING_WEB_EVIDENCE=old;fs.unlinkSync(file);fs.rmdirSync(dir);}
 console.log('PASS nine upgrade cases, strict postdeployment, prior approval/serving identity, stale web proof, configuration and cross-worker payment denial');
+// Candidate config and actual serving-prior config are separately sealed inputs.
+const {priorConfigurationProof,sanitizedConfiguration}=require('./runtime-evidence.cjs');
+const changedCandidate=structuredClone(candidate),changedConfig={...config,matureFallback:true};
+changedCandidate.workerConfiguration.configHashes.legacy=digest(changedConfig);
+const actualPriorProof=priorConfigurationProof({...config,anonKey:'synthetic-anon',workerKey:'synthetic-worker',releaseAttestation:{synthetic:true}},'synthetic-prior-worker.json');
+assert.deepEqual(actualPriorProof.configuration,config,'Prior proof excludes credential and attestation values');
+const separate=(ctx,cfg=changedConfig,b=body('legacy'))=>classify(changedCandidate,'legacy',cfg,{status:200,body:b},ctx);
+assert.equal(separate({...pre,priorWorkerConfiguration:actualPriorProof}).runtime.status,'DEPLOYMENT_PREREQUISITE','Reviewed changed candidate and independently read exact prior coexist PRE');
+assert.equal(separate(pre).runtime.status,'FAIL','Changed candidate alone cannot prove prior config');
+assert.equal(separate({...pre,priorWorkerConfiguration:priorConfigurationProof({...config,pollMs:1},'unknown.json')}).runtime.status,'FAIL','Unknown prior config fails');
+for(const patch of [{sha256:'wrong'},{method:'supplied-hash-only'},{path:''},{configuration:{...config,workerKey:'must-not-be-present'}}])assert.equal(separate({...pre,priorWorkerConfiguration:{...actualPriorProof,...patch}}).runtime.status,'FAIL','Malformed or unsanitized prior evidence fails');
+assert.equal(separate({...pre,priorWorkerConfiguration:actualPriorProof},{...changedConfig,pollMs:1}).runtime.status,'FAIL','Prior proof cannot excuse wrong candidate config');
+const changedBody={...body('legacy',changedCandidate),v2Release:record(changedCandidate,'v2-shadow')};
+assert.equal(separate({mode:'POSTDEPLOYMENT',servingWeb:web(changedCandidate)},changedConfig,changedBody).runtime.status,'PASS','POST accepts candidate identity/config only');
+assert.equal(separate({mode:'POSTDEPLOYMENT',servingWeb:web(changedCandidate),priorWorkerConfiguration:actualPriorProof},changedConfig,changedBody).runtime.status,'FAIL','Prior proof cannot authorize POST');
+assert.equal(separate({mode:'POSTDEPLOYMENT',servingWeb:web(changedCandidate)},changedConfig).runtime.status,'FAIL','Prior deployed identity fails POST despite correct candidate config');
+assert.deepEqual(sanitizedConfiguration({...config,anonKey:'secret',workerKey:'secret',releaseAttestation:'secret'}),config);
+console.log('PASS independently sealed prior/candidate configurations, sanitized proof, unknown config rejection and strict POST separation');

@@ -1,4 +1,4 @@
-// Release: saved-remittance-payment-history-20261023. Triggers the existing installed-PWA update flow.
+// Release: remittance-photo-robustness-20261023. Triggers the existing installed-PWA update flow.
 const DEFAULT_NOTIFICATION_URL = "/";
 
 self.addEventListener("install", () => {

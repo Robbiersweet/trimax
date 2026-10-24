@@ -74,6 +74,35 @@ export function localizePhysicalRows(input: {
         const support = cells.filter(cell => { const own = cs.filter(c => c.column === cell.type); return own.length > 0 && Math.max(...own.map(c => right(c.bounds))) - Math.min(...own.map(c => c.bounds.left)) >= font * 1.5; }).map(c => c.type);
         return { center: median(cs.map(c => c.y)), components: cs, columns: support, accepted: support.filter(c => c !== 'unlabeled-leading').length >= 2, reason: support.filter(c => c !== 'unlabeled-leading').length >= 2 ? 'corroborated columns' : 'insufficient independent columns' };
     });
+    // Page OCR can miss a whole printed row. Source glyphs can establish a new
+    // row, but never its transcription. Preserve existing OCR-supported bands.
+    const pixelCandidates = (input.inkComponents ?? []).flatMap(c => {
+        const cx = c.bounds.left + c.bounds.width / 2;
+        const column = cells.find(cell => cx >= cell.left && cx < cell.right)?.type;
+        const y = c.bounds.top + c.bounds.height / 2 - slope * (cx - referenceX);
+        return column && y > headingBottom && c.bounds.height >= font * .45
+            && c.bounds.height <= font * 1.8 && c.bounds.width <= c.bounds.height * 5
+            ? [{ ...c, column, y }] : [];
+    });
+    const pixelGroups: typeof pixelCandidates[] = [];
+    for (const c of pixelCandidates.slice().sort((a,b) => a.y-b.y)) {
+        const last = pixelGroups.at(-1);
+        if (last && c.y-median(last.map(v=>v.y)) <= font*.65) last.push(c);
+        else pixelGroups.push([c]);
+    }
+    for (const cs of pixelGroups) {
+        const center = median(cs.map(c=>c.y));
+        const support = cells.filter(cell => {
+            const own=cs.filter(c=>c.column===cell.type);
+            return own.length>=2 && Math.max(...own.map(c=>right(c.bounds)))-Math.min(...own.map(c=>c.bounds.left)) >= font*1.5;
+        }).map(c=>c.type);
+        // A total label plus amount must not become an invoice row. New pixel
+        // rows need the invoice column and two other independently printed cells.
+        if (!support.includes('invoice_number') || support.filter(c=>c!=='unlabeled-leading').length<3
+            || bands.some(b=>b.accepted && Math.abs(b.center-center)<=font*.8)) continue;
+        bands.push({center,components:cs,columns:support,accepted:true,reason:'source glyphs corroborated across invoice and independent columns'});
+    }
+    bands.sort((a,b)=>a.center-b.center);
     const supported: typeof bands = [];
     for (const band of bands.filter(b => b.accepted)) {
         const previous = supported.at(-1);

@@ -1,3 +1,4 @@
+import {recoverLeadingCaption} from './tableCaptionOwnership.ts';
 import { ocrRuntimeCache } from '../../ocrRuntimeCache.ts';
 /** Offline vendor-neutral candidate entry. Legacy research layouts are not called.
  * Existing trusted words can bypass OCR entirely. Unknown layouts return review.
@@ -45,6 +46,9 @@ export async function recognizeSemanticPage(image: Buffer, ledger: EvidenceLedge
       }
     } finally { await worker.terminate(); }
   }
+  const mapped=interpretDocument({sourceHash,observations,physicalComponents});
+  const recovered=await recoverLeadingCaption(image,mapped,ledger);
+  observations.push(...recovered); passes+=recovered.length;
   return { model: interpretDocument({ sourceHash, observations, physicalComponents }), observations, physicalComponents, ledger: ledger.snapshot(), passes, durationMs: performance.now() - started };
 }
 export async function analyzeUnseenDocument(original: Buffer, attemptId: string, documentId: string) {

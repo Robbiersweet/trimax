@@ -1,13 +1,12 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- Retained Glen header date and durable-review boundary regression. */
-const assert=require('node:assert/strict'),fs=require('node:fs'),ts=require('typescript');
+const assert=require('node:assert/strict');
 const {selectObservedHeader,selectObservedCheckDate,selectObservedCheckNumber,createRemittanceEvidence,resolveRemittanceAttempt}=require('../src/app/lib/remittanceAttempt.ts');
 const {finishScan,scanSummary,slimAttempt}=require('../src/app/lib/ocrHistory.ts');
 const word=(text,confidence,y0=566)=>({text,confidence,bbox:{x0:781,x1:1123,y0,y1:y0+32}});
 const rows=[0,1,2].map(i=>({rowId:'row-'+i,y:850+i*49,height:30,text:`INV-0${536+i} 1428.70`,rawInvoiceLikeTokens:[`INV0${536+i}`],normalizedInvoiceCandidates:[`INV-0${536+i}`],amountCandidates:[{value:1428.7,selected:true}],dateTokens:[],unitLikeTokens:[]}));
 const rawHeader='DATE:10/01/2026 CK#:717 TOTAL:$4,286.10 BANK:JP-GlenAtNorthCreek-Operating(19300p2)';
-const route=fs.readFileSync('src/app/api/payments/extract-check-stub/route.ts','utf8'),tree=ts.createSourceFile('route.ts',route,99,true);let filter;function visit(n){if(ts.isFunctionDeclaration(n)&&n.name?.text==='withoutMicrBandText')filter=n.getText(tree);else ts.forEachChild(n,visit);}visit(tree);
-const withoutMicr=new Function(ts.transpileModule(filter+'\nreturn withoutMicrBandText',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText)();
-assert.equal(withoutMicr(rawHeader),'','Saved header line was removed before date authority');
+const {withoutMicrBandText:withoutMicr}=require('../src/app/lib/documentFields/paymentHeaderLine.ts');
+assert.equal(withoutMicr(rawHeader),'DATE:10/01/2026 CK#:717 TOTAL:$4,286.10','Dense legitimate header survives banking-noise filtering');
 const passes=[['local-gray',90,566],['local-binary',80,565]].map(([variant,confidence,y])=>({region:'full-document',variant,pageMode:'sparse-text',text:withoutMicr(rawHeader)+'\nTOTAL: $4,286.10\nPAYOR: Glen at North Creek',words:[word('DATE:10/01/2026',confidence,y),{...word('CK#:717',confidence,y),bbox:{x0:1200,x1:1400,y0:y,y1:y+32}}],confidence}));
 assert.equal(selectObservedCheckDate(passes,rows).value,'2026-10-01');
 assert.equal(selectObservedCheckDate([passes[0]],rows).value,null);

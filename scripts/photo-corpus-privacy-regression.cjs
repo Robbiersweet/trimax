@@ -1,0 +1,32 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Synthetic outside-Git privacy boundary tests; no retained financial evidence is required. */
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),os=require('node:os'),crypto=require('node:crypto');
+const {loadAnnotations,exportReceipt,verifyReceipt,privatePath,hashKeys,fields}=require('./photo-corpus-privacy.cjs');
+const sha=b=>crypto.createHash('sha256').update(b).digest('hex'),copy=x=>structuredClone(x),sentinel='PRIVATE_CUSTOMER_INVOICE_12345_4286_10';
+const root=fs.mkdtempSync(path.join(os.tmpdir(),'trimax-privacy-regression-')),reportPath='matrix-2026-10-24T00-00-00-000Z/report.json',matrix=path.join(root,path.dirname(reportPath));
+fs.mkdirSync(matrix);const reportFile=path.join(root,reportPath);
+const corpus={documents:Array.from({length:7},(_,i)=>({id:sentinel+'-'+i,sha256:sha('capture-'+i),customer:sentinel,invoices:[{id:sentinel,amount:4286.10}]}))};
+const annotations=JSON.stringify(corpus),annotationFile=path.join(root,'physical-photo-annotations.json');fs.writeFileSync(annotationFile,annotations);
+const bootstrap={schemaVersion:2,independentPhysicalCaptures:7,annotations:{file:'physical-photo-annotations.json',sha256:sha(annotations)},variants:['native','distance-resolution','lighting-rotation','perspective'],engines:['legacy','v2-shadow']};
+const hashes=Object.fromEntries(hashKeys.map((k,i)=>[k,sha('hash-'+i)]));hashes.annotationHash=bootstrap.annotations.sha256;
+const report={status:'PASS',startedAt:'2026-10-24T00:00:00.000Z',finishedAt:'2026-10-24T01:00:00.000Z',independentPhysicalCaptures:7,out:matrix,...hashes,privateSentinel:sentinel,results:corpus.documents.flatMap(d=>bootstrap.variants.flatMap(variant=>bootstrap.engines.map(engine=>({capture:d.id,variant,engine,sha256:variant==='native'?d.sha256:sha(d.id+variant),status:'PASS',paymentApplied:false,paymentCapability:false,terminalStatus:'review',fields:Object.fromEntries(fields.map(f=>[f,'PASS'])),financial:{customer:sentinel,invoiceId:sentinel,total:4286.10},raw:sentinel}))))};
+const options={corpus,privateRoot:root,hashes,reportPath};
+function persist(value){fs.writeFileSync(reportFile,JSON.stringify(value));}
+function rejects(fn){assert.throws(fn,error=>{assert(!error.message.includes(sentinel),'Errors must not disclose private evidence');return true;});}
+try{
+ assert.deepEqual(loadAnnotations(bootstrap,root),corpus);persist(report);
+ const receipt=exportReceipt(report,options),serialized=JSON.stringify(receipt);assert(!serialized.includes(sentinel));assert(!serialized.includes('4286'));assert(!serialized.includes(matrix));assert(!serialized.includes('\"financial\":')); assert(!serialized.includes('sha256\":\"'+corpus.documents[0].sha256));
+ assert.equal(receipt.caseCount,56);assert.equal(receipt.independentPhysicalCaptures,7);assert.deepEqual([...new Set(receipt.results.map(r=>r.capture))].sort(),Array.from({length:7},(_,i)=>'capture-'+(i+1)));
+ assert.deepEqual(verifyReceipt(receipt,options),report);
+ for(const mutate of [r=>r.extra=sentinel,r=>r.results[0].financial=sentinel,r=>r.results[0].capture=sentinel,r=>r.privateReport.path='../report.json',r=>r.privateReport.path='matrix-secret-customer/report.json',r=>r.privateReport.sha256='0'.repeat(64),r=>r.caseCount=55,r=>r.results.reverse()]){const r=copy(receipt);mutate(r);rejects(()=>verifyReceipt(r,options));}
+ fs.appendFileSync(reportFile,' ');rejects(()=>verifyReceipt(receipt,options));persist(report);
+ const changed=copy(report);changed.privateSentinel+='changed';rejects(()=>exportReceipt(changed,options));
+ for(const key of hashKeys){const stale={...options,hashes:{...hashes,[key]:sha('stale')}};rejects(()=>exportReceipt(report,stale));}
+ for(const mutate of [r=>r.results.pop(),r=>r.results[1]=copy(r.results[0]),r=>r.results[0].capture='unknown',r=>r.results[0].fields.date='FAIL',r=>delete r.results[0].fields.date,r=>r.results[0].fields.extra='PASS',r=>r.results[0].fields.date='NOT_APPLICABLE_CURRENTLY_UNPAID',r=>r.results[0].fields.payor='PASS_OBSERVED_REVIEW_REQUIRED',r=>r.results[0].fields.selectedTotal='PASS_CORRECT_RECORDS_REVIEW_REQUIRED',r=>r.results[0].paymentApplied=true,r=>r.results[0].paymentCapability=true,r=>delete r.results[0].paymentApplied,r=>r.results[0].terminalStatus='pending',r=>r.results[0].sha256='bad',r=>r.results[0].sha256=sha('wrong-native'),r=>r.finishedAt='2025-01-01',r=>r.startedAt='2026-10-24 ('+sentinel+')',r=>r.out=root]){const r=copy(report);mutate(r);persist(r);rejects(()=>exportReceipt(r,options));}
+ const allowed=copy(report);allowed.results[0].fields.invoiceRows='PASS_OBSERVED_REVIEW_REQUIRED';allowed.results[0].fields.financialReconciliation='PASS_CORRECT_RECORDS_REVIEW_REQUIRED';allowed.results[0].fields.alreadyPaidCollectibleGuard='NOT_APPLICABLE_CURRENTLY_UNPAID';persist(allowed);assert.equal(exportReceipt(allowed,options).results.length,56);persist(report);
+ for(const pointer of ['../report.json','/report.json','a\\report.json','a//report.json','./physical-photo-annotations.json'])rejects(()=>privatePath(root,pointer));
+ for(const mutate of [b=>b.annotations.sha256='0'.repeat(64),b=>b.annotations.file='../physical-photo-annotations.json',b=>b.engines=['legacy'],b=>b.variants=['native'],b=>b.independentPhysicalCaptures=6]){const b=copy(bootstrap);mutate(b);rejects(()=>loadAnnotations(b,root));}
+ fs.appendFileSync(annotationFile,' ');rejects(()=>loadAnnotations(bootstrap,root));fs.writeFileSync(annotationFile,annotations);
+ const duplicate=copy(corpus);duplicate.documents[1].id=duplicate.documents[0].id;fs.writeFileSync(annotationFile,JSON.stringify(duplicate));rejects(()=>loadAnnotations({...bootstrap,annotations:{...bootstrap.annotations,sha256:sha(JSON.stringify(duplicate))}},root));fs.writeFileSync(annotationFile,annotations);
+ const gitDir=path.join(root,'synthetic-git');fs.mkdirSync(gitDir);fs.mkdirSync(path.join(gitDir,'.git'));fs.writeFileSync(path.join(gitDir,'report.json'),'{}');rejects(()=>privatePath(root,'synthetic-git/report.json'));
+ console.log('PASS private corpus/public receipt: synthetic56case whitelist, private binding, source hashes, exact field statuses, no payment capability, annotation integrity, traversal and Git exclusion');
+}finally{const resolved=fs.realpathSync(root);assert.equal(path.dirname(resolved),fs.realpathSync(os.tmpdir()));assert(path.basename(resolved).startsWith('trimax-privacy-regression-'));fs.rmSync(resolved,{recursive:true,force:true});}

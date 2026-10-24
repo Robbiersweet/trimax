@@ -19,6 +19,17 @@ function data(mult=1,noise=false){
   if(name==='noise cannot win')assert.equal(result.observations[0].credible,false);
   assert(result.observations.every(o=>o.recognitionStarted&&o.costs.recognitionMs>=0));console.log('PASS',name);
  }
+
+ const rich=()=>({text:'Routine inspection garden maintenance scheduling service client customer '.repeat(3),blocks:[{paragraphs:[{lines:[0,1,2].map(y=>({words:['Routine','inspection','garden','maintenance','scheduling','service','client','customer'].map((text,x)=>({text,confidence:95,bbox:{x0:x*150,y0:y*30,x1:x*150+140,y1:y*30+20}}))}))}]}]});
+ const structured=()=>({text:'North Creek INV-0612 11/03/2027',blocks:[{paragraphs:[{lines:[{words:['North','Creek'].map((text,x)=>({text,confidence:90,bbox:{x0:x*100,y0:0,x1:x*100+90,y1:20}}))}]}]}]});
+ for(const [name,plan,winner,basis] of [
+  ['ordinary dense prose without financial labels',[rich(),data(.4),data(.4),data(.4)],0,'generic-optical-text'],
+  ['structured anchors outrank denser generic gibberish',[structured(),rich(),data(.4),data(.4)],0,'structured-direction-anchors'],
+  ['opposing dense prose remains uncertain',[rich(),data(.4),rich(),data(.4)],null,'generic-optical-text'],
+  ['opposing structured text remains uncertain',[structured(),rich(),structured(),data(.4)],null,'structured-direction-anchors'],
+  ['header labels alone never invent structured evidence',[data(1),data(1),data(1),data(1)],null,'generic-optical-text'],
+  ['punctuation noise never establishes direction',[data(2,true),data(2,true),data(2,true),data(2,true)],null,'insufficient-optical-evidence']
+ ]){let at=0;const result=await copy.exports.selectDocumentDirection(image,{sampling:'text-bands',requireStructuredAnchors:true},async()=>({setParameters:async()=>{},terminate:async()=>{},recognize:async()=>({data:plan[at++]})}));assert.equal(result.rotation,winner,name);assert.equal(result.selectionBasis,basis,name);if(name==='structured anchors outrank denser generic gibberish'){assert.equal(result.observations[1].credible,false);assert.equal(result.observations[1].ordinaryTextCredible,true,'Retain raw generic optical evidence while excluding it from the structured comparison');}assert.equal(at,4);console.log('PASS '+name);}
  let initializations=0;const failure=await probe(image,async()=>{initializations++;throw Error('injected initialization failure');});assert.equal(initializations,1);assert.equal(failure.certain,false);assert.equal(failure.rotation,null);assert(failure.observations.every(o=>!o.recognitionStarted));console.log('PASS initialization failure remains truthful and safe');
  const {orientLegacyStill}=require('../../src/app/lib/ocrLegacyOrientation.ts');
  await assert.rejects(orientLegacyStill(image),e=>{assert.equal(e.stage,'orientation-probe');assert.equal(e.diagnostics.detailedOcrStarted,false);assert.deepEqual(e.diagnostics.passTimings,[]);return true;});

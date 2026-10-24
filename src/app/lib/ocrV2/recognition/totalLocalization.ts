@@ -13,6 +13,50 @@ export function boundedAmountOwnership(owner:Bounds,proof:{axis:number;axisSourc
  const edge=Math.min(right(owner),Math.ceil(proof.axis+pad));
  return edge>owner.left?{...owner,width:edge-owner.left}:owner;
 }
+/** Missing page OCR text must not erase visible footer pixels. This produces
+ * geometry only. Independent header/footer recognition still supplies authority. */
+export function localizePixelTotalRegion(model:DocumentSemanticModel,page:SemanticObservation[],font:number,width:number,height:number){
+ const rows=model.table.rows, owners=rows.flatMap(r=>r.amountRegion?[r.amountRegion]:[]);
+ const valid=model.table.supported&&rows.length>0&&owners.length===rows.length&&font>0
+  &&rows.every(r=>r.physical?.sourceHash===model.sourceHash)
+  &&model.table.columns.some(c=>c.type==='row_amount'&&c.semanticConfidence==='label-supported');
+ const last=Math.max(0,...rows.map(r=>bottom(r.bounds)),...owners.map(bottom));
+ const rowHeight=Math.max(0,...rows.map(r=>r.bounds.height));
+ const amountColumn=model.table.columns.find(c=>c.type==='row_amount');
+ const axis=median(owners.map(right)),left=Math.max(0,Math.floor(Math.min(...owners.map(o=>o.left),amountColumn?.bounds?.left??Infinity)-font));
+ const end=Math.min(width,Math.ceil(axis+font));
+ const raw=model.table.physicalGeometry?.inkComponents??[];
+ const eligible=valid?raw.filter(c=>{
+  const b=c.bounds,cx=b.left+b.width/2;
+  return cx>=left&&cx<=end&&b.top>=last&&bottom(b)<=Math.min(height,last+rowHeight*4)
+   &&b.height>=font*.45&&b.height<=font*1.8&&b.width<=b.height*3&&c.pixels>=3;
+ }):[];
+ const bands:Array<typeof eligible>=[];
+ for(const c of eligible.slice().sort((a,b)=>(a.bounds.top+a.bounds.height/2)-(b.bounds.top+b.bounds.height/2))){
+  const y=c.bounds.top+c.bounds.height/2,lastBand=bands.at(-1);
+  if(lastBand&&y-median(lastBand.map(v=>v.bounds.top+v.bounds.height/2))<=font*.65)lastBand.push(c);else bands.push([c]);
+ }
+ const fields=bands.flatMap(cs=>{
+  if(cs.length<4)return [];
+  const x0=Math.min(...cs.map(c=>c.bounds.left)),x1=Math.max(...cs.map(c=>right(c.bounds)));
+  const center=median(cs.map(c=>c.bounds.top+c.bounds.height/2));
+  const marks=raw.filter(c=>c.bounds.left>=left&&right(c.bounds)<=end&&c.bounds.height>=1&&c.bounds.height<=font*.5&&c.bounds.width<=font*1.5&&Math.abs(c.bounds.top+c.bounds.height/2-center)<=font*.8);
+  const owned=[...cs,...marks];
+  const y0=Math.min(...owned.map(c=>c.bounds.top)),y1=Math.max(...owned.map(c=>bottom(c.bounds)));
+  if(x1-x0<font*3||Math.abs(x1-axis)>font*2)return [];
+  // Preserve signs, currency, decimal and punctuation across the full measured
+  // amount ownership. Never tighten left bounds to digit-only OCR output.
+  const pad=Math.max(2,Math.ceil(font*.2)),top=Math.max(last,Math.floor(y0-pad));
+  const bounds={left,top,width:end-left,height:Math.min(height,Math.ceil(y1+pad))-top};
+  const near=page.filter(o=>o.verified&&o.sourceHash===model.sourceHash).flatMap(o=>o.words)
+   .filter(w=>Math.abs((w.bounds.top+w.bounds.height/2)-(y0+y1)/2)<=Math.max(font,w.bounds.height)*.8&&w.bounds.left<end&&right(w.bounds)>left-font*12);
+  const subtotal=near.some(w=>/^SUB[-\s]*TOTAL:?$/i.test(w.text.trim()))||/\bSUB\s+TOTAL\b/i.test(near.slice().sort((a,b)=>a.bounds.left-b.bounds.left).map(w=>w.text).join(' '));
+  return [{bounds,componentIds:[...new Set(owned.map(c=>c.id))],subtotal,sourceHash:model.sourceHash}];
+ });
+ return {version:'pixel-total-geometry-1',sourceHash:model.sourceHash,axis,lastRowBottom:last,fields,
+  bounds:fields.length===1&&!fields[0].subtotal?fields[0].bounds:undefined,
+  reason:fields.some(f=>f.subtotal)?'Observed subtotal label':fields.length>1?'Competing source pixel footer fields':fields.length===1?'Unique source glyph band in amount-column continuation':'No unique source glyph footer band'};
+}
 export function localizeDocumentTotal(model:DocumentSemanticModel,page:SemanticObservation[],font:number,width:number,height:number){
  const rows=model.table.rows, owners=rows.flatMap(r=>r.amountRegion?[r.amountRegion]:[]);
  const last=Math.max(...rows.map(r=>bottom(r.bounds)),...owners.map(bottom));
@@ -69,7 +113,10 @@ export function localizeDocumentTotal(model:DocumentSemanticModel,page:SemanticO
  const plausible=labeled.length===1&&groups.every(g=>g===labeled[0]||g.observations.some(c=>c.subtotal))?labeled:groups;
  const chosen=plausible.length===1&&!plausible[0].conflicting&&!plausible[0].observations.some(c=>c.subtotal)?plausible[0]:null;
  const pad=Math.max(2,Math.ceil(font*.2));
+ const pixel=localizePixelTotalRegion(model,page,font,width,height);
+ // Pixel geometry is fallback only; never erase an observed value conflict.
+ const pixelFallback=groups.length===0?pixel:undefined;
  const b=chosen?.bounds;
- const bounds=b?{left:Math.max(0,Math.floor(b.left-pad)),top:Math.max(Math.ceil(last),Math.floor(b.top-pad)),width:Math.min(width,Math.ceil(right(b)+pad))-Math.max(0,Math.floor(b.left-pad)),height:Math.min(height,Math.ceil(bottom(b)+pad))-Math.max(Math.ceil(last),Math.floor(b.top-pad))}:undefined;
- return {version:'document-total-localization-1',sourceHash:model.sourceHash,axis,axisSource:observedAxis?'observed-row-money':'ownership-bounds',axisRows:observedEdges.length,lastRowBottom:last,candidates,plausibleFields:plausible.length,conflictingField:plausible.some(g=>g.conflicting),selected:chosen,bounds,finalField:supported&&!!chosen&&groups.every(g=>bottom(g.bounds)<=bottom(chosen.bounds)),reason:chosen?'Unique visual monetary field in amount-column continuation':plausible.some(g=>g.conflicting)?'Conflicting complete observations of the same total field':plausible.length>1?'Competing footer monetary fields':'No isolated observed total field'};
+ const bounds=b?{left:Math.max(0,Math.floor(b.left-pad)),top:Math.max(Math.ceil(last),Math.floor(b.top-pad)),width:Math.min(width,Math.ceil(right(b)+pad))-Math.max(0,Math.floor(b.left-pad)),height:Math.min(height,Math.ceil(bottom(b)+pad))-Math.max(Math.ceil(last),Math.floor(b.top-pad))}:pixelFallback?.bounds;
+ return {version:'document-total-localization-1',sourceHash:model.sourceHash,axis,axisSource:observedAxis?'observed-row-money':'ownership-bounds',axisRows:observedEdges.length,lastRowBottom:last,candidates,pixelLocalization:pixel,plausibleFields:plausible.length||(pixelFallback?.fields.length??0),conflictingField:plausible.some(g=>g.conflicting),selected:chosen,bounds,finalField:supported&&(!!chosen&&groups.every(g=>bottom(g.bounds)<=bottom(chosen.bounds))||!!pixelFallback?.bounds),reason:chosen?'Unique visual monetary field in amount-column continuation':plausible.some(g=>g.conflicting)?'Conflicting complete observations of the same total field':plausible.length>1?'Competing footer monetary fields':'No isolated observed total field'};
 }

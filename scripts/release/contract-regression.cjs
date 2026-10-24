@@ -9,3 +9,14 @@ const fingerprints=Object.fromEntries(['schema','rpc','triggers','policies','gra
 assert.deepEqual(compareDatabase(db,actual,'legacy','b'),[]);assert(compareDatabase(db,{...actual,credentialScope:'payment'},'legacy','b').length);assert(compareDatabase(db,{...actual,flags:[]},'legacy','b').length);
 assert.equal(digest({a:1,b:2}),digest({b:2,a:1}));console.log('Release contract safety regressions PASS');
 const {validate}=require('./physical-acceptance.cjs');assert.throws(()=>validate({releaseId:'r',components:{web:{commit:'c'}},modelBundle:{sha256:'m'},database:{fingerprints:{schema:{sha256:'d'}}}},{kind:'retained-replay'}),'Replay must never grant physical acceptance');
+const {requiresMatureRuntime,matureRuntimeConfigurationFailures}=require('./contract.cjs');
+const matureConfig={matureFallbackEnabled:true,python:'/approved/python',wslDistribution:'Ubuntu'};
+const matureManifest={workerConfiguration:{python:matureConfig.python,wslDistribution:'Ubuntu'},models:[{engines:['legacy','v2-shadow']}]};
+assert.equal(requiresMatureRuntime({},'legacy'),false);
+assert.equal(requiresMatureRuntime({},'v2-shadow'),true);
+assert.equal(requiresMatureRuntime(matureConfig,'legacy'),true);
+assert.deepEqual(matureRuntimeConfigurationFailures(matureManifest,'legacy',matureConfig),[]);
+assert(matureRuntimeConfigurationFailures({...matureManifest,models:[{engines:['v2-shadow']}]},'legacy',matureConfig).length,'Legacy fallback must attest every existing mature model');
+assert(matureRuntimeConfigurationFailures(matureManifest,'legacy',{...matureConfig,python:'/unapproved/python'}).length,'Legacy fallback uses the same pinned runtime');
+assert(matureRuntimeConfigurationFailures(matureManifest,'legacy',{...matureConfig,wslDistribution:'Other'}).length);
+console.log('PASS legacy mature fallback requires identical pinned model and Python/WSL runtime coverage');

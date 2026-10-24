@@ -28,6 +28,7 @@ export type DocumentGeometry = {
         componentFill: number;
         boundaryFit: number;
         edgeContrast: number;
+        edgeContrasts?: number[];
         candidates: number;
     } | null;
     perspectiveTransform: number[] | null;
@@ -48,6 +49,8 @@ export type OcrV2Foundation = {
         exifOrientation: number | null;
     };
     normalization: {
+        recognitionView?: 'rectified'|'native-paper';
+        nativeCropBounds?: Bounds;
         exifAppliedOnce: true;
         rotation: number;
         orientationCertain: boolean;

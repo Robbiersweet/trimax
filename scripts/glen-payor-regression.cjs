@@ -21,3 +21,11 @@ const expected={documentId:'doc',sourceImageHash:'source'};
 const observations=rows.flatMap((r,i)=>['ppocrv5','svtrv2','parseq'].map(recognizer=>({...expected,id:i+recognizer,cropHash:'crop'+i,sourceRegion:r.rowId,geometry:{left:714,top:820+i*46,width:452,height:38},regionType:'property_name',recognizer,rawText:recognizer==='parseq'?'GlenatNorthCreek':'Glen at North Creek',confidence:null,durationMs:1})));
 assert.equal(fuseOrganizationIdentity(observations,expected).value,'glen at north creek');assert.equal(fuseOrganizationIdentity(observations.map(o=>({...o,sourceImageHash:'wrong'})),expected).value,null);
 console.log('PASS saved Glen descriptor-free visual identity, header geometry/pass/row independence, conflict rejection, unique client compatibility, three exact invoices, no North candidates, exact4286.10');
+
+// A repeated global identity never authorizes a foreign row or amount-only match.
+const mixedRows=rows.map((r,i)=>({...r,rowId:'mixed-'+i,text:i<2?`North Creek Apartments INV-060${i} 1,428.70`:r.text,normalizedInvoiceCandidates:[i<2?`INV-060${i}`:'INV-0538'],rawInvoiceLikeTokens:[i<2?`INV060${i}`:'INV0538']}));
+const mixedInvoices=[...mixedRows.slice(0,2).map((r,i)=>({...north,id:'north-mixed-'+i,displayId:`INV-060${i}`,projectTitle:r.text})),invoices[2]];
+const mixed=findRemittanceMatches(mixedInvoices,mixedRows.map(r=>r.text).join('\n')+'\nTOTAL: $4286.10','North Creek Apartments',mixedRows,{amount:4286.10,source:'explicit-document-total',payable:true});
+assert(!mixed.resolvedMatches.some(r=>r.id==='glen-2'),'A global North identity must never authorize the foreign Glen invoice');
+assert.notEqual(mixed.matchedTotal,4286.10,'The unresolved foreign row must prevent exact reconciliation');
+assert(mixed.matchTrace.filter(r=>r.invoiceId==='glen-2').every(r=>!r.eligible&&!r.accepted&&/incompatible/.test(r.rejectionReason)),'Foreign row remains explicitly rejected, never eligible or accepted');

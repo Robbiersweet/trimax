@@ -45,10 +45,13 @@ export function totalLabels(observations: PaymentObservation[], layout: Layout):
     }));
 }
 
-export function decideDocumentTotal(layout: Layout & { totalLocalization?: ReturnType<typeof localizeDocumentTotal> }, evidence: DocumentPaymentEvidence, observations: PaymentObservation[], corroboratedFooter?: { cents: number; bounds: Bounds; sourceHash: string; provenance: string[] }) {
+export type MatureHeaderTotalProof={cents:number;bounds:Bounds;sourceHash:string;cropHash:string;recognizers:string[];models:string[];exactLabelRecognizers:string[];provenance:string[]};
+export function decideDocumentTotal(layout: Layout & { totalLocalization?: ReturnType<typeof localizeDocumentTotal> }, evidence: DocumentPaymentEvidence, observations: PaymentObservation[], corroboratedFooter?: { cents: number; bounds: Bounds; sourceHash: string; provenance: string[];cropHash?:string;recognizers?:string[];models?:string[] },matureHeaders:MatureHeaderTotalProof[]=[]) {
     const start = performance.now();
     const scoped = observations.filter(o => o.sourceHash === evidence.sourceHash);
     const labels = totalLabels(scoped, layout), reliableLabels = labels.filter(l => l.confidence >= 40);
+    const firstBody=Math.min(...layout.rows.map(r=>r.bounds.top));
+    const matureHeaderProof=matureHeaders.filter(h=>h.sourceHash===evidence.sourceHash&&/^[a-f0-9]{64}$/.test(h.cropHash)&&Number.isSafeInteger(h.cents)&&h.cents>0&&h.bounds.left>=0&&h.bounds.top>=0&&h.bounds.width>0&&h.bounds.height>0&&right(h.bounds)<=layout.sourceWidth&&bottom(h.bounds)<=Math.min(firstBody,layout.headerRegion?.top??firstBody)&&!layout.rows.some(r=>overlap(h.bounds,r.bounds)>0)&&['svtrv2','parseq','ppocrv5'].every(r=>h.models.includes(r))&&new Set(h.recognizers.filter(r=>['svtrv2','parseq','ppocrv5'].includes(r))).size>=2&&new Set(h.exactLabelRecognizers.filter(r=>['svtrv2','parseq','ppocrv5'].includes(r))).size>=2&&h.provenance.length>=2);
     const last = Math.max(...layout.rows.map(r => bottom(r.bounds))), regions = layout.rows.flatMap(r => r.amountRegion ? [r.amountRegion] : []);
     const font = layout.diagnostics.font * layout.sourceWidth / Math.min(layout.sourceWidth, 2400);
     const candidateRegion = layout.totalCandidateRegion;
@@ -70,24 +73,27 @@ export function decideDocumentTotal(layout: Layout & { totalLocalization?: Retur
     const footer = scoped.filter(o => o.scope === 'document' && o.field === 'total' && o.bounds.top >= last && candidateRegion && overlap(o.bounds, candidateRegion) >= candidateRegion.width * candidateRegion.height * .8 && !layout.rows.some(r => overlap(o.bounds, r.bounds) > 0));
     const numeric = decideMoney(footer);
     const supportedFooter = numeric.candidates.filter(candidate => decideMoney(footer.filter(o => o.money.length === 1 && o.money[0] === candidate.cents)).cents === candidate.cents);
+    const authoritativeMatureFooter=!!corroboratedFooter&&corroboratedFooter.sourceHash===evidence.sourceHash&&!!candidateRegion&&JSON.stringify(corroboratedFooter.bounds)===JSON.stringify(candidateRegion)&&/^[a-f0-9]{64}$/.test(corroboratedFooter.cropHash??'')&&['svtrv2','parseq','ppocrv5'].every(r=>corroboratedFooter.models?.includes(r))&&new Set(corroboratedFooter.recognizers?.filter(r=>['svtrv2','parseq','ppocrv5'].includes(r))).size>=2&&corroboratedFooter.provenance.length>=2;
+    const independentMatureFields=authoritativeMatureFooter&&matureHeaderProof.some(h=>h.cents===corroboratedFooter!.cents&&h.cropHash!==corroboratedFooter!.cropHash&&overlap(h.bounds,corroboratedFooter!.bounds)===0);
     // The shared mature-money contract already independently corroborates a complete
     // value. Consume it on its exact field; do not turn uncalibrated scores into
     // fabricated Tesseract confidence or bypass any label/geometry authority gate.
     if (corroboratedFooter && corroboratedFooter.sourceHash === evidence.sourceHash && candidateRegion
         && JSON.stringify(corroboratedFooter.bounds) === JSON.stringify(candidateRegion)
         && corroboratedFooter.provenance.length >= 2
-        && !numeric.candidates.some(c => c.cents !== corroboratedFooter.cents)
+        && (!numeric.candidates.some(c => c.cents !== corroboratedFooter.cents)||independentMatureFields)
         && !supportedFooter.some(c => c.cents === corroboratedFooter.cents)) {
       supportedFooter.push({ cents: corroboratedFooter.cents, observations: corroboratedFooter.provenance });
     }
-    const headerValues = [...new Set(reliableLabels.flatMap(l => l.headerCents === null ? [] : [l.headerCents]))];
+    const headerValues = [...new Set([...reliableLabels.flatMap(l => l.headerCents === null ? [] : [l.headerCents]),...matureHeaderProof.map(h=>h.cents)])];
     const matches = supportedFooter.filter(candidate => headerValues.includes(candidate.cents));
     const repeatedLabel = (reliableLabels.length > 0 && new Set(labels.filter(l => l.confidence >= 20).map(l => l.variant)).size >= 2) || reliableLabels.some(l => l.confidence >= 85);
     const explicitFooterLabels = scoped.filter(o => o.field === 'footer-label' && o.scope === 'document' && !/\bSUB\s*-?\s*TOTAL\b/i.test(o.raw) && candidateRegion && o.words.some(w => /^TOTAL:?$/i.test(w.text.trim()) && w.bounds.left < candidateRegion.left && w.bounds.top >= last && Math.abs(w.bounds.top - candidateRegion.top) < candidateRegion.height * 1.5 && !layout.rows.some(r => overlap(w.bounds, r.bounds) > 0)));
     const sameRegionAuthority = new Set(explicitFooterLabels.map(o => o.variant)).size >= 2 && numeric.cents !== null;
     let cents: number | null = null;
     let reason = 'No supported document-level label/value association';
-    if (layout.totalLocalization?.conflictingField) reason = 'Conflicting complete observations of the same total field';
+    if(authoritativeMatureFooter&&headerValues.some(c=>c!==corroboratedFooter!.cents))reason='Conflicting authoritative labeled header and independently recognized footer values';
+    else if (layout.totalLocalization?.conflictingField) reason = 'Conflicting complete observations of the same total field';
     else if (!geometry) reason = 'Footer candidate is not an isolated final amount-column field';
     else if (headerValues.length > 1) reason = 'Conflicting labeled header amounts';
     else if (sameRegionAuthority && (!headerValues.length || headerValues[0] === numeric.cents)) { cents = numeric.cents; reason = 'Explicit footer TOTAL labels and supported same-region value'; }
@@ -95,14 +101,14 @@ export function decideDocumentTotal(layout: Layout & { totalLocalization?: Retur
         && candidateRegion && layout.totalLocalization.selected && overlap(candidateRegion,layout.totalLocalization.selected.bounds)>=layout.totalLocalization.selected.bounds.width*layout.totalLocalization.selected.bounds.height*.8
         && new Set(footer.filter(o=>o.confidence>=40&&o.money.length===1&&o.money[0]===numeric.cents).map(o=>o.variant)).size>=2
         && layout.totalLocalization.selected?.observations.some(o=>o.cents===numeric.cents&&o.confidence>=85)) { cents=numeric.cents; reason='Unique final amount-column field corroborated by page and bounded field observations'; }
-    else if (!reliableLabels.length) reason = 'No sufficiently reliable exact TOTAL label outside the body';
+    else if (!reliableLabels.length&&!matureHeaderProof.length) reason = 'No sufficiently reliable exact TOTAL label outside the body';
     else if (matches.length === 1) { cents = matches[0].cents; reason = 'Explicit header total agrees with independently supported isolated footer value'; }
     else if (!headerValues.length && repeatedLabel && numeric.cents !== null) { cents = numeric.cents; reason = 'Repeated explicit header TOTAL semantics plus supported final amount-column value'; }
     else if (headerValues.length && supportedFooter.length) reason = 'Labeled header and supported footer values disagree';
     const subtotal = evidence.rows.every(r => r.cents !== null) ? evidence.rows.reduce((sum, r) => sum + r.cents!, 0) : null;
     // A visible conflict blocks authority; subtotal never selects or manufactures money.
     if (cents !== null && subtotal !== null && subtotal !== cents) { cents = null; reason = 'Observed row subtotal conflicts with document total'; }
-    return { cents, reason, labels, explicitFooterLabels: explicitFooterLabels.map(o => ({ id: o.id, bounds: o.bounds, words: o.words })), supportedFooter, allFooterCandidates: numeric.candidates, headerValues, geometry: { rowBody: layout.rows.map(r => r.bounds), header: layout.headerRegion, footer: candidateRegion, alignedAndIsolated: geometry, belowLastRow: candidateRegion ? candidateRegion.top >= last : false }, subtotal, subtotalCorroborates: cents !== null && subtotal === cents, durationMs: performance.now() - start };
+    return { cents, reason, labels, explicitFooterLabels: explicitFooterLabels.map(o => ({ id: o.id, bounds: o.bounds, words: o.words })), supportedFooter, allFooterCandidates: numeric.candidates, headerValues, geometry: { rowBody: layout.rows.map(r => r.bounds), header: layout.headerRegion, footer: candidateRegion, alignedAndIsolated: geometry, belowLastRow: candidateRegion ? candidateRegion.top >= last : false }, subtotal, subtotalCorroborates: cents !== null && subtotal === cents, matureHeaderProof, independentMatureFields, retainedSingleRecognizerAlternatives:independentMatureFields?numeric.candidates.filter(c=>c.cents!==corroboratedFooter!.cents):[], durationMs: performance.now() - start };
 }
 
 /** Retained field observations must be bound to these exact normalized pixels and crop bytes. */

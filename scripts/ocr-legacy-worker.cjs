@@ -11,7 +11,9 @@ function loadEngine(){
   const req=spec=>{if(!spec.startsWith('.')&&!spec.startsWith('@/'))return require(spec);const base=spec.startsWith('@/')?path.resolve('src',spec.slice(2)):path.resolve(path.dirname(file),spec);return load([base,base+'.ts',base+'.tsx'].find(p=>fs.existsSync(p)));};
   new Function('require','module','exports',js)(req,mod,mod.exports);return mod.exports;
  }
- return {route:load(path.resolve('src/app/api/payments/extract-check-stub/route.ts')),progress:load(path.resolve('src/app/lib/ocrLegacyProgress.ts'))};
+ return {route:load(path.resolve('src/app/api/payments/extract-check-stub/route.ts')),progress:load(path.resolve('src/app/lib/ocrLegacyProgress.ts')),
+  matureContext:load(path.resolve('src/app/lib/documentFields/legacyMatureContext.ts')),
+  get maturePipeline(){return load(path.resolve('src/app/lib/ocrV2/shadow/pipeline.ts'));}};
 }
 async function runJob(config,rpc,engine){
  const claim=await rpc('trimax_claim_ocr_legacy',{});if(!claim)return false;
@@ -28,7 +30,12 @@ async function runJob(config,rpc,engine){
   const image=await readWorkerCanonical(config,j,claim.optical,'legacy');
   if(!image||!['image/jpeg','image/png','image/webp'].includes(image.mime))throw Error('Canonical image unavailable or hash mismatch');
   if(claim.recovery && typeof claim.recovery.text!=='string')throw Error('Completed checkpoint lacks selected text; preserve evidence for recovery without repeating OCR');
-  const response=await engine.progress.withLegacyProgress(async(stage,evidence)=>{if(lostLease)throw Error('Legacy lease heartbeat failed');await saveEvidence(update,stage,evidence);},()=>engine.route.POST(new Request('http://legacy-worker/extract',{method:'POST',headers:{'Content-Type':'application/json','x-ocr-observation-scope':crypto.randomUUID()},body:JSON.stringify({...j.input,attemptId:j.attempt_id,imageDataUrl:'data:'+image.mime+';base64,'+image.base64})})),claim.recovery??undefined);
+  const extract=()=>engine.route.POST(new Request('http://legacy-worker/extract',{method:'POST',headers:{'Content-Type':'application/json','x-ocr-observation-scope':crypto.randomUUID()},body:JSON.stringify({...j.input,attemptId:j.attempt_id,imageDataUrl:'data:'+image.mime+';base64,'+image.base64})}));
+  const execute=config.matureFallbackEnabled===true?()=>engine.matureContext.withLegacyMatureFallback((bytes,attemptId)=>engine.maturePipeline.runShadowPipeline(bytes,{
+    attemptId,captureSessionId:crypto.randomUUID(),sourceImageHash:crypto.createHash('sha256').update(bytes).digest('hex'),build:config.releaseAttestation?.sourceCommit??'validated-worker',
+    snapshot:{label:'Optical fallback without business records',provenance:[],invoices:[],activities:[],receivedDate:''},
+   },require('./ocr-mature-optical-adapter.cjs').createMatureOpticalAdapter(config)),extract):extract;
+  const response=await engine.progress.withLegacyProgress(async(stage,evidence)=>{if(lostLease)throw Error('Legacy lease heartbeat failed');await saveEvidence(update,stage,evidence);},execute,claim.recovery??undefined);
   const result=await response.json();delete result.optical; // Canonical image is already retained; never duplicate image bytes.
   if(config.releaseAttestation)result.release=config.releaseAttestation;
   if(lostLease)throw Error('Legacy lease lost before completion');

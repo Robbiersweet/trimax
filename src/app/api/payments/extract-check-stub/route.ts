@@ -1,3 +1,13 @@
+import {ownedUnitField} from '../../../lib/documentFields/unitFieldOwnership.ts';
+import {coalesceComplementaryRowBands,type RowCoalescenceProof} from '../../../lib/documentFields/complementaryRowBands.ts';
+import {ownedRowAmountRegions,ownedRowAmountConsensus,type OwnedAmountProof} from '../../../lib/documentFields/rowAmountOwnership.ts';
+import {legacyMatureFallbackAvailable,recognizeLegacyMatureFallback} from '../../../lib/documentFields/legacyMatureContext.ts';
+import {assessLegacyMatureFallback,type LegacyMatureDecision} from '../../../lib/documentFields/legacyMatureFallback.ts';
+import {measuredTableHeader,measuredTableBodySupport} from "../../../lib/documentFields/tableHeaderOwnership.ts";
+import {createHash} from 'node:crypto';
+import {compareOpticalViews} from '../../../lib/documentFields/opticalViews.ts';
+import { detectDocumentGeometry, rectifyDocument } from "../../../lib/documentFields/documentGeometry.ts";
+import { paymentHeaderLine, paymentHeaderPixelFields, paymentHeaderFields, propertyRowRegions, prepareOwnedPaymentField, withoutMicrBandText } from "../../../lib/documentFields/paymentHeaderLine.ts";
 import { sumMoney as canonicalSumMoney } from "../../../lib/money.ts";
 import { moneyFixed, moneyCents, multiplyMoney } from "../../../lib/money.ts";
 import { ocrRuntimeCache } from '../../../lib/ocrRuntimeCache';
@@ -10,7 +20,7 @@ import { legacyBootstrapImage, legacyRecognitionDeadline, legacyWorkerSession, l
 import { opticalScore } from "@/app/lib/ocrOptical";
 import { checkpointOcr } from "@/app/lib/ocrHistoryServer";
 import { legacyProgress, completedLegacyRecognition } from "@/app/lib/ocrLegacyProgress";
-import { createRemittanceEvidence, selectObservedHeader } from "@/app/lib/remittanceAttempt";
+import { createRemittanceEvidence, selectObservedHeader, selectRepeatedPropertyIdentity } from "@/app/lib/remittanceAttempt";
 import { rowAssignment, normalizeInvoiceColumnToken, rankSourceEvaluations, rankRowAmounts } from "@/app/lib/ocrStructure";
 import { NextResponse } from "next/server";
 import sharp from "sharp";
@@ -86,6 +96,7 @@ type OcrAttempt = {
 };
 
 type OcrImageSource = {
+  ownedRowId?:string;
   prepared?: FaintPreparation;
   name: string;
   image: Buffer;
@@ -154,6 +165,7 @@ type CaptureSourceFailure = {
 };
 
 type OcrWord = {
+  ownedAmount?:OwnedAmountProof;
   text: string;
   confidence: number;
   bbox: {
@@ -169,6 +181,7 @@ type OcrWord = {
 };
 
 type GeometricRow = {
+  coalescenceProof?:RowCoalescenceProof[];
   y: number;
   height: number;
   text: string;
@@ -917,18 +930,6 @@ function redactedTextSummary(text: string) {
     .slice(0, 800);
 }
 
-function withoutMicrBandText(text: string) {
-  return text
-    .split(/\r?\n/)
-    .filter((line) => {
-      const compact = line.replace(/\s/g, "");
-      const digitCount = (compact.match(/\d/g) ?? []).length;
-      const micrMarks = /[⑆⑈⑉]|routing|account|micr/i.test(line);
-
-      return !(digitCount >= 9 && (micrMarks || compact.length >= 12));
-    })
-    .join("\n");
-}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -1080,6 +1081,9 @@ function scoreGeometryRow(text: string) {
 }
 
 function reconstructRowsFromOcrGeometry(words: OcrWord[]): GeometricRow[] {
+  const tableHeader=measuredTableHeader(words);
+  if(tableHeader)words=words.filter(w=>wordCenterY(w)>tableHeader.slope*(w.bbox.x0+w.bbox.x1)/2+tableHeader.intercept+tableHeader.font*.45);
+
   const usefulWords = words
     .filter((word) => {
       const text = normalizeGeometryToken(word.text);
@@ -1135,7 +1139,8 @@ function reconstructRowsFromOcrGeometry(words: OcrWord[]): GeometricRow[] {
       (row) =>
         row.score >= 55 &&
         !/^[-_\s]+$/.test(row.text) &&
-        !/\bproperty\b.*\binvoice\b.*\bamount\b/i.test(row.text)
+        !/\bproperty\b.*\binvoice\b.*\bamount\b/i.test(row.text) &&
+        !(/\bDATE\s*[:#]/i.test(row.text) && /\b(?:CK|CHK|CHECK)\s*[:#&¥]/i.test(row.text))
     )
     .sort((left, right) => left.y - right.y);
 }
@@ -1378,6 +1383,7 @@ function geometryRowSetScore(
 
   return (
     candidateStructureScore(attempt) +
+    measuredTableBodySupport(rows,attempt.words)*200 +
     rows.length * 30 +
     acceptedRows.length * 85 +
     completeness +
@@ -1648,6 +1654,7 @@ function buildStructuredRowEvidence(
   attempts: OcrAttempt[] = [],
   documentWidth = 0
 ): StructuredRemittanceRowEvidence[] {
+  rows=coalesceComplementaryRowBands(rows);
   const allWords = attempts.length > 0 ? attempts.flatMap((attempt) => attempt.words) : [];
 
   return rows
@@ -1663,6 +1670,7 @@ function buildStructuredRowEvidence(
         documentWidth
       );
       const sameBandWords = assignedWords;
+      const ownedAmount=ownedRowAmountConsensus(assignedWords,'ocr-row-'+(index+1));
       const amountCandidates = mergeStructuredAmountCandidates(
         geometryAmountCandidates(row),
         sameBandAmountCandidates(row, assignedWords)
@@ -1674,7 +1682,7 @@ function buildStructuredRowEvidence(
           value: candidate.value,
           score: candidate.score,
           confidence: candidate.confidence,
-          selected: candidate.selected,
+          selected: ownedAmount.conflict?false:ownedAmount.value!==null?moneyCents(candidate.value)===moneyCents(ownedAmount.value):candidate.selected,
           bbox: candidate.bbox,
         }));
       const rawInvoiceTokens = Array.from(
@@ -1693,7 +1701,8 @@ function buildStructuredRowEvidence(
           ...invoiceEvidence.flatMap((item) => item.normalized),
         ])
       );
-      const unitLikeTokens = Array.from(
+      const unitOwner=ownedUnitField(row,assignedWords,allWords);
+      const unitLikeTokens = unitOwner.available ? Array.from(new Set(unitOwner.words.flatMap(word=>[...extractUnitCodeCandidates(normalizeGeometryToken(word.text)),...rawUnitLikeTokens(normalizeGeometryToken(word.text))]))) : Array.from(
         new Set([
           ...acceptance.unitCodes,
           ...extractUnitCodeCandidates(row.text),
@@ -1717,7 +1726,10 @@ function buildStructuredRowEvidence(
 
       return {
         rowId: `ocr-row-${index + 1}`,
-        text: row.text,
+        text: unitOwner.available ? normalizeGeometryRowText(row.words.filter(word=>unitOwner.owns(word)||(!extractUnitCodeCandidates(normalizeGeometryToken(word.text)).length&&!rawUnitLikeTokens(normalizeGeometryToken(word.text)).length)).map(word=>normalizeGeometryToken(word.text))) : row.text,
+        rawRowText: row.text,
+        unitFieldOwnership: {available:unitOwner.available,caption:unitOwner.caption,proof:unitOwner.proof},
+        physicalRowCoalescence: row.coalescenceProof,
         source: {
           region: firstWord?.region ?? "geometric-row-reconstruction",
           variant: firstWord?.variant ?? "row-focused",
@@ -2066,7 +2078,8 @@ function hasTargetableStructure(rowCount:number) { return rowCount >= 2; }
 async function recognizeBestText(
   originalImage: Buffer,
   documentType: RemittanceDocumentType,
-  retryStrategy: OcrRetryStrategy
+  retryStrategy: OcrRetryStrategy,
+  rectifyView = false
 ) {
   const Tesseract = await import("tesseract.js");
   const startedAt = Date.now();
@@ -2079,7 +2092,11 @@ async function recognizeBestText(
   }));
   const detailedCosts={worker:lifecycle.metrics,sourcePreparationMs:0,regionPreparationMs:0,faintPreparationMs:0,totalMs:0};
   try {
-  const oriented = await orientLegacyStill(originalImage,lifecycle.direction);
+  const normalizedForGeometry = rectifyView ? await normalizeInputImage(originalImage) : null;
+  const geometry = normalizedForGeometry ? await detectDocumentGeometry(normalizedForGeometry) : null;
+  const rectified = geometry && normalizedForGeometry ? await rectifyDocument(normalizedForGeometry, geometry) : null;
+  if (geometry && rectified) geometry.perspectiveTransform = rectified.matrix;
+  const oriented = await orientLegacyStill(rectified?.image ?? originalImage,lifecycle.direction);
   await legacyProgress('orientation_complete', oriented.evidence);
   markStage("orientation-selected");
   const passTimings: Array<{stage:string;variant:string;rotation:number;sourceRotation:number;durationMs:number;startedAt:string;status:string;error?:string;preparationMs:number;recognitionMs:number;extractionMs:number;workingWidth?:number;workingHeight?:number;workerMs?:number;cleanupMs?:number;role?:string;completedEvidencePreserved?:boolean}> = [];
@@ -2227,6 +2244,10 @@ async function recognizeBestText(
           spec,
           rotation
         );
+        if(source.ownedRowId){
+          const proof:OwnedAmountProof={canonicalHash:createHash('sha256').update(originalImage).digest('hex'),normalizedHash:createHash('sha256').update(sources.document.image).digest('hex'),cropHash:createHash('sha256').update(image).digest('hex'),rowId:source.ownedRowId,bounds:source.bounds};
+          words.forEach(word=>{word.ownedAmount=proof;});
+        }
         const attempt = {
           region: source.name,
           variant: spec.variant,
@@ -2269,6 +2290,44 @@ async function recognizeBestText(
     markStage('faint-regions-prepared');
     const faintSource: OcrImageSource = {name:fullDocumentSource.name,image:faint.color,width:faint.bounds.width,height:faint.bounds.height,bounds:faint.bounds,prepared:faint};
     await runAttemptsForSource(faintSource, FAINT_VARIANTS.map(variant=>({variant,pageMode:{name:"sparse-text",value:Tesseract.PSM.SPARSE_TEXT}})), [0]);
+    // Re-read the observed payment-header baseline independently of camera framing.
+    const headerRows = buildGeometryRowSets(attempts, 0)[0]?.rows ?? [];
+    const headerEvidenceRows = buildStructuredRowEvidence(headerRows, attempts, sources.document.width ?? 0);
+    const firstInvoiceTop = Math.min(...headerEvidenceRows.filter(r => r.normalizedInvoiceCandidates.length && r.y != null).map(r => r.y! - (r.height ?? 0)));
+    const headerBounds = paymentHeaderLine(attempts.filter(a => a.region === 'full-document').flatMap(a => a.words), firstInvoiceTop, sources.document.width!, sources.document.height!);
+    if (headerBounds) {
+      const headerImage = await cropImageRegion(sources.document.image, headerBounds);
+      const prepared = await prepareOwnedPaymentField(headerImage);
+      const headerSource: OcrImageSource = { name: 'payment-header-line', image: prepared.color, width: headerBounds.width, height: headerBounds.height, bounds: headerBounds, prepared };
+      await runAttemptsForSource(headerSource, FAINT_VARIANTS.map(variant => ({ variant, pageMode: { name: 'single-line', value: Tesseract.PSM.SINGLE_LINE } })), [0]);
+    }
+    const fieldBounds = await paymentHeaderPixelFields(sources.document.image,attempts.filter(a => a.region === 'full-document' || a.region === 'payment-header-line').flatMap(a => a.words), firstInvoiceTop, sources.document.width!, sources.document.height!);
+        let headerFollowed=false;
+    for(let index=0;index<fieldBounds.length;index++) {
+      const bounds=fieldBounds[index];
+      const image = await cropImageRegion(sources.document.image, bounds);
+      const prepared = await prepareOwnedPaymentField(image);
+      const source: OcrImageSource = { name: 'payment-header-field-' + index, image: prepared.color, width: prepared.bounds.width, height: prepared.bounds.height, bounds: { ...prepared.bounds, left: bounds.left + prepared.bounds.left, top: bounds.top + prepared.bounds.top }, prepared };
+      await runAttemptsForSource(source, FAINT_VARIANTS.map(variant => ({variant, pageMode: {name: 'single-line', value: Tesseract.PSM.SINGLE_LINE}})), [0]);
+      for(const scale of [2,3]){
+        const scaled=await prepareOwnedPaymentField(image,scale);
+        const scaledSource:OcrImageSource={...source,name:source.name+'-scale-'+scale,image:scaled.color,prepared:scaled};
+        await runAttemptsForSource(scaledSource,[{variant:'native-color',pageMode:{name:'single-line',value:Tesseract.PSM.SINGLE_LINE}}],[0]);
+      }
+      if(index===fieldBounds.length-1&&!headerFollowed){
+        headerFollowed=true;
+        const seed=attempts.filter(a=>a.region.startsWith('payment-header-field-')).flatMap(a=>a.words);
+        fieldBounds.push(...paymentHeaderFields(seed,firstInvoiceTop,sources.document.width!,sources.document.height!).filter(b=>!fieldBounds.some(q=>JSON.stringify(q)===JSON.stringify(b))).slice(0,12));
+      }
+    }
+    if (!selectRepeatedPropertyIdentity(attempts, headerEvidenceRows).value) {
+      const cells = propertyRowRegions(attempts.filter(a => a.region === 'full-document').flatMap(a => a.words), headerEvidenceRows, sources.document.width!, sources.document.height!);
+      for (const { index, bounds } of cells) {
+        const image = await cropImageRegion(sources.document.image, bounds), prepared = await prepareOwnedPaymentField(image);
+        const source: OcrImageSource = { name: 'payment-property-row-' + index, image: prepared.color, width: bounds.width, height: bounds.height, bounds, prepared };
+        await runAttemptsForSource(source, FAINT_VARIANTS.map(variant => ({variant, pageMode: {name:'single-line', value:Tesseract.PSM.SINGLE_LINE}})), [0]);
+      }
+    }
     const recoveryStartedAt = Date.now();
     const initialRows = buildGeometryRowSets(attempts, 0)[0]?.rows ?? [];
     const structuredRecovery = hasTargetableStructure(initialRows.length);
@@ -2456,6 +2515,14 @@ async function recognizeBestText(
       attempts,
       documentWidth
     );
+    for(const cell of ownedRowAmountRegions(structuredRowEvidence,attempts.filter(a=>a.region==='full-document').flatMap(a=>a.words),documentWidth,documentHeight)){
+      const image=await cropImageRegion(sources.document.image,cell.bounds),prepared=await prepareOwnedPaymentField(image);
+      const source:OcrImageSource={name:'payment-row-amount-'+cell.rowId,ownedRowId:cell.rowId,image:prepared.color,width:cell.bounds.width,height:cell.bounds.height,bounds:cell.bounds,prepared};
+      await runAttemptsForSource(source,FAINT_VARIANTS.map(variant=>({variant,pageMode:{name:'single-line',value:Tesseract.PSM.SINGLE_LINE}})),[0]);
+      const scale2=await prepareOwnedPaymentField(image,2);
+      await runAttemptsForSource({...source,name:source.name+'-scale-2',image:scale2.color,prepared:scale2},[{variant:'native-color',pageMode:{name:'single-line',value:Tesseract.PSM.SINGLE_LINE}}],[0]);
+    }
+    structuredRowEvidence=buildStructuredRowEvidence(geometricRows,attempts,documentWidth);
     const headerEvidence = selectRemittanceHeaderEvidence(documentHeaderObservations(attempts).map((attempt) => ({ ...attempt, text: withoutMicrBandText(attempt.text) })), structuredRowEvidence);
     const explicitDocumentTotalEvidence = headerEvidence.evidence;
     const explicitDocumentTotal = explicitDocumentTotalEvidence?.amount ?? 0;
@@ -2724,6 +2791,12 @@ async function recognizeBestText(
         documentHeight: sources.document.height,
         ocrReceivedThumbnail: false,
         detectedBounds: sources.detectedBounds,
+        documentGeometry: geometry,
+        recognitionView: rectifyView ? 'contour-rectified' : 'native-paper',
+        normalizedHash: createHash('sha256').update(sources.document.image).digest('hex'),
+        recognitionViews: {} as Record<string,unknown>,
+        opticalViewConflict: [] as string[],
+        legacyMatureFallback: null as LegacyMatureDecision | null,
         selectedRegion: selected?.region,
         selectedRotation: selected?.rotation,
         selectedVariant: selected?.variant,
@@ -3264,16 +3337,48 @@ async function runExtraction(request: Request) {
   try {
     const originalImage = dataUrlToBuffer(imageDataUrl as string);
     const completed = completedLegacyRecognition<Awaited<ReturnType<typeof recognizeBestText>>>();
-    const ocrResult = completed ?? await recognizeBestText(
-      originalImage,
-      documentType,
-      retryStrategy
-    );
+    let ocrResult;
+    try { ocrResult = completed ?? await recognizeBestText(originalImage, documentType, retryStrategy); }
+    catch (error) { if (documentType !== 'remittance_stub') throw error; ocrResult = await recognizeBestText(originalImage, documentType, retryStrategy, true); }
+    const opticallyComplete = (result: Awaited<ReturnType<typeof recognizeBestText>>) => {
+      const rows=result.structuredRowEvidence, header=selectObservedHeader(documentHeaderObservations(result.rawPasses),rows);
+      const values=rows.map(row=>[...new Set(row.amountCandidates.filter(a=>a.selected).map(a=>a.value))]);
+      return !!header.checkNumber&&!!header.checkDate&&!!header.payor&&!!header.documentTotal?.payable&&rows.length>0&&rows.every((r,i)=>r.normalizedInvoiceCandidates.length>0&&values[i].length===1)&&moneyCents(canonicalSumMoney(values.map(v=>v[0])))===moneyCents(header.documentTotal.amount);
+    };
+    if (!completed && documentType === 'remittance_stub' && ocrResult.diagnostics.recognitionView !== 'contour-rectified' && !opticallyComplete(ocrResult)) {
+      const native=ocrResult;
+      try { const alternate=await recognizeBestText(originalImage,documentType,retryStrategy,true);
+        const canonicalHash=createHash('sha256').update(originalImage).digest('hex');
+        const view=(r:typeof alternate)=>({canonicalHash,normalizedHash:r.diagnostics.normalizedHash,header:selectObservedHeader(documentHeaderObservations(r.rawPasses),r.structuredRowEvidence),rows:r.structuredRowEvidence});
+        const compatibility=compareOpticalViews(view(native),view(alternate));
+        if(opticallyComplete(alternate)&&compatibility.compatible)ocrResult=alternate;
+        if(!compatibility.compatible){ocrResult={...native,diagnostics:{...native.diagnostics,opticalViewConflict:compatibility.conflicts}};}
+
+        ocrResult.diagnostics.recognitionViews={nativeComplete:opticallyComplete(native),rectifiedComplete:opticallyComplete(alternate),selected:ocrResult.diagnostics.recognitionView,alternateHeader:selectObservedHeader(documentHeaderObservations(alternate.rawPasses),alternate.structuredRowEvidence),alternateRows:alternate.structuredRowEvidence,alternateDiagnostics:{normalizedHash:alternate.diagnostics.normalizedHash,documentGeometry:alternate.diagnostics.documentGeometry}};
+      } catch(error) { ocrResult.diagnostics.recognitionViews={nativeComplete:false,rectifiedFailure:error instanceof Error?error.message:String(error)}; }
+    }
+    if (!completed && documentType === 'remittance_stub' && !opticallyComplete(ocrResult) && legacyMatureFallbackAvailable()) {
+      const attemptId = typeof body?.attemptId === 'string' ? body.attemptId.slice(0,128) : crypto.randomUUID();
+      try {
+        const independent = await recognizeLegacyMatureFallback(originalImage,attemptId);
+        if (independent) {
+          const decision = assessLegacyMatureFallback(independent,originalImage,attemptId,selectObservedHeader(documentHeaderObservations(ocrResult.rawPasses),ocrResult.structuredRowEvidence));
+          ocrResult.diagnostics.legacyMatureFallback = decision;
+          if (decision.accepted && decision.rows && decision.text) {
+            ocrResult.structuredRowEvidence = decision.rows;
+            ocrResult.text = decision.text;
+          }
+        }
+      } catch (error) {
+        ocrResult.diagnostics.legacyMatureFallback = {accepted:false,reason:error instanceof Error?error.message:'Independent optical fallback unavailable',proof:null};
+      }
+    }
+    const matureFallback = ocrResult.diagnostics.legacyMatureFallback;
     const rawText = ocrResult.text;
     if (!completed) await legacyProgress('ocr_complete', { text: ocrResult.text, rawPasses: ocrResult.rawPasses, structuredRowEvidence: ocrResult.structuredRowEvidence, diagnostics: ocrResult.diagnostics });
     const parsedText = withoutMicrBandText(rawText);
 
-    if (!rawText || !ocrResult.rawPasses.some(pass=>opticalScore(pass.text,pass.confidence).credible)) {
+    if (!rawText || (!matureFallback?.accepted && !ocrResult.rawPasses.some(pass=>opticalScore(pass.text,pass.confidence).credible))) {
       return NextResponse.json({
         optical:ocrResult.optical,
         rawText: "",
@@ -3292,6 +3397,9 @@ async function runExtraction(request: Request) {
 
     const parsedExtraction = parseCheckStubText(parsedText);
     const observedHeader = selectObservedHeader(documentHeaderObservations(ocrResult.rawPasses), ocrResult.structuredRowEvidence);
+    if (matureFallback?.accepted && matureFallback.header) Object.assign(observedHeader,matureFallback.header);
+    else if (ocrResult.diagnostics.opticalViewConflict?.length) observedHeader.documentTotal = null;
+    if (matureFallback?.metadata) Object.assign(observedHeader,matureFallback.metadata);
     const totalEvidence = observedHeader.documentTotal ?? { amount: 0, source: "none" as const, payable: false, normalizationReason: "No reliable explicit document total was read." };
     const extraction = {
       ...parsedExtraction,

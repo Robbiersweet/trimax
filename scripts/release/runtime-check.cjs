@@ -1,12 +1,15 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- Read-only validation, never claim a job. */
 const fs=require('node:fs'),path=require('node:path');
 const {read,validateLocalRuntime}=require('./contract.cjs');
-const {classify,aggregate}=require('./runtime-evidence.cjs');
+const {classify,aggregate,priorConfigurationProof}=require('./runtime-evidence.cjs');
 const {load}=require('./upgrade-context.cjs');
 (async()=>{const results=[];let upgrade;for(const [engine,envName,directory] of [['legacy','TRIMAX_LEGACY_CONFIG','ocr-legacy-worker'],['v2-shadow','TRIMAX_SHADOW_CONFIG','ocr-shadow-worker']]){
  const file=process.env[envName]||path.join(process.env.LOCALAPPDATA,'Trimax',directory,'worker.json');
  try{const config=read(file),manifest=validateLocalRuntime(config,engine);
- const context=load(manifest,process.argv[3]);upgrade={mode:context.mode,currentProductionRelease:context.currentProductionRelease.releaseId,candidateRelease:context.candidateReleaseId,servingWeb:context.servingWeb,servingWebEvidenceHash:context.servingWebEvidenceHash};
+ const context=load(manifest,process.argv[3]);
+ const priorFile=process.env[engine==='legacy'?'TRIMAX_PRIOR_LEGACY_CONFIG':'TRIMAX_PRIOR_SHADOW_CONFIG'];
+ if(context.mode==='PREDEPLOYMENT'&&priorFile)context.priorWorkerConfiguration=priorConfigurationProof(read(priorFile),priorFile);
+ upgrade={mode:context.mode,currentProductionRelease:context.currentProductionRelease.releaseId,candidateRelease:context.candidateReleaseId,servingWeb:context.servingWeb,servingWebEvidenceHash:context.servingWebEvidenceHash};
  const response=await fetch(config.supabaseUrl+'/rest/v1/rpc/trimax_release_runtime',{method:'POST',headers:{apikey:config.anonKey,'Content-Type':'application/json'},body:JSON.stringify({p_business:config.businessId,p_key:config.workerKey,p_engine:engine}),signal:AbortSignal.timeout(15000)});
  const body=await response.json();results.push({engine,...classify(manifest,engine,config,{status:response.status,body},context)});
  }catch(e){results.push({engine,database:{status:'FAIL',failures:[e.message]},runtime:{status:'FAIL',failures:[e.message]}});}}

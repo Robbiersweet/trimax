@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 2,
+  "purpose": "Private hash-bound physical annotations; scoring only, never inference input",
+  "annotations": {
+    "file": "physical-photo-annotations.json",
+    "sha256": "e91b647009ea9f6027668dc894acb3f8bcbc29fc8514a1d06ff0053a9ff79d6a"
+  },
+  "independentPhysicalCaptures": 7,
+  "variants": [
+    "native",
+    "distance-resolution",
+    "lighting-rotation",
+    "perspective"
+  ],
+  "engines": [
+    "legacy",
+    "v2-shadow"
+  ]
+}

@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 
 
 import { probeDocumentDirection } from "../ocrStillDirection.ts";
-import { detectDocumentGeometry, rectifyDocument } from "./documentGeometry.ts";
+import { detectDocumentGeometry, rectifyDocument, documentEdgeMargin } from "./documentGeometry.ts";
 import type { OcrV2Foundation } from "./types.ts";
 export async function lightingVariants(image: Buffer) {
     const gray = await sharp(image).flatten({ background: 'white' }).grayscale().raw().toBuffer({ resolveWithObject: true }), width = gray.info.width, height = gray.info.height;
@@ -53,7 +53,7 @@ export async function pixelMetrics(image: Buffer, reference?: Buffer) {
     return { clippedBlackFraction: black / raw.data.length, clippedWhiteFraction: white / raw.data.length, strokeContrast: strokes ? contrast / strokes : 0, weakStrokeRetention: weak ? retained / weak : null };
 }
 /** No fixture labels, invoice records, payment APIs or production route imports. */
-export async function normalizeDocument(original: Buffer) {
+export async function normalizeDocument(original: Buffer,view: 'rectified'|'native-paper'='rectified') {
     const start = performance.now(), meta = await sharp(original, { limitInputPixels: 48000000, failOn: 'error' }).metadata();
     if (!meta.width || !meta.height || (meta.pages ?? 1) > 1)
         throw Error('Expected one still image, not an animation/multipage document');
@@ -62,7 +62,9 @@ export async function normalizeDocument(original: Buffer) {
     let stage = performance.now();
     const geometry = await detectDocumentGeometry(normalizedFull), geometryMs = performance.now() - stage;
     stage = performance.now();
-    const rectified = await rectifyDocument(normalizedFull, geometry), rectificationMs = performance.now() - stage;
+    const b=geometry.bounds,margin=documentEdgeMargin(fullMeta.width!,fullMeta.height!),left=Math.max(0,Math.floor(b.left)-margin),top=Math.max(0,Math.floor(b.top)-margin);
+    const nativeBounds={left,top,width:Math.min(fullMeta.width!,Math.ceil(b.left+b.width)+margin)-left,height:Math.min(fullMeta.height!,Math.ceil(b.top+b.height)+margin)-top};
+    const rectified = view==='native-paper'?{image:geometry.reliable?await sharp(normalizedFull).extract(nativeBounds).png().toBuffer():normalizedFull,matrix:null}:await rectifyDocument(normalizedFull, geometry), rectificationMs = performance.now() - stage;
     geometry.perspectiveTransform = rectified.matrix;
     stage = performance.now();
     const prepared = await lightingVariants(rectified.image);
@@ -84,6 +86,6 @@ export async function normalizeDocument(original: Buffer) {
         warnings.push(geometry.reason);
     if (!orientation.certain)
         warnings.push('Direction uncertain; retained pixels without discarding the still.');
-    const evidence: OcrV2Foundation = { engine: 'v2', version: 'phase1-optical-1', stage: 'optical-foundation', sourceImage: { sha256: createHash('sha256').update(original).digest('hex'), width: meta.width, height: meta.height, format: meta.format ?? 'unknown', bytes: original.length, exifOrientation: meta.orientation ?? null }, normalization: { exifAppliedOnce: true, rotation: orientation.rotation, orientationCertain: orientation.certain, orientationObservations: orientation.observations, originalNormalizedDimensions: { width: fullMeta.width!, height: fullMeta.height! }, documentDimensions: { width: documentMeta.width!, height: documentMeta.height! }, perspectiveApplied: Boolean(rectified.matrix), deskewDegrees: geometry.reliable ? geometry.angle : 0, resampling: rectified.matrix ? 'One bilinear projective resampling; right-angle rotation is lossless' : 'No projective resampling', warnings }, documentGeometry: geometry, variants: variantMetrics, metrics: { decodeMs, geometryMs, rectificationMs, variantsMs, orientationMs, completeMs: performance.now() - start, ocrPassCount: orientation.observations.length }, result: 'foundation-only-no-business-resolution' };
+    const evidence: OcrV2Foundation = { engine: 'v2', version: 'phase1-optical-1', stage: 'optical-foundation', sourceImage: { sha256: createHash('sha256').update(original).digest('hex'), width: meta.width, height: meta.height, format: meta.format ?? 'unknown', bytes: original.length, exifOrientation: meta.orientation ?? null }, normalization: { recognitionView:view,nativeCropBounds:view==='native-paper'&&geometry.reliable?nativeBounds:undefined, exifAppliedOnce: true, rotation: orientation.rotation, orientationCertain: orientation.certain, orientationObservations: orientation.observations, originalNormalizedDimensions: { width: fullMeta.width!, height: fullMeta.height! }, documentDimensions: { width: documentMeta.width!, height: documentMeta.height! }, perspectiveApplied: Boolean(rectified.matrix), deskewDegrees: geometry.reliable ? geometry.angle : 0, resampling: rectified.matrix ? 'One bilinear projective resampling; right-angle rotation is lossless' : 'No projective resampling', warnings }, documentGeometry: geometry, variants: variantMetrics, metrics: { decodeMs, geometryMs, rectificationMs, variantsMs, orientationMs, completeMs: performance.now() - start, ocrPassCount: orientation.observations.length }, result: 'foundation-only-no-business-resolution' };
     return { normalizedFull, documentColor, variants, evidence };
 }
