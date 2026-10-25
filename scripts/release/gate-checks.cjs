@@ -38,3 +38,4 @@ module.exports=scripts;
 scripts.push('scripts/property-request-sql-regression.cjs','scripts/property-request-access-regression.cjs','scripts/communications-regression.ts','scripts/communications-sql-regression.cjs','scripts/workflow-upgrade-catalog-replay.cjs');
 scripts.push('scripts/property-request-ui-regression.cjs','scripts/service-workflow-ui-regression.cjs');
 scripts.push('scripts/communications-queue-regression.cjs');
+scripts.push('scripts/communications-reply-regression.cjs');

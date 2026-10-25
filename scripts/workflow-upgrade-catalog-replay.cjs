@@ -13,7 +13,7 @@ module.exports=async function projectUpgrade(db,parts,base){
  assert.deepEqual(before,expected,'Exact current production 885d01f database must reproduce before candidate migrations');
  console.log('PASS exact 885d01f production schema fingerprints');
  const anonymousBefore={rpc:(await db.query("select p.oid::regprocedure::text name from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and has_function_privilege('anon',p.oid,'EXECUTE') order by 1")).rows.map(r=>r.name),tables:(await db.query("select c.relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind in ('r','v') and has_table_privilege('anon',c.oid,'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER') order by 1")).rows.map(r=>r.relname)};
- const migrations=['20261025_workflow_experience.sql','20261025_property_request_intake.sql','20261025_property_request_access.sql','20261025_communications.sql','20261025_service_request_consent_intake.sql','20261025_sms_queue.sql'];
+ const migrations=['20261025_workflow_experience.sql','20261025_property_request_intake.sql','20261025_property_request_access.sql','20261025_communications.sql','20261025_service_request_consent_intake.sql','20261025_sms_queue.sql','20261025_customer_reply.sql'];
  const receipts=[];
  for(const name of migrations){const file=name==='20261025_communications.sql'&&process.env.TRIMAX_COMMUNICATIONS_CANDIDATE?process.env.TRIMAX_COMMUNICATIONS_CANDIDATE:path.join('supabase/migrations',name);const text=fs.readFileSync(file,'utf8').replace(/\r?\n/g,'\r\n');await db.exec(text);receipts.push({name,sha256:crypto.createHash('sha256').update(text).digest('hex')});}
  const scope={};
@@ -51,7 +51,20 @@ module.exports=async function projectUpgrade(db,parts,base){
   await db.query('update queue_items set source_request_id=null where business_id=$1 and id=$2',[id(1),linked.queueItemId]);
   await db.query("update queue_items set appointment_start=now()+interval '3 days',appointment_end=now()+interval '3 days 1 hour' where business_id=$1 and id=$2",[id(1),linked.queueItemId]);
   assert.equal((await db.query("select count(*)::int n from communication_messages where business_id=$1 and queue_id=$2 and request_id is null and event_type='appointment_scheduled'",[id(1),linked.queueItemId])).rows[0].n,1,'Actual Queue schema and consent mapping enqueue exactly one appointment milestone');
-  console.log('PASS actual-catalog opt-in, atomic conversion, invoice and payment audit triggers; synthetic rows rolled back');
+  await db.query("update public_service_requests set status='needs_information' where id=$1",[receipt.id]);
+  await db.query("insert into public_request_activity(business_id,request_id,event_type,details) values($1,$2,'review_updated',$3)",[id(1),receipt.id,JSON.stringify({fromStatus:'approved',toStatus:'needs_information'})]);
+  const information=(await db.query("select id from communication_messages where business_id=$1 and request_id=$2 and event_type='needs_information'",[id(1),receipt.id])).rows;
+  assert.equal(information.length,1,'Actual request activity produces information request');
+  const capability='a'.repeat(64),replyKey='b'.repeat(64);
+  await db.query("insert into communication_links(token_hash,business_id,message_id,expires_at) values($1,$2,$3,now()+interval '1 hour')",[capability,id(1),information[0].id]);
+  assert.equal((await db.query("select has_function_privilege('authenticated','public.trimax_customer_link_reply(text,text,text)','EXECUTE') allowed")).rows[0].allowed,false,'Customer capability RPC is not available to browser roles');
+  await db.exec('set role service_role');
+  const reply=async()=>(await db.query('select trimax_customer_link_reply($1,$2,$3) id',[capability,replyKey,'Synthetic additional information'])).rows[0].id;
+  const replyId=await reply();assert.equal(await reply(),replyId,'Capability retry returns the exact original reply');
+  await db.exec('reset role');
+  assert.equal((await db.query("select count(*)::int n from communication_owner_alerts where business_id=$1 and message_id=$2 and kind='customer_reply'",[id(1),replyId])).rows[0].n,1,'Exactly one reply owner alert');
+  assert.equal((await db.query('select status from public_service_requests where id=$1',[receipt.id])).rows[0].status,'needs_information','Customer reply cannot approve or schedule');
+  console.log('PASS actual-catalog opt-in, atomic conversion, document/Queue events and capability reply with idempotent owner alert; synthetic rows rolled back');
  }finally{await db.exec('reset role;rollback');}
  const candidate=await fingerprints();fs.writeFileSync(path.join(directory,'candidate.json'),JSON.stringify({baseline,transport:'CRLF',migrations:receipts,fingerprints:candidate,scope},null,2));
  console.log('PASS full-catalog candidate migrations and restricted role scope; projection saved privately');
