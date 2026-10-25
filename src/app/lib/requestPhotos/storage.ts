@@ -9,7 +9,7 @@ export function photoStorage(client:SupabaseClient){return {async put(bucket:str
  // A prior upload may have succeeded before its response was lost. Verify exact bytes;
  // never overwrite, and never treat an arbitrary conflict as a successful upload.
  const existing=await client.storage.from(bucket).download(key);
- if(existing.error||!existing.data||existing.data.size>PHOTO_LIMITS.inputBytes)throw Error('Photo storage unavailable');
+ if(existing.error||!existing.data||existing.data.size>PHOTO_LIMITS.outputBytes)throw Error('Photo storage unavailable');
  const original=Buffer.from(await existing.data.arrayBuffer());
  if(createHash('sha256').update(original).digest('hex')!==createHash('sha256').update(bytes).digest('hex'))throw Error('Photo storage conflict');
  }};}
