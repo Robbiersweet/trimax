@@ -50,3 +50,8 @@ Activation remains blocked pending app photo candidate review/migration/privateb
 Verification: public website81 boundary/routing/security/SEO checks PASS; consent and actual form regression PASS; photo gate/forged-payload denial/browser crypto tests PASS; branding PASS; lint/typecheck/local production build PASS. Initial local suite failed because port3108 server absent, then /schedule public-isolation exposed unused disabled endpoint in serialized props; fixed by omitting endpoint prop when disabled, rerun81 PASS. No browser physical acceptance claimed.
 
 Last hosted preview verified by parent: deployment GLV3gyGfkQuk4dDNjT1mcqh1uP1X, exact source26f6a37, immutable https://rnl-public-website-aww039dte-trimax-s-projects.vercel.app. This photo candidate is NEW and has NOT been pushed/deployed to a new preview. Prior preview evidence does not cover these changes. Root reviews/pushes next.
+
+## Hosted photo-candidate preview verification
+Authenticated Vercel dashboard verified deployment `5vLNVxD7yJoqXPFQz6SFh7eDop85` Ready / Latest / Preview at exact `19ab1cf1dd37509fb5b4f91f325099232c6b1b05`.
+URL: https://rnl-public-website-9tavgjzu2-trimax-s-projects.vercel.app
+Hosted `/schedule` renders the three-step form and explicit disabled-submission notice. Actual DOM confirms favicon, Apple touch icon, manifest and branded Open Graph metadata. Photo collection stays gated off; no upload input or submission was activated. Evidence: private `brand-acceptance-20261025/vercel-photo-preview-ready.png`. This is preview/render evidence, not hosted upload or customer acceptance. Production unchanged.
