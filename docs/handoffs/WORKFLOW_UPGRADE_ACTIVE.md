@@ -1,48 +1,45 @@
 # Workflow upgrade — active checkpoint
 
 ## Objective and authorization
+Continue the extended customer scheduling, manager photos, communications and website release mission. The owner approved the existing free Supabase lab `yzyfmvoswucyauogueca`, its reviewed schema and synthetic fixtures, private photos, restricted two-RPC login, and lab-only credentials on the two specified Preview branches. The separate approval to set passwords on only the newly created synthetic owner and manager accounts has been executed and verified. No production deployment, migration, worker switch, credential change, real customer message or paid service is authorized in this session.
 
-Continue the extended workflow, manager photo, communications and website mission. Primary production and existing data/credentials/rollback checkpoints remain unchanged. No production deployment, migration, worker switch, real customer message or paid provider operation is authorized in this session.
+## Workspaces and candidate
+- App: `C:/Users/robbi/.codex/worktrees/workflow-upgrade/trimax`, branch `codex/workflow-upgrade`.
+- Executable: `e53add6ca29e1b25f9930923680814c413ab5766`; release `trimax-workflow-communications-20261025-rc7`; seal `9154514`; photo receipt commit `9f8c0e1`.
+- Source bundle: `d5f7b967be8e01dee1e157559e4522c51f8d64dfa3490153e21be6c16b055f71`.
+- Manifest digest: `5c949fed9b568c0de27a1753faf67b5442018ff196749833935623afff0f2818`.
+- Marketing: `C:/Users/robbi/.codex/worktrees/rnl-brand-icons/trimax`, branch `codex/rnl-brand-icons`. Preserve its unrelated/uncommitted `sites/rnl/BRANDING_HANDOFF.md` changes.
 
-**LAB APPROVED:** Robbie explicitly approved the exact isolated FREE lab setup on2026-10-25 via the pending question. Scope: yzyfmvoswucyauogueca reviewed schema/candidate migrations, four synthetic identities/fixtures/private photos, restricted two-RPC login, lab-only keys in protected files and only Preview branches codex/workflow-upgrade and codex/rnl-brand-icons, synthetic E2E/simulated messages. No destructive cleanup, production data/secrets, rotation or paid services. Do not ask duplicate setup approval.
+## Verified evidence and active operations
+- Photo matrix `matrix-2026-10-25T21-43-03-274Z/report.json`: FINAL PASS, 56/56. Source-bound privacy receipt exported, verified and committed. Do not rerun for unchanged source.
+- Prior rc6 gate `2026-10-25T21-18-07-636Z`: FAIL only production build, because Windows Application Control blocked native SWC. Preserved. Supported Webpack/WASM build passed; package and full gate now consistently use `--webpack`, with drift/bypass regression. Application Control and prebuild authorization unchanged.
+- Current full gate: session `99158`, private directory `2026-10-25T23-16-51-813Z`. Completed READY_FOR_CONTROLLED_DEPLOYMENT: 154 checks and eight retained documents; lint, TypeScript, production build and clean-end checks passed. Privacy-safe receipt exported. Production runtime/database remain the two explicit deployment prerequisites, not PASS.
+- Marketing `b631b5867552bf66813ff88cbf0d34108d933ad9`: actual Ready deployment `7uRNCvJeo6pHm1XAGLcwR2D8qjrj`, https://rnl-public-website-l5erbvp0m-trimax-s-projects.vercel.app . Fixed the isolated Next Request wrapper failure and clarified the lab banner. Real wrapped-request regression/build/lint/typecheck passed.
+- Actual browser same-day submission PASSED. Reference `REQ-658727cbd933495fb690a962a7250540`; internal request UUID `22832082-1e1f-48a7-a86f-9ce7c027a35f`. Reuse this A request; do not resubmit. Private `website-acceptance.json` and receipt screenshot record it. Prior failed attempt created no record.
+- Hosted lab communications database: 13 checks PASS, including leases/retries, activation cutoff, STOP/HELP/START, duplicates, delivery ordering and tenant denial. `communications-db-api-journal.json` records this as database-only simulation. Settings restored to disabled/test. No provider calls or hosted worker HTTP acceptance.
 
-## Current workspaces and candidate
+## Actual lab state
+All 25 reviewed schema stages applied. Seven catalog comparisons passed after narrowly reviewed lab grant normalization, preserving the original sentinel and two original restricted lab RPCs. Four synthetic identities and two businesses exist. Private photo bucket is provisioned; actual uploaded-object privacy remains pending. Restricted PostgreSQL login has only the two intake RPCs and verified TLS. Existing production credentials were never copied or rotated.
 
-- App C:/Users/robbi/.codex/worktrees/workflow-upgrade/trimax, codex/workflow-upgrade.
-- Current executable4fa633766e30263de5862ea4d72903790967f760; rc6 seal f547a03. Bundle0d67b4508dcffbec054a574f1f9b7f21e67771e3c5c7e03c16a27695832c6b33. Manifest digestbd57d352a3122490552f0ed7e1be62f269f53093271e044a74b4eec65d510f7a.
-- Integrated manager photos/preferences, owner duplicate retry repair, email simulation/capabilities/signed status, exactlab adapters. Latesta8bbf01 repairs preview-origin bootstrap using trusted VERCEL_URL only in exactlabmode; production origin unchanged.65 email assertions pass. No more executable edits while final matrix runs.
-- Current56-case matrix process27534: C:/Users/robbi/AppData/Local/Trimax/photo-robustness-20261022/matrix-2026-10-25T20-58-51-341Z/report.json. Running. Prior20:43 run had56/56 individual cases pass but finalFAIL because source changed for origin repair; preserve that failed receipt, never export it asPASS.
-- Need finish currentmatrix, export/verify photo receipt, commit metadata; fresh production UI observation; full predeployment gate; export safe receipt/commit; exact build authorization; push branch and verify Ready preview. Do not npm ci whilematrix runs.
-- Marketing C:/Users/robbi/.codex/worktrees/rnl-brand-icons/trimax. Newdd3e19d originbootstrapfix locally verified, not pushed yet; preserves uncommitted BRANDING_HANDOFF.md. Previousb4f926c394f3d38e79825e0c7f82c7fdb0a561db ReadyELKwMSsVBG6xPH87JiszX1L3UxWS https://rnl-public-website-q0iisa9cl-trimax-s-projects.vercel.app. Bind approvedlabPreviewconfig before nextpublish.
+Private bundle: `C:/Users/robbi/AppData/Local/Trimax/hosted-lab-acceptance-20261026/`. `lab-secrets.env` and `synthetic-login-passwords.json` are protected to Robbie and SYSTEM; never print their values. Password helper is resumable and reuses the same saved password. No original/customer identity was changed or email sent.
 
-## Hosted lab actual progress
+App lab environment is bound only to Preview branch `codex/workflow-upgrade`; stable origin https://trimax-git-codex-workflow-upgrade-trimax-s-projects.vercel.app . Real email, SMS and push delivery are disabled. Website lab config is bound only to `codex/rnl-brand-icons`, with restricted SQL credentials and strict public Supabase CA. Public website photo intake is still disabled.
 
-- All25 frozen stages00–24 APPLIED successfully via authenticated Supabase SQL UI, target yzyfmvoswucyauogueca. Finalcheckpoint count25/max24. Original sentinel/identity retained. Schema cache notified.
-- First actual read-only catalog comparison: schema1085, policies87, triggers24 match all expectedhashes exactly. Grants1241 vs1175; RPC86 vs84 mismatch. Investigate exactdiff before restrictedlogin/fixtures. workflow_ui preparing readonlydiffSQL; do not weaken expectedfingerprints or deleteexistingobjects blindly.
-- Saved actualproof C:/Users/robbi/AppData/Local/Trimax/hosted-lab-acceptance-20261026/lab-schema-provisioned.png and hosted-catalog-first-observation.txt.
-- Protected EMPTY lab-secrets.env created with inheritanceoff, only Robbie/robbi andSYSTEMfullaccess. No key copied/generated yet. CurrentbrowserlabSettings14 on legacyAPIkeys loading. Use existingkeycopy controls, transfer directly to protectedfile without logs/chat/screenshots. Never rotate/reset.
-- Lab SQLtab9 on schema visualizer withdrawer201 editor/199Run; freshAXbefore actions. UseControl+a thenpaste; notsetValue(Monacoconcats). SQLresultchecks mayneedsecondobservation afterrequest.
-- Bundle C:/Users/robbi/AppData/Local/Trimax/hosted-lab-acceptance-20261026/: README,stage-manifest,25stages,read-only06catalogSQL,identity-fixtures,acceptance-core,FINANCIAL_ACCEPTANCE andacceptance-financial,PREVIEW_ENV_PLAN.
-- Current exactlab schema succeeded but grant/RPC comparison NOTPASS. No restrictedlogin/identities/fixtures/bucket configured yet; no Previewenvbindingschanged.
-- Appworkflow/photos use actualverified stablebranchalias. Marketingorigin omitted derives immutableVERCEL_URL. Emailorigin omitted derives immutableappVERCEL_URL; sharedproductionorigin mustnotleak. Useonly labkeys; disable realpush/email/SMS; manuallyinvoke simulatedworker, no labscheduler.
+## Access and pending approval
+Authenticated browser access works. Direct HTTP requests to both Preview projects return302 to Vercel SSO. No CLI credential, callable Vercel integration, existing automation secret or shareable link was found. Do not repeat login procedures or extract browser cookies.
 
-## Production unchanged and preserved
+A single pending owner question requests creation of a temporary project-wide Vercel automation token for `trimax`, used only against the verified lab alias and revoked after tests, without setting a deployment environment variable or changing existing protection/credentials. This is broader than lab access because Vercel tokens cover all protected project deployments. Do not create it until the owner explicitly approves. Continue browser/database testing independently.
 
-App885d01f18b1811de7f2be8fe33ec9d8858056d20 /6G2N5TMoymwBRm48NKrtt8Qbr7Xc at https://app.rnlcreations.com; immutable https://trimax-985pnrbl9-trimax-s-projects.vercel.app.
-Website7e0ca069a5cbbb2c38aa05e8705113a5cc769e18 /7nhM28FWzouDAL8HwXyom7fX7VbB at https://rnlcreations.com.
-Rollback/rnl-marketing-20261017 ->34fa3b47f16890a9de09b253848ecf8a690f4e9b; rollback/trimax-service-workflow-20261018 ->4e3d786e12092c5ffde86d8324cd6c23ce6670cf. Dirty primarymain686c8a0 untouched.
+## Next steps
+1. Read the actual completion of gate99158. If PASS/READY, export its privacy-safe receipt, commit metadata, run exact build authorization, then push only the app Preview branch. Verify actual Ready source and stable-alias deployment binding before login/testing.
+2. Update this checkpoint with gate and deployment identity. No app hosted full-lifecycle acceptance has passed yet; old rc4 preview is historical only.
+3. Log in through the normal app form using the protected synthetic owner/manager passwords. Test A owner review, matching, Queue, same-day schedule, estimate, active Job Session completion guard, completion, invoice and synthetic bookkeeping payment. No direct financial inserts.
+4. Private helpers prepared: `acceptance-core.cjs` (A reuse, B restricted intake, denial/conversion/schedule/reschedule/cancel), `acceptance-manager-photos.cjs`, `acceptance-conflicts.cjs`, `acceptance-communications.cjs`, `acceptance-financial.cjs`. Require fresh actual Ready receipts and exact lab guards. Vercel HTTP protection still blocks these runners until approved access is established. Preserve journals before retries.
+5. Complete real hosted manager photo upload/private-object/cross-tenant/Queue tests and normal browser review. Assignment revocation and positive trusted-manager direct Queue remain explicitly unverified. Test worker HTTP separately from database simulation.
+6. Reconcile implementation report and recovery plan. Present production approval only after actual hosted prerequisites pass; SMS/email provider activation remains separate.
 
-Historicalrc4 app483074f Ready5WmGB5Jm94qYuXgqBAVhhhHi6Ch5 https://trimax-huofvq7ky-trimax-s-projects.vercel.app. Its141PASS/2prerequisites/8retained/56photos is prior evidence only. CurrentappPreviewnotyetupdated. Branch-onlyTRIMAX_RELEASE_GATE_RESULT already pointsrelease/evidence/workflow-upgrade-preview-result.json.
-
-October19 physical iPhone request navigation PASSED historically; no candidate physical acceptance. Customeremail/SMS unactivated; productionpush/privateHTTP/pg_cron/CRONsecret untouched. Public OptionCtwoRPC intake preserved.
-
-## Resume sequence
-
-1. Finish approvedlabsetup: resolve catalogdiff, create approvedrestrictedlogin withserver-generatedlabsecret securely, existinglabAPIkeys, fouridentities/fixtures/privatebucket. No productioncredentials. Recordresultssafely.
-2. Bind exactbranchPreviewenvplan and deploy freshly gatedapp/marketing sources. Verify real labtarget/origins and no realprovider sends.
-3. Run actualhosted two-customer/manager/photo access, submission->review->client->Queue->appointment->estimate->completion->invoice->syntheticpayment andalternativepaths. UseexistingUI/API, preservejournalbefore retries. No directfinancial inserts to fakeacceptance. Fixobserveddefects thenreseal/gate.
-4. Complete finalreport/deployidentities. Productionapproval onlywhen hostedprerequisites pass;13migrations and coordinatednativecontract requireseparateapproval. Email/SMSsender/handsetactivation independent.
-
-Fullgate env: TRIMAX_LEGACY_CONFIG andTRIMAX_SHADOW_CONFIG under C:/Users/robbi/AppData/Local/Trimax/ocr-native-runtime/config/ocr-legacy-worker/worker.json andocr-shadow-worker/worker.json; NODE_PATH=C:/Users/robbi/AppData/Local/Trimax/phase6-dbtest/node_modules; TRIMAX_SERVING_WEB_EVIDENCE=C:/Users/robbi/AppData/Local/Trimax/scheduling-security-release/workflow-upgrade-20261025/serving-web.json (refresh actualVercelReadyProductionLatest885 observation within30min). Run node --env-file=C:/Users/robbi/trimax/.env.local scripts/release/gate.cjs --mode=predeployment. No productionmutations.
-
-Recovery: privateROLLOUT_RECOVERY.md samefolder;13orderedmigrations/data-preservingrecovery. Update candidateheader fromrc5 torc6 beforefinal. Detailedreport WORKFLOW_UPGRADE_IMPLEMENTATION_REPORT.md wasconsolidated thissession; finalevidencecounts needupdate. No backgroundexecutionclaim.
+## Production and rollback preserved
+App `885d01f18b1811de7f2be8fe33ec9d8858056d20`, deployment `6G2N5TMoymwBRm48NKrtt8Qbr7Xc`, https://app.rnlcreations.com . Actual Ready/Latest Production refreshed before the gate.
+Website `7e0ca069a5cbbb2c38aa05e8705113a5cc769e18`, deployment `7nhM28FWzouDAL8HwXyom7fX7VbB`, https://rnlcreations.com .
+Rollback `rollback/rnl-marketing-20261017` → `34fa3b47f16890a9de09b253848ecf8a690f4e9b`; `rollback/trimax-service-workflow-20261018` → `4e3d786e12092c5ffde86d8324cd6c23ce6670cf`. Both reverified. Dirty primary checkout untouched.
+October19 physical iPhone navigation PASS is historical only. Candidate physical acceptance remains pending. Preserve data/audits and prefer forward repair; no destructive down migrations or snapshot replacement. No background execution is promised after the turn ends.
