@@ -110,7 +110,7 @@ try{
  await db.exec(fs.readFileSync('supabase/migrations/20261025_service_request_consent_intake.sql','utf8'));
  const opted=await submit(99,{smsConsent:true,smsDisclosureVersion:'transactional-sms-2026-10-25'});
  const consent=(await db.query('select sms_consent_at,sms_consent_version,sms_consent_source from public_service_requests where id=$1',[opted.id])).rows[0];
- assert.ok(consent.sms_consent_at);eq(consent.sms_consent_version,'transactional-sms-2026-10-25');eq(consent.sms_consent_source,'public-request-form');
+ assert.ok(consent.sms_consent_at);eq(consent.sms_consent_version,'transactional-sms-2026-10-25');eq(consent.sms_consent_source,'public-web');
  await fail(()=>submit(100,{smsConsent:true,smsDisclosureVersion:'old'}),/Invalid SMS disclosure/);
  const noSms=await submit(101,{smsConsent:false,smsDisclosureVersion:'transactional-sms-2026-10-25'});
  eq((await db.query('select sms_consent_at from public_service_requests where id=$1',[noSms.id])).rows[0].sms_consent_at,null);

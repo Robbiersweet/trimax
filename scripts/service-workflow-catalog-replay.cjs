@@ -15,4 +15,5 @@ assert.equal((await db.query("select has_function_privilege('anon','public.trima
 await db.exec(fs.readFileSync('supabase/sql/2026-10-19-scheduler-provisioning-remove.sql','utf8'));
 assert.deepEqual(await catalogHashes(),beforeProvisioning,'Temporary provisioning helper removal must restore every candidate fingerprint');
 console.log('PASS provisioning helper cleanup restores all five candidate fingerprints');
+if(process.argv.includes('--workflow-upgrade'))await require('./workflow-upgrade-catalog-replay.cjs')(db,parts,base);
 };

@@ -74,3 +74,8 @@
 /* Allura's lighter connected strokes need slightly larger script-only metrics. */
 .schedule-tagline{font-size:42px;letter-spacing:0;line-height:1.02}
 @media(max-width:800px){.schedule-tagline{font-size:clamp(23px,6.2vw,35px);letter-spacing:0}}
+
+.schedule-sms-consent {margin:0;padding:18px;border:1px solid #b7bcae;border-radius:12px;min-width:0;}
+.schedule-sms-consent legend {padding:0 6px;font-weight:700;}
+.schedule-sms-consent[hidden] {display:none;}
+.schedule-sms-consent .schedule-consent {margin:0;}

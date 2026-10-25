@@ -35,3 +35,6 @@ const scripts=[
 ];
 scripts.push('scripts/table-caption-ownership-regression.cjs','scripts/complementary-row-regression.cjs','scripts/pixel-localization-regression.cjs','scripts/legacy-mature-fallback-regression.cjs','scripts/photo-evidence-regression.cjs','scripts/photo-corpus-financial-regression.cjs','scripts/photo-corpus-acceptance.cjs','scripts/photo-corpus-privacy-regression.cjs');
 module.exports=scripts;
+scripts.push('scripts/property-request-sql-regression.cjs','scripts/property-request-access-regression.cjs','scripts/communications-regression.ts','scripts/communications-sql-regression.cjs','scripts/workflow-upgrade-catalog-replay.cjs');
+scripts.push('scripts/property-request-ui-regression.cjs','scripts/service-workflow-ui-regression.cjs');
+scripts.push('scripts/communications-queue-regression.cjs');
