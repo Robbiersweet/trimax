@@ -5,7 +5,7 @@ export async function GET(request:Request){
  try{
  const {db,businessId}=await communicationsOwner(request);
  const [messages,audit,settings,alerts,usage]=await Promise.all([
- db.from('communication_messages').select('id,request_id,client_id,direction,event_type,recipient,status,body,attempts,simulated,error_code,estimated_segments,estimated_cost,created_at').eq('business_id',businessId).order('created_at',{ascending:false}).limit(100),
+ db.from('communication_messages').select('id,request_id,client_id,queue_id,direction,event_type,recipient,status,body,attempts,simulated,error_code,estimated_segments,estimated_cost,created_at').eq('business_id',businessId).order('created_at',{ascending:false}).limit(100),
  db.from('communication_audit').select('id,message_id,event_type,details,created_at').eq('business_id',businessId).order('created_at',{ascending:false}).limit(100),
  db.from('communication_settings').select('enabled,provider,display_name,time_zone,quiet_start,quiet_end,monthly_limit,milestones').eq('business_id',businessId).maybeSingle(),
  db.from('communication_owner_alerts').select('id,message_id,kind,created_at').eq('business_id',businessId).order('created_at',{ascending:false}).limit(30),db.rpc('trimax_sms_usage',{p_business:businessId})]);
@@ -20,3 +20,4 @@ export async function PATCH(request:Request){
  return Response.json({saved:true},{headers:{'Cache-Control':'no-store'}});
  }catch{return Response.json({error:'Preferences not saved. Verify owner access, quiet hours, time zone and message limit.'},{status:400});}
 }
+

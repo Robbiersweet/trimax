@@ -8,10 +8,11 @@ export async function GET(request:Request,{params}:{params:Promise<{token:string
  try{
  const {token}=await params;if(!/^[A-Za-z0-9_-]{43}$/.test(token))throw Error();const db=communicationsDb();
  const {data:link}=await db.from('communication_links').select('business_id,message_id').eq('token_hash',createHash('sha256').update(token).digest('hex')).gt('expires_at',new Date().toISOString()).is('revoked_at',null).maybeSingle();if(!link)throw Error();
- const {data:message}=await db.from('communication_messages').select('business_id,queue_id,entity_type,entity_id,client_id,request_id,event_type').eq('id',link.message_id).eq('business_id',link.business_id).maybeSingle();if(!message)throw Error();
+ const {data:message}=await db.from('communication_messages').select('business_id,queue_id,entity_type,entity_id,client_id,request_id,event_type,recipient').eq('id',link.message_id).eq('business_id',link.business_id).maybeSingle();if(!message)throw Error();
  const {data:settings}=await db.from('communication_settings').select('display_name,time_zone').eq('business_id',link.business_id).maybeSingle();
  let title='Service update',content='';
  if(message.queue_id){
+  if(!message.request_id){const {data:currentClient,error}=await db.rpc('trimax_queue_sms_client',{p_business:link.business_id,p_queue:message.queue_id,p_phone:message.recipient});if(error||!message.client_id||currentClient!==message.client_id)throw Error();}
   const {data:q}=await db.from('queue_items').select('id,appointment_start,appointment_end,appointment_revision,appointment_status,appointment_previous_start,appointment_previous_end,appointment_changed_at').eq('id',message.queue_id).eq('business_id',link.business_id).maybeSingle();if(!q)throw Error();
   const cancelled=q.appointment_status==='cancelled';const start=cancelled?q.appointment_previous_start:q.appointment_start,end=cancelled?q.appointment_previous_end:q.appointment_end;
   if(new URL(request.url).searchParams.get('format')==='ics'){
@@ -30,3 +31,4 @@ export async function GET(request:Request,{params}:{params:Promise<{token:string
  return new Response(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(title)}</title><style>body{font:18px system-ui;max-width:42rem;margin:3rem auto;padding:1rem;color:#173b42}a{color:#166c59}</style><h1>${escape(settings?.display_name||'Service update')}</h1><h2>${escape(title)}</h2>${content}</html>`,{headers:{...headers,'Content-Type':'text/html; charset=utf-8'}});
  }catch{return new Response('This private link is unavailable or expired. Contact the business for assistance.',{status:404,headers});}
 }
+

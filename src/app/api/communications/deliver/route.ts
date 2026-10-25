@@ -17,6 +17,7 @@ export async function GET(request:Request){
   try{
    const {data:prepared,error:prepareError}=await db.rpc('trimax_prepare_sms',{p_id:row.id,p_lease:row.lease_token,p_test:test});if(prepareError)throw Error('prepare_failed');if(!prepared){deferred++;continue;}
    const {message,settings}=prepared;
+   if(message.queue_id&&!message.request_id){const {data:client,error:identityError}=await db.rpc('trimax_queue_sms_client',{p_business:message.business_id,p_queue:message.queue_id,p_phone:message.recipient});if(identityError||client!==message.client_id)throw new SmsSendError('recipient_changed',false);}
    if(providerMode(process.env,settings.provider)==='disabled')throw new SmsSendError('sms_disabled',false);
    const origin=process.env.TRIMAX_SMS_PUBLIC_ORIGIN;
    let link:string|null=null;
@@ -30,6 +31,7 @@ export async function GET(request:Request){
    body=smsBody(message.event_type as Milestone,settings.display_name,when,link);segments=estimatedSegments(body);
    // Recheck consent + current appointment after preparing links, immediately before provider call.
    const {data:current,error:currentError}=await db.rpc('trimax_prepare_sms',{p_id:row.id,p_lease:row.lease_token,p_test:test});if(currentError)throw Error('prepare_failed');if(!current){deferred++;continue;}
+   if(message.queue_id&&!message.request_id){const {data:client,error:identityError}=await db.rpc('trimax_queue_sms_client',{p_business:message.business_id,p_queue:message.queue_id,p_phone:message.recipient});if(identityError||client!==message.client_id)throw new SmsSendError('recipient_changed',false);}
    const result=await sendSms(settings,{id:message.id,recipient:message.recipient,body});
    const {data:done,error:finishError}=await db.rpc('trimax_finish_sms',{p_id:row.id,p_lease:row.lease_token,p_reference:result.id,p_body:body,p_segments:segments,p_simulated:result.simulated});
    if(finishError||!done){failed++;continue;}accepted++;
@@ -40,3 +42,4 @@ export async function GET(request:Request){
  }
  return Response.json({accepted,failed,deferred,simulated:test},{status:failed?207:200,headers:{'Cache-Control':'no-store'}});
 }
+
