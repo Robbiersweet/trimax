@@ -39,4 +39,5 @@ scripts.push('scripts/property-request-sql-regression.cjs','scripts/property-req
 scripts.push('scripts/property-request-ui-regression.cjs','scripts/service-workflow-ui-regression.cjs');
 scripts.push('scripts/communications-queue-regression.cjs');
 scripts.push('scripts/communications-reply-regression.cjs');
+scripts.push('scripts/request-photo-regression.mjs','scripts/request-photo-ui-regression.cjs','scripts/request-photo-sql-regression.cjs','scripts/request-photo-intake-sql-regression.cjs');
 scripts.push('scripts/communications-document-regression.ts');

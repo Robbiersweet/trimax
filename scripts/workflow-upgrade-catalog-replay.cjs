@@ -25,7 +25,7 @@ module.exports=async function projectUpgrade(db,parts,base){
  }
  console.log('PASS actual production invoice/estimate document and line-item query columns and ordering');
  const anonymousBefore={rpc:(await db.query("select p.oid::regprocedure::text name from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and has_function_privilege('anon',p.oid,'EXECUTE') order by 1")).rows.map(r=>r.name),tables:(await db.query("select c.relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind in ('r','v') and has_table_privilege('anon',c.oid,'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER') order by 1")).rows.map(r=>r.relname)};
- const migrations=['20261025_workflow_experience.sql','20261025_property_request_intake.sql','20261025_property_request_access.sql','20261025_communications.sql','20261025_service_request_consent_intake.sql','20261025_sms_queue.sql','20261025_customer_reply.sql'];
+ const migrations=['20261025_workflow_experience.sql','20261025_property_request_intake.sql','20261025_property_request_access.sql','20261025_communications.sql','20261025_service_request_consent_intake.sql','20261025_sms_queue.sql','20261025_customer_reply.sql','20261026_request_photo_candidate.sql'];
  const receipts=[];
  for(const name of migrations){const file=name==='20261025_communications.sql'&&process.env.TRIMAX_COMMUNICATIONS_CANDIDATE?process.env.TRIMAX_COMMUNICATIONS_CANDIDATE:path.join('supabase/migrations',name);const text=fs.readFileSync(file,'utf8').replace(/\r?\n/g,'\r\n');await db.exec(text);receipts.push({name,sha256:crypto.createHash('sha256').update(text).digest('hex')});}
  const scope={};
@@ -48,10 +48,21 @@ module.exports=async function projectUpgrade(db,parts,base){
   await db.query("insert into public_scheduling_settings(business_id,public_slug,display_name,enabled) values($1,'catalog-verification','Synthetic catalog verification',true)",[id(1)]);
   await db.query("insert into public_service_request_types(business_id,public_key,public_label,internal_label) values($1,'repair','Repair','Repair')",[id(1)]);
   const payload={requestTypeId:'repair',customerName:'Synthetic catalog customer',phone:'+14255550149',email:'catalog@example.invalid',preferredContact:'sms',address:'Synthetic address',description:'Catalog validation only',preferredDate:'',timeWindowId:'',flexibility:'flexible',urgency:'routine',notes:'',consent:true,smsConsent:true,smsDisclosureVersion:'transactional-sms-2026-10-25'};
+  payload.uploadCapabilityHash='c'.repeat(64);
   await db.exec('set role trimax_scheduling_web');
   const receipt=(await db.query('select trimax_submit_public_service_request($1,$2,$3,$4) r',['catalog-verification',JSON.stringify(payload),'1'.repeat(64),'2'.repeat(64)])).rows[0].r;
   await db.exec('reset role');
   assert.equal((await db.query('select count(*)::int n from communication_consent where business_id=$1',[id(1)])).rows[0].n,1,'Actual intake trigger records consent');
+  const photoRequest=(await db.query('select upload_capability_hash,upload_capability_expires_at>now() valid from public_service_requests where id=$1',[receipt.id])).rows[0];
+  assert.equal(photoRequest.upload_capability_hash,payload.uploadCapabilityHash);assert.equal(photoRequest.valid,true,'Intake stores expiring photo hash');
+  await db.exec('set role service_role');
+  const reserve=async()=>(await db.query('select trimax_reserve_request_photo($1,$2,$3,$4,$5) r',[receipt.id,payload.uploadCapabilityHash,id(4),'d'.repeat(64),1234])).rows[0].r;
+  const photo=await reserve();assert.deepEqual(await reserve(),photo,'Photo reservation retries preserve identity');
+  assert.equal(photo.objectKey,`${id(1)}/${receipt.id}/${id(4)}.jpg`,'Photo storage key is tenant/request scoped');
+  await db.query('select trimax_complete_request_photo($1,$2,$3,$4,$5,$6)',[receipt.id,payload.uploadCapabilityHash,id(4),'e'.repeat(64),12,8]);
+  assert.equal((await reserve()).state,'complete','Service-only completion is visible to an idempotent retry');
+  await db.exec('reset role');
+  assert.equal((await db.query('select count(*)::int n from request_photos where request_id=$1',[receipt.id])).rows[0].n,1,'Exactly one synthetic photo metadata row');
   await db.exec(`set role authenticated;set test.uid='${id(2)}'`);
   const linked=(await db.query("select trimax_service_request_workflow($1,1,'catalog-conversion-0001','approve_queue') r",[receipt.id])).rows[0].r;
   await db.exec('reset role');
