@@ -9,7 +9,7 @@ create table public.request_photos(
 );
 alter table public.request_photos enable row level security;
 alter table public.request_photos force row level security;
-revoke all on public.request_photos from public,anon,authenticated,trimax_scheduling_web,service_role;
+revoke all on public.request_photos from public,anon,authenticated,trimax_scheduling_web,trimax_scheduling_intake,service_role;
 grant select on public.request_photos to service_role;
 -- Server-only entrypoints. Website role retains its existing two RPCs; no photo grants.
 create function public.trimax_reserve_request_photo(p_request uuid,p_hash text,p_upload uuid,p_input_hash text,p_bytes integer) returns jsonb
@@ -41,5 +41,5 @@ begin
  if saved.state='complete' and (saved.output_hash<>p_output_hash or saved.width<>p_width or saved.height<>p_height) then raise exception 'Photo rejected';end if;
  update public.request_photos set state='complete',output_hash=p_output_hash,width=p_width,height=p_height where id=saved.id;
 end $$;
-revoke all on function public.trimax_reserve_request_photo(uuid,text,uuid,text,integer),public.trimax_complete_request_photo(uuid,text,uuid,text,integer,integer) from public,anon,authenticated,trimax_scheduling_web;
+revoke all on function public.trimax_reserve_request_photo(uuid,text,uuid,text,integer),public.trimax_complete_request_photo(uuid,text,uuid,text,integer,integer) from public,anon,authenticated,trimax_scheduling_web,trimax_scheduling_intake;
 grant execute on function public.trimax_reserve_request_photo(uuid,text,uuid,text,integer),public.trimax_complete_request_photo(uuid,text,uuid,text,integer,integer) to service_role;
