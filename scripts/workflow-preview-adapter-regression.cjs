@@ -19,4 +19,19 @@ assert.equal(runtime.workflowWritesAllowed(request(),{VERCEL_ENV:'production',SE
  assert.equal((await route.POST(request(origin,null))).status,403);assert.equal(ownerCalls,0);assert.equal(mutationCalls,0);
  assert.equal((await route.POST(request())).status,409);assert.equal(ownerCalls,1);assert.equal(mutationCalls,0);
  authorized=true;assert.equal((await route.POST(request())).status,200);assert.equal(mutationCalls,1);
-}console.log('PASS isolated preview project/origin/flag denial and actual route owner-auth boundary; no hosted writes');})().catch(e=>{console.error(e);process.exitCode=1});
+}
+let authValid=false,rpcDenied=false,rpcCalls=0,clientCalls=0;
+const assignment='99999999-9999-4999-8999-000000000001',clientId='99999999-9999-4999-8999-000000000002';
+const access=compile('src/app/api/property-request-access/route.ts',id=>{
+ if(id.endsWith('/workflowRuntime'))return {workflowWritesAllowed:r=>runtime.workflowWritesAllowed(r,env)};
+ if(id.endsWith('/httpBody'))return {readBoundedJson:async()=>({assignmentId:assignment,clientId,direct:true})};
+ if(id==='@supabase/supabase-js')return {createClient:(_url,_key,options)=>{clientCalls++;assert.equal(options.global.headers.Authorization,'Bearer synthetic');return {auth:{getUser:async()=>({data:{user:authValid?{id:'synthetic'}:null},error:null})},rpc:async(name,args)=>{rpcCalls++;assert.equal(name,'trimax_set_property_request_access');assert.deepEqual(args,{p_assignment_id:assignment,p_client_id:clientId,p_direct:true});return {error:rpcDenied?new Error('Tenant/owner denied'):null};}};}};
+ throw Error(id);
+});
+const accessRequest=(header=origin,token=true)=>new Request(origin+'/api/property-request-access',{method:'POST',headers:{...(header?{origin:header}:{}),...(token?{authorization:'Bearer synthetic'}:{})}});
+assert.equal((await access.POST(accessRequest(null))).status,403);assert.equal(clientCalls,0);
+assert.equal((await access.POST(accessRequest(origin,false))).status,403);assert.equal(clientCalls,0);
+assert.equal((await access.POST(accessRequest())).status,403);assert.equal(rpcCalls,0);
+authValid=true;rpcDenied=true;assert.equal((await access.POST(accessRequest())).status,403);
+rpcDenied=false;assert.equal((await access.POST(accessRequest())).status,200);assert.equal(rpcCalls,2);
+console.log('PASS isolated preview project/origin/flag denial and workflow/block/property-access auth and RPC boundaries; no hosted writes');})().catch(e=>{console.error(e);process.exitCode=1});
