@@ -1,3 +1,4 @@
+import {requestPhotosEnabled} from './photoBoundary.ts';
 import {smsConsentCollectionEnabled} from './smsConsentBoundary.ts';
 import 'server-only';
 import {getPublicBusiness} from '../.shared/lib/publicScheduling/domain.ts';
@@ -14,6 +15,6 @@ export async function publicScheduling(){
   if(!preview){try{const runtime=websiteSubmissionRuntime();business=await productionBusiness('rnl-creations',runtime.client);siteKey=process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;}catch{/* Fail closed; no development fallback in production. */}}
   if(!business)return null;
   const publicBusiness:PublicPageBusiness={slug:business.slug,displayName:business.displayName,rules:business.rules,requestTypes:business.requestTypes.map(({id,publicLabel,active,displayOrder})=>({id,publicLabel,active,displayOrder}))};
-  return {business:publicBusiness,preview,siteKey,smsConsentEnabled:preview||smsConsentCollectionEnabled()};
+  return {business:publicBusiness,preview,siteKey,smsConsentEnabled:preview||smsConsentCollectionEnabled(),photosEnabled:requestPhotosEnabled()};
 }
 

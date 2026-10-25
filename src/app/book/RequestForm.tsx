@@ -1,17 +1,21 @@
 "use client";
 import {SMS_DISCLOSURE,SMS_DISCLOSURE_VERSION} from "../lib/communications/consent";
+import RequestPhotos from "./RequestPhotos";
+import {createPhotoCapability} from "../lib/requestPhotos/clientCapability";
 import TurnstileChallenge from "./TurnstileChallenge";
 import { useRef, useState } from "react";
 import type { PublicBusiness, ServiceRequestInput } from "../lib/publicScheduling/domain";
 
-type Receipt = { reference: string; status: string; submittedAt: string };
+type Receipt = { id?:string; reference: string; status: string; submittedAt: string };
 export type PublicPageBusiness = Pick<PublicBusiness, "slug" | "displayName" | "rules"> & { requestTypes: Pick<PublicBusiness["requestTypes"][number], "id" | "publicLabel" | "active" | "displayOrder">[] };
 const initial: ServiceRequestInput = { requestTypeId: "", customerName: "", phone: "", email: "", preferredContact: "phone", address: "", description: "", preferredDate: "", timeWindowId: "", flexibility: "flexible", urgency: "routine", notes: "", consent: false, website: "" };
-export default function RequestForm({ business, preview=false, challengeSiteKey, restartHref, smsConsentEnabled=false }: { business: PublicPageBusiness; preview?:boolean; challengeSiteKey?:string; restartHref?: "/schedule"; smsConsentEnabled?:boolean }) {
+export default function RequestForm({ business, preview=false, challengeSiteKey, restartHref, smsConsentEnabled=false,photosEnabled=false,photoEndpoint }: { business: PublicPageBusiness; preview?:boolean; challengeSiteKey?:string; restartHref?: "/schedule"; smsConsentEnabled?:boolean;photosEnabled?:boolean;photoEndpoint?:string }) {
   const [value, setValue] = useState(initial), [step, setStep] = useState(1), [busy, setBusy] = useState(false), [error, setError] = useState(""), [receipt, setReceipt] = useState<Receipt | null>(null);
   const [challengeToken,setChallengeToken]=useState(""),[challengeRevision,setChallengeRevision]=useState(0);
   const key = useRef<string | null>(null);
   const sending = useRef(false);
+  const [photoSecret,setPhotoSecret]=useState("");
+  const photoCapability=useRef<Awaited<ReturnType<typeof createPhotoCapability>>|null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   function update<K extends keyof ServiceRequestInput>(field: K, next: ServiceRequestInput[K]) { if (sending.current) return; setValue(previous => ({ ...previous, [field]: next })); key.current = null; setError(""); }
   function go(next: number) { setStep(next); setError(""); requestAnimationFrame(() => heading.current?.focus()); }
@@ -25,14 +29,15 @@ export default function RequestForm({ business, preview=false, challengeSiteKey,
     try {
       const payload={...value}; delete payload.smsConsent; delete payload.smsDisclosureVersion;
       if(smsConsentEnabled){payload.smsConsent=value.smsConsent===true;payload.smsDisclosureVersion=SMS_DISCLOSURE_VERSION;}
+      if(photosEnabled){photoCapability.current??=await createPhotoCapability();payload.uploadCapabilityHash=photoCapability.current.uploadCapabilityHash;}
       const response = await fetch(`/api/public-scheduling/${encodeURIComponent(business.slug)}`, { method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": key.current, ...(challengeSiteKey?{"X-Turnstile-Token":challengeToken}:{}) }, body: JSON.stringify(payload) });
       const result = await response.json();
       if (!response.ok) { setError([result.error, ...Object.values(result.fields ?? {})].filter(Boolean).join(" ") || "We couldn’t send your request. Your details are still here. Please try again."); return; }
-      setReceipt(result.request);
+      setPhotoSecret(photoCapability.current?.secret??"");setReceipt(result.request);
     } catch { setError("Connection interrupted. Your details are still here. Retry to safely send the same request."); }
     finally { sending.current = false; setBusy(false); setChallengeToken(""); setChallengeRevision(n=>n+1); }
   }
-  if (receipt) return <section className="schedule-card schedule-success" aria-live="polite"><div className="schedule-success-icon" aria-hidden="true">✓</div><p className="schedule-eyebrow">REQUEST RECEIVED</p><h2>You’re on our list.</h2><p>{business.displayName} will contact you to review the details and confirm a time.</p><div className="schedule-reference"><small>YOUR REQUEST NUMBER</small><strong>{receipt.reference}</strong></div>{preview&&<p><strong>Preview complete. No real request or notification was sent.</strong></p>}<p><strong>Your appointment is not yet confirmed.</strong> Keep this reference for your records.</p><p>We’ll review your contact preference and reach out using the details you provided. Text-message delivery depends on your consent and available messaging service.</p><a className="schedule-button" href={restartHref ?? `/book/${business.slug}`}>Start another request</a></section>;
+  if (receipt) return <section className="schedule-card schedule-success" aria-live="polite"><div className="schedule-success-icon" aria-hidden="true">✓</div><p className="schedule-eyebrow">REQUEST RECEIVED</p><h2>You’re on our list.</h2><p>{business.displayName} will contact you to review the details and confirm a time.</p><div className="schedule-reference"><small>YOUR REQUEST NUMBER</small><strong>{receipt.reference}</strong></div>{preview&&<p><strong>Preview complete. No real request or notification was sent.</strong></p>}<p><strong>Your appointment is not yet confirmed.</strong> Keep this reference for your records.</p><p>We’ll review your contact preference and reach out using the details you provided. Text-message delivery depends on your consent and available messaging service.</p>{photosEnabled&&receipt.id&&photoSecret&&<RequestPhotos requestId={receipt.id} secret={photoSecret} endpoint={photoEndpoint}/>}<a className="schedule-button" href={restartHref ?? `/book/${business.slug}`}>Start another request</a></section>;
   return <section className="schedule-card"><div className="schedule-form-header"><p className="schedule-eyebrow">LET’S MAKE A PLAN</p><h2 ref={heading} tabIndex={-1}>{step === 1 ? "What can we help with?" : step === 2 ? "When & where?" : "Review your request"}</h2><p>{step === 1 ? "Tell us a little about the work and how to reach you." : step === 2 ? "Your preferences help us find the right time." : "Check the details before sending. You can go back to edit."}</p></div><nav aria-label="Request progress" className="schedule-progress">{["Your Info", "Project Details", "Review & Submit"].map((label, index) => <span key={label} aria-current={step === index + 1 ? "step" : undefined} className={step >= index + 1 ? "active" : ""}>{index + 1}<small>{label}</small></span>)}</nav>
     <form onSubmit={submit} aria-busy={busy}>
       {step === 1 && <div className="schedule-fields"><label>Service or request type <select required value={value.requestTypeId} onChange={e => update("requestTypeId", e.target.value)}><option value="">Choose a service</option>{business.requestTypes.filter(type => type.active).sort((a,b) => a.displayOrder-b.displayOrder).map(type => <option key={type.id} value={type.id}>{type.publicLabel}</option>)}</select></label><label>What would you like done? <textarea required minLength={10} maxLength={3000} rows={4} value={value.description} placeholder="For example: repair a sticking door and replace two damaged trim pieces." onChange={e => update("description", e.target.value)}/></label><label>Your name <input required autoComplete="name" maxLength={120} value={value.customerName} onChange={e => update("customerName", e.target.value)}/></label><div className="schedule-grid"><label>Phone <input required type="tel" autoComplete="tel" maxLength={32} value={value.phone} onChange={e => update("phone", e.target.value)}/></label><label>Email <input required type="email" autoComplete="email" maxLength={254} value={value.email} onChange={e => update("email", e.target.value)}/></label></div><label>Best way to contact you <select value={value.preferredContact} onChange={e => update("preferredContact", e.target.value as ServiceRequestInput["preferredContact"])}><option value="phone">Phone call</option><option value="email">Email</option>{smsConsentEnabled&&<option value="sms">Text message</option>}</select></label></div>}
