@@ -8,7 +8,7 @@ const filename=path.resolve('src/app/components/SchedulingNotifications.tsx');co
 loaded._compile(ts.transpileModule(fs.readFileSync(filename,'utf8'),{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,filename);
 const Component=loaded.exports.default;const text=r=>JSON.stringify(r.toJSON());
 (async()=>{let root;await act(async()=>{root=create(React.createElement(Component,{business:'rnl-creations'}));});assert.match(text(root),/1/);
-await act(async()=>root.root.findByType('button').props.onClick());const link=root.root.findByType('a');assert.equal(link.props.href,'/admin/service-requests?business=rnl-creations&request=r1');assert.match(text(root),/Synthetic Customer/);
+await act(async()=>root.root.findByType('button').props.onClick());const link=root.root.findAllByType('a').find(a=>a.props.href.includes('/admin/service-requests?'));assert.ok(root.root.findAllByType('a').some(a=>a.props.href==='/admin/communications?business=rnl-creations'));assert.equal(link.props.href,'/admin/service-requests?business=rnl-creations&request=r1');assert.match(text(root),/Synthetic Customer/);
 await act(async()=>root.root.findAllByType('button')[1].props.onClick());assert.ok(records[0].read_at);assert.equal(root.root.findAllByType('button').filter(b=>b.props.children==='Mark as read').length,0);
 await act(async()=>root.unmount());await act(async()=>{root=create(React.createElement(Component,{business:'rnl-creations'}));});assert.match(text(root),/0/);
 records.push({...records[0],id:'n2',request_id:'r2',read_at:null});await act(async()=>tick());assert.match(text(root),/1/);
@@ -17,3 +17,4 @@ role='manager';await act(async()=>{root=create(React.createElement(Component,{bu
 role='owner';fail=true;await act(async()=>{root=create(React.createElement(Component,{business:'rnl-creations'}));});assert.match(text(root),/Notifications unavailable/);assert.doesNotMatch(text(root),/Synthetic Customer/);await act(async()=>root.unmount());
 console.log('PASS notification UI: unread, direct link, persisted read/remount, polling, logout, manager denial, storage failure');
 })().catch(e=>{console.error(e);process.exitCode=1});
+

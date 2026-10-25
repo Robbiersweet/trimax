@@ -1,0 +1,53 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {PGlite}=require(path.join(process.env.LOCALAPPDATA,'Trimax/phase6-dbtest/node_modules/@electric-sql/pglite'));
+(async()=>{const db=new PGlite();let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};
+try{
+ const source=fs.readFileSync('scripts/service-workflow-sql-regression.cjs','utf8');await db.exec(source.split('`')[1]);
+ for(const name of ['20261009_public_scheduling_foundation.sql','20261010_public_scheduling_phase2.sql','20261017_scheduling_owner_notifications.sql','20261018_service_request_workflow.sql','20261018_service_request_delivery.sql','20261018_request_urgency.sql'])await db.exec(fs.readFileSync('supabase/migrations/'+name,'utf8'));
+ await db.exec(`create table estimates(id uuid,business_id uuid,client_id uuid,status text,estimate_amount numeric);create table invoices(id uuid,business_id uuid,client_id uuid,status text,amount_paid numeric);create table activity_logs(id uuid default gen_random_uuid(),business_id uuid,entity_id uuid,action text,details jsonb);`);
+ await db.exec(fs.readFileSync('supabase/migrations/20261025_communications.sql','utf8'));
+ const uid=n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`,b=uid(1),other=uid(2),owner=uid(3),outsider=uid(4),request=uid(5),type=uid(6),phone='+14255550100';
+ await db.query('insert into businesses values($1),($2)',[b,other]);await db.query('insert into auth.users values($1),($2)',[owner,outsider]);await db.query("insert into business_users values($1,$2,'owner'),($3,$4,'owner')",[b,owner,other,outsider]);
+ await db.query("insert into public_scheduling_settings(business_id,public_slug,display_name) values($1,'test','Synthetic')",[b]);await db.query("insert into public_service_request_types(id,business_id,public_key,public_label,internal_label) values($1,$2,'repair','Repair','Repair')",[type,b]);
+ await db.query(`insert into public_service_requests(id,business_id,request_type_id,public_reference,idempotency_hash,payload_hash,customer_name,phone,email,preferred_contact,service_address,description,flexibility,urgency,contact_consent_at,sms_consent_at,sms_consent_version,sms_consent_source) values($1,$2,$3,'REQ-test',repeat('a',64),repeat('b',64),'Synthetic',$4,'x@example.invalid','sms','Synthetic','Repair','flexible','routine',now(),now(),'transactional-sms-2026-10-25','public-web')`,[request,b,type,phone]);
+ eq((await db.query('select count(*)::int n from communication_consent')).rows[0].n,1);
+ await db.query("insert into communication_settings(business_id,enabled,provider,sender,account_sid,time_zone,quiet_start,quiet_end) values($1,true,'twilio','+14255550101',$2,'UTC',0,1)",[b,'AC'+'a'.repeat(32)]);
+ // Select a quiet window that excludes current hour deterministically.
+ await db.exec("update communication_settings set quiet_start=(extract(hour from now() at time zone 'UTC')::int+2)%24,quiet_end=(extract(hour from now() at time zone 'UTC')::int+3)%24");
+ const event=uid(7);await db.query("insert into public_request_activity(id,business_id,request_id,event_type,details) values($1,$2,$3,'request_received','{}')",[event,b,request]);
+ eq((await db.query('select count(*)::int n from communication_messages')).rows[0].n,1);
+ const claim=async()=> (await db.query('select * from trimax_claim_sms(true)')).rows;
+ let rows=await claim();eq(rows.length,1);eq((await claim()).length,0);let m=rows[0];
+ eq((await db.query('select trimax_prepare_sms($1,$2,true) p',[m.id,m.lease_token])).rows[0].p.message.id,m.id);
+ eq((await db.query("select trimax_finish_sms($1,$2,'SM'||repeat('b',32),'Test',1,false) ok",[m.id,uid(99)])).rows[0].ok,false);
+ eq((await db.query("select trimax_finish_sms($1,$2,'SM'||repeat('b',32),'Test',1,false) ok",[m.id,m.lease_token])).rows[0].ok,true);
+ async function webhook(key,id,body,status=null,from=phone,to='+14255550101',business=b){return db.query('select trimax_sms_webhook($1,$2,$3,$4,$5,$6,$7,null,null) ok',[business,key,id,from,to,body,status]);}
+ await webhook('stop','SM'+'c'.repeat(32),'STOP');await webhook('stop','SM'+'c'.repeat(32),'STOP');eq((await db.query("select count(*)::int n from communication_messages where direction='inbound'")).rows[0].n,1);
+ eq((await db.query('select suppressed_at is not null yes from communication_consent')).rows[0].yes,true);
+ await webhook('start','SM'+'d'.repeat(32),'START');eq((await db.query('select suppressed_at is null yes from communication_consent')).rows[0].yes,true);
+ await webhook('delivered','SM'+'b'.repeat(32),'','delivered','+14255550101',phone);await webhook('late-sent','SM'+'b'.repeat(32),'','sent','+14255550101',phone);eq((await db.query('select status from communication_messages where id=$1',[m.id])).rows[0].status,'delivered');
+ await assert.rejects(()=>webhook('bad','SM'+'b'.repeat(32),'','failed','+14255550199',phone));checks++;
+ async function as(user,sql){await db.exec(`set role authenticated;set test.uid='${user}'`);try{return await db.query(sql);}finally{await db.exec('reset role');}}
+ eq((await as(outsider,'select * from communication_messages')).rows.length,0);eq((await as(owner,'select * from communication_messages')).rows.length,3);
+ await assert.rejects(()=>as(owner,'select * from trimax_claim_sms(true)'));checks++;
+ await assert.rejects(()=>as(owner,"update communication_settings set enabled=true"));checks++;
+ const queue=uid(8);await db.query("insert into queue_items(id,business_id,property,unit,appointment_start,appointment_end) values($1,$2,'Synthetic','1',now()+interval '3 days',now()+interval '3 days 1 hour')",[queue,b]);await db.query('update public_service_requests set queue_item_id=$1 where id=$2',[queue,request]);
+ await db.query("insert into public_request_activity(business_id,request_id,event_type,details) values($1,$2,'appointment_scheduled','{}')",[b,request]);eq((await db.query("select count(*)::int n from communication_messages where event_type like 'reminder_%'")).rows[0].n,2);
+ rows=await claim();m=rows[0];await db.query('update queue_items set appointment_start=null,appointment_end=null where id=$1',[queue]);eq((await db.query('select trimax_prepare_sms($1,$2,true) p',[m.id,m.lease_token])).rows[0].p,null);eq((await db.query('select status from communication_messages where id=$1',[m.id])).rows[0].status,'superseded');
+ await db.query("insert into public_request_activity(business_id,request_id,event_type,details) values($1,$2,'appointment_cancelled','{}')",[b,request]);eq((await db.query("select count(*)::int n from communication_messages where event_type like 'reminder_%' and status='superseded'")).rows[0].n,2);
+ rows=await claim();m=rows[0];await db.exec("update communication_settings set quiet_start=extract(hour from now() at time zone 'UTC')::int,quiet_end=(extract(hour from now() at time zone 'UTC')::int+1)%24");eq((await db.query('select trimax_prepare_sms($1,$2,true) p',[m.id,m.lease_token])).rows[0].p,null);eq((await db.query('select status from communication_messages where id=$1',[m.id])).rows[0].status,'retry');
+ await db.exec("update communication_messages set status='leased',lease_expires_at=now()-interval '1 minute' where event_type='appointment_cancelled'");await claim();eq((await db.query("select status from communication_messages where event_type='appointment_cancelled'")).rows[0].status,'uncertain');
+ const client=uid(20),invoice=uid(21),estimate=uid(22);await db.query("insert into clients(id,business_id,name,phone) values($1,$2,'Synthetic',$3)",[client,b,phone]);await db.query('update communication_consent set client_id=$1 where business_id=$2',[client,b]);
+ await db.query("insert into invoices values($1,$2,$3,'Sent',0)",[invoice,b,client]);await db.query("insert into estimates values($1,$2,$3,'Sent',100)",[estimate,b,client]);
+ await db.query("insert into activity_logs(business_id,entity_id,action,details) values($1,$2,'estimate.email_sent','{\"delivery_status\":\"sent\"}'),($1,$3,'invoice.email_sent','{\"delivery_status\":\"sent\"}')",[b,estimate,invoice]);
+ eq((await db.query("select count(*)::int n from communication_messages where event_type in ('estimate_sent','invoice_sent')")).rows[0].n,2);
+ await db.query("insert into activity_logs(business_id,entity_id,action,details) values($1,$2,'invoice.batch_payment_applied','{\"amountApplied\":100,\"resultingAmountPaid\":100}')",[b,invoice]);eq((await db.query("select count(*)::int n from communication_messages where event_type='payment_received'")).rows[0].n,0);
+ await db.query('update invoices set amount_paid=100 where id=$1',[invoice]);await db.query("insert into activity_logs(business_id,entity_id,action,details) values($1,$2,'invoice.batch_payment_applied','{\"amountApplied\":100,\"resultingAmountPaid\":100}')",[b,invoice]);eq((await db.query("select count(*)::int n from communication_messages where event_type='payment_received'")).rows[0].n,1);
+ await assert.rejects(()=>as(outsider,`select trimax_update_sms_preferences('${b}',20,8,'UTC',50,array['approved'])`));checks++;
+ await as(owner,`select trimax_update_sms_preferences('${b}',20,8,'UTC',50,array['approved'])`);eq((await db.query('select monthly_limit from communication_settings where business_id=$1',[b])).rows[0].monthly_limit,50);
+ eq((await as(outsider,`select trimax_sms_usage('${b}') r`)).rows[0].r.accepted,0);
+ for(const table of ['communication_links','communication_webhook_receipts'])await assert.rejects(()=>as(owner,'select * from '+table));checks+=2;
+ console.log(JSON.stringify({status:'PASS',checks,scope:'isolated PostgreSQL rehearsal, no production changes or real SMS'}));
+}finally{await db.close();}})().catch(e=>{console.error(e);process.exitCode=1});
+

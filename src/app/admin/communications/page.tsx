@@ -1,0 +1,20 @@
+'use client';
+import {useCallback,useEffect,useState} from 'react';
+import {useSearchParams} from 'next/navigation';
+import AppShell from '@/app/components/AppShell';
+import {supabase} from '@/app/lib/supabase';
+import Preferences from './Preferences';
+type Message={id:string;request_id:string|null;direction:string;event_type:string;recipient:string;status:string;body:string|null;simulated:boolean;error_code:string|null;created_at:string};
+type Audit={id:string;message_id:string;event_type:string;created_at:string};
+type View={messages:Message[];audit:Audit[];settings:{enabled:boolean;provider:string;time_zone:string;quiet_start:number;quiet_end:number;monthly_limit:number;milestones:string[]}|null;usage:{accepted:number;delivered:number;failed:number;simulated:number;estimatedSegments:number;estimatedCost:number;actualCost:number|null}};
+export default function Communications(){
+ const params=useSearchParams(),business=params.get('business')||'rnl-creations';
+ return <CommunicationsInbox key={business} business={business}/>;
+}
+function CommunicationsInbox({business}:{business:string}){
+ const [view,setView]=useState<View|null>(null),[status,setStatus]=useState('Loading communications…');
+ const load=useCallback(async()=>{try{const {data:{session}}=await supabase.auth.getSession();if(!session)throw Error('Sign in as an owner or administrator.');const response=await fetch(`/api/communications?business=${encodeURIComponent(business)}`,{headers:{Authorization:`Bearer ${session.access_token}`},cache:'no-store'});const data=await response.json();if(!response.ok)throw Error(data.error);setView(data);setStatus('');}catch(error){setStatus(error instanceof Error?error.message:'Communications unavailable.');}},[business]);
+ useEffect(()=>{const timer=window.setTimeout(()=>void load(),0);return()=>window.clearTimeout(timer);},[load]);
+ return <AppShell><main className="mx-auto max-w-5xl p-4 sm:p-8"><h1 className="text-3xl font-semibold">Communications</h1><p className="my-3">Customer replies and delivery history. Replies do not change jobs or appointments.</p><button className="rounded border px-4 py-2" onClick={()=>void load()}>Refresh</button><p role="status">{status}</p>{view&&<><section className="my-5 rounded border p-4"><h2 className="text-xl">SMS settings</h2><p>{view.settings?.enabled?'Workspace configured':'Disabled'} · Provider: {view.settings?.provider||'not configured'}</p><p>Real sending also requires separately approved production activation. Email and SMS are independent.</p>{view.settings&&<p>Quiet hours {view.settings.quiet_start}:00–{view.settings.quiet_end}:00 ({view.settings.time_zone}); monthly limit {view.settings.monthly_limit} messages.</p>}</section><p>This month: {view.usage.accepted} accepted, {view.usage.delivered} delivered, {view.usage.failed} failed/uncertain, {view.usage.simulated} simulated. Estimated segments: {view.usage.estimatedSegments}; estimated cost: ${view.usage.estimatedCost}. Provider billing may include additional fees.</p>{view.settings&&<Preferences business={business} initial={view.settings}/>}<h2 className="text-xl">Inbox and delivery activity</h2>{view.messages.length===0?<p>No communications yet.</p>:view.messages.map(m=><article className="my-3 rounded border p-4" key={m.id}><p className="font-semibold">{m.direction==='inbound'?'Customer reply':m.event_type.replaceAll('_',' ')} · {m.status}{m.simulated?' · TEST PROVIDER':''}</p><p>{m.recipient} · {new Date(m.created_at).toLocaleString()}</p><p className="my-2 whitespace-pre-wrap break-words">{m.body||'Message not sent yet.'}</p>{m.error_code&&<p>Delivery issue: {m.error_code.replaceAll('_',' ')}</p>}{m.request_id&&<a className="underline" href={`/admin/service-requests?business=${encodeURIComponent(business)}&request=${encodeURIComponent(m.request_id)}`}>Open service request</a>}</article>)}<details className="my-5"><summary>Audit history</summary>{view.audit.map(a=><p key={a.id}>{new Date(a.created_at).toLocaleString()} · {a.event_type.replaceAll('_',' ')}</p>)}</details></>}</main></AppShell>;
+}
+

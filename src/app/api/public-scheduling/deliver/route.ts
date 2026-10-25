@@ -22,7 +22,8 @@ export async function GET(request:Request){
      const {data:members,error:memberError}=await db.from('business_users').select('role').eq('business_id',row.business_id).eq('user_id',sub.user_id).in('role',['owner','admin']);
      if(memberError||!members?.length)throw Error('recipient_no_longer_owner');
      webpush.setVapidDetails(process.env.VAPID_SUBJECT||'mailto:robbie@rnlcreations.com',process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,process.env.VAPID_PRIVATE_KEY!);
-     await webpush.sendNotification({endpoint:sub.endpoint,keys:{p256dh:sub.p256dh,auth:sub.auth}},JSON.stringify({title:'New service request',body:`${row.parameters.customer} · ${row.parameters.category} · Requested: ${row.parameters.requestedDate}`,tag:`service-request-${row.request_id}`,url:`/admin/service-requests?business=${encodeURIComponent(row.parameters.slug||'')}&request=${row.request_id}`}),{TTL:3600,timeout:10000});
+     const communication=row.event_type==='customer_reply'||row.event_type==='delivery_issue';
+     await webpush.sendNotification({endpoint:sub.endpoint,keys:{p256dh:sub.p256dh,auth:sub.auth}},JSON.stringify({title:communication?(row.event_type==='customer_reply'?'Customer replied':'Customer message needs attention'):'New service request',body:communication?'Open Communications to review the update.':`${row.parameters.customer} · ${row.parameters.category} · Requested: ${row.parameters.requestedDate}`,tag:communication?`communication-${row.id}`:`service-request-${row.request_id}`,url:communication?`/admin/communications?business=${encodeURIComponent(row.parameters.slug||'')}`:`/admin/service-requests?business=${encodeURIComponent(row.parameters.slug||'')}&request=${row.request_id}`}),{TTL:3600,timeout:10000});
      return 'push-service-accepted';
     }else{
      if(row.business_id!==process.env.SERVICE_REQUEST_EMAIL_BUSINESS_ID)throw Error('sender_workspace_not_configured');
