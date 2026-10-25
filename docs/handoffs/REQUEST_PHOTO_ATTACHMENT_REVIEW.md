@@ -46,3 +46,9 @@ Marketing source is separate branch/base26f6a37. App `/book` wiring alone does N
 6. Only then approve activation. Current flag remains unset; no public photo requests performed.
 
 Current constraints: JPEG/PNG/WebP only (HEIC unsupported),5MiB input limit; verify platform request ceiling before approval. No retention cleanup implemented: reserved slots remain counted and FK prevents deleting parent requests with photos. These intentionally fail closed but require operational retention approval. No cleanup touches financial/OCR data. No paid resources, credentials or customer messages created.
+
+### Preview isolation follow-up
+
+Route runtime validates Supabase project before creating a client: production accepts only the existing protected production project; any nonproduction environment rejects it. Nonproduction requires REQUEST_PHOTOS_ISOLATED_PROJECT matching the URL plus exact HTTPS REQUEST_PHOTOS_ISOLATED_ORIGIN; no wildcard origins. Disabled feature denies writes and returns no owner photos. Synthetic runtime regressions PASS for disabled, preview-to-production rejection and isolated exact origin.
+
+Denial-of-service limit: request body is buffered (maximum5MiB,15s) before capability SQL verification, while expensive image decoding happens only after authorization/reservation. Thus invalid capabilities can still consume bounded request memory and bandwidth. Hosting/WAF concurrency and request-size limits must be validated before deployment; current code does not claim a complete upload abuse/rate-limiting solution. No platform bypass or public endpoint activation occurred.

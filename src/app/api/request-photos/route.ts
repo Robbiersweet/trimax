@@ -1,18 +1,19 @@
 import {createClient} from '@supabase/supabase-js';
 import sharp from 'sharp';
+import {photoRuntime} from '../../lib/requestPhotos/runtime';
 import {boundedPhotoBody} from '../../lib/requestPhotos/http';
 import {uploadRequestPhoto} from '../../lib/requestPhotos/upload';
 import {photoStorage} from '../../lib/requestPhotos/storage';
 import {productionOwner} from '../../lib/publicScheduling/productionOwner';
 export const runtime='nodejs';
-const origins=new Set(['https://rnlcreations.com','https://app.rnlcreations.com']);
-function headers(request:Request){const origin=request.headers.get('origin');return {'Cache-Control':'no-store','Vary':'Origin',...(origin&&origins.has(origin)?{'Access-Control-Allow-Origin':origin}:{} )};}
+function allowedOrigins(){try{return photoRuntime(process.env).origins;}catch{return new Set<string>();}}
+function headers(request:Request){const origin=request.headers.get('origin');return {'Cache-Control':'no-store','Vary':'Origin',...(origin&&allowedOrigins().has(origin)?{'Access-Control-Allow-Origin':origin}:{} )};}
 function client(){const url=process.env.NEXT_PUBLIC_SUPABASE_URL,key=process.env.SUPABASE_SERVICE_ROLE_KEY;if(!url||!key)throw Error('Unavailable');return createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});}
-function enabled(){return process.env.REQUEST_PHOTOS_ENABLED==='enabled';}
-export async function OPTIONS(request:Request){return new Response(null,{status:origins.has(request.headers.get('origin')??'')?204:403,headers:{...headers(request),'Access-Control-Allow-Methods':'POST, GET, OPTIONS','Access-Control-Allow-Headers':'Content-Type, Authorization, X-Request-ID, X-Upload-ID','Access-Control-Max-Age':'600'}});}
+function enabled(){try{photoRuntime(process.env);return true;}catch{return false;}}
+export async function OPTIONS(request:Request){return new Response(null,{status:allowedOrigins().has(request.headers.get('origin')??'')?204:403,headers:{...headers(request),'Access-Control-Allow-Methods':'POST, GET, OPTIONS','Access-Control-Allow-Headers':'Content-Type, Authorization, X-Request-ID, X-Upload-ID','Access-Control-Max-Age':'600'}});}
 export async function POST(request:Request){
  if(!enabled())return Response.json({error:'Photos unavailable. Your request remains received.'},{status:503,headers:headers(request)});
- if(!origins.has(request.headers.get('origin')??''))return new Response(null,{status:403,headers:headers(request)});
+ if(!allowedOrigins().has(request.headers.get('origin')??''))return new Response(null,{status:403,headers:headers(request)});
  const secret=request.headers.get('authorization')?.match(/^Bearer ([a-f0-9]{64})$/)?.[1];
  if(!secret)return new Response(null,{status:403,headers:headers(request)});
  try{const db=client(),result=await uploadRequestPhoto({requestId:request.headers.get('x-request-id')??'',uploadId:request.headers.get('x-upload-id')??'',secret,bytes:await boundedPhotoBody(request)},{rpc:{rpc:async(name,args)=>await db.rpc(name,args)},storage:photoStorage(db),sharp});return Response.json(result,{headers:headers(request)});}

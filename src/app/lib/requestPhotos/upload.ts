@@ -3,7 +3,7 @@ import {photoCapabilityHash,scrubPhoto} from './server.ts';
 export const REQUEST_PHOTO_BUCKET='request-photos-private';
 type Rpc={rpc(name:string,args:Record<string,unknown>):Promise<{data:unknown;error:unknown}>};
 type Storage={put(bucket:string,key:string,bytes:Uint8Array,type:string):Promise<void>};
-/** Unwired server orchestration. The storage adapter must never overwrite an existing object. */
+/** Server orchestration behind the disabled-by-default route. The storage adapter must never overwrite an existing object. */
 export async function uploadRequestPhoto(input:{requestId:string;uploadId:string;secret:string;bytes:Uint8Array},dependencies:{rpc:Rpc;storage:Storage;sharp:typeof import('sharp').default}){
  const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
  if(!uuid.test(input.requestId)||!uuid.test(input.uploadId))throw Error('Photo rejected');
