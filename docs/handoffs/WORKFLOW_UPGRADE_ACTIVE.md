@@ -25,3 +25,11 @@ Local implementation/tests, commits, pushes and verified previews authorized. Ne
 
 ## Resume
 Read this checkpoint, inspect live agent status and clean/dirty worktrees, integrate only reviewed candidate commits, finish isolated SQL and existing financial/OCR regressions, record hosted preview identity or exact gate blocker. Do not repeat authentication or architecture discovery.
+
+## Current seal and long verification
+- Candidate rc3 executable `2f503f18f15d6d3c639173a9d68d016fb73ffb90`, metadata seal `c65d8e9`. Next.js/eslint-config-next pinned16.4.3; reviewed compatible audit fixes, zero reported vulnerabilities; patched production build and TypeScript pass. No production install/deployment.
+- The rc2 matrix was deliberately interrupted after dependency advisories were found; its partial results are NOT release evidence.
+- Current fresh matrix private report: `C:/Users/robbi/AppData/Local/Trimax/photo-robustness-20261022/matrix-2026-10-25T11-58-34-056Z/report.json`. During this session command session89611 runs it; check process/report before resuming rather than assuming continued execution after a session ends.
+- Eight-migration actual-catalog replay passed, including photo intake/reservation/completion and secure replies/document query fields. All four photo tests pass. Private bucket remains separate unexecuted proposal.
+- Latest marketing preview `5vLNVxD7yJoqXPFQz6SFh7eDop85`, exact19ab1cf, is Ready/Latest/Preview; hosted scheduling and metadata verified. URL https://rnl-public-website-9tavgjzu2-trimax-s-projects.vercel.app . No real submission/upload was sent.
+- Next: finish56matrix; export privacy-whitelisted receipt; metadata commit; refresh authenticated Vercel current-production proof; complete predeployment gate with pinned native configs and NODE_PATH; publish only a validated sanitized gate receipt before app preview. No verified hosted isolated database has been established, so mutation/storage/provider acceptance remains outstanding.
