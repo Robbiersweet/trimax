@@ -16,8 +16,8 @@ Existing request intake, owner push/in-app notifications, atomic client/Queue co
 - Next16.4.3 and compatible dependency security fixes; exact sharp0.35.5 runtime pin review. npm audit reports zero vulnerabilities at verification time.
 
 ## Evidence levels
-Local: actual-catalog replay of all eight candidate migrations and retained grants, synthetic SQL and real React tests, real image decoder tests, 56-case private photo matrix PASS. Full release-gate status and preview identity are recorded in WORKFLOW_UPGRADE_ACTIVE.md and its referenced receipt.
-Hosted marketing: exact19ab1cf1dd37509fb5b4f91f325099232c6b1b05, Ready preview5vLNVxD7yJoqXPFQz6SFh7eDop85, https://rnl-public-website-9tavgjzu2-trimax-s-projects.vercel.app. Metadata and /schedule inspected; no real submission/upload.
+Local: actual-catalog replay of all eight candidate migrations and retained grants, synthetic SQL and real React tests, real image decoder tests, Earlier rc3 56-case private photo matrix PASS; final rc4 matrix must pass separately. Full release-gate status and preview identity are recorded in WORKFLOW_UPGRADE_ACTIVE.md and its referenced receipt.
+Hosted marketing: exact8ee2d20c6d8bde2b89a504c8ed663d8e5ecbbe1d, Ready previewDTXmAkPUpnPZ4aPb88fPcQMnXA7G, https://rnl-public-website-ep4dqxknw-trimax-s-projects.vercel.app. Metadata and /schedule inspected; no real submission/upload.
 Provider/device: no actual SMS send, carrier callback, STOP/HELP handset or candidate iPhone acceptance. Historical Oct19 push navigation remains accepted independently.
 
 ## Hosted verification prerequisite
@@ -34,9 +34,10 @@ After isolated setup, test anonymous request/retry, new/existing/ambiguous clien
 - No production approval requested until isolated hosted tests and exact coordinated deployment plan are ready. Production schema changes require a coordinated web/native-worker contract and data-preserving recovery; an old Vercel promotion alone is insufficient after migrations.
 
 ## Source and recovery
-App executablec591ae875a24e5523be89414d475a5dea2a6f9d5; release trimax-workflow-communications-20261025-rc4. Marketing executable19ab1cf1dd37509fb5b4f91f325099232c6b1b05. Final metadata/preview commits are in the active checkpoint. Detailed private procedure: %LOCALAPPDATA%/Trimax/scheduling-security-release/workflow-upgrade-20261025/ROLLOUT_RECOVERY.md. Preserve all additive data and audit history during recovery; no destructive down migrations, secret rotation or snapshot overwrite.
+App executablec591ae875a24e5523be89414d475a5dea2a6f9d5; release trimax-workflow-communications-20261025-rc4. Marketing executable8ee2d20c6d8bde2b89a504c8ed663d8e5ecbbe1d. Final metadata/preview commits are in the active checkpoint. Detailed private procedure: %LOCALAPPDATA%/Trimax/scheduling-security-release/workflow-upgrade-20261025/ROLLOUT_RECOVERY.md. Preserve all additive data and audit history during recovery; no destructive down migrations, secret rotation or snapshot overwrite.
 
 ## Photo hosting follow-up
-Vercel documents a4.5MB Function body limit (https://vercel.com/docs/functions/limitations). Isolated follow-up cdf2046b2fb7b7dcc3f7ae8cdd72f5f4e66d811a lowers client/server raw input to4MiB while retaining5MiB processed-output/SQL quotas. Exact-boundary and overflow tests plus existing photo regression/lint pass. Integrated in root c591ae8/rc4; marketing port and exact-final-source gates are pending. Photos stay disabled in the current candidate. Hosted body-size and storage acceptance remain required; local boundary tests are not hosted upload acceptance.
+Vercel documents a4.5MB Function body limit (https://vercel.com/docs/functions/limitations). Isolated follow-up cdf2046b2fb7b7dcc3f7ae8cdd72f5f4e66d811a lowers client/server raw input to4MiB while retaining5MiB processed-output/SQL quotas. Exact-boundary and overflow tests plus existing photo regression/lint pass. Integrated in root c591ae8/rc4 and marketing8ee2d20. Marketing local checks and exact hosted preview pass; app final gates are running. Photos stay disabled in the current candidate. Hosted body-size and storage acceptance remain required; local boundary tests are not hosted upload acceptance.
+
 
 
