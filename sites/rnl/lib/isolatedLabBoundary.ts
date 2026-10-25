@@ -3,8 +3,11 @@ export const labProject='yzyfmvoswucyauogueca';
 export const labRole='trimax_lab_website_intake_20261025';
 export function isolatedLabConfig(env:Record<string,string|undefined>=process.env){
  if(env.VERCEL!=='1'||env.VERCEL_ENV!=='preview'||env.RNL_ISOLATED_INTAKE_ENABLED!=='enabled')throw Error('LAB_DISABLED');
- const origin=new URL(env.RNL_ISOLATED_INTAKE_ORIGIN??'');
- if(origin.origin!==env.RNL_ISOLATED_INTAKE_ORIGIN||origin.protocol!=='https:'||!origin.hostname.endsWith('.vercel.app')||origin.hostname!==env.VERCEL_URL)throw Error('LAB_ORIGIN_REJECTED');
+ // Vercel assigns the immutable host during deployment, after Preview env is bound.
+ // Only the platform deployment variable may supply this default; never request Host.
+ const configuredOrigin=env.RNL_ISOLATED_INTAKE_ORIGIN??`https://${env.VERCEL_URL??''}`;
+ const origin=new URL(configuredOrigin);
+ if(origin.origin!==configuredOrigin||origin.protocol!=='https:'||!origin.hostname.endsWith('.vercel.app')||origin.hostname!==env.VERCEL_URL)throw Error('LAB_ORIGIN_REJECTED');
  const database=new URL(env.RNL_SCHEDULING_DATABASE_URL??'');
  if(database.protocol!=='postgres:'||database.hostname!=='aws-1-us-west-2.pooler.supabase.com'||database.port!=='5432'||database.pathname!=='/postgres'||database.username!==`${labRole}.${labProject}`||database.password.length<40||database.search||database.hash)throw Error('LAB_DATABASE_REJECTED');
  const slug=env.RNL_ISOLATED_INTAKE_SLUG;
