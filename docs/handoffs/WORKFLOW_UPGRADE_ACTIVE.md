@@ -40,3 +40,6 @@ Read this checkpoint, inspect live agent status and clean/dirty worktrees, integ
 - Existing FREE isolated lab yzyfmvoswucyauogueca restored successfully; public schema has only lab_scheduling_requests. No schema/credential/grant/bucket changes. New hosted workflow setup remains a protected prerequisite.
 - No production or rollback change. Detailed candid limitations in WORKFLOW_UPGRADE_IMPLEMENTATION_REPORT.md.
 
+
+Active rc4 photo matrix: C:/Users/robbi/AppData/Local/Trimax/photo-robustness-20261022/matrix-2026-10-25T12-30-25-100Z/report.json (execution session8421 while this session is alive). Root seal401e1a7. Export receipt only after all56 pass, commit metadata, refresh serving-web proof, then full gate. Private exporter export-preview-receipt.cjs validates the unchanged gate authorizer before writing a privacy-whitelisted receipt. Marketing4MiB source8ee2d20 pushed; previewDTXmAkPUpnPZ4aPb88fPcQMnXA7G currentlyBuilding, not yet accepted. No production changes.
+
