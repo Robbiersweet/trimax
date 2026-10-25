@@ -1,4 +1,5 @@
 "use client";
+import PropertyRequestAccess, {type RequestClient} from "./PropertyRequestAccess";
 import { formatMoney as canonicalFormatMoney } from "../lib/money.ts";
 
 
@@ -46,6 +47,7 @@ type BusinessUser = {
 };
 
 type PropertyUser = {
+  request_client_id?: string | null;
   id: string;
   business_id: string;
   user_id: string | null;
@@ -288,6 +290,8 @@ function BusinessSettingsPageContent() {
     useState<AccessRequest[]>([]);
   const [propertyUsers, setPropertyUsers] =
     useState<PropertyUser[]>([]);
+  const [requestClients,setRequestClients]=useState<RequestClient[]>([]);
+  const [requestMappingReady,setRequestMappingReady]=useState(false);
   const [propertyAccessReady, setPropertyAccessReady] =
     useState(true);
   const [currentEmail, setCurrentEmail] =
@@ -648,6 +652,13 @@ function BusinessSettingsPageContent() {
         (propertyRows ?? []) as PropertyUser[]
       );
     }
+
+    const [mappingProbe,clientLookup]=await Promise.all([
+      supabase.from("property_users").select("request_client_id").eq("business_id",selectedBusiness.id).limit(1),
+      supabase.from("clients").select("id,name,business_id").eq("business_id",selectedBusiness.id).order("name").limit(1000)
+    ]);
+    setRequestMappingReady(!mappingProbe.error&&!clientLookup.error);
+    setRequestClients(clientLookup.error?[]:(clientLookup.data??[]) as RequestClient[]);
 
     setLoading(false);
   }
@@ -2700,6 +2711,8 @@ function BusinessSettingsPageContent() {
                               <p className="mt-1 text-xs text-zinc-500">
                                 {propertyKey(userRow.property_name)}
                               </p>
+                              {canManageUsers&&<PropertyRequestAccess key={`${userRow.id}:${userRow.request_client_id??''}:${userRow.can_create_queue_items}`} assignmentId={userRow.id} businessId={business?.id??''} clientId={userRow.request_client_id??null} canCreate={userRow.can_create_queue_items} clients={requestClients} ready={requestMappingReady} onSaved={loadSettings}/>}
+
                             </div>
 
                             <div className="flex flex-wrap gap-2 text-xs">
