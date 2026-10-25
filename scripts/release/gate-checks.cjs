@@ -39,3 +39,4 @@ scripts.push('scripts/property-request-sql-regression.cjs','scripts/property-req
 scripts.push('scripts/property-request-ui-regression.cjs','scripts/service-workflow-ui-regression.cjs');
 scripts.push('scripts/communications-queue-regression.cjs');
 scripts.push('scripts/communications-reply-regression.cjs');
+scripts.push('scripts/communications-document-regression.ts');
