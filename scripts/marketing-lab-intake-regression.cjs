@@ -19,6 +19,12 @@ for(const patch of [{VERCEL_ENV:'production'},{RNL_ISOLATED_INTAKE_ENABLED:undef
 assert.equal(boundary.isolatedLabRequest(new Request(request.url,{headers:{origin:'https://other.vercel.app'}}),env),null);
 assert.equal(boundary.isolatedLabRequest(new Request('https://other.vercel.app/test',{headers:{origin:env.RNL_ISOLATED_INTAKE_ORIGIN}}),env),null);
 (async()=>{
+ const wrappedRoute=load(path.join(root,'sites/rnl/app/api/public-scheduling/[slug]/route.ts'),{'../../../../.shared/lib/publicScheduling/productionHandler.ts':{productionSubmission:async req=>{assert.equal(req.headers.get('x-turnstile-token'),'isolated-lab-synthetic');assert.deepEqual(await req.json(),{synthetic:true});return Response.json({ok:true});}},'../../../../lib/submissionRuntime.ts':{},'../../../../lib/isolatedLabBoundary.ts':{isolatedLabRequest:()=>({slug:'test'})},'../../../../lib/isolatedLabRuntime.ts':{isolatedLabRuntime:()=>{}}});
+ const real=new Request('https://synthetic.vercel.app/api/test',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({synthetic:true})});
+ // Next's wrapped Request may not be accepted as a native Request constructor input.
+ const wrapped=new Proxy(real,{get(target,key){const value=Reflect.get(target,key,target);return typeof value==='function'?value.bind(target):value;}});
+ assert.equal((await wrappedRoute.POST(wrapped,{params:Promise.resolve({slug:'test'})})).status,200);
+
  const old={...process.env};Object.assign(process.env,env);
  let calls=0,queries=[],badScope=false,conflict=false,pools=0;
  const direct=load(path.join(root,'sites/rnl/lib/credentialLifecycle/directIntegrationReview.ts'),{'server-only':{}});
@@ -49,3 +55,4 @@ assert.equal(boundary.isolatedLabRequest(new Request('https://other.vercel.app/t
  process.env.RNL_ISOLATED_INTAKE_ENABLED='disabled';assert.equal((await route.POST(request,{params:Promise.resolve({slug:env.RNL_ISOLATED_INTAKE_SLUG})})).status,503);assert.equal(handled,1);
  process.env=old;console.log('PASS exact isolated project/origin/role boundary, two RPC scope, synthetic identities, fail-closed SQL privilege checks, simulated providers; no network');
 })().catch(e=>{console.error(e);process.exitCode=1});
+

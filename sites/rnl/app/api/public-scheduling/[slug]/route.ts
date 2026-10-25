@@ -7,7 +7,7 @@ export async function POST(request:Request,context:{params:Promise<{slug:string}
   const lab=isolatedLabRequest(request);
   if(lab){const {slug}=await context.params;if(slug!==lab.slug)return Response.json({error:'Not found.'},{status:404});
     const headers=new Headers(request.headers);headers.set('x-turnstile-token','isolated-lab-synthetic');
-    return productionSubmission(new Request(request,{headers}),slug,isolatedLabRuntime);
+    return productionSubmission(new Request(request.url,{method:request.method,headers,body:request.body,duplex:'half'} as RequestInit),slug,isolatedLabRuntime);
   }
   if(process.env.VERCEL_ENV!=='production')return Response.json({error:'Website review only. Submissions are disabled; no request has been sent.'},{status:503,headers:{'Cache-Control':'no-store'}});
   const {slug}=await context.params;
