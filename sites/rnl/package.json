@@ -9,7 +9,9 @@
     "start": "next start -p 3108",
     "lint": "eslint app components lib scripts",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types scripts/credential-boundary-regression.mjs && node --conditions=react-server --experimental-strip-types scripts/regression.mjs && node --conditions=react-server --experimental-strip-types scripts/submission-runtime-regression.mjs"
+    "test": "node --experimental-strip-types scripts/credential-boundary-regression.mjs && node --conditions=react-server --experimental-strip-types scripts/regression.mjs && node --conditions=react-server --experimental-strip-types scripts/submission-runtime-regression.mjs",
+    "brand:generate": "node scripts/generate-brand-assets.mjs",
+    "test:brand": "node scripts/brand-regression.mjs"
   },
   "dependencies": {
     "next": "16.4.0",
@@ -25,6 +27,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.0",
+    "sharp": "0.35.5",
     "typescript": "^5"
   }
 }
