@@ -8,6 +8,7 @@ import { logActivity } from "../lib/activityLog";
 import { assertCanWriteDuringMaintenance } from "../lib/maintenanceMode";
 import { appendUnitHistoryForQueueItem } from "../lib/unitHistory";
 import Button from "./Button";
+import { assertNoActiveJobSession } from "../lib/jobCompletionGuard";
 
 type MarkCompletedButtonProps = {
   queueItemId: string;
@@ -56,6 +57,8 @@ export default function MarkCompletedButton({
 
     try {
       await assertCanWriteDuringMaintenance(businessSlug);
+
+      await assertNoActiveJobSession(() => supabase.from("job_sessions").select("id", {count:"exact",head:true}).eq("business_id", businessId!).eq("queue_item_id", queueItemId).is("ended_at", null), businessId);
 
       const { data: currentItem } = await supabase
         .from("queue_items")
