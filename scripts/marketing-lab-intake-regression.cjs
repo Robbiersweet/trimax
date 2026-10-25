@@ -4,6 +4,12 @@ let ts;try{ts=require('typescript');}catch{ts=require('C:/Users/robbi/.codex/wor
 function load(file,mocks={}){const m=new Module(file,module);m.filename=file;m.paths=module.paths;m.require=id=>id in mocks?mocks[id]:require(id);m._compile(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,esModuleInterop:true}}).outputText,file);return m.exports;}
 const boundary=load(path.join(root,'sites/rnl/lib/isolatedLabBoundary.ts'));
 const env={VERCEL:'1',VERCEL_ENV:'preview',RNL_ISOLATED_INTAKE_ENABLED:'enabled',VERCEL_URL:'synthetic.vercel.app',RNL_ISOLATED_INTAKE_ORIGIN:'https://synthetic.vercel.app',RNL_ISOLATED_INTAKE_SLUG:'trimax-acceptance-20261026-a',RNL_ISOLATED_FINGERPRINT_SECRET:'x'.repeat(40),RNL_SCHEDULING_DATABASE_URL:`postgres://trimax_lab_website_intake_20261025.yzyfmvoswucyauogueca:${'x'.repeat(40)}@aws-1-us-west-2.pooler.supabase.com:5432/postgres`};
+const notice=load(path.join(root,'sites/rnl/lib/previewNotice.ts'),{'./isolatedLabBoundary':boundary}).previewNotice;
+assert.equal(notice(env).title,'ISOLATED ACCEPTANCE LAB');
+assert.match(notice(env).message,/Test records are enabled/);
+assert.equal(notice({...env,VERCEL_ENV:'production'}),null);
+for(const patch of [{RNL_ISOLATED_INTAKE_ENABLED:undefined},{RNL_SCHEDULING_DATABASE_URL:'invalid'},{VERCEL_URL:'rnlcreations.com'}]){assert.equal(notice({...env,...patch}).title,'WEBSITE PREVIEW');assert.match(notice({...env,...patch}).message,/submissions are disabled/);}
+assert.ok(fs.readFileSync(path.join(root,'sites/rnl/app/layout.tsx'),'utf8').includes('const notice=previewNotice()'));
 const request=new Request(env.RNL_ISOLATED_INTAKE_ORIGIN+'/api/public-scheduling/'+env.RNL_ISOLATED_INTAKE_SLUG,{method:'POST',headers:{origin:env.RNL_ISOLATED_INTAKE_ORIGIN}});
 assert.ok(boundary.isolatedLabRequest(request,env));
 const defaultOrigin={...env,RNL_ISOLATED_INTAKE_ORIGIN:undefined};
