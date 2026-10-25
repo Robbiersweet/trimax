@@ -142,7 +142,8 @@ create trigger communication_owner_push after insert on public.communication_own
 create function public.trimax_claim_sms(p_test boolean default true) returns setof public.communication_messages language plpgsql security definer set search_path=pg_catalog as $$
 begin
  -- Unknown provider outcome requires reconciliation, not automatic duplicate delivery.
- update public.communication_messages set status='uncertain',error_code='expired_send_lease',lease_token=null,lease_expires_at=null where status='leased' and lease_expires_at<now();
+ with expired as (update public.communication_messages set status='uncertain',error_code='expired_send_lease',lease_token=null,lease_expires_at=null where status='leased' and lease_expires_at<now() returning id,business_id)
+ insert into public.communication_owner_alerts(business_id,message_id,kind) select business_id,id,'delivery_issue' from expired on conflict do nothing;
  return query with due as (
  select m.id from public.communication_messages m join public.communication_settings s on s.business_id=m.business_id
  where s.enabled and m.created_at>=s.enabled_at and (p_test or s.provider<>'test') and m.direction='outbound' and m.status in ('pending','retry')

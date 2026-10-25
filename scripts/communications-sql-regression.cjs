@@ -48,6 +48,13 @@ try{
  await as(owner,`select trimax_update_sms_preferences('${b}',20,8,'UTC',50,array['approved'])`);eq((await db.query('select monthly_limit from communication_settings where business_id=$1',[b])).rows[0].monthly_limit,50);
  eq((await as(outsider,`select trimax_sms_usage('${b}') r`)).rows[0].r.accepted,0);
  for(const table of ['communication_links','communication_webhook_receipts'])await assert.rejects(()=>as(owner,'select * from '+table));checks+=2;
+ await db.exec("update communication_settings set quiet_start=(extract(hour from now() at time zone 'UTC')::int+2)%24,quiet_end=(extract(hour from now() at time zone 'UTC')::int+3)%24,monthly_limit=0");
+ await db.query("insert into communication_messages(business_id,request_id,event_type,idempotency_key,recipient) values($1,$2,'approved','cap-check',$3)",[b,request,phone]);rows=await claim();m=rows[0];eq((await db.query('select trimax_prepare_sms($1,$2,true) p',[m.id,m.lease_token])).rows[0].p,null);eq((await db.query('select error_code from communication_messages where id=$1',[m.id])).rows[0].error_code,'monthly_limit');
+ await db.exec('update communication_settings set monthly_limit=500');await db.query("update communication_messages set status='pending',next_attempt_at=now() where id=$1",[m.id]);rows=await claim();m=rows[0];
+ await webhook('late-stop','SM'+'e'.repeat(32),'STOP');eq((await db.query('select trimax_prepare_sms($1,$2,true) p',[m.id,m.lease_token])).rows[0].p,null);eq((await db.query('select status from communication_messages where id=$1',[m.id])).rows[0].status,'suppressed');
+ await webhook('unknown-start','SM'+'f'.repeat(32),'START',null,'+14255550199');eq((await db.query("select opted_in_at from communication_consent where phone='+14255550199'")).rows[0].opted_in_at,null);
+ await webhook('resubscribe','SM'+'1'.repeat(32),'START');await db.query("insert into communication_messages(business_id,request_id,event_type,idempotency_key,recipient) values($1,$2,'approved','retry-check',$3)",[b,request,phone]);rows=await claim();m=rows[0];await db.query("select trimax_finish_sms($1,$2,null,'Test',1,false,'provider_rate_limited',true,false)",[m.id,m.lease_token]);eq((await db.query('select status, next_attempt_at>now() later from communication_messages where id=$1',[m.id])).rows[0],{status:'retry',later:true});
+ eq((await db.query("select count(*)::int n from communication_owner_alerts where kind='delivery_issue'")).rows[0].n>=1,true);
  console.log(JSON.stringify({status:'PASS',checks,scope:'isolated PostgreSQL rehearsal, no production changes or real SMS'}));
 }finally{await db.close();}})().catch(e=>{console.error(e);process.exitCode=1});
 
