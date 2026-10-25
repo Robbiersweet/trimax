@@ -34,7 +34,7 @@ export async function productionOwner(request:Request,slug:string){
    client.from('clients').select('id,name,email,phone').eq('business_id',s.business_id).order('name').limit(500),
    client.from('queue_items').select('id,property,scheduled_date,appointment_start,appointment_end').eq('business_id',s.business_id).is('completed_date',null).not('scheduled_date','is',null).order('scheduled_date').limit(500),
    client.from('queue_items').select('id,request_client_id,appointment_start,appointment_end,appointment_revision,appointment_status,appointment_previous_start,appointment_previous_end,appointment_changed_at').eq('business_id',s.business_id).eq('source_request_id',id).maybeSingle(),
-   client.from('public_scheduling_outbox').select('channel,event_type,status,attempts,last_error_code').eq('business_id',s.business_id).eq('request_id',id).in('channel',['push','email','sms']).order('created_at',{ascending:false}).limit(50),
+   client.from('public_scheduling_outbox').select('channel,event_type,status,attempts,last_error_code,email_delivery_status,provider_message_id').eq('business_id',s.business_id).eq('request_id',id).in('channel',['push','email','sms']).order('created_at',{ascending:false}).limit(50),
    client.from('scheduling_time_blocks').select('id,starts_at,ends_at,label').eq('business_id',s.business_id).gte('ends_at',new Date().toISOString()).order('starts_at').limit(500)
   ]);
   if(customers.error||scheduled.error||linked.error||delivery.error||blocks.error)throw Error('Workflow unavailable');

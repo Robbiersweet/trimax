@@ -8,6 +8,7 @@ const headers={'Cache-Control':'no-store, private','Referrer-Policy':'no-referre
 function hash(token:string){if(!/^[A-Za-z0-9_-]{43}$/.test(token))throw Error();return createHash('sha256').update(token).digest('hex');}
 export async function GET(request:Request,{params}:{params:Promise<{token:string}>}){
  try{
+ if(process.env.VERCEL_ENV!=='production'&&emailMode(process.env)!=='test')throw Error();
  const {token}=await params,db=communicationsDb();
  const {data:l}=await db.from('request_email_links').select('business_id,outbox_id,recipient').eq('token_hash',hash(token)).gt('expires_at',new Date().toISOString()).is('revoked_at',null).maybeSingle();if(!l)throw Error();
  const {data:o}=await db.from('public_scheduling_outbox').select('request_id,event_type,recipient').eq('id',l.outbox_id).eq('business_id',l.business_id).eq('channel','email').eq('audience','customer').maybeSingle();if(!o||o.recipient.toLowerCase()!==l.recipient.toLowerCase())throw Error();
