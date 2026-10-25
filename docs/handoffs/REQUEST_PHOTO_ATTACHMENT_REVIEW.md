@@ -56,3 +56,7 @@ Denial-of-service limit: request body is buffered (maximum5MiB,15s) before capab
 ## Isolated hosting-ceiling follow-up (not yet integrated)
 
 Parent verified Vercel Functions4.5MB payload ceiling: https://vercel.com/docs/functions/limitations. Shared limits.ts now sets input ceiling4MiB (4,194,304bytes) for browser selection and server decode/body checks. Scrubbed output/readback remains5MiB because server-to-storage uploads are not inbound function requests; SQL reservation bounds and bucket quota remain5MiB (application enforces narrower input). Exact4MiB HTTP acceptance and +1byte declared/streamed/UI rejection tests PASS. No root/marketing files edited in this follow-up, no deployment or activation. When porting marketing later, copy limits.ts and add lib/requestPhotos/limits.ts to prepare-shared.mjs's allowlist along with the changed RequestPhotos.tsx. Full reseal required before release.
+
+## Integrated root update
+Root integrated this implementation plus PromiseLike repair and actual eight-migration catalog/grant replay. Marketing integration landed at19ab1cf and its Ready preview was inspected with photos disabled. Subsequent hosting-limit fix c591ae8 uses4MiB client/server raw input, keeping5MiB processed-output/SQL/storage limits. Exact boundary and declared/streamed/UI overflow regressions pass. Root rc4 is being resealed and fully tested; no hosted storage acceptance or production activation is claimed. The older unintegrated/5MiB-input statements above are historical workstream notes, superseded by this update.
+

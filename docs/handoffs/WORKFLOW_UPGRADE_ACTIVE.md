@@ -33,3 +33,10 @@ Read this checkpoint, inspect live agent status and clean/dirty worktrees, integ
 - Eight-migration actual-catalog replay passed, including photo intake/reservation/completion and secure replies/document query fields. All four photo tests pass. Private bucket remains separate unexecuted proposal.
 - Latest marketing preview `5vLNVxD7yJoqXPFQz6SFh7eDop85`, exact19ab1cf, is Ready/Latest/Preview; hosted scheduling and metadata verified. URL https://rnl-public-website-9tavgjzu2-trimax-s-projects.vercel.app . No real submission/upload was sent.
 - Next: finish56matrix; export privacy-whitelisted receipt; metadata commit; refresh authenticated Vercel current-production proof; complete predeployment gate with pinned native configs and NODE_PATH; publish only a validated sanitized gate receipt before app preview. No verified hosted isolated database has been established, so mutation/storage/provider acceptance remains outstanding.
+
+## Superseding rc4 verification
+- rc3 gate12-14-53 was interrupted after five retained documents passed because hosting review confirmed4.5MB Vercel body ceiling. It is NOT a successful gate receipt.
+- c591ae875a24e5523be89414d475a5dea2a6f9d5 integrates4MiB raw-photo input limit and boundary regressions. Current release is trimax-workflow-communications-20261025-rc4; new full photo matrix and gate are required. Reviewed security runtime pins from51504c5 are preserved.
+- Existing FREE isolated lab yzyfmvoswucyauogueca restored successfully; public schema has only lab_scheduling_requests. No schema/credential/grant/bucket changes. New hosted workflow setup remains a protected prerequisite.
+- No production or rollback change. Detailed candid limitations in WORKFLOW_UPGRADE_IMPLEMENTATION_REPORT.md.
+

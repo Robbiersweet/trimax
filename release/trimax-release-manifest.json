@@ -1,26 +1,26 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-workflow-communications-20261025-rc3",
+  "releaseId": "trimax-workflow-communications-20261025-rc4",
   "status": "SEALED_CONTROLLED_DEPLOYMENT_CANDIDATE",
-  "createdAt": "2026-10-25T11:58:23.074Z",
-  "releaseTimestamp": "2026-10-25T11:58:23.074Z",
+  "createdAt": "2026-10-25T12:29:36.189Z",
+  "releaseTimestamp": "2026-10-25T12:29:36.189Z",
   "baseProduction": {
     "commit": "885d01f18b1811de7f2be8fe33ec9d8858056d20",
     "vercelDeploymentId": "6G2N5TMoymwBRm48NKrtt8Qbr7Xc"
   },
   "components": {
     "web": {
-      "commit": "2f503f18f15d6d3c639173a9d68d016fb73ffb90"
+      "commit": "c591ae875a24e5523be89414d475a5dea2a6f9d5"
     },
     "legacy": {
-      "commit": "2f503f18f15d6d3c639173a9d68d016fb73ffb90"
+      "commit": "c591ae875a24e5523be89414d475a5dea2a6f9d5"
     },
     "v2-shadow": {
-      "commit": "2f503f18f15d6d3c639173a9d68d016fb73ffb90"
+      "commit": "c591ae875a24e5523be89414d475a5dea2a6f9d5"
     }
   },
   "sourceBundle": {
-    "sha256": "8c0abd733f9dfa39dc1c2721dbc3051fb5dfcc8b24b2976ba6b2ecf4b10dc6ff",
+    "sha256": "4725db3cfd7d6a05d5e3d33043565aa518d5b7094fc5d6b7e57da4d85f631a8d",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -297,9 +297,9 @@
       "scripts/remittance-release-gate.ts": "21944edbe46796c2b87e595dad18d2c49eb9fb72f2c9558b80f6880ceb4cdf32",
       "scripts/remittance-retry-regression.ts": "6a768fef914bc295d09ececbb7216648d08ebc3b69b6ef07e1c1dbcfe078ec9d",
       "scripts/request-photo-intake-sql-regression.cjs": "62309bbe8a9621a5f9f030f7c765bec2a387b3fe781b822d3f3718ee554e9a4a",
-      "scripts/request-photo-regression.mjs": "650a382b27e1b908482fecd8045c2ea04a20431c6fe70289723df70d58f97f37",
+      "scripts/request-photo-regression.mjs": "8a87489f5f998a12c35cd5597ddfbb7535a2603020f8703dd65f6a06d65af559",
       "scripts/request-photo-sql-regression.cjs": "1ef9ed767a41560095cb948831f86355a7f7ad01782d9e8112d22b5dd4b4e4cd",
-      "scripts/request-photo-ui-regression.cjs": "27b830905c537ae77213b7b7b6d1334b6a6bba74257bec4925be3c246b4d74eb",
+      "scripts/request-photo-ui-regression.cjs": "62a3f4bb819b3d076d9194573002cc8cdf8067dd6953bae12ad1bce6858aee76",
       "scripts/reverse-total-regression.ts": "62c57f48dd4ae0ce1c497ee3441aa1197df590870f1de6103d4657638a0fd953",
       "scripts/saved-remittance-payment-regression.cjs": "c0a1f3896a6c811dc1bf2d9eb5ab47d6312da9f12bc1f7630e724c28497eb52a",
       "scripts/saved-remittance-reopen-regression.cjs": "0752f1eee945f3304bc93795ca39a952cdf5d91d8fc54bef0e72512595f40522",
@@ -360,7 +360,7 @@
       "src/app/api/recurring-invoices/run/route.ts": "07ed01bd9655b005b44944fba4b6a1b70da686b4466d2d059f40b5b7d04c59d9",
       "src/app/api/request-photos/route.ts": "d254bb4bfe2ad7786ca9b272405e24e066a9ccb3f6aaa652da7a512b8db3b8aa",
       "src/app/book/RequestForm.tsx": "a4c147287b835639b7a35ff7ea4ff6bed7ef805026647ee3408fae77e0a29517",
-      "src/app/book/RequestPhotos.tsx": "dc8d48708261e03c274671636f4b336ce313caec4004320a91008072c13e40b5",
+      "src/app/book/RequestPhotos.tsx": "6109745c841a7e6f0904f0a97174a6a580863e85a2b1bcfa80c6b4b771a5c9ca",
       "src/app/book/TurnstileChallenge.tsx": "31ed159bfeb127d5704811144e42e44b5aaed77973d874356d66196ca7c34795",
       "src/app/book/[slug]/page.tsx": "d12e2efed23346edec1d1edaa2d6fe7c7634e28b1d0590e4941b0939c49d9149",
       "src/app/book/fonts/Allura-Regular.ttf": "9c142b2e515832c0dfc4ff8b8ea18f40314943bf937b72e2b23c4661bac14cc6",
@@ -624,10 +624,11 @@
       "src/app/lib/remittanceMatching.ts": "44be1ad2155c708537bb9b32e701e51f97ed133f3cc1a5581bf84dba2bba7557",
       "src/app/lib/requestPhotos/clientCapability.ts": "05a11f7cde569648e9459ddeca95224adcfcc06ef0408222a29f189c00887c0a",
       "src/app/lib/requestPhotos/http.ts": "574429b1ecb60aa50bce1d8273ff2d74fa5636f25fa945920ad442f90a84ded2",
+      "src/app/lib/requestPhotos/limits.ts": "16cacd46741f74dd49a12f20723346db48ec39bb9fd3d884647e0509ba25baa1",
       "src/app/lib/requestPhotos/owner.ts": "b9b41b01cc9b46a117f503b51d4865610470cfbb6bfb95cb47817877cc477716",
       "src/app/lib/requestPhotos/runtime.ts": "eb6bb0ab6a1331a0c105416e6dd364399b405dc65d1d2643f4d53c1d169434bf",
-      "src/app/lib/requestPhotos/server.ts": "c589afc6b5e11c9e2e0ade439f9ae0e62176f3c11032ed0c56090373ed4edca1",
-      "src/app/lib/requestPhotos/storage.ts": "dd62e956e83a6a70263a5a170e01a88e1d112992495f47b3c7f0bead41420eb6",
+      "src/app/lib/requestPhotos/server.ts": "2ecd97d097bf3417629a85dd2f7a6efcd0467d8844ce90e415ba5556e69fa687",
+      "src/app/lib/requestPhotos/storage.ts": "793abf7ce5b3b95251529766446eceb22f612e46f5e5e38a587c6724ebe5beeb",
       "src/app/lib/requestPhotos/upload.ts": "41abad0c0339c0efb76bffe6d9c62084d1a54a037d67c6cf43a68bfae132045b",
       "src/app/lib/reverseDocumentTotals.ts": "cedf534760d6f5ff671a2d04fe6346f774000cd79096e8c050bd8c207899eb4d",
       "src/app/lib/rolePermissions.ts": "99ed89b9f517dbb1576a991ac1a2e4089bcc85aa3dfa5e728f72f9cca5bedae5",
@@ -872,7 +873,7 @@
     }
   ],
   "database": {
-    "capturedAt": "2026-10-25T11:58:23.074Z",
+    "capturedAt": "2026-10-25T12:29:36.189Z",
     "algorithm": "catalog-v1; sorted C collation name=value; UTF8 SHA256; public tables/constraints/indexes/functions, public+storage RLS, public table grants; excludes only trimax_release_runtime itself",
     "fingerprints": {
       "schema": {
@@ -982,7 +983,7 @@
     "physicalAcceptance": "Only installed-iPhone production evidence for exact release may pass; replay cannot pass",
     "legacyModelCache": "Pinned runtime cache verified by startup contract before claim"
   },
-  "sealedAt": "2026-10-25T11:58:23.074Z",
+  "sealedAt": "2026-10-25T12:29:36.189Z",
   "testRuntime": {
     "pgliteVersion": "0.5.8",
     "pglitePackageSha256": "65dff2c93c707e526902eebfab246bcbf2df2eba1c6984a5b5e9a44177532b1c",
@@ -1725,14 +1726,14 @@
       "deploymentId": "6G2N5TMoymwBRm48NKrtt8Qbr7Xc",
       "deploymentCommit": "885d01f18b1811de7f2be8fe33ec9d8858056d20"
     },
-    "candidateReleaseId": "trimax-workflow-communications-20261025-rc3",
-    "applicationCommit": "2f503f18f15d6d3c639173a9d68d016fb73ffb90",
-    "machineryCommit": "2f503f18f15d6d3c639173a9d68d016fb73ffb90"
+    "candidateReleaseId": "trimax-workflow-communications-20261025-rc4",
+    "applicationCommit": "c591ae875a24e5523be89414d475a5dea2a6f9d5",
+    "machineryCommit": "c591ae875a24e5523be89414d475a5dea2a6f9d5"
   },
   "contractRevision": {
     "id": "workflow-manager-communications",
     "priorManifestDigest": "969b1f6b35bc3c7c9e81886e5591767c33cb8542d529ced9bce0b3463fec3239",
-    "reason": "Atomic request approval/conversion, scheduling buffers and blocks, calendar revisions, exact property/client access, optional consent and disabled-by-default communications. Existing OCR, financial and tenant safeguards retained. Security-reviewed Next.js16.4.3 and sharp0.35.5 dependency patches; model weights and WSL recognizer sources unchanged; new full photo and retained gates required.",
+    "reason": "Atomic request approval/conversion, scheduling buffers and blocks, calendar revisions, exact property/client access, optional consent and disabled-by-default communications. Existing OCR, financial and tenant safeguards retained.",
     "rollback": "Restore verified production 885d01f and matching native worker source/configuration. Preserve all existing and newly created business records, requests, appointments, audit trails and communications history. Disable new communications and intake capabilities as necessary; do not drop tables or reverse data-bearing migrations. Reconcile pending messages before any later activation."
   },
   "captureWorkflow": "guided-live-camera-v1"
