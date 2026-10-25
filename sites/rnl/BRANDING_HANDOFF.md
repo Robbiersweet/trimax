@@ -55,3 +55,7 @@ Last hosted preview verified by parent: deployment GLV3gyGfkQuk4dDNjT1mcqh1uP1X,
 Authenticated Vercel dashboard verified deployment `5vLNVxD7yJoqXPFQz6SFh7eDop85` Ready / Latest / Preview at exact `19ab1cf1dd37509fb5b4f91f325099232c6b1b05`.
 URL: https://rnl-public-website-9tavgjzu2-trimax-s-projects.vercel.app
 Hosted `/schedule` renders the three-step form and explicit disabled-submission notice. Actual DOM confirms favicon, Apple touch icon, manifest and branded Open Graph metadata. Photo collection stays gated off; no upload input or submission was activated. Evidence: private `brand-acceptance-20261025/vercel-photo-preview-ready.png`. This is preview/render evidence, not hosted upload or customer acceptance. Production unchanged.
+
+## Hosting input ceiling follow-up
+
+Ported shared4MiB input limit from app follow-up cdf2046; browser chooser now uses limits.ts and shared packaging includes it. Output/storage quotas remain app-side unchanged. Fresh82 website checks, consent, photo boundary, branding, lint,TypeScript and local build PASS. Photo/SMS/submission gates unchanged; no production environment/deployment. New source pending preview after push; previous19ab1cf hosted evidence remains historical only.
