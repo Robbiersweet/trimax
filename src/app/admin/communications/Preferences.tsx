@@ -2,7 +2,7 @@
 import {useState} from 'react';
 import {supabase} from '@/app/lib/supabase';
 export type SmsPreferences={quiet_start:number;quiet_end:number;time_zone:string;monthly_limit:number;milestones:string[]};
-const milestones=['request_received','approved','appointment_scheduled','appointment_rescheduled','appointment_cancelled','reminder_24h','reminder_1h','estimate_sent','invoice_sent','payment_received'];
+const milestones=['request_received','approved','needs_information','appointment_scheduled','appointment_rescheduled','appointment_cancelled','reminder_24h','reminder_1h','estimate_sent','invoice_sent','payment_received'];
 export default function Preferences({business,initial}:{business:string;initial:SmsPreferences}){
  const [value,setValue]=useState(initial),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
  async function save(){setBusy(true);try{const {data:{session}}=await supabase.auth.getSession();if(!session)throw Error('Sign in first.');const response=await fetch(`/api/communications?business=${encodeURIComponent(business)}`,{method:'PATCH',headers:{Authorization:`Bearer ${session.access_token}`,'Content-Type':'application/json'},body:JSON.stringify({quietStart:value.quiet_start,quietEnd:value.quiet_end,timeZone:value.time_zone,monthlyLimit:value.monthly_limit,milestones:value.milestones})});const result=await response.json();if(!response.ok)throw Error(result.error);setMessage('Preferences saved. Sending activation was not changed.');}catch(error){setMessage(error instanceof Error?error.message:'Not saved.');}finally{setBusy(false);}}

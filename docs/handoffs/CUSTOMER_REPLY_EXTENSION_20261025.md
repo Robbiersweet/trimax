@@ -1,0 +1,13 @@
+# Customer reply extension checkpoint — 2026-10-25
+
+Candidate workspace: communications-customer-view, based on 38e15c5. No deployment, production data writes, credentials, email or SMS activation occurred.
+
+Implemented secure additional-information replies using existing communication_links. A review transition to needs_information creates an SMS outbox event only for explicit consent. The existing worker generates an expiring capability; GET renders a no-script reply form; POST requires same origin, bounded body and isolated database outside production. The private SQL RPC rechecks expiry/revocation, business/message/request/current phone and needs_information status, serializes request writes, deduplicates form retries and limits five replies per request/hour. It inserts inbound communications/audit and existing owner push alerts. It never changes request status, Queue, appointments or finances. No internal review notes are exposed.
+
+Apply candidate 20261025_customer_reply.sql after communications (and existing upgrade migrations); it only changes the default milestone list. Existing business preferences are preserved: explicitly add needs_information to that business milestone list when independently activating SMS. It remains disabled until existing activation prerequisites pass.
+
+Validation: communications-reply-regression.cjs 18 isolated PostgreSQL checks PASS; targeted ESLint PASS. Full tsc at base 38e15c5 reports an existing property-requests/page.tsx:27 PromiseLike.catch error, unrelated to these edits. No hosted acceptance claimed. Root must include migration in actual-catalog/grant replay and normal release gate before integration/deployment.
+
+Full invoice/estimate PDF investigation: printPagePdf.ts generates transient base64 attachments through authenticated print pages, and send-email routes do not persist PDFs. Existing document links remain summaries. Faithful full-PDF reuse would require private immutable artifact capture in the existing authenticated email generation path, binding artifact to business/client/document/version and downloading only after capability validation. Do not lend CRON_SECRET/service credentials to browser, loosen print auth, duplicate financial calculations, or reuse OCR storage. That extension needs separate protected email/PDF regression review and retention design. No such changes made here.
+
+Resume: integrate reply candidate in isolated upgrade checkout, include migration in full actual-catalog replay (including inherited privileges), then browser-test form and owner notification with controlled isolated data. Preserve production flags and existing rollback checkpoints.

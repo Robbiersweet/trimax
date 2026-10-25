@@ -21,8 +21,8 @@ export async function GET(request:Request){
    if(providerMode(process.env,settings.provider)==='disabled')throw new SmsSendError('sms_disabled',false);
    const origin=process.env.TRIMAX_SMS_PUBLIC_ORIGIN;
    let link:string|null=null;
-   if((message.queue_id||message.entity_id)&&(!origin||new URL(origin).protocol!=='https:'||new URL(origin).origin!==origin))throw new SmsSendError('customer_link_origin_unavailable',false);
-   if(origin&&new URL(origin).protocol==='https:'&&new URL(origin).origin===origin&&(message.queue_id||message.entity_id)){
+   if((message.queue_id||message.entity_id||message.event_type==='needs_information')&&(!origin||new URL(origin).protocol!=='https:'||new URL(origin).origin!==origin))throw new SmsSendError('customer_link_origin_unavailable',false);
+   if(origin&&new URL(origin).protocol==='https:'&&new URL(origin).origin===origin&&(message.queue_id||message.entity_id||message.event_type==='needs_information')){
     const token=randomBytes(32).toString('base64url');
     const {error:linkError}=await db.from('communication_links').insert({token_hash:createHash('sha256').update(token).digest('hex'),business_id:message.business_id,message_id:message.id,expires_at:new Date(Date.now()+7*86400000).toISOString()});if(linkError)throw Error('link_failed');
     link=`${origin}/api/communications/customer/${token}`;
