@@ -19,7 +19,7 @@ export default function PropertyRequestsPage() {
   const context=data as {assignments:Assignment[];requests:RequestSummary[]};
   setAssignments(context.assignments);setRequests(context.requests);
  }
- useEffect(()=>{let active=true;void supabase.rpc("trimax_property_request_context").then(({data,error:failure})=>{
+ useEffect(()=>{let active=true;void Promise.resolve(supabase.rpc("trimax_property_request_context")).then(({data,error:failure})=>{
   if(!active)return;
   if(failure)setError("Property requests are not available. Please sign in or contact R&L to confirm your property access.");
   else {const context=data as {assignments:Assignment[];requests:RequestSummary[]};setAssignments(context.assignments);setRequests(context.requests);}
