@@ -1,4 +1,4 @@
-export type Delivery={id:string;business_id:string;request_id:string;channel:'push'|'email';audience:string;recipient:string;event_type:string;idempotency_key:string;lease_token:string;consent_reference:string|null;parameters:Record<string,string|null>};
+export type Delivery={created_at?:string;id:string;business_id:string;request_id:string;channel:'push'|'email';audience:string;recipient:string;event_type:string;idempotency_key:string;lease_token:string;consent_reference:string|null;parameters:Record<string,string|null>};
 export function customerEmail(row:Delivery){
  if(row.channel!=='email'||row.audience!=='customer'||!row.consent_reference)throw Error('Invalid customer delivery');
  const p=row.parameters,brand=p.business||'R&L Creations',reference=p.reference||'';
@@ -6,6 +6,8 @@ export function customerEmail(row:Delivery){
  const content:Record<string,()=>string>={
   request_received:()=> 'We received your service request. It is awaiting review and is not a confirmed appointment.',
   approved:()=> 'Your request has been approved. Scheduling is pending; no appointment is confirmed yet.',
+  reminder_24h:()=> `Reminder: your appointment is ${appointment()}.`,
+  reminder_1h:()=> `Reminder: your appointment is ${appointment()}.`,
   appointment_scheduled:()=> `Your appointment is confirmed for ${appointment()}.`,
   appointment_rescheduled:()=> `Your appointment has been rescheduled to ${appointment()}.`,
   appointment_cancelled:()=> 'Your appointment has been cancelled. Please contact us to discuss another time.',

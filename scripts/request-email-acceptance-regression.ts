@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+import {emailMode,sendCustomerEmail,validateEmailCurrent} from '../src/app/lib/publicScheduling/emailProvider.ts';
+import {dispatchDeliveries,DeliveryFailure} from '../src/app/lib/publicScheduling/dispatch.ts';
+import {customerEmail,type Delivery} from '../src/app/lib/publicScheduling/delivery.ts';
+const env={VERCEL_ENV:'preview',SERVICE_REQUEST_EMAIL_TEST_MODE:'enabled',EMAIL_TEST_SUPABASE_URL:'https://isolated.example.invalid',NEXT_PUBLIC_SUPABASE_URL:'https://isolated.example.invalid'};
+const row:Delivery={id:'m',business_id:'b',request_id:'r',channel:'email',audience:'customer',recipient:'synthetic@example.invalid',event_type:'request_received',idempotency_key:'test-key',lease_token:'lease',consent_reference:'consent',created_at:'2026-10-25T01:00:00Z',parameters:{business:'Synthetic',reference:'REQ-test',internalNotes:'SECRET'}};
+let checks=0;const eq=(a:unknown,b:unknown)=>{assert.deepEqual(a,b);checks++};
+eq(emailMode(env),'test');eq(emailMode({...env,VERCEL_ENV:'production'}),'disabled');eq(emailMode({...env,EMAIL_TEST_SUPABASE_URL:'https://gqknefosisnsjuzmhvts.supabase.co',NEXT_PUBLIC_SUPABASE_URL:'https://gqknefosisnsjuzmhvts.supabase.co'}),'disabled');
+const never:typeof fetch=async()=>{throw Error('network must never be reached')};const sent=await sendCustomerEmail(row,env,never);eq(sent.simulated,true);eq(sent.id,'test-email-m');eq(sent.text.includes('SECRET'),false);
+const current={business_id:'b',email:row.recipient,contact_consent_at:'2026-10-25',status:'reviewing',queue_item_id:null};validateEmailCurrent(row,current,null,env);checks++;
+for(const c of [{...current,business_id:'other'},{...current,email:'changed@example.invalid'},{...current,contact_consent_at:null},{...current,status:'approved'}]){assert.throws(()=>validateEmailCurrent(row,c,null,env));checks++;}
+const future=new Date(Date.now()+86400000).toISOString(),end=new Date(Date.now()+90000000).toISOString();const appointment={appointment_start:future,appointment_end:end,completed_date:null};
+for(const kind of ['reminder_24h','reminder_1h','request_received','approved','declined','appointment_scheduled','appointment_rescheduled','appointment_cancelled']){const email=customerEmail({...row,event_type:kind,parameters:{...row.parameters,start:future,end,timeZone:'America/Los_Angeles'}});assert.ok(email.subject.includes('Synthetic'));assert.ok(!email.text.includes('SECRET'));checks+=2;}
+const scheduled={...row,event_type:'appointment_scheduled',parameters:{...row.parameters,start:future,end,timeZone:'America/Los_Angeles'}};validateEmailCurrent(scheduled,current,appointment,env);checks++;
+assert.throws(()=>validateEmailCurrent(scheduled,current,{...appointment,appointment_start:end},env));checks++;assert.throws(()=>validateEmailCurrent({...row,event_type:'appointment_cancelled'},current,appointment,env));checks++;
+const prod={VERCEL_ENV:'production',SERVICE_REQUEST_DELIVERY_ENABLED:'enabled',SERVICE_REQUEST_EMAIL_ENABLED:'enabled',RESEND_API_KEY:'synthetic',SERVICE_REQUEST_EMAIL_FROM:'synthetic@example.invalid',SERVICE_REQUEST_EMAIL_BUSINESS_ID:'b',SERVICE_REQUEST_EMAIL_ACTIVATED_AT:'2026-10-25T02:00:00Z'};
+assert.throws(()=>validateEmailCurrent(row,current,null,prod));checks++;
+let observedKey='';const fake:typeof fetch=async(_url,options)=>{observedKey=new Headers(options?.headers).get('Idempotency-Key')||'';return Response.json({id:'synthetic-provider-id'});};eq((await sendCustomerEmail(row,prod,fake)).simulated,false);eq(observedKey,row.idempotency_key);
+let finishError:string|null=null;const counts=await dispatchDeliveries(['email','push'],{claim:async channel=>[{...row,channel}],send:async delivery=>{if(delivery.channel==='email')throw new DeliveryFailure('email_obsolete');return 'push-accepted'},finish:async(delivery,_reference,error)=>{if(delivery.channel==='email')finishError=error;return true}});eq(counts,{accepted:1,failed:1});eq(finishError,'email_obsolete');
+console.log(JSON.stringify({status:'PASS',checks,scope:'simulated request email; no provider network or delivery'}));
