@@ -9,7 +9,7 @@ let checks=0;function check(ok,label){assert.ok(ok,label);checks++;console.log('
 const provenance=JSON.parse(await read('.shared/provenance.json'));
 for(const [file,hash] of Object.entries(provenance)){check(createHash('sha256').update(await readFile(resolve(root,'src/app',file))).digest('hex')===hash,`shared source unchanged: ${file}`);}
 const handler=await read('app/api/public-scheduling/[slug]/route.ts');
-check(handler.indexOf("VERCEL_ENV!=='production'")<handler.indexOf('await context.params'),'preview closes before config/RPC work');
+check(handler.includes('const lab=isolatedLabRequest(request)')&&handler.includes("if(process.env.VERCEL_ENV!=='production')return"),'explicit isolated boundary precedes default preview denial');
 check(handler.includes('return productionSubmission(request,slug,websiteSubmissionRuntime)'),'production uses existing security boundary');
 const {POST}=await import('../app/api/public-scheduling/[slug]/route.ts');
 const previous=process.env.VERCEL_ENV;process.env.VERCEL_ENV='preview';

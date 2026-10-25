@@ -35,7 +35,7 @@ export function isolatedLabRuntime():SubmissionRuntime{
    if(health?.role!==labRole||health.session_role!==labRole||!['safe_role','no_memberships','required_rpcs','no_other_rpcs','no_tables','no_create'].every(k=>health[k]===true))throw Error('LAB_SCOPE_REJECTED');
    const sql=read?'SELECT public.trimax_public_scheduling_config($1::text) result':'SELECT public.trimax_submit_public_service_request($1::text,$2::jsonb,$3::text,$4::text) result';
    const result=await client.query(sql,keys.map(k=>k==='p_payload'?JSON.stringify(args[k]):args[k]));await client.query('COMMIT');return {data:result.rows[0].result,error:null};
-  }catch{failed=true;await client.query('ROLLBACK').catch(()=>{});return {data:null,error:{message:'Scheduling unavailable'}};}finally{client.release(failed);}
+  }catch(error){failed=true;await client.query('ROLLBACK').catch(()=>{});return {data:null,error:{message:error instanceof Error&&error.message==='Idempotency conflict'?'Idempotency conflict':'Scheduling unavailable'}};}finally{client.release(failed);}
  }}};
  return runtime;
 }
