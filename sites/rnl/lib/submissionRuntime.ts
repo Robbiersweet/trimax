@@ -1,3 +1,4 @@
+import {smsConsentCollectionEnabled,withSmsConsentBoundary} from './smsConsentBoundary.ts';
 import 'server-only';
 import {legacySubmissionRuntime,type SubmissionRuntime} from '../.shared/lib/publicScheduling/productionHandler.ts';
 import {createDisabledDirectRuntime} from './credentialLifecycle/directRuntimeCandidate.ts';
@@ -7,8 +8,8 @@ import {createDisabledDirectRuntime} from './credentialLifecycle/directRuntimeCa
 let direct: ReturnType<typeof createDisabledDirectRuntime> | undefined;
 export function websiteSubmissionRuntime(): SubmissionRuntime {
   const transport=process.env.SCHEDULING_TRANSPORT;
-  if(transport===undefined||transport==='static-jwt')return legacySubmissionRuntime();
+  if(transport===undefined||transport==='static-jwt')return withSmsConsentBoundary(legacySubmissionRuntime(),smsConsentCollectionEnabled());
   if(transport!=='direct-postgres')throw Error('UNKNOWN_SCHEDULING_TRANSPORT');
   direct ??= createDisabledDirectRuntime();
-  return direct;
+  return withSmsConsentBoundary(direct,smsConsentCollectionEnabled());
 }

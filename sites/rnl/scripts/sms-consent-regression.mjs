@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {validateRequest,getPublicBusiness} from '../../../src/app/lib/publicScheduling/domain.ts';
+import {SMS_DISCLOSURE_VERSION} from '../../../src/app/lib/communications/consent.ts';
+import {withSmsConsentBoundary,smsConsentCollectionEnabled} from '../lib/smsConsentBoundary.ts';
+import {createSchedulingPersistence} from '../../../src/app/lib/publicScheduling/productionAdapter.ts';
+const business=getPublicBusiness('rnl-creations'),input={requestTypeId:'repair',customerName:'Synthetic Test',phone:'4255550149',email:'test@example.invalid',preferredContact:'phone',address:'Synthetic test only',description:'Synthetic repair test',preferredDate:'',timeWindowId:'',flexibility:'flexible',urgency:'routine',notes:'',consent:true};
+assert.equal(smsConsentCollectionEnabled({}),false);assert.equal(smsConsentCollectionEnabled({PUBLIC_SCHEDULING_SMS_CONSENT_ENABLED:'true'}),false);assert.equal(smsConsentCollectionEnabled({PUBLIC_SCHEDULING_SMS_CONSENT_ENABLED:'enabled'}),true);
+assert.equal(validateRequest(input,business).ok,true);assert.equal(Object.hasOwn(validateRequest(input,business).value,'smsConsent'),false);
+for(const bad of [{smsConsent:'true',smsDisclosureVersion:SMS_DISCLOSURE_VERSION},{smsConsent:true,smsDisclosureVersion:'old'},{smsConsent:true,smsDisclosureVersion:SMS_DISCLOSURE_VERSION,phone:'5550149'}])assert.equal(validateRequest({...input,...bad},business).ok,false);
+let calls=[];const runtime={config:{},client:{rpc:async(name,args)=>{calls.push({name,args});return {data:{id:'synthetic',reference:'TEST',status:'pending_confirmation',submittedAt:new Date().toISOString()},error:null};}}};
+const submit=(enabled,payload)=>createSchedulingPersistence(withSmsConsentBoundary(runtime,enabled).client,async()=>business).submit({slug:'rnl-creations',input:payload,idempotencyKey:'test-only-idempotency-00001',capabilityHash:'a'.repeat(64)});
+await submit(false,input);assert.equal(calls.length,1);assert.equal(Object.hasOwn(calls[0].args.p_payload,'smsConsent'),false);
+await assert.rejects(submit(false,{...input,smsConsent:true,smsDisclosureVersion:SMS_DISCLOSURE_VERSION}));assert.equal(calls.length,1);
+await submit(true,{...input,smsConsent:true,smsDisclosureVersion:SMS_DISCLOSURE_VERSION});assert.equal(calls.length,2);assert.equal(calls[1].args.p_payload.smsConsent,true);assert.equal(calls[1].args.p_payload.smsDisclosureVersion,SMS_DISCLOSURE_VERSION);
+assert.equal(calls[1].name,'trimax_submit_public_service_request');assert.equal(Object.hasOwn(calls[1].args.p_payload,'smsConsentAt'),false);
+console.log('PASS consent boolean/version/mobile validation, off-default collection, unchanged legacy payload, disabled no-RPC, enabled existing-RPC payload and server-owned timestamps.');

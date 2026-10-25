@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types scripts/credential-boundary-regression.mjs && node --conditions=react-server --experimental-strip-types scripts/regression.mjs && node --conditions=react-server --experimental-strip-types scripts/submission-runtime-regression.mjs",
     "brand:generate": "node scripts/generate-brand-assets.mjs",
-    "test:brand": "node scripts/brand-regression.mjs"
+    "test:brand": "node scripts/brand-regression.mjs",
+    "test:consent": "node --experimental-strip-types scripts/sms-consent-regression.mjs && node scripts/request-form-regression.mjs"
   },
   "dependencies": {
     "next": "16.4.3",
