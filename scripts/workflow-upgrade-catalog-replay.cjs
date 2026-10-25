@@ -12,6 +12,18 @@ module.exports=async function projectUpgrade(db,parts,base){
  fs.writeFileSync(path.join(directory,'baseline.json'),JSON.stringify({baseline,before,expected},null,2));
  assert.deepEqual(before,expected,'Exact current production 885d01f database must reproduce before candidate migrations');
  console.log('PASS exact 885d01f production schema fingerprints');
+ // Exercise the customer document endpoint projections against actual production
+ // columns, including the ordering column omitted from its returned payload.
+ const documentRoute=fs.readFileSync('src/app/api/communications/customer/[token]/route.ts','utf8');
+ const common='id,business_id,client_id,display_id,project_title,service_address,status,terms,tax_mode,tax_rate,tax_label,tax_number';
+ assert.ok(documentRoute.includes(`const common='${common}'`),'Keep catalog document projection synchronized with customer route');
+ assert.ok(documentRoute.includes("',invoice_amount,amount_paid,deposit_requested_amount,deposit_status':',estimate_amount'"));
+ assert.ok(documentRoute.includes('business_id,${foreignKey},description,quantity,unit_price,line_total')&&documentRoute.includes(".order('sort_order'"));
+ for(const [table,extra,foreignKey] of [['invoices','invoice_amount,amount_paid,deposit_requested_amount,deposit_status','invoice_id'],['estimates','estimate_amount','estimate_id']]){
+  await db.query(`select ${common},${extra} from public.${table} where id=$1 and business_id=$2 and client_id=$3 limit 1`,['99999999-9999-4999-8999-000000000001','99999999-9999-4999-8999-000000000002','99999999-9999-4999-8999-000000000003']);
+  await db.query(`select business_id,${foreignKey},description,quantity,unit_price,line_total from public.${table==='invoices'?'invoice_line_items':'estimate_line_items'} where ${foreignKey}=$1 and business_id=$2 order by sort_order asc limit 1001`,['99999999-9999-4999-8999-000000000001','99999999-9999-4999-8999-000000000002']);
+ }
+ console.log('PASS actual production invoice/estimate document and line-item query columns and ordering');
  const anonymousBefore={rpc:(await db.query("select p.oid::regprocedure::text name from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and has_function_privilege('anon',p.oid,'EXECUTE') order by 1")).rows.map(r=>r.name),tables:(await db.query("select c.relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind in ('r','v') and has_table_privilege('anon',c.oid,'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER') order by 1")).rows.map(r=>r.relname)};
  const migrations=['20261025_workflow_experience.sql','20261025_property_request_intake.sql','20261025_property_request_access.sql','20261025_communications.sql','20261025_service_request_consent_intake.sql','20261025_sms_queue.sql','20261025_customer_reply.sql'];
  const receipts=[];
