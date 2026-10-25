@@ -12,6 +12,8 @@ try{
  await db.query("insert into public_scheduling_settings(business_id,public_slug,display_name) values($1,'test','Synthetic')",[b]);await db.query("insert into public_service_request_types(id,business_id,public_key,public_label,internal_label) values($1,$2,'repair','Repair','Repair')",[type,b]);
  await db.query(`insert into public_service_requests(id,business_id,request_type_id,public_reference,idempotency_hash,payload_hash,customer_name,phone,email,preferred_contact,service_address,description,flexibility,urgency,contact_consent_at,sms_consent_at,sms_consent_version,sms_consent_source) values($1,$2,$3,'REQ-test',repeat('a',64),repeat('b',64),'Synthetic',$4,'x@example.invalid','sms','Synthetic','Repair','flexible','routine',now(),now(),'transactional-sms-2026-10-25','public-web')`,[request,b,type,phone]);
 
+ await db.exec('alter table queue_items add column linked_estimate_id uuid,add column appointment_revision integer not null default 0');
+ await db.exec(fs.readFileSync('supabase/migrations/20261025_sms_queue.sql','utf8'));
  await db.exec(fs.readFileSync('supabase/migrations/20261025_customer_reply.sql','utf8'));
  await db.query("update public_service_requests set status='needs_information' where id=$1",[request]);
  await db.query("insert into public_request_activity(business_id,request_id,event_type,details) values($1,$2,'review_updated','{\"fromStatus\":\"reviewing\",\"toStatus\":\"needs_information\"}')",[b,request]);
@@ -19,6 +21,8 @@ try{
  const hash='c'.repeat(64),key='d'.repeat(64);
  await db.query("insert into communication_links(token_hash,business_id,message_id,expires_at) values($1,$2,$3,now()+interval '1 day')",[hash,b,m.id]);
  const reply=async(h=hash,k=key)=>db.query("select trimax_customer_link_reply($1,$2,'Synthetic reply') id",[h,k]);
+ await assert.rejects(()=>reply(null));checks++;await assert.rejects(()=>reply(hash,null));checks++;
+ await db.query("update communication_messages set event_type='request_received' where id=$1",[m.id]);await assert.rejects(()=>reply());checks++;await db.query("update communication_messages set event_type='needs_information' where id=$1",[m.id]);
  const result=await reply();eq((await reply()).rows[0].id,result.rows[0].id);
  eq((await db.query("select count(*)::int n from communication_owner_alerts")).rows[0].n,1);
  eq((await db.query("select status from public_service_requests where id=$1",[request])).rows[0].status,'needs_information');

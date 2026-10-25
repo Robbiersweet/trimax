@@ -9,7 +9,7 @@ try{
  alter table queue_items add column linked_estimate_id uuid,add column appointment_revision integer not null default 0;
  create function test_revision() returns trigger language plpgsql as $$begin if new.appointment_start is distinct from old.appointment_start or new.appointment_end is distinct from old.appointment_end then new.appointment_revision=old.appointment_revision+1;end if;return new;end$$;
  create trigger zz_appointment_revision before update on queue_items for each row execute function test_revision();`);
- await db.exec(fs.readFileSync('supabase/migrations/20261025_communications.sql','utf8'));await db.exec(fs.readFileSync('supabase/migrations/20261025_sms_queue.sql','utf8'));
+ await db.exec(fs.readFileSync('supabase/migrations/20261025_communications.sql','utf8'));await db.exec(fs.readFileSync('supabase/migrations/20261025_sms_queue.sql','utf8'));await db.exec(fs.readFileSync('supabase/migrations/20261025_customer_reply.sql','utf8'));
  const uid=n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`,b=uid(1),other=uid(2),client=uid(3),client2=uid(4),foreign=uid(5),phone='+14255550100';
  await db.query('insert into businesses values($1),($2)',[b,other]);await db.query("insert into clients(id,business_id,name,phone) values($1,$2,'First',$3),($4,$2,'Second','+14255550101'),($5,$6,'Foreign','+14255550102')",[client,b,phone,client2,foreign,other]);await db.query("insert into communication_consent(business_id,phone,client_id,opted_in_at,disclosure_version,source) values($1,$2,$3,now(),'transactional-sms-2026-10-25','public-web')",[b,phone,client]);
  const q='queue-direct';await db.query("insert into queue_items(id,business_id,property,unit,request_client_id) values($1,$2,'Synthetic','1',$3)",[q,b,client]);
@@ -23,6 +23,14 @@ try{
  await db.query("update queue_items set request_client_id=$1 where id='estimate-linked'",[client2]);eq((await db.query("select trimax_queue_sms_client($1,'estimate-linked') c",[b])).rows[0].c,null);
  await db.exec("update communication_messages set status='leased',lease_token=gen_random_uuid() where queue_id='estimate-linked' and event_type='appointment_scheduled'");eq((await db.query("select status from communication_messages where queue_id='estimate-linked' and event_type='appointment_scheduled'")).rows[0].status,'suppressed');
  eq((await db.query('select trimax_queue_sms_client($1,$2,$3) c',[b,q,phone])).rows[0].c,client);await db.query("update clients set phone='+14255550999' where id=$1",[client]);eq((await db.query('select trimax_queue_sms_client($1,$2,$3) c',[b,q,phone])).rows[0].c,null);
+ // Full migration chain: identity can change after claim without a message update.
+ await db.query('update clients set phone=$1 where id=$2',[phone,client]);
+ await db.query("insert into communication_settings(business_id,enabled) values($1,true)",[b]);
+ await db.exec("update communication_messages set created_at=now()+interval '1 second' where queue_id='queue-direct' and status='pending'");
+ const claimed=(await db.query('select * from trimax_claim_sms(true)')).rows.find(m=>m.queue_id===q);assert.ok(claimed);checks++;
+ await db.query('update queue_items set request_client_id=$1 where id=$2',[client2,q]);
+ eq((await db.query('select trimax_prepare_sms($1,$2,true) p',[claimed.id,claimed.lease_token])).rows[0].p,null);
+ eq((await db.query('select status from communication_messages where id=$1',[claimed.id])).rows[0].status,'suppressed');
  for(const role of ['anon','authenticated','trimax_scheduling_web'])eq((await db.query("select has_function_privilege($1,'trimax_queue_sms_client(uuid,text,text)','execute') yes",[role])).rows[0].yes,false);
  // Existing single-invoice and deposit actions intentionally use the same verified
  // recorded-payment endpoint. No speculative legacy `invoice.paid` event added.

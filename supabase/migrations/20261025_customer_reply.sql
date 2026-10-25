@@ -4,10 +4,11 @@ create function public.trimax_customer_link_reply(p_hash text,p_key text,p_body 
 language plpgsql security definer set search_path=pg_catalog as $$
 declare l public.communication_links;m public.communication_messages;r public.public_service_requests;reply_id uuid;
 begin
- if p_hash !~ '^[a-f0-9]{64}$' or p_key !~ '^[a-f0-9]{64}$' or p_body is null or length(trim(p_body)) not between 1 and 1600 then raise exception 'Invalid reply';end if;
+ if p_hash is null or p_key is null or p_hash !~ '^[a-f0-9]{64}$' or p_key !~ '^[a-f0-9]{64}$' or p_body is null or length(trim(p_body)) not between 1 and 1600 then raise exception 'Invalid reply';end if;
  select * into l from public.communication_links where token_hash=p_hash and revoked_at is null and expires_at>now() for update;
  if not found then raise exception 'Unavailable link';end if;
- select * into m from public.communication_messages where id=l.message_id and business_id=l.business_id and direction='outbound';
+ select * into m from public.communication_messages where id=l.message_id and business_id=l.business_id and direction='outbound' and event_type='needs_information';
+ if not found then raise exception 'Reply unavailable';end if;
  select * into r from public.public_service_requests where id=m.request_id and business_id=l.business_id for update;
  if not found or r.status<>'needs_information' or public.trimax_normalize_sms_phone(r.phone) is distinct from m.recipient then raise exception 'Reply unavailable';end if;
  select id into reply_id from public.communication_messages where business_id=l.business_id and idempotency_key='web-reply:'||p_hash||':'||p_key;
@@ -45,6 +46,8 @@ begin
  if not s.enabled or c.opted_in_at is null or c.suppressed_at is not null or not(m.event_type=any(s.milestones)) then
  update public.communication_messages set status='suppressed',error_code='consent_or_workspace_disabled',lease_token=null,lease_expires_at=null where id=m.id;return null;end if;
  if (m.request_id is not null and not exists(select 1 from public.public_service_requests r where r.id=m.request_id and r.business_id=m.business_id and public.trimax_normalize_sms_phone(r.phone)=m.recipient)) or (m.entity_id is not null and not exists(select 1 from public.clients x where x.id=m.client_id and x.business_id=m.business_id and public.trimax_normalize_sms_phone(x.phone)=m.recipient)) then
+ update public.communication_messages set status='suppressed',error_code='recipient_changed',lease_token=null,lease_expires_at=null where id=m.id;return null;end if;
+ if m.queue_id is not null and m.request_id is null and (m.client_id is null or public.trimax_queue_sms_client(m.business_id,m.queue_id,m.recipient) is distinct from m.client_id) then
  update public.communication_messages set status='suppressed',error_code='recipient_changed',lease_token=null,lease_expires_at=null where id=m.id;return null;end if;
  if m.event_type='needs_information' and not exists(select 1 from public.public_service_requests where id=m.request_id and business_id=m.business_id and status='needs_information') then
  update public.communication_messages set status='superseded',error_code='request_changed',lease_token=null,lease_expires_at=null where id=m.id;return null;end if;
