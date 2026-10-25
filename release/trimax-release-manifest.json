@@ -1,31 +1,31 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-workflow-communications-20261025-rc6",
+  "releaseId": "trimax-workflow-communications-20261025-rc7",
   "status": "SEALED_CONTROLLED_DEPLOYMENT_CANDIDATE",
-  "createdAt": "2026-10-25T20:58:40.807Z",
-  "releaseTimestamp": "2026-10-25T20:58:40.807Z",
+  "createdAt": "2026-10-25T21:42:54.631Z",
+  "releaseTimestamp": "2026-10-25T21:42:54.631Z",
   "baseProduction": {
     "commit": "885d01f18b1811de7f2be8fe33ec9d8858056d20",
     "vercelDeploymentId": "6G2N5TMoymwBRm48NKrtt8Qbr7Xc"
   },
   "components": {
     "web": {
-      "commit": "4fa633766e30263de5862ea4d72903790967f760"
+      "commit": "e53add6ca29e1b25f9930923680814c413ab5766"
     },
     "legacy": {
-      "commit": "4fa633766e30263de5862ea4d72903790967f760"
+      "commit": "e53add6ca29e1b25f9930923680814c413ab5766"
     },
     "v2-shadow": {
-      "commit": "4fa633766e30263de5862ea4d72903790967f760"
+      "commit": "e53add6ca29e1b25f9930923680814c413ab5766"
     }
   },
   "sourceBundle": {
-    "sha256": "0d67b4508dcffbec054a574f1f9b7f21e67771e3c5c7e03c16a27695832c6b33",
+    "sha256": "d5f7b967be8e01dee1e157559e4522c51f8d64dfa3490153e21be6c16b055f71",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
       "package-lock.json": "dced402a3f6bc4de1a534f5a0abae6e35a9e707afbd170adc87e0feac1f82c5b",
-      "package.json": "b84e10327f957f007a720bbccc30227fe58fc04767f17b4b29bf02c1b908ae41",
+      "package.json": "366377f0aaa21a8ab4c0ffb4bf46c387b81f0339495e8c78c321cfb9b021d382",
       "proxy.ts": "c07e9824217830ca636dac8141204cf2a422728fdc173f488ad61e86edbc8cce",
       "public/Brand/R&L Full Black.png": "3745bd9aec6198d87a968e3f5c3402b87010925d881ddd03411a5caef2c40f65",
       "public/Brand/R&L Full Orange.png": "2c1b88a1718f11f58eb4e59d812f6e47a52ad4c2005a6625eddb601f54fd3fb0",
@@ -268,6 +268,7 @@
       "scripts/release/authorization-execution-regression.cjs": "04df6de9929ae8bde95b621a843650f575acf23f9074a357ae6a705125ba67f5",
       "scripts/release/authorize-build.cjs": "88c7d10b41262c22f4415b3af851adc606441f18a57370a55c0049b29bed11b7",
       "scripts/release/build-diagnostics.cjs": "c0aef8fd7da629a1b672859a2b9a5728607f6e291dc56498d9eb2fe5de489b04",
+      "scripts/release/build-mode-regression.cjs": "6f44238211f75a53c286c353a03a815d2c6f595ccc53ba831fc7e6d5cd3f8b65",
       "scripts/release/contract-regression.cjs": "d4c7f3d0ce201af5abf3fe55e1f8a37a7b83448b3a90067437f79bdca17ce55d",
       "scripts/release/contract.cjs": "eedbbb3aa4264245cc8282cdb62285f864aec8991eea8bef0f813cf6120b7a67",
       "scripts/release/evidence-handoff-regression.cjs": "65541a59c8934fbb36cebdd780f5bdee6499cf36ef1815469a618a193e498bcc",
@@ -275,10 +276,10 @@
       "scripts/release/file-forensics-regression.cjs": "a6da1ba822d17c1a31b7bd29d3cb49e95febca66f29c51b712ccdd9d608c1b26",
       "scripts/release/file-forensics.cjs": "25133a9f2167c801a05906be04068f3d85f54f3c462e085869df2d486c8bea30",
       "scripts/release/final-candidate-regression.cjs": "edc0dbfa8f70d55607c65327a08ed25193380387dd4f1e850cf130ef992ca03f",
-      "scripts/release/gate-checks.cjs": "898e56a6d733e0f6ec8aa689fd34cd76e52a0f21862f4d9a1192069f6e86770d",
+      "scripts/release/gate-checks.cjs": "39d53f63d8ce0e0c888a310b90d5ae29df3165d62cdad0d0157662cb54dfe2f7",
       "scripts/release/gate-state-regression.cjs": "51f1d2c76eca73d122f20cc0f537b624074ebd4943f946dcba63857775e45d04",
       "scripts/release/gate-state.cjs": "f56bdc9741b07b92c53bb487f21320080537fa90734721130612e8c1b52da839",
-      "scripts/release/gate.cjs": "228232de653ef9c0c5a96ea24a9bfb0220a06eed1a0a516222d523b67d778c45",
+      "scripts/release/gate.cjs": "ba31b2e07a44c17f51fd895140562869e419720573e2461286150ed3347a8aa2",
       "scripts/release/physical-acceptance.cjs": "71e4a9df0609730faddbb0e9afef8b69fe198a795f09df1ee97128f78d642a7e",
       "scripts/release/portability-regression.cjs": "0a6b803e3baafab78e5feaa342629a7086292bbf8dff435f2b6e1653adbee656",
       "scripts/release/provision-cache.cjs": "bc081613e0524214f212142fb6991139c7aceaa81fb5b1ca353ad5dfd59f6d24",
@@ -896,7 +897,7 @@
     }
   ],
   "database": {
-    "capturedAt": "2026-10-25T20:58:40.807Z",
+    "capturedAt": "2026-10-25T21:42:54.631Z",
     "algorithm": "catalog-v1; sorted C collation name=value; UTF8 SHA256; public tables/constraints/indexes/functions, public+storage RLS, public table grants; excludes only trimax_release_runtime itself",
     "fingerprints": {
       "schema": {
@@ -1011,7 +1012,7 @@
     "physicalAcceptance": "Only installed-iPhone production evidence for exact release may pass; replay cannot pass",
     "legacyModelCache": "Pinned runtime cache verified by startup contract before claim"
   },
-  "sealedAt": "2026-10-25T20:58:40.807Z",
+  "sealedAt": "2026-10-25T21:42:54.631Z",
   "testRuntime": {
     "pgliteVersion": "0.5.8",
     "pglitePackageSha256": "65dff2c93c707e526902eebfab246bcbf2df2eba1c6984a5b5e9a44177532b1c",
@@ -1754,9 +1755,9 @@
       "deploymentId": "6G2N5TMoymwBRm48NKrtt8Qbr7Xc",
       "deploymentCommit": "885d01f18b1811de7f2be8fe33ec9d8858056d20"
     },
-    "candidateReleaseId": "trimax-workflow-communications-20261025-rc6",
-    "applicationCommit": "4fa633766e30263de5862ea4d72903790967f760",
-    "machineryCommit": "4fa633766e30263de5862ea4d72903790967f760"
+    "candidateReleaseId": "trimax-workflow-communications-20261025-rc7",
+    "applicationCommit": "e53add6ca29e1b25f9930923680814c413ab5766",
+    "machineryCommit": "e53add6ca29e1b25f9930923680814c413ab5766"
   },
   "contractRevision": {
     "id": "workflow-manager-communications",
