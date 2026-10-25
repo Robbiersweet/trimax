@@ -37,7 +37,11 @@ scripts.push('scripts/table-caption-ownership-regression.cjs','scripts/complemen
 module.exports=scripts;
 scripts.push('scripts/property-request-sql-regression.cjs','scripts/property-request-access-regression.cjs','scripts/communications-regression.ts','scripts/communications-sql-regression.cjs','scripts/workflow-upgrade-catalog-replay.cjs');
 scripts.push('scripts/property-request-ui-regression.cjs','scripts/service-workflow-ui-regression.cjs');
+scripts.push('scripts/workflow-preview-adapter-regression.cjs');
 scripts.push('scripts/communications-queue-regression.cjs');
 scripts.push('scripts/communications-reply-regression.cjs');
 scripts.push('scripts/request-photo-regression.mjs','scripts/request-photo-ui-regression.cjs','scripts/request-photo-sql-regression.cjs','scripts/request-photo-intake-sql-regression.cjs');
 scripts.push('scripts/communications-document-regression.ts');
+scripts.push('scripts/property-request-photo-route-regression.cjs','scripts/property-request-photo-sql-regression.cjs','scripts/property-request-photo-ui-regression.cjs','scripts/property-request-photo-uploader-regression.cjs');
+scripts.push('scripts/request-email-acceptance-regression.ts','scripts/request-email-sql-regression.cjs','scripts/request-email-links-regression.cjs','scripts/request-email-webhook-regression.ts');
+scripts.push('scripts/owner-review-ui-regression.cjs');
