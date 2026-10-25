@@ -14,11 +14,14 @@ assert.equal(boundary.isolatedLabRequest(new Request(request.url,{headers:{origi
 assert.equal(boundary.isolatedLabRequest(new Request('https://other.vercel.app/test',{headers:{origin:env.RNL_ISOLATED_INTAKE_ORIGIN}}),env),null);
 (async()=>{
  const old={...process.env};Object.assign(process.env,env);
- let calls=0,queries=[],badScope=false,conflict=false;
+ let calls=0,queries=[],badScope=false,conflict=false,pools=0;
  const direct=load(path.join(root,'sites/rnl/lib/credentialLifecycle/directIntegrationReview.ts'),{'server-only':{}});
- class Pool{on(){}async connect(){return {query:async(sql,values)=>{queries.push(sql);if(sql.startsWith('SELECT current_user'))return {rows:[{role:boundary.labRole,session_role:boundary.labRole,safe_role:true,no_memberships:true,required_rpcs:true,no_other_rpcs:!badScope,no_tables:true,no_create:true}]};if(sql.includes(' result')){if(conflict)throw Error('Idempotency conflict');calls++;return {rows:[{result:{ok:true}}]};}return {rows:[]};},release(){}};}}
+ class Pool{constructor(options){pools++;assert.equal(options.ssl.rejectUnauthorized,true);assert.equal(options.ssl.ca,process.env.RNL_ISOLATED_DB_CA_PEM);}on(){}async connect(){return {query:async(sql,values)=>{queries.push(sql);if(sql.startsWith('SELECT current_user'))return {rows:[{role:boundary.labRole,session_role:boundary.labRole,safe_role:true,no_memberships:true,required_rpcs:true,no_other_rpcs:!badScope,no_tables:true,no_create:true}]};if(sql.includes(' result')){if(conflict)throw Error('Idempotency conflict');calls++;return {rows:[{result:{ok:true}}]};}return {rows:[]};},release(){}};}}
  const mod=load(path.join(root,'sites/rnl/lib/isolatedLabRuntime.ts'),{'server-only':{},pg:{Pool},'./isolatedLabBoundary.ts':boundary,'./credentialLifecycle/directIntegrationReview.ts':direct});
  assert.ok(mod.labScopeSql.includes("r.rolname='trimax_scheduling_web'"));assert.ok(!mod.labScopeSql.includes('NOT rolinherit'));
+ delete process.env.RNL_ISOLATED_DB_CA_PEM;assert.throws(()=>mod.isolatedLabRuntime(),/LAB_CA_REJECTED/);
+ for(const ca of ['invalid','-----BEGIN CERTIFICATE-----\ninvalid\n-----END CERTIFICATE-----',require('node:tls').rootCertificates[0].replaceAll('\n','\\n')]){process.env.RNL_ISOLATED_DB_CA_PEM=ca;assert.throws(()=>mod.isolatedLabRuntime(),/LAB_CA_REJECTED/);}assert.equal(pools,0);
+ process.env.RNL_ISOLATED_DB_CA_PEM=require('node:tls').rootCertificates[0];
  const runtime=mod.isolatedLabRuntime();
  assert.equal((await runtime.client.rpc('trimax_public_scheduling_config',{p_slug:env.RNL_ISOLATED_INTAKE_SLUG})).error,null);assert.equal(calls,1);
  await assert.rejects(()=>runtime.client.rpc('trimax_public_scheduling_config',{p_slug:'rnl-creations'}));

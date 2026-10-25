@@ -1,5 +1,6 @@
 import 'server-only';
 import pg from 'pg';
+import {X509Certificate} from 'node:crypto';
 import type {SubmissionRuntime} from '../.shared/lib/publicScheduling/productionHandler.ts';
 import {isolatedLabConfig,labRole} from './isolatedLabBoundary.ts';
 import {scopeSql} from './credentialLifecycle/directIntegrationReview.ts';
@@ -12,9 +13,11 @@ export const labScopeSql=scopeSql.replace('rolconnlimit=1 AND ', '').replace('NO
 let runtime:SubmissionRuntime|undefined;
 export function isolatedLabRuntime():SubmissionRuntime{
  const config=isolatedLabConfig(); // Check every selection, including after initialization.
+ const ca=process.env.RNL_ISOLATED_DB_CA_PEM;
+ try{if(!ca||!ca.includes('\n')||!ca.trim().startsWith('-----BEGIN CERTIFICATE-----')||!new X509Certificate(ca).ca)throw Error();}catch{throw Error('LAB_CA_REJECTED');}
  if(runtime)return runtime;
  const db=config.database;
- const pool=new pg.Pool({host:db.hostname,port:5432,user:db.username,password:decodeURIComponent(db.password),database:'postgres',ssl:{rejectUnauthorized:true},max:1,connectionTimeoutMillis:5000,idleTimeoutMillis:10000,query_timeout:10000,allowExitOnIdle:true,application_name:'trimax-isolated-lab-intake'});
+ const pool=new pg.Pool({host:db.hostname,port:5432,user:db.username,password:decodeURIComponent(db.password),database:'postgres',ssl:{rejectUnauthorized:true,ca},max:1,connectionTimeoutMillis:5000,idleTimeoutMillis:10000,query_timeout:10000,allowExitOnIdle:true,application_name:'trimax-isolated-lab-intake'});
  pool.on('error',()=>{}); // Never log driver objects/connection credentials.
  const attempts=new Map<string,{count:number,until:number}>();
  runtime={config:{origin:config.origin,fingerprintSecret:config.fingerprintSecret,providers:{fingerprintSecret:config.fingerprintSecret,
