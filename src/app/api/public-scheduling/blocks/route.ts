@@ -1,7 +1,8 @@
 import {productionOwner} from '@/app/lib/publicScheduling/productionOwner';
 import {readBoundedJson} from '@/app/lib/publicScheduling/httpBody';
+import {workflowWritesAllowed} from '@/app/lib/publicScheduling/workflowRuntime';
 export async function POST(request:Request){
- if(process.env.VERCEL_ENV==='preview'||process.env.SERVICE_REQUEST_WORKFLOW_ENABLED!=='enabled')return Response.json({error:'Live schedule changes are disabled.'},{status:403});
+ if(!workflowWritesAllowed(request,process.env))return Response.json({error:'Live schedule changes are disabled.'},{status:403});
  try{const owner=await productionOwner(request,new URL(request.url).searchParams.get('business')||'');const value=await readBoundedJson(request,2000) as Record<string,unknown>;
  if(!value||typeof value!=='object'||typeof value.label!=='string'||value.label.length>120)throw Error();
  const removeId=value.removeId==null?null:String(value.removeId);if(removeId&&!/^[0-9a-f-]{36}$/i.test(removeId))throw Error();
