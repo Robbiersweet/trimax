@@ -90,7 +90,7 @@ begin
  if k is null then return new;end if;
  select * into q from public.queue_items where id=r.queue_item_id and business_id=r.business_id;
  if k like 'appointment_%' then
- update public.communication_messages set status='superseded',updated_at=now() where business_id=r.business_id and request_id=r.id and status in ('pending','retry') and event_type in ('reminder_24h','reminder_1h','appointment_scheduled','appointment_rescheduled');
+ update public.communication_messages set status='superseded',updated_at=now() where business_id=r.business_id and request_id=r.id and status in ('pending','retry') and event_type in ('reminder_24h','reminder_1h','appointment_scheduled','appointment_rescheduled','appointment_cancelled');
  end if;
  insert into public.communication_messages(business_id,request_id,client_id,queue_id,event_type,idempotency_key,recipient,appointment_start,appointment_end)
  values(r.business_id,r.id,r.client_id,q.id,k,'request-event:'||new.id::text,phone_normal,q.appointment_start,q.appointment_end) on conflict do nothing;
@@ -163,6 +163,8 @@ begin
  update public.communication_messages set status='suppressed',error_code='consent_or_workspace_disabled',lease_token=null,lease_expires_at=null where id=m.id;return null;end if;
  if (m.request_id is not null and not exists(select 1 from public.public_service_requests r where r.id=m.request_id and r.business_id=m.business_id and public.trimax_normalize_sms_phone(r.phone)=m.recipient)) or (m.entity_id is not null and not exists(select 1 from public.clients x where x.id=m.client_id and x.business_id=m.business_id and public.trimax_normalize_sms_phone(x.phone)=m.recipient)) then
  update public.communication_messages set status='suppressed',error_code='recipient_changed',lease_token=null,lease_expires_at=null where id=m.id;return null;end if;
+ if m.event_type='appointment_cancelled' and exists(select 1 from public.queue_items where id=m.queue_id and business_id=m.business_id and appointment_start is not null) then
+ update public.communication_messages set status='superseded',error_code='appointment_restored',lease_token=null,lease_expires_at=null where id=m.id;return null;end if;
  if m.event_type in ('reminder_24h','reminder_1h','appointment_scheduled','appointment_rescheduled') then
  select * into q from public.queue_items where id=m.queue_id and business_id=m.business_id;
  if q.appointment_start is distinct from m.appointment_start or q.appointment_end is distinct from m.appointment_end or q.appointment_start<=now() or q.completed_date is not null then
@@ -263,4 +265,5 @@ do $$ begin
  if exists(select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace cross join lateral aclexplode(coalesce(c.relacl,acldefault('r',c.relowner))) a where n.nspname='public' and c.relname like 'communication_%' and c.relkind='r' and a.grantee<>c.relowner and not(a.grantee='service_role'::regrole or (a.grantee='authenticated'::regrole and a.privilege_type='SELECT' and c.relname not in ('communication_links','communication_webhook_receipts')))) then raise exception 'Unexpected communications table grants';end if;
 end $$;
 commit;
+
 
