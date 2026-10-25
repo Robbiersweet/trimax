@@ -21,3 +21,10 @@ Run `node scripts/property-request-photo-render-fixture.cjs` from this checkout;
 
 ## Integration and boundaries
 Cherry-pick candidate, review changed SQL and catalog expectations, then run the full release gate before any deployment. No production changes, credentials, deployment, grants, bucket activation or scheduling activation. No OCR/payment changes. Public website source was not modified.
+
+## Follow-up: manager urgency and timing completeness
+Verified defect: the manager submit function hard-coded `routine` urgency and did not accept a time window or flexibility. The follow-up `20261026_property_request_preferences.sql` (after manager-photo migration) replaces only the same submit/context functions, preserving ACLs, authorization, photo capability, idempotency and Queue behavior. It reuses existing request columns: urgency, flexibility, preferred_date and time_window_id. No schema objects or grants added.
+
+The form adds urgency, exact configured business time windows and timing flexibility. A specific-date request requires a date; unsupported/null values and windows from another business are rejected. Emergency guidance explains this is not a dispatch channel. Building/unit remains the existing combined required field. Owner review already reads these persisted fields. Manager history now displays their persisted requested timing and urgency. A preference does not schedule or reprioritize the Queue.
+
+Validation: 23 PGlite SQL checks PASS, including preference persistence, context output, default compatibility, invalid urgency/type, unconfigured window, fixed-date validation and changed-payload retry conflict. Actual manager React tests PASS for submitted fields, pending-disabled controls, unchanged retry and receipt. Existing manager UI regression PASS. Targeted ESLint PASS; full TypeScript PASS. No hosted execution or deployment. The fixture declares UTF-8 to preserve punctuation. Parent confirmed prior actual-CSS mobile snapshot had no horizontal overflow; refreshed preference controls still require rendered review.
