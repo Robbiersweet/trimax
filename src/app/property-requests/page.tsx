@@ -32,8 +32,10 @@ export default function PropertyRequestsPage() {
   const signature=JSON.stringify([assignment.id,payload]);
   if(!pending.current||pending.current.payload!==signature)pending.current={key:crypto.randomUUID(),payload:signature};
   try{
-   const {data,error:failure}=await supabase.rpc("trimax_submit_property_request",{p_assignment_id:assignment.id,p_key:pending.current.key,p_payload:payload});
-   if(failure)throw Error("Unable to submit. Check your property permission and service details, then retry. An unchanged retry will not create a duplicate.");
+   const {data:{session}}=await supabase.auth.getSession();
+   const response=await fetch("/api/property-requests",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${session?.access_token??""}`},body:JSON.stringify({assignmentId:assignment.id,key:pending.current.key,payload})});
+   const data=await response.json();
+   if(!response.ok)throw Error((data.error??"Unable to submit.")+" An unchanged retry will not create a duplicate.");
    setSuccess(data.queueItemId?"Added to the Work Queue. Scheduling will be confirmed separately.":"Request received. R&L will review the work and confirm the next steps.");
    pending.current=null;setDescription("");setUnit("");setDate("");setDirect(false);await refresh();
   }catch(failure){setError(failure instanceof Error?failure.message:"Unable to submit. Please retry.");}

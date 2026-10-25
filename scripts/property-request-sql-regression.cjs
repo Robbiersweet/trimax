@@ -8,7 +8,7 @@ try{
  create table property_users(id uuid primary key,business_id uuid,user_id uuid,property_name text,email text,can_create_queue_items boolean);
  create table push_subscriptions(id uuid primary key,business_id uuid,user_id uuid,status text);
  create table queue_items(id text primary key,business_id uuid,created_by_user_id uuid,property text not null,unit text not null,status text,priority text,notes text,scheduled_date date,completed_date date);`);
- for(const name of ['20261009_public_scheduling_foundation.sql','20261010_public_scheduling_phase2.sql','20261017_scheduling_owner_notifications.sql','20261018_service_request_workflow.sql','20261018_service_request_delivery.sql','20261018_request_urgency.sql','20261025_property_request_intake.sql'])await db.exec(fs.readFileSync('supabase/migrations/'+name,'utf8'));
+ for(const name of ['20261009_public_scheduling_foundation.sql','20261010_public_scheduling_phase2.sql','20261017_scheduling_owner_notifications.sql','20261018_service_request_workflow.sql','20261018_service_request_delivery.sql','20261018_request_urgency.sql','20261025_workflow_experience.sql','20261025_property_request_intake.sql'])await db.exec(fs.readFileSync('supabase/migrations/'+name,'utf8'));
  const uid=n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`,business=uid(1),otherBusiness=uid(2),owner=uid(3),manager=uid(4),outsider=uid(5),assignment=uid(6),client=uid(7),type=uid(8);
  await db.query('insert into businesses values($1),($2)',[business,otherBusiness]);
  await db.query('insert into auth.users values($1),($2),($3)',[owner,manager,outsider]);
@@ -42,6 +42,11 @@ try{
  eq((await as(manager,()=>submit('direct-allowed-0001',{directQueue:true}))).rows[0].r,direct);
  eq((await db.query('select count(*)::int n from queue_items')).rows[0].n,1);
  const q=(await db.query('select * from queue_items')).rows[0];eq(q.request_client_id,client);eq(q.scheduled_date,null);eq(q.appointment_start,null);eq(q.unit,'A-12');eq(q.property,'Assigned property');
+ eq((await db.query('select count(*)::int n from clients')).rows[0].n,2);
+ const mapped=(await as(manager,()=>submit('mapped-request-0001'))).rows[0].r;
+ await as(owner,()=>db.query("select trimax_service_request_workflow($1,1,'mapped-approval-0001','approve_queue')",[mapped.id]));
+ const mappedQueue=(await db.query('select * from queue_items where source_request_id=$1',[mapped.id])).rows[0];
+ eq(mappedQueue.request_client_id,client);eq(mappedQueue.unit,'A-12');
  eq((await db.query('select count(*)::int n from clients')).rows[0].n,2);
  // Revocation takes effect immediately, including historical reads and retries.
  await db.query('update property_users set user_id=$1 where id=$2',[outsider,assignment]);

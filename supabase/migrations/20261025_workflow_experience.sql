@@ -61,8 +61,8 @@ begin
     (x.appointment_start is null and x.scheduled_date between (p_start at time zone zone)::date and ((finish-interval '1 second') at time zone zone)::date))) and p_conflict_reason is null then raise exception 'Schedule conflict: review existing work, choose another time, or provide an override reason'; end if;
  end if;
  if r.queue_item_id is null then
-  if p_client_id is not null then
-   select id into chosen from public.clients where id=p_client_id and business_id=r.business_id for share;
+  if p_client_id is not null or (r.source='property-manager' and r.client_id is not null) then
+   select id into chosen from public.clients where id=coalesce(p_client_id,r.client_id) and business_id=r.business_id for share;
    if not found then raise exception 'Client is not in this workspace'; end if;
   else
    select count(*),(array_agg(id))[1] into matches,chosen from public.clients where business_id=r.business_id and
@@ -75,7 +75,7 @@ begin
    end if;
   end if;
   insert into public.queue_items(id,business_id,created_by_user_id,property,unit,status,priority,notes,request_client_id,source_request_id)
-   values(gen_random_uuid()::text,r.business_id,actor,r.service_address,'','Pending Estimate','Normal',
+   values(gen_random_uuid()::text,r.business_id,actor,r.service_address,case when r.source='property-manager' then coalesce(r.integration_references->>'propertyUnit','') else '' end,'Pending Estimate','Normal',
     concat_ws(E'\n',r.description,'Customer: '||r.customer_name,'Phone: '||r.phone,'Email: '||r.email,'Preferred contact: '||r.preferred_contact,'Requested date (preference): '||coalesce(r.preferred_date::text,'Flexible'),'Requested window: '||coalesce(r.time_window_id,'Any'),'Flexibility: '||r.flexibility,'Urgency: '||r.urgency,'Customer notes: '||r.customer_notes,'Source request: '||r.public_reference),chosen,r.id) returning * into q;
   update public.public_service_requests set client_id=chosen,queue_item_id=q.id where id=r.id;
   insert into public.public_request_activity(business_id,request_id,actor_id,event_type,details)

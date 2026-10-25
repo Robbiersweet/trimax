@@ -49,6 +49,7 @@ begin
  contact_email=coalesce(a.email,'');customer=left(a.property_name||' manager',120);
  insert into public.public_service_requests(business_id,request_type_id,public_reference,idempotency_hash,payload_hash,customer_name,email,preferred_contact,service_address,description,preferred_date,flexibility,urgency,contact_consent_at,status,source,submitted_by_user_id,property_assignment_id)
  values(a.business_id,t.id,'REQ-'||replace(gen_random_uuid()::text,'-',''),key_hash,digest,customer,contact_email,'email',a.property_name,left('Unit: '||unit_name||E'\n'||description,3000),preferred,'preferred','routine',now(),case when direct then 'approved' else 'pending_confirmation' end,'property-manager',actor,a.id) returning * into r;
+ update public.public_service_requests set integration_references=jsonb_build_object('propertyUnit',unit_name),client_id=(select id from public.clients where id=a.request_client_id and business_id=a.business_id) where id=r.id;
  if direct then
   queue_id=gen_random_uuid()::text;
   insert into public.queue_items(id,business_id,created_by_user_id,property,unit,status,priority,notes,request_client_id,source_request_id)
