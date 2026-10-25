@@ -1,5 +1,10 @@
 # Service workflow — production checkpoint, 2026-10-19
 
+## Superseding evidence recorded October 25
+The owner explicitly confirmed **PHYSICAL IPHONE ACCEPTANCE TEST — PASSED** after the fresh labeled push: tapping the banner opened the correct "Rollout Acceptance 20261019" Service Request, rather than the operations dashboard. The attached screenshot shows REQ-aab75cfd2daa4d6c8ec8937255629bba. The historical pending statements below describe the earlier rollout stage and are superseded by this human report. This does not establish physical acceptance of later candidate releases or customer email/SMS delivery.
+
+The current authenticated Vercel production baseline is now `885d01f18b1811de7f2be8fe33ec9d8858056d20`, deployment `6G2N5TMoymwBRm48NKrtt8Qbr7Xc`. Preserve its newer OCR/remittance/authentication repairs. The October 19 identities and recovery procedure below are historical evidence, not instructions to replace current production. See `WORKFLOW_UPGRADE_ACTIVE.md` for the current isolated candidate and authorization boundary. No production mutation accompanied this documentation update.
+
 ## Status
 User explicitly approved the coordinated rollout. Three migrations, existing-secret provisioning, both production deployments, matching OCR workers, and push scheduler activation completed. Real live-form acceptance passed request intake, persistent notification/deep link/read state, new client and single Queue conversion, same-day appointment, reschedule, calendar export and cancellation. Physical iPhone acceptance and verified customer email delivery remain pending. SMS and customer email remain disabled. Do not repeat authentication or rotate credentials.
 
