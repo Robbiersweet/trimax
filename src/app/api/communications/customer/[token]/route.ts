@@ -1,3 +1,4 @@
+import {customerDocumentHtml,type CustomerDocument,type CustomerLine} from '@/app/lib/communications/customerDocument';
 import {normalizeSmsPhone} from '@/app/lib/communications/consent';
 import {createHash,randomBytes} from 'node:crypto';
 import {communicationsDb,isolatedSmsTestDatabase} from '@/app/lib/communications/server';
@@ -28,12 +29,14 @@ export async function GET(request:Request,{params}:{params:Promise<{token:string
   content=`<p>${start?escape(new Date(start).toLocaleString('en-US',{timeZone:settings?.time_zone||'America/Los_Angeles',dateStyle:'full',timeStyle:'short'})): 'No appointment is confirmed.'}</p>${start?'<p><a href="?format=ics">Add or update in Apple Calendar, Google Calendar or Outlook (.ics)</a></p>':''}`;
  }else if(message.entity_id&&message.client_id&&['invoice','estimate'].includes(message.entity_type)){
   const invoice=message.entity_type==='invoice';
-  const {data:doc}=await db.from(invoice?'invoices':'estimates').select(invoice?'display_id,project_title,invoice_amount,amount_paid,status':'display_id,project_title,estimate_amount,status').eq('id',message.entity_id).eq('business_id',link.business_id).eq('client_id',message.client_id).maybeSingle();if(!doc)throw Error();
-  const d=doc as unknown as Record<string,unknown>;
-  title=`${invoice?'Invoice':'Estimate'} ${d.display_id||''}`;
-  content=`<p>${escape(d.project_title)}</p><p>Status: ${escape(d.status)}</p><p>Total: ${escape(invoice?d.invoice_amount:d.estimate_amount)}</p>${invoice?`<p>Recorded payments: ${escape(d.amount_paid)}</p>`:''}<p>Your detailed document was sent by email. Contact the business if you need another copy.</p>`;
+  const common='id,business_id,client_id,display_id,project_title,service_address,status,terms,tax_mode,tax_rate,tax_label,tax_number';
+  const {data:doc,error:docError}=await db.from(invoice?'invoices':'estimates').select(common+(invoice?',invoice_amount,amount_paid,deposit_requested_amount,deposit_status':',estimate_amount')).eq('id',message.entity_id).eq('business_id',link.business_id).eq('client_id',message.client_id).maybeSingle();if(docError||!doc)throw Error();
+  const foreignKey=invoice?'invoice_id':'estimate_id';
+  const {data:lines,error:lineError}=await db.from(invoice?'invoice_line_items':'estimate_line_items').select(`business_id,${foreignKey},description,quantity,unit_price,line_total`).eq(foreignKey,message.entity_id).eq('business_id',link.business_id).order('sort_order',{ascending:true}).limit(1001);if(lineError||!lines||lines.length>1000)throw Error();
+  const d=doc as unknown as CustomerDocument;title=`${invoice?'Invoice':'Estimate'} ${d.display_id||''}`;
+  content=customerDocumentHtml(invoice?'invoice':'estimate',d,lines as unknown as CustomerLine[],{businessId:link.business_id,clientId:message.client_id,documentId:message.entity_id});
  }else throw Error();
- return new Response(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(title)}</title><style>body{font:18px system-ui;max-width:42rem;margin:3rem auto;padding:1rem;color:#173b42}a{color:#166c59}</style><h1>${escape(settings?.display_name||'Service update')}</h1><h2>${escape(title)}</h2>${content}</html>`,{headers:{...headers,'Content-Type':'text/html; charset=utf-8'}});
+ return new Response(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(title)}</title><style>body{font:18px system-ui;max-width:42rem;margin:3rem auto;padding:1rem;color:#173b42}a{color:#166c59}table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:.6rem;border-bottom:1px solid #ccc}dt{font-weight:600}dd{margin:0 0 .7rem}</style><h1>${escape(settings?.display_name||'Service update')}</h1><h2>${escape(title)}</h2>${content}</html>`,{headers:{...headers,'Content-Type':'text/html; charset=utf-8'}});
  }catch{return new Response('This private link is unavailable or expired. Contact the business for assistance.',{status:404,headers});}
 }
 
