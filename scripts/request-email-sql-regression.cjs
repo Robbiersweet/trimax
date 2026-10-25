@@ -14,6 +14,7 @@ try{
 
 
  await db.exec(fs.readFileSync('supabase/migrations/20261025_request_email_acceptance.sql','utf8'));
+ await db.exec(fs.readFileSync('supabase/migrations/20261025_request_email_webhooks.sql','utf8'));
  await db.query("insert into public_scheduling_outbox(business_id,request_id,event_type,channel,audience,recipient,template,parameters,consent_reference,idempotency_key) values($1,$2,'request_received','email','customer','synthetic@example.invalid','request_received','{}','synthetic','email-synthetic')",[b,request]);
  const m=(await db.query("select * from trimax_claim_request_email()")).rows[0];assert.ok(m);checks++;
  eq((await db.query("select trimax_finish_request_email($1,$2,null,'email_obsolete') ok",[m.id,uid(99)])).rows[0].ok,false);
@@ -28,5 +29,10 @@ try{
  const queue=uid(80);await db.query("insert into queue_items(id,business_id,property,unit,appointment_start,appointment_end) values($1,$2,'Synthetic','1',now()+interval '3 days',now()+interval '3 days 1 hour')",[queue,b]);await db.query('update public_service_requests set queue_item_id=$1 where id=$2',[queue,request]);
  await db.query("insert into public_request_activity(business_id,request_id,event_type,details) values($1,$2,'appointment_scheduled','{}')",[b,request]);eq((await db.query("select count(*)::int n from public_scheduling_outbox where channel='email' and event_type like 'reminder_%' and status='pending'")).rows[0].n,2);
  await db.query("update queue_items set appointment_start=null,appointment_end=null where id=$1",[queue]);await db.query("insert into public_request_activity(business_id,request_id,event_type,details) values($1,$2,'appointment_cancelled','{}')",[b,request]);eq((await db.query("select count(*)::int n from public_scheduling_outbox where channel='email' and event_type like 'reminder_%' and status='pending'")).rows[0].n,0);
+ await db.query("update public_scheduling_outbox set provider_message_id='provider-test',status='delivered' where id=$1",[m.id]);
+ const status=async(event,state,business=b,recipient='synthetic@example.invalid')=>db.query('select trimax_request_email_status($1,$2,$3,$4,$5) ok',[business,event,'provider-test',recipient,state]);
+ eq((await status('evt1','email.delivered')).rows[0].ok,true);eq((await status('evt1','email.delivered')).rows[0].ok,false);
+ await assert.rejects(()=>status('evt2','email.bounced',other));checks++;await assert.rejects(()=>status('evt2','email.bounced',b,'wrong@example.invalid'));checks++;
+ eq((await status('evt2','email.bounced')).rows[0].ok,true);await status('evt3','email.delivered');eq((await db.query('select email_delivery_status from public_scheduling_outbox where id=$1',[m.id])).rows[0].email_delivery_status,'email.bounced');eq((await db.query('select count(*)::int n from request_email_suppressions')).rows[0].n,1);
  console.log(JSON.stringify({status:'PASS',checks,scope:'isolated email lease CAS, stale suppression and retries; no messages'}));
 }finally{await db.close();}})().catch(e=>{console.error(e);process.exitCode=1});

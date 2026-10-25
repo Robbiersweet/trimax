@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {verifyResendWebhook} from '../src/app/lib/publicScheduling/resendWebhook.ts';
+const body='{"event_type":"ping","data":{"success":true}}',secret='whsec_plJ3nmyCDGBKInavdOK15jsl';
+const headers=new Headers({'svix-id':'msg_loFOjxBNrRLzqYUf','svix-timestamp':'1731705121','svix-signature':'v1,rAvfW3dJ/X/qxhsaXPOyyCGmRKsaKWcsNccKXlIktD0='});
+assert.equal(verifyResendWebhook(body,headers,secret,1731705121000),true);
+assert.equal(verifyResendWebhook(body+' ',headers,secret,1731705121000),false);
+assert.equal(verifyResendWebhook(body,headers,secret,1731705521000),false);
+assert.equal(verifyResendWebhook(body,headers,secret,1731704721000),false);
+headers.set('svix-signature','v2,invalid v1,rAvfW3dJ/X/qxhsaXPOyyCGmRKsaKWcsNccKXlIktD0=');assert.equal(verifyResendWebhook(body,headers,secret,1731705121000),true);
+headers.set('svix-id','other');assert.equal(verifyResendWebhook(body,headers,secret,1731705121000),false);
+console.log('PASS: 6 signed webhook assertions using official Svix published vector; no provider traffic');

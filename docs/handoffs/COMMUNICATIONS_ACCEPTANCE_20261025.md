@@ -12,7 +12,7 @@ Production email now requires SERVICE_REQUEST_EMAIL_ACTIVATED_AT in addition to 
 
 35 email template/transport/current-state assertions, 15 isolated email SQL assertions, TypeScript and targeted ESLint pass. New candidate migration: supabase/migrations/20261025_request_email_acceptance.sql, after existing request-delivery migration. Include actual-catalog inherited-grant replay and hosted isolated acceptance before deployment.
 
-## Audit limitations
+## Original audit findings (resolved by follow-up below where noted)
 
 Provider acceptance is not mailbox delivery; no Resend bounce/delivery webhook exists in this workflow. Existing estimate/invoice send-email routes remain protected and unchanged. Request emails use safe plain text; they do not yet contain customer capability links or an email-only information-reply path. Secure SMS information replies and document links work only where SMS consent/current phone identity exists. Do not manufacture SMS consent to enable email replies. A generic email capability requires an explicit recipient-bound design. No customer email or SMS activation is performed here.
 
@@ -35,3 +35,18 @@ Provider acceptance is not mailbox delivery; no Resend bounce/delivery webhook e
 7. Recovery: disable only affected outbound channel, preserve rows and audits, reconcile uncertain provider IDs before retrying. Never replay historical dead letters automatically or reset suppression. Existing production rollback checkpoints remain untouched.
 
 Resume: integrate candidate commit, add both request-email regression scripts to gate, apply migration to isolated catalog rehearsal, and use workflow_ui's lab runner with preview test flags. Live activation requires the separate approvals above.
+
+
+## Email capabilities and signed delivery status follow-up
+
+Completed email-only request links and additional-information replies without SMS consent. New request_email_links records bind token hash to business/outbox/email; GET and POST revalidate current request email/contact consent, expiry and revocation. Information replies require the original needs_information event and current needs_information state; duplicate form submissions are idempotent, five/hour cap, no status/Queue/finance mutation. Replies appear in existing owner request activity (note), and existing push delivery links back to that request. Current appointment/calendar view reuses stable Queue UID, revision and cancellation fields in calendarDataUri.
+
+Worker needs exact HTTPS TRIMAX_EMAIL_PUBLIC_ORIGIN. Tokens use a domain-separated HMAC of outbox ID under existing CRON_SECRET so retry email bodies keep the same capability URL within provider idempotency; only token hash is stored. No new credential is generated. Link expiry is 30 days after the outbox scheduled time. Existing revocation is never overwritten on retry. Changing CRON_SECRET changes future derived links and is outside this task; existing production secret is preserved.
+
+Signed Resend endpoint /api/public-scheduling/webhooks/resend is off unless production plus SERVICE_REQUEST_EMAIL_WEBHOOK_ENABLED=enabled, SERVICE_REQUEST_RESEND_WEBHOOK_SECRET and configured email business. It verifies raw-body HMAC, exact Svix ID/timestamp with five-minute tolerance, handles signature rotation list, deduplicates event ID, binds provider message ID and recipient to the configured business, and records delivered/bounced/complained/failed status separately from initial provider acceptance. Bounces/complaints suppress future email for that business/address; late delivery cannot overwrite terminal failure. Early callbacks before the send-result commit receive 503 for provider retry. No secrets or raw payloads logged. Mail-server delivery still does not prove human reading. Reactivation of a suppressed recipient requires separate owner/provider reconciliation; no automatic clearing.
+
+Primary specifications: [Resend verification](https://resend.com/docs/webhooks/verify-webhooks-requests), [Resend event definitions](https://resend.com/docs/webhooks/event-types), and [Svix manual verification](https://docs.svix.com/receiving/verifying-payloads/how-manual). The official published Svix signature vector passes along with tampering/time-window tests.
+
+Follow-up evidence: 45 email adapter/template/current-state tests; 20 email-only capability SQL assertions (including absence of SMS consent, tenant/current-email binding, expiry, revocation, replay, rate limit and no public grants); 22 email SQL retry/status assertions; 6 webhook signature assertions; TypeScript and targeted lint pass. No hosted/provider delivery evidence claimed.
+
+Migration order adds 20261025_request_email_links.sql and 20261025_request_email_webhooks.sql after 20261025_request_email_acceptance.sql. Integrate both before deploying the updated worker (it checks suppressions before any email). Add scripts/request-email-links-regression.cjs and scripts/request-email-webhook-regression.ts to the gate. Preview simulation is now restricted to the exact approved lab URL https://yzyfmvoswucyauogueca.supabase.co; arbitrary nonproduction databases are rejected. Real delivery and webhook activation still require approval and sender/provider setup, and all flags remain disabled here.
