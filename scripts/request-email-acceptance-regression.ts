@@ -2,10 +2,11 @@ import assert from 'node:assert/strict';
 import {emailMode,sendCustomerEmail,validateEmailCurrent} from '../src/app/lib/publicScheduling/emailProvider.ts';
 import {dispatchDeliveries,DeliveryFailure} from '../src/app/lib/publicScheduling/dispatch.ts';
 import {customerEmail,type Delivery} from '../src/app/lib/publicScheduling/delivery.ts';
-const env={VERCEL_ENV:'preview',SERVICE_REQUEST_EMAIL_TEST_MODE:'enabled',EMAIL_TEST_SUPABASE_URL:'https://isolated.example.invalid',NEXT_PUBLIC_SUPABASE_URL:'https://isolated.example.invalid'};
+const env={VERCEL_ENV:'preview',SERVICE_REQUEST_EMAIL_TEST_MODE:'enabled',EMAIL_TEST_SUPABASE_URL:'https://yzyfmvoswucyauogueca.supabase.co',NEXT_PUBLIC_SUPABASE_URL:'https://yzyfmvoswucyauogueca.supabase.co'};
 const row:Delivery={id:'m',business_id:'b',request_id:'r',channel:'email',audience:'customer',recipient:'synthetic@example.invalid',event_type:'request_received',idempotency_key:'test-key',lease_token:'lease',consent_reference:'consent',created_at:'2026-10-25T01:00:00Z',parameters:{business:'Synthetic',reference:'REQ-test',internalNotes:'SECRET'}};
 let checks=0;const eq=(a:unknown,b:unknown)=>{assert.deepEqual(a,b);checks++};
 eq(emailMode(env),'test');eq(emailMode({...env,VERCEL_ENV:'production'}),'disabled');eq(emailMode({...env,EMAIL_TEST_SUPABASE_URL:'https://gqknefosisnsjuzmhvts.supabase.co',NEXT_PUBLIC_SUPABASE_URL:'https://gqknefosisnsjuzmhvts.supabase.co'}),'disabled');
+for(const url of ['https://arbitrary.supabase.co','https://yzyfmvoswucyauogueca.supabase.co/','https://yzyfmvoswucyauogueca.supabase.co:443','https://yzyfmvoswucyauogueca.supabase.co/path'])eq(emailMode({...env,EMAIL_TEST_SUPABASE_URL:url,NEXT_PUBLIC_SUPABASE_URL:url}),'disabled');
 const never:typeof fetch=async()=>{throw Error('network must never be reached')};const sent=await sendCustomerEmail(row,env,never);eq(sent.simulated,true);eq(sent.id,'test-email-m');eq(sent.text.includes('SECRET'),false);
 const current={business_id:'b',email:row.recipient,contact_consent_at:'2026-10-25',status:'reviewing',queue_item_id:null};validateEmailCurrent(row,current,null,env);checks++;
 for(const c of [{...current,business_id:'other'},{...current,email:'changed@example.invalid'},{...current,contact_consent_at:null},{...current,status:'approved'}]){assert.throws(()=>validateEmailCurrent(row,c,null,env));checks++;}

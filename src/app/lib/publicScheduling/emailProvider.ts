@@ -4,7 +4,7 @@ type Env=Record<string,string|undefined>;
 export function emailMode(env:Env):'disabled'|'test'|'resend'{
  if(env.VERCEL_ENV!=='production'){
   if(env.SERVICE_REQUEST_EMAIL_TEST_MODE!=='enabled'||!env.EMAIL_TEST_SUPABASE_URL||env.EMAIL_TEST_SUPABASE_URL!==env.NEXT_PUBLIC_SUPABASE_URL)return 'disabled';
-  try{const u=new URL(env.EMAIL_TEST_SUPABASE_URL);if(u.hostname.startsWith('gqknefosisnsjuzmhvts.'))return 'disabled';}catch{return 'disabled';}
+  if(env.EMAIL_TEST_SUPABASE_URL!=='https://yzyfmvoswucyauogueca.supabase.co')return 'disabled';
   return 'test';
  }
  if(env.SERVICE_REQUEST_DELIVERY_ENABLED!=='enabled'||env.SERVICE_REQUEST_EMAIL_ENABLED!=='enabled'||!env.RESEND_API_KEY||!env.SERVICE_REQUEST_EMAIL_FROM||!env.SERVICE_REQUEST_EMAIL_BUSINESS_ID||!Number.isFinite(Date.parse(env.SERVICE_REQUEST_EMAIL_ACTIVATED_AT||'')))return 'disabled';
