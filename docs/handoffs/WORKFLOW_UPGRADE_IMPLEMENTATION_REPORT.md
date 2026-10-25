@@ -1,48 +1,94 @@
-# Workflow upgrade — October 25 implementation and acceptance
+# TriMax extended workflow session — implementation and release handoff
 
-## Release boundary
-This is a candidate implementation, not a production release or an operational SMS claim. Current production remains TriMax 885d01f18b1811de7f2be8fe33ec9d8858056d20 / Vercel6G2N5TMoymwBRm48NKrtt8Qbr7Xc and marketing7e0ca069a5cbbb2c38aa05e8705113a5cc769e18 /7nhM28FWzouDAL8HwXyom7fX7VbB. No production migrations, credentials, flags, native worker switches, customer messages or test submissions were performed. Original rollback tags remain intact. Dirty primary checkout is untouched.
+## 1. Outcome and authorization boundary
 
-## Existing behavior preserved
-Existing request intake, owner push/in-app notifications, atomic client/Queue conversion, appointments/reschedule/cancellation/ICS, Queue completion rules and financial/OCR pipelines were extended rather than replaced. Marketing /schedule is the active Option C restricted-PostgreSQL entry point; the legacy app /book/rnl-creations route is not activated. The owner's October19 iPhone notification navigation PASS is preserved; this candidate has no new physical acceptance.
+The candidate now includes authenticated manager photos, timing preferences, improved owner retry handling, email-only reply/calendar links, delivery-status reporting, and isolated preview adapters. It is not yet approved for production: actual hosted laboratory lifecycle acceptance is now authorized after Robbie approved the exact isolated lab setup; execution is in progress.
 
-## Implemented
-- Approval-to-Queue/schedule actions, retry-safe conversion, trustworthy client matching and ambiguity review; blocks, buffers, appointment types, same-day decisions and multi-day jobs; stable ICS identity/revisions.
-- Property-scoped manager request/direct-Queue permissions and owner access controls, without automatic appointment confirmation.
-- Disabled-by-default Twilio/test adapters, tenant outbox, consent/suppression, current-state reminders, bounded retries, uncertain-send reconciliation, signed status/inbound callbacks, audit/inbox and estimated usage/cost. No provider number, campaign or credentials purchased/configured.
-- Expiring customer appointment/calendar/document/reply capabilities. Detailed read-only estimate/invoice HTML uses existing financial helpers. Additional-information replies are idempotent and notify the owner without approving or scheduling jobs.
-- Optional public request photos: capability-bound intake, bounded decode/metadata stripping, private storage proposal, retry reconciliation and owner-authorized viewing. No existing OCR bucket reuse.
-- Public website favicon, touch/PWA icons and branded share preview; optional consent/photo UI remains gated. TriMax installed-PWA branding/service worker preserved.
-- Next16.4.3 and compatible dependency security fixes; exact sharp0.35.5 runtime pin review. npm audit reports zero vulnerabilities at verification time.
+Production remains TriMax885d01f18b1811de7f2be8fe33ec9d8858056d20 / Vercel6G2N5TMoymwBRm48NKrtt8Qbr7Xc and website7e0ca069a5cbbb2c38aa05e8705113a5cc769e18 /7nhM28FWzouDAL8HwXyom7fX7VbB. This newer production baseline includes protected remittance/auth work and supersedes October19 as the release baseline. No production migration, deployment, worker switch, credential change, customer message or synthetic production submission occurred in this session. Existing push subscriptions/scheduler, data and dirty primary checkout were preserved.
 
-## Evidence levels
-Local: actual-catalog replay of all eight candidate migrations and retained grants, synthetic SQL and real React tests, real image decoder tests, Final rc4 56-case photo matrix PASS. Full predeployment gate READY_FOR_CONTROLLED_DEPLOYMENT with141 passed checks,two named deployment prerequisites,eightretained/lint/TypeScript/build; physical and deployed schema/runtime acceptance remain separate. Full release-gate status and preview identity are recorded in WORKFLOW_UPGRADE_ACTIVE.md and its referenced receipt.
-Hosted marketing: exact8ee2d20c6d8bde2b89a504c8ed663d8e5ecbbe1d, Ready previewDTXmAkPUpnPZ4aPb88fPcQMnXA7G, https://rnl-public-website-ep4dqxknw-trimax-s-projects.vercel.app. Metadata and /schedule inspected; no real submission/upload.
-Provider/device: no actual SMS send, carrier callback, STOP/HELP handset or candidate iPhone acceptance. Historical Oct19 push navigation remains accepted independently.
+Exact final candidate, gate and deployment identities are maintained in WORKFLOW_UPGRADE_ACTIVE.md; that checkpoint supersedes historical source references in older reports.
 
-## Hosted verification prerequisite
-The existing FREE trimax-scheduling-auth-lab (yzyfmvoswucyauogueca) was resumed successfully. Its public schema contains only lab_scheduling_requests; it is not a complete TriMax test environment. No schema/grants/credentials/bucket/users were added. Before hosted mutation tests, approve a separately reviewed setup containing schema-only baseline plus the eight candidate migrations, synthetic tenants/clients/owner/manager identities, exact least-privilege roles and a dedicated private photo bucket. Do not copy production customer/financial data. Configure only the candidate preview with isolated database credentials via approved secure transfer, never chat/logs. No new paid infrastructure is needed.
+## 2. Already implemented before this session
 
-After isolated setup, test anonymous request/retry, new/existing/ambiguous client conversion and exactly one Queue item; manager request/direct/cross-tenant denial; block/buffer/same-day/reschedule/cancel/ICS; test-provider milestone/STOP/signature/retry/uncertain-send behavior; reply expiration/retry and owner notification; representative document totals; upload CORS/platform body ceiling/expiry/retry and independent-session PostgreSQL concurrency. Preview must not write to production or send real email/SMS.
+- Existing public Option C restricted PostgreSQL intake, owner push/in-app notifications, client matching/creation, atomic Queue conversion, approved scheduling/reschedule/cancellation and ICS.
+- Candidate owner workflow actions, schedule blocks/travel buffers/types, manager request/direct-Queue permissions, customer document/reply capabilities and disabled SMS outbox/provider implementation.
+- Candidate optional public photo scrubber/private-storage proposal,4MiB input boundary,5MiB processed quota.
+- Website favicon, touch icons and sharing metadata; reviewed Next16.4.3/sharp0.35.5 security/runtime pins.
+- Historical rc4 evidence was reread:141 checks passed plus two named production prerequisites,8/8 retained documents and56/56 photo cases. App483074f and marketing8ee2d20 Ready previews were verified. Those receipts do not authorize the changed candidate.
+- October19 physical iPhone banner-to-request navigation PASSED by Robbie with screenshot for Rollout Acceptance20261019. It remains historical; no candidate-specific physical test has passed in this session.
 
-## Remaining limitations and activation requirements
-- Authenticated manager photo UI is not implemented; public-request photos are implemented but disabled pending hosted storage acceptance. HEIC unsupported; JPEG/PNG/WebP only. Validate iPhone conversion and hosting request ceiling. Retention/orphan cleanup and reserved-slot recovery need an explicit data-preserving policy.
-- Customer document HTML is not an e-signature/payment portal or immutable PDF archive. Existing emailed PDFs are unchanged.
-- Unlinked inbound SMS has Communications history/alerts but no fabricated service request to force a request-only push. Real handset behavior remains unverified.
-- Cost is an estimate, not carrier billing reconciliation or a guaranteed spend cap. Provider acceptance is not delivery. Unknown send outcomes require reconciliation before retry.
-- Customer email remains unactivated: verify sender, controlled delivery and separate activation. Its masked live flag was not freshly revealed; no configuration was changed. SMS global flag was absent/default-disabled and workspace activation remains separate.
-- No production approval requested until isolated hosted tests and exact coordinated deployment plan are ready. Production schema changes require a coordinated web/native-worker contract and data-preserving recovery; an old Vercel promotion alone is insufficient after migrations.
+## 3. Completed during this extended session
 
-## Source and recovery
-App executablec591ae875a24e5523be89414d475a5dea2a6f9d5; release trimax-workflow-communications-20261025-rc4. Marketing executable8ee2d20c6d8bde2b89a504c8ed663d8e5ecbbe1d. Final metadata/preview commits are in the active checkpoint. Detailed private procedure: %LOCALAPPDATA%/Trimax/scheduling-security-release/workflow-upgrade-20261025/ROLLOUT_RECOVERY.md. Preserve all additive data and audit history during recovery; no destructive down migrations, secret rotation or snapshot overwrite.
+### Manager intake and owner workflow
 
-## Photo hosting follow-up
-Vercel documents a4.5MB Function body limit (https://vercel.com/docs/functions/limitations). Isolated follow-up cdf2046b2fb7b7dcc3f7ae8cdd72f5f4e66d811a lowers client/server raw input to4MiB while retaining5MiB processed-output/SQL quotas. Exact-boundary and overflow tests plus existing photo regression/lint pass. Integrated in root c591ae8/rc4 and marketing8ee2d20. Marketing local checks and exact hosted preview pass; app final gates and exact preview build passed. Photos stay disabled in the current candidate. Hosted body-size and storage acceptance remain required; local boundary tests are not hosted upload acceptance.
+Authenticated managers can submit property/building/unit, category/description, urgency, preferred time window/flexibility and multiple photos. The shared uploader provides progress, bounded files, retry and independent request receipt. Reserve/complete and viewing enforce current exact assignment and business/property boundaries; revocation cannot be bypassed through raw photo capability calls. Photos remain associated with the originating request and linked Queue item. Existing source of client/property identity is preserved.
 
+Urgency and timing use existing request columns and business-specific allowed windows. Owner review now prevents same-tick duplicate saves and preserves the mutation identity when retrying a lost response; changed input receives a new identity. Actual component and SQL regressions cover these behaviors. Production photo activation remains off pending hosted storage acceptance.
 
+### Email and internal notifications
 
+Added exact-lab email simulation, current-recipient/consent/state checks, stale backlog suppression and obsolete reminder cancellation. Durable first-attempt timing stops automatic retry before Resend's24h idempotency expiry. Unknown old attempts require reconciliation.
 
-## Final preview result
-TriMax source483074fee304e6716a1a5d70933be1bf93b529e9 is Ready Preview5WmGB5Jm94qYuXgqBAVhhhHi6Ch5 at https://trimax-huofvq7ky-trimax-s-projects.vercel.app. Hosted root login and protected Service Requests login destination verified. This is an authentication smoke check, not hosted workflow acceptance. Production remains885d01f, rechecked after publication. Initial build was blocked by inherited receipt; branch-only gate configuration and same-source redeploy resolved it without code bypass.
+Email-only request/reply/calendar capabilities work independently of SMS consent. Tokens bind business/outbox/current recipient, expire after30days, honor revocation and support idempotent additional-information replies. Replies reuse request activity and request-targeted owner notification. ICS uses current appointment state, stable UID and revision/cancellation fields.
 
-Isolated lab setup is prepared privately, not executed. Managed dependencies exist; one Auth identity and no buckets. Separate adaptera531351/e30f1e4 locally tested but not integrated/deployed. A second test identity, approved isolated schema/access/configuration and optional private bucket are required; no production data or delivery credentials should enter this lab. See active checkpoint for precise continuation.
+Signed Resend callback support records provider acceptance separately from recipient-server delivery, bounce, complaint or failure. It checks signature/time/message/recipient/business, deduplicates events, suppresses bounced/complained addresses and retries early callbacks. Existing owner Delivery history displays these distinctions. Real outbound delivery and webhook activation remain disabled; production CRON_SECRET is preserved.
+
+### Preview integration and laboratory preparation
+
+Existing FREE lab yzyfmvoswucyauogueca is active; one original Auth identity, no buckets and only the original public sentinel were observed. The approved isolated provisioning is now in progress; consult the active checkpoint for committed hosted stages.
+
+Prepared25 resumable atomic stages for actual schema plus13 candidate migrations, with hashes, previous-stage checks, exact project guard and repeatable recovery. Local double replay matches all five candidate catalog fingerprints. Four synthetic identities/two businesses, namespace collision checks, private photo setup, restricted two-RPC website login and storage→data→identity cleanup are prepared. No production customer or financial data is required.
+
+The app preview adapter retains real JWT/RLS authorization and existing RPCs. The website adapter uses the actual Option C PostgreSQL handler, only the approved lab role/project and synthetic emails; simulated CAPTCHA/rate-provider behavior is explicitly labeled. Public website lab photos remain disabled to avoid the existing production photo endpoint.
+
+Prepared actual financial acceptance uses existing browser estimate/completion/invoice controls and /api/payments/apply-batch. It verifies request→Queue→estimate→invoice relationships,125 synthetic total, active-session completion denial, owner-only validate/apply and duplicate-payment rejection. No direct financial inserts substitute for UI behavior.
+
+## 4. Evidence levels and limits
+
+| Area | Evidence completed | Still required |
+| --- | --- | --- |
+| Candidate database | Actual885 baseline catalog reproduced;13 migrations replayed; restricted two-RPC/no-table and tenant checks | Approved hosted lab install, independent-session concurrency, production attestation after approved cutover |
+| Manager photos/timing | SQL/API/uploader/actual React tests;390px and1024px local CSS layouts without horizontal overflow | Actual hosted upload/storage/platform limits, current-assignment revocation and manager/owner review in browser |
+| SMS | Simulated provider/signatures/templates;40 base SQL,21 Queue,21 replies; consent, STOP/HELP/START, retries, suppression, quiet hours, outdated events and financial milestones | Real provider account/sender/registration, signed callback/handset acceptance, activation approval |
+| Email |51 adapter/origin/current-state assertions,20 link SQL,22 status SQL,6 signature checks; templates/retry/status/UI | Verified sender, owner-address controlled delivery, actual signed callback and mailbox evidence |
+| Website |82 retained checks, build/lint/TypeScript, brand/light-dark16/32/48px review, actual Ready preview and disabled schedule page | Actual isolated hosted submission; physical Safari cache/touch behavior not claimed |
+| Financial/OCR/Queue/Job Sessions | Existing regression suites retained; full current release run recorded in active checkpoint | Hosted end-to-end lifecycle and candidate production/device gates |
+| Hosted full lifecycle | No complete hosted lifecycle passed this session | Public submission→review→client→Queue→appointment→estimate→completion→invoice→payment; estimate-first and manager direct paths |
+| iPhone push | Historical October19 physical acceptance retained | Candidate-specific installed-device acceptance after approved rollout |
+
+Local visual fixtures use actual CSS but inert controls and some stubbed children; they are layout evidence, not hosted authenticated acceptance. Mocked/synthetic provider tests do not establish carrier or mailbox delivery. A Ready preview proves deployment/build, not production readiness.
+
+## 5. Remaining release work and recovery
+
+1. Execute the already-approved isolated lab setup. Bind lab-only keys to codex/workflow-upgrade and codex/rnl-brand-icons Preview scopes; no production/provider secrets.
+2. Run actual hosted browser/API lifecycle including two customers, manager request/direct paths/photos, cross-business/property denial, matching and retry, unapproved appointment denial, conflicts/buffers, same-day/reschedule/cancel/ICS, estimate-first, session completion, invoice and synthetic payment. Repair observed failures and reseal/retest changed code.
+3. Complete fresh release evidence and exact previews (current status in active checkpoint). Resolve production schema/runtime prerequisites only through approved coordinated database/web/native cutover; do not manufacture a PASS from local rehearsal.
+4. Present one exact coordinated production approval after hosted prerequisites pass. Include13 ordered migrations, any private storage/named manager grants, optional paused SMS scheduler, app/website/native source identities, controlled acceptance and recovery limitations.
+5. After approved deployment, POSTDEPLOYMENT attestations/live worker health and candidate-specific physical acceptance remain mandatory. SMS carrier setup must not delay unrelated verified core release work.
+
+Detailed reviewed sequence: C:/Users/robbi/AppData/Local/Trimax/scheduling-security-release/workflow-upgrade-20261025/ROLLOUT_RECOVERY.md. Preserve both rollback refs. After schema changes, old Vercel promotion alone is insufficient: retain records/audits, prefer forward repair or seal a compatible recovery executable against the measured retained catalog. No destructive down migrations, snapshot overwrite, secret rotation or suppression reset.
+
+## 6. SMS and email activation
+
+SMS: owner selects/approves provider account, sender/number use and chargeable registration; complete10DLC or toll-free verification, inbound STOP/HELP/START and signed status callbacks; store server-only credentials; test owner handset/private links/obsolete reminders; set business consent/timezone/cap then approve activation. Current implementation uses Twilio. Telnyx was researched, not implemented or purchased.
+
+Official checked base rates: Twilio US$0.0083/inbound or outbound segment plus$1.15/month long-code or$2.15 toll-free and carrier/registration fees. Telnyx$0.004/part plus separate fees. At1000parts/month base messaging is$8.30 versus$4 before carrier/number/registration/tax/inbound traffic. Long capability URLs can increase segments. See linked official sources and exact flags in COMMUNICATIONS_ACCEPTANCE_20261025.md; this is an estimate, not a guaranteed spending cap.
+
+Email: verify sender domain/address and reply handling, configure existing Resend key/business/from and exact production link origin securely, configure signed webhook secret, approve controlled owner-address delivery and verify mailbox/callback outcome. Then set activation timestamp and separately approve customer enablement. Historical backlog stays suppressed. Existing estimate/invoice send routes are preserved; request email does not claim a new payment portal or electronic signature system.
+
+## 7. Owner-only actions
+
+Robbie approved the exact isolated lab setup on2026-10-25. No additional setup approval or login is needed within that scope. Production and provider activation remain separately protected.
+
+Later: exact coordinated production deployment approval, named manager access decisions, candidate physical-device acceptance, and independently scoped email/provider/SMS registration/delivery activation. No real customer messages or new paid service has been authorized here.
+
+## 8. Evidence and continuation
+
+- Active source/deployments/full gate: WORKFLOW_UPGRADE_ACTIVE.md.
+- Photos/access details: PROPERTY_REQUEST_PHOTOS_CANDIDATE.md.
+- Communications/provider sources/flags: COMMUNICATIONS_ACCEPTANCE_20261025.md.
+- Private lab bundle: C:/Users/robbi/AppData/Local/Trimax/hosted-lab-acceptance-20261026/README.md and FINANCIAL_ACCEPTANCE.md.
+- Private actual-catalog projection: C:/Users/robbi/AppData/Local/Trimax/scheduling-security-release/workflow-upgrade-20261025/candidate.json.
+- Local visual proof: C:/Users/robbi/AppData/Local/Trimax/workflow-extended-20261025/.
+
+Resume from the active checkpoint, preserve working branches and rollback tags, and use existing authenticated browser sessions. No background execution is promised after the turn ends.
