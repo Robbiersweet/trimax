@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import RequestPhotos from "../book/RequestPhotos";
+import {createPhotoCapability} from "../lib/requestPhotos/clientCapability";
 import { supabase } from "../lib/supabase";
 
 type Assignment = { id: string; businessId: string; property: string; directQueue: boolean; types: { id: string; label: string }[] };
@@ -12,6 +14,10 @@ export default function PropertyRequestsPage() {
  const [assignmentId,setAssignmentId]=useState(""),[typeId,setTypeId]=useState(""),[unit,setUnit]=useState(""),[description,setDescription]=useState(""),[date,setDate]=useState(""),[direct,setDirect]=useState(false);
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(""),[success,setSuccess]=useState("");
  const pending=useRef<{key:string;payload:string}|null>(null),sending=useRef(false);
+ const [photosEnabled,setPhotosEnabled]=useState(false),[photoReceipts,setPhotoReceipts]=useState<{id:string;secret:string}[]>([]);
+ const photoCapability=useRef<Awaited<ReturnType<typeof createPhotoCapability>>|null>(null);
+ useEffect(()=>{let active=true;void fetch("/api/property-request-photos",{cache:"no-store"}).then(r=>r.ok?r.json():{enabled:false}).then(data=>{if(active)setPhotosEnabled(data.enabled===true);}).catch(()=>{});return()=>{active=false;};},[]);
+ async function sessionToken(){const {data:{session}}=await supabase.auth.getSession();if(!session)throw Error("Sign in");return session.access_token;}
  const assignment=assignments.find(a=>a.id===assignmentId);
  async function refresh(){
   const {data,error:failure}=await supabase.rpc("trimax_property_request_context");
@@ -28,7 +34,8 @@ export default function PropertyRequestsPage() {
  async function submit(event:React.FormEvent){
   event.preventDefault();if(sending.current||!assignment)return;
   sending.current=true;setBusy(true);setError("");setSuccess("");
-  const payload={requestTypeId:typeId,unit:unit.trim(),description:description.trim(),preferredDate:date,directQueue:direct&&assignment.directQueue};
+  const payload:{requestTypeId:string;unit:string;description:string;preferredDate:string;directQueue:boolean;uploadCapabilityHash?:string}={requestTypeId:typeId,unit:unit.trim(),description:description.trim(),preferredDate:date,directQueue:direct&&assignment.directQueue};
+  try{if(photosEnabled){photoCapability.current??=await createPhotoCapability();payload.uploadCapabilityHash=photoCapability.current.uploadCapabilityHash;}}catch{sending.current=false;setBusy(false);setError("Photo preparation failed. Please retry.");return;}
   const signature=JSON.stringify([assignment.id,payload]);
   if(!pending.current||pending.current.payload!==signature)pending.current={key:crypto.randomUUID(),payload:signature};
   try{
@@ -37,7 +44,8 @@ export default function PropertyRequestsPage() {
    const data=await response.json();
    if(!response.ok)throw Error((data.error??"Unable to submit.")+" An unchanged retry will not create a duplicate.");
    setSuccess(data.queueItemId?"Added to the Work Queue. Scheduling will be confirmed separately.":"Request received. R&L will review the work and confirm the next steps.");
-   pending.current=null;setDescription("");setUnit("");setDate("");setDirect(false);await refresh();
+   if(photosEnabled&&photoCapability.current&&typeof data.id==="string"){const secret=photoCapability.current.secret;setPhotoReceipts(old=>old.some(p=>p.id===data.id)?old:[...old,{id:data.id,secret}]);}
+   photoCapability.current=null;pending.current=null;setDescription("");setUnit("");setDate("");setDirect(false);await refresh();
   }catch(failure){setError(failure instanceof Error?failure.message:"Unable to submit. Please retry.");}
   finally{sending.current=false;setBusy(false);}
  }
@@ -56,6 +64,7 @@ export default function PropertyRequestsPage() {
    {assignment?.directQueue&&<label className="flex items-start gap-3"><input type="checkbox" className="mt-1" checked={direct} disabled={busy} onChange={e=>setDirect(e.target.checked)}/><span>Add directly to the Work Queue using my property permission. An appointment still requires scheduling approval.</span></label>}
    <button disabled={busy||!assignment} className="rounded-lg bg-orange-500 px-5 py-3 font-bold text-black disabled:opacity-50">{busy?"Submitting…":direct?"Add to Work Queue":"Send for review"}</button>
   </form>}
+  {photoReceipts.map(p=><RequestPhotos key={p.id} requestId={p.id} secret={p.secret} endpoint="/api/property-request-photos" getSessionToken={sessionToken}/>)}
   <section aria-label="Your requests"><h2 className="text-xl font-bold">Your requests</h2><ul className="mt-3 space-y-3">{requests.map(r=><li key={r.id} className="rounded-lg border p-4"><p className="font-semibold">{r.property} · {r.status.replaceAll("_"," ")}</p><p className="whitespace-pre-wrap">{r.description}</p><p className="mt-2 text-sm">{r.appointmentStart?`Scheduled: ${new Date(r.appointmentStart).toLocaleString()}`:r.queueItemId?"In Work Queue · awaiting scheduling":"Awaiting review"}</p><p className="break-all text-xs">{r.reference}</p></li>)}</ul></section>
  </main>;
 }
