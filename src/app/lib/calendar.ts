@@ -1,5 +1,8 @@
 type CalendarEventInput = {
   title: string;
+  revision?: number;
+  changedAt?: string | null;
+  cancelled?: boolean;
   start?: string | null;
   end?: string | null;
   id?: string;
@@ -27,13 +30,13 @@ function eventDate(value: string | null) {
 }
 
 function nextDate(value: string | null) {
-  const date = value ? new Date(`${value.slice(0, 10)}T00:00:00`) : null;
+  const date = value ? new Date(`${value.slice(0, 10)}T00:00:00Z`) : null;
 
   if (!date || Number.isNaN(date.getTime())) {
     return null;
   }
 
-  date.setDate(date.getDate() + 1);
+  date.setUTCDate(date.getUTCDate() + 1);
 
   return date.toISOString().slice(0, 10).replaceAll("-", "");
 }
@@ -68,10 +71,12 @@ export function calendarDataUri(input: CalendarEventInput) {
     "VERSION:2.0",
     "PRODID:-//Trimax Operations Platform//Schedule//EN",
     "CALSCALE:GREGORIAN",
-    "METHOD:PUBLISH",
+    input.cancelled ? "METHOD:CANCEL" : "METHOD:PUBLISH",
     "BEGIN:VEVENT",
     `UID:${uid}`,
-    `DTSTAMP:${now}`,
+    `DTSTAMP:${input.changedAt && Number.isFinite(Date.parse(input.changedAt)) ? stamp(input.changedAt) : now}`,
+    `SEQUENCE:${Math.max(0, Math.floor(input.revision ?? 0))}`,
+    `STATUS:${input.cancelled ? "CANCELLED" : "CONFIRMED"}`,
     timed ? `DTSTART:${stamp(input.start!)}` : `DTSTART;VALUE=DATE:${date}`,
     timed ? `DTEND:${stamp(input.end!)}` : `DTEND;VALUE=DATE:${endDate}`,
     `SUMMARY:${cleanText(input.title)}`,

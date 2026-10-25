@@ -9,7 +9,7 @@ assert.throws(()=>appointmentInstant('2027-11-07','01:30','America/Los_Angeles')
 assert.throws(()=>appointmentInstant('2030-02-31','09:00','UTC'));
 const change={requestId:'00000000-0000-4000-8000-000000000001',expectedRevision:1,mutationId:'synthetic-mutation-01',action:'schedule',clientId:null,start:'2030-01-07T17:00:00.000Z',minutes:60};
 assert.equal(validateWorkflowChange(change).minutes,60);
-for(const patch of [{minutes:0},{minutes:721},{minutes:1.5},{clientId:'foreign'},{businessId:'injected'},{action:'delete'},{start:'2030-01-07T09:00'}])assert.throws(()=>validateWorkflowChange({...change,...patch}));
+for(const patch of [{minutes:0},{minutes:10081},{minutes:1.5},{clientId:'foreign'},{businessId:'injected'},{action:'delete'},{start:'2030-01-07T09:00'}])assert.throws(()=>validateWorkflowChange({...change,...patch}));
 assert.equal(validateWorkflowChange({...change,conflictReason:'Two crews assigned'}).conflictReason,'Two crews assigned');
 for(const conflictReason of ['', 'x', 'x'.repeat(501), true])assert.throws(()=>validateWorkflowChange({...change,conflictReason}));
 const row:Delivery={id:'synthetic',business_id:'b',request_id:'r',channel:'email',audience:'customer',recipient:'synthetic@example.invalid',event_type:'approved',idempotency_key:'synthetic-email-01',lease_token:'lease',consent_reference:'synthetic-consent',parameters:{business:'R&L Creations',reference:'SYNTHETIC',start:'2030-01-07T17:00:00Z',end:'2030-01-07T18:00:00Z',timeZone:'America/Los_Angeles',internalNotes:'SECRET NOTE'}};
@@ -37,3 +37,8 @@ assert.deepEqual(await dispatchDeliveries(['push','email'],{async claim(channel)
 assert.deepEqual(await dispatchDeliveries(['push'],{async claim(){return [row];},async send(){return 'accepted';},async finish(){throw Error('database offline');}}),{accepted:0,failed:1});
 assert.deepEqual(await dispatchDeliveries([],{async claim(){throw Error('must not claim');},async send(){throw Error('must not send');},async finish(){throw Error('must not finish');}}),{accepted:0,failed:0});
 console.log('PASS real dispatcher orchestration: provider failure isolation, independent channels, finish failure accounting, disabled dispatch');
+
+const cancelledCalendar=decodeURIComponent(calendarDataUri({date:'2030-01-07',title:'Test',id:'job-1',start:'2030-01-07T17:00:00Z',end:'2030-01-07T18:00:00Z',revision:3,changedAt:'2030-01-06T18:00:00Z',cancelled:true})!);
+assert.match(cancelledCalendar,/UID:job-1@trimax/);assert.match(cancelledCalendar,/METHOD:CANCEL/);assert.match(cancelledCalendar,/STATUS:CANCELLED/);assert.match(cancelledCalendar,/SEQUENCE:3/);assert.match(cancelledCalendar,/DTSTAMP:20300106T180000Z/);
+assert.equal(validateWorkflowChange({...change,action:'approve_queue',start:null,minutes:null}).action,'approve_queue');
+console.log('PASS stable calendar cancellation/revision and one-step approval validation');

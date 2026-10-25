@@ -7,7 +7,7 @@ try{
  create table clients(id uuid primary key default gen_random_uuid(),business_id uuid,created_by_user_id uuid,name text not null,contact_name text,email text,phone text,service_address text);
  create table push_subscriptions(id uuid primary key,business_id uuid,user_id uuid,status text);
  create table queue_items(id text primary key,business_id uuid,created_by_user_id uuid,property text not null,unit text not null,status text,priority text,notes text,scheduled_date date,completed_date date);`);
- for(const name of ['20261009_public_scheduling_foundation.sql','20261010_public_scheduling_phase2.sql','20261017_scheduling_owner_notifications.sql','20261018_service_request_workflow.sql','20261018_service_request_delivery.sql','20261018_request_urgency.sql'])await db.exec(fs.readFileSync('supabase/migrations/'+name,'utf8'));
+ for(const name of ['20261009_public_scheduling_foundation.sql','20261010_public_scheduling_phase2.sql','20261017_scheduling_owner_notifications.sql','20261018_service_request_workflow.sql','20261018_service_request_delivery.sql','20261018_request_urgency.sql','20261025_workflow_experience.sql'])await db.exec(fs.readFileSync('supabase/migrations/'+name,'utf8'));
  const uid=n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`,business=uid(1),owner=uid(2),outsider=uid(3);
  await db.query('insert into businesses values($1),($2)',[business,uid(4)]);
  await db.query('insert into auth.users values($1),($2)',[owner,outsider]);
@@ -40,6 +40,7 @@ try{
  await as(owner,()=>call(first.id,6,'cancel_appointment','cancel-first-0000001'));
  const cancelled=(await db.query('select * from queue_items where id=$1',[q.id])).rows[0];eq(cancelled.scheduled_date,null);eq(cancelled.completed_date,null);
  const history=(await db.query('select event_type from public_request_activity where request_id=$1',[first.id])).rows.map(r=>r.event_type);for(const event of ['client_created','queue_converted','appointment_scheduled','appointment_rescheduled','appointment_cancelled']){assert.ok(history.includes(event));checks++;}
+ eq(cancelled.appointment_revision,3);eq(cancelled.appointment_status,'cancelled');assert.ok(cancelled.appointment_previous_start);checks++;
  const third=await submit(3,{email:'other@example.invalid',phone:'5555550101'});
  await db.query('insert into clients(id,business_id,name) values($1,$2,$3)',[uid(50),uid(4),'Other workspace']);
  await fail(()=>as(owner,()=>call(third.id,1,'approve_schedule','foreign-client-0001',uid(50),'2030-01-09T18:00:00Z',60)),/Client is not/);
@@ -88,5 +89,30 @@ try{
  await db.exec(command);eq((await db.query('select count(*)::int n from net.calls')).rows[0].n,1);
  await db.exec("update public_scheduling_outbox set status='delivered';truncate net.calls");await db.exec(command);eq((await db.query('select count(*)::int n from net.calls')).rows[0].n,0);
  await db.query("update public_scheduling_outbox set status='leased',lease_expires_at=now()-interval '1 minute' where id=$1",[batch[2].id]);await db.exec(command);eq((await db.query('select count(*)::int n from net.calls')).rows[0].n,1);
+ const quick=await submit(98,{email:'quick@example.invalid',phone:'5555550198'});
+ const accepted=(await as(owner,()=>call(quick.id,1,'approve_queue','quick-approval-00001'))).rows[0].r;
+ eq((await as(owner,()=>call(quick.id,1,'approve_queue','quick-approval-00001'))).rows[0].r,accepted);
+ eq((await db.query('select count(*)::int n from queue_items where source_request_id=$1',[quick.id])).rows[0].n,1);
+ eq((await db.query('select appointment_start from queue_items where source_request_id=$1',[quick.id])).rows[0].appointment_start,null);
+ await db.query("update public_scheduling_settings set blocked_dates=array['2030-02-01'::date] where business_id=$1",[business]);
+ await fail(()=>as(owner,()=>call(quick.id,2,'schedule','blocked-test-000001',null,'2030-02-01T18:00:00Z',60)),/Blocked date/);
+ console.log('Atomic approval and blocked-date checks passed');
+ const block=(await as(owner,()=>db.query('select trimax_schedule_block($1,$2,$3,$4) id',[business,'2030-03-01T17:00:00Z','2030-03-01T18:00:00Z','Unavailable']))).rows[0].id;
+ await fail(()=>as(outsider,()=>db.query('select trimax_schedule_block($1,$2,$3,$4,$5)',[business,null,null,'',block])),/Not authorized/);
+ await fail(()=>as(owner,()=>call(quick.id,2,'schedule','timed-block-0000001',null,'2030-03-01T17:30:00Z',60,'Deliberate overlap')),/Blocked time/);
+ await fail(()=>as(owner,()=>db.query('select trimax_service_request_workflow($1,2,$2,$3,null,$4,60,null,30,0,$5)',[quick.id,'buffer-block-000001','schedule','2030-03-01T18:15:00Z','job'])),/Blocked time/);
+ await as(owner,()=>db.query('select trimax_schedule_block($1,$2,$3,$4,$5)',[business,null,null,'',block]));
+ await as(owner,()=>db.query('select trimax_service_request_workflow($1,2,$2,$3,null,$4,2880,null,30,15,$5)',[quick.id,'multi-day-000000001','schedule','2030-03-01T18:15:00Z','site_visit']));
+ const multi=(await db.query('select appointment_kind,appointment_buffer_before,appointment_buffer_after,extract(epoch from appointment_end-appointment_start)::int duration from queue_items where id=$1',[accepted.queueItemId])).rows[0];
+ eq(multi,{appointment_kind:'site_visit',appointment_buffer_before:30,appointment_buffer_after:15,duration:172800});
+ await fail(()=>as(owner,()=>db.query('select trimax_schedule_block($1,$2,$3,$4)',[business,'2030-03-01T18:00:00Z','2030-03-01T18:10:00Z','Travel collision'])),/overlaps scheduled work/);
+ await db.exec('alter table public_service_requests add column sms_consent_at timestamptz, add column sms_consent_version text, add column sms_consent_source text');
+ await db.exec(fs.readFileSync('supabase/migrations/20261025_service_request_consent_intake.sql','utf8'));
+ const opted=await submit(99,{smsConsent:true,smsDisclosureVersion:'transactional-sms-2026-10-25'});
+ const consent=(await db.query('select sms_consent_at,sms_consent_version,sms_consent_source from public_service_requests where id=$1',[opted.id])).rows[0];
+ assert.ok(consent.sms_consent_at);eq(consent.sms_consent_version,'transactional-sms-2026-10-25');eq(consent.sms_consent_source,'public-request-form');
+ await fail(()=>submit(100,{smsConsent:true,smsDisclosureVersion:'old'}),/Invalid SMS disclosure/);
+ const noSms=await submit(101,{smsConsent:false,smsDisclosureVersion:'transactional-sms-2026-10-25'});
+ eq((await db.query('select sms_consent_at from public_service_requests where id=$1',[noSms.id])).rows[0].sms_consent_at,null);
  console.log(JSON.stringify({result:'PASS',checks,scope:'isolated PostgreSQL; no production writes'}));
 }finally{await db.close();}})().catch(e=>{console.error(e);process.exitCode=1});

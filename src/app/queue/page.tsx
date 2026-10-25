@@ -1146,7 +1146,16 @@ export default async function QueuePage({
               <Link href={`/new-request${businessQuery}`}>
                 <Button>+ New Queue Item</Button>
               </Link>
-              {isPriorityPlannerView ? (
+              <RoleVisible businessSlug={businessSlug} allow={["owner", "admin"]}>
+          <Card className="p-4 border-orange-400/30">
+            <h2 className="text-lg font-semibold">Incoming service requests</h2>
+            <p className="mt-1 text-sm text-zinc-400">Review new requests, approve work into this Queue, or confirm an appointment. Requests remain separate until accepted.</p>
+            <Link className="mt-3 inline-block font-semibold text-orange-400" href={`/admin/service-requests${businessQuery}`}>Review incoming requests</Link>
+            <p className="mt-2 text-xs text-zinc-500">Accepted work stays in the active Queue until completed; sending an estimate or invoice does not complete the work.</p>
+          </Card>
+        </RoleVisible>
+
+        {isPriorityPlannerView ? (
                 <Link href={`/queue${businessQuery}`}>
                   <Button variant="secondary">Back to Queue</Button>
                 </Link>

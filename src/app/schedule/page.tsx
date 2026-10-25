@@ -1,3 +1,5 @@
+import ScheduleBlocks from "./ScheduleBlocks";
+import RoleVisible from "../components/RoleVisible";
 import Link from "next/link";
 import AppShell from "../components/AppShell";
 import Button from "../components/Button";
@@ -28,6 +30,8 @@ type QueueScheduleItem = {
   ready_date: string | null;
   scheduled_date: string | null;
   appointment_time_zone?: string | null;
+  appointment_revision?: number;
+  appointment_changed_at?: string | null;
   appointment_start?: string | null;
   appointment_end?: string | null;
   source_request_id?: string | null;
@@ -297,6 +301,7 @@ export default async function SchedulePage({
 
   return (
     <AppShell>
+      <RoleVisible businessSlug={businessSlug} allow={["owner","admin"]}><ScheduleBlocks business={businessSlug}/></RoleVisible>
       <div className="schedule-page space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -532,6 +537,7 @@ export default async function SchedulePage({
                 item.scheduled_date || item.ready_date || null;
               const calendarHref = calendarDataUri({
                 title: `Trimax: ${title}`,
+                revision: item.appointment_revision, changedAt: item.appointment_changed_at,
                 start: item.appointment_start, end: item.appointment_end, id: item.appointment_start ? item.id : undefined,
                 date: eventDate,
                 location: item.property,

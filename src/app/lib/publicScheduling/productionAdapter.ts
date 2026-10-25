@@ -2,7 +2,7 @@ import {createHash} from 'node:crypto';
 import {validateRequest,type PublicBusiness} from './domain.ts';
 export interface SchedulingRpc {rpc(name:string,args:Record<string,unknown>):Promise<{data:unknown;error:{message:string}|null}>}
 export type SchedulingReceipt={id:string;reference:string;status:string;submittedAt:string};
-const allowed=['requestTypeId','customerName','phone','email','preferredContact','address','description','preferredDate','timeWindowId','flexibility','urgency','notes','consent','website'];
+const allowed=['requestTypeId','customerName','phone','email','preferredContact','address','description','preferredDate','timeWindowId','flexibility','urgency','notes','consent','smsConsent','smsDisclosureVersion','website'];
 /** Server-only adapter for a dedicated restricted RPC credential. Never use this
  * client in a browser. No default credential is loaded, and no deployment is enabled.
  * Production handler must pass the fail-closed abuse check before calling submit. */

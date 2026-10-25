@@ -30,18 +30,19 @@ export async function productionOwner(request:Request,slug:string){
  }
  async function workflowContext(id:string):Promise<WorkflowContext>{
   if(!(await list(id)).length)throw Error('Request not found');
-  const [customers,scheduled,linked,delivery]=await Promise.all([
+  const [customers,scheduled,linked,delivery,blocks]=await Promise.all([
    client.from('clients').select('id,name,email,phone').eq('business_id',s.business_id).order('name').limit(500),
    client.from('queue_items').select('id,property,scheduled_date,appointment_start,appointment_end').eq('business_id',s.business_id).is('completed_date',null).not('scheduled_date','is',null).order('scheduled_date').limit(500),
-   client.from('queue_items').select('id,request_client_id,appointment_start,appointment_end').eq('business_id',s.business_id).eq('source_request_id',id).maybeSingle(),
-   client.from('public_scheduling_outbox').select('channel,event_type,status,attempts,last_error_code').eq('business_id',s.business_id).eq('request_id',id).in('channel',['push','email','sms']).order('created_at',{ascending:false}).limit(50)
+   client.from('queue_items').select('id,request_client_id,appointment_start,appointment_end,appointment_revision,appointment_status,appointment_previous_start,appointment_previous_end,appointment_changed_at').eq('business_id',s.business_id).eq('source_request_id',id).maybeSingle(),
+   client.from('public_scheduling_outbox').select('channel,event_type,status,attempts,last_error_code').eq('business_id',s.business_id).eq('request_id',id).in('channel',['push','email','sms']).order('created_at',{ascending:false}).limit(50),
+   client.from('scheduling_time_blocks').select('id,starts_at,ends_at,label').eq('business_id',s.business_id).gte('ends_at',new Date().toISOString()).order('starts_at').limit(500)
   ]);
-  if(customers.error||scheduled.error||linked.error||delivery.error)throw Error('Workflow unavailable');
-  return {delivery:delivery.data??[],clients:customers.data??[],queue:scheduled.data??[],linked:linked.data};
+  if(customers.error||scheduled.error||linked.error||delivery.error||blocks.error)throw Error('Workflow unavailable');
+  return {blocks:blocks.data??[],delivery:delivery.data??[],clients:customers.data??[],queue:scheduled.data??[],linked:linked.data};
  }
- return {settings:{revision:0,business,production:true},list,workflowContext,async workflow(change:WorkflowChange){
+ return {async blocks(){const {data,error}=await client.from('scheduling_time_blocks').select('id,starts_at,ends_at,label').eq('business_id',s.business_id).gte('ends_at',new Date().toISOString()).order('starts_at').limit(500);if(error)throw Error('Blocks unavailable');return {blocks:data,timeZone:s.time_zone};},async block(input:{start:string|null;end:string|null;label:string;removeId?:string|null}){const {data,error}=await client.rpc('trimax_schedule_block',{p_business_id:s.business_id,p_start:input.start,p_end:input.end,p_label:input.label,p_remove_id:input.removeId??null});if(error)throw Error('Block rejected');return data;},settings:{revision:0,business,production:true},list,workflowContext,async workflow(change:WorkflowChange){
   if(!(await list(change.requestId)).length)throw Error('Request not found');
-  const {data,error:failure}=await client.rpc('trimax_service_request_workflow',{p_request_id:change.requestId,p_revision:change.expectedRevision,p_mutation_id:change.mutationId,p_action:change.action,p_client_id:change.clientId,p_start:change.start,p_minutes:change.minutes,p_conflict_reason:change.conflictReason??null});
+  const {data,error:failure}=await client.rpc('trimax_service_request_workflow',{p_request_id:change.requestId,p_revision:change.expectedRevision,p_mutation_id:change.mutationId,p_action:change.action,p_client_id:change.clientId,p_start:change.start,p_minutes:change.minutes,p_conflict_reason:change.conflictReason??null,p_buffer_before:change.bufferBefore??0,p_buffer_after:change.bufferAfter??0,p_kind:change.kind??'job'});
   if(failure)throw Error('Workflow rejected');
   return {receipt:data,request:(await list(change.requestId))[0],context:await workflowContext(change.requestId)};
  },async review(value:unknown){
