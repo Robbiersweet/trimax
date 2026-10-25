@@ -231,6 +231,11 @@ export default function Navigation() {
           description: "Add work",
           href: `/new-request?business=${business}`,
         },
+        {
+          label: "Property Requests",
+          description: "Assigned property work",
+          href: "/property-requests",
+        },
       ],
       technician: [
         {
