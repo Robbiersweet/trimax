@@ -46,6 +46,6 @@ for(const doc of corpus.documents){const failures=[];let metrics=null;const imag
 }
 run('lint',process.execPath,['node_modules/eslint/bin/eslint.js','.']);
 run('typescript',process.execPath,['node_modules/typescript/bin/tsc','--noEmit']);
-run('production-build',process.execPath,['node_modules/next/dist/bin/next','build'],600000);
+run('production-build',process.execPath,['node_modules/next/dist/bin/next','build','--webpack'],600000);
 record('clean-manifest-source-end',c.localFailures(manifest));
 Object.assign(report,state.evaluate(report,corpus));report.finishedAt=new Date().toISOString();save();console.log(JSON.stringify({status:report.status,mode:report.mode,report:path.join(out,'gate-result.json'),physicalAcceptance:report.physicalAcceptance}));process.exitCode=report.status==='FAIL'?1:0;
