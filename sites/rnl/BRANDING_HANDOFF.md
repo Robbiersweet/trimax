@@ -1,0 +1,31 @@
+# R&L website branding — 2026-10-25
+
+## Objective and workspace
+Independent marketing favicon/link-preview workstream. Checkout `C:/Users/robbi/.codex/worktrees/rnl-brand-icons/trimax`, branch `codex/rnl-brand-icons`, based on verified marketing production source `7e0ca069a5cbbb2c38aa05e8705113a5cc769e18`.
+
+## Implementation and source
+- Branding commit `56858ddfccc417f056aecea00474baf600c28228`.
+- Separate framework security patch/deployed preview source `3daecdead20aa9d149dd367d61a61e2106d40e66`.
+- Inspected original approved 5334x4268 badge. Cropped its crossed-hammer emblem for tab/bookmark icons; full original seal used in social image. No AI-generated replacement logo.
+- SVG, ICO (16/32/48), PNG fallback, 180px Apple touch, 192/512 Android and maskable-safe icon. Marketing manifest uses browser display and its own host/scope, without service worker or TriMax PWA edits.
+- Open Graph and Twitter large image:1200x630 approved badge with existing slogan. Old `/opengraph-image` URL still renders the new artwork.
+- Versioned `/brand/*-v1.*` references allow future cache invalidation; Next adds a content-hashed favicon URL. Metadata URLs point to canonical marketing host. Existing bookmarks/social caches may require a refresh after authorized production rollout; real iPhone bookmark/icon refresh is not yet accepted.
+- Minimal Next/eslint-config-next16.4.0→16.4.3 patch because the existing version reported security advisories and initial build stopped. Official evidence: https://github.com/advisories/GHSA-2464-fhr4-w9xw and https://github.com/advisories/GHSA-673q-mjm6-r5xr (fixed16.4.1+), https://github.com/vercel/next.js/releases/tag/v16.4.3 . No root app framework change.
+
+## Verification
+- Patched production-mode build, lint, typecheck passed.
+- Existing credential boundary,78 website route/security/SEO checks, actual submission-runtime guards passed against local built server.
+- `npm run test:brand` passed: homepage/gallery/schedule metadata, PNG dimensions, ICO directory, manifest identity/icons, social route compatibility.
+- `npm audit --omit=dev`:0 vulnerabilities; install audit also0.
+- Local rendered16/32/48 icons inspected on light/dark; social artwork inspected. Private screenshots in `C:/Users/robbi/AppData/Local/Trimax/brand-acceptance-20261025/`: `icon-sizes.png`, `social-preview.png`, `hosted-social-preview.png`, `vercel-preview-ready.png`.
+
+## Hosted preview
+Vercel deployment `4jz7uRfdRtmErPUWLE3g2yLfduPC` is Ready/Preview, verified exactsource3daecde in authenticated dashboard.
+- https://rnl-public-website-1pa4hhx78-trimax-s-projects.vercel.app
+- https://vercel.com/trimax-s-projects/rnl-public-website/4jz7uRfdRtmErPUWLE3g2yLfduPC
+- Existing authenticated browser verified homepage, preview notice, rendered icon/touch/manifest/OG metadata, social artwork1200x630, manifest JSON and deployed180/192/512maskable/32 pixel icons.
+- Unauthenticated CLI HTTP suite redirected to Vercel login; recorded as protection limitation, not a website failure. No protection weakened, no login request, no customer submission.
+
+## Boundary and exact resume
+No production deployment, database/credential change, customer message or TriMax PWA/worker change. Existing marketing production remains7nhM28FWzouDAL8HwXyom7fX7VbB; preserve `rollback/rnl-marketing-20261017`.
+Parent integrates reviewed commits or uses the existing Ready marketing preview for a separately authorized production rollout. Verify exactsource/settings and live metadata after promotion; production and physical iPhone icon/social cache acceptance remain pending. Changes do not alter scheduling form or its production activation flags. Do not promote the unrelated TriMax preview caused by the shared Git repository.
