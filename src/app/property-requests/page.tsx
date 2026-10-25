@@ -24,7 +24,7 @@ export default function PropertyRequestsPage() {
   if(failure)setError("Property requests are not available. Please sign in or contact R&L to confirm your property access.");
   else {const context=data as {assignments:Assignment[];requests:RequestSummary[]};setAssignments(context.assignments);setRequests(context.requests);}
   setLoading(false);
- });return()=>{active=false;};},[]);
+ }).catch(()=>{if(active){setError("Property requests are not available. Please sign in or contact R&L to confirm your property access.");setLoading(false);}});return()=>{active=false;};},[]);
  async function submit(event:React.FormEvent){
   event.preventDefault();if(sending.current||!assignment)return;
   sending.current=true;setBusy(true);setError("");setSuccess("");
