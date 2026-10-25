@@ -38,7 +38,7 @@ create table public.communication_messages (
  scheduled_for timestamptz not null default now(),next_attempt_at timestamptz not null default now(),
  appointment_start timestamptz,appointment_end timestamptz,
  attempts integer not null default 0,lease_token uuid,lease_expires_at timestamptz,
- provider_message_id text,provider text,simulated boolean not null default false,
+ provider_message_id text,provider text,simulated boolean not null default false,accepted_at timestamptz,
  body text,estimated_segments integer,estimated_cost numeric(12,6),actual_cost numeric(12,6),
  error_code text,created_at timestamptz not null default now(),updated_at timestamptz not null default now(),
  unique(business_id,idempotency_key),foreign key(business_id,recipient) references public.communication_consent(business_id,phone)
@@ -142,7 +142,7 @@ create trigger communication_owner_push after insert on public.communication_own
 create function public.trimax_claim_sms(p_test boolean default true) returns setof public.communication_messages language plpgsql security definer set search_path=pg_catalog as $$
 begin
  -- Unknown provider outcome requires reconciliation, not automatic duplicate delivery.
- with expired as (update public.communication_messages set status='uncertain',error_code='expired_send_lease',lease_token=null,lease_expires_at=null where status='leased' and lease_expires_at<now() returning id,business_id)
+ with expired as (update public.communication_messages set status='uncertain',error_code='expired_send_lease',lease_token=null,lease_expires_at=null,updated_at=now() where status='leased' and lease_expires_at<now() returning id,business_id)
  insert into public.communication_owner_alerts(business_id,message_id,kind) select business_id,id,'delivery_issue' from expired on conflict do nothing;
  return query with due as (
  select m.id from public.communication_messages m join public.communication_settings s on s.business_id=m.business_id
@@ -172,14 +172,14 @@ begin
  next_time=date_trunc('day',local_time)+make_interval(hours=>s.quiet_end);
  if next_time<=local_time then next_time=next_time+interval '1 day';end if;
  update public.communication_messages set status='retry',next_attempt_at=next_time at time zone s.time_zone,attempts=greatest(0,attempts-1),lease_token=null,lease_expires_at=null where id=m.id;return null;end if;
- select count(*) into used from public.communication_messages where business_id=m.business_id and direction='outbound' and created_at>=date_trunc('month',now()) and id<>m.id and (status in ('accepted','sent','delivered','uncertain') or (status='leased' and (created_at,id)<(m.created_at,m.id)));
+ select count(*) into used from public.communication_messages where business_id=m.business_id and direction='outbound' and coalesce(accepted_at,updated_at)>=date_trunc('month',now()) and id<>m.id and (status in ('accepted','sent','delivered','uncertain') or (status='leased' and (created_at,id)<(m.created_at,m.id)));
  if used>=s.monthly_limit then update public.communication_messages set status='retry',next_attempt_at=date_trunc('month',now())+interval '1 month',attempts=greatest(0,attempts-1),error_code='monthly_limit',lease_token=null,lease_expires_at=null where id=m.id;return null;end if;
  return jsonb_build_object('message',to_jsonb(m),'settings',to_jsonb(s));
 end $$;
 
 create function public.trimax_sms_usage(p_business uuid) returns jsonb language sql stable security invoker set search_path=pg_catalog as $$
  select jsonb_build_object('month',date_trunc('month',now()),'accepted',count(*) filter(where status in ('accepted','sent','delivered')),'delivered',count(*) filter(where status='delivered'),'failed',count(*) filter(where status in ('failed','uncertain')),'simulated',count(*) filter(where simulated),'estimatedSegments',coalesce(sum(estimated_segments),0),'estimatedCost',coalesce(sum(estimated_cost),0),'actualCost',sum(actual_cost))
- from public.communication_messages where business_id=p_business and direction='outbound' and created_at>=date_trunc('month',now())
+ from public.communication_messages where business_id=p_business and direction='outbound' and coalesce(accepted_at,updated_at)>=date_trunc('month',now())
 $$;
 revoke all on function public.trimax_sms_usage(uuid) from public,anon;
 grant execute on function public.trimax_sms_usage(uuid) to authenticated;
@@ -205,7 +205,7 @@ begin
  update public.communication_messages set status='suppressed',error_code='provider_opted_out',updated_at=now() where business_id=m.business_id and recipient=m.recipient and status in ('pending','retry');
  end if;
  update public.communication_messages set status=case when p_uncertain then 'uncertain' when p_error is null then 'accepted' when p_retry and attempts<5 then 'retry' else 'failed' end,
- provider=case when p_simulated then 'test' else s.provider end,provider_message_id=p_reference,simulated=p_simulated,body=left(p_body,1600),estimated_segments=p_segments,estimated_cost=case when p_simulated then 0 else p_segments*s.estimated_segment_cost end,
+ provider=case when p_simulated then 'test' else s.provider end,provider_message_id=p_reference,simulated=p_simulated,accepted_at=case when p_error is null then now() else accepted_at end,body=left(p_body,1600),estimated_segments=p_segments,estimated_cost=case when p_simulated or p_error is not null then 0 else p_segments*s.estimated_segment_cost end,
  error_code=left(p_error,80),next_attempt_at=now()+make_interval(secs=>least(3600,30*power(2,attempts)::integer)),lease_token=null,lease_expires_at=null,updated_at=now() where id=m.id;
  insert into public.communication_audit(business_id,message_id,event_type,details) values(m.business_id,m.id,'delivery_attempt',jsonb_build_object('attempt',m.attempts,'simulated',p_simulated,'error',left(p_error,80),'uncertain',p_uncertain));
  if p_error is not null and (not p_retry or m.attempts>=5) then insert into public.communication_owner_alerts(business_id,message_id,kind) values(m.business_id,m.id,'delivery_issue') on conflict do nothing;end if;
@@ -263,3 +263,4 @@ do $$ begin
  if exists(select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace cross join lateral aclexplode(coalesce(c.relacl,acldefault('r',c.relowner))) a where n.nspname='public' and c.relname like 'communication_%' and c.relkind='r' and a.grantee<>c.relowner and not(a.grantee='service_role'::regrole or (a.grantee='authenticated'::regrole and a.privilege_type='SELECT' and c.relname not in ('communication_links','communication_webhook_receipts')))) then raise exception 'Unexpected communications table grants';end if;
 end $$;
 commit;
+
