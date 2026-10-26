@@ -1897,6 +1897,10 @@ export default async function InvoiceDetailPage({
             </Card>
           ) : null}
 
+          {!isNonCollectibleInvoice ? (
+            <DocumentSmsPanel documentId={invoice.id} documentKind="invoice" businessSlug={businessSlug} />
+          ) : null}
+
           {hasSplitInvoiceGroup && !isNonCollectibleInvoice ? (
             <div id="send-invoice" className="scroll-mt-6">
               <PersistentDetails
@@ -1906,7 +1910,6 @@ export default async function InvoiceDetailPage({
                 className="rounded-2xl border border-sky-500/25 bg-sky-500/5 p-3"
                 contentClassName="mt-4"
               >
-                <DocumentSmsPanel key={invoice.id} documentId={invoice.id} documentKind="invoice" businessSlug={businessSlug} />
                 <InvoiceEmailSendPanel
                   documentId={invoice.id}
                   businessId={invoice.business_id}
