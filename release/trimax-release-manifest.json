@@ -10,17 +10,17 @@
   },
   "components": {
     "web": {
-      "commit": "041dbf50f746035a1079b8043cedf9de9eef2c9a"
+      "commit": "47d435fff6e258881fc0e47ddb480053e9f73a73"
     },
     "legacy": {
-      "commit": "041dbf50f746035a1079b8043cedf9de9eef2c9a"
+      "commit": "47d435fff6e258881fc0e47ddb480053e9f73a73"
     },
     "v2-shadow": {
-      "commit": "041dbf50f746035a1079b8043cedf9de9eef2c9a"
+      "commit": "47d435fff6e258881fc0e47ddb480053e9f73a73"
     }
   },
   "sourceBundle": {
-    "sha256": "308d271c60a3257bf6b81874af98f8722625dd4bd9a498aa09bbce204696cfdb",
+    "sha256": "f7c1685f82fea628e0b81c92df9e1221bbdc6b3f4e6290c2f92092a79cb3be14",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -227,7 +227,7 @@
       "scripts/payment-state-lifecycle-regression.ts": "88f1ec8d51facaf9c25d94f18ab4c827db668b331cbe0f61d923855ce8bced04",
       "scripts/payment-submit-regression.cjs": "19469651acbbdec6f1b5dcc1de8e60ef1813ee395d8afe3918ca59671e9f718a",
       "scripts/payment-timeliness-regression.ts": "92b739b72360bad34278d2d364fdf701e02b97c04026baca58d30ec6ffc7dd64",
-      "scripts/pdf-readiness-regression.mjs": "34fd04950dfc1456fdf1e662a39ae301c7916425e15afb67c702363a8a961dd5",
+      "scripts/pdf-readiness-regression.mjs": "8aa9bd83c0975d2c8b376745150c4c616132ea03d7331f3a1b350bba1fff6687",
       "scripts/photo-corpus-acceptance.cjs": "7451ce420af4c707f3185c11db2cb49c1a2702859618b5e5201fad5403a96971",
       "scripts/photo-corpus-financial-regression.cjs": "8ec7fce66dbcd180cb3e3ddd4c0c62a9275c6baa1903f851c4195836af0bea85",
       "scripts/photo-corpus-financial.cjs": "29a09c999cbef3476b9c6014d69290e848c711acf658cc0a32203cbc36e77df4",
@@ -318,7 +318,7 @@
       "src/app/admin/service-requests/page.tsx": "bcdac0b54194809d40cc0bb6f79e8581ed0062de2b9160f06dbe609f3270a152",
       "src/app/api/access-requests/route.ts": "be8e1bd81f9ed7e0833594de01d69179b231256229e6c0d1951032bb9cbd645c",
       "src/app/api/estimates/[id]/send-email/route.ts": "fc187489ea8f6193e0b659802f24fcdc3015715f1cf895756cd8e19c38fb1748",
-      "src/app/api/invoices/[id]/send-email/route.ts": "796e2e86be060d4ee0de6ce11b45c96982e92158d960ec4af00288b371b389b5",
+      "src/app/api/invoices/[id]/send-email/route.ts": "3a61b658dda0ca1c2d79924a901a50b248d2e408764327c877b9bf92745b4dd7",
       "src/app/api/invoices/send-overdue-reminders/route.ts": "ec50003ae92ac4ba7cc48d55603eb97a28340cf0aa2fe7ad522e74aff884a674",
       "src/app/api/ocr-retention/route.ts": "ba61d5de6ade820727a15828b9df895b0c5a18d72df289f881273f50335d4e17",
       "src/app/api/payments/apply-batch/route.ts": "5bf3306af7d3d1f839f5fdcadf42a98c4702c6bc1d841363241729aa102c27cf",
@@ -562,7 +562,7 @@
       "src/app/lib/outlookDrafts.ts": "bc667fa98601cd119a338a06bd6d8875af5ec0621b79ed8ca9d622190e2e5ba5",
       "src/app/lib/paymentTimeliness.ts": "27dc1dd279ad3f1f6387b7ea37206c75a9bf64f95de5a9c67b1fac1f355c070a",
       "src/app/lib/pdfAttachments.ts": "113ca5b2189e8b02d62d29f62cb389083fe9f871066b5b69ae379fc50a981b55",
-      "src/app/lib/printPagePdf.ts": "b0325c2967ad140b90a93cc7280601e118748fae971800fcaa9d65a91a50212d",
+      "src/app/lib/printPagePdf.ts": "bf1caca7530bb9f26e366baf0dc2234c23341fb9efc4b1dfef750e1c50d6bfdb",
       "src/app/lib/propertyAccess.ts": "5b3f81d36908ef4985c5525d34ac6842285fbc23ecf42d6bbbba0c7fd44c2ecc",
       "src/app/lib/propertyCommercialSettings.ts": "b345a647c84c259fb084a413943f0220140e23352a636ab5e0a67a39bf183466",
       "src/app/lib/publicScheduling/abuseProtection.ts": "546b4f5a6e4934873ff1b50037937d2fa6749ba1338fecb023c9b1b48aeeb5db",
