@@ -507,6 +507,10 @@ async function sendApiRegression(scenario) {
     status: "Draft",
     tax_mode: "no_tax",
   };
+  const delivery = scenario.endsWith("_delivery");
+  const writes = [];
+  if (scenario.startsWith("deposit")) Object.assign(invoice, {deposit_status: "requested",deposit_requested_amount:50});
+  if (scenario === "deposit_paid") invoice.amount_paid=50;
   const client = {
     id: "client",
     name: "Client Alpha",
@@ -580,7 +584,8 @@ async function sendApiRegression(scenario) {
             return (...args) => {
               if (["insert", "update", "delete"].includes(key)) {
                 mutations++;
-                throw Error("Preflight must not mutate data");
+                if (!delivery) throw Error("Preflight must not mutate data");
+                writes.push({table, operation:key, payload:args[0]});
               }
               if (key === "select") selected = args[0];
               if (key === "eq") filters.push(args);
@@ -596,15 +601,18 @@ async function sendApiRegression(scenario) {
   const savedEnv = {
     url: process.env.NEXT_PUBLIC_SUPABASE_URL,
     key: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    emailKey: process.env.RESEND_API_KEY,
   };
   process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test.supabase.co";
   process.env.SUPABASE_SERVICE_ROLE_KEY = "mock-key";
+  process.env.RESEND_API_KEY = "synthetic-never-transmitted";
   const oldFetch = global.fetch,
     oldLog = console.info,
     oldError = console.error;
   global.fetch = async () => {
     networkCalls++;
-    throw Error("No real provider calls in preflight tests");
+    if (!delivery) throw Error("No real provider calls in preflight tests");
+    return new Response(JSON.stringify({id:"synthetic-provider-proof"}),{status:200});
   };
   console.info = () => {};
   console.error = () => {};
@@ -628,7 +636,8 @@ async function sendApiRegression(scenario) {
           "content-type": "application/json",
         },
         body: JSON.stringify({
-          preflightOnly: true,
+          preflightOnly: !delivery,
+          emailPurpose: scenario.startsWith("deposit") && scenario !== "deposit_wrong_purpose" ? "deposit" : "send",
           businessSlug: "test",
           recipientEmail:
             scenario === "wrong_recipient" ? "other@example.com" : client.email,
@@ -640,18 +649,24 @@ async function sendApiRegression(scenario) {
       { params: Promise.resolve({ id: invoice.id }) },
     );
     const result = await response.json();
-    const ready = ["ready", "split_ready"].includes(scenario);
+    const ready = ["ready", "split_ready", "deposit_ready", "deposit_delivery", "final_delivery"].includes(scenario);
     assert.equal(response.ok, ready, JSON.stringify(result));
-    if (ready) {
+    if (delivery) {
+      assert.equal(networkCalls,1);
+      const updates=writes.filter(w=>w.table==='invoices'&&w.operation==='update');
+      assert.equal(updates.length,scenario==='deposit_delivery'?0:1);
+      assert.equal(writes.some(w=>w.table==='activity_logs'&&w.payload.action===(scenario==='deposit_delivery'?'invoice.deposit_email_sent':'invoice.email_sent')),true);
+      assert.equal(writes.some(w=>w.table==='invoices'&&Object.hasOwn(w.payload,'amount_paid')),false);
+    } else if (ready) {
       assert.equal(result.ready, true);
       assert.equal(result.recipientEmail, client.email);
       assert.equal(result.ccEmail, client.cc_email);
       assert.equal(pdfCount, split ? 2 : 1);
       assert.equal(result.attachmentCount, pdfCount);
     }
-    assert.equal(mutations, 0);
-    assert.equal(networkCalls, 0);
+    if (!delivery) { assert.equal(mutations, 0); assert.equal(networkCalls, 0); }
   } finally {
+    if (savedEnv.emailKey === undefined) delete process.env.RESEND_API_KEY; else process.env.RESEND_API_KEY=savedEnv.emailKey;
     global.fetch = oldFetch;
     console.info = oldLog;
     console.error = oldError;
@@ -709,6 +724,16 @@ async function splitPreferenceRegression(
     ],
   };
   const supabase = {
+    async rpc(name, args) {
+      assert.equal(name, "trimax_save_invoice_draft");
+      assert.equal(args.p_invoice_id, record.id);
+      assert.equal(args.p_business_id, record.business_id);
+      assert.equal(Object.hasOwn(args.p_fields, "amount_paid"), false);
+      assert.ok(args.p_items.length > 0);
+      payload = { ...args.p_fields };
+      Object.assign(record, args.p_fields);
+      return { data: { invoiceId: record.id }, error: null };
+    },
     auth: { getUser: async () => ({ data: { user: { id: "user" } } }) },
     from(table) {
       let single = false,
@@ -1151,6 +1176,11 @@ async function duplicatePreflightAndViewRegression() {
 }
 
 async function main() {
+  if (process.argv.includes("--invoice-send-only")) {
+    for (const scenario of ["deposit_ready","deposit_wrong_purpose","deposit_paid","deposit_delivery","final_delivery"]) await sendApiRegression(scenario);
+    console.log("Invoice send subset PASS: real route, mocked provider; deposit creates separate proof without issuing final balance, paid deposit rejected, legacy wrong-purpose send rejected, final delivery still issues invoice. Zero external requests.");
+    return;
+  }
   require("node:child_process").execFileSync(process.execPath,["scripts/remittance-intake-regression.cjs"],{stdio:"inherit"});
   require("node:child_process").execFileSync(process.execPath,["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON","--experimental-strip-types","scripts/capture-readiness-regression.ts"],{stdio:"inherit"});
   require("node:child_process").execFileSync(process.execPath,["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON","--experimental-strip-types","scripts/ocr-optical-regression.ts"],{stdio:"inherit"});
@@ -1279,6 +1309,7 @@ async function main() {
     "split_ready",
     "split_single",
     "already_sent",
+    "deposit_ready", "deposit_wrong_purpose", "deposit_paid", "deposit_delivery", "final_delivery",
     "proof_error",
     "wrong_recipient",
     "pdf_error",

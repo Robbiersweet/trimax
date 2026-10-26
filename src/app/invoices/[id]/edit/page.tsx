@@ -1,5 +1,4 @@
 "use client";
-import { roundMoney } from "../../../lib/money.ts";
 
 
 import { multiplyMoney, subtractMoney, sumMoney } from "../../../lib/money";
@@ -37,7 +36,6 @@ import {
   serviceSearchText,
   uniqueSavedServices,
 } from "../../../lib/savedServicePresentation";
-import { logActivity } from "../../../lib/activityLog";
 import { assertCanWriteDuringMaintenance } from "../../../lib/maintenanceMode";
 import {
   buildSplitInvoicePlan,
@@ -59,6 +57,7 @@ type Invoice = {
   client_id: string | null;
   display_id: string | null;
   status: string | null;
+  updated_at: string | null;
   customer_name: string | null;
   project_title: string | null;
   invoice_amount: string | null;
@@ -156,7 +155,7 @@ export default function EditInvoicePage() {
     useState<string | null>(null);
   const [invoiceSplitParentId, setInvoiceSplitParentId] =
     useState<string | null>(null);
-  const [previousInvoiceAmount, setPreviousInvoiceAmount] = useState<string | null>(null);
+  const [expectedUpdatedAt, setExpectedUpdatedAt] = useState<string | null>(null);
   const [invoiceStatus, setInvoiceStatus] = useState<string | null>(null);
   const [serviceItems, setServiceItems] =
     useState<ServiceItem[]>([]);
@@ -436,7 +435,7 @@ export default function EditInvoicePage() {
       setInvoiceClientId(invoice.client_id ?? null);
       setInvoiceSplitParentId(invoice.split_parent_invoice_id ?? null);
       setInvoiceStatus(invoice.status ?? null);
-      setPreviousInvoiceAmount(invoice.invoice_amount);
+      setExpectedUpdatedAt(invoice.updated_at);
       setCustomerName(invoice.customer_name ?? "");
       setProjectTitle(invoice.project_title ?? "");
       setIssueDate(invoice.issue_date ?? "");
@@ -753,7 +752,7 @@ export default function EditInvoicePage() {
       setToast({
         type: "error",
         message:
-          "Sent invoices cannot be edited directly. Use Supersede This Invoice, then apply the discount to the replacement draft.",
+          "Sent invoices cannot be edited directly. Return to the invoice to review correction options. Invoices with recorded payments require a payment-preserving review.",
       });
       setSaving(false);
       return;
@@ -807,9 +806,11 @@ export default function EditInvoicePage() {
       return;
     }
 
-    const { error } = await supabase
-      .from("invoices")
-      .update({
+    const { error } = await supabase.rpc("trimax_save_invoice_draft", {
+      p_business_id: businessId,
+      p_invoice_id: invoiceId,
+      p_expected_updated_at: expectedUpdatedAt,
+      p_fields: {
         customer_name: customerName,
         project_title: projectTitle,
         invoice_amount: formatCurrency(invoiceTotal),
@@ -822,7 +823,6 @@ export default function EditInvoicePage() {
         tax_rate: getEffectiveTaxRate({ taxMode, taxRate }),
         tax_number:
           taxMode === "taxable" ? taxNumber.trim() || null : null,
-        amount_paid: roundMoney(Number(amountPaid) || 0),
         split_warning_enabled: effectiveSplitWarningEnabled,
         split_target_amount:
           effectiveSplitWarningEnabled &&
@@ -831,71 +831,21 @@ export default function EditInvoicePage() {
             : null,
         terms,
         notes,
-      })
-      .eq("id", invoiceId)
-      .eq("business_id", businessId);
-
+      },
+      p_items: saveLineItems.map((item) => ({
+        description: item.description.trim(), quantity: Number(item.quantity) || 0,
+        unit_price: Number(item.unitPrice) || 0, line_total: getLineTotal(item),
+      })),
+    });
     if (error) {
-      console.error(error);
-
-      setToast({
-        type: "error",
-        message: "Unable to update invoice.",
-      });
-
+      setToast({type: "error", message: "Invoice was not saved. Reload and review before retrying."});
       setSaving(false);
-      return;
-    }
-
-    const { error: deleteError } =
-      await supabase
-        .from("invoice_line_items")
-        .delete()
-        .eq("invoice_id", invoiceId)
-        .eq("business_id", businessId);
-
-    if (deleteError) {
-      console.error(deleteError);
-
-      setToast({
-        type: "error",
-        message:
-          "Invoice saved, but old line items could not be replaced.",
-      });
-
-      setSaving(false);
-      return;
-    }
-
-    const { error: lineItemError } =
-      await supabase
-        .from("invoice_line_items")
-        .insert(
-          saveLineItems.map((item, index) => ({
-            invoice_id: invoiceId,
-            business_id: businessId,
-            description: item.description.trim(),
-            quantity: Number(item.quantity) || 0,
-            unit_price: Number(item.unitPrice) || 0,
-            line_total: getLineTotal(item),
-            sort_order: index,
-          }))
-        );
-
-    if (lineItemError) {
-      console.error(lineItemError);
-
-      setToast({
-        type: "error",
-        message:
-          "Invoice saved, but line items could not be saved.",
-      });
-
       return;
     }
 
     if (
       !invoiceSplitParentId &&
+      Number(amountPaid) === 0 &&
       effectiveSplitWarningEnabled &&
       effectiveSplitTargetAmount > 0 &&
       automaticSplitPlan.length > 0
@@ -965,25 +915,6 @@ export default function EditInvoicePage() {
         }
       }
     }
-
-    await logActivity({
-      businessId: businessId || null,
-      action: "invoice.updated",
-      entityType: "invoice",
-      entityId: invoiceId,
-      entityLabel: projectTitle || customerName,
-      details: {
-        customerName,
-        projectTitle,
-        amount: formatCurrency(invoiceTotal),
-        previousAmount: previousInvoiceAmount,
-        amountRounding: "customer-facing-decimal-currency",
-        lineItemCount: saveLineItems.length,
-        discountAmount: formatCurrency(discountAmount),
-        discountLabel: discountLabel.trim() || null,
-        splitWarningEnabled: effectiveSplitWarningEnabled,
-      },
-    });
 
     router.push(
       `/invoices/${invoiceId}?business=${businessSlug}`
@@ -1160,13 +1091,11 @@ export default function EditInvoicePage() {
                 onChange={setTaxNumber}
               />
 
-              <InputField
-                label="Amount Paid"
-                type="number"
-                preventWheelChange
-                value={amountPaid}
-                onChange={setAmountPaid}
-              />
+              <div className="text-sm text-zinc-300">
+                <p className="font-bold">Recorded payments</p>
+                <p>{formatCurrency(Number(amountPaid) || 0)}</p>
+                <p>Managed in Payments; invoice edits do not change payment history.</p>
+              </div>
             </div>
 
             {taxMode === "no_tax" ? (

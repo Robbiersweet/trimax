@@ -156,7 +156,7 @@ function isEligiblePaymentTarget({
 
   return (
     status !== "paid" &&
-    status !== "draft" &&
+    (status !== "draft" || hasActiveDepositRequest(invoice)) &&
     !isNonCollectibleStatus(invoice.status) &&
     collectionAmountDue(invoice) > 0 &&
     Number(invoice.split_children_count ?? 0) <= 0 &&

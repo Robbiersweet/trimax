@@ -35,6 +35,10 @@ export default function UpdateInvoiceStatusButton({
       return;
     }
 
+    if (newStatus.toLowerCase() === "sent" && !window.confirm(
+      "Confirm that the FINAL invoice has actually been issued outside Trimax, with the saved issue date and agreed due date. This makes its remaining balance collectible. A deposit request alone does not qualify."
+    )) return;
+
     setIsSaving(true);
 
     const { error } = await supabase
@@ -61,6 +65,7 @@ export default function UpdateInvoiceStatusButton({
       entityLabel: invoiceLabel,
       details: {
         status: newStatus,
+        ...(newStatus.toLowerCase() === "sent" ? { billingPurpose: "final", issuedVia: "manual-confirmation" } : {}),
       },
     });
 

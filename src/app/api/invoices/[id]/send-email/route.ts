@@ -1,3 +1,4 @@
+import { invoiceDeliveryAction, invoiceDeliveryIssuesFinalBalance } from "../../../../lib/invoiceLifecycle";
 import { sumMoney } from "../../../../lib/money.ts";
 import { roundMoney as canonicalRoundMoney } from "../../../../lib/money.ts";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
@@ -76,6 +77,10 @@ type InvoiceRow = {
   split_parent_invoice_id: string | null;
   split_sequence: number | null;
   split_count: number | null;
+  deposit_requested_amount?: string | number | null;
+  deposit_status?: string | null;
+  import_reviewed?: boolean | null;
+  terms?: string | null;
   tax_mode?: string | null;
   tax_label?: string | null;
   tax_rate?: number | null;
@@ -545,7 +550,8 @@ export async function POST(request: Request, { params }: RouteParams) {
   const sendIdempotencyKey = cleanText(body.sendIdempotencyKey, 120);
   const attachOfficialPdf = true;
   const emailPurpose =
-    cleanText(body.emailPurpose, 40) === "reminder" ? "reminder" : "send";
+    cleanText(body.emailPurpose, 40) === "reminder" ? "reminder"
+      : cleanText(body.emailPurpose, 40) === "deposit" ? "deposit" : "send";
 
   logSendStep({
     traceId,
@@ -599,7 +605,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   const { data: invoice, error: invoiceError } = await supabase
     .from("invoices")
     .select(
-      "id, business_id, client_id, display_id, customer_name, project_title, invoice_amount, amount_paid, notes, created_at, due_date, issue_date, reference, service_address, status, split_parent_invoice_id, split_sequence, split_count, tax_mode, tax_label, tax_rate"
+      "id, business_id, client_id, display_id, customer_name, project_title, invoice_amount, amount_paid, notes, created_at, due_date, issue_date, reference, service_address, status, split_parent_invoice_id, split_sequence, split_count, import_reviewed, terms, deposit_requested_amount, deposit_status, tax_mode, tax_label, tax_rate"
     )
     .eq("id", id)
     .limit(1)
@@ -797,15 +803,15 @@ export async function POST(request: Request, { params }: RouteParams) {
   let targetInvoices = [invoice];
   const splitGroupRootId = invoice.split_parent_invoice_id ?? invoice.id;
 
-  if (!sendSplitGroup && emailPurpose !== "reminder" && (invoice.split_parent_invoice_id || (invoice.split_count ?? 0) > 1)) {
+  if (!sendSplitGroup && emailPurpose === "send" && (invoice.split_parent_invoice_id || (invoice.split_count ?? 0) > 1)) {
     return sendFailureResponse({ traceId, steps, stage: "split_group_lookup", message: "Send the complete split invoice package together.", status: 409 });
   }
 
-  if (sendSplitGroup && emailPurpose !== "reminder") {
+  if (sendSplitGroup && emailPurpose === "send") {
     const { data: splitInvoices, error: splitInvoicesError } = await supabase
       .from("invoices")
       .select(
-        "id, business_id, client_id, display_id, customer_name, project_title, invoice_amount, amount_paid, notes, created_at, due_date, issue_date, reference, service_address, status, split_parent_invoice_id, split_sequence, split_count, tax_mode, tax_label, tax_rate"
+        "id, business_id, client_id, display_id, customer_name, project_title, invoice_amount, amount_paid, notes, created_at, due_date, issue_date, reference, service_address, status, split_parent_invoice_id, split_sequence, split_count, import_reviewed, terms, deposit_requested_amount, deposit_status, tax_mode, tax_label, tax_rate"
       )
       .eq("business_id", invoice.business_id)
       .eq("split_parent_invoice_id", splitGroupRootId)
@@ -898,15 +904,29 @@ export async function POST(request: Request, { params }: RouteParams) {
     });
   }
 
+  if (emailPurpose === "send" && invoice.deposit_status === "requested" && Number(invoice.deposit_requested_amount) > 0) {
+    return sendFailureResponse({ traceId, steps, stage: "request_validation", message: "An active deposit request must be sent as a deposit, not as the final invoice.", status: 409 });
+  }
+
+  // A deposit delivery is a separate billing event; it must never issue the
+  // remaining project balance or borrow the final-invoice due date.
+  if (emailPurpose === "deposit" && (
+    sendSplitGroup || invoice.split_parent_invoice_id || (invoice.split_count ?? 0) > 1 ||
+    invoice.deposit_status !== "requested" ||
+    Number(invoice.deposit_requested_amount) <= Number(invoice.amount_paid || 0) ||
+    !Number.isFinite(Number(invoice.deposit_requested_amount)) ||
+    !["draft", "sent"].includes(String(invoice.status).toLowerCase())
+  )) {
+    return sendFailureResponse({ traceId, steps, stage: "request_validation", message: "Review the active unpaid deposit request before sending.", status: 409 });
+  }
+
   const isSplitGroupSend =
-    sendSplitGroup && emailPurpose !== "reminder" && targetInvoices.length > 1;
+    sendSplitGroup && emailPurpose === "send" && targetInvoices.length > 1;
 
   if (sendIdempotencyKey) {
     const existingSendAction = isSplitGroupSend
       ? "invoice.split_group_email_sent"
-      : emailPurpose === "reminder"
-        ? "invoice.payment_reminder_sent"
-        : "invoice.email_sent";
+      : invoiceDeliveryAction(emailPurpose);
     const existingSendEntityId = isSplitGroupSend ? splitGroupRootId : invoice.id;
     const { data: existingSendLog, error: existingSendError } = await supabase
       .from("activity_logs")
@@ -977,7 +997,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   if (emailPurpose !== "reminder") {
     const targetInvoiceIds = targetInvoices.map((targetInvoice) => targetInvoice.id);
     const { data: priorDelivery, error: priorDeliveryError } = await supabase.from("activity_logs").select("entity_id").eq("business_id", invoice.business_id).eq("entity_type", "invoice").in("entity_id", targetInvoiceIds).in("action", ["invoice.email_sent", "invoice.split_group_email_sent"]);
-    if (priorDeliveryError || priorDelivery?.length) return sendFailureResponse({ traceId, steps, stage: "request_validation", message: priorDeliveryError ? "Invoice delivery history could not be verified." : "Invoice was already sent. Review its delivery history.", status: 409 });
+    if (priorDeliveryError || (emailPurpose === "send" && priorDelivery?.length)) return sendFailureResponse({ traceId, steps, stage: "request_validation", message: priorDeliveryError ? "Invoice delivery history could not be verified." : "Invoice was already sent. Review its delivery history.", status: 409 });
     const { data: splitChildren, error: splitChildrenError } = await supabase
       .from("invoices")
       .select("split_parent_invoice_id")
@@ -1057,7 +1077,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     }
   }
 
-  if (sendSplitGroup && emailPurpose !== "reminder" && (targetInvoices.length < 2 || targetInvoices.some(target => target.split_count !== targetInvoices.length))) {
+  if (sendSplitGroup && emailPurpose === "send" && (targetInvoices.length < 2 || targetInvoices.some(target => target.split_count !== targetInvoices.length))) {
     return sendFailureResponse({ traceId, steps, stage: "split_group_lookup", message: "Review the complete split invoice package.", status: 409 });
   }
 
@@ -1145,7 +1165,7 @@ export async function POST(request: Request, { params }: RouteParams) {
           actor_email: access.email,
           action: isSplitGroupSend
             ? "invoice.split_group_email_failed"
-            : "invoice.email_failed",
+            : emailPurpose === "deposit" ? "invoice.deposit_email_failed" : "invoice.email_failed",
           entity_type: "invoice",
           entity_id: targetInvoice.id,
           entity_label:
@@ -1307,7 +1327,7 @@ export async function POST(request: Request, { params }: RouteParams) {
           ? "invoice.payment_reminder_failed"
           : isSplitGroupSend
             ? "invoice.split_group_email_failed"
-            : "invoice.email_failed",
+            : emailPurpose === "deposit" ? "invoice.deposit_email_failed" : "invoice.email_failed",
       entity_type: "invoice",
       entity_id: invoice.id,
       entity_label: invoice.display_id ?? invoice.project_title ?? "Invoice",
@@ -1337,7 +1357,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   let statusUpdateErrorMessage: string | null = null;
   const sentAt = new Date().toISOString();
 
-  if (emailPurpose !== "reminder") {
+  if (invoiceDeliveryIssuesFinalBalance(emailPurpose)) {
     const { error: statusUpdateError } = await supabase
       .from("invoices")
       .update({
@@ -1386,6 +1406,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       entity_id: splitGroupRootId,
       entity_label: groupLabel,
       details: {
+        billing_purpose: emailPurpose,
         recipient_email: recipientEmail,
         business_profile: business.slug,
         included_invoice_ids: targetInvoices.map((item) => item.id),
@@ -1430,14 +1451,19 @@ export async function POST(request: Request, { params }: RouteParams) {
       actor_user_id: access.userId,
       actor_email: access.email,
       action:
-        emailPurpose === "reminder"
-          ? "invoice.payment_reminder_sent"
-          : "invoice.email_sent",
+        invoiceDeliveryAction(emailPurpose),
       entity_type: "invoice",
       entity_id: targetInvoice.id,
       entity_label:
         targetInvoice.display_id ?? targetInvoice.project_title ?? "Invoice",
       details: {
+        billing_purpose: emailPurpose,
+        invoice_issue_date: emailPurpose === "send" ? targetInvoice.issue_date : null,
+        invoice_due_date: emailPurpose === "send" ? targetInvoice.due_date : null,
+        invoice_terms: emailPurpose === "send" ? targetInvoice.terms : null,
+        invoice_total: targetInvoice.invoice_amount,
+        recorded_payments: targetInvoice.amount_paid,
+        deposit_requested_amount: emailPurpose === "deposit" ? invoice.deposit_requested_amount : null,
         recipient_email: recipientEmail,
         business_profile: business.slug,
         document_number: targetDocumentNumber,

@@ -27,6 +27,8 @@ for (const path of ["src/app/invoices/new/page.tsx", "src/app/invoices/[id]/edit
   assert(source.includes("return formatStoredInvoiceAmount(amount);"), `${path} must persist customer-facing decimal rounding.`);
 }
 const edit = readFileSync("src/app/invoices/[id]/edit/page.tsx", "utf8");
-assert(edit.includes("previousAmount: previousInvoiceAmount"));
-assert(edit.includes("setPreviousInvoiceAmount(invoice.invoice_amount)"));
+assert(edit.includes('supabase.rpc("trimax_save_invoice_draft"'));
+const atomicSave = readFileSync("supabase/sql/2026-10-26-invoice-draft-atomic-save.sql", "utf8");
+assert(atomicSave.includes("'previousAmount',v_before.invoice_amount"));
+assert(edit.includes("setExpectedUpdatedAt(invoice.updated_at)"));
 console.log("Invoice cent persistence regression passed; retained five-row total is 433405 cents.");

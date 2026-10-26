@@ -361,6 +361,8 @@ function activityLabel(action: string) {
     "invoice.email_sent": "Invoice sent",
     "invoice.payment_reminder_sent": "Payment reminder sent",
     "invoice.deposit_requested": "Deposit requested",
+    "invoice.deposit_email_sent": "Deposit request emailed",
+    "invoice.deposit_email_failed": "Deposit email failed",
     "invoice.deposit_cleared": "Deposit cleared",
     "invoice.batch_payment_applied": "Payment applied",
     "invoice.status_updated": "Status changed",
@@ -655,7 +657,7 @@ function InvoiceIntelligence({
           />
           <Info
             label="Send Status"
-            value={hasSendProof ? "Sent proof saved" : "Not sent yet"}
+            value={hasSendProof ? "Email proof saved" : "No Trimax email proof"}
           />
           {isFullyPaid && latestPaymentDate ? (
             <Info
@@ -1052,7 +1054,7 @@ export default async function InvoiceDetailPage({
   const depositStatus = String(invoice.deposit_status ?? "none").toLowerCase();
   const hasDepositRequest =
     depositStatus === "requested" && depositRequestedAmount > 0;
-  const hasInferredDepositCollection = isPartiallyPaid && amountPaid > 0;
+  const hasRecordedDepositCollection = depositRequestedAmount > 0 && amountPaid >= depositRequestedAmount && ["requested", "paid"].includes(depositStatus);
   const depositDueNow = hasDepositRequest
     ? Math.max(canonicalSubtractMoney(depositRequestedAmount, amountPaid), 0)
     : 0;
@@ -1165,9 +1167,6 @@ export default async function InvoiceDetailPage({
   const latestPaymentLog = invoiceActivityLogs.find(
     (log) => log.action === "invoice.batch_payment_applied"
   );
-  const latestDepositRequestLog = invoiceActivityLogs.find(
-    (log) => log.action === "invoice.deposit_requested"
-  );
   const latestPaymentDate =
     detailText(latestPaymentLog?.details, "receivedDate") ??
     detailText(latestPaymentLog?.details, "paymentDate") ??
@@ -1181,7 +1180,7 @@ export default async function InvoiceDetailPage({
   const hasSendProof = Boolean(latestSendLog);
   const latestReminderSentToday =
     businessDayKey(latestReminderLog?.created_at ?? null) === businessDayKey();
-  const depositStatusLabel = isPartiallyPaid
+  const depositStatusLabel = hasRecordedDepositCollection
     ? "Collected"
     : isFullyPaid && collectedAmount > 0
       ? "N/A"
@@ -1190,17 +1189,17 @@ export default async function InvoiceDetailPage({
           ? "Requested"
           : "Collected"
         : "Not Requested";
-  const depositCardTitle = hasInferredDepositCollection
+  const depositCardTitle = hasRecordedDepositCollection
     ? "Deposit collected"
     : hasDepositRequest
       ? depositDueNow > 0
         ? `${money(depositRequestedAmount)} requested`
         : "Deposit collected"
       : "No deposit requested yet";
-  const depositCardDetail = hasInferredDepositCollection
+  const depositCardDetail = hasRecordedDepositCollection
     ? `${money(amountPaid)} has already been collected against this invoice, leaving ${money(
         amountDue
-      )} open. Trimax is treating this as deposit activity even without a saved deposit request.`
+      )} open. A deposit request is recorded. Payment alone does not establish when the remaining balance was issued.`
     : hasDepositRequest
       ? `Trimax will show ${money(
           customerFacingAmountDue
@@ -1210,7 +1209,7 @@ export default async function InvoiceDetailPage({
       : "Use this when you want the customer to pay part of the invoice now without marking it as paid.";
   const depositCardShouldShow =
     !isNonCollectibleInvoice &&
-    (!isFullyPaid || hasDepositRequest || hasInferredDepositCollection);
+    (!isFullyPaid || hasDepositRequest || hasRecordedDepositCollection);
   const proofTimelineEvents: ProofTimelineEvent[] = [
     {
       id: "invoice-created",
@@ -1261,19 +1260,6 @@ export default async function InvoiceDetailPage({
           value:
             detailText(latestPaymentLog.details, "paymentReference") ?? "-",
         },
-      ],
-    });
-  }
-  if (hasInferredDepositCollection && !latestDepositRequestLog) {
-    proofTimelineEvents.push({
-      id: "deposit-inferred-from-payment",
-      date: latestPaymentDate,
-      title: "Deposit received",
-      actor: "Trimax",
-      tone: "emerald",
-      fields: [
-        { label: "Deposit amount", value: money(amountPaid) },
-        { label: "Remaining balance", value: money(amountDue) },
       ],
     });
   }
@@ -1353,7 +1339,7 @@ export default async function InvoiceDetailPage({
       )} collected`;
   const depositSummary = hasDepositRequest
     ? `${depositStatusLabel} / ${money(depositDueNow)} due`
-    : hasInferredDepositCollection
+    : hasRecordedDepositCollection
       ? `${money(amountPaid)} collected`
       : "Not requested";
   const emailPdfCount =
@@ -1568,6 +1554,32 @@ export default async function InvoiceDetailPage({
                   </Link>
                 </div>
               </div>
+            </Card>
+          ) : null}
+
+          {!isNonCollectibleInvoice ? (
+            <Card className="flex flex-wrap items-center gap-3 p-3" >
+              {isDraftInvoice ? (
+                <Link href={`/invoices/${invoice.id}/edit${businessQuery}`}>
+                  <Button>Edit Invoice & Discounts</Button>
+                </Link>
+              ) : normalizedStatus === "sent" && amountPaid <= 0 ? (
+                <CorrectInvoiceButton
+                  invoiceId={invoice.id}
+                  businessId={invoice.business_id}
+                  businessSlug={businessSlug}
+                  invoiceLabel={invoice.display_id || projectTitle || "Invoice"}
+                  amountPaid={amountPaid}
+                />
+              ) : (
+                <p className="text-sm text-zinc-300">
+                  Payment history is preserved. A payment-preserving correction must be reviewed before editing this invoice.
+                </p>
+              )}
+              <Link href={`/invoices/${invoice.id}/print${businessQuery}`}>
+                <Button variant="secondary">Review PDF</Button>
+              </Link>
+              {isDraftInvoice ? <p className="text-sm text-zinc-400">Fixed-dollar or percentage discounts recalculate tax before review.</p> : null}
             </Card>
           ) : null}
 
@@ -1915,7 +1927,7 @@ export default async function InvoiceDetailPage({
                   clientCcEmail={clientContact?.cc_email ?? null}
                   documentNumber={invoiceNumber}
                   amountDue={money(customerFacingAmountDue)}
-                  dueDate={displayDueDate ? formatDate(displayDueDate) : "-"}
+                  dueDate={!hasDepositRequest && displayDueDate ? formatDate(displayDueDate) : "-"}
                   projectTitle={projectTitle}
                   printHref={`/invoices/${invoice.id}/print${businessQuery}`}
                   requestType="invoice"
@@ -1975,7 +1987,7 @@ export default async function InvoiceDetailPage({
                   clientCcEmail={clientContact?.cc_email ?? null}
                   documentNumber={invoiceNumber}
                   amountDue={money(customerFacingAmountDue)}
-                  dueDate={displayDueDate ? formatDate(displayDueDate) : "-"}
+                  dueDate={!hasDepositRequest && displayDueDate ? formatDate(displayDueDate) : "-"}
                   projectTitle={projectTitle}
                   printHref={`/invoices/${invoice.id}/print${businessQuery}`}
                   requestType={hasDepositRequest ? "deposit" : "invoice"}
@@ -2026,7 +2038,7 @@ export default async function InvoiceDetailPage({
                   clientCcEmail={clientContact?.cc_email ?? null}
                   documentNumber={invoiceNumber}
                   amountDue={money(customerFacingAmountDue)}
-                  dueDate={displayDueDate ? formatDate(displayDueDate) : "-"}
+                  dueDate={!hasDepositRequest && displayDueDate ? formatDate(displayDueDate) : "-"}
                   daysPastDue={daysLate}
                   projectTitle={projectTitle}
                   printHref={`/invoices/${invoice.id}/print${businessQuery}`}
@@ -2045,7 +2057,7 @@ export default async function InvoiceDetailPage({
               title="Deposit"
               subtitle={depositSummary}
               className={`rounded-2xl border p-3 ${
-                hasDepositRequest || hasInferredDepositCollection
+                hasDepositRequest || hasRecordedDepositCollection
                   ? "deposit-request-card border-emerald-200 bg-white"
                   : "border-zinc-800 bg-zinc-950/70"
               }`}
@@ -2058,7 +2070,7 @@ export default async function InvoiceDetailPage({
                   </p>
                   <h2
                     className={`mt-3 text-2xl font-black ${
-                      hasDepositRequest || hasInferredDepositCollection
+                      hasDepositRequest || hasRecordedDepositCollection
                         ? "text-slate-950"
                         : "text-white"
                     }`}
@@ -2067,7 +2079,7 @@ export default async function InvoiceDetailPage({
                   </h2>
                   <p
                     className={`mt-3 max-w-3xl text-sm leading-6 ${
-                      hasDepositRequest || hasInferredDepositCollection
+                      hasDepositRequest || hasRecordedDepositCollection
                         ? "text-slate-600"
                         : "text-zinc-400"
                     }`}
@@ -2075,7 +2087,7 @@ export default async function InvoiceDetailPage({
                     {depositCardDetail}
                   </p>
 
-                  {hasDepositRequest || hasInferredDepositCollection ? (
+                  {hasDepositRequest || hasRecordedDepositCollection ? (
                     <div className="mt-4 grid gap-3 sm:grid-cols-4">
                       <div className="rounded-2xl border border-emerald-200 bg-white p-4">
                         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
@@ -2091,7 +2103,7 @@ export default async function InvoiceDetailPage({
                         </p>
                         <p className="mt-2 text-xl font-black text-slate-950">
                           {money(
-                            hasInferredDepositCollection
+                            hasRecordedDepositCollection
                               ? amountPaid
                               : depositRequestedAmount
                           )}
@@ -2253,28 +2265,28 @@ export default async function InvoiceDetailPage({
                 value={money(taxAmount)}
               />
               <SummaryRow label="Total" value={money(invoiceTotal)} />
-              {hasDepositRequest || hasInferredDepositCollection ? (
+              {hasDepositRequest || hasRecordedDepositCollection ? (
                 <>
                   <SummaryRow
                     label={
-                      hasInferredDepositCollection
+                      hasRecordedDepositCollection
                         ? "Deposit Collected"
                         : "Deposit Requested"
                     }
                     value={money(
-                      hasInferredDepositCollection
+                      hasRecordedDepositCollection
                         ? amountPaid
                         : depositRequestedAmount
                     )}
                   />
                   <SummaryRow
                     label={
-                      hasInferredDepositCollection
+                      hasRecordedDepositCollection
                         ? "Remaining Balance"
                         : "Remaining After Deposit"
                     }
                     value={money(
-                      hasInferredDepositCollection
+                      hasRecordedDepositCollection
                         ? amountDue
                         : balanceAfterDepositRequest
                     )}
@@ -2366,9 +2378,9 @@ export default async function InvoiceDetailPage({
                   <UpdateInvoiceStatusButton
                     invoiceId={invoice.id}
                     newStatus="sent"
-                    label="Mark Sent"
+                    label="Mark Final Invoice Issued"
                     businessId={invoice.business_id}
-                    disabledReason={draftSendDisabledReason}
+                    disabledReason={hasDepositRequest ? "An active deposit request does not issue the final balance." : draftSendDisabledReason}
                     invoiceLabel={invoice.display_id || projectTitle}
                   />
                 ) : null}
@@ -2402,15 +2414,6 @@ export default async function InvoiceDetailPage({
                   />
                 ) : null}
 
-                {normalizedStatus === "sent" && amountPaid <= 0 ? (
-                  <CorrectInvoiceButton
-                    invoiceId={invoice.id}
-                    businessId={invoice.business_id}
-                    businessSlug={businessSlug}
-                    invoiceLabel={invoice.display_id || projectTitle || "Invoice"}
-                    amountPaid={amountPaid}
-                  />
-                ) : null}
 
                 {showFiveStarsBoaPrintButton ? (
                   <Link
@@ -2432,9 +2435,6 @@ export default async function InvoiceDetailPage({
                   <Button variant="secondary">Print Invoice</Button>
                 </Link>
 
-                <Link href={`/invoices/${invoice.id}/edit${businessQuery}`}>
-                  <Button variant="secondary">Edit Invoice</Button>
-                </Link>
 
                 <DeleteInvoiceButton
                   invoiceId={invoice.id}

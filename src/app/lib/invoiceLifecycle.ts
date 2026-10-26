@@ -175,3 +175,18 @@ export function resolveFinancialStatus({
 
   return fallbackStatus || "Pending Estimate";
 }
+
+// Delivery purpose is explicit: a deposit email is not final invoice issuance.
+// Keep legacy callers using "send" as final-invoice sends; never infer purpose
+// from a subject, partial payment, or imported status.
+export type InvoiceDeliveryPurpose = "send" | "deposit" | "reminder";
+
+export function invoiceDeliveryAction(purpose: InvoiceDeliveryPurpose) {
+  return purpose === "deposit" ? "invoice.deposit_email_sent"
+    : purpose === "reminder" ? "invoice.payment_reminder_sent"
+    : "invoice.email_sent";
+}
+
+export function invoiceDeliveryIssuesFinalBalance(purpose: InvoiceDeliveryPurpose) {
+  return purpose === "send";
+}

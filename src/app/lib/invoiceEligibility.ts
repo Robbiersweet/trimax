@@ -233,7 +233,8 @@ export function isPaymentEligibleInvoice({
   lineItems?: InvoiceEligibilityLineItem[];
 }) {
   return (
-    isCollectibleInvoiceStatus(invoice.status) &&
+    (isCollectibleInvoiceStatus(invoice.status) ||
+      (invoiceStatusKey(invoice.status) === "draft" && hasActiveDepositRequest(invoice))) &&
     invoiceCollectionAmountDue(invoice) > 0 &&
     !isSplitSourceInvoice(invoice) &&
     !isIncompleteDraftInvoice({ invoice, lineItems })
@@ -322,7 +323,8 @@ export function invoicePaymentIneligibleReason({
     return "Draft incomplete - add line items and pricing";
   }
 
-  if (!isCollectibleInvoiceStatus(invoice.status)) {
+  if (!isCollectibleInvoiceStatus(invoice.status) &&
+    !(invoiceStatusKey(invoice.status) === "draft" && hasActiveDepositRequest(invoice))) {
     return "Not collectible";
   }
 

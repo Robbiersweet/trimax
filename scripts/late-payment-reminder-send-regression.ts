@@ -82,7 +82,7 @@ assert(
 assert(
   invoiceSendRoute.includes("Payment reminder was already sent. Existing proof is saved.") &&
     invoiceSendRoute.includes('emailPurpose === "reminder"') &&
-    invoiceSendRoute.includes('"invoice.payment_reminder_sent"') &&
+    invoiceSendRoute.includes("invoiceDeliveryAction(emailPurpose)") &&
     invoiceSendRoute.includes('filter("details->>send_idempotency_key", "eq", sendIdempotencyKey)') &&
     invoiceSendRoute.includes("send_idempotency_key: sendIdempotencyKey || null"),
   "Reminder send API must return existing proof for same-key retries instead of sending duplicate reminders."
@@ -92,7 +92,7 @@ assert(
   invoiceSendRoute.indexOf("createPrintPagePdfAttachment") <
     invoiceSendRoute.indexOf("sendWithResend") &&
     invoiceSendRoute.includes('emailPurpose === "reminder"') &&
-    invoiceSendRoute.includes("invoice.payment_reminder_sent"),
+    invoiceSendRoute.includes("invoiceDeliveryAction(emailPurpose)"),
   "Reminder PDF generation and proof logging must remain on the existing invoice send route."
 );
 

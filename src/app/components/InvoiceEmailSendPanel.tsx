@@ -796,7 +796,7 @@ export default function InvoiceEmailSendPanel({
           replyToEmail,
           attachOfficialPdf: true,
           sendSplitGroup: sendAsSplitGroup,
-          emailPurpose: requestType === "reminder" ? "reminder" : "send",
+          emailPurpose: requestType === "reminder" ? "reminder" : requestType === "deposit" ? "deposit" : "send",
           sendIdempotencyKey,
         }),
         }

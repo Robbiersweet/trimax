@@ -481,17 +481,17 @@ export default async function InvoicePrintPage({
           </div>
 
           <div className="min-w-0">
-            <PrintLabel>Date of Issue</PrintLabel>
+            <PrintLabel>{hasDepositRequest ? "Deposit Request" : "Date of Issue"}</PrintLabel>
 
             <p className="mt-2 text-base print:mt-1 print:text-sm">
-              {formatDate(printIssueDate)}
+              {hasDepositRequest ? "Separate payment request" : formatDate(printIssueDate)}
             </p>
 
             <div className="mt-5 print:mt-2">
               <PrintLabel>Due Date</PrintLabel>
 
               <p className="mt-2 text-base print:mt-1 print:text-sm">
-                {formatDate(printDueDate)}
+                {hasDepositRequest ? "See deposit agreement" : formatDate(printDueDate)}
               </p>
             </div>
           </div>
@@ -636,7 +636,7 @@ export default async function InvoicePrintPage({
           <PrintLabel>Terms</PrintLabel>
 
           <p className="mt-3 max-w-4xl overflow-wrap-anywhere text-base leading-6 print:mt-1 print:text-sm print:leading-5">
-            {invoiceTerms}
+            {hasDepositRequest ? "This request is for the deposit only. Final-balance terms apply when the final invoice is issued." : invoiceTerms}
           </p>
         </section>
 
