@@ -1,17 +1,20 @@
-const fs = require('node:fs');
-const path = require('node:path');
-const ts = require('typescript');
-const assert = require('node:assert/strict');
+(async()=>{
+const fs = await import('node:fs');
+const path = await import('node:path');
+const {default: ts} = await import('typescript');
+const {default: assert} = await import('node:assert/strict');
+const {createRequire} = await import('node:module');
+const loadDependency = createRequire(__filename);
 const cache = new Map();
 function load(file) {
   file = path.resolve(file);
   if (cache.has(file)) return cache.get(file);
   const exports = {}; cache.set(file,exports);
   const code = ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-  const module = {exports};
-  const localRequire = name => name.startsWith('.') ? load(path.resolve(path.dirname(file),name.endsWith('.ts') ? name : name+'.ts')) : require(name);
-  new Function('require','module','exports',code)(localRequire,module,exports);
-  cache.set(file,module.exports); return module.exports;
+  const compiledModule = {exports};
+  const localRequire = name => name.startsWith('.') ? load(path.resolve(path.dirname(file),name.endsWith('.ts') ? name : name+'.ts')) : loadDependency(name);
+  new Function('require','module','exports',code)(localRequire,compiledModule,exports);
+  cache.set(file,compiledModule.exports); return compiledModule.exports;
 }
 const lifecycle=load('src/app/lib/invoiceLifecycle.ts');
 const eligibility=load('src/app/lib/invoiceEligibility.ts');
@@ -46,3 +49,4 @@ assert(!edit.slice(edit.indexOf('async function handleSave')).includes('amount_p
 const detail=fs.readFileSync('src/app/invoices/[id]/page.tsx','utf8');
 assert(detail.indexOf('Edit Invoice & Discounts')<detail.indexOf('title="More Actions"'));
 console.log('Invoice deposit delivery, draft collection, issued aging, discount arithmetic and payment-preservation regression passed. Historical sent/deposit reclassification remains an explicit review prerequisite.');
+})().catch(error=>{console.error(error);process.exitCode=1;});

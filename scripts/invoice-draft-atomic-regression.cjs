@@ -1,6 +1,10 @@
-const {PGlite}=require(require('node:path').join(process.env.LOCALAPPDATA,'Trimax/phase6-dbtest/node_modules/@electric-sql/pglite'));
-const fs=require('node:fs'); const assert=require('node:assert/strict');
-(async()=>{const db=new PGlite(); try {
+(async()=>{
+const {createRequire}=await import('node:module');
+const {join}=await import('node:path');
+const loadDependency=createRequire(__filename);
+const {PGlite}=loadDependency(join(process.env.LOCALAPPDATA,'Trimax/phase6-dbtest/node_modules/@electric-sql/pglite'));
+const fs=await import('node:fs'); const {default:assert}=await import('node:assert/strict');
+const db=new PGlite(); try {
 await db.exec(`create role anon; create role authenticated; create schema auth;
 create function auth.uid() returns uuid language sql as $$select '11111111-1111-4111-8111-111111111111'::uuid$$;
 create function public.trimax_has_business_role(uuid,text[]) returns boolean language sql as $$select $1='22222222-2222-4222-8222-222222222222'::uuid$$;
