@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-invoice-lifecycle-repair-20261026-rc1",
+  "releaseId": "trimax-invoice-lifecycle-repair-20261026-rc2",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
   "createdAt": "2026-10-26T11:55:56.876Z",
   "releaseTimestamp": "2026-10-26T11:55:56.876Z",
@@ -828,25 +828,25 @@
     "capturedAt": "2026-10-24T01:28:03.702Z",
     "algorithm": "catalog-v1; sorted C collation name=value; UTF8 SHA256; public tables/constraints/indexes/functions, public+storage RLS, public table grants; excludes only trimax_release_runtime itself",
     "fingerprints": {
-      "rpc": {
-        "sha256": "2d87af4a6c3f6d30e4775907ccfb797faa3917c0599db0138ba60c1900cf0ec4",
-        "entries": 52
-      },
-      "grants": {
-        "sha256": "68c1e22e09077e040fd81451819c5dc3ec12c8c377d78d706dbea0007deb1e47",
-        "entries": 1014
-      },
       "schema": {
-        "sha256": "2c889492d0b90aed1c83e36a20464df87bd3c1041e7b409ef6ab0f94bd2ab72b",
-        "entries": 883
+        "entries": 884,
+        "sha256": "60630a1fc259957e825b38f6cb26f719d781df7dcd436cce9a90cae2c324ef6b"
       },
-      "policies": {
-        "sha256": "3b84cfce7458daf00ab80492a52688e5f58d3b38bd56afc3b9938a80883bfc1f",
-        "entries": 81
+      "rpc": {
+        "entries": 53,
+        "sha256": "b53c9ba454eec8d4451a87b6920e1c41bedf2591a1b114485081511b54312302"
       },
       "triggers": {
-        "sha256": "c35cfea25289bdf6e7f278e4d0e3628a2eec3c66d19c434b3aa53563e1fd1e5e",
-        "entries": 13
+        "entries": 13,
+        "sha256": "c35cfea25289bdf6e7f278e4d0e3628a2eec3c66d19c434b3aa53563e1fd1e5e"
+      },
+      "policies": {
+        "entries": 81,
+        "sha256": "3b84cfce7458daf00ab80492a52688e5f58d3b38bd56afc3b9938a80883bfc1f"
+      },
+      "grants": {
+        "entries": 1014,
+        "sha256": "68c1e22e09077e040fd81451819c5dc3ec12c8c377d78d706dbea0007deb1e47"
       }
     },
     "flags": [
