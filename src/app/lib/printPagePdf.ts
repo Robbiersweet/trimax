@@ -44,12 +44,14 @@ export async function createPrintPagePdfAttachment({
   filename,
   accessToken,
   cronSecret,
+  requestSession,
   diagnostics,
 }: {
   url: string;
   filename: string;
   accessToken?: string | null;
   cronSecret?: string | null;
+  requestSession?: { origin: string; cookie: string | null };
   diagnostics?: PrintPagePdfDiagnostics;
 }): Promise<EmailAttachment> {
   const isProduction = process.env.NODE_ENV === "production";
@@ -95,15 +97,25 @@ export async function createPrintPagePdfAttachment({
       );
     });
 
-    if (accessToken) {
-      await page.setExtraHTTPHeaders({
-        Authorization: `Bearer ${accessToken}`,
-      });
-    } else if (cronSecret) {
-      await page.setExtraHTTPHeaders({
-        "x-trimax-cron-secret": cronSecret,
-      });
+    // Forward the initiating session only to this exact origin. In particular,
+    // Vercel login redirects and external assets must never receive credentials.
+    const printOrigin = new URL(url).origin;
+    if (requestSession && requestSession.origin !== printOrigin) {
+      throw new Error("Print session origin does not match the document origin.");
     }
+    await page.setRequestInterception(true);
+    page.on("request", (request) => {
+      const headers = { ...request.headers() };
+      delete headers.authorization;
+      delete headers.cookie;
+      delete headers["x-trimax-cron-secret"];
+      if (new URL(request.url()).origin === printOrigin) {
+        if (accessToken) headers.authorization = `Bearer ${accessToken}`;
+        else if (cronSecret) headers["x-trimax-cron-secret"] = cronSecret;
+        if (requestSession?.cookie) headers.cookie = requestSession.cookie;
+      }
+      void request.continue({ headers });
+    });
 
     const response = await page.goto(url, {
       waitUntil: "networkidle0",

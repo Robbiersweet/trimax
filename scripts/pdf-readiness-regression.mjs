@@ -1,5 +1,55 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { createRequire } from "node:module";
+import strictAssert from "node:assert/strict";
+
+// Execute the real renderer with an in-memory browser to verify credential
+// boundaries, including redirected requests. Never use a real session here.
+const load = createRequire(import.meta.url);
+const typescript = load("typescript");
+const handlers = {};
+let closed = 0;
+const mockPage = {
+  on: (event, handler) => { handlers[event] = handler; },
+  setRequestInterception: async (enabled) => strictAssert.equal(enabled, true),
+  goto: async () => ({ ok: () => true, status: () => 200 }),
+  url: () => "https://preview.example/invoices/test/print",
+  evaluate: async (fn) => fn.toString().includes("document.body.innerText") ? "Synthetic invoice" : true,
+  waitForSelector: async () => {},
+  emulateMediaType: async () => {},
+  pdf: async () => Buffer.from("%PDF-synthetic"),
+};
+const mockBrowser = { newPage: async () => mockPage, close: async () => { closed++; } };
+const rendererModule = { exports: {} };
+const rendererSource = readFileSync(resolve("src/app/lib/printPagePdf.ts"), "utf8");
+const rendererCode = typescript.transpileModule(rendererSource, {
+  compilerOptions: { module: typescript.ModuleKind.CommonJS, target: typescript.ScriptTarget.ES2022, esModuleInterop: true },
+}).outputText;
+new Function("require", "module", "exports", rendererCode)((name) => {
+  if (name === "puppeteer-core") return { launch: async () => mockBrowser };
+  if (name === "@sparticuz/chromium") return { executablePath: async () => "synthetic", args: [] };
+  throw new Error(`Unexpected renderer dependency: ${name}`);
+}, rendererModule, rendererModule.exports);
+await rendererModule.exports.createPrintPagePdfAttachment({
+  url: "https://preview.example/invoices/test/print", filename: "test",
+  accessToken: "synthetic-token", requestSession: { origin: "https://preview.example", cookie: "synthetic-session=value" },
+});
+function headersFor(url) {
+  let forwarded;
+  handlers.request({ url: () => url, headers: () => ({ authorization: "old", cookie: "old", "x-trimax-cron-secret": "old", accept: "text/html" }), continue: (options) => { forwarded = options.headers; return Promise.resolve(); } });
+  return forwarded;
+}
+strictAssert.deepEqual(headersFor("https://preview.example/invoices/test/print"), {
+  accept: "text/html", authorization: "Bearer synthetic-token", cookie: "synthetic-session=value",
+});
+for (const destination of ["https://vercel.com/login", "https://preview.example.evil.test/", "http://preview.example/", "https://preview.example:444/", "data:text/plain,test"]) {
+  strictAssert.deepEqual(headersFor(destination), { accept: "text/html" });
+}
+await strictAssert.rejects(rendererModule.exports.createPrintPagePdfAttachment({
+  url: "https://other.example/print", filename: "test",
+  requestSession: { origin: "https://preview.example", cookie: "synthetic-session=value" },
+}), /origin does not match/);
+strictAssert.equal(closed, 2);
 
 const root = process.cwd();
 

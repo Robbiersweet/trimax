@@ -1133,6 +1133,10 @@ export async function POST(request: Request, { params }: RouteParams) {
           filename: targetDocumentNumber,
           accessToken: token,
           cronSecret,
+          requestSession: {
+            origin: new URL(request.url).origin,
+            cookie: request.headers.get("cookie"),
+          },
           diagnostics: {
             traceId,
             documentId: targetInvoice.id,
