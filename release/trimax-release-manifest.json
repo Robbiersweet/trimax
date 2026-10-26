@@ -2,25 +2,25 @@
   "schemaVersion": 1,
   "releaseId": "trimax-workflow-communications-20261025-rc8",
   "status": "SEALED_CONTROLLED_DEPLOYMENT_CANDIDATE",
-  "createdAt": "2026-10-26T00:08:49.229Z",
-  "releaseTimestamp": "2026-10-26T00:08:49.229Z",
+  "createdAt": "2026-10-26T00:46:53.204Z",
+  "releaseTimestamp": "2026-10-26T00:46:53.204Z",
   "baseProduction": {
     "commit": "885d01f18b1811de7f2be8fe33ec9d8858056d20",
     "vercelDeploymentId": "6G2N5TMoymwBRm48NKrtt8Qbr7Xc"
   },
   "components": {
     "web": {
-      "commit": "4ce67cc2d66fd3c858f702bc9ed72113beecbe28"
+      "commit": "65f21b79da5928b8125dfcf278d9018c216a277d"
     },
     "legacy": {
-      "commit": "4ce67cc2d66fd3c858f702bc9ed72113beecbe28"
+      "commit": "65f21b79da5928b8125dfcf278d9018c216a277d"
     },
     "v2-shadow": {
-      "commit": "4ce67cc2d66fd3c858f702bc9ed72113beecbe28"
+      "commit": "65f21b79da5928b8125dfcf278d9018c216a277d"
     }
   },
   "sourceBundle": {
-    "sha256": "81cd951ea02af0d5640090f43faa7a94ab1d544d65cd1d4022128303bdbfc0b3",
+    "sha256": "38e11b3504897e2e91d473bb15a4a383d7c6f182874669f03fcf0311bb587733",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -75,7 +75,7 @@
       "scripts/invoice-cent-regression.ts": "0e46f12fccbf5618d591e029cd4574198a2199eeb64b3e9165ff49eaafd821e3",
       "scripts/invoice-correction-regression.ts": "d637ec393a9ae331676b88d5d4e9db9d4c96e326977b103d39e15aebf8e4c873",
       "scripts/invoice-detail-declutter-regression.ts": "d1a397c3325ead5c2ed2fb3e8d3c9131e0978955c2db73e3957d4029b88e6c44",
-      "scripts/job-completion-guard-regression.cjs": "cd69be796a3fe350d29814bddd54153c88ec57dc6e77887bdc16fadd9326d026",
+      "scripts/job-completion-guard-regression.cjs": "243a11fb74f0f8d350f56284fd1e44fb54a02bab60bc960f3c7cb7616f4a1c17",
       "scripts/job-session-crew-regression.ts": "20dd3bb6fc1ab001b088eeb58b17f45c600ed406d582a3e982617672ab959aef",
       "scripts/job-session-integrity-regression.ts": "856bf47c592d6a1e4e9f30156de9ab6debd50791f78b54986569872465e704ba",
       "scripts/late-payment-reminder-send-regression.ts": "bc79e06ce165ba2ab8f5263ec615a9f33bd38ac6ba35a8ee01f4b796e9f6d53d",
@@ -899,7 +899,7 @@
     }
   ],
   "database": {
-    "capturedAt": "2026-10-26T00:08:49.229Z",
+    "capturedAt": "2026-10-26T00:46:53.204Z",
     "algorithm": "catalog-v1; sorted C collation name=value; UTF8 SHA256; public tables/constraints/indexes/functions, public+storage RLS, public table grants; excludes only trimax_release_runtime itself",
     "fingerprints": {
       "schema": {
@@ -1014,7 +1014,7 @@
     "physicalAcceptance": "Only installed-iPhone production evidence for exact release may pass; replay cannot pass",
     "legacyModelCache": "Pinned runtime cache verified by startup contract before claim"
   },
-  "sealedAt": "2026-10-26T00:08:49.229Z",
+  "sealedAt": "2026-10-26T00:46:53.204Z",
   "testRuntime": {
     "pgliteVersion": "0.5.8",
     "pglitePackageSha256": "65dff2c93c707e526902eebfab246bcbf2df2eba1c6984a5b5e9a44177532b1c",
@@ -1758,8 +1758,8 @@
       "deploymentCommit": "885d01f18b1811de7f2be8fe33ec9d8858056d20"
     },
     "candidateReleaseId": "trimax-workflow-communications-20261025-rc8",
-    "applicationCommit": "4ce67cc2d66fd3c858f702bc9ed72113beecbe28",
-    "machineryCommit": "4ce67cc2d66fd3c858f702bc9ed72113beecbe28"
+    "applicationCommit": "65f21b79da5928b8125dfcf278d9018c216a277d",
+    "machineryCommit": "65f21b79da5928b8125dfcf278d9018c216a277d"
   },
   "contractRevision": {
     "id": "workflow-manager-communications",
