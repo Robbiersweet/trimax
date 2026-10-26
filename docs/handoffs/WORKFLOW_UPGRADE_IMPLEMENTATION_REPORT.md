@@ -1,5 +1,13 @@
 # TriMax extended workflow — implementation and acceptance
 
+## Current candidate: rc9 (not deployed)
+Resumed from verified `07cf1d8`; completed manager permission tests were reused, not repeated. Executable `a7463374a1fcde9cd0f16adc70105ed189597e28`, seal `6c32cfd`, bundle `ed01a2e682a250818d34e6cf1da8ab3c49f3ebb5a09ee128382c6609526c5ded`.
+
+- Independent document SMS: explicit owner/admin action on an issued estimate/invoice, no successful-email dependency. Consent, current client identity, workspace enablement, retry identity and delivery gates remain enforced. No financial/status writes. Document eligibility is re-read immediately before transport. Local SQL16 and send-time19 assertions PASS; TypeScript/lint PASS.
+- Atomic completion: database guards serialize session starts/reopens/relinks and terminal Queue transitions through private mutex writes. Technician and edit paths receive the same enforcement. Queue identity changes preserve existing session history. Historical rows are not rewritten; ending sessions remains possible. Local SQL29 and real PostgreSQL17.11 two-connection39 cases PASS, including three isolation levels, rollback and identity races. A multi-Queue opposing relink can produce a normal PostgreSQL deadlock; roll back and retry the entire transaction, never blindly retry financial actions. Disposable servers stopped.
+- Exact recorded production catalog replay with15 candidate migrations PASS, including owner/crew/business-manager and property-assignment RLS, customer/impersonation denial, restricted intake scope, manual document SMS idempotency and unchanged invoice fields. These are disposable local tests, not hosted acceptance.
+- New migrations `20261026_document_sms_request.sql` and `20261026_atomic_job_completion.sql` remain unapplied in the hosted lab and production. rc9 source-bound photo/full release checks are in progress; rc8 results below remain historical and cannot authorize rc9.
+
 ## Scope and release evidence
 The candidate extends manager intake/photos/preferences, owner retry safety, scheduling/calendar relationships, isolated acceptance adapters, simulated communications and action-time Job Session completion checking. Public website intake retains Option C restricted PostgreSQL access to the existing backend. Production data, existing credentials, native workers and rollback checkpoints remain unchanged; real customer email/SMS and public photo activation remain disabled.
 
@@ -20,7 +28,7 @@ The approved free lab `yzyfmvoswucyauogueca` contains25 reviewed schema stages/1
 ## Completion enforcement scope
 The verified defect was a stale server-rendered active-session prop. rc8 freshly checks same-business sessions at the completion action and fails closed on missing business, query errors, unknown count or active sessions. The regression executes the actual confirmation callback; hosted retest passed. Missing optional progress columns retain the existing fallback behavior.
 
-The session query and Queue update are not atomic. Technician/edit paths do not use the new helper. Private atomic SQL draft is unapplied, outside the13 reviewed migrations, and requires schema/concurrency/security review plus appropriate authorization. No universal race-free completion guarantee is claimed.
+The deployed rc8 preview still has separate query/update behavior. The rc9 database migration above replaces that limitation across write paths when installed; local concurrency evidence does not establish hosted installation. Do not install the superseded private SQL draft.
 
 ## Access and credential cleanup
 Owner and manager normal browser login used only approved synthetic accounts. A temporary Vercel automation token with its automatic system-environment designation was explicitly approved, created after Ready verification and used for scoped lab HTTP tests. It was revoked in UI; old-token requests returned302; protected local token values were cleared. No deployment occurred while active. Existing production secrets were never copied or rotated. Automated protected HTTP access must not be assumed to persist.
@@ -32,7 +40,7 @@ Customer email and SMS remain disabled pending their separate requirements. SMS 
 
 Email requires a verified sender/domain, configured reply handling and provider mapping, exact origin/cutoff, approved mailbox delivery and signed callbacks. Provider acceptance, mail-server delivery and human receipt are distinct. Retain production CRON_SECRET and reconcile uncertain sends before retries.
 
-Private SMS_LIFECYCLE_COMPLETENESS_REVIEW.md documents remaining limits: estimate/invoice SMS depends on an existing successful email-send audit, not manual Mark Sent or SMS-first issuance; payment acknowledgment requires the verified payment audit; operational payment-reminder automation is absent. Successful simulated worker HTTP tests do not remove those limitations or demonstrate real delivery. Do not rewrite historical activation timestamps or reset outboxes to manufacture acceptance.
+The rc8 preview's document SMS remains email-event dependent; rc9 adds independent explicit issuance as described above. Payment acknowledgment still requires the verified payment audit; operational payment-reminder automation is absent. Successful simulated worker tests do not demonstrate real delivery. Do not rewrite historical activation timestamps or reset outboxes to manufacture acceptance.
 
 Historical October 25 estimates—not newly verified rates—from docs/handoffs/COMMUNICATIONS_ACCEPTANCE_20261025.md and its official pricing links: Twilio $0.0083/segment plus $1.15/month long-code or $2.15 toll-free; Telnyx $0.004/part. 1,000 parts estimate $8.30/$4 before carrier, registration, number, tax and inbound costs. Private URLs can increase segment counts. No purchase authorized here.
 
