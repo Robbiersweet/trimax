@@ -939,7 +939,7 @@ assert(
     invoiceDetail.includes("Send Invoice") &&
     invoiceDetail.includes("draftSendDisabledReason") &&
     invoiceDetail.includes("sendDisabledReason={draftSendDisabledReason}") &&
-    invoiceDetail.includes("disabledReason={draftSendDisabledReason}") &&
+    invoiceDetail.includes('disabledReason={hasDepositRequest ? "An active deposit request does not issue the final balance." : draftSendDisabledReason}') &&
     invoiceDetail.includes("draftPaymentDisabledReason"),
   "Invoice detail must show incomplete drafts as editable drafts, not paid invoices, and must disable draft send/status actions until priced line items exist."
 );
