@@ -1,26 +1,26 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-workflow-communications-20261025-rc8",
+  "releaseId": "trimax-workflow-communications-20261025-rc9",
   "status": "SEALED_CONTROLLED_DEPLOYMENT_CANDIDATE",
-  "createdAt": "2026-10-26T00:46:53.204Z",
-  "releaseTimestamp": "2026-10-26T00:46:53.204Z",
+  "createdAt": "2026-10-26T04:43:42.386Z",
+  "releaseTimestamp": "2026-10-26T04:43:42.386Z",
   "baseProduction": {
     "commit": "885d01f18b1811de7f2be8fe33ec9d8858056d20",
     "vercelDeploymentId": "6G2N5TMoymwBRm48NKrtt8Qbr7Xc"
   },
   "components": {
     "web": {
-      "commit": "65f21b79da5928b8125dfcf278d9018c216a277d"
+      "commit": "a7463374a1fcde9cd0f16adc70105ed189597e28"
     },
     "legacy": {
-      "commit": "65f21b79da5928b8125dfcf278d9018c216a277d"
+      "commit": "a7463374a1fcde9cd0f16adc70105ed189597e28"
     },
     "v2-shadow": {
-      "commit": "65f21b79da5928b8125dfcf278d9018c216a277d"
+      "commit": "a7463374a1fcde9cd0f16adc70105ed189597e28"
     }
   },
   "sourceBundle": {
-    "sha256": "38e11b3504897e2e91d473bb15a4a383d7c6f182874669f03fcf0311bb587733",
+    "sha256": "ed01a2e682a250818d34e6cf1da8ab3c49f3ebb5a09ee128382c6609526c5ded",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -45,6 +45,9 @@
       "public/vercel.svg": "f081337b2fee635b455b63275406a3e7f39d6a014e25ad90dab5a67e62a12ac4",
       "public/window.svg": "644768c4aaeb4767bce293344eeb0c125fb804a94d801440424072202d85e3a1",
       "scripts/account-management-regression.ts": "26119699454a3a80814fcb0afdfc1eeaaec65474e1153b0949ceddbe480a6264",
+      "scripts/atomic-job-completion-concurrency.cjs": "78f55e7b68900fd2f324d38a8060dcc84f70881af27edce94a70a07d3d57d86a",
+      "scripts/atomic-job-completion-evidence.cjs": "b68f9b2d22f91d2dab348eb6e8e530b684b03246a84367d5a7dadfcbe3a2b751",
+      "scripts/atomic-job-completion-sql-regression.cjs": "f1e2178b36d6dc51b883a89ba5bc484a705ebfb676da9d02d53a54243e57fb1e",
       "scripts/auth-cookie-refresh-regression.cjs": "9c6de241282900626139337c5ab0bd10c8beb75925cc28a9cf1cae86f5b5a4f8",
       "scripts/business-read-isolation-regression.ts": "36319d04f87c4d27ef15e171c2ef89ec6cb3b5314ca4c334e527d7da500b1be8",
       "scripts/camera-lifecycle-regression.ts": "2a881a1c73291c51ccd4574a149eb95089c98d7513242b36e14f861add05ce24",
@@ -60,6 +63,8 @@
       "scripts/communications-sql-regression.cjs": "c7a43202db0c8229c1f9ba514bccd34a2b9a2bd7249aebf77628b1a004a9cec4",
       "scripts/complementary-row-regression.cjs": "7b5a850b6849ce608ef33b2b8c5f4c40f2175b59958bd61441918361e5c8dce0",
       "scripts/discounts-and-services-regression.ts": "aa3b178219d61fbafd75d38bc960b60be8cc0695a080ff669d4866fdb1dd1b3b",
+      "scripts/document-sms-regression.cjs": "704b6c3ab0002b4de32f3debbeeaff5d328d44a67acd89888caba4cf7cab6375",
+      "scripts/document-sms-sendtime-regression.ts": "eadc5f24c76633263072ac56bb21f2513139717b2b5e1ab3cc0bd5714bdaaf26",
       "scripts/duplicate-remittance-regression.ts": "620cdeafc884c62c61507e863074a76040aa3c870b3bd8c7350134c3cc32a0c9",
       "scripts/estimate-list-compact-actions-regression.ts": "e8301085ae9e0dccdb21c4b8cfbb7b7f339c40d82110b4db7a942fd77eee7908",
       "scripts/estimate-list-loading-regression.ts": "e16e1f2f3df849ebfb9d8a722260bab33fc94064548319e7e2e58a0b34be25bd",
@@ -277,7 +282,7 @@
       "scripts/release/file-forensics-regression.cjs": "a6da1ba822d17c1a31b7bd29d3cb49e95febca66f29c51b712ccdd9d608c1b26",
       "scripts/release/file-forensics.cjs": "25133a9f2167c801a05906be04068f3d85f54f3c462e085869df2d486c8bea30",
       "scripts/release/final-candidate-regression.cjs": "edc0dbfa8f70d55607c65327a08ed25193380387dd4f1e850cf130ef992ca03f",
-      "scripts/release/gate-checks.cjs": "a41fad4a209807ae21f47f2fad19d401a338d7ff17dee642ee1bad6c1e79c4df",
+      "scripts/release/gate-checks.cjs": "849ee58cb15b583f852f981c643b37ea9e39094787f38e30de9e777a0d79d9ba",
       "scripts/release/gate-state-regression.cjs": "51f1d2c76eca73d122f20cc0f537b624074ebd4943f946dcba63857775e45d04",
       "scripts/release/gate-state.cjs": "f56bdc9741b07b92c53bb487f21320080537fa90734721130612e8c1b52da839",
       "scripts/release/gate.cjs": "ba31b2e07a44c17f51fd895140562869e419720573e2461286150ed3347a8aa2",
@@ -333,7 +338,7 @@
       "scripts/table-caption-ownership-regression.cjs": "802dd640e13598fc74301cb75a5fbd20f035da540e3bdd781963abcfe89330a4",
       "scripts/tenant-isolation-hardening-regression.ts": "fb3bf2d7f46325e44263458cdaf9ebc93cbc5f5453d4191e74393db8d5a8e501",
       "scripts/workflow-preview-adapter-regression.cjs": "aded84abc8307faed09f853b8e71f2e67b1833b7883b99cbed80a60cc05804d4",
-      "scripts/workflow-upgrade-catalog-replay.cjs": "9f287e7cad966357f2407bd6738bb9946d573f36fe6cb5f5b2f6e6435f904f47",
+      "scripts/workflow-upgrade-catalog-replay.cjs": "684a3a5b5cd768b920abe539b608affaea4d112fbd733c1ccb33991130460159",
       "src/app/activity/page.tsx": "d3d1a01cc89209ee2c76962e551aa3f06de698e4abb877bab2666418117d3ca7",
       "src/app/admin/communications/Preferences.tsx": "93110b7d0aeafe0f8507bc32e735bd3f58e6c45c5e13e805184ac109f8d57bd9",
       "src/app/admin/communications/page.tsx": "7790704e762651fb60a453f74559e3a03e85f17cf521ee7d7bfeb427968bd5d9",
@@ -346,7 +351,8 @@
       "src/app/admin/service-requests/page.tsx": "bcdac0b54194809d40cc0bb6f79e8581ed0062de2b9160f06dbe609f3270a152",
       "src/app/api/access-requests/route.ts": "be8e1bd81f9ed7e0833594de01d69179b231256229e6c0d1951032bb9cbd645c",
       "src/app/api/communications/customer/[token]/route.ts": "fff954f91414a9d03d58fe175786827dc71a2d6ed38c7bb904fa2cfbf2b00ccc",
-      "src/app/api/communications/deliver/route.ts": "2a05cafd1c968db0bdc71a24c0d7ba09e0f7a70a6778d67f6e641de6071cf227",
+      "src/app/api/communications/deliver/route.ts": "75704e8c71b2785badfd69ab393a4b5758b1e2194979aa626b89e2bf7f1c156a",
+      "src/app/api/communications/documents/route.ts": "bf61611d080207e6c637cdc9664b86a35eac39584b13effb0269440d572ce598",
       "src/app/api/communications/route.ts": "cf1cd4c2bfac43de9cc4dcaed1898a23455d30600901a8f1d6e82f280e6d22b1",
       "src/app/api/communications/webhooks/twilio/route.ts": "141660ab65051fa09f72acf890a7fca0d76b7236ada6c1faab99801db77fb5cd",
       "src/app/api/estimates/[id]/send-email/route.ts": "fc187489ea8f6193e0b659802f24fcdc3015715f1cf895756cd8e19c38fb1748",
@@ -408,6 +414,7 @@
       "src/app/components/DeleteInvoiceButton.tsx": "7591783148622b1f4cd508d47ec3d3f99894cb27f682a5158d9a25f3e880b293",
       "src/app/components/DeleteQueueItemButton.tsx": "05f40948fede7a6d92d795c5a11c0dc130ec1aec2f832d9906a935b7d2d715f9",
       "src/app/components/DocumentReadinessPanel.tsx": "06ea8a58252e27215c5e6e6d437bcc15a5b98980d1cf9e96aa37f301e45be47e",
+      "src/app/components/DocumentSmsPanel.tsx": "5d08792a1a34ff921c5167a32e48e75684fbd73798ddb45db11b981380437764",
       "src/app/components/FilteredResultsScroller.tsx": "009d2a40551e1ef72053bd2a7c37b6b84c51f460c36896d29a46ba2141d63514",
       "src/app/components/HashScrollRestorer.tsx": "5d65719bae9c455e610dc1b2a6e67b6c02dda4fd00b5d451e6df3a7f640acfd5",
       "src/app/components/InputField.tsx": "a83c369087e93e172b0215c5e960aff42a85400c365a522a0f7d33bcb913ef8d",
@@ -472,7 +479,7 @@
       "src/app/data/queueItems.ts": "d787440758522cafb911db57da24af144c51ae3a0c663ab722df04223f175e4e",
       "src/app/estimates/[id]/edit/page.tsx": "b843d2e5abb745c77a5e72615f6b315dc2c518546c6728bcac3ca858791168cf",
       "src/app/estimates/[id]/error.tsx": "3e72ce3dc7e9dfbc6312896b1a920980d789ea6b2293f11cdea4fe1e1bc77c4a",
-      "src/app/estimates/[id]/page.tsx": "2cf61f1b9bb0aeafa5fc8a9cfdf9ff099d1c1b05d9879a83ffc378e5912d62fa",
+      "src/app/estimates/[id]/page.tsx": "38cb3e831b62888015481e7f90117e9c2b2e4e0d5dee39b4dd60b8aa0625a862",
       "src/app/estimates/[id]/print/error.tsx": "5f6ac5e64ea8325ba4906ad2495d92d7a4f7e43499552c92459011c4b57b569a",
       "src/app/estimates/[id]/print/page.tsx": "1ab4c6161a5024fbab75a8564d3fa661e163df2e033718d7fe66cf6e619ed02d",
       "src/app/estimates/new/page.tsx": "2140a3d4c9158e1b9e7d43d39600d9eab7593131db398bfcfb87b992b9396aa1",
@@ -484,7 +491,7 @@
       "src/app/invoices/[id]/edit/page.tsx": "eaafd4fd1a8dcddb0ffc0f39356c36349ed3bb5a1a90df852a7a607e995b18b8",
       "src/app/invoices/[id]/error.tsx": "1f8dcb4db98edea4f131eaca0b8c217fb60054949fd7e57f280a5f0b6620dcf9",
       "src/app/invoices/[id]/exports/5stars-boa/route.ts": "442e141be7542b7bc203df357c8f65be33222b8c262aa0500a3e32a549b756e2",
-      "src/app/invoices/[id]/page.tsx": "fcab96f7c81b43de48a1c9e9f1d89623bb626dce4b2fd1609c5ba40fd131f9c2",
+      "src/app/invoices/[id]/page.tsx": "2d41d1bad614c9f445a101ca5998e4e83d177e99c3b08baf9c95ef52e09ef227",
       "src/app/invoices/[id]/print/error.tsx": "833c6fb2b2d20fcd09b8ef6b03189c4a9a092252ce4502426f4650736cbb6ed1",
       "src/app/invoices/[id]/print/page.tsx": "aa1059c253e01c076cd1f50bf07aff7ebe7ec3c1fa1e6554bedde4b6149429e3",
       "src/app/invoices/batch-payment/page.tsx": "e7b469d92ee87e0b51770c7c4cfd6ca589f689627113ca7579386eb64dc96982",
@@ -503,6 +510,7 @@
       "src/app/lib/clientIdentity.ts": "d3fba620dc5c04d9eca46806aa13e56b20a3b60631d19aeeb53057c07f04327f",
       "src/app/lib/communications/consent.ts": "bd30a7e88667dd9885dab51a49a3e51ce456e39c30e5fe8b158cd7c755e47f16",
       "src/app/lib/communications/customerDocument.ts": "f0e3d81324be5ebb35df3646552ff85bafef4e7bd15e0f2d09db91b07404011d",
+      "src/app/lib/communications/documentEligibility.ts": "4d2f0d14a590c947f3665b828b7952cec9436ea4359bf208d2eb2b7b2f506736",
       "src/app/lib/communications/messages.ts": "074ec4182ded1adffc2af74afff2706c3323c02851e0128a4bf259c050c7c3d6",
       "src/app/lib/communications/provider.ts": "c1e496313b148b2243e7b636b65d898648a17401172d67ef336e6c4bd49d901a",
       "src/app/lib/communications/server.ts": "6585211f14735d8f8a102334f04c3fda625f0435fa620388aac3ae84b832ef79",
@@ -724,6 +732,8 @@
       "supabase/migrations/20261025_service_request_consent_intake.sql": "14acc589e3242a8e7f47ef8f29a7e883ae78aafbf93b1315557af42e07b6e190",
       "supabase/migrations/20261025_sms_queue.sql": "ab45066a122751983ada105a261eafbb087f8be4902251a98879fcfe496f16ee",
       "supabase/migrations/20261025_workflow_experience.sql": "a1f33d03777f72ba3901e2438b504e5a0c3aee1138f250f7eb4fccedb6db68f3",
+      "supabase/migrations/20261026_atomic_job_completion.sql": "7fb66907000d373e50d9f419930b7bff5c50359abc45a1842e4727523bd9c3ae",
+      "supabase/migrations/20261026_document_sms_request.sql": "992484bd1dc3caed73ef08e63eb2a0589db8b53c1e315503a1cfeecc7cd455d8",
       "supabase/migrations/20261026_property_request_photos.sql": "21d2b30ffa812ece8278ec2b59b93ba3ca93c0a9b9d1aa8c53d222d9f8e380c8",
       "supabase/migrations/20261026_property_request_preferences.sql": "92e91752a3ad09ca004f0e60cf2652dbcbcf01e277e123546388a5475e578c5e",
       "supabase/migrations/20261026_request_photo_candidate.sql": "c7ae144f8fa4a33546b7d62d851112c786531968cf9e4282b170ceb76ca6ad4a",
@@ -899,28 +909,28 @@
     }
   ],
   "database": {
-    "capturedAt": "2026-10-26T00:46:53.204Z",
+    "capturedAt": "2026-10-26T04:43:42.386Z",
     "algorithm": "catalog-v1; sorted C collation name=value; UTF8 SHA256; public tables/constraints/indexes/functions, public+storage RLS, public table grants; excludes only trimax_release_runtime itself",
     "fingerprints": {
       "schema": {
-        "entries": 1085,
-        "sha256": "1556c33c464d4c5fea3d85a4c6e50c1d71cc64a16e7dcc26a6cc35373244672c"
+        "entries": 1090,
+        "sha256": "49ece891213bf8ce0286d33be91ac3956ebef345cb03a7fa7b6e72216704671c"
       },
       "rpc": {
-        "entries": 84,
-        "sha256": "0bf99830a2afe5a5a48f36e51911f87ebd9c4422c0c191fc2788208015f87f62"
+        "entries": 88,
+        "sha256": "073bdadb3d4751204ff14e3aad1939b05aa40e9920cd0ddfcba332aeb5499f36"
       },
       "triggers": {
-        "entries": 24,
-        "sha256": "e1ede827a9251f73de008ceee3badac665e53b374bf3480d0cf3c1cec1c305fd"
+        "entries": 27,
+        "sha256": "4810867bd1f77bc58b05739e7487a8bb9c50346031184ffea2e490ad97227a00"
       },
       "policies": {
         "entries": 87,
         "sha256": "9ce0fc1bc08c25d4ce52cbf5018e33e48e8c094c02c314b827cd86a95076d61f"
       },
       "grants": {
-        "entries": 1175,
-        "sha256": "ed0e98c420040ae86a8319302e83c58c5ae7d6fb43d991114e89d8ea4e985fd5"
+        "entries": 1182,
+        "sha256": "83fe9dcd8e68087aec7f419caee2ebe7a98cab9a0fad6f520b67aa5d8448c445"
       }
     },
     "flags": [
@@ -932,7 +942,7 @@
     ],
     "legacyEnabled": true,
     "acceptanceTableRecords": 0,
-    "evidenceType": "Exact prior production catalog reproduced, then thirteen candidate migrations applied in isolated PostgreSQL; not production acceptance",
+    "evidenceType": "Exact prior production catalog reproduced, then fifteen candidate migrations applied in isolated PostgreSQL; not production acceptance",
     "migration": [
       "supabase/migrations/20261025_workflow_experience.sql",
       "supabase/migrations/20261025_property_request_intake.sql",
@@ -946,7 +956,9 @@
       "supabase/migrations/20261026_property_request_preferences.sql",
       "supabase/migrations/20261025_request_email_acceptance.sql",
       "supabase/migrations/20261025_request_email_links.sql",
-      "supabase/migrations/20261025_request_email_webhooks.sql"
+      "supabase/migrations/20261025_request_email_webhooks.sql",
+      "supabase/migrations/20261026_document_sms_request.sql",
+      "supabase/migrations/20261026_atomic_job_completion.sql"
     ]
   },
   "workerConfiguration": {
@@ -1014,7 +1026,7 @@
     "physicalAcceptance": "Only installed-iPhone production evidence for exact release may pass; replay cannot pass",
     "legacyModelCache": "Pinned runtime cache verified by startup contract before claim"
   },
-  "sealedAt": "2026-10-26T00:46:53.204Z",
+  "sealedAt": "2026-10-26T04:43:42.386Z",
   "testRuntime": {
     "pgliteVersion": "0.5.8",
     "pglitePackageSha256": "65dff2c93c707e526902eebfab246bcbf2df2eba1c6984a5b5e9a44177532b1c",
@@ -1757,9 +1769,9 @@
       "deploymentId": "6G2N5TMoymwBRm48NKrtt8Qbr7Xc",
       "deploymentCommit": "885d01f18b1811de7f2be8fe33ec9d8858056d20"
     },
-    "candidateReleaseId": "trimax-workflow-communications-20261025-rc8",
-    "applicationCommit": "65f21b79da5928b8125dfcf278d9018c216a277d",
-    "machineryCommit": "65f21b79da5928b8125dfcf278d9018c216a277d"
+    "candidateReleaseId": "trimax-workflow-communications-20261025-rc9",
+    "applicationCommit": "a7463374a1fcde9cd0f16adc70105ed189597e28",
+    "machineryCommit": "a7463374a1fcde9cd0f16adc70105ed189597e28"
   },
   "contractRevision": {
     "id": "workflow-manager-communications",
