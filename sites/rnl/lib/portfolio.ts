@@ -17,6 +17,7 @@ export type PortfolioProject = {
 };
 const photos = photoData as Record<string,Photo[]>;
 export const portfolio:PortfolioProject[] = [
+  {id:'cedar-privacy-fence',title:'Cedar Privacy Fence Replacement — Everett, WA',category:'Fences & Exterior Carpentry',collection:'specialty',tags:['Custom Carpentry','Custom Builds'],description:'A cedar privacy fence along a stone retaining wall, fitted around mature trees and uneven terrain. Installation photos show the new fence with tools and construction materials still on site.',photos:photos['cedar-privacy-fence']},
   {id:'sound-booth',title:'Hope Church Sound Booth',category:'Custom Carpentry',collection:'hope-church',tags:['Custom Carpentry','Commercial','Custom Builds'],description:'Custom construction, from wall framing to the finished sanctuary sound booth.',photos:photos['sound-booth']},
   {id:'coffee-bar',title:'Hope Church Coffee Bar',category:'Custom Woodworking',collection:'hope-church',tags:['Custom Carpentry','Commercial','Custom Builds'],description:'Custom hospitality cabinetry with a finished wood countertop and decorative front.',photos:photos['coffee-bar']},
   {id:'fireplace',title:'Fireplace Resurfacing',category:'Specialty Finishes',collection:'apartments',tags:['Specialty Finishes','Apartment Renovations'],description:'An original beige surround and hearth, refinished with a bold black marble effect.',photos:photos.fireplace,comparison:true},

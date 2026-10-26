@@ -227,5 +227,70 @@
       "source": "codex-clipboard-46074081-4620-4e3d-b54f-936c0c0a9240.jpg",
       "bytes": 87372
     }
+  ],
+  "cedar-privacy-fence": [
+    {
+      "src": "/projects/cedar-privacy-fence-1947.webp",
+      "alt": "New cedar privacy fence from the street side, with a level and tools visible during installation",
+      "width": 1536,
+      "height": 1152,
+      "label": "Installed fence detail",
+      "source": "IMG_1947.jpeg",
+      "bytes": 563298
+    },
+    {
+      "src": "/projects/cedar-privacy-fence-1946.webp",
+      "alt": "Long cedar fence line beside the sidewalk, with tools remaining in the work area",
+      "width": 1152,
+      "height": 1536,
+      "label": "Fence line overview",
+      "source": "IMG_1946.jpeg",
+      "bytes": 569720
+    },
+    {
+      "src": "/projects/cedar-privacy-fence-1966.webp",
+      "alt": "Cedar privacy fence following an elevated stone retaining wall, with equipment below",
+      "width": 1536,
+      "height": 1152,
+      "label": "Retaining wall layout",
+      "source": "IMG_1966.jpeg",
+      "bytes": 717154
+    },
+    {
+      "src": "/projects/cedar-privacy-fence-1967.webp",
+      "alt": "Courtyard view along the cedar fence and stone wall during construction",
+      "width": 1536,
+      "height": 1152,
+      "label": "Installation context",
+      "source": "IMG_1967.jpeg",
+      "bytes": 692818
+    },
+    {
+      "src": "/projects/cedar-privacy-fence-1968.webp",
+      "alt": "Mature tree trunks and exposed roots beside the fence line on uneven ground",
+      "width": 1536,
+      "height": 1152,
+      "label": "Terrain and tree roots",
+      "source": "IMG_1968.jpeg",
+      "bytes": 484134
+    },
+    {
+      "src": "/projects/cedar-privacy-fence-1965.webp",
+      "alt": "Cedar fence behind removed chain-link mesh and construction materials near a mature tree",
+      "width": 1536,
+      "height": 1152,
+      "label": "Work in progress",
+      "source": "IMG_1965.jpeg",
+      "bytes": 655426
+    },
+    {
+      "src": "/projects/cedar-privacy-fence-1964.webp",
+      "alt": "Cedar fence extending around mature trees with removed wood gathered in the work area",
+      "width": 1536,
+      "height": 1152,
+      "label": "Work in progress",
+      "source": "IMG_1964.jpeg",
+      "bytes": 680056
+    }
   ]
 }

@@ -19,6 +19,7 @@ const frames=await Promise.all([16,32,48].map(s=>readFile(new URL(`rnl-mark-${s}
 const head=Buffer.alloc(6+16*frames.length);head.writeUInt16LE(1,2);head.writeUInt16LE(frames.length,4);let offset=head.length;
 frames.forEach((frame,i)=>{const at=6+i*16;head[at]=[16,32,48][i];head[at+1]=head[at];head.writeUInt16LE(1,at+4);head.writeUInt16LE(32,at+6);head.writeUInt32LE(frame.length,at+8);head.writeUInt32LE(offset,at+12);offset+=frame.length;});
 await writeFile(new URL('app/favicon.ico',root),Buffer.concat([head,...frames]));
+await writeFile(new URL('rnl-favicon-v1.ico',output),Buffer.concat([head,...frames]));
 // Full original badge remains readable in shared-link previews; unlike tab icons this
 // retains the company name and complete approved seal, without recreating the logo.
 const badge=await sharp(fileURLToPath(original)).extract({left:1170,top:870,width:2980,height:2520}).resize({width:590,height:500,fit:'inside'}).png().toBuffer();
