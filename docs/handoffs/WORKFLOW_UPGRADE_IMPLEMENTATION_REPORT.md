@@ -47,7 +47,17 @@ Historical October 25 estimates—not newly verified rates—from docs/handoffs/
 ## Outstanding work and safe recovery
 The scoped manager permission/revocation approval was granted and both tests passed with exact original-row restoration; see evidence below.
 
-Current-candidate physical iPhone notification and physical calendar import, real email sender/mailbox/callback, SMS carrier/handset, universal atomic completion enforcement, and production catalog/native-runtime attestations remain separate prerequisites or explicit limitations. Reuse existing controlled requests; do not duplicate A payment or reset completed jobs.
+Next hosted approval is the two additive rc9 lab migrations and bounded synthetic delta acceptance, including their explicitly described new-object grants/revokes. Private `RC9_LAB_DELTA_PLAN.md` and `rc9-lab-delta-review.json` describe exact hashes, preflight, preservation checks and partial-transaction recovery. No new credentials, permission-window retest, payment replay, real delivery or production operation is included. Existing lab access must be verified before execution; do not recreate a revoked automation token implicitly.
+
+Before any production request: finish rc9 local gates, approved hosted delta verification, exact target catalog comparison and a coordinated web/native worker plan. The five catalog fingerprints change; old worker manifests do not attest the migrated schema. Keep existing OCR/models/payment authority unchanged, stop/settle affected claims during an approved cutover, verify new worker source/configuration/model/schema identity before allowing claims, then verify deployed web identity. A promoted old web deployment alone is not a data-preserving schema recovery plan.
+
+### Consolidated human/device/provider checklist
+- On the exact final candidate: receive a labeled push on the physical iPhone, tap through required login to the corresponding existing request, and verify installed-app/login behavior. Preserve the historical October19 pass without treating it as current-candidate evidence.
+- Import/update/cancel one controlled appointment in the actual calendar client; verify stable event identity, local time and cancellation. Existing generated ICS tests do not prove provider import behavior.
+- Email separately: verify sender/domain and reply handling; authorize one controlled mailbox delivery and signed callback check before enabling customer delivery. Keep delivery disabled until successful.
+- SMS separately: approve provider/sender and any registration or cost; configure server-only credentials and signed callbacks; authorize one controlled handset sequence for delivery/private link/STOP/HELP/START and obsolete reminder handling. Keep real SMS disabled until successful. SMS does not block the core workflow rollout.
+
+Reuse existing controlled requests; do not duplicate A payment or reset completed jobs. Do not claim current-candidate physical, hosted atomic enforcement or provider acceptance from local tests.
 
 Production app remains `885d01f18b1811de7f2be8fe33ec9d8858056d20`/`6G2N5TMoymwBRm48NKrtt8Qbr7Xc`; website `7e0ca069a5cbbb2c38aa05e8705113a5cc769e18`/`7nhM28FWzouDAL8HwXyom7fX7VbB`. Production deployment/migrations/native changes and customer messaging require separate explicit approval. Preserve rollback refs `34fa3b47f16890a9de09b253848ecf8a690f4e9b` and `4e3d786e12092c5ffde86d8324cd6c23ce6670cf`. Follow private ROLLOUT_RECOVERY.md: preserve records/audits, reconcile pending messages, reseal against actual retained catalog and prefer forward repair. Old deployment promotion cannot undo migrated state; no destructive down migrations or snapshot replacement.
 
