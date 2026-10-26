@@ -25,7 +25,7 @@ module.exports=async function projectUpgrade(db,parts,base){
  }
  console.log('PASS actual production invoice/estimate document and line-item query columns and ordering');
  const anonymousBefore={rpc:(await db.query("select p.oid::regprocedure::text name from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and has_function_privilege('anon',p.oid,'EXECUTE') order by 1")).rows.map(r=>r.name),tables:(await db.query("select c.relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind in ('r','v') and has_table_privilege('anon',c.oid,'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER') order by 1")).rows.map(r=>r.relname)};
- const migrations=['20261025_workflow_experience.sql','20261025_property_request_intake.sql','20261025_property_request_access.sql','20261025_communications.sql','20261025_service_request_consent_intake.sql','20261025_sms_queue.sql','20261025_customer_reply.sql','20261026_request_photo_candidate.sql','20261026_property_request_photos.sql','20261026_property_request_preferences.sql','20261025_request_email_acceptance.sql','20261025_request_email_links.sql','20261025_request_email_webhooks.sql'];
+ const migrations=['20261025_workflow_experience.sql','20261025_property_request_intake.sql','20261025_property_request_access.sql','20261025_communications.sql','20261025_service_request_consent_intake.sql','20261025_sms_queue.sql','20261025_customer_reply.sql','20261026_request_photo_candidate.sql','20261026_property_request_photos.sql','20261026_property_request_preferences.sql','20261025_request_email_acceptance.sql','20261025_request_email_links.sql','20261025_request_email_webhooks.sql','20261026_document_sms_request.sql','20261026_atomic_job_completion.sql'];
  const receipts=[];
  for(const name of migrations){const file=name==='20261025_communications.sql'&&process.env.TRIMAX_COMMUNICATIONS_CANDIDATE?process.env.TRIMAX_COMMUNICATIONS_CANDIDATE:path.join('supabase/migrations',name);const text=fs.readFileSync(file,'utf8').replace(/\r?\n/g,'\r\n');await db.exec(text);receipts.push({name,sha256:crypto.createHash('sha256').update(text).digest('hex')});}
  const scope={};
@@ -71,6 +71,17 @@ module.exports=async function projectUpgrade(db,parts,base){
   await db.query("insert into activity_logs(business_id,action,entity_type,entity_id,details) values($1,'invoice.batch_payment_applied','invoice',$2,$3)",[id(1),id(3),JSON.stringify({amountApplied:10,resultingAmountPaid:10})]);
   const events=(await db.query('select event_type from communication_messages where business_id=$1',[id(1)])).rows.map(r=>r.event_type);
   assert.ok(events.includes('invoice_sent'),'Real invoice audit trigger creates milestone');assert.ok(events.includes('payment_received'),'Real recorded-payment audit creates milestone');
+  // Explicit SMS issuance also works against the full production-shaped catalog,
+  // without adding email audit events or changing invoice/payment fields.
+  const invoiceBefore=(await db.query('select to_jsonb(i) value from invoices i where id=$1',[id(3)])).rows[0].value;
+  await db.query('insert into communication_settings(business_id,enabled) values($1,true) on conflict(business_id) do update set enabled=true',[id(1)]);
+  await db.exec(`set role authenticated;set test.uid='${id(2)}'`);
+  const manualSms=async()=>(await db.query("select trimax_queue_document_sms($1,'invoice',$2,$3) id",[id(1),id(3),id(89)])).rows[0].id;
+  const manualId=await manualSms();assert.equal(await manualSms(),manualId);
+  await db.exec('reset role');
+  assert.deepEqual((await db.query('select to_jsonb(i) value from invoices i where id=$1',[id(3)])).rows[0].value,invoiceBefore);
+  assert.equal((await db.query("select count(*)::int n from communication_audit where message_id=$1 and event_type='document_sms_requested'",[manualId])).rows[0].n,1);
+  await db.query('update communication_settings set enabled=false where business_id=$1',[id(1)]);
   await db.query('update queue_items set source_request_id=null where business_id=$1 and id=$2',[id(1),linked.queueItemId]);
   await db.query("update queue_items set appointment_start=now()+interval '3 days',appointment_end=now()+interval '3 days 1 hour' where business_id=$1 and id=$2",[id(1),linked.queueItemId]);
   assert.equal((await db.query("select count(*)::int n from communication_messages where business_id=$1 and queue_id=$2 and request_id is null and event_type='appointment_scheduled'",[id(1),linked.queueItemId])).rows[0].n,1,'Actual Queue schema and consent mapping enqueue exactly one appointment milestone');
@@ -87,8 +98,35 @@ module.exports=async function projectUpgrade(db,parts,base){
   await db.exec('reset role');
   assert.equal((await db.query("select count(*)::int n from communication_owner_alerts where business_id=$1 and message_id=$2 and kind='customer_reply'",[id(1),replyId])).rows[0].n,1,'Exactly one reply owner alert');
   assert.equal((await db.query('select status from public_service_requests where id=$1',[receipt.id])).rows[0].status,'needs_information','Customer reply cannot approve or schedule');
+  // Exercise unchanged production RLS, not permissive test policies. Business
+  // property_manager membership differs from a property-only assignment.
+  for(const n of [82,83,84,85])await db.query('insert into auth.users(id) values($1)',[id(n)]);
+  for(const [n,role] of [[82,'technician'],[83,'property_manager']])await db.query('insert into business_users(business_id,user_id,role,email) values($1,$2,$3,$4)',[id(1),id(n),role,'catalog-'+n+'@example.invalid']);
+  await db.query("insert into property_users(id,business_id,user_id,email,property_name,can_update_queue_items) values($1,$2,$3,'assigned@example.invalid','Assigned property',true)",[id(86),id(1),id(84)]);
+  const roleCall=async(user,fn)=>{await db.exec('savepoint rls_case');await db.exec(`set role authenticated;set test.uid='${user}'`);try{const result=await fn();await db.exec('reset role;release savepoint rls_case');return result;}catch(error){await db.exec('rollback to savepoint rls_case;reset role;release savepoint rls_case');throw error;}};
+  const seedQueue=async(q,property='Assigned property')=>db.query("insert into queue_items(id,business_id,property,unit,status) values($1,$2,$3,'A-101','Open')",[q,id(1),property]);
+  for(const [n,label] of [[2,'owner'],[82,'crew'],[83,'business-manager']]){
+   const q='catalog-rls-'+label;await seedQueue(q);
+   const session=(await roleCall(id(n),()=>db.query('insert into job_sessions(business_id,user_id,queue_item_id) values($1,$2,$3) returning id',[id(1),id(n),q]))).rows[0].id;
+   await assert.rejects(roleCall(id(n),()=>db.query("update queue_items set status='Completed',completed_date=current_date where id=$1 returning id",[q])),/Finish the active Job Session/);
+   await roleCall(id(n),()=>db.query('update job_sessions set ended_at=now() where id=$1 returning id',[session]));
+   assert.equal((await roleCall(id(n),()=>db.query("update queue_items set status='Completed',completed_date=current_date where id=$1 returning id",[q]))).rows.length,1,label+' can complete after own session ends');
+   await assert.rejects(roleCall(id(n),()=>db.query('insert into job_sessions(business_id,user_id,queue_item_id) values($1,$2,$3)',[id(1),id(n),q])),/Cannot start a Job Session/);
+  }
+  const scoped='catalog-assigned-manager';await seedQueue(scoped);await seedQueue('catalog-unassigned','Unassigned property');
+  // Property-only manager may manage assigned Queue, but has no business-wide
+  // job_sessions INSERT policy. Existing permission distinction is preserved.
+  await assert.rejects(roleCall(id(84),()=>db.query('insert into job_sessions(business_id,user_id,queue_item_id) values($1,$2,$3)',[id(1),id(84),scoped])),/row-level security/);
+  assert.equal((await roleCall(id(84),()=>db.query("update queue_items set status='Completed',completed_date=current_date where id=$1 returning id",[scoped]))).rows.length,1);
+  assert.equal((await roleCall(id(84),()=>db.query("update queue_items set status='Completed' where id='catalog-unassigned' returning id"))).rows.length,0);
+  await seedQueue('catalog-customer-denial');
+  assert.equal((await roleCall(id(85),()=>db.query("update queue_items set status='Completed' where id='catalog-customer-denial' returning id"))).rows.length,0);
+  await assert.rejects(roleCall(id(85),()=>db.query("insert into job_sessions(business_id,user_id,queue_item_id) values($1,$2,'catalog-customer-denial')",[id(1),id(85)])),/row-level security/);
+  await assert.rejects(roleCall(id(82),()=>db.query("insert into job_sessions(business_id,user_id,queue_item_id) values($1,$2,'catalog-customer-denial')",[id(1),id(2)])),/row-level security/);
+  for(const n of [2,82,83,84,85])await assert.rejects(roleCall(id(n),()=>db.query("select count(*)::int n from public.trimax_queue_completion_mutex")),/permission denied/);
+  console.log('PASS actual-catalog owner/crew/business-manager own sessions and completion; assigned-manager scope; customer/impersonation RLS denial');
   console.log('PASS actual-catalog opt-in, atomic conversion, document/Queue events and capability reply with idempotent owner alert; synthetic rows rolled back');
- }finally{await db.exec('reset role;rollback');}
+ }finally{await db.exec('rollback;reset role');}
  const candidate=await fingerprints();fs.writeFileSync(path.join(directory,'candidate.json'),JSON.stringify({baseline,transport:'CRLF',migrations:receipts,fingerprints:candidate,scope},null,2));
  console.log('PASS full-catalog candidate migrations and restricted role scope; projection saved privately');
 };

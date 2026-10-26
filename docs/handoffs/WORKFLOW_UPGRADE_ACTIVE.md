@@ -3,9 +3,9 @@
 ## Objective, workspace and authorization
 Complete the extended scheduling/customer/manager workflow and separate communications activation. App checkout: `C:/Users/robbi/.codex/worktrees/workflow-upgrade/trimax`, branch `codex/workflow-upgrade`. Marketing checkout: `C:/Users/robbi/.codex/worktrees/rnl-brand-icons/trimax`; preserve dirty `sites/rnl/BRANDING_HANDOFF.md`.
 
-Approved work covers the existing free isolated lab `yzyfmvoswucyauogueca`, reviewed schema/fixtures/private storage, synthetic owner/manager passwords, branch-only previews and controlled synthetic acceptance. Production deployment/migrations/native worker changes, real customer messages and spending remain unauthorized. Manager permission/revocation approval is pending; no permission changes have occurred.
+Approved work covers the existing free isolated lab `yzyfmvoswucyauogueca`, reviewed schema/fixtures/private storage, synthetic owner/manager passwords, branch-only previews and controlled synthetic acceptance. Production deployment/migrations/native worker changes, real customer messages and spending remain unauthorized. Both explicitly approved lab manager permission tests passed; the exact original assignment is restored. Do not repeat them.
 
-## Release identity and completed local evidence
+## Previous verified rc8 release identity (historical; new candidate below)
 - rc8 executable `65f21b79da5928b8125dfcf278d9018c216a277d`; seal `86b0f82`.
 - Bundle `38e11b3504897e2e91d473bb15a4a383d7c6f182874669f03fcf0311bb587733`; manifest `5bda467e6ec9cafefc6c73406105c6b0d435c806839ee10cd439e0c7c8f4ae37`.
 - Photo matrix `matrix-2026-10-26T00-46-34-742Z`:56/56 PASS, receipt `c65fbe1`.
@@ -30,8 +30,8 @@ Private bundle: `C:/Users/robbi/AppData/Local/Trimax/hosted-lab-acceptance-20261
 ## Exact next steps
 1. Manager direct-Queue and assignment-revocation tests completed and exact original assignment restored; reuse the evidence below, do not repeat.
 2. Reconcile any remaining negative/preapproval or provider acceptance requirements against actual journals; avoid duplicate requests, Queue items, payments or already-sufficient tests.
-3. Review SMS lifecycle limits (document sends depend on existing email-send audit, no SMS-first/manual-Mark-Sent trigger, payment acknowledgment depends on verified payment audit, payment-reminder automation absent). Email sender/mailbox/callback and SMS carrier/handset activation remain separate and disabled.
-4. Atomic completion race protection, technician/edit-path coverage, current-candidate physical iPhone and calendar import remain unverified. Do not claim universal completion enforcement or physical delivery.
+3. New candidate resolves independent document SMS issuance and atomic completion locally; see current continuation below. Payment acknowledgment still requires verified payment audit; payment-reminder automation remains absent. Email and SMS activation remain separate and disabled.
+4. New migrations have not been installed in the hosted lab or production. Current-candidate hosted acceptance, physical iPhone and calendar import remain pending. Do not claim deployed atomic enforcement or physical delivery.
 5. Present coordinated production approval only after unresolved prerequisites are explicit and required acceptance complete. No active gate/background work remains from this checkpoint.
 
 ## Production and rollback

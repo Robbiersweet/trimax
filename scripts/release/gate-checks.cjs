@@ -47,3 +47,6 @@ scripts.push('scripts/request-email-acceptance-regression.ts','scripts/request-e
 scripts.push('scripts/owner-review-ui-regression.cjs');
 scripts.push('scripts/release/build-mode-regression.cjs');
 scripts.push('scripts/job-completion-guard-regression.cjs');
+scripts.push('scripts/document-sms-regression.cjs','scripts/atomic-job-completion-sql-regression.cjs');
+scripts.push('scripts/document-sms-sendtime-regression.ts');
+scripts.push('scripts/atomic-job-completion-evidence.cjs');
