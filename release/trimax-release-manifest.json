@@ -1674,7 +1674,7 @@
       "deploymentCommit": "885d01f18b1811de7f2be8fe33ec9d8858056d20",
       "deploymentId": "6G2N5TMoymwBRm48NKrtt8Qbr7Xc"
     },
-    "candidateReleaseId": "trimax-invoice-lifecycle-repair-20261026-rc1",
+    "candidateReleaseId": "trimax-invoice-lifecycle-repair-20261026-rc2",
     "applicationCommit": "041dbf50f746035a1079b8043cedf9de9eef2c9a",
     "machineryCommit": "041dbf50f746035a1079b8043cedf9de9eef2c9a"
   },
