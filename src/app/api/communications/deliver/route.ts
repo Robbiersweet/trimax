@@ -1,3 +1,4 @@
+import {currentSmsDocument} from '@/app/lib/communications/documentEligibility';
 import {createHash,randomBytes} from 'node:crypto';
 import {communicationsDb,authorizedCron,isolatedSmsTestDatabase} from '@/app/lib/communications/server';
 import {sendSms,SmsSendError,providerMode} from '@/app/lib/communications/provider';
@@ -32,6 +33,8 @@ export async function GET(request:Request){
    // Recheck consent + current appointment after preparing links, immediately before provider call.
    const {data:current,error:currentError}=await db.rpc('trimax_prepare_sms',{p_id:row.id,p_lease:row.lease_token,p_test:test});if(currentError)throw Error('prepare_failed');if(!current){deferred++;continue;}
    if(message.queue_id&&!message.request_id){const {data:client,error:identityError}=await db.rpc('trimax_queue_sms_client',{p_business:message.business_id,p_queue:message.queue_id,p_phone:message.recipient});if(identityError||client!==message.client_id)throw new SmsSendError('recipient_changed',false);}
+   // Read current issuance/client after the second preparation, immediately before transport.
+   if(!await currentSmsDocument(current.message,async(kind,id,businessId)=>{const {data,error}=await db.from(kind==='invoice'?'invoices':'estimates').select('id,business_id,client_id,status').eq('id',id).eq('business_id',businessId).maybeSingle();if(error)throw Error('document_read_failed');return data;}))throw new SmsSendError('document_unavailable',false);
    const result=await sendSms(settings,{id:message.id,recipient:message.recipient,body});
    const {data:done,error:finishError}=await db.rpc('trimax_finish_sms',{p_id:row.id,p_lease:row.lease_token,p_reference:result.id,p_body:body,p_segments:segments,p_simulated:result.simulated});
    if(finishError||!done){failed++;continue;}accepted++;

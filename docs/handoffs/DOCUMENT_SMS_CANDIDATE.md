@@ -11,3 +11,7 @@ Migration 20261026_document_sms_request.sql follows communications migration (an
 Local validation: document-sms-regression.cjs16 assertions (including tenant denial, disabled settings, no consent, STOP, retry mismatch/dedup, null/draft status, withdrawn document suppression, no email dependency, unchanged invoice/money/activity, inherited restricted-role denial); TypeScript noEmit and targeted ESLint pass. These do not establish hosted or provider acceptance.
 
 Remaining: integrate, project against actual catalog/grants, full gate/reseal, approved isolated migration/deployment and normal document-page controlled simulated acceptance. SMS remains separately disabled until approved activation. Payment reminders are outside this focused change.
+
+Send-time follow-up: common SMS worker now rereads document issuance/business/client after second consent preparation immediately before transport, covering automatic and manual document messages. Revoked/draft/missing/moved documents fail closed; unavailable database never sends. This narrows the post-lease gap but does not assert an impossible atomic transaction spanning database and external provider. Panel internal action is keyed by business+kind+ID so client navigation resets retry key and queued/busy/status without carrying the previous document's state.
+
+19 send-time eligibility assertions plus TypeScript and targeted ESLint pass. Candidate migration unchanged; no hosted acceptance run.
