@@ -10,17 +10,17 @@
   },
   "components": {
     "web": {
-      "commit": "23c2ce41115981a5ba1ae9fcf62350d2591a1e58"
+      "commit": "041dbf50f746035a1079b8043cedf9de9eef2c9a"
     },
     "legacy": {
-      "commit": "23c2ce41115981a5ba1ae9fcf62350d2591a1e58"
+      "commit": "041dbf50f746035a1079b8043cedf9de9eef2c9a"
     },
     "v2-shadow": {
-      "commit": "23c2ce41115981a5ba1ae9fcf62350d2591a1e58"
+      "commit": "041dbf50f746035a1079b8043cedf9de9eef2c9a"
     }
   },
   "sourceBundle": {
-    "sha256": "f4b19776bbbf6a8555a96ae229ba8d57e11acfc37a0eeab5576902d270dd4b55",
+    "sha256": "308d271c60a3257bf6b81874af98f8722625dd4bd9a498aa09bbce204696cfdb",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -45,7 +45,7 @@
       "public/vercel.svg": "f081337b2fee635b455b63275406a3e7f39d6a014e25ad90dab5a67e62a12ac4",
       "public/window.svg": "644768c4aaeb4767bce293344eeb0c125fb804a94d801440424072202d85e3a1",
       "scripts/account-management-regression.ts": "26119699454a3a80814fcb0afdfc1eeaaec65474e1153b0949ceddbe480a6264",
-      "scripts/auth-cookie-refresh-regression.cjs": "9c6de241282900626139337c5ab0bd10c8beb75925cc28a9cf1cae86f5b5a4f8",
+      "scripts/auth-cookie-refresh-regression.cjs": "35ac8923b0c555d5470651edc1ce56bc89896f52837086c3c674eb1fb922b9a7",
       "scripts/business-read-isolation-regression.ts": "36319d04f87c4d27ef15e171c2ef89ec6cb3b5314ca4c334e527d7da500b1be8",
       "scripts/camera-lifecycle-regression.ts": "2a881a1c73291c51ccd4574a149eb95089c98d7513242b36e14f861add05ce24",
       "scripts/canonical-money-regression.cjs": "2193835b78375719d4068bec66044f410e6cc2e2d804c548d9a2403f0f4fe905",
@@ -69,9 +69,9 @@
       "scripts/install-ocr-supervisor.ps1": "7c295e68e7c9b95036412b44cf423d677519f9e0a5107beb1278cc244d65848e",
       "scripts/invoice-cent-regression.ts": "f8a163dfaa3a9457ecd49188f6d8dc9d0c4bf9cbb655ff99e262014c226bc778",
       "scripts/invoice-correction-regression.ts": "d637ec393a9ae331676b88d5d4e9db9d4c96e326977b103d39e15aebf8e4c873",
-      "scripts/invoice-deposit-lifecycle-regression.cjs": "ef3d389c5deee24b0bb00bcb3595581f21227f16b17f01bb519f0d902ce2f96e",
+      "scripts/invoice-deposit-lifecycle-regression.cjs": "32f4ef29a6ef703a1fd1d5391f7a1f4e639967bc911be8e5ade4c445ac98f0f3",
       "scripts/invoice-detail-declutter-regression.ts": "d1a397c3325ead5c2ed2fb3e8d3c9131e0978955c2db73e3957d4029b88e6c44",
-      "scripts/invoice-draft-atomic-regression.cjs": "083db9771c799ce12ffb408ca44f1983f87f59e89b37a66a3839c396dc20e8b8",
+      "scripts/invoice-draft-atomic-regression.cjs": "ac9c3f5c4af97e05526a86c54a0b794de5b27c01bc8c8b05798848d5b11121c9",
       "scripts/job-session-crew-regression.ts": "20dd3bb6fc1ab001b088eeb58b17f45c600ed406d582a3e982617672ab959aef",
       "scripts/job-session-integrity-regression.ts": "04e636e81078f3567c0fd5052b2c2cd814cc3220ba3a24928938d7218463869b",
       "scripts/late-payment-reminder-send-regression.ts": "092c02d9e9e112fd55d8ba051dc104fba4452f3050ca1a35b6fad547a58a9c63",
@@ -643,7 +643,7 @@
       "src/app/utils/tax.ts": "dc918795a758e784b3d33e78b277afe696a2423d1d540c02a5e0f7ed67c4a17d",
       "src/app/utils/unitLabels.ts": "fbe888b20334d471cb170dc628130582a940cd990982b97f21116e5f846718fe",
       "src/app/utils/workflows.ts": "fbcb8536a53194aaa81093c3b034995568596d1dd7882a2f1342218dce4122c7",
-      "src/proxy.ts": "2dba351c812615cf20ec4ae71b1a776541e404fab797e15cb035f7de4a6d1df9",
+      "src/proxy.ts": "b34bbc9ad73a3b15a3f139e2a1747a830295f51246b2eb81b2f0a9a1de66bdbc",
       "supabase/migrations/20261009_public_scheduling_foundation.sql": "454ce09d612efe4c3953cc5c71afda1642d584be70f81caa6c8705131c56914b",
       "supabase/migrations/20261010_public_scheduling_phase2.sql": "24887d03dbf1975df3c8643ac10af3dae0a4e2d18072dbe43a5ed5b8297b5f59",
       "supabase/migrations/20261011_public_scheduling_runtime.sql": "c97b1da22dfb3f4fde45c250f03a91dbf457b45aeea2e7d1f192ba7e094dc3e4",
@@ -1675,14 +1675,14 @@
       "deploymentId": "6G2N5TMoymwBRm48NKrtt8Qbr7Xc"
     },
     "candidateReleaseId": "trimax-invoice-lifecycle-repair-20261026-rc1",
-    "applicationCommit": "f1e48bf983082bf7845c08309cd1ac6c053d445d",
-    "machineryCommit": "f1e48bf983082bf7845c08309cd1ac6c053d445d"
+    "applicationCommit": "041dbf50f746035a1079b8043cedf9de9eef2c9a",
+    "machineryCommit": "041dbf50f746035a1079b8043cedf9de9eef2c9a"
   },
   "contractRevision": {
-    "id": "source-owned-remittance-photo-robustness",
-    "priorManifestDigest": "ed659125cc71b8e29ccca8f4ca98cb2ebd4cd91b662a98945065a07647a564ee",
-    "reason": "Measured glyph/table ownership, bounded perspective/orientation recovery, independently corroborated caption/header/footer fields and mature local model fallback for insufficient legacy evidence. Identical existing model bytes/runtime now attested for both workers. Financial resolver, split/collectible/duplicate/reconciliation gates, audit history, business records and tenant authorization unchanged. Complete actual-invoice-ID/per-row-cents physical corpus required.",
-    "rollback": "Restore production build4bcd6f8 and matching native source/configuration. Restore the original legacy worker.json without mature fallback fields before starting old source. No database/schema/model-weight/credential or historical payment changes; preserve all images/jobs/audits and never reapply payments."
+    "id": "invoice-draft-atomic-save-and-deposit-lifecycle",
+    "priorManifestDigest": "969b1f6b35bc3c7c9e81886e5591767c33cb8542d529ced9bce0b3463fec3239",
+    "reason": "Atomic draft editing and discounts preserve payments and mandatory audit history. Deposit delivery is separate from final issuance. Active session proxy now preserves trusted print-path identification for authenticated PDF rendering. Single additive financial migration installed in synthetic lab only. Existing frozen production database hashes are pre-migration baseline, not candidate post-migration identity.",
+    "rollback": "Keep verified production 885d01f18b1811de7f2be8fe33ec9d8858056d20 and deployment 6G2N5TMoymwBRm48NKrtt8Qbr7Xc. No production deployment before complete recoverable backup and isolated restoration, reviewed post-migration catalog and coordinated web/worker seal. After additive migration, preserve data, objects, payments and audit history; recover with compatible reviewed forward code/manifest rather than destructive downmigration or stale financial restore. Preview can be withdrawn without production changes."
   },
   "captureWorkflow": "guided-live-camera-v1"
 }
