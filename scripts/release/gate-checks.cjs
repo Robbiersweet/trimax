@@ -46,3 +46,4 @@ scripts.push('scripts/property-request-photo-route-regression.cjs','scripts/prop
 scripts.push('scripts/request-email-acceptance-regression.ts','scripts/request-email-sql-regression.cjs','scripts/request-email-links-regression.cjs','scripts/request-email-webhook-regression.ts');
 scripts.push('scripts/owner-review-ui-regression.cjs');
 scripts.push('scripts/release/build-mode-regression.cjs');
+scripts.push('scripts/job-completion-guard-regression.cjs');
