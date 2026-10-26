@@ -1,0 +1,8 @@
+"use client";
+import {useRef,useState} from 'react';
+import {supabase} from '../lib/supabase';
+export default function DocumentSmsPanel({documentId,documentKind,businessSlug}:{documentId:string;documentKind:'estimate'|'invoice';businessSlug:string}){
+ const key=useRef<string|null>(null),[busy,setBusy]=useState(false),[status,setStatus]=useState(''),[queued,setQueued]=useState(false);
+ async function queue(){setBusy(true);try{key.current??=crypto.randomUUID();const {data:{session}}=await supabase.auth.getSession();if(!session)throw Error('Sign in as an owner or administrator.');const response=await fetch(`/api/communications/documents?business=${encodeURIComponent(businessSlug)}`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.access_token}`},body:JSON.stringify({kind:documentKind,documentId,key:key.current})});const result=await response.json();if(!response.ok)throw Error(result.error);setQueued(true);setStatus(result.simulated?'Test text queued. No real message will be sent.':'Text queued. Check Communications for delivery status.');}catch(error){setStatus(error instanceof Error?error.message:'Text not queued. Retry uses the same request.');}finally{setBusy(false);}}
+ return <section className="my-4 rounded-xl border p-4"><h2 className="font-semibold">Share by text</h2><p className="my-2">Queue a private link to this issued {documentKind}. The client must have opted in to texts. Email is not required.</p><button type="button" disabled={busy||queued} onClick={()=>void queue()} className="rounded border px-4 py-2 disabled:opacity-50">{queued?'Text queued':busy?'Queuing…':'Queue document text'}</button><p role="status" className="mt-2">{status}</p></section>;
+}

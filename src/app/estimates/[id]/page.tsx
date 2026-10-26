@@ -5,6 +5,7 @@ import Card from "../../components/Card";
 import Button from "../../components/Button";
 import ConvertEstimateToInvoiceButton from "../../components/ConvertEstimateToInvoiceButton";
 import DeleteEstimateButton from "../../components/DeleteEstimateButton";
+import DocumentSmsPanel from "../../components/DocumentSmsPanel";
 import InvoiceEmailSendPanel from "../../components/InvoiceEmailSendPanel";
 import OutlookDraftPrepCard from "../../components/OutlookDraftPrepCard";
 import SplitInvoicePlanner from "../../components/SplitInvoicePlanner";
@@ -642,7 +643,8 @@ export default async function EstimateDetailsPage({
           </Card>
         )}
 
-        <InvoiceEmailSendPanel
+        <DocumentSmsPanel key={estimate.id} documentId={estimate.id} documentKind="estimate" businessSlug={businessSlug} />
+                <InvoiceEmailSendPanel
           documentId={estimate.id}
           documentKind="estimate"
           businessId={selectedBusiness.id}
