@@ -9,14 +9,22 @@ async function run(){
   let calls=0,issued=0,offline=false;const responses=[];
   const next=({request}={})=>{const values=new Map();const response={request,cookies:{set:(name,value,options)=>values.set(name,{value,options}),getAll:()=>[...values].map(([name,o])=>({name,...o}))},headers:new Headers(),issued:++issued};responses.push(response);return response;};
   const proxy=compile('src/proxy.ts',name=>name==='next/server'?{NextResponse:{next}}:name==='@supabase/ssr'?{createServerClient:(_url,_key,options)=>({auth:{getClaims:async()=>{calls++;if(offline)throw new TypeError("Synthetic transport failure");assert.equal(options.cookies.getAll()[0].value,'expired-synthetic');options.cookies.setAll([{name:'session.0',value:'fresh-synthetic-0',options:{path:'/',secure:true,sameSite:'lax'}},{name:'session.1',value:'fresh-synthetic-1',options:{path:'/',secure:true,sameSite:'lax'}}],{'Cache-Control':'no-cache','Pragma':'no-cache'});return {data:{claims:{sub:'synthetic-user'}}};}}})}:name.includes('publicScheduling/routes')?routes:require(name));
-  const request=path=>{const data=new Map([['session.0','expired-synthetic']]);return{nextUrl:{pathname:path},cookies:{getAll:()=>[...data].map(([name,value])=>({name,value})),set:(name,value)=>data.set(name,value)}};};
+  const request=path=>{const data=new Map([['session.0','expired-synthetic']]);return{nextUrl:{pathname:path},headers:new Headers({'x-trimax-pathname':'/invoices/spoof/print',authorization:'Bearer synthetic'}),cookies:{getAll:()=>[...data].map(([name,value])=>({name,value})),set:(name,value)=>data.set(name,value)}};};
   const input=request('/admin/ocr-attempts');const result=await proxy.proxy(input);
   assert.equal(calls,1);assert.equal(result,responses.at(-1),'Return the response containing refreshed cookies');
   assert.equal(input.cookies.getAll().find(c=>c.name==='session.0').value,'fresh-synthetic-0','Server Components receive refreshed request cookies');
   assert.equal(result.cookies.getAll().length,2,'Browser receives every refreshed cookie chunk');
   assert(result.cookies.getAll().every(c=>c.options.secure&&c.options.path==='/'&&c.options.sameSite==='lax'),'Preserve SDK cookie protections');
   assert.equal(result.headers.get('Cache-Control'),'private, no-store');assert.equal(result.headers.get('Pragma'),'no-cache');
-  await proxy.proxy(request('/book/rnl-creations'));assert.equal(calls,1,'Public scheduling remains outside employee auth refresh');
+  assert.equal(result.request.headers.get('x-trimax-pathname'),'/admin/ocr-attempts','Caller cannot spoof the print-layout path');
+  assert.equal(result.request.headers.get('authorization'),'Bearer synthetic','Preserve bearer authorization for document RLS');
+  for(const documentPath of ['/invoices/synthetic/print','/estimates/synthetic/print']){
+    const printed=await proxy.proxy(request(documentPath));
+    assert.equal(printed.request.headers.get('x-trimax-pathname'),documentPath,'Print path survives cookie-refresh response replacement');
+    assert.equal(printed.headers.get('x-trimax-pathname'),null,'Internal request header is not exposed as a response header');
+  }
+  const callsBeforePublic=calls;
+  await proxy.proxy(request('/book/rnl-creations'));assert.equal(calls,callsBeforePublic,'Public scheduling remains outside employee auth refresh');
   offline=true;const temporary=await proxy.proxy(request('/payments'));assert.equal(temporary.cookies.getAll().length,0,'Transport outage must not clear browser cookies or redirect to login');assert.equal(temporary.headers.get('location'),null);
   const pattern=new RegExp('^'+proxy.config.matcher[0]+'$');
   for(const path of ['/payments','/invoices','/admin/ocr-attempts','/login'])assert(pattern.test(path));

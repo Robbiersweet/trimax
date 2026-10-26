@@ -4,7 +4,15 @@ import { isPublicSchedulingPath } from "./app/lib/publicScheduling/routes";
 
 /** Refresh before Server Components read cookies; return every updated cookie. */
 export async function proxy(request: NextRequest) {
-  let response = NextResponse.next({ request });
+  // The print layout must recognize bearer-authenticated PDF requests before
+  // mounting the browser-only login guard. Derive this only from the real URL,
+  // overwriting any caller-supplied value; document access still uses its RLS.
+  const nextResponse = () => {
+    const headers = new Headers(request.headers);
+    headers.set("x-trimax-pathname", request.nextUrl.pathname);
+    return NextResponse.next({ request: { headers } });
+  };
+  let response = nextResponse();
   if (isPublicSchedulingPath(request.nextUrl.pathname)) return response;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -15,7 +23,7 @@ export async function proxy(request: NextRequest) {
       getAll: () => request.cookies.getAll(),
       setAll(cookies, headers) {
         cookies.forEach(({ name, value }) => request.cookies.set(name, value));
-        response = NextResponse.next({ request });
+        response = nextResponse();
         cookies.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
         Object.entries(headers).forEach(([name, value]) => response.headers.set(name, value));
         response.headers.set("Cache-Control", "private, no-store");
