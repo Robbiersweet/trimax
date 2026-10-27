@@ -1,31 +1,31 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-document-notes-privacy-20261027-rc1",
+  "releaseId": "trimax-maintenance-qr-20261027-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-10-27T11:31:13.748Z",
-  "releaseTimestamp": "2026-10-27T11:31:13.748Z",
+  "createdAt": "2026-10-27T23:00:03.271Z",
+  "releaseTimestamp": "2026-10-27T23:00:03.271Z",
   "baseProduction": {
-    "commit": "a36aba799c28644919ba21ebb685eae7e2d8ac3b",
-    "vercelDeploymentId": "ETNt4ncmvbNbgx6wWzDM1huqLHcc"
+    "commit": "16313c23e2203a700f359aa03963756000d18750",
+    "vercelDeploymentId": "EqiC6JrbiAueE8DHwf8PEGezGC3D"
   },
   "components": {
     "web": {
-      "commit": "50e482e2d5546602e87c872260b5089e4108856c"
+      "commit": "feb232548fde4b5b7c3ef205557554b3b10c86f9"
     },
     "legacy": {
-      "commit": "50e482e2d5546602e87c872260b5089e4108856c"
+      "commit": "feb232548fde4b5b7c3ef205557554b3b10c86f9"
     },
     "v2-shadow": {
-      "commit": "50e482e2d5546602e87c872260b5089e4108856c"
+      "commit": "feb232548fde4b5b7c3ef205557554b3b10c86f9"
     }
   },
   "sourceBundle": {
-    "sha256": "47d5b13a039ee4a13d6be8877806b613794587f2c4e009191949d1567143ae1d",
+    "sha256": "650fc3e480e69fa886a9446a2b80320ba845c275b2b8720d26f8a6649b3e8190",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
-      "package-lock.json": "f59c4191dbab35152626d37ecd849e1c20d17564df0cf62d2dbac122dff062b9",
-      "package.json": "9b80c7bac4ab4e22151ff029fa930bf3e3be9ed33f6b41852800814019f6d0a2",
+      "package-lock.json": "793b93383cb22b291e6a5034cb3c37edde5cb1bfbe74064ea1615ebc0a711ac6",
+      "package.json": "40857a15bc44c5e9c3135d0e82b6e201ff09eeaa7d4e8dab2b1e261972912710",
       "proxy.ts": "c07e9824217830ca636dac8141204cf2a422728fdc173f488ad61e86edbc8cce",
       "public/Brand/R&L Full Black.png": "3745bd9aec6198d87a968e3f5c3402b87010925d881ddd03411a5caef2c40f65",
       "public/Brand/R&L Full Orange.png": "2c1b88a1718f11f58eb4e59d812f6e47a52ad4c2005a6625eddb601f54fd3fb0",
@@ -78,6 +78,9 @@
       "scripts/late-payment-reminder-send-regression.ts": "092c02d9e9e112fd55d8ba051dc104fba4452f3050ca1a35b6fad547a58a9c63",
       "scripts/legacy-mature-fallback-regression.cjs": "7019b5d2d2b7f14d26583f48ce5fd0bb29b48448d2c5d3a0e5a0c2ea10ecd142",
       "scripts/login-return-regression.cjs": "50f65d976a9b4baa8450ed8c0ad9e9ba0c51890e8e375c21e66b5b4f030bd021",
+      "scripts/maintenance-qr-image-regression.cjs": "2257778c645174e463c84e409d63757377cb487cd5378d15103419bae9a4713e",
+      "scripts/maintenance-qr-production-regression.cjs": "d83b301b2e38b9a5a584af62b39ca7363a3c323fab316808aacaa67c2fedcce1",
+      "scripts/maintenance-qr-sql-regression.cjs": "bc3eceae5fda5f639b64f51a39ca7acd6355dad52ed1f665a116e5c1a6104b06",
       "scripts/ocr-canonical-object.cjs": "56fc82d9392d86ae644b3925823210875519e3398d1e9cf4d374a993bfa59970",
       "scripts/ocr-cold-pipeline-regression.cjs": "17c9df1d8990902cc10373a1c9d422b63d4c65e4ab2eabaf5a885e3bc122e538",
       "scripts/ocr-debug-queue-regression.cjs": "32205f4b926e1b0c7d5a628499a3c69051b1002d80a0149488018a9b971e1281",
@@ -264,7 +267,7 @@
       "scripts/release/file-forensics-regression.cjs": "a6da1ba822d17c1a31b7bd29d3cb49e95febca66f29c51b712ccdd9d608c1b26",
       "scripts/release/file-forensics.cjs": "25133a9f2167c801a05906be04068f3d85f54f3c462e085869df2d486c8bea30",
       "scripts/release/final-candidate-regression.cjs": "edc0dbfa8f70d55607c65327a08ed25193380387dd4f1e850cf130ef992ca03f",
-      "scripts/release/gate-checks.cjs": "422933885a3bfc3d25ceba0d0566bf20748642784f1e95dbbe08ac5d226f0a73",
+      "scripts/release/gate-checks.cjs": "1865e39d4250dce5c441dac3a2e260f3e34fe1c676b793fe3fe6846771cc38dc",
       "scripts/release/gate-state-regression.cjs": "51f1d2c76eca73d122f20cc0f537b624074ebd4943f946dcba63857775e45d04",
       "scripts/release/gate-state.cjs": "f56bdc9741b07b92c53bb487f21320080537fa90734721130612e8c1b52da839",
       "scripts/release/gate.cjs": "228232de653ef9c0c5a96ea24a9bfb0220a06eed1a0a516222d523b67d778c45",
@@ -313,7 +316,8 @@
       "src/app/activity/page.tsx": "d3d1a01cc89209ee2c76962e551aa3f06de698e4abb877bab2666418117d3ca7",
       "src/app/admin/ocr-attempts/[attemptId]/page.tsx": "47b7930a27ffcec419ae723006d4ef899aa4e22f15e36d0bc34cf493f4dc5253",
       "src/app/admin/ocr-attempts/page.tsx": "731169273760d65bdc574d7150e90e34178a0c7cac1b4e33dd550ee2fc6df8b8",
-      "src/app/admin/service-requests/components/OwnerWorkspace.tsx": "5dda7428981bd4133211ae530d7452ad472ad0173c0664bb64d91706cef52fab",
+      "src/app/admin/service-requests/components/OwnerRequestPhotos.tsx": "492f20d4a74f892228859e72c691d7cc7f91b882ae1307d784d28c9280234748",
+      "src/app/admin/service-requests/components/OwnerWorkspace.tsx": "7b49dd92468fef0a840b5e89b9a81b0c95d66e353e176fcd5869cc0496f5cfa0",
       "src/app/admin/service-requests/components/WorkflowActions.tsx": "4a42de7aad15eb33e5a31fd928d26db6d2582b5f96665b68647419ee3f5c535d",
       "src/app/admin/service-requests/components/owner.css": "92045317f886adee59b75b35afa6ec6f589ad1acd1f82f56d29a6e93aab2e589",
       "src/app/admin/service-requests/page.tsx": "bcdac0b54194809d40cc0bb6f79e8581ed0062de2b9160f06dbe609f3270a152",
@@ -321,12 +325,16 @@
       "src/app/api/estimates/[id]/send-email/route.ts": "fc187489ea8f6193e0b659802f24fcdc3015715f1cf895756cd8e19c38fb1748",
       "src/app/api/invoices/[id]/send-email/route.ts": "3a61b658dda0ca1c2d79924a901a50b248d2e408764327c877b9bf92745b4dd7",
       "src/app/api/invoices/send-overdue-reminders/route.ts": "ec50003ae92ac4ba7cc48d55603eb97a28340cf0aa2fe7ad522e74aff884a674",
+      "src/app/api/maintenance-qr/[id]/route.ts": "a570282e4c3ec92a97de85276a17887ea59bb83407d2a9fe8cb971fc65cb9284",
+      "src/app/api/maintenance-qr/route.ts": "7f6dfca7b2ecd0d3157408c2e203aa491f262ae71d866f555cfbc86482d41ec5",
       "src/app/api/ocr-retention/route.ts": "ba61d5de6ade820727a15828b9df895b0c5a18d72df289f881273f50335d4e17",
       "src/app/api/payments/apply-batch/route.ts": "5bf3306af7d3d1f839f5fdcadf42a98c4702c6bc1d841363241729aa102c27cf",
       "src/app/api/payments/duplicate-remittance-preflight/route.ts": "01661a87fa0c7a8b821b256f9e68e7ba48a68a9809755c5b1b23ed64e0f59528",
       "src/app/api/payments/extract-check-stub/route.ts": "ee9a1c1208049273a5969c2754bee5334110ff727fdb28ad9c4f97608657adb1",
       "src/app/api/payments/ocr-jobs/route.ts": "20654cb307aa2d04afad5a80276bf6e75bc829d09726afba1574a93787d9b67e",
       "src/app/api/payments/saved-remittance/route.ts": "f23ad2a26e0496a96b6321a757c87fda55ae92fa19498eba561faba7e7ed8001",
+      "src/app/api/property-request-photos/route.ts": "9d5a7ba751a50b39213c2b603f7fc3c3252cf5cbd098f1cdb6a56a23066ab19d",
+      "src/app/api/property-requests/route.ts": "9d4d88a4ed70bc7f4e69aaf8443d834583eef1044997358a8d4a046b6934e5d2",
       "src/app/api/public-scheduling/[slug]/route.ts": "9749cfd93818e29a0a979da083b7880204496e44a1861b0e67b84f8f51fd2c88",
       "src/app/api/public-scheduling/deliver/route.ts": "9726ad374da19b1ea4856fcf317a8a3d0d6a62746974df69ae8fa2ed64d9bf11",
       "src/app/api/public-scheduling/intake/route.ts": "3a80f34d12df0ac1f91d44c37808bb6d0fa78c3b3e0dbbccee4d8e1fc192f466",
@@ -337,7 +345,9 @@
       "src/app/api/queue-items/[id]/route.ts": "5cd257ffd7e62daeb7732e5694a9dc8f0393362cfb3d07d74e12c89ae7871f7f",
       "src/app/api/queue/send-tbd-reminders/route.ts": "efd0f4b5d05f4316c7780c2f9a62a56153966a6d6188e31ce734d8d8abff23f8",
       "src/app/api/recurring-invoices/run/route.ts": "07ed01bd9655b005b44944fba4b6a1b70da686b4466d2d059f40b5b7d04c59d9",
-      "src/app/book/RequestForm.tsx": "36ade2c8a4709d2ceb21dd0695fbbe3af3ca1b9850ec16564e7643ded83102d9",
+      "src/app/api/request-photos/route.ts": "d254bb4bfe2ad7786ca9b272405e24e066a9ccb3f6aaa652da7a512b8db3b8aa",
+      "src/app/book/RequestForm.tsx": "1cb62bb2bc3ae0b46504f5ce377e82bb401429feeadcd3aa1a1dc910b6c2b53f",
+      "src/app/book/RequestPhotos.tsx": "3dbd5c1d4aa426314030afedc2b12f5e2f48eb5e8fc62c28f50bfb47d4ddb054",
       "src/app/book/TurnstileChallenge.tsx": "31ed159bfeb127d5704811144e42e44b5aaed77973d874356d66196ca7c34795",
       "src/app/book/[slug]/page.tsx": "0584364828b5d64da346a9f17994472a22ea85d764dd682864a6053d5447348a",
       "src/app/book/fonts/Allura-Regular.ttf": "9c142b2e515832c0dfc4ff8b8ea18f40314943bf937b72e2b23c4661bac14cc6",
@@ -462,6 +472,7 @@
       "src/app/lib/captureRouting.ts": "b8ef278041c22146dc18dae51fdb741781315a5b261895861f7943616b465dc7",
       "src/app/lib/captureServicesFromLineItems.ts": "2ca268b2274f4878aabbf5b67bd71834d277b5100c061142ebec31a1106a657b",
       "src/app/lib/clientIdentity.ts": "d3fba620dc5c04d9eca46806aa13e56b20a3b60631d19aeeb53057c07f04327f",
+      "src/app/lib/communications/consent.ts": "bd30a7e88667dd9885dab51a49a3e51ce456e39c30e5fe8b158cd7c755e47f16",
       "src/app/lib/createQueueItem.ts": "12482a5c96c69e2c62c17f76e929abb55f1ea82b87ae872a96e0333e9b846207",
       "src/app/lib/documentDiscounts.ts": "94b98462bc0502418501623bef978713ea49a1d060e79a8bf848aa3ebf3b26f5",
       "src/app/lib/documentFields/complementaryRowBands.ts": "50566adb2676f30e5da78248f1afcd738eb87d803cca834f8cfcc9a7f8dc0e35",
@@ -493,6 +504,8 @@
       "src/app/lib/jobSessionLabor.ts": "1561ac43f587e55df4a7a67baab378810f2e4ede2498a08e6cfca22ac4060503",
       "src/app/lib/loginReturn.ts": "fa6c306af2215a37860864d0bf6364a9449544b2c9101ff104288fbe50c29849",
       "src/app/lib/maintenanceMode.ts": "2caa1d8585706dae45460aef8538d4d5336a29b53c490ae5a69b2059b77e3cca",
+      "src/app/lib/maintenanceQr.ts": "ada0279bd32c91c7007169c18871445c5e04002f235f0f00831613e903cee82c",
+      "src/app/lib/maintenanceQrHandler.ts": "d26fa04f9a5d6701d9e285b609b590d806b658223c5df0b44b070b4716ffb75e",
       "src/app/lib/money.ts": "2e7b2a456f1caa9ae06b08949e0dd71570d2f0ad791d92637846a50073888a52",
       "src/app/lib/ocrCanonical.ts": "258aaa456b5ea1d3f73a0d655d05b04cc619577af4bbf4d845cff645a50a2978",
       "src/app/lib/ocrCanonicalClient.ts": "2059299a63282d4d749e213fe67d1abf3a3c85cda609e9a74bedfa528b7168a5",
@@ -574,12 +587,12 @@
       "src/app/lib/publicScheduling/delivery.ts": "f345dde6c72f425909fb722eea5211cea9e6e352359fe6be9ca14e5ff74f01f3",
       "src/app/lib/publicScheduling/developmentStore.ts": "f7551e3bfb18ab6813ab2f347cd5973cf26eb343756d680062e29e59141f32f2",
       "src/app/lib/publicScheduling/dispatch.ts": "d6091ab20fa7e219d0afd5079ecf2d57aeda7f74255d774466945de61e26ea58",
-      "src/app/lib/publicScheduling/domain.ts": "b645830a68735827048ad7ee705a1e922decd0f73030cc0e144cf0d0fdaf55e4",
+      "src/app/lib/publicScheduling/domain.ts": "25faa8f9a9f6c06c4ee92af453a0f204216279ae3537fbc20da50f247f441656",
       "src/app/lib/publicScheduling/httpBody.ts": "8d48548bc924c40261429e1a4cf1a7dba2ddae7f057d0b119523da66cbd85400",
       "src/app/lib/publicScheduling/notifications.ts": "9054dd7b4d60f2c5a86dcc44efc214e05fa0cdc0f947985fd40d22dd1873e93d",
       "src/app/lib/publicScheduling/outbox.ts": "dd5c1354b712f517841c8235a51cef9303e3079c918851ecd71429f3f6e63dee",
       "src/app/lib/publicScheduling/ownerWorkflow.ts": "a065851c0d58c7faaf22aa81b265dc28ee5561412d9aaa11b9c370c70acf49ab",
-      "src/app/lib/publicScheduling/productionAdapter.ts": "7569ab44173fbbb987130b426d1c1623aa59d94a61c81c027e0f9b0ef0411a6c",
+      "src/app/lib/publicScheduling/productionAdapter.ts": "6c46803ff7a6e9bc30d457e6ecf6e487d028b63a4f5643e8a12b0fb9b3b1ec28",
       "src/app/lib/publicScheduling/productionHandler.ts": "7f27fb92962fc6dfffbecdd9a59082f75a4c5f8e4860a32a80c21e6a4cee616e",
       "src/app/lib/publicScheduling/productionOwner.ts": "0fc063dd8b088c82b5d523488ca8ec85395b371e1fc93300fc33baac61278ed4",
       "src/app/lib/publicScheduling/productionRuntime.ts": "46c98c4438c6c59d09e0a5b67e8bec148ff20f230337b5d6ad2898c6f5eb414b",
@@ -595,6 +608,14 @@
       "src/app/lib/remittanceDeadline.ts": "83f38cdc157d34dc1b70ed89e612a6c2b682e4cc20f3bc15d7a97a1c7f1920e2",
       "src/app/lib/remittanceDocumentFingerprint.ts": "b67dacf687a3431ddc16a79641f73ce7cb8522e3d1f5a52e5db498ac77e0cf89",
       "src/app/lib/remittanceMatching.ts": "44be1ad2155c708537bb9b32e701e51f97ed133f3cc1a5581bf84dba2bba7557",
+      "src/app/lib/requestPhotos/clientCapability.ts": "05a11f7cde569648e9459ddeca95224adcfcc06ef0408222a29f189c00887c0a",
+      "src/app/lib/requestPhotos/http.ts": "574429b1ecb60aa50bce1d8273ff2d74fa5636f25fa945920ad442f90a84ded2",
+      "src/app/lib/requestPhotos/limits.ts": "16cacd46741f74dd49a12f20723346db48ec39bb9fd3d884647e0509ba25baa1",
+      "src/app/lib/requestPhotos/owner.ts": "b9b41b01cc9b46a117f503b51d4865610470cfbb6bfb95cb47817877cc477716",
+      "src/app/lib/requestPhotos/runtime.ts": "eb6bb0ab6a1331a0c105416e6dd364399b405dc65d1d2643f4d53c1d169434bf",
+      "src/app/lib/requestPhotos/server.ts": "2ecd97d097bf3417629a85dd2f7a6efcd0467d8844ce90e415ba5556e69fa687",
+      "src/app/lib/requestPhotos/storage.ts": "793abf7ce5b3b95251529766446eceb22f612e46f5e5e38a587c6724ebe5beeb",
+      "src/app/lib/requestPhotos/upload.ts": "41abad0c0339c0efb76bffe6d9c62084d1a54a037d67c6cf43a68bfae132045b",
       "src/app/lib/reverseDocumentTotals.ts": "cedf534760d6f5ff671a2d04fe6346f774000cd79096e8c050bd8c207899eb4d",
       "src/app/lib/rolePermissions.ts": "99ed89b9f517dbb1576a991ac1a2e4089bcc85aa3dfa5e728f72f9cca5bedae5",
       "src/app/lib/savedRemittancePayment.ts": "456dd0aa828ab000b4433267c8d9b4ee4df448f7eeb76053f66d85cc8e5ad80c",
@@ -613,6 +634,8 @@
       "src/app/lib/useRemittanceEvent.ts": "a7a4d74bf8e7dd957194830dff99cdc6af3a78e0eae869bd0dbc0e966039b8b2",
       "src/app/lib/workspaceAccess.ts": "6d6334182d663536ac1123695bf2017f06373486cfa01ef54d0e72967d480b71",
       "src/app/login/page.tsx": "dd709a37f471db722b752c21226ee621099a615f3578b3d381745a8e11e3c37a",
+      "src/app/maintenance-labels/page.tsx": "a6ab919078adc6deb0f1b1495c189dd51c158639cb15bdcfb2eee8a1def6055c",
+      "src/app/maintenance/[id]/page.tsx": "acbef0dff6a90cadfaab181a456a8b68bdc98fdb6cd90fd37ef8487df6049458",
       "src/app/manifest.ts": "7a70a588bc52215af58477c2bcfc67c143742493f01048b35b4898d6732d8954",
       "src/app/new-request/page.tsx": "f9a6ace8bd00f32b5f465aaaf9dab0eb7bccbc3d54c5399376b4202696ba32ee",
       "src/app/page.tsx": "c74d3f4a58454be4823909b448874519aac13d8139e7cae216af61e928bfbc8f",
@@ -620,6 +643,7 @@
       "src/app/print.css": "fed798b5ee421adfad69102d91eeabb6a9e497a89ff39910e53c39de396df887",
       "src/app/profile/page.tsx": "d4004ca0abc6b078b20da89ad0662045b64d591c1beb6e61c6f477210fe850b1",
       "src/app/property-intelligence/page.tsx": "39442297c2ce48a7ee33da366aac8bc06aae0d73fb904983943c04837b2af06c",
+      "src/app/property-requests/page.tsx": "1ea611b64f447d32fd89270ecea839c1f4369f5c19a1418a8b140b4503289743",
       "src/app/property-sales/loading.tsx": "8683cfb53dd71f0acc74d0636c29e1d0916e5093f5542f76eac61bb3bcb5b35f",
       "src/app/property-sales/page.tsx": "3957d22990d05992c9a3398fec3fe79f35c48284539aad324f4e3c89b82f52c7",
       "src/app/queue/[unit]/edit/page.tsx": "a77a30afda450a0673d179699262790ed9ede92f4d08101331d4e5508497bf0d",
@@ -655,6 +679,12 @@
       "supabase/migrations/20261018_request_urgency.sql": "2fcb42dc6a5ecd25b0fd8220419bd051d688816a07336689f3d79b991e9101c5",
       "supabase/migrations/20261018_service_request_delivery.sql": "c179f9f7f78cdacf3eb5717de4c1ce8db06f1a1ab824494e057c5fee54d10e1d",
       "supabase/migrations/20261018_service_request_workflow.sql": "7f9766c34c1aa48b486952a10a1897737f343dfd4c6183554e7bf1d39be7cb66",
+      "supabase/migrations/20261025_property_request_intake.sql": "1f9b523a4fe1593cdc093a5cdbfea66bb0e936c4c990477d181a06f30c6b6017",
+      "supabase/migrations/20261026_property_request_photos.sql": "21d2b30ffa812ece8278ec2b59b93ba3ca93c0a9b9d1aa8c53d222d9f8e380c8",
+      "supabase/migrations/20261026_property_request_preferences.sql": "92e91752a3ad09ca004f0e60cf2652dbcbcf01e277e123546388a5475e578c5e",
+      "supabase/migrations/20261026_request_photo_candidate.sql": "c7ae144f8fa4a33546b7d62d851112c786531968cf9e4282b170ceb76ca6ad4a",
+      "supabase/migrations/20261027_maintenance_qr_intake.sql": "2190a999a0125c8ec90273ea74ad1c717721fea9f66a369f584d56c98b638091",
+      "supabase/migrations/20261027_qr_photo_compatibility.sql": "54740d86f49eed537821f01da5b24e00b4a64e132875381c4e1397e5cbcfbfcb",
       "supabase/sql/2026-05-24-business-users.sql": "1c6caf132eb207b9cdcea52b25fb552e4c18e7f22f4949117e14b8ccc8ea2165",
       "supabase/sql/2026-05-24-seed-business-users.sql": "0f4cb6e000f5b1a6d48c27e1521bf010f94a638b4f2a932f1c64c1a59318df28",
       "supabase/sql/2026-05-25-allow-pending-business-invites.sql": "c27c4bb32ff1e09e48e7f9858b3a8087d815d63a8331ecb1310f7c1e01d76a1f",
@@ -827,28 +857,28 @@
     }
   ],
   "database": {
-    "capturedAt": "2026-10-24T01:28:03.702Z",
+    "capturedAt": "2026-10-27T23:00:03.751Z",
     "algorithm": "catalog-v1; sorted C collation name=value; UTF8 SHA256; public tables/constraints/indexes/functions, public+storage RLS, public table grants; excludes only trimax_release_runtime itself",
     "fingerprints": {
-      "schema": {
-        "entries": 884,
-        "sha256": "60630a1fc259957e825b38f6cb26f719d781df7dcd436cce9a90cae2c324ef6b"
-      },
       "rpc": {
-        "entries": 53,
-        "sha256": "b53c9ba454eec8d4451a87b6920e1c41bedf2591a1b114485081511b54312302"
-      },
-      "triggers": {
-        "entries": 13,
-        "sha256": "c35cfea25289bdf6e7f278e4d0e3628a2eec3c66d19c434b3aa53563e1fd1e5e"
-      },
-      "policies": {
-        "entries": 81,
-        "sha256": "3b84cfce7458daf00ab80492a52688e5f58d3b38bd56afc3b9938a80883bfc1f"
+        "sha256": "66603ea4c77118d35bbb476277223f6f04d8e0c8da69d0ed73e6268336443d00",
+        "entries": 63
       },
       "grants": {
-        "entries": 1014,
-        "sha256": "68c1e22e09077e040fd81451819c5dc3ec12c8c377d78d706dbea0007deb1e47"
+        "sha256": "8a170a7f747e17631a97bc1bd3f1ab1896c6651628e27d6aa46315b98226c54d",
+        "entries": 1036
+      },
+      "schema": {
+        "sha256": "aa9b50a70dc3cb00948635d1bab373336040ddaadca60849274652515feefbb2",
+        "entries": 940
+      },
+      "policies": {
+        "sha256": "3b84cfce7458daf00ab80492a52688e5f58d3b38bd56afc3b9938a80883bfc1f",
+        "entries": 81
+      },
+      "triggers": {
+        "sha256": "c35cfea25289bdf6e7f278e4d0e3628a2eec3c66d19c434b3aa53563e1fd1e5e",
+        "entries": 13
       }
     },
     "flags": [
@@ -860,7 +890,7 @@
     ],
     "legacyEnabled": true,
     "acceptanceTableRecords": 0,
-    "evidenceType": "REVIEWED_PRODUCTION_TRANSACTIONAL_SCHEMA_PREVIEW_ROLLED_BACK",
+    "evidenceType": "ISOLATED_RECOVERY_TRANSACTION_MATCHED_PRODUCTION_BASELINE_ROLLED_BACK",
     "migration": {
       "path": "supabase/sql/2026-10-23-ocr-job-lifecycle.sql",
       "sha256": "6c5f637e2b7fdff92ee99aee7f45450e77dc55f6b89e8f326d5ab56ec8241d16",
@@ -1670,15 +1700,15 @@
   },
   "upgradeContext": {
     "currentProductionRelease": {
-      "manifestCommit": "a36aba799c28644919ba21ebb685eae7e2d8ac3b",
-      "manifestDigest": "cdd64e1ffc7efef515bc768d1d2185d34c98e389add766702c77f573a4ed3199",
-      "releaseId": "trimax-invoice-currency-display-20261026-rc1",
-      "deploymentCommit": "a36aba799c28644919ba21ebb685eae7e2d8ac3b",
-      "deploymentId": "ETNt4ncmvbNbgx6wWzDM1huqLHcc"
+      "manifestCommit": "16313c23e2203a700f359aa03963756000d18750",
+      "manifestDigest": "5bd60429e8aa4ca920a109e253c5019793bd75e255560f609b1c1f6659fad02c",
+      "releaseId": "trimax-document-notes-privacy-20261027-rc1",
+      "deploymentCommit": "16313c23e2203a700f359aa03963756000d18750",
+      "deploymentId": "EqiC6JrbiAueE8DHwf8PEGezGC3D"
     },
-    "candidateReleaseId": "trimax-document-notes-privacy-20261027-rc1",
-    "applicationCommit": "50e482e2d5546602e87c872260b5089e4108856c",
-    "machineryCommit": "50e482e2d5546602e87c872260b5089e4108856c"
+    "candidateReleaseId": "trimax-maintenance-qr-20261027-rc1",
+    "applicationCommit": "feb232548fde4b5b7c3ef205557554b3b10c86f9",
+    "machineryCommit": "feb232548fde4b5b7c3ef205557554b3b10c86f9"
   },
   "contractRevision": {
     "id": "customer-document-operational-notes-privacy",
