@@ -1,26 +1,26 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-invoice-lifecycle-repair-20261026-rc2",
+  "releaseId": "trimax-invoice-currency-display-20261026-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-10-26T11:55:56.876Z",
-  "releaseTimestamp": "2026-10-26T11:55:56.876Z",
+  "createdAt": "2026-10-27T05:39:27.978Z",
+  "releaseTimestamp": "2026-10-27T05:39:27.978Z",
   "baseProduction": {
-    "commit": "885d01f18b1811de7f2be8fe33ec9d8858056d20",
-    "vercelDeploymentId": "6G2N5TMoymwBRm48NKrtt8Qbr7Xc"
+    "commit": "07f01873134fb0c8f2eb9741ca08fa9e2e45d58c",
+    "vercelDeploymentId": "3VzQjXXWPALqsNpmzovSfj2smtQ7"
   },
   "components": {
     "web": {
-      "commit": "47d435fff6e258881fc0e47ddb480053e9f73a73"
+      "commit": "48db79ef70c25208931e2e61b8828e2ff2d27a30"
     },
     "legacy": {
-      "commit": "47d435fff6e258881fc0e47ddb480053e9f73a73"
+      "commit": "48db79ef70c25208931e2e61b8828e2ff2d27a30"
     },
     "v2-shadow": {
-      "commit": "47d435fff6e258881fc0e47ddb480053e9f73a73"
+      "commit": "48db79ef70c25208931e2e61b8828e2ff2d27a30"
     }
   },
   "sourceBundle": {
-    "sha256": "f7c1685f82fea628e0b81c92df9e1221bbdc6b3f4e6290c2f92092a79cb3be14",
+    "sha256": "735921ce5816130e1db8feb606c3ab85aa375698edf00a095025768e83a9c5b1",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -67,7 +67,7 @@
       "scripts/generate_role_guides.py": "60baf7d8d0bdcb376ca03d80be15276a8e12e3227592ad2bf8dc5bfe79e678e5",
       "scripts/glen-payor-regression.cjs": "2f91135035c00a5786372e8d7b847879e440cdadfab3038651c88cba74fa04e2",
       "scripts/install-ocr-supervisor.ps1": "7c295e68e7c9b95036412b44cf423d677519f9e0a5107beb1278cc244d65848e",
-      "scripts/invoice-cent-regression.ts": "f8a163dfaa3a9457ecd49188f6d8dc9d0c4bf9cbb655ff99e262014c226bc778",
+      "scripts/invoice-cent-regression.ts": "f6b7878369411ad11297c0d79aed1e41eab3c3c2dd7d626496f43510093d5078",
       "scripts/invoice-correction-regression.ts": "d637ec393a9ae331676b88d5d4e9db9d4c96e326977b103d39e15aebf8e4c873",
       "scripts/invoice-deposit-lifecycle-regression.cjs": "32f4ef29a6ef703a1fd1d5391f7a1f4e639967bc911be8e5ade4c445ac98f0f3",
       "scripts/invoice-detail-declutter-regression.ts": "d1a397c3325ead5c2ed2fb3e8d3c9131e0978955c2db73e3957d4029b88e6c44",
@@ -441,7 +441,7 @@
       "src/app/forgot-password/page.tsx": "ed72e30e4f161990113a13d562649a33c0918beb6074c66ca8284fc118155aa6",
       "src/app/globals.css": "11a63cd4baf5bdef2bc091dd0327643eaa746002acabf0c7fb79ea11d20a50d3",
       "src/app/imports/page.tsx": "c94bf40f247de68ef6179fb46dafff727c7338550cfad249720bce93500bd49d",
-      "src/app/invoices/[id]/edit/page.tsx": "5efcdfe2a6bc5ba4edf42687c8a7a6c70e1f85b371ccf91b507c435113588f4a",
+      "src/app/invoices/[id]/edit/page.tsx": "8b9251600f66c2be10c3246cd64fb70632984ecb61ec6b9801660cfbb2acf624",
       "src/app/invoices/[id]/error.tsx": "1f8dcb4db98edea4f131eaca0b8c217fb60054949fd7e57f280a5f0b6620dcf9",
       "src/app/invoices/[id]/exports/5stars-boa/route.ts": "442e141be7542b7bc203df357c8f65be33222b8c262aa0500a3e32a549b756e2",
       "src/app/invoices/[id]/page.tsx": "76132d5224646cb6852f216c79b222ddd18ac71a15bf91628685c1fbdd55b56f",
@@ -449,7 +449,7 @@
       "src/app/invoices/[id]/print/page.tsx": "8408eff6dbbf1e24733a785bf508c3f58278c636a5236b12250f5bbf56209874",
       "src/app/invoices/batch-payment/page.tsx": "e7b469d92ee87e0b51770c7c4cfd6ca589f689627113ca7579386eb64dc96982",
       "src/app/invoices/batch-send/page.tsx": "a6c7427b671c844246d285b96ac6d540a9d7b59fa956dcfebdb76e28f8e7e43a",
-      "src/app/invoices/new/page.tsx": "936cc5bd6ab2df2f5fa8345e151261fd5c59a55878ace99513bfa4416d25b597",
+      "src/app/invoices/new/page.tsx": "2ac8f406b8ea2468f84f331f03b1955ab7c11f0ae94f0a9ffbb50ca4a84d7ecf",
       "src/app/invoices/page.tsx": "d0876d96e84001d0861fe063a7480f417b8c4ccdfd85ae3e602219bffbf0bdb4",
       "src/app/job-sessions/page.tsx": "1a6e829e37311d624d561d5e23f605bf6394c91e21d384c48267a5df1b856caf",
       "src/app/layout.tsx": "307661f331bc8e30bb262bee9196d32dff2d60af8c11042ee4ef15ba69981f0f",
@@ -487,7 +487,7 @@
       "src/app/lib/invoiceEligibility.ts": "02b9c072baf32af735a1e71dd90b5efce73d787c2a63f11f0088e78d93446eea",
       "src/app/lib/invoiceEmailSettings.ts": "3ebaf7deb6a876e2b5c9676c76222d0de2bc900a08dde7572ad0b7192525bdef",
       "src/app/lib/invoiceLifecycle.ts": "624ff271a8d77a484bd789d588c8e47d8af7686bc43dfa59edd5d00abbaf4cf7",
-      "src/app/lib/invoiceMoney.ts": "a885326949aacc6a246a4e0ec5017b373cd3ec4b40d0611c56813646b83d069b",
+      "src/app/lib/invoiceMoney.ts": "4ce431ac21458943716a021b7889bac354f8b34a33f453fe87eca9b10f201c8b",
       "src/app/lib/jobSessionLabor.ts": "1561ac43f587e55df4a7a67baab378810f2e4ede2498a08e6cfca22ac4060503",
       "src/app/lib/loginReturn.ts": "fa6c306af2215a37860864d0bf6364a9449544b2c9101ff104288fbe50c29849",
       "src/app/lib/maintenanceMode.ts": "2caa1d8585706dae45460aef8538d4d5336a29b53c490ae5a69b2059b77e3cca",
@@ -1668,21 +1668,21 @@
   },
   "upgradeContext": {
     "currentProductionRelease": {
-      "manifestCommit": "885d01f18b1811de7f2be8fe33ec9d8858056d20",
-      "manifestDigest": "969b1f6b35bc3c7c9e81886e5591767c33cb8542d529ced9bce0b3463fec3239",
-      "releaseId": "trimax-remittance-optical-robustness-20261024-rc6",
-      "deploymentCommit": "885d01f18b1811de7f2be8fe33ec9d8858056d20",
-      "deploymentId": "6G2N5TMoymwBRm48NKrtt8Qbr7Xc"
+      "manifestCommit": "07f01873134fb0c8f2eb9741ca08fa9e2e45d58c",
+      "manifestDigest": "be211bdc7bf3b54cde39e3fad47670dd2b3f0d0306fb80cc367990e91408db1d",
+      "releaseId": "trimax-invoice-lifecycle-repair-20261026-rc2",
+      "deploymentCommit": "07f01873134fb0c8f2eb9741ca08fa9e2e45d58c",
+      "deploymentId": "3VzQjXXWPALqsNpmzovSfj2smtQ7"
     },
-    "candidateReleaseId": "trimax-invoice-lifecycle-repair-20261026-rc2",
-    "applicationCommit": "041dbf50f746035a1079b8043cedf9de9eef2c9a",
-    "machineryCommit": "041dbf50f746035a1079b8043cedf9de9eef2c9a"
+    "candidateReleaseId": "trimax-invoice-currency-display-20261026-rc1",
+    "applicationCommit": "48db79ef70c25208931e2e61b8828e2ff2d27a30",
+    "machineryCommit": "48db79ef70c25208931e2e61b8828e2ff2d27a30"
   },
   "contractRevision": {
-    "id": "invoice-draft-atomic-save-and-deposit-lifecycle",
-    "priorManifestDigest": "969b1f6b35bc3c7c9e81886e5591767c33cb8542d529ced9bce0b3463fec3239",
-    "reason": "Atomic draft editing and discounts preserve payments and mandatory audit history. Deposit delivery is separate from final issuance. Active session proxy now preserves trusted print-path identification for authenticated PDF rendering. Single additive financial migration installed in synthetic lab only. Existing frozen production database hashes are pre-migration baseline, not candidate post-migration identity.",
-    "rollback": "Keep verified production 885d01f18b1811de7f2be8fe33ec9d8858056d20 and deployment 6G2N5TMoymwBRm48NKrtt8Qbr7Xc. No production deployment before complete recoverable backup and isolated restoration, reviewed post-migration catalog and coordinated web/worker seal. After additive migration, preserve data, objects, payments and audit history; recover with compatible reviewed forward code/manifest rather than destructive downmigration or stale financial restore. Preview can be withdrawn without production changes."
+    "id": "grouped-invoice-display-exact-cent-storage",
+    "priorManifestDigest": "be211bdc7bf3b54cde39e3fad47670dd2b3f0d0306fb80cc367990e91408db1d",
+    "reason": "Invoice create/edit display uses a grouped USD formatter while persistence and decimal arithmetic remain unchanged. No OCR logic, database, financial records, credentials, permissions, or messaging changes.",
+    "rollback": "Preserve production deployment3VzQjXXWPALqsNpmzovSfj2smtQ7, current additive schema, compatible financial-rc2 workers, and all current invoice/payment/audit records. No database restoration or downmigration."
   },
   "captureWorkflow": "guided-live-camera-v1"
 }
