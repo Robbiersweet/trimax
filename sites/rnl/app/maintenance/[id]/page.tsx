@@ -1,3 +1,4 @@
+import '../maintenance.css';
 export const dynamic='force-dynamic';
 import MaintenanceRequest from '../../../qr-shared/maintenance/[id]/page';
 export {metadata} from '../../../qr-shared/maintenance/[id]/page';

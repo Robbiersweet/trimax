@@ -1,0 +1,4 @@
+.scheduling-public { width: min(100% - 2rem, 62rem); margin: 0 auto; padding: clamp(1.25rem, 4vw, 3rem) 0; }
+.scheduling-public > h1 { font-size: clamp(1.8rem, 4vw, 2.6rem); line-height: 1.15; margin: 0 0 1rem; }
+.scheduling-public > p { max-width: 68ch; margin: 0 0 1rem; }
+.scheduling-public > a { display: inline-block; margin-top: 1.5rem; text-decoration: underline; }
