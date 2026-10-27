@@ -2,25 +2,25 @@
   "schemaVersion": 1,
   "releaseId": "trimax-invoice-currency-display-20261026-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-10-27T05:39:27.978Z",
-  "releaseTimestamp": "2026-10-27T05:39:27.978Z",
+  "createdAt": "2026-10-27T05:43:28.072Z",
+  "releaseTimestamp": "2026-10-27T05:43:28.072Z",
   "baseProduction": {
     "commit": "07f01873134fb0c8f2eb9741ca08fa9e2e45d58c",
     "vercelDeploymentId": "3VzQjXXWPALqsNpmzovSfj2smtQ7"
   },
   "components": {
     "web": {
-      "commit": "48db79ef70c25208931e2e61b8828e2ff2d27a30"
+      "commit": "dc459df19c1505ff0ef611c28e1b607530f1a8c6"
     },
     "legacy": {
-      "commit": "48db79ef70c25208931e2e61b8828e2ff2d27a30"
+      "commit": "dc459df19c1505ff0ef611c28e1b607530f1a8c6"
     },
     "v2-shadow": {
-      "commit": "48db79ef70c25208931e2e61b8828e2ff2d27a30"
+      "commit": "dc459df19c1505ff0ef611c28e1b607530f1a8c6"
     }
   },
   "sourceBundle": {
-    "sha256": "735921ce5816130e1db8feb606c3ab85aa375698edf00a095025768e83a9c5b1",
+    "sha256": "0791c57788a321e309b0b9a3475c4a4b746e875cf9c27e88eee82126fa8dd816",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -227,7 +227,7 @@
       "scripts/payment-state-lifecycle-regression.ts": "88f1ec8d51facaf9c25d94f18ab4c827db668b331cbe0f61d923855ce8bced04",
       "scripts/payment-submit-regression.cjs": "19469651acbbdec6f1b5dcc1de8e60ef1813ee395d8afe3918ca59671e9f718a",
       "scripts/payment-timeliness-regression.ts": "92b739b72360bad34278d2d364fdf701e02b97c04026baca58d30ec6ffc7dd64",
-      "scripts/pdf-readiness-regression.mjs": "8aa9bd83c0975d2c8b376745150c4c616132ea03d7331f3a1b350bba1fff6687",
+      "scripts/pdf-readiness-regression.mjs": "de4c822ecc6b4d495ea5985a3f7b1fd282b8c97750013fd653e8a873d4bae64b",
       "scripts/photo-corpus-acceptance.cjs": "7451ce420af4c707f3185c11db2cb49c1a2702859618b5e5201fad5403a96971",
       "scripts/photo-corpus-financial-regression.cjs": "8ec7fce66dbcd180cb3e3ddd4c0c62a9275c6baa1903f851c4195836af0bea85",
       "scripts/photo-corpus-financial.cjs": "29a09c999cbef3476b9c6014d69290e848c711acf658cc0a32203cbc36e77df4",
@@ -615,7 +615,7 @@
       "src/app/new-request/page.tsx": "74ef72e0d2c2cd9b2762c63202051620e326fbed774fec8140bf77d614524953",
       "src/app/page.tsx": "c74d3f4a58454be4823909b448874519aac13d8139e7cae216af61e928bfbc8f",
       "src/app/payments/page.tsx": "450b22fd468849a694fc88c24b327b3009ba39b3ba93cc3ab54a6b046fcd0c3c",
-      "src/app/print.css": "3ad58a6bc745b4409cd8a4ad6f9369dda251eeaf96a0978732d3980b0815ef91",
+      "src/app/print.css": "fed798b5ee421adfad69102d91eeabb6a9e497a89ff39910e53c39de396df887",
       "src/app/profile/page.tsx": "d4004ca0abc6b078b20da89ad0662045b64d591c1beb6e61c6f477210fe850b1",
       "src/app/property-intelligence/page.tsx": "39442297c2ce48a7ee33da366aac8bc06aae0d73fb904983943c04837b2af06c",
       "src/app/property-sales/loading.tsx": "8683cfb53dd71f0acc74d0636c29e1d0916e5093f5542f76eac61bb3bcb5b35f",
@@ -1675,8 +1675,8 @@
       "deploymentId": "3VzQjXXWPALqsNpmzovSfj2smtQ7"
     },
     "candidateReleaseId": "trimax-invoice-currency-display-20261026-rc1",
-    "applicationCommit": "48db79ef70c25208931e2e61b8828e2ff2d27a30",
-    "machineryCommit": "48db79ef70c25208931e2e61b8828e2ff2d27a30"
+    "applicationCommit": "dc459df19c1505ff0ef611c28e1b607530f1a8c6",
+    "machineryCommit": "dc459df19c1505ff0ef611c28e1b607530f1a8c6"
   },
   "contractRevision": {
     "id": "grouped-invoice-display-exact-cent-storage",
