@@ -1,3 +1,11 @@
+/* A currency token is indivisible: never wrap its final decimal digit. */
+.standard-print-table th:not(:first-child),
+.standard-print-table td:not(:first-child) {
+  white-space: nowrap !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+}
+
 @media screen {
   .print-preview-page {
     background: #f8fafc !important;
@@ -282,7 +290,7 @@
 
   .standard-print-table th:nth-child(2),
   .standard-print-table td:nth-child(2) {
-    width: 0.85in !important;
+    width: 1.15in !important;
   }
 
   .standard-print-table th:nth-child(3),
@@ -292,13 +300,13 @@
 
   .standard-print-table th:nth-child(4),
   .standard-print-table td:nth-child(4) {
-    width: 0.95in !important;
+    width: 1.2in !important;
   }
 
   .standard-print-line-grid,
   .standard-print-line-header {
     display: grid !important;
-    grid-template-columns: minmax(0, 1fr) 0.85in 0.42in 0.95in !important;
+    grid-template-columns: minmax(0, 1fr) 1.15in 0.42in 1.2in !important;
     gap: 0.16in !important;
     width: 100% !important;
   }

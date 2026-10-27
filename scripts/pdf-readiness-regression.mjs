@@ -116,4 +116,8 @@ assert(
   "Toast must keep technical details in a collapsible section."
 );
 
+const printCss = readFileSync(resolve("src/app/print.css"), "utf8");
+const numericPrintRule = printCss.match(/\.standard-print-table th:not\(:first-child\),\s*\.standard-print-table td:not\(:first-child\)\s*\{([^}]+)\}/)?.[1] ?? "";
+assert(/white-space:\s*nowrap\s*!important/.test(numericPrintRule), "Printed currency tokens must not break before their final decimal digit.");
+assert(/overflow-wrap:\s*normal\s*!important/.test(numericPrintRule), "Generic break-anywhere styling must not split printed currency tokens.");
 console.log("PDF readiness regression checks passed.");
