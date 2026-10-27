@@ -7,7 +7,12 @@ for(const [file,expected] of Object.entries(provenance.files))assert.equal(creat
 const runtime=await readFile(new URL('lib/maintenanceQr.ts',root),'utf8');
 assert.ok(runtime.includes("MAINTENANCE_QR_ENABLED!=='enabled'"));
 assert.ok(runtime.includes("process.env.VERCEL_ENV==='preview'&&process.env.NEXT_PUBLIC_SUPABASE_URL==='https://yzyfmvoswucyauogueca.supabase.co'"));
-const route=await readFile(new URL('api/maintenance-qr/[id]/route.ts',root),'utf8');
+const route=await readFile(new URL('lib/maintenanceQrHandler.ts',root),'utf8');
 assert.ok(route.includes('if(config){const abuse=await enforceProductionAbuse'));
 assert.ok(route.includes('validateRequest({...body,address:qr.address'));
 console.log(`PASS ${Object.keys(provenance.files).length} exact canonical QR modules; explicit activation, isolated-lab boundary, production abuse check and trusted location binding retained.`);
+
+const wrapper=await readFile(new URL('../app/api/maintenance-qr/[id]/route.ts',import.meta.url),'utf8');
+assert.ok(wrapper.includes('createMaintenanceQrPost(websiteSubmissionRuntime)'));
+assert.ok(route.includes('integration?.client??restrictedRpc'));
+assert.ok(route.includes('config.providers'));
