@@ -9,7 +9,7 @@
     "start": "next start -p 3108",
     "lint": "eslint app components lib scripts",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types scripts/credential-boundary-regression.mjs && node --conditions=react-server --experimental-strip-types scripts/regression.mjs && node --conditions=react-server --experimental-strip-types scripts/submission-runtime-regression.mjs",
+    "test": "node --experimental-strip-types scripts/credential-boundary-regression.mjs && node --conditions=react-server --experimental-strip-types scripts/regression.mjs && node --conditions=react-server --experimental-strip-types scripts/submission-runtime-regression.mjs && node scripts/qr-provenance-regression.mjs",
     "brand:generate": "node scripts/generate-brand-assets.mjs",
     "test:brand": "node scripts/brand-regression.mjs"
   },
