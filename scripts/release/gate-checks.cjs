@@ -2,6 +2,7 @@ const scripts=[
  'scripts/maintenance-qr-sql-regression.cjs',
  'scripts/maintenance-qr-image-regression.cjs',
  'scripts/maintenance-qr-production-regression.cjs',
+ 'scripts/property-request-access-regression.cjs',
  'scripts/ocr-lifecycle-regression.cjs',
  'scripts/document-notes-privacy-regression.cjs',
  'scripts/discounts-and-services-regression.ts',
