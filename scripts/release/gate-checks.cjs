@@ -1,4 +1,7 @@
 const scripts=[
+ 'scripts/maintenance-qr-sql-regression.cjs',
+ 'scripts/maintenance-qr-image-regression.cjs',
+ 'scripts/maintenance-qr-production-regression.cjs',
  'scripts/ocr-lifecycle-regression.cjs',
  'scripts/document-notes-privacy-regression.cjs',
  'scripts/discounts-and-services-regression.ts',
@@ -36,3 +39,4 @@ const scripts=[
 ];
 scripts.push('scripts/table-caption-ownership-regression.cjs','scripts/complementary-row-regression.cjs','scripts/pixel-localization-regression.cjs','scripts/legacy-mature-fallback-regression.cjs','scripts/photo-evidence-regression.cjs','scripts/photo-corpus-financial-regression.cjs','scripts/photo-corpus-acceptance.cjs','scripts/photo-corpus-privacy-regression.cjs');
 module.exports=scripts;
+
