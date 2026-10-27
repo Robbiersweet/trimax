@@ -4,7 +4,7 @@
 import { multiplyMoney, subtractMoney, sumMoney } from "../../../lib/money";
 
 
-import { formatStoredInvoiceAmount } from "../../../lib/invoiceMoney";
+import { formatInvoiceDisplayAmount, formatStoredInvoiceAmount } from "../../../lib/invoiceMoney";
 
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -109,7 +109,7 @@ type LineItem = {
 };
 
 function formatCurrency(amount: number) {
-  return formatStoredInvoiceAmount(amount);
+  return formatInvoiceDisplayAmount(amount);
 }
 
 function parseCurrency(value: string | null) {
@@ -813,7 +813,7 @@ export default function EditInvoicePage() {
       p_fields: {
         customer_name: customerName,
         project_title: projectTitle,
-        invoice_amount: formatCurrency(invoiceTotal),
+        invoice_amount: formatStoredInvoiceAmount(invoiceTotal),
         issue_date: issueDate,
         due_date: dueDate,
         reference: maybeCanonicalApartmentUnitLabel(reference),

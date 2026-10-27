@@ -5,7 +5,7 @@ import { roundMoney } from "../../lib/money.ts";
 import { multiplyMoney, percentMoney, sumMoney, subtractMoney } from "../../lib/money";
 
 
-import { formatStoredInvoiceAmount } from "../../lib/invoiceMoney";
+import { formatInvoiceDisplayAmount, formatStoredInvoiceAmount } from "../../lib/invoiceMoney";
 
 import {
   Suspense,
@@ -79,7 +79,7 @@ type LineItem = {
 };
 
 function formatCurrency(amount: number) {
-  return formatStoredInvoiceAmount(amount);
+  return formatInvoiceDisplayAmount(amount);
 }
 
 function getLineTotal(item: LineItem) {
@@ -775,7 +775,7 @@ function NewInvoicePageContent() {
         customer_name: customerName,
         project_title: projectTitle,
         service_address: serviceAddress,
-        invoice_amount: formatCurrency(invoiceTotal),
+        invoice_amount: formatStoredInvoiceAmount(invoiceTotal),
         issue_date: issueDate,
         due_date: dueDate,
         reference: maybeCanonicalApartmentUnitLabel(reference),
