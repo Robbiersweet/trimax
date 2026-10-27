@@ -1,31 +1,31 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-invoice-currency-display-20261026-rc1",
+  "releaseId": "trimax-document-notes-privacy-20261027-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-10-27T05:43:28.072Z",
-  "releaseTimestamp": "2026-10-27T05:43:28.072Z",
+  "createdAt": "2026-10-27T11:31:13.748Z",
+  "releaseTimestamp": "2026-10-27T11:31:13.748Z",
   "baseProduction": {
-    "commit": "07f01873134fb0c8f2eb9741ca08fa9e2e45d58c",
-    "vercelDeploymentId": "3VzQjXXWPALqsNpmzovSfj2smtQ7"
+    "commit": "a36aba799c28644919ba21ebb685eae7e2d8ac3b",
+    "vercelDeploymentId": "ETNt4ncmvbNbgx6wWzDM1huqLHcc"
   },
   "components": {
     "web": {
-      "commit": "dc459df19c1505ff0ef611c28e1b607530f1a8c6"
+      "commit": "50e482e2d5546602e87c872260b5089e4108856c"
     },
     "legacy": {
-      "commit": "dc459df19c1505ff0ef611c28e1b607530f1a8c6"
+      "commit": "50e482e2d5546602e87c872260b5089e4108856c"
     },
     "v2-shadow": {
-      "commit": "dc459df19c1505ff0ef611c28e1b607530f1a8c6"
+      "commit": "50e482e2d5546602e87c872260b5089e4108856c"
     }
   },
   "sourceBundle": {
-    "sha256": "0791c57788a321e309b0b9a3475c4a4b746e875cf9c27e88eee82126fa8dd816",
+    "sha256": "47d5b13a039ee4a13d6be8877806b613794587f2c4e009191949d1567143ae1d",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
       "package-lock.json": "f59c4191dbab35152626d37ecd849e1c20d17564df0cf62d2dbac122dff062b9",
-      "package.json": "1d65b0f4a9c58c2dda81a6bb58b5bd27f6e01e3c575c30daa888e045da7158fc",
+      "package.json": "9b80c7bac4ab4e22151ff029fa930bf3e3be9ed33f6b41852800814019f6d0a2",
       "proxy.ts": "c07e9824217830ca636dac8141204cf2a422728fdc173f488ad61e86edbc8cce",
       "public/Brand/R&L Full Black.png": "3745bd9aec6198d87a968e3f5c3402b87010925d881ddd03411a5caef2c40f65",
       "public/Brand/R&L Full Orange.png": "2c1b88a1718f11f58eb4e59d812f6e47a52ad4c2005a6625eddb601f54fd3fb0",
@@ -55,6 +55,7 @@
       "scripts/check-date-persistence-regression.cjs": "9d05fe83a58333f03ee51856bb9cd4d77e5e1bf65c35b57590d35ff70968a5f7",
       "scripts/complementary-row-regression.cjs": "7b5a850b6849ce608ef33b2b8c5f4c40f2175b59958bd61441918361e5c8dce0",
       "scripts/discounts-and-services-regression.ts": "aa3b178219d61fbafd75d38bc960b60be8cc0695a080ff669d4866fdb1dd1b3b",
+      "scripts/document-notes-privacy-regression.cjs": "2ca0b412048db612fb5c4e250774d28968814fd9b53344db54322f1fd813066b",
       "scripts/duplicate-remittance-regression.ts": "620cdeafc884c62c61507e863074a76040aa3c870b3bd8c7350134c3cc32a0c9",
       "scripts/estimate-list-compact-actions-regression.ts": "e8301085ae9e0dccdb21c4b8cfbb7b7f339c40d82110b4db7a942fd77eee7908",
       "scripts/estimate-list-loading-regression.ts": "e16e1f2f3df849ebfb9d8a722260bab33fc94064548319e7e2e58a0b34be25bd",
@@ -263,7 +264,7 @@
       "scripts/release/file-forensics-regression.cjs": "a6da1ba822d17c1a31b7bd29d3cb49e95febca66f29c51b712ccdd9d608c1b26",
       "scripts/release/file-forensics.cjs": "25133a9f2167c801a05906be04068f3d85f54f3c462e085869df2d486c8bea30",
       "scripts/release/final-candidate-regression.cjs": "edc0dbfa8f70d55607c65327a08ed25193380387dd4f1e850cf130ef992ca03f",
-      "scripts/release/gate-checks.cjs": "56bb5f180b6d93012f1cbdfaf4558503174a4f2ce5b5c9eb86f7ca54ea8a57fc",
+      "scripts/release/gate-checks.cjs": "422933885a3bfc3d25ceba0d0566bf20748642784f1e95dbbe08ac5d226f0a73",
       "scripts/release/gate-state-regression.cjs": "51f1d2c76eca73d122f20cc0f537b624074ebd4943f946dcba63857775e45d04",
       "scripts/release/gate-state.cjs": "f56bdc9741b07b92c53bb487f21320080537fa90734721130612e8c1b52da839",
       "scripts/release/gate.cjs": "228232de653ef9c0c5a96ea24a9bfb0220a06eed1a0a516222d523b67d778c45",
@@ -305,7 +306,7 @@
       "scripts/session-tab-isolation-regression.ts": "2e9606534b9482ff7d2f45c30d7b9a4a5bd85ee425cbeb4ca3c33c9fdaeb8d28",
       "scripts/split-invoice-send-regression.ts": "a030f1bd265a7791cd21b5664af094cd64cbb09ce43a000ce9064cd861815527",
       "scripts/split-source-relationship-regression.ts": "3e66f4141541fbb83e0645cc0a5f6d07e9e508b5cb49edf99ea88c75dce1200d",
-      "scripts/stabilization-regression.cjs": "e3e01b0b586268d42c248c9ec59c88095d21e3f7887a52e73322131769229afe",
+      "scripts/stabilization-regression.cjs": "61ed4717dd9ec2310ff7ac5f4fa8d8bad5b8b7cca6401893687c14123f4004f4",
       "scripts/start-ocr-supervisor.ps1": "1c0b14c757d211cfa54b271c6011504c7d524d4410203e646fd95611dd4dd1b7",
       "scripts/table-caption-ownership-regression.cjs": "802dd640e13598fc74301cb75a5fbd20f035da540e3bdd781963abcfe89330a4",
       "scripts/tenant-isolation-hardening-regression.ts": "fb3bf2d7f46325e44263458cdaf9ebc93cbc5f5453d4191e74393db8d5a8e501",
@@ -357,7 +358,7 @@
       "src/app/components/Button.tsx": "68f87a76cee881a6b148ec30af54746d8a0fbe11a153b3ccf0134a62504deb97",
       "src/app/components/Card.tsx": "6706fd0d306b77c27bf8f9f2558fdfc4f5a77b874404cba67b0f4980c96de207",
       "src/app/components/ClientSmartSearch.tsx": "6780c13e035f04c4bf532a23842cf8d220021a409362c1f2d01fc93cbb3c1278",
-      "src/app/components/ConvertEstimateToInvoiceButton.tsx": "6d09929d9d68110b26e6ce2cca6ecb9576b21e8b918492d8339d7b616436fd79",
+      "src/app/components/ConvertEstimateToInvoiceButton.tsx": "b9469f716c3b4e32ce6afa7e2a79d2d97324efac81f071832c81b4d1c6b8a98c",
       "src/app/components/CopyManagerBriefButton.tsx": "61edbc348a5d2949928dffd9a01d39c02e7107aa563361aa5eedd792c04c39f3",
       "src/app/components/CopyProofSummaryButton.tsx": "f9b22ef6b924092a336716aacbb6c3f34d75c64e3e241eb7dec261777366ee8e",
       "src/app/components/CorrectInvoiceButton.tsx": "7f1f1a9773bc34e7c7777f245d7d3de5606aea96a3a4a5a7f8dc5ea46e4259d4",
@@ -371,7 +372,7 @@
       "src/app/components/FilteredResultsScroller.tsx": "009d2a40551e1ef72053bd2a7c37b6b84c51f460c36896d29a46ba2141d63514",
       "src/app/components/HashScrollRestorer.tsx": "5d65719bae9c455e610dc1b2a6e67b6c02dda4fd00b5d451e6df3a7f640acfd5",
       "src/app/components/InputField.tsx": "a83c369087e93e172b0215c5e960aff42a85400c365a522a0f7d33bcb913ef8d",
-      "src/app/components/InternalNotes.tsx": "1b9e107d375e2ed110a4f9d3dde7c3c7501eb725f99ba2a660cce1da0c985b1a",
+      "src/app/components/InternalNotes.tsx": "258124ecc13bdc20a5a4115249c17c3a4ed08952def2487ea2efdb73f3092588",
       "src/app/components/InvoiceBatchSendActions.tsx": "ecf90333a29a05c3783a483b173433d360480bd96c54c696bb193511d098f2da",
       "src/app/components/InvoiceBulkPaymentActions.tsx": "bed6db61c345da652d97aa9dc302813d75e18b6f3cfc080ef5a97bf199833239",
       "src/app/components/InvoiceEmailSendPanel.tsx": "ef77db85080dd490b21b670e532ea9e331dd978b67e2065b21ed81bd08e642c4",
@@ -434,8 +435,8 @@
       "src/app/estimates/[id]/error.tsx": "3e72ce3dc7e9dfbc6312896b1a920980d789ea6b2293f11cdea4fe1e1bc77c4a",
       "src/app/estimates/[id]/page.tsx": "2cf61f1b9bb0aeafa5fc8a9cfdf9ff099d1c1b05d9879a83ffc378e5912d62fa",
       "src/app/estimates/[id]/print/error.tsx": "5f6ac5e64ea8325ba4906ad2495d92d7a4f7e43499552c92459011c4b57b569a",
-      "src/app/estimates/[id]/print/page.tsx": "1ab4c6161a5024fbab75a8564d3fa661e163df2e033718d7fe66cf6e619ed02d",
-      "src/app/estimates/new/page.tsx": "2140a3d4c9158e1b9e7d43d39600d9eab7593131db398bfcfb87b992b9396aa1",
+      "src/app/estimates/[id]/print/page.tsx": "c10fef569beec5cfcd0fe032752c8cb9aac936a874c07fae5bf3584d3165cf1e",
+      "src/app/estimates/new/page.tsx": "d07528284e7d10729ad46a139e9b17c0f1be449b065b1ba46d0a78b7bc02a352",
       "src/app/estimates/page.tsx": "7f517aae2420acfaee0ab87a28b420cb7774306f726f05eed0af451cb0bf7945",
       "src/app/favicon.ico": "2b8ad2d33455a8f736fc3a8ebf8f0bdea8848ad4c0db48a2833bd0f9cd775932",
       "src/app/forgot-password/page.tsx": "ed72e30e4f161990113a13d562649a33c0918beb6074c66ca8284fc118155aa6",
@@ -444,9 +445,9 @@
       "src/app/invoices/[id]/edit/page.tsx": "8b9251600f66c2be10c3246cd64fb70632984ecb61ec6b9801660cfbb2acf624",
       "src/app/invoices/[id]/error.tsx": "1f8dcb4db98edea4f131eaca0b8c217fb60054949fd7e57f280a5f0b6620dcf9",
       "src/app/invoices/[id]/exports/5stars-boa/route.ts": "442e141be7542b7bc203df357c8f65be33222b8c262aa0500a3e32a549b756e2",
-      "src/app/invoices/[id]/page.tsx": "76132d5224646cb6852f216c79b222ddd18ac71a15bf91628685c1fbdd55b56f",
+      "src/app/invoices/[id]/page.tsx": "177f002b9d9e6c878f4505556af12dc8465aa7c9af3e8d6bb07bd3245d9c5782",
       "src/app/invoices/[id]/print/error.tsx": "833c6fb2b2d20fcd09b8ef6b03189c4a9a092252ce4502426f4650736cbb6ed1",
-      "src/app/invoices/[id]/print/page.tsx": "8408eff6dbbf1e24733a785bf508c3f58278c636a5236b12250f5bbf56209874",
+      "src/app/invoices/[id]/print/page.tsx": "df3ba4b4dbcc3fb0329da9a15d9f0729e6cb5948a46332e6da97878b38727d13",
       "src/app/invoices/batch-payment/page.tsx": "e7b469d92ee87e0b51770c7c4cfd6ca589f689627113ca7579386eb64dc96982",
       "src/app/invoices/batch-send/page.tsx": "a6c7427b671c844246d285b96ac6d540a9d7b59fa956dcfebdb76e28f8e7e43a",
       "src/app/invoices/new/page.tsx": "2ac8f406b8ea2468f84f331f03b1955ab7c11f0ae94f0a9ffbb50ca4a84d7ecf",
@@ -479,6 +480,7 @@
       "src/app/lib/documentFields/unitFieldOwnership.ts": "066c1172daaf6730fcad3183e887e872b1431be786fe8016e534d6e8d5e4fe26",
       "src/app/lib/documentFields/visualComponents.ts": "3e94db6b0a343851c003a67b7fca154cff71c33a6da551ac60e834830ca64d43",
       "src/app/lib/documentFields/visualMoney.ts": "3f040c820cb30b2ad19df12d506c500d982757f5d8b56fb075db6caefff5e6ab",
+      "src/app/lib/documentNotes.ts": "9d7aace87317b4c9cf290645faf4ccfc7bcbb3f854239bae2da373b8fec3dd7a",
       "src/app/lib/documentNumbers.ts": "e6f0593f5230d2f2703427e2995ddfc2c6ec4710608f4864a8445264d32dd16c",
       "src/app/lib/documentTerms.ts": "7210f64a1a5717ef1c86605cca4320721fe9f2de4162751bbe64845110abf40f",
       "src/app/lib/duplicateRemittance.ts": "a056cf54cbb16dafc07206b2314aa08408b0da2363145008f1a55467f8602c28",
@@ -603,7 +605,7 @@
       "src/app/lib/serviceDuplicateCleanup.ts": "9480c2417864482068c6e7f0d6c6a2e2aa304f854bbe492ee933e02273e6847e",
       "src/app/lib/sessionSecurity.ts": "4d6de72c838c371f3c0ed212e3b9b94b221114a8e1a915cfbfb994988a664078",
       "src/app/lib/splitInvoiceRelationships.ts": "20b9d8321a6c1b54426e48f1543256edcd1aa553d5a2fc070dc595951bde5b09",
-      "src/app/lib/splitInvoices.ts": "730933e6269bddeacd21ca638c7288131bf6085d514317b30fb7a15ef03027c5",
+      "src/app/lib/splitInvoices.ts": "f1d6be47a2dc9c80bdd015d07e1a5d63e86ce032223bc3560481bb725b4f7e5f",
       "src/app/lib/supabase.ts": "acc5b28abec1303a26b73c0ff4036327c126f31d00e9e0e00bca6b9aa0b0de6f",
       "src/app/lib/supabaseServer.ts": "de9688c0baf8a377bee90a1b9e10aa4996c982c8051ab8a9ef876630316bb946",
       "src/app/lib/tbd.ts": "d355d3001455be4797b4d1575bc165db11309735a09c41e0eb3037224dc472e0",
@@ -612,7 +614,7 @@
       "src/app/lib/workspaceAccess.ts": "6d6334182d663536ac1123695bf2017f06373486cfa01ef54d0e72967d480b71",
       "src/app/login/page.tsx": "dd709a37f471db722b752c21226ee621099a615f3578b3d381745a8e11e3c37a",
       "src/app/manifest.ts": "7a70a588bc52215af58477c2bcfc67c143742493f01048b35b4898d6732d8954",
-      "src/app/new-request/page.tsx": "74ef72e0d2c2cd9b2762c63202051620e326fbed774fec8140bf77d614524953",
+      "src/app/new-request/page.tsx": "f9a6ace8bd00f32b5f465aaaf9dab0eb7bccbc3d54c5399376b4202696ba32ee",
       "src/app/page.tsx": "c74d3f4a58454be4823909b448874519aac13d8139e7cae216af61e928bfbc8f",
       "src/app/payments/page.tsx": "450b22fd468849a694fc88c24b327b3009ba39b3ba93cc3ab54a6b046fcd0c3c",
       "src/app/print.css": "fed798b5ee421adfad69102d91eeabb6a9e497a89ff39910e53c39de396df887",
@@ -1668,21 +1670,21 @@
   },
   "upgradeContext": {
     "currentProductionRelease": {
-      "manifestCommit": "07f01873134fb0c8f2eb9741ca08fa9e2e45d58c",
-      "manifestDigest": "be211bdc7bf3b54cde39e3fad47670dd2b3f0d0306fb80cc367990e91408db1d",
-      "releaseId": "trimax-invoice-lifecycle-repair-20261026-rc2",
-      "deploymentCommit": "07f01873134fb0c8f2eb9741ca08fa9e2e45d58c",
-      "deploymentId": "3VzQjXXWPALqsNpmzovSfj2smtQ7"
+      "manifestCommit": "a36aba799c28644919ba21ebb685eae7e2d8ac3b",
+      "manifestDigest": "cdd64e1ffc7efef515bc768d1d2185d34c98e389add766702c77f573a4ed3199",
+      "releaseId": "trimax-invoice-currency-display-20261026-rc1",
+      "deploymentCommit": "a36aba799c28644919ba21ebb685eae7e2d8ac3b",
+      "deploymentId": "ETNt4ncmvbNbgx6wWzDM1huqLHcc"
     },
-    "candidateReleaseId": "trimax-invoice-currency-display-20261026-rc1",
-    "applicationCommit": "dc459df19c1505ff0ef611c28e1b607530f1a8c6",
-    "machineryCommit": "dc459df19c1505ff0ef611c28e1b607530f1a8c6"
+    "candidateReleaseId": "trimax-document-notes-privacy-20261027-rc1",
+    "applicationCommit": "50e482e2d5546602e87c872260b5089e4108856c",
+    "machineryCommit": "50e482e2d5546602e87c872260b5089e4108856c"
   },
   "contractRevision": {
-    "id": "grouped-invoice-display-exact-cent-storage",
-    "priorManifestDigest": "be211bdc7bf3b54cde39e3fad47670dd2b3f0d0306fb80cc367990e91408db1d",
-    "reason": "Invoice create/edit display uses a grouped USD formatter while persistence and decimal arithmetic remain unchanged. No OCR logic, database, financial records, credentials, permissions, or messaging changes.",
-    "rollback": "Preserve production deployment3VzQjXXWPALqsNpmzovSfj2smtQ7, current additive schema, compatible financial-rc2 workers, and all current invoice/payment/audit records. No database restoration or downmigration."
+    "id": "customer-document-operational-notes-privacy",
+    "priorManifestDigest": "cdd64e1ffc7efef515bc768d1d2185d34c98e389add766702c77f573a4ed3199",
+    "reason": "Stop automatic Queue note inheritance; omit exact legacy generated priority templates at customer document boundaries, preserve stored raw notes and internal Team Notes; deduplicate only automatic warning. No DB, financial, permission, credential, OCR or messaging changes.",
+    "rollback": "Rollback web to dpl_ETNt4ncmvbNbgx6wWzDM1huqLHcc and compatible currency-rc1 workers a36aba7. Keep all financial/audit/Queue rows; no data restore or downmigration."
   },
   "captureWorkflow": "guided-live-camera-v1"
 }
