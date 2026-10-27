@@ -1,3 +1,4 @@
+import { customerFacingNotes } from "../../../lib/documentNotes";
 import { roundMoney } from "../../../lib/money";
 import { percentMoney, sumMoney } from "../../../lib/money";
 import Image from "next/image";
@@ -427,12 +428,12 @@ export default async function EstimatePrintPage({
           </div>
         </section>
 
-        {estimate.notes ? (
+        {customerFacingNotes(estimate.notes) ? (
           <section className="mt-12 print:mt-10">
             <PrintLabel>Scope of Work</PrintLabel>
 
             <p className="mt-3 max-w-4xl whitespace-pre-line text-base leading-6">
-              {estimate.notes}
+              {customerFacingNotes(estimate.notes)}
             </p>
           </section>
         ) : null}

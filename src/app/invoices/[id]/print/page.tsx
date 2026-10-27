@@ -1,3 +1,4 @@
+import { customerFacingNotes } from "../../../lib/documentNotes";
 import { subtractMoney as canonicalSubtractMoney } from "../../../lib/money.ts";
 import { roundMoney } from "../../../lib/money";
 import { percentMoney, sumMoney, subtractMoney, multiplyMoney } from "../../../lib/money";
@@ -640,12 +641,12 @@ export default async function InvoicePrintPage({
           </p>
         </section>
 
-        {invoice.notes && (
+        {customerFacingNotes(invoice.notes) && (
           <section className="mt-5 print:mt-2">
             <PrintLabel>Notes</PrintLabel>
 
             <p className="mt-3 max-w-4xl overflow-wrap-anywhere whitespace-pre-line text-base leading-6 print:mt-1 print:text-sm print:leading-5">
-              {invoice.notes}
+              {customerFacingNotes(invoice.notes)}
             </p>
           </section>
         )}
@@ -958,7 +959,7 @@ function FiveStarsBoaPrintPage({
             SL
           </div>
           <div className="px-2 py-2">
-            {invoice.notes || ""}
+            {customerFacingNotes(invoice.notes)}
           </div>
         </div>
 

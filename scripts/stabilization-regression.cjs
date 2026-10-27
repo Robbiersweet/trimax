@@ -851,6 +851,7 @@ async function splitPreferenceRegression(
 async function conversionSplitPreferenceRegression(enabled) {
   const estimate = {
     id: "estimate",
+    notes: "Please retain the customer note.\nPriority check: T09 may need to jump ahead of E08 due Oct 5. Confirm with management before scheduling.",
     business_id: "business",
     client_id: "client",
     customer_name: "Client Alpha",
@@ -961,6 +962,7 @@ async function conversionSplitPreferenceRegression(enabled) {
     "Conversion only invokes splitting for explicit ON",
   );
   assert.equal(inserted.client_id, estimate.client_id);
+  assert.equal(inserted.notes, "Please retain the customer note.");
   assert.equal(inserted.tax_rate, 9.9);
   await renderer.act(async () => tree.unmount());
 }

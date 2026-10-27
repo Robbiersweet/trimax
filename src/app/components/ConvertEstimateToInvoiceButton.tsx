@@ -1,5 +1,7 @@
 "use client";
 
+import { customerFacingNotes } from "../lib/documentNotes";
+
 import { percentMoney, sumMoney } from "../lib/money";
 
 
@@ -212,7 +214,7 @@ export default function ConvertEstimateToInvoiceButton({
       serviceAddress:
         estimate.service_address ?? estimate.project_address ?? "",
       reference: maybeCanonicalApartmentUnitLabel(estimate.reference),
-      notes: estimate.notes ?? notes,
+      notes: customerFacingNotes(estimate.notes ?? notes),
       terms: invoiceTerms,
       lineItems: estimateLineItems.map((item) => ({
         description: item.description ?? "",
@@ -289,7 +291,7 @@ export default function ConvertEstimateToInvoiceButton({
         split_target_amount:
           estimate.split_target_amount ?? null,
         terms: invoiceTerms,
-        notes: estimate.notes ?? notes,
+        notes: customerFacingNotes(estimate.notes ?? notes),
         status: "Draft",
       })
       .select()
@@ -386,7 +388,7 @@ export default function ConvertEstimateToInvoiceButton({
               estimate.project_address ??
               "",
             terms: invoiceTerms || DEFAULT_INVOICE_TERMS,
-            notes: estimate.notes ?? notes,
+            notes: customerFacingNotes(estimate.notes ?? notes),
           },
           subtotalAmount: fallbackSubtotal,
           targetAmount: effectiveSplitTargetAmount,

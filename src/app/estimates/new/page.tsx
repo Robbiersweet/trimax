@@ -1,5 +1,7 @@
 "use client";
 
+import { queueCustomerScopeNotes } from "../../lib/documentNotes";
+
 import { multiplyMoney, formatMoney, percentMoney, sumMoney } from "../../lib/money";
 
 
@@ -999,19 +1001,7 @@ function NewEstimatePageContent() {
       );
       setProjectTitle(titleParts.join(" - "));
       setReference(maybeCanonicalApartmentUnitLabel(loadedQueueItem.unit));
-      setNotes(
-        [
-          loadedQueueItem.wall_paint_color
-            ? `Wall paint color: ${loadedQueueItem.wall_paint_color}`
-            : null,
-          loadedQueueItem.unit_layout
-            ? `Unit layout: ${loadedQueueItem.unit_layout}`
-            : null,
-          loadedQueueItem.notes,
-        ]
-          .filter(Boolean)
-          .join("\n")
-      );
+      setNotes(queueCustomerScopeNotes(loadedQueueItem));
       setLineItems(startingLineItems);
 
       if (matchingClient) {

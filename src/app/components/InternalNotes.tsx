@@ -18,6 +18,7 @@ type InternalNotesProps = {
   entityType: "client" | "invoice" | "estimate" | "queue_item";
   entityId: string;
   title?: string;
+  retainedNotes?: string;
 };
 
 function formatDateTime(value: string | null) {
@@ -45,6 +46,7 @@ export default function InternalNotes({
   entityType,
   entityId,
   title = "Internal Notes",
+  retainedNotes,
 }: InternalNotesProps) {
   const [notes, setNotes] = useState<InternalNote[]>([]);
   const [body, setBody] = useState("");
@@ -167,6 +169,13 @@ export default function InternalNotes({
       ) : null}
 
       <h2 className="text-xl font-bold text-white">{title}</h2>
+
+      {retainedNotes ? (
+        <div className="mt-4 whitespace-pre-wrap text-sm text-zinc-300">
+          <p className="font-semibold">Retained operational history (excluded from customer documents)</p>
+          <p>{retainedNotes}</p>
+        </div>
+      ) : null}
 
       <div className="mt-5 grid gap-3">
         <textarea

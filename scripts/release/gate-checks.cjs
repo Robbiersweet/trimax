@@ -1,5 +1,6 @@
 const scripts=[
  'scripts/ocr-lifecycle-regression.cjs',
+ 'scripts/document-notes-privacy-regression.cjs',
  'scripts/discounts-and-services-regression.ts',
  'scripts/reverse-total-regression.ts',
  'scripts/canonical-money-regression.cjs',

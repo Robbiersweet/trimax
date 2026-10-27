@@ -1,3 +1,4 @@
+import { customerFacingNotes } from "./documentNotes";
 import { formatMoney, moneyCents, percentCents } from "./money.ts";
 import { getNextDocumentDisplayId } from "./documentNumbers";
 import { logActivity } from "./activityLog";
@@ -181,12 +182,12 @@ export async function createSplitInvoices({
     const splitLabel = `Split ${item.sequence} of ${plan.length}`;
     const notes = correctionOriginalDisplayId
       ? buildReplacementCorrectionNote({
-          existingNotes: sourceInvoice.notes,
+          existingNotes: customerFacingNotes(sourceInvoice.notes),
           originalDisplayId: correctionOriginalDisplayId,
           replacementDisplayIds: splitDisplayIds,
         })
       : [
-          sourceInvoice.notes,
+          customerFacingNotes(sourceInvoice.notes),
           `Created from ${
             sourceInvoice.displayId || sourceInvoice.projectTitle
           } as ${splitLabel}.`,

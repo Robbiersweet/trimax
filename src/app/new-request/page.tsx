@@ -1,5 +1,7 @@
 "use client";
 
+import { appendPriorityNote } from "../lib/documentNotes";
+
 import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -1603,15 +1605,7 @@ function NewRequestPageContent() {
       return;
     }
 
-    setNotes((currentNotes) => {
-      if (currentNotes.includes(priorityNoteText)) {
-        return currentNotes;
-      }
-
-      return [currentNotes.trim(), priorityNoteText]
-        .filter(Boolean)
-        .join("\n\n");
-    });
+    setNotes((currentNotes) => appendPriorityNote(currentNotes, priorityNoteText));
   }
 
   function planPrioritySwap(item: ActiveQueueItem) {
@@ -1721,14 +1715,9 @@ function NewRequestPageContent() {
               typeof normalizedPriorityOrderStart === "number"
                 ? normalizedPriorityOrderStart + index
                 : null,
-            notes: [
-              notes.trim(),
-              plannedPrioritySwaps.length > 0 && priorityNoteText
-                ? `${priorityNoteText} Trimax will keep the selected existing unit behind this new request.`
-                : "",
-            ]
-              .filter(Boolean)
-              .join("\n\n"),
+            notes: plannedPrioritySwaps.length > 0
+              ? appendPriorityNote(notes.trim(), priorityNoteText, true)
+              : notes.trim(),
           }));
 
       const createdItems = await Promise.all(

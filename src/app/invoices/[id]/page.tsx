@@ -1,3 +1,4 @@
+import { customerFacingNotes, retainedOperationalNotes } from "../../lib/documentNotes";
 import { subtractMoney as canonicalSubtractMoney } from "../../lib/money.ts";
 import { sumMoney as canonicalSumMoney } from "../../lib/money.ts";
 import { roundMoney } from "../../lib/money";
@@ -2330,7 +2331,7 @@ export default async function InvoiceDetailPage({
           <Card className="p-3 sm:p-4">
             <Info
               label="Customer-Facing Notes"
-              value={invoice.notes || "No customer-facing notes added."}
+              value={customerFacingNotes(invoice.notes) || "No customer-facing notes added."}
             />
           </Card>
 
@@ -2339,6 +2340,7 @@ export default async function InvoiceDetailPage({
             entityType="invoice"
             entityId={invoice.id}
             title="Internal Invoice Notes"
+            retainedNotes={retainedOperationalNotes(invoice.notes)}
           />
 
           <PersistentDetails

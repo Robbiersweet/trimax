@@ -19,7 +19,7 @@
     "pretest": "node scripts/release/build-diagnostics.cjs pretest",
     "posttest": "node scripts/release/build-diagnostics.cjs posttest",
     "test:public-scheduling": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/public-scheduling-regression.ts && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/public-scheduling-boundary-regression.ts && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/public-scheduling-authorization-regression.ts && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/public-scheduling-owner-regression.ts && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/public-scheduling-phase2-regression.ts && node --experimental-strip-types scripts/public-scheduling-production-regression.ts && node scripts/public-scheduling-challenge-ui-regression.cjs",
-    "test:invoice-repair": "node scripts/invoice-deposit-lifecycle-regression.cjs && node scripts/invoice-draft-atomic-regression.cjs && node scripts/stabilization-regression.cjs --invoice-send-only",
+    "test:invoice-repair": "node scripts/document-notes-privacy-regression.cjs && node scripts/invoice-deposit-lifecycle-regression.cjs && node scripts/invoice-draft-atomic-regression.cjs && node scripts/stabilization-regression.cjs --invoice-send-only",
     "test:ocr-lifecycle": "node scripts/ocr-lifecycle-regression.cjs",
     "test:remittance-history": "node scripts/saved-remittance-payment-regression.cjs && node scripts/saved-remittance-reopen-regression.cjs"
   },
