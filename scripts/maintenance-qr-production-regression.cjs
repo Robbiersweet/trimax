@@ -31,3 +31,10 @@ assert.equal((await m.exports.POST(new Request('https://app.rnlcreations.com/api
 assert.equal((await m.exports.GET(new Request('https://app.rnlcreations.com/api/maintenance-qr?business=other-workspace',{headers:{authorization:'Bearer synthetic'}}))).status,403);assert.equal(managed,3);assert.equal(lookups,3);
 console.log('PASS actual owner label API: UUID and workspace-slug resolution, create/find, unavailable workspace denied; RPC owner authorization retained.');
 }finally{if(old===undefined)delete process.env.VERCEL_ENV;else process.env.VERCEL_ENV=old;}})().catch(e=>{console.error(e);process.exitCode=1;});
+
+// Next route pages accept framework props only; reusable lab login configuration belongs in a component.
+const labelPage=fs.readFileSync('src/app/maintenance-labels/page.tsx','utf8');
+assert.match(labelPage,/export default function MaintenanceLabelsPage\(\)/);
+assert.ok(!labelPage.includes('loginHref'));
+assert.ok(fs.readFileSync('src/app/maintenance-labels/MaintenanceLabels.tsx','utf8').includes('loginHref'));
+console.log('PASS QR labels keep configurable component props outside the Next route-page boundary.');
