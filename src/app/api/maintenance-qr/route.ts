@@ -12,7 +12,12 @@ async function manage(request:Request,create:boolean){
   const params=new URL(request.url).searchParams;
   const body=create?await readBoundedJson(request,4000) as Record<string,unknown>:{};
   if(Object.keys(body).some(k=>!['businessId','assignmentId','unit','address'].includes(k)))return response({error:'Invalid field'},400);
-  const {data,error}=await db.rpc('trimax_manage_maintenance_qr',{p_business_id:create?body.businessId:params.get('business'),p_assignment_id:create?body.assignmentId:null,p_unit:create?body.unit:null,p_address:create?body.address:null});
+  const selected=create?body.businessId:params.get('business');
+  if(typeof selected!=='string')return response({error:'Choose an authorized workspace.'},403);
+  const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+  const resolved=uuid.test(selected)?selected:/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(selected)?(await db.from('businesses').select('id').eq('slug',selected).maybeSingle()).data?.id:null;
+  if(!resolved)return response({error:'Choose an authorized workspace.'},403);
+  const {data,error}=await db.rpc('trimax_manage_maintenance_qr',{p_business_id:resolved,p_assignment_id:create?body.assignmentId:null,p_unit:create?body.unit:null,p_address:create?body.address:null});
   if(error)return response({error:'An owner or administrator must select an authorized property.'},403);
   const origin=process.env.VERCEL_ENV==='production'?'https://rnlcreations.com':process.env.MAINTENANCE_QR_LAB_WEBSITE_ORIGIN;
   if(!origin)throw Error('Lab website origin required');

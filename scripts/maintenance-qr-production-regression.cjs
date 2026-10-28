@@ -18,3 +18,16 @@ assert.equal((await post(request(),ctx)).status,201);assert.equal(calls,1);asser
 abuseAllowed=false;assert.equal((await post(request(),ctx)).status,429);assert.equal(calls,1);
 assert.equal((await post(request('https://other.invalid'),ctx)).status,403);assert.equal(calls,1);
 console.log('PASS actual production QR handler: existing Option C transport; no JWT fallback; trusted location; unchanged rate/challenge gate; wrong-origin rejection; no write after denial.');})().catch(e=>{console.error(e);process.exitCode=1;});
+
+// Execute the actual label API after the existing workspace guard normalizes IDs to slugs.
+(async()=>{const file=fs.readFileSync('src/app/api/maintenance-qr/route.ts','utf8'),m={exports:{}};const id='88888888-8888-4888-8888-000000000101';let lookups=0,managed=0;
+const db={auth:{getUser:async()=>({data:{user:{id:'owner'}},error:null})},from:table=>{assert.equal(table,'businesses');let selected;return {select(){return this;},eq(key,value){assert.equal(key,'slug');selected=value;return this;},async maybeSingle(){lookups++;return {data:selected==='rnl-creations'?{id}:null};}};},rpc:async(name,args)=>{assert.equal(name,'trimax_manage_maintenance_qr');assert.equal(args.p_business_id,id);managed++;return {data:{labels:[],properties:[]},error:null};}};
+const deps={'@supabase/supabase-js':{createClient:()=>db},'../../lib/publicScheduling/httpBody':{readBoundedJson:r=>r.json()},'../../lib/maintenanceQr':{maintenanceQrRuntime:()=>({}),maintenanceQrSvg:async()=>'',maintenanceQrUrl:()=>''}};
+new Function('require','module','exports',ts.transpileModule(file,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(name=>deps[name]??require(name),m,m.exports);
+const old=process.env.VERCEL_ENV;process.env.VERCEL_ENV='production';try{
+assert.equal((await m.exports.GET(new Request('https://app.rnlcreations.com/api/maintenance-qr?business='+id,{headers:{authorization:'Bearer synthetic'}}))).status,200);
+assert.equal((await m.exports.GET(new Request('https://app.rnlcreations.com/api/maintenance-qr?business=rnl-creations',{headers:{authorization:'Bearer synthetic'}}))).status,200);
+assert.equal((await m.exports.POST(new Request('https://app.rnlcreations.com/api/maintenance-qr',{method:'POST',headers:{authorization:'Bearer synthetic','Content-Type':'application/json'},body:JSON.stringify({businessId:'rnl-creations',assignmentId:id,unit:'A-1',address:'Synthetic'})}))).status,200);
+assert.equal((await m.exports.GET(new Request('https://app.rnlcreations.com/api/maintenance-qr?business=other-workspace',{headers:{authorization:'Bearer synthetic'}}))).status,403);assert.equal(managed,3);assert.equal(lookups,3);
+console.log('PASS actual owner label API: UUID and workspace-slug resolution, create/find, unavailable workspace denied; RPC owner authorization retained.');
+}finally{if(old===undefined)delete process.env.VERCEL_ENV;else process.env.VERCEL_ENV=old;}})().catch(e=>{console.error(e);process.exitCode=1;});
