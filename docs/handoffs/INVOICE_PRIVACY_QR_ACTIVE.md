@@ -1,3 +1,18 @@
+# Active QR production continuation — 2026-10-28
+
+This section supersedes historical resume/recovery instructions below. The owner approved RC3 at3a9de0b. Seven exact migrations committed, paired live sources TriMax3a9de0b/dpl_Hdh9D1ULMAVycdSK1cSjsPfSWhvn and website3870857/dpl_J2wyS7i6uetpDFZFG46V9FdQ7mjB. Original intake restored; both compatible qr-rc3 workers healthy. No repeat migrations, backup, permissions or deployment. Real customer email/SMS remain disabled.
+
+Backup080421Z:85 tables restore-matched;35 Storage objects63672008 bytes matched; roles/Vault recovered privately; seven-migration rehearsal preserved44 tables. Archive SHA471aea817499c199d418f872363bb240247ab0a4734c750f2799b000ddbc6fa4. Secure artifacts under AppData/Local/Trimax/production-backup-20261026, outsideGit; recovery container stopped.
+
+Production acceptance: actual label07b303a2-6cf4-43e9-b514-7aafc77e956e decodes256/512 to https://rnlcreations.com/maintenance/07b303a2-6cf4-43e9-b514-7aafc77e956e. One guest request8a34740a520241a39ab57c27202750f1/private synthetic photo; one owner-authenticated synthetic manager directQueue request1459acf7802a401db1f4bee55e653634. SQL verifies2 bindings/2 owner notifications/1 Queue/1 complete photo; provider reports both test pushes delivered, NOT physical receipt. Original financial rows unchanged; actual INV0545 customer print excludes internal warning and preserves intentional notes. Unauthenticated private-photo access403; invalid label404; six public routes200. No actual customer work or invoice edit/save/send.
+
+Outstanding narrow defect: AuthGuard workspace normalization discarded all query parameters, including scanned qr. Explicit business+qr works, but actual public manager sign-in link loses prefill. Candidate workspace C:/Users/robbi/.codex/worktrees/qr-manager-return/trimax, branch codex/qr-manager-return. Executable8b2838621a89bb88bc92f19d46d17d21b45e3bc2 replaces two redirects with existing query-preserving helper; regression reproduces before/pass after (missing and unavailable workspace, existing auth/expiry/isolation preserved). Sealed rc4 bundle60374b69b87fab8be3a69adf1b00407af7a92094d125ceff39e00ba96e72e330. No schema, OCR, financial, public-site or permission change.
+
+RC3 full POST attempt1 completed all134/eight retained but failed random-hash digit-substring privacy assertion; failed receipt085534Z retained. Unchanged focused retry PASS. Complete unchanged POST retry091758Z still running at this checkpoint. Private orchestration qr-rc4-prepare.cjs waits for that PASS, then runs mandatory source-bound56 matrix/export and full RC4 PRE. Journal qr-rc4-preparation.json and private logs in AppData/Local/Trimax/invoice-lifecycle-20261026. Do not repeat completed stages or edit source while gate runs.
+
+Exact resume: inspect actual processes/journal first. Finish RC3 POST; RC4 source-bound matrix and PRE, export validated receipt. Then verified production-configured staged RC4 core build, hosted manager-link acceptance, compatible native worker synchronization and POST. Keep unchanged website3870857 live. Reuse existing synthetic label/requests, no duplicate jobs/permission changes. No more migrations. Owner authorization covers targeted rollout repair; stop unsafe operation if critical gate fails. RC4 recovery is current compatible RC3 app/workers (same schema); older pre-QR manifests/workers must not be blindly restored. Do not claim full QR acceptance until manager-link issue resolved and full gates pass. Physical paper print/iPhone scan/push receipt remain final owner checklist. Crash logs retained separately; no further investigation now.
+
+---
 # Invoice privacy / QR — verified checkpoint, 2026-10-27
 
 ## Production privacy release — complete
