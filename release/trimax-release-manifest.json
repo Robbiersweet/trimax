@@ -1,26 +1,26 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-maintenance-qr-20261027-rc1",
+  "releaseId": "trimax-maintenance-qr-20261027-rc2",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-10-27T23:03:56.423Z",
-  "releaseTimestamp": "2026-10-27T23:03:56.423Z",
+  "createdAt": "2026-10-28T01:58:23.082Z",
+  "releaseTimestamp": "2026-10-28T01:58:23.082Z",
   "baseProduction": {
     "commit": "16313c23e2203a700f359aa03963756000d18750",
     "vercelDeploymentId": "EqiC6JrbiAueE8DHwf8PEGezGC3D"
   },
   "components": {
     "web": {
-      "commit": "63cc896a032ebaa71f8cf12e8c6f425a4342a525"
+      "commit": "d891c6037dd64479426de03de9e1928c7e975bae"
     },
     "legacy": {
-      "commit": "63cc896a032ebaa71f8cf12e8c6f425a4342a525"
+      "commit": "d891c6037dd64479426de03de9e1928c7e975bae"
     },
     "v2-shadow": {
-      "commit": "63cc896a032ebaa71f8cf12e8c6f425a4342a525"
+      "commit": "d891c6037dd64479426de03de9e1928c7e975bae"
     }
   },
   "sourceBundle": {
-    "sha256": "68cf1300cb3e222f063ef66b9f1c6ff62d7113273e03ca13374503ae59fe105f",
+    "sha256": "135b92c349cee3ff7265abbf11f0e8b57257c2df7b790ba4842ac6d53905ed71",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -79,7 +79,7 @@
       "scripts/legacy-mature-fallback-regression.cjs": "7019b5d2d2b7f14d26583f48ce5fd0bb29b48448d2c5d3a0e5a0c2ea10ecd142",
       "scripts/login-return-regression.cjs": "50f65d976a9b4baa8450ed8c0ad9e9ba0c51890e8e375c21e66b5b4f030bd021",
       "scripts/maintenance-qr-image-regression.cjs": "2257778c645174e463c84e409d63757377cb487cd5378d15103419bae9a4713e",
-      "scripts/maintenance-qr-production-regression.cjs": "d83b301b2e38b9a5a584af62b39ca7363a3c323fab316808aacaa67c2fedcce1",
+      "scripts/maintenance-qr-production-regression.cjs": "65f9adf313dda6714a845530a2d27ae16cffcd2af0bb588761bbe14793ada445",
       "scripts/maintenance-qr-sql-regression.cjs": "bc3eceae5fda5f639b64f51a39ca7acd6355dad52ed1f665a116e5c1a6104b06",
       "scripts/ocr-canonical-object.cjs": "56fc82d9392d86ae644b3925823210875519e3398d1e9cf4d374a993bfa59970",
       "scripts/ocr-cold-pipeline-regression.cjs": "17c9df1d8990902cc10373a1c9d422b63d4c65e4ab2eabaf5a885e3bc122e538",
@@ -327,7 +327,7 @@
       "src/app/api/invoices/[id]/send-email/route.ts": "3a61b658dda0ca1c2d79924a901a50b248d2e408764327c877b9bf92745b4dd7",
       "src/app/api/invoices/send-overdue-reminders/route.ts": "ec50003ae92ac4ba7cc48d55603eb97a28340cf0aa2fe7ad522e74aff884a674",
       "src/app/api/maintenance-qr/[id]/route.ts": "a570282e4c3ec92a97de85276a17887ea59bb83407d2a9fe8cb971fc65cb9284",
-      "src/app/api/maintenance-qr/route.ts": "7f6dfca7b2ecd0d3157408c2e203aa491f262ae71d866f555cfbc86482d41ec5",
+      "src/app/api/maintenance-qr/route.ts": "2ba79fc1aeffb950a7158d12760e609bf6acfaae39361d44809ec17acf53fc65",
       "src/app/api/ocr-retention/route.ts": "ba61d5de6ade820727a15828b9df895b0c5a18d72df289f881273f50335d4e17",
       "src/app/api/payments/apply-batch/route.ts": "5bf3306af7d3d1f839f5fdcadf42a98c4702c6bc1d841363241729aa102c27cf",
       "src/app/api/payments/duplicate-remittance-preflight/route.ts": "01661a87fa0c7a8b821b256f9e68e7ba48a68a9809755c5b1b23ed64e0f59528",
@@ -862,7 +862,7 @@
     }
   ],
   "database": {
-    "capturedAt": "2026-10-27T23:03:56.738Z",
+    "capturedAt": "2026-10-28T01:58:23.677Z",
     "algorithm": "catalog-v1; sorted C collation name=value; UTF8 SHA256; public tables/constraints/indexes/functions, public+storage RLS, public table grants; excludes only trimax_release_runtime itself",
     "fingerprints": {
       "rpc": {
@@ -1711,9 +1711,9 @@
       "deploymentCommit": "16313c23e2203a700f359aa03963756000d18750",
       "deploymentId": "EqiC6JrbiAueE8DHwf8PEGezGC3D"
     },
-    "candidateReleaseId": "trimax-maintenance-qr-20261027-rc1",
-    "applicationCommit": "63cc896a032ebaa71f8cf12e8c6f425a4342a525",
-    "machineryCommit": "63cc896a032ebaa71f8cf12e8c6f425a4342a525"
+    "candidateReleaseId": "trimax-maintenance-qr-20261027-rc2",
+    "applicationCommit": "d891c6037dd64479426de03de9e1928c7e975bae",
+    "machineryCommit": "d891c6037dd64479426de03de9e1928c7e975bae"
   },
   "contractRevision": {
     "id": "customer-document-operational-notes-privacy",
