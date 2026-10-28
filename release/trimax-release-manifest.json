@@ -1,26 +1,26 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-maintenance-qr-20261027-rc3",
+  "releaseId": "trimax-maintenance-qr-20261028-rc4",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-10-28T02:37:10.030Z",
-  "releaseTimestamp": "2026-10-28T02:37:10.030Z",
+  "createdAt": "2026-10-28T09:26:11.725Z",
+  "releaseTimestamp": "2026-10-28T09:26:11.725Z",
   "baseProduction": {
-    "commit": "16313c23e2203a700f359aa03963756000d18750",
-    "vercelDeploymentId": "EqiC6JrbiAueE8DHwf8PEGezGC3D"
+    "commit": "3a9de0b1a1adeb8116b457346f32fa8699c9fa2d",
+    "vercelDeploymentId": "Hdh9D1ULMAVycdSK1cSjsPfSWhvn"
   },
   "components": {
     "web": {
-      "commit": "0ed4de54192fa0f1d4c51419ddb7994b9122bc50"
+      "commit": "8b2838621a89bb88bc92f19d46d17d21b45e3bc2"
     },
     "legacy": {
-      "commit": "0ed4de54192fa0f1d4c51419ddb7994b9122bc50"
+      "commit": "8b2838621a89bb88bc92f19d46d17d21b45e3bc2"
     },
     "v2-shadow": {
-      "commit": "0ed4de54192fa0f1d4c51419ddb7994b9122bc50"
+      "commit": "8b2838621a89bb88bc92f19d46d17d21b45e3bc2"
     }
   },
   "sourceBundle": {
-    "sha256": "2901eed59966baf4d34490804f648298e1c4434a48cbae41e84a3f3ea8b8728d",
+    "sha256": "60374b69b87fab8be3a69adf1b00407af7a92094d125ceff39e00ba96e72e330",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -257,7 +257,7 @@
       "scripts/public-scheduling-seed-rnl.sql": "e9a1dd34f3f6c753860f95b7fa0eb4799e3bbc9f8ed9ea0d7f4b88db6bb85ddd",
       "scripts/queue-compact-toolbar-regression.ts": "31290b567851c074872fc5d4b7d332d7cbc1af517129c9f5e2c2d61ef7fdb5d5",
       "scripts/queue-workspace-polish-regression.ts": "73a85ddd6d1f6a888f216d075bdea530e00acbfc3f36312dedb8d131f2c70ec6",
-      "scripts/release/auth-flow-regression.cjs": "d1e5b43419ec4e7c19606d83192cddb4617da447ef18ce53d400d7b76a0f0fff",
+      "scripts/release/auth-flow-regression.cjs": "aeb0732faff0509e554727b939877c3dade25f7fcea9e755a9120004f61d04dd",
       "scripts/release/authorization-execution-regression.cjs": "04df6de9929ae8bde95b621a843650f575acf23f9074a357ae6a705125ba67f5",
       "scripts/release/authorize-build.cjs": "88c7d10b41262c22f4415b3af851adc606441f18a57370a55c0049b29bed11b7",
       "scripts/release/build-diagnostics.cjs": "c0aef8fd7da629a1b672859a2b9a5728607f6e291dc56498d9eb2fe5de489b04",
@@ -364,7 +364,7 @@
       "src/app/clients/page.tsx": "e3c30f1f80e420b61020bc71cc6156b415a2771dd8b817be86db9a25102e3459",
       "src/app/components/ActiveJobSessionDock.tsx": "a4d5dcb81f50fb9ffb0b9e1796e89c1fc4ed4dc4753878db0ae717099f4154ca",
       "src/app/components/AppShell.tsx": "b4358a4c5a82735d1871ef0bc8e7e3bbb30b3770b577d51b0343552155c489af",
-      "src/app/components/AuthGuard.tsx": "5d27be00447294b8eefafa4f37b66c4f1ddcd402c285c41433d84b33201023d1",
+      "src/app/components/AuthGuard.tsx": "46294b22fe601402e06a792dd5b3215dabea560e27a7409b457354cdac45b9bc",
       "src/app/components/BackButton.tsx": "87360394e36c2e90d4a33135d5539d0176e75d8cc2448783c5c859783ee1059c",
       "src/app/components/BatchInvoicePayments.tsx": "1957e4067ba54031c2362ef4ce1e4977c9efd89f50a4ab9da438e309cac8d8f2",
       "src/app/components/Button.tsx": "68f87a76cee881a6b148ec30af54746d8a0fbe11a153b3ccf0134a62504deb97",
@@ -1706,15 +1706,15 @@
   },
   "upgradeContext": {
     "currentProductionRelease": {
-      "manifestCommit": "16313c23e2203a700f359aa03963756000d18750",
-      "manifestDigest": "5bd60429e8aa4ca920a109e253c5019793bd75e255560f609b1c1f6659fad02c",
-      "releaseId": "trimax-document-notes-privacy-20261027-rc1",
-      "deploymentCommit": "16313c23e2203a700f359aa03963756000d18750",
-      "deploymentId": "EqiC6JrbiAueE8DHwf8PEGezGC3D"
+      "manifestCommit": "3a9de0b1a1adeb8116b457346f32fa8699c9fa2d",
+      "manifestDigest": "64f5678570388da94210743d504776ede4ef684a70c174290c8ae966af8514fc",
+      "releaseId": "trimax-maintenance-qr-20261027-rc3",
+      "deploymentCommit": "3a9de0b1a1adeb8116b457346f32fa8699c9fa2d",
+      "deploymentId": "Hdh9D1ULMAVycdSK1cSjsPfSWhvn"
     },
-    "candidateReleaseId": "trimax-maintenance-qr-20261027-rc3",
-    "applicationCommit": "0ed4de54192fa0f1d4c51419ddb7994b9122bc50",
-    "machineryCommit": "0ed4de54192fa0f1d4c51419ddb7994b9122bc50"
+    "candidateReleaseId": "trimax-maintenance-qr-20261028-rc4",
+    "applicationCommit": "8b2838621a89bb88bc92f19d46d17d21b45e3bc2",
+    "machineryCommit": "8b2838621a89bb88bc92f19d46d17d21b45e3bc2"
   },
   "contractRevision": {
     "id": "customer-document-operational-notes-privacy",
