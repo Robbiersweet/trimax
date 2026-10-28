@@ -1,7 +1,7 @@
 import {createClient} from '@supabase/supabase-js';
 import QRCode from 'qrcode';
 export const qrIdPattern=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
-export type MaintenanceQr={id:string;businessId:string;property:string;unit:string;address:string;slug:string};
+export type MaintenanceQr={id:string;businessId:string;property:string;unit:string|null;address:string;slug:string;scope?:'unit'|'property'};
 export function maintenanceQrRuntime(){
  const project=new URL(process.env.NEXT_PUBLIC_SUPABASE_URL??'').hostname.split('.')[0];
  if(process.env.MAINTENANCE_QR_ENABLED!=='enabled')throw Error('QR intake disabled');

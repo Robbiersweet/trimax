@@ -1,0 +1,27 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
+const assert=require('node:assert/strict'),fs=require('fs'),ts=require('typescript'),React=require('react'),{create,act}=require('react-test-renderer');
+global.IS_REACT_ACT_ENVIRONMENT=true;
+function load(file,deps={}){const m={exports:{}};new Function('require','module','exports',ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022}}).outputText)(name=>deps[name]??require(name),m,m.exports);return m.exports;}
+const promotions=load('src/app/lib/publicScheduling/promotions.ts'),location=load('src/app/lib/maintenanceQrLocation.ts');
+assert.equal(promotions.winterPromotionCode(' winter25 '),'WINTER25');assert.equal(promotions.winterPromotionCode('other'),undefined);assert.equal(promotions.winterPromotionCode(['WINTER25']),undefined);
+for(const code of ['WINTER25','WINTER100']){const n=promotions.withPromotionNote('Keep my original note',code);assert.ok(n.includes(code));assert.ok(n.includes('no discount has been applied'));assert.equal(promotions.withPromotionNote(n,code),n);assert.ok(n.endsWith('Keep my original note'));}
+assert.deepEqual(location.maintenanceRequestLocation({scope:'property',unit:null,address:'Saved'}, {unit:' Z07 ',specificArea:' Kitchen '}),{unit:'Z07',specificArea:'Kitchen',address:'Saved, Unit Z07'});
+for(const input of [{},{unit:''},{unit:'x'.repeat(101)},{unit:'Z07\nA'},{unit:'Z07',specificArea:'x'.repeat(101)}])assert.equal(location.maintenanceRequestLocation({scope:'property',unit:null,address:'Saved'},input),null);
+assert.equal(location.maintenanceRequestLocation({unit:'A-1',address:'Saved'},{unit:'evil'}).unit,'A-1');
+const roles=load('src/app/lib/rolePermissions.ts');
+assert.equal(roles.canAccessNavItem('owner','maintenance_qr'),true);assert.equal(roles.canAccessNavItem('admin','maintenance_qr'),true);assert.equal(roles.canAccessNavItem('property_manager','maintenance_qr'),false);assert.equal(roles.canAccessNavItem('technician','maintenance_qr'),false);
+const domain=load('src/app/lib/publicScheduling/domain.ts',{'./promotions.ts':promotions,'../communications/consent.ts':load('src/app/lib/communications/consent.ts')});
+const business=domain.getPublicBusiness('rnl-creations');
+const input={requestTypeId:'repair',customerName:'Synthetic acceptance',phone:'4255550100',email:'acceptance@example.invalid',preferredContact:'email',address:'Synthetic address',description:'Synthetic request do not dispatch',preferredDate:'2026-10-30',timeWindowId:'morning',flexibility:'flexible',urgency:'routine',notes:'Owner review only',consent:true,promotionCode:'WINTER25'};
+const valid=domain.validateRequest(input,business);assert.equal(valid.ok,true);assert.ok(valid.value.notes.includes('WINTER25'));assert.ok(!('promotionCode' in valid.value));assert.equal(domain.validateRequest(valid.value,business).value.notes,valid.value.notes);
+assert.equal(domain.validateRequest({...input,promotionCode:'unapproved'},business).ok,false);
+assert.equal(domain.validateRequest({...input,notes:'x'.repeat(2000)},business).ok,false);
+let submitted;
+const Form=load('src/app/book/RequestForm.tsx',{'../lib/communications/consent':{},'../lib/publicScheduling/promotions':promotions,'./RequestPhotos':{default:()=>null},'../lib/requestPhotos/clientCapability':{},'./TurnstileChallenge':{default:()=>null}}).default;
+global.requestAnimationFrame=f=>f();global.fetch=async(url,options)=>{submitted=JSON.parse(options.body);return {ok:true,json:async()=>({request:{id:'synthetic',reference:'SYNTHETIC',status:'pending_confirmation',submittedAt:new Date().toISOString()}})}};
+(async()=>{let app;await act(async()=>{app=create(React.createElement(Form,{business,requiredUnit:true,locationAddress:'Saved address',locationProperty:'Synthetic property'}));});
+const fields=app.root.findAllByType('input');const unit=fields.find(x=>x.props.autoComplete==='address-line2');assert.ok(unit.props.required);await act(async()=>unit.props.onChange({target:{value:'Z07'}}));
+let form=app.root.findByType('form');await act(async()=>form.props.onSubmit({preventDefault(){}}));assert.equal(app.root.findAllByType('textarea').find(x=>x.props.autoComplete==='street-address').props.readOnly,true);
+await act(async()=>app.root.findByType('form').props.onSubmit({preventDefault(){}}));assert.ok(JSON.stringify(app.toJSON()).includes('Z07'));await act(async()=>app.root.findByType('form').props.onSubmit({preventDefault(){}}));assert.equal(submitted.unit,'Z07');assert.equal(submitted.address,'Saved address');assert.equal(submitted.promotionCode,undefined);await act(async()=>app.unmount());
+await act(async()=>{app=create(React.createElement(Form,{business,promotionCode:'WINTER100'}));});assert.ok(JSON.stringify(app.toJSON()).includes('WINTER100'));await act(async()=>app.root.findByType('form').props.onSubmit({preventDefault(){}}));await act(async()=>app.root.findByType('form').props.onSubmit({preventDefault(){}}));await act(async()=>app.root.findByType('form').props.onSubmit({preventDefault(){}}));assert.equal(submitted.promotionCode,'WINTER100');assert.equal(submitted.unit,undefined);await act(async()=>app.unmount());
+console.log('PASS office/coupon domain and actual React form: unit, saved-address lock, review/payload, allowlisted coupon persistence, idempotent notes, no discount fields, separated workflows.');})().catch(e=>{console.error(e);process.exitCode=1;});

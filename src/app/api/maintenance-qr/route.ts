@@ -11,13 +11,16 @@ async function manage(request:Request,create:boolean){
   const {data:{user},error:authError}=await db.auth.getUser(token);if(authError||!user)return response({error:'Sign in required'},401);
   const params=new URL(request.url).searchParams;
   const body=create?await readBoundedJson(request,4000) as Record<string,unknown>:{};
-  if(Object.keys(body).some(k=>!['businessId','assignmentId','unit','address'].includes(k)))return response({error:'Invalid field'},400);
+  if(Object.keys(body).some(k=>!['businessId','assignmentId','unit','address','scope','action','labelId'].includes(k)))return response({error:'Invalid field'},400);
+  if(create&&((body.scope!==undefined&&!['unit','property'].includes(String(body.scope)))||(body.action!==undefined&&!['create','replace'].includes(String(body.action)))||(body.action==='replace'&&body.scope!=='property')))return response({error:'Invalid action'},400);
   const selected=create?body.businessId:params.get('business');
   if(typeof selected!=='string')return response({error:'Choose an authorized workspace.'},403);
   const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
   const resolved=uuid.test(selected)?selected:/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(selected)?(await db.from('businesses').select('id').eq('slug',selected).maybeSingle()).data?.id:null;
   if(!resolved)return response({error:'Choose an authorized workspace.'},403);
-  const {data,error}=await db.rpc('trimax_manage_maintenance_qr',{p_business_id:resolved,p_assignment_id:create?body.assignmentId:null,p_unit:create?body.unit:null,p_address:create?body.address:null});
+  const {data,error}=create&&body.scope==='property'
+   ?await db.rpc('trimax_manage_property_maintenance_qr',{p_business_id:resolved,p_assignment_id:body.assignmentId,p_action:body.action??'create',p_label_id:body.labelId??null})
+   :await db.rpc('trimax_manage_maintenance_qr',{p_business_id:resolved,p_assignment_id:create?body.assignmentId:null,p_unit:create?body.unit:null,p_address:create?body.address:null});
   if(error)return response({error:'An owner or administrator must select an authorized property.'},403);
   const origin=process.env.VERCEL_ENV==='production'?'https://rnlcreations.com':process.env.MAINTENANCE_QR_LAB_WEBSITE_ORIGIN;
   if(!origin)throw Error('Lab website origin required');

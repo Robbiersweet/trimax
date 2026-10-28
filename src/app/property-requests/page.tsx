@@ -14,7 +14,7 @@ export default function PropertyRequestsPage() {
  const [assignmentId,setAssignmentId]=useState(""),[typeId,setTypeId]=useState(""),[unit,setUnit]=useState(""),[description,setDescription]=useState(""),[date,setDate]=useState(""),[direct,setDirect]=useState(false);
  const [urgency,setUrgency]=useState("routine"),[flexibility,setFlexibility]=useState("flexible"),[timeWindowId,setTimeWindowId]=useState("");
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(""),[success,setSuccess]=useState("");
- const [qrId,setQrId]=useState(""),[qrLocation,setQrLocation]=useState<{property:string;unit:string;businessId?:string}|null>(null);
+ const [qrId,setQrId]=useState(""),[qrLocation,setQrLocation]=useState<{property:string;unit:string|null;businessId?:string;scope?:'unit'|'property'}|null>(null);
  useEffect(()=>{void Promise.resolve().then(()=>{const id=new URLSearchParams(window.location.search).get("qr");if(!id)return;setQrId(id);return fetch("/api/maintenance-qr/"+encodeURIComponent(id),{cache:"no-store"}).then(async r=>{if(!r.ok)throw Error();const data=await r.json();setQrLocation(data);}).catch(()=>setError("This QR label is unavailable."));});},[]);
 
  const pending=useRef<{key:string;payload:string}|null>(null),sending=useRef(false);
@@ -22,8 +22,8 @@ export default function PropertyRequestsPage() {
  const photoCapability=useRef<Awaited<ReturnType<typeof createPhotoCapability>>|null>(null);
  useEffect(()=>{let active=true;void fetch("/api/property-request-photos",{cache:"no-store"}).then(r=>r.ok?r.json():{enabled:false}).then(data=>{if(active)setPhotosEnabled(data.enabled===true);}).catch(()=>{});return()=>{active=false;};},[]);
  async function sessionToken(){const {data:{session}}=await supabase.auth.getSession();if(!session)throw Error("Sign in");return session.access_token;}
- const assignment=qrId?assignments.find(a=>qrLocation&&a.property===qrLocation.property&&a.businessId===qrLocation.businessId):assignments.find(a=>a.id===assignmentId);
- const effectiveUnit=qrLocation?.unit??unit;
+ const assignment=qrId?assignments.find(a=>qrLocation&&a.property.trim().toLowerCase()===qrLocation.property.trim().toLowerCase()&&a.businessId===qrLocation.businessId):assignments.find(a=>a.id===assignmentId);
+ const effectiveUnit=qrLocation?.scope==='property'?unit:qrLocation?.unit??unit;
  async function refresh(){
   const {data,error:failure}=await supabase.rpc("trimax_property_request_context");
   if(failure){setError("Property requests are not available. Please sign in or contact R&L to confirm your property access.");return;}
@@ -63,7 +63,7 @@ export default function PropertyRequestsPage() {
   {!!assignments.length&&<form onSubmit={submit} className="space-y-4 rounded-xl border p-5">
    <label className="block">Property<select required disabled={busy||!!qrId} className="mt-1 block w-full rounded border bg-white p-3 text-black" value={assignment?.id??assignmentId} onChange={e=>{setAssignmentId(e.target.value);setTypeId("");setDirect(false);setTimeWindowId("");}}><option value="">Choose your property</option>{assignments.map(a=><option key={a.id} value={a.id}>{a.property}</option>)}</select></label>
    <label className="block">Service<select required disabled={busy||!assignment} className="mt-1 block w-full rounded border bg-white p-3 text-black" value={typeId} onChange={e=>setTypeId(e.target.value)}><option value="">Choose a service</option>{assignment?.types.map(t=><option key={t.id} value={t.id}>{t.label}</option>)}</select></label>
-   <label className="block">Building / unit<input required maxLength={100} readOnly={!!qrId} disabled={busy} value={effectiveUnit} onChange={e=>setUnit(e.target.value)} className="mt-1 block w-full rounded border bg-white p-3 text-black"/></label>
+   <label className="block">Building / unit<input required maxLength={100} readOnly={!!qrId&&qrLocation?.scope!=='property'} disabled={busy} value={effectiveUnit} onChange={e=>setUnit(e.target.value)} className="mt-1 block w-full rounded border bg-white p-3 text-black"/></label>
    <label className="block">Work needed<textarea required maxLength={3000} rows={5} disabled={busy} value={description} onChange={e=>setDescription(e.target.value)} className="mt-1 block w-full rounded border bg-white p-3 text-black"/></label>
    <label className="block">Preferred date (optional)<input type="date" required={flexibility==="fixed"} disabled={busy} value={date} onChange={e=>setDate(e.target.value)} className="mt-1 block w-full rounded border bg-white p-3 text-black"/></label>
    <label className="block">Preferred time window<select disabled={busy||!assignment} value={timeWindowId} onChange={e=>setTimeWindowId(e.target.value)} className="mt-1 block w-full rounded border bg-white p-3 text-black"><option value="">Any time window</option>{assignment?.windows?.map(w=><option key={w.id} value={w.id}>{w.label}</option>)}</select></label>

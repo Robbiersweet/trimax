@@ -1,4 +1,6 @@
 const scripts=[
+ 'scripts/office-qr-sql-regression.cjs',
+ 'scripts/office-coupon-regression.cjs',
  'scripts/maintenance-qr-sql-regression.cjs',
  'scripts/maintenance-qr-image-regression.cjs',
  'scripts/maintenance-qr-production-regression.cjs',

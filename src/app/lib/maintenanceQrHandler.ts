@@ -6,6 +6,7 @@ import {productionConfig,productionBusiness,restrictedRpc,unusedCapabilityHash} 
 import {enforceProductionAbuse} from './publicScheduling/abuseProtection';
 import {turnstileProvider,trustedVercelIdentity} from './publicScheduling/providers';
 import {validateRequest} from './publicScheduling/domain';
+import {maintenanceRequestLocation} from './maintenanceQrLocation';
 import type {SchedulingRpc} from './publicScheduling/productionAdapter';
 export type QrProductionRuntime={client:SchedulingRpc;config:Pick<ReturnType<typeof productionConfig>,'fingerprintSecret'|'providers'>};
 type Context={params:Promise<{id:string}>};
@@ -32,10 +33,12 @@ async function submit(request:Request,context:Context,provided?:()=>QrProduction
   const origin=request.headers.get('origin')??'';if(!maintenanceQrOrigins().has(origin))return reply({error:'Origin denied'},403);
   const lab=maintenanceQrLab(),integration=!lab&&provided?provided():null,config=lab?null:integration?.config??productionConfig();
   const business=config?await productionBusiness(qr.slug,integration?.client??restrictedRpc(config as ReturnType<typeof productionConfig>)):await maintenanceQrBusiness(qr);if(!business||business.businessId!==qr.businessId)return reply({error:'Service unavailable'},404);
-  const validated=validateRequest({...body,address:qr.address+', Unit '+qr.unit},business);if(!validated.ok)return reply({error:'Check the request details',fields:validated.fields},422);
+  const location=maintenanceRequestLocation(qr,body);if(!location)return reply({error:'Enter the apartment/unit number and an optional specific area (up to 100 characters).',fields:{unit:'Enter the apartment/unit number.'}},422);
+  const validated=validateRequest({...body,promotionCode:undefined,address:location.address},business);if(!validated.ok)return reply({error:'Check the request details',fields:validated.fields},422);
   if(config){const abuse=await enforceProductionAbuse({businessSlug:qr.slug,challengeToken:request.headers.get('x-turnstile-token')??'',trustedClientIdentity:trustedVercelIdentity(request)},{...config.providers,challenge:turnstileProvider(process.env.TURNSTILE_SECRET_KEY!,new URL(origin).hostname)});
   if(!abuse.allowed)return reply({error:'Security check failed. Please retry.'},429);}
-  const {data,error}=await maintenanceQrRuntime().rpc('trimax_submit_maintenance_qr',{p_label_id:qr.id,p_payload:validated.value,p_key:key,p_capability_hash:unusedCapabilityHash(config?.fingerprintSecret??process.env.SCHEDULING_FINGERPRINT_SECRET!,qr.slug,createHash('sha256').update(qr.id+key).digest('hex'))});
+  const payload=qr.scope==='property'?{...validated.value,unit:location.unit,specificArea:location.specificArea}:validated.value;
+  const {data,error}=await maintenanceQrRuntime().rpc('trimax_submit_maintenance_qr',{p_label_id:qr.id,p_payload:payload,p_key:key,p_capability_hash:unusedCapabilityHash(config?.fingerprintSecret??process.env.SCHEDULING_FINGERPRINT_SECRET!,qr.slug,createHash('sha256').update(qr.id+key).digest('hex'))});
   return error?reply({error:'Unable to save. Keep this form open and retry.'},409):reply({request:data,message:'Request received. Appointment not confirmed.'},201);
  }catch{return reply({error:'QR intake unavailable. Your request has not been confirmed.'},503);}
 }

@@ -116,6 +116,13 @@ export default function Navigation() {
         icon: "job_sessions",
       },
       {
+        key: "maintenance_qr",
+        label: "Maintenance QR Labels",
+        href: `/maintenance-labels?business=${business}`,
+        active: pathname.startsWith("/maintenance-labels"),
+        icon: "services",
+      },
+      {
         key: "schedule",
         label: "Schedule",
         href: `/schedule?business=${business}`,
@@ -203,6 +210,7 @@ export default function Navigation() {
   const activeLink = visibleNavLinks.find((link) => link.active);
   const sectionSubLinks = useMemo<Record<NavPermissionKey, NavSubLink[]>>(
     () => ({
+      maintenance_qr: [],
       dashboard: [
         {
           label: "Command Center",

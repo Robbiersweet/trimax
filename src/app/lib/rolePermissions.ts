@@ -24,7 +24,8 @@ export type NavPermissionKey =
   | "services"
   | "reports"
   | "activity"
-  | "settings";
+  | "settings"
+  | "maintenance_qr";
 
 export type DashboardActionKey =
   | "new_queue"
@@ -91,6 +92,7 @@ const rolePermissions: Record<
       "reports",
       "activity",
       "settings",
+      "maintenance_qr",
     ],
     actions: [
       "new_queue",
@@ -120,6 +122,7 @@ const rolePermissions: Record<
       "reports",
       "activity",
       "settings",
+      "maintenance_qr",
     ],
     actions: [
       "new_queue",
@@ -264,6 +267,7 @@ export function canUseWorkPermission(
 export function navPermissionForPath(
   pathname: string
 ): NavPermissionKey {
+  if(pathname.startsWith("/maintenance-labels"))return "maintenance_qr";
   if (pathname.startsWith("/queue")) {
     return "queue";
   }

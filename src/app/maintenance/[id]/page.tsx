@@ -8,8 +8,9 @@ export default async function MaintenanceRequest({params,managerLoginPath="/logi
  const {id}=await params;const qr=await maintenanceQrContext(id);if(!qr)notFound();
  const business=await maintenanceQrBusiness(qr);if(!business)notFound();
  const publicBusiness={slug:business.slug,displayName:business.displayName,rules:business.rules,requestTypes:business.requestTypes.map(({id,publicLabel,active,displayOrder})=>({id,publicLabel,active,displayOrder}))};
- return <main className="scheduling-public mx-auto max-w-3xl p-4" data-brand="rnl"><h1 className="text-3xl font-bold">Request maintenance</h1>{maintenanceQrLab()&&<p role="status">Isolated QR laboratory: synthetic requests only. Nothing is sent to production or to customers.</p>}<p className="my-4">{qr.property} · Unit {qr.unit}</p><p className="my-4">This form is not monitored continuously. For an emergency, contact emergency services.</p>
-  <RequestForm business={publicBusiness} challengeSiteKey={maintenanceQrLab()?undefined:process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY} photosEnabled photoEndpoint="/api/request-photos" submissionEndpoint={`/api/maintenance-qr/${id}`} locationAddress={qr.address+', Unit '+qr.unit}/>
-  <a className="mt-6 block underline" href={managerLoginPath+'?next='+encodeURIComponent('/property-requests?qr='+id)}>Property manager? Sign in to use your assigned permissions.</a>
+ return <main className="scheduling-public mx-auto max-w-3xl p-4" data-brand="rnl"><h1 className="text-3xl font-bold">Request maintenance</h1>{maintenanceQrLab()&&<p role="status">Isolated QR laboratory: synthetic requests only. Nothing is sent to production or to customers.</p>}<p className="my-4">{qr.property}{qr.scope==='property'?' · Office maintenance requests':` · Unit ${qr.unit}`}</p><p>Property address: {qr.address}</p><p className="my-4">This form is not monitored continuously. For an emergency, contact emergency services or your property’s emergency contact.</p>
+  <a className="my-4 inline-block underline" href={managerLoginPath+'?next='+encodeURIComponent('/property-requests?business='+qr.slug+'&qr='+id)}>Property manager sign-in (optional)</a>
+  <RequestForm business={publicBusiness} challengeSiteKey={maintenanceQrLab()?undefined:process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY} photosEnabled photoEndpoint="/api/request-photos" submissionEndpoint={`/api/maintenance-qr/${id}`} locationAddress={qr.scope==='property'?qr.address:qr.address+', Unit '+qr.unit} requiredUnit={qr.scope==='property'} locationProperty={qr.property}/>
+
  </main>;
 }
