@@ -44,13 +44,6 @@ type AuthGuardProps = {
   children: React.ReactNode;
 };
 
-function withBusinessParam(
-  pathname: string,
-  businessSlug: string
-) {
-  return `${pathname}?business=${businessSlug}`;
-}
-
 function withSearchParam(
   pathname: string,
   searchParams: URLSearchParams,
@@ -310,8 +303,10 @@ export default function AuthGuard({
 
       if (!selectedBusiness) {
         router.replace(
-          withBusinessParam(
+          withSearchParam(
             pathname,
+            searchParams,
+            "business",
             defaultBusinessSlug
           )
         );
@@ -325,8 +320,10 @@ export default function AuthGuard({
         )
       ) {
         router.replace(
-          withBusinessParam(
+          withSearchParam(
             pathname,
+            searchParams,
+            "business",
             defaultBusinessSlug
           )
         );

@@ -36,6 +36,15 @@ async function scenario(start,signedIn,secure,reopened=false,options={}){let cur
  assert.equal((await scenario('/login?business=rnl-creations',false,false,false,{pendingSignIn:true})).path,'/login');
  const login='/login?business=rnl-creations&next='+encodeURIComponent(destination);
  const resumed=await scenario(login,true,true);assert.equal(resumed.navigations[0],destination);
+ const qr='07b303a2-6cf4-43e9-b514-7aafc77e956e';
+ for(const query of ['qr='+qr,'business=unavailable&qr='+qr]){
+  const result=await scenario('/property-requests?'+query,true,true);
+  assert.equal(result.path,'/property-requests');
+  assert.equal(result.search.get('business'),'rnl-creations');
+  assert.equal(result.search.get('qr'),qr,'Workspace normalization must retain the scanned QR location');
+ }
+ const qrReturn='/property-requests?business=rnl-creations&qr='+qr;
+ assert.equal((await scenario('/login?next='+encodeURIComponent(qrReturn),true,true)).navigations[0],qrReturn);
  assert.equal((await scenario(login,false,false)).navigations.length,0);
  for(const unsafe of ['https://evil.invalid','//evil.invalid','/\\evil.invalid','/%5cevil.invalid','/login?next=/login','/forgot-password','/reset-password','/%0a/evil','/%ZZ'])assert.equal(loginReturn.safeLoginReturn(unsafe),null,unsafe);
  assert.equal(loginReturn.loginUrl('/login',new URL(login,'https://test.invalid').searchParams.toString(),'idle-timeout').includes('next=%2Fadmin'),true);
