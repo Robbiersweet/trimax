@@ -1,4 +1,4 @@
-import MaintenanceLabels from '../../qr-shared/maintenance-labels/page';
+import MaintenanceLabels from '../../qr-shared/maintenance-labels/MaintenanceLabels';
 import './labels.css';
 import {notFound} from 'next/navigation';
 export const metadata={title:'Maintenance labels | TriMax',robots:{index:false,follow:false}};
