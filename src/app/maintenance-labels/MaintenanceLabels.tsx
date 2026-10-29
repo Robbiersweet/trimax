@@ -4,7 +4,7 @@ import Link from 'next/link';
 import {supabase} from '../lib/supabase';
 type Property={id:string;property:string;address:string|null;addressIssue?:string|null};
 type Label={id:string;property:string;unit:string|null;scope?:'unit'|'property';address:string;active:boolean;url:string;svg:string};
-export default function MaintenanceLabels({loginHref="/login?next=%2Fmaintenance-labels"}:{loginHref?:string}={}){
+export default function MaintenanceLabels({loginHref="/login?next=%2Fmaintenance-labels",backLabel="Back to TriMax"}:{loginHref?:string;backLabel?:string}={}){
  const [business,setBusiness]=useState(''),[assignment,setAssignment]=useState(''),[unit,setUnit]=useState(''),[address,setAddress]=useState(''),[scope,setScope]=useState<'property'|'unit'>('property');
  const [properties,setProperties]=useState<Property[]>([]),[labels,setLabels]=useState<Label[]>([]),[error,setError]=useState(''),[busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[printId,setPrintId]=useState<string|null>(null);
  const selected=properties.find(p=>p.id===assignment);
@@ -21,9 +21,9 @@ export default function MaintenanceLabels({loginHref="/login?next=%2Fmaintenance
  useEffect(()=>{const done=()=>setPrintId(null);window.addEventListener('afterprint',done);return()=>window.removeEventListener('afterprint',done);},[]);
  function print(label:Label){setPrintId(label.id);requestAnimationFrame(()=>window.print());}
  async function copy(label:Label){try{await navigator.clipboard.writeText(label.url);setNotice('QR link copied.');}catch{setNotice('Copy the public link shown below the QR code.');}}
- return <main className="mx-auto max-w-5xl p-5 text-white">
+ return <main className="maintenance-labels-content mx-auto max-w-5xl p-5 text-white">
   <style>{`@media print{.maintenance-qr-card{display:none!important}.maintenance-qr-card[data-print="true"]{display:block!important;width:3.5in;max-width:100%;margin:auto}.maintenance-qr-grid{display:block!important}}`}</style>
-  <div className="print:hidden"><Link href={'/?business='+encodeURIComponent(business||'rnl-creations')} className="underline">Back to TriMax</Link><h1 className="mt-5 text-3xl font-bold">Maintenance QR Labels</h1><p className="mt-2">One office QR per property, with unlimited identical copies. Anyone can request work without an account; each request needs owner review.</p>
+  <div className="print:hidden"><Link href={'/?business='+encodeURIComponent(business||'rnl-creations')} className="inline-flex rounded-xl border border-current/20 px-3 py-2 text-sm font-semibold">{backLabel}</Link><h1 className="mt-5 text-3xl font-bold">Maintenance QR Labels</h1><p className="mt-2">One office QR per property, with unlimited identical copies. Anyone can request work without an account; each request needs owner review.</p>
    <form className="my-5 grid gap-3" onSubmit={e=>{e.preventDefault();void load(business,'create');}}>
     <label>Label type<select className="block w-full bg-zinc-900 p-3" value={scope} onChange={e=>setScope(e.target.value as 'property'|'unit')}><option value="property">Property-wide office QR — requester enters unit</option><option value="unit">Existing unit-specific label</option></select></label>
     <label>Authorized property<select required className="block w-full bg-zinc-900 p-3" value={assignment} onChange={e=>setAssignment(e.target.value)}><option value="">Choose property</option>{properties.map(p=><option key={p.id} value={p.id}>{p.property}</option>)}</select></label>

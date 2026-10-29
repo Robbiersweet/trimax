@@ -1,0 +1,21 @@
+/* Keep card printing independent of the authenticated workspace chrome. */
+@media print {
+  [data-workspace-section="maintenance-labels"] > :not(.app-shell-content),
+  [data-workspace-section="maintenance-labels"] .app-shell-content > :not(#trimax-main-content),
+  [data-workspace-section="maintenance-labels"] #trimax-main-content > :not(.maintenance-labels-content) {
+    display: none !important;
+  }
+
+  [data-workspace-section="maintenance-labels"],
+  [data-workspace-section="maintenance-labels"] .app-shell-content,
+  [data-workspace-section="maintenance-labels"] #trimax-main-content,
+  [data-workspace-section="maintenance-labels"] .maintenance-labels-content {
+    display: block !important;
+    min-height: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+}
