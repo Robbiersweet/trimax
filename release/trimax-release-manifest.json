@@ -1713,15 +1713,15 @@
   },
   "upgradeContext": {
     "currentProductionRelease": {
-      "manifestCommit": "690d42665c39469c16980e666ffe18963338de7d",
-      "manifestDigest": "da4bf748f5d08be50090448e779d4e1e4c50f1462f5509016ccefc890832b2a4",
-      "releaseId": "trimax-maintenance-qr-20261028-rc4",
-      "deploymentCommit": "690d42665c39469c16980e666ffe18963338de7d",
-      "deploymentId": "8GBEb5E6FXNKqYeamAP2BWGHALW3"
+      "manifestCommit": "5f8ddc055ab617fa36942ac264e6ea31cdd9e634",
+      "manifestDigest": "5e082f9fd1683406c0d761a7df929b67b6ce4c4d8aa1c0f33a9bd8a403973bac",
+      "releaseId": "trimax-office-coupon-20261028-rc1",
+      "deploymentCommit": "5f8ddc055ab617fa36942ac264e6ea31cdd9e634",
+      "deploymentId": "Amcg5JhtK2PZux3WJU6nTCCgHW5V"
     },
-    "candidateReleaseId": "trimax-office-coupon-20261028-rc1",
-    "applicationCommit": "6a5762177b254fea9056d07f1c89dc4963093433",
-    "machineryCommit": "6a5762177b254fea9056d07f1c89dc4963093433"
+    "candidateReleaseId": "trimax-office-shell-20261029-rc1",
+    "applicationCommit": "858267f063743ca574d46a0f08019d8e3f75f673",
+    "machineryCommit": "858267f063743ca574d46a0f08019d8e3f75f673"
   },
   "contractRevision": {
     "id": "customer-document-operational-notes-privacy",
