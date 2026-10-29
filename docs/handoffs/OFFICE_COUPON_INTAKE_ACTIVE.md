@@ -1,3 +1,45 @@
+# Latest result — approved cutover stopped and recovered
+
+2026-10-28 Pacific (2026-10-29 UTC). Owner approved the coordinated office rollout.
+Do not ask again for routine preparation. Critical schema gate failed before
+migration COMMIT; obeyed stop/rollback condition. No application promotion occurred.
+
+Fresh snapshot 20261029T042015Z: all 88 restored table hashes matched; exact RC4
+catalog restored with source ACL supplement; isolated container stopped. Separate
+Storage refresh: 38 objects / 64,697,988 bytes verified. Vault supplement unchanged.
+Reviewed migration raw SHA256 matched. Original production schema/current app,
+disabled SMS/customer email, and idle queues passed initial preflight.
+
+Intake was paused and native workers stopped; migration target fingerprint differed
+from manifest. Transaction rolled back without commit. Original intake enablement
+restored and original qr-rc4 native task restarted preserving principal/triggers.
+Live app remains dpl_8GBEb5E6FXNKqYeamAP2BWGHALW3; website coupon version unchanged.
+
+Root cause reproduced only in isolated local recovery: rehearsal fingerprints
+were captured with default search_path, while the production transaction pinned
+public,pg_catalog. RPC/grants/triggers agree, schema/policy deparsing hashes differ.
+Private stopped-cutover-isolated-diagnosis.json preserves both exact targets.
+This is NOT authorization to remove, weaken, skip, or normalize away safety checks.
+
+Next safe engineering: make rehearsal, migration precommit check, manifests and
+runtime/POST evidence use the same canonical search path. Reconcile BOTH candidate
+and post-migration recovery manifests, retain source-bound evidence, rerun impacted
+release gates, and stage exact matching artifacts. Do not promote the previously
+staged candidate/recovery with unreconciled target fingerprints. Preserve current
+production until corrected prerequisites are fully verified. No invoice/customer
+communications, financial modifications, new migration, or physical scan occurred.
+
+Private production operation files: office-intake-fence.json,
+office-migration-before.private.json, office-cutover-error.private.json,
+post-stop-catalog.private.json, rollback-verification.json,
+cutover-backup-ready.json, stopped-cutover-isolated-diagnosis.json.
+New secure bridge Invoke-OfficeApprovedCutover.ps1 supports inspect/pause/migrate/
+restore; do not blindly repeat operations. Migration result file does NOT exist
+because its target check failed before verification/commit. Inspect journal/state
+before any retry. Existing staging records below are historical preparation only.
+The earlier async owner sign-in request is no longer needed for this stopped run.
+
+---
 # Office QR and winter coupon intake — verified checkpoint
 
 Updated 2026-10-28. One primary agent. No new source work required.
