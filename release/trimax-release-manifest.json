@@ -1,26 +1,26 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-office-coupon-20261028-rc1",
+  "releaseId": "trimax-office-shell-20261029-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-10-28T12:54:14.459Z",
-  "releaseTimestamp": "2026-10-28T12:54:14.459Z",
+  "createdAt": "2026-10-29T07:14:26.341Z",
+  "releaseTimestamp": "2026-10-29T07:14:26.341Z",
   "baseProduction": {
-    "commit": "690d42665c39469c16980e666ffe18963338de7d",
-    "vercelDeploymentId": "8GBEb5E6FXNKqYeamAP2BWGHALW3"
+    "commit": "5f8ddc055ab617fa36942ac264e6ea31cdd9e634",
+    "vercelDeploymentId": "Amcg5JhtK2PZux3WJU6nTCCgHW5V"
   },
   "components": {
     "web": {
-      "commit": "6a5762177b254fea9056d07f1c89dc4963093433"
+      "commit": "858267f063743ca574d46a0f08019d8e3f75f673"
     },
     "legacy": {
-      "commit": "6a5762177b254fea9056d07f1c89dc4963093433"
+      "commit": "858267f063743ca574d46a0f08019d8e3f75f673"
     },
     "v2-shadow": {
-      "commit": "6a5762177b254fea9056d07f1c89dc4963093433"
+      "commit": "858267f063743ca574d46a0f08019d8e3f75f673"
     }
   },
   "sourceBundle": {
-    "sha256": "53292dddc0dd7ee2cbbb5fdd2f37b816af4139f753b7586b46c5f2039c35c716",
+    "sha256": "ebf022f85044c93c5ff0695a7106e68eabf2c442227cd470a32311c8748f3bd3",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -80,6 +80,7 @@
       "scripts/login-return-regression.cjs": "50f65d976a9b4baa8450ed8c0ad9e9ba0c51890e8e375c21e66b5b4f030bd021",
       "scripts/maintenance-qr-image-regression.cjs": "2257778c645174e463c84e409d63757377cb487cd5378d15103419bae9a4713e",
       "scripts/maintenance-qr-production-regression.cjs": "30f7da56c00f44384a07563ba7d1193bc9b601057e298a326bf21a67c0a26be8",
+      "scripts/maintenance-qr-shell-regression.cjs": "dc3fcccd21d54a2575568f9907e1f85988e1f615fe683dd4e5a9acbaa6b9786c",
       "scripts/maintenance-qr-sql-regression.cjs": "bc3eceae5fda5f639b64f51a39ca7acd6355dad52ed1f665a116e5c1a6104b06",
       "scripts/ocr-canonical-object.cjs": "56fc82d9392d86ae644b3925823210875519e3398d1e9cf4d374a993bfa59970",
       "scripts/ocr-cold-pipeline-regression.cjs": "17c9df1d8990902cc10373a1c9d422b63d4c65e4ab2eabaf5a885e3bc122e538",
@@ -270,7 +271,7 @@
       "scripts/release/file-forensics-regression.cjs": "a6da1ba822d17c1a31b7bd29d3cb49e95febca66f29c51b712ccdd9d608c1b26",
       "scripts/release/file-forensics.cjs": "25133a9f2167c801a05906be04068f3d85f54f3c462e085869df2d486c8bea30",
       "scripts/release/final-candidate-regression.cjs": "edc0dbfa8f70d55607c65327a08ed25193380387dd4f1e850cf130ef992ca03f",
-      "scripts/release/gate-checks.cjs": "093634756ab54a99977af8ac1cce4dfbbe4c2c718bfd6968af431de162d5c783",
+      "scripts/release/gate-checks.cjs": "e6c9d6aba9a5c4b915aba66415ef4342d9fe5cf7b155a3f38d84628eac439447",
       "scripts/release/gate-state-regression.cjs": "51f1d2c76eca73d122f20cc0f537b624074ebd4943f946dcba63857775e45d04",
       "scripts/release/gate-state.cjs": "f56bdc9741b07b92c53bb487f21320080537fa90734721130612e8c1b52da839",
       "scripts/release/gate.cjs": "228232de653ef9c0c5a96ea24a9bfb0220a06eed1a0a516222d523b67d778c45",
@@ -641,8 +642,9 @@
       "src/app/lib/useRemittanceEvent.ts": "a7a4d74bf8e7dd957194830dff99cdc6af3a78e0eae869bd0dbc0e966039b8b2",
       "src/app/lib/workspaceAccess.ts": "6d6334182d663536ac1123695bf2017f06373486cfa01ef54d0e72967d480b71",
       "src/app/login/page.tsx": "dd709a37f471db722b752c21226ee621099a615f3578b3d381745a8e11e3c37a",
-      "src/app/maintenance-labels/MaintenanceLabels.tsx": "d0e8d48edc054d757c3f81fcd5e393a57a3c49d37306a9602e24105af9399c97",
-      "src/app/maintenance-labels/page.tsx": "df69a74195fe3a54f53eca3aa52a9d22aaa5f05e88dff9733ddae94db9762a15",
+      "src/app/maintenance-labels/MaintenanceLabels.tsx": "013f20ff2b6d8dd3d65f1ead637aae031b08977cbf8ddc3f4e69036b387e95b8",
+      "src/app/maintenance-labels/page.tsx": "ff6f8671fd43bb4cc2d93958fcf6ac59ebc2a34f6b05b745c1e362e1446d0887",
+      "src/app/maintenance-labels/workspace.css": "93da78e8cf3e53c57b0bd1c9bbd6fc4c16879676d13ffd8993fb417c98d4feb9",
       "src/app/maintenance/[id]/page.tsx": "cc4f2436cf6b798b797ce6058aa9fe1b144aa63d865f76c2e3ea16605bc8dc13",
       "src/app/manifest.ts": "7a70a588bc52215af58477c2bcfc67c143742493f01048b35b4898d6732d8954",
       "src/app/new-request/page.tsx": "f9a6ace8bd00f32b5f465aaaf9dab0eb7bccbc3d54c5399376b4202696ba32ee",
