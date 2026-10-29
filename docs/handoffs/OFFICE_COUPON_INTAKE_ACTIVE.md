@@ -1,3 +1,62 @@
+# LIVE Office QR cutover — final acceptance in progress
+
+2026-10-29 UTC / 2026-10-28 Pacific. Owner explicitly authorized continuation after
+all checks. Both full canonical PRE gates passed, all 8 retained cases each;
+source/executable and reviewed migration unchanged. Correct staged/live core:
+5f8ddc055ab617fa36942ac264e6ea31cdd9e634 / dpl_Amcg5JhtK2PZux3WJU6nTCCgHW5V
+https://trimax-cccf0dpye-trimax-s-projects.vercel.app
+Live custom URL https://app.rnlcreations.com verified exact source/project/Ready.
+Recovery: 62a48eeeb02509ec7e601cb1453b9877cfd12e98 /
+dpl_4ei3HzM1HQB2nrKi72X4Vf78BHHG /
+https://trimax-8rcs2rcku-trimax-s-projects.vercel.app . Recovery is for NEW schema.
+Website still live 811b7b3, no website redeployment needed.
+
+Two independent serialization issues are now diagnosed and addressed:
+1. Canonical search_path public,pg_catalog, explicit catalog schemas; direct
+   installed runtime RPC matches all five expected fingerprints in isolated DB.
+2. Python read_text silently normalized reviewed CRLF SQL to LF, changing stored
+   function bodies. A second attempted transaction rolled back on RPC mismatch.
+   Exact LF failure hash reproduced in isolation; raw reviewed CRLF matches all
+   five canonical expectations. Actual SSL read-only psycopg query transport
+   confirmed preservation. Deployment helper now read_bytes().decode('utf8'),
+   asserts reviewed raw SHA256 before stripping outer BEGIN/COMMIT only.
+   Migration source and application/manifests need no further changes for this fix.
+
+Both stopped attempts restored original schema/intake/RC4 workers and protected
+financial/client/Queue/audit rows before retry. Preserve attempt archives in OPS.
+Final attempt COMMITTED single 20261028_property_office_qr.sql, reviewed raw hash
+97eb4f42fb5148444b29f829d5d84686831789de8d8ed6fe67a36ab6261b2fc0.
+All five target fingerprints matched and 47 existing public tables preserved
+before commit. Exact new app promoted, existing supervisor switched to prepared
+native office-coupon-rc1 source 5f8ddc0; original intake enablement restored.
+Task identity/triggers and credentials preserved. SMS/customer email disabled.
+
+Fresh snapshot 20261029T052241Z: all 88 restored hashes matched, canonical migration
+rehearsal passed, 38 Storage objects / 64,697,988 bytes verified against DB count.
+Private recovery remains network-none/no ports/no cron, stopped after checks.
+OPS/canonical-cutover-backup-ready.json records exact proof. No financial restore.
+One controlled nonpayment OCR diagnostic pair: legacy REVIEW, shadow COMPLETED;
+both new release identities/expected canonical fingerprint/payment capability
+false verified. Complete POST gate running via run-canonical-post-gate.cjs;
+log canonical-production-post-gate.log (session 15153). Do not repeat successful
+PRE or 56-photo matrix; source bundle remains byte-identical common 6a57621.
+
+Production browser tab 14 could not restore owner session after app refresh and
+shows actual login form. One async sign-in question issued; wait/reuse that tab,
+no new OAuth/password reset. Owner session WAS verified before long PRE runs.
+Pending actual owner QR creation, guest Z07+photo submission, owner approve and
+existing-client Queue conversion, public readback and final POST report. Do not
+claim these passed yet. Physical iPhone/paper scan remains owner-only afterward.
+
+Private prepared tools: promote-office.cjs (promote/recover), worker-office-cutover.ps1
+(switch/recover AFTER committed schema), Invoke-OfficeProductionAcceptance.ps1
+(before-owner/after-owner). Acceptance requires production-office-fixture.json
+with actual labelId/reference. Keep test labeled synthetic; no actual jobs/messages.
+If any critical final test fails, pause intake/workers and recover compatible
+app/native source 62a48ee; retain additive DB and new records, restore original
+intake state. Never restore old DB/downmigrate. Preserve backup/checkpoint history.
+
+---
 # Canonical fingerprint correction — continuation in progress
 
 Owner explicitly authorized corrected rollout after all critical checks pass.
