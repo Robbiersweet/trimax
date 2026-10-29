@@ -1,3 +1,31 @@
+# Canonical fingerprint correction — continuation in progress
+
+Owner explicitly authorized corrected rollout after all critical checks pass.
+Checkpoint e187e3d preserved; original production remains RC4 while PRE gates run.
+Candidate manifest correction 74902a2; recovery manifest correction 69d3c4b.
+Executable and migration bytes unchanged. Only schema and policy expected hashes
+changed to the exact output of the EXISTING installed trimax_release_runtime RPC.
+
+OPS/canonical-fingerprint-query.sql explicitly qualifies pg_catalog catalog
+relations/deparser functions and pins public,pg_catalog at every comparison.
+OPS/canonical-fingerprint-verification.json records query SHA256, unchanged RC4
+baseline and canonical office target. Three incoming paths converge; direct
+owner-gated runtime RPC in network-isolated restored DB matches all five target
+fingerprints. Rehearsal rolled back and container stopped. No checks weakened.
+
+Complete candidate then recovery PRE gates running via run-canonical-pre-gates.cjs;
+prepare-canonical-artifacts.cjs waits for BOTH successful reports before exporting
+receipts, committing metadata, staging matching builds and preparing exact native
+runtimes. Sessions are independent Windows processes; inspect process journals
+and actual artifacts before retrying after interruption. Do not repeat or promote
+old unreconciled artifacts. Production owner browser tab 14 is authenticated.
+
+Before cutover: refresh backup/Storage, rerun canonical restore/rehearsal,
+revalidate disabled messaging/current baseline, archive prior RESTORED pause
+journal without deleting history, use existing approval for single migration.
+Stop and perform schema-state-appropriate recovery on any critical failure.
+
+---
 # Latest result — approved cutover stopped and recovered
 
 2026-10-28 Pacific (2026-10-29 UTC). Owner approved the coordinated office rollout.
