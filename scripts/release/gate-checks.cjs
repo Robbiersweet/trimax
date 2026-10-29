@@ -41,6 +41,6 @@ const scripts=[
  'scripts/ocr-v2/dataset/regression.cjs','scripts/remittance-matching-regression.ts','scripts/remittance-contract-regression.ts','scripts/remittance-retry-regression.ts','scripts/duplicate-remittance-regression.ts','scripts/payment-application-regression.ts','scripts/payment-state-lifecycle-regression.ts','scripts/invoice-correction-regression.ts','scripts/split-source-relationship-regression.ts','scripts/split-invoice-send-regression.ts','scripts/tenant-isolation-hardening-regression.ts','scripts/business-read-isolation-regression.ts','scripts/owner-server-auth-regression.ts','scripts/account-management-regression.ts','scripts/stabilization-regression.cjs'
 ];
 scripts.push('scripts/table-caption-ownership-regression.cjs','scripts/complementary-row-regression.cjs','scripts/pixel-localization-regression.cjs','scripts/legacy-mature-fallback-regression.cjs','scripts/photo-evidence-regression.cjs','scripts/photo-corpus-financial-regression.cjs','scripts/photo-corpus-acceptance.cjs','scripts/photo-corpus-privacy-regression.cjs');
-scripts.push('scripts/maintenance-qr-shell-regression.cjs');
+scripts.push('scripts/maintenance-qr-shell-regression.cjs','scripts/apartment-turn-regression.cjs');
 module.exports=scripts;
 

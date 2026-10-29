@@ -1,4 +1,5 @@
 "use client";
+import {paintTypeOptions as rnlPaintTypeOptions,wallPaintColorOptions as rnlWallPaintColorOptions,northCreekUnitLayoutOptions,flooringOptions as rnlFlooringOptions} from "../lib/queueTurnOptions";
 
 import { appendPriorityNote } from "../lib/documentNotes";
 
@@ -14,7 +15,6 @@ import { createQueueItem } from "../lib/createQueueItem";
 import { logActivity } from "../lib/activityLog";
 import { supabase } from "../lib/supabase";
 import {
-  TBD_VALUE,
   isTbdValue,
   normalizeTbdValue,
 } from "../lib/tbd";
@@ -150,26 +150,11 @@ const justKleenClientOptions = [
   "Inventive Construction",
 ];
 
-const rnlPaintTypeOptions = [
-  "Classic",
-  "Touch-Up",
-  "Full Repaint",
-  "Primer + Paint",
-  "Reno Paint",
-];
 
-const rnlWallPaintColorOptions = [
-  TBD_VALUE,
-  "Sherwin-Williams Roman Column (SW 7562)",
-  "Sherwin-Williams Nebulous White (SW 7063)",
-  "Confirm with manager",
-];
 
-const northCreekUnitLayoutOptions = [
-  "2x2 - 2 Bed / 2 Bath",
-  "2x1 - 2 Bed / 1 Bath",
-  "Confirm with manager",
-];
+
+
+
 
 const justKleenServiceOptions = [
   "Recurring Cleaning",
@@ -180,19 +165,7 @@ const justKleenServiceOptions = [
   "Church Cleaning",
 ];
 
-const rnlFlooringOptions = [
-  TBD_VALUE,
-  "Keep Carpet & Keep Vinyl",
-  "Keep Vinyl & Replace Carpet",
-  "Keep Carpet & Replace Vinyl",
-  "Replace Carpet & Replace Vinyl",
-  "Keep Existing Flooring",
-  "Replace Carpet",
-  "Replace Vinyl",
-  "LVP",
-  "Carpet",
-  "Vinyl",
-];
+
 
 const justKleenScopeOptions = [
   "Full Facility",

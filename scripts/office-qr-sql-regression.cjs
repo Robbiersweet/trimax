@@ -27,6 +27,8 @@ try{
 
  await db.exec(fs.readFileSync('supabase/migrations/20261027_maintenance_qr_intake.sql','utf8'));
  await db.exec(fs.readFileSync('supabase/migrations/20261028_property_office_qr.sql','utf8'));
+ await db.exec(`alter table queue_items add column paint_type text,add column unit_layout text,add column wall_paint_color text,add column flooring text,add column smoked_in boolean,add column primer_requested boolean,add column prior_renovation boolean,add column prior_renovation_details text,add column renovation_needed boolean,add column renovation_needed_details text,add column move_out_date date,add column ready_date date,add column priority_order integer;`);
+ await db.exec(fs.readFileSync('supabase/migrations/20261029_office_qr_apartment_turn.sql','utf8'));
  await db.query('update public_scheduling_settings set enabled=true where business_id=$1',[business]);
  const manage=(bid=business,aid=assignment,unit='A-12')=>db.query('select trimax_manage_maintenance_qr($1,$2,$3,$4) r',[bid,aid,unit,'Synthetic property address']);
  await fail(()=>as(manager,()=>manage()),/Not authorized/);
@@ -69,7 +71,7 @@ try{
  eq(officeData.properties.length,1);eq(officeData.properties[0].address,'Saved property address');
  const office=officeData.labels.find(x=>x.scope==='property');eq(office.unit,null);
  eq((await as(owner,()=>officeManage())).rows[0].r.labels.find(x=>x.scope==='property').id,office.id);
- const submitOffice=(key='office-synthetic-0001',payload={...publicPayload,unit:'Z07',specificArea:'Kitchen'})=>db.query('select trimax_submit_maintenance_qr($1,$2,$3,$4) r',[office.id,JSON.stringify(payload),key,'c'.repeat(64)]);
+ const submitOffice=(key='office-synthetic-0001',payload={...publicPayload,unit:'Z07',specificArea:'Kitchen'})=>db.query('select trimax_submit_maintenance_qr($1,$2,$3,$4) r',[office.id,JSON.stringify(payload),key,require('node:crypto').createHash('sha256').update(key).digest('hex')]);
  await db.exec('set role service_role');
  await fail(()=>submitOffice('office-missing-unit-01',{...publicPayload}),/Enter a unit/);
  await fail(()=>submitOffice('office-blank-unit-001',{...publicPayload,unit:'  '}),/valid unit/);
@@ -89,6 +91,32 @@ try{
  eq(officeQueue.property,office.property);eq(officeQueue.unit,'Z07');eq(officeQueue.business_id,business);assert.ok(approved);checks++;
  const managerOffice=(await as(manager,()=>db.query('select trimax_submit_manager_maintenance_qr($1,$2,$3,$4) r',[office.id,assignment,'office-manager-00001',JSON.stringify({...managerPayload,unit:'Z09'})]))).rows[0].r;
  eq((await db.query('select unit from queue_items where id=$1',[managerOffice.queueItemId])).rows[0].unit,'Z09');
+
+ const turn={building:'Z',unitLayout:'2x2 - 2 Bed / 2 Bath',carpet:'Replace',vinyl:'Keep',paintType:'Color Change',paintingScope:'Walls, ceiling, trim and doors',specialRequirements:'Synthetic smoke/odor treatment only',smokedIn:true,primerRequested:true,wallPaintColor:'Roman Column',paintCode:'SW 7562',priority:'High',priorRenovation:true,priorRenovationDetails:'Prior cabinet renovation',renovationNeeded:true,renovationNeededDetails:'Repair damaged trim',moveOutDate:'2099-01-01'};
+ const turnPayload={...publicPayload,unit:'Z07',specificArea:'Apartment turn',preferredDate:'2099-01-03',notes:'Synthetic access instructions',apartmentTurn:turn};
+ await db.exec('set role service_role');
+ const turnResult=(await submitOffice('turn-synthetic-request-01',turnPayload)).rows[0].r;
+ eq((await submitOffice('turn-synthetic-request-01',turnPayload)).rows[0].r,turnResult);
+ for(const changed of [{...turn,carpet:'Keep'},{...turn,priority:'Urgent'}])await fail(()=>submitOffice('turn-synthetic-request-01',{...turnPayload,apartmentTurn:changed}),/Idempotency/);
+ for(const invalid of [{...turn,smokedIn:'true'},{...turn,extra:'unauthorized'},{...turn,paintType:'Unreviewed'},{...turn,paintCode:'arbitrary'},{...turn,moveOutDate:'2099-02-31'},{...turn,building:'Bad\nBuilding'}])await fail(()=>submitOffice('turn-invalid-request-001',{...turnPayload,apartmentTurn:invalid}),/turn|paint|date|range|text|option|field|boolean/i);
+ await db.exec('reset role');await db.query('update maintenance_qr_labels set active=true where id=$1',[label]);await db.exec('set role service_role');
+ await fail(()=>publicSubmit('turn-fixed-unit-denied',{...publicPayload,apartmentTurn:turn}),/Office QR/);
+ await db.exec('reset role');await db.query('update maintenance_qr_labels set active=false where id=$1',[label]);
+ const turnRow=(await db.query('select * from public_service_requests where id=$1',[turnResult.id])).rows[0];
+ eq(turnRow.integration_references.apartmentTurn,turn);eq(turnRow.status,'pending_confirmation');eq(turnRow.upload_capability_hash,'a'.repeat(64));eq(turnRow.customer_notes,'Synthetic access instructions');eq(turnRow.integration_references.propertyUnit,'Z07');
+ eq((await db.query('select count(*)::int n from queue_items where source_request_id=$1',[turnResult.id])).rows[0].n,0);
+ eq((await db.query('select count(*)::int n from scheduling_owner_notifications where request_id=$1',[turnResult.id])).rows[0].n,1);
+ await fail(()=>as(manager,()=>db.query("select trimax_service_request_workflow($1,0,'turn-denied-manager-01','convert',$2,null,null,null)",[turnResult.id,client])),/Not authorized/);
+ await fail(()=>as(owner,()=>db.query("select trimax_service_request_workflow($1,$2,'turn-unapproved-denied','convert',$3,null,null,null)",[turnResult.id,turnRow.revision,client])),/Approve/);
+ const beforeQueue=(await db.query('select jsonb_agg(to_jsonb(q) order by id) v from queue_items q')).rows[0].v;
+ await as(owner,()=>db.query("select trimax_review_public_service_request($1,$2,'approved','','turn-review-owner-001')",[turnResult.id,turnRow.revision]));
+ const convertArgs=[turnResult.id,turnRow.revision+1,'turn-convert-owner-001',client];
+ const converted=(await as(owner,()=>db.query("select trimax_service_request_workflow($1,$2,$3,'convert',$4,null,null,null) r",convertArgs))).rows[0].r;
+ eq((await as(owner,()=>db.query("select trimax_service_request_workflow($1,$2,$3,'convert',$4,null,null,null) r",convertArgs))).rows[0].r,converted);
+ eq((await db.query('select jsonb_agg(to_jsonb(q) order by id) v from queue_items q where source_request_id is distinct from $1',[turnResult.id])).rows[0].v,beforeQueue);
+ const tq=(await db.query('select * from queue_items where source_request_id=$1',[turnResult.id])).rows;
+ eq(tq.length,1);eq(tq[0].apartment_turn,turn);eq(tq[0].paint_type,'Color Change');eq(tq[0].flooring,'Keep Vinyl & Replace Carpet');eq(tq[0].wall_paint_color,'Roman Column SW 7562');eq(tq[0].smoked_in,true);eq(tq[0].primer_requested,true);eq(tq[0].ready_date.toISOString().slice(0,10),'2099-01-03');eq(tq[0].move_out_date.toISOString().slice(0,10),'2099-01-01');eq(tq[0].priority,'High');eq(tq[0].priority_order,null);eq(tq[0].scheduled_date,null);eq(tq[0].property,office.property);eq(tq[0].unit,'Z07');eq(tq[0].prior_renovation_details,'Prior cabinet renovation');eq(tq[0].renovation_needed_details,'Repair damaged trim');
+ for(const role of ['anon','authenticated','service_role']){await db.exec('set role '+role);await fail(()=>db.query('select trimax_validate_apartment_turn($1)',[JSON.stringify(turn)]),/permission/);await db.exec('reset role');}
  const replaced=(await as(owner,()=>officeManage('replace',office.id))).rows[0].r.labels.find(x=>x.scope==='property'&&x.active);
  assert.notEqual(replaced.id,office.id);checks++;
  await fail(()=>as(owner,()=>officeManage('replace',office.id)),/QR changed/);

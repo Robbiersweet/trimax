@@ -1,3 +1,4 @@
+import {validateApartmentTurn} from './apartmentTurn';
 import {createClient} from '@supabase/supabase-js';
 import {createHash} from 'node:crypto';
 import {maintenanceQrContext,maintenanceQrRuntime,maintenanceQrBusiness,maintenanceQrOrigins,maintenanceQrLab} from './maintenanceQr';
@@ -37,7 +38,8 @@ async function submit(request:Request,context:Context,provided?:()=>QrProduction
   const validated=validateRequest({...body,promotionCode:undefined,address:location.address},business);if(!validated.ok)return reply({error:'Check the request details',fields:validated.fields},422);
   if(config){const abuse=await enforceProductionAbuse({businessSlug:qr.slug,challengeToken:request.headers.get('x-turnstile-token')??'',trustedClientIdentity:trustedVercelIdentity(request)},{...config.providers,challenge:turnstileProvider(process.env.TURNSTILE_SECRET_KEY!,new URL(origin).hostname)});
   if(!abuse.allowed)return reply({error:'Security check failed. Please retry.'},429);}
-  const payload=qr.scope==='property'?{...validated.value,unit:location.unit,specificArea:location.specificArea}:validated.value;
+  let turn; if(body.apartmentTurn!==undefined){if(qr.scope!=='property')return reply({error:'Apartment turns use the property Office QR.'},422);const result=validateApartmentTurn(body.apartmentTurn);if(!result.ok)return reply({error:result.error},422);turn=result.value;}
+  const payload=qr.scope==='property'?{...validated.value,unit:location.unit,specificArea:location.specificArea,...(turn?{apartmentTurn:turn}:{})}:validated.value;
   const {data,error}=await maintenanceQrRuntime().rpc('trimax_submit_maintenance_qr',{p_label_id:qr.id,p_payload:payload,p_key:key,p_capability_hash:unusedCapabilityHash(config?.fingerprintSecret??process.env.SCHEDULING_FINGERPRINT_SECRET!,qr.slug,createHash('sha256').update(qr.id+key).digest('hex'))});
   return error?reply({error:'Unable to save. Keep this form open and retry.'},409):reply({request:data,message:'Request received. Appointment not confirmed.'},201);
  }catch{return reply({error:'QR intake unavailable. Your request has not been confirmed.'},503);}

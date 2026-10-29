@@ -5,6 +5,7 @@ import Card from "../../components/Card";
 import Button from "../../components/Button";
 import StatusBadge from "../../components/StatusBadge";
 import DeleteQueueItemButton from "../../components/DeleteQueueItemButton";
+import ApartmentTurnSummary from "../../components/ApartmentTurnSummary";
 import InternalNotes from "../../components/InternalNotes";
 import JobSessionPanel from "../../components/JobSessionPanel";
 import MarkCompletedButton from "../../components/MarkCompletedButton";
@@ -41,6 +42,7 @@ import {
 } from "../../utils/unitLabels";
 
 type SupabaseQueueItem = {
+  apartment_turn?: unknown;
   id: string;
   business_id: string | null;
   property: string | null;
@@ -1677,6 +1679,7 @@ export default async function QueueDetailPage({
           businessSlug={businessSlug}
           allow={["owner", "admin", "accountant", "technician"]}
         >
+          {!!item.apartment_turn&&<ApartmentTurnSummary value={item.apartment_turn}/>}
           <InternalNotes
             businessId={item.business_id}
             entityType="queue_item"

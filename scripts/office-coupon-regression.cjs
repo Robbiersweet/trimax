@@ -17,7 +17,7 @@ const valid=domain.validateRequest(input,business);assert.equal(valid.ok,true);a
 assert.equal(domain.validateRequest({...input,promotionCode:'unapproved'},business).ok,false);
 assert.equal(domain.validateRequest({...input,notes:'x'.repeat(2000)},business).ok,false);
 let submitted;
-const Form=load('src/app/book/RequestForm.tsx',{'../lib/communications/consent':{},'../lib/publicScheduling/promotions':promotions,'./RequestPhotos':{default:()=>null},'../lib/requestPhotos/clientCapability':{},'./TurnstileChallenge':{default:()=>null}}).default;
+const Form=load('src/app/book/RequestForm.tsx',{'../lib/communications/consent':{},'../lib/publicScheduling/promotions':promotions,'./ApartmentTurnFields':{default:()=>null},'../components/ApartmentTurnSummary':{default:()=>null},'../lib/apartmentTurn':{},'./RequestPhotos':{default:()=>null},'../lib/requestPhotos/clientCapability':{},'./TurnstileChallenge':{default:()=>null}}).default;
 global.requestAnimationFrame=f=>f();global.fetch=async(url,options)=>{submitted=JSON.parse(options.body);return {ok:true,json:async()=>({request:{id:'synthetic',reference:'SYNTHETIC',status:'pending_confirmation',submittedAt:new Date().toISOString()}})}};
 (async()=>{let app;await act(async()=>{app=create(React.createElement(Form,{business,requiredUnit:true,locationAddress:'Saved address',locationProperty:'Synthetic property'}));});
 const fields=app.root.findAllByType('input');const unit=fields.find(x=>x.props.autoComplete==='address-line2');assert.ok(unit.props.required);await act(async()=>unit.props.onChange({target:{value:'Z07'}}));
