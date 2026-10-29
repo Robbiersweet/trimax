@@ -2,25 +2,25 @@
   "schemaVersion": 1,
   "releaseId": "trimax-office-apartment-turn-20261029-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-10-29T09:45:32.052Z",
-  "releaseTimestamp": "2026-10-29T09:45:32.052Z",
+  "createdAt": "2026-10-29T10:25:46.254Z",
+  "releaseTimestamp": "2026-10-29T10:25:46.254Z",
   "baseProduction": {
     "commit": "ea2b1ec53cbdc7a6112dd9b18b72d25495e7fa73",
     "vercelDeploymentId": "59QprQczH6iqQLpMe8z5fd8yj6Rr"
   },
   "components": {
     "web": {
-      "commit": "edfe0cf58918551f5e18da37dfe8677abf196cc7"
+      "commit": "362be4f92a4fe628c0a83a951c88ed566401d474"
     },
     "legacy": {
-      "commit": "edfe0cf58918551f5e18da37dfe8677abf196cc7"
+      "commit": "362be4f92a4fe628c0a83a951c88ed566401d474"
     },
     "v2-shadow": {
-      "commit": "edfe0cf58918551f5e18da37dfe8677abf196cc7"
+      "commit": "362be4f92a4fe628c0a83a951c88ed566401d474"
     }
   },
   "sourceBundle": {
-    "sha256": "bdf2614673e8b655062c9d2be78d29f3e4c4f78f6a0c626573b60a69e2243dcf",
+    "sha256": "051d20b117f6e216a32aea43c97d155333d989fa5e6970aba347eef88a4ea6d6",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -45,7 +45,7 @@
       "public/vercel.svg": "f081337b2fee635b455b63275406a3e7f39d6a014e25ad90dab5a67e62a12ac4",
       "public/window.svg": "644768c4aaeb4767bce293344eeb0c125fb804a94d801440424072202d85e3a1",
       "scripts/account-management-regression.ts": "26119699454a3a80814fcb0afdfc1eeaaec65474e1153b0949ceddbe480a6264",
-      "scripts/apartment-turn-regression.cjs": "6567ee1585580dbceac7bb748a821e61d1090d9bf56ad120282701706cc773f3",
+      "scripts/apartment-turn-regression.cjs": "3577ecf06d38e2b2cd217c814557fba9ff46f7e11c726e0b20104eef145e3e0d",
       "scripts/auth-cookie-refresh-regression.cjs": "35ac8923b0c555d5470651edc1ce56bc89896f52837086c3c674eb1fb922b9a7",
       "scripts/business-read-isolation-regression.ts": "36319d04f87c4d27ef15e171c2ef89ec6cb3b5314ca4c334e527d7da500b1be8",
       "scripts/camera-lifecycle-regression.ts": "2a881a1c73291c51ccd4574a149eb95089c98d7513242b36e14f861add05ce24",
@@ -80,7 +80,7 @@
       "scripts/legacy-mature-fallback-regression.cjs": "7019b5d2d2b7f14d26583f48ce5fd0bb29b48448d2c5d3a0e5a0c2ea10ecd142",
       "scripts/login-return-regression.cjs": "50f65d976a9b4baa8450ed8c0ad9e9ba0c51890e8e375c21e66b5b4f030bd021",
       "scripts/maintenance-qr-image-regression.cjs": "2257778c645174e463c84e409d63757377cb487cd5378d15103419bae9a4713e",
-      "scripts/maintenance-qr-production-regression.cjs": "30f7da56c00f44384a07563ba7d1193bc9b601057e298a326bf21a67c0a26be8",
+      "scripts/maintenance-qr-production-regression.cjs": "67215318c11be80ee16458d40d1a41795359cce5c513044add1b25d30774e1e1",
       "scripts/maintenance-qr-shell-regression.cjs": "dc3fcccd21d54a2575568f9907e1f85988e1f615fe683dd4e5a9acbaa6b9786c",
       "scripts/maintenance-qr-sql-regression.cjs": "bc3eceae5fda5f639b64f51a39ca7acd6355dad52ed1f665a116e5c1a6104b06",
       "scripts/ocr-canonical-object.cjs": "56fc82d9392d86ae644b3925823210875519e3398d1e9cf4d374a993bfa59970",
@@ -353,7 +353,7 @@
       "src/app/api/recurring-invoices/run/route.ts": "07ed01bd9655b005b44944fba4b6a1b70da686b4466d2d059f40b5b7d04c59d9",
       "src/app/api/request-photos/route.ts": "d254bb4bfe2ad7786ca9b272405e24e066a9ccb3f6aaa652da7a512b8db3b8aa",
       "src/app/book/ApartmentTurnFields.tsx": "d138f9de0f32ca9db60bb74ecbeec2e1702a1f60c538061bee0df18c12011267",
-      "src/app/book/RequestForm.tsx": "43c0c24c74f8f7ca8eec1d71059c79b94ffba2a23817d17ec3cc5c53e40145bd",
+      "src/app/book/RequestForm.tsx": "5c7e21b5d9c8032328c6129f8dcba2a9794a64ac05485e920c4419a00ec30f6e",
       "src/app/book/RequestPhotos.tsx": "3dbd5c1d4aa426314030afedc2b12f5e2f48eb5e8fc62c28f50bfb47d4ddb054",
       "src/app/book/TurnstileChallenge.tsx": "31ed159bfeb127d5704811144e42e44b5aaed77973d874356d66196ca7c34795",
       "src/app/book/[slug]/page.tsx": "0584364828b5d64da346a9f17994472a22ea85d764dd682864a6053d5447348a",
@@ -650,7 +650,7 @@
       "src/app/maintenance-labels/MaintenanceLabels.tsx": "013f20ff2b6d8dd3d65f1ead637aae031b08977cbf8ddc3f4e69036b387e95b8",
       "src/app/maintenance-labels/page.tsx": "ff6f8671fd43bb4cc2d93958fcf6ac59ebc2a34f6b05b745c1e362e1446d0887",
       "src/app/maintenance-labels/workspace.css": "93da78e8cf3e53c57b0bd1c9bbd6fc4c16879676d13ffd8993fb417c98d4feb9",
-      "src/app/maintenance/[id]/page.tsx": "5d56f3e579d4131f862f816f6133a467126e809a0c7b173fc0f6ee21af9ce33e",
+      "src/app/maintenance/[id]/page.tsx": "b37c12a545b25ac02420638120c396462257c11f049f4f1b0555caf6dce101ba",
       "src/app/manifest.ts": "7a70a588bc52215af58477c2bcfc67c143742493f01048b35b4898d6732d8954",
       "src/app/new-request/page.tsx": "f8244b6732b3b16aa2da4b613f1d657681339b30e0f833cbe6a830d8f8cf211b",
       "src/app/page.tsx": "c74d3f4a58454be4823909b448874519aac13d8139e7cae216af61e928bfbc8f",
@@ -1732,8 +1732,8 @@
       "deploymentId": "59QprQczH6iqQLpMe8z5fd8yj6Rr"
     },
     "candidateReleaseId": "trimax-office-apartment-turn-20261029-rc1",
-    "applicationCommit": "edfe0cf58918551f5e18da37dfe8677abf196cc7",
-    "machineryCommit": "edfe0cf58918551f5e18da37dfe8677abf196cc7"
+    "applicationCommit": "362be4f92a4fe628c0a83a951c88ed566401d474",
+    "machineryCommit": "362be4f92a4fe628c0a83a951c88ed566401d474"
   },
   "contractRevision": {
     "id": "office-qr-apartment-turn",
