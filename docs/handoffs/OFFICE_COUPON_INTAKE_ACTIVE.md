@@ -1,3 +1,99 @@
+# COMPLETE — Office QR live and production acceptance verified
+
+Final 2026-10-29 UTC / 2026-10-28 Pacific. Status LIVE_VERIFIED.
+Production app https://app.rnlcreations.com source
+5f8ddc055ab617fa36942ac264e6ea31cdd9e634, deployment
+dpl_Amcg5JhtK2PZux3WJU6nTCCgHW5V.
+Common executable 6a5762177b254fea9056d07f1c89dc4963093433; bundle 53292dddc0dd7ee2cbbb5fdd2f37b816af4139f753b7586b46c5f2039c35c716.
+Website remains verified live 811b7b3. Existing coupon URLs unchanged and working.
+
+Full POST: PASS, 136/136 checks and 8/8 retained cases. Live database and runtime
+attestations PASS; no remaining deployment prerequisite. Report:
+%LOCALAPPDATA%/Trimax/release-gates/2026-10-29T05-34-26-987Z/gate-result.json.
+Exact source/project/Ready reverified after acceptance. Existing native supervisor
+running both validated workers from office-coupon-rc1, artifact 5f8ddc0. Both
+persisted synthetic diagnostic identities match release/source/bundle/database;
+legacy review and shadow completed, payment write capability false.
+
+Single reviewed office migration committed after all five canonical fingerprints
+and 47 existing public table values matched. Corrected search_path and reviewed
+raw CRLF transport; application/migration bytes unchanged. Initial stopped
+attempts were rolled back and old app/intake/workers verified before retries.
+Do not rerun migrations or successful tests. Source and expected manifest remain
+frozen; private deployment helper preserves raw reviewed SQL bytes. Catalog
+comparisons remain strict, explicitly qualified and pinned public,pg_catalog.
+
+## Permanent North Creek card
+
+https://rnlcreations.com/maintenance/876c0409-1d58-4633-80df-45c7db119a1a
+One active property QR; create/find repeated in actual owner UI returned same ID.
+Normal Menu → Maintenance QR Labels was clicked and verified. North Creek appears
+once; saved service address comes from existing client. Existing synthetic choice
+hidden without deleting assignment/history; legacy unit URL still HTTP200.
+Owner tab 14 left at live manager for printing. Print cards → select 5 copies.
+Actual hosted SVG decoded at 256 and 512 pixels. Physical print/iPhone scan not
+performed. No additional test submission is required merely to verify the scan.
+
+## Actual production browser acceptance
+
+Anonymous public form submitted Unit Z07, specific area Kitchen — synthetic
+release test, timing/urgency, invalid test contact, explicit NO DISPATCH/BILL/
+CUSTOMER CONTACT instructions. Reference REQ-30c07b8ac2094a91ac88780ffa0acd65,
+request e1e4090c-221b-47c9-b8d0-d3defd340803. One photo uploaded and completed.
+Readback BEFORE owner approval: correct property/trusted address/Z07, one owner
+notice, two provider push deliveries, zero automatic Queue. Owner opened actual
+notification link into exact request, saved Approved review, explicitly selected
+existing North Creek client, then clicked Match client & add to Queue.
+One Queue da8194a0-6701-460b-829b-e7c5e7bad9b3; correct property/Z07, no appointment,
+no new client, no invoice, no financial amounts/payments modified. Actual Queue
+page and synthetic instructions verified. Keep this labeled synthetic record for
+audit; it does not authorize real work. Do not dispatch, bill, or send messages.
+
+Final read-only acceptance verified unchanged invoice/line-item/client/payment-
+attachment/job-session/recurring records and all existing activity_logs rows.
+New authorized review/conversion history remains. Customer delivery count zero.
+Service-request SMS/email flags disabled on both projects; owner push remains on.
+Physical iPhone push receipt/scan not claimed. Owner session had expired after the
+long PRE run; one required sign-in restored it and all UI testing then passed.
+
+## Evidence / recovery
+
+OPS = %LOCALAPPDATA%/Trimax/invoice-lifecycle-20261026/office-coupon-20261028.
+OFFICE_QR_PRODUCTION_COMPLETE.json is final exact deployment/gate/acceptance receipt.
+production-office-browser-acceptance.json and production-office-after-owner.json
+retain actual UI and read-only results. Actual screenshots: production-office-
+label-final.png, production-office-owner-approved.png, production-office-queue.png,
+production-office-guest-receipt.png; original SVG production-office-label.svg.
+Screenshot clipping was ineffective; invalid clipped artifact removed. Use the
+full actual manager screenshot as proof. Do not claim simulated mobile viewport.
+
+Fresh pre-cutover snapshot 20261029T052241Z: all 88 restored table hashes matched,
+38 Storage objects / 64,697,988 bytes verified against DB count. Isolated restore
+had no network/ports/cron and is stopped. Later test adds one diagnostic capture
+and one request photo; preserve them and all records during app recovery.
+Backup/credential/Storage/crash evidence and historical rollback tags intact.
+
+Exact data-preserving recovery (only if required; not executed on healthy live app):
+1. Use protected Invoke-OfficeApprovedCutover.ps1 -Mode recovery-pause, which gates
+   on exact committed office schema and preserves current intake setting in a
+   separate recovery journal. Do NOT use baseline-only Mode pause after migration.
+2. worker-office-cutover.ps1 -Mode pause (identity-checked current supervisor).
+3. node OPS/promote-office.cjs recover, target recovery deployment
+   dpl_4ei3HzM1HQB2nrKi72X4Vf78BHHG,
+   https://trimax-8rcs2rcku-trimax-s-projects.vercel.app,
+   source 62a48eeeb02509ec7e601cb1453b9877cfd12e98. Canonical new-schema manifest;
+   unchanged RC4 executable 8b2838621a89bb88bc92f19d46d17d21b45e3bc2.
+4. worker-office-cutover.ps1 -Mode recover, exact clean office-coupon-recovery.
+5. Invoke-OfficeApprovedCutover.ps1 -Mode restore restores the separately saved
+   recovery intake state. Reverify alias/runtime and records afterward.
+Retain additive database schema and new requests/audit. Never downmigrate or restore
+old DB over current financial data. Revalidate source/current state before future
+recovery; existing journal collision deliberately stops repeated operations.
+
+Remaining owner-only action: print the cards and scan one on the physical iPhone.
+No release approval, login, provider activation, or further deployment is pending.
+
+---
 # LIVE Office QR cutover — final acceptance in progress
 
 2026-10-29 UTC / 2026-10-28 Pacific. Owner explicitly authorized continuation after
