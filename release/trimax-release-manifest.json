@@ -1,26 +1,26 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-qr-label-address-20261029-rc2",
+  "releaseId": "trimax-qr-label-address-20261029-rc3",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-10-30T06:43:37.914Z",
-  "releaseTimestamp": "2026-10-30T06:43:37.914Z",
+  "createdAt": "2026-10-30T06:45:16.444Z",
+  "releaseTimestamp": "2026-10-30T06:45:16.444Z",
   "baseProduction": {
     "commit": "e88425ecfac8b9634b65f1aec5113c3fca44ab9f",
     "vercelDeploymentId": "6ZoqebCngt1hQHFWHhJfhnwGAzTV"
   },
   "components": {
     "web": {
-      "commit": "b328258f816ef5b00e0dc41f9c0e7e3276a05ee4"
+      "commit": "55278fa1987c5062ee87c3903ed02d37770b68e7"
     },
     "legacy": {
-      "commit": "b328258f816ef5b00e0dc41f9c0e7e3276a05ee4"
+      "commit": "55278fa1987c5062ee87c3903ed02d37770b68e7"
     },
     "v2-shadow": {
-      "commit": "b328258f816ef5b00e0dc41f9c0e7e3276a05ee4"
+      "commit": "55278fa1987c5062ee87c3903ed02d37770b68e7"
     }
   },
   "sourceBundle": {
-    "sha256": "dd8c242d886edc1b0eb5e4e05541fdecd1cc265c8d36da8fca4061b228974ea6",
+    "sha256": "336406e8a72441d60dbc561b3253993a5e826bf746fec070a5af48fdaeb589fb",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -82,7 +82,7 @@
       "scripts/maintenance-label-address-regression.cjs": "e61499511bedf3b5210554f5a09138fb9da3e09b05f27a178be9985c45fa9ca8",
       "scripts/maintenance-qr-image-regression.cjs": "2257778c645174e463c84e409d63757377cb487cd5378d15103419bae9a4713e",
       "scripts/maintenance-qr-production-regression.cjs": "67215318c11be80ee16458d40d1a41795359cce5c513044add1b25d30774e1e1",
-      "scripts/maintenance-qr-shell-regression.cjs": "dc3fcccd21d54a2575568f9907e1f85988e1f615fe683dd4e5a9acbaa6b9786c",
+      "scripts/maintenance-qr-shell-regression.cjs": "2349804c384877a7289b18ed86733d9b5c202099cf02616fb23d83fe05334097",
       "scripts/maintenance-qr-sql-regression.cjs": "bc3eceae5fda5f639b64f51a39ca7acd6355dad52ed1f665a116e5c1a6104b06",
       "scripts/ocr-canonical-object.cjs": "56fc82d9392d86ae644b3925823210875519e3398d1e9cf4d374a993bfa59970",
       "scripts/ocr-cold-pipeline-regression.cjs": "17c9df1d8990902cc10373a1c9d422b63d4c65e4ab2eabaf5a885e3bc122e538",
@@ -1726,9 +1726,9 @@
     "sha256": "bccc49970c7db9510b64204809cbb282c6d22d5f651708a9e7a7fede7a550bbc"
   },
   "upgradeContext": {
-    "candidateReleaseId": "trimax-qr-label-address-20261029-rc2",
-    "applicationCommit": "b328258f816ef5b00e0dc41f9c0e7e3276a05ee4",
-    "machineryCommit": "b328258f816ef5b00e0dc41f9c0e7e3276a05ee4",
+    "candidateReleaseId": "trimax-qr-label-address-20261029-rc3",
+    "applicationCommit": "55278fa1987c5062ee87c3903ed02d37770b68e7",
+    "machineryCommit": "55278fa1987c5062ee87c3903ed02d37770b68e7",
     "currentProductionRelease": {
       "manifestCommit": "e88425ecfac8b9634b65f1aec5113c3fca44ab9f",
       "manifestDigest": "737ec3e38b5c1ea84ef81d972e5accd556da349ec5d8678b28b9347312e687e0",
