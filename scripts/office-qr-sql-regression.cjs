@@ -29,6 +29,7 @@ try{
  await db.exec(fs.readFileSync('supabase/migrations/20261028_property_office_qr.sql','utf8'));
  await db.exec(`alter table queue_items add column paint_type text,add column unit_layout text,add column wall_paint_color text,add column flooring text,add column smoked_in boolean,add column primer_requested boolean,add column prior_renovation boolean,add column prior_renovation_details text,add column renovation_needed boolean,add column renovation_needed_details text,add column move_out_date date,add column ready_date date,add column priority_order integer;`);
  await db.exec(fs.readFileSync('supabase/migrations/20261029_office_qr_apartment_turn.sql','utf8'));
+ await db.exec(fs.readFileSync('supabase/migrations/20261030_office_turn_submitter_contact.sql','utf8'));
  await db.query('update public_scheduling_settings set enabled=true where business_id=$1',[business]);
  const manage=(bid=business,aid=assignment,unit='A-12')=>db.query('select trimax_manage_maintenance_qr($1,$2,$3,$4) r',[bid,aid,unit,'Synthetic property address']);
  await fail(()=>as(manager,()=>manage()),/Not authorized/);
@@ -102,6 +103,20 @@ try{
  await db.exec('reset role');await db.query('update maintenance_qr_labels set active=true where id=$1',[label]);await db.exec('set role service_role');
  await fail(()=>publicSubmit('turn-fixed-unit-denied',{...publicPayload,apartmentTurn:turn}),/Office QR/);
  await db.exec('reset role');await db.query('update maintenance_qr_labels set active=false where id=$1',[label]);
+ // Anonymous Office turns accept no personal contact; ordinary customer validation remains strict.
+ await db.exec('set role service_role');
+ await fail(()=>submitOffice('turn-empty-name-reject',{...turnPayload,customerName:'   ',phone:'',email:''}),/Invalid request fields/);
+ await fail(()=>submitOffice('ordinary-no-contact-01',{...publicPayload,unit:'Z07',phone:'',email:''}),/Email required/);
+ await db.exec('reset role');
+ eq((await db.query('select phone from public_service_requests where id=$1',[turnResult.id])).rows[0].phone,'');
+ await db.query("update clients set email='office@example.invalid',phone='4255550100' where id=$1",[client]);
+ await db.exec('set role service_role');
+ const officeContact=(await submitOffice('turn-office-contact-01',{...turnPayload,customerName:'Synthetic employee',phone:'9999999999',email:'personal@example.invalid'})).rows[0].r;
+ eq((await submitOffice('turn-office-contact-01',{...turnPayload,customerName:'Synthetic employee',phone:'9999999999',email:'personal@example.invalid'})).rows[0].r,officeContact);
+ await db.exec('reset role');
+ const oc=(await db.query('select * from public_service_requests where id=$1',[officeContact.id])).rows[0];
+ eq(oc.customer_name,'Synthetic employee');eq(oc.email,'office@example.invalid');eq(oc.phone,'4255550100');eq(oc.integration_references.submittedBy,'Synthetic employee');eq(oc.integration_references.submitterIdentity,'self-reported');eq(oc.integration_references.followUpContactSource,'saved-property-office');
+ for(const role of ['anon','authenticated','service_role','trimax_scheduling_web','trimax_scheduling_intake']){await db.exec('set role '+role);await fail(()=>db.query('select trimax_submit_office_turn_request($1,$2,$3,$4)',['test',JSON.stringify(publicPayload),'a'.repeat(64),'b'.repeat(64)]),/permission/);await db.exec('reset role');}
  const turnRow=(await db.query('select * from public_service_requests where id=$1',[turnResult.id])).rows[0];
  eq(turnRow.integration_references.apartmentTurn,turn);eq(turnRow.status,'pending_confirmation');eq(turnRow.upload_capability_hash,'a'.repeat(64));eq(turnRow.customer_notes,'Synthetic access instructions');eq(turnRow.integration_references.propertyUnit,'Z07');
  eq((await db.query('select count(*)::int n from queue_items where source_request_id=$1',[turnResult.id])).rows[0].n,0);
@@ -132,4 +147,5 @@ try{
  for(const role of ['anon','authenticated','service_role']){await db.exec('set role '+role);await fail(()=>db.query('select * from trimax_qr_property_choices($1)',[business]),/permission/);await db.exec('reset role');}
  console.log('PASS '+checks+' office and fixed-unit QR SQL checks: saved address, grouped assignments, owner gates, unit/area validation, replay rejection, notification, approval-only Queue location, manager permissions, replacement, fixture hiding, private helpers. Synthetic local database only.');
  }finally{await db.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
+
 

@@ -9,9 +9,9 @@ export function listPublicBusinesses() { return [structuredClone(initial)]; }
 export type ServiceRequestInput = {requestTypeId:string;customerName:string;phone:string;email:string;preferredContact:'phone'|'email'|'sms';address:string;description:string;preferredDate:string;timeWindowId:string;flexibility:'flexible'|'preferred'|'fixed';urgency:'routine'|'soon'|'time_sensitive'|'urgent';notes:string;consent:boolean;smsConsent?:boolean;smsDisclosureVersion?:string;uploadCapabilityHash?:string;website?:string;promotionCode?:string};
 export type RequestStatus = 'pending_confirmation' | 'reviewing' | 'approved' | 'needs_information' | 'rejected' | 'cancelled';
 export type RequestActivity = {id:string;at:string;actor:string;event:string;from?:RequestStatus;to?:RequestStatus;note?:string};
-export type PublicServiceRequest = ServiceRequestInput & {id:string;businessId:string;businessSlug:string;reference:string;status:RequestStatus;revision?:number;activity?:RequestActivity[];submittedAt:string;source:'public-web';internalNotes:string;confirmationStatus:'unconfirmed';notificationStatus:'not_configured';propertyName?:string;unit?:string;specificArea?:string;apartmentTurn?:import('../apartmentTurn').ApartmentTurn};
+export type PublicServiceRequest = ServiceRequestInput & {id:string;businessId:string;businessSlug:string;reference:string;status:RequestStatus;revision?:number;activity?:RequestActivity[];submittedAt:string;source:'public-web';internalNotes:string;confirmationStatus:'unconfirmed';notificationStatus:'not_configured';submitterIdentity?:'self-reported';followUpContactSource?:string;propertyName?:string;unit?:string;specificArea?:string;apartmentTurn?:import('../apartmentTurn').ApartmentTurn};
 export type ValidationResult = {ok:true;value:ServiceRequestInput}|{ok:false;fields:Record<string,string>};
-export function validateRequest(input:unknown,business:PublicBusiness,now=new Date()):ValidationResult {
+export function validateRequest(input:unknown,business:PublicBusiness,now=new Date(),options:{officeTurn?:boolean}={}):ValidationResult {
  const data = input && typeof input==='object' && !Array.isArray(input) ? input as Record<string,unknown> : {};
  const fields:Record<string,string>={};
  const read=(key:string,max:number,required=true)=>{const raw=data[key];if(typeof raw!=='string'){if(required)fields[key]='This field is required.';return '';}const value=raw.trim().replace(/\r\n/g,'\n');if((required&&!value)||value.length>max||/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(value))fields[key]=`Enter ${required?'1–':''}${max} characters or fewer.`;return value;};
@@ -27,8 +27,8 @@ export function validateRequest(input:unknown,business:PublicBusiness,now=new Da
  if(!['phone','email','sms'].includes(value.preferredContact))fields.preferredContact='Choose a contact method.';
  if(value.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.email))fields.email='Enter a valid email address.';
  if(value.phone&&(!/^\+?[\d () .-]{7,40}$/.test(value.phone)||value.phone.replace(/\D/g,'').length<7))fields.phone='Enter a valid phone number.';
- if(value.preferredContact==='email'&&!value.email)fields.email='Email is required for your contact preference.';
- if(['phone','sms'].includes(value.preferredContact)&&value.phone.replace(/\D/g,'').length<7)fields.phone='Phone is required for your contact preference.';
+ if(!options.officeTurn&&value.preferredContact==='email'&&!value.email)fields.email='Email is required for your contact preference.';
+ if(!options.officeTurn&&['phone','sms'].includes(value.preferredContact)&&value.phone.replace(/\D/g,'').length<7)fields.phone='Phone is required for your contact preference.';
  if(!['flexible','preferred','fixed'].includes(value.flexibility))fields.flexibility='Choose your flexibility.';
  if(!['routine','soon','time_sensitive','urgent'].includes(value.urgency))fields.urgency='Choose an urgency.';
  if(!value.consent)fields.consent='Please agree to be contacted about this request.';
