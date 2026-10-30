@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- Actual QR view composition and print behavior. */
 const assert=require('node:assert/strict'),fs=require('node:fs'),ts=require('typescript'),React=require('react'),{create,act}=require('react-test-renderer');
 global.IS_REACT_ACT_ENVIRONMENT=true;
-function load(file,deps){const m={exports:{}};new Function('require','module','exports',ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022}}).outputText)(n=>deps[n]??require(n),m,m.exports);return m.exports.default;}
+function loadModule(file,deps){const path=require('node:path'),m={exports:{}};const request=n=>{if(Object.hasOwn(deps,n))return deps[n];if(n.startsWith('.')){const base=path.resolve(path.dirname(file),n),target=[base,base+'.ts',base+'.tsx'].find(p=>fs.existsSync(p)&&fs.statSync(p).isFile());if(target)return loadModule(target,deps);}return require(n);};new Function('require','module','exports',ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022}}).outputText)(request,m,m.exports);return m.exports;}
+function load(file,deps){return loadModule(file,deps).default;}
+
 const Shell=()=>null,View=()=>null;
 const Page=load('src/app/maintenance-labels/page.tsx',{'../components/AppShell':{default:Shell},'./MaintenanceLabels':{default:View},'./workspace.css':{}});
 const page=Page();assert.equal(page.type,Shell);assert.equal(page.props.children.type,View);assert.equal(page.props.children.props.backLabel,'Back to Dashboard');
