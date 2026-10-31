@@ -12,10 +12,11 @@ const roles=load('src/app/lib/rolePermissions.ts');
 assert.equal(roles.canAccessNavItem('owner','maintenance_qr'),true);assert.equal(roles.canAccessNavItem('admin','maintenance_qr'),true);assert.equal(roles.canAccessNavItem('property_manager','maintenance_qr'),false);assert.equal(roles.canAccessNavItem('technician','maintenance_qr'),false);
 const domain=load('src/app/lib/publicScheduling/domain.ts',{'./promotions.ts':promotions,'../communications/consent.ts':load('src/app/lib/communications/consent.ts')});
 const business=domain.getPublicBusiness('rnl-creations');
+const validate=value=>domain.validateRequest(value,business,new Date('2026-10-26T12:00:00Z')); // Frozen fixture date; production clock remains real.
 const input={requestTypeId:'repair',customerName:'Synthetic acceptance',phone:'4255550100',email:'acceptance@example.invalid',preferredContact:'email',address:'Synthetic address',description:'Synthetic request do not dispatch',preferredDate:'2026-10-30',timeWindowId:'morning',flexibility:'flexible',urgency:'routine',notes:'Owner review only',consent:true,promotionCode:'WINTER25'};
-const valid=domain.validateRequest(input,business);assert.equal(valid.ok,true);assert.ok(valid.value.notes.includes('WINTER25'));assert.ok(!('promotionCode' in valid.value));assert.equal(domain.validateRequest(valid.value,business).value.notes,valid.value.notes);
-assert.equal(domain.validateRequest({...input,promotionCode:'unapproved'},business).ok,false);
-assert.equal(domain.validateRequest({...input,notes:'x'.repeat(2000)},business).ok,false);
+const valid=validate(input);assert.equal(valid.ok,true);assert.ok(valid.value.notes.includes('WINTER25'));assert.ok(!('promotionCode' in valid.value));assert.equal(validate(valid.value).value.notes,valid.value.notes);
+assert.equal(validate({...input,promotionCode:'unapproved'}).ok,false);
+assert.equal(validate({...input,notes:'x'.repeat(2000)}).ok,false);
 let submitted;
 const Form=load('src/app/book/RequestForm.tsx',{'../lib/communications/consent':{},'../lib/publicScheduling/promotions':promotions,'./ApartmentTurnFields':{default:()=>null},'../components/ApartmentTurnSummary':{default:()=>null},'../lib/apartmentTurn':{},'./RequestPhotos':{default:()=>null},'../lib/requestPhotos/clientCapability':{},'./TurnstileChallenge':{default:()=>null}}).default;
 global.requestAnimationFrame=f=>f();global.fetch=async(url,options)=>{submitted=JSON.parse(options.body);return {ok:true,json:async()=>({request:{id:'synthetic',reference:'SYNTHETIC',status:'pending_confirmation',submittedAt:new Date().toISOString()}})}};

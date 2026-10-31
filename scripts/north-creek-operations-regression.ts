@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {queueTimingBadge} from '../src/app/lib/queueTiming.ts';
 import {readFileSync} from 'node:fs';
 import {classifyOperation,businessDate,type OperationJob} from '../src/app/lib/northCreekOperations.ts';
 import {syntheticBusinessId,verifiedSyntheticRequests,isVerifiedSyntheticRequest,isVerifiedSyntheticQueue} from '../src/app/lib/verifiedSyntheticRequests.ts';
@@ -22,6 +23,8 @@ assert.ok(classify({ready_date:'2026-11-06',projected_completion_date:'2026-11-0
 assert.deepEqual(classify({completed_date:'2026-10-29',ready_date:'2026-10-20'}).groups,['Recently completed']);
 assert.deepEqual(classify({status:'Completed'}).groups,['Earlier completion / date unknown']);
 assert.deepEqual(classify({completed_date:'2026-09-29'}).groups,['Earlier completion / date unknown']);
+for(const status of ['Paid','Invoiced'])assert.equal(queueTimingBadge({status,ready_date:'2099-01-01',completed_date:null}),'On Track');
+assert.equal(queueTimingBadge({status:'Paid',ready_date:'2099-01-01',completed_date:'2098-12-31'}),'Completed On Time');
 assert.equal(verifiedSyntheticRequests.length,8);
 for(const row of verifiedSyntheticRequests){assert.equal(isVerifiedSyntheticRequest(syntheticBusinessId,row.id),true);assert.equal(isVerifiedSyntheticRequest('another-business',row.id),false);if('queueId'in row){assert.equal(isVerifiedSyntheticQueue(syntheticBusinessId,row.queueId),true);assert.equal(isVerifiedSyntheticQueue('another-business',row.queueId),false);}}
 assert.equal(isVerifiedSyntheticRequest(syntheticBusinessId,'d8bb05a7-df04-4669-bcf8-6179a9795d1f'),false);
