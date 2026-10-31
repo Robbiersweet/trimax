@@ -2,25 +2,25 @@
   "schemaVersion": 1,
   "releaseId": "trimax-north-creek-operations-20261030-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-10-31T06:55:56.401Z",
-  "releaseTimestamp": "2026-10-31T06:55:56.401Z",
+  "createdAt": "2026-10-31T07:32:32.256Z",
+  "releaseTimestamp": "2026-10-31T07:32:32.256Z",
   "baseProduction": {
     "commit": "06b82c4a335d722b9205ab0b6480b0d0f1673cb7",
     "vercelDeploymentId": "5cD4MMZiQVEJmdP29AHneLboZxnJ"
   },
   "components": {
     "web": {
-      "commit": "bfc149927cea1223878ad3a7dc08a59000c1cc28"
+      "commit": "889c18fa644eb55e9821e307860f92c396ea5f98"
     },
     "legacy": {
-      "commit": "bfc149927cea1223878ad3a7dc08a59000c1cc28"
+      "commit": "889c18fa644eb55e9821e307860f92c396ea5f98"
     },
     "v2-shadow": {
-      "commit": "bfc149927cea1223878ad3a7dc08a59000c1cc28"
+      "commit": "889c18fa644eb55e9821e307860f92c396ea5f98"
     }
   },
   "sourceBundle": {
-    "sha256": "57299fe91b47b24b52f931d64be1cae3824d1597df8c6bdad6cc03dea80ada83",
+    "sha256": "647ed7f00a058fc876de503df9665efc4a8e3f1dd130b96bbc401a595513c59d",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -84,7 +84,7 @@
       "scripts/maintenance-qr-production-regression.cjs": "67215318c11be80ee16458d40d1a41795359cce5c513044add1b25d30774e1e1",
       "scripts/maintenance-qr-shell-regression.cjs": "2349804c384877a7289b18ed86733d9b5c202099cf02616fb23d83fe05334097",
       "scripts/maintenance-qr-sql-regression.cjs": "bc3eceae5fda5f639b64f51a39ca7acd6355dad52ed1f665a116e5c1a6104b06",
-      "scripts/north-creek-operations-regression.ts": "7100cc562fa8e3170937ffe631e6e0ace5ab38280c17664f9ba845564f9e0c61",
+      "scripts/north-creek-operations-regression.ts": "4ef9657faf4d162f294f7c6451205467e186e5c45a192fe157717a3864a73e10",
       "scripts/north-creek-operations-ui-regression.cjs": "e3b6d728ee697df18a8e5d8ccc38336477e17280c455884ab98381aa69f0cc72",
       "scripts/ocr-canonical-object.cjs": "56fc82d9392d86ae644b3925823210875519e3398d1e9cf4d374a993bfa59970",
       "scripts/ocr-cold-pipeline-regression.cjs": "17c9df1d8990902cc10373a1c9d422b63d4c65e4ab2eabaf5a885e3bc122e538",
@@ -231,7 +231,7 @@
       "scripts/ocr-v2/visuals.cjs": "5fa713cf3714c9bd082cbc8859953e3d6a09a1ffd95dc7742b32c0fc7425ece6",
       "scripts/ocr-worker-health.cjs": "abd54cc6766521ac7909fee66840b56abc1250210f2ed31d9dbf20b7376ffa37",
       "scripts/ocr-worker-supervisor.cjs": "fb8237456894ab1f8c488ede113f1585970f002242c2fa39a31eba2d7a8c6626",
-      "scripts/office-coupon-regression.cjs": "133ece9d75d0290216e2f2e693118e41f6d5cc78db8fe67d05d9a11993058df6",
+      "scripts/office-coupon-regression.cjs": "9336eadc65dca0f3816f5b841fec9f1202140fb31cb7d22d4d46f04f1636859b",
       "scripts/office-qr-sql-regression.cjs": "00c3333acbd7301c7b82384087c72e5ae5f9e18451d7628416c5966dd9c748d8",
       "scripts/owner-server-auth-regression.ts": "b295a70ecdc6e291e2a474afbd900075334cb940ca57bb191a9e41f67311f273",
       "scripts/payment-application-regression.ts": "5c225a32885471d7aa93afe306e28c911fc1c81158361222f11da1f2e8bd62f2",
@@ -307,7 +307,7 @@
       "scripts/saved-remittance-reopen-regression.cjs": "0752f1eee945f3304bc93795ca39a952cdf5d91d8fc54bef0e72512595f40522",
       "scripts/scheduler-provisioning-regression.cjs": "f96e0dc2543c0329d5538759285fe53cd599da41c11418127a29978c107cf126",
       "scripts/scheduling-notifications-sql-regression.cjs": "50c29b03e3d451046ca531b73471129413b7624a476046fb5c7ba9f6763cb1a8",
-      "scripts/scheduling-notifications-ui-regression.cjs": "276a63d5a9a90f02e7cebfb0dc0fba140bf2d778d1868179a7f1e2fcd6cf2bfb",
+      "scripts/scheduling-notifications-ui-regression.cjs": "e7a086d3451bf44ad4e8094ff92d55ead0109b5143a88e2bdccba77848f78e7e",
       "scripts/second-physical-remittance-regression.cjs": "8922598f64df58332e5bd6eda2c3acfc1dbe6c2b7f6c8d04cade9e9efe4e0417",
       "scripts/service-duplicate-cleanup-regression.ts": "cb12dbb4a373decfac6e47f30fadc6aeae871466944405724e8197b69c46586c",
       "scripts/service-workflow-catalog-replay.cjs": "64a8339195e41616a5b466a019f1b620cd4bcf251e6adbd740be3e8c156400fb",
@@ -1732,15 +1732,15 @@
     "sha256": "bccc49970c7db9510b64204809cbb282c6d22d5f651708a9e7a7fede7a550bbc"
   },
   "upgradeContext": {
-    "candidateReleaseId": "trimax-office-turn-contact-20261030-rc1",
-    "applicationCommit": "7e2e3653dc8dd668f02b9c0ea5cdca0c362e0d9a",
-    "machineryCommit": "7e2e3653dc8dd668f02b9c0ea5cdca0c362e0d9a",
+    "candidateReleaseId": "trimax-north-creek-operations-20261030-rc1",
+    "applicationCommit": "889c18fa644eb55e9821e307860f92c396ea5f98",
+    "machineryCommit": "889c18fa644eb55e9821e307860f92c396ea5f98",
     "currentProductionRelease": {
-      "manifestCommit": "85674900dde64df02c30d8fe9f5ab53eb3c1a49a",
-      "manifestDigest": "593797ddd09c0f6c1af40a5c738b2b44c613ce11b66796ceab711defa4482cc0",
-      "releaseId": "trimax-qr-label-address-20261029-rc4",
-      "deploymentCommit": "85674900dde64df02c30d8fe9f5ab53eb3c1a49a",
-      "deploymentId": "N8UYWBvxb7UasDbn76Nu37emDrBm"
+      "manifestCommit": "06b82c4a335d722b9205ab0b6480b0d0f1673cb7",
+      "manifestDigest": "36b4c10f7394adc9a87feb2e999eea2bf362290272eb78188ca98697b116e902",
+      "releaseId": "trimax-office-turn-contact-20261030-rc1",
+      "deploymentCommit": "06b82c4a335d722b9205ab0b6480b0d0f1673cb7",
+      "deploymentId": "5cD4MMZiQVEJmdP29AHneLboZxnJ"
     }
   },
   "contractRevision": {
