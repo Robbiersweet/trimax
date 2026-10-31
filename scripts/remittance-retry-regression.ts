@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import "./remittance-grouped-total-regression.ts";
 import { findRemittanceMatches, selectRemittanceHeaderEvidence, type StructuredRemittanceRowEvidence } from "../src/app/lib/remittanceMatching.ts";
 
 // Synthetic reconstruction of the reported physical evidence, not a captured OCR payload.

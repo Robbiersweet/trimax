@@ -494,8 +494,10 @@ function totalEvidenceScore(
 }
 
 function explicitTotalEvidenceCandidates(text: string): ExplicitTotalEvidenceCandidate[] {
+  // OCR may separate a thousands comma from its complete three-digit group.
+  // Admit that spacing without supplying missing digits or joining partial totals.
   const totalPattern =
-    /\b(?:GRAND\s+TOTAL|CHECK\s*TOTAL|PAYMENT\s*TOTAL|PAYMENT\s*AMOUNT|AMOUNT\s*ENCLOSED|AMOUNT\s*PAID|CHECK\s*AMOUNT|TOTAL)\b\s*:?\s*[^\d$]{0,48}\$?\s*((?:\d{1,3}(?:[,\s]\d{3})+|\d+)(?:\s*[,.]\s*\d{2}|\.\d{2}))/gi;
+    /\b(?:GRAND\s+TOTAL|CHECK\s*TOTAL|PAYMENT\s*TOTAL|PAYMENT\s*AMOUNT|AMOUNT\s*ENCLOSED|AMOUNT\s*PAID|CHECK\s*AMOUNT|TOTAL)\b\s*:?\s*[^\d$]{0,48}\$?\s*((?:\d{1,3}(?:[,\s][ \t]*\d{3})+|\d+)(?:\s*[,.]\s*\d{2}|\.\d{2}))/gi;
 
   return Array.from(text.matchAll(totalPattern)).reduce<
     ExplicitTotalEvidenceCandidate[]
