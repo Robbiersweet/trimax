@@ -1,26 +1,26 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-office-turn-contact-20261030-rc1",
+  "releaseId": "trimax-north-creek-operations-20261030-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-10-30T16:32:03.985Z",
-  "releaseTimestamp": "2026-10-30T16:32:03.985Z",
+  "createdAt": "2026-10-31T06:55:56.401Z",
+  "releaseTimestamp": "2026-10-31T06:55:56.401Z",
   "baseProduction": {
-    "commit": "85674900dde64df02c30d8fe9f5ab53eb3c1a49a",
-    "vercelDeploymentId": "N8UYWBvxb7UasDbn76Nu37emDrBm"
+    "commit": "06b82c4a335d722b9205ab0b6480b0d0f1673cb7",
+    "vercelDeploymentId": "5cD4MMZiQVEJmdP29AHneLboZxnJ"
   },
   "components": {
     "web": {
-      "commit": "7e2e3653dc8dd668f02b9c0ea5cdca0c362e0d9a"
+      "commit": "bfc149927cea1223878ad3a7dc08a59000c1cc28"
     },
     "legacy": {
-      "commit": "7e2e3653dc8dd668f02b9c0ea5cdca0c362e0d9a"
+      "commit": "bfc149927cea1223878ad3a7dc08a59000c1cc28"
     },
     "v2-shadow": {
-      "commit": "7e2e3653dc8dd668f02b9c0ea5cdca0c362e0d9a"
+      "commit": "bfc149927cea1223878ad3a7dc08a59000c1cc28"
     }
   },
   "sourceBundle": {
-    "sha256": "0651874f05a3a1195a2928ec77966b42fe56071614bd5e482cbe8156db68cb49",
+    "sha256": "57299fe91b47b24b52f931d64be1cae3824d1597df8c6bdad6cc03dea80ada83",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -84,6 +84,8 @@
       "scripts/maintenance-qr-production-regression.cjs": "67215318c11be80ee16458d40d1a41795359cce5c513044add1b25d30774e1e1",
       "scripts/maintenance-qr-shell-regression.cjs": "2349804c384877a7289b18ed86733d9b5c202099cf02616fb23d83fe05334097",
       "scripts/maintenance-qr-sql-regression.cjs": "bc3eceae5fda5f639b64f51a39ca7acd6355dad52ed1f665a116e5c1a6104b06",
+      "scripts/north-creek-operations-regression.ts": "7100cc562fa8e3170937ffe631e6e0ace5ab38280c17664f9ba845564f9e0c61",
+      "scripts/north-creek-operations-ui-regression.cjs": "e3b6d728ee697df18a8e5d8ccc38336477e17280c455884ab98381aa69f0cc72",
       "scripts/ocr-canonical-object.cjs": "56fc82d9392d86ae644b3925823210875519e3398d1e9cf4d374a993bfa59970",
       "scripts/ocr-cold-pipeline-regression.cjs": "17c9df1d8990902cc10373a1c9d422b63d4c65e4ab2eabaf5a885e3bc122e538",
       "scripts/ocr-debug-queue-regression.cjs": "32205f4b926e1b0c7d5a628499a3c69051b1002d80a0149488018a9b971e1281",
@@ -323,7 +325,7 @@
       "src/app/admin/ocr-attempts/[attemptId]/page.tsx": "47b7930a27ffcec419ae723006d4ef899aa4e22f15e36d0bc34cf493f4dc5253",
       "src/app/admin/ocr-attempts/page.tsx": "731169273760d65bdc574d7150e90e34178a0c7cac1b4e33dd550ee2fc6df8b8",
       "src/app/admin/service-requests/components/OwnerRequestPhotos.tsx": "492f20d4a74f892228859e72c691d7cc7f91b882ae1307d784d28c9280234748",
-      "src/app/admin/service-requests/components/OwnerWorkspace.tsx": "41fabf1993639157fc0a8b2b616635ae8688dea7551d0649ff86fbe0f952a6e2",
+      "src/app/admin/service-requests/components/OwnerWorkspace.tsx": "ae7239ec21885f7470d96308e3714b9aece5fd018c19bdc756b0a0456c7ecfd3",
       "src/app/admin/service-requests/components/WorkflowActions.tsx": "4a42de7aad15eb33e5a31fd928d26db6d2582b5f96665b68647419ee3f5c535d",
       "src/app/admin/service-requests/components/owner.css": "92045317f886adee59b75b35afa6ec6f589ad1acd1f82f56d29a6e93aab2e589",
       "src/app/admin/service-requests/page.tsx": "bcdac0b54194809d40cc0bb6f79e8581ed0062de2b9160f06dbe609f3270a152",
@@ -432,7 +434,7 @@
       "src/app/components/RoleVisible.tsx": "69e7eb4de7cacee6a5f0be80545fdb57d1e48a96988178711d761eee57e9bef5",
       "src/app/components/RouteAccessBoundary.tsx": "59dcc979387329a6be84b757edf82f7099831adaf7d94e5b412e4d02ca029949",
       "src/app/components/SavedRemittancePaymentView.tsx": "1284ecbcf3b37102031331f3081b7418e4beb52fcd3d5d651d20ae41293fb6e4",
-      "src/app/components/SchedulingNotifications.tsx": "acc227ad4bc577bd5acd830c6a9baf9b34ae45ec9c5c2d74ac83ba4898081ccb",
+      "src/app/components/SchedulingNotifications.tsx": "4efa99f2d59101b2612b110de33586058ba40377300ae8626fecb92e8c0bf2f6",
       "src/app/components/SecureSessionBadge.tsx": "43f3538d53c576802a1cc851ca77a84a43144127d959ac44a673f9fc874ea592",
       "src/app/components/SplitInvoicePlanner.tsx": "0f44da82ecfa28d220f403c60d5e9dd361183ad73cca3a468fef580a00623edc",
       "src/app/components/SplitInvoiceRelationshipDisplay.tsx": "3b7cd9bebd733e2b3b6eedf65a33a7ab2a23eca2f11b303fa7da46169df025e7",
@@ -519,6 +521,7 @@
       "src/app/lib/maintenanceQrHandler.ts": "952ad9ffcde8f359273fcb9164f47b7a6c9212276037baea9749a3eeb7508dc3",
       "src/app/lib/maintenanceQrLocation.ts": "e93da208b38af4fe708c93439ec137ff9ae55d58b172058c0fde1ecac5d8f914",
       "src/app/lib/money.ts": "2e7b2a456f1caa9ae06b08949e0dd71570d2f0ad791d92637846a50073888a52",
+      "src/app/lib/northCreekOperations.ts": "b3e165448d7b0cac17e0f6c8cd35c4483a2169991cd3d3cb6ffc4d261dfcd5b7",
       "src/app/lib/ocrCanonical.ts": "258aaa456b5ea1d3f73a0d655d05b04cc619577af4bbf4d845cff645a50a2978",
       "src/app/lib/ocrCanonicalClient.ts": "2059299a63282d4d749e213fe67d1abf3a3c85cda609e9a74bedfa528b7168a5",
       "src/app/lib/ocrCanonicalObject.ts": "597f21ab92a2c497023146cb99131706a34255fbcba3288e085ae70517514841",
@@ -617,7 +620,7 @@
       "src/app/lib/publicScheduling/workflow.ts": "78b914cae30a16366fb325fb6bc2b6d4bd82317b5141f76ea965a24656f5954f",
       "src/app/lib/publicScheduling/workflowRuntime.ts": "a162216d4fd73bd268ab46b1ae8ec6dbcc4e4fa78fbc36d35897a4b6c5db9e9c",
       "src/app/lib/queueAction.ts": "8b02f818d6cef91ccd70c454f3356c3fd197ebcaaf25668d392bdd73e6c7e8ec",
-      "src/app/lib/queueTiming.ts": "ae19f6d156c3c60ffad1877db3c0ed31b77c419d3b998f56d34d30d2d8772337",
+      "src/app/lib/queueTiming.ts": "74c8ee72d358135addec6dea5b34e0ba8cf220fa4c94d76b9693bc3fa46dc20d",
       "src/app/lib/queueTurnOptions.ts": "45a374378c48fdd011ed792bfd244478a45823f92cde24d56e7684521f50e9c7",
       "src/app/lib/remittanceAttempt.ts": "94abe4d319d650bc3bf0ffdae659e18b670bab92a3bf7531862b7ec523db1867",
       "src/app/lib/remittanceDeadline.ts": "83f38cdc157d34dc1b70ed89e612a6c2b682e4cc20f3bc15d7a97a1c7f1920e2",
@@ -647,6 +650,7 @@
       "src/app/lib/tbd.ts": "d355d3001455be4797b4d1575bc165db11309735a09c41e0eb3037224dc472e0",
       "src/app/lib/unitHistory.ts": "e5890af5c3776e123136e562d2fd9f8a99a2ac9449c68f8893f940c2fa9da9be",
       "src/app/lib/useRemittanceEvent.ts": "a7a4d74bf8e7dd957194830dff99cdc6af3a78e0eae869bd0dbc0e966039b8b2",
+      "src/app/lib/verifiedSyntheticRequests.ts": "a298bfd0c6dab332247529509b39c082f317fed246c600977f0965b51401d7e1",
       "src/app/lib/workspaceAccess.ts": "6d6334182d663536ac1123695bf2017f06373486cfa01ef54d0e72967d480b71",
       "src/app/login/page.tsx": "dd709a37f471db722b752c21226ee621099a615f3578b3d381745a8e11e3c37a",
       "src/app/maintenance-labels/MaintenanceLabels.tsx": "03d465b1996ec931eeb0c639ec3b75aea38caf4d444c949755f31974c3708f1d",
@@ -655,7 +659,7 @@
       "src/app/maintenance/[id]/page.tsx": "b37c12a545b25ac02420638120c396462257c11f049f4f1b0555caf6dce101ba",
       "src/app/manifest.ts": "7a70a588bc52215af58477c2bcfc67c143742493f01048b35b4898d6732d8954",
       "src/app/new-request/page.tsx": "f8244b6732b3b16aa2da4b613f1d657681339b30e0f833cbe6a830d8f8cf211b",
-      "src/app/page.tsx": "c74d3f4a58454be4823909b448874519aac13d8139e7cae216af61e928bfbc8f",
+      "src/app/page.tsx": "43444566ed07c394b072335bccbd54b343aaa92a1b95c2c30afb5bf5995bf290",
       "src/app/payments/page.tsx": "450b22fd468849a694fc88c24b327b3009ba39b3ba93cc3ab54a6b046fcd0c3c",
       "src/app/print.css": "fed798b5ee421adfad69102d91eeabb6a9e497a89ff39910e53c39de396df887",
       "src/app/profile/page.tsx": "d4004ca0abc6b078b20da89ad0662045b64d591c1beb6e61c6f477210fe850b1",
@@ -663,9 +667,10 @@
       "src/app/property-requests/page.tsx": "c8835402582e1519bd5c01b34384a455d056f465f9ab42889d3dd68f2a571e7b",
       "src/app/property-sales/loading.tsx": "8683cfb53dd71f0acc74d0636c29e1d0916e5093f5542f76eac61bb3bcb5b35f",
       "src/app/property-sales/page.tsx": "3957d22990d05992c9a3398fec3fe79f35c48284539aad324f4e3c89b82f52c7",
+      "src/app/queue/NorthCreekOperations.tsx": "50de03ea78cb11dd7c867bc7273d7b29c882b1b9a2f75c4fcb0f12595d5c584a",
       "src/app/queue/[unit]/edit/page.tsx": "cbdd57e5b8e88cbfc2624a510a24529b41723c50ce79850d58d29e637c868ce6",
       "src/app/queue/[unit]/page.tsx": "cc89faa6bf49a17e06bd5ac291fc006b1982a0a76199f494e8b54ec79aa89aec",
-      "src/app/queue/page.tsx": "082de09339f51dc9e93c2d4025290893bc83710af3045c74e68220e63db37bef",
+      "src/app/queue/page.tsx": "d1552a21454061f3b348e10a293898065a7a097c12914fbab44815b63a2ee086",
       "src/app/recurring-invoices/page.tsx": "2439da300f8d7f290d6d6588ad701596ed431ccdb08ffb74f49b1cc77a6d791a",
       "src/app/reports/page.tsx": "a50611261889780a7a5a7670471022da1715578011b9b16b31becb98e3fc4b98",
       "src/app/request-access/page.tsx": "79b3f1188970fe3c1078d1fbe6a9dfac9ba26cd99263cd2ad3c57722660090b2",
