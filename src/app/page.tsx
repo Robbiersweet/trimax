@@ -1,3 +1,4 @@
+import {isVerifiedSyntheticQueue} from './lib/verifiedSyntheticRequests';
 import { sumMoney as canonicalSumMoney } from "./lib/money.ts";
 import Link from "next/link";
 import AppShell from "./components/AppShell";
@@ -524,7 +525,7 @@ export default async function DashboardPage({
     }
 
     queueItems =
-      (queueData ?? []) as QueueItem[];
+      ((queueData ?? []) as QueueItem[]).filter(item=>!isVerifiedSyntheticQueue(selectedBusiness.id,item.id));
     invoices =
       (invoiceResponse.data ?? []) as Invoice[];
     activityLogs =
@@ -3593,6 +3594,7 @@ export default async function DashboardPage({
                 >
                   Open Queue
                 </Link>
+                <RoleVisible allow={["owner"]} businessSlug={selectedBusinessSlug}><Link className="inline-block rounded-xl border border-sky-400/30 px-4 py-3 text-sm font-bold text-sky-100" href={`/queue?business=${encodeURIComponent(selectedBusinessSlug)}&view=operations`}>North Creek operations →</Link></RoleVisible>
 
                 <Link
                   href={`/new-request?business=${selectedBusinessSlug}`}

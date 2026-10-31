@@ -1,0 +1,37 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {classifyOperation,businessDate,type OperationJob} from '../src/app/lib/northCreekOperations.ts';
+import {syntheticBusinessId,verifiedSyntheticRequests,isVerifiedSyntheticRequest,isVerifiedSyntheticQueue} from '../src/app/lib/verifiedSyntheticRequests.ts';
+const job:OperationJob={id:'fixture',unit:'TEST-01',status:'Pending Estimate',ready_date:null,completed_date:null};
+const classify=(fields:Partial<OperationJob>={},options={})=>classifyOperation({...job,...fields},{today:'2026-10-30',...options});
+assert.equal(businessDate(new Date('2026-10-31T02:00:00Z')),'2026-10-30');
+for(const status of ['Invoiced','Paid']){assert.equal(classify({status}).complete,false);assert.deepEqual(classify({status}).groups,['Other recorded work']);}
+assert.deepEqual(classify({}, {approved:true}).groups,['Approved, awaiting work']);
+assert.ok(classify({}, {active:true}).groups.includes('Underway'));
+assert.ok(classify({}, {worked:true}).groups.includes('Underway'));
+assert.ok(classify({progress_stage:'Painting Started'}).groups.includes('Underway'));
+assert.ok(!classify({progress_stage:'Not Started'}).groups.includes('Underway'));
+assert.ok(!classify({progress_stage:'Walked / Reviewed'}).groups.includes('Underway'));
+assert.ok(classify({progress_stage:'Blocked / Waiting'}).groups.includes('Blocked / waiting'));
+assert.ok(!classify({}, {worked:true}).groups.includes('Blocked / waiting'));
+for(const ready_date of ['2026-10-30','2026-11-06'])assert.ok(classify({ready_date}).groups.includes('Needed within 7 days'));
+assert.ok(!classify({ready_date:'2026-11-07'}).groups.includes('Needed within 7 days'));
+assert.ok(classify({ready_date:'2026-10-29'}).groups.includes('Overdue / delayed'));
+assert.ok(classify({delay_reason:'Waiting on maintenance'}).groups.includes('Overdue / delayed'));
+assert.ok(classify({ready_date:'2026-11-06',projected_completion_date:'2026-11-07'}).groups.includes('Overdue / delayed'));
+assert.deepEqual(classify({completed_date:'2026-10-29',ready_date:'2026-10-20'}).groups,['Recently completed']);
+assert.deepEqual(classify({status:'Completed'}).groups,['Earlier completion / date unknown']);
+assert.deepEqual(classify({completed_date:'2026-09-29'}).groups,['Earlier completion / date unknown']);
+assert.equal(verifiedSyntheticRequests.length,8);
+for(const row of verifiedSyntheticRequests){assert.equal(isVerifiedSyntheticRequest(syntheticBusinessId,row.id),true);assert.equal(isVerifiedSyntheticRequest('another-business',row.id),false);if('queueId'in row){assert.equal(isVerifiedSyntheticQueue(syntheticBusinessId,row.queueId),true);assert.equal(isVerifiedSyntheticQueue('another-business',row.queueId),false);}}
+assert.equal(isVerifiedSyntheticRequest(syntheticBusinessId,'d8bb05a7-df04-4669-bcf8-6179a9795d1f'),false);
+assert.equal(isVerifiedSyntheticRequest(syntheticBusinessId,'Synthetic Acceptance Only'),false);
+const source=readFileSync('src/app/queue/NorthCreekOperations.tsx','utf8');
+assert.ok(source.indexOf("row.role==='owner'")<source.indexOf("db.from('public_service_requests')"));
+assert.ok(!/service_role|SERVICE_ROLE|\.insert\(|\.update\(|\.delete\(/.test(source));
+assert.ok(!source.includes("from('invoices')"));
+assert.ok(source.includes(".eq('business_id',businessId)"));
+const notifications=readFileSync('src/app/components/SchedulingNotifications.tsx','utf8');
+assert.ok(notifications.indexOf("inboxQuery.not('request_id'")<notifications.indexOf('range(page*50'));
+assert.ok(notifications.includes("unreadQuery.not('request_id'"));
+console.log('PASS North Creek status/date/completion truth, exact scoped test IDs, owner-only read boundary and notification pagination');

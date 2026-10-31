@@ -1,3 +1,5 @@
+import NorthCreekOperations from './NorthCreekOperations';
+import {isVerifiedSyntheticQueue} from './../lib/verifiedSyntheticRequests';
 import { moneyFixed } from "../lib/money.ts";
 import { sumMoney as canonicalSumMoney } from "../lib/money.ts";
 import Link from "next/link";
@@ -428,6 +430,8 @@ export default async function QueuePage({
     view?: string;
     sort?: string;
     completed?: string;
+    tests?: string;
+    group?: string;
   }>;
 }) {
   const supabase = await createSupabaseServerClient();
@@ -469,6 +473,8 @@ export default async function QueuePage({
   }
 
   const selectedBusiness = businessData as Business | null;
+
+  if(resolvedSearchParams.view==='operations')return <AppShell><main className="mx-auto max-w-6xl space-y-4 p-4 text-white">{selectedBusiness?.id?<NorthCreekOperations businessId={selectedBusiness.id} businessSlug={businessSlug} group={resolvedSearchParams.group}/>:<p>Workspace unavailable.</p>}</main></AppShell>;
 
   let queueItems: QueueItemWithEstimate[] = [];
   let jobSessions: QueueJobSession[] = [];
@@ -540,7 +546,7 @@ export default async function QueuePage({
       );
     }
 
-    queueItems = (queueData ?? []) as QueueItemWithEstimate[];
+    queueItems = ((queueData ?? []) as QueueItemWithEstimate[]).filter(item=>resolvedSearchParams.tests==="1"||viewFilter==="history"||!isVerifiedSyntheticQueue(selectedBusiness.id,item.id));
     jobSessions = (jobSessionResponse.data ?? []) as QueueJobSession[];
     jobSessionBreakdowns =
       (jobBreakdownResponse.data ?? []) as QueueJobSessionBreakdown[];
@@ -1159,6 +1165,7 @@ export default async function QueuePage({
           </RoleVisible>
         </div>
 
+        <RoleVisible allow={['owner']} businessSlug={businessSlug}><Link className="inline-block rounded-xl border p-3" href={`/queue?business=${encodeURIComponent(businessSlug)}&view=operations`}>North Creek operations →</Link><Link className="ml-3 inline-block underline" href={`/queue?business=${encodeURIComponent(businessSlug)}${resolvedSearchParams.tests==="1"?"":"&tests=1"}`}>{resolvedSearchParams.tests==="1"?"Hide verified test Queue items":"Include verified test Queue items"}</Link></RoleVisible>
         {isPriorityPlannerView ? (
           <>
             {queueLoadMessage ? (

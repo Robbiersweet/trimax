@@ -51,7 +51,7 @@ function isComplete(item: TimingItem) {
   return (
     Boolean(item.completed_date) ||
     item.progress_stage === "Complete" ||
-    ["completed", "invoiced", "paid"].includes(status)
+    status === "completed"
   );
 }
 
