@@ -1,26 +1,26 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-north-creek-operations-20261030-rc1",
+  "releaseId": "trimax-remittance-grouped-total-20261031-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-10-31T07:32:32.256Z",
-  "releaseTimestamp": "2026-10-31T07:32:32.256Z",
+  "createdAt": "2026-10-31T22:23:51.190Z",
+  "releaseTimestamp": "2026-10-31T22:23:51.190Z",
   "baseProduction": {
-    "commit": "06b82c4a335d722b9205ab0b6480b0d0f1673cb7",
-    "vercelDeploymentId": "5cD4MMZiQVEJmdP29AHneLboZxnJ"
+    "commit": "e3812ce085baa52a3b13a9f80373637a24e13ac3",
+    "vercelDeploymentId": "5XCq2g9EwEuYneeAJ6EWpnzP5u7R"
   },
   "components": {
     "web": {
-      "commit": "889c18fa644eb55e9821e307860f92c396ea5f98"
+      "commit": "aebe4a9e50a51a840d2fe2d6a3a27a55c83614ca"
     },
     "legacy": {
-      "commit": "889c18fa644eb55e9821e307860f92c396ea5f98"
+      "commit": "aebe4a9e50a51a840d2fe2d6a3a27a55c83614ca"
     },
     "v2-shadow": {
-      "commit": "889c18fa644eb55e9821e307860f92c396ea5f98"
+      "commit": "aebe4a9e50a51a840d2fe2d6a3a27a55c83614ca"
     }
   },
   "sourceBundle": {
-    "sha256": "647ed7f00a058fc876de503df9665efc4a8e3f1dd130b96bbc401a595513c59d",
+    "sha256": "4d25664b4ffddd38707a7d6ce317a0d8e20865484c56bf041e2785b99983f04a",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -296,12 +296,13 @@
       "scripts/remittance-client-safety-regression.cjs": "63595f724d6c510def2821730d4b76e0d9c5bdd4c71c29f1fcf22dad5b8d8c60",
       "scripts/remittance-contract-regression.ts": "75e3bf300050abfcd6145eb5d912af9251fef904bc1c9be19c5bc5695d50cf77",
       "scripts/remittance-deadline-regression.cjs": "c55b3c02d5bd6fb8f8a41b36fe4202a2c8795bb5eb8562cf30d54a1f60f665f2",
+      "scripts/remittance-grouped-total-regression.ts": "13468a09e8c3bedf13a88b7917e8baf288e75a762354c887740f867f519fa6b0",
       "scripts/remittance-intake-regression.cjs": "fd9f8aff6fae7b1500fc62b985b6cd740ad027cfd856e6b2322a829a0282b5fa",
       "scripts/remittance-matching-regression.ts": "d20447b958fe5fe91dadf60608419850b870e956058d230b2d147d6c9a782c66",
       "scripts/remittance-ocr-fixture-regression.ts": "2e90a200e8de9d64212a8f56092f3ef4e00522f2751463b33c827cad45991fa0",
       "scripts/remittance-photo-corpus.cjs": "7d8342d9234119d129613d43afd1af2d807769d0c8df5c5f2daff9017a3c25ec",
       "scripts/remittance-release-gate.ts": "21944edbe46796c2b87e595dad18d2c49eb9fb72f2c9558b80f6880ceb4cdf32",
-      "scripts/remittance-retry-regression.ts": "6a768fef914bc295d09ececbb7216648d08ebc3b69b6ef07e1c1dbcfe078ec9d",
+      "scripts/remittance-retry-regression.ts": "b9da16b9ed9b0eb810738b6149946a535440446edf7b0e98f3ada85ab9266f53",
       "scripts/reverse-total-regression.ts": "62c57f48dd4ae0ce1c497ee3441aa1197df590870f1de6103d4657638a0fd953",
       "scripts/saved-remittance-payment-regression.cjs": "c0a1f3896a6c811dc1bf2d9eb5ab47d6312da9f12bc1f7630e724c28497eb52a",
       "scripts/saved-remittance-reopen-regression.cjs": "0752f1eee945f3304bc93795ca39a952cdf5d91d8fc54bef0e72512595f40522",
@@ -625,7 +626,7 @@
       "src/app/lib/remittanceAttempt.ts": "94abe4d319d650bc3bf0ffdae659e18b670bab92a3bf7531862b7ec523db1867",
       "src/app/lib/remittanceDeadline.ts": "83f38cdc157d34dc1b70ed89e612a6c2b682e4cc20f3bc15d7a97a1c7f1920e2",
       "src/app/lib/remittanceDocumentFingerprint.ts": "b67dacf687a3431ddc16a79641f73ce7cb8522e3d1f5a52e5db498ac77e0cf89",
-      "src/app/lib/remittanceMatching.ts": "44be1ad2155c708537bb9b32e701e51f97ed133f3cc1a5581bf84dba2bba7557",
+      "src/app/lib/remittanceMatching.ts": "34ab4e51ee70c431388121e4bd45704dc5d3d6a5852bad5b7c043c17d44e1942",
       "src/app/lib/requestPhotos/clientCapability.ts": "05a11f7cde569648e9459ddeca95224adcfcc06ef0408222a29f189c00887c0a",
       "src/app/lib/requestPhotos/http.ts": "574429b1ecb60aa50bce1d8273ff2d74fa5636f25fa945920ad442f90a84ded2",
       "src/app/lib/requestPhotos/limits.ts": "16cacd46741f74dd49a12f20723346db48ec39bb9fd3d884647e0509ba25baa1",
@@ -1732,15 +1733,15 @@
     "sha256": "bccc49970c7db9510b64204809cbb282c6d22d5f651708a9e7a7fede7a550bbc"
   },
   "upgradeContext": {
-    "candidateReleaseId": "trimax-north-creek-operations-20261030-rc1",
-    "applicationCommit": "889c18fa644eb55e9821e307860f92c396ea5f98",
-    "machineryCommit": "889c18fa644eb55e9821e307860f92c396ea5f98",
+    "candidateReleaseId": "trimax-remittance-grouped-total-20261031-rc1",
+    "applicationCommit": "aebe4a9e50a51a840d2fe2d6a3a27a55c83614ca",
+    "machineryCommit": "aebe4a9e50a51a840d2fe2d6a3a27a55c83614ca",
     "currentProductionRelease": {
-      "manifestCommit": "06b82c4a335d722b9205ab0b6480b0d0f1673cb7",
-      "manifestDigest": "36b4c10f7394adc9a87feb2e999eea2bf362290272eb78188ca98697b116e902",
-      "releaseId": "trimax-office-turn-contact-20261030-rc1",
-      "deploymentCommit": "06b82c4a335d722b9205ab0b6480b0d0f1673cb7",
-      "deploymentId": "5cD4MMZiQVEJmdP29AHneLboZxnJ"
+      "manifestCommit": "e3812ce085baa52a3b13a9f80373637a24e13ac3",
+      "manifestDigest": "a18fb5f8b222c62cc603d57e9ddd8053c6a04e528176250838624da15282c966",
+      "releaseId": "trimax-north-creek-operations-20261030-rc1",
+      "deploymentCommit": "e3812ce085baa52a3b13a9f80373637a24e13ac3",
+      "deploymentId": "5XCq2g9EwEuYneeAJ6EWpnzP5u7R"
     }
   },
   "contractRevision": {
