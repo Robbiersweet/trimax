@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- Document authority and retained optical provenance safety. */
+const {normalizeReviewedTotalSpacing}=require('./reviewed-total-spacing-contract.cjs');
 const assert = require('node:assert/strict'), sharp = require('sharp'), fs = require('node:fs'), cp = require('node:child_process'), crypto = require('node:crypto');
 const { headerMoney, decideDocumentTotal, validateRetainedAmounts, recognizeDocumentTotal } = require('../../src/app/lib/ocrV2/recognition/documentTotalAuthority.ts');
 const { paymentMoney } = require('../../src/app/lib/ocrV2/recognition/paymentEvidence.ts');
@@ -15,6 +16,7 @@ const reviewedOpticalDeclarations = {
  'src/app/lib/remittanceMatching.ts': new Set(['isBankingNoiseLine','checkNumberCandidatesFromText','selectBestCheckNumberCandidate','selectRemittanceHeaderEvidence','CheckNumberCandidate']),
 };
 function frozenFinancialContract(text,file){
+ text=normalizeReviewedTotalSpacing(text,file);
  const allowed=reviewedOpticalDeclarations[file];if(!allowed)return recognitionContract(text);
  const ts=require('typescript'),ast=ts.createSourceFile(file,text,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);
  return recognitionContract(ast.statements.map(statement=>{

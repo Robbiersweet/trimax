@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- Offline payment-field safety and real OCR tests. */
+const {normalizeReviewedTotalSpacing}=require('./reviewed-total-spacing-contract.cjs');
 const assert=require('node:assert/strict'),sharp=require('sharp'),fs=require('node:fs'),cp=require('node:child_process');
 const {paymentMoney,normalizePaymentDate,decideMoney,paymentRegions,recognizePaymentEvidence}=require('../../src/app/lib/ocrV2/recognition/paymentEvidence.ts');
 const ts=require('typescript');
@@ -7,6 +8,7 @@ const reviewedOptical={
  'src/app/lib/remittanceMatching.ts':['checkNumberCandidatesFromText','selectBestCheckNumberCandidate','selectRemittanceHeaderEvidence'],
 };
 function frozenFinancialSource(source,file){
+ source=normalizeReviewedTotalSpacing(source,file);
  const tree=ts.createSourceFile(file,source.replaceAll('\r\n','\n'),ts.ScriptTarget.Latest,true,ts.ScriptKind.TS),excluded=reviewedOptical[file]??[];
  for(const name of excluded)assert.equal(tree.statements.filter(n=>ts.isFunctionDeclaration(n)&&n.name?.text===name).length,1,'Reviewed optical declaration must exist exactly once: '+name);
  return tree.statements.filter(n=>!(ts.isFunctionDeclaration(n)&&excluded.includes(n.name?.text))).map(n=>{
