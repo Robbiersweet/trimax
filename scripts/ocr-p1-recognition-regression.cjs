@@ -33,6 +33,8 @@ const amountPrefix=Math.trunc(fixture.truth.amounts[2]).toLocaleString('en-US');
 assert.equal(rowCenterAt({y:20,height:10},900),20,'Unmeasured/horizontal rows retain the existing coordinate contract');
 const horizontal=[{y:20,height:10},{y:40,height:10}];assert(!rowAssignment({x0:0,x1:10,y0:29,y1:31},horizontal[0],horizontal).accepted,'Adjacent-row boundary stays excluded');
 const fields=load(path.join(root,'src/app/lib/documentFields/maturePaymentFields.ts'));
+const word=(text,x0,x1,y0=10,y1=30)=>({text,confidence:90,bbox:{x0,x1,y0,y1}});
+assert.deepEqual(fields.splitPaymentCaptionRegion({left:0,top:0,width:300,height:40},[word('SUB',0,40),word('TOTAL:',43,103),word('12.34',110,170)],200,300,200),[],'Splitting cannot discard SUB and turn a subtotal into TOTAL evidence');
 const read=(hint,raw)=>({hint,raw,bounds:{left:1,top:1,width:100,height:20}}),date=read('date','DATE:01/01/2026'),check=read('check','CK#:1234'),existingTotal=read('total','TOTAL:$12.34');
 assert.deepEqual(fields.appendMissingCaptionReads([date,existingTotal,check],[read('date','DATE:01/01/2026'),read('total','TOTAL:')],3),[date,existingTotal,check],'Supplemental date/label-only crops cannot displace existing accepted fields');
 assert.deepEqual(fields.appendMissingCaptionReads([date,check],[read('total','TOTAL:'),read('date','DATE:01/01/2026'),existingTotal],3),[date,check,existingTotal],'Only a missing numeric caption field may fill a spare slot');

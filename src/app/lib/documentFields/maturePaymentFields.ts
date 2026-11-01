@@ -33,6 +33,9 @@ const hash=(b:Buffer)=>createHash('sha256').update(b).digest('hex');
 /** Observed caption boxes propose narrower pixels, never a field value. */
 export function splitPaymentCaptionRegion(bounds:Bounds,words:Word[],firstBodyTop:number,width:number,height:number){
  return paymentHeaderFields(words,firstBodyTop,width,height).flatMap(field=>{
+  // Do not manufacture a TOTAL caption by cropping away an adjacent SUB
+  // prefix that OCR emitted as a separate word on the same physical line.
+  if(words.some(w=>/^SUB[\s:.\-–—]*$/i.test(w.text.trim())&&w.bbox.x0<field.left&&w.bbox.x1>=field.left-(w.bbox.y1-w.bbox.y0)*.75&&Math.abs((w.bbox.y0+w.bbox.y1)/2-field.top-field.height/2)<=Math.max(w.bbox.y1-w.bbox.y0,field.height)*.5))return [];
   const left=Math.max(bounds.left,field.left),top=Math.max(bounds.top,field.top),right=Math.min(bounds.left+bounds.width,field.left+field.width),bottom=Math.min(bounds.top+bounds.height,field.top+field.height);
   return right>left&&bottom>top&&right-left<bounds.width?[{left,top,width:right-left,height:bottom-top}]:[];
  });
