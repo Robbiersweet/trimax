@@ -11,7 +11,7 @@ export type MaturePaymentCrop={rowId:string;bounds:Bounds;bytes:Buffer;sha256:st
 export type MaturePaymentObservation={id:string;fieldId:string;documentId:string;sourceHash:string;cropHash:string;recognizer:string;raw:string;confidence:null;confidenceCalibrated:false};
 /** Proposal only: fuzzy captions locate pixels; they never normalize recognizer answers. */
 export function paymentCaptionHint(raw:string):'date'|'total'|'check'|null {
- const caption=raw.trim().replace(/^[\p{P}\p{S}\p{Z}\s]+/u,'');
+ const caption=raw.trim().replace(/^[\p{P}\p{Z}\s~]+/u,'');
  const prefix=caption.match(/^([A-Za-z'’ ]{2,24})(?=[:#$\d]|$)/)?.[1].toUpperCase().replace(/[^A-Z]/g,'');
  if(!prefix||prefix.length>7)return null;
  const distance=(a:string,b:string)=>{let p=Array.from({length:b.length+1},(_,i)=>i);for(let i=1;i<=a.length;i++){const n=[i];for(let j=1;j<=b.length;j++)n[j]=Math.min(n[j-1]+1,p[j]+1,p[j-1]+Number(a[i-1]!==b[j-1]));p=n;}return p[b.length];};
