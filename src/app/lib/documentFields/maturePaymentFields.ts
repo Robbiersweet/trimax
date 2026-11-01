@@ -44,6 +44,18 @@ export function captionInsidePaper(field:Bounds,edge?:[{x:number;y:number},{x:nu
  const top=Math.max(field.top,Math.floor(Math.min(y(field.left),y(field.left+field.width))-field.height*.15));
  return top>field.top&&top<field.top+field.height*.4?{...field,top,height:field.top+field.height-top}:field;
 }
+type CaptionRead={bounds:Bounds;raw:string;hint:string|null;supplemental?:boolean};
+/** Preserve all existing selected fields. New proposals may fill missing slots
+ * and field kinds, never evict a previously supported capture. */
+export function appendMissingCaptionReads(original:CaptionRead[],supplemental:CaptionRead[],maxFields:number){
+ const selected=original.slice(0,Math.min(6,Math.max(0,maxFields)));
+ for(const read of supplemental){
+  if(selected.length>=Math.min(6,Math.max(0,maxFields)))break;
+  if(!read.hint||!/[0-9]/.test(read.raw)||hasMultiplePaymentCaptions(read.raw)||selected.some(r=>r.hint===read.hint))continue;
+  selected.push(read);
+ }
+ return selected;
+}
 const models=['svtrv2','parseq','ppocrv5'];
 const label=(raw:string)=>{const s=raw.trim().toUpperCase().replace(/[#:.$\s]+$/g,'');return /^(?:(?:CHECK|PAYMENT)\s+)?DATE$/.test(s)?'checkDate':/^(?:CK|CHK|CHECK)(?:\s+(?:NO|NUMBER))?$/.test(s)?'checkNumber':/^(?:(?:CHECK|GRAND)\s+)?TOTAL$/.test(s)?'documentTotal':null;};
 /** Formatting only: complete numeric strings retain every digit/year. Caption
@@ -85,7 +97,7 @@ export async function prepareMaturePaymentFields(image:Buffer,words:Word[],first
   const top=Math.min(joined.top,b.top),bottom=Math.max(joined.top+joined.height,b.top+b.height);joined={left:joined.left,top,width:b.left+b.width-joined.left,height:bottom-top};
  }if(joined.width>a.width&&!regions.some(b=>JSON.stringify(b)===JSON.stringify(joined)))regions.push(joined);}
  const worker=await createWorker('eng',OEM.LSTM_ONLY,{cachePath:ocrRuntimeCache(),logger:()=>undefined});
- const reads:Array<{bounds:Bounds;raw:string;hint:string|null}>=[];
+ const reads:CaptionRead[]=[];
  const hint=paymentCaptionHint;
  try{
   await worker.setParameters({tessedit_pageseg_mode:PSM.RAW_LINE,user_defined_dpi:'300'});
@@ -105,14 +117,15 @@ export async function prepareMaturePaymentFields(image:Buffer,words:Word[],first
     if(![...regions,...split].some(b=>JSON.stringify(b)===JSON.stringify(own)))split.push(own);
    }
   }
-  for(const bounds of split){const {data}=await worker.recognize(await sharp(image).extract(bounds).png().toBuffer());reads.push({bounds,raw:data.text,hint:hint(data.text)});}
+  for(const bounds of split){const {data}=await worker.recognize(await sharp(image).extract(bounds).png().toBuffer());reads.push({bounds,raw:data.text,hint:hint(data.text),supplemental:true});}
  }finally{await worker.terminate();}
- const eligible=reads.filter(r=>!hasMultiplePaymentCaptions(r.raw)),hinted=eligible.filter(r=>r.hint),selected=new Set(hinted);
+ const eligible=reads.filter(r=>!r.supplemental&&!hasMultiplePaymentCaptions(r.raw)),hinted=eligible.filter(r=>r.hint),selected=new Set(hinted);
  for(const a of hinted)for(const b of hinted){if(a.hint===b.hint||Math.abs(baseline(a.bounds)-baseline(b.bounds))>Math.min(a.bounds.height,b.bounds.height)*.6)continue;
   const left=Math.min(a.bounds.left,b.bounds.left),right=Math.max(a.bounds.left+a.bounds.width,b.bounds.left+b.bounds.width),center=(baseline(a.bounds)+baseline(b.bounds))/2,h=Math.min(a.bounds.height,b.bounds.height);
   for(const r of eligible)if(r.bounds.left>=left&&r.bounds.left+r.bounds.width<=right&&Math.abs(baseline(r.bounds)-center)<h*.6)selected.add(r);
  }
- const candidates=deduplicatePaymentFieldRegions([...selected]).sort((a,b)=>Number(!!b.hint)-Number(!!a.hint)||a.bounds.left-b.bounds.left).slice(0,Math.min(6,Math.max(0,maxFields))),out:MaturePaymentCrop[]=[];
+ const original=deduplicatePaymentFieldRegions([...selected]).sort((a,b)=>Number(!!b.hint)-Number(!!a.hint)||a.bounds.left-b.bounds.left);
+ const candidates=appendMissingCaptionReads(original,reads.filter(r=>r.supplemental),maxFields),out:MaturePaymentCrop[]=[];
  for(const r of candidates){const scale=Math.min(2,Math.sqrt(24000000/(r.bounds.width*r.bounds.height))),border=12;const bytes=await sharp(image).extract(r.bounds).resize({width:Math.round(r.bounds.width*scale),height:Math.round(r.bounds.height*scale),fit:'fill'}).extend({top:border,bottom:border,left:border,right:border,background:'white'}).png().toBuffer();out.push({rowId:'payment-field-'+out.length,bounds:r.bounds,bytes,sha256:hash(bytes),sourceHash,scale,border,firstBodyTop,localization:'Physical payment-header glyph band and observed caption baseline; cheap OCR supplies location only'});}
  return out;
 }

@@ -11,3 +11,5 @@ The private retained-observation fixture is hash pinned by `scripts/ocr-p1-recog
 Focused offline inference/scoring passed for both distinct retained captures in both engines. Remaining digit ambiguity and identity limitations stay in review; this is not automatic-payment or physical-device acceptance. Private evidence and precise before/after results: `C:/Users/robbi/trimax-ocr-p1-recognition-ops/targeted-acceptance.private.json` and `ACTIVE_CHECKPOINT.txt`.
 
 Required next steps are the new-source photo matrix, complete predeployment gate, sealed production build and one exact release approval. No production changes or financial writes have occurred. The separately audited status issue and the unposted remittance remain untouched. Physical-iPhone acceptance remains pending.
+
+Supplemental caption crops preserve every original selected field and may fill only spare slots for missing numeric-caption types. Regression coverage rejects duplicate-date and label-only TOTAL proposals displacing existing crops. The original acceptance corpus remains unchanged.

@@ -33,6 +33,9 @@ const right=native.words.find(w=>/1,291/.test(w.text));assert(right);assert(rowA
 assert.equal(rowCenterAt({y:20,height:10},900),20,'Unmeasured/horizontal rows retain the existing coordinate contract');
 const horizontal=[{y:20,height:10},{y:40,height:10}];assert(!rowAssignment({x0:0,x1:10,y0:29,y1:31},horizontal[0],horizontal).accepted,'Adjacent-row boundary stays excluded');
 const fields=load(path.join(root,'src/app/lib/documentFields/maturePaymentFields.ts'));
+const read=(hint,raw)=>({hint,raw,bounds:{left:1,top:1,width:100,height:20}}),date=read('date','DATE:01/01/2026'),check=read('check','CK#:1234'),existingTotal=read('total','TOTAL:$12.34');
+assert.deepEqual(fields.appendMissingCaptionReads([date,existingTotal,check],[read('date','DATE:01/01/2026'),read('total','TOTAL:')],3),[date,existingTotal,check],'Supplemental date/label-only crops cannot displace existing accepted fields');
+assert.deepEqual(fields.appendMissingCaptionReads([date,check],[read('total','TOTAL:'),read('date','DATE:01/01/2026'),existingTotal],3),[date,check,existingTotal],'Only a missing numeric caption field may fill a spare slot');
 const proposed=fields.splitPaymentCaptionRegion(fixture.captionInput.bounds,fixture.captionInput.words,297,2974,1278);
 assert(proposed.length);for(const b of proposed){assert(b.left>=fixture.captionInput.bounds.left);assert(b.top>=0);assert(b.left+b.width<=fixture.captionInput.bounds.left+fixture.captionInput.bounds.width);assert(b.top+b.height<=297);}
 assert.equal(fields.paymentCaptionHint('~ IOTAL:$12.34***'),'total','Fuzzy text may propose pixels only');
