@@ -1,19 +1,19 @@
 {
   "schemaVersion": 2,
   "status": "PASS",
-  "applicationHash": "b90ada96608432c98fc0b6f6a81a9a5407c341b6ec962593f4888106f1ccd0bd",
+  "applicationHash": "50a35b0fc23d4dc7f1fca7e7c44fbba07059a3a40be11979ad9d8dae5467247d",
   "runnerHash": "7d8342d9234119d129613d43afd1af2d807769d0c8df5c5f2daff9017a3c25ec",
   "financialScorerHash": "29a09c999cbef3476b9c6014d69290e848c711acf658cc0a32203cbc36e77df4",
   "recognizerAdapterHash": "ec71b83b03972bc812ff69a7f7b126d6417f7826751e5d963cbcfa04f5022ee4",
   "corpusHash": "42a00f91d2ff0bcd18b5c88cc14d772d8303533db41e8eb6fdb12bd9f785aef0",
   "annotationHash": "e91b647009ea9f6027668dc894acb3f8bcbc29fc8514a1d06ff0053a9ff79d6a",
-  "startedAt": "2026-11-01T12:07:36.011Z",
-  "finishedAt": "2026-11-01T12:22:46.139Z",
+  "startedAt": "2026-11-01T23:19:14.440Z",
+  "finishedAt": "2026-11-01T23:34:13.604Z",
   "independentPhysicalCaptures": 7,
   "caseCount": 56,
   "privateReport": {
-    "path": "matrix-2026-11-01T12-07-36-011Z/report.json",
-    "sha256": "daee9fc4810063e0c63ebcf7c9111bd1b9d2f5099d7aa51d6d314d101f2a8386"
+    "path": "matrix-2026-11-01T23-19-14-440Z/report.json",
+    "sha256": "fba7d068041fcaba8f60107dec4cdfe7d89d76d612772a91d680abb5df7e7b79"
   },
   "results": [
     {
