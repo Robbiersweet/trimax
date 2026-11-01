@@ -1258,7 +1258,7 @@ assert(
     route.includes("buildStructuredRowEvidence") &&
     route.includes("invoiceEvidenceForRow") &&
     route.includes("invoiceEvidenceByPass") &&
-    route.includes("Math.abs(wordCenterY(word) - row.y)") &&
+    route.includes("Math.abs(wordCenterY(word) - rowCenterAt(row,wordCenterX(word)))") &&
     route.includes("xRatio >= 0.08 && xRatio <= 0.72") &&
     route.includes("structuredRowDiagnostics") &&
     route.includes("structuredRowEvidence") &&
