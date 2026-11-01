@@ -3,6 +3,8 @@ import { moneyFixed } from "../lib/money.ts";
 
 import OcrCaptureRecovery from './OcrCaptureRecovery';
 import SavedRemittancePaymentStatus from './SavedRemittancePaymentView';
+import OcrDiagnosticBuild from './OcrDiagnosticBuild';
+import { diagnosticDate } from '../lib/ocrDiagnosticDisplay.ts';
 
 import OpticalEvidenceView from "./OpticalEvidenceView";
 import OcrShadowComparison from './OcrShadowComparison';
@@ -140,6 +142,7 @@ export default function RecentScans({
   }
   if (!allowed) return null;
   const s = selected?.summary;
+  const date = s ? diagnosticDate(s, selected?.created_at, standalone) : null;
   const button =
     "rounded-lg border border-white/20 px-3 py-2 text-sm font-semibold hover:bg-white/10 disabled:opacity-50";
   return (
@@ -200,20 +203,16 @@ export default function RecentScans({
                 {s.kind === "retry" ? "Retry Reading" : "Original Scan"} ·{" "}
                 {selected.result}
               </h3>
-              <OcrCaptureRecovery summary={s} businessSlug={businessSlug}/>
+              <OcrCaptureRecovery summary={s} businessSlug={businessSlug} businessId={businessId}/>
               <SavedRemittancePaymentStatus businessId={businessId} attemptId={s.attemptId}/>
               <OcrShadowComparison summary={s} businessSlug={businessSlug}/>
               <dl className="grid grid-cols-2 gap-2 text-sm">
-                <dt>Scanned</dt>
-                <dd>
-                  {standalone
-                    ? debugTimestamp(s.timestamp)
-                    : new Date(s.timestamp).toLocaleString()}
-                </dd>
+                <dt>{date?.label}</dt>
+                <dd>{date?.value}</dd>
                 <dt>Attempt</dt>
                 <dd className="break-all">{s.attemptId}</dd>
                 <dt>Build</dt>
-                <dd className="break-all">{s.build}</dd>
+                <dd className="break-all"><OcrDiagnosticBuild summary={s} attemptId={selected.id} businessId={businessId}/></dd>
                 <dt>Duration</dt>
                 <dd>{s.durationMs} ms</dd>
                 <dt>Input</dt>

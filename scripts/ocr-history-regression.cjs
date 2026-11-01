@@ -78,6 +78,7 @@ module.exports = async function historyRegression(load, React, renderer) {
     pinScan: async () => {},
   };
   const component = load({ "../lib/ocrHistoryClient": client,
+    "../lib/ocrDiagnosticDisplayClient": {diagnosticRecordedRelease:async()=>null,diagnosticPairedSummary:async()=>null},
     "../lib/savedRemittancePaymentClient": {savedRemittancePayment: async () => ({status:'none'})} })(
     "src/app/components/RecentScans.tsx",
   ).default;

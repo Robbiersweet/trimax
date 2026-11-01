@@ -16,7 +16,7 @@ function load(file,dependencies){const exports={};new Function('require','export
  await transport.resumeCaptureHandoff('a');assert.deepEqual(calls[1],{name:'trimax_resume_ocr_handoff',args:{p_attempt:'a'}});
  failure={message:'canceling statement due to statement timeout',code:'57014'};
  await assert.rejects(transport.resumeCaptureHandoff('a'),error=>error.code==='57014'&&error.retriable);
- const Recovery=load('src/app/components/OcrCaptureRecovery.tsx',{'../lib/ocrCanonicalClient':transport}).default;
+ const Recovery=load('src/app/components/OcrCaptureRecovery.tsx',{'../lib/ocrCanonicalClient':transport,'../lib/ocrDiagnosticDisplay.ts':require('../../src/app/lib/ocrDiagnosticDisplay.ts'),'../lib/ocrDiagnosticDisplayClient':{diagnosticPairedSummary:async()=>null}}).default;
  let tree;await renderer.act(async()=>{tree=renderer.create(React.createElement(Recovery,{summary:{attemptId:'a',canonicalReference:'a',captureState:'image_stored',shadowHandoffState:'handoff_pending'},businessSlug:'test'}));});
  assert(JSON.stringify(tree.toJSON()).includes('Capture saved'));
  assert(tree.root.findByType('a').props.href.includes('replayAttempt=a'));
