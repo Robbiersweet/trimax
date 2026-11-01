@@ -1,15 +1,20 @@
-export type RowBand = { y: number; height: number };
+export type RowBand = { y: number; height: number; baseline?: { slope: number; referenceX: number } };
 export type WordBox = { x0: number; y0: number; x1: number; y1: number };
+
+export function rowCenterAt(row: RowBand, x: number) {
+  return row.y + (row.baseline ? row.baseline.slope * (x - row.baseline.referenceX) : 0);
+}
 
 export function rowAssignment(box: WordBox, row: RowBand, rows: RowBand[]) {
   const centerY = (box.y0 + box.y1) / 2;
-  const previous = Math.max(-Infinity, ...rows.filter(other => other.y < row.y).map(other => other.y));
-  const next = Math.min(Infinity, ...rows.filter(other => other.y > row.y).map(other => other.y));
+  const centerX = (box.x0 + box.x1) / 2, rowY = rowCenterAt(row, centerX);
+  const previous = Math.max(-Infinity, ...rows.filter(other => other.y < row.y).map(other => rowCenterAt(other, centerX)));
+  const next = Math.min(Infinity, ...rows.filter(other => other.y > row.y).map(other => rowCenterAt(other, centerX)));
   const tolerance = Math.max(2, row.height * 0.65);
-  const top = Math.max(row.y - tolerance, (previous + row.y) / 2);
-  const bottom = Math.min(row.y + tolerance, (next + row.y) / 2);
+  const top = Math.max(rowY - tolerance, (previous + rowY) / 2);
+  const bottom = Math.min(rowY + tolerance, (next + rowY) / 2);
   const accepted = centerY > top && centerY < bottom;
-  return { centerY, rowY: row.y, distance: Math.abs(centerY - row.y), top, bottom, accepted,
+  return { centerY, rowY, distance: Math.abs(centerY - rowY), top, bottom, accepted,
     reason: accepted ? "inside exclusive physical row band" : "outside physical row band or on adjacent-row boundary" };
 }
 

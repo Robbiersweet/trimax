@@ -2,7 +2,7 @@ import sharp from 'sharp';
 import {createHash} from 'node:crypto';
 import {createWorker,OEM,PSM} from 'tesseract.js';
 import {ocrRuntimeCache} from '../ocrRuntimeCache.ts';
-import {paymentHeaderPixelFields} from './paymentHeaderLine.ts';
+import {paymentHeaderPixelFields,paymentHeaderFields} from './paymentHeaderLine.ts';
 import {detectDocumentGeometry} from './documentGeometry.ts';
 import {normalizeVisualMoney} from './visualMoney.ts';
 type Bounds={left:number;top:number;width:number;height:number};
@@ -11,7 +11,7 @@ export type MaturePaymentCrop={rowId:string;bounds:Bounds;bytes:Buffer;sha256:st
 export type MaturePaymentObservation={id:string;fieldId:string;documentId:string;sourceHash:string;cropHash:string;recognizer:string;raw:string;confidence:null;confidenceCalibrated:false};
 /** Proposal only: fuzzy captions locate pixels; they never normalize recognizer answers. */
 export function paymentCaptionHint(raw:string):'date'|'total'|'check'|null {
- const caption=raw.trim().replace(/^[\p{P}\p{Z}\s]+/u,'');
+ const caption=raw.trim().replace(/^[\p{P}\p{S}\p{Z}\s]+/u,'');
  const prefix=caption.match(/^([A-Za-z'’ ]{2,24})(?=[:#$\d]|$)/)?.[1].toUpperCase().replace(/[^A-Z]/g,'');
  if(!prefix||prefix.length>7)return null;
  const distance=(a:string,b:string)=>{let p=Array.from({length:b.length+1},(_,i)=>i);for(let i=1;i<=a.length;i++){const n=[i];for(let j=1;j<=b.length;j++)n[j]=Math.min(n[j-1]+1,p[j]+1,p[j-1]+Number(a[i-1]!==b[j-1]));p=n;}return p[b.length];};
@@ -30,6 +30,20 @@ export function deduplicatePaymentFieldRegions<T extends {bounds:Bounds;hint:str
 }
 
 const hash=(b:Buffer)=>createHash('sha256').update(b).digest('hex');
+/** Observed caption boxes propose narrower pixels, never a field value. */
+export function splitPaymentCaptionRegion(bounds:Bounds,words:Word[],firstBodyTop:number,width:number,height:number){
+ return paymentHeaderFields(words,firstBodyTop,width,height).flatMap(field=>{
+  const left=Math.max(bounds.left,field.left),top=Math.max(bounds.top,field.top),right=Math.min(bounds.left+bounds.width,field.left+field.width),bottom=Math.min(bounds.top+bounds.height,field.top+field.height);
+  return right>left&&bottom>top&&right-left<bounds.width?[{left,top,width:right-left,height:bottom-top}]:[];
+ });
+}
+export function captionInsidePaper(field:Bounds,edge?:[{x:number;y:number},{x:number;y:number}]){
+ if(!edge)return field;
+ const [a,b]=edge;if(b.x<=a.x)return field;
+ const y=(x:number)=>a.y+(b.y-a.y)*(x-a.x)/(b.x-a.x);
+ const top=Math.max(field.top,Math.floor(Math.min(y(field.left),y(field.left+field.width))-field.height*.15));
+ return top>field.top&&top<field.top+field.height*.4?{...field,top,height:field.top+field.height-top}:field;
+}
 const models=['svtrv2','parseq','ppocrv5'];
 const label=(raw:string)=>{const s=raw.trim().toUpperCase().replace(/[#:.$\s]+$/g,'');return /^(?:(?:CHECK|PAYMENT)\s+)?DATE$/.test(s)?'checkDate':/^(?:CK|CHK|CHECK)(?:\s+(?:NO|NUMBER))?$/.test(s)?'checkNumber':/^(?:(?:CHECK|GRAND)\s+)?TOTAL$/.test(s)?'documentTotal':null;};
 /** Formatting only: complete numeric strings retain every digit/year. Caption
@@ -73,7 +87,26 @@ export async function prepareMaturePaymentFields(image:Buffer,words:Word[],first
  const worker=await createWorker('eng',OEM.LSTM_ONLY,{cachePath:ocrRuntimeCache(),logger:()=>undefined});
  const reads:Array<{bounds:Bounds;raw:string;hint:string|null}>=[];
  const hint=paymentCaptionHint;
- try{await worker.setParameters({tessedit_pageseg_mode:PSM.RAW_LINE,user_defined_dpi:'300'});for(const bounds of regions){const {data}=await worker.recognize(await sharp(image).extract(bounds).png().toBuffer());reads.push({bounds,raw:data.text,hint:hint(data.text)});}}finally{await worker.terminate();}
+ try{
+  await worker.setParameters({tessedit_pageseg_mode:PSM.RAW_LINE,user_defined_dpi:'300'});
+  const split:Bounds[]=[];
+  for(const bounds of regions){
+   const {data}=await worker.recognize(await sharp(image).extract(bounds).png().toBuffer(),{},{text:true,blocks:true});
+   reads.push({bounds,raw:data.text,hint:hint(data.text)});
+   if(hint(data.text)&&!hasMultiplePaymentCaptions(data.text))continue;
+   // A connected glyph region can span CK and TOTAL. Word boxes propose
+   // separate pixels only; mature recognition still must read an exact caption.
+   const observed=(data.blocks??[]).flatMap(b=>b.paragraphs.flatMap(p=>p.lines.flatMap(l=>l.words))).map(w=>({text:w.text,confidence:w.confidence,bbox:{x0:bounds.left+w.bbox.x0,y0:bounds.top+w.bbox.y0,x1:bounds.left+w.bbox.x1,y1:bounds.top+w.bbox.y1}}));
+   for(const field of splitPaymentCaptionRegion(bounds,observed,firstBodyTop,m.width!,m.height!)){
+    if(split.length>=12)break;
+    // RAW_LINE can attach the paper edge to a faint caption's word box.
+    // Exclude only pixels above the supported paper edge, with a safety margin.
+    const own=captionInsidePaper(field,geometry.reliable?[geometry.corners[0],geometry.corners[1]]:undefined);
+    if(![...regions,...split].some(b=>JSON.stringify(b)===JSON.stringify(own)))split.push(own);
+   }
+  }
+  for(const bounds of split){const {data}=await worker.recognize(await sharp(image).extract(bounds).png().toBuffer());reads.push({bounds,raw:data.text,hint:hint(data.text)});}
+ }finally{await worker.terminate();}
  const eligible=reads.filter(r=>!hasMultiplePaymentCaptions(r.raw)),hinted=eligible.filter(r=>r.hint),selected=new Set(hinted);
  for(const a of hinted)for(const b of hinted){if(a.hint===b.hint||Math.abs(baseline(a.bounds)-baseline(b.bounds))>Math.min(a.bounds.height,b.bounds.height)*.6)continue;
   const left=Math.min(a.bounds.left,b.bounds.left),right=Math.max(a.bounds.left+a.bounds.width,b.bounds.left+b.bounds.width),center=(baseline(a.bounds)+baseline(b.bounds))/2,h=Math.min(a.bounds.height,b.bounds.height);

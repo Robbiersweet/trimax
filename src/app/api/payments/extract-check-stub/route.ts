@@ -21,7 +21,7 @@ import { opticalScore } from "@/app/lib/ocrOptical";
 import { checkpointOcr } from "@/app/lib/ocrHistoryServer";
 import { legacyProgress, completedLegacyRecognition } from "@/app/lib/ocrLegacyProgress";
 import { createRemittanceEvidence, selectObservedHeader, selectRepeatedPropertyIdentity } from "@/app/lib/remittanceAttempt";
-import { rowAssignment, normalizeInvoiceColumnToken, rankSourceEvaluations, rankRowAmounts } from "@/app/lib/ocrStructure";
+import { rowCenterAt, rowAssignment, normalizeInvoiceColumnToken, rankSourceEvaluations, rankRowAmounts } from "@/app/lib/ocrStructure";
 import { NextResponse } from "next/server";
 import sharp from "sharp";
 import {
@@ -181,6 +181,7 @@ type OcrWord = {
 };
 
 type GeometricRow = {
+  baseline?: { slope: number; referenceX: number };
   coalescenceProof?:RowCoalescenceProof[];
   y: number;
   height: number;
@@ -1082,6 +1083,8 @@ function scoreGeometryRow(text: string) {
 
 function reconstructRowsFromOcrGeometry(words: OcrWord[]): GeometricRow[] {
   const tableHeader=measuredTableHeader(words);
+  const slope=tableHeader?.slope ?? 0;
+  const baselineY=(word:OcrWord)=>wordCenterY(word)-slope*wordCenterX(word);
   if(tableHeader)words=words.filter(w=>wordCenterY(w)>tableHeader.slope*(w.bbox.x0+w.bbox.x1)/2+tableHeader.intercept+tableHeader.font*.45);
 
   const usefulWords = words
@@ -1094,20 +1097,21 @@ function reconstructRowsFromOcrGeometry(words: OcrWord[]): GeometricRow[] {
         !/^[^\w$]+$/.test(text)
       );
     })
-    .sort((left, right) => wordCenterY(left) - wordCenterY(right));
+    .sort((left, right) => baselineY(left) - baselineY(right));
 
   if (usefulWords.length === 0) {
     return [];
   }
 
   const medianHeight = median(usefulWords.map(wordHeight));
+  const referenceX = median(usefulWords.map(wordCenterX));
   const yTolerance = Math.max(3, medianHeight * 0.5);
   const bands: OcrWord[][] = [];
 
   for (const word of usefulWords) {
-    const centerY = wordCenterY(word);
+    const centerY = baselineY(word);
     const band = bands.find((candidate) => {
-      const candidateCenter = median(candidate.map(wordCenterY));
+      const candidateCenter = median(candidate.map(baselineY));
 
       return Math.abs(candidateCenter - centerY) <= yTolerance;
     });
@@ -1127,7 +1131,8 @@ function reconstructRowsFromOcrGeometry(words: OcrWord[]): GeometricRow[] {
       const score = scoreGeometryRow(text);
 
       return {
-        y: Math.round(median(sortedWords.map(wordCenterY))),
+        y: Math.round(median(sortedWords.map(baselineY))+slope*referenceX),
+        ...(tableHeader ? {baseline:{slope,referenceX}} : {}),
         height: Math.round(median(heights)),
         text,
         score,
@@ -1476,7 +1481,7 @@ function invoiceEvidenceForRow(
         return false;
       }
 
-      if (Math.abs(wordCenterY(word) - row.y) > yTolerance) {
+      if (Math.abs(wordCenterY(word) - rowCenterAt(row,wordCenterX(word))) > yTolerance) {
         return false;
       }
 
@@ -1519,7 +1524,7 @@ function sameBandWordsForRow(row: GeometricRow, words: OcrWord[]) {
   const yTolerance = Math.max(row.height * 0.65, 2);
 
   return words.filter(
-    (word) => Math.abs(wordCenterY(word) - row.y) <= yTolerance
+    (word) => Math.abs(wordCenterY(word) - rowCenterAt(row,wordCenterX(word))) <= yTolerance
   );
 }
 
@@ -1974,7 +1979,7 @@ function geometryRowDetails(
     const nearbyAmountWords = amountWords
       .filter(
         (word) =>
-          Math.abs(wordCenterY(word) - row.y) <= Math.max(row.height * 2.5, 36)
+          Math.abs(wordCenterY(word) - rowCenterAt(row,wordCenterX(word))) <= Math.max(row.height * 2.5, 36)
       )
       .sort((left, right) => left.bbox.x0 - right.bbox.x0);
 

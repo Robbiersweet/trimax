@@ -43,5 +43,6 @@ const scripts=[
 scripts.push('scripts/table-caption-ownership-regression.cjs','scripts/complementary-row-regression.cjs','scripts/pixel-localization-regression.cjs','scripts/legacy-mature-fallback-regression.cjs','scripts/photo-evidence-regression.cjs','scripts/photo-corpus-financial-regression.cjs','scripts/photo-corpus-acceptance.cjs','scripts/photo-corpus-privacy-regression.cjs');
 scripts.push('scripts/maintenance-qr-shell-regression.cjs','scripts/apartment-turn-regression.cjs');
 scripts.push('scripts/ocr-diagnostic-display-regression.cjs');
+scripts.push('scripts/ocr-p1-recognition-regression.cjs');
 module.exports=scripts;
 
