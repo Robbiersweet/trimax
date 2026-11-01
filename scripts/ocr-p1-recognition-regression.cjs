@@ -29,13 +29,17 @@ for(let i=0;i<4;i++){
 assert(evidence.some(r=>r.normalizedInvoiceCandidates.length>1),'Optical contradictions must remain visible; grouping cannot repair digits');
 const {rowAssignment,rowCenterAt}=load(path.join(root,'src/app/lib/ocrStructure.ts'));
 for(const row of rows)for(const word of row.words)assert(rowAssignment(word.bbox,row,rows).accepted,'Own physical row must retain every supported word');
-const right=native.words.find(w=>/1,291/.test(w.text));assert(right);assert(rowAssignment(right.bbox,rows[2],rows).accepted);assert(!rowAssignment(right.bbox,rows[1],rows).accepted);
+const amountPrefix=Math.trunc(fixture.truth.amounts[2]).toLocaleString('en-US'); const right=native.words.find(w=>w.text.includes(amountPrefix));assert(right);assert(rowAssignment(right.bbox,rows[2],rows).accepted);assert(!rowAssignment(right.bbox,rows[1],rows).accepted);
 assert.equal(rowCenterAt({y:20,height:10},900),20,'Unmeasured/horizontal rows retain the existing coordinate contract');
 const horizontal=[{y:20,height:10},{y:40,height:10}];assert(!rowAssignment({x0:0,x1:10,y0:29,y1:31},horizontal[0],horizontal).accepted,'Adjacent-row boundary stays excluded');
 const fields=load(path.join(root,'src/app/lib/documentFields/maturePaymentFields.ts'));
 const read=(hint,raw)=>({hint,raw,bounds:{left:1,top:1,width:100,height:20}}),date=read('date','DATE:01/01/2026'),check=read('check','CK#:1234'),existingTotal=read('total','TOTAL:$12.34');
 assert.deepEqual(fields.appendMissingCaptionReads([date,existingTotal,check],[read('date','DATE:01/01/2026'),read('total','TOTAL:')],3),[date,existingTotal,check],'Supplemental date/label-only crops cannot displace existing accepted fields');
 assert.deepEqual(fields.appendMissingCaptionReads([date,check],[read('total','TOTAL:'),read('date','DATE:01/01/2026'),existingTotal],3),[date,check,existingTotal],'Only a missing numeric caption field may fill a spare slot');
+const clipped={...read('total','TOTAL:$1,234'),bounds:{left:20,top:10,width:50,height:20}},expanded={...read('total','IOTAL:$12.34***'),bounds:{left:15,top:5,width:90,height:30}};
+assert.deepEqual(fields.appendMissingCaptionReads([date,clipped,check],[expanded],3),[date,expanded,check],'An incomplete total can gain pixels only through a containing same-field proposal');
+assert.deepEqual(fields.appendMissingCaptionReads([date,clipped,check],[{...expanded,bounds:{...expanded.bounds,left:21}}],3),[date,clipped,check],'A proposal that drops original pixels cannot replace the total');
+assert.deepEqual(fields.appendMissingCaptionReads([date,{...clipped,raw:'TOTAL:$12.34'},check],[expanded],3),[date,{...clipped,raw:'TOTAL:$12.34'},check],'A complete existing total stays unchanged even when a larger proposal exists');
 const proposed=fields.splitPaymentCaptionRegion(fixture.captionInput.bounds,fixture.captionInput.words,297,2974,1278);
 assert(proposed.length);for(const b of proposed){assert(b.left>=fixture.captionInput.bounds.left);assert(b.top>=0);assert(b.left+b.width<=fixture.captionInput.bounds.left+fixture.captionInput.bounds.width);assert(b.top+b.height<=297);}
 assert.equal(fields.paymentCaptionHint('~ IOTAL:$12.34***'),'total','Fuzzy text may propose pixels only');

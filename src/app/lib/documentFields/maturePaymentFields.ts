@@ -45,13 +45,19 @@ export function captionInsidePaper(field:Bounds,edge?:[{x:number;y:number},{x:nu
  return top>field.top&&top<field.top+field.height*.4?{...field,top,height:field.top+field.height-top}:field;
 }
 type CaptionRead={bounds:Bounds;raw:string;hint:string|null;supplemental?:boolean};
-/** Preserve all existing selected fields. New proposals may fill missing slots
- * and field kinds, never evict a previously supported capture. */
+/** Preserve complete existing fields. An incomplete TOTAL may gain surrounding
+ * pixels only when a same-field proposal contains every original pixel. */
 export function appendMissingCaptionReads(original:CaptionRead[],supplemental:CaptionRead[],maxFields:number){
  const selected=original.slice(0,Math.min(6,Math.max(0,maxFields)));
  for(const read of supplemental){
-  if(selected.length>=Math.min(6,Math.max(0,maxFields)))break;
-  if(!read.hint||!/[0-9]/.test(read.raw)||hasMultiplePaymentCaptions(read.raw)||selected.some(r=>r.hint===read.hint))continue;
+  if(!read.hint||!/[0-9]/.test(read.raw)||hasMultiplePaymentCaptions(read.raw))continue;
+  const index=selected.findIndex(r=>r.hint===read.hint);
+  if(index>=0){
+   const old=selected[index],a=old.bounds,b=read.bounds;
+   if(read.hint==='total'&&maturePaymentValue(old.raw,'documentTotal')===null&&b.left<=a.left&&b.top<=a.top&&b.left+b.width>=a.left+a.width&&b.top+b.height>=a.top+a.height&&b.width*b.height>a.width*a.height)selected[index]=read;
+   continue;
+  }
+  if(selected.length>=Math.min(6,Math.max(0,maxFields)))continue;
   selected.push(read);
  }
  return selected;

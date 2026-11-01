@@ -12,4 +12,4 @@ Focused offline inference/scoring passed for both distinct retained captures in 
 
 Required next steps are the new-source photo matrix, complete predeployment gate, sealed production build and one exact release approval. No production changes or financial writes have occurred. The separately audited status issue and the unposted remittance remain untouched. Physical-iPhone acceptance remains pending.
 
-Supplemental caption crops preserve every original selected field and may fill only spare slots for missing numeric-caption types. Regression coverage rejects duplicate-date and label-only TOTAL proposals displacing existing crops. The original acceptance corpus remains unchanged.
+Supplemental caption crops preserve complete original fields and fill spare slots for missing numeric-caption types. An incomplete TOTAL proposal may expand only through a same-field box containing every original pixel; this does not qualify its numeric value. Regression coverage rejects duplicate dates, label-only totals, pixel-dropping replacements and replacement of complete fields. The original acceptance corpus remains unchanged.
