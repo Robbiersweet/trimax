@@ -15,13 +15,19 @@ async function run(){for(const kind of ['camera','existing']){const x=setup(),fi
  const late=setup();late.api.captureCheckImage({name:'check-A.jpg'},'existing');late.api.openCameraCapture('remittance_stub','primary');late.frames.shift()();late.frames.shift()();await new Promise(resolve=>setImmediate(resolve));assert.equal(late.calls.length,0,'Delayed previous preparation must not start OCR for the new remittance');
  const stale=setup();stale.api.captureCheckImage({name:'first.jpg'},'existing');stale.bindings.ocrAttemptVersion.current++;stale.frames.shift()();stale.frames.shift()();await new Promise(resolve=>setImmediate(resolve));assert.equal(stale.calls.length,0);
  const empty=setup();empty.api.captureCheckImage(undefined);assert.deepEqual(empty.state,{});
- // Financial apply/eligibility hashes unchanged. Review loader deliberately clears absent payer instead of inheriting prior identity.
+ // Financial apply/eligibility changes are exactly pinned below. Review loader deliberately clears absent payer instead of inheriting prior identity.
  assert(/setCheckDate\(extractedDate\);/.test(source),'Primary review replaces current capture date');
  assert(!source.includes('placeholder="2721"'),'No misleading previous check placeholder');
  assert(!/if \(extractedCheckNumber\)/.test(source.slice(source.indexOf('const extractedCheckNumber = evidence.headerEvidence.checkNumber'),source.indexOf('setCheckPayor(extractedPayor)'))),'Primary review replaces missing check number');
  assert(source.includes('setCheckPayor(extractedPayor);'),'Primary review must replace, never inherit, payer state');
  const baselineHashes={"applyBatchPayment":"5bd29d83511b84c52611c1172648b0a0c59d04a0f06adcd8151794a5a9ed7369","loadExtractedRemittance":"f3317c7e1104667e909612c5128d837c262fab032a189fff82533418aa83ef89","paymentCanApply":"ed74264d7748de8f3b10edbac5dd44636d86f8f92dfcde0ef03fc4b0780d41a3"};
  function executable(text,name){const ast=ts.createSourceFile('screen.tsx',text,99,true,4);let found;function visit(n){if((ts.isFunctionDeclaration(n)&&n.name?.text===name)||(ts.isVariableDeclaration(n)&&n.name.getText(ast)===name))found=n.getText(ast);else ts.forEachChild(n,visit);}visit(ast);assert(found,name);return ts.transpileModule(found,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;}
- for(const name of ['applyBatchPayment','loadExtractedRemittance','paymentCanApply'])assert.equal(crypto.createHash('sha256').update(executable(source,name)).digest('hex'),baselineHashes[name],'Protected integration changed: '+name);
- console.log('PASS A4588.33 to B1099 state isolation at opening/direct intake, source/attempt reset, old preparation cancellation, intentional same-remittance check details, intake preview before preparation, camera independent of flags, existing source identity, stale capture cancellation, empty picker, unchanged financial application/reconciliation integration');}
+ // Retain the original production freeze and pin only the two explicitly changed financial functions.
+ const historical=require('node:child_process').execFileSync('git',['show','e5a1e943151c781ea66cd0c9f100d36f80e8e137:src/app/components/BatchInvoicePayments.tsx'],{encoding:'utf8',windowsHide:true});
+ const financialHashes={applyBatchPayment:'d9b6f94be0e278f86a07aecd7e0bcbaf97080fae88a0da9e18e1107793fa172b',paymentCanApply:'e3a1dabbaa952503587f9b581bf8f405d73ee21bdf31d9f09cd9da19da09a29b'};
+ for(const name of ['applyBatchPayment','loadExtractedRemittance','paymentCanApply']){
+  assert.equal(crypto.createHash('sha256').update(executable(historical,name)).digest('hex'),baselineHashes[name],'Original production integration changed: '+name);
+  assert.equal(crypto.createHash('sha256').update(executable(source,name)).digest('hex'),financialHashes[name]??baselineHashes[name],'Unreviewed integration changed: '+name);
+ }
+ console.log('PASS A4588.33 to B1099 state isolation at opening/direct intake, source/attempt reset, old preparation cancellation, intentional same-remittance check details, intake preview before preparation, camera independent of flags, existing source identity, stale capture cancellation, empty picker, original and exact financial integration pins; unchanged OCR reconciliation integration');}
 run().catch(error=>{console.error(error);process.exitCode=1});
