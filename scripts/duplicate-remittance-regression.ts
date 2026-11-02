@@ -359,6 +359,7 @@ const applyBatchRoute = readFileSync(
   resolve(root, "src/app/api/payments/apply-batch/route.ts"),
   "utf8"
 );
+const nativePosting=readFileSync(resolve(root,'supabase/sql/2026-11-02-atomic-remittance-posting.sql'),'utf8');
 const duplicatePreflightRoute = readFileSync(
   resolve(root, "src/app/api/payments/duplicate-remittance-preflight/route.ts"),
   "utf8"
@@ -399,20 +400,12 @@ assert(
     applyBatchRoute.includes("status === \"active\"") &&
     applyBatchRoute.includes("status === \"possible\"") &&
     applyBatchRoute.includes("Only an owner or admin can continue") &&
-    applyBatchRoute.includes("payment.duplicate_override") &&
+    nativePosting.includes("payment.duplicate_override") &&
     applyBatchRoute.indexOf("findDuplicateRemittance") <
-      applyBatchRoute.indexOf("const appliedInvoices = []"),
+      applyBatchRoute.indexOf("supabase.rpc('trimax_commit_remittance'"),
   "Server-side duplicate detection must run before payment mutations and audit owner/admin overrides."
 );
-assert(
-  applyBatchRoute.includes("rollbackAppliedMutations") &&
-    applyBatchRoute.includes("insertedActivityLogIds") &&
-    applyBatchRoute.includes("payment_audit_insert_failed") &&
-    applyBatchRoute.includes("duplicate_override_audit_failed") &&
-    applyBatchRoute.indexOf("findDuplicateRemittance") <
-      applyBatchRoute.indexOf("invoiceRollbackSnapshots"),
-  "Duplicate protection must remain inside the atomic apply-batch envelope without breaking valid new payments."
-);
+assert(nativePosting.includes('pg_advisory_xact_lock')&&nativePosting.includes('Payment history changed')&&nativePosting.includes("'payment.duplicate_override'")&&!/\.(?:update|insert|delete)\(/.test(applyBatchRoute),'Duplicate checks and override audits are inside native transactional enforcement.');
 assert(
   duplicatePreflightRoute.includes("createRemittanceDocumentFingerprint") &&
     duplicatePreflightRoute.includes("fingerprintStoredPaymentImage") &&

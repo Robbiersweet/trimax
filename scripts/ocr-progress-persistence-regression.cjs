@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- Actual retained iPhone observations; transport-only, no network or financial writes. */
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),cp=require('node:child_process');
 const {batchedProgress}=require('./ocr-progress-persistence.cjs'),{encodeEvidence,saveEvidence}=require('./ocr-legacy-evidence.cjs');
-const changed=cp.execFileSync('git',['diff','9e756b34472b16be6e42ea81923c67bba8f5e080','--name-only','--',...require('./release/contract.cjs').sourcePaths],{encoding:'utf8',windowsHide:true}).trim().split(/\r?\n/).filter(Boolean);
+// Preserve the historical transport-only proof; current financial scope has its own independent guard.
+const changed=cp.execFileSync('git',['diff','9e756b34472b16be6e42ea81923c67bba8f5e080','871864944120570305aaa7ced7597835c6276b48','--name-only','--',...require('./release/contract.cjs').sourcePaths],{encoding:'utf8',windowsHide:true}).trim().split(/\r?\n/).filter(Boolean);
 const allowed=new Set(['scripts/ocr-legacy-worker.cjs','scripts/ocr-progress-persistence.cjs','scripts/ocr-progress-persistence-regression.cjs','scripts/ocr-p1-recognition-regression.cjs','scripts/release/gate-checks.cjs']);
 assert(changed.every(p=>allowed.has(p)),'Only legacy progress persistence and its release regressions may change; recognition, money, matching, payment, duplicate, SQL, canonical transport and shadow execution stay frozen');
 const file=path.join(process.env.LOCALAPPDATA,'Trimax/ocr-progress-batching-20261102/fixture.json'),bytes=fs.readFileSync(file),hash=b=>crypto.createHash('sha256').update(b).digest('hex');

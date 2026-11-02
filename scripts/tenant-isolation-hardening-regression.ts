@@ -128,7 +128,7 @@ assert(
   paymentApplyRoute.includes(".from(\"invoice_line_items\")") &&
     paymentApplyRoute.includes(".eq(\"business_id\", businessId)") &&
     paymentApplyRoute.includes(".in(\"invoice_id\", invoiceIds)") &&
-    paymentApplyRoute.includes(".eq(\"id\", invoice.id)") &&
+    read('supabase/sql/2026-11-02-atomic-remittance-posting.sql').includes('where id=inv.id and business_id=p_business') &&
     paymentApplyRoute.includes(".eq(\"business_id\", businessId)"),
   "Payment application must verify line items and invoice updates inside the selected business."
 );

@@ -588,6 +588,7 @@ export default function BatchInvoicePayments({
     initialCustomerFocus(invoices, initialCustomer);
   const startedFromInvoiceSelection =
     Boolean(initialInvoiceIds?.length) && Boolean(startingFocus);
+  const [allocationAmounts,setAllocationAmounts]=useState<Record<string,string>>({});
   const [selectedIds, setSelectedIds] = useState<string[]>(
     startingFocus?.invoiceIds ?? []
   );
@@ -785,7 +786,9 @@ export default function BatchInvoicePayments({
     selectedIds.includes(invoice.id)
   );
 
-  const selectedTotal = sumMoney(selectedInvoices.map(invoice => invoice.amountDue));
+  const intendedAllocations=selectedInvoices.map(invoice=>({invoiceId:invoice.id,amount:paymentEntryMode==='manual'&&allocationAmounts[invoice.id]!==undefined?parseMoney(allocationAmounts[invoice.id]):invoice.amountDue}));
+  const selectedTotal = sumMoney(intendedAllocations.map(v=>v.amount));
+  const validAllocations=intendedAllocations.length===selectedIds.length&&intendedAllocations.every(v=>v.amount>0&&moneyCents(v.amount)<=moneyCents(selectedInvoices.find(i=>i.id===v.invoiceId)!.amountDue));
 
   const selectedCustomerGroups = new Map<
     string,
@@ -803,7 +806,7 @@ export default function BatchInvoicePayments({
     selectedCustomerGroups.set(customerName, {
       customerName,
       count: current.count + 1,
-      total: sumMoney([current.total, invoice.amountDue]),
+      total: sumMoney([current.total, intendedAllocations.find(v=>v.invoiceId===invoice.id)!.amount]),
     });
   });
 
@@ -909,7 +912,7 @@ export default function BatchInvoicePayments({
       checkOcrStatus !== "idle"));
   const showManualInvoiceBrowser = paymentEntryMode === "manual";
   const paymentCanApply =
-    !isSaving &&
+    !isSaving && validAllocations &&
     (paymentEntryMode !== "photo" || attemptAllowsApply(activeRemittanceAttempt, selectedIds, reviewMatchedInvoices.map(invoice => invoice.id), enteredCheckAmount, duplicateRemittanceCheck.status !== "none")) &&
     (paymentEntryMode !== "photo" || (checkOcrStatus === "ready" && ocrReconciliationVerified)) &&
     selectedInvoices.length > 0 &&
@@ -994,6 +997,7 @@ export default function BatchInvoicePayments({
 
   function clearSelection() {
     setSelectedIds([]);
+    setAllocationAmounts({});
     setCheckAmount("");
   }
 
@@ -2164,6 +2168,7 @@ export default function BatchInvoicePayments({
     if (intent !== "check_details" && documentType !== "check_only") {
       setOcrReconciliationVerified(false);
       setSelectedIds([]);
+    setAllocationAmounts({});
       setReviewMatchedInvoices([]);
       setRemittanceStubText("");
       setExtractedPaymentAmount(null);
@@ -2399,6 +2404,7 @@ export default function BatchInvoicePayments({
     setScanSavedStatus("");
     setRemittanceStubText("");
     setSelectedIds([]);
+    setAllocationAmounts({});
     setExtractedPaymentAmount(null);
     setReviewMatchedInvoices([]);
     setCapturedCheckAmount("");
@@ -2488,6 +2494,7 @@ export default function BatchInvoicePayments({
       clearCurrentRemittanceReviewState();
       setRemittanceStubText("");
       setSelectedIds([]);
+    setAllocationAmounts({});
       setReviewMatchedInvoices([]);
       setExtractedPaymentAmount(null);
       setPaymentReviewNotice("");
@@ -2551,7 +2558,7 @@ export default function BatchInvoicePayments({
 
   async function applyBatchPayment(confirmedReviewKey?: string) {
     if(paymentSubmitBusy.current)return;
-    const reviewKey=JSON.stringify({businessId,sourceAttemptId:latestScan.current?.attemptId??null,invoiceIds:[...selectedIds].sort(),checkAmount:enteredCheckAmount,paymentReference,checkDate,receivedDate,checkPayor,paymentType,internalNote,remittanceDocumentFingerprint,duplicateEvidenceKey,duplicateOverrideClearedKey,reversedDuplicateReviewedKey});
+    const reviewKey=JSON.stringify({businessId,sourceAttemptId:latestScan.current?.attemptId??null,invoiceIds:[...selectedIds].sort(),allocations:intendedAllocations,checkAmount:enteredCheckAmount,paymentReference,checkDate,receivedDate,checkPayor,paymentType,internalNote,remittanceDocumentFingerprint,duplicateEvidenceKey,duplicateOverrideClearedKey,reversedDuplicateReviewedKey});
     if(confirmedReviewKey!==undefined&&confirmedReviewKey!==reviewKey){setPaymentConfirmation(null);setToast({type:'error',message:'The payment review changed. Check the details and confirm again.'});return;}
     const validationOnly=confirmedReviewKey===undefined;
     if (!paymentCanApply) {
@@ -2640,7 +2647,10 @@ export default function BatchInvoicePayments({
           validateOnly: validationOnly,
           sourceAttemptId: latestScan.current?.attemptId ?? null,
           confirmSavedRemittance: !validationOnly,
-          invoiceIds: selectedInvoices.map((invoice) => invoice.id),
+          invoiceIds: selectedIds,
+          allocations: intendedAllocations,
+          confirmedInvoiceRefs: selectedInvoices.map(invoice=>({id:invoice.id,number:invoice.displayId??invoice.projectTitle??'Invoice',amountPaidCents:moneyCents(invoice.amountPaid),amountDueCents:moneyCents(invoice.amountDue)})),
+          reversedDuplicateConfirmed: duplicateRemittanceCheck.status==='reversed' && reversedDuplicateReviewedKey===duplicateEvidenceKey,
           paymentDate: receivedDate,
           receivedDate,
           checkDate,
@@ -2716,8 +2726,8 @@ export default function BatchInvoicePayments({
         );
       }
 
-      if(validationOnly){
-        if(result.validated!==true||result.paymentApplied!==false)throw Error('Payment validation did not return a safe confirmation. No payment was applied.');
+      if(validationOnly && result.paymentApplied!==true){
+        if(result.validated!==true||result.paymentApplied!==false)throw Error('Payment validation did not return a safe confirmation. The check remains unconfirmed.');
         setPaymentConfirmation({key:reviewKey,checkNumber:submittedPaymentReference,payor:submittedPayor,amount:enteredCheckAmount!,invoiceNumbers:selectedInvoices.map(invoice=>invoice.displayId||invoice.id),savedDiagnostic:resumedDiagnosticReplay.current});
         return;
       }
@@ -2740,6 +2750,7 @@ export default function BatchInvoicePayments({
       clearCurrentRemittanceReviewState();
       setRemittanceStubText("");
       setSelectedIds([]);
+    setAllocationAmounts({});
       setReviewMatchedInvoices([]);
       setExtractedPaymentAmount(null);
       setPaymentReviewNotice("");
@@ -3722,6 +3733,7 @@ export default function BatchInvoicePayments({
 
                 <span className="text-right font-bold text-emerald-200">
                   {formatMoney(invoice.amountDue)}
+                  {selectedIds.includes(invoice.id) ? <input aria-label={`Payment allocation for ${invoice.displayId}`} inputMode="decimal" value={allocationAmounts[invoice.id]??invoice.amountDue.toFixed(2)} onChange={event=>setAllocationAmounts(current=>({...current,[invoice.id]:event.target.value}))} className="mt-2 w-28 rounded border border-zinc-600 bg-zinc-950 px-2 py-1 text-right text-white" /> : null}
                 </span>
               </label>
             );

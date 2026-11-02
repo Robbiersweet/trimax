@@ -45,5 +45,6 @@ scripts.push('scripts/maintenance-qr-shell-regression.cjs','scripts/apartment-tu
 scripts.push('scripts/ocr-diagnostic-display-regression.cjs');
 scripts.push('scripts/ocr-p1-recognition-regression.cjs');
 scripts.push('scripts/ocr-progress-persistence-regression.cjs');
+scripts.push('scripts/atomic-remittance-regression.cjs','scripts/financial-hardening-scope-regression.cjs');
 module.exports=scripts;
 

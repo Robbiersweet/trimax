@@ -220,13 +220,14 @@ const applyBatchRoute = readFileSync(
   resolve(root, "src/app/api/payments/apply-batch/route.ts"),
   "utf8"
 );
+const atomicPostingSource=applyBatchRoute+readFileSync(resolve(root,'src/app/lib/atomicRemittance.ts'),'utf8')+readFileSync(resolve(root,'supabase/sql/2026-11-02-atomic-remittance-posting.sql'),'utf8');
 assert(
-  applyBatchRoute.includes("createPaymentTimelinessSnapshot") &&
-    applyBatchRoute.includes("paymentCompletedInvoice") &&
-    applyBatchRoute.includes("dueDateAtCompletion") &&
-    applyBatchRoute.includes("fullyPaidDate") &&
-    applyBatchRoute.includes("daysLate") &&
-    applyBatchRoute.includes("paidLate"),
+  atomicPostingSource.includes("createPaymentTimelinessSnapshot") &&
+    atomicPostingSource.includes("paymentCompletedInvoice") &&
+    atomicPostingSource.includes("dueDateAtCompletion") &&
+    atomicPostingSource.includes("fullyPaidDate") &&
+    atomicPostingSource.includes("daysLate") &&
+    atomicPostingSource.includes("paidLate"),
   "Server-side payment application must record immutable payment-timeliness snapshots."
 );
 assert(
@@ -240,11 +241,7 @@ assert(
     applyBatchRoute.includes("payor,"),
   "Payment application must store Check Date separately and use Received Date for legacy paymentDate/timeliness."
 );
-assert(
-  applyBatchRoute.includes("isFullyPaid") &&
-    applyBatchRoute.includes("paymentOutcome: isFullyPaid ? \"paid\" : \"partial\""),
-  "Only the final payment should establish the completed payment history result."
-);
+assert(atomicPostingSource.includes("if full_paid and entry->'timeliness'")&&atomicPostingSource.includes("'paymentOutcome',case when full_paid then 'paid' else 'partial' end"),'Only final payment records completed timeliness.');
 
 const batchInvoicePayments = readFileSync(
   resolve(root, "src/app/components/BatchInvoicePayments.tsx"),

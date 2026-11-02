@@ -20,12 +20,15 @@ async function clientTest(){
  const source=fs.readFileSync('src/app/lib/ocrLegacyJobClient.ts','utf8'),mod={exports:{}};
  const calls=[];let polls=0,elapsed=0;
  const mockedFetch=async(url,options)=>{calls.push({url,options});if(options.method==='POST')return Response.json({status:'queued'},{status:202});polls++;if(polls===2)throw Error('network interrupted');return Response.json(polls<30?{status:'running'}:{status:'review',httpStatus:200,response:{evidence:{rows:5}}});};
- new Function('require','module','exports','fetch','setTimeout','clearTimeout','performance',ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(()=>({supabase:{auth:{getSession:async()=>({data:{session:{access_token:'test'}}})}}}),mod,mod.exports,mockedFetch,(fn,ms)=>{if(ms===2500){elapsed+=2500;fn();}return 1;},()=>{}, {now:()=>elapsed});
+ new Function('require','module','exports','fetch','setTimeout','clearTimeout','performance',ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(()=>({supabase:{auth:{getSession:async()=>({data:{session:{access_token:'test'}}})}}}),mod,mod.exports,mockedFetch,(fn,ms)=>{if(fn.length===1){elapsed+=ms;queueMicrotask(fn);}return 1;},()=>{}, {now:()=>elapsed});
  const response=await mod.exports.waitForLegacyJob({attemptId:crypto.randomUUID(),documentType:'remittance_stub',retryStrategy:'standard'},()=>true,()=>{});
  assert(elapsed>60000);assert.equal(calls.filter(c=>c.options.method==='POST').length,1);const result=await response.json();assert.equal(result.evidence.rows,5);assert(Number.isFinite(result.diagnostics.backgroundJob.enqueueRequestMs));assert(calls.filter(c=>c.options.method==='GET').every(c=>!c.options.body));
  // Reload resumes the same identity; the database contract makes POST idempotent.
  elapsed=0;
  const id=calls[0].options.body;await mod.exports.waitForLegacyJob(JSON.parse(id),()=>true,()=>{});assert.equal(calls.filter(c=>c.options.method==='POST')[1].options.body,id);
  elapsed=0;polls=-1000;await assert.rejects(mod.exports.waitForLegacyJob(JSON.parse(id),()=>true,()=>{}),error=>/couldn't finish/.test(error.message)&&error.code==='OCR_JOB_PENDING'&&error.jobStatus==='running');assert(elapsed<=95000);
+ // Completion after the 90-second browser window remains in the durable job.
+ polls=30;elapsed=0;const reopened=await mod.exports.waitForLegacyJob(JSON.parse(id),()=>true,()=>{});assert.deepEqual((await reopened.json()).evidence,{rows:5});assert(calls.filter(c=>c.options.method==='POST').every(c=>c.options.body===id),'Late completion resumes the same attempt/job, never a replacement capture');
 }
-(async()=>{await workerTest();await clientTest();console.log('PASS: detached completion, >60s polling, network recovery, same-ID reload, per-stage checkpoint, hash validation, OCR failure, no payment/shadow writes');})().catch(e=>{console.error(e);process.exitCode=1;});
+const watchdog=setTimeout(()=>{console.error('FAIL transport regression did not settle');process.exit(1);},process.argv.includes("--long")?80000:10000);
+(async()=>{await workerTest();await clientTest();console.log('PASS: detached completion, >60s polling, network recovery, same-ID reload, per-stage checkpoint, hash validation, OCR failure, no payment/shadow writes');})().catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>clearTimeout(watchdog));

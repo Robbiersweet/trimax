@@ -8,7 +8,6 @@ import {
 } from "../../../lib/invoiceEligibility";
 import { moneyNumber } from "../../../lib/invoiceLifecycle";
 import {
-  createPaymentTimelinessSnapshot,
   paymentDateKey,
 } from "../../../lib/paymentTimeliness";
 import {
@@ -16,6 +15,7 @@ import {
   type DuplicateRemittanceActivity,
 } from "../../../lib/duplicateRemittance";
 import { createRemittanceDocumentFingerprint } from "../../../lib/remittanceDocumentFingerprint";
+import {postingRequestKey, prepareAtomicPlan, verifiedActivitySnapshot, type VerifiedInvoiceReference, type PostingLine} from '../../../lib/atomicRemittance';
 import {loadSavedRemittancePayment} from '../../../lib/savedRemittancePaymentServer';
 
 type GenericTable = {
@@ -28,6 +28,7 @@ type GenericTable = {
 type Database = {
   public: {
     Tables: {
+      remittance_posting_receipts: GenericTable;
       activity_logs: GenericTable;
       business_users: GenericTable;
       invoice_line_items: GenericTable;
@@ -37,7 +38,7 @@ type Database = {
       ocr_attempt_diagnostics: GenericTable;
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {trimax_commit_remittance:{Args:{p_business:string;p_actor:string;p_key:string;p_plan:unknown;p_verified_activities:unknown;p_validate_only:boolean};Returns:Record<string,unknown>}};
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };
@@ -62,6 +63,7 @@ type InvoiceRow = {
 };
 
 type InvoiceLineItemRow = InvoiceEligibilityLineItem & {
+  id: string;
   invoice_id: string;
 };
 
@@ -69,39 +71,6 @@ type BusinessUserRow = {
   id: string;
   role?: string | null;
 };
-
-class ApplyBatchError extends Error {
-  code: string;
-  stage: string;
-  status: number;
-  causeMessage?: string;
-
-  constructor({
-    message,
-    code,
-    stage,
-    status = 500,
-    cause,
-  }: {
-    message: string;
-    code: string;
-    stage: string;
-    status?: number;
-    cause?: unknown;
-  }) {
-    super(message);
-    this.name = "ApplyBatchError";
-    this.code = code;
-    this.stage = stage;
-    this.status = status;
-    this.causeMessage =
-      cause instanceof Error
-        ? cause.message
-        : typeof cause === "string"
-          ? cause
-          : undefined;
-  }
-}
 
 function getAdminClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -147,7 +116,7 @@ async function requireWorkspaceAccess({
     .limit(1)
     .maybeSingle<BusinessUserRow>();
 
-  if (error || !data) {
+  if (error || !data || !["owner","admin","accountant"].includes(data.role ?? "")) {
     return {
       ok: false,
       email: userData.user.email ?? null,
@@ -227,7 +196,7 @@ export async function POST(request: Request) {
       status: 503,
     });
   }
-  const adminSupabase = supabase;
+
 
   const body = (await request.json().catch(() => ({}))) as {
     businessId?: string;
@@ -253,13 +222,15 @@ export async function POST(request: Request) {
     validateOnly?: boolean;
     sourceAttemptId?: string;
     confirmSavedRemittance?: boolean;
+    confirmedInvoiceRefs?: VerifiedInvoiceReference[];
+    allocations?: {invoiceId:string;amount:number}[];
+    reversedDuplicateConfirmed?: boolean;
   };
+  if(!Array.isArray(body.invoiceIds)||body.invoiceIds.some(v=>typeof v!=='string')||(body.allocations!==undefined&&!Array.isArray(body.allocations))||(body.confirmedInvoiceRefs!==undefined&&!Array.isArray(body.confirmedInvoiceRefs))) return NextResponse.json({error:'Invalid complete allocation request.'},{status:400});
   const businessId = cleanString(body.businessId, 80);
-  const invoiceIds = Array.from(
-    new Set((body.invoiceIds ?? []).map((id) => cleanString(id, 80)).filter(Boolean))
-  );
+  const invoiceIds = (body.invoiceIds ?? []).map((id) => cleanString(id, 80));
 
-  if (!businessId || invoiceIds.length === 0) {
+  if (!businessId || invoiceIds.length === 0 || invoiceIds.length>1000 || new Set(invoiceIds).size!==invoiceIds.length || invoiceIds.some(id=>!id)) {
     return applyErrorResponse({
       message: "Select at least one invoice before applying payment.",
       code: "invalid_apply_request",
@@ -295,6 +266,22 @@ export async function POST(request: Request) {
     });
   }
 
+  if (body.validateOnly !== true && body.confirmSavedRemittance !== true) return applyErrorResponse({message:'Explicit approval of the whole check is required.',code:'confirmation_required',stage:'confirmation',status:400});
+  // Complete history is rechecked under the database lock. Never truncate duplicate evidence.
+  type Activity={id:string;action:string;entity_id?:string|null;entity_label?:string|null;details?:Record<string,unknown>|null;created_at?:string|null};
+  const duplicateActivityData:Activity[]=[];
+  for(let offset=0; ;offset+=500){
+    const {data,error}=await supabase.from('activity_logs').select('id, action, entity_id, entity_label, details, created_at').eq('business_id',businessId).eq('action','invoice.batch_payment_applied').order('id').range(offset,offset+499);
+    if(error || offset>=10000) return applyErrorResponse({message:'Complete payment history could not be verified. No payment was applied.',code:'payment_history_unavailable',stage:'history',status:503});
+    duplicateActivityData.push(...(data??[]) as Activity[]);
+    if((data??[]).length<500)break;
+  }
+  const reversedAuditIds=body.reversedDuplicateConfirmed?duplicateActivityData.filter(v=>invoiceIds.includes(v.entity_id??'')&&(v.details?.paymentOutcome==='reversed'||v.details?.paymentReversed===true||v.details?.reversedAt||v.details?.reversalDate)).map(v=>v.id):[];
+  const requestKey=postingRequestKey({...body,businessId,invoiceIds},reversedAuditIds);
+  // A committed result is retrieved before current Paid eligibility or saved-scan guards.
+  const {data:receipt,error:receiptError}=await supabase.from('remittance_posting_receipts').select('result').eq('business_id',businessId).eq('request_key',requestKey).maybeSingle<{result:Record<string,unknown>}>();
+  if(receiptError) return applyErrorResponse({message:'Atomic payment posting is unavailable. No new payment was applied.',code:'atomic_posting_unavailable',stage:'receipt',status:503});
+  if(receipt) return NextResponse.json(body.validateOnly===true?{validated:true,paymentApplied:true,alreadyApplied:true,...receipt.result}:receipt.result);
   const sourceAttemptId = cleanString(body.sourceAttemptId, 80);
   let savedDiagnosticReview = false;
   if (sourceAttemptId) {
@@ -341,12 +328,13 @@ export async function POST(request: Request) {
     );
   }
 
-  const { data: childData } = await supabase
+  const { data: childData, error: childError } = await supabase
     .from("invoices")
     .select("split_parent_invoice_id")
     .eq("business_id", businessId)
     .in("split_parent_invoice_id", invoiceIds)
     .returns<{ split_parent_invoice_id: string | null }[]>();
+  if(childError) return NextResponse.json({error:'Split invoice relationships could not be verified.'},{status:503});
   const splitChildrenByParentId = new Map<string, number>();
   (childData ?? []).forEach((child) => {
     const parentId = String(child.split_parent_invoice_id ?? "");
@@ -359,7 +347,7 @@ export async function POST(request: Request) {
 
   const { data: lineItemData, error: lineItemError } = await supabase
     .from("invoice_line_items")
-    .select("invoice_id, description, quantity, unit_price, line_total")
+    .select("id, invoice_id, description, quantity, unit_price, line_total")
     .eq("business_id", businessId)
     .in("invoice_id", invoiceIds)
     .returns<InvoiceLineItemRow[]>();
@@ -371,7 +359,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const lineItemsByInvoiceId = new Map<string, InvoiceEligibilityLineItem[]>();
+  const lineItemsByInvoiceId = new Map<string, PostingLine[]>();
   (lineItemData ?? []).forEach((lineItem) => {
     const current = lineItemsByInvoiceId.get(lineItem.invoice_id) ?? [];
     current.push(lineItem);
@@ -399,7 +387,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const selectedTotal = sumMoney(invoices.map(invoiceCollectionAmountDue));
+  const selectedTotal = body.allocations ? sumMoney(body.allocations.map(v=>moneyNumber(v.amount))) : sumMoney(invoices.map(invoiceCollectionAmountDue));
   const remittanceTotal = moneyNumber(body.remittanceStubTotal ?? null);
 
   if (moneyCents(selectedTotal) !== moneyCents(checkAmount)) {
@@ -449,21 +437,6 @@ export async function POST(request: Request) {
 
       remittanceDocumentFingerprint = fingerprint?.hash ?? "";
     }
-  }
-
-  const { data: duplicateActivityData, error: duplicateActivityError } = await supabase
-    .from("activity_logs")
-    .select("id, action, entity_id, entity_label, details, created_at")
-    .eq("business_id", businessId)
-    .eq("action", "invoice.batch_payment_applied")
-    .order("created_at", { ascending: false })
-    .limit(500);
-
-  if (duplicateActivityError) {
-    return NextResponse.json(
-      { error: "Trimax could not verify whether this remittance was already applied." },
-      { status: 500 }
-    );
   }
 
   const duplicateCheck = findDuplicateRemittance(
@@ -534,269 +507,30 @@ export async function POST(request: Request) {
     );
   }
 
-  // All authorization, collectibility, split, amount and duplicate checks above
-  // are shared with application. This branch cannot upload, update or insert.
-  if (body.validateOnly === true) return NextResponse.json({validated:true,paymentApplied:false,selectedTotal,invoiceIds,sourceAttemptId:sourceAttemptId||null,requiresSavedRemittanceConfirmation:savedDiagnosticReview});
-
-  const appliedInvoices = [];
-  const invoiceRollbackSnapshots = invoices.map((invoice) => ({
-    id: invoice.id,
-    amount_paid: moneyNumber(invoice.amount_paid),
-    status: invoice.status ?? null,
-    deposit_status: invoice.deposit_status ?? null,
-  }));
-  const updatedInvoiceIds: string[] = [];
-  const insertedActivityLogIds: string[] = [];
-
-  async function rollbackAppliedMutations() {
-    let succeeded = true;
-
-    for (const invoiceId of [...updatedInvoiceIds].reverse()) {
-      const snapshot = invoiceRollbackSnapshots.find(
-        (invoice) => invoice.id === invoiceId
-      );
-
-      if (!snapshot) {
-        succeeded = false;
-        continue;
-      }
-
-      const { error } = await adminSupabase
-        .from("invoices")
-        .update({
-          amount_paid: snapshot.amount_paid,
-          status: snapshot.status,
-          deposit_status: snapshot.deposit_status,
-        })
-        .eq("id", snapshot.id)
-        .eq("business_id", businessId);
-
-      if (error) {
-        succeeded = false;
-      }
+  const audit={paymentDate: receivedDate,receivedDate,checkDate,paymentType:cleanString(body.paymentType,80),paymentReference,payor,
+    sourceOcrAttemptId:sourceAttemptId||null,savedDiagnosticReviewConfirmed:savedDiagnosticReview&&body.confirmSavedRemittance===true,
+    internalNote:cleanString(body.internalNote,1000),remittanceStubMatched:Boolean(body.remittanceStubMatched),remittanceStubTotal:body.remittanceStubTotal??null,
+    remittanceStubLineCount:body.remittanceStubLineCount??null,remittanceMatchConfidence:body.remittanceMatchConfidence??null,
+    remittanceDocumentFingerprint:remittanceDocumentFingerprint||null,remittanceDocumentFingerprintVersion:remittanceDocumentFingerprint?'trimax-ahash-32-v1':null,
+    paymentAttachmentId:body.paymentAttachmentId??null,paymentImagePath:body.paymentImagePath??null,paymentImageFileName:body.paymentImageFileName??null};
+  const overrideAudit=duplicateCheck.status==='possible'&&body.duplicateOverrideConfirmed&&duplicateCheck.canOverride?{
+    priorPaymentId:duplicateCheck.payment?.id??null,priorActivityLogIds:duplicateCheck.payment?.activityLogIds??[],
+    reason:cleanString(body.duplicateOverrideReason,500)||'Owner/admin confirmed possible duplicate review.',
+    duplicateEvidenceSummary:duplicateCheck.reasons.join(', '),paymentReference,checkAmount,checkDate,receivedDate,payor,invoiceIds}:null;
+  let plan;
+  try{plan=prepareAtomicPlan({...body,invoiceIds},invoices,lineItemsByInvoiceId,audit,overrideAudit);}
+  catch(error){return applyErrorResponse({message:error instanceof Error?error.message:'Complete allocation review required.',code:'allocation_review_required',stage:'allocation-validation',status:400});}
+  // This is the only financial mutation. PostgreSQL commits invoices, audits and retry receipt together.
+  // No HTTP compensation or nontransactional fallback is permitted.
+  try{
+    const {data,error}=await supabase.rpc('trimax_commit_remittance',{p_business:businessId,p_actor:access.userId!,p_key:requestKey,p_plan:plan,p_verified_activities:verifiedActivitySnapshot(duplicateActivityData),p_validate_only:body.validateOnly===true});
+    if(error){
+      const status=error.code==='42501'?403:['40001','23505'].includes(error.code)?409:error.code==='22023'?400:503;
+      return applyErrorResponse({message:status===503?'Payment confirmation is unavailable. Retry this same check to retrieve its saved result safely.':'The complete check needs review. '+error.message,code:'atomic_posting_rejected',stage:'atomic-commit',status,cause:error.message});
     }
-
-    if (insertedActivityLogIds.length > 0) {
-      const { error } = await adminSupabase
-        .from("activity_logs")
-        .delete()
-        .eq("business_id", businessId)
-        .in("id", insertedActivityLogIds);
-
-      if (error) {
-        succeeded = false;
-      }
-    }
-
-    return succeeded;
+    if(!data||(body.validateOnly===true?data.validated!==true:data.paymentApplied!==true)) return NextResponse.json({error:'Payment confirmation is unavailable. Retry this same check safely.',code:'payment_confirmation_unknown'},{status:503});
+    return NextResponse.json(body.validateOnly===true?{...data,sourceAttemptId:sourceAttemptId||null,requiresSavedRemittanceConfirmation:savedDiagnosticReview}:data);
+  }catch{
+    return NextResponse.json({error:'Payment confirmation was interrupted. Retry this same check to retrieve its saved result safely.',code:'payment_confirmation_unknown',stage:'atomic-commit'},{status:503});
   }
-
-  if (
-    duplicateCheck.status === "possible" &&
-    body.duplicateOverrideConfirmed &&
-    duplicateCheck.canOverride
-  ) {
-    const { data: duplicateOverrideLog, error: duplicateOverrideError } =
-      await supabase.from("activity_logs").insert({
-      business_id: businessId,
-      actor_user_id: access.userId,
-      actor_email: access.email,
-      action: "payment.duplicate_override",
-      entity_type: "payment",
-      entity_id: duplicateCheck.payment?.id ?? null,
-      entity_label: paymentReference || "Possible duplicate remittance",
-      details: {
-        priorPaymentId: duplicateCheck.payment?.id ?? null,
-        priorActivityLogIds: duplicateCheck.payment?.activityLogIds ?? [],
-        reason: cleanString(body.duplicateOverrideReason, 500) || "Owner/admin confirmed possible duplicate review.",
-        duplicateEvidenceSummary: duplicateCheck.reasons.join(", "),
-        paymentReference,
-        checkAmount,
-        checkDate,
-        receivedDate,
-        payor,
-        invoiceIds,
-      },
-    }).select("id").single<{ id: string }>();
-
-    if (duplicateOverrideError) {
-      return applyErrorResponse({
-        message: "Trimax could not record duplicate review approval.",
-        code: "duplicate_override_audit_failed",
-        stage: "duplicate-override-audit",
-        status: 500,
-        cause: duplicateOverrideError.message,
-      });
-    }
-
-    if (duplicateOverrideLog?.id) {
-      insertedActivityLogIds.push(duplicateOverrideLog.id);
-    }
-  }
-
-  try {
-    for (const invoice of invoices) {
-      const invoiceAmount = moneyNumber(invoice.invoice_amount);
-      const amountPaid = moneyNumber(invoice.amount_paid);
-      const amountDue = invoiceCollectionAmountDue(invoice);
-      const nextAmountPaid = Math.min(invoiceAmount, sumMoney([amountPaid, amountDue]));
-      const isFullyPaid =
-        invoiceAmount > 0 && moneyCents(nextAmountPaid) >= moneyCents(invoiceAmount);
-      const isDepositRequest =
-        String(invoice.deposit_status ?? "none").toLowerCase() === "requested" &&
-        moneyNumber(invoice.deposit_requested_amount) > 0;
-      const updatePayload: {
-        amount_paid: number;
-        status: string;
-        deposit_status?: string;
-      } = {
-        amount_paid: nextAmountPaid,
-        status: isFullyPaid ? "Paid" : invoice.status ?? "Sent",
-      };
-
-      if (isDepositRequest && !isFullyPaid) {
-        updatePayload.deposit_status = "paid";
-      }
-
-      const timelinessSnapshot = isFullyPaid
-        ? createPaymentTimelinessSnapshot({
-            invoice,
-            lineItems: lineItemsByInvoiceId.get(invoice.id) ?? [],
-            fullyPaidDate: receivedDate,
-            finalPaymentReference: paymentReference,
-          })
-        : null;
-
-      const { error: updateError } = await supabase
-        .from("invoices")
-        .update(updatePayload)
-        .eq("id", invoice.id)
-        .eq("business_id", businessId);
-
-      if (updateError) {
-        throw new ApplyBatchError({
-          message: `Unable to apply payment to ${invoice.display_id ?? "invoice"}.`,
-          code: "invoice_update_failed",
-          stage: "invoice-update",
-          cause: updateError.message,
-        });
-      }
-
-      updatedInvoiceIds.push(invoice.id);
-
-      const { data: activityLog, error: activityLogError } = await supabase
-        .from("activity_logs")
-        .insert({
-          business_id: businessId,
-          actor_user_id: access.userId,
-          actor_email: access.email,
-          action: "invoice.batch_payment_applied",
-          entity_type: "invoice",
-          entity_id: invoice.id,
-          entity_label: invoice.display_id ?? invoice.project_title ?? "Invoice",
-          details: {
-            paymentDate: receivedDate,
-            receivedDate,
-            checkDate,
-            paymentType: cleanString(body.paymentType, 80),
-            paymentReference,
-            sourceOcrAttemptId: sourceAttemptId || null,
-            savedDiagnosticReviewConfirmed: savedDiagnosticReview && body.confirmSavedRemittance === true,
-            payor,
-            internalNote: cleanString(body.internalNote, 1000),
-            invoiceId: invoice.id,
-            businessId,
-            clientId: invoice.client_id ?? null,
-            customerName: invoice.customer_name ?? null,
-            invoiceNumber: invoice.display_id ?? null,
-            dueDateAtPayment: invoice.due_date ?? null,
-            checkAmount,
-            amountApplied: amountDue,
-            resultingAmountPaid: nextAmountPaid,
-            paymentOutcome: isFullyPaid ? "paid" : "partial",
-            paymentCompletedInvoice: isFullyPaid,
-            ...(timelinessSnapshot
-              ? {
-                  dueDateAtCompletion: timelinessSnapshot.dueDateAtCompletion,
-                  fullyPaidDate: timelinessSnapshot.fullyPaidDate,
-                  daysLate: timelinessSnapshot.daysLate,
-                  paidLate: timelinessSnapshot.paidLate,
-                  finalPaymentReference: timelinessSnapshot.finalPaymentReference,
-                  recordedAt: timelinessSnapshot.recordedAt,
-                }
-              : {}),
-            depositPayment: isDepositRequest,
-            batchInvoiceCount: invoices.length,
-            remittanceStubMatched: Boolean(body.remittanceStubMatched),
-            remittanceStubTotal: body.remittanceStubTotal ?? null,
-            remittanceStubLineCount: body.remittanceStubLineCount ?? null,
-            remittanceMatchConfidence: body.remittanceMatchConfidence ?? null,
-            remittanceDocumentFingerprint: remittanceDocumentFingerprint || null,
-            remittanceDocumentFingerprintVersion: remittanceDocumentFingerprint
-              ? "trimax-ahash-32-v1"
-              : null,
-            paymentAttachmentId: body.paymentAttachmentId ?? null,
-            paymentImagePath: body.paymentImagePath ?? null,
-            paymentImageFileName: body.paymentImageFileName ?? null,
-          },
-        })
-        .select("id")
-        .single<{ id: string }>();
-
-      if (activityLogError) {
-        throw new ApplyBatchError({
-          message: `Unable to record payment audit for ${invoice.display_id ?? "invoice"}.`,
-          code: "payment_audit_insert_failed",
-          stage: "payment-audit-insert",
-          cause: activityLogError.message,
-        });
-      }
-
-      if (activityLog?.id) {
-        insertedActivityLogIds.push(activityLog.id);
-      }
-
-      appliedInvoices.push({
-        invoiceId: invoice.id,
-        displayId: invoice.display_id,
-        amountApplied: amountDue,
-        resultingAmountPaid: nextAmountPaid,
-        status: updatePayload.status,
-      });
-    }
-  } catch (error) {
-    const rollbackSucceeded = await rollbackAppliedMutations();
-    const applyError =
-      error instanceof ApplyBatchError
-        ? error
-        : new ApplyBatchError({
-            message: "Unable to apply the batch payment.",
-            code: "payment_apply_failed",
-            stage: "payment-application",
-            cause: error,
-          });
-
-    return applyErrorResponse({
-      message: applyError.message,
-      code: applyError.code,
-      stage: applyError.stage,
-      status: applyError.status,
-      cause: applyError.causeMessage,
-      partialMutationOccurred:
-        updatedInvoiceIds.length > 0 || insertedActivityLogIds.length > 0,
-      rollbackAttempted: true,
-      rollbackSucceeded,
-    });
-  }
-
-  return NextResponse.json({
-    ok: true,
-    appliedCount: appliedInvoices.length,
-    appliedInvoices,
-    checkAmount,
-    paymentReference,
-    payor,
-    receivedDate,
-    checkDate,
-  });
 }
