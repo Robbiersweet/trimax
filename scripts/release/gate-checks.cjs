@@ -44,5 +44,6 @@ scripts.push('scripts/table-caption-ownership-regression.cjs','scripts/complemen
 scripts.push('scripts/maintenance-qr-shell-regression.cjs','scripts/apartment-turn-regression.cjs');
 scripts.push('scripts/ocr-diagnostic-display-regression.cjs');
 scripts.push('scripts/ocr-p1-recognition-regression.cjs');
+scripts.push('scripts/ocr-progress-persistence-regression.cjs');
 module.exports=scripts;
 

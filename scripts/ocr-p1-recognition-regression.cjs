@@ -2,7 +2,9 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),ts=require('typescript');
 const root=path.resolve(__dirname,'..');process.chdir(root);
 const allowed=new Set(['src/app/api/payments/extract-check-stub/route.ts','src/app/lib/ocrStructure.ts','src/app/lib/documentFields/maturePaymentFields.ts']);
-const changed=require('node:child_process').execFileSync('git',['diff','93dfcde696b1b060b06f24215767f756de0fc4a2','--name-only','--','src','supabase','scripts/ocr-legacy-worker.cjs','scripts/ocr-v2/shadow-worker.cjs'],{encoding:'utf8',windowsHide:true}).trim().split(/\r?\n/).filter(Boolean);
+// Preserve the exact historical P1 scope proof. Current transport-only scope is
+// independently checked by ocr-progress-persistence-regression.cjs.
+const changed=require('node:child_process').execFileSync('git',['diff','93dfcde696b1b060b06f24215767f756de0fc4a2','9ce66d28e7e10fefd49244bb2266732eb9738c91','--name-only','--','src','supabase','scripts/ocr-legacy-worker.cjs','scripts/ocr-v2/shadow-worker.cjs'],{encoding:'utf8',windowsHide:true}).trim().split(/\r?\n/).filter(Boolean);
 assert(changed.every(p=>allowed.has(p)),'Only the three authorized P1 recognition sources may change; matching, payment, duplicate, workers and SQL remain frozen');
 const fixtureFile=path.join(process.env.TRIMAX_P1_FIXTURE_ROOT||path.join(process.env.LOCALAPPDATA,'Trimax/ocr-p1-recognition-20261101'),'fixture.json');
 const bytes=fs.readFileSync(fixtureFile),hash=b=>crypto.createHash('sha256').update(b).digest('hex');

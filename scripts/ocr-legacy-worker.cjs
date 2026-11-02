@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- Isolated Node worker loads the unchanged TypeScript extraction route. */
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),ts=require('typescript');
 const {saveEvidence,terminalSummary}=require('./ocr-legacy-evidence.cjs');
+const {batchedProgress}=require('./ocr-progress-persistence.cjs');
 const {readWorkerCanonical}=require('./ocr-canonical-object.cjs');
 function loadEngine(){
  const cache=new Map();
@@ -20,6 +21,7 @@ async function runJob(config,rpc,engine){
  const j=claim.job;
  const update=(stage,payload={},status=null)=>rpc('trimax_update_ocr_legacy',{p_attempt:j.attempt_id,p_lease:j.lease,p_stage:stage,p_payload:payload,p_status:status});
  let lostLease=false;
+ let progressPersistence;
  const heartbeat=setInterval(()=>{update('heartbeat').catch(()=>{lostLease=true;});},30000);
  try{
   // A durable response needs only its bounded terminal acknowledgement after restart.
@@ -35,7 +37,9 @@ async function runJob(config,rpc,engine){
     attemptId,captureSessionId:crypto.randomUUID(),sourceImageHash:crypto.createHash('sha256').update(bytes).digest('hex'),build:config.releaseAttestation?.sourceCommit??'validated-worker',
     snapshot:{label:'Optical fallback without business records',provenance:[],invoices:[],activities:[],receivedDate:''},
    },require('./ocr-mature-optical-adapter.cjs').createMatureOpticalAdapter(config)),extract):extract;
-  const response=await engine.progress.withLegacyProgress(async(stage,evidence)=>{if(lostLease)throw Error('Legacy lease heartbeat failed');await saveEvidence(update,stage,evidence);},execute,claim.recovery??undefined);
+  progressPersistence=batchedProgress(update);
+  const response=await engine.progress.withLegacyProgress(async(stage,evidence)=>{if(lostLease)throw Error('Legacy lease heartbeat failed');await progressPersistence.persist(stage,evidence);},execute,claim.recovery??undefined);
+  await progressPersistence.flush();
   const result=await response.json();delete result.optical; // Canonical image is already retained; never duplicate image bytes.
   if(config.releaseAttestation)result.release=config.releaseAttestation;
   if(lostLease)throw Error('Legacy lease lost before completion');
@@ -43,6 +47,7 @@ async function runJob(config,rpc,engine){
   await update('complete',terminalSummary(result,reference),response.status);
   console.log(JSON.stringify({attemptId:j.attempt_id,status:response.status,completedAt:new Date().toISOString()}));
  }catch(error){
+  if(!lostLease)await progressPersistence?.flush().catch(()=>{});
   // A stale lease cannot overwrite the new owner's result. Persistence failure leaves the lease reclaimable.
   if(!lostLease)await update('failed',{error:error.message},500).catch(()=>{});
   console.error(JSON.stringify({attemptId:j.attempt_id,error:error.message}));
