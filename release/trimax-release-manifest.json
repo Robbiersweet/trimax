@@ -1,26 +1,26 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-ocr-p1-recognition-20261101-rc1",
+  "releaseId": "trimax-ocr-progress-batching-20261102-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-11-01T23:38:11.447Z",
-  "releaseTimestamp": "2026-11-01T23:38:11.447Z",
+  "createdAt": "2026-11-02T04:59:40.895Z",
+  "releaseTimestamp": "2026-11-02T04:59:40.895Z",
   "baseProduction": {
-    "commit": "93dfcde696b1b060b06f24215767f756de0fc4a2",
-    "vercelDeploymentId": "3Y9MroXdjmSbxMQa9nY1hrm7ZBWr"
+    "commit": "9e756b34472b16be6e42ea81923c67bba8f5e080",
+    "vercelDeploymentId": "ARf86QmE454nd3ac1kuUK5fKxEWj"
   },
   "components": {
     "web": {
-      "commit": "9ce66d28e7e10fefd49244bb2266732eb9738c91"
+      "commit": "871864944120570305aaa7ced7597835c6276b48"
     },
     "legacy": {
-      "commit": "9ce66d28e7e10fefd49244bb2266732eb9738c91"
+      "commit": "871864944120570305aaa7ced7597835c6276b48"
     },
     "v2-shadow": {
-      "commit": "9ce66d28e7e10fefd49244bb2266732eb9738c91"
+      "commit": "871864944120570305aaa7ced7597835c6276b48"
     }
   },
   "sourceBundle": {
-    "sha256": "efc0b517cc7b3dc9d80b55efbfa0998115b0c45fd046b09a87da93adfd6689c1",
+    "sha256": "90663d3a7e79909e711303c692f49582b71829c1eaaf3af9ba63caa7284112ca",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -97,13 +97,15 @@
       "scripts/ocr-latency-regression.cjs": "1f170c45d821b8930e81cb74603cdf40e08cba3c824f11815195f58febef2fa7",
       "scripts/ocr-legacy-evidence.cjs": "23708e4c328cdc50aaf5a2e3004511e51b7ea2a377142cb6a8104b01791cfb16",
       "scripts/ocr-legacy-job-regression.cjs": "061362c99ffcd5bc1cb357835e9d7f271ac7d9a4390d1bfd1135aa0a9280a9c4",
-      "scripts/ocr-legacy-worker.cjs": "de2e151dbc7a317214332366aa17cdf1ec4c36632edc3b212358e12ec37ee578",
+      "scripts/ocr-legacy-worker.cjs": "b564c151c3d0802f4666b7b4c2f86dd65b8db44d33261fc82188f260750c898f",
       "scripts/ocr-lifecycle-regression.cjs": "a4c509c7074d73e54929a9059126180bb438940c14e5391f1baf4a2628f17a91",
       "scripts/ocr-mature-optical-adapter.cjs": "bbe7f7b9b41cea0499cf3f652f2ee35c8091ec73864f8d6d339983cb3938e886",
       "scripts/ocr-object-upload-regression.cjs": "6e1442bdc9770beb028d3a61aaa8bb4be6b863de80cfa05734b8855aaa5e3c2e",
       "scripts/ocr-optical-regression.ts": "80c5926c139d62e1b63a80dd3d5da35f5d3907e12abc8acbc0382e3b6dc4c52c",
       "scripts/ocr-optical-ui-regression.cjs": "98cc6f8042396e6652c944d2433dbe390916e56c3e3c72d863ce6434e999b611",
-      "scripts/ocr-p1-recognition-regression.cjs": "e97c02db9f07b2c2e8fe92454cc10778f7705d9c66c00b6de7fa6e18702a7f00",
+      "scripts/ocr-p1-recognition-regression.cjs": "590e1b2a61df04c310964ab5d069c52d96bbd82a6846d1a0885f8239fa75b391",
+      "scripts/ocr-progress-persistence-regression.cjs": "ac55f13151e68e792df11c55dac954ebc797d617195b803c67f0acca0d8c69e8",
+      "scripts/ocr-progress-persistence.cjs": "0dba580bd4aa4b3a58f06bd16ab90cfab9b5f4c65a917245b83d9ffd1e1d9658",
       "scripts/ocr-structure-regression.cjs": "6650e2c97b68ba75e44e24da9df7f62d81c1ce8dbb94f3c77e424260eb2e491c",
       "scripts/ocr-v2/MONETARY.md": "8ed45135ecd766fe397f618a6d4aeaa6158f6a6fcd9d774ae4dc64708b89e567",
       "scripts/ocr-v2/PHASE3B.md": "04860ab89de360e4be6a715f309852b7997048e8d5ea6b1809555c81e3c48599",
@@ -278,7 +280,7 @@
       "scripts/release/file-forensics-regression.cjs": "a6da1ba822d17c1a31b7bd29d3cb49e95febca66f29c51b712ccdd9d608c1b26",
       "scripts/release/file-forensics.cjs": "25133a9f2167c801a05906be04068f3d85f54f3c462e085869df2d486c8bea30",
       "scripts/release/final-candidate-regression.cjs": "edc0dbfa8f70d55607c65327a08ed25193380387dd4f1e850cf130ef992ca03f",
-      "scripts/release/gate-checks.cjs": "ebea8d4a49a0993fee1fb04c0d024b7698bf6b465814432829d07fafc39f686f",
+      "scripts/release/gate-checks.cjs": "ece3c69c5e01007bb8282bdde6b0014df56a7ae39d2fd5def2b2112b928b94a5",
       "scripts/release/gate-state-regression.cjs": "51f1d2c76eca73d122f20cc0f537b624074ebd4943f946dcba63857775e45d04",
       "scripts/release/gate-state.cjs": "f56bdc9741b07b92c53bb487f21320080537fa90734721130612e8c1b52da839",
       "scripts/release/gate.cjs": "228232de653ef9c0c5a96ea24a9bfb0220a06eed1a0a516222d523b67d778c45",
@@ -1739,15 +1741,15 @@
     "sha256": "bccc49970c7db9510b64204809cbb282c6d22d5f651708a9e7a7fede7a550bbc"
   },
   "upgradeContext": {
-    "candidateReleaseId": "trimax-ocr-p1-recognition-20261101-rc1",
-    "applicationCommit": "9ce66d28e7e10fefd49244bb2266732eb9738c91",
-    "machineryCommit": "9ce66d28e7e10fefd49244bb2266732eb9738c91",
+    "candidateReleaseId": "trimax-ocr-progress-batching-20261102-rc1",
+    "applicationCommit": "871864944120570305aaa7ced7597835c6276b48",
+    "machineryCommit": "871864944120570305aaa7ced7597835c6276b48",
     "currentProductionRelease": {
-      "manifestCommit": "93dfcde696b1b060b06f24215767f756de0fc4a2",
-      "manifestDigest": "94ec3a62eb976acc70ee3a16dcf5dd16468159bd97da841f3432d5660a8a567a",
-      "releaseId": "trimax-ocr-diagnostic-display-20261101-rc1",
-      "deploymentCommit": "93dfcde696b1b060b06f24215767f756de0fc4a2",
-      "deploymentId": "3Y9MroXdjmSbxMQa9nY1hrm7ZBWr"
+      "manifestCommit": "9e756b34472b16be6e42ea81923c67bba8f5e080",
+      "manifestDigest": "ad2514678f202271c7a8b8c63b9e729738b285fe995524b8bb8579ccef67623a",
+      "releaseId": "trimax-ocr-p1-recognition-20261101-rc1",
+      "deploymentCommit": "9e756b34472b16be6e42ea81923c67bba8f5e080",
+      "deploymentId": "ARf86QmE454nd3ac1kuUK5fKxEWj"
     }
   },
   "contractRevision": {
