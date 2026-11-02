@@ -63,7 +63,7 @@ assert(
 
 assert(applyBatchRoute.includes('function applyErrorResponse')&&applyBatchRoute.includes('payment_confirmation_unknown'),'Interrupted confirmations are actionable without a false rollback claim.');
 assert(migration.includes("'invoice.batch_payment_applied'")&&migration.includes('insert into public.remittance_posting_receipts')&&!migration.includes('exception when'),'Audit errors abort the entire transaction and its receipt.');
-assert(applyBatchRoute.includes('paymentDate:receivedDate')&&applyBatchRoute.includes('checkDate')&&helper.includes('finalPaymentReference'),'Existing payment dates, references and timeliness are retained.');
+assert(/paymentDate:\s*receivedDate/.test(applyBatchRoute)&&applyBatchRoute.includes('checkDate')&&helper.includes('finalPaymentReference'),'Existing payment dates, references and timeliness are retained.');
 assert(migration.includes("'batchInvoiceCount',cardinality(ids)")&&migration.includes("'amountApplied',allocation::numeric/100"),'Every intended allocation shares the same transaction.');
 assert(
   paymentScreen.includes("type ApplyBatchPaymentResponse") &&
