@@ -34,6 +34,7 @@ const reversed = (d: Record<string, unknown>) => clean(d.paymentOutcome).toLower
 export function resolveSavedRemittancePayment(input: {
   businessId: string; attemptIds: string[]; activities: SavedRemittanceActivity[];
   trustedOriginal?: SavedRemittanceHistoricalIdentity | null;
+  observedCheck?: {checkNumber: string; checkDate: string; amount: number; payor?: string | null} | null;
 }): SavedRemittancePaymentResult {
   const none: SavedRemittancePaymentResult = { status: 'none', match: null, payment: null, reasons: [] };
   if (!clean(input.businessId)) return none;
@@ -73,7 +74,18 @@ export function resolveSavedRemittancePayment(input: {
       cents(d.checkAmount) === cents(original.amount); })) candidates.push({ rows: group, match: 'strict_historical',
         incomplete: JSON.stringify(invoiceIds) !== JSON.stringify(originalIds) });
   }
-  if (!candidates.length) return none;
+  if (!candidates.length) {
+    const observed = input.observedCheck;
+    // Different photographs are not source lineage. A matching observed check
+    // can require history review, but cannot prove that this scan was applied.
+    if (observed && check(observed.checkNumber) && date(observed.checkDate) && cents(observed.amount) &&
+      rows.some(a => {const d = a.details ?? {}; return check(d.paymentReference) === check(observed.checkNumber) &&
+        date(d.checkDate) === date(observed.checkDate) && cents(d.checkAmount) === cents(observed.amount) &&
+        (!payor(observed.payor) || payor(d.payor) === payor(observed.payor));})) {
+      return {...none, status: 'ambiguous', reasons: ['A previous payment has the same observed check number, date and amount. Verify its original saved scan and allocation audit before continuing. This different capture does not prove payment identity.']};
+    }
+    return none;
+  }
   if (candidates.length !== 1) return { ...none, status: 'ambiguous', reasons: ['Multiple historical payment batches match this saved remittance.'] };
   const candidate = candidates[0], group = candidate.rows, first = group[0].details ?? {};
   const amount = cents(first.checkAmount), expected = Number(first.batchInvoiceCount);

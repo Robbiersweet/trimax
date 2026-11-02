@@ -2104,8 +2104,8 @@ export default function BatchInvoicePayments({
     if (parent) observationScopeRef.current=crypto.randomUUID();
     // Reserve a fresh namespace immediately for the next attempt, including uploads.
     observationScopeRef.current=crypto.randomUUID();
-    const history = resume?.history ?? scanSummary(attemptId,parent?.original??attemptId,parent?.last??null,preparedCaptureRef.current?.source??"unknown",process.env.NEXT_PUBLIC_TRIMAX_BUILD??"local");
-    history.inputSource=lastOcrSourceType;
+    const history = resume ? structuredClone(resume.history) : scanSummary(attemptId,parent?.original??attemptId,parent?.last??null,preparedCaptureRef.current?.source??"unknown",process.env.NEXT_PUBLIC_TRIMAX_BUILD??"local");
+    if (!resume) history.inputSource=lastOcrSourceType;
     if (!history.captureUi && captureUi.current) history.captureUi=structuredClone(captureUi.current);
     scanLineage.current = {original:history.originalId,last:attemptId};
     latestScan.current = history;
@@ -2118,6 +2118,8 @@ export default function BatchInvoicePayments({
     let retainedResponse: unknown = null;
     let completed = false;
     const persist = (summary:ScanSummary,payload:unknown,phase:0|2) => {
+      // A completed saved scan is historical evidence, not a new recognition.
+      if (resume && ['review','failed'].includes(resume.history.captureState ?? '')) return Promise.resolve(true);
       if (!businessId) { setScanSavedStatus("Attempt not saved: workspace unavailable."); return; }
       return saveScan({businessId,summary,payload:payload && typeof payload==='object' ? {...payload,captureUi:summary.captureUi} : payload,phase}).then(status=>{
         if (latestScan.current?.attemptId !== attemptId || (phase===0 && latestScan.current.result!=="processing")) return true;
@@ -2203,12 +2205,12 @@ export default function BatchInvoicePayments({
       history.captureState='processing';
       setCheckOcrMessage('Reading remittance');
       // Detached, independent commit. Shadow downtime must never delay or fail legacy OCR.
-      if(shadowSnapshot) void resumeCaptureHandoff(attemptId,shadowSnapshot,shadowCaptureTimings).then(result=>{
+      if(shadowSnapshot && !resume) void resumeCaptureHandoff(attemptId,shadowSnapshot,shadowCaptureTimings).then(result=>{
         if(canonical)canonical.shadowQueued=result.queued;
         if(result.queued && history.captureUi){history.captureUi.shadowJobQueuedAt=Date.now(); if(latestScan.current?.attemptId===attemptId && latestScan.current.result==='processing')void persist(history,{stage:'shadow-queued'},0); }
       }).catch(()=>{ if(attemptVersion===ocrAttemptVersion.current)setScanSavedStatus('Capture saved — shadow processing pending. Retry from Recent Scans.'); });
       appendCameraStage("OCR started");
-      const response = await waitForLegacyJob({attemptId,documentType,retryStrategy,diagnosticReplay:resumedDiagnosticReplay.current},()=>attemptVersion===ocrAttemptVersion.current,message=>{if(attemptVersion===ocrAttemptVersion.current)setCheckOcrMessage(message);},()=>{if(history.captureUi)history.captureUi.legacyJobQueuedAt=Date.now();void persist(history,{stage:'legacy-queued'},0);});
+      const response = await waitForLegacyJob({attemptId,documentType,retryStrategy,diagnosticReplay:resumedDiagnosticReplay.current},()=>attemptVersion===ocrAttemptVersion.current,message=>{if(attemptVersion===ocrAttemptVersion.current)setCheckOcrMessage(message);},()=>{if(!resume && history.captureUi)history.captureUi.legacyJobQueuedAt=Date.now();void persist(history,{stage:'legacy-queued'},0);});
       const data = (await response.json().catch(() => ({}))) as CheckStubOcrResponse;
       retainedResponse=data;
       if (attemptVersion !== ocrAttemptVersion.current) return;

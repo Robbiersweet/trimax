@@ -8,7 +8,7 @@ export async function loadSavedRemittancePayment(client: Pick<SupabaseClient, 'f
     .select('id,business_id,summary').eq('business_id', businessId).eq('id', attemptId).maybeSingle();
   if (error || !attempt) throw Error('Saved remittance is unavailable in this workspace.');
   const { data: job, error: jobError } = await client.from('ocr_legacy_jobs')
-    .select('attempt_id,source_reference,source_hash').eq('business_id', businessId).eq('attempt_id', attemptId).maybeSingle();
+    .select('attempt_id,source_reference,source_hash,terminal_summary').eq('business_id', businessId).eq('attempt_id', attemptId).maybeSingle();
   if (jobError) throw Error('Saved remittance source could not be verified.');
   const ids = new Set<string>([attemptId]);
   // original_id/parent_id can include a NEW photo. Only the durable job's exact
@@ -58,6 +58,9 @@ export async function loadSavedRemittancePayment(client: Pick<SupabaseClient, 'f
         amount: header.documentTotal.amount, invoiceIds: [...proof.reviewIds]};
     }
   }
-  return { ...resolveSavedRemittancePayment({businessId, attemptIds: [...ids], activities, trustedOriginal}),
+  const terminal = job?.terminal_summary;
+  const observedCheck = terminal?.checkNumber && terminal?.checkDate && typeof terminal.documentTotal === 'number'
+    ? {checkNumber: terminal.checkNumber, checkDate: terminal.checkDate, amount: terminal.documentTotal, payor: terminal.identity || null} : null;
+  return { ...resolveSavedRemittancePayment({businessId, attemptIds: [...ids], activities, trustedOriginal, observedCheck}),
     attemptId, canonicalReference, sourceImageHash };
 }

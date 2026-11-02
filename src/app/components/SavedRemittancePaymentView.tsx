@@ -22,7 +22,7 @@ export function SavedRemittancePaymentView({history}: {history: SavedRemittanceL
   const payment = history.payment;
   return <section role="status" aria-label="Saved remittance payment history" className="my-4 rounded-xl border border-emerald-400 bg-slate-950 p-4 text-white">
     <h3 className="text-xl font-bold">{history.status === 'applied' ? 'Payment already applied' : history.status === 'reversed' ? 'Previous payment reversed' : 'Payment history needs review'}</h3>
-    <p>{history.status === 'applied' ? 'This remittance has already been processed. No action is required.' : history.status === 'reversed' ? 'The prior application was reversed. Review the remittance and current eligibility before any new payment.' : 'Historical payment records are incomplete or conflicting. New application is blocked until the history is reviewed.'}</p>
+    <p>{history.status === 'applied' ? 'This remittance has already been processed. No action is required.' : history.status === 'reversed' ? 'The prior application was reversed. Review the remittance and current eligibility before any new payment.' : 'Historical payment identity or allocations need review. New application is blocked until the history is reviewed.'}</p>
     {payment && <>
       <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
         <dt>Check number</dt><dd>{payment.checkNumber}</dd><dt>Check date</dt><dd>{payment.checkDate}</dd>

@@ -203,6 +203,7 @@ export default function RecentScans({
                 {s.kind === "retry" ? "Retry Reading" : "Original Scan"} ·{" "}
                 {selected.result}
               </h3>
+              <p className="text-sm" role="note">Historical OCR diagnostics from the build shown below. Opening these diagnostics does not rerun recognition or select invoices in the payment form.</p>
               <OcrCaptureRecovery summary={s} businessSlug={businessSlug} businessId={businessId}/>
               <SavedRemittancePaymentStatus businessId={businessId} attemptId={s.attemptId}/>
               <OcrShadowComparison summary={s} businessSlug={businessSlug}/>

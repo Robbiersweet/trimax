@@ -3369,7 +3369,10 @@ async function runExtraction(request: Request) {
         if (independent) {
           const decision = assessLegacyMatureFallback(independent,originalImage,attemptId,selectObservedHeader(documentHeaderObservations(ocrResult.rawPasses),ocrResult.structuredRowEvidence));
           ocrResult.diagnostics.legacyMatureFallback = decision;
-          if (decision.accepted && decision.rows && decision.text) {
+          if (decision.reviewEvidence) {
+            ocrResult.structuredRowEvidence = decision.reviewEvidence.rows;
+            ocrResult.text = decision.reviewEvidence.text;
+          } else if (decision.accepted && decision.rows && decision.text) {
             ocrResult.structuredRowEvidence = decision.rows;
             ocrResult.text = decision.text;
           }
@@ -3404,6 +3407,7 @@ async function runExtraction(request: Request) {
     const observedHeader = selectObservedHeader(documentHeaderObservations(ocrResult.rawPasses), ocrResult.structuredRowEvidence);
     if (matureFallback?.accepted && matureFallback.header) Object.assign(observedHeader,matureFallback.header);
     else if (ocrResult.diagnostics.opticalViewConflict?.length) observedHeader.documentTotal = null;
+    if (matureFallback?.reviewEvidence) Object.assign(observedHeader,matureFallback.reviewEvidence.header);
     if (matureFallback?.metadata) Object.assign(observedHeader,matureFallback.metadata);
     const totalEvidence = observedHeader.documentTotal ?? { amount: 0, source: "none" as const, payable: false, normalizationReason: "No reliable explicit document total was read." };
     const extraction = {

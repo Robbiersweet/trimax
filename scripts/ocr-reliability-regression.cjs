@@ -1,0 +1,28 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Execute optical and financial boundaries; never write production data. */
+const assert=require('node:assert/strict');
+const {resolveSavedRemittancePayment:resolve}=require('../src/app/lib/savedRemittancePayment.ts');
+const {findRemittanceMatches}=require('../src/app/lib/remittanceMatching.ts');
+const row={id:'audit',businessId:'business',action:'invoice.batch_payment_applied',entityId:'invoice',details:{businessId:'business',sourceOcrAttemptId:'original',paymentReference:'1234',checkDate:'2026-01-02',checkAmount:100,payor:'Example Apartments',amountApplied:100,batchInvoiceCount:1,paymentOutcome:'paid'}};
+const input={businessId:'business',attemptIds:['different-photo'],activities:[row],observedCheck:{checkNumber:'1234',checkDate:'2026-01-02',amount:100}};
+assert.equal(resolve(input).status,'ambiguous');assert.equal(resolve(input).payment,null,'Observed identity cannot manufacture an applied payment');
+assert.equal(resolve({...input,attemptIds:['original']}).status,'applied');
+for(const change of [{checkNumber:'234'},{checkNumber:'51234'},{checkDate:'2026-01-03'},{amount:100.01},{payor:'Different Property'}])assert.equal(resolve({...input,observedCheck:{...input.observedCheck,...change}}).status,'none');
+assert.equal(resolve({...input,businessId:'other'}).status,'none');
+assert.equal(resolve({...input,activities:[{...row,details:{...row.details,paymentOutcome:'reversed'}}]}).status,'ambiguous','Different capture requires explicit history review even for reversal');
+const invoices=[{id:'invoice',displayId:'INV-1234',customerName:'Example Apartments',projectTitle:'A01',status:'paid',invoiceAmount:100,amountPaid:100}];
+const match=findRemittanceMatches(invoices,'INV-1234 100.00','Example Apartments',[],{amount:100,source:'explicit-document-total',payable:true});
+assert(match.matchTrace.some(t=>t.displayId==='INV-1234' && t.found && !t.eligible),'Existing Paid invoice is found but not collectible');
+assert.equal(match.resolvedMatches.length,0,'Paid invoice must remain ineligible');
+console.log('PASS independent observed-check history review: exact check/date/cents, tenant/payor isolation, no fabricated applied result, current Paid existence distinct from eligibility');
+const fs=require('node:fs'),ts=require('typescript');
+const screen=fs.readFileSync('src/app/components/BatchInvoicePayments.tsx','utf8');
+const initialization=screen.slice(screen.indexOf('    const history = resume ?'),screen.indexOf('    scanLineage.current = {original:history.originalId'));
+const makeHistory=new Function('resume','scanSummary','attemptId','parent','preparedCaptureRef','lastOcrSourceType','captureUi',ts.transpileModule(initialization+'\nreturn history;',{compilerOptions:{target:99}}).outputText);
+const saved={attemptId:'saved',inputSource:'camera',captureUi:{legacyJobQueuedAt:123},captureState:'review'};
+const cloned=makeHistory({history:saved},()=>{throw Error('No new attempt on resume');},'saved',null,{current:null},'unknown',{current:null});
+cloned.captureUi.legacyJobQueuedAt=999;
+assert.equal(saved.inputSource,'camera');assert.equal(saved.captureUi.legacyJobQueuedAt,123,'Resume state must not mutate original evidence');
+const persistSource=screen.slice(screen.indexOf('    const persist = (summary:ScanSummary'),screen.indexOf('    const complete = (result:ScanResult'));
+const persistFactory=new Function('resume','businessId','saveScan','setScanSavedStatus','latestScan','attemptId',ts.transpileModule(persistSource+'\nreturn persist;',{compilerOptions:{target:99}}).outputText);
+let writes=0;const persist=persistFactory({history:saved},'business',()=>{writes++;throw Error('Completed review must not replace original evidence');},()=>{}, {current:saved},'saved');
+Promise.all([persist(saved,{},0),persist(saved,{},2)]).then(values=>{assert.deepEqual(values,[true,true]);assert.equal(writes,0);console.log('PASS completed saved review preserves original capture metadata and terminal evidence; no recognition or persistence restart');}).catch(error=>{console.error(error);process.exitCode=1;});

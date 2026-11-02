@@ -14,7 +14,7 @@ function query(table) {
       if(scenario.errorTable===table || (table==='activity_logs'&&bounds?.[0]===scenario.errorOffset))return {data:null,error:{message:'isolated lookup failure'}};
       let data;
       if(table==='ocr_attempts')data=selection==='id,summary'?[{id:original,summary:{canonicalReference:original,sourceImageHash:scenario.sourceMismatch?'different-hash':'same-image-hash'}}]:[{id:replay,business_id:business,original_id:original,parent_id:original,summary:{canonicalReference:'new-object',sourceImageHash:'new-hash'}}];
-      else if(table==='ocr_legacy_jobs')data=selection==='attempt_id'?(scenario.familyOverflow?Array.from({length:101},(_,i)=>({attempt_id:`family${i}`})):scenario.fresh?[{attempt_id:replay}]:[{attempt_id:original},{attempt_id:replay}]):scenario.noJob?[]:[{attempt_id:replay,source_reference:scenario.fresh?'new-object':original,source_hash:scenario.fresh?'new-hash':'same-image-hash'}];
+      else if(table==='ocr_legacy_jobs')data=selection==='attempt_id'?(scenario.familyOverflow?Array.from({length:101},(_,i)=>({attempt_id:`family${i}`})):scenario.fresh?[{attempt_id:replay}]:[{attempt_id:original},{attempt_id:replay}]):scenario.noJob?[]:[{attempt_id:replay,source_reference:scenario.fresh?'new-object':original,source_hash:scenario.fresh?'new-hash':'same-image-hash',terminal_summary:scenario.observed?{checkNumber:'717',checkDate:'2026-10-01',documentTotal:4286.1,identity:''}:undefined}];
       else if(table==='activity_logs')data=scenario.activities??audits;
       else if(table==='ocr_attempt_diagnostics')data=[];
       else throw Error(`Unexpected table ${table}; historical lookup must not read invoice balances`);
@@ -48,6 +48,7 @@ function reopen(overrides={}){
 }
 const job={attemptId:replay,input:{diagnosticReplay:true,documentType:'remittance_stub',retryStrategy:'standard'},summary:{canonicalReference:original,sourceImageHash:'hash'}};
 async function main(){
+  scenario={fresh:true,observed:true};const observed=await loader(fake,business,replay);assert.equal(observed.status,'ambiguous');assert.equal(observed.payment,null,'Different photograph only flags prior payment identity for review');
   scenario={};reads=[];const result=await loader(fake,business,replay);assert.equal(result.status,'applied');assert.equal(result.match,'source_attempt');assert.equal(result.payment.allocations.length,3);assert.equal(result.payment.amount,4286.1);
   assert(reads.every(r=>r.table==='ocr_attempt_diagnostics'||r.filters.some(([k,v])=>k==='business_id'&&v===business)));
   const family=reads.find(r=>r.table==='ocr_legacy_jobs'&&r.selection==='attempt_id');assert(family.filters.some(([k,v])=>k==='source_reference'&&v===original));assert(family.filters.some(([k,v])=>k==='source_hash'&&v==='same-image-hash'));

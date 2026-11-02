@@ -22,6 +22,7 @@ const sameProperty = (a: string, b: string) => {
 export type LegacyMatureDecision = {
   accepted: boolean; reason: string; metadata?: Partial<Pick<Header,'checkNumber'|'checkDate'>>; header?: Header; rows?: StructuredRemittanceRowEvidence[];
   rawPasses?: OcrPass[]; text?: string; proof: unknown;
+  reviewEvidence?: {header: Header; rows: StructuredRemittanceRowEvidence[]; text: string};
 };
 
 /** Project independently observed fields only. No invoice records, balances,
@@ -73,6 +74,7 @@ function assessCompleteLegacyMatureFallback(value: unknown, image: Buffer, attem
       f.sourceHash === normalizedHash && new Set(f.observations.filter(o => f.exactLabelProvenance.includes(o.id)).map(o => o.recognizer)).size >= 2);
     if (!captionProof) return reject('Conflicting legacy total lacks independent header and footer corroboration');
   }
+  let propertyConflict = false;
   let subtotal = 0;
   const ids = new Set<string>();
   const rows: StructuredRemittanceRowEvidence[] = [];
@@ -95,7 +97,7 @@ function assessCompleteLegacyMatureFallback(value: unknown, image: Buffer, attem
       o.geometry.top + o.geometry.height / 2 < geometry.top || o.geometry.top + o.geometry.height / 2 > geometry.top + geometry.height)) return reject('Property field does not belong to its measured row');
     const rowProperties = [...new Set(propertyObservations.map(o => o.normalizedText))].filter(text =>
       new Set(propertyObservations.filter(o => sameProperty(o.normalizedText,text)).map(o => o.recognizer)).size >= 2);
-    if (rowProperties.some(text => !sameProperty(text,payor))) return reject('An independently observed physical row belongs to a different property');
+    if (rowProperties.some(text => !sameProperty(text,payor))) propertyConflict = true;
     const rowProperty = rowProperties[0] ?? '';
     ids.add(row.rowId); subtotal += money.cents;
     const amount = money.cents / 100;
@@ -114,6 +116,10 @@ function assessCompleteLegacyMatureFallback(value: unknown, image: Buffer, attem
   if (!Number.isSafeInteger(subtotal) || subtotal !== total.cents) return reject('Independently observed row amounts do not exactly reconcile with the document total');
   const normalizedHeader: Header = {checkNumber: header.checkNumber, checkDate: header.checkDate, payor,
     documentTotal: {...header.total, normalizationReason: 'Source-owned existing mature model fields; independent header/footer and exact observed-row reconciliation'}};
+  // Preserve independently complete row/amount/total observations without
+  // authorizing a disputed payor. The unchanged resolver must block this review.
+  if (propertyConflict) return {accepted: false, reason: 'An independently observed physical row belongs to a different property',
+    reviewEvidence: {header: {...normalizedHeader, payor: null}, rows, text: rows.map(r => r.text).join('\n')}, proof: value};
   const rawPasses: OcrPass[] = result.document.rows.flatMap(row => row.fusion.observations.map(o => ({text: o.rawText, region: 'mature-owned-invoice:' + row.rowId,
     variant: o.recognizer, pageMode: 'bounded-field', confidence: 0, words: []})));
   return {accepted: true, reason: 'Complete independent source-owned fields; no financial context used', header: normalizedHeader, rows, rawPasses,
