@@ -2,25 +2,25 @@
   "schemaVersion": 1,
   "releaseId": "trimax-final-hardening-20261102-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-11-02T09:38:53.887Z",
-  "releaseTimestamp": "2026-11-02T09:38:53.887Z",
+  "createdAt": "2026-11-02T10:02:39.419Z",
+  "releaseTimestamp": "2026-11-02T10:02:39.419Z",
   "baseProduction": {
     "commit": "e5a1e943151c781ea66cd0c9f100d36f80e8e137",
     "vercelDeploymentId": "ES3Mf6HLEha1K9FRLVZ1T5uJjNDG"
   },
   "components": {
     "web": {
-      "commit": "61e92ef15c206ece89a9c7131a84b6e982f37064"
+      "commit": "92cc5777d077ad8abcd219b8c65fe637131f99e1"
     },
     "legacy": {
-      "commit": "61e92ef15c206ece89a9c7131a84b6e982f37064"
+      "commit": "92cc5777d077ad8abcd219b8c65fe637131f99e1"
     },
     "v2-shadow": {
-      "commit": "61e92ef15c206ece89a9c7131a84b6e982f37064"
+      "commit": "92cc5777d077ad8abcd219b8c65fe637131f99e1"
     }
   },
   "sourceBundle": {
-    "sha256": "64ab30f15a4a12a8a57f5849a63151e5ee72e964a8965fb6d825e7ec99040ccc",
+    "sha256": "df2409b40e241cb3f73f258b59612f58815529cd5c2504a6868a0d7b7b155767",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -243,7 +243,7 @@
       "scripts/office-coupon-regression.cjs": "9336eadc65dca0f3816f5b841fec9f1202140fb31cb7d22d4d46f04f1636859b",
       "scripts/office-qr-sql-regression.cjs": "00c3333acbd7301c7b82384087c72e5ae5f9e18451d7628416c5966dd9c748d8",
       "scripts/owner-server-auth-regression.ts": "b295a70ecdc6e291e2a474afbd900075334cb940ca57bb191a9e41f67311f273",
-      "scripts/payment-application-regression.ts": "49bf368e200e0ff0edcc890506c7a544fc8d2eb7d97c018ebf9415d5869f929b",
+      "scripts/payment-application-regression.ts": "fca8cef368b45f605315ecc08e8d5291ea240de891e8e3ba2978f1c6eed6ffdd",
       "scripts/payment-state-lifecycle-regression.ts": "88f1ec8d51facaf9c25d94f18ab4c827db668b331cbe0f61d923855ce8bced04",
       "scripts/payment-submit-regression.cjs": "1e9aece0f127539d7f75f76227f4ba4265bd40d9a73d7c75d28823f5a2aae4e3",
       "scripts/payment-timeliness-regression.ts": "1f37027e88738030fa535958741ed5ac9c77fa7938034b93c9b92e01a2d1c91d",
@@ -899,7 +899,7 @@
     }
   ],
   "database": {
-    "capturedAt": "2026-11-02T09:38:54.131Z",
+    "capturedAt": "2026-11-02T10:02:39.682Z",
     "algorithm": "catalog-v1; sorted C collation name=value; UTF8 SHA256; public tables/constraints/indexes/functions, public+storage RLS, public table grants; excludes only trimax_release_runtime itself",
     "fingerprints": {
       "schema": {
@@ -1755,8 +1755,8 @@
   },
   "upgradeContext": {
     "candidateReleaseId": "trimax-final-hardening-20261102-rc1",
-    "applicationCommit": "61e92ef15c206ece89a9c7131a84b6e982f37064",
-    "machineryCommit": "61e92ef15c206ece89a9c7131a84b6e982f37064",
+    "applicationCommit": "92cc5777d077ad8abcd219b8c65fe637131f99e1",
+    "machineryCommit": "92cc5777d077ad8abcd219b8c65fe637131f99e1",
     "currentProductionRelease": {
       "manifestCommit": "e5a1e943151c781ea66cd0c9f100d36f80e8e137",
       "manifestDigest": "2de6b6d1c287d3551c7f07b036ca22801dac37b96dc1867bda106e534623abe1",
