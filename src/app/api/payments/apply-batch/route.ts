@@ -271,7 +271,7 @@ export async function POST(request: Request) {
   type Activity={id:string;action:string;entity_id?:string|null;entity_label?:string|null;details?:Record<string,unknown>|null;created_at?:string|null};
   const duplicateActivityData:Activity[]=[];
   for(let offset=0; ;offset+=500){
-    const {data,error}=await supabase.from('activity_logs').select('id, action, entity_id, entity_label, details, created_at').eq('business_id',businessId).eq('action','invoice.batch_payment_applied').order('id').range(offset,offset+499);
+    const {data,error}=await supabase.from('activity_logs').select('id, action, entity_id, entity_label, details, created_at').eq('business_id',businessId).eq('action','invoice.batch_payment_applied').order('created_at',{ascending:false}).order('id').range(offset,offset+499);
     if(error || offset>=10000) return applyErrorResponse({message:'Complete payment history could not be verified. No payment was applied.',code:'payment_history_unavailable',stage:'history',status:503});
     duplicateActivityData.push(...(data??[]) as Activity[]);
     if((data??[]).length<500)break;
