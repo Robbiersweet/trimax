@@ -2,25 +2,25 @@
   "schemaVersion": 1,
   "releaseId": "trimax-final-hardening-20261102-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-11-02T09:12:41.861Z",
-  "releaseTimestamp": "2026-11-02T09:12:41.861Z",
+  "createdAt": "2026-11-02T09:38:53.887Z",
+  "releaseTimestamp": "2026-11-02T09:38:53.887Z",
   "baseProduction": {
     "commit": "e5a1e943151c781ea66cd0c9f100d36f80e8e137",
     "vercelDeploymentId": "ES3Mf6HLEha1K9FRLVZ1T5uJjNDG"
   },
   "components": {
     "web": {
-      "commit": "a18fcdb1cac50a6a688415b21b1d3d26ff3def12"
+      "commit": "61e92ef15c206ece89a9c7131a84b6e982f37064"
     },
     "legacy": {
-      "commit": "a18fcdb1cac50a6a688415b21b1d3d26ff3def12"
+      "commit": "61e92ef15c206ece89a9c7131a84b6e982f37064"
     },
     "v2-shadow": {
-      "commit": "a18fcdb1cac50a6a688415b21b1d3d26ff3def12"
+      "commit": "61e92ef15c206ece89a9c7131a84b6e982f37064"
     }
   },
   "sourceBundle": {
-    "sha256": "1037dbb2e6d860f9781d0a2178e0ea28283effe2a3969ac19eb6de598d0d9954",
+    "sha256": "64ab30f15a4a12a8a57f5849a63151e5ee72e964a8965fb6d825e7ec99040ccc",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -62,7 +62,7 @@
       "scripts/duplicate-remittance-regression.ts": "ad026c1affe97d8e492dea351201d067be6d2ca4ae2e18b1d11548b0970bb5de",
       "scripts/estimate-list-compact-actions-regression.ts": "e8301085ae9e0dccdb21c4b8cfbb7b7f339c40d82110b4db7a942fd77eee7908",
       "scripts/estimate-list-loading-regression.ts": "e16e1f2f3df849ebfb9d8a722260bab33fc94064548319e7e2e58a0b34be25bd",
-      "scripts/financial-hardening-scope-regression.cjs": "2a2bfc4ce974c65d3a1541d800df84b2682112fea76cea031e253db5f94a5040",
+      "scripts/financial-hardening-scope-regression.cjs": "6f21cf3a45267a939dd45e4a709dd028713402d93a57d110904341b837ac1c96",
       "scripts/fixtures/atomic-remittance-schema.sql": "948e92c96bcd7d67b707fd04ca4a0b9cf433b892bb639311238a7ba0393e8277",
       "scripts/fixtures/faint-remittance.md": "a0d35fcfbf3a4022f8c7a12f395b261141fee040f9fce22c99cd4b4933c07ac4",
       "scripts/fixtures/faint-remittance.png": "7d17df080e11ec13030502ed7b2d04404a59dda549241d7ee62eeec9d53bde88",
@@ -306,7 +306,7 @@
       "scripts/remittance-contract-regression.ts": "75e3bf300050abfcd6145eb5d912af9251fef904bc1c9be19c5bc5695d50cf77",
       "scripts/remittance-deadline-regression.cjs": "c55b3c02d5bd6fb8f8a41b36fe4202a2c8795bb5eb8562cf30d54a1f60f665f2",
       "scripts/remittance-grouped-total-regression.ts": "13468a09e8c3bedf13a88b7917e8baf288e75a762354c887740f867f519fa6b0",
-      "scripts/remittance-intake-regression.cjs": "fd9f8aff6fae7b1500fc62b985b6cd740ad027cfd856e6b2322a829a0282b5fa",
+      "scripts/remittance-intake-regression.cjs": "49ffb7c3d43c7a5b984168aee628f1460f41016929f813c63b4aaa87644c166c",
       "scripts/remittance-matching-regression.ts": "91a0f110ade0d5bdb052639568e0f65e50ee05084a7ba246c9e47aa9cf03e31b",
       "scripts/remittance-ocr-fixture-regression.ts": "2e90a200e8de9d64212a8f56092f3ef4e00522f2751463b33c827cad45991fa0",
       "scripts/remittance-photo-corpus.cjs": "7d8342d9234119d129613d43afd1af2d807769d0c8df5c5f2daff9017a3c25ec",
@@ -327,7 +327,7 @@
       "scripts/session-tab-isolation-regression.ts": "2e9606534b9482ff7d2f45c30d7b9a4a5bd85ee425cbeb4ca3c33c9fdaeb8d28",
       "scripts/split-invoice-send-regression.ts": "a030f1bd265a7791cd21b5664af094cd64cbb09ce43a000ce9064cd861815527",
       "scripts/split-source-relationship-regression.ts": "3e66f4141541fbb83e0645cc0a5f6d07e9e508b5cb49edf99ea88c75dce1200d",
-      "scripts/stabilization-regression.cjs": "61ed4717dd9ec2310ff7ac5f4fa8d8bad5b8b7cca6401893687c14123f4004f4",
+      "scripts/stabilization-regression.cjs": "07a2b1b9272fb1b19e96a269feba279e957f43fd3715ddcf7357f0124aa3c121",
       "scripts/start-ocr-supervisor.ps1": "1c0b14c757d211cfa54b271c6011504c7d524d4410203e646fd95611dd4dd1b7",
       "scripts/table-caption-ownership-regression.cjs": "802dd640e13598fc74301cb75a5fbd20f035da540e3bdd781963abcfe89330a4",
       "scripts/tenant-isolation-hardening-regression.ts": "e4bef09c2ccb1007eb5c9483056ababf5584f6927a8022084aebe445bee31ca0",
@@ -899,7 +899,7 @@
     }
   ],
   "database": {
-    "capturedAt": "2026-11-02T09:12:42.106Z",
+    "capturedAt": "2026-11-02T09:38:54.131Z",
     "algorithm": "catalog-v1; sorted C collation name=value; UTF8 SHA256; public tables/constraints/indexes/functions, public+storage RLS, public table grants; excludes only trimax_release_runtime itself",
     "fingerprints": {
       "schema": {
@@ -1755,8 +1755,8 @@
   },
   "upgradeContext": {
     "candidateReleaseId": "trimax-final-hardening-20261102-rc1",
-    "applicationCommit": "a18fcdb1cac50a6a688415b21b1d3d26ff3def12",
-    "machineryCommit": "a18fcdb1cac50a6a688415b21b1d3d26ff3def12",
+    "applicationCommit": "61e92ef15c206ece89a9c7131a84b6e982f37064",
+    "machineryCommit": "61e92ef15c206ece89a9c7131a84b6e982f37064",
     "currentProductionRelease": {
       "manifestCommit": "e5a1e943151c781ea66cd0c9f100d36f80e8e137",
       "manifestDigest": "2de6b6d1c287d3551c7f07b036ca22801dac37b96dc1867bda106e534623abe1",
