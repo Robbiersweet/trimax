@@ -1,26 +1,26 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-ocr-reliability-20261102-rc1",
+  "releaseId": "trimax-ocr-performance-20261102-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-11-02T21:58:26.410Z",
-  "releaseTimestamp": "2026-11-02T21:58:26.410Z",
+  "createdAt": "2026-11-03T01:38:35.397Z",
+  "releaseTimestamp": "2026-11-03T01:38:35.397Z",
   "baseProduction": {
-    "commit": "4b428401682f2c00903a43dabd10fb238dc95601",
-    "vercelDeploymentId": "HDXG6xjswaRTQvQrx2KqrRE12dAc"
+    "commit": "c9f1dd4e21ae7c413ff125d0b1a81c595b4018ba",
+    "vercelDeploymentId": "3RBr5GdxjCVDYtBEoYsp7JxBJo5S"
   },
   "components": {
     "web": {
-      "commit": "2eb8d1c69bfb4bbd07a2e5004340739c350c2829"
+      "commit": "14294b1727914a952c4a70d95e63ebea3dd07250"
     },
     "legacy": {
-      "commit": "2eb8d1c69bfb4bbd07a2e5004340739c350c2829"
+      "commit": "14294b1727914a952c4a70d95e63ebea3dd07250"
     },
     "v2-shadow": {
-      "commit": "2eb8d1c69bfb4bbd07a2e5004340739c350c2829"
+      "commit": "14294b1727914a952c4a70d95e63ebea3dd07250"
     }
   },
   "sourceBundle": {
-    "sha256": "1c1c95da77d5c103362bab4d0048dd13809a4b07760d5e725a09ff56be1f13dd",
+    "sha256": "6dfd679eca1fa4c4578c36f16fc8373de6b689c2db7dcc361ddef461fc4e52de",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -108,10 +108,12 @@
       "scripts/ocr-optical-regression.ts": "80c5926c139d62e1b63a80dd3d5da35f5d3907e12abc8acbc0382e3b6dc4c52c",
       "scripts/ocr-optical-ui-regression.cjs": "98cc6f8042396e6652c944d2433dbe390916e56c3e3c72d863ce6434e999b611",
       "scripts/ocr-p1-recognition-regression.cjs": "590e1b2a61df04c310964ab5d069c52d96bbd82a6846d1a0885f8239fa75b391",
+      "scripts/ocr-performance-regression.cjs": "1d9a4a30d5a70fc55e7506720d9a79affed8c003243b0763b3eb904a6ca30a8b",
+      "scripts/ocr-performance-scope-regression.cjs": "d4a21cc5d92a29cfe71a0d6c445de18b2a0fc5fd4ccf2760f7dc6056a643ece8",
       "scripts/ocr-progress-persistence-regression.cjs": "c0f25bf2862b8ac0a814edd1a1b3f6ed73dfb9d3cb4008689945a79c7dc19647",
       "scripts/ocr-progress-persistence.cjs": "0dba580bd4aa4b3a58f06bd16ab90cfab9b5f4c65a917245b83d9ffd1e1d9658",
       "scripts/ocr-reliability-regression.cjs": "c665851d4cb9b041516ba7cbad918bb3342b838711325bc4f8c3cb419cd95bc6",
-      "scripts/ocr-reliability-scope-regression.cjs": "a757f316eb34268de15eb47f6c346603617d958660137841b018cdc9ea3494fc",
+      "scripts/ocr-reliability-scope-regression.cjs": "161a28e4d153ad7d8cddccbf3d0dc13187fce338c828f74235c5c5c06974da8b",
       "scripts/ocr-structure-regression.cjs": "6650e2c97b68ba75e44e24da9df7f62d81c1ce8dbb94f3c77e424260eb2e491c",
       "scripts/ocr-v2/MONETARY.md": "8ed45135ecd766fe397f618a6d4aeaa6158f6a6fcd9d774ae4dc64708b89e567",
       "scripts/ocr-v2/PHASE3B.md": "04860ab89de360e4be6a715f309852b7997048e8d5ea6b1809555c81e3c48599",
@@ -286,7 +288,7 @@
       "scripts/release/file-forensics-regression.cjs": "a6da1ba822d17c1a31b7bd29d3cb49e95febca66f29c51b712ccdd9d608c1b26",
       "scripts/release/file-forensics.cjs": "25133a9f2167c801a05906be04068f3d85f54f3c462e085869df2d486c8bea30",
       "scripts/release/final-candidate-regression.cjs": "edc0dbfa8f70d55607c65327a08ed25193380387dd4f1e850cf130ef992ca03f",
-      "scripts/release/gate-checks.cjs": "269037aca487db48151a238a72c3443a9ce01d5aeeb8556d28efd8856b96fdc4",
+      "scripts/release/gate-checks.cjs": "8727c0104ba40b34e8fe87819ab7c116b817b5e888970d8d1d347e28e68e915c",
       "scripts/release/gate-state-regression.cjs": "51f1d2c76eca73d122f20cc0f537b624074ebd4943f946dcba63857775e45d04",
       "scripts/release/gate-state.cjs": "f56bdc9741b07b92c53bb487f21320080537fa90734721130612e8c1b52da839",
       "scripts/release/gate.cjs": "228232de653ef9c0c5a96ea24a9bfb0220a06eed1a0a516222d523b67d778c45",
@@ -603,7 +605,7 @@
       "src/app/lib/ocrV2/shadow/acceptance.ts": "4d7bc75288190b4743d8c357a90f9898687fc7822d1dc49b6b2ff3022f6f6bcf",
       "src/app/lib/ocrV2/shadow/client.ts": "ef1b3565b5a94dac334c680ac3eaa39e58c9277fd15fef257274cded0e3e9880",
       "src/app/lib/ocrV2/shadow/contract.ts": "7df7baa3680af0818bf2402a1241f456789e856ed77fdf3b708824f7e15e050b",
-      "src/app/lib/ocrV2/shadow/pipeline.ts": "7458cbd9385119bf25d8310836ae3416001e2aaee609bbfd4465dae2b98eece2",
+      "src/app/lib/ocrV2/shadow/pipeline.ts": "14b3d7a4e9df25ccbae709c7bd13d0eb1ba4f0975a061f9414cdb00097fe3f02",
       "src/app/lib/ocrV2/types.ts": "59848dd98e9874bcac2820e61a4816ea374fe971370064826c28afb09a43e2ec",
       "src/app/lib/outlookDrafts.ts": "bc667fa98601cd119a338a06bd6d8875af5ec0621b79ed8ca9d622190e2e5ba5",
       "src/app/lib/paymentTimeliness.ts": "27dc1dd279ad3f1f6387b7ea37206c75a9bf64f95de5a9c67b1fac1f355c070a",
@@ -1756,15 +1758,15 @@
     "sha256": "bccc49970c7db9510b64204809cbb282c6d22d5f651708a9e7a7fede7a550bbc"
   },
   "upgradeContext": {
-    "candidateReleaseId": "trimax-ocr-reliability-20261102-rc1",
-    "applicationCommit": "2eb8d1c69bfb4bbd07a2e5004340739c350c2829",
-    "machineryCommit": "2eb8d1c69bfb4bbd07a2e5004340739c350c2829",
+    "candidateReleaseId": "trimax-ocr-performance-20261102-rc1",
+    "applicationCommit": "14294b1727914a952c4a70d95e63ebea3dd07250",
+    "machineryCommit": "14294b1727914a952c4a70d95e63ebea3dd07250",
     "currentProductionRelease": {
-      "manifestCommit": "4b428401682f2c00903a43dabd10fb238dc95601",
-      "manifestDigest": "1fb7e110fe8efb1c3f82294756fbe4efef648272596ca43d5b7501a1de700319",
-      "releaseId": "trimax-final-hardening-20261102-rc1",
-      "deploymentCommit": "4b428401682f2c00903a43dabd10fb238dc95601",
-      "deploymentId": "HDXG6xjswaRTQvQrx2KqrRE12dAc"
+      "manifestCommit": "c9f1dd4e21ae7c413ff125d0b1a81c595b4018ba",
+      "manifestDigest": "e5ee6d6e781835d3f4ac20ca112dc2dd56758ae92a9fcd016f69a1d44a5bd588",
+      "releaseId": "trimax-ocr-reliability-20261102-rc1",
+      "deploymentCommit": "c9f1dd4e21ae7c413ff125d0b1a81c595b4018ba",
+      "deploymentId": "3RBr5GdxjCVDYtBEoYsp7JxBJo5S"
     }
   },
   "contractRevision": {
