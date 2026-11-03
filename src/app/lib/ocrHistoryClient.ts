@@ -222,7 +222,15 @@ export async function scanOptical(id: string) {
     .maybeSingle();
   if (error) throw Error(error.message);
   if(!data?.evidence)return null;
-  const evidence={...data.evidence,images:[...(data.evidence.images??[])]};
+  const evidence={...data.evidence,notes:[...(data.evidence.notes??[])],images:[...(data.evidence.images??[])]};
+  // The original is uploaded before canonical registration, in the same private
+  // attempt scope. Existing retention/pinning protects all objects for that ID.
+  for(const image of [...evidence.images]){
+    const original=image.originalCapture;
+    if(!original)continue;
+    if(original.storageBucket!=='trimax-ocr-captures'||!/^image\/(jpeg|png|webp)$/.test(original.mime)||!/^[a-f0-9]{64}$/.test(original.sha256)||original.objectPath!==image.objectPath?.split('/').slice(0,2).join('/')+'/'+original.sha256)throw Error('Invalid original still reference');
+    if(!evidence.images.some((i:{objectPath?:string})=>i.objectPath===original.objectPath))evidence.images.push({...original,base64:''});
+  }
   for(let index=0;index<evidence.images.length;index++){
     const image=evidence.images[index];
     if(image.storageBucket!=='trimax-ocr-captures'||!image.objectPath)continue;

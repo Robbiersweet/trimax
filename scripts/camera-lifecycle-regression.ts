@@ -15,9 +15,10 @@ await assert.rejects(acquireStillAndRelease(async () => { throw Error("camera fa
 assert(released, "Acquisition failure must release camera before fallback processing");
 const source = readFileSync("src/app/components/BatchInvoicePayments.tsx", "utf8");
 const camera = readFileSync("src/app/components/RemittanceCamera.tsx", "utf8");
-assert(camera.indexOf("stop(); onCapture(") > camera.indexOf("await remittanceDeadline(new Promise<Blob>"));
-assert(camera.includes("stream.current?.getTracks().forEach(track => track.stop())"));
-assert(camera.includes("if (cancelled || expired) result.getTracks().forEach(track => track.stop())"));
+assert(camera.includes("acquireStillAndRelease(()=>remittanceDeadline(requestFullStill"));
+assert(!camera.includes("drawImage("), "Camera must never capture video-frame pixels");
+assert(camera.includes("stream.current?.getTracks().forEach(track=>track.stop())"));
+assert(camera.includes("if(cancelled||expired)result.getTracks().forEach(track=>track.stop())"));
 assert(!source.includes("Promise.all(candidates.map"), "Candidate OCR must not compete concurrently");
 const canvas = { id: "canvas", usable: true, completenessScore: 9999 };
 assert.equal(selectPhysicalSource([canvas, { id: "still-full", usable: true, completenessScore: 10 }])?.id, "still-full");

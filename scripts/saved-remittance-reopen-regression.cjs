@@ -39,7 +39,7 @@ const screen=fs.readFileSync('src/app/components/BatchInvoicePayments.tsx','utf8
 const functions={};function visit(n){if(ts.isFunctionDeclaration(n)&&['openSavedRemittance','resetCheckCaptureState','clearNewRemittanceReviewState','clearCurrentRemittanceReviewState'].includes(n.name?.text))functions[n.name.text]=n.getText(ast);ts.forEachChild(n,visit);}visit(ast);
 function reopen(overrides={}){
   const state={setSelectedIds:['stale-selection']}, opticalCalls=[], ocrCalls=[];
-  const bindings={businessId:business,ocrAttemptVersion:{current:0},resumedDiagnosticReplay:{current:false},scanLineage:{current:null},latestScan:{current:null},preparedCaptureRef:{current:null},sourceSelectionRef:{current:[]},observationScopeRef:{current:''},opticalRef:{current:{}},checkImagePreview:'',crypto:require('node:crypto').webcrypto,URL,
+  const bindings={businessId:business,ocrAttemptVersion:{current:0},resumedDiagnosticReplay:{current:false},scanLineage:{current:null},latestScan:{current:null},originalStillRef:{current:null},preparedCaptureRef:{current:null},sourceSelectionRef:{current:[]},observationScopeRef:{current:''},opticalRef:{current:{}},checkImagePreview:'',crypto:require('node:crypto').webcrypto,URL,
     savedRemittancePayment:async()=>({status:'applied',attemptId:replay}),scanOptical:async(reference)=>{opticalCalls.push(reference);return {images:[{sha256:'hash',base64:'YWJj',mime:'image/jpeg'}]};},remittanceDeadline:promise=>promise,extractCheckStubFromPhoto:async(...args)=>ocrCalls.push(args),...overrides};
   const source=Object.values(functions).join('\n');
   for(const name of new Set(source.match(/set[A-Z][A-Za-z]+/g)))bindings[name]=v=>{state[name]=typeof v==='function'?v(state[name]):v;};

@@ -1,4 +1,4 @@
-export type CaptureImplementation = 'native-still' | 'custom-camera' | 'existing-photo';
+export type CaptureImplementation = 'native-still' | 'image-capture-still' | 'custom-camera' | 'existing-photo';
 export type CaptureOpeningState = {
   nativeStillConfigured: boolean; shadowConfigured: boolean; flagsLoaded: boolean;
   roleLoaded: boolean; workspaceLoaded: boolean; shadowEligible: boolean; flagReadError: string | null;

@@ -51,7 +51,7 @@ export default function OpticalEvidenceView({
                 <p className="text-xs">{image.transformation}</p>
               </figcaption>
               {image.base64 ? (
-                <a
+                <div><a
                   href={`data:${image.mime};base64,${image.base64}`}
                   target="_blank"
                   rel="noreferrer"
@@ -63,7 +63,7 @@ export default function OpticalEvidenceView({
                     src={`data:${image.mime};base64,${image.base64}`}
                     className="mt-2 max-h-96 w-full object-contain"
                   />
-                </a>
+                </a>{image.label==='Original high-resolution still'&&<a className="mt-2 inline-block rounded border px-3 py-2" href={`data:${image.mime};base64,${image.base64}`} download={`Trimax-original-${attemptId}.${image.mime==='image/png'?'png':image.mime==='image/webp'?'webp':'jpg'}`}>Download original still</a>}</div>
               ) : (
                 <p>Image bytes were not retained.</p>
               )}

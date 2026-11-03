@@ -5,6 +5,7 @@ import { sumMoney, subtractMoney, moneyCents } from "../lib/money.ts";
 
 import { useRemittanceEvent } from "../lib/useRemittanceEvent";
 import RemittanceCamera from "./RemittanceCamera";
+import type {StillArtifact} from '../lib/highResolutionStill';
 import { remittanceDeadline, REMITTANCE_PROCESSING_LIMIT_MS } from "../lib/remittanceDeadline";
 import { storeCanonicalCapture, resumeCaptureHandoff } from "../lib/ocrCanonicalClient";
 import LegacyOcrJobs from "./LegacyOcrJobs";
@@ -702,6 +703,7 @@ export default function BatchInvoicePayments({
     useState<PaymentEntryMode>("choice");
   // Session-only recovery retains the same photo and attempt; never writes image bytes to device storage.
   const [captureRetry, setCaptureRetry] = useState<{ run: () => Promise<void> } | null>(null);
+  const originalStillRef=useRef<StillArtifact|null>(null);
   const captureRetryBusy = useRef(false);
   const [checkOcrMessage, setCheckOcrMessage] = useState(
     "Upload a remittance stub or enter the payment manually."
@@ -2103,7 +2105,7 @@ export default function BatchInvoicePayments({
     prepDiagnosticLines: string[] = lastOcrPrepDiagnosticLines,
     currentDocumentFingerprint: string = remittanceDocumentFingerprint,
     retainedReference?: string,
-    resume?: {history:ScanSummary;canonical:CanonicalCapture|null}
+    resume?: {history:ScanSummary;canonical:CanonicalCapture|null;originalStill?:StillArtifact|null}
   ): Promise<void> {
     if (checkOcrStatus !== "reading" || !processingDeadlineAt.current) beginProcessingWindow();
     const attemptVersion = ++ocrAttemptVersion.current;
@@ -2125,6 +2127,7 @@ export default function BatchInvoicePayments({
     const shadowCaptureTimings = {...captureTimings.current};
     const shadowSnapshot = shadowEnabledForAttempt && intent !== "check_details" && documentType !== "check_only" ? {label:'Read-only workspace snapshot before legacy resolution',provenance:['Same-capture pre-review invoice/activity state'],invoices:structuredClone(invoiceRecords),activities:structuredClone(paymentActivities),receivedDate} : null;
     let canonical: CanonicalCapture | null = resume?.canonical ?? null;
+    const originalStill=resume?.originalStill??originalStillRef.current;
     let failure: TransportFailure | null = null;
     let retainedResponse: unknown = null;
     let completed = false;
@@ -2208,7 +2211,7 @@ export default function BatchInvoicePayments({
       if (attemptVersion !== ocrAttemptVersion.current) return;
       try {
         if(!canonical && history.captureUi)history.captureUi.canonicalUploadStartedAt=Date.now();
-        canonical=canonical ?? await remittanceDeadline(storeCanonicalCapture({attemptId,imageDataUrl,metadata:{...captureSnapshot?.image,originalPreparation:prepDiagnosticLines,rotation:0,retainedReference},snapshot:shadowSnapshot,captureTimings:shadowCaptureTimings,onProgress:message=>{if(attemptVersion===ocrAttemptVersion.current)setCheckOcrMessage(message);}}), 30_000, "Photo upload timed out. Retry.");
+        canonical=canonical ?? await remittanceDeadline(storeCanonicalCapture({attemptId,imageDataUrl,metadata:{...captureSnapshot?.image,originalPreparation:prepDiagnosticLines,rotation:0,retainedReference},originalStill,snapshot:shadowSnapshot,captureTimings:shadowCaptureTimings,onProgress:message=>{if(attemptVersion===ocrAttemptVersion.current)setCheckOcrMessage(message);}}), 30_000, "Photo upload timed out. Retry.");
       } catch(error) {
         failure=captureFailure(error,'canonical-upload');
         throw error;
@@ -2330,7 +2333,7 @@ export default function BatchInvoicePayments({
         setCaptureRetry({run:async()=>{
           if(captureRetryBusy.current || attemptVersion!==ocrAttemptVersion.current)return;
           captureRetryBusy.current=true;
-          try { await extractCheckStubFromPhotoEvent(imageDataUrl,documentType,intent,retryStrategy,prepDiagnosticLines,currentDocumentFingerprint,retainedReference,{history,canonical}); }
+          try { await extractCheckStubFromPhotoEvent(imageDataUrl,documentType,intent,retryStrategy,prepDiagnosticLines,currentDocumentFingerprint,retainedReference,{history,canonical,originalStill}); }
           finally {captureRetryBusy.current=false;}
         }});
         return;
@@ -2374,7 +2377,7 @@ export default function BatchInvoicePayments({
       const lines = [...sourceDiagnosticLines,
         'Source type: '+sourceType+'.',
         'Source image: '+metadata.rawWidth+' x '+metadata.rawHeight+', '+file.size+' bytes.',
-        metadata.transformation, 'Full image preserved; no document crop or competing camera source.',
+        metadata.transformation, originalStillRef.current?'Reviewed still crop prepared; untouched original retained separately.':'Full image preserved; no document crop or competing camera source.',
         'Saved preview and OCR input match: '+metadata.width+' x '+metadata.height+'.'];
       preparedCaptureRef.current = {source:sourceType,image:{width:metadata.width,height:metadata.height,bytes:normalized.file.size,mime:normalized.file.type},quality:{},sources:[],selectionReason:'Full-frame guided capture or existing photo; EXIF normalized once'};
       setOcrImageFile(normalized.file); setCheckImageFile(normalized.file);
@@ -2405,6 +2408,7 @@ export default function BatchInvoicePayments({
   // A new source owns a fresh review. Clear synchronously before camera,
   // normalization, duplicate preflight or any old asynchronous completion.
   function clearNewRemittanceReviewState() {
+    originalStillRef.current=null;
     setSavedPaymentHistory(null);
     resumedDiagnosticReplay.current=false;
     setPaymentConfirmation(null);
@@ -2466,14 +2470,22 @@ export default function BatchInvoicePayments({
     source: "camera" | "existing" = "existing",
     documentType: RemittanceDocumentType = captureDocumentType,
     intent: CaptureIntent = captureIntent,
-    sourceDiagnosticLines: string[] = []
+    sourceDiagnosticLines: string[] = [],
+    originalStill?: StillArtifact
   ): void {
     if (!file) return;
     if (intent === "primary") clearNewRemittanceReviewState();
+    originalStillRef.current=originalStill??null;
     beginProcessingWindow();
     const capturedFile = file;
     const implementation = source === 'existing' ? 'existing-photo' : captureUi.current?.selection.implementation ?? 'custom-camera';
     if (!captureUi.current || captureUi.current.selection.implementation !== implementation) beginCapture(implementation,'Image intake without an opening event');
+    if(originalStill&&captureUi.current){
+      const selected=captureUi.current.selection;
+      captureUi.current.selection=selectCapture(originalStill.method==='image-capture'?'image-capture-still':'native-still',selected.openingState,'User-reviewed high-resolution still',selected.selectedAt);
+      captureUi.current.acquisitionMechanism=originalStill.method==='image-capture'?'ImageCapture.takePhoto':'file-input-capture-environment';
+      sourceDiagnosticLines=[...sourceDiagnosticLines,`Still acquisition: ${originalStill.method}; original ${originalStill.width} x ${originalStill.height}, ${originalStill.file.size} bytes; reviewed crop ${JSON.stringify(originalStill.crop)}.`];
+    }
     captureUi.current!.imageReturnedAt ??= Date.now();
     setPaymentEntryMode('photo');
     captureUi.current!.cameraUiEndedAt ??= Date.now();
@@ -2543,7 +2555,7 @@ export default function BatchInvoicePayments({
         acquiredEvidence.previewPaintOpportunityAt = Date.now();
         captureTimings.current.previewPaintOpportunityAt = acquiredEvidence.previewPaintOpportunityAt;
         await readPreparedRemittanceFromFile(capturedFile,documentType,intent,'standard',source,
-          [...sourceDiagnosticLines,'Capture implementation: guided camera or existing photo; full image preserved.']);
+          [...sourceDiagnosticLines,originalStill?'User-reviewed still crop; untouched original retained for private archival.':'Capture implementation: guided camera or existing photo; full image preserved.']);
       } catch (error) {
         if (captureVersion !== ocrAttemptVersion.current) return;
         setIsPreparingCrop(false); setCheckOcrStatus("error");
@@ -3039,7 +3051,7 @@ export default function BatchInvoicePayments({
 
       {typeof document !== "undefined" ? duplicateRemittanceModalView() : null}
 
-      {paymentEntryMode === "camera" && <RemittanceCamera onCancel={closeRemittanceCamera} onManual={enterRemittanceManually} onCapture={(file, source) => captureCheckImage(file, source)} />}
+      {paymentEntryMode === "camera" && <RemittanceCamera onCancel={closeRemittanceCamera} onManual={enterRemittanceManually} onCapture={(file, source, original) => captureCheckImage(file, source, captureDocumentType, captureIntent, [], original)} />}
 
       {paymentEntryMode === "complete" ? (
         <div className="rounded-2xl border border-emerald-300/40 bg-emerald-500/10 p-4">
