@@ -2,25 +2,25 @@
   "schemaVersion": 1,
   "releaseId": "trimax-high-res-still-20261103-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-11-03T21:06:00.076Z",
-  "releaseTimestamp": "2026-11-03T21:06:00.076Z",
+  "createdAt": "2026-11-03T21:10:16.582Z",
+  "releaseTimestamp": "2026-11-03T21:10:16.582Z",
   "baseProduction": {
     "commit": "e7ca4407399b77be14aac8918b80a7108d75677c",
     "vercelDeploymentId": "5UgcgrY9H72RDgaqaZVxdDBHDC4M"
   },
   "components": {
     "web": {
-      "commit": "c1888a82f3b0764498a8df0186aff077d3809dff"
+      "commit": "ee497960a35cc650ae96e8773dce6db726714bf0"
     },
     "legacy": {
-      "commit": "c1888a82f3b0764498a8df0186aff077d3809dff"
+      "commit": "ee497960a35cc650ae96e8773dce6db726714bf0"
     },
     "v2-shadow": {
-      "commit": "c1888a82f3b0764498a8df0186aff077d3809dff"
+      "commit": "ee497960a35cc650ae96e8773dce6db726714bf0"
     }
   },
   "sourceBundle": {
-    "sha256": "f8438148e4594501c8926a0820ef996303b61ac55a82bbef493d1bdd5e8591ff",
+    "sha256": "e4f56fcc9baf0c7d6915b12bdf0a10d0e00984d55fbebdc223699a3502da5d57",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -73,7 +73,7 @@
       "scripts/generate_role_guides.py": "60baf7d8d0bdcb376ca03d80be15276a8e12e3227592ad2bf8dc5bfe79e678e5",
       "scripts/glen-payor-regression.cjs": "2f91135035c00a5786372e8d7b847879e440cdadfab3038651c88cba74fa04e2",
       "scripts/high-resolution-still-regression.cjs": "65be29f1660f4b97e87b69cb6411c912eb8c345c91dfcb78ea208d9a748021d6",
-      "scripts/high-resolution-still-scope-regression.cjs": "0810c6ed4876d142cee119c91c135265d2c0a612c8d53aa01d391b2a8ace7091",
+      "scripts/high-resolution-still-scope-regression.cjs": "b3f23d88e87dcba5648cd6a9d79fcae1b096965b302f9e06b91b2660138d2317",
       "scripts/install-ocr-supervisor.ps1": "7c295e68e7c9b95036412b44cf423d677519f9e0a5107beb1278cc244d65848e",
       "scripts/invoice-cent-regression.ts": "f6b7878369411ad11297c0d79aed1e41eab3c3c2dd7d626496f43510093d5078",
       "scripts/invoice-correction-regression.ts": "d637ec393a9ae331676b88d5d4e9db9d4c96e326977b103d39e15aebf8e4c873",
@@ -315,7 +315,7 @@
       "scripts/remittance-deadline-regression.cjs": "c55b3c02d5bd6fb8f8a41b36fe4202a2c8795bb5eb8562cf30d54a1f60f665f2",
       "scripts/remittance-grouped-total-regression.ts": "13468a09e8c3bedf13a88b7917e8baf288e75a762354c887740f867f519fa6b0",
       "scripts/remittance-intake-regression.cjs": "0f4e506bf7cc76e0f922f2842850ae0e98b8c6eacdf7d821dc482094fddec11f",
-      "scripts/remittance-matching-regression.ts": "91a0f110ade0d5bdb052639568e0f65e50ee05084a7ba246c9e47aa9cf03e31b",
+      "scripts/remittance-matching-regression.ts": "0cf40399daa9da28c2808a6417cb4900c4b67d99094716f9cca510acd0bbd33b",
       "scripts/remittance-ocr-fixture-regression.ts": "2e90a200e8de9d64212a8f56092f3ef4e00522f2751463b33c827cad45991fa0",
       "scripts/remittance-photo-corpus.cjs": "7d8342d9234119d129613d43afd1af2d807769d0c8df5c5f2daff9017a3c25ec",
       "scripts/remittance-release-gate.ts": "21944edbe46796c2b87e595dad18d2c49eb9fb72f2c9558b80f6880ceb4cdf32",
@@ -1765,8 +1765,8 @@
   },
   "upgradeContext": {
     "candidateReleaseId": "trimax-high-res-still-20261103-rc1",
-    "applicationCommit": "c1888a82f3b0764498a8df0186aff077d3809dff",
-    "machineryCommit": "c1888a82f3b0764498a8df0186aff077d3809dff",
+    "applicationCommit": "ee497960a35cc650ae96e8773dce6db726714bf0",
+    "machineryCommit": "ee497960a35cc650ae96e8773dce6db726714bf0",
     "currentProductionRelease": {
       "manifestCommit": "e7ca4407399b77be14aac8918b80a7108d75677c",
       "manifestDigest": "80e66e3c7bebbc8c0ca80fae78831f06d66cea60f3640030b0189f81075dd4c2",
