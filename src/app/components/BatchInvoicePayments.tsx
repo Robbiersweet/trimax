@@ -12,7 +12,7 @@ import type {SavedLegacyJob} from "./LegacyOcrJobs";
 import {SavedRemittancePaymentView} from "./SavedRemittancePaymentView";
 import {savedRemittancePayment, type SavedRemittanceLookup} from "../lib/savedRemittancePaymentClient";
 import { waitForLegacyJob } from "../lib/ocrLegacyJobClient";
-import { transportFailure, type CanonicalCapture, type TransportFailure } from "../lib/ocrCanonical";
+import { captureFailure, captureFailureMessage, transportFailure, type CanonicalCapture, type TransportFailure } from "../lib/ocrCanonical";
 
 import { normalizePhysicalStill } from "../lib/ocrOpticalBrowser";
 
@@ -26,7 +26,7 @@ import { useRouter } from "next/navigation";
 import Card from "./Card";
 import RecentScans from "./RecentScans";
 import { legacyMoneyEvidence, type SharedMoneyEvidence } from "../lib/documentFields/moneyContract";
-import { scanSummary, finishScan, failureSummary, debugFile, slimAttempt, type ScanSummary, type ScanResult } from "../lib/ocrHistory";
+import { captureTransportReport, scanSummary, finishScan, failureSummary, debugFile, slimAttempt, type ScanSummary, type ScanResult } from "../lib/ocrHistory";
 import { saveScan, scanDiagnostics, scanOptical, pairedScanSummary } from "../lib/ocrHistoryClient";
 import { selectCapture, type CaptureImplementation, type CaptureUiEvidence } from "../lib/captureRouting";
 import { loadShadowFlags } from "../lib/ocrV2/shadow/client";
@@ -1879,6 +1879,17 @@ export default function BatchInvoicePayments({
     try{return debugFile(summary,await scanDiagnostics(businessId,summary.attemptId)).text;}catch{return buildOcrDiagnosticReport();}
   }
 
+  async function copyCaptureDiagnostics() {
+    const summary=latestScan.current;
+    if(!summary?.captureTransport)return;
+    try {
+      await copyTextToClipboard(captureTransportReport(summary,checkImageName));
+      setToast({type:'success',message:'Capture diagnostics copied. Your photo remains on this page.'});
+    } catch {
+      setToast({type:'error',message:'Copy unavailable. Open Capture diagnostics below to read the report. Keep this page open.'});
+    }
+  }
+
   async function copyOcrDiagnostics() {
     try {
       await copyTextToClipboard(await retainedOcrReport());
@@ -2120,12 +2131,14 @@ export default function BatchInvoicePayments({
     const persist = (summary:ScanSummary,payload:unknown,phase:0|2) => {
       // A completed saved scan is historical evidence, not a new recognition.
       if (resume && ['review','failed'].includes(resume.history.captureState ?? '')) return Promise.resolve(true);
-      if (!businessId) { setScanSavedStatus("Attempt not saved: workspace unavailable."); return; }
-      return saveScan({businessId,summary,payload:payload && typeof payload==='object' ? {...payload,captureUi:summary.captureUi} : payload,phase}).then(status=>{
+      if (!businessId) { failure=transportFailure(null,'Workspace unavailable','workspace');setScanSavedStatus("Attempt not saved: workspace unavailable."); return; }
+      return saveScan({businessId,summary,payload:payload && typeof payload==='object' ? {...payload,captureUi:summary.captureUi} : payload,phase},error=>{
+        if(phase===0 && history.captureState==='capture_local')failure=captureFailure(error,'capture-registration');
+      }).then(status=>{
         if (latestScan.current?.attemptId !== attemptId || (phase===0 && latestScan.current.result!=="processing")) return true;
         setScanSavedStatus(status==='saved' ? (phase===2 ? "Attempt saved ✓"+(summary.result==='success'?"":" · Diagnostics retained for 30 days") : "Scan started · saving evidence") : "Saved on this device · waiting to sync");
         return status === "saved";
-      }).catch(()=>{if(latestScan.current?.attemptId===attemptId)setScanSavedStatus("Attempt could not be saved. Keep this page open and use Copy Full Diagnostics.");return false;});
+      }).catch(error=>{if(phase===0 && history.captureState==='capture_local')failure=captureFailure(error,'capture-registration');if(latestScan.current?.attemptId===attemptId)setScanSavedStatus("Attempt could not be saved. Keep this page open and use Copy Full Diagnostics.");return false;});
     };
     const complete = (result:ScanResult,attempt:RemittanceAttempt|null,reasons:string[]=[]) => {
       if(completed)return;completed=true;
@@ -2183,21 +2196,21 @@ export default function BatchInvoicePayments({
       setPaymentReviewNotice("");
     }
     setCheckOcrStatus("reading");
-    setCheckOcrMessage("Preparing image");
+    setCheckOcrMessage(canonical ? "Opening saved photo" : "Registering scan before photo upload");
     setLastOcrDiagnosticLines([]);
     setLastOcrRawText("");
-    appendCameraStage("Upload started");
+    appendCameraStage(canonical ? "Saved photo reuse started" : "Scan registration started");
 
     const requestStartedAt = performance.now();
 
     try {
-      if(!await remittanceDeadline(Promise.resolve(initialSave), 15_000, "Could not save the scan. Retry.")){failure=transportFailure(null,'Attempt identity could not be saved','capture-registration');throw Error(failure.message);}
+      if(!await remittanceDeadline(Promise.resolve(initialSave), 15_000, "Could not save the scan. Retry.")){failure??=transportFailure(null,'Attempt identity could not be saved','capture-registration');throw Error(failure.message);}
       if (attemptVersion !== ocrAttemptVersion.current) return;
       try {
         if(!canonical && history.captureUi)history.captureUi.canonicalUploadStartedAt=Date.now();
-        canonical=canonical ?? await remittanceDeadline(storeCanonicalCapture({attemptId,imageDataUrl,metadata:{...captureSnapshot?.image,originalPreparation:prepDiagnosticLines,rotation:0,retainedReference},snapshot:shadowSnapshot,captureTimings:shadowCaptureTimings}), 30_000, "Photo upload timed out. Retry.");
+        canonical=canonical ?? await remittanceDeadline(storeCanonicalCapture({attemptId,imageDataUrl,metadata:{...captureSnapshot?.image,originalPreparation:prepDiagnosticLines,rotation:0,retainedReference},snapshot:shadowSnapshot,captureTimings:shadowCaptureTimings,onProgress:message=>{if(attemptVersion===ocrAttemptVersion.current)setCheckOcrMessage(message);}}), 30_000, "Photo upload timed out. Retry.");
       } catch(error) {
-        failure=transportFailure(null,error instanceof Error?error.message:String(error),'canonical-upload');
+        failure=captureFailure(error,'canonical-upload');
         throw error;
       }
       if (attemptVersion !== ocrAttemptVersion.current) return;
@@ -2305,13 +2318,15 @@ export default function BatchInvoicePayments({
       );
     } catch (error) {
       if (attemptVersion !== ocrAttemptVersion.current) return;
-      failure??=transportFailure(null,error instanceof Error?error.message:'OCR request failed.');
+      failure??=captureFailure(error,canonical?'ocr-request':'capture-registration');
       if(!canonical || failure.stage==='canonical-upload') {
         history.captureState='transport_failed';
-        history.reasons=['Photo captured, upload interrupted — Retry'];
+        history.reasons=[captureFailureMessage(failure)];
+        history.captureTransport={stage:failure.stage,httpStatus:failure.httpStatus,errorCode:failure.errorCode,retryCount:resume?(resume.history.captureTransport?.retryCount??0)+1:0,elapsedMs:Math.round(performance.now()-startedAt)};
+        setLastOcrDiagnosticLines([failureSummary(history)]);
         void persist(history,{stage:'transport_failed',transport:failure,preparation:prepDiagnosticLines},0);
         setCheckOcrStatus('error');
-        setCheckOcrMessage('Photo captured, upload interrupted — Retry. Keep this page open; your photo is still available.');
+        setCheckOcrMessage(captureFailureMessage(failure));
         setCaptureRetry({run:async()=>{
           if(captureRetryBusy.current || attemptVersion!==ocrAttemptVersion.current)return;
           captureRetryBusy.current=true;
@@ -3241,7 +3256,18 @@ export default function BatchInvoicePayments({
                       >
                         Enter Manually / Select Missing Invoice
                       </button>
+                      {captureRetry && latestScan.current?.captureTransport ? (
+                        <button type="button" onClick={()=>void copyCaptureDiagnostics()} className="min-h-11 rounded-full border border-amber-100/50 px-3 py-1.5 text-xs font-semibold text-amber-50 transition hover:bg-white/10">
+                          Copy Capture Diagnostics
+                        </button>
+                      ) : null}
                     </div>
+                    {captureRetry && latestScan.current?.captureTransport ? (
+                      <details className="mt-3 min-w-0">
+                        <summary className="cursor-pointer py-2 font-semibold">Capture diagnostics</summary>
+                        <pre className="mt-2 max-w-full whitespace-pre-wrap break-all text-xs">{captureTransportReport(latestScan.current,checkImageName)}</pre>
+                      </details>
+                    ) : null}
                   </div>
                 ) : null}
 

@@ -67,7 +67,7 @@ async function send(write: ScanWrite) {
   const payload=write.payload as Record<string,unknown>|null;
   const response=payload?.response as {diagnostics?:{backgroundJob?:{evidenceReference?:string}}}|undefined;
   const reference=response?.diagnostics?.backgroundJob?.evidenceReference;
-  const { error } = await supabase.rpc("trimax_save_ocr_attempt", {
+  const { error, status } = await supabase.rpc("trimax_save_ocr_attempt", {
     p_business: write.businessId,
     p_id: write.summary.attemptId,
     p_original: write.summary.originalId,
@@ -84,10 +84,10 @@ async function send(write: ScanWrite) {
       p_payload:{stage:'terminal-diagnostics-fallback',diagnosticPersistenceError:error.message,canonicalCapture:(write.payload as Record<string,unknown>|null)?.canonicalCapture,transport:(write.payload as Record<string,unknown>|null)?.transport,shadowHandoff:(write.payload as Record<string,unknown>|null)?.shadowHandoff,finishedAt:new Date().toISOString()}
     });
     if(terminalError)throw Error(terminalError.message);
-  } else if (error) throw new Error(error.message);
+  } else if (error) throw Object.assign(new Error(error.message),{code:error.code,status});
 }
 let flushing = Promise.resolve();
-export function flushScans(businessId: string) {
+export function flushScans(businessId: string, onFailure?: (key:string,error:unknown)=>void) {
   const next = flushing
     .catch(() => {})
     .then(async () => {
@@ -105,6 +105,7 @@ export function flushScans(businessId: string) {
             return tx.objectStore(STORE).delete(write.key);
           });
         } catch (error) {
+          onFailure?.(write.key,error);
           failure = error;
         }
       }
@@ -113,7 +114,7 @@ export function flushScans(businessId: string) {
   flushing = next;
   return next;
 }
-export async function saveScan(write: ScanWrite): Promise<"saved" | "device"> {
+export async function saveScan(write: ScanWrite, onFailure?: (error:unknown)=>void): Promise<"saved" | "device"> {
   const payload =
     write.summary.result === "success"
       ? null
@@ -137,7 +138,7 @@ export async function saveScan(write: ScanWrite): Promise<"saved" | "device"> {
     return "saved";
   }
   try {
-    await flushScans(write.businessId);
+    await flushScans(write.businessId,(failedKey,error)=>{if(failedKey===key)onFailure?.(error);});
     return "saved";
   } catch {
     // An unrelated failed record must not hide this attempt's acknowledged save.

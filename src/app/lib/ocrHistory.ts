@@ -10,6 +10,7 @@ export type ScanResult =
   | "duplicate"
   | "apply blocked";
 export type ScanSummary = {
+  captureTransport?: {stage:string;httpStatus:number|null;errorCode?:string;retryCount:number;elapsedMs:number};
   captureUi?: import('./captureRouting').CaptureUiEvidence;
   canonicalReference?: string;
   captureState?: 'capture_local'|'uploading'|'image_stored'|'processing'|'review'|'failed'|'transport_failed'|'completion_persistence_pending';
@@ -163,6 +164,13 @@ export function diagnosticPayload(value: unknown): unknown {
     ),
   );
 }
+/** Explicit allowlist: this report never reads image bytes, auth state, invoice selections or diagnostic blobs. */
+export function captureTransportReport(summary: ScanSummary, fileName: string) {
+  const transport=summary.captureTransport;
+  return JSON.stringify({report:'TriMax capture transport',attemptId:summary.attemptId,build:summary.build,timestamp:summary.timestamp,fileName,
+    captureState:summary.captureState,stage:transport?.stage,httpStatus:transport?.httpStatus??null,errorCode:transport?.errorCode??null,
+    retryCount:transport?.retryCount??0,elapsedMs:transport?.elapsedMs??null,canonicalCaptureConfirmed:Boolean(summary.canonicalReference)},null,2);
+}
 export function failureSummary(summary: ScanSummary) {
   const money = (n: number | null) =>
     n == null ? "UNKNOWN" : `$${moneyFixed(n)}`;
@@ -172,6 +180,7 @@ export function failureSummary(summary: ScanSummary) {
     `Build: ${summary.build}`,
     `Timestamp: ${summary.timestamp}`,
     `Result: ${summary.result}; duration: ${summary.durationMs}ms`,
+    ...(summary.captureTransport ? [`Capture transport: ${JSON.stringify(summary.captureTransport)}`] : []),
     "",
     "SOURCE",
     `Selected: ${summary.selectedSource}`,

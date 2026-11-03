@@ -13,6 +13,9 @@ export async function uploadCanonicalObject(
  const uploaded=await storage.upload(path,blob,{contentType:blob.type,upsert:false}).catch(error=>({error}));
  if(!uploaded.error)return;
  const existing=await storage.download(path);
- if(existing.error||!existing.data)throw Error('Photo captured, upload interrupted — Retry');
+ if(existing.error||!existing.data){
+  const error=uploaded.error && typeof uploaded.error==='object'?uploaded.error as Record<string,unknown>:{};
+  throw Object.assign(Error('Photo upload could not be confirmed'),{stage:'object-upload',status:error.status??error.statusCode,code:error.code});
+ }
  if(existing.data.size!==blob.size||await imageSha256(await existing.data.arrayBuffer())!==hash)throw Error('Canonical object integrity mismatch');
 }
