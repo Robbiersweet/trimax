@@ -1114,7 +1114,7 @@ async function retryStateRegression() {
     const run=new Function(...Object.keys(injected),compiled)(...Object.values(injected));
     const before=calls.length;
     await run('same-session-private-photo','remittance_stub','primary','standard',[],'');
-    assert.equal(calls.length,before);assert(state.CheckOcrMessage.includes('upload interrupted'));
+    assert.equal(calls.length,before);assert(state.CheckOcrMessage.includes('Photo upload could not be confirmed'));assert(state.CheckOcrMessage.includes('Retry will reuse this photo and scan ID'));
     available=true;
     const retry=state.CaptureRetry.run();
     await new Promise(setImmediate);
