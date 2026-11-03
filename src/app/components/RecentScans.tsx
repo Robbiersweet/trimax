@@ -17,7 +17,7 @@ import {
 } from "../lib/ocrDebug";
 import type { RemittanceAttempt } from "../lib/remittanceAttempt";
 import { useEffect, useState, useRef } from "react";
-import { debugFile, failureSummary, type ScanRecord } from "../lib/ocrHistory";
+import { debugFile, failureSummary, scanTimestampMillis, type ScanRecord } from "../lib/ocrHistory";
 import {
   flushScans,
   pendingScans,
@@ -75,7 +75,7 @@ export default function RecentScans({
     try {
       const remote = await recentScans(
         businessId,
-        older ? records.at(-1)?.created_at : undefined,
+        older ? records.filter(record=>scanTimestampMillis(record.created_at)!==null).at(-1)?.created_at : undefined,
       ).catch((e) => {
         setError(String(e));
         return [];
@@ -103,7 +103,7 @@ export default function RecentScans({
       );
       setRecords(
         [...merged.values()].sort((a, b) =>
-          b.created_at.localeCompare(a.created_at),
+          (scanTimestampMillis(b.created_at)??-Infinity)-(scanTimestampMillis(a.created_at)??-Infinity),
         ),
       );
     } catch (e) {
@@ -416,7 +416,7 @@ export default function RecentScans({
                     {record.pinned ? " · Pinned" : ""}
                   </span>
                   <span className="block text-sm text-slate-300">
-                    {new Date(record.created_at).toLocaleString()} ·{" "}
+                    {diagnosticDate(record.summary,record.created_at).value} ·{" "}
                     {record.summary.invoicesResolved}/
                     {record.summary.rowsDetected} invoices ·{" "}
                     {record.summary.documentTotal == null

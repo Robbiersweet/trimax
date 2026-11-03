@@ -65,6 +65,12 @@ export type ScanRecord = {
   diagnostics_expires_at: string | null;
   diagnostic_bytes: number;
 };
+/** Local history from earlier clients can lack a timestamp. Never invent one or let it block other attempts. */
+export function scanTimestampMillis(value: unknown): number | null {
+  if(typeof value!=='string'||!value.trim())return null;
+  const time=Date.parse(value);
+  return Number.isFinite(time)?time:null;
+}
 export function scanSummary(
   id: string,
   original: string,

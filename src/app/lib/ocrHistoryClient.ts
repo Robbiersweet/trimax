@@ -3,6 +3,7 @@ import { supabase } from "./supabase";
 import { imageSha256 } from './ocrCanonical';
 import {
   diagnosticPayload,
+  scanTimestampMillis,
   type ScanWrite,
   type ScanRecord,
 } from "./ocrHistory";
@@ -93,12 +94,13 @@ export function flushScans(businessId: string, onFailure?: (key:string,error:unk
     .then(async () => {
       const writes = (await pendingScans(businessId)).sort(
         (a, b) =>
-          a.summary.timestamp.localeCompare(b.summary.timestamp) ||
+          (scanTimestampMillis(a.summary?.timestamp)??Infinity)-(scanTimestampMillis(b.summary?.timestamp)??Infinity) ||
           a.phase - b.phase,
       );
       let failure: unknown = null;
       for (const write of writes) {
         try {
+          if(scanTimestampMillis(write.summary?.timestamp)===null)throw Object.assign(Error('Local scan timestamp is missing or invalid. Original evidence remains on this device; other scans can sync.'),{code:'LOCAL_SCAN_METADATA_INVALID'});
           await send({ ...write, payload: await localPayload(write) });
           await transaction([STORE, PAYLOAD], "readwrite", (tx) => {
             tx.objectStore(PAYLOAD).delete(write.key);

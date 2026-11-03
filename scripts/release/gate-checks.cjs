@@ -49,4 +49,5 @@ scripts.push('scripts/atomic-remittance-regression.cjs','scripts/financial-harde
 scripts.push('scripts/ocr-reliability-regression.cjs','scripts/ocr-reliability-scope-regression.cjs');
 scripts.push('scripts/ocr-performance-regression.cjs','scripts/ocr-performance-scope-regression.cjs');
 module.exports=scripts;
+scripts.push('scripts/ocr-upload-retry-regression.cjs','scripts/ocr-upload-retry-scope-regression.cjs');
 

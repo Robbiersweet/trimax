@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- Execute production handlers with isolated transport fault injection; no live requests. */
 const assert=require('node:assert/strict'),fs=require('node:fs'),ts=require('typescript'),cp=require('node:child_process');
-function load(file,deps={}){const m={exports:{}};new Function('require','module','exports',ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:99}}).outputText)(n=>deps[n]??require(n),m,m.exports);return m.exports;}
+function load(file,deps={},source=fs.readFileSync(file,'utf8')){const m={exports:{}};new Function('require','module','exports',ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:99}}).outputText)(n=>deps[n]??require(n),m,m.exports);return m.exports;}
 const canonical=load('src/app/lib/ocrCanonical.ts'),history=require('../src/app/lib/ocrHistory.ts');
 const screen=fs.readFileSync('src/app/components/BatchInvoicePayments.tsx','utf8');
 const baseline=cp.execFileSync('git',['show','52dfc56445229c055a6b9fa90727b1be7116798f:src/app/components/BatchInvoicePayments.tsx'],{encoding:'utf8',windowsHide:true});
@@ -39,17 +39,32 @@ async function outbox(){
  reject=false;assert.equal(await client.saveScan(write),'saved');assert.equal((await client.pendingScans('business')).length,0);assert(calls.every(x=>x.name==='trimax_save_ocr_attempt'&&x.args.p_id==='attempt'));
  reject=true;write.summary.captureState='transport_failed';write.payload={stage:'transport_failed',transport:{stage:'capture-registration',message:'Attempt identity could not be saved'}};await client.saveScan(write);
  await existingRecentScans(client,calls);
+ // Reproduce the screenshot's missing-timestamp local record in the real outbox and both deployed consumers.
+ stores.attempts.clear();stores.diagnostics.clear();calls.length=0;reject=false;
+ const good={...write,key:'business:older:0',payloadBytes:1,summary:{...write.summary,attemptId:'older',originalId:'older'}},bad={...good,key:'business:missing-time:0',summary:{...good.summary,attemptId:'missing-time',originalId:'missing-time'}};delete bad.summary.timestamp;
+ stores.attempts.set(good.key,structuredClone(good));stores.attempts.set(bad.key,structuredClone(bad));const originalBad=structuredClone(bad);
+ const deps={'./ocrDebug':{safeDiagnosticView:x=>x},'./ocrCanonical':canonical,'./ocrHistory':history,'./supabase':{supabase:{rpc:async(name,args)=>{calls.push({name,args});return{error:null,status:200};}}}};
+ const baselineClient=load('src/app/lib/ocrHistoryClient.ts',deps,cp.execFileSync('git',['show','52dfc56445229c055a6b9fa90727b1be7116798f:src/app/lib/ocrHistoryClient.ts'],{encoding:'utf8',windowsHide:true}));
+ await assert.rejects(baselineClient.flushScans('business'),/localeCompare/);assert.equal(calls.length,0,'Malformed local row blocks every original registration before any RPC');
+ const originalHandler=handler(baseline,{bindings:{saveScan:baselineClient.saveScan}});await originalHandler.run('data:image/jpeg;base64,aW1hZ2U=');await originalHandler.state.setCaptureRetry.run();assert.equal(calls.length,0);assert.equal(originalHandler.uploads.length,0);assert.match(originalHandler.state.setCheckOcrMessage,/upload interrupted/);
+ await existingRecentScans(baselineClient,calls,'baseline');
+ const repairedClient=load('src/app/lib/ocrHistoryClient.ts',deps),repaired=handler(screen,{bindings:{saveScan:repairedClient.saveScan}});await repaired.run('data:image/jpeg;base64,aW1hZ2U=');assert.equal(repaired.uploads.length,1);assert.equal(repaired.jobs.length,1);assert(calls.every(call=>call.args.p_id!=='missing-time'));
+ assert.deepEqual(stores.attempts.get(bad.key),originalBad,'Malformed original metadata must remain byte-for-byte unchanged');
+ await existingRecentScans(repairedClient,calls,true);
  delete global.indexedDB;
 }
-async function existingRecentScans(client,calls){
+async function existingRecentScans(client,calls,missingTime=false){
  const React=require('react'),renderer=require('react-test-renderer');global.IS_REACT_ACT_ENVIRONMENT=true;global.window={addEventListener(){},removeEventListener(){}};
  const filename='src/app/components/RecentScans.tsx',m={exports:{}},empty={default:()=>null};
- const deps={'../lib/money.ts':{moneyFixed:()=>''},'./OcrCaptureRecovery':empty,'./SavedRemittancePaymentView':empty,'./OcrDiagnosticBuild':empty,'./OpticalEvidenceView':empty,'./OcrShadowComparison':empty,'./OcrDerivedAmountView':empty,'../lib/ocrDiagnosticDisplay.ts':{diagnosticDate:()=>({label:'Date',value:'test'})},'../lib/ocrDebug':{attemptPath:()=>'',debugTimestamp:()=>'',debugQueuePath:()=>'',diagnosticsAvailable:()=>true},'../lib/ocrHistory':history,'../lib/ocrHistoryClient':{...client,flushScans:async()=>{},recentScans:async()=>[]}};
- new Function('require','module','exports',ts.transpileModule(fs.readFileSync(filename,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:99,jsx:ts.JsxEmit.ReactJSX}}).outputText)(name=>deps[name]??require(name),m,m.exports);
+ const deps={'../lib/money.ts':{moneyFixed:()=>''},'./OcrCaptureRecovery':empty,'./SavedRemittancePaymentView':empty,'./OcrDiagnosticBuild':empty,'./OpticalEvidenceView':empty,'./OcrShadowComparison':empty,'./OcrDerivedAmountView':empty,'../lib/ocrDiagnosticDisplay.ts':require('../src/app/lib/ocrDiagnosticDisplay.ts'),'../lib/ocrDebug':{attemptPath:()=>'',debugTimestamp:()=>'',debugQueuePath:()=>'',diagnosticsAvailable:()=>true},'../lib/ocrHistory':history,'../lib/ocrHistoryClient':{...client,flushScans:async()=>{},recentScans:async()=>[]}};
+ const source=missingTime==='baseline'?cp.execFileSync('git',['show','52dfc56445229c055a6b9fa90727b1be7116798f:'+filename],{encoding:'utf8',windowsHide:true}):fs.readFileSync(filename,'utf8');
+ new Function('require','module','exports',ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:99,jsx:ts.JsxEmit.ReactJSX}}).outputText)(name=>deps[name]??require(name),m,m.exports);
  let tree;const before=calls.length;
  await renderer.act(async()=>{tree=renderer.create(React.createElement(m.exports.default,{businessId:'business',role:'owner',savedStatus:'Saved on this device'}));});
  const button=text=>tree.root.findAllByType('button').find(node=>node.children.join('').includes(text));
  await renderer.act(async()=>{button('Recent Scans').props.onClick();});
+ if(missingTime==='baseline'){assert(JSON.stringify(tree.toJSON()).includes('localeCompare'),'Reproduce the deployed list crash from the same malformed outbox fixture');await renderer.act(async()=>tree.unmount());delete global.window;return;}
+ if(missingTime){assert(JSON.stringify(tree.toJSON()).includes('Date unavailable'));assert(!JSON.stringify(tree.toJSON()).includes('localeCompare'));assert.equal(calls.length,before);await renderer.act(async()=>tree.unmount());delete global.window;return;}
  await renderer.act(async()=>{tree.root.findAllByType('button').find(node=>node.findAllByType('span').some(span=>span.children.join('').includes('Original Scan'))).props.onClick();});
  const raw=tree.root.findAllByType('details').find(node=>node.findAllByType('summary').some(s=>s.children.join('')==='Raw diagnostics'));
  await renderer.act(async()=>{raw.props.onToggle({currentTarget:{open:true}});});
