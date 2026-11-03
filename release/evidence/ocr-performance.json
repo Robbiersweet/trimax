@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS",
+  "baselineCommit": "c9f1dd4e21ae7c413ff125d0b1a81c595b4018ba",
+  "candidatePipelineSha256": "14b3d7a4e9df25ccbae709c7bd13d0eb1ba4f0975a061f9414cdb00097fe3f02",
+  "privateEvidenceSha256": "4c9c9dcb3d34dbfe9971d7a3370372117e654c807b04e9b3313b82554bbc16ee",
+  "realCaptures": 4,
+  "pairedMeasurements": 8,
+  "exactTesseractPassPairs": 2448,
+  "modelMetadataAndAuthorityEquivalent": true,
+  "productionWrites": false,
+  "productionTimingClaim": false,
+  "results": [
+    {
+      "id": "case-1",
+      "beforeMs": 50200.8599,
+      "afterMs": 41554.1623,
+      "savedMs": 8646.6976,
+      "improvementPercent": 17.224202169493115,
+      "exactRecognitionEvidenceEqual": true
+    },
+    {
+      "id": "case-2",
+      "beforeMs": 47083.917499999996,
+      "afterMs": 37614.539300000004,
+      "savedMs": 9469.378199999992,
+      "improvementPercent": 20.111704171599552,
+      "exactRecognitionEvidenceEqual": true
+    },
+    {
+      "id": "case-3",
+      "beforeMs": 8824.5779,
+      "afterMs": 8819.7065,
+      "savedMs": 4.871399999999994,
+      "improvementPercent": 0.055202640343851396,
+      "exactRecognitionEvidenceEqual": true
+    },
+    {
+      "id": "case-4",
+      "beforeMs": 8679.940100000002,
+      "afterMs": 8707.290099999998,
+      "savedMs": -27.349999999996726,
+      "improvementPercent": -0.3150943403399376,
+      "exactRecognitionEvidenceEqual": true
+    },
+    {
+      "id": "case-5",
+      "beforeMs": 12378.395499999999,
+      "afterMs": 12339.518600000001,
+      "savedMs": 38.87689999999748,
+      "improvementPercent": 0.3140705917822506,
+      "exactRecognitionEvidenceEqual": true
+    },
+    {
+      "id": "case-6",
+      "beforeMs": 12178.118500000002,
+      "afterMs": 12188.910899999999,
+      "savedMs": -10.792399999996633,
+      "improvementPercent": -0.08862124309265533,
+      "exactRecognitionEvidenceEqual": true
+    },
+    {
+      "id": "case-7",
+      "beforeMs": 51565.2313,
+      "afterMs": 42839.1178,
+      "savedMs": 8726.1135,
+      "improvementPercent": 16.92247524156844,
+      "exactRecognitionEvidenceEqual": true
+    },
+    {
+      "id": "case-8",
+      "beforeMs": 53916.567800000004,
+      "afterMs": 43099.2235,
+      "savedMs": 10817.344300000004,
+      "improvementPercent": 20.063117407855483,
+      "exactRecognitionEvidenceEqual": true
+    }
+  ]
+}

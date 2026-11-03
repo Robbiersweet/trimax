@@ -20,6 +20,15 @@ import { fuseOrganizationIdentity, type OrganizationObservation } from '../recog
 import { deriveResidualAmount } from '../recognition/residualAmount.ts';
 import { selectObservedIdentity } from '../recognition/identityHandoff.ts';
 
+/** Two bounded independent optical tasks. Preserve result/error order and wait
+ * for both cleanups before returning or failing; never leave orphan recognition. */
+export async function joinedOpticalStages<A,B>(left:()=>Promise<A>,right:()=>Promise<B>):Promise<[A,B]> {
+  const [a,b]=await Promise.allSettled([Promise.resolve().then(left),Promise.resolve().then(right)]);
+  if(a.status==='rejected')throw a.reason;
+  if(b.status==='rejected')throw b.reason;
+  return [a.value,b.value];
+}
+
 const hash = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 export type InvoiceCrop = { rowId: string; bounds: Bounds; bytes: Buffer; sha256: string };
 export type MoneyCrop = InvoiceCrop & { field: 'row_amount' | 'total' };
@@ -44,17 +53,18 @@ export async function runShadowPipeline(original: Buffer, input: ShadowInput,
   recognize: (crops: InvoiceCrop[], documentId: string, sourceHash: string, moneyCrops: MoneyCrop[], organizationCrops: OrganizationCrop[],paymentCrops?:MaturePaymentCrop[]) => Promise<ModelBatch>, view:'rectified'|'native-paper'='rectified') {
   assertUnverifiedInput(input);
   if (hash(original) !== input.sourceImageHash) throw Error('Canonical capture hash mismatch');
-  const started = performance.now(), normalized = await normalizeDocument(original,view);
-  const sourceHash = hash(normalized.documentColor), ledger = new EvidenceLedger(input.attemptId, input.attemptId, sourceHash);
-  const semantics = await recognizeSemanticPage(normalized.documentColor, ledger, [], normalized.variants['local-contrast']), model = semantics.model;
-  const metadataWords=(sem:typeof semantics)=>sem.observations.flatMap(o=>o.words.map(w=>({text:w.text,confidence:w.confidence,bbox:{x0:w.bounds.left,y0:w.bounds.top,x1:w.bounds.left+w.bounds.width,y1:w.bounds.top+w.bounds.height}})));
-  const primaryPaymentCrops=(await prepareMaturePaymentFields(normalized.documentColor,metadataWords(semantics),Math.min(...model.table.rows.map(r=>r.bounds.top)),view==='native-paper'?6:3)).map(c=>({...c,rowId:'primary-'+c.rowId}));
-  let alternatePaymentView:null|{normalized:Awaited<ReturnType<typeof normalizeDocument>>;semantics:typeof semantics;crops:MaturePaymentCrop[]}=null;
-  if(view!=='native-paper'){
-    const native=await normalizeDocument(original,'native-paper'),nativeHash=hash(native.documentColor),nativeLedger=new EvidenceLedger(input.attemptId,input.attemptId,nativeHash),nativeSemantics=await recognizeSemanticPage(native.documentColor,nativeLedger,[],native.variants['local-contrast']);
-    const nativeCrops=(await prepareMaturePaymentFields(native.documentColor,metadataWords(nativeSemantics),Math.min(...nativeSemantics.model.table.rows.map(r=>r.bounds.top)),3)).map(c=>({...c,rowId:'native-'+c.rowId}));
-    alternatePaymentView={normalized:native,semantics:nativeSemantics,crops:nativeCrops};
-  }
+  const started = performance.now();
+  const metadataWords=(sem:Awaited<ReturnType<typeof recognizeSemanticPage>>)=>sem.observations.flatMap(o=>o.words.map(w=>({text:w.text,confidence:w.confidence,bbox:{x0:w.bounds.left,y0:w.bounds.top,x1:w.bounds.left+w.bounds.width,y1:w.bounds.top+w.bounds.height}})));
+  const prepareView=async(selectedView:'rectified'|'native-paper',prefix:string,scale:number)=>{
+    const normalized=await normalizeDocument(original,selectedView),sourceHash=hash(normalized.documentColor),ledger=new EvidenceLedger(input.attemptId,input.attemptId,sourceHash);
+    const semantics=await recognizeSemanticPage(normalized.documentColor,ledger,[],normalized.variants['local-contrast']);
+    const crops=(await prepareMaturePaymentFields(normalized.documentColor,metadataWords(semantics),Math.min(...semantics.model.table.rows.map(r=>r.bounds.top)),scale)).map(c=>({...c,rowId:prefix+c.rowId}));
+    return {normalized,sourceHash,ledger,semantics,crops};
+  };
+  const [primary,alternatePaymentView]=await joinedOpticalStages(
+    ()=>prepareView(view,'primary-',view==='native-paper'?6:3),
+    async()=>view!=='native-paper'?prepareView('native-paper','native-',3):null);
+  const {normalized,sourceHash,ledger,semantics}=primary,model=semantics.model,primaryPaymentCrops=primary.crops;
   const paymentCrops=[...primaryPaymentCrops,...(alternatePaymentView?.crops??[])];
   const preparedMoney = await prepareMoneyFields(normalized.documentColor, model, semantics.observations, ledger);
   const monetary = preparedMoney.monetary;
@@ -78,9 +88,24 @@ export async function runShadowPipeline(original: Buffer, input: ShadowInput,
       organizationCrops.push({ rowId: row.id, bounds, bytes, sha256: hash(bytes), regionType: identityColumn.type as OrganizationObservation['regionType'] });
     }
   }
-  const recognitionStart = performance.now();
-  const batch: ModelBatch = crops.length||paymentCrops.length ? await recognize(crops, input.attemptId, sourceHash, moneyCrops, organizationCrops,paymentCrops) : { observations: [], versions: { status: 'not-run-no-supported-invoice-cells' } };
-  const recognitionMs = performance.now() - recognitionStart;
+  const readLocalizedMetadata=async()=>{
+    let localizedMetadata=await recognizeLocalizedPaymentMetadata(normalized.documentColor,semantics.observations.flatMap(o=>o.words.map(w=>({text:w.text,confidence:w.confidence,bbox:{x0:w.bounds.left,y0:w.bounds.top,x1:w.bounds.left+w.bounds.width,y1:w.bounds.top+w.bounds.height}}))),Math.min(...model.table.rows.map(r=>r.bounds.top)));
+    const metadataViews:Array<unknown>=[{normalization:normalized.evidence,metadata:localizedMetadata}];
+  if(view!=='native-paper'&&(!localizedMetadata.checkDate||!localizedMetadata.checkNumber)){
+    const native=alternatePaymentView?.normalized??await normalizeDocument(original,'native-paper'),nativeHash=hash(native.documentColor),nativeLedger=new EvidenceLedger(input.attemptId,input.attemptId,nativeHash);
+    const nativeSemantics=alternatePaymentView?.semantics??await recognizeSemanticPage(native.documentColor,nativeLedger,[],native.variants['local-contrast']);
+    const alternate=await recognizeLocalizedPaymentMetadata(native.documentColor,nativeSemantics.observations.flatMap(o=>o.words.map(w=>({text:w.text,confidence:w.confidence,bbox:{x0:w.bounds.left,y0:w.bounds.top,x1:w.bounds.left+w.bounds.width,y1:w.bounds.top+w.bounds.height}}))),Math.min(...nativeSemantics.model.table.rows.map(r=>r.bounds.top)));
+    metadataViews.push({normalization:native.evidence,metadata:alternate});
+    localizedMetadata={...localizedMetadata,...combinePaymentMetadataViews({...localizedMetadata,canonicalHash:input.sourceImageHash},{...alternate,canonicalHash:input.sourceImageHash})};
+  }
+    return {localizedMetadata,metadataViews};
+  };
+  let recognitionMs=0;
+  const [batch,localizedResult]=await joinedOpticalStages(async()=>{
+    const recognitionStart=performance.now();
+    try {return crops.length||paymentCrops.length ? await recognize(crops,input.attemptId,sourceHash,moneyCrops,organizationCrops,paymentCrops) : {observations:[],versions:{status:'not-run-no-supported-invoice-cells'}} as ModelBatch;}
+    finally {recognitionMs=performance.now()-recognitionStart;}
+  },readLocalizedMetadata);
   for (const o of batch.observations) {
     const crop = crops.find(c => c.rowId === o.rowId);
     if (!crop || o.cropReference.sha256 !== crop.sha256 || o.cropReference.sourceImageSha256 !== sourceHash || o.cropReference.documentId !== input.attemptId)
@@ -119,15 +144,7 @@ export async function runShadowPipeline(original: Buffer, input: ShadowInput,
       amounts: money.cents === null ? [] : moneyObservations.filter(o => money.provenance.includes(o.id)).map(o => ({ cents: money.cents!, raw: o.raw, observationId: o.id, rowId: row.id })),
       units: model.rowFields.filter(f => f.rowId === row.id && f.type === 'unit' && f.confidence >= 85).map(f => ({ value: f.value, observationId: f.observationId, rowId: row.id })), accountCandidates: [] });
   }
-  let localizedMetadata=await recognizeLocalizedPaymentMetadata(normalized.documentColor,semantics.observations.flatMap(o=>o.words.map(w=>({text:w.text,confidence:w.confidence,bbox:{x0:w.bounds.left,y0:w.bounds.top,x1:w.bounds.left+w.bounds.width,y1:w.bounds.top+w.bounds.height}}))),Math.min(...model.table.rows.map(r=>r.bounds.top)));
-  const metadataViews:Array<unknown>=[{normalization:normalized.evidence,metadata:localizedMetadata}];
-  if(view!=='native-paper'&&(!localizedMetadata.checkDate||!localizedMetadata.checkNumber)){
-    const native=alternatePaymentView?.normalized??await normalizeDocument(original,'native-paper'),nativeHash=hash(native.documentColor),nativeLedger=new EvidenceLedger(input.attemptId,input.attemptId,nativeHash);
-    const nativeSemantics=alternatePaymentView?.semantics??await recognizeSemanticPage(native.documentColor,nativeLedger,[],native.variants['local-contrast']);
-    const alternate=await recognizeLocalizedPaymentMetadata(native.documentColor,nativeSemantics.observations.flatMap(o=>o.words.map(w=>({text:w.text,confidence:w.confidence,bbox:{x0:w.bounds.left,y0:w.bounds.top,x1:w.bounds.left+w.bounds.width,y1:w.bounds.top+w.bounds.height}}))),Math.min(...nativeSemantics.model.table.rows.map(r=>r.bounds.top)));
-    metadataViews.push({normalization:native.evidence,metadata:alternate});
-    localizedMetadata={...localizedMetadata,...combinePaymentMetadataViews({...localizedMetadata,canonicalHash:input.sourceImageHash},{...alternate,canonicalHash:input.sourceImageHash})};
-  }
+  const {localizedMetadata,metadataViews}=localizedResult;
   const metadataFusion:Array<unknown>=[];
   for(const field of ['checkNumber','checkDate'] as const){
     const strongTess=metadataViews.flatMap(v=>(v as {metadata:{observations:Array<{field:string|null;value:string|null;confidence:number}>}}).metadata.observations).filter(o=>o.field===field&&o.confidence>=70&&o.value).map(o=>o.value!);

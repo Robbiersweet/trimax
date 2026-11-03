@@ -47,5 +47,6 @@ scripts.push('scripts/ocr-p1-recognition-regression.cjs');
 scripts.push('scripts/ocr-progress-persistence-regression.cjs');
 scripts.push('scripts/atomic-remittance-regression.cjs','scripts/financial-hardening-scope-regression.cjs');
 scripts.push('scripts/ocr-reliability-regression.cjs','scripts/ocr-reliability-scope-regression.cjs');
+scripts.push('scripts/ocr-performance-regression.cjs','scripts/ocr-performance-scope-regression.cjs');
 module.exports=scripts;
 
