@@ -1,26 +1,26 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-ocr-upload-retry-20261102-rc1",
+  "releaseId": "trimax-high-res-still-20261103-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-11-03T04:29:58.919Z",
-  "releaseTimestamp": "2026-11-03T04:29:58.919Z",
+  "createdAt": "2026-11-03T21:06:00.076Z",
+  "releaseTimestamp": "2026-11-03T21:06:00.076Z",
   "baseProduction": {
-    "commit": "52dfc56445229c055a6b9fa90727b1be7116798f",
-    "vercelDeploymentId": "t8yThBbz94nqcTT1R5PNKu3XiAwo"
+    "commit": "e7ca4407399b77be14aac8918b80a7108d75677c",
+    "vercelDeploymentId": "5UgcgrY9H72RDgaqaZVxdDBHDC4M"
   },
   "components": {
     "web": {
-      "commit": "4bd8376fa4db4b3279da951c7149a174f4ad36b1"
+      "commit": "c1888a82f3b0764498a8df0186aff077d3809dff"
     },
     "legacy": {
-      "commit": "4bd8376fa4db4b3279da951c7149a174f4ad36b1"
+      "commit": "c1888a82f3b0764498a8df0186aff077d3809dff"
     },
     "v2-shadow": {
-      "commit": "4bd8376fa4db4b3279da951c7149a174f4ad36b1"
+      "commit": "c1888a82f3b0764498a8df0186aff077d3809dff"
     }
   },
   "sourceBundle": {
-    "sha256": "2349add4902dcb99b9aa0ad6c24488ae8b00bbdfc85845183a35c3b0e2e3ef4c",
+    "sha256": "f8438148e4594501c8926a0820ef996303b61ac55a82bbef493d1bdd5e8591ff",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -50,7 +50,7 @@
       "scripts/atomic-remittance-regression.cjs": "e765ded4cb2dbf5f89b059a40d76902cd796f14606d04373513d19b50e130f55",
       "scripts/auth-cookie-refresh-regression.cjs": "35ac8923b0c555d5470651edc1ce56bc89896f52837086c3c674eb1fb922b9a7",
       "scripts/business-read-isolation-regression.ts": "36319d04f87c4d27ef15e171c2ef89ec6cb3b5314ca4c334e527d7da500b1be8",
-      "scripts/camera-lifecycle-regression.ts": "2a881a1c73291c51ccd4574a149eb95089c98d7513242b36e14f861add05ce24",
+      "scripts/camera-lifecycle-regression.ts": "019893d9e4e30b49b8189384db4d48946eb4a201caa353fbacba9431358d5a5c",
       "scripts/canonical-money-regression.cjs": "2193835b78375719d4068bec66044f410e6cc2e2d804c548d9a2403f0f4fe905",
       "scripts/capture-gate-integration-regression.cjs": "4634b41a575a02eb8fe3f4f3bb5d3562a77956d0782d66957c5ec2543c657629",
       "scripts/capture-readiness-regression.ts": "177badbb517c0969278b6a60ba4ca5e88d0ff701a57591c6b915b846ace1c87d",
@@ -72,6 +72,8 @@
       "scripts/floating-back-navigation-regression.ts": "8218d847ce054ce0e9caceb4eba1297104ef87379fa0f062eb465835c8e0a588",
       "scripts/generate_role_guides.py": "60baf7d8d0bdcb376ca03d80be15276a8e12e3227592ad2bf8dc5bfe79e678e5",
       "scripts/glen-payor-regression.cjs": "2f91135035c00a5786372e8d7b847879e440cdadfab3038651c88cba74fa04e2",
+      "scripts/high-resolution-still-regression.cjs": "65be29f1660f4b97e87b69cb6411c912eb8c345c91dfcb78ea208d9a748021d6",
+      "scripts/high-resolution-still-scope-regression.cjs": "0810c6ed4876d142cee119c91c135265d2c0a612c8d53aa01d391b2a8ace7091",
       "scripts/install-ocr-supervisor.ps1": "7c295e68e7c9b95036412b44cf423d677519f9e0a5107beb1278cc244d65848e",
       "scripts/invoice-cent-regression.ts": "f6b7878369411ad11297c0d79aed1e41eab3c3c2dd7d626496f43510093d5078",
       "scripts/invoice-correction-regression.ts": "d637ec393a9ae331676b88d5d4e9db9d4c96e326977b103d39e15aebf8e4c873",
@@ -115,8 +117,8 @@
       "scripts/ocr-reliability-regression.cjs": "c665851d4cb9b041516ba7cbad918bb3342b838711325bc4f8c3cb419cd95bc6",
       "scripts/ocr-reliability-scope-regression.cjs": "161a28e4d153ad7d8cddccbf3d0dc13187fce338c828f74235c5c5c06974da8b",
       "scripts/ocr-structure-regression.cjs": "6650e2c97b68ba75e44e24da9df7f62d81c1ce8dbb94f3c77e424260eb2e491c",
-      "scripts/ocr-upload-retry-regression.cjs": "8021677499d1939b56645d509aeee358aa7223b6eddae0483b069e2fe3199af8",
-      "scripts/ocr-upload-retry-scope-regression.cjs": "090a46e59ec92a2091048d897d9cc57bdba968c568637714156f90da54c72737",
+      "scripts/ocr-upload-retry-regression.cjs": "f66ecba3fb8acda33cd83c484856c4124044bea37fa9f55aa32779d4ea73e0ed",
+      "scripts/ocr-upload-retry-scope-regression.cjs": "7bbc97a31f98ce5b847f809b7a81c7dfcb213e6a9e6b595d3772e98d715f6253",
       "scripts/ocr-v2/MONETARY.md": "8ed45135ecd766fe397f618a6d4aeaa6158f6a6fcd9d774ae4dc64708b89e567",
       "scripts/ocr-v2/PHASE3B.md": "04860ab89de360e4be6a715f309852b7997048e8d5ea6b1809555c81e3c48599",
       "scripts/ocr-v2/PHASE4.md": "b2f3d3923dec83dcceaa028d098181b5e4e868c1da407457e0690263426414ad",
@@ -290,7 +292,7 @@
       "scripts/release/file-forensics-regression.cjs": "a6da1ba822d17c1a31b7bd29d3cb49e95febca66f29c51b712ccdd9d608c1b26",
       "scripts/release/file-forensics.cjs": "25133a9f2167c801a05906be04068f3d85f54f3c462e085869df2d486c8bea30",
       "scripts/release/final-candidate-regression.cjs": "edc0dbfa8f70d55607c65327a08ed25193380387dd4f1e850cf130ef992ca03f",
-      "scripts/release/gate-checks.cjs": "ca193805b21ae55b84f6fdb0edc62003ac9b646a8f7ad29b5e7a72d773de502b",
+      "scripts/release/gate-checks.cjs": "48951b47e794b5903e74e7dbcfa200dcd1276baaace7e34e818c9498527dcf19",
       "scripts/release/gate-state-regression.cjs": "51f1d2c76eca73d122f20cc0f537b624074ebd4943f946dcba63857775e45d04",
       "scripts/release/gate-state.cjs": "f56bdc9741b07b92c53bb487f21320080537fa90734721130612e8c1b52da839",
       "scripts/release/gate.cjs": "228232de653ef9c0c5a96ea24a9bfb0220a06eed1a0a516222d523b67d778c45",
@@ -306,13 +308,13 @@
       "scripts/release/upgrade-context.cjs": "3f8c1a731178b9f21dd0f956191fc7df9a6703e1356413fe57edde9b44ac4f39",
       "scripts/release/upgrade-state-regression.cjs": "25576aa25e0fd649f470ee7b6ffdaa8bf576c6e8498e04263df3127466771f88",
       "scripts/release/worker-validation.cjs": "5e784a2d0b74c60cbe4406d7c961e78f686e11e8ec50d8dd1e6153d35755701e",
-      "scripts/remittance-camera-browser.cjs": "c0a3d2f0c103644c6a5b39ea257b1cf20c7fbcab74a8f8e8c89aa82d5cb93aef",
+      "scripts/remittance-camera-browser.cjs": "21b29a1ecf31ce4dd10da4c471430c69efa2c069a123ff5602cb98eed8b6f083",
       "scripts/remittance-camera-geometry-regression.ts": "e4a9f18a735264cf1fafc0ff6d06efaf31226facf571d24c27da5ac440d72a37",
       "scripts/remittance-client-safety-regression.cjs": "63595f724d6c510def2821730d4b76e0d9c5bdd4c71c29f1fcf22dad5b8d8c60",
       "scripts/remittance-contract-regression.ts": "75e3bf300050abfcd6145eb5d912af9251fef904bc1c9be19c5bc5695d50cf77",
       "scripts/remittance-deadline-regression.cjs": "c55b3c02d5bd6fb8f8a41b36fe4202a2c8795bb5eb8562cf30d54a1f60f665f2",
       "scripts/remittance-grouped-total-regression.ts": "13468a09e8c3bedf13a88b7917e8baf288e75a762354c887740f867f519fa6b0",
-      "scripts/remittance-intake-regression.cjs": "49ffb7c3d43c7a5b984168aee628f1460f41016929f813c63b4aaa87644c166c",
+      "scripts/remittance-intake-regression.cjs": "0f4e506bf7cc76e0f922f2842850ae0e98b8c6eacdf7d821dc482094fddec11f",
       "scripts/remittance-matching-regression.ts": "91a0f110ade0d5bdb052639568e0f65e50ee05084a7ba246c9e47aa9cf03e31b",
       "scripts/remittance-ocr-fixture-regression.ts": "2e90a200e8de9d64212a8f56092f3ef4e00522f2751463b33c827cad45991fa0",
       "scripts/remittance-photo-corpus.cjs": "7d8342d9234119d129613d43afd1af2d807769d0c8df5c5f2daff9017a3c25ec",
@@ -320,7 +322,7 @@
       "scripts/remittance-retry-regression.ts": "b9da16b9ed9b0eb810738b6149946a535440446edf7b0e98f3ada85ab9266f53",
       "scripts/reverse-total-regression.ts": "62c57f48dd4ae0ce1c497ee3441aa1197df590870f1de6103d4657638a0fd953",
       "scripts/saved-remittance-payment-regression.cjs": "c0a1f3896a6c811dc1bf2d9eb5ab47d6312da9f12bc1f7630e724c28497eb52a",
-      "scripts/saved-remittance-reopen-regression.cjs": "2216dd724de9e19d0a5c28f9b13219bb21d8ff4939f8fa94b90b9bb2d357a104",
+      "scripts/saved-remittance-reopen-regression.cjs": "bdf1bdecefca1bf65a58f05cbea671d3b9c0ec40f298bbd3b4e802ac580e0974",
       "scripts/scheduler-provisioning-regression.cjs": "f96e0dc2543c0329d5538759285fe53cd599da41c11418127a29978c107cf126",
       "scripts/scheduling-notifications-sql-regression.cjs": "50c29b03e3d451046ca531b73471129413b7624a476046fb5c7ba9f6763cb1a8",
       "scripts/scheduling-notifications-ui-regression.cjs": "e7a086d3451bf44ad4e8094ff92d55ead0109b5143a88e2bdccba77848f78e7e",
@@ -333,7 +335,7 @@
       "scripts/session-tab-isolation-regression.ts": "2e9606534b9482ff7d2f45c30d7b9a4a5bd85ee425cbeb4ca3c33c9fdaeb8d28",
       "scripts/split-invoice-send-regression.ts": "a030f1bd265a7791cd21b5664af094cd64cbb09ce43a000ce9064cd861815527",
       "scripts/split-source-relationship-regression.ts": "3e66f4141541fbb83e0645cc0a5f6d07e9e508b5cb49edf99ea88c75dce1200d",
-      "scripts/stabilization-regression.cjs": "dd742df32684c94c33fdfc9ac3f6665d32a61624c1e0ae88f7fdde4b2c67313a",
+      "scripts/stabilization-regression.cjs": "a4772b72963ab71f7417658be1ccfac0fdf4e146497c37140cfd038b37cda353",
       "scripts/start-ocr-supervisor.ps1": "1c0b14c757d211cfa54b271c6011504c7d524d4410203e646fd95611dd4dd1b7",
       "scripts/table-caption-ownership-regression.cjs": "802dd640e13598fc74301cb75a5fbd20f035da540e3bdd781963abcfe89330a4",
       "scripts/tenant-isolation-hardening-regression.ts": "e4bef09c2ccb1007eb5c9483056ababf5584f6927a8022084aebe445bee31ca0",
@@ -391,7 +393,7 @@
       "src/app/components/AppShell.tsx": "b4358a4c5a82735d1871ef0bc8e7e3bbb30b3770b577d51b0343552155c489af",
       "src/app/components/AuthGuard.tsx": "46294b22fe601402e06a792dd5b3215dabea560e27a7409b457354cdac45b9bc",
       "src/app/components/BackButton.tsx": "87360394e36c2e90d4a33135d5539d0176e75d8cc2448783c5c859783ee1059c",
-      "src/app/components/BatchInvoicePayments.tsx": "9e55be1f98ce9fcb2b75a4e6854283d5988608aeae7c5c01877e2e00d4cbe7fb",
+      "src/app/components/BatchInvoicePayments.tsx": "71f3256e2b4bc36bbff2fb814e235315ff256a61fdfe15d5938a6f4b11e9b85c",
       "src/app/components/Button.tsx": "68f87a76cee881a6b148ec30af54746d8a0fbe11a153b3ccf0134a62504deb97",
       "src/app/components/Card.tsx": "6706fd0d306b77c27bf8f9f2558fdfc4f5a77b874404cba67b0f4980c96de207",
       "src/app/components/ClientSmartSearch.tsx": "6780c13e035f04c4bf532a23842cf8d220021a409362c1f2d01fc93cbb3c1278",
@@ -432,7 +434,7 @@
       "src/app/components/OcrShadowControls.tsx": "9c5ee03ae2654f75a450a5d5412876849ba843894909634b9a80c15a5cada314",
       "src/app/components/OcrShadowTruth.tsx": "2c704f57bf74ac555eb7063d43bddf48ea0a5810a0de63e255c9a66aad4fc4e2",
       "src/app/components/OpenSendReviewButton.tsx": "f530b39cb62bdb4ff77e3bdd927ce52c92f0ec9a12da8e4e28c2f4e75ac21e5e",
-      "src/app/components/OpticalEvidenceView.tsx": "3c09c513227e0df2d624e310f135d44ad1d0472a47d1e158db54baa63942d53b",
+      "src/app/components/OpticalEvidenceView.tsx": "825552f6b556d27c5f4f553ce30d62d0fcdd965cfc2849b4af8a75432910d98b",
       "src/app/components/OutlookDraftPrepCard.tsx": "6dcb59872b15f70817af997e320f40736e7a623f03d2f9ea2854f25bd9a88090",
       "src/app/components/PersistentDetails.tsx": "dc4ec2c7750a7ac4133cc65473f5ad035b87410ad7c96ded03647d775f442cb7",
       "src/app/components/PresentationCueDeck.tsx": "8824bc6dcbc3ac0508e91bd9e1f1f4aa1b7e099e9bd940d018285facbbb2c532",
@@ -445,7 +447,7 @@
       "src/app/components/QuickCommandCenter.tsx": "e630fe08ca3815301be88b28b0dfc3160d0723690db0f3164cdb3a95652efb53",
       "src/app/components/RecentScans.tsx": "0028aec174703631fe75cd0c95b4e107d5e2c9795eb8a4fe17bbf2e7be033e1b",
       "src/app/components/ReleaseDiagnostics.tsx": "2b753593c400ce36611ec5a9033bc83c67288322bfa27c502587dbd05dfe2661",
-      "src/app/components/RemittanceCamera.tsx": "0b8dad7036fa6948744de3a671310412f0cb01bcab5b0a1423400d0c779978c1",
+      "src/app/components/RemittanceCamera.tsx": "67a39a5f3d47e9ccc97cab290cbdab70e90ece435e0eb7aa7a050b119974b01d",
       "src/app/components/RequestDepositButton.tsx": "01f4144aa0b5a0aa8baf077cf945e8a8af25a7be3b6c62ec7f31f3d7a3f7e67d",
       "src/app/components/ReverseTotalControl.tsx": "749611bb72de255fae488a8b90f5e1488ef25e5e3aaf07f25a58d7819221b7cd",
       "src/app/components/RoleVisible.tsx": "69e7eb4de7cacee6a5f0be80545fdb57d1e48a96988178711d761eee57e9bef5",
@@ -456,6 +458,7 @@
       "src/app/components/SplitInvoicePlanner.tsx": "0f44da82ecfa28d220f403c60d5e9dd361183ad73cca3a468fef580a00623edc",
       "src/app/components/SplitInvoiceRelationshipDisplay.tsx": "3b7cd9bebd733e2b3b6eedf65a33a7ab2a23eca2f11b303fa7da46169df025e7",
       "src/app/components/StatusBadge.tsx": "d81b9950ce2ffd37898583e1b02caa8732e4bd936f393f1a5c393bf276c4f807",
+      "src/app/components/StillCropReview.tsx": "4d4f12d29085f9f922f5f0b334e7c1d38afa7ead55af620db5a6e55b754035f2",
       "src/app/components/SyncUnitProfileButton.tsx": "5c3fb5b44198f4d5f16b97ea164aaf3a256daff5b2e8a4add357966d8c3b222b",
       "src/app/components/TaxModeSelect.tsx": "1526a6e6b13ed93ffef118e14fef549660a862428dd896966a5a49d2ec310289",
       "src/app/components/ThemeToggle.tsx": "cb10c155dc0bc8d9d5e5aba2f4a694497889cd52e09d8e9e2a57dc16f28d6438",
@@ -499,7 +502,7 @@
       "src/app/lib/calendar.ts": "f25c6d9d1566885a2886b78c1bc96234bedb96af6a1467895983d8b59393f5f9",
       "src/app/lib/cameraArtifacts.ts": "3c88907c29cd8bc925cbcf305e90bac986617598f5d604ef62d092a0edb36988",
       "src/app/lib/captureReadiness.ts": "282eb9bed36a6d8ddde54c578f7104a128ace17d9b36659ea4897197f01b4758",
-      "src/app/lib/captureRouting.ts": "b8ef278041c22146dc18dae51fdb741781315a5b261895861f7943616b465dc7",
+      "src/app/lib/captureRouting.ts": "b6da4f2c13499cbf548d3470fd50a15b98c40cf053513d81683347faaf03d35c",
       "src/app/lib/captureServicesFromLineItems.ts": "2ca268b2274f4878aabbf5b67bd71834d277b5100c061142ebec31a1106a657b",
       "src/app/lib/clientIdentity.ts": "d3fba620dc5c04d9eca46806aa13e56b20a3b60631d19aeeb53057c07f04327f",
       "src/app/lib/communications/consent.ts": "bd30a7e88667dd9885dab51a49a3e51ce456e39c30e5fe8b158cd7c755e47f16",
@@ -526,6 +529,7 @@
       "src/app/lib/documentTerms.ts": "7210f64a1a5717ef1c86605cca4320721fe9f2de4162751bbe64845110abf40f",
       "src/app/lib/duplicateRemittance.ts": "a056cf54cbb16dafc07206b2314aa08408b0da2363145008f1a55467f8602c28",
       "src/app/lib/getQueueItems.ts": "c7d1b869c7d2bb0cd1fb425a8a9274ce442127e5d51535984dcae8dd93452169",
+      "src/app/lib/highResolutionStill.ts": "f7ebaa9591bcdb993293ac06b51e5f7d2ee1a1ad794bf029cba5bd3dbbc69645",
       "src/app/lib/invoiceCorrections.ts": "c7b56656e22e36d16004e81ca7589968f59b4db14458292fcdcd77d3eb588ea6",
       "src/app/lib/invoiceEligibility.ts": "02b9c072baf32af735a1e71dd90b5efce73d787c2a63f11f0088e78d93446eea",
       "src/app/lib/invoiceEmailSettings.ts": "3ebaf7deb6a876e2b5c9676c76222d0de2bc900a08dde7572ad0b7192525bdef",
@@ -541,7 +545,7 @@
       "src/app/lib/money.ts": "2e7b2a456f1caa9ae06b08949e0dd71570d2f0ad791d92637846a50073888a52",
       "src/app/lib/northCreekOperations.ts": "b3e165448d7b0cac17e0f6c8cd35c4483a2169991cd3d3cb6ffc4d261dfcd5b7",
       "src/app/lib/ocrCanonical.ts": "b7214dc62a65f3d2fcb7222b431ad721250848cf78c5cba67535cb25344c59f2",
-      "src/app/lib/ocrCanonicalClient.ts": "bb5a2e8b817fbb28ab53177d8ea2a6d63d5d2b2bb7a7d5eb19fdcccb3af1fd32",
+      "src/app/lib/ocrCanonicalClient.ts": "43fcd2138b2ec94868fd01159dde9c93ffaa52967456e7502cd7b246fb31051a",
       "src/app/lib/ocrCanonicalObject.ts": "fd357d365a0c9a8d6541a42d89e32293e61beab7be172e5d53b33b7edd5648e9",
       "src/app/lib/ocrCanonicalServer.ts": "3356996580d99cf40ea606e768a9590f383b3a34244525f97e1bd08ef5e1296f",
       "src/app/lib/ocrDebug.ts": "62cdf0d98e77a75bdee03eba80379592a441ceb660ebd03d1bca99773b680755",
@@ -552,7 +556,7 @@
       "src/app/lib/ocrDocumentDirection.ts": "dda2536c1db2ee99408e9bf5760be27cc5150f624ba517183f4227eafd36822c",
       "src/app/lib/ocrFaint.ts": "f44ca5208691ff7b6872840c5063b800a821e5e9749cdebca19e45a4a201a7d8",
       "src/app/lib/ocrHistory.ts": "99b4abd3803e2b5bc8332ce92f02d170e1abc2e5130d9daef5ecd341f067a64f",
-      "src/app/lib/ocrHistoryClient.ts": "2b22740029db7ba7bc3ee9868e53e74a7c8b8366a52bb3e95efbc40e91208f0c",
+      "src/app/lib/ocrHistoryClient.ts": "22b041a1e31eb448a8674497ec3ff5f1066005d3d5fcc0bd70ee0f12e9851291",
       "src/app/lib/ocrHistoryServer.ts": "7a03c924a56afc1ad58b9c76875b42cc6eddea013d8ad664045ef330a8cf7114",
       "src/app/lib/ocrLegacyDirection.ts": "b9e39b255ddd95cb396b788f8b7a3bfde0f8578f69ed7f27fdd64e9fe4f703b0",
       "src/app/lib/ocrLegacyJobClient.ts": "0befb9da663c462b286cd1b2178d79067a37e6c068125bf3dd138505f092d9b2",
@@ -1760,15 +1764,15 @@
     "sha256": "bccc49970c7db9510b64204809cbb282c6d22d5f651708a9e7a7fede7a550bbc"
   },
   "upgradeContext": {
-    "candidateReleaseId": "trimax-ocr-upload-retry-20261102-rc1",
-    "applicationCommit": "4bd8376fa4db4b3279da951c7149a174f4ad36b1",
-    "machineryCommit": "4bd8376fa4db4b3279da951c7149a174f4ad36b1",
+    "candidateReleaseId": "trimax-high-res-still-20261103-rc1",
+    "applicationCommit": "c1888a82f3b0764498a8df0186aff077d3809dff",
+    "machineryCommit": "c1888a82f3b0764498a8df0186aff077d3809dff",
     "currentProductionRelease": {
-      "manifestCommit": "52dfc56445229c055a6b9fa90727b1be7116798f",
-      "manifestDigest": "bf0b841eb0d49501c5f4e37623bf774a89af66bf0d58fe21fc867584eb983f21",
-      "releaseId": "trimax-ocr-performance-20261102-rc1",
-      "deploymentCommit": "52dfc56445229c055a6b9fa90727b1be7116798f",
-      "deploymentId": "t8yThBbz94nqcTT1R5PNKu3XiAwo"
+      "manifestCommit": "e7ca4407399b77be14aac8918b80a7108d75677c",
+      "manifestDigest": "80e66e3c7bebbc8c0ca80fae78831f06d66cea60f3640030b0189f81075dd4c2",
+      "releaseId": "trimax-ocr-upload-retry-20261102-rc1",
+      "deploymentCommit": "e7ca4407399b77be14aac8918b80a7108d75677c",
+      "deploymentId": "5UgcgrY9H72RDgaqaZVxdDBHDC4M"
     }
   },
   "contractRevision": {
