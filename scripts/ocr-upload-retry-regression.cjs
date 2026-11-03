@@ -43,6 +43,7 @@ async function outbox(){
  stores.attempts.clear();stores.diagnostics.clear();calls.length=0;reject=false;
  const good={...write,key:'business:older:0',payloadBytes:1,summary:{...write.summary,attemptId:'older',originalId:'older'}},bad={...good,key:'business:missing-time:0',summary:{...good.summary,attemptId:'missing-time',originalId:'missing-time'}};delete bad.summary.timestamp;
  stores.attempts.set(good.key,structuredClone(good));stores.attempts.set(bad.key,structuredClone(bad));const originalBad=structuredClone(bad);
+ const exported=history.debugFile(bad.summary,{transport:{stage:'capture-registration'}});assert(exported.name.includes('date-unknown'));assert(exported.text.includes('capture-registration'));assert.deepEqual(bad,originalBad);
  const deps={'./ocrDebug':{safeDiagnosticView:x=>x},'./ocrCanonical':canonical,'./ocrHistory':history,'./supabase':{supabase:{rpc:async(name,args)=>{calls.push({name,args});return{error:null,status:200};}}}};
  const baselineClient=load('src/app/lib/ocrHistoryClient.ts',deps,cp.execFileSync('git',['show','52dfc56445229c055a6b9fa90727b1be7116798f:src/app/lib/ocrHistoryClient.ts'],{encoding:'utf8',windowsHide:true}));
  await assert.rejects(baselineClient.flushScans('business'),/localeCompare/);assert.equal(calls.length,0,'Malformed local row blocks every original registration before any RPC');

@@ -214,8 +214,9 @@ export function failureSummary(summary: ScanSummary) {
   ].join("\n");
 }
 export function debugFile(summary: ScanSummary, payload: unknown) {
+  const stamp=scanTimestampMillis(summary.timestamp)===null?'date-unknown':summary.timestamp.replace(/[:.]/g, "-");
   return {
-    name: `Trimax-OCR-${summary.result.toUpperCase().replaceAll(" ", "-")}-${summary.timestamp.replace(/[:.]/g, "-")}-Attempt-${summary.attemptId}.txt`,
+    name: `Trimax-OCR-${summary.result.toUpperCase().replaceAll(" ", "-")}-${stamp}-Attempt-${summary.attemptId}.txt`,
     text:
       failureSummary(summary) +
       "\n\nFULL RETAINED DIAGNOSTICS\n" +
