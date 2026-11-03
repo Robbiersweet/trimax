@@ -2,25 +2,25 @@
   "schemaVersion": 1,
   "releaseId": "trimax-ocr-upload-retry-20261102-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-11-03T04:06:30.145Z",
-  "releaseTimestamp": "2026-11-03T04:06:30.145Z",
+  "createdAt": "2026-11-03T04:07:45.378Z",
+  "releaseTimestamp": "2026-11-03T04:07:45.378Z",
   "baseProduction": {
     "commit": "52dfc56445229c055a6b9fa90727b1be7116798f",
     "vercelDeploymentId": "t8yThBbz94nqcTT1R5PNKu3XiAwo"
   },
   "components": {
     "web": {
-      "commit": "dcfe43b2877173421f85e8b596f2213f33d2b251"
+      "commit": "d823df133c33e03c799d62d391b8923c25a91516"
     },
     "legacy": {
-      "commit": "dcfe43b2877173421f85e8b596f2213f33d2b251"
+      "commit": "d823df133c33e03c799d62d391b8923c25a91516"
     },
     "v2-shadow": {
-      "commit": "dcfe43b2877173421f85e8b596f2213f33d2b251"
+      "commit": "d823df133c33e03c799d62d391b8923c25a91516"
     }
   },
   "sourceBundle": {
-    "sha256": "d04f7b0f25dc3bce4c64a1e08b2e4b129c4cc338151be4a80e3ab819aca68e33",
+    "sha256": "4d340e206fb800ee667cae57bfefc34eb286f39b73611d64c792b97256889de2",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -115,7 +115,7 @@
       "scripts/ocr-reliability-regression.cjs": "c665851d4cb9b041516ba7cbad918bb3342b838711325bc4f8c3cb419cd95bc6",
       "scripts/ocr-reliability-scope-regression.cjs": "161a28e4d153ad7d8cddccbf3d0dc13187fce338c828f74235c5c5c06974da8b",
       "scripts/ocr-structure-regression.cjs": "6650e2c97b68ba75e44e24da9df7f62d81c1ce8dbb94f3c77e424260eb2e491c",
-      "scripts/ocr-upload-retry-regression.cjs": "c259dba8374d86ebf270968281901d68b2edb49601bf50c96b02ac86d57eb886",
+      "scripts/ocr-upload-retry-regression.cjs": "8021677499d1939b56645d509aeee358aa7223b6eddae0483b069e2fe3199af8",
       "scripts/ocr-upload-retry-scope-regression.cjs": "bedb75d29cd0745895584736f3c3eaa794164f4b38b51baa81bf42a0cc06253b",
       "scripts/ocr-v2/MONETARY.md": "8ed45135ecd766fe397f618a6d4aeaa6158f6a6fcd9d774ae4dc64708b89e567",
       "scripts/ocr-v2/PHASE3B.md": "04860ab89de360e4be6a715f309852b7997048e8d5ea6b1809555c81e3c48599",
@@ -551,7 +551,7 @@
       "src/app/lib/ocrDirectionSamples.ts": "0bbf044bb8d82b13c67596cd5b2f4e18714666a47c927b9cf37fced239685e58",
       "src/app/lib/ocrDocumentDirection.ts": "dda2536c1db2ee99408e9bf5760be27cc5150f624ba517183f4227eafd36822c",
       "src/app/lib/ocrFaint.ts": "f44ca5208691ff7b6872840c5063b800a821e5e9749cdebca19e45a4a201a7d8",
-      "src/app/lib/ocrHistory.ts": "3ee5afa63ceb5b538f722210ecd92433ef3c4783819e6c7677df988cf94908d7",
+      "src/app/lib/ocrHistory.ts": "99b4abd3803e2b5bc8332ce92f02d170e1abc2e5130d9daef5ecd341f067a64f",
       "src/app/lib/ocrHistoryClient.ts": "2b22740029db7ba7bc3ee9868e53e74a7c8b8366a52bb3e95efbc40e91208f0c",
       "src/app/lib/ocrHistoryServer.ts": "7a03c924a56afc1ad58b9c76875b42cc6eddea013d8ad664045ef330a8cf7114",
       "src/app/lib/ocrLegacyDirection.ts": "b9e39b255ddd95cb396b788f8b7a3bfde0f8578f69ed7f27fdd64e9fe4f703b0",
@@ -1761,8 +1761,8 @@
   },
   "upgradeContext": {
     "candidateReleaseId": "trimax-ocr-upload-retry-20261102-rc1",
-    "applicationCommit": "dcfe43b2877173421f85e8b596f2213f33d2b251",
-    "machineryCommit": "dcfe43b2877173421f85e8b596f2213f33d2b251",
+    "applicationCommit": "d823df133c33e03c799d62d391b8923c25a91516",
+    "machineryCommit": "d823df133c33e03c799d62d391b8923c25a91516",
     "currentProductionRelease": {
       "manifestCommit": "52dfc56445229c055a6b9fa90727b1be7116798f",
       "manifestDigest": "bf0b841eb0d49501c5f4e37623bf774a89af66bf0d58fe21fc867584eb983f21",
