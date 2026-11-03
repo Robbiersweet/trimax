@@ -2,25 +2,25 @@
   "schemaVersion": 1,
   "releaseId": "trimax-ocr-upload-retry-20261102-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-11-03T04:07:45.378Z",
-  "releaseTimestamp": "2026-11-03T04:07:45.378Z",
+  "createdAt": "2026-11-03T04:29:58.919Z",
+  "releaseTimestamp": "2026-11-03T04:29:58.919Z",
   "baseProduction": {
     "commit": "52dfc56445229c055a6b9fa90727b1be7116798f",
     "vercelDeploymentId": "t8yThBbz94nqcTT1R5PNKu3XiAwo"
   },
   "components": {
     "web": {
-      "commit": "d823df133c33e03c799d62d391b8923c25a91516"
+      "commit": "4bd8376fa4db4b3279da951c7149a174f4ad36b1"
     },
     "legacy": {
-      "commit": "d823df133c33e03c799d62d391b8923c25a91516"
+      "commit": "4bd8376fa4db4b3279da951c7149a174f4ad36b1"
     },
     "v2-shadow": {
-      "commit": "d823df133c33e03c799d62d391b8923c25a91516"
+      "commit": "4bd8376fa4db4b3279da951c7149a174f4ad36b1"
     }
   },
   "sourceBundle": {
-    "sha256": "4d340e206fb800ee667cae57bfefc34eb286f39b73611d64c792b97256889de2",
+    "sha256": "2349add4902dcb99b9aa0ad6c24488ae8b00bbdfc85845183a35c3b0e2e3ef4c",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -116,7 +116,7 @@
       "scripts/ocr-reliability-scope-regression.cjs": "161a28e4d153ad7d8cddccbf3d0dc13187fce338c828f74235c5c5c06974da8b",
       "scripts/ocr-structure-regression.cjs": "6650e2c97b68ba75e44e24da9df7f62d81c1ce8dbb94f3c77e424260eb2e491c",
       "scripts/ocr-upload-retry-regression.cjs": "8021677499d1939b56645d509aeee358aa7223b6eddae0483b069e2fe3199af8",
-      "scripts/ocr-upload-retry-scope-regression.cjs": "bedb75d29cd0745895584736f3c3eaa794164f4b38b51baa81bf42a0cc06253b",
+      "scripts/ocr-upload-retry-scope-regression.cjs": "090a46e59ec92a2091048d897d9cc57bdba968c568637714156f90da54c72737",
       "scripts/ocr-v2/MONETARY.md": "8ed45135ecd766fe397f618a6d4aeaa6158f6a6fcd9d774ae4dc64708b89e567",
       "scripts/ocr-v2/PHASE3B.md": "04860ab89de360e4be6a715f309852b7997048e8d5ea6b1809555c81e3c48599",
       "scripts/ocr-v2/PHASE4.md": "b2f3d3923dec83dcceaa028d098181b5e4e868c1da407457e0690263426414ad",
@@ -333,7 +333,7 @@
       "scripts/session-tab-isolation-regression.ts": "2e9606534b9482ff7d2f45c30d7b9a4a5bd85ee425cbeb4ca3c33c9fdaeb8d28",
       "scripts/split-invoice-send-regression.ts": "a030f1bd265a7791cd21b5664af094cd64cbb09ce43a000ce9064cd861815527",
       "scripts/split-source-relationship-regression.ts": "3e66f4141541fbb83e0645cc0a5f6d07e9e508b5cb49edf99ea88c75dce1200d",
-      "scripts/stabilization-regression.cjs": "07a2b1b9272fb1b19e96a269feba279e957f43fd3715ddcf7357f0124aa3c121",
+      "scripts/stabilization-regression.cjs": "dd742df32684c94c33fdfc9ac3f6665d32a61624c1e0ae88f7fdde4b2c67313a",
       "scripts/start-ocr-supervisor.ps1": "1c0b14c757d211cfa54b271c6011504c7d524d4410203e646fd95611dd4dd1b7",
       "scripts/table-caption-ownership-regression.cjs": "802dd640e13598fc74301cb75a5fbd20f035da540e3bdd781963abcfe89330a4",
       "scripts/tenant-isolation-hardening-regression.ts": "e4bef09c2ccb1007eb5c9483056ababf5584f6927a8022084aebe445bee31ca0",
@@ -1761,8 +1761,8 @@
   },
   "upgradeContext": {
     "candidateReleaseId": "trimax-ocr-upload-retry-20261102-rc1",
-    "applicationCommit": "d823df133c33e03c799d62d391b8923c25a91516",
-    "machineryCommit": "d823df133c33e03c799d62d391b8923c25a91516",
+    "applicationCommit": "4bd8376fa4db4b3279da951c7149a174f4ad36b1",
+    "machineryCommit": "4bd8376fa4db4b3279da951c7149a174f4ad36b1",
     "currentProductionRelease": {
       "manifestCommit": "52dfc56445229c055a6b9fa90727b1be7116798f",
       "manifestDigest": "bf0b841eb0d49501c5f4e37623bf774a89af66bf0d58fe21fc867584eb983f21",
