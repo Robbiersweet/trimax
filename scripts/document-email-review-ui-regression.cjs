@@ -8,6 +8,9 @@ const fs = require("fs"),
   React = require("react"),
   renderer = require("react-test-renderer");
 const storage = new Map();
+const viewportRoot = { name: "synthetic-body" };
+global.document = { body: viewportRoot };
+let portalRenders = 0;
 global.sessionStorage = {
   getItem: (k) => storage.get(k) || null,
   setItem: (k, v) => storage.set(k, v),
@@ -81,6 +84,11 @@ function load(file) {
     },
   }).outputText;
   const req = (name) => {
+    if (name === "react-dom") return { createPortal(children, target) {
+      assert.equal(target, viewportRoot, "Review must escape scrolled/transformed document cards into the viewport root");
+      portalRenders++;
+      return children;
+    } };
     if (name.endsWith("/supabase"))
       return {
         supabase: {
@@ -379,6 +387,7 @@ async function click(tree, label) {
     "Fixed deposit editor uses canonical half-cent rounding",
   );
   await renderer.act(async () => tree.unmount());
+  assert(portalRenders > 0, "The actual review rendered into the viewport root");
   console.log(
     "PASS actual React review interactions: initial/compact/batch actions do not transmit; final approval only; edit invalidation; cancellation; draft restoration; exact PDF payload; no real network.",
   );

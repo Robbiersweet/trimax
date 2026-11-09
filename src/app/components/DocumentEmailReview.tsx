@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { supabase } from "../lib/supabase";
 type Attachment = { filename: string; content: string };
 type Review = {
@@ -243,7 +244,11 @@ export default function DocumentEmailReview({
       }
     }
   }
-  return (
+  // Document cards can establish fixed-position containing blocks. Keep the
+  // review at the viewport root so every field and the cancel control remain
+  // reachable even when the underlying document is scrolled.
+  if (typeof document === "undefined") return null;
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -421,6 +426,7 @@ export default function DocumentEmailReview({
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
