@@ -1,0 +1,22 @@
+# Mandatory document email review
+
+Objective: every estimate/invoice transmission requires a complete editable Review Email and explicit final approval. No live customer messages were sent during development.
+
+Workspace: isolated `codex/document-email-review`, based on deployed `37e9fa26d5b969782cc37563393e456d9525fd89`. Primary checkout and other worktrees preserved.
+
+Existing infrastructure reused: Resend, business-scoped sender/CC/BCC/reply-to settings, authenticated document routes, official Chromium PDFs, split eligibility, collectible/deposit lifecycle, idempotency and activity history. External Outlook draft preparation remains a draft, without a Sent transition.
+
+Changes:
+- Initial ordinary, compact/queue and batch actions open mandatory review. Each batch email requires separate final approval. Cancellation has no provider/status effect. Scoped session drafts retain edits; previews/approval/PDFs are refreshed, not persisted as reusable authority.
+- Server approval requires authenticated owner/admin membership. Expiring HMAC review tokens bind user/business, canonical records and line items, settings/recipients, subject/body/signature, purpose and exact PDF bytes. Altered/stale/expired/unapproved payloads fail closed. Final submission uses the exact reviewed attachment bytes, with existing provider idempotency.
+- Financial document details are generated server-side and must remain verbatim exactly once. Editable surrounding text is conservatively checked for new financial/date/completion claims and pasted signatures. Correct financial terms on the document, then refresh; do not override the PDF through prose.
+- Canonical estimate arithmetic is shared with its PDF. Explicit deposit policy is stored in existing public terms (`Deposit: 50%.`, a custom percentage, `Deposit: $500.00.`, or `Deposit: none.`). New estimates default explicitly to 50%; legacy missing/ambiguous policies block sending until chosen. No historical records migrated. Fixed policies invent no percentage. No-deposit policies omit the deposit sentence.
+- R&L uses the pinned approved v4 graphic/signature links exactly once plus readable plain text; Just Kleen receives no R&L artwork/contact details. Internal notes, project planner titles and job/session fields are excluded from customer prose.
+- Provider acceptance is distinguished from delivery. Sent transitions occur only after provider acceptance. Deposits never issue the final invoice. Provider failure/PDF failure/preview/cancel never mark Sent.
+- Recurring workflows create drafts for manual review; unattended overdue invoice transmission is blocked. Scheduling and other message types are unchanged. No website or Zoho RNLMaster changes.
+
+Evidence: private logs under `%LOCALAPPDATA%/Trimax/document-email-*.log`. New actual-route tests use synthetic Supabase/PDF/provider dependencies and no real network. New actual React tests cover initial/compact/batch, disabled approval, edit invalidation, draft restoration, cancel, final payload and exact reviewed attachments. Full `npm test`, lint and TypeScript passed. Tests that asserted the old optional panel/source layout were replaced with mandatory-review behavior coverage; existing money/payment/split/isolation/lifecycle regressions retained.
+
+Release boundary: implementation is local. Existing guarded `npm run build` rejects an unsealed source bundle/missing matching receipt. Formal PREDEPLOYMENT gate must be reported separately; no guard bypass, customer email test, production mutation or deployment is authorized by a passing unit test. Existing production still uses its previous code until an approved controlled release.
+
+Resume: inspect this handoff and the private document-email release-gate result. Address candidate release identity/evidence through the existing release workflow, without changing financial/OCR baselines. After controlled deployment, perform owner-only nontransmitting review/cancel/attachment checks; do not send a customer email without the owner's final approval in the review UI.

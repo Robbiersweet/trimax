@@ -155,11 +155,10 @@ assert(
 );
 
 assert(
-  invoiceEmailSendPanel.includes("businessId?: string | null") &&
-    invoiceEmailSendPanel.includes(".from(\"business_settings\")") &&
-    invoiceEmailSendPanel.includes(".eq(\"business_id\", businessId)") &&
-    invoiceEmailSendPanel.includes(".eq(\"key\", \"email_settings\")"),
-  "The invoice/estimate send panel must load templates from business-scoped settings when a business ID is available."
+  invoiceEmailSendPanel.includes("DocumentEmailReview") &&
+    invoiceSendRoute.includes('.from("business_settings")') && invoiceSendRoute.includes('.eq("business_id", business.id)') &&
+    estimateSendRoute.includes('.from("business_settings")') && estimateSendRoute.includes('.eq("business_id", business.id)'),
+  "Authoritative email review must resolve sender/settings server-side within the owning business, never from another tab's local settings."
 );
 
 assert(

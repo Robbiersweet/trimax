@@ -1,3 +1,7 @@
+import { issueEmailReview, verifyEmailReview, approvedAttachments, reviewDigest } from "../../../../lib/documentEmailReview";
+import { renderDocumentEmail } from "../../../../lib/documentEmailBranding";
+import { validateEmailEdits } from "../../../../lib/documentEmailPolicy";
+import { invoiceCollectionAmountDue } from "../../../../lib/invoiceEligibility";
 import { invoiceDeliveryAction, invoiceDeliveryIssuesFinalBalance } from "../../../../lib/invoiceLifecycle";
 import { sumMoney } from "../../../../lib/money.ts";
 import { roundMoney as canonicalRoundMoney } from "../../../../lib/money.ts";
@@ -132,18 +136,7 @@ function cleanText(value: unknown, maxLength: number) {
   return String(value ?? "").trim().slice(0, maxLength);
 }
 
-function escapeHtml(value: string) {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
 
-function plainTextToHtml(value: string) {
-  return escapeHtml(value).replace(/\n/g, "<br />");
-}
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -333,19 +326,6 @@ function buildSplitGroupSummary(invoices: InvoiceRow[]) {
   return { lines, combinedTotal };
 }
 
-function documentListLabel(documents: string[]) {
-  if (documents.length <= 1) {
-    return documents[0] ?? "the attached invoice";
-  }
-
-  if (documents.length === 2) {
-    return `${documents[0]} and ${documents[1]}`;
-  }
-
-  return `${documents.slice(0, -1).join(", ")}, and ${
-    documents[documents.length - 1]
-  }`;
-}
 
 async function requireWorkspaceAccess({
   supabase,
@@ -385,7 +365,7 @@ async function requireWorkspaceAccess({
     .limit(1)
     .maybeSingle<BusinessUserRow>();
 
-  if (error || !data) {
+  if (error || !data || !["owner", "admin"].includes(String(data.role).toLowerCase())) {
     return {
       ok: false,
       email: userData.user.email ?? null,
@@ -479,11 +459,11 @@ async function sendWithResend({
     }
   })();
 
-  if (!response.ok) {
+  if (!response.ok || !payload?.id) {
 
     return {
       ok: false,
-      status: response.status,
+      status: response.ok ? 502 : response.status,
       error:
         payload?.message ??
         payload?.error ??
@@ -539,11 +519,12 @@ export async function POST(request: Request, { params }: RouteParams) {
     unknown
   >;
   const preflightOnly = body.preflightOnly === true;
+  if (!preflightOnly && (body.finalApproval !== true || typeof body.reviewToken !== "string")) return NextResponse.json({error:"Review Email and explicit final approval are required. No email was sent."},{status:409});
   const recipientEmail = cleanText(body.recipientEmail, 200).toLowerCase();
   const requestedCcEmail = cleanText(body.ccEmail, 200).toLowerCase();
   const requestedBccEmail = cleanText(body.bccEmail, 200).toLowerCase();
-  const subject = cleanText(body.subject, 240);
-  const message = cleanText(body.message, 5000);
+  let subject = cleanText(body.subject, 240) || (body.mode === "prepare" ? "Document" : "");
+  let message = cleanText(body.message, 10000) || (body.mode === "prepare" ? "Preparing document review" : "");
   const replyToEmail = cleanText(body.replyToEmail, 200).toLowerCase();
   const businessSlug = cleanText(body.businessSlug, 80);
   const sendSplitGroup = Boolean(body.sendSplitGroup);
@@ -682,7 +663,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     cronSecret,
   });
 
-  if (!access.ok) {
+  if (!access.ok || !access.userId || !token) {
     return sendFailureResponse({
       traceId,
       steps,
@@ -746,14 +727,14 @@ export async function POST(request: Request, { params }: RouteParams) {
     200
   ).toLowerCase();
   const fallbackCcEmail = emailSettings.ccEmail.trim().toLowerCase();
-  const ccEmail = automationCcEmail
+  const ccEmail = Object.hasOwn(body, "ccEmail") ? requestedCcEmail : automationCcEmail
     ? automationCcEmail
     : isValidEmail(clientCcEmail)
     ? clientCcEmail
     : isValidEmail(fallbackCcEmail)
       ? fallbackCcEmail
       : "";
-  if ((clientCcEmail && !isValidEmail(clientCcEmail)) || (fallbackCcEmail && !isValidEmail(fallbackCcEmail))) {
+  if ((requestedCcEmail && !isValidEmail(requestedCcEmail)) || (clientCcEmail && !isValidEmail(clientCcEmail)) || (fallbackCcEmail && !isValidEmail(fallbackCcEmail))) {
     return sendFailureResponse({ traceId, steps, stage: "email_settings", message: "Review CC email before sending.", status: 400 });
   }
   const ccSource = ccEmail
@@ -869,7 +850,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   }
 
   const selectedRecipientClient = (clientIdentityData ?? []).find(client => client.id === invoice.client_id);
-  if (!selectedRecipientClient || recipientEmail !== selectedRecipientClient.email?.trim().toLowerCase() || targetInvoices.some(target => target.client_id !== invoice.client_id)) {
+  if (!selectedRecipientClient || (recipientEmail !== selectedRecipientClient.email?.trim().toLowerCase() && (clientIdentityData ?? []).some(c=>c.id!==invoice.client_id && c.email?.trim().toLowerCase()===recipientEmail)) || targetInvoices.some(target => target.client_id !== invoice.client_id)) {
     return sendFailureResponse({ traceId, steps, stage: "client_identity_check", message: "Customer and property do not match. Review before continuing.", status: 409 });
   }
 
@@ -1084,33 +1065,40 @@ export async function POST(request: Request, { params }: RouteParams) {
   const { lines: splitSummaryLines, combinedTotal } =
     buildSplitGroupSummary(targetInvoices);
   const groupLabel = splitGroupLabel(targetInvoices);
-  const effectiveSubject = isSplitGroupSend
-    ? `${groupLabel} - Split invoices`
-    : subject;
-  const splitSummaryText = isSplitGroupSend
-    ? [
-        `Attached are invoices ${documentListLabel(
-          splitSummaryLines.map((item) => item.documentNumber)
-        )} for ${groupLabel}.`,
-        "",
-        "This invoice was split because of the billing limit. Both official invoice PDFs are attached to this email.",
-        "",
-        "Attached invoices:",
-        ...splitSummaryLines.map(
-          (item) =>
-            `- ${item.documentNumber} - ${formatCurrency(item.amount)}${
-              item.splitLabel ? ` (${item.splitLabel})` : ""
-            }`
-        ),
-        "",
-        `Combined total: ${formatCurrency(combinedTotal)}`,
-      ].join("\n")
-    : "";
-  const effectiveMessage = isSplitGroupSend ? splitSummaryText : message;
+  const facts = ["Document details", ...targetInvoices.map(item => [
+    `Invoice: ${item.display_id ?? item.id}`,
+    `Document purpose: ${emailPurpose === "deposit" ? "Deposit request" : emailPurpose === "reminder" ? "Payment reminder" : "Invoice"}`,
+    `Customer: ${item.customer_name ?? ""}`,
+    `Status: ${item.status || "Not specified"}`,
+    `Amount due: ${formatCurrency(invoiceCollectionAmountDue(item))}`,
+    `Due date: ${emailPurpose === "deposit" ? "See deposit terms" : item.due_date || "Not specified"}`,
+    `Payment terms: ${item.terms || "Not specified on the saved invoice"}`,
+  ].join("\n")), ...(isSplitGroupSend ? [`Combined total: ${formatCurrency(combinedTotal)}`] : [])].join("\n");
+  const canonicalSubject = `${emailPurpose === "reminder" ? "Invoice reminder" : "Invoice"} ${targetInvoices.map(i=>i.display_id).join(" / ")}`;
+  if (body.mode === "prepare") {
+    subject = `${emailPurpose === "reminder" ? "Invoice reminder" : "Invoice"} ${targetInvoices.map(i=>i.display_id).join(" / ")}`;
+    message = `Hello,\n\nPlease review the attached document${targetInvoices.length > 1 ? "s" : ""}.\n\n${facts}\n\nThank you.`;
+  }
+  try { validateEmailEdits(subject, message, facts, canonicalSubject); } catch(error) { return NextResponse.json({error:(error as Error).message},{status:409}); }
+  const effectiveSubject = subject;
+  const effectiveMessage = message;
+  const {data: reviewLines, error: reviewLinesError} = await supabase.from("invoice_line_items").select("*").eq("business_id", invoice.business_id).in("invoice_id",targetInvoices.map(i=>i.id));
+  if(reviewLinesError) return NextResponse.json({error:"Could not revalidate invoice rows."},{status:503});
+  const renderedEmail = renderDocumentEmail(effectiveMessage,business.slug,business.name || "Trimax");
+  const reviewSnapshot = {kind:"invoice", user:access.userId, documents:targetInvoices, lines:reviewLines, settings:emailSettings, recipientEmail, ccEmail, bccEmail, from, replyToEmail:replyToEmail || access.email, effectiveSubject, renderedEmail, emailPurpose, sendIdempotencyKey};
   const pdfAttachments: EmailAttachment[] = [];
   let pdfAttachmentSource: "print-page" | "none" = "none";
 
-  if (attachOfficialPdf) {
+  if (!preflightOnly) {
+    try {
+      const reviewed = approvedAttachments(body.reviewAttachments);
+      verifyEmailReview(body.reviewToken,body.finalApproval,reviewSnapshot,reviewed);
+      if(reviewed.length !== targetInvoices.length) throw Error("Review the complete PDF package.");
+      pdfAttachments.push(...reviewed);
+      pdfAttachmentSource = "print-page";
+    } catch(error) { return NextResponse.json({error:(error as Error).message},{status:409}); }
+  }
+  if (attachOfficialPdf && preflightOnly) {
     for (const targetInvoice of targetInvoices) {
       const targetDocumentNumber = targetInvoice.display_id ?? "Invoice";
 
@@ -1215,25 +1203,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     }
   }
 
-  const html = `
-    <div style="font-family: Arial, sans-serif; color: #1f3347; line-height: 1.6; max-width: 640px; margin: 0 auto;">
-      <div style="padding: 28px 0; text-align: center; border-bottom: 1px solid #d8e1ea;">
-        <div style="font-size: 18px; font-weight: 800; color: #0f2a44;">${escapeHtml(
-          business.name ?? "Trimax"
-        )}</div>
-      </div>
-      <div style="padding: 34px 0;">
-        <p style="font-size: 16px;">${plainTextToHtml(effectiveMessage)}</p>
-        ${
-          attachOfficialPdf && !isSplitGroupSend
-            ? `<p style="font-size: 14px; color: #52677c;">${
-                "A PDF copy is attached."
-              }</p>`
-            : ""
-        }
-      </div>
-    </div>
-  `;
+  const html = renderedEmail.html;
 
   logSendStep({
     traceId,
@@ -1253,7 +1223,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   });
 
   if (preflightOnly) {
-    return NextResponse.json({ ready: true, attachmentCount: pdfAttachments.length, recipientEmail, ccEmail, invoiceIds: targetInvoices.map(item => item.id) });
+    return NextResponse.json({ ready: true, subject:effectiveSubject, message:effectiveMessage, html, facts, from, replyToEmail:replyToEmail || access.email, bccEmail, reviewToken:issueEmailReview(reviewSnapshot,pdfAttachments), attachments:pdfAttachments, attachmentCount: pdfAttachments.length, recipientEmail, ccEmail, invoiceIds: targetInvoices.map(item => item.id) });
   }
 
   logSendStep({
@@ -1277,7 +1247,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     bcc: bccEmail && isValidEmail(bccEmail) ? bccEmail : null,
     subject: effectiveSubject,
     html,
-    text: effectiveMessage,
+    text: renderedEmail.text,
     attachments: pdfAttachments.length > 0 ? pdfAttachments : undefined,
     idempotencyKey: sendIdempotencyKey || null,
   });
@@ -1436,6 +1406,7 @@ export async function POST(request: Request, { params }: RouteParams) {
         split_group_send: true,
         split_group_root_id: splitGroupRootId,
         send_idempotency_key: sendIdempotencyKey || null,
+        review_digest:reviewDigest(reviewSnapshot),
         provider: "resend",
         provider_status: sendResult.status,
         provider_response: sendResult.providerResponse ?? null,
@@ -1481,6 +1452,7 @@ export async function POST(request: Request, { params }: RouteParams) {
         split_group_send: isSplitGroupSend,
         split_group_root_id: splitGroupRootId,
         send_idempotency_key: sendIdempotencyKey || null,
+        review_digest:reviewDigest(reviewSnapshot),
         ...(isSplitGroupSend
           ? {
               included_invoice_ids: targetInvoices.map((item) => item.id),

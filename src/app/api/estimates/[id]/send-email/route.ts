@@ -1,3 +1,8 @@
+import { issueEmailReview, verifyEmailReview, approvedAttachments, reviewDigest } from "../../../../lib/documentEmailReview";
+import { renderDocumentEmail } from "../../../../lib/documentEmailBranding";
+import { validateEmailEdits } from "../../../../lib/documentEmailPolicy";
+import { estimateMoney, estimateDepositSentence } from "../../../../lib/documentEmailPolicy";
+import { formatDocumentMoney as formatMoney } from "../../../../lib/documentEmailPolicy";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import {
@@ -32,6 +37,7 @@ type Database = {
       businesses: GenericTable;
       clients: GenericTable;
       estimates: GenericTable;
+      estimate_line_items: GenericTable;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -59,6 +65,9 @@ type EstimateRow = {
   project_address: string | null;
   service_address: string | null;
   estimate_amount: string | number | null;
+  terms: string | null;
+  tax_mode: string | null;
+  tax_rate: string | number | null;
   reference: string | null;
   status: string | null;
 };
@@ -99,18 +108,7 @@ function cleanText(value: unknown, maxLength: number) {
   return String(value ?? "").trim().slice(0, maxLength);
 }
 
-function escapeHtml(value: string) {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
 
-function plainTextToHtml(value: string) {
-  return escapeHtml(value).replace(/\n/g, "<br />");
-}
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -146,7 +144,7 @@ async function requireWorkspaceAccess({
     .limit(1)
     .maybeSingle<BusinessUserRow>();
 
-  if (error || !data) {
+  if (error || !data || !["owner", "admin"].includes(String(data.role).toLowerCase())) {
     return {
       ok: false,
       email: userData.user.email ?? null,
@@ -171,6 +169,7 @@ async function sendWithResend({
   html,
   text,
   attachments,
+  idempotencyKey,
 }: {
   from: string;
   to: string;
@@ -181,6 +180,7 @@ async function sendWithResend({
   html: string;
   text: string;
   attachments?: EmailAttachment[];
+  idempotencyKey: string;
 }) {
   const apiKey = process.env.RESEND_API_KEY;
 
@@ -197,6 +197,7 @@ async function sendWithResend({
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
+      "Idempotency-Key": idempotencyKey,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -216,11 +217,11 @@ async function sendWithResend({
     | { id?: string; message?: string; error?: string; name?: string }
     | null;
 
-  if (!response.ok) {
+  if (!response.ok || !payload?.id) {
 
     return {
       ok: false,
-      status: response.status,
+      status: response.ok ? 502 : response.status,
       error:
         payload?.message ??
         payload?.error ??
@@ -260,12 +261,14 @@ export async function POST(request: Request, { params }: RouteParams) {
     string,
     unknown
   >;
+  const preflightOnly = body.preflightOnly === true;
+  if (!preflightOnly && (body.finalApproval !== true || typeof body.reviewToken !== "string")) return NextResponse.json({error:"Review Email and explicit final approval are required. No email was sent."},{status:409});
   const recipientEmail = cleanText(body.recipientEmail, 200).toLowerCase();
-  const subject = cleanText(body.subject, 240);
-  const message = cleanText(body.message, 5000);
+  let subject = cleanText(body.subject, 240) || (body.mode === "prepare" ? "Estimate" : "");
+  let message = cleanText(body.message, 10000) || (body.mode === "prepare" ? "Preparing estimate review" : "");
   const replyToEmail = cleanText(body.replyToEmail, 200).toLowerCase();
   const businessSlug = cleanText(body.businessSlug, 80);
-  const includePdfNote = Boolean(body.includePdfNote);
+  const includePdfNote = true;
 
   if (!isValidEmail(recipientEmail)) {
     return NextResponse.json(
@@ -291,7 +294,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   const { data: estimate, error: estimateError } = await supabase
     .from("estimates")
     .select(
-      "id, business_id, client_id, display_id, customer_name, project_title, project_address, service_address, estimate_amount, reference, status"
+      "id, business_id, client_id, display_id, customer_name, project_title, project_address, service_address, estimate_amount, reference, status, terms, tax_mode, tax_rate"
     )
     .eq("id", id)
     .limit(1)
@@ -337,7 +340,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     .select("id, name, property_aliases, email, cc_email")
     .eq("business_id", estimate.business_id);
   const authoritativeClient = (clientIdentityData ?? []).find(client => client.id === estimate.client_id);
-  if (clientIdentityError || !authoritativeClient || recipientEmail !== String(authoritativeClient.email ?? "").trim().toLowerCase()) {
+  if (clientIdentityError || !authoritativeClient || (recipientEmail !== String(authoritativeClient.email ?? "").trim().toLowerCase() && (clientIdentityData ?? []).some(c=>c.id!==estimate.client_id && String(c.email ?? "").trim().toLowerCase()===recipientEmail))) {
     return NextResponse.json({ error: "Customer and property do not match. Review before continuing." }, { status: 409 });
   }
   const clientIdentityConflict = detectClientIdentityConflict({
@@ -394,7 +397,9 @@ export async function POST(request: Request, { params }: RouteParams) {
     200
   ).toLowerCase();
   const fallbackCcEmail = emailSettings.ccEmail.trim().toLowerCase();
-  const ccEmail = isValidEmail(clientCcEmail)
+  const requestedCcEmail = cleanText(body.ccEmail,200).toLowerCase();
+  if(requestedCcEmail && !isValidEmail(requestedCcEmail)) return NextResponse.json({error:"Review CC email."},{status:400});
+  const ccEmail = Object.hasOwn(body,"ccEmail") ? requestedCcEmail : isValidEmail(clientCcEmail)
     ? clientCcEmail
     : isValidEmail(fallbackCcEmail)
       ? fallbackCcEmail
@@ -420,11 +425,27 @@ export async function POST(request: Request, { params }: RouteParams) {
     senderName: emailSettings.senderName || business.name || "Trimax",
     senderEmail,
   });
+  const {data: rows,error: rowsError} = await supabase.from("estimate_line_items").select("*").eq("business_id",estimate.business_id).eq("estimate_id",estimate.id);
+  if(rowsError) return NextResponse.json({error:"Could not revalidate estimate rows."},{status:503});
+  let facts: string;
+  try {
+    const amounts=estimateMoney(estimate,(rows ?? []) as {line_total:string|number|null}[]);
+    const deposit=estimateDepositSentence(amounts.total,estimate.terms);
+    facts=["Document details",`Estimate: ${estimate.display_id || estimate.id}`,`Customer: ${estimate.customer_name || ""}`,`Project estimate: ${formatMoney(amounts.total)}`,deposit,`Terms: ${estimate.terms || ""}`].filter(Boolean).join("\n");
+  } catch(error) { return NextResponse.json({error:(error as Error).message},{status:409}); }
+  const canonicalSubject=`Estimate ${estimate.display_id || ""}`;
+  if(body.mode === "prepare") { subject=`Estimate ${estimate.display_id || ""}`; message=`Hello,\n\nPlease review the attached estimate.\n\n${facts}\n\nThank you.`; }
+  try { validateEmailEdits(subject,message,facts,canonicalSubject); } catch(error) { return NextResponse.json({error:(error as Error).message},{status:409}); }
+  const renderedEmail=renderDocumentEmail(message,business.slug,business.name || "Trimax");
+  const reviewSnapshot={kind:"estimate",user:access.userId,estimate,rows,settings:emailSettings,recipientEmail,ccEmail,bccEmail,from,replyToEmail:replyToEmail || access.email,subject,renderedEmail};
   let pdfAttachment: EmailAttachment | null = null;
   let pdfAttachmentSource: "print-page" | "none" =
     "none";
 
-  if (includePdfNote) {
+  if (!preflightOnly) {
+    try { const reviewed=approvedAttachments(body.reviewAttachments);verifyEmailReview(body.reviewToken,body.finalApproval,reviewSnapshot,reviewed);if(reviewed.length!==1) throw Error("Review the estimate PDF.");pdfAttachment=reviewed[0];pdfAttachmentSource="print-page"; } catch(error) {return NextResponse.json({error:(error as Error).message},{status:409});}
+  }
+  if (includePdfNote && preflightOnly) {
     try {
       pdfAttachment = await createPrintPagePdfAttachment({
         url: new URL(
@@ -432,6 +453,8 @@ export async function POST(request: Request, { params }: RouteParams) {
           request.url
         ).toString(),
         filename: estimate.display_id ?? "estimate",
+        accessToken:token,
+        requestSession:{origin:new URL(request.url).origin,cookie:request.headers.get("cookie")},
       });
       pdfAttachmentSource = "print-page";
     } catch (error) {
@@ -446,23 +469,8 @@ export async function POST(request: Request, { params }: RouteParams) {
     }
   }
 
-  const html = `
-    <div style="font-family: Arial, sans-serif; color: #1f3347; line-height: 1.6; max-width: 640px; margin: 0 auto;">
-      <div style="padding: 28px 0; text-align: center; border-bottom: 1px solid #d8e1ea;">
-        <div style="font-size: 18px; font-weight: 800; color: #0f2a44;">${escapeHtml(
-          business.name ?? "Trimax"
-        )}</div>
-      </div>
-      <div style="padding: 34px 0;">
-        <p style="font-size: 16px;">${plainTextToHtml(message)}</p>
-        ${
-          includePdfNote
-            ? `<p style="font-size: 14px; color: #52677c;">A PDF copy is attached.</p>`
-            : ""
-        }
-      </div>
-    </div>
-  `;
+  const html=renderedEmail.html;
+  if(preflightOnly) return NextResponse.json({ready:true,subject,message,html,facts,from,replyToEmail:replyToEmail || access.email,recipientEmail,ccEmail,bccEmail,attachments:[pdfAttachment],reviewToken:issueEmailReview(reviewSnapshot,[pdfAttachment!])});
 
   const sendResult = await sendWithResend({
     from,
@@ -472,8 +480,9 @@ export async function POST(request: Request, { params }: RouteParams) {
     bcc: bccEmail && isValidEmail(bccEmail) ? bccEmail : null,
     subject,
     html,
-    text: message,
+    text: renderedEmail.text,
     attachments: pdfAttachment ? [pdfAttachment] : undefined,
+    idempotencyKey:`trimax-estimate-${reviewDigest(body.reviewToken)}`,
   });
 
   if (!sendResult.ok) {
@@ -509,7 +518,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     );
   }
 
-  await supabase
+  const {error:statusUpdateError} = await supabase
     .from("estimates")
     .update({
       status: "Sent",
@@ -539,11 +548,14 @@ export async function POST(request: Request, { params }: RouteParams) {
       provider: "resend",
       provider_status: sendResult.status,
       provider_response: sendResult.providerResponse ?? null,
-      delivery_status: "sent",
+      delivery_status: "accepted",
+      review_digest:reviewDigest(reviewSnapshot),
+      status_update_error:statusUpdateError?.message ?? null,
     },
   });
 
   return NextResponse.json({
+    statusUpdateError:statusUpdateError?.message ?? null,
     message: `${estimate.display_id ?? "Estimate"} was sent to ${recipientEmail}${
       ccEmail ? " and CC'd" : ""
     }${

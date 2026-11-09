@@ -446,73 +446,6 @@ async function createInvoiceFromTemplate(
   };
 }
 
-async function sendRecurringInvoice({
-  request,
-  invoiceId,
-  businessSlug,
-  recipientEmail,
-  ccEmail,
-  bccEmail,
-  subject,
-  message,
-  authorizationToken,
-}: {
-  request: Request;
-  invoiceId: string;
-  businessSlug: string;
-  recipientEmail: string;
-  ccEmail: string;
-  bccEmail: string;
-  subject: string;
-  message: string;
-  authorizationToken?: string | null;
-}) {
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (!authorizationToken && !cronSecret) {
-    throw new Error("Recurring invoice auto-send is missing CRON_SECRET.");
-  }
-
-  if (!isValidEmail(recipientEmail)) {
-    throw new Error("Recurring invoice auto-send needs a valid recipient email.");
-  }
-
-  const response = await fetch(
-    new URL(`/api/invoices/${invoiceId}/send-email`, request.url).toString(),
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(authorizationToken
-          ? { Authorization: `Bearer ${authorizationToken}` }
-          : { "x-trimax-cron-secret": cronSecret as string }),
-      },
-      body: JSON.stringify({
-        recipientEmail,
-        ccEmail,
-        bccEmail,
-        subject,
-        message,
-        businessSlug,
-        emailPurpose: "send",
-      }),
-    }
-  );
-
-  const payload = await response.json().catch(() => null) as
-    | { message?: string; error?: string; traceId?: string }
-    | null;
-
-  if (!response.ok) {
-    throw new Error(
-      payload?.error ||
-        payload?.message ||
-        `Recurring invoice auto-send failed with status ${response.status}.`
-    );
-  }
-
-  return payload;
-}
 
 async function requireWorkspaceAccess({
   supabase,
@@ -672,54 +605,15 @@ export async function POST(request: Request) {
       throw new Error("Trimax could not resolve the business workspace.");
     }
 
-    await sendRecurringInvoice({
-      request,
-      invoiceId: result.invoiceId,
-      businessSlug: resolvedBusinessSlug,
-      recipientEmail: result.recipientEmail,
-      ccEmail: result.ccEmail,
-      bccEmail: result.bccEmail,
-      subject: result.subject,
-      message: result.message,
-      authorizationToken: token,
-    });
-
-    await supabase
-      .from("recurring_invoice_templates")
-      .update({
-        last_sent_invoice_id: result.invoiceId,
-        last_sent_at: new Date().toISOString(),
-        last_send_error: null,
-        next_run_date: futureNextRunDate,
-        last_error: null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", template.id)
-      .eq("business_id", template.business_id);
-
-    await supabase.from("activity_logs").insert({
-      business_id: template.business_id,
-      actor_user_id: access.userId,
-      actor_email: access.email,
-      action: "invoice.recurring_first_invoice_sent",
-      entity_type: "invoice",
-      entity_id: result.invoiceId,
-      entity_label: result.displayId,
-      details: {
-        templateName: template.name,
-        customerName: template.customer_name,
-        projectTitle: template.project_title,
-        firstInvoiceDate: issueDateInput,
-        futureNextRunDate,
-      },
-    });
+    await supabase.from("recurring_invoice_templates").update({next_run_date:futureNextRunDate,last_send_error:"Draft created. Review Email and final approval required.",updated_at:new Date().toISOString()}).eq("id",template.id).eq("business_id", template.business_id);
 
     return NextResponse.json({
       ok: true,
       invoiceId: result.invoiceId,
       displayId: result.displayId,
       nextRunDate: futureNextRunDate,
-      sentAt: new Date().toISOString(),
+      reviewRequired:true,
+      reviewHref:`/invoices/${result.invoiceId}?business=${resolvedBusinessSlug}#send-invoice`,
     });
   } catch (error) {
     const message =
@@ -808,47 +702,8 @@ export async function GET(request: Request) {
           nextOccurrences
         );
 
-        if (template.auto_send_enabled) {
-          const businessSlug = template.businesses?.slug;
+        await supabase.from("recurring_invoice_templates").update({next_run_date:result.nextRunDate,occurrences_sent:nextOccurrences,auto_create_drafts:shouldPause ? false : template.auto_create_drafts,last_send_error:template.auto_send_enabled ? "Draft created. Review Email and final approval required." : null,last_error:null,updated_at:new Date().toISOString()}).eq("id",template.id).eq("business_id", template.business_id);
 
-          if (!businessSlug) {
-            throw new Error("Recurring invoice auto-send could not resolve the business workspace.");
-          }
-
-          await sendRecurringInvoice({
-            request,
-            invoiceId: result.invoiceId,
-            businessSlug,
-            recipientEmail: result.recipientEmail,
-            ccEmail: result.ccEmail,
-            bccEmail: result.bccEmail,
-            subject: result.subject,
-            message: result.message,
-          });
-
-          sent.push(result.displayId);
-
-          await supabase.from("recurring_invoice_templates").update({
-            last_sent_invoice_id: result.invoiceId,
-            last_sent_at: new Date().toISOString(),
-            last_send_error: null,
-            next_run_date: result.nextRunDate,
-            occurrences_sent: nextOccurrences,
-            auto_create_drafts: shouldPause ? false : template.auto_create_drafts,
-            auto_send_enabled: shouldPause ? false : template.auto_send_enabled,
-            last_error: null,
-            updated_at: new Date().toISOString(),
-          }).eq("id", template.id).eq("business_id", template.business_id);
-        } else {
-          await supabase.from("recurring_invoice_templates").update({
-            next_run_date: result.nextRunDate,
-            occurrences_sent: nextOccurrences,
-            auto_create_drafts: shouldPause ? false : template.auto_create_drafts,
-            auto_send_enabled: shouldPause ? false : template.auto_send_enabled,
-            last_error: null,
-            updated_at: new Date().toISOString(),
-          }).eq("id", template.id).eq("business_id", template.business_id);
-        }
       }
     } catch (error) {
       const message =

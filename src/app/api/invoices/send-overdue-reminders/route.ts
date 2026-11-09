@@ -233,6 +233,7 @@ export async function POST(request: Request) {
     businessSlug?: string;
     dryRun?: boolean;
   };
+  if (body.dryRun !== true) return NextResponse.json({error:"Unattended invoice emails are disabled. Open each invoice Review Email and explicitly approve sending."},{status:409});
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayInput = today.toISOString().slice(0, 10);

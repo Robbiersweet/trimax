@@ -254,7 +254,7 @@ function isRecurringEndMet(template: RecurringTemplate) {
 }
 
 function recurringModeLabel(template: RecurringTemplate) {
-  return template.auto_send_enabled ? "Auto Send" : "Manual / Draft";
+  return template.auto_send_enabled ? "Review required" : "Manual / Draft";
 }
 
 function recurringEndLabel(template: RecurringTemplate) {
@@ -922,9 +922,8 @@ function RecurringInvoicesPageContent() {
           last_generated_at:
             immediateInvoice.sentAt ?? savedTemplate.last_generated_at,
           last_generated_for_date: firstInvoiceDate,
-          last_sent_invoice_id:
-            immediateInvoice.invoiceId ?? savedTemplate.last_sent_invoice_id,
-          last_sent_at: immediateInvoice.sentAt ?? savedTemplate.last_sent_at,
+          last_sent_invoice_id: savedTemplate.last_sent_invoice_id,
+          last_sent_at: savedTemplate.last_sent_at,
           last_error: null,
           last_send_error: null,
           next_run_date: futureStartDate,
@@ -962,13 +961,14 @@ function RecurringInvoicesPageContent() {
       message: mode === "send_now"
         ? `${
             immediateInvoice?.displayId ?? "First invoice"
-          } sent. Future recurring invoices start ${formatDate(futureStartDate)}.`
+          } created for review; nothing sent. Future recurring invoices start ${formatDate(futureStartDate)}.`
         : editingTemplateId
           ? "Recurring invoice updated."
           : "Recurring invoice saved.",
     });
 
     resetTemplateForm();
+    if (immediateInvoice?.invoiceId) window.location.assign(`/invoices/${immediateInvoice.invoiceId}?business=${businessSlug}#send-invoice`);
   }
 
   async function createDraftInvoice(template: RecurringTemplate) {
@@ -2305,7 +2305,7 @@ function RecurringInvoicesPageContent() {
 
                 <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
                   <h3 className="text-lg font-black text-white">
-                    Send first invoice now
+                    Create first draft for review
                   </h3>
                   <p className="mt-2 text-sm leading-6 text-zinc-300">
                     Create and email one invoice immediately. Future recurring
@@ -2329,7 +2329,7 @@ function RecurringInvoicesPageContent() {
                       setIsStartModalOpen(false);
                     }}
                   >
-                    Send first invoice now
+                    Create first draft for review
                   </Button>
                 </div>
               </div>

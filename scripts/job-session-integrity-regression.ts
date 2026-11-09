@@ -945,8 +945,8 @@ assert(
 );
 assert(
   invoiceEmailSendPanel.includes("sendDisabledReason?: string | null") &&
-    invoiceEmailSendPanel.includes("!sendDisabledReason") &&
-    invoiceEmailSendPanel.includes("message: sendDisabledReason"),
+    invoiceEmailSendPanel.includes("disabled={Boolean(props.sendDisabledReason)}") &&
+    invoiceEmailSendPanel.includes("{props.sendDisabledReason}"),
   "Invoice email panel must accept an app-level disabled reason before attempting a send."
 );
 assert(

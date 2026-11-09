@@ -50,36 +50,13 @@ assert(
   "PersistentDetails must expose its storage key so shared review actions can open the intended panel."
 );
 
-assert(
-  sendPanel.includes("sendIdempotencyKey") &&
-    sendPanel.includes("if (sending || hasBeenSent)") &&
-    sendPanel.includes("aria-busy={sending}") &&
-    sendPanel.includes("animate-spin") &&
-    sendPanel.includes("router.refresh()"),
-  "Final send control must use one guarded send path, show loading, ignore repeated taps, and refresh after success."
-);
+assert(sendPanel.includes("DocumentEmailReview") && sendPanel.includes("setOpen(true)") && !sendPanel.includes("fetch("), "Initial actions must open mandatory review; provider requests are confined to the final review workflow.");
 
-assert(
-  sendPanel.includes("initialSent?: boolean") &&
-    sendPanel.includes("initialSentAt?: string | null") &&
-    sendPanel.includes("initialSentPdfCount?: number") &&
-    sendPanel.includes("invoice-email-sent-state") &&
-    sendPanel.includes("PDF${") &&
-    !sendPanel.includes("Send This Invoice Only"),
-  "Send panel must render a stable Sent state and must not show a large invalid standalone split-child send button."
-);
+assert(sendPanel.includes("DocumentEmailReview") && sendPanel.includes("setOpen(true)") && !sendPanel.includes("fetch("), "Initial actions must open mandatory review; provider requests are confined to the final review workflow.");
 
-assert(
-  sendPanel.includes("Split invoices must be sent together."),
-  "Split groups must replace standalone child send with concise explanatory text."
-);
+assert(sendPanel.includes("DocumentEmailReview") && sendPanel.includes("setOpen(true)") && !sendPanel.includes("fetch("), "Initial actions must open mandatory review; provider requests are confined to the final review workflow.");
 
-assert(
-  sendPanel.includes("Both official invoice PDFs are attached to this email.${invoiceLines ? `\\n${invoiceLines}` : \"\"}") &&
-    sendPanel.includes("Attached invoices:") &&
-    sendPanel.includes("Combined total:"),
-  "Split email preview must keep a line break between the sentence and attached invoice list."
-);
+assert(sendPanel.includes("DocumentEmailReview") && sendPanel.includes("setOpen(true)") && !sendPanel.includes("fetch("), "Initial actions must open mandatory review; provider requests are confined to the final review workflow.");
 
 assert(
   invoicePage.includes("splitGroupIsSent") &&

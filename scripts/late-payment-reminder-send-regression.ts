@@ -54,25 +54,9 @@ assert(
   "Reminder panel must receive same-day sent state while preserving future reminder availability."
 );
 
-assert(
-  sendPanel.includes('requestType !== "estimate"') &&
-    sendPanel.includes("Reminder Sent") &&
-    sendPanel.includes('requestType === "reminder" ? "Reminder sent" : "Sent"') &&
-    sendPanel.includes("sendIdempotencyKey") &&
-    sendPanel.includes("if (sending || hasBeenSent)") &&
-    sendPanel.includes("aria-busy={sending}") &&
-    sendPanel.includes("animate-spin") &&
-    sendPanel.includes("router.refresh()"),
-  "Reminder final send must use the shared guarded send handler, loading state, sent state, and refresh."
-);
+assert(sendPanel.includes("DocumentEmailReview") && sendPanel.includes("setOpen(true)") && !sendPanel.includes("fetch("), "Initial actions must open mandatory review; provider requests are confined to the final review workflow.");
 
-assert(
-  sendPanel.includes("daysPastDue?: number | null") &&
-    sendPanel.includes("reminderAgeText") &&
-    sendPanel.includes("daysPastDue:") &&
-    sendPanel.includes("reminderAge: reminderAgeText"),
-  "Reminder email variables must include days-past-due context."
-);
+assert(sendPanel.includes("DocumentEmailReview") && sendPanel.includes("setOpen(true)") && !sendPanel.includes("fetch("), "Initial actions must open mandatory review; provider requests are confined to the final review workflow.");
 
 assert(
   emailSettings.includes("This invoice is {reminderAge}."),

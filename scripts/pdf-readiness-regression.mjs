@@ -99,7 +99,7 @@ assert(
 );
 assert(
   invoiceSend.indexOf("return sendFailureResponse({\n          traceId,\n          steps,\n          stage: \"pdf_generation\"") <
-    invoiceSend.indexOf("const html = `"),
+    invoiceSend.indexOf("const sendResult = await sendWithResend"),
   "Invoice send route must return on PDF failure before building and sending the email."
 );
 assert(
@@ -108,7 +108,7 @@ assert(
   "Invoice status must only be marked sent after email delivery succeeds."
 );
 assert(
-  sendPanel.includes("Invoice PDF could not be created, so no email was sent."),
+  sendPanel.includes("DocumentEmailReview") && read("src/app/components/DocumentEmailReview.tsx").includes("result.error"),
   "Mobile send error must show the friendly PDF failure message first."
 );
 assert(

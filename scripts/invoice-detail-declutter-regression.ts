@@ -60,7 +60,7 @@ assert(
   invoicePage.includes("<InvoiceEmailSendPanel") &&
     invoicePage.includes("title=\"Email & Preview\"") &&
     invoicePage.includes("Review Split Group") &&
-    sendPanel.includes("Send Split Group") &&
+    sendPanel.includes("DocumentEmailReview") && sendPanel.includes("sendSplitGroup") &&
     invoicePage.includes("sendSplitGroup"),
   "Email details must collapse while preserving review-first split workflow and the existing final send panel."
 );

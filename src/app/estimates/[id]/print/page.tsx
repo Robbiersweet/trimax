@@ -1,6 +1,7 @@
+import { estimateMoney, estimateDepositSentence, readEstimatePolicy } from "../../../lib/documentEmailPolicy";
 import { customerFacingNotes } from "../../../lib/documentNotes";
 import { roundMoney } from "../../../lib/money";
-import { percentMoney, sumMoney } from "../../../lib/money";
+
 import Image from "next/image";
 import { headers } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
@@ -9,7 +10,6 @@ import PrintToolbar from "../../../components/PrintToolbar";
 import { createSupabaseServerClient } from "../../../lib/supabaseServer";
 import {
   formatTaxSummaryLabel,
-  getEffectiveTaxRate,
 } from "../../../utils/tax";
 import { maybeCanonicalApartmentUnitLabel } from "../../../utils/unitLabels";
 
@@ -93,9 +93,6 @@ function toNumber(value: number | string | null | undefined) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function parseCurrency(value: number | string | null | undefined) {
-  return toNumber(value);
-}
 
 function formatCurrency(amount: number) {
   const safeAmount = Number.isFinite(amount) ? amount : 0;
@@ -188,19 +185,8 @@ export default async function EstimatePrintPage({
   const lineItems =
     (lineItemData ?? []) as EstimateLineItem[];
 
-  const subtotalFromLineItems = sumMoney(lineItems.map(item => toNumber(item.line_total)));
-
-  const subtotal =
-    subtotalFromLineItems > 0
-      ? subtotalFromLineItems
-      : parseCurrency(estimate.estimate_amount);
-
-  const taxRate = getEffectiveTaxRate({
-    taxMode: estimate.tax_mode,
-    taxRate: estimate.tax_rate,
-  });
-  const taxAmount = percentMoney(subtotal, taxRate);
-  const total = sumMoney([subtotal, taxAmount]);
+  const {subtotal,taxRate,taxAmount,total}=estimateMoney(estimate,lineItems);
+  const depositSentence=readEstimatePolicy(estimate.terms) ? estimateDepositSentence(total,estimate.terms) : "Deposit terms not specified. Confirm deposit requirements before scheduling.";
 
   const companyName =
     business?.name || "R&L Creations";
@@ -440,6 +426,7 @@ export default async function EstimatePrintPage({
 
         <section className="mt-8">
           <PrintLabel>Terms</PrintLabel>
+          <p className="mt-3 text-base">{depositSentence}</p>
 
           <p className="mt-3 max-w-4xl text-base leading-6">
             {estimate.terms ||

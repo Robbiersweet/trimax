@@ -1,4 +1,5 @@
 "use client";
+import EstimateDepositPolicy from "../../components/EstimateDepositPolicy";
 
 import { queueCustomerScopeNotes } from "../../lib/documentNotes";
 
@@ -447,7 +448,7 @@ function NewEstimatePageContent() {
   const [splitTargetAmount, setSplitTargetAmount] =
     useState("");
   const [terms, setTerms] = useState(
-    "This estimate is provided for review and approval. Final pricing may vary if scope, materials, or site conditions change."
+    "This estimate is provided for review and approval. Final pricing may vary if scope, materials, or site conditions change.\nDeposit: 50%."
   );
   const [notes, setNotes] = useState("");
 
@@ -1921,6 +1922,7 @@ function NewEstimatePageContent() {
                 Terms
               </label>
 
+              <EstimateDepositPolicy terms={terms} onChange={setTerms}/>
               <textarea
                 value={terms}
                 onChange={(event) =>

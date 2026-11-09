@@ -1,4 +1,5 @@
 "use client";
+import EstimateDepositPolicy from "../../../components/EstimateDepositPolicy";
 
 import { multiplyMoney, formatMoney, sumMoney } from "../../../lib/money";
 
@@ -1522,6 +1523,7 @@ export default function EditEstimatePage() {
                 Terms
               </label>
 
+              <EstimateDepositPolicy terms={terms} onChange={setTerms}/>
               <textarea
                 value={terms}
                 onChange={(event) =>

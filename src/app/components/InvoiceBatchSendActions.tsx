@@ -1,4 +1,5 @@
 "use client";
+import DocumentEmailReview from "./DocumentEmailReview";
 import { sumMoney as canonicalSumMoney } from "../lib/money.ts";
 
 import { roundMoney as canonicalRoundMoney } from "../lib/money.ts";
@@ -11,12 +12,8 @@ import Button from "./Button";
 import Card from "./Card";
 import Toast from "./Toast";
 import {
-  buildCorrectionEmailMessage,
-  buildCorrectionEmailSubject,
-  displayDocumentList,
   extractCorrectionOriginalDisplayId,
 } from "../lib/invoiceCorrections";
-import { supabase } from "../lib/supabase";
 
 type BatchSendInvoice = {
   id: string;
@@ -59,12 +56,6 @@ type SendResult = {
   message: string;
 };
 
-type ApiSendResult = {
-  error?: string;
-  message?: string;
-  pipelineStageLabel?: string;
-  traceId?: string;
-};
 
 function isValidEmail(value: string | null | undefined) {
   return Boolean(value?.trim().includes("@"));
@@ -83,9 +74,6 @@ function invoiceStatusKey(status: string | null | undefined) {
   return (status || "draft").trim().toLowerCase();
 }
 
-function invoiceContext(invoice: Pick<BatchSendInvoice, "customerName" | "projectTitle">) {
-  return invoice.projectTitle?.trim() || invoice.customerName?.trim() || "this work";
-}
 
 function formatDate(value: string | null) {
   if (!value) {
@@ -187,7 +175,6 @@ function groupSelection(
 
 export default function InvoiceBatchSendActions({
   businessSlug,
-  businessName,
   invoices,
 }: {
   businessSlug: string;
@@ -195,6 +182,7 @@ export default function InvoiceBatchSendActions({
   invoices: BatchSendInvoice[];
 }) {
   const router = useRouter();
+  const [reviewIndex,setReviewIndex]=useState<number|null>(null);
   const sendableInvoices = useMemo(
     () =>
       invoices.filter((invoice) => {
@@ -204,12 +192,12 @@ export default function InvoiceBatchSendActions({
     [invoices]
   );
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [isSending, setIsSending] = useState(false);
-  const [toast, setToast] = useState<{
+  const [isSending] = useState(false);
+  const [toast] = useState<{
     type: "success" | "error";
     message: string;
   } | null>(null);
-  const [results, setResults] = useState<SendResult[]>([]);
+  const [results] = useState<SendResult[]>([]);
 
   const selectedInvoices = sendableInvoices.filter((invoice) =>
     selectedIds.includes(invoice.id)
@@ -233,156 +221,7 @@ export default function InvoiceBatchSendActions({
     );
   }
 
-  async function sendBatch() {
-    setToast(null);
-    setResults([]);
-
-    if (sendActions.length === 0) {
-      setToast({
-        type: "error",
-        message: "Select at least one draft invoice to send.",
-      });
-      return;
-    }
-
-    setIsSending(true);
-
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    const nextResults: SendResult[] = [];
-
-    for (const action of sendActions) {
-      if (!isValidEmail(action.recipientEmail)) {
-        nextResults.push({
-          key: action.key,
-          label: action.label,
-          type: action.sendSplitGroup ? "split" : "standalone",
-          ok: false,
-          message: "Missing saved recipient email.",
-        });
-        continue;
-      }
-
-      const subject =
-        action.sendSplitGroup && action.correctionOriginalDisplayId
-          ? buildCorrectionEmailSubject({
-              projectTitle: action.projectTitle,
-              fallbackLabel: action.projectTitle,
-            })
-        : action.sendSplitGroup
-        ? `${action.projectTitle} - Split invoices`
-        : `Invoice ${action.invoiceNumbers[0]} from ${businessName}`;
-      const message =
-        action.sendSplitGroup && action.correctionOriginalDisplayId
-          ? buildCorrectionEmailMessage({
-              documentNumbers: action.invoiceNumbers,
-              projectTitle: action.projectTitle,
-              originalDisplayId: action.correctionOriginalDisplayId,
-              combinedTotal: formatMoney(action.combinedTotal),
-            })
-        : action.sendSplitGroup
-        ? `Attached are invoices ${displayDocumentList(
-            action.invoiceNumbers
-          )} for ${action.projectTitle}.`
-        : `Attached is invoice ${action.invoiceNumbers[0]} for ${invoiceContext(
-            action
-          )}.`;
-
-      try {
-        const response = await fetch(
-          `/api/invoices/${action.invoiceId}/send-email`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              ...(session?.access_token
-                ? { Authorization: `Bearer ${session.access_token}` }
-                : {}),
-            },
-            body: JSON.stringify({
-              businessSlug,
-              recipientEmail: action.recipientEmail,
-              subject,
-              message,
-              attachOfficialPdf: true,
-              sendSplitGroup: action.sendSplitGroup,
-              emailPurpose: "send",
-            }),
-          }
-        );
-        const result = (await response.json().catch(() => ({}))) as ApiSendResult;
-
-        if (!response.ok) {
-          const traceText = result.traceId ? ` Trace ID: ${result.traceId}.` : "";
-          const stageText = result.pipelineStageLabel
-            ? `${result.pipelineStageLabel}: `
-            : "";
-          nextResults.push({
-            key: action.key,
-            label: action.label,
-            type: action.sendSplitGroup ? "split" : "standalone",
-            ok: false,
-            message:
-              `${stageText}${
-                result.error ?? "Trimax could not send this invoice."
-              }${traceText}`,
-          });
-          continue;
-        }
-
-        nextResults.push({
-          key: action.key,
-          label: action.label,
-          type: action.sendSplitGroup ? "split" : "standalone",
-          ok: true,
-          message: result.message ?? "Sent.",
-        });
-      } catch (error) {
-        nextResults.push({
-          key: action.key,
-          label: action.label,
-          type: action.sendSplitGroup ? "split" : "standalone",
-          ok: false,
-          message:
-            error instanceof Error
-              ? error.message
-              : "Browser request failed before Trimax could reach the send server.",
-        });
-      }
-    }
-
-    setIsSending(false);
-    setResults(nextResults);
-
-    const successfulStandalone = nextResults.filter(
-      (result) => result.ok && result.type === "standalone"
-    ).length;
-    const successfulSplitGroups = nextResults.filter(
-      (result) => result.ok && result.type === "split"
-    ).length;
-    const failures = nextResults.filter((result) => !result.ok);
-
-    setToast({
-      type: failures.length > 0 ? "error" : "success",
-      message:
-        failures.length > 0
-          ? `Batch send finished with ${failures.length} failure${
-              failures.length === 1 ? "" : "s"
-            }. ${successfulStandalone} standalone invoice${
-              successfulStandalone === 1 ? "" : "s"
-            } and ${successfulSplitGroups} split group${
-              successfulSplitGroups === 1 ? "" : "s"
-            } sent.`
-          : `Batch send complete. ${successfulStandalone} standalone invoice${
-              successfulStandalone === 1 ? "" : "s"
-            } and ${successfulSplitGroups} split group${
-              successfulSplitGroups === 1 ? "" : "s"
-            } sent.`,
-    });
-    setSelectedIds([]);
-    router.refresh();
-  }
+  function sendBatch() { if(sendActions.length) setReviewIndex(0); }
 
   if (sendableInvoices.length === 0) {
     return null;
@@ -390,6 +229,8 @@ export default function InvoiceBatchSendActions({
 
   return (
     <Card className="border-sky-500/30 bg-sky-500/10">
+      {reviewIndex !== null && sendActions[reviewIndex] && <DocumentEmailReview key={sendActions[reviewIndex].key} documentId={sendActions[reviewIndex].invoiceId} businessSlug={businessSlug} recipientEmail={sendActions[reviewIndex].recipientEmail || ""} sendSplitGroup={sendActions[reviewIndex].sendSplitGroup} onClose={()=>setReviewIndex(null)} onSent={()=>{if(reviewIndex+1<sendActions.length)setReviewIndex(reviewIndex+1);else {setReviewIndex(null);setSelectedIds([]);router.refresh();}}}/>}
+      <p className="text-sm">Each selected email opens for editable review and requires its own explicit final approval. Canceling stops the batch.</p>
       {toast ? <Toast type={toast.type} message={toast.message} /> : null}
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
