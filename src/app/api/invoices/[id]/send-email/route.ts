@@ -743,18 +743,14 @@ export async function POST(request: Request, { params }: RouteParams) {
   if ((requestedCcEmail && !isValidEmail(requestedCcEmail)) || (clientCcEmail && !isValidEmail(clientCcEmail)) || (fallbackCcEmail && !isValidEmail(fallbackCcEmail))) {
     return sendFailureResponse({ traceId, steps, stage: "email_settings", message: "Review CC email before sending.", status: 400 });
   }
-  const ccSource = ccEmail
-    ? ccEmail === automationCcEmail
-      ? "automation"
-      : ccEmail === clientCcEmail
-      ? "client"
-      : "workspace"
-    : null;
+  const ccSource = ccEmail ? ccEmail === clientCcEmail ? "client" : ccEmail === fallbackCcEmail ? "workspace" : "review" : null;
   const bccEmail =
     isTrustedAutomationRequest && isValidEmail(requestedBccEmail)
       ? requestedBccEmail
       : emailSettings.bccEmail.trim().toLowerCase();
 
+  const effectiveReplyToEmail = replyToEmail || emailSettings.replyToEmail.trim().toLowerCase() || access.email;
+  if ((effectiveReplyToEmail && !isValidEmail(effectiveReplyToEmail)) || (bccEmail && !isValidEmail(bccEmail))) return NextResponse.json({error:"Review the workspace reply-to and BCC email settings before sending."},{status:400});
   if (!senderEmail || !isValidEmail(senderEmail)) {
     return sendFailureResponse({
       traceId,
@@ -1101,7 +1097,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   const effectiveSubject = subject;
   const effectiveMessage = message;
   const renderedEmail = renderDocumentEmail(effectiveMessage,business.slug,business.name || "Trimax");
-  const reviewSnapshot = {kind:"invoice", user:access.userId, documents:targetInvoices, client:selectedRecipientClient, lines:reviewLines, settings:emailSettings, recipientEmail, ccEmail, bccEmail, from, replyToEmail:replyToEmail || access.email, effectiveSubject, renderedEmail, emailPurpose, sendIdempotencyKey};
+  const reviewSnapshot = {kind:"invoice", user:access.userId, documents:targetInvoices, client:selectedRecipientClient, lines:reviewLines, settings:emailSettings, recipientEmail, ccEmail, bccEmail, from, replyToEmail:effectiveReplyToEmail, effectiveSubject, renderedEmail, emailPurpose, sendIdempotencyKey};
   const pdfAttachments: EmailAttachment[] = [];
   let pdfAttachmentSource: "print-page" | "none" = "none";
 
@@ -1239,7 +1235,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   });
 
   if (preflightOnly) {
-    return NextResponse.json({ ready: true, subject:effectiveSubject, message:effectiveMessage, html, facts, from, replyToEmail:replyToEmail || access.email, bccEmail, reviewToken:issueEmailReview(reviewSnapshot,pdfAttachments), attachments:pdfAttachments, attachmentCount: pdfAttachments.length, recipientEmail, ccEmail, invoiceIds: targetInvoices.map(item => item.id) });
+    return NextResponse.json({ ready: true, subject:effectiveSubject, message:effectiveMessage, html, facts, from, replyToEmail:effectiveReplyToEmail, bccEmail, reviewToken:issueEmailReview(reviewSnapshot,pdfAttachments), attachments:pdfAttachments, attachmentCount: pdfAttachments.length, recipientEmail, ccEmail, invoiceIds: targetInvoices.map(item => item.id) });
   }
 
   logSendStep({
@@ -1258,7 +1254,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   const sendResult = await sendWithResend({
     from,
     to: recipientEmail,
-    replyTo: replyToEmail || access.email,
+    replyTo: effectiveReplyToEmail,
     cc: ccEmail || null,
     bcc: bccEmail && isValidEmail(bccEmail) ? bccEmail : null,
     subject: effectiveSubject,

@@ -63,6 +63,7 @@ export default function QueueInvoiceAction({
               subject: "Invoice readiness check",
               message: "Invoice readiness check",
               preflightOnly: true,
+              mode: "prepare",
               attachOfficialPdf: true,
               sendSplitGroup: email.sendSplitGroup,
             }),

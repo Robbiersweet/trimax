@@ -693,6 +693,7 @@ async function queueBlockerRegression() {
       global.fetch = async (_url, options) => {
         requests++;
         assert.equal(JSON.parse(options.body).preflightOnly, true);
+        assert.equal(JSON.parse(options.body).mode, "prepare", "Queue readiness uses canonical nontransmitting preparation");
         return { ok: Boolean(test.ready), json: async () => ({ ready: test.ready, error: test.error }) };
       };
       let tree;

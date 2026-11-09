@@ -41,6 +41,7 @@ export default function DocumentEmailReview({
     message: "",
     recipientEmail,
     ccEmail: "",
+    ccEdited: false,
   });
   const [review, setReview] = useState<Review | null>(null);
   const [busy, setBusy] = useState(false);
@@ -97,6 +98,39 @@ export default function DocumentEmailReview({
       if (!session)
         throw Error("Your session is unavailable. No email was sent.");
       key.current = `document-email:${session.user.id}:${businessSlug}:${kind}:${documentId}:${purpose}:${sendSplitGroup}`;
+      let restored: typeof draft | null = null;
+      if (mode === "prepare") {
+        try {
+          const saved = sessionStorage.getItem(key.current);
+          const parsed = saved ? JSON.parse(saved) : null;
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            restored = {
+              subject: typeof parsed.subject === "string" ? parsed.subject : "",
+              message: typeof parsed.message === "string" ? parsed.message : "",
+              recipientEmail:
+                typeof parsed.recipientEmail === "string"
+                  ? parsed.recipientEmail
+                  : values.recipientEmail,
+              ccEmail: typeof parsed.ccEmail === "string" ? parsed.ccEmail : "",
+              ccEdited: parsed.ccEdited === true,
+            };
+            setDraft(restored);
+          }
+        } catch {
+          /* Draft storage is optional. */
+        }
+      }
+      const effective = restored || values;
+      const fields = {
+        subject: effective.subject,
+        message: effective.message,
+        recipientEmail: effective.recipientEmail,
+        // Omit CC on initial preparation: resolve the saved client/workspace default.
+        // An intentional empty edit is explicit and must remain empty.
+        ...(mode !== "prepare" || effective.ccEdited
+          ? { ccEmail: effective.ccEmail }
+          : {}),
+      };
       const response = await fetch(endpoint, {
         method: "POST",
         signal: controller.signal,
@@ -105,7 +139,7 @@ export default function DocumentEmailReview({
           Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          ...values,
+          ...fields,
           businessSlug,
           sendSplitGroup,
           emailPurpose: purpose,
@@ -142,22 +176,22 @@ export default function DocumentEmailReview({
       }
       const prepared = result as Review;
       if (mode === "prepare") {
-        let saved: string | null = null;
-        try {
-          saved = sessionStorage.getItem(key.current);
-        } catch {
-          /* Storage is optional; review remains usable. */
-        }
-        const restored = saved ? JSON.parse(saved) : null;
-        setDraft(
-          restored || {
-            subject: prepared.subject,
-            message: prepared.message,
-            recipientEmail: prepared.recipientEmail,
-            ccEmail: prepared.ccEmail,
-          },
-        );
-        if (restored) {
+        const next = {
+          subject: restored?.subject.trim()
+            ? restored.subject
+            : prepared.subject,
+          message: restored?.message.trim()
+            ? restored.message
+            : prepared.message,
+          recipientEmail: prepared.recipientEmail,
+          ccEmail: prepared.ccEmail,
+          ccEdited: effective.ccEdited,
+        };
+        setDraft(next);
+        if (
+          next.subject !== prepared.subject ||
+          next.message !== prepared.message
+        ) {
           setReview(null);
           setError(
             "Your saved edits were restored. Refresh the review to validate them against the current documents.",
@@ -165,6 +199,7 @@ export default function DocumentEmailReview({
           return;
         }
       }
+
       setReview(prepared);
     } catch (e) {
       if (
@@ -191,8 +226,12 @@ export default function DocumentEmailReview({
       if (mounted.current) void request("prepare");
     }); /* props are fixed for this keyed review */ // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  function edit(name: keyof typeof draft, value: string) {
-    const next = { ...draft, [name]: value };
+  function edit(name: Exclude<keyof typeof draft, "ccEdited">, value: string) {
+    const next = {
+      ...draft,
+      [name]: value,
+      ccEdited: name === "ccEmail" || draft.ccEdited,
+    };
     setDraft(next);
     setReview(null);
     setApproved(false);

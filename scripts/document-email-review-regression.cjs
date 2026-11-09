@@ -176,7 +176,7 @@ async function scenario(
                 if (table === "business_users")
                   rows = [{ id: "membership", role: "owner" }];
                 if (table === "business_settings")
-                  rows = [{ value: { senderEmail: "owner@example.test" } }];
+                  rows = [{ value: { senderEmail: "owner@example.test",replyToEmail:"reply@example.test",bccEmail:"blind-copy@example.test" } }];
                 if (table === kind + "_line_items")
                   rows = docs.map((d) => ({
                     id: "line-" + d.id,
@@ -326,6 +326,8 @@ async function scenario(
     }
     assert.equal(prepared.status, 200, JSON.stringify(prepared.body));
     const draft = prepared.body;
+    assert.equal(draft.replyToEmail,"reply@example.test","Workspace reply-to is resolved on the server and displayed exactly");
+    assert.equal(draft.bccEmail,"blind-copy@example.test");
     assert.equal(calls, 0);
     assert.equal(writes.length, 0);
     assert.equal(draft.attachments.length, split ? 2 : 1);
@@ -401,6 +403,8 @@ async function scenario(
     assert.equal(calls, 1);
     assert.deepEqual(lastPayload.attachments, edited.body.attachments);
     assert.equal(lastPayload.to[0], "alternate@example.test");
+    assert.equal(lastPayload.reply_to,"reply@example.test");
+    assert.deepEqual(lastPayload.bcc,["blind-copy@example.test"]);
     assert(!lastPayload.cc);
     assert.equal(
       pdfs,

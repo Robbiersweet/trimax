@@ -404,13 +404,11 @@ export async function POST(request: Request, { params }: RouteParams) {
     : isValidEmail(fallbackCcEmail)
       ? fallbackCcEmail
       : "";
-  const ccSource = ccEmail
-    ? ccEmail === clientCcEmail
-      ? "client"
-      : "workspace"
-    : null;
+  const ccSource = ccEmail ? ccEmail === clientCcEmail ? "client" : ccEmail === fallbackCcEmail ? "workspace" : "review" : null;
   const bccEmail = emailSettings.bccEmail.trim().toLowerCase();
 
+  const effectiveReplyToEmail = replyToEmail || emailSettings.replyToEmail.trim().toLowerCase() || access.email;
+  if ((effectiveReplyToEmail && !isValidEmail(effectiveReplyToEmail)) || (bccEmail && !isValidEmail(bccEmail))) return NextResponse.json({error:"Review the workspace reply-to and BCC email settings before sending."},{status:400});
   if (!senderEmail || !isValidEmail(senderEmail)) {
     return NextResponse.json(
       {
@@ -437,7 +435,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   if(body.mode === "prepare") { subject=`Estimate ${estimate.display_id || ""}`; message=`Hello,\n\nPlease review the attached estimate.\n\n${facts}\n\nThank you.`; }
   try { validateEmailEdits(subject,message,facts,canonicalSubject); } catch(error) { return NextResponse.json({error:(error as Error).message},{status:409}); }
   const renderedEmail=renderDocumentEmail(message,business.slug,business.name || "Trimax");
-  const reviewSnapshot={kind:"estimate",user:access.userId,estimate,rows,settings:emailSettings,recipientEmail,ccEmail,bccEmail,from,replyToEmail:replyToEmail || access.email,subject,renderedEmail};
+  const reviewSnapshot={kind:"estimate",user:access.userId,estimate,client:authoritativeClient,rows,settings:emailSettings,recipientEmail,ccEmail,bccEmail,from,replyToEmail:effectiveReplyToEmail,subject,renderedEmail};
   let pdfAttachment: EmailAttachment | null = null;
   let pdfAttachmentSource: "print-page" | "none" =
     "none";
@@ -470,12 +468,12 @@ export async function POST(request: Request, { params }: RouteParams) {
   }
 
   const html=renderedEmail.html;
-  if(preflightOnly) return NextResponse.json({ready:true,subject,message,html,facts,from,replyToEmail:replyToEmail || access.email,recipientEmail,ccEmail,bccEmail,attachments:[pdfAttachment],reviewToken:issueEmailReview(reviewSnapshot,[pdfAttachment!])});
+  if(preflightOnly) return NextResponse.json({ready:true,subject,message,html,facts,from,replyToEmail:effectiveReplyToEmail,recipientEmail,ccEmail,bccEmail,attachments:[pdfAttachment],reviewToken:issueEmailReview(reviewSnapshot,[pdfAttachment!])});
 
   const sendResult = await sendWithResend({
     from,
     to: recipientEmail,
-    replyTo: replyToEmail || access.email,
+    replyTo: effectiveReplyToEmail,
     cc: ccEmail || null,
     bcc: bccEmail && isValidEmail(bccEmail) ? bccEmail : null,
     subject,

@@ -39,12 +39,21 @@ const savedFetch = global.fetch;
 global.fetch = async (_url, options) => {
   const body = JSON.parse(options.body);
   requests.push(body);
+  if (!body.recipientEmail)
+    return new Response(
+      JSON.stringify({ error: "Enter a valid customer email address." }),
+      { status: 400 },
+    );
   return new Response(
     JSON.stringify(
       body.mode === "send"
         ? { message: "accepted" }
         : {
             ...fixture,
+            recipientEmail: body.recipientEmail,
+            ccEmail: Object.hasOwn(body, "ccEmail")
+              ? body.ccEmail
+              : fixture.ccEmail,
             ...(body.mode === "review"
               ? {
                   subject: body.subject,
@@ -135,6 +144,10 @@ async function click(tree, label) {
   });
   assert.equal(requests.length, 1);
   assert.equal(requests[0].preflightOnly, true);
+  assert(
+    !Object.hasOwn(requests[0], "ccEmail"),
+    "Initial preparation must resolve saved client/workspace CC defaults",
+  );
   assert.equal(requests.filter((r) => r.mode === "send").length, 0);
   assert.equal(button(tree, "Confirm and Send").props.disabled, true);
   await renderer.act(async () => {
@@ -183,6 +196,67 @@ async function click(tree, label) {
   assert.equal(requests.at(-1).finalApproval, true);
   assert.deepEqual(requests.at(-1).reviewAttachments, fixture.attachments);
   assert.equal(storage.size, 0);
+  await renderer.act(async () => tree.unmount());
+  // Missing saved email + address-only drafts must generate and restore without a loop.
+  const missingProps = {
+    ...props,
+    documentId: "missing-contact",
+    recipientEmail: "",
+  };
+  await renderer.act(async () => {
+    tree = renderer.create(React.createElement(Review, missingProps));
+  });
+  assert(!button(tree, "Confirm and Send"));
+  await renderer.act(async () =>
+    tree.root
+      .findByProps({ "aria-label": "To" })
+      .props.onChange({ target: { value: "manual@example.test" } }),
+  );
+  await click(tree, "Refresh and validate");
+  assert.equal(
+    tree.root.findByProps({ "aria-label": "Subject" }).props.value,
+    fixture.subject,
+  );
+  assert.equal(
+    tree.root.findByProps({ "aria-label": "Message" }).props.value,
+    fixture.message,
+  );
+  assert.equal(
+    tree.root.findByProps({ "aria-label": "CC" }).props.value,
+    fixture.ccEmail,
+    "Saved default CC is shown, not silently removed",
+  );
+  assert(button(tree, "Confirm and Send"));
+  await click(tree, "Cancel");
+  await renderer.act(async () => tree.unmount());
+  await renderer.act(async () => {
+    tree = renderer.create(React.createElement(Review, missingProps));
+  });
+  assert.equal(
+    requests.at(-1).recipientEmail,
+    "manual@example.test",
+    "Restore recipient before preparation, including when profile email is absent",
+  );
+  assert.equal(
+    tree.root.findByProps({ "aria-label": "To" }).props.value,
+    "manual@example.test",
+  );
+  assert(
+    button(tree, "Confirm and Send"),
+    "Contact-only drafts merge into a generated canonical email without repeated restoration errors",
+  );
+  await renderer.act(async () =>
+    tree.root
+      .findByProps({ "aria-label": "CC" })
+      .props.onChange({ target: { value: "" } }),
+  );
+  await click(tree, "Refresh and validate");
+  assert.equal(
+    requests.at(-1).ccEmail,
+    "",
+    "An intentional empty CC edit remains explicit",
+  );
+  await click(tree, "Cancel");
   await renderer.act(async () => tree.unmount());
   // Compact/queue and ordinary initial actions are equally review-only.
   const Panel = load("src/app/components/InvoiceEmailSendPanel.tsx").default;

@@ -23,6 +23,7 @@ const allowed=new Set([
   "src/app/components/EstimateDepositPolicy.tsx",
   "src/app/components/InvoiceBatchSendActions.tsx",
   "src/app/components/InvoiceEmailSendPanel.tsx",
+  "src/app/components/QueueInvoiceAction.tsx",
   "src/app/estimates/[id]/edit/page.tsx",
   "src/app/estimates/[id]/print/page.tsx",
   "src/app/estimates/new/page.tsx",
