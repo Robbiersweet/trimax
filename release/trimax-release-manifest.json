@@ -10,17 +10,17 @@
   },
   "components": {
     "web": {
-      "commit": "4d3e13615e975bd118930b186b3371006bf3016e"
+      "commit": "707715fa7caf78cc4a3d3a3904553d8eab47272e"
     },
     "legacy": {
-      "commit": "4d3e13615e975bd118930b186b3371006bf3016e"
+      "commit": "707715fa7caf78cc4a3d3a3904553d8eab47272e"
     },
     "v2-shadow": {
-      "commit": "4d3e13615e975bd118930b186b3371006bf3016e"
+      "commit": "707715fa7caf78cc4a3d3a3904553d8eab47272e"
     }
   },
   "sourceBundle": {
-    "sha256": "828d58a11fd21d29655c3045f673196dc900d5a1a048a3f94a248dbb59e9bd18",
+    "sha256": "07f2a14a8c9419d1deca5739c5a27312a20195f79cd72008be499130cb990e43",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -58,9 +58,9 @@
       "scripts/check-date-persistence-regression.cjs": "9d05fe83a58333f03ee51856bb9cd4d77e5e1bf65c35b57590d35ff70968a5f7",
       "scripts/complementary-row-regression.cjs": "7b5a850b6849ce608ef33b2b8c5f4c40f2175b59958bd61441918361e5c8dce0",
       "scripts/discounts-and-services-regression.ts": "aa3b178219d61fbafd75d38bc960b60be8cc0695a080ff669d4866fdb1dd1b3b",
-      "scripts/document-email-review-regression.cjs": "4d90d023a0f030c82900f60cc9eb42a012450678974aa3ca3b7b787670ff1bed",
-      "scripts/document-email-review-ui-regression.cjs": "3cf0432e377365b27363372f7709f5dda34112fbf1ec62d8c187d1d5691453da",
-      "scripts/document-email-scope-regression.cjs": "1956deda93f6b2e68de2efc8ad1082536e90df0783f8efae702e743e5423f35e",
+      "scripts/document-email-review-regression.cjs": "c5af663f99fb1a7ded3c59fa727119babc58d4e66ff300c16e777b99b7165ab2",
+      "scripts/document-email-review-ui-regression.cjs": "a4822ab0f41b50c5e4fab7c5dc5420a83ae7a55985ba4165a0d31a3853e19a1f",
+      "scripts/document-email-scope-regression.cjs": "be50b663ab38bda7b555ae97be65984a5ecc2d079d1cd7a8eda67f63add2bf07",
       "scripts/document-notes-privacy-regression.cjs": "2ca0b412048db612fb5c4e250774d28968814fd9b53344db54322f1fd813066b",
       "scripts/duplicate-remittance-regression.ts": "ad026c1affe97d8e492dea351201d067be6d2ca4ae2e18b1d11548b0970bb5de",
       "scripts/estimate-list-compact-actions-regression.ts": "e8301085ae9e0dccdb21c4b8cfbb7b7f339c40d82110b4db7a942fd77eee7908",
@@ -338,7 +338,7 @@
       "scripts/session-tab-isolation-regression.ts": "2e9606534b9482ff7d2f45c30d7b9a4a5bd85ee425cbeb4ca3c33c9fdaeb8d28",
       "scripts/split-invoice-send-regression.ts": "27301b0c098f1028eee390a1901e45792ccee200423d3b42d21ce5e3e9a3bc35",
       "scripts/split-source-relationship-regression.ts": "3e66f4141541fbb83e0645cc0a5f6d07e9e508b5cb49edf99ea88c75dce1200d",
-      "scripts/stabilization-regression.cjs": "aacbb76a4f8778eab862c49624190cee22d5a04c3d1b41e4cbfa60179ac505cf",
+      "scripts/stabilization-regression.cjs": "8ce2d569c4159c9a6dcd02e8d4a505caab9681b5263dfd9850651358cf8c705f",
       "scripts/start-ocr-supervisor.ps1": "1c0b14c757d211cfa54b271c6011504c7d524d4410203e646fd95611dd4dd1b7",
       "scripts/table-caption-ownership-regression.cjs": "802dd640e13598fc74301cb75a5fbd20f035da540e3bdd781963abcfe89330a4",
       "scripts/tenant-isolation-hardening-regression.ts": "a1c42f4f88fbca8e64ae38dfb58127ad9a76bf95ee6ff44f66ddb57d8ed4a396",
@@ -351,8 +351,8 @@
       "src/app/admin/service-requests/components/owner.css": "92045317f886adee59b75b35afa6ec6f589ad1acd1f82f56d29a6e93aab2e589",
       "src/app/admin/service-requests/page.tsx": "bcdac0b54194809d40cc0bb6f79e8581ed0062de2b9160f06dbe609f3270a152",
       "src/app/api/access-requests/route.ts": "be8e1bd81f9ed7e0833594de01d69179b231256229e6c0d1951032bb9cbd645c",
-      "src/app/api/estimates/[id]/send-email/route.ts": "d362d1c1e330d69637d0cf2dfa9a85e28796bc8a88ceacba97107ddc10f012f5",
-      "src/app/api/invoices/[id]/send-email/route.ts": "4b5087584b1028f858c8dd46869114a1abc3b3e2907bd3a52ffd70f8e60683b4",
+      "src/app/api/estimates/[id]/send-email/route.ts": "064b5c707f8d121e031709544d5d3a34be2e82b959db2541d7ef65670c095a2b",
+      "src/app/api/invoices/[id]/send-email/route.ts": "4ec6c44e28942218d8b1e81588975d53dfe9d5b8c4440cc7c175a89be2d97495",
       "src/app/api/invoices/send-overdue-reminders/route.ts": "3f1a2f8ed980de36b62894067a5cbe48f6fff97179de25f11b7d7615674c2982",
       "src/app/api/maintenance-qr/[id]/route.ts": "a570282e4c3ec92a97de85276a17887ea59bb83407d2a9fe8cb971fc65cb9284",
       "src/app/api/maintenance-qr/route.ts": "8fd39825940a6150ad6fade9031657f8eb484923fd254e6fdf397083399602eb",
@@ -410,7 +410,7 @@
       "src/app/components/DeleteEstimateButton.tsx": "90cbe546245e40b69db4f947f89ffa05c869c362b7f0e776318633ba2226f9a2",
       "src/app/components/DeleteInvoiceButton.tsx": "7591783148622b1f4cd508d47ec3d3f99894cb27f682a5158d9a25f3e880b293",
       "src/app/components/DeleteQueueItemButton.tsx": "05f40948fede7a6d92d795c5a11c0dc130ec1aec2f832d9906a935b7d2d715f9",
-      "src/app/components/DocumentEmailReview.tsx": "fbd6cbfd8d74566ae10fbf0cb1f6f06a7c63fb86f2dbdc39259eef743fe552d7",
+      "src/app/components/DocumentEmailReview.tsx": "7569fb2d24c5e31f0d3fcbd04e8ea49ba6ac1e474119c707711a2c5068056a26",
       "src/app/components/DocumentReadinessPanel.tsx": "06ea8a58252e27215c5e6e6d437bcc15a5b98980d1cf9e96aa37f301e45be47e",
       "src/app/components/EstimateDepositPolicy.tsx": "54fb76517d126ceb1a2d3df6ff07a0987304ffd6072b3b0955e1c95409ea001b",
       "src/app/components/FilteredResultsScroller.tsx": "009d2a40551e1ef72053bd2a7c37b6b84c51f460c36896d29a46ba2141d63514",
@@ -448,7 +448,7 @@
       "src/app/components/PushNotificationSetup.tsx": "0c7bda2662d43370455e2f173c3c51f76d36620b093542ea121caa6c6806c2fc",
       "src/app/components/PwaRegistration.tsx": "91f4d4836faa4db9b8191b6baf6b07144530be539aecf8dae80f90f7800a90b0",
       "src/app/components/QueueClickableCard.tsx": "e5a238a1be6174944e446b8f9d8e945381a6f60f7a890d173d247cabf7fe2cb0",
-      "src/app/components/QueueInvoiceAction.tsx": "13b05d9ac2f4db5aa3ccf0f72d8492ad8f67d95215806892c91bea27a1fa4d16",
+      "src/app/components/QueueInvoiceAction.tsx": "1774dccb5156063e1b93dde967d19b232bcdd53107a4ae93b6b047bd39c949c2",
       "src/app/components/QuickCommandCenter.tsx": "e630fe08ca3815301be88b28b0dfc3160d0723690db0f3164cdb3a95652efb53",
       "src/app/components/RecentScans.tsx": "0028aec174703631fe75cd0c95b4e107d5e2c9795eb8a4fe17bbf2e7be033e1b",
       "src/app/components/ReleaseDiagnostics.tsx": "2b753593c400ce36611ec5a9033bc83c67288322bfa27c502587dbd05dfe2661",
@@ -1773,8 +1773,8 @@
   },
   "upgradeContext": {
     "candidateReleaseId": "trimax-document-email-review-20261108-rc1",
-    "applicationCommit": "4d3e13615e975bd118930b186b3371006bf3016e",
-    "machineryCommit": "4d3e13615e975bd118930b186b3371006bf3016e",
+    "applicationCommit": "707715fa7caf78cc4a3d3a3904553d8eab47272e",
+    "machineryCommit": "707715fa7caf78cc4a3d3a3904553d8eab47272e",
     "currentProductionRelease": {
       "manifestCommit": "37e9fa26d5b969782cc37563393e456d9525fd89",
       "manifestDigest": "56eeb028de8a95fe00ca3d3dba87123780372dfb965ac36e61b7f11b42ba70a2",
