@@ -1,26 +1,26 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-document-email-review-20261108-rc1",
+  "releaseId": "trimax-document-email-review-20261109-rc2",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-11-09T07:37:15.377Z",
-  "releaseTimestamp": "2026-11-09T07:37:15.377Z",
+  "createdAt": "2026-11-09T10:33:27.152Z",
+  "releaseTimestamp": "2026-11-09T10:33:27.152Z",
   "baseProduction": {
-    "commit": "37e9fa26d5b969782cc37563393e456d9525fd89",
-    "vercelDeploymentId": "CBDjowmYCc9NgyFv9qNbuMN5Bj4v"
+    "commit": "00cb1ad4c190e06e9788fa9910b39ef5653b698a",
+    "vercelDeploymentId": "7kttSHfaHjtETeoxe6dteds7HJk9"
   },
   "components": {
     "web": {
-      "commit": "707715fa7caf78cc4a3d3a3904553d8eab47272e"
+      "commit": "a4f4cd7b8c3cff11e5ba8407bbac18696f2e29c8"
     },
     "legacy": {
-      "commit": "707715fa7caf78cc4a3d3a3904553d8eab47272e"
+      "commit": "a4f4cd7b8c3cff11e5ba8407bbac18696f2e29c8"
     },
     "v2-shadow": {
-      "commit": "707715fa7caf78cc4a3d3a3904553d8eab47272e"
+      "commit": "a4f4cd7b8c3cff11e5ba8407bbac18696f2e29c8"
     }
   },
   "sourceBundle": {
-    "sha256": "07f2a14a8c9419d1deca5739c5a27312a20195f79cd72008be499130cb990e43",
+    "sha256": "80f727d0cbfc14d57173e9d348f1094392b5720f334b5b5fdb400f4e0c0eb207",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -59,7 +59,7 @@
       "scripts/complementary-row-regression.cjs": "7b5a850b6849ce608ef33b2b8c5f4c40f2175b59958bd61441918361e5c8dce0",
       "scripts/discounts-and-services-regression.ts": "aa3b178219d61fbafd75d38bc960b60be8cc0695a080ff669d4866fdb1dd1b3b",
       "scripts/document-email-review-regression.cjs": "c5af663f99fb1a7ded3c59fa727119babc58d4e66ff300c16e777b99b7165ab2",
-      "scripts/document-email-review-ui-regression.cjs": "a4822ab0f41b50c5e4fab7c5dc5420a83ae7a55985ba4165a0d31a3853e19a1f",
+      "scripts/document-email-review-ui-regression.cjs": "e6f450864e43dc0916c98a672fe98726cadd659814aa3a574db9faf4912e367a",
       "scripts/document-email-scope-regression.cjs": "be50b663ab38bda7b555ae97be65984a5ecc2d079d1cd7a8eda67f63add2bf07",
       "scripts/document-notes-privacy-regression.cjs": "2ca0b412048db612fb5c4e250774d28968814fd9b53344db54322f1fd813066b",
       "scripts/duplicate-remittance-regression.ts": "ad026c1affe97d8e492dea351201d067be6d2ca4ae2e18b1d11548b0970bb5de",
@@ -410,7 +410,7 @@
       "src/app/components/DeleteEstimateButton.tsx": "90cbe546245e40b69db4f947f89ffa05c869c362b7f0e776318633ba2226f9a2",
       "src/app/components/DeleteInvoiceButton.tsx": "7591783148622b1f4cd508d47ec3d3f99894cb27f682a5158d9a25f3e880b293",
       "src/app/components/DeleteQueueItemButton.tsx": "05f40948fede7a6d92d795c5a11c0dc130ec1aec2f832d9906a935b7d2d715f9",
-      "src/app/components/DocumentEmailReview.tsx": "7569fb2d24c5e31f0d3fcbd04e8ea49ba6ac1e474119c707711a2c5068056a26",
+      "src/app/components/DocumentEmailReview.tsx": "590e9ec4a627b88c7fc7130b9ae9547c1d44f0a15ad5a5bfd83cb675437de71e",
       "src/app/components/DocumentReadinessPanel.tsx": "06ea8a58252e27215c5e6e6d437bcc15a5b98980d1cf9e96aa37f301e45be47e",
       "src/app/components/EstimateDepositPolicy.tsx": "54fb76517d126ceb1a2d3df6ff07a0987304ffd6072b3b0955e1c95409ea001b",
       "src/app/components/FilteredResultsScroller.tsx": "009d2a40551e1ef72053bd2a7c37b6b84c51f460c36896d29a46ba2141d63514",
@@ -1772,22 +1772,22 @@
     "sha256": "bccc49970c7db9510b64204809cbb282c6d22d5f651708a9e7a7fede7a550bbc"
   },
   "upgradeContext": {
-    "candidateReleaseId": "trimax-document-email-review-20261108-rc1",
-    "applicationCommit": "707715fa7caf78cc4a3d3a3904553d8eab47272e",
-    "machineryCommit": "707715fa7caf78cc4a3d3a3904553d8eab47272e",
+    "candidateReleaseId": "trimax-document-email-review-20261109-rc2",
+    "applicationCommit": "a4f4cd7b8c3cff11e5ba8407bbac18696f2e29c8",
+    "machineryCommit": "a4f4cd7b8c3cff11e5ba8407bbac18696f2e29c8",
     "currentProductionRelease": {
-      "manifestCommit": "37e9fa26d5b969782cc37563393e456d9525fd89",
-      "manifestDigest": "56eeb028de8a95fe00ca3d3dba87123780372dfb965ac36e61b7f11b42ba70a2",
-      "releaseId": "trimax-high-res-still-20261103-rc1",
-      "deploymentCommit": "37e9fa26d5b969782cc37563393e456d9525fd89",
-      "deploymentId": "CBDjowmYCc9NgyFv9qNbuMN5Bj4v"
+      "manifestCommit": "00cb1ad4c190e06e9788fa9910b39ef5653b698a",
+      "manifestDigest": "07cf48620db8e7f30a6820eef6bea889980621a0924210e6ee805c2c5ccf39c1",
+      "releaseId": "trimax-document-email-review-20261108-rc1",
+      "deploymentCommit": "00cb1ad4c190e06e9788fa9910b39ef5653b698a",
+      "deploymentId": "7kttSHfaHjtETeoxe6dteds7HJk9"
     }
   },
   "contractRevision": {
-    "id": "mandatory-document-email-review",
-    "priorManifestDigest": "56eeb028de8a95fe00ca3d3dba87123780372dfb965ac36e61b7f11b42ba70a2",
-    "reason": "Email-only application change: mandatory explicit approval binds editable email, canonical financial details and exact PDFs; no database/schema/model/worker/payment changes.",
-    "rollback": "Preserve all financial records and audit history. Never roll back to unattended sending: retain the approval guard or keep document email transmission disabled."
+    "id": "mandatory-email-review-viewport-repair",
+    "priorManifestDigest": "07cf48620db8e7f30a6820eef6bea889980621a0924210e6ee805c2c5ccf39c1",
+    "reason": "Two-file viewport portal repair and regression. Mandatory server approval, PDFs, financial, database, OCR/model/worker configuration and website sources unchanged from approved deployed email release.",
+    "rollback": "Restore deployed mandatory-review rc1 00cb1ad/dpl_7kttSHfaHjtETeoxe6dteds7HJk9 and document-email-review-rc1 workers; preserve all financial/audit data and server approval enforcement. No database restore."
   },
   "captureWorkflow": "guided-live-camera-v1"
 }
