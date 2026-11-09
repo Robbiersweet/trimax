@@ -213,7 +213,7 @@ function scheduleStatusLabel(template: RecurringTemplate) {
       return "Sends today";
     }
 
-    return `Auto sends in ${days} day${days === 1 ? "" : "s"}`;
+    return `Draft ready for review in ${days} day${days === 1 ? "" : "s"}`;
   }
 
   if (days < 0) {
@@ -742,7 +742,7 @@ function RecurringInvoicesPageContent() {
 
     if (!response.ok || !payload?.ok) {
       throw new Error(
-        payload?.error ?? "The first invoice could not be sent right now."
+        payload?.error ?? "The first invoice could not be prepared right now."
       );
     }
 
@@ -777,7 +777,7 @@ function RecurringInvoicesPageContent() {
     if (autoSendEnabled && !isValidEmail(recipientEmail.trim())) {
       setToast({
         type: "error",
-        message: "Auto Send mode needs a valid recipient email.",
+        message: "Scheduled Review mode needs a valid recipient email.",
       });
       return;
     }
@@ -789,7 +789,7 @@ function RecurringInvoicesPageContent() {
       setToast({
         type: "error",
         message:
-          "Save and send now requires Auto Send mode and a valid recipient email.",
+          "Create first draft for review requires Scheduled Review mode and a valid recipient email.",
       });
       return;
     }
@@ -942,7 +942,7 @@ function RecurringInvoicesPageContent() {
           message:
             error instanceof Error
               ? error.message
-              : "Recurring invoice saved, but the first invoice could not be sent.",
+              : "Recurring invoice saved, but the first invoice could not be prepared.",
         });
         return;
       }
@@ -1272,7 +1272,7 @@ function RecurringInvoicesPageContent() {
       setToast({
         type: "error",
         message:
-          "Add a client email or create a new template with an Auto Send recipient before enabling Auto Send.",
+          "Add a client email or create a new template with an Scheduled Review recipient before enabling Scheduled Review.",
       });
       return;
     }
@@ -1316,7 +1316,7 @@ function RecurringInvoicesPageContent() {
     setToast({
       type: "success",
       message: nextValue
-        ? `${template.name} is in Auto Send mode.`
+        ? `${template.name} is in Scheduled Review mode.`
         : `${template.name} is in Manual / Draft mode.`,
     });
   }
@@ -1351,7 +1351,7 @@ function RecurringInvoicesPageContent() {
 
             <p className="mt-2 max-w-3xl text-zinc-400">
               Save repeat invoice packages for Just Kleen, then choose Manual /
-              Manual / Draft mode or Auto Send mode for each recurring invoice.
+              Manual / Draft mode or Scheduled Review mode for each recurring invoice.
             </p>
           </div>
 
@@ -1710,7 +1710,7 @@ function RecurringInvoicesPageContent() {
                 </span>
                 <span className="mt-1 block text-sm leading-5 text-zinc-400">
                   Trimax will run this template on the schedule. Pause this when
-                  you do not want invoices created or auto-sent.
+                  you do not want invoices created for review.
                 </span>
               </span>
             </label>
@@ -1729,11 +1729,11 @@ function RecurringInvoicesPageContent() {
               />
               <span>
                 <span className="block text-sm font-semibold text-white">
-                  Auto Send mode
+                  Scheduled Review mode
                 </span>
                 <span className="mt-1 block text-sm leading-5 text-zinc-400">
-                  Create and send the invoice automatically with the official
-                  customer PDF attached. Leave off for Manual / Draft mode.
+                  Create invoice drafts with recipients ready for review. Every email
+                  requires explicit final approval. Leave off for Manual / Draft mode.
                 </span>
               </span>
             </label>
@@ -1744,7 +1744,7 @@ function RecurringInvoicesPageContent() {
                   Delivery
                 </p>
                 <p className="mt-2 text-sm leading-6 text-zinc-400">
-                  Auto Send mode requires a recipient. CC and BCC are optional
+                  Scheduled Review mode requires a recipient. CC and BCC are optional
                   for temporary routing changes.
                 </p>
                 <div className="mt-4 grid gap-4 lg:grid-cols-3">
@@ -1754,7 +1754,7 @@ function RecurringInvoicesPageContent() {
                     placeholder="customer@example.com"
                     value={recipientEmail}
                     onChange={setRecipientEmail}
-                    helperText="Required for Auto Send mode."
+                    helperText="Required for Scheduled Review mode."
                   />
                   <InputField
                     label="CC"
@@ -1987,7 +1987,7 @@ function RecurringInvoicesPageContent() {
               </h2>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
                 FreshBooks-style recurring invoices with two modes: Manual /
-                Draft for review, or Auto Send for scheduled customer delivery.
+                Draft for review, or Scheduled Review for drafts prepared on a schedule. Neither mode sends without approval.
               </p>
             </div>
 
@@ -2019,12 +2019,12 @@ function RecurringInvoicesPageContent() {
 
             <div className="recurring-metric-card rounded-2xl border p-4">
               <p className="text-xs font-black uppercase tracking-[0.2em]">
-                Auto Send
+                Scheduled Review
               </p>
               <p className="mt-2 text-3xl font-black">
                 {autoSendTemplates.length}
               </p>
-              <p className="mt-1 text-sm">Send without prompting</p>
+              <p className="mt-1 text-sm">Human approval required</p>
             </div>
 
             <div className="recurring-metric-card rounded-2xl border p-4">
@@ -2235,7 +2235,7 @@ function RecurringInvoicesPageContent() {
                         >
                           {template.auto_send_enabled
                             ? "Use Manual / Draft"
-                            : "Enable Auto Send"}
+                            : "Enable Scheduled Review"}
                         </Button>
                       ) : null}
                       {template.is_active ? (
@@ -2288,7 +2288,7 @@ function RecurringInvoicesPageContent() {
                   </h3>
                   <p className="mt-2 text-sm leading-6 text-zinc-300">
                     No invoice is sent today. The first recurring invoice will
-                    be sent on {formatDate(nextRunDate)}.
+                    be prepared for review on {formatDate(nextRunDate)}.
                   </p>
                   <Button
                     className="mt-4"
@@ -2308,13 +2308,13 @@ function RecurringInvoicesPageContent() {
                     Create first draft for review
                   </h3>
                   <p className="mt-2 text-sm leading-6 text-zinc-300">
-                    Create and email one invoice immediately. Future recurring
+                    Create one draft immediately for review. No email is transmitted without final approval. Future recurring
                     invoices will begin on {formatDate(nextRunDate)}.
                   </p>
                   {!autoSendEnabled || !isValidEmail(recipientEmail.trim()) ? (
                     <p className="mt-3 rounded-2xl border border-amber-400/25 bg-amber-400/10 p-3 text-sm leading-6 text-amber-100">
-                      Turn on Auto Send mode and enter a valid recipient before
-                      sending the first invoice now.
+                      Turn on Scheduled Review mode and enter a valid recipient before
+                      reviewing the first draft.
                     </p>
                   ) : null}
                   <Button

@@ -363,7 +363,7 @@ async function createInvoiceFromTemplate(
       notes: [
         template.notes,
         template.auto_send_enabled
-          ? "Recurring invoice prepared by Trimax auto-send."
+          ? "Recurring invoice draft prepared for human email review."
           : "Recurring draft prepared by Trimax. Review and send manually.",
       ]
         .filter(Boolean)
@@ -579,7 +579,7 @@ export async function POST(request: Request) {
 
   if (!isValidEmail(recipientEmail)) {
     return NextResponse.json(
-      { error: "Send first invoice now needs a valid recipient email." },
+      { error: "Creating the first draft for review needs a valid recipient email." },
       { status: 400 }
     );
   }
