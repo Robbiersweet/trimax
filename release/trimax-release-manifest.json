@@ -6,21 +6,21 @@
   "releaseTimestamp": "2026-11-09T07:37:15.377Z",
   "baseProduction": {
     "commit": "37e9fa26d5b969782cc37563393e456d9525fd89",
-    "vercelDeploymentId": "dpl_CBDjowmYCc9NgyFv9qNbuMN5Bj4v"
+    "vercelDeploymentId": "CBDjowmYCc9NgyFv9qNbuMN5Bj4v"
   },
   "components": {
     "web": {
-      "commit": "10857f47f07d63b22f6cb8389bae4e46daedda12"
+      "commit": "95a87228cad32e8e9e616ab124285c4d8ccae948"
     },
     "legacy": {
-      "commit": "10857f47f07d63b22f6cb8389bae4e46daedda12"
+      "commit": "95a87228cad32e8e9e616ab124285c4d8ccae948"
     },
     "v2-shadow": {
-      "commit": "10857f47f07d63b22f6cb8389bae4e46daedda12"
+      "commit": "95a87228cad32e8e9e616ab124285c4d8ccae948"
     }
   },
   "sourceBundle": {
-    "sha256": "61296e16f46b83002304382b09efe6bf5da0bd1b0defc0b2452100f8f1bcbb7b",
+    "sha256": "6c83ee33c8261964bbdc286e35a059793ad56c89440c3ce11346c19670184a51",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -374,7 +374,7 @@
       "src/app/api/push/queue-created/route.ts": "19e60a688ee2c9f23db484a7df77576213f141111ed73d5693fa455c0c445877",
       "src/app/api/queue-items/[id]/route.ts": "5cd257ffd7e62daeb7732e5694a9dc8f0393362cfb3d07d74e12c89ae7871f7f",
       "src/app/api/queue/send-tbd-reminders/route.ts": "efd0f4b5d05f4316c7780c2f9a62a56153966a6d6188e31ce734d8d8abff23f8",
-      "src/app/api/recurring-invoices/run/route.ts": "0ff2963fbe2f746edcfee5f5e65c07602602f531f9cc31637d5246c61b607e50",
+      "src/app/api/recurring-invoices/run/route.ts": "f4c952a701ed08036c8d417ccd51e2b5bbe3d709fd1ae1d3d6589b1f0c7e64ae",
       "src/app/api/request-photos/route.ts": "d254bb4bfe2ad7786ca9b272405e24e066a9ccb3f6aaa652da7a512b8db3b8aa",
       "src/app/book/ApartmentTurnFields.tsx": "d138f9de0f32ca9db60bb74ecbeec2e1702a1f60c538061bee0df18c12011267",
       "src/app/book/RequestForm.tsx": "5c7e21b5d9c8032328c6129f8dcba2a9794a64ac05485e920c4419a00ec30f6e",
@@ -703,7 +703,7 @@
       "src/app/queue/[unit]/edit/page.tsx": "cbdd57e5b8e88cbfc2624a510a24529b41723c50ce79850d58d29e637c868ce6",
       "src/app/queue/[unit]/page.tsx": "cc89faa6bf49a17e06bd5ac291fc006b1982a0a76199f494e8b54ec79aa89aec",
       "src/app/queue/page.tsx": "d1552a21454061f3b348e10a293898065a7a097c12914fbab44815b63a2ee086",
-      "src/app/recurring-invoices/page.tsx": "4fdae007a12e73a81d9e7e6ed224e02a82c71b54c6703f9ecc4af4594d18976d",
+      "src/app/recurring-invoices/page.tsx": "a6766ab37cafe1041dde69b73ef8d5a6e63cda3c3e79445e92e8aa21b956e12f",
       "src/app/reports/page.tsx": "a50611261889780a7a5a7670471022da1715578011b9b16b31becb98e3fc4b98",
       "src/app/request-access/page.tsx": "79b3f1188970fe3c1078d1fbe6a9dfac9ba26cd99263cd2ad3c57722660090b2",
       "src/app/reset-password/page.tsx": "7ceb0be0b5cc1781712a5148613a01a34604d228c27fa7cef479490abb619777",
@@ -1773,14 +1773,14 @@
   },
   "upgradeContext": {
     "candidateReleaseId": "trimax-document-email-review-20261108-rc1",
-    "applicationCommit": "10857f47f07d63b22f6cb8389bae4e46daedda12",
-    "machineryCommit": "10857f47f07d63b22f6cb8389bae4e46daedda12",
+    "applicationCommit": "95a87228cad32e8e9e616ab124285c4d8ccae948",
+    "machineryCommit": "95a87228cad32e8e9e616ab124285c4d8ccae948",
     "currentProductionRelease": {
       "manifestCommit": "37e9fa26d5b969782cc37563393e456d9525fd89",
       "manifestDigest": "56eeb028de8a95fe00ca3d3dba87123780372dfb965ac36e61b7f11b42ba70a2",
       "releaseId": "trimax-high-res-still-20261103-rc1",
       "deploymentCommit": "37e9fa26d5b969782cc37563393e456d9525fd89",
-      "deploymentId": "dpl_CBDjowmYCc9NgyFv9qNbuMN5Bj4v"
+      "deploymentId": "CBDjowmYCc9NgyFv9qNbuMN5Bj4v"
     }
   },
   "contractRevision": {
