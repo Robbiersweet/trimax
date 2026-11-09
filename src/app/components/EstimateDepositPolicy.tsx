@@ -1,5 +1,8 @@
 "use client";
-import { readEstimatePolicy } from "../lib/documentEmailPolicy";
+import {
+  readEstimatePolicy,
+  formatDocumentMoney,
+} from "../lib/documentEmailPolicy";
 export default function EstimateDepositPolicy({
   terms,
   onChange,
@@ -20,7 +23,7 @@ export default function EstimateDepositPolicy({
         (kind === "none"
           ? "Deposit: none."
           : kind === "fixed"
-            ? `Deposit: $${value.toFixed(2)}.`
+            ? `Deposit: ${formatDocumentMoney(value)}.`
             : `Deposit: ${value}%.`),
     );
   }

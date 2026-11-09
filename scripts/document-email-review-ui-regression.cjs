@@ -252,14 +252,58 @@ async function click(tree, label) {
   await renderer.act(async () => sendButton.props.onClick());
   assert(tree.root.findAllByProps({ role: "dialog" }).length);
   assert.equal(requests.at(-1).mode, "prepare");
-  const firstBatchApproval=tree.root.findAllByType("input").find(i=>i.props.type==="checkbox" && !i.props["aria-label"]);
-  await renderer.act(async()=>firstBatchApproval.props.onChange({target:{checked:true}}));
-  await click(tree,"Confirm and Send");
-  assert.equal(requests.filter(r=>r.mode==='send').length,2,'Only the explicitly approved first batch email is submitted');
-  assert.equal(requests.at(-1).mode,'prepare','The second selected email only opens review');
-  assert.equal(button(tree,'Confirm and Send').props.disabled,true,'Next batch item needs fresh explicit approval');
-  await click(tree,"Cancel");
-  assert.equal(requests.filter(r=>r.mode==='send').length,2,'Canceling the second item sends nothing else');
+  const firstBatchApproval = tree.root
+    .findAllByType("input")
+    .find((i) => i.props.type === "checkbox" && !i.props["aria-label"]);
+  await renderer.act(async () =>
+    firstBatchApproval.props.onChange({ target: { checked: true } }),
+  );
+  await click(tree, "Confirm and Send");
+  assert.equal(
+    requests.filter((r) => r.mode === "send").length,
+    2,
+    "Only the explicitly approved first batch email is submitted",
+  );
+  assert.equal(
+    requests.at(-1).mode,
+    "prepare",
+    "The second selected email only opens review",
+  );
+  assert.equal(
+    button(tree, "Confirm and Send").props.disabled,
+    true,
+    "Next batch item needs fresh explicit approval",
+  );
+  await click(tree, "Cancel");
+  assert.equal(
+    requests.filter((r) => r.mode === "send").length,
+    2,
+    "Canceling the second item sends nothing else",
+  );
+  await renderer.act(async () => tree.unmount());
+  const DepositPolicy = load(
+    "src/app/components/EstimateDepositPolicy.tsx",
+  ).default;
+  let savedTerms = "";
+  await renderer.act(async () => {
+    tree = renderer.create(
+      React.createElement(DepositPolicy, {
+        terms: "Public estimate terms.\nDeposit: $100.00.",
+        onChange: (value) => {
+          savedTerms = value;
+        },
+      }),
+    );
+  });
+  await renderer.act(async () =>
+    tree.root
+      .findByProps({ "aria-label": "Deposit value" })
+      .props.onChange({ target: { value: "324.205" } }),
+  );
+  assert(
+    savedTerms.includes("Deposit: $324.21."),
+    "Fixed deposit editor uses canonical half-cent rounding",
+  );
   await renderer.act(async () => tree.unmount());
   console.log(
     "PASS actual React review interactions: initial/compact/batch actions do not transmit; final approval only; edit invalidation; cancellation; draft restoration; exact PDF payload; no real network.",

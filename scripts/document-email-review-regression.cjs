@@ -72,6 +72,19 @@ for (const [t, approved, s, p, now] of [
   ["forged", true, snapshot, a, 1001],
 ])
   assert.throws(() => review.verifyEmailReview(t, approved, s, p, now));
+assert.equal(
+  require("node:crypto")
+    .createHash("sha256")
+    .update(
+      load("src/app/lib/documentEmailBranding.ts").emailBranding(
+        "rnl-creations",
+        "R&L Creations",
+      ).html,
+    )
+    .digest("hex"),
+  "ce4d6eb2982195dbacbc001e0e97facd60abcbda5a73bf0e2433bd85dd904937",
+  "Approved signature HTML, links and UTF-8 accessibility text stay exact",
+);
 let checks = 0;
 async function scenario(
   kind,
@@ -290,7 +303,15 @@ async function scenario(
         record.deposit_status = "none";
       }
     }
-    if(kind==='invoice') { record.invoice_amount=9999; assert.equal((await post({preflightOnly:true,mode:'prepare'})).status,409,'Stored total/PDF mismatch blocks sending');record.invoice_amount=10000; }
+    if (kind === "invoice") {
+      record.invoice_amount = 9999;
+      assert.equal(
+        (await post({ preflightOnly: true, mode: "prepare" })).status,
+        409,
+        "Stored total/PDF mismatch blocks sending",
+      );
+      record.invoice_amount = 10000;
+    }
     const prepared = await post({ preflightOnly: true, mode: "prepare" });
     if (pdfFailure) {
       assert.equal(prepared.status, 502);

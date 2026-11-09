@@ -60,7 +60,7 @@ export default function InvoiceEmailSendPanel(
         {sent ? "Accepted for sending" : "Send by Email"}
       </h2>
       <p>
-        {props.documentNumber} � {props.amountDue}
+        {props.documentNumber} - {props.amountDue}
       </p>
       <p>
         To: {props.recipientEmail || "Enter recipient in Review Email"}
