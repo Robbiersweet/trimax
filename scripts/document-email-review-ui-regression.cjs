@@ -138,11 +138,18 @@ async function click(tree, label) {
   assert.equal(requests.filter((r) => r.mode === "send").length, 0);
   assert.equal(button(tree, "Confirm and Send").props.disabled, true);
   await renderer.act(async () => {
-    tree.root
-      .findByProps({ "aria-label": "Message" })
-      .props.onChange({
-        target: { value: fixture.message.replace("Hello,", "Dear customer,") },
-      });
+    await button(tree, "Confirm and Send").props.onClick();
+  });
+  assert.equal(
+    requests.filter((r) => r.mode === "send").length,
+    0,
+    "Calling a disabled final handler cannot bypass approval",
+  );
+
+  await renderer.act(async () => {
+    tree.root.findByProps({ "aria-label": "Message" }).props.onChange({
+      target: { value: fixture.message.replace("Hello,", "Dear customer,") },
+    });
   });
   assert(storage.size > 0);
   assert(
@@ -245,8 +252,14 @@ async function click(tree, label) {
   await renderer.act(async () => sendButton.props.onClick());
   assert(tree.root.findAllByProps({ role: "dialog" }).length);
   assert.equal(requests.at(-1).mode, "prepare");
-  await click(tree, "Cancel");
-  assert.equal(requests.filter((r) => r.mode === "send").length, 1);
+  const firstBatchApproval=tree.root.findAllByType("input").find(i=>i.props.type==="checkbox" && !i.props["aria-label"]);
+  await renderer.act(async()=>firstBatchApproval.props.onChange({target:{checked:true}}));
+  await click(tree,"Confirm and Send");
+  assert.equal(requests.filter(r=>r.mode==='send').length,2,'Only the explicitly approved first batch email is submitted');
+  assert.equal(requests.at(-1).mode,'prepare','The second selected email only opens review');
+  assert.equal(button(tree,'Confirm and Send').props.disabled,true,'Next batch item needs fresh explicit approval');
+  await click(tree,"Cancel");
+  assert.equal(requests.filter(r=>r.mode==='send').length,2,'Canceling the second item sends nothing else');
   await renderer.act(async () => tree.unmount());
   console.log(
     "PASS actual React review interactions: initial/compact/batch actions do not transmit; final approval only; edit invalidation; cancellation; draft restoration; exact PDF payload; no real network.",

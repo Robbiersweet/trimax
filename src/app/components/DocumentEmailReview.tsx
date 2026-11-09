@@ -24,6 +24,7 @@ export default function DocumentEmailReview({
   purpose = "send",
   onClose,
   onSent,
+  onSubmittingChange,
 }: {
   documentId: string;
   kind?: "invoice" | "estimate";
@@ -33,6 +34,7 @@ export default function DocumentEmailReview({
   purpose?: string;
   onClose: () => void;
   onSent: () => void;
+  onSubmittingChange?: (submitting: boolean) => void;
 }) {
   const [draft, setDraft] = useState({
     subject: "",
@@ -83,6 +85,7 @@ export default function DocumentEmailReview({
     inFlight.current = true;
     setBusy(true);
     setSubmitting(mode === "send");
+    onSubmittingChange?.(mode === "send");
     setError("");
     setApproved(false);
     const controller = new AbortController();
@@ -175,6 +178,7 @@ export default function DocumentEmailReview({
         );
     } finally {
       inFlight.current = false;
+      onSubmittingChange?.(false);
       if (mounted.current) {
         setBusy(false);
         setSubmitting(false);

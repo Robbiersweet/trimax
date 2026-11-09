@@ -290,6 +290,7 @@ async function scenario(
         record.deposit_status = "none";
       }
     }
+    if(kind==='invoice') { record.invoice_amount=9999; assert.equal((await post({preflightOnly:true,mode:'prepare'})).status,409,'Stored total/PDF mismatch blocks sending');record.invoice_amount=10000; }
     const prepared = await post({ preflightOnly: true, mode: "prepare" });
     if (pdfFailure) {
       assert.equal(prepared.status, 502);

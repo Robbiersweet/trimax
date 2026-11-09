@@ -51,4 +51,6 @@ scripts.push('scripts/ocr-performance-regression.cjs','scripts/ocr-performance-s
 module.exports=scripts;
 scripts.push('scripts/ocr-upload-retry-regression.cjs','scripts/ocr-upload-retry-scope-regression.cjs');
 
-scripts.push('scripts/high-resolution-still-regression.cjs','scripts/high-resolution-still-scope-regression.cjs');
+scripts.push('scripts/high-resolution-still-regression.cjs','scripts/document-email-scope-regression.cjs');
+
+scripts.push('scripts/document-email-review-regression.cjs','scripts/document-email-review-ui-regression.cjs');

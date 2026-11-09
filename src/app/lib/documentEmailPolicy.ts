@@ -78,8 +78,15 @@ export function validateEmailEdits(
     throw Error(
       "Keep the canonical document details exactly once. Correct amounts and terms on the saved document, then refresh review.",
     );
+  const documentNumbers = [
+    ...facts.matchAll(/^(?:Estimate|Invoice): (.+)$/gm),
+  ].map((match) => match[1]);
+  const subjectCover = documentNumbers.reduce(
+    (text, id) => text.split(id).join(""),
+    subject,
+  );
   const cover =
-    (subject === canonicalSubject ? "" : subject) +
+    (subject === canonicalSubject ? "" : subjectCover) +
     "\n" +
     message.replace(facts, "");
   if (

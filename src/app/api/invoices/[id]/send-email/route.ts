@@ -1,3 +1,8 @@
+import { estimateMoney } from "../../../../lib/documentEmailPolicy";
+import { moneyCents } from "../../../../lib/money";
+import { resolveInvoiceTerms } from "../../../../lib/documentTerms";
+import { getSmartInvoiceDates } from "../../../../utils/invoiceDates";
+import { maybeCanonicalApartmentUnitLabel } from "../../../../utils/unitLabels";
 import { issueEmailReview, verifyEmailReview, approvedAttachments, reviewDigest } from "../../../../lib/documentEmailReview";
 import { renderDocumentEmail } from "../../../../lib/documentEmailBranding";
 import { validateEmailEdits } from "../../../../lib/documentEmailPolicy";
@@ -83,6 +88,7 @@ type InvoiceRow = {
   split_count: number | null;
   deposit_requested_amount?: string | number | null;
   deposit_status?: string | null;
+  deposit_note?: string | null;
   import_reviewed?: boolean | null;
   terms?: string | null;
   tax_mode?: string | null;
@@ -586,7 +592,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   const { data: invoice, error: invoiceError } = await supabase
     .from("invoices")
     .select(
-      "id, business_id, client_id, display_id, customer_name, project_title, invoice_amount, amount_paid, notes, created_at, due_date, issue_date, reference, service_address, status, split_parent_invoice_id, split_sequence, split_count, import_reviewed, terms, deposit_requested_amount, deposit_status, tax_mode, tax_label, tax_rate"
+      "id, business_id, client_id, display_id, customer_name, project_title, invoice_amount, amount_paid, notes, created_at, due_date, issue_date, reference, service_address, status, split_parent_invoice_id, split_sequence, split_count, import_reviewed, terms, deposit_requested_amount, deposit_status, deposit_note, tax_mode, tax_label, tax_rate"
     )
     .eq("id", id)
     .limit(1)
@@ -792,7 +798,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     const { data: splitInvoices, error: splitInvoicesError } = await supabase
       .from("invoices")
       .select(
-        "id, business_id, client_id, display_id, customer_name, project_title, invoice_amount, amount_paid, notes, created_at, due_date, issue_date, reference, service_address, status, split_parent_invoice_id, split_sequence, split_count, import_reviewed, terms, deposit_requested_amount, deposit_status, tax_mode, tax_label, tax_rate"
+        "id, business_id, client_id, display_id, customer_name, project_title, invoice_amount, amount_paid, notes, created_at, due_date, issue_date, reference, service_address, status, split_parent_invoice_id, split_sequence, split_count, import_reviewed, terms, deposit_requested_amount, deposit_status, deposit_note, tax_mode, tax_label, tax_rate"
       )
       .eq("business_id", invoice.business_id)
       .eq("split_parent_invoice_id", splitGroupRootId)
@@ -1065,14 +1071,26 @@ export async function POST(request: Request, { params }: RouteParams) {
   const { lines: splitSummaryLines, combinedTotal } =
     buildSplitGroupSummary(targetInvoices);
   const groupLabel = splitGroupLabel(targetInvoices);
+  const {data: reviewLines, error: reviewLinesError} = await supabase.from("invoice_line_items").select("*").eq("business_id", invoice.business_id).in("invoice_id",targetInvoices.map(i=>i.id));
+  if(reviewLinesError) return NextResponse.json({error:"Could not revalidate invoice rows."},{status:503});
+  const pdfDetails = new Map<string,{terms:string;dueDate:string;lines:InvoiceLineItemRow[]}>();
+  for (const item of targetInvoices) {
+    const rows=(reviewLines ?? []).filter(line=>line.invoice_id===item.id) as InvoiceLineItemRow[];
+    const pdfTotal=estimateMoney({...item,estimate_amount:item.invoice_amount},rows.map(line=>({line_total:line.line_total ?? 0}))).total;
+    if(moneyCents(pdfTotal)!==moneyCents(item.invoice_amount)) return NextResponse.json({error:"The stored invoice total differs from the official PDF calculation. Correct the saved invoice before sending."},{status:409});
+    const terms=resolveInvoiceTerms(item.terms);
+    const dates=getSmartInvoiceDates({customerName:item.customer_name ?? selectedRecipientClient?.name ?? "",projectTitle:item.project_title ?? "",serviceAddress:item.service_address ?? "",reference:maybeCanonicalApartmentUnitLabel(item.reference),notes:item.notes ?? "",terms,lineItems:rows.map(line=>({description:line.description || ""})),issueDate:item.issue_date ?? item.created_at});
+    pdfDetails.set(item.id,{terms:emailPurpose==="deposit" ? "This request is for the deposit only. Final-balance terms apply when the final invoice is issued." : terms,dueDate:emailPurpose==="deposit" ? "See deposit agreement" : item.due_date ?? dates.dueDate,lines:rows});
+  }
   const facts = ["Document details", ...targetInvoices.map(item => [
     `Invoice: ${item.display_id ?? item.id}`,
     `Document purpose: ${emailPurpose === "deposit" ? "Deposit request" : emailPurpose === "reminder" ? "Payment reminder" : "Invoice"}`,
     `Customer: ${item.customer_name ?? ""}`,
     `Status: ${item.status || "Not specified"}`,
     `Amount due: ${formatCurrency(invoiceCollectionAmountDue(item))}`,
-    `Due date: ${emailPurpose === "deposit" ? "See deposit terms" : item.due_date || "Not specified"}`,
-    `Payment terms: ${item.terms || "Not specified on the saved invoice"}`,
+    `Due date: ${pdfDetails.get(item.id)!.dueDate}`,
+    `Payment terms: ${pdfDetails.get(item.id)!.terms}`,
+    ...(emailPurpose === "deposit" && item.deposit_note ? [`Deposit agreement: ${item.deposit_note}`] : []),,
   ].join("\n")), ...(isSplitGroupSend ? [`Combined total: ${formatCurrency(combinedTotal)}`] : [])].join("\n");
   const canonicalSubject = `${emailPurpose === "reminder" ? "Invoice reminder" : "Invoice"} ${targetInvoices.map(i=>i.display_id).join(" / ")}`;
   if (body.mode === "prepare") {
@@ -1082,10 +1100,8 @@ export async function POST(request: Request, { params }: RouteParams) {
   try { validateEmailEdits(subject, message, facts, canonicalSubject); } catch(error) { return NextResponse.json({error:(error as Error).message},{status:409}); }
   const effectiveSubject = subject;
   const effectiveMessage = message;
-  const {data: reviewLines, error: reviewLinesError} = await supabase.from("invoice_line_items").select("*").eq("business_id", invoice.business_id).in("invoice_id",targetInvoices.map(i=>i.id));
-  if(reviewLinesError) return NextResponse.json({error:"Could not revalidate invoice rows."},{status:503});
   const renderedEmail = renderDocumentEmail(effectiveMessage,business.slug,business.name || "Trimax");
-  const reviewSnapshot = {kind:"invoice", user:access.userId, documents:targetInvoices, lines:reviewLines, settings:emailSettings, recipientEmail, ccEmail, bccEmail, from, replyToEmail:replyToEmail || access.email, effectiveSubject, renderedEmail, emailPurpose, sendIdempotencyKey};
+  const reviewSnapshot = {kind:"invoice", user:access.userId, documents:targetInvoices, client:selectedRecipientClient, lines:reviewLines, settings:emailSettings, recipientEmail, ccEmail, bccEmail, from, replyToEmail:replyToEmail || access.email, effectiveSubject, renderedEmail, emailPurpose, sendIdempotencyKey};
   const pdfAttachments: EmailAttachment[] = [];
   let pdfAttachmentSource: "print-page" | "none" = "none";
 

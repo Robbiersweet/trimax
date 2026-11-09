@@ -42,8 +42,9 @@ export default function InvoiceEmailSendPanel(
 ) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [accepted, setAccepted] = useState(false);
-  const sent = props.initialSent || accepted;
+  const [accepted, setAccepted] = useState<string | null>(null);
+  const scope = `${props.businessSlug}:${props.documentKind}:${props.documentId}:${props.requestType}`;
+  const sent = props.initialSent || accepted === scope;
   return (
     <section
       id={
@@ -94,6 +95,8 @@ export default function InvoiceEmailSendPanel(
       </p>
       {open && (
         <DocumentEmailReview
+          key={scope}
+          onSubmittingChange={props.onSendingChange}
           documentId={props.documentId}
           kind={props.documentKind}
           businessSlug={props.businessSlug}
@@ -111,7 +114,7 @@ export default function InvoiceEmailSendPanel(
             props.onSendingChange?.(false);
           }}
           onSent={() => {
-            setAccepted(true);
+            setAccepted(scope);
             props.onSent?.();
             router.refresh();
           }}
