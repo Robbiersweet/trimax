@@ -4,14 +4,12 @@ import {createPortal} from 'react-dom';
 import {remittanceDeadline} from '../lib/remittanceDeadline';
 import {acquireStillAndRelease} from '../lib/cameraArtifacts';
 import {FULL_STILL,photoConstructor,prepareStillReview,projectStillGuide,requestFullStill,type FractionRect,type StillArtifact} from '../lib/highResolutionStill';
-import StillCropReview from './StillCropReview';
 type Props={onCapture:(file:File,source:'camera'|'existing',original?:StillArtifact)=>void;onCancel:()=>void;onManual:()=>void};
-type Review={canvas:HTMLCanvasElement;url:string;original:StillArtifact};
 /** Existing live guide; only ImageCapture.takePhoto or an explicit device still supplies pixels. */
 export default function RemittanceCamera({onCapture,onCancel,onManual}:Props){
  const video=useRef<HTMLVideoElement>(null),stream=useRef<MediaStream|null>(null),active=useRef(true),capturing=useRef(false),guide=useRef<HTMLDivElement>(null),nativeInput=useRef<HTMLInputElement>(null),ownedUrls=useRef(new Set<string>());
  const [ready,setReady]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[generation,setGeneration]=useState(0),[landscape,setLandscape]=useState(false),[ratio,setRatio]=useState(4/3),[viewport,setViewport]=useState({width:0,height:0,left:0,top:0});
- const [review,setReview]=useState<Review|null>(null),[originalFile,setOriginalFile]=useState<{file:File;url:string}|null>(null),[nativeReason,setNativeReason]=useState('');
+ const [originalFile,setOriginalFile]=useState<{file:File;url:string}|null>(null),[nativeReason,setNativeReason]=useState('');
  const snapshot=useRef<{videoWidth:number;videoHeight:number;guide:FractionRect}|null>(null);
  function stop(){stream.current?.getTracks().forEach(track=>track.stop());stream.current=null;if(video.current)video.current.srcObject=null;}
  useEffect(()=>{
@@ -38,12 +36,12 @@ export default function RemittanceCamera({onCapture,onCancel,onManual}:Props){
   const originalUrl=URL.createObjectURL(file);ownedUrls.current.add(originalUrl);setOriginalFile({file,url:originalUrl});
   const prepared=await prepareStillReview(file);
   if(!active.current){prepared.canvas.width=0;prepared.canvas.height=0;return;}
-  const preview=await new Promise<Blob>((resolve,reject)=>prepared.canvas.toBlob(b=>b?resolve(b):reject(Error('Still preview unavailable. Save the original and retry.')),'image/jpeg',0.9));
-  if(!active.current){prepared.canvas.width=0;prepared.canvas.height=0;return;}
-  const url=URL.createObjectURL(preview);ownedUrls.current.add(url);
   const guideBox=method==='image-capture'&&snapshot.current?projectStillGuide(snapshot.current.videoWidth,snapshot.current.videoHeight,prepared.canvas.width,prepared.canvas.height,snapshot.current.guide):null;
   const artifact:StillArtifact={file,width:prepared.width,height:prepared.height,orientation:prepared.orientation,method,crop:{...FULL_STILL},guide:guideBox,videoWidth:snapshot.current?.videoWidth??0,videoHeight:snapshot.current?.videoHeight??0};
-  setError('');setReview({canvas:prepared.canvas,url,original:artifact});
+  // The guide is advisory, never a crop boundary. Forward untouched still bytes to
+  // the same normalization/document-isolation/OCR path used by existing photos.
+  prepared.canvas.width=0;prepared.canvas.height=0;
+  setError('');onCapture(file,'camera',artifact);
  }
  async function capture(){
   if(capturing.current||!ready||!landscape)return;capturing.current=true;setBusy(true);setError('');
@@ -60,7 +58,6 @@ export default function RemittanceCamera({onCapture,onCancel,onManual}:Props){
   finally{capturing.current=false;if(active.current)setBusy(false);}
  }
  const nativePicker=<input ref={nativeInput} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" aria-label="Device camera still photo" className="sr-only" onChange={event=>{const file=event.currentTarget.files?.[0];event.currentTarget.value='';if(!file)return;capturing.current=true;setBusy(true);void acceptStill(file,'native-camera').catch(e=>{if(active.current)setError(e instanceof Error?e.message:'Still could not be prepared. Original retained.');}).finally(()=>{capturing.current=false;if(active.current)setBusy(false);});}}/>;
- if(review)return <>{nativePicker}<StillCropReview canvas={review.canvas} preview={review.url} original={review.original} originalUrl={originalFile!.url} viewport={viewport} landscape={landscape} onCancel={onCancel} onRetake={()=>{setReview(null);setOriginalFile(null);setNativeReason('');setReady(false);setGeneration(x=>x+1);}} onUse={(file,original)=>onCapture(file,'camera',original)}/></>;
  const width=Math.max(1,Math.min(viewport.width-(landscape?220:32),(viewport.height-(landscape?32:260))*ratio));
  return createPortal(<div role="dialog" aria-modal="true" aria-label="Remittance camera" className="fixed z-[2147483000] flex overflow-hidden bg-black text-white" style={{left:viewport.left,top:viewport.top,width:viewport.width||'100vw',height:viewport.height||'100dvh',flexDirection:landscape?'row':'column',padding:'max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left))'}}>
   {nativePicker}<button autoFocus type="button" onClick={onCancel} className="absolute left-[max(12px,env(safe-area-inset-left))] top-[max(12px,env(safe-area-inset-top))] z-10 min-h-11 rounded-xl border border-white/40 bg-black/70 px-4">Cancel</button>

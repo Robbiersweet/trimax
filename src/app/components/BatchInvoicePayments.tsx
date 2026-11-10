@@ -2377,7 +2377,7 @@ export default function BatchInvoicePayments({
       const lines = [...sourceDiagnosticLines,
         'Source type: '+sourceType+'.',
         'Source image: '+metadata.rawWidth+' x '+metadata.rawHeight+', '+file.size+' bytes.',
-        metadata.transformation, originalStillRef.current?'Reviewed still crop prepared; untouched original retained separately.':'Full image preserved; no document crop or competing camera source.',
+        metadata.transformation, originalStillRef.current?'Full-resolution still prepared automatically; untouched original retained separately.':'Full image preserved; no document crop or competing camera source.',
         'Saved preview and OCR input match: '+metadata.width+' x '+metadata.height+'.'];
       preparedCaptureRef.current = {source:sourceType,image:{width:metadata.width,height:metadata.height,bytes:normalized.file.size,mime:normalized.file.type},quality:{},sources:[],selectionReason:'Full-frame guided capture or existing photo; EXIF normalized once'};
       setOcrImageFile(normalized.file); setCheckImageFile(normalized.file);
@@ -2482,9 +2482,9 @@ export default function BatchInvoicePayments({
     if (!captureUi.current || captureUi.current.selection.implementation !== implementation) beginCapture(implementation,'Image intake without an opening event');
     if(originalStill&&captureUi.current){
       const selected=captureUi.current.selection;
-      captureUi.current.selection=selectCapture(originalStill.method==='image-capture'?'image-capture-still':'native-still',selected.openingState,'User-reviewed high-resolution still',selected.selectedAt);
+      captureUi.current.selection=selectCapture(originalStill.method==='image-capture'?'image-capture-still':'native-still',selected.openingState,'Automatic full-resolution still intake',selected.selectedAt);
       captureUi.current.acquisitionMechanism=originalStill.method==='image-capture'?'ImageCapture.takePhoto':'file-input-capture-environment';
-      sourceDiagnosticLines=[...sourceDiagnosticLines,`Still acquisition: ${originalStill.method}; original ${originalStill.width} x ${originalStill.height}, ${originalStill.file.size} bytes; reviewed crop ${JSON.stringify(originalStill.crop)}.`];
+      sourceDiagnosticLines=[...sourceDiagnosticLines,`Still acquisition: ${originalStill.method}; original ${originalStill.width} x ${originalStill.height}, ${originalStill.file.size} bytes; preserved frame ${JSON.stringify(originalStill.crop)}.`];
     }
     captureUi.current!.imageReturnedAt ??= Date.now();
     setPaymentEntryMode('photo');
@@ -2555,7 +2555,7 @@ export default function BatchInvoicePayments({
         acquiredEvidence.previewPaintOpportunityAt = Date.now();
         captureTimings.current.previewPaintOpportunityAt = acquiredEvidence.previewPaintOpportunityAt;
         await readPreparedRemittanceFromFile(capturedFile,documentType,intent,'standard',source,
-          [...sourceDiagnosticLines,originalStill?'User-reviewed still crop; untouched original retained for private archival.':'Capture implementation: guided camera or existing photo; full image preserved.']);
+          [...sourceDiagnosticLines,originalStill?'Full-resolution original sent directly to automatic normalization and document isolation; untouched original retained for private archival.':'Capture implementation: guided camera or existing photo; full image preserved.']);
       } catch (error) {
         if (captureVersion !== ocrAttemptVersion.current) return;
         setIsPreparingCrop(false); setCheckOcrStatus("error");

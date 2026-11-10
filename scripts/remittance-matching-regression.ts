@@ -1522,7 +1522,7 @@ assert(
     paymentScreen.includes("diagnostics.invoiceColumnDiagnostics"),
   "Payments OCR diagnostics must expose per-pass token summaries and text-region quality so good and bad physical reads can be compared."
 );
-assert(camera.includes('requestFullStill(track,ctor)') && camera.includes('acquireStillAndRelease') && camera.includes('<StillCropReview') && !camera.includes('drawImage('), "Capture must use a full-resolution still with crop review, never video pixels.");
+assert(camera.includes('requestFullStill(track,ctor)') && camera.includes('acquireStillAndRelease') && !camera.includes('StillCropReview') && camera.includes("onCapture(file,'camera',artifact)") && !camera.includes('drawImage('), "Capture must automatically forward the original full-resolution still without crop review or video pixels.");
 assert(paymentScreen.includes('Guided live remittance camera') && !paymentScreen.includes('capture="environment"'), "Normal Take Photo must use one in-app camera independently of shadow eligibility.");
 assert(paymentScreen.includes('normalizePhysicalStill(file)') && paymentScreen.includes('Document total not found. Enter the check amount') && paymentScreen.includes('setPaymentReference(extractedCheckNumber)'), "Keep recognized fields and actionable manual fallback after full-image preparation.");
 

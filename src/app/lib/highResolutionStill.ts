@@ -11,8 +11,8 @@ export const FULL_STILL:FractionRect={left:0,top:0,width:1,height:1};
 export function validCrop(crop:FractionRect):boolean {
  return Object.values(crop).every(Number.isFinite)&&crop.left>=0&&crop.top>=0&&crop.width>0&&crop.height>0&&crop.left+crop.width<=1.000001&&crop.top+crop.height<=1.000001;
 }
-/** Centered sensor-aspect projection, shown only as a suggestion. Still review
- * is mandatory: browser APIs do not promise identical photo/video field of view. */
+/** Advisory centered sensor-aspect projection, never an automatic crop boundary:
+ * browser APIs do not promise identical photo/video field of view. */
 export function projectStillGuide(videoWidth:number,videoHeight:number,stillWidth:number,stillHeight:number,guide:FractionRect):FractionRect|null {
  if(![videoWidth,videoHeight,stillWidth,stillHeight].every(n=>Number.isFinite(n)&&n>0)||!validCrop(guide))return null;
  if((videoWidth>videoHeight)!==(stillWidth>stillHeight))return null;
