@@ -1,26 +1,26 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-document-email-review-20261109-rc2",
+  "releaseId": "trimax-remittance-auto-capture-20261109-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-11-09T10:33:27.152Z",
-  "releaseTimestamp": "2026-11-09T10:33:27.152Z",
+  "createdAt": "2026-11-10T02:09:25.848Z",
+  "releaseTimestamp": "2026-11-10T02:09:25.848Z",
   "baseProduction": {
-    "commit": "00cb1ad4c190e06e9788fa9910b39ef5653b698a",
-    "vercelDeploymentId": "7kttSHfaHjtETeoxe6dteds7HJk9"
+    "commit": "991f5d0bb8f914465c7f695d4beb060fed964012",
+    "vercelDeploymentId": "6U2FSEvDbWZSNfxa6sFZW2ppXNo9"
   },
   "components": {
     "web": {
-      "commit": "a4f4cd7b8c3cff11e5ba8407bbac18696f2e29c8"
+      "commit": "89ab16ccd2e53a4bb2bc951e340ee958d6ec7767"
     },
     "legacy": {
-      "commit": "a4f4cd7b8c3cff11e5ba8407bbac18696f2e29c8"
+      "commit": "89ab16ccd2e53a4bb2bc951e340ee958d6ec7767"
     },
     "v2-shadow": {
-      "commit": "a4f4cd7b8c3cff11e5ba8407bbac18696f2e29c8"
+      "commit": "89ab16ccd2e53a4bb2bc951e340ee958d6ec7767"
     }
   },
   "sourceBundle": {
-    "sha256": "80f727d0cbfc14d57173e9d348f1094392b5720f334b5b5fdb400f4e0c0eb207",
+    "sha256": "59d9a82d30d0c7ebb6624f0a3b886c3a6286de70611c8fde0deeb38c07726fe4",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -295,7 +295,7 @@
       "scripts/release/file-forensics-regression.cjs": "a6da1ba822d17c1a31b7bd29d3cb49e95febca66f29c51b712ccdd9d608c1b26",
       "scripts/release/file-forensics.cjs": "25133a9f2167c801a05906be04068f3d85f54f3c462e085869df2d486c8bea30",
       "scripts/release/final-candidate-regression.cjs": "edc0dbfa8f70d55607c65327a08ed25193380387dd4f1e850cf130ef992ca03f",
-      "scripts/release/gate-checks.cjs": "bc8fd2d378b690580d515f743ea5b25ccbbbeb78a7b3f90966f12433887bc27b",
+      "scripts/release/gate-checks.cjs": "09afa6c9efbb5b9bafee2868249bd630106571a2c25c06578aeab67ea5b7b6e2",
       "scripts/release/gate-state-regression.cjs": "51f1d2c76eca73d122f20cc0f537b624074ebd4943f946dcba63857775e45d04",
       "scripts/release/gate-state.cjs": "f56bdc9741b07b92c53bb487f21320080537fa90734721130612e8c1b52da839",
       "scripts/release/gate.cjs": "228232de653ef9c0c5a96ea24a9bfb0220a06eed1a0a516222d523b67d778c45",
@@ -311,14 +311,15 @@
       "scripts/release/upgrade-context.cjs": "3f8c1a731178b9f21dd0f956191fc7df9a6703e1356413fe57edde9b44ac4f39",
       "scripts/release/upgrade-state-regression.cjs": "25576aa25e0fd649f470ee7b6ffdaa8bf576c6e8498e04263df3127466771f88",
       "scripts/release/worker-validation.cjs": "5e784a2d0b74c60cbe4406d7c961e78f686e11e8ec50d8dd1e6153d35755701e",
-      "scripts/remittance-camera-browser.cjs": "21b29a1ecf31ce4dd10da4c471430c69efa2c069a123ff5602cb98eed8b6f083",
+      "scripts/remittance-auto-capture-scope-regression.cjs": "13a094d06ad8eb11c4e7bab7dfef3bcdc4779ad2dee822248e6dc5488475155a",
+      "scripts/remittance-camera-browser.cjs": "48744d34f05d3d997080570f1dab6cba191d42b5f27229c07431b2d9b6524a49",
       "scripts/remittance-camera-geometry-regression.ts": "e4a9f18a735264cf1fafc0ff6d06efaf31226facf571d24c27da5ac440d72a37",
       "scripts/remittance-client-safety-regression.cjs": "63595f724d6c510def2821730d4b76e0d9c5bdd4c71c29f1fcf22dad5b8d8c60",
       "scripts/remittance-contract-regression.ts": "75e3bf300050abfcd6145eb5d912af9251fef904bc1c9be19c5bc5695d50cf77",
       "scripts/remittance-deadline-regression.cjs": "c55b3c02d5bd6fb8f8a41b36fe4202a2c8795bb5eb8562cf30d54a1f60f665f2",
       "scripts/remittance-grouped-total-regression.ts": "13468a09e8c3bedf13a88b7917e8baf288e75a762354c887740f867f519fa6b0",
       "scripts/remittance-intake-regression.cjs": "0f4e506bf7cc76e0f922f2842850ae0e98b8c6eacdf7d821dc482094fddec11f",
-      "scripts/remittance-matching-regression.ts": "0cf40399daa9da28c2808a6417cb4900c4b67d99094716f9cca510acd0bbd33b",
+      "scripts/remittance-matching-regression.ts": "dcd944b497903ac3ee066cb43d0de6fec3ac4a66caa69b037242388b44ec32bf",
       "scripts/remittance-ocr-fixture-regression.ts": "2e90a200e8de9d64212a8f56092f3ef4e00522f2751463b33c827cad45991fa0",
       "scripts/remittance-photo-corpus.cjs": "7d8342d9234119d129613d43afd1af2d807769d0c8df5c5f2daff9017a3c25ec",
       "scripts/remittance-release-gate.ts": "21944edbe46796c2b87e595dad18d2c49eb9fb72f2c9558b80f6880ceb4cdf32",
@@ -396,7 +397,7 @@
       "src/app/components/AppShell.tsx": "b4358a4c5a82735d1871ef0bc8e7e3bbb30b3770b577d51b0343552155c489af",
       "src/app/components/AuthGuard.tsx": "46294b22fe601402e06a792dd5b3215dabea560e27a7409b457354cdac45b9bc",
       "src/app/components/BackButton.tsx": "87360394e36c2e90d4a33135d5539d0176e75d8cc2448783c5c859783ee1059c",
-      "src/app/components/BatchInvoicePayments.tsx": "71f3256e2b4bc36bbff2fb814e235315ff256a61fdfe15d5938a6f4b11e9b85c",
+      "src/app/components/BatchInvoicePayments.tsx": "c1901fbd56c5a6bbebc918bfb65f778208b1f29d551874ca3b4855464df8dded",
       "src/app/components/Button.tsx": "68f87a76cee881a6b148ec30af54746d8a0fbe11a153b3ccf0134a62504deb97",
       "src/app/components/Card.tsx": "6706fd0d306b77c27bf8f9f2558fdfc4f5a77b874404cba67b0f4980c96de207",
       "src/app/components/ClientSmartSearch.tsx": "6780c13e035f04c4bf532a23842cf8d220021a409362c1f2d01fc93cbb3c1278",
@@ -452,7 +453,7 @@
       "src/app/components/QuickCommandCenter.tsx": "e630fe08ca3815301be88b28b0dfc3160d0723690db0f3164cdb3a95652efb53",
       "src/app/components/RecentScans.tsx": "0028aec174703631fe75cd0c95b4e107d5e2c9795eb8a4fe17bbf2e7be033e1b",
       "src/app/components/ReleaseDiagnostics.tsx": "2b753593c400ce36611ec5a9033bc83c67288322bfa27c502587dbd05dfe2661",
-      "src/app/components/RemittanceCamera.tsx": "67a39a5f3d47e9ccc97cab290cbdab70e90ece435e0eb7aa7a050b119974b01d",
+      "src/app/components/RemittanceCamera.tsx": "554e87b5db7ca6d71ae7d32c454506fbb754153e004e8cb009c8c2236e487643",
       "src/app/components/RequestDepositButton.tsx": "01f4144aa0b5a0aa8baf077cf945e8a8af25a7be3b6c62ec7f31f3d7a3f7e67d",
       "src/app/components/ReverseTotalControl.tsx": "749611bb72de255fae488a8b90f5e1488ef25e5e3aaf07f25a58d7819221b7cd",
       "src/app/components/RoleVisible.tsx": "69e7eb4de7cacee6a5f0be80545fdb57d1e48a96988178711d761eee57e9bef5",
@@ -537,7 +538,7 @@
       "src/app/lib/documentTerms.ts": "7210f64a1a5717ef1c86605cca4320721fe9f2de4162751bbe64845110abf40f",
       "src/app/lib/duplicateRemittance.ts": "a056cf54cbb16dafc07206b2314aa08408b0da2363145008f1a55467f8602c28",
       "src/app/lib/getQueueItems.ts": "c7d1b869c7d2bb0cd1fb425a8a9274ce442127e5d51535984dcae8dd93452169",
-      "src/app/lib/highResolutionStill.ts": "f7ebaa9591bcdb993293ac06b51e5f7d2ee1a1ad794bf029cba5bd3dbbc69645",
+      "src/app/lib/highResolutionStill.ts": "2de37605539abe45ece527d1589687c86cc712516b6fe247f98e7655814d109c",
       "src/app/lib/invoiceCorrections.ts": "c7b56656e22e36d16004e81ca7589968f59b4db14458292fcdcd77d3eb588ea6",
       "src/app/lib/invoiceEligibility.ts": "02b9c072baf32af735a1e71dd90b5efce73d787c2a63f11f0088e78d93446eea",
       "src/app/lib/invoiceEmailSettings.ts": "3ebaf7deb6a876e2b5c9676c76222d0de2bc900a08dde7572ad0b7192525bdef",
@@ -1772,22 +1773,22 @@
     "sha256": "bccc49970c7db9510b64204809cbb282c6d22d5f651708a9e7a7fede7a550bbc"
   },
   "upgradeContext": {
-    "candidateReleaseId": "trimax-document-email-review-20261109-rc2",
-    "applicationCommit": "a4f4cd7b8c3cff11e5ba8407bbac18696f2e29c8",
-    "machineryCommit": "a4f4cd7b8c3cff11e5ba8407bbac18696f2e29c8",
+    "candidateReleaseId": "trimax-remittance-auto-capture-20261109-rc1",
+    "applicationCommit": "89ab16ccd2e53a4bb2bc951e340ee958d6ec7767",
+    "machineryCommit": "89ab16ccd2e53a4bb2bc951e340ee958d6ec7767",
     "currentProductionRelease": {
-      "manifestCommit": "00cb1ad4c190e06e9788fa9910b39ef5653b698a",
-      "manifestDigest": "07cf48620db8e7f30a6820eef6bea889980621a0924210e6ee805c2c5ccf39c1",
-      "releaseId": "trimax-document-email-review-20261108-rc1",
-      "deploymentCommit": "00cb1ad4c190e06e9788fa9910b39ef5653b698a",
-      "deploymentId": "7kttSHfaHjtETeoxe6dteds7HJk9"
+      "manifestCommit": "991f5d0bb8f914465c7f695d4beb060fed964012",
+      "manifestDigest": "40f84e12e002ea4f3075e99ebdcabfc7fdf0bc92c0f7586a4a48024c6d93d4e3",
+      "releaseId": "trimax-document-email-review-20261109-rc2",
+      "deploymentCommit": "991f5d0bb8f914465c7f695d4beb060fed964012",
+      "deploymentId": "6U2FSEvDbWZSNfxa6sFZW2ppXNo9"
     }
   },
   "contractRevision": {
-    "id": "mandatory-email-review-viewport-repair",
-    "priorManifestDigest": "07cf48620db8e7f30a6820eef6bea889980621a0924210e6ee805c2c5ccf39c1",
-    "reason": "Two-file viewport portal repair and regression. Mandatory server approval, PDFs, financial, database, OCR/model/worker configuration and website sources unchanged from approved deployed email release.",
-    "rollback": "Restore deployed mandatory-review rc1 00cb1ad/dpl_7kttSHfaHjtETeoxe6dteds7HJk9 and document-email-review-rc1 workers; preserve all financial/audit data and server approval enforcement. No database restore."
+    "id": "automatic-full-resolution-capture",
+    "priorManifestDigest": "40f84e12e002ea4f3075e99ebdcabfc7fdf0bc92c0f7586a4a48024c6d93d4e3",
+    "reason": "Remove mandatory manual crop; original still automatically enters existing normalized document isolation and OCR. Review/payment handlers, financial and recognition safeguards, mandatory email approval, models, schema and worker configuration unchanged.",
+    "rollback": "Restore 991f5d0 / dpl_6U2FSEvDbWZSNfxa6sFZW2ppXNo9 and document-email-review-rc2 native runtime, preserving financial/audit data and server email approval. No DB restore."
   },
   "captureWorkflow": "guided-live-camera-v1"
 }
