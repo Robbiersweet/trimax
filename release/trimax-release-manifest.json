@@ -1776,9 +1776,9 @@
     "sha256": "bccc49970c7db9510b64204809cbb282c6d22d5f651708a9e7a7fede7a550bbc"
   },
   "upgradeContext": {
-    "candidateReleaseId": "trimax-remittance-job-observer-20261110-rc1",
-    "applicationCommit": "01cafb26dc0ef50fd1fa8ab04e73556de5df3035",
-    "machineryCommit": "01cafb26dc0ef50fd1fa8ab04e73556de5df3035",
+    "candidateReleaseId": "trimax-remittance-job-observer-20261110-rc3",
+    "applicationCommit": "0b9221b1a1a0b61e6bc10501f2ea66f6a17e1f89",
+    "machineryCommit": "0b9221b1a1a0b61e6bc10501f2ea66f6a17e1f89",
     "currentProductionRelease": {
       "manifestCommit": "f54919232e66efce8c54752454e1ff869314df96",
       "manifestDigest": "15792fa914edcbf1d6f0d4a63803dd22e6322a2e8fcc164e02ff0ea316933572",
