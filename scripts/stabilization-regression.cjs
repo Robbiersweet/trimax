@@ -748,7 +748,7 @@ async function retryStateRegression() {
   const validGate = { validAllocations: true, moneyCents: require('../src/app/lib/money.ts').moneyCents, attemptAllowsApply: () => true, activeRemittanceAttempt: {}, selectedIds: ["one"], reviewMatchedInvoices: [{id:"one"}], duplicateRemittanceCheck: {status:"none"}, isSaving: false, paymentEntryMode: "photo", checkOcrStatus: "ready", ocrReconciliationVerified: true, selectedInvoices: [{ id: "one" }], enteredCheckAmount: 5495, checkAmountMatches: true, isRemittanceReview: true, isPreparingCrop: false, extractedPaymentAmount: 5495, selectedTotal: 5495, reviewMatchedTotal: 5495, hasDuplicateSelectedInvoiceIds: false, hasDuplicateReviewInvoiceIds: false, selectedReviewSetsMatch: true };
   const allowed = (overrides = {}) => { const values = { ...validGate, ...overrides }; return new Function(...Object.keys(values), "return (" + gate + ");")(...Object.values(values)); };
   assert.equal(allowed(), true);
-  for (const overrides of [{ validAllocations: false }, { ocrReconciliationVerified: false }, { checkOcrStatus: "manual", isRemittanceReview: false }, { hasDuplicateSelectedInvoiceIds: true }, { selectedTotal: 4396 }, { isPreparingCrop: true }]) assert.equal(allowed(overrides), false);
+  for (const overrides of [{ validAllocations: false }, { ocrReconciliationVerified: false }, { checkOcrStatus: "manual", isRemittanceReview: false }, { checkOcrStatus: "background", isRemittanceReview: false }, { hasDuplicateSelectedInvoiceIds: true }, { selectedTotal: 4396 }, { isPreparingCrop: true }]) assert.equal(allowed(overrides), false);
   const start = source.indexOf("  const extractCheckStubFromPhoto =");
   const end = source.indexOf("  function retainPreparationFailure", start);
   const functionSource = source.slice(start, end);
@@ -756,7 +756,7 @@ async function retryStateRegression() {
   const pending = [];
   const calls = [];
   const historyWrites=[];
-  const bindings = { beginProcessingWindow:()=>{},checkOcrStatus:"idle",processingDeadlineAt:{current:0},useRemittanceEvent: fn=>fn, remittanceDeadline: work=>work, captureRetryBusy:{current:false},resumeCaptureHandoff:async()=>({queued:true}),observationScopeRef:{current:crypto.randomUUID()}, opticalRef:{current:{images:[],notes:[]}}, ...require("../src/app/lib/remittanceAttempt.ts"), ...require("../src/app/lib/ocrHistory.ts"), businessId:"test-workspace",lastOcrSourceType:"existing",process,scanLineage:{current:null},latestScan:{current:null},supabase:{auth:{getSession:async()=>({data:{session:null}})}},saveScan:async write=>{historyWrites.push(write);return 'saved';}, performance, crypto, originalStillRef:{current:null},preparedCaptureRef: {current:null}, immutableSnapshot: value => structuredClone(value), invoiceRecords: [], paymentActivities: [], workspaceRole: "owner", receivedDate: "2026-09-17", ocrAttemptVersion: { current: 0 },
+  const bindings = { observingLegacyVersion:{current:null},beginProcessingWindow:()=>{},checkOcrStatus:"idle",processingDeadlineAt:{current:0},useRemittanceEvent: fn=>fn, remittanceDeadline: work=>work, captureRetryBusy:{current:false},resumeCaptureHandoff:async()=>({queued:true}),observationScopeRef:{current:crypto.randomUUID()}, opticalRef:{current:{images:[],notes:[]}}, ...require("../src/app/lib/remittanceAttempt.ts"), ...require("../src/app/lib/ocrHistory.ts"), businessId:"test-workspace",lastOcrSourceType:"existing",process,scanLineage:{current:null},latestScan:{current:null},supabase:{auth:{getSession:async()=>({data:{session:null}})}},saveScan:async write=>{historyWrites.push(write);return 'saved';}, performance, crypto, originalStillRef:{current:null},preparedCaptureRef: {current:null}, immutableSnapshot: value => structuredClone(value), invoiceRecords: [], paymentActivities: [], workspaceRole: "owner", receivedDate: "2026-09-17", ocrAttemptVersion: { current: 0 },
     appendCameraStage: () => {}, ocrDiagnosticLines: () => [], remittanceReviewDiagnosticLines: () => [],
     ocrFailureMessage: () => "Incomplete", loadCheckDetailsFromExtraction: () => {},
     fetch: async (_url, options) => { calls.push(JSON.parse(options.body)); return new Promise(resolve => pending.push(resolve)); },
@@ -825,6 +825,12 @@ async function retryStateRegression() {
   const detached=new Function(...Object.keys(detachedBindings),compiled)(...Object.values(detachedBindings));
   const detachedRun=detached('photo','remittance_stub','primary','standard',[],'');await new Promise(setImmediate);
   pending.shift()({ok:false,status:503,json:async()=>({error:'test'})});await detachedRun;
+  const brokenReviewBindings={...bindings,loadExtractedRemittance:()=>{throw Error('Injected review preparation failure');}};
+  const brokenReview=new Function(...Object.keys(brokenReviewBindings),compiled)(...Object.values(brokenReviewBindings));
+  const brokenRun=brokenReview('retained-photo','remittance_stub','primary','standard',[],'');await new Promise(setImmediate);
+  pending.shift()({ok:true,status:200,json:async()=>({stubText:'Observed rows',evidence:{}})});await brokenRun;
+  assert.equal(state.CheckOcrStatus,'error');assert(state.CheckOcrMessage.includes('OCR completed, but payment review could not be prepared'));
+  assert.deepEqual(state.SelectedIds,[]);assert.equal(bindings.observingLegacyVersion.current,null);
   console.log('Capture durability UI: 57014/restart/503/520/521 retain photo and attempt; hung shadow cannot block legacy.');
   console.log("Actual Retry Reading request flow: incomplete -> retry, cleared fields, isolated request and stale response rejection passed.");
 }

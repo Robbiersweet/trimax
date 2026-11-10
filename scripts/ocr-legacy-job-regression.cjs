@@ -26,8 +26,8 @@ async function clientTest(){
  // Reload resumes the same identity; the database contract makes POST idempotent.
  elapsed=0;
  const id=calls[0].options.body;await mod.exports.waitForLegacyJob(JSON.parse(id),()=>true,()=>{});assert.equal(calls.filter(c=>c.options.method==='POST')[1].options.body,id);
- elapsed=0;polls=-1000;await assert.rejects(mod.exports.waitForLegacyJob(JSON.parse(id),()=>true,()=>{}),error=>/couldn't finish/.test(error.message)&&error.code==='OCR_JOB_PENDING'&&error.jobStatus==='running');assert(elapsed<=95000);
- // Completion after the 90-second browser window remains in the durable job.
+ elapsed=0;polls=-1000;await assert.rejects(mod.exports.waitForLegacyJob(JSON.parse(id),()=>true,()=>{}),error=>/couldn't finish/.test(error.message)&&error.code==='OCR_JOB_PENDING'&&error.jobStatus==='running');assert(elapsed<=32*60_000+5000);
+ // Completion after a prior view closed remains in the same durable job.
  polls=30;elapsed=0;const reopened=await mod.exports.waitForLegacyJob(JSON.parse(id),()=>true,()=>{});assert.deepEqual((await reopened.json()).evidence,{rows:5});assert(calls.filter(c=>c.options.method==='POST').every(c=>c.options.body===id),'Late completion resumes the same attempt/job, never a replacement capture');
 }
 const watchdog=setTimeout(()=>{console.error('FAIL transport regression did not settle');process.exit(1);},process.argv.includes("--long")?80000:10000);

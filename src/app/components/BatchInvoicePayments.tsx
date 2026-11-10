@@ -100,7 +100,7 @@ type ToastState = {
   message: string;
 } | null;
 
-type CheckOcrStatus = "idle" | "reading" | "ready" | "manual" | "error";
+type CheckOcrStatus = "idle" | "reading" | "background" | "ready" | "manual" | "error";
 type PaymentEntryMode =
   | "choice"
   | "camera"
@@ -709,6 +709,7 @@ export default function BatchInvoicePayments({
     "Upload a remittance stub or enter the payment manually."
   );
   const processingDeadlineAt = useRef(0);
+  const observingLegacyVersion = useRef<number | null>(null);
   const [processingEpoch, setProcessingEpoch] = useState(0);
   function beginProcessingWindow() {
     processingDeadlineAt.current = Date.now() + REMITTANCE_PROCESSING_LIMIT_MS;
@@ -718,6 +719,14 @@ export default function BatchInvoicePayments({
     if (checkOcrStatus !== "reading" && !isPreparingCrop) { processingDeadlineAt.current = 0; return; }
     const timer = window.setTimeout(() => {
       processingDeadlineAt.current = 0;
+      // A suspended PWA can resume with both timers due. Keep the durable job
+      // observer alive; this timer only limits the foreground preparation UI.
+      if (observingLegacyVersion.current === ocrAttemptVersion.current) {
+        setIsPreparingCrop(false);
+        setCheckOcrStatus("background");
+        setCheckOcrMessage("Your photo is saved. Processing continues; review will open here automatically.");
+        return;
+      }
       ocrAttemptVersion.current++;
       setIsPreparingCrop(false);
       setCheckOcrStatus("error");
@@ -911,6 +920,7 @@ export default function BatchInvoicePayments({
     !['applied', 'ambiguous'].includes(savedPaymentHistory?.status ?? '') && (paymentEntryMode === "manual" ||
     (paymentEntryMode === "photo" &&
       checkOcrStatus !== "reading" &&
+      checkOcrStatus !== "background" &&
       checkOcrStatus !== "idle"));
   const showManualInvoiceBrowser = paymentEntryMode === "manual";
   const paymentCanApply =
@@ -2226,7 +2236,17 @@ export default function BatchInvoicePayments({
         if(result.queued && history.captureUi){history.captureUi.shadowJobQueuedAt=Date.now(); if(latestScan.current?.attemptId===attemptId && latestScan.current.result==='processing')void persist(history,{stage:'shadow-queued'},0); }
       }).catch(()=>{ if(attemptVersion===ocrAttemptVersion.current)setScanSavedStatus('Capture saved — shadow processing pending. Retry from Recent Scans.'); });
       appendCameraStage("OCR started");
-      const response = await waitForLegacyJob({attemptId,documentType,retryStrategy,diagnosticReplay:resumedDiagnosticReplay.current},()=>attemptVersion===ocrAttemptVersion.current,message=>{if(attemptVersion===ocrAttemptVersion.current)setCheckOcrMessage(message);},()=>{if(!resume && history.captureUi)history.captureUi.legacyJobQueuedAt=Date.now();void persist(history,{stage:'legacy-queued'},0);});
+      const response = await (async () => {
+        observingLegacyVersion.current = attemptVersion;
+        try {
+        return await waitForLegacyJob({attemptId,documentType,retryStrategy,diagnosticReplay:resumedDiagnosticReplay.current},()=>attemptVersion===ocrAttemptVersion.current,message=>{if(attemptVersion===ocrAttemptVersion.current){setCheckOcrMessage(message);setScanSavedStatus(message);}},()=>{if(!resume && history.captureUi)history.captureUi.legacyJobQueuedAt=Date.now();void persist(history,{stage:'legacy-queued'},0);},()=>{if(attemptVersion===ocrAttemptVersion.current){setIsPreparingCrop(false);setCheckOcrStatus('background');setScanSavedStatus('Photo saved - processing continues; review will open here automatically.');}});
+        } finally {
+          if (observingLegacyVersion.current === attemptVersion) {
+            observingLegacyVersion.current = null;
+            if (attemptVersion === ocrAttemptVersion.current) processingDeadlineAt.current = 0;
+          }
+        }
+      })();
       const data = (await response.json().catch(() => ({}))) as CheckStubOcrResponse;
       retainedResponse=data;
       if (attemptVersion !== ocrAttemptVersion.current) return;
@@ -2340,7 +2360,7 @@ export default function BatchInvoicePayments({
       }
       // Network failures do not terminate an independently running durable job.
       setCheckOcrStatus('error');
-      setCheckOcrMessage(error instanceof Error && (('workerUnavailable' in error && error.workerUnavailable) || ('jobStatus' in error && error.jobStatus==='recoverable_stalled')) ? error.message : error instanceof Error && 'code' in error && error.code==='OCR_JOB_PENDING'
+      setCheckOcrMessage(retainedResponse ? 'OCR completed, but payment review could not be prepared. Your saved photo and result are retained; reopen this scan to retry review.' : error instanceof Error && ('code' in error && ['OCR_STATUS_UNAVAILABLE','OCR_AUTH_REQUIRED','OCR_RESULT_UNAVAILABLE','OCR_JOB_PENDING'].includes(String(error.code))) ? error.message : error instanceof Error && (('workerUnavailable' in error && error.workerUnavailable) || ('jobStatus' in error && error.jobStatus==='recoverable_stalled')) ? error.message : error instanceof Error && 'code' in error && error.code==='OCR_JOB_PENDING'
         ? 'Capture saved — processing is still pending. Open the saved scan to resume.'
         : 'Capture saved — processing status unavailable. Open the saved scan to resume.');
       setCaptureRetry({run:async()=>{await extractCheckStubFromPhotoEvent(imageDataUrl,documentType,intent,retryStrategy,prepDiagnosticLines,currentDocumentFingerprint,retainedReference,{history,canonical});}});
@@ -2966,6 +2986,7 @@ export default function BatchInvoicePayments({
         setScanSavedStatus(history.status === 'applied' ? 'Payment already applied — no action required.' : 'Payment history needs review — application blocked.');
         return;
       }
+      setScanSavedStatus('Saved scan found - opening its processing result.');
       resumedDiagnosticReplay.current = Boolean(job.input.diagnosticReplay);
       const summary = job.summary;
       const optical = await remittanceDeadline(scanOptical(summary.canonicalReference!), 15000, 'Saved image lookup timed out. Reopen this saved scan to retry.');
@@ -3017,9 +3038,9 @@ export default function BatchInvoicePayments({
             setScanSavedStatus(paymentHistory.status === 'applied' ? 'Payment already applied — no action required.' : 'Payment history needs review — application blocked.');
             return;
           }
-          const {data:original,error}=await supabase.from('ocr_attempts').select('id,business_id,original_id,summary').eq('id',retainedAttemptId).eq('business_id',businessId!).single();
+          const {data:original,error}=await remittanceDeadline(Promise.resolve(supabase.from('ocr_attempts').select('id,business_id,original_id,summary').eq('id',retainedAttemptId).eq('business_id',businessId!).single()),12000,'Retained scan lookup timed out. Your photo is saved; reopen this scan to retry.');
           if(error||!original)throw Error('Retained attempt unavailable');
-          const optical=await scanOptical(original.summary.canonicalReference??retainedAttemptId);
+          const optical=await remittanceDeadline(scanOptical(original.summary.canonicalReference??retainedAttemptId),15000,'Retained image lookup timed out. Your photo is saved; reopen this scan to retry.');
           if (version !== ocrAttemptVersion.current) return;
           const image=optical?.images?.find((item:{label:string;base64?:string;sha256?:string})=>item.label==='Canonical OCR input'&&item.sha256===original.summary.sourceImageHash&&item.base64)??(!original.summary.canonicalReference?optical?.images?.find((item:{label:string;base64?:string})=>item.label==='Final OCR input'&&item.base64):null);
           if(!image)throw Error('Retained canonical image unavailable');
@@ -3213,7 +3234,7 @@ export default function BatchInvoicePayments({
               <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <p className="font-black text-white">
-                    {checkOcrStatus === "reading"
+                    {checkOcrStatus === "background" ? "Processing saved remittance" : checkOcrStatus === "reading"
                       ? "Reading remittance"
                       : checkOcrStatus === "ready"
                         ? "Review Payment"
@@ -3227,6 +3248,8 @@ export default function BatchInvoicePayments({
                     </span>
                   ) : null}
                 </div>
+
+                {checkOcrStatus === "background" ? <div role="status" className="mt-3 rounded-xl border border-sky-300/35 bg-sky-300/10 px-3 py-2 text-sm text-sky-50"><p>{checkOcrMessage}</p><p className="mt-1">No payment has been applied. You may leave and reopen this saved scan without taking another photo.</p></div> : null}
 
                 {checkOcrStatus === "error" || checkOcrStatus === "manual" ? (
                   <div className="mt-3 rounded-xl border border-amber-300/35 bg-amber-300/10 px-3 py-2 text-sm text-amber-50">

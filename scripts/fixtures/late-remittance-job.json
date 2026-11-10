@@ -1,0 +1,10 @@
+{
+  "description": "Observed two-row physical job: one healthy claim, terminal acknowledgement after the former 90-second observer cutoff. No image bytes or financial truth enter this timing fixture.",
+  "queuedMs": 0,
+  "claimedMs": 2863,
+  "ocrCompleteMs": 95248,
+  "responseReadyMs": 96797,
+  "terminalMs": 96892,
+  "claims": 1,
+  "httpStatus": 200
+}
