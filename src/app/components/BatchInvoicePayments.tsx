@@ -717,7 +717,10 @@ export default function BatchInvoicePayments({
   }
   useEffect(() => {
     if (checkOcrStatus !== "reading" && !isPreparingCrop) { processingDeadlineAt.current = 0; return; }
+    const expectedDeadline = processingDeadlineAt.current;
+    const expectedVersion = ocrAttemptVersion.current;
     const timer = window.setTimeout(() => {
+      if (!expectedDeadline || processingDeadlineAt.current !== expectedDeadline || ocrAttemptVersion.current !== expectedVersion) return;
       processingDeadlineAt.current = 0;
       // A suspended PWA can resume with both timers due. Keep the durable job
       // observer alive; this timer only limits the foreground preparation UI.

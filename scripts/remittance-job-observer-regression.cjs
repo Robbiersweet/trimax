@@ -29,6 +29,16 @@ async function lateJob(){
  const resumed=clock(),state2={status:'reading',preparing:true},v={current:9};let clean;
  new Function('useEffect','checkOcrStatus','isPreparingCrop','processingEpoch','window','ocrAttemptVersion','processingDeadlineAt','observingLegacyVersion','Date','setIsPreparingCrop','setCheckOcrStatus','setCheckOcrMessage',compile(watchdog))(fn=>{clean=fn()},'reading',true,1,resumed,v,{current:120000},{current:9},{now:resumed.now},value=>state2.preparing=value,value=>state2.status=value,value=>state2.message=value);
  await resumed.next();assert.equal(v.current,9);assert.equal(state2.status,'background');assert.equal(state2.preparing,false);clean();
+ // Timer callbacks already queued during suspension can outlive effect cleanup.
+ for(const boundary of ['terminal-review','new-processing-window','replaced-view']){
+  const stale=clock(),d={current:120000},o={current:9},version={current:9},mutations=[];
+  new Function('useEffect','checkOcrStatus','isPreparingCrop','processingEpoch','window','ocrAttemptVersion','processingDeadlineAt','observingLegacyVersion','Date','setIsPreparingCrop','setCheckOcrStatus','setCheckOcrMessage',compile(watchdog))(fn=>fn(),'reading',true,1,stale,version,d,o,{now:stale.now},value=>mutations.push(value),value=>mutations.push(value),value=>mutations.push(value));
+  if(boundary==='terminal-review'){d.current=0;o.current=null;}
+  if(boundary==='new-processing-window')d.current=240000;
+  if(boundary==='replaced-view')version.current=10;
+  const expectedVersion=version.current,expectedDeadline=d.current;
+  await stale.next();assert.deepEqual(mutations,[],boundary+' must ignore the obsolete watchdog');assert.equal(version.current,expectedVersion);assert.equal(d.current,expectedDeadline);
+ }
 }
 async function otherStates(){
  for(const mode of ['recovered','failed','lost-enqueue-ack','missing-result','cancelled']){
