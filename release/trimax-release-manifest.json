@@ -1,26 +1,26 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-remittance-job-observer-20261110-rc2",
+  "releaseId": "trimax-remittance-job-observer-20261110-rc3",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-11-10T07:45:54.731Z",
-  "releaseTimestamp": "2026-11-10T07:45:54.731Z",
+  "createdAt": "2026-11-10T07:57:49.985Z",
+  "releaseTimestamp": "2026-11-10T07:57:49.985Z",
   "baseProduction": {
     "commit": "f54919232e66efce8c54752454e1ff869314df96",
     "vercelDeploymentId": "Biz4x43XVShchR41rnmN52fYftPw"
   },
   "components": {
     "web": {
-      "commit": "50e4a64eb897d37d9dfaf7649a72e886e50bbff8"
+      "commit": "0b9221b1a1a0b61e6bc10501f2ea66f6a17e1f89"
     },
     "legacy": {
-      "commit": "50e4a64eb897d37d9dfaf7649a72e886e50bbff8"
+      "commit": "0b9221b1a1a0b61e6bc10501f2ea66f6a17e1f89"
     },
     "v2-shadow": {
-      "commit": "50e4a64eb897d37d9dfaf7649a72e886e50bbff8"
+      "commit": "0b9221b1a1a0b61e6bc10501f2ea66f6a17e1f89"
     }
   },
   "sourceBundle": {
-    "sha256": "0362cc27b874e9db52026c6482b9a9a2321c4789d1e98653b53de947c5cf482f",
+    "sha256": "91069076da2fd61a094bc8d6c75ab537899f96da94cbf472f9bfd4f961d1e299",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -320,7 +320,7 @@
       "scripts/remittance-deadline-regression.cjs": "ff7538f06bb4716e297a2b60f453b4ddac8cba554122268833fc57b1b5384586",
       "scripts/remittance-grouped-total-regression.ts": "13468a09e8c3bedf13a88b7917e8baf288e75a762354c887740f867f519fa6b0",
       "scripts/remittance-intake-regression.cjs": "0f4e506bf7cc76e0f922f2842850ae0e98b8c6eacdf7d821dc482094fddec11f",
-      "scripts/remittance-job-observer-regression.cjs": "b7b9ae0bad8e49235c1fc875c413b7ebfc0e853f51daa61262a578ccc70fdc4f",
+      "scripts/remittance-job-observer-regression.cjs": "f86e7dfe0d5c2286dd9c5459005ee9c775bb834f2ede452b50cab8a0c2a96c99",
       "scripts/remittance-job-observer-scope-regression.cjs": "677772e32bd2eda28056e75cec88387ed86b672b5eb4953a7276095d5d867a68",
       "scripts/remittance-matching-regression.ts": "dcd944b497903ac3ee066cb43d0de6fec3ac4a66caa69b037242388b44ec32bf",
       "scripts/remittance-ocr-fixture-regression.ts": "2e90a200e8de9d64212a8f56092f3ef4e00522f2751463b33c827cad45991fa0",
@@ -400,7 +400,7 @@
       "src/app/components/AppShell.tsx": "b4358a4c5a82735d1871ef0bc8e7e3bbb30b3770b577d51b0343552155c489af",
       "src/app/components/AuthGuard.tsx": "46294b22fe601402e06a792dd5b3215dabea560e27a7409b457354cdac45b9bc",
       "src/app/components/BackButton.tsx": "87360394e36c2e90d4a33135d5539d0176e75d8cc2448783c5c859783ee1059c",
-      "src/app/components/BatchInvoicePayments.tsx": "d03532e3d1e05f1bc64e92a266d32356fc24a612bba9afb283a1786b8369aa7a",
+      "src/app/components/BatchInvoicePayments.tsx": "a9f953f75c2800c12f6294d1eb319a3683430d09cf70e10e8e9d0ad48f83a841",
       "src/app/components/Button.tsx": "68f87a76cee881a6b148ec30af54746d8a0fbe11a153b3ccf0134a62504deb97",
       "src/app/components/Card.tsx": "6706fd0d306b77c27bf8f9f2558fdfc4f5a77b874404cba67b0f4980c96de207",
       "src/app/components/ClientSmartSearch.tsx": "6780c13e035f04c4bf532a23842cf8d220021a409362c1f2d01fc93cbb3c1278",
