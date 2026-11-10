@@ -2,25 +2,25 @@
   "schemaVersion": 1,
   "releaseId": "trimax-remittance-job-observer-20261110-rc2",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-11-10T07:43:16.485Z",
-  "releaseTimestamp": "2026-11-10T07:43:16.485Z",
+  "createdAt": "2026-11-10T07:45:54.731Z",
+  "releaseTimestamp": "2026-11-10T07:45:54.731Z",
   "baseProduction": {
     "commit": "f54919232e66efce8c54752454e1ff869314df96",
     "vercelDeploymentId": "Biz4x43XVShchR41rnmN52fYftPw"
   },
   "components": {
     "web": {
-      "commit": "5baba27672bb647f1d6c65d2198873785a9b01b1"
+      "commit": "50e4a64eb897d37d9dfaf7649a72e886e50bbff8"
     },
     "legacy": {
-      "commit": "5baba27672bb647f1d6c65d2198873785a9b01b1"
+      "commit": "50e4a64eb897d37d9dfaf7649a72e886e50bbff8"
     },
     "v2-shadow": {
-      "commit": "5baba27672bb647f1d6c65d2198873785a9b01b1"
+      "commit": "50e4a64eb897d37d9dfaf7649a72e886e50bbff8"
     }
   },
   "sourceBundle": {
-    "sha256": "48cd9178bd077667274bb7074d0193c61ee04997b7416da400a3bbf393e86808",
+    "sha256": "0362cc27b874e9db52026c6482b9a9a2321c4789d1e98653b53de947c5cf482f",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -121,7 +121,7 @@
       "scripts/ocr-reliability-regression.cjs": "c665851d4cb9b041516ba7cbad918bb3342b838711325bc4f8c3cb419cd95bc6",
       "scripts/ocr-reliability-scope-regression.cjs": "161a28e4d153ad7d8cddccbf3d0dc13187fce338c828f74235c5c5c06974da8b",
       "scripts/ocr-structure-regression.cjs": "6650e2c97b68ba75e44e24da9df7f62d81c1ce8dbb94f3c77e424260eb2e491c",
-      "scripts/ocr-upload-retry-regression.cjs": "f66ecba3fb8acda33cd83c484856c4124044bea37fa9f55aa32779d4ea73e0ed",
+      "scripts/ocr-upload-retry-regression.cjs": "a0f31a1b124833ec0c8ea109efea19ea7aa00184ed9f3802b33abf882877e315",
       "scripts/ocr-upload-retry-scope-regression.cjs": "7bbc97a31f98ce5b847f809b7a81c7dfcb213e6a9e6b595d3772e98d715f6253",
       "scripts/ocr-v2/MONETARY.md": "8ed45135ecd766fe397f618a6d4aeaa6158f6a6fcd9d774ae4dc64708b89e567",
       "scripts/ocr-v2/PHASE3B.md": "04860ab89de360e4be6a715f309852b7997048e8d5ea6b1809555c81e3c48599",
@@ -321,7 +321,7 @@
       "scripts/remittance-grouped-total-regression.ts": "13468a09e8c3bedf13a88b7917e8baf288e75a762354c887740f867f519fa6b0",
       "scripts/remittance-intake-regression.cjs": "0f4e506bf7cc76e0f922f2842850ae0e98b8c6eacdf7d821dc482094fddec11f",
       "scripts/remittance-job-observer-regression.cjs": "b7b9ae0bad8e49235c1fc875c413b7ebfc0e853f51daa61262a578ccc70fdc4f",
-      "scripts/remittance-job-observer-scope-regression.cjs": "599171ed7dc70e3680d708e68fec9a3a50b2751391d648ec9a71592a8eeaac97",
+      "scripts/remittance-job-observer-scope-regression.cjs": "677772e32bd2eda28056e75cec88387ed86b672b5eb4953a7276095d5d867a68",
       "scripts/remittance-matching-regression.ts": "dcd944b497903ac3ee066cb43d0de6fec3ac4a66caa69b037242388b44ec32bf",
       "scripts/remittance-ocr-fixture-regression.ts": "2e90a200e8de9d64212a8f56092f3ef4e00522f2751463b33c827cad45991fa0",
       "scripts/remittance-photo-corpus.cjs": "7d8342d9234119d129613d43afd1af2d807769d0c8df5c5f2daff9017a3c25ec",
