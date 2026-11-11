@@ -1,26 +1,26 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-remittance-job-observer-20261110-rc3",
+  "releaseId": "trimax-historical-payment-dates-20261110-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-11-10T07:57:49.985Z",
-  "releaseTimestamp": "2026-11-10T07:57:49.985Z",
+  "createdAt": "2026-11-11T04:52:48.890Z",
+  "releaseTimestamp": "2026-11-11T04:52:48.890Z",
   "baseProduction": {
-    "commit": "f54919232e66efce8c54752454e1ff869314df96",
-    "vercelDeploymentId": "Biz4x43XVShchR41rnmN52fYftPw"
+    "commit": "f14e51bae7c7f3a66a69a184fd0e101a07ecac78",
+    "vercelDeploymentId": "DEmsLRRkkNxu2ZGGRHUBZFV3xweT"
   },
   "components": {
     "web": {
-      "commit": "0b9221b1a1a0b61e6bc10501f2ea66f6a17e1f89"
+      "commit": "c261ad7a62c4b0f36810397f176ebd59db4abbd9"
     },
     "legacy": {
-      "commit": "0b9221b1a1a0b61e6bc10501f2ea66f6a17e1f89"
+      "commit": "c261ad7a62c4b0f36810397f176ebd59db4abbd9"
     },
     "v2-shadow": {
-      "commit": "0b9221b1a1a0b61e6bc10501f2ea66f6a17e1f89"
+      "commit": "c261ad7a62c4b0f36810397f176ebd59db4abbd9"
     }
   },
   "sourceBundle": {
-    "sha256": "91069076da2fd61a094bc8d6c75ab537899f96da94cbf472f9bfd4f961d1e299",
+    "sha256": "a9c02373b21e00c9b1f943c75c0ff7bf39196da13ebada3cdc5f08d384d8cb34",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -46,8 +46,8 @@
       "public/window.svg": "644768c4aaeb4767bce293344eeb0c125fb804a94d801440424072202d85e3a1",
       "scripts/account-management-regression.ts": "26119699454a3a80814fcb0afdfc1eeaaec65474e1153b0949ceddbe480a6264",
       "scripts/apartment-turn-regression.cjs": "3577ecf06d38e2b2cd217c814557fba9ff46f7e11c726e0b20104eef145e3e0d",
-      "scripts/atomic-remittance-pg.cjs": "a7d75ac882e3b0e9e04888fee1022b9c462b6a858cb6b90edb1068d39722af84",
-      "scripts/atomic-remittance-regression.cjs": "e765ded4cb2dbf5f89b059a40d76902cd796f14606d04373513d19b50e130f55",
+      "scripts/atomic-remittance-pg.cjs": "b5413e0c989e5b11ed705f9987a3f305e58bff2b897c49add9d0f11d7381254d",
+      "scripts/atomic-remittance-regression.cjs": "5ec7782107ed6530c2d76e28851ca4a292a9ff9513935cd54f39220b8bde5e4d",
       "scripts/auth-cookie-refresh-regression.cjs": "35ac8923b0c555d5470651edc1ce56bc89896f52837086c3c674eb1fb922b9a7",
       "scripts/business-read-isolation-regression.ts": "36319d04f87c4d27ef15e171c2ef89ec6cb3b5314ca4c334e527d7da500b1be8",
       "scripts/camera-lifecycle-regression.ts": "019893d9e4e30b49b8189384db4d48946eb4a201caa353fbacba9431358d5a5c",
@@ -78,6 +78,7 @@
       "scripts/glen-payor-regression.cjs": "2f91135035c00a5786372e8d7b847879e440cdadfab3038651c88cba74fa04e2",
       "scripts/high-resolution-still-regression.cjs": "65be29f1660f4b97e87b69cb6411c912eb8c345c91dfcb78ea208d9a748021d6",
       "scripts/high-resolution-still-scope-regression.cjs": "b3f23d88e87dcba5648cd6a9d79fcae1b096965b302f9e06b91b2660138d2317",
+      "scripts/historical-payment-date-scope-regression.cjs": "4c8d5d42bcd0a80739dbabceb226587d9576d19e02b2887b8d837ba06b5d9545",
       "scripts/install-ocr-supervisor.ps1": "7c295e68e7c9b95036412b44cf423d677519f9e0a5107beb1278cc244d65848e",
       "scripts/invoice-cent-regression.ts": "f6b7878369411ad11297c0d79aed1e41eab3c3c2dd7d626496f43510093d5078",
       "scripts/invoice-correction-regression.ts": "d637ec393a9ae331676b88d5d4e9db9d4c96e326977b103d39e15aebf8e4c873",
@@ -257,8 +258,8 @@
       "scripts/owner-server-auth-regression.ts": "b295a70ecdc6e291e2a474afbd900075334cb940ca57bb191a9e41f67311f273",
       "scripts/payment-application-regression.ts": "fca8cef368b45f605315ecc08e8d5291ea240de891e8e3ba2978f1c6eed6ffdd",
       "scripts/payment-state-lifecycle-regression.ts": "88f1ec8d51facaf9c25d94f18ab4c827db668b331cbe0f61d923855ce8bced04",
-      "scripts/payment-submit-regression.cjs": "1e9aece0f127539d7f75f76227f4ba4265bd40d9a73d7c75d28823f5a2aae4e3",
-      "scripts/payment-timeliness-regression.ts": "1f37027e88738030fa535958741ed5ac9c77fa7938034b93c9b92e01a2d1c91d",
+      "scripts/payment-submit-regression.cjs": "21524c65accd2b8a9a9df4a24265569171a9b1090ae1bcc1f6a6304bd993033f",
+      "scripts/payment-timeliness-regression.ts": "bdf9043f629d96250ea2f6731ee5fa1f02b15044892587f7033fe5aa780e40d9",
       "scripts/pdf-readiness-regression.mjs": "d9ee3fe4b47c70c05ebe481f6029216f708688d370151d6c1209e1ade97a7f39",
       "scripts/photo-corpus-acceptance.cjs": "7451ce420af4c707f3185c11db2cb49c1a2702859618b5e5201fad5403a96971",
       "scripts/photo-corpus-financial-regression.cjs": "8ec7fce66dbcd180cb3e3ddd4c0c62a9275c6baa1903f851c4195836af0bea85",
@@ -296,7 +297,7 @@
       "scripts/release/file-forensics-regression.cjs": "a6da1ba822d17c1a31b7bd29d3cb49e95febca66f29c51b712ccdd9d608c1b26",
       "scripts/release/file-forensics.cjs": "25133a9f2167c801a05906be04068f3d85f54f3c462e085869df2d486c8bea30",
       "scripts/release/final-candidate-regression.cjs": "edc0dbfa8f70d55607c65327a08ed25193380387dd4f1e850cf130ef992ca03f",
-      "scripts/release/gate-checks.cjs": "64598b6d7aa912aee0279cfa38a8c7de6895ff67ffa52160b0a4339bec4429ad",
+      "scripts/release/gate-checks.cjs": "659eaaf1a8af2900fc7d32e0a13c075bb259a349481cdf8b0f1b26e25d9458ca",
       "scripts/release/gate-state-regression.cjs": "51f1d2c76eca73d122f20cc0f537b624074ebd4943f946dcba63857775e45d04",
       "scripts/release/gate-state.cjs": "f56bdc9741b07b92c53bb487f21320080537fa90734721130612e8c1b52da839",
       "scripts/release/gate.cjs": "228232de653ef9c0c5a96ea24a9bfb0220a06eed1a0a516222d523b67d778c45",
@@ -319,7 +320,7 @@
       "scripts/remittance-contract-regression.ts": "75e3bf300050abfcd6145eb5d912af9251fef904bc1c9be19c5bc5695d50cf77",
       "scripts/remittance-deadline-regression.cjs": "ff7538f06bb4716e297a2b60f453b4ddac8cba554122268833fc57b1b5384586",
       "scripts/remittance-grouped-total-regression.ts": "13468a09e8c3bedf13a88b7917e8baf288e75a762354c887740f867f519fa6b0",
-      "scripts/remittance-intake-regression.cjs": "0f4e506bf7cc76e0f922f2842850ae0e98b8c6eacdf7d821dc482094fddec11f",
+      "scripts/remittance-intake-regression.cjs": "6d361c5531898df9c398295593acaba8e55043cb6b5ea824f517e62fadb9ccea",
       "scripts/remittance-job-observer-regression.cjs": "f86e7dfe0d5c2286dd9c5459005ee9c775bb834f2ede452b50cab8a0c2a96c99",
       "scripts/remittance-job-observer-scope-regression.cjs": "677772e32bd2eda28056e75cec88387ed86b672b5eb4953a7276095d5d867a68",
       "scripts/remittance-matching-regression.ts": "dcd944b497903ac3ee066cb43d0de6fec3ac4a66caa69b037242388b44ec32bf",
@@ -346,7 +347,7 @@
       "scripts/start-ocr-supervisor.ps1": "1c0b14c757d211cfa54b271c6011504c7d524d4410203e646fd95611dd4dd1b7",
       "scripts/table-caption-ownership-regression.cjs": "802dd640e13598fc74301cb75a5fbd20f035da540e3bdd781963abcfe89330a4",
       "scripts/tenant-isolation-hardening-regression.ts": "a1c42f4f88fbca8e64ae38dfb58127ad9a76bf95ee6ff44f66ddb57d8ed4a396",
-      "src/app/activity/page.tsx": "d3d1a01cc89209ee2c76962e551aa3f06de698e4abb877bab2666418117d3ca7",
+      "src/app/activity/page.tsx": "dbf83e03b4ceae5e0efe2c205935f18b4d9c7db335f8b770d3a5b834735e6ec0",
       "src/app/admin/ocr-attempts/[attemptId]/page.tsx": "47b7930a27ffcec419ae723006d4ef899aa4e22f15e36d0bc34cf493f4dc5253",
       "src/app/admin/ocr-attempts/page.tsx": "731169273760d65bdc574d7150e90e34178a0c7cac1b4e33dd550ee2fc6df8b8",
       "src/app/admin/service-requests/components/OwnerRequestPhotos.tsx": "492f20d4a74f892228859e72c691d7cc7f91b882ae1307d784d28c9280234748",
@@ -361,7 +362,7 @@
       "src/app/api/maintenance-qr/[id]/route.ts": "a570282e4c3ec92a97de85276a17887ea59bb83407d2a9fe8cb971fc65cb9284",
       "src/app/api/maintenance-qr/route.ts": "8fd39825940a6150ad6fade9031657f8eb484923fd254e6fdf397083399602eb",
       "src/app/api/ocr-retention/route.ts": "ba61d5de6ade820727a15828b9df895b0c5a18d72df289f881273f50335d4e17",
-      "src/app/api/payments/apply-batch/route.ts": "d8d1586fa633416815d9ca1bbc7a26c59db19ad78466707f64a9de46a047dcdd",
+      "src/app/api/payments/apply-batch/route.ts": "e8a3e230376f48a978ef25cf510d5a96e28c950a4fff38cdfb6911801fa7b3df",
       "src/app/api/payments/duplicate-remittance-preflight/route.ts": "01661a87fa0c7a8b821b256f9e68e7ba48a68a9809755c5b1b23ed64e0f59528",
       "src/app/api/payments/extract-check-stub/route.ts": "bb14c6f5085fe7e76c3a6b7277a1708206c780dd37a3b7e7bb3fcdf53cdb6b24",
       "src/app/api/payments/ocr-jobs/route.ts": "20654cb307aa2d04afad5a80276bf6e75bc829d09726afba1574a93787d9b67e",
@@ -400,7 +401,7 @@
       "src/app/components/AppShell.tsx": "b4358a4c5a82735d1871ef0bc8e7e3bbb30b3770b577d51b0343552155c489af",
       "src/app/components/AuthGuard.tsx": "46294b22fe601402e06a792dd5b3215dabea560e27a7409b457354cdac45b9bc",
       "src/app/components/BackButton.tsx": "87360394e36c2e90d4a33135d5539d0176e75d8cc2448783c5c859783ee1059c",
-      "src/app/components/BatchInvoicePayments.tsx": "a9f953f75c2800c12f6294d1eb319a3683430d09cf70e10e8e9d0ad48f83a841",
+      "src/app/components/BatchInvoicePayments.tsx": "1fdac55de69f6da5b2afa4fe39b5d6d4231ee5a02e5fd55325e3f6c6d9a4eba3",
       "src/app/components/Button.tsx": "68f87a76cee881a6b148ec30af54746d8a0fbe11a153b3ccf0134a62504deb97",
       "src/app/components/Card.tsx": "6706fd0d306b77c27bf8f9f2558fdfc4f5a77b874404cba67b0f4980c96de207",
       "src/app/components/ClientSmartSearch.tsx": "6780c13e035f04c4bf532a23842cf8d220021a409362c1f2d01fc93cbb3c1278",
@@ -461,7 +462,7 @@
       "src/app/components/ReverseTotalControl.tsx": "749611bb72de255fae488a8b90f5e1488ef25e5e3aaf07f25a58d7819221b7cd",
       "src/app/components/RoleVisible.tsx": "69e7eb4de7cacee6a5f0be80545fdb57d1e48a96988178711d761eee57e9bef5",
       "src/app/components/RouteAccessBoundary.tsx": "59dcc979387329a6be84b757edf82f7099831adaf7d94e5b412e4d02ca029949",
-      "src/app/components/SavedRemittancePaymentView.tsx": "1bd2e135256764d550f9ca2ede7db69210e9dc45fdef15a10a3969e8564d1288",
+      "src/app/components/SavedRemittancePaymentView.tsx": "a26ddc609675a4452c1f20b725f55443c07802784a6eb2a2fbc186697b272703",
       "src/app/components/SchedulingNotifications.tsx": "4efa99f2d59101b2612b110de33586058ba40377300ae8626fecb92e8c0bf2f6",
       "src/app/components/SecureSessionBadge.tsx": "43f3538d53c576802a1cc851ca77a84a43144127d959ac44a673f9fc874ea592",
       "src/app/components/SplitInvoicePlanner.tsx": "0f44da82ecfa28d220f403c60d5e9dd361183ad73cca3a468fef580a00623edc",
@@ -507,7 +508,7 @@
       "src/app/lib/accountSecurity.ts": "1e6da6dbffd25fb55dd20b632a182351d806c85d7e1021684a55da3141e6b0b3",
       "src/app/lib/activityLog.ts": "047d1272e5144b29e8165a0ff614c2d85e52bab3f5fea573b22651ec3213f3c6",
       "src/app/lib/apartmentTurn.ts": "f5324e83c42fe7b5ac2400adc4bfcc1b2ce20000e99076d3549c8097c7d9b683",
-      "src/app/lib/atomicRemittance.ts": "ed56e83577a279d68df8f3e16afe81dab2fa95e317fabb381c00d284c5ef13a5",
+      "src/app/lib/atomicRemittance.ts": "f26e577d7aa0c2b96754bae47ce4204cbabd3762c5d13bbc67f19f40a3f4f7dc",
       "src/app/lib/calendar.ts": "f25c6d9d1566885a2886b78c1bc96234bedb96af6a1467895983d8b59393f5f9",
       "src/app/lib/cameraArtifacts.ts": "3c88907c29cd8bc925cbcf305e90bac986617598f5d604ef62d092a0edb36988",
       "src/app/lib/captureReadiness.ts": "282eb9bed36a6d8ddde54c578f7104a128ace17d9b36659ea4897197f01b4758",
@@ -626,7 +627,7 @@
       "src/app/lib/ocrV2/shadow/pipeline.ts": "14b3d7a4e9df25ccbae709c7bd13d0eb1ba4f0975a061f9414cdb00097fe3f02",
       "src/app/lib/ocrV2/types.ts": "59848dd98e9874bcac2820e61a4816ea374fe971370064826c28afb09a43e2ec",
       "src/app/lib/outlookDrafts.ts": "bc667fa98601cd119a338a06bd6d8875af5ec0621b79ed8ca9d622190e2e5ba5",
-      "src/app/lib/paymentTimeliness.ts": "27dc1dd279ad3f1f6387b7ea37206c75a9bf64f95de5a9c67b1fac1f355c070a",
+      "src/app/lib/paymentTimeliness.ts": "1047fb0755b30f874bcbaf2fc8b255788134b9a9f6eaca50c6fd1f024c89ffe4",
       "src/app/lib/pdfAttachments.ts": "113ca5b2189e8b02d62d29f62cb389083fe9f871066b5b69ae379fc50a981b55",
       "src/app/lib/printPagePdf.ts": "bf1caca7530bb9f26e366baf0dc2234c23341fb9efc4b1dfef750e1c50d6bfdb",
       "src/app/lib/propertyAccess.ts": "5b3f81d36908ef4985c5525d34ac6842285fbc23ecf42d6bbbba0c7fd44c2ecc",
@@ -696,7 +697,7 @@
       "src/app/manifest.ts": "7a70a588bc52215af58477c2bcfc67c143742493f01048b35b4898d6732d8954",
       "src/app/new-request/page.tsx": "f8244b6732b3b16aa2da4b613f1d657681339b30e0f833cbe6a830d8f8cf211b",
       "src/app/page.tsx": "43444566ed07c394b072335bccbd54b343aaa92a1b95c2c30afb5bf5995bf290",
-      "src/app/payments/page.tsx": "450b22fd468849a694fc88c24b327b3009ba39b3ba93cc3ab54a6b046fcd0c3c",
+      "src/app/payments/page.tsx": "8ef9415d6ebb8dcd7e6fe77c81a1846a4556ff29b752ad5667cb7b4978febce5",
       "src/app/print.css": "fed798b5ee421adfad69102d91eeabb6a9e497a89ff39910e53c39de396df887",
       "src/app/profile/page.tsx": "d4004ca0abc6b078b20da89ad0662045b64d591c1beb6e61c6f477210fe850b1",
       "src/app/property-intelligence/page.tsx": "39442297c2ce48a7ee33da366aac8bc06aae0d73fb904983943c04837b2af06c",
@@ -813,6 +814,7 @@
       "supabase/sql/2026-10-23-ocr-job-watchdog-schedule.sql": "0b33178f7aa9b555e75d4a98f435f263cff48666f810c21f1034f0f4bc170571",
       "supabase/sql/2026-10-26-invoice-draft-atomic-save.sql": "0c5ffb14d24799c18fd931d731c7f4d4f3db3481b6ecdf269e074d17161fce36",
       "supabase/sql/2026-11-02-atomic-remittance-posting.sql": "b2d5ba60d6f3577e76b647ffbe620a4b486d7a6cac75921208698325b8d83f7d",
+      "supabase/sql/2026-11-10-unknown-historical-receipt-date.sql": "dbe10bd9736e674077dc8c21158665eb521a6db4290b23c3ad851400bce9479e",
       "supabase/sql/README.md": "e3ac010eb016b07963eda46c3f2670d0e1aa78a51666deb38dfcb0f391c34684",
       "tsconfig.json": "3a134da0f9f609ce947455552bb788567797c0d6ba5042056b6f71d42ee52916",
       "vercel.json": "dd0dafc7204af5e053d507b4f7db1f7e42d2db001e4d0e9d3694f7e3e56308e4"
@@ -929,8 +931,8 @@
         "entries": 955
       },
       "rpc": {
-        "sha256": "e7028e9c0a1377dbe2d4431f43be63ce1bfee797a310f6796d7cda968c87b6cc",
-        "entries": 71
+        "entries": 71,
+        "sha256": "3d980c78a97f967caf8db1ef9ffa3cf3bbf6a918cc0a7e2ddedb09e376ef3bfa"
       },
       "triggers": {
         "sha256": "f7ce08d5292f72c8e967f4fc4c905b85eaf3418498e26d78da5c401a7f79c52a",
@@ -1776,22 +1778,22 @@
     "sha256": "bccc49970c7db9510b64204809cbb282c6d22d5f651708a9e7a7fede7a550bbc"
   },
   "upgradeContext": {
-    "candidateReleaseId": "trimax-remittance-job-observer-20261110-rc3",
-    "applicationCommit": "0b9221b1a1a0b61e6bc10501f2ea66f6a17e1f89",
-    "machineryCommit": "0b9221b1a1a0b61e6bc10501f2ea66f6a17e1f89",
+    "candidateReleaseId": "trimax-historical-payment-dates-20261110-rc1",
+    "applicationCommit": "c261ad7a62c4b0f36810397f176ebd59db4abbd9",
+    "machineryCommit": "c261ad7a62c4b0f36810397f176ebd59db4abbd9",
     "currentProductionRelease": {
-      "manifestCommit": "f54919232e66efce8c54752454e1ff869314df96",
-      "manifestDigest": "15792fa914edcbf1d6f0d4a63803dd22e6322a2e8fcc164e02ff0ea316933572",
-      "releaseId": "trimax-remittance-auto-capture-20261109-rc1",
-      "deploymentCommit": "f54919232e66efce8c54752454e1ff869314df96",
-      "deploymentId": "Biz4x43XVShchR41rnmN52fYftPw"
+      "manifestCommit": "f14e51bae7c7f3a66a69a184fd0e101a07ecac78",
+      "manifestDigest": "1f6d8c23a24afb8c207e4e3302f35d4beac6ab416491038b49599d0a2fc7f0e2",
+      "releaseId": "trimax-remittance-job-observer-20261110-rc3",
+      "deploymentCommit": "f14e51bae7c7f3a66a69a184fd0e101a07ecac78",
+      "deploymentId": "DEmsLRRkkNxu2ZGGRHUBZFV3xweT"
     }
   },
   "contractRevision": {
-    "id": "durable-job-observation",
-    "priorManifestDigest": "15792fa914edcbf1d6f0d4a63803dd22e6322a2e8fcc164e02ff0ea316933572",
-    "reason": "Separate finite foreground spinner from durable observation, preserve late terminal results and suspended-PWA state, bound status/history/resume waits. OCR, financial/matching/payment safeguards, database/leases/reaper, models, worker configs, automatic camera and mandatory email review unchanged.",
-    "rollback": "Restore f549192 / dpl_Biz4x43XVShchR41rnmN52fYftPw and native remittance-auto-capture-rc1. No database restore; keep no-crop camera and mandatory email approval."
+    "id": "historical-payment-dates",
+    "priorManifestDigest": "1f6d8c23a24afb8c207e4e3302f35d4beac6ab416491038b49599d0a2fc7f0e2",
+    "reason": "Explicit unknown historical receipt dates for owner-confirmed checks. Separate check, postmark, receipt, deposit and posting dates. Preserve atomic allocations, immutable audits and duplicate detection.",
+    "rollback": "Before posting, restore the previous posting function, deployment and worker source. After a real posting, retain all committed audit and invoice records."
   },
   "captureWorkflow": "guided-live-camera-v1"
 }
