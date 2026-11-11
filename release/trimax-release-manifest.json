@@ -10,17 +10,17 @@
   },
   "components": {
     "web": {
-      "commit": "c261ad7a62c4b0f36810397f176ebd59db4abbd9"
+      "commit": "274a059869f0840f46e1d4abb585782e9d1dc357"
     },
     "legacy": {
-      "commit": "c261ad7a62c4b0f36810397f176ebd59db4abbd9"
+      "commit": "274a059869f0840f46e1d4abb585782e9d1dc357"
     },
     "v2-shadow": {
-      "commit": "c261ad7a62c4b0f36810397f176ebd59db4abbd9"
+      "commit": "274a059869f0840f46e1d4abb585782e9d1dc357"
     }
   },
   "sourceBundle": {
-    "sha256": "a9c02373b21e00c9b1f943c75c0ff7bf39196da13ebada3cdc5f08d384d8cb34",
+    "sha256": "a222f42b1faa499f2f172c29b2b9c750ab0ed78ea3258526dc69367ae0888f61",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -78,7 +78,7 @@
       "scripts/glen-payor-regression.cjs": "2f91135035c00a5786372e8d7b847879e440cdadfab3038651c88cba74fa04e2",
       "scripts/high-resolution-still-regression.cjs": "65be29f1660f4b97e87b69cb6411c912eb8c345c91dfcb78ea208d9a748021d6",
       "scripts/high-resolution-still-scope-regression.cjs": "b3f23d88e87dcba5648cd6a9d79fcae1b096965b302f9e06b91b2660138d2317",
-      "scripts/historical-payment-date-scope-regression.cjs": "4c8d5d42bcd0a80739dbabceb226587d9576d19e02b2887b8d837ba06b5d9545",
+      "scripts/historical-payment-date-scope-regression.cjs": "c961ec1a14123c55bf5ff6dbda9d02b744693bd55ff624d4b58a710f0b8121ab",
       "scripts/install-ocr-supervisor.ps1": "7c295e68e7c9b95036412b44cf423d677519f9e0a5107beb1278cc244d65848e",
       "scripts/invoice-cent-regression.ts": "f6b7878369411ad11297c0d79aed1e41eab3c3c2dd7d626496f43510093d5078",
       "scripts/invoice-correction-regression.ts": "d637ec393a9ae331676b88d5d4e9db9d4c96e326977b103d39e15aebf8e4c873",
@@ -120,10 +120,10 @@
       "scripts/ocr-progress-persistence-regression.cjs": "c0f25bf2862b8ac0a814edd1a1b3f6ed73dfb9d3cb4008689945a79c7dc19647",
       "scripts/ocr-progress-persistence.cjs": "0dba580bd4aa4b3a58f06bd16ab90cfab9b5f4c65a917245b83d9ffd1e1d9658",
       "scripts/ocr-reliability-regression.cjs": "c665851d4cb9b041516ba7cbad918bb3342b838711325bc4f8c3cb419cd95bc6",
-      "scripts/ocr-reliability-scope-regression.cjs": "161a28e4d153ad7d8cddccbf3d0dc13187fce338c828f74235c5c5c06974da8b",
+      "scripts/ocr-reliability-scope-regression.cjs": "0f820b18292475e57b38544e7c309c05bb817b8bdacd71092961a56556c5d37f",
       "scripts/ocr-structure-regression.cjs": "6650e2c97b68ba75e44e24da9df7f62d81c1ce8dbb94f3c77e424260eb2e491c",
       "scripts/ocr-upload-retry-regression.cjs": "a0f31a1b124833ec0c8ea109efea19ea7aa00184ed9f3802b33abf882877e315",
-      "scripts/ocr-upload-retry-scope-regression.cjs": "7bbc97a31f98ce5b847f809b7a81c7dfcb213e6a9e6b595d3772e98d715f6253",
+      "scripts/ocr-upload-retry-scope-regression.cjs": "7b3b802a144752fd85ceb2343b0dd36de124847743dfe0e9711ad060366f4b67",
       "scripts/ocr-v2/MONETARY.md": "8ed45135ecd766fe397f618a6d4aeaa6158f6a6fcd9d774ae4dc64708b89e567",
       "scripts/ocr-v2/PHASE3B.md": "04860ab89de360e4be6a715f309852b7997048e8d5ea6b1809555c81e3c48599",
       "scripts/ocr-v2/PHASE4.md": "b2f3d3923dec83dcceaa028d098181b5e4e868c1da407457e0690263426414ad",
@@ -256,7 +256,7 @@
       "scripts/office-coupon-regression.cjs": "9336eadc65dca0f3816f5b841fec9f1202140fb31cb7d22d4d46f04f1636859b",
       "scripts/office-qr-sql-regression.cjs": "00c3333acbd7301c7b82384087c72e5ae5f9e18451d7628416c5966dd9c748d8",
       "scripts/owner-server-auth-regression.ts": "b295a70ecdc6e291e2a474afbd900075334cb940ca57bb191a9e41f67311f273",
-      "scripts/payment-application-regression.ts": "fca8cef368b45f605315ecc08e8d5291ea240de891e8e3ba2978f1c6eed6ffdd",
+      "scripts/payment-application-regression.ts": "57a71e69d3a19c535077fd79cf40757afadf79c39d43d580bac00d781fa841e7",
       "scripts/payment-state-lifecycle-regression.ts": "88f1ec8d51facaf9c25d94f18ab4c827db668b331cbe0f61d923855ce8bced04",
       "scripts/payment-submit-regression.cjs": "21524c65accd2b8a9a9df4a24265569171a9b1090ae1bcc1f6a6304bd993033f",
       "scripts/payment-timeliness-regression.ts": "bdf9043f629d96250ea2f6731ee5fa1f02b15044892587f7033fe5aa780e40d9",
