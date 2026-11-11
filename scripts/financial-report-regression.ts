@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { financialReport, parseBankCsv, validDay, type ReportAudit, type ReportInvoice, type Expense } from "../src/app/lib/financialReports.ts";
 import { financialCsv, statementHtml } from "../src/app/lib/financialReportExport.ts";
 const range = { from: "2026-01-01", through: "2026-11-10" };
@@ -52,4 +53,5 @@ assert.deepEqual(parseBankCsv('Transaction Date,Description,Debit,Credit\r\n1/2/
 ]);
 assert.equal(validDay("2026-02-30"),false);
 assert.throws(()=>parseBankCsv("Date,Description,Amount\n2/30/2026,Fuel,-10"),/Invalid date/);
+assert.match(readFileSync("src/app/reports/financial/page.tsx", "utf8"), /<form key=\{from \+ ":" \+ through\} method="get"/, "Preset navigation must remount the uncontrolled custom date form");
 console.log("PASS cash basis, exact cents, unknown dates, tax, installments, reversals, split sources, classifications, CSV and export safety");

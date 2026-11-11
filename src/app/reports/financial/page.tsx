@@ -34,7 +34,7 @@ export default async function FinancialReports({ searchParams }: { searchParams:
       <nav aria-label="Report periods" className="flex flex-wrap gap-4 underline">
         <Link href={reportPath}>Year to date</Link><Link href={reportPath + "&period=month"}>This month</Link><Link href={reportPath + "&period=year"}>This calendar year</Link>
       </nav>
-      <form method="get" className="flex flex-wrap items-end gap-3">
+      <form key={from + ":" + through} method="get" className="flex flex-wrap items-end gap-3">
         <input type="hidden" name="business" value={business.slug} /><input type="hidden" name="period" value="custom" />
         <label className="grid gap-1">Start date<input className={field} required name="from" type="date" defaultValue={from} /></label>
         <label className="grid gap-1">End date<input className={field} required name="through" type="date" defaultValue={through} /></label>
