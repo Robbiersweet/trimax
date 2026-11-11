@@ -531,6 +531,7 @@ html.theme-light .report-library-action {
 
 .report-command-card {
   min-height: 12rem;
+  padding-inline-start: 1.5rem;
   overflow: hidden;
   position: relative;
 }
@@ -547,7 +548,7 @@ html.theme-light .report-library-action {
   background: #22d3ee;
   border-radius: 999px;
   bottom: 1rem;
-  left: 1rem;
+  inset-inline-start: .5rem;
   position: absolute;
   top: 1rem;
   width: 3px;
@@ -20330,4 +20331,45 @@ html.theme-light .queue-empty-card::after {
     grid-row: 2;
     z-index: 1;
   }
+}
+
+.report-fold-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 44px;
+  padding-block: .375rem;
+  list-style: none;
+  cursor: pointer;
+  border-radius: .5rem;
+}
+.report-fold-heading::-webkit-details-marker { display: none; }
+.report-fold-heading h2 { font-size: 1rem; font-weight: 800; }
+.report-fold-chevron {
+  display: block;
+  flex: 0 0 .55rem;
+  width: .55rem;
+  height: .55rem;
+  margin-inline-end: .375rem;
+  border-inline-end: 2px solid currentColor;
+  border-block-end: 2px solid currentColor;
+  transform: translateY(-.1rem) rotate(45deg);
+}
+.report-fold[open] > .report-fold-heading .report-fold-chevron {
+  transform: translateY(.1rem) rotate(225deg);
+}
+.report-fold[open] > .report-fold-content { padding-block-start: .75rem; }
+.report-fold-control {
+  min-height: 44px;
+  padding: .375rem .875rem;
+  border: 1px solid #64748b;
+  border-radius: .625rem;
+  font-size: .875rem;
+  font-weight: 700;
+}
+.report-fold-control:hover, .report-fold-heading:hover { text-decoration: underline; }
+.report-fold-control:focus-visible, .report-fold-heading:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
 }

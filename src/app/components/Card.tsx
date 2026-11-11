@@ -1,3 +1,5 @@
+export const cardSurface = "app-card min-w-0 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 shadow-lg sm:p-5";
+
 type CardProps = {
   children: React.ReactNode;
   className?: string;
@@ -12,7 +14,7 @@ export default function Card({
   return (
     <div
       id={id}
-      className={`app-card min-w-0 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 shadow-lg sm:p-5 ${className}`}
+      className={`${cardSurface} ${className}`}
     >
       {children}
     </div>

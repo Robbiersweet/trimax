@@ -23,8 +23,21 @@ const allowed = new Set([
   "src/app/reports/page.tsx",
   "supabase/sql/2026-11-10-financial-reports.sql",
 ]);
-for (const args of [["diff", baseline, "--name-only"], ["ls-files", "--others", "--exclude-standard"]]) {
+const brandingRelease = "ab2e844c22b018a90cbb60c22dcc1acfe502ae27";
+const polishPaths = new Set([
+  "scripts/financial-report-scope-regression.cjs",
+  "src/app/components/Card.tsx",
+  "src/app/globals.css",
+  "src/app/reports/ReportSection.tsx",
+  "src/app/reports/ReportWorkspace.tsx",
+  "src/app/reports/page.tsx",
+]);
+for (const [args, permitted] of [
+  [["diff", baseline, brandingRelease, "--name-only"], allowed],
+  [["diff", brandingRelease, "--name-only"], polishPaths],
+  [["ls-files", "--others", "--exclude-standard"], polishPaths],
+]) {
   const changed = execFileSync("git", [...args, "--", ...sourcePaths], {encoding:"utf8"}).trim().split(/\r?\n/).filter(Boolean);
-  assert.deepEqual(changed.filter(file => !allowed.has(file)), []);
+  assert.deepEqual(changed.filter(file => !permitted.has(file)), []);
 }
 console.log("PASS financial reports release scope; existing payment, invoice, OCR and scheduling source preserved");

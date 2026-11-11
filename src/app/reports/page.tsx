@@ -1,3 +1,5 @@
+import ReportWorkspace from "./ReportWorkspace";
+import { ReportSection, ReportSectionControls } from "./ReportSection";
 import { subtractMoney as canonicalSubtractMoney } from "../lib/money.ts";
 import { sumMoney as canonicalSumMoney } from "../lib/money.ts";
 import Link from "next/link";
@@ -1136,7 +1138,7 @@ export default async function ReportsPage({
 
   return (
     <AppShell>
-      <div className="space-y-6">
+      <ReportWorkspace businessSlug={businessSlug}>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
@@ -1163,12 +1165,16 @@ export default async function ReportsPage({
           </Link>
         </div>
 
-        <Card className="report-directory border-cyan-500/20 bg-zinc-950/70 p-4">
+        <div className="flex flex-wrap items-center gap-3">
+        <RoleVisible businessSlug={businessSlug} allow={["owner", "admin"]}>
+          <Link className="inline-block rounded-xl bg-orange-700 px-4 py-2 font-semibold text-white" href={`/reports/financial?business=${encodeURIComponent(businessSlug)}`}>Profit &amp; Loss and financial reports</Link>
+        </RoleVisible>
+          <ReportSectionControls />
+        </div>
+
+        <ReportSection title="Report Directory" id="report-directory" defaultOpen className="report-directory border-cyan-500/20 bg-zinc-950/70 p-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="report-directory-kicker text-xs font-black uppercase tracking-[0.28em] text-cyan-300">
-                Report Directory
-              </p>
 
               <h2 className="mt-2 text-2xl font-black text-white">
                 {propertyLabel} reporting for {rangeLabel}
@@ -1239,14 +1245,11 @@ export default async function ReportsPage({
               </Link>
             ))}
           </div>
-        </Card>
+        </ReportSection>
 
-        <Card className="report-command-brief border-orange-500/20 bg-zinc-950/75">
+        <ReportSection title="Executive Readout" id="executive-readout" defaultOpen className="report-command-brief border-orange-500/20 bg-zinc-950/75">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="report-command-kicker text-sm font-black uppercase tracking-[0.3em] text-orange-300">
-                Executive Readout
-              </p>
 
               <h2 className="mt-2 text-2xl font-black text-white">
                 What this report view says first
@@ -1288,7 +1291,7 @@ export default async function ReportsPage({
               </Link>
             ))}
           </div>
-        </Card>
+        </ReportSection>
 
         {reportLoadMessages.length > 0 ? (
           <Card className="app-notice-card border-amber-500/40 bg-amber-500/10">
@@ -1303,9 +1306,6 @@ export default async function ReportsPage({
         ) : null}
 
         <RoleVisible businessSlug={businessSlug} allow={["owner", "admin"]}>
-          <Link className="inline-block rounded-xl bg-orange-700 px-4 py-2 font-semibold text-white" href={`/reports/financial?business=${encodeURIComponent(businessSlug)}`}>Profit &amp; Loss and financial reports</Link>
-        </RoleVisible>
-        <RoleVisible businessSlug={businessSlug} allow={["owner", "admin"]}>
           {laborReportLoadMessages.length > 0 ? (
             <Card className="app-notice-card border-amber-500/40 bg-amber-500/10">
               <p className="text-sm font-semibold text-amber-200">
@@ -1318,15 +1318,12 @@ export default async function ReportsPage({
             </Card>
           ) : null}
 
-          <Card
+          <ReportSection title="Labor Intelligence"
             id="labor-intelligence"
             className="labor-intelligence-card border-emerald-500/25 bg-gradient-to-br from-emerald-500/10 via-zinc-950 to-sky-500/10"
           >
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="labor-intelligence-kicker text-sm uppercase tracking-[0.3em] text-emerald-300">
-                  Labor Intelligence
-                </p>
 
                 <h2 className="mt-2 text-2xl font-bold">
                   Job session basics
@@ -1487,19 +1484,16 @@ export default async function ReportsPage({
                 </div>
               </div>
             </div>
-          </Card>
+          </ReportSection>
         </RoleVisible>
 
         <RoleVisible businessSlug={businessSlug} allow={["owner", "admin"]}>
-          <Card
+          <ReportSection title="Volatility Intelligence"
             id="operations-volatility"
             className="report-volatility-card border-cyan-500/25 bg-gradient-to-br from-cyan-500/10 via-zinc-950 to-amber-500/10"
           >
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="text-sm uppercase tracking-[0.3em] text-cyan-200">
-                  Volatility Intelligence
-                </p>
 
                 <h2 className="mt-2 text-2xl font-bold">
                   Schedule, priority, and disruption history
@@ -1634,15 +1628,12 @@ export default async function ReportsPage({
                 </div>
               </div>
             </div>
-          </Card>
+          </ReportSection>
         </RoleVisible>
 
-        <Card className="report-library-card border-sky-500/20 bg-gradient-to-br from-sky-500/5 via-zinc-950 to-orange-500/5">
+        <ReportSection title="Report Library" id="report-library" className="report-library-card border-sky-500/20 bg-gradient-to-br from-sky-500/5 via-zinc-950 to-orange-500/5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="report-library-kicker text-sm uppercase tracking-[0.3em] text-sky-300">
-                Report Library
-              </p>
 
               <h2 className="report-library-title mt-2 text-2xl font-bold">
                 Choose the report you need
@@ -1732,9 +1723,9 @@ export default async function ReportsPage({
               href={appHref(businessSlug, "/activity")}
             />
           </div>
-        </Card>
+        </ReportSection>
 
-        <Card className="p-5">
+        <ReportSection id="property-metrics" title="Property Filters and Detailed Metrics" className="p-5">
           <div className="grid gap-5 xl:grid-cols-[1fr_auto_auto] xl:items-end">
             <div>
               <p className="text-sm text-zinc-400">Property</p>
@@ -1834,9 +1825,8 @@ export default async function ReportsPage({
               <Button type="submit">Apply Dates</Button>
             </div>
           </form>
-        </Card>
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <MetricCard
             label="Units Submitted"
             value={filteredQueueItems.length}
@@ -1922,13 +1912,13 @@ export default async function ReportsPage({
             })}
           />
         </div>
+        </ReportSection>
 
-        <div id="financial-reports" className="scroll-mt-24">
         <RoleVisible
           businessSlug={businessSlug}
           allow={["owner", "admin", "accountant"]}
           fallback={
-            <Card className="border-purple-500/30 bg-purple-500/5">
+            <Card id="financial-reports" className="scroll-mt-24 border-purple-500/30 bg-purple-500/5">
               <p className="text-sm uppercase tracking-[0.3em] text-purple-300">
                 Property Report View
               </p>
@@ -1945,6 +1935,7 @@ export default async function ReportsPage({
             </Card>
           }
         >
+          <ReportSection id="financial-reports" title="Business Money Snapshot / Accounting Lite">
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
@@ -2098,13 +2089,11 @@ export default async function ReportsPage({
               </Link>
             </div>
           </Card>
+          </ReportSection>
 
-          <Card id="revenue-by-client" className="mt-4 scroll-mt-24">
+          <ReportSection title="Revenue by Client" id="revenue-by-client" className="mt-4 scroll-mt-24">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
-                  Revenue by Client
-                </p>
 
                 <h2 className="mt-2 text-2xl font-bold">
                   Who is driving revenue
@@ -2165,14 +2154,11 @@ export default async function ReportsPage({
                 ))
               )}
             </div>
-          </Card>
+          </ReportSection>
 
-          <Card className="report-section-card mt-4 border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-zinc-950 to-orange-500/5">
+          <ReportSection title="Sales Tax Summary" id="sales-tax-summary" className="report-section-card mt-4 border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-zinc-950 to-orange-500/5">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="text-sm uppercase tracking-[0.3em] text-emerald-300">
-                  Sales Tax Summary
-                </p>
 
                 <h2 className="mt-2 text-2xl font-bold">
                   Tax review for {rangeLabel}
@@ -2251,10 +2237,10 @@ export default async function ReportsPage({
                 ))
               )}
             </div>
-          </Card>
+          </ReportSection>
         </RoleVisible>
-        </div>
 
+        <ReportSection id="unit-and-renovation" title="Unit History and Renovation Reporting">
         <div id="job-mix-reports" className="grid scroll-mt-24 gap-4 lg:grid-cols-3">
           <BreakdownCard title="Status Breakdown" items={statusBreakdown} />
           <BreakdownCard title="Paint Type" items={paintBreakdown} />
@@ -2391,13 +2377,11 @@ export default async function ReportsPage({
             )}
           </div>
         </Card>
+        </ReportSection>
 
-        <Card className="report-section-card border-purple-500/30 bg-gradient-to-br from-purple-500/10 via-sky-500/5 to-emerald-500/10">
+        <ReportSection title="Future Property Portal" id="future-property-portal" className="report-section-card border-purple-500/30 bg-gradient-to-br from-purple-500/10 via-sky-500/5 to-emerald-500/10">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-sm uppercase tracking-[0.3em] text-purple-300">
-                Future Property Portal
-              </p>
 
               <h2 className="mt-3 text-2xl font-bold">
                 Built toward property manager dashboards
@@ -2425,8 +2409,8 @@ export default async function ReportsPage({
               ))}
             </div>
           </div>
-        </Card>
-      </div>
+        </ReportSection>
+      </ReportWorkspace>
     </AppShell>
   );
 }
