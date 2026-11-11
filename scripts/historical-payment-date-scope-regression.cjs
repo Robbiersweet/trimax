@@ -15,6 +15,8 @@ const allowed = new Set([
   'scripts/atomic-remittance-pg.cjs',
   'scripts/atomic-remittance-regression.cjs',
   'scripts/payment-submit-regression.cjs',
+  'scripts/payment-application-regression.ts',
+  'scripts/ocr-reliability-scope-regression.cjs',
   'scripts/ocr-upload-retry-scope-regression.cjs',
   'scripts/remittance-intake-regression.cjs',
   'scripts/payment-timeliness-regression.ts',

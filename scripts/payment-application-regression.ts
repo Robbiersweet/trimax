@@ -76,12 +76,14 @@ assert(
   "Payment UI diagnostics must retain apply-batch status, code, failing stage, and rollback outcome."
 );
 assert(
-  paymentScreen.includes("paymentDate: receivedDate") &&
-    paymentScreen.includes("receivedDate,") &&
+  paymentScreen.includes("receivedDate: historicalReceiptDateUnknown ? null : receivedDate") &&
+    paymentScreen.includes("historicalReceiptDateUnknown,") &&
+    paymentScreen.includes("postmarkDate,") &&
+    paymentScreen.includes("depositDate,") &&
     paymentScreen.includes("checkDate,") &&
     paymentScreen.includes("paymentReference: submittedPaymentReference") &&
     paymentScreen.includes("payor: submittedPayor"),
-  "Apply payload must submit received date, check date, check number, and payor unchanged."
+  "Apply payload must submit received date, check date, check number, and payor without conflating receipt, postmark, deposit, or check dates."
 );
 assert(
   nextConfig.includes("\"/api/payments/apply-batch\"") &&
