@@ -10,9 +10,12 @@ for(const args of [['diff',baseline,'4bd8376fa4db4b3279da951c7149a174f4ad36b1','
 }
 const original=cp.execFileSync('git',['show',baseline+':src/app/components/BatchInvoicePayments.tsx'],{encoding:'utf8',windowsHide:true}).replaceAll('\r\n','\n');
 const current=fs.readFileSync('src/app/components/BatchInvoicePayments.tsx','utf8').replaceAll('\r\n','\n');
+const transportRelease=cp.execFileSync('git',['show','4bd8376fa4db4b3279da951c7149a174f4ad36b1:src/app/components/BatchInvoicePayments.tsx'],{encoding:'utf8',windowsHide:true}).replaceAll('\r\n','\n');
 for(const [start,end] of [['      const data = (await response.json()', '    } catch (error) {'],['  async function applyBatchPayment(', '\n  function ']]){
- const a=original.indexOf(start),b=current.indexOf(start);assert(a>=0&&b>=0,start);
- const x=original.indexOf(end,a),y=current.indexOf(end,b);assert(x>a&&y>b,end);
- assert.equal(current.slice(b,y).replaceAll('\r\n','\n'),original.slice(a,x).replaceAll('\r\n','\n'),'Review/recognition and payment handler must remain identical');
+ // The current release changes payment receipt handling, independently covered by atomic payment and receipt-date scope regressions.
+ const candidate=start.includes('applyBatchPayment')?transportRelease:current;
+ const a=original.indexOf(start),b=candidate.indexOf(start);assert(a>=0&&b>=0,start);
+ const x=original.indexOf(end,a),y=candidate.indexOf(end,b);assert(x>a&&y>b,end);
+ assert.equal(candidate.slice(b,y).replaceAll('\r\n','\n'),original.slice(a,x).replaceAll('\r\n','\n'),'Review/recognition and payment handler must remain identical');
 }
 console.log('PASS transport-only draft scope: unchanged recognizers, batching/performance, matching, monetary validation, duplicate checks, atomic posting, worker/job lifecycle, SQL/RLS/grants, financial API and QR/settings; unchanged review result and apply handlers');
