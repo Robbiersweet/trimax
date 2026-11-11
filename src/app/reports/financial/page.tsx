@@ -18,6 +18,7 @@ export default async function FinancialReports({ searchParams }: { searchParams:
   try { result = await loadFinancialReport(access, reportRange(query)); }
   catch (error) { return <AppShell><p className="p-4">{error instanceof Error ? error.message : "Financial reports unavailable."}</p><Link className="p-4 underline" href={"/reports/financial?business=" + encodeURIComponent(access.business.slug)}>Reset to year to date</Link></AppShell>; }
   const { report, expenses, covered } = result;
+  const profitUndetermined = !covered || report.reviewCount > 0;
   const { business } = access;
   const { from, through } = report.range;
   const exportUrl = "/api/reports/financial?" + new URLSearchParams({ business: business.slug, period: "custom", from, through });
@@ -47,7 +48,10 @@ export default async function FinancialReports({ searchParams }: { searchParams:
         <a className="rounded-lg bg-orange-700 px-3 py-2 font-semibold text-white" href={exportUrl + "&format=pdf"}>Download P&amp;L PDF</a>
       </div>
       {report.draft && <p role="status" className="rounded-lg border border-amber-500 p-2 font-semibold">Draft · Incomplete records</p>}
-      <dl className="divide-y divide-slate-500">{statementLines(report).map(([label, cents]) => <div className="flex justify-between gap-4 py-2" key={label}><dt>{label}</dt><dd className="whitespace-nowrap tabular-nums">{displayCents(cents)}</dd></div>)}</dl>
+      <dl className="divide-y divide-slate-500">{statementLines(report).map(([label, cents], index, lines) => {
+        const undetermined = profitUndetermined && index === lines.length - 1;
+        return <div className="flex justify-between gap-4 py-2" key={label}><dt>{undetermined ? "Net profit" : label}</dt><dd className="whitespace-nowrap tabular-nums">{undetermined ? "Undetermined" : displayCents(cents)}</dd></div>;
+      })}</dl>
       {!covered && <p className="text-sm">Expense coverage is unconfirmed. Zero recorded expenses do not establish zero actual expenses.</p>}
       <Coverage key={from + through} slug={business.slug} from={from} through={through} covered={covered} canConfirm={through <= today()} />
       {report.reviewCount > 0 && <p>{report.reviewCount} transactions need classification.</p>}

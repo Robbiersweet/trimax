@@ -12,6 +12,8 @@ const allowed = new Set([
   "scripts/release/gate-checks.cjs",
   "src/app/api/reports/financial/route.ts",
   "src/app/lib/financialReportExport.ts",
+  "src/app/lib/workspaceLogo.ts",
+  "src/app/components/Navigation.tsx",
   "src/app/lib/financialReportPdf.ts",
   "src/app/lib/financialReports.ts",
   "src/app/lib/financialReportsServer.ts",

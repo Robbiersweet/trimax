@@ -1,5 +1,6 @@
 "use client";
 
+import { workspaceLogo } from "../lib/workspaceLogo";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -49,6 +50,7 @@ export default function Navigation() {
   const isRnl =
     business === "rnl-creations";
 
+  const logo = workspaceLogo(business);
   const businessName = isRnl
     ? "R&L Creations"
     : "JUST KLEEN";
@@ -459,9 +461,9 @@ export default function Navigation() {
           href={`/?business=${business}`}
           className="app-sidebar-brand flex min-w-0 items-center gap-3 lg:flex-col lg:items-start"
         >
-          {isRnl ? (
+          {logo ? (
             <Image
-              src="/Brand/rnl-multi-colors.png"
+              src={logo}
               alt={businessName}
               width={48}
               height={48}

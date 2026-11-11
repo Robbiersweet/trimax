@@ -1,3 +1,6 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { workspaceLogo } from "../../../lib/workspaceLogo";
 import { NextRequest } from "next/server";
 import { financialAccess, loadFinancialReport, reportRange } from "../../../lib/financialReportsServer";
 import { financialCsv, statementHtml } from "../../../lib/financialReportExport";
@@ -29,10 +32,13 @@ export async function GET(request: NextRequest) {
   if (format !== "pdf" && format !== "csv") return new Response("Choose PDF or CSV.", { status: 400, headers });
   try {
     const range = reportRange(Object.fromEntries(query));
-    const { report } = await loadFinancialReport(access, range);
+    const { report, covered } = await loadFinancialReport(access, range);
     const base = "profit-and-loss-" + range.from + "-to-" + range.through + (report.draft ? "-draft" : "");
     if (format === "csv") return attachment(financialCsv(report), base + ".csv", "text/csv; charset=utf-8");
-    const pdf = await renderStatementPdf(statementHtml(access.business.name, report));
+    const logo = workspaceLogo(access.business.slug);
+    const bytes = logo ? await readFile(join(process.cwd(), "public", logo.slice(1))).catch(() => null) : null;
+    const logoDataUrl = bytes ? "data:image/png;base64," + bytes.toString("base64") : undefined;
+    const pdf = await renderStatementPdf(statementHtml({ name: access.business.name, logoDataUrl }, report, covered));
     return attachment(new Uint8Array(pdf), base + ".pdf", "application/pdf");
   } catch {
     return new Response("The report could not be generated. Check the selected period and retry.", { status: 503, headers });
