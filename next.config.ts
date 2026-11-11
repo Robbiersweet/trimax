@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
   env: { NEXT_PUBLIC_TRIMAX_BUILD: process.env.VERCEL_GIT_COMMIT_SHA ?? "local" },
   serverExternalPackages: ["@sparticuz/chromium", "sharp", "tesseract.js"],
   outputFileTracingIncludes: {
+    "/api/reports/financial": ["./node_modules/@sparticuz/chromium/bin/**/*"],
     "/api/invoices/[id]/send-email": [
       "./node_modules/@sparticuz/chromium/bin/**/*",
     ],

@@ -1303,6 +1303,9 @@ export default async function ReportsPage({
         ) : null}
 
         <RoleVisible businessSlug={businessSlug} allow={["owner", "admin"]}>
+          <Link className="inline-block rounded-xl bg-orange-700 px-4 py-2 font-semibold text-white" href={`/reports/financial?business=${encodeURIComponent(businessSlug)}`}>Profit &amp; Loss and financial reports</Link>
+        </RoleVisible>
+        <RoleVisible businessSlug={businessSlug} allow={["owner", "admin"]}>
           {laborReportLoadMessages.length > 0 ? (
             <Card className="app-notice-card border-amber-500/40 bg-amber-500/10">
               <p className="text-sm font-semibold text-amber-200">

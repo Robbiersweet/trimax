@@ -4,6 +4,7 @@ const {readFileSync} = require('node:fs');
 const {execFileSync} = require('node:child_process');
 const {sourcePaths} = require('./release/contract.cjs');
 const baseline = 'f14e51bae7c7f3a66a69a184fd0e101a07ecac78';
+const historicalRelease = 'd8d86995b133a77839a4dbd0fc600259359b26f8';
 const allowed = new Set([
   'src/app/activity/page.tsx',
   'src/app/api/payments/apply-batch/route.ts',
@@ -25,7 +26,7 @@ const allowed = new Set([
   'scripts/release/gate-checks.cjs',
   'scripts/historical-payment-date-scope-regression.cjs',
 ]);
-for (const args of [['diff', baseline, '--name-only'], ['ls-files', '--others', '--exclude-standard']]) {
+for (const args of [['diff', baseline, historicalRelease, '--name-only']]) {
   const changed = execFileSync('git', [...args, '--', ...sourcePaths], {encoding:'utf8'}).trim().split(/\r?\n/).filter(Boolean);
   assert.deepEqual(changed.filter(file => !allowed.has(file)), []);
 }

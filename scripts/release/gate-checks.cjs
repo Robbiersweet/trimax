@@ -56,3 +56,4 @@ scripts.push('scripts/high-resolution-still-regression.cjs','scripts/historical-
 scripts.push('scripts/document-email-review-regression.cjs','scripts/document-email-review-ui-regression.cjs');
 
 scripts.push('scripts/remittance-job-observer-regression.cjs');
+scripts.push('scripts/financial-report-regression.ts','scripts/financial-expense-sql-regression.cjs','scripts/financial-report-scope-regression.cjs');
