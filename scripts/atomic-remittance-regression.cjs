@@ -20,6 +20,22 @@ async function success(response){const result=await response.json();assert.equal
 async function zero(label,change,overrides={}){await reset();if(change)await sql(change);const before=await state(),response=await call(overrides),result=await response.json();assert.notEqual(response.status,200,label+JSON.stringify(result));assert.deepEqual(await state(),before,label);results.push({test:label,status:response.status,unchanged:true});}
 (async()=>{
  await initialize();
+ await zero('Omitted receipt date is rejected without defaulting to today', null, {receivedDate:null});
+ await zero('Unknown receipt date is restricted to checks', null, {receivedDate:null,historicalReceiptDateUnknown:true,paymentType:'Cash'});
+ await zero('Unknown and explicit receipt dates conflict', null, {historicalReceiptDateUnknown:true});
+ await reset();
+ const unknownReceipt = {receivedDate:null,historicalReceiptDateUnknown:true,postmarkDate:'2026-11-03',depositDate:'2026-11-06'};
+ const historical = await success(await call(unknownReceipt));
+ assert.deepEqual(await success(await call(unknownReceipt)), historical);
+ assert.deepEqual(await state(), {paid:500,logs:5,receipts:1});
+ assert.equal(await sql(`select count(*) from activity_logs where
+  details->'receivedDate'='null'::jsonb and details->'paymentDate'='null'::jsonb
+  and details->'historicalReceiptDateUnknown'='true'::jsonb
+  and details->>'postmarkDate'='2026-11-03' and details->>'depositDate'='2026-11-06'
+  and details->>'checkDate'='2026-11-02' and not(details ? 'fullyPaidDate')
+  and created_at between now()-interval '5 minutes' and now();`),'5');
+ results.push({test:'Unknown receipt posts exactly once with separate dates and real audit timestamps',passed:true});
+
  await reset();const pre=await success(await call({validateOnly:true}));assert.equal(pre.paymentApplied,false);assert.equal((await state()).paid,0);
  const first=await success(await call());assert.equal(first.appliedCount,5);assert.deepEqual(await state(),{paid:500,logs:5,receipts:1});results.push({test:'A five allocations and audits atomic',passed:true});
  const retry=await success(await call());assert.deepEqual(retry,first);assert.deepEqual(await state(),{paid:500,logs:5,receipts:1});results.push({test:'D/F duplicate retry/lost confirmation returns original result',passed:true});

@@ -8,7 +8,6 @@ import {
 } from "../../../lib/invoiceEligibility";
 import { moneyNumber } from "../../../lib/invoiceLifecycle";
 import {
-  paymentDateKey,
 } from "../../../lib/paymentTimeliness";
 import {
   findDuplicateRemittance,
@@ -139,7 +138,9 @@ function cleanString(value: unknown, maxLength = 500) {
 function optionalDateKey(value: unknown) {
   const key = cleanString(value, 40).slice(0, 10);
 
-  return /^\d{4}-\d{2}-\d{2}$/.test(key) ? key : null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return null;
+  const parsed = new Date(key + "T00:00:00Z");
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === key ? key : null;
 }
 
 function applyErrorResponse({
@@ -202,7 +203,10 @@ export async function POST(request: Request) {
     businessId?: string;
     invoiceIds?: string[];
     paymentDate?: string;
-    receivedDate?: string;
+    receivedDate?: string | null;
+    historicalReceiptDateUnknown?: boolean;
+    postmarkDate?: string;
+    depositDate?: string;
     checkDate?: string;
     paymentType?: string;
     paymentReference?: string;
@@ -416,10 +420,24 @@ export async function POST(request: Request) {
 
   const paymentReference = cleanString(body.paymentReference, 120);
   const payor = cleanString(body.payor, 160);
-  const receivedDate = paymentDateKey(
-    cleanString(body.receivedDate ?? body.paymentDate, 40)
-  );
+  const historicalReceiptDateUnknown = body.historicalReceiptDateUnknown === true;
+  const receiptInput = body.receivedDate ?? body.paymentDate;
+  const receivedDate = optionalDateKey(receiptInput);
   const checkDate = optionalDateKey(body.checkDate);
+  const postmarkDate = optionalDateKey(body.postmarkDate);
+  const depositDate = optionalDateKey(body.depositDate);
+  if (historicalReceiptDateUnknown && !['owner', 'admin'].includes(access.role ?? '')) {
+    return NextResponse.json({ error: 'Owner or admin approval is required for an unknown historical receipt date.' }, { status: 403 });
+  }
+  if (
+    (historicalReceiptDateUnknown
+      ? Boolean(receiptInput) || cleanString(body.paymentType, 80).toLowerCase() !== 'check'
+      : !receivedDate) ||
+    (body.postmarkDate && !postmarkDate) ||
+    (body.depositDate && !depositDate)
+  ) {
+    return NextResponse.json({ error: 'Enter a valid receipt date or explicitly confirm that the historical check receipt date is unknown.' }, { status: 400 });
+  }
   let remittanceDocumentFingerprint = cleanString(
     body.remittanceDocumentFingerprint,
     300
@@ -507,7 +525,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const audit={paymentDate: receivedDate,receivedDate,checkDate,paymentType:cleanString(body.paymentType,80),paymentReference,payor,
+  const audit={paymentDate: receivedDate,receivedDate,historicalReceiptDateUnknown,checkDate,postmarkDate,depositDate,paymentType:cleanString(body.paymentType,80),paymentReference,payor,
     sourceOcrAttemptId:sourceAttemptId||null,savedDiagnosticReviewConfirmed:savedDiagnosticReview&&body.confirmSavedRemittance===true,
     internalNote:cleanString(body.internalNote,1000),remittanceStubMatched:Boolean(body.remittanceStubMatched),remittanceStubTotal:body.remittanceStubTotal??null,
     remittanceStubLineCount:body.remittanceStubLineCount??null,remittanceMatchConfidence:body.remittanceMatchConfidence??null,

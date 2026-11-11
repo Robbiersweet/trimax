@@ -470,7 +470,9 @@ function detailChips(log: ActivityLog): DetailChip[] {
 
     return [
       { label: "Check Date", value: formatDate(details.checkDate) },
-      { label: "Received Date", value: formatDate(receivedDate) },
+      { label: "USPS Postmark", value: formatDate(details.postmarkDate) },
+      { label: "Bank Deposit", value: formatDate(details.depositDate) },
+      { label: "Received Date", value: details.historicalReceiptDateUnknown === true ? "Unknown" : formatDate(receivedDate) },
       { label: "Type", value: formatDetailValue(details.paymentType) },
       {
         label: "Reference",

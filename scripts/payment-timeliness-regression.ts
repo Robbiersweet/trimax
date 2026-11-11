@@ -231,7 +231,7 @@ assert(
   "Server-side payment application must record immutable payment-timeliness snapshots."
 );
 assert(
-  applyBatchRoute.includes("receivedDate = paymentDateKey") &&
+  applyBatchRoute.includes("receivedDate = optionalDateKey(receiptInput)") &&
     applyBatchRoute.includes("body.receivedDate ?? body.paymentDate") &&
     applyBatchRoute.includes("checkDate = optionalDateKey(body.checkDate)") &&
     applyBatchRoute.includes("paymentDate: receivedDate") &&
@@ -254,7 +254,7 @@ assert(
     batchInvoicePayments.includes("label=\"Received Date\"") &&
     batchInvoicePayments.includes("setCheckDate(extractedDate)") &&
     !batchInvoicePayments.includes("setPaymentDate(extractedDate)") &&
-    batchInvoicePayments.includes("paymentDate: receivedDate") &&
+    batchInvoicePayments.includes("receivedDate: historicalReceiptDateUnknown ? null : receivedDate") &&
     batchInvoicePayments.includes("receivedDate,") &&
     batchInvoicePayments.includes("checkDate,") &&
     batchInvoicePayments.includes("submittedPaymentReference") &&
@@ -262,7 +262,7 @@ assert(
     batchInvoicePayments.includes("payor: submittedPayor") &&
     batchInvoicePayments.includes("result.payor || submittedPayor") &&
     batchInvoicePayments.includes("router.refresh();"),
-  "Payment review must route OCR dates to Check Date while Received Date defaults to today and is submitted separately."
+  "Payment review must route OCR dates to Check Date while receipt date is submitted separately, including explicit unknown dates."
 );
 
 const paymentsPage = readFileSync(resolve(root, "src/app/payments/page.tsx"), "utf8");

@@ -28,7 +28,7 @@ export function SavedRemittancePaymentView({history}: {history: SavedRemittanceL
         <dt>Check number</dt><dd>{payment.checkNumber}</dd><dt>Check date</dt><dd>{payment.checkDate}</dd>
         <dt>Original check amount</dt><dd>${moneyFixed(payment.amount)}</dd><dt>Payor</dt><dd>{payment.payor}</dd>
         <dt>Applied at</dt><dd>{payment.appliedAt ? new Date(payment.appliedAt).toLocaleString() : 'Retained in audit history'}</dd>
-        <dt>Received date</dt><dd>{payment.receivedDate}</dd>
+        <dt>Received date</dt><dd>{payment.receivedDate || "Unknown"}</dd>
       </dl>
       <table className="mt-3 w-full text-left text-sm"><thead><tr><th>Invoice paid</th><th>Amount applied</th></tr></thead>
         <tbody>{payment.allocations.map(row => <tr key={row.invoiceId}><td>{row.invoiceNumber || row.invoiceId}</td><td>${moneyFixed(row.amount)}</td></tr>)}</tbody></table>

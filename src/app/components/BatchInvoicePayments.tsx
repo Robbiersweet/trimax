@@ -595,6 +595,9 @@ export default function BatchInvoicePayments({
   );
   const [checkDate, setCheckDate] = useState("");
   const [receivedDate, setReceivedDate] = useState(todayInputValue());
+  const [historicalReceiptDateUnknown, setHistoricalReceiptDateUnknown] = useState(false);
+  const [postmarkDate, setPostmarkDate] = useState("");
+  const [depositDate, setDepositDate] = useState("");
   const [paymentType, setPaymentType] = useState("Check");
   const [paymentReference, setPaymentReference] = useState("");
   const [checkAmount, setCheckAmount] = useState(
@@ -2431,6 +2434,9 @@ export default function BatchInvoicePayments({
   // A new source owns a fresh review. Clear synchronously before camera,
   // normalization, duplicate preflight or any old asynchronous completion.
   function clearNewRemittanceReviewState() {
+    setHistoricalReceiptDateUnknown(false);
+    setPostmarkDate("");
+    setDepositDate("");
     originalStillRef.current=null;
     setSavedPaymentHistory(null);
     resumedDiagnosticReplay.current=false;
@@ -2610,7 +2616,7 @@ export default function BatchInvoicePayments({
 
   async function applyBatchPayment(confirmedReviewKey?: string) {
     if(paymentSubmitBusy.current)return;
-    const reviewKey=JSON.stringify({businessId,sourceAttemptId:latestScan.current?.attemptId??null,invoiceIds:[...selectedIds].sort(),allocations:intendedAllocations,checkAmount:enteredCheckAmount,paymentReference,checkDate,receivedDate,checkPayor,paymentType,internalNote,remittanceDocumentFingerprint,duplicateEvidenceKey,duplicateOverrideClearedKey,reversedDuplicateReviewedKey});
+    const reviewKey=JSON.stringify({businessId,sourceAttemptId:latestScan.current?.attemptId??null,invoiceIds:[...selectedIds].sort(),allocations:intendedAllocations,checkAmount:enteredCheckAmount,paymentReference,checkDate,receivedDate,historicalReceiptDateUnknown,postmarkDate,depositDate,checkPayor,paymentType,internalNote,remittanceDocumentFingerprint,duplicateEvidenceKey,duplicateOverrideClearedKey,reversedDuplicateReviewedKey});
     if(confirmedReviewKey!==undefined&&confirmedReviewKey!==reviewKey){setPaymentConfirmation(null);setToast({type:'error',message:'The payment review changed. Check the details and confirm again.'});return;}
     const validationOnly=confirmedReviewKey===undefined;
     if (!paymentCanApply) {
@@ -2703,8 +2709,10 @@ export default function BatchInvoicePayments({
           allocations: intendedAllocations,
           confirmedInvoiceRefs: selectedInvoices.map(invoice=>({id:invoice.id,number:invoice.displayId??invoice.projectTitle??'Invoice',amountPaidCents:moneyCents(invoice.amountPaid),amountDueCents:moneyCents(invoice.amountDue)})),
           reversedDuplicateConfirmed: duplicateRemittanceCheck.status==='reversed' && reversedDuplicateReviewedKey===duplicateEvidenceKey,
-          paymentDate: receivedDate,
-          receivedDate,
+          receivedDate: historicalReceiptDateUnknown ? null : receivedDate,
+          historicalReceiptDateUnknown,
+          postmarkDate,
+          depositDate,
           checkDate,
           paymentType,
           paymentReference: submittedPaymentReference,
@@ -2796,6 +2804,9 @@ export default function BatchInvoicePayments({
         totalAmount: result.checkAmount ?? enteredCheckAmount ?? selectedTotal,
         invoiceCount: selectedInvoices.length,
       });
+      setHistoricalReceiptDateUnknown(false);
+      setPostmarkDate("");
+      setDepositDate("");
       setPaymentEntryMode("complete");
       setCheckOcrStatus("idle");
       setCheckOcrMessage("Payment applied.");
@@ -3460,6 +3471,10 @@ export default function BatchInvoicePayments({
             inputClassName="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 pr-28 text-slate-950 outline-none transition focus:border-sky-500"
           />
 
+          <div>
+          {historicalReceiptDateUnknown ? (
+            <p className="text-sm">Historical receipt date unknown</p>
+          ) : (
           <DateInputField
             label="Received Date"
             value={receivedDate}
@@ -3468,6 +3483,29 @@ export default function BatchInvoicePayments({
             inputClassName="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 pr-28 text-slate-950 outline-none transition focus:border-sky-500"
           />
 
+          )}
+          {["owner", "admin"].includes(workspaceRole ?? "") && paymentType.toLowerCase() === "check" && (
+            <label className="mt-2 flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={historicalReceiptDateUnknown}
+                onChange={(event) => {
+                  setHistoricalReceiptDateUnknown(event.target.checked);
+                  if (event.target.checked) setReceivedDate("");
+                }}
+              />
+              I received this historical check. The receipt date is unknown.
+            </label>
+          )}
+          </div>
+
+          {paymentType.toLowerCase() === "check" && (
+            <div className="space-y-3">
+              <DateInputField label="USPS Postmark Date (optional)" value={postmarkDate} onChange={setPostmarkDate} />
+              <DateInputField label="Bank Deposit Date (optional)" value={depositDate} onChange={setDepositDate} />
+            </div>
+          )}
+
           {!isRemittanceReview ? (
           <div className="min-w-0">
             <label className="mb-2 block text-sm text-zinc-400">
@@ -3475,7 +3513,10 @@ export default function BatchInvoicePayments({
             </label>
             <select
               value={paymentType}
-              onChange={(event) => setPaymentType(event.target.value)}
+              onChange={(event) => {
+                setPaymentType(event.target.value);
+                if (event.target.value.toLowerCase() !== "check") setHistoricalReceiptDateUnknown(false);
+              }}
               className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-sky-500"
             >
               <option>Check</option>

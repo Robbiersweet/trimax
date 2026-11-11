@@ -13,5 +13,6 @@ async function initialize(){
  await sql('drop schema public cascade;drop schema auth cascade;create schema public;');
  await sql(fs.readFileSync(path.join(__dirname,'fixtures/atomic-remittance-schema.sql'),'utf8'));
  await sql(fs.readFileSync(path.join(__dirname,'../supabase/sql/2026-11-02-atomic-remittance-posting.sql'),'utf8'));
+ await sql(fs.readFileSync(path.join(__dirname,'../supabase/sql/2026-11-10-unknown-historical-receipt-date.sql'),'utf8'));
 }
 module.exports.initialize=initialize;

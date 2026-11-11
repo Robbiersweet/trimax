@@ -208,11 +208,12 @@ export function createPaymentTimelinessSnapshot({
   recordedAt?: string;
 }) {
   const dueDateAtCompletion = invoiceDateKey(invoice.due_date);
-  const paidDate = paymentDateKey(fullyPaidDate);
+  const paidDate = invoiceDateKey(fullyPaidDate);
 
   if (
     !invoice.id ||
     !dueDateAtCompletion ||
+    !paidDate ||
     !isEligiblePaymentTarget({ invoice, lineItems }) ||
     moneyNumber(invoice.invoice_amount) <= 0
   ) {
@@ -244,6 +245,7 @@ export function timelinessLogFromActivity(
   log: PaymentTimelinessActivityLog
 ): PaymentTimelinessLog | null {
   const details = log.details ?? {};
+  if (details.historicalReceiptDateUnknown === true) return null;
   const invoiceId = cleanString(details.invoiceId) || cleanString(log.entity_id);
   const dueDateAtCompletion = invoiceDateKey(
     cleanString(details.dueDateAtCompletion)

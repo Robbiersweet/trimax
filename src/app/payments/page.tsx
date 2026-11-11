@@ -202,7 +202,9 @@ function paymentProofChips(log: ActivityLog) {
     detailText(details.fullyPaidDate);
   const chips = [
     { label: "Check Date", value: formatDate(detailText(details.checkDate)) },
-    { label: "Received Date", value: formatDate(receivedDate) },
+    { label: "USPS Postmark", value: formatDate(detailText(details.postmarkDate)) },
+    { label: "Bank Deposit", value: formatDate(detailText(details.depositDate)) },
+    { label: "Received Date", value: details.historicalReceiptDateUnknown === true ? "Unknown" : formatDate(receivedDate) },
     { label: "Type", value: detailText(details.paymentType) },
     { label: "Reference", value: detailText(details.paymentReference) },
     { label: "Payor", value: detailText(details.payor) },

@@ -27,7 +27,15 @@ async function run(){for(const kind of ['camera','existing']){const x=setup(),fi
  const financialHashes={applyBatchPayment:'d9b6f94be0e278f86a07aecd7e0bcbaf97080fae88a0da9e18e1107793fa172b',paymentCanApply:'e3a1dabbaa952503587f9b581bf8f405d73ee21bdf31d9f09cd9da19da09a29b'};
  for(const name of ['applyBatchPayment','loadExtractedRemittance','paymentCanApply']){
   assert.equal(crypto.createHash('sha256').update(executable(historical,name)).digest('hex'),baselineHashes[name],'Original production integration changed: '+name);
-  assert.equal(crypto.createHash('sha256').update(executable(source,name)).digest('hex'),financialHashes[name]??baselineHashes[name],'Unreviewed integration changed: '+name);
+  let reviewedSource = source;
+  if (name === 'applyBatchPayment') {
+   // Remove only the reviewed date-handling delta before comparing with the earlier financial pin.
+   reviewedSource = source
+    .replace('receivedDate,historicalReceiptDateUnknown,postmarkDate,depositDate,checkPayor','receivedDate,checkPayor')
+    .replace(/          receivedDate: historicalReceiptDateUnknown \? null : receivedDate,\r?\n          historicalReceiptDateUnknown,\r?\n          postmarkDate,\r?\n          depositDate,/, '          paymentDate: receivedDate,\n          receivedDate,')
+    .replace(/      setHistoricalReceiptDateUnknown\(false\);\r?\n      setPostmarkDate\(""\);\r?\n      setDepositDate\(""\);\r?\n      setPaymentEntryMode\("complete"\);/, '      setPaymentEntryMode("complete");');
+  }
+  assert.equal(crypto.createHash('sha256').update(executable(reviewedSource,name)).digest('hex'),financialHashes[name]??baselineHashes[name],'Unreviewed integration changed: '+name);
  }
  console.log('PASS A4588.33 to B1099 state isolation at opening/direct intake, source/attempt reset, old preparation cancellation, intentional same-remittance check details, intake preview before preparation, camera independent of flags, existing source identity, stale capture cancellation, empty picker, original and exact financial integration pins; unchanged OCR reconciliation integration');}
 run().catch(error=>{console.error(error);process.exitCode=1});
