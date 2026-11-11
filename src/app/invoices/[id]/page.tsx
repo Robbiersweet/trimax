@@ -411,7 +411,9 @@ function evidenceFields(log: ActivityLog) {
     push("Reference", detailText(details, "paymentReference"));
     push("Payor", detailText(details, "payor"));
     push("Check date", detailText(details, "checkDate"));
-    push("Received date", receivedDate);
+    push("Received date", details.historicalReceiptDateUnknown === true ? "Unknown" : receivedDate);
+    push("USPS postmark", detailText(details, "postmarkDate"));
+    push("Bank deposit date", detailText(details, "depositDate"));
     push("Outcome", detailText(details, "paymentOutcome"));
     push("Stub image", detailText(details, "paymentImageFileName"));
     push("Internal note", detailText(details, "internalNote"));
@@ -1168,12 +1170,14 @@ export default async function InvoiceDetailPage({
   const latestPaymentLog = invoiceActivityLogs.find(
     (log) => log.action === "invoice.batch_payment_applied"
   );
-  const latestPaymentDate =
+  const latestReceiptDateUnknown = latestPaymentLog?.details?.historicalReceiptDateUnknown === true;
+  const latestPaymentDate = latestReceiptDateUnknown ? null : (
     detailText(latestPaymentLog?.details, "receivedDate") ??
     detailText(latestPaymentLog?.details, "paymentDate") ??
     detailText(latestPaymentLog?.details, "fullyPaidDate") ??
     latestPaymentLog?.created_at ??
-    null;
+    null
+  );
   const latestPaymentImageName =
     detailText(latestPaymentLog?.details, "paymentImageFileName") ??
     detailText(latestPaymentLog?.details, "paymentImagePath") ??
@@ -1264,7 +1268,7 @@ export default async function InvoiceDetailPage({
       ],
     });
   }
-  if (isFullyPaid && collectedAmount > 0) {
+  if (isFullyPaid && collectedAmount > 0 && !latestReceiptDateUnknown) {
     proofTimelineEvents.push({
       id: "invoice-paid-state",
       date: latestPaymentDate ?? invoice.created_at,
@@ -2123,7 +2127,7 @@ export default async function InvoiceDetailPage({
                           Collected Date
                         </p>
                         <p className="mt-2 text-base font-black text-slate-950">
-                          {formatLifecycleDate(
+                          {latestReceiptDateUnknown ? "Unknown" : formatLifecycleDate(
                             latestPaymentDate ??
                               invoice.deposit_requested_at ??
                               null
@@ -2172,7 +2176,7 @@ export default async function InvoiceDetailPage({
               {isFullyPaid ? (
                 <Info
                   label="Paid Date"
-                  value={formatLifecycleDate(latestPaymentDate)}
+                  value={latestReceiptDateUnknown ? "Unknown" : formatLifecycleDate(latestPaymentDate)}
                 />
               ) : null}
               <Info
