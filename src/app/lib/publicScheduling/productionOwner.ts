@@ -30,18 +30,20 @@ export async function productionOwner(request:Request,slug:string){
  }
  async function workflowContext(id:string):Promise<WorkflowContext>{
   if(!(await list(id)).length)throw Error('Request not found');
-  const [customers,scheduled,linked,delivery]=await Promise.all([
+  const [customers,scheduled,linked,delivery,properties,units]=await Promise.all([
    client.from('clients').select('id,name,email,phone').eq('business_id',s.business_id).order('name').limit(500),
    client.from('queue_items').select('id,property,scheduled_date,appointment_start,appointment_end').eq('business_id',s.business_id).is('completed_date',null).not('scheduled_date','is',null).order('scheduled_date').limit(500),
    client.from('queue_items').select('id,request_client_id,appointment_start,appointment_end').eq('business_id',s.business_id).eq('source_request_id',id).maybeSingle(),
-   client.from('public_scheduling_outbox').select('channel,event_type,status,attempts,last_error_code').eq('business_id',s.business_id).eq('request_id',id).in('channel',['push','email','sms']).order('created_at',{ascending:false}).limit(50)
+   client.from('public_scheduling_outbox').select('channel,event_type,status,attempts,last_error_code').eq('business_id',s.business_id).eq('request_id',id).in('channel',['push','email','sms']).order('created_at',{ascending:false}).limit(50),
+   client.from('properties').select('id,name').eq('business_id',s.business_id).order('name'),
+   client.from('property_units').select('id,property_id,unit_label').eq('business_id',s.business_id).order('unit_label')
   ]);
-  if(customers.error||scheduled.error||linked.error||delivery.error)throw Error('Workflow unavailable');
-  return {delivery:delivery.data??[],clients:customers.data??[],queue:scheduled.data??[],linked:linked.data};
+  if(properties.error||units.error||customers.error||scheduled.error||linked.error||delivery.error)throw Error('Workflow unavailable');
+  return {properties:properties.data??[],units:units.data??[],delivery:delivery.data??[],clients:customers.data??[],queue:scheduled.data??[],linked:linked.data};
  }
  return {settings:{revision:0,business,production:true},list,workflowContext,async workflow(change:WorkflowChange){
   if(!(await list(change.requestId)).length)throw Error('Request not found');
-  const {data,error:failure}=await client.rpc('trimax_service_request_workflow',{p_request_id:change.requestId,p_revision:change.expectedRevision,p_mutation_id:change.mutationId,p_action:change.action,p_client_id:change.clientId,p_start:change.start,p_minutes:change.minutes,p_conflict_reason:change.conflictReason??null});
+  const {data,error:failure}=await client.rpc('trimax_service_request_workflow',{p_request_id:change.requestId,p_revision:change.expectedRevision,p_mutation_id:change.mutationId,p_action:change.action,p_client_id:change.clientId,p_start:change.start,p_minutes:change.minutes,p_conflict_reason:change.conflictReason??null,p_property_id:change.propertyId??null,p_unit_id:change.unitId??null,p_property_name:change.propertyName??null,p_unit_label:change.unitLabel??null,p_no_unit:change.noUnit??false});
   if(failure)throw Error('Workflow rejected');
   return {receipt:data,request:(await list(change.requestId))[0],context:await workflowContext(change.requestId)};
  },async review(value:unknown){

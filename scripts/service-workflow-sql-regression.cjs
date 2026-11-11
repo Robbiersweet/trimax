@@ -6,8 +6,10 @@ try{
  await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;create role trimax_scheduling_web;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('test.uid',true),'')::uuid$$;grant usage on schema auth to authenticated;grant execute on function auth.uid() to authenticated;create table businesses(id uuid primary key);create table business_users(business_id uuid,user_id uuid,role text);grant select on business_users to authenticated;
  create table clients(id uuid primary key default gen_random_uuid(),business_id uuid,created_by_user_id uuid,name text not null,contact_name text,email text,phone text,service_address text);
  create table push_subscriptions(id uuid primary key,business_id uuid,user_id uuid,status text);
+ create table properties(id uuid primary key default gen_random_uuid(),business_id uuid,name text,unique(business_id,name));
+ create table property_units(id uuid primary key,business_id uuid,property_id uuid,unit_label text);
  create table queue_items(id text primary key,business_id uuid,created_by_user_id uuid,property text not null,unit text not null,status text,priority text,notes text,scheduled_date date,completed_date date);`);
- for(const name of ['20261009_public_scheduling_foundation.sql','20261010_public_scheduling_phase2.sql','20261017_scheduling_owner_notifications.sql','20261018_service_request_workflow.sql','20261018_service_request_delivery.sql','20261018_request_urgency.sql'])await db.exec(fs.readFileSync('supabase/migrations/'+name,'utf8'));
+ for(const name of ['20261009_public_scheduling_foundation.sql','20261010_public_scheduling_phase2.sql','20261017_scheduling_owner_notifications.sql','20261018_service_request_workflow.sql','20261018_service_request_delivery.sql','20261018_request_urgency.sql','20261111_structured_service_request_conversion.sql'])await db.exec(fs.readFileSync('supabase/migrations/'+name,'utf8'));
  const uid=n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`,business=uid(1),owner=uid(2),outsider=uid(3);
  await db.query('insert into businesses values($1),($2)',[business,uid(4)]);
  await db.query('insert into auth.users values($1),($2)',[owner,outsider]);
@@ -19,18 +21,23 @@ try{
  async function submit(n,extra={}){return (await db.query('select trimax_submit_public_service_request($1,$2,$3,$4) r',['test',JSON.stringify({...payload,...extra}),String(n).padStart(64,'0'),String(n+100).padStart(64,'0')])).rows[0].r;}
  const first=await submit(1);eq((await submit(1)).id,first.id);eq((await db.query('select count(*)::int n from scheduling_owner_notifications')).rows[0].n,1);
  async function as(user,fn){await db.exec(`set role authenticated;set test.uid='${user}'`);try{return await fn();}finally{await db.exec('reset role');}}
- const call=(id,revision,action,key,client=null,start=null,minutes=null,reason=null)=>db.query('select trimax_service_request_workflow($1,$2,$3,$4,$5,$6,$7,$8) r',[id,revision,key,action,client,start,minutes,reason]);
+ const property=uid(71),unit=uid(72),wrongProperty=uid(73),wrongUnit=uid(74);
+ await db.query("insert into properties(id,business_id,name) values($1,$2,'Synthetic Glen'),($3,$4,'Other workspace')",[property,business,wrongProperty,uid(4)]);
+ await db.query("insert into property_units values($1,$2,$3,'QA-07'),($4,$5,$6,'Other')",[unit,business,property,wrongUnit,uid(4),wrongProperty]);
+ const call=(id,revision,action,key,client=null,start=null,minutes=null,reason=null,location=[property,unit,null,null,false])=>db.query('select trimax_service_request_workflow($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) r',[id,revision,key,action,client,start,minutes,reason,...location]);
  const fail=async(fn,re)=>{await assert.rejects(fn,re);checks++};
  await fail(()=>as(outsider,()=>call(first.id,1,'convert','outsider-attempt-0001')),/Not authorized/);
  await fail(()=>as(owner,()=>call(first.id,1,'convert','unapproved-attempt-1')),/Approve/);
  await as(owner,()=>db.query('select trimax_review_public_service_request($1,1,$2,$3,$4)',[first.id,'approved','Synthetic internal note','approval-test-000001']));
  eq((await db.query('select count(*)::int n from queue_items')).rows[0].n,0);
+ await fail(()=>as(owner,()=>call(first.id,2,'convert','wrong-property-test',null,null,null,null,[wrongProperty,wrongUnit,null,null,false])),/Select a property/);
+ await fail(()=>as(owner,()=>call(first.id,2,'convert','wrong-unit-test-001',null,null,null,null,[property,wrongUnit,null,null,false])),/Choose the unit/);
  const conversion=(await as(owner,()=>call(first.id,2,'convert','conversion-test-0001'))).rows[0].r;
  eq((await as(owner,()=>call(first.id,2,'convert','conversion-test-0001'))).rows[0].r,conversion);
  await fail(()=>as(owner,()=>call(first.id,2,'schedule','conversion-test-0001',null,'2030-01-07T17:00:00Z',60)),/Mutation conflict/);
  await as(owner,()=>call(first.id,3,'convert','conversion-repeat-02'));
  eq((await db.query('select count(*)::int n from queue_items')).rows[0].n,1);eq((await db.query('select count(*)::int n from clients')).rows[0].n,1);
- const q=(await db.query('select * from queue_items')).rows[0];assert.match(q.notes,/Synthetic repair/);assert.match(q.notes,/Preferred contact: email/);assert.match(q.notes,/Urgency: time_sensitive/);checks+=3;
+ const q=(await db.query('select * from queue_items')).rows[0];eq(q.property,"Synthetic Glen");eq(q.unit,"QA-07");assert.match(q.notes,/Submitted service address: Synthetic address/);checks++;assert.match(q.notes,/Synthetic repair/);assert.match(q.notes,/Preferred contact: email/);assert.match(q.notes,/Urgency: time_sensitive/);checks+=3;
  const second=await submit(2);await as(owner,()=>call(second.id,1,'approve_schedule','schedule-second-0001',null,'2030-01-07T17:00:00Z',60));
  eq((await db.query('select count(*)::int n from clients')).rows[0].n,1);
  await fail(()=>as(owner,()=>call(first.id,4,'schedule','schedule-conflict-01',null,'2030-01-07T17:30:00Z',60)),/Schedule conflict/);

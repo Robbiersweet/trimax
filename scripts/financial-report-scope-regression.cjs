@@ -33,16 +33,21 @@ const polishPaths = new Set([
   "src/app/reports/page.tsx",
 ]);
 const polishRelease = "39f47f4d1d3382dede76f6777010ce0a37ddc895";
-const ownerNavigationPaths = new Set([
+const serviceRequestPaths = new Set([
   "scripts/financial-report-scope-regression.cjs",
   "src/app/components/Navigation.tsx",
   "src/app/lib/rolePermissions.ts",
+  "scripts/service-workflow-sql-regression.cjs",
+  "src/app/admin/service-requests/components/WorkflowActions.tsx",
+  "src/app/lib/publicScheduling/productionOwner.ts",
+  "src/app/lib/publicScheduling/workflow.ts",
+  "supabase/migrations/20261111_structured_service_request_conversion.sql",
 ]);
 for (const [args, permitted] of [
   [["diff", baseline, brandingRelease, "--name-only"], allowed],
   [["diff", brandingRelease, polishRelease, "--name-only"], polishPaths],
-  [["diff", polishRelease, "--name-only"], ownerNavigationPaths],
-  [["ls-files", "--others", "--exclude-standard"], ownerNavigationPaths],
+  [["diff", polishRelease, "--name-only"], serviceRequestPaths],
+  [["ls-files", "--others", "--exclude-standard"], serviceRequestPaths],
 ]) {
   const changed = execFileSync("git", [...args, "--", ...sourcePaths], {encoding:"utf8"}).trim().split(/\r?\n/).filter(Boolean);
   assert.deepEqual(changed.filter(file => !permitted.has(file)), []);
