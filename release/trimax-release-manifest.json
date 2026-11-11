@@ -10,17 +10,17 @@
   },
   "components": {
     "web": {
-      "commit": "274a059869f0840f46e1d4abb585782e9d1dc357"
+      "commit": "f9a00d4eaf1d255b37cabf08afbfded47e83d7bf"
     },
     "legacy": {
-      "commit": "274a059869f0840f46e1d4abb585782e9d1dc357"
+      "commit": "f9a00d4eaf1d255b37cabf08afbfded47e83d7bf"
     },
     "v2-shadow": {
-      "commit": "274a059869f0840f46e1d4abb585782e9d1dc357"
+      "commit": "f9a00d4eaf1d255b37cabf08afbfded47e83d7bf"
     }
   },
   "sourceBundle": {
-    "sha256": "a222f42b1faa499f2f172c29b2b9c750ab0ed78ea3258526dc69367ae0888f61",
+    "sha256": "b39bdc7539d298e37407bf738d9c7c08a7dea6744597affa7854329e80eb8d65",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "3c08f61c180dad7fc32d3ccbebd97b7a836082480d994e3a779c70a356677dc0",
@@ -78,7 +78,7 @@
       "scripts/glen-payor-regression.cjs": "2f91135035c00a5786372e8d7b847879e440cdadfab3038651c88cba74fa04e2",
       "scripts/high-resolution-still-regression.cjs": "65be29f1660f4b97e87b69cb6411c912eb8c345c91dfcb78ea208d9a748021d6",
       "scripts/high-resolution-still-scope-regression.cjs": "b3f23d88e87dcba5648cd6a9d79fcae1b096965b302f9e06b91b2660138d2317",
-      "scripts/historical-payment-date-scope-regression.cjs": "c961ec1a14123c55bf5ff6dbda9d02b744693bd55ff624d4b58a710f0b8121ab",
+      "scripts/historical-payment-date-scope-regression.cjs": "bb7bd53fbf6641a2b427ba16cc68b466ce1e289799d0454e768bf7b9906dc08d",
       "scripts/install-ocr-supervisor.ps1": "7c295e68e7c9b95036412b44cf423d677519f9e0a5107beb1278cc244d65848e",
       "scripts/invoice-cent-regression.ts": "f6b7878369411ad11297c0d79aed1e41eab3c3c2dd7d626496f43510093d5078",
       "scripts/invoice-correction-regression.ts": "d637ec393a9ae331676b88d5d4e9db9d4c96e326977b103d39e15aebf8e4c873",
@@ -496,7 +496,7 @@
       "src/app/invoices/[id]/edit/page.tsx": "8b9251600f66c2be10c3246cd64fb70632984ecb61ec6b9801660cfbb2acf624",
       "src/app/invoices/[id]/error.tsx": "1f8dcb4db98edea4f131eaca0b8c217fb60054949fd7e57f280a5f0b6620dcf9",
       "src/app/invoices/[id]/exports/5stars-boa/route.ts": "442e141be7542b7bc203df357c8f65be33222b8c262aa0500a3e32a549b756e2",
-      "src/app/invoices/[id]/page.tsx": "177f002b9d9e6c878f4505556af12dc8465aa7c9af3e8d6bb07bd3245d9c5782",
+      "src/app/invoices/[id]/page.tsx": "ec1ceae598ed9639bdbddde106871fc81644ee38452624c93d904c19266f9401",
       "src/app/invoices/[id]/print/error.tsx": "833c6fb2b2d20fcd09b8ef6b03189c4a9a092252ce4502426f4650736cbb6ed1",
       "src/app/invoices/[id]/print/page.tsx": "df3ba4b4dbcc3fb0329da9a15d9f0729e6cb5948a46332e6da97878b38727d13",
       "src/app/invoices/batch-payment/page.tsx": "e7b469d92ee87e0b51770c7c4cfd6ca589f689627113ca7579386eb64dc96982",
