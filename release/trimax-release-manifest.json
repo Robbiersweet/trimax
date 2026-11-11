@@ -1,26 +1,26 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-financial-reports-20261110-rc1",
+  "releaseId": "trimax-financial-report-period-controls-20261111-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-11-11T07:20:16.194Z",
-  "releaseTimestamp": "2026-11-11T07:20:16.194Z",
+  "createdAt": "2026-11-11T08:24:52.963Z",
+  "releaseTimestamp": "2026-11-11T08:24:52.963Z",
   "baseProduction": {
-    "commit": "d8d86995b133a77839a4dbd0fc600259359b26f8",
-    "vercelDeploymentId": "Yttdz96J4Vfm8iAAJ9qTWvD4zLws"
+    "commit": "6d0b1d2005933e046c72973d67134b997faeb148",
+    "vercelDeploymentId": "6uqDLfiW7rEdq1dvCsFREGk5pL38"
   },
   "components": {
     "web": {
-      "commit": "7a5102370544b1f2edc30c7521b8a17b193e43b8"
+      "commit": "7249e5f511bb63a7dd27a1c554735a4d3ad789dd"
     },
     "legacy": {
-      "commit": "7a5102370544b1f2edc30c7521b8a17b193e43b8"
+      "commit": "7249e5f511bb63a7dd27a1c554735a4d3ad789dd"
     },
     "v2-shadow": {
-      "commit": "7a5102370544b1f2edc30c7521b8a17b193e43b8"
+      "commit": "7249e5f511bb63a7dd27a1c554735a4d3ad789dd"
     }
   },
   "sourceBundle": {
-    "sha256": "5bfcf4f079a1ed6059358fd634f618e37291af548e57c6db63d510dd274c4f50",
+    "sha256": "516ac715132f353cea404953345d388c8ba03b52162c38d59981e784905627a0",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "c29efb4ac14d8a3fc436ac84fd9bcac18cbd2192cc4d2a5f191e6e63df53486f",
@@ -67,7 +67,7 @@
       "scripts/estimate-list-loading-regression.ts": "e16e1f2f3df849ebfb9d8a722260bab33fc94064548319e7e2e58a0b34be25bd",
       "scripts/financial-expense-sql-regression.cjs": "a3699eac45b9d8cd12cafb8ea59a239e9d1029035d75dbf25c32ab69e76e9184",
       "scripts/financial-hardening-scope-regression.cjs": "6e3e7ea5b3f3f26e820b02955e3aae64336b9c17e4f6ee1098ddab5825f15910",
-      "scripts/financial-report-regression.ts": "ce38d2a5124cb482b4f69f65ca25c0dc9449a139e6bb9d0ee12f853efc887301",
+      "scripts/financial-report-regression.ts": "0c950e4008ef3271f2f0fc6a58854c83d65249fc3da5d7a3ee4ba9bf338d2af6",
       "scripts/financial-report-scope-regression.cjs": "8701be59069cba87598d8de3dd432f109e628f81fc2a2c003e201cadd2824f5e",
       "scripts/fixtures/atomic-remittance-schema.sql": "948e92c96bcd7d67b707fd04ca4a0b9cf433b892bb639311238a7ba0393e8277",
       "scripts/fixtures/faint-remittance.md": "a0d35fcfbf3a4022f8c7a12f395b261141fee040f9fce22c99cd4b4933c07ac4",
@@ -719,7 +719,7 @@
       "src/app/recurring-invoices/page.tsx": "a6766ab37cafe1041dde69b73ef8d5a6e63cda3c3e79445e92e8aa21b956e12f",
       "src/app/reports/financial/ExpenseLedger.tsx": "a116911616da1149ea6621d21a574e1f93244c1edb57009d87111769e38a91b6",
       "src/app/reports/financial/actions.ts": "e7d32664c4cf669df91ada79508a23f507bf86fcbba9cb3b78bfb333be589132",
-      "src/app/reports/financial/page.tsx": "f4cd64c9defa735b6be562f002b0e4dc5566544ae9651dd4f1f5e1eb29ff5c0e",
+      "src/app/reports/financial/page.tsx": "15ecf5cf5ed9a9e027aa42e18dce8a03b227c0a590cc8dd713ae18039aa5cf2a",
       "src/app/reports/page.tsx": "ac8f6cda6cbdf5b1e547219c190a8100321a657c9dbc4407d36e4ab6423a67bc",
       "src/app/request-access/page.tsx": "79b3f1188970fe3c1078d1fbe6a9dfac9ba26cd99263cd2ad3c57722660090b2",
       "src/app/reset-password/page.tsx": "7ceb0be0b5cc1781712a5148613a01a34604d228c27fa7cef479490abb619777",
@@ -1047,7 +1047,7 @@
   },
   "runtimeDrift": {
     "detected": true,
-    "evidence": "The historical receipt-date release remains serving before the controlled financial reporting cutover.",
+    "evidence": "The current financial reports deployment remains serving before the period-control cutover.",
     "productionWorkersReplaced": false
   },
   "requirements": {
@@ -1055,7 +1055,7 @@
     "physicalAcceptance": "Only installed-iPhone production evidence for exact release may pass; replay cannot pass",
     "legacyModelCache": "Pinned runtime cache verified by startup contract before claim"
   },
-  "sealedAt": "2026-11-11T07:20:16.194Z",
+  "sealedAt": "2026-11-11T08:24:52.963Z",
   "testRuntime": {
     "pgliteVersion": "0.5.8",
     "pglitePackageSha256": "65dff2c93c707e526902eebfab246bcbf2df2eba1c6984a5b5e9a44177532b1c",
@@ -1791,15 +1791,15 @@
     "sha256": "bccc49970c7db9510b64204809cbb282c6d22d5f651708a9e7a7fede7a550bbc"
   },
   "upgradeContext": {
-    "candidateReleaseId": "trimax-financial-reports-20261110-rc1",
-    "applicationCommit": "7a5102370544b1f2edc30c7521b8a17b193e43b8",
-    "machineryCommit": "7a5102370544b1f2edc30c7521b8a17b193e43b8",
+    "candidateReleaseId": "trimax-financial-report-period-controls-20261111-rc1",
+    "applicationCommit": "7249e5f511bb63a7dd27a1c554735a4d3ad789dd",
+    "machineryCommit": "7249e5f511bb63a7dd27a1c554735a4d3ad789dd",
     "currentProductionRelease": {
-      "manifestCommit": "d8d86995b133a77839a4dbd0fc600259359b26f8",
-      "manifestDigest": "4339bb9830efbfd1523b63242a34cb8ec351233fe07dc5bbdb503bee7e5fad75",
-      "releaseId": "trimax-historical-payment-dates-20261110-rc1",
-      "deploymentCommit": "d8d86995b133a77839a4dbd0fc600259359b26f8",
-      "deploymentId": "Yttdz96J4Vfm8iAAJ9qTWvD4zLws"
+      "manifestCommit": "6d0b1d2005933e046c72973d67134b997faeb148",
+      "manifestDigest": "622ad21d2f1c34832f79b6f7dafe0a7b7f5a2927a81d5acf461d62027ac67b10",
+      "releaseId": "trimax-financial-reports-20261110-rc1",
+      "deploymentCommit": "6d0b1d2005933e046c72973d67134b997faeb148",
+      "deploymentId": "6uqDLfiW7rEdq1dvCsFREGk5pL38"
     }
   },
   "contractRevision": {
