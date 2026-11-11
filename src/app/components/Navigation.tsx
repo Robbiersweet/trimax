@@ -69,7 +69,7 @@ export default function Navigation() {
         return;
       }
 
-      setRole(currentWorkspace?.role ?? "owner");
+      setRole(currentWorkspace?.role ?? null);
       setIsLoadingRole(false);
     }
 
@@ -94,6 +94,13 @@ export default function Navigation() {
         label: "Queue",
         href: `/queue?business=${business}`,
         active: pathname.startsWith("/queue"),
+        icon: "queue",
+      },
+      {
+        key: "service_requests",
+        label: "Service Requests",
+        href: `/admin/service-requests?business=${encodeURIComponent(business)}`,
+        active: pathname.startsWith("/admin/service-requests"),
         icon: "queue",
       },
       {
@@ -204,7 +211,9 @@ export default function Navigation() {
     () =>
       navLinks.filter(
         (link) =>
-          isLoadingRole ||
+          link.key === "service_requests"
+            ? !isLoadingRole && canAccessNavItem(role, link.key)
+            : isLoadingRole ||
           canAccessNavItem(role, link.key)
       ),
     [isLoadingRole, navLinks, role]
@@ -213,6 +222,7 @@ export default function Navigation() {
   const sectionSubLinks = useMemo<Record<NavPermissionKey, NavSubLink[]>>(
     () => ({
       maintenance_qr: [],
+      service_requests: [],
       dashboard: [
         {
           label: "Command Center",

@@ -12,6 +12,7 @@ export type WorkspaceRole =
 export type NavPermissionKey =
   | "dashboard"
   | "queue"
+  | "service_requests"
   | "technician"
   | "property_sales"
   | "job_sessions"
@@ -79,6 +80,7 @@ const rolePermissions: Record<
     nav: [
       "dashboard",
       "queue",
+      "service_requests",
       "technician",
       "property_sales",
       "job_sessions",
@@ -109,6 +111,7 @@ const rolePermissions: Record<
     nav: [
       "dashboard",
       "queue",
+      "service_requests",
       "technician",
       "property_sales",
       "job_sessions",

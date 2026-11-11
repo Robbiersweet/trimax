@@ -32,10 +32,17 @@ const polishPaths = new Set([
   "src/app/reports/ReportWorkspace.tsx",
   "src/app/reports/page.tsx",
 ]);
+const polishRelease = "39f47f4d1d3382dede76f6777010ce0a37ddc895";
+const ownerNavigationPaths = new Set([
+  "scripts/financial-report-scope-regression.cjs",
+  "src/app/components/Navigation.tsx",
+  "src/app/lib/rolePermissions.ts",
+]);
 for (const [args, permitted] of [
   [["diff", baseline, brandingRelease, "--name-only"], allowed],
-  [["diff", brandingRelease, "--name-only"], polishPaths],
-  [["ls-files", "--others", "--exclude-standard"], polishPaths],
+  [["diff", brandingRelease, polishRelease, "--name-only"], polishPaths],
+  [["diff", polishRelease, "--name-only"], ownerNavigationPaths],
+  [["ls-files", "--others", "--exclude-standard"], ownerNavigationPaths],
 ]) {
   const changed = execFileSync("git", [...args, "--", ...sourcePaths], {encoding:"utf8"}).trim().split(/\r?\n/).filter(Boolean);
   assert.deepEqual(changed.filter(file => !permitted.has(file)), []);
