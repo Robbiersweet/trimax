@@ -20373,3 +20373,19 @@ html.theme-light .queue-empty-card::after {
   outline: 2px solid currentColor;
   outline-offset: 3px;
 }
+
+/* Keep description full width and pair numeric fields on narrow document forms. */
+.document-line-fields > * {
+  min-width: 0;
+}
+
+@media (max-width: 1279px) {
+  .document-line-fields > :first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+.document-line-fields input {
+  width: 100%;
+  min-width: 0;
+}

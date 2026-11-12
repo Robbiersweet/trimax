@@ -1,6 +1,7 @@
 import sharp from 'sharp';
 import {createHash} from 'node:crypto';
 import {createWorker,OEM,PSM} from 'tesseract.js';
+import { terminateOcrWorker } from '../terminateOcrWorker.ts';
 import {ocrRuntimeCache} from '../../ocrRuntimeCache.ts';
 import type {DocumentSemanticModel,SemanticObservation,SemanticWord} from './model.ts';
 import type {Bounds} from '../types.ts';
@@ -39,7 +40,7 @@ export async function recoverLeadingCaption(image:Buffer,model:DocumentSemanticM
   for(const variant of ['native','grayscale']){let s=sharp(image).extract(region).resize({width:region.width*2,height:region.height*2,fit:'fill'});if(variant==='grayscale')s=s.grayscale();const bytes=await s.png().toBuffer();const {data}=await worker.recognize(bytes,{}, {text:true,blocks:true});
    reads.push({variant,bytes,raw:data.text,confidence:data.confidence,words:(data.blocks??[]).flatMap(b=>b.paragraphs.flatMap(p=>p.lines.flatMap(l=>l.words))).map(w=>({text:w.text,confidence:w.confidence,bounds:{left:region.left+w.bbox.x0/2,top:region.top+w.bbox.y0/2,width:(w.bbox.x1-w.bbox.x0)/2,height:(w.bbox.y1-w.bbox.y0)/2}}))});
   }
- }finally{await worker.terminate();}
+ }finally{await terminateOcrWorker(worker);}
  const words=acceptedCaptionWords(reads,region);if(!words.length)return [];
  return reads.map((r,i)=>{const id=ledger.documentId+':owned-table-caption:'+r.variant,cropHash=hash(r.bytes),sequence=ledger.append({field:'table-caption',documentId:ledger.documentId,sourceHash,cropHash,region,recognizer:'tesseract.js-eng-lstm',variant:r.variant,configuration:'owned-leading-header-psm7-scale2',raw:r.raw,normalized:[words[i].text],confidence:words[i].confidence,provenance:{valid:true,reason:'Two source-owned exact caption rereads; measured leading column and heading bounds; no identity values',reference:id},stage:'phase5e-table-caption',timestamp:new Date().toISOString()});return {id,runKey:ledger.snapshot().entries[sequence].runKey,sourceHash,cropHash,region,recognizer:'tesseract.js-eng-lstm',variant:'owned-caption-'+r.variant,raw:r.raw,confidence:words[i].confidence,verified:true,words:[words[i]]};});
 }

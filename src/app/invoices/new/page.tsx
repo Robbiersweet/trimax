@@ -1161,9 +1161,12 @@ function NewInvoicePageContent() {
 
             <div className="document-line-items-panel rounded-2xl border border-zinc-800 bg-zinc-950/40 p-4">
               <div className="flex items-center justify-between gap-4">
-                <h2 className="text-lg font-semibold">
-                  Line Items
-                </h2>
+                <div className="min-w-0">
+                  <h2 className="text-lg font-semibold">Line Items</h2>
+                  <a href="#document-totals" className="inline-flex min-h-11 items-center text-sm font-semibold text-sky-300 underline">
+                    Jump to totals
+                  </a>
+                </div>
 
                 <Button variant="secondary" onClick={addLineItem}>
                   Add Line
@@ -1174,7 +1177,7 @@ function NewInvoicePageContent() {
                 {lineItems.map((item, index) => (
                   <div
                     key={index}
-                    className="document-line-item-row grid gap-3 rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
+                    className="document-line-item-row grid min-w-0 gap-2 rounded-2xl border border-zinc-800 bg-zinc-950 p-3 sm:p-4"
                   >
                     <div>
                       <label className="mb-2 block text-sm text-zinc-400">
@@ -1208,7 +1211,7 @@ function NewInvoicePageContent() {
                       </select>
                     </div>
 
-                    <div className="grid gap-3 md:grid-cols-[1fr_120px_140px_120px_auto]">
+                    <div className="document-line-fields grid min-w-0 grid-cols-2 gap-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.55fr)_minmax(0,0.7fr)_minmax(0,0.7fr)_auto]">
                       <InputField
                         label="Description"
                         placeholder="Labor, materials, paint..."
@@ -1259,7 +1262,7 @@ function NewInvoicePageContent() {
                         </p>
                       </div>
 
-                      <div className="flex items-end">
+                      <div className="flex items-end justify-end">
                         <Button
                           variant="secondary"
                           onClick={() => removeLineItem(index)}
@@ -1272,7 +1275,7 @@ function NewInvoicePageContent() {
                 ))}
               </div>
 
-              <div className="ml-auto mt-6 grid max-w-sm gap-3 text-sm">
+              <div id="document-totals" tabIndex={-1} className="ml-auto mt-6 grid max-w-sm scroll-mt-6 gap-3 text-sm">
                 <SummaryRow
                   label="Subtotal"
                   value={formatCurrency(subtotal)}

@@ -1,6 +1,5 @@
 import NorthCreekOperations from './NorthCreekOperations';
 import {isVerifiedSyntheticQueue} from './../lib/verifiedSyntheticRequests';
-import { moneyFixed } from "../lib/money.ts";
 import { sumMoney as canonicalSumMoney } from "../lib/money.ts";
 import Link from "next/link";
 import QueueInvoiceAction from "../components/QueueInvoiceAction";
@@ -25,6 +24,9 @@ import {
 import { createSupabaseServerClient } from "../lib/supabaseServer";
 import { tbdDisplay } from "../lib/tbd";
 import { maybeCanonicalApartmentUnitLabel } from "../utils/unitLabels";
+
+const queueCurrency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+const formatQueueCurrency = (value: number) => queueCurrency.format(value);
 
 type Business = {
   id: string;
@@ -1558,13 +1560,13 @@ export default async function QueuePage({
                       documentId: linkedInvoice.id, businessId: selectedBusiness?.id, businessSlug,
                       businessName: selectedBusiness?.name ?? "Trimax", customerName: linkedInvoice.customer_name ?? "",
                       recipientEmail: invoiceClient?.email ?? null, clientCcEmail: invoiceClient?.cc_email || queueEmailDefaults.ccEmail,
-                      documentNumber: linkedInvoice.display_id ?? "Invoice", amountDue: new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(moneyNumber(linkedInvoice.invoice_amount)),
+                      documentNumber: linkedInvoice.display_id ?? "Invoice", amountDue: formatQueueCurrency(moneyNumber(linkedInvoice.invoice_amount)),
                       dueDate: linkedInvoice.due_date ?? "", projectTitle: [linkedInvoice.project_title, linkedInvoice.reference].filter(Boolean).join(" / "),
                       printHref: "/invoices/" + linkedInvoice.id + "/print" + businessQuery,
                       sendSplitGroup: splitChildren.length > 0 || Boolean(linkedInvoice.split_parent_invoice_id),
                       splitGroupCount: actionContext.packageInvoices.length,
-                      splitGroupItems: actionContext.packageInvoices.map(invoice => ({ documentNumber: invoice.display_id ?? "Invoice", amountLabel: new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(moneyNumber(invoice.invoice_amount)) })),
-                      splitGroupCombinedTotal: splitChildren.length ? "$" + moneyFixed(canonicalSumMoney(splitChildren.map((invoice) => moneyNumber(invoice.invoice_amount)))) : undefined,
+                      splitGroupItems: actionContext.packageInvoices.map(invoice => ({ documentNumber: invoice.display_id ?? "Invoice", amountLabel: formatQueueCurrency(moneyNumber(invoice.invoice_amount)) })),
+                      splitGroupCombinedTotal: splitChildren.length ? formatQueueCurrency(canonicalSumMoney(splitChildren.map((invoice) => moneyNumber(invoice.invoice_amount)))) : undefined,
                     }} /> : <Link href={primaryAction.href} title={primaryAction.blockedReason ?? undefined} className="rounded-2xl bg-sky-500 px-4 py-3 text-center text-sm font-black text-white transition hover:bg-sky-400 md:justify-self-end">{primaryAction.label}</Link>}
                   </div>
 

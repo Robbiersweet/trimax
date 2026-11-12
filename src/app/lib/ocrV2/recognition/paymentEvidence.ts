@@ -3,6 +3,7 @@ import { ocrRuntimeCache } from '../../ocrRuntimeCache.ts';
 import sharp from 'sharp';
 import { createHash } from 'node:crypto';
 import { createWorker, OEM, PSM } from 'tesseract.js';
+import { terminateOcrWorker } from '../terminateOcrWorker.ts';
 import type { Bounds } from '../types.ts';
 import type { structuralLayout } from '../layout/generalized.ts';
 
@@ -115,5 +116,5 @@ export async function recognizePaymentEvidence(image: Buffer, layout: Layout, do
     const payors=headers.flatMap(o=>[...o.raw.matchAll(/(?:^|\n)\s*(?:PAYOR|PAYER|PROPERTY|CUSTOMER)\s*:\s*([^\n]+)/gi)].map(m=>m[1].trim()));
     const consensus=(values:string[])=>{const unique=[...new Set(values)];return unique.length===1&&values.length>=2?unique[0]:null;};
     return completed={documentId,sourceHash,checkNumber:consensus(checks),checkDate:consensus(dates),payor:consensus(payors),headerEvidence:{observations:headers,checkCandidates:[...new Set(checks)],dateCandidates:[...new Set(dates)],payorCandidates:[...new Set(payors)]},authoritativeTotal:explicit?decision.cents:null,totalEvidence:{...decision,authority:explicit?'explicit-label':decision.cents===null?'unknown':'unlabeled-footer',labelEvidence,observations:[...totals,...labels],belowLastRow:true},rows,timings:{rowAmountsMs,footerMs,headerMs:performance.now()-headerStart,completeMs:performance.now()-start,passCount}};
-  } finally {await worker.terminate();if(completed)completed.timings.completeMs=performance.now()-start;}
+  } finally {await terminateOcrWorker(worker);if(completed)completed.timings.completeMs=performance.now()-start;}
 }

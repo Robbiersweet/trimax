@@ -3,6 +3,7 @@ import { ocrRuntimeCache } from '../../ocrRuntimeCache.ts';
 import { createHash } from 'node:crypto';
 import sharp from 'sharp';
 import { createWorker, OEM, PSM } from 'tesseract.js';
+import { terminateOcrWorker } from '../terminateOcrWorker.ts';
 import { inspectStructuralLines, type structuralLayout } from '../layout/generalized.ts';
 import { fieldVariant } from './index.ts';
 import type { Bounds } from '../types.ts';
@@ -79,6 +80,6 @@ export async function recognizeDocumentIdentity(image: Buffer, layout: Layout, d
         if (bounds) for (const variant of ['native', 'local-contrast'] as const) await observe(field, bounds, variant, `${documentId}-${i}`);
       }
     }
-  } finally { await worker.terminate(); }
+  } finally { await terminateOcrWorker(worker); }
   return { documentId, sourceHash, rawObservations, ...decideIdentity(rawObservations, ledger, labelValid), labelBounds, durationMs: performance.now() - start, passCount: rawObservations.length };
 }

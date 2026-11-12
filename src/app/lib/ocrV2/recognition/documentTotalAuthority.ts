@@ -3,6 +3,7 @@ import { ocrRuntimeCache } from '../../ocrRuntimeCache.ts';
 import sharp from 'sharp';
 import { createHash } from 'node:crypto';
 import { createWorker, OEM, PSM } from 'tesseract.js';
+import { terminateOcrWorker } from '../terminateOcrWorker.ts';
 import type { Bounds } from '../types.ts';
 import { inspectStructuralLines, type structuralLayout } from '../layout/generalized.ts';
 import { fieldVariant } from './index.ts';
@@ -168,7 +169,7 @@ export async function recognizeDocumentTotal(image: Buffer, layout: Layout, orig
                         }
                     }
                 }
-            } finally { await worker.terminate(); }
+            } finally { await terminateOcrWorker(worker); }
             authority = decideDocumentTotal(layout, evidence, observations);
         }
     }

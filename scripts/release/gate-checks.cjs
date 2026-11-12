@@ -57,3 +57,5 @@ scripts.push('scripts/document-email-review-regression.cjs','scripts/document-em
 
 scripts.push('scripts/remittance-job-observer-regression.cjs');
 scripts.push('scripts/financial-report-regression.ts','scripts/financial-expense-sql-regression.cjs','scripts/financial-report-scope-regression.cjs');
+
+scripts.push('scripts/ocr-worker-shutdown-regression.cjs');

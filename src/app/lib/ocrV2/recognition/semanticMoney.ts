@@ -5,6 +5,7 @@ import { ocrRuntimeCache } from '../../ocrRuntimeCache.ts';
 import sharp from 'sharp';
 import { createHash } from 'node:crypto';
 import { createWorker, OEM, PSM } from 'tesseract.js';
+import { terminateOcrWorker } from '../terminateOcrWorker.ts';
 import type { Bounds } from '../types.ts';
 import type { DocumentSemanticModel, SemanticObservation } from '../semantics/model.ts';
 import { inspectStructuralLines, type structuralLayout } from '../layout/generalized.ts';
@@ -132,5 +133,5 @@ export async function recognizeSemanticMoney(image: Buffer, model: DocumentSeman
       else if (authority.cents === null && !authority.headerValues.some(v => v !== model.total.cents) && !authority.supportedFooter.some(v => v.cents !== model.total.cents)) { authority.cents = model.total.cents; authority.reason = 'Preserved established semantic total authority'; }
     }
     return { version: 'semantic-money-1', totalLocalization, regions, totalOwnershipBounds, totalBounds, footerCandidateCount: footerCandidates.length, rows, authority, authorityInput: { layout, evidence, observations: [...headers, ...totals] }, observations, reused, passes, durationMs: performance.now()-started };
-  } finally { await worker.terminate(); }
+  } finally { await terminateOcrWorker(worker); }
 }

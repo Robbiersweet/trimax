@@ -1,6 +1,6 @@
 "use client";
 import Link from 'next/link';
-import {useEffect,useState} from 'react';
+import {useEffect,useId,useRef,useState} from 'react';
 import {supabase} from '../lib/supabase';
 import {loadWorkspaceAccess} from '../lib/workspaceAccess';
 import {syntheticRequestIds,isVerifiedSyntheticRequest} from '../lib/verifiedSyntheticRequests';
@@ -8,6 +8,8 @@ import {syntheticRequestIds,isVerifiedSyntheticRequest} from '../lib/verifiedSyn
 type Notice={id:string;request_id:string;customer_name:string;request_type:string;requested_date?:string|null;submitted_at:string;read_at:string|null};
 /** Caller JWT + database RLS; no intake credential or admin authority in the browser. */
 export default function SchedulingNotifications({business}:{business:string}){
+ const panelId=useId();
+ const toggle=useRef<HTMLButtonElement>(null);
  const [page,setPage]=useState(0);
  const [includeTests,setIncludeTests]=useState(false),[businessId,setBusinessId]=useState('');
  const [rows,setRows]=useState<Notice[]>([]),[count,setCount]=useState(0),[open,setOpen]=useState(false),[error,setError]=useState(''),[allowed,setAllowed]=useState(false);
@@ -47,9 +49,37 @@ export default function SchedulingNotifications({business}:{business:string}){
   }catch{setError('Could not mark notification read. Try again.');}
  }
  if(!allowed&&!error)return null;
- return <section className="relative my-3" aria-label="Scheduling notifications">
-  <button className="rounded-xl border border-zinc-600 px-3 py-2 text-sm text-white" aria-expanded={open} onClick={()=>setOpen(!open)}>Notifications <span aria-live="polite">({count} unread)</span></button>
-  {error&&<p role="status" className="text-sm text-amber-300">{error}</p>}
-  {open&&<div className="mt-2 max-h-96 overflow-auto rounded-xl border border-zinc-600 bg-zinc-950 p-3 text-white"><h2 className="font-semibold">Service request notifications</h2><label className="my-2 block text-sm"><input type="checkbox" checked={includeTests} onChange={e=>{setIncludeTests(e.target.checked);setPage(0);setRows([]);}}/> Include verified tests · unread badge excludes tests</label><p className="text-xs text-zinc-400">Page {page+1} · updates every 30 seconds</p>{rows.length===0?<p>No notifications yet.</p>:<ul>{rows.map(n=><li key={n.id} className="border-b border-zinc-700 py-3"><Link className="block underline" href={`/admin/service-requests?business=${encodeURIComponent(business)}&request=${encodeURIComponent(n.request_id)}`} onClick={()=>{void mark(n.id);setOpen(false);}}>{!n.read_at?'Unread · ':''}{n.customer_name} — {n.request_type}</Link><p className="text-xs">Requested: {n.requested_date||'Flexible date'}</p><time className="block text-xs" dateTime={n.submitted_at}>{new Date(n.submitted_at).toLocaleString()}</time>{!n.read_at&&<button className="mt-2 text-sm underline" onClick={()=>void mark(n.id)}>Mark as read</button>}</li>)}</ul>}<div className="flex gap-4 pt-3"><button disabled={page===0} onClick={()=>setPage(n=>n-1)}>Newer</button><button disabled={rows.length<50} onClick={()=>setPage(n=>n+1)}>Older</button></div></div>}
- </section>;
+ return (
+  <section className="relative my-2" aria-label="Scheduling notifications" onKeyDown={event=>{
+   if(event.key==='Escape'&&open){event.stopPropagation();setOpen(false);toggle.current?.focus();}
+  }}>
+   <button ref={toggle} type="button" className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-zinc-200 hover:bg-zinc-800"
+    aria-expanded={open} aria-controls={panelId} onClick={()=>setOpen(current=>!current)}>
+    Notifications
+    <span className="sr-only" aria-live="polite">{count} unread</span>
+    {count>0&&<span aria-hidden="true" className="rounded-full bg-orange-400/15 px-2 py-0.5 text-orange-300">{count}</span>}
+   </button>
+   {error&&<p role="status" className="text-sm text-amber-300">{error}</p>}
+   <div id={panelId} hidden={!open} className="mt-1 max-h-[min(24rem,55dvh)] overflow-auto rounded-xl border border-zinc-600 bg-zinc-950 p-3 text-white">
+    <label className="flex min-h-11 items-center gap-2 text-sm text-zinc-300">
+     <input type="checkbox" checked={includeTests} onChange={event=>{setIncludeTests(event.target.checked);setPage(0);setRows([]);}}/>
+     Show test notifications
+    </label>
+    {rows.length===0?<p>{page===0?'No notifications yet.':'No older notifications.'}</p>:<ul>{rows.map(notice=>(
+     <li key={notice.id} className="border-b border-zinc-700 py-2">
+      <Link className="block break-words py-2 text-sm font-semibold underline" href={`/admin/service-requests?business=${encodeURIComponent(business)}&request=${encodeURIComponent(notice.request_id)}`}
+       onClick={()=>{void mark(notice.id);setOpen(false);}}>{!notice.read_at?'Unread · ':''}{notice.customer_name} — {notice.request_type}</Link>
+      <p className="text-xs text-zinc-300">Requested: {notice.requested_date||'Flexible date'}</p>
+      <time className="block text-xs text-zinc-300" dateTime={notice.submitted_at}>{new Date(notice.submitted_at).toLocaleString()}</time>
+      {!notice.read_at&&<button type="button" className="min-h-11 text-sm underline" onClick={()=>void mark(notice.id)}>Mark as read</button>}
+     </li>
+    ))}</ul>}
+    {(page>0||rows.length===50)&&<div className="flex items-center justify-between gap-2">
+     <button type="button" className="min-h-11 px-2 disabled:opacity-50" disabled={page===0} onClick={()=>setPage(current=>current-1)}>Newer</button>
+     <span className="text-xs">Page {page+1}</span>
+     <button type="button" className="min-h-11 px-2 disabled:opacity-50" disabled={rows.length<50} onClick={()=>setPage(current=>current+1)}>Older</button>
+    </div>}
+   </div>
+  </section>
+ );
 }

@@ -425,7 +425,9 @@ export default function Navigation() {
     }),
     [business]
   );
-  const activeSubLinks = activeLink ? sectionSubLinks[activeLink.key] : [];
+  const activeSubLinks = activeLink
+    ? sectionSubLinks[activeLink.key].filter((subLink) => subLink.href !== activeLink.href)
+    : [];
 
   useEffect(() => {
     if (isLoadingRole) {
@@ -499,27 +501,9 @@ export default function Navigation() {
       </div>
 
       <SchedulingNotifications key={business} business={business} />
-      <div className="app-sidebar-current mt-3 rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-300 lg:hidden">
-        <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
-          Current
-        </p>
-
-        <p className="mt-1 font-semibold text-orange-400">
-          {activeLink?.label ?? "Workspace"}
-        </p>
-      </div>
-
       <div
         id="mobile-workspace-menu"
-        className={`mt-4 space-y-4 lg:hidden ${
-          isMobileMenuOpen ? "block" : "hidden"
-        }`}
-      >
-        <UserMenu variant="top" />
-      </div>
-
-      <div
-        className={`app-sidebar-nav-list mt-4 grid grid-cols-2 gap-2 text-sm font-medium text-zinc-300 sm:grid-cols-4 lg:flex lg:flex-1 lg:flex-col lg:overflow-x-hidden lg:overflow-y-auto lg:pt-3 ${
+        className={`app-sidebar-nav-list mt-3 grid-cols-2 gap-2 text-sm font-medium text-zinc-300 sm:grid-cols-4 lg:flex lg:flex-1 lg:flex-col lg:overflow-x-hidden lg:overflow-y-auto lg:pt-3 ${
           isMobileMenuOpen ? "grid" : "hidden lg:flex"
         }`}
       >
@@ -532,7 +516,7 @@ export default function Navigation() {
               href={link.href}
               onClick={() => setIsMobileMenuOpen(false)}
               aria-current={link.active ? "page" : undefined}
-              className={`app-sidebar-nav-link group flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-center transition lg:justify-between lg:text-left ${
+              className={`app-sidebar-nav-link group flex items-center justify-center gap-2 min-h-11 rounded-xl px-3 py-2 text-center transition lg:justify-between lg:text-left ${
                 link.active
                   ? "app-sidebar-nav-link-active text-white shadow-lg"
                   : "app-sidebar-nav-link-inactive hover:bg-zinc-800 hover:text-sky-300"
@@ -585,6 +569,9 @@ export default function Navigation() {
             ) : null}
           </div>
         ))}
+        <div className="col-span-full border-t border-zinc-800 pt-3 lg:hidden">
+          <UserMenu variant="top" />
+        </div>
       </div>
 
       <div className="mt-5 hidden border-t border-zinc-800 pt-4 lg:block">

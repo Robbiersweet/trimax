@@ -1,6 +1,7 @@
 import { ocrRuntimeCache } from '../../ocrRuntimeCache.ts';
 import sharp from 'sharp';
 import { createWorker, OEM, PSM } from 'tesseract.js';
+import { terminateOcrWorker } from '../terminateOcrWorker.ts';
 import { mkdir } from 'node:fs/promises';
 import type { Bounds } from '../types.ts';
 import type { DocumentLayout } from '../layout/types.ts';
@@ -74,7 +75,7 @@ export async function recognizeFields(source: Buffer, layout: DocumentLayout, im
             }
     }
     finally {
-        await worker.terminate();
+        await terminateOcrWorker(worker);
     }
     return { imageId, crops, observations, durationMs: performance.now() - start, passCount: observations.length, unitSkipped: !crops.some(c => c.field === 'unit'), totalAuthority: 'not-evaluated', businessResolution: 'not-performed' };
 }

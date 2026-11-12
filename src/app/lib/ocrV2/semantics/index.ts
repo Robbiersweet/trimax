@@ -6,6 +6,7 @@ import { ocrRuntimeCache } from '../../ocrRuntimeCache.ts';
 import sharp from 'sharp';
 import { createHash } from 'node:crypto';
 import { createWorker, OEM, PSM } from 'tesseract.js';
+import { terminateOcrWorker } from '../terminateOcrWorker.ts';
 import { normalizeDocument, lightingVariants } from '../documentNormalization.ts';
 import { interpretDocument } from './interpret.ts';
 import { EvidenceLedger } from '../recognition/evidenceLedger.ts';
@@ -44,7 +45,7 @@ export async function recognizeSemanticPage(image: Buffer, ledger: EvidenceLedge
         const sequence = ledger.append({ field: 'semantic-page', documentId: ledger.documentId, sourceHash, cropHash, region, recognizer: 'tesseract.js-eng-lstm', variant, configuration: 'psm11-native-resolution', raw: data.text, normalized: [data.text.trim()], confidence: data.confidence, provenance: { valid: true, reason: 'Same normalized page geometry; non-destructive variant, no template or business data', reference: id }, stage: 'phase5e-semantic-page', timestamp: new Date().toISOString() });
         observations.push({ id, runKey: ledger.snapshot().entries[sequence].runKey, sourceHash, cropHash, region, recognizer: 'tesseract.js-eng-lstm', variant, raw: data.text, confidence: data.confidence, verified: true, words: (data.blocks ?? []).flatMap(b => b.paragraphs.flatMap(p => p.lines.flatMap(l => l.words))).map(w => ({ text: w.text, confidence: w.confidence, bounds: { left: w.bbox.x0, top: w.bbox.y0, width: w.bbox.x1 - w.bbox.x0, height: w.bbox.y1 - w.bbox.y0 } })) });
       }
-    } finally { await worker.terminate(); }
+    } finally { await terminateOcrWorker(worker); }
   }
   const mapped=interpretDocument({sourceHash,observations,physicalComponents});
   const recovered=await recoverLeadingCaption(image,mapped,ledger);
