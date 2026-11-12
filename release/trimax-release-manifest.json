@@ -1,26 +1,26 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-shared-calendar-20261112-rc1",
+  "releaseId": "trimax-calendar-holidays-20261112-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-11-12T10:17:07.931Z",
-  "releaseTimestamp": "2026-11-12T10:17:07.931Z",
+  "createdAt": "2026-11-12T11:33:23.138Z",
+  "releaseTimestamp": "2026-11-12T11:33:23.138Z",
   "baseProduction": {
-    "commit": "4c9db0ab458a754cc309a635fe7bd4747b28ff52",
-    "vercelDeploymentId": "Ba1xDKcM7s9Y6znne3LSRirNd1ik"
+    "commit": "ae268a4d07481d405ddc5d052174775ed62df3e5",
+    "vercelDeploymentId": "GpodFRHp1JstWB98BBqkjWqEiGP6"
   },
   "components": {
     "web": {
-      "commit": "82cf5ccea5d410df0a8f1bd38ea91af7c944d67a"
+      "commit": "cbb6d6c13c3863ca765f9ac806af5731989a82b7"
     },
     "legacy": {
-      "commit": "82cf5ccea5d410df0a8f1bd38ea91af7c944d67a"
+      "commit": "cbb6d6c13c3863ca765f9ac806af5731989a82b7"
     },
     "v2-shadow": {
-      "commit": "82cf5ccea5d410df0a8f1bd38ea91af7c944d67a"
+      "commit": "cbb6d6c13c3863ca765f9ac806af5731989a82b7"
     }
   },
   "sourceBundle": {
-    "sha256": "f70cc31f0b7ef8cf7732afa746c8015933447c454abf782eb7065b7b80fdf388",
+    "sha256": "0f2b470474db88dafd8081f74e382285414cf457fce252a112135b301d061e96",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "192442130897c780cee30c0ae29ce8bbf1b1e33bf7fbc4b1629d28b917d744b7",
@@ -50,6 +50,7 @@
       "scripts/atomic-remittance-regression.cjs": "52fe6ba923a6e8e06ac6bf4a223a6d7662fbda8a46a9f5313fe1dd98bafd2299",
       "scripts/auth-cookie-refresh-regression.cjs": "35ac8923b0c555d5470651edc1ce56bc89896f52837086c3c674eb1fb922b9a7",
       "scripts/business-read-isolation-regression.ts": "36319d04f87c4d27ef15e171c2ef89ec6cb3b5314ca4c334e527d7da500b1be8",
+      "scripts/calendar-holiday-regression.ts": "7ffed40bb04ce67989ac9efd789d054c797ebe0977539ed3fd3303e79d1e2026",
       "scripts/camera-lifecycle-regression.ts": "019893d9e4e30b49b8189384db4d48946eb4a201caa353fbacba9431358d5a5c",
       "scripts/canonical-money-regression.cjs": "2193835b78375719d4068bec66044f410e6cc2e2d804c548d9a2403f0f4fe905",
       "scripts/capture-gate-integration-regression.cjs": "4634b41a575a02eb8fe3f4f3bb5d3562a77956d0782d66957c5ec2543c657629",
@@ -396,7 +397,8 @@
       "src/app/book/schedule.css": "794774842881fedb8273f74b40629c15c0bb048c1df1f0544148d1819759df72",
       "src/app/book/workflow-preview/page.tsx": "d742a0d5dfb1a3344dc6f4c8d2164e8ac601bac722584ac0d9e71cd21459e7a5",
       "src/app/book/workflow-preview/preview.tsx": "15ca5997d6904e0c32c892def8d2ae0c210338f29413faa797ace00fd1b15228",
-      "src/app/calendar/CalendarView.tsx": "43206495a407c3919aaf56f50447f7cf79af3f48514d87ac0efa2bdc57d1fde7",
+      "src/app/calendar/CalendarView.tsx": "d46935a99634406a060855f47af956e3438c65e30e37ae1e94e0a0061497311c",
+      "src/app/calendar/federalHolidays.ts": "082f57d602adc10029139380d8c5f803489bbb9ca4db368b32dd5aa0cfab6304",
       "src/app/calendar/model.ts": "3bb46726c2695e39efa4340c95efa6c1ca2aca5f3fecc067d0c3f517ab605b64",
       "src/app/calendar/page.tsx": "d55639bfac7b4917124b146aa44bd6813e150872d7fb0abcdd0e770cffdca8d5",
       "src/app/clients/[id]/edit/page.tsx": "b3f721065962d8abfce605b204f68aec524f3a933bab3b00344483953ff8f258",
@@ -698,7 +700,7 @@
       "src/app/lib/tbd.ts": "d355d3001455be4797b4d1575bc165db11309735a09c41e0eb3037224dc472e0",
       "src/app/lib/unitHistory.ts": "e5890af5c3776e123136e562d2fd9f8a99a2ac9449c68f8893f940c2fa9da9be",
       "src/app/lib/useRemittanceEvent.ts": "a7a4d74bf8e7dd957194830dff99cdc6af3a78e0eae869bd0dbc0e966039b8b2",
-      "src/app/lib/verifiedSyntheticRequests.ts": "a298bfd0c6dab332247529509b39c082f317fed246c600977f0965b51401d7e1",
+      "src/app/lib/verifiedSyntheticRequests.ts": "e4e1a5c478dee5499353345bee067462fcb365a05d2d594e0c7985150f60ed8c",
       "src/app/lib/workspaceAccess.ts": "6d6334182d663536ac1123695bf2017f06373486cfa01ef54d0e72967d480b71",
       "src/app/lib/workspaceLogo.ts": "b4cdd4722a46d55d32b25434864519656cac20a99f5352b512b75374d0315a97",
       "src/app/login/page.tsx": "dd709a37f471db722b752c21226ee621099a615f3578b3d381745a8e11e3c37a",
@@ -946,7 +948,7 @@
     }
   ],
   "database": {
-    "capturedAt": "2026-11-12T10:17:07.931Z",
+    "capturedAt": "2026-11-12T11:33:23.138Z",
     "algorithm": "catalog-v1; sorted C collation name=value; UTF8 SHA256; public tables/constraints/indexes/functions, public+storage RLS, public table grants; excludes only trimax_release_runtime itself",
     "fingerprints": {
       "schema": {
@@ -1066,7 +1068,7 @@
     "physicalAcceptance": "Only installed-iPhone production evidence for exact release may pass; replay cannot pass",
     "legacyModelCache": "Pinned runtime cache verified by startup contract before claim"
   },
-  "sealedAt": "2026-11-12T10:17:07.931Z",
+  "sealedAt": "2026-11-12T11:33:23.138Z",
   "testRuntime": {
     "pgliteVersion": "0.5.8",
     "pglitePackageSha256": "65dff2c93c707e526902eebfab246bcbf2df2eba1c6984a5b5e9a44177532b1c",
@@ -1802,15 +1804,15 @@
     "sha256": "bccc49970c7db9510b64204809cbb282c6d22d5f651708a9e7a7fede7a550bbc"
   },
   "upgradeContext": {
-    "candidateReleaseId": "trimax-shared-calendar-20261112-rc1",
-    "applicationCommit": "82cf5ccea5d410df0a8f1bd38ea91af7c944d67a",
-    "machineryCommit": "82cf5ccea5d410df0a8f1bd38ea91af7c944d67a",
+    "candidateReleaseId": "trimax-calendar-holidays-20261112-rc1",
+    "applicationCommit": "cbb6d6c13c3863ca765f9ac806af5731989a82b7",
+    "machineryCommit": "cbb6d6c13c3863ca765f9ac806af5731989a82b7",
     "currentProductionRelease": {
-      "manifestCommit": "4c9db0ab458a754cc309a635fe7bd4747b28ff52",
-      "manifestDigest": "34af610d83a4393017badcca1eae1d0a6cf878a1fae27379f836bcfe9522fd0f",
-      "releaseId": "trimax-receipt-period-release-20261111-rc1",
-      "deploymentCommit": "4c9db0ab458a754cc309a635fe7bd4747b28ff52",
-      "deploymentId": "Ba1xDKcM7s9Y6znne3LSRirNd1ik"
+      "manifestCommit": "ae268a4d07481d405ddc5d052174775ed62df3e5",
+      "manifestDigest": "ee78e9c740e724791ca5ab1f8d25b05767f2e5aa6692b5bb959487e42c6e12c3",
+      "releaseId": "trimax-shared-calendar-20261112-rc1",
+      "deploymentCommit": "ae268a4d07481d405ddc5d052174775ed62df3e5",
+      "deploymentId": "GpodFRHp1JstWB98BBqkjWqEiGP6"
     }
   },
   "contractRevision": {
