@@ -1,26 +1,26 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-operations-ui-cleanup-20261112-rc1",
+  "releaseId": "trimax-operations-ui-mobile-editors-20261112-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-11-12T17:50:31.325Z",
-  "releaseTimestamp": "2026-11-12T17:50:31.325Z",
+  "createdAt": "2026-11-12T20:27:45.387Z",
+  "releaseTimestamp": "2026-11-12T20:27:45.387Z",
   "baseProduction": {
-    "commit": "d59f753215805c12df8f0083472e0fd43a6c75c7",
-    "vercelDeploymentId": "9W62tNCbraV9xr4rJZ9Cdty76HCt"
+    "commit": "686c1ca289d6b96d17d955d10efcd4b1e679af5b",
+    "vercelDeploymentId": "HscYmcSHPbpxayXG1f3ZwMhJm9PJ"
   },
   "components": {
     "web": {
-      "commit": "15a86ec0d6bf82908b8b14b1ff0fadc9e74f1d56"
+      "commit": "03ee9cc90500f82cf61c3ab02ed0dbff21f4d2c8"
     },
     "legacy": {
-      "commit": "15a86ec0d6bf82908b8b14b1ff0fadc9e74f1d56"
+      "commit": "03ee9cc90500f82cf61c3ab02ed0dbff21f4d2c8"
     },
     "v2-shadow": {
-      "commit": "15a86ec0d6bf82908b8b14b1ff0fadc9e74f1d56"
+      "commit": "03ee9cc90500f82cf61c3ab02ed0dbff21f4d2c8"
     }
   },
   "sourceBundle": {
-    "sha256": "b962b9c23aef321722b3a2a99488c822d428c8127d3a604409caddc25cdc4fb2",
+    "sha256": "c27d4cb6eb9a520e457f35d233005e70ac4ee4c9135f12a580e20e2d09cf849a",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "192442130897c780cee30c0ae29ce8bbf1b1e33bf7fbc4b1629d28b917d744b7",
@@ -257,6 +257,7 @@
       "scripts/ocr-v2/variant-ablation.cjs": "41956e6aaeb44369450b6c75c7cf1fb39ca8bd723780fd396406498600d5f03f",
       "scripts/ocr-v2/visuals.cjs": "5fa713cf3714c9bd082cbc8859953e3d6a09a1ffd95dc7742b32c0fc7425ece6",
       "scripts/ocr-worker-health.cjs": "abd54cc6766521ac7909fee66840b56abc1250210f2ed31d9dbf20b7376ffa37",
+      "scripts/ocr-worker-shutdown-regression.cjs": "9eb6528e9f63e363786d392e327e9068be80d87178031fa0651276d08caee642",
       "scripts/ocr-worker-supervisor.cjs": "fb8237456894ab1f8c488ede113f1585970f002242c2fa39a31eba2d7a8c6626",
       "scripts/office-coupon-regression.cjs": "9336eadc65dca0f3816f5b841fec9f1202140fb31cb7d22d4d46f04f1636859b",
       "scripts/office-qr-sql-regression.cjs": "00c3333acbd7301c7b82384087c72e5ae5f9e18451d7628416c5966dd9c748d8",
@@ -303,7 +304,7 @@
       "scripts/release/file-forensics-regression.cjs": "a6da1ba822d17c1a31b7bd29d3cb49e95febca66f29c51b712ccdd9d608c1b26",
       "scripts/release/file-forensics.cjs": "25133a9f2167c801a05906be04068f3d85f54f3c462e085869df2d486c8bea30",
       "scripts/release/final-candidate-regression.cjs": "edc0dbfa8f70d55607c65327a08ed25193380387dd4f1e850cf130ef992ca03f",
-      "scripts/release/gate-checks.cjs": "b24dedc81c55d85cb8896d89e3f9298117b3eb5ba36a31d62646dce56327b9f9",
+      "scripts/release/gate-checks.cjs": "245c22e5888a36ff6b8c95fdda7215a0e312644494f56ca3af0ee399b6e976fd",
       "scripts/release/gate-state-regression.cjs": "51f1d2c76eca73d122f20cc0f537b624074ebd4943f946dcba63857775e45d04",
       "scripts/release/gate-state.cjs": "f56bdc9741b07b92c53bb487f21320080537fa90734721130612e8c1b52da839",
       "scripts/release/gate.cjs": "228232de653ef9c0c5a96ea24a9bfb0220a06eed1a0a516222d523b67d778c45",
@@ -446,7 +447,7 @@
       "src/app/components/LogoutButton.tsx": "1a5259f98c2a5a6d229b966f9e12a3b69a93bf5d6626bac622db5b03e7178775",
       "src/app/components/MarkCompletedButton.tsx": "ad814f44dfe6cb7a714adee95576c9f49c0f9df86d3d17a957edcf813ec04234",
       "src/app/components/MarkScheduledButton.tsx": "202c93b6e9e5e8804928cdf9951f7f28b27d59bbe97e628e87711a9ac2cf43eb",
-      "src/app/components/Navigation.tsx": "f12eb91e1ab27b8743cbb6c87714a7dcc4690026da80f2dfd4899c2f833435bf",
+      "src/app/components/Navigation.tsx": "e04714a5175e5d07817a723fe2c94c220245694465a191b925ae09cd7b236fc7",
       "src/app/components/NavigationHistoryTracker.tsx": "afd34af190e47b7ed294fb56080c9f075e5836ebcb9394289abbe9e02baed661",
       "src/app/components/OcrCaptureRecovery.tsx": "218eb69626753c392b241697c6ad6fb9e01680ef014de187476d5d77d0a94fdd",
       "src/app/components/OcrDebugMetadata.tsx": "5e88f5259d68b5faec0be10c224d5a26343f96716c500901a8bf1586aafe094d",
@@ -475,7 +476,7 @@
       "src/app/components/RoleVisible.tsx": "69e7eb4de7cacee6a5f0be80545fdb57d1e48a96988178711d761eee57e9bef5",
       "src/app/components/RouteAccessBoundary.tsx": "59dcc979387329a6be84b757edf82f7099831adaf7d94e5b412e4d02ca029949",
       "src/app/components/SavedRemittancePaymentView.tsx": "a26ddc609675a4452c1f20b725f55443c07802784a6eb2a2fbc186697b272703",
-      "src/app/components/SchedulingNotifications.tsx": "4efa99f2d59101b2612b110de33586058ba40377300ae8626fecb92e8c0bf2f6",
+      "src/app/components/SchedulingNotifications.tsx": "2bcedef8d89d9f916817e419feafd2c3290d2df968fbe7d5710a2228de273ad4",
       "src/app/components/SecureSessionBadge.tsx": "43f3538d53c576802a1cc851ca77a84a43144127d959ac44a673f9fc874ea592",
       "src/app/components/SplitInvoicePlanner.tsx": "0f44da82ecfa28d220f403c60d5e9dd361183ad73cca3a468fef580a00623edc",
       "src/app/components/SplitInvoiceRelationshipDisplay.tsx": "3b7cd9bebd733e2b3b6eedf65a33a7ab2a23eca2f11b303fa7da46169df025e7",
@@ -494,18 +495,18 @@
       "src/app/data/invoices.ts": "b174688f8ab7225720e2406c6c23dac16ba19aac6480df7debc8d41385951d20",
       "src/app/data/queue.ts": "3fa04961316e2ad359a89734580794a9a348c8c3f0297c25d581b49f407b750d",
       "src/app/data/queueItems.ts": "d787440758522cafb911db57da24af144c51ae3a0c663ab722df04223f175e4e",
-      "src/app/estimates/[id]/edit/page.tsx": "1f6467958ea4eaa3837c710a31eeb4a2aa2070aeb59ae5c5215ec1295f4433b0",
+      "src/app/estimates/[id]/edit/page.tsx": "bb508054f5bb52c483ca1739309391afd1231446bcdec2ec3f9749ef11e5e0fb",
       "src/app/estimates/[id]/error.tsx": "3e72ce3dc7e9dfbc6312896b1a920980d789ea6b2293f11cdea4fe1e1bc77c4a",
       "src/app/estimates/[id]/page.tsx": "2cf61f1b9bb0aeafa5fc8a9cfdf9ff099d1c1b05d9879a83ffc378e5912d62fa",
       "src/app/estimates/[id]/print/error.tsx": "5f6ac5e64ea8325ba4906ad2495d92d7a4f7e43499552c92459011c4b57b569a",
       "src/app/estimates/[id]/print/page.tsx": "efab225d001181359277df51cbae037d334cae64e996e12fc1e44728219f551e",
-      "src/app/estimates/new/page.tsx": "3f76fea74209d2b48cbf19f5e46ab5882b43a2a7253c07ab7b00512f2a2f2905",
+      "src/app/estimates/new/page.tsx": "8e68f30562d1bc3a49adc1edf08d39a9466b44a18610b16c0557f507c78fcc77",
       "src/app/estimates/page.tsx": "7f517aae2420acfaee0ab87a28b420cb7774306f726f05eed0af451cb0bf7945",
       "src/app/favicon.ico": "2b8ad2d33455a8f736fc3a8ebf8f0bdea8848ad4c0db48a2833bd0f9cd775932",
       "src/app/forgot-password/page.tsx": "ed72e30e4f161990113a13d562649a33c0918beb6074c66ca8284fc118155aa6",
-      "src/app/globals.css": "fcc12b99e1cf5b821636c5a373d55fc89952450452ef4d3acaccd93fe2234814",
+      "src/app/globals.css": "43a35529da2265a0b8e45f8d2f96a839c40e1c9acf1861ea5d7f076e1e7d3436",
       "src/app/imports/page.tsx": "c94bf40f247de68ef6179fb46dafff727c7338550cfad249720bce93500bd49d",
-      "src/app/invoices/[id]/edit/page.tsx": "e77a6ac3192ad9d74d6be292a67f780884823d8c5f568071bfb299a2356d3a05",
+      "src/app/invoices/[id]/edit/page.tsx": "3f9e3b322890b0309bf0c50a98ffc8f8e73d6af53c9939473943c745b31e8b3f",
       "src/app/invoices/[id]/error.tsx": "1f8dcb4db98edea4f131eaca0b8c217fb60054949fd7e57f280a5f0b6620dcf9",
       "src/app/invoices/[id]/exports/5stars-boa/route.ts": "442e141be7542b7bc203df357c8f65be33222b8c262aa0500a3e32a549b756e2",
       "src/app/invoices/[id]/page.tsx": "ec1ceae598ed9639bdbddde106871fc81644ee38452624c93d904c19266f9401",
@@ -513,7 +514,7 @@
       "src/app/invoices/[id]/print/page.tsx": "df3ba4b4dbcc3fb0329da9a15d9f0729e6cb5948a46332e6da97878b38727d13",
       "src/app/invoices/batch-payment/page.tsx": "e7b469d92ee87e0b51770c7c4cfd6ca589f689627113ca7579386eb64dc96982",
       "src/app/invoices/batch-send/page.tsx": "a6c7427b671c844246d285b96ac6d540a9d7b59fa956dcfebdb76e28f8e7e43a",
-      "src/app/invoices/new/page.tsx": "2ac8f406b8ea2468f84f331f03b1955ab7c11f0ae94f0a9ffbb50ca4a84d7ecf",
+      "src/app/invoices/new/page.tsx": "b4e72ec72aa9b593ca5c1573eec4ec1c904659e5e086d78599de6a2422bf60a9",
       "src/app/invoices/page.tsx": "d0876d96e84001d0861fe063a7480f417b8c4ccdfd85ae3e602219bffbf0bdb4",
       "src/app/job-sessions/page.tsx": "1a6e829e37311d624d561d5e23f605bf6394c91e21d384c48267a5df1b856caf",
       "src/app/layout.tsx": "307661f331bc8e30bb262bee9196d32dff2d60af8c11042ee4ef15ba69981f0f",
@@ -611,36 +612,37 @@
       "src/app/lib/ocrV2/layout/types.ts": "3f8c1e5e20e5aef3601384da6590df66a72d84a8c72ec54ba28c1e412ba9a833",
       "src/app/lib/ocrV2/recognition/README.md": "21d35e1d313c871477bf69ef0c3936d05a239b8ee47b9985c90c2f4dda35d9b1",
       "src/app/lib/ocrV2/recognition/completeMoneyAuthority.ts": "79f975ed6f8dafe520641ac884b6a676e22ab1c2d06aaac34d805a3233127f93",
-      "src/app/lib/ocrV2/recognition/documentIdentity.ts": "beefe48c094d3910cca998ec90c09d85fe29a5fd8d0cb09874a0ecb1498d67fb",
-      "src/app/lib/ocrV2/recognition/documentTotalAuthority.ts": "c195476148c742241e9c72db658466d7026f7b02c59a2850a7406ce6abd0a337",
+      "src/app/lib/ocrV2/recognition/documentIdentity.ts": "b968d9f0218964f9a164c5cfbf4f489451e651711ec51a50f2fb15b3317b26e9",
+      "src/app/lib/ocrV2/recognition/documentTotalAuthority.ts": "b89e9d24cf1aa247fbda899ac80ee88cb65aaadcf31348ca2e20862a20e73a14",
       "src/app/lib/ocrV2/recognition/evidenceLedger.ts": "22688c7f2a6de783747b2421737333aa7a298dc95d82db0d87189cd73ba1ffae",
       "src/app/lib/ocrV2/recognition/identityHandoff.ts": "66cffdf20257789e604d61351881583a937acfaf74880d0556be88625c1b33ac",
-      "src/app/lib/ocrV2/recognition/index.ts": "994813e357b834735628f4e898a4a133cdcbb2cf58cfa70e936529cdcff3f2db",
+      "src/app/lib/ocrV2/recognition/index.ts": "453d909bfb937df807879c86361ae6520e782e438cb44c9f517f5db45da74e13",
       "src/app/lib/ocrV2/recognition/matureMoney.ts": "25ea80861c0f8c67a5c59bfc3dd5a485cf0f51e684b12bfed4526da5e6dbbf56",
       "src/app/lib/ocrV2/recognition/normalize.ts": "b534958995772bc7f9bf6e19887578975389099e5206e332e5283d6f40ced038",
       "src/app/lib/ocrV2/recognition/organizationIdentity.ts": "2eea3a2503e38dc5e63afdaec99119f466646f05be3ee396dacf009b21ffcbe6",
-      "src/app/lib/ocrV2/recognition/paymentEvidence.ts": "2dc2bd4c0e5e85163a34987ec0882b32f0dc314c1a084f5e65f706c86213cdeb",
+      "src/app/lib/ocrV2/recognition/paymentEvidence.ts": "168217feec4ac173eadb73c429a14ab5a0ece2aa7313dcf9fa114cd6c1896c0b",
       "src/app/lib/ocrV2/recognition/preservePaymentEvidence.ts": "8834319c7ea95bf735d4f4e60c41352a5753be058fcd5bdbb27568df5d6ec90d",
       "src/app/lib/ocrV2/recognition/residualAmount.ts": "f94674cfe227c6b9f439297cfbe8a17d9d870bb60ef76c96937a70b93265b4fc",
-      "src/app/lib/ocrV2/recognition/semanticMoney.ts": "d09145770873318a0f5c474a3119295014d32f25e6bc6b121be58beff840db14",
+      "src/app/lib/ocrV2/recognition/semanticMoney.ts": "4903a19431cee22141cf72234308cd647059863f30535baca3f4701c47a6c78b",
       "src/app/lib/ocrV2/recognition/totalLocalization.ts": "4569e746d65ef5263c44b1a89d810f35755480282c67e6e9312a053755840a4a",
       "src/app/lib/ocrV2/recognition/types.ts": "61556867b81411adb38ee2eac9dba79314dcd7f466ea7a4127cd247519ca486d",
       "src/app/lib/ocrV2/resolver/index.ts": "4dc5f11bfb5d2b49fd7c0e43f458822db951a7764f3f0c496cb6c4a43b9a62a8",
       "src/app/lib/ocrV2/resolver/residual.ts": "451bf481f6d1f68b010294cda08b9489f54d1446a042b75ad49b5486dce310c6",
       "src/app/lib/ocrV2/semantics/README.md": "b67d7a20a06066f2ae6eae0d29195a69572e4eb58fffaa591c3e28d28bc58b6b",
       "src/app/lib/ocrV2/semantics/headerGeometry.ts": "92b97a7b593668cf073536571ca9888aad5dc7728b4177ef9112d990f31044fd",
-      "src/app/lib/ocrV2/semantics/index.ts": "13c4b3a14f0572592a41202877594d7aff5bda8c0df83f3c145aaea560967688",
+      "src/app/lib/ocrV2/semantics/index.ts": "07185a0557c3757094ec4de2a9632dce589f6224a86d90ac62ecc2438bbcdcd2",
       "src/app/lib/ocrV2/semantics/interpret.ts": "b7bc9e87dc2cdf4c893d9c51e55aafa9338d5a957f171af7e9ff289ffb5290d8",
       "src/app/lib/ocrV2/semantics/labels.ts": "3bb5052eea07a5d54609d5508eeb1c859c49b10defc418d00fdc31cdc006a38a",
       "src/app/lib/ocrV2/semantics/model.ts": "6fb2ee3da890ee2751a2a8f10ea5501cbea28c003dfd9fde26cef5fd36bb7261",
       "src/app/lib/ocrV2/semantics/physicalRows.ts": "ba70b20ec1e7313eab7bc31550887477ba303e8264eb37169fbcf0392f465fc1",
       "src/app/lib/ocrV2/semantics/replay.ts": "4738f42d192c0bcb5019842fb6bdd0df7df54250bc06d1b810e06bfcf408bf16",
-      "src/app/lib/ocrV2/semantics/tableCaptionOwnership.ts": "affdc95170c73a0fd46fac5a83a2b9adad76fdc4cbf246fb15dfa6459b5b9342",
+      "src/app/lib/ocrV2/semantics/tableCaptionOwnership.ts": "bbb914ff24b35d3df8921fed249ecfbc3dea6eea6e34f1032872648853492bdf",
       "src/app/lib/ocrV2/semantics/tableGeometry.ts": "33e1f14c4f9550f110893fa38da387363db61b00822eac269551e5121969e305",
       "src/app/lib/ocrV2/shadow/acceptance.ts": "4d7bc75288190b4743d8c357a90f9898687fc7822d1dc49b6b2ff3022f6f6bcf",
       "src/app/lib/ocrV2/shadow/client.ts": "ef1b3565b5a94dac334c680ac3eaa39e58c9277fd15fef257274cded0e3e9880",
       "src/app/lib/ocrV2/shadow/contract.ts": "7df7baa3680af0818bf2402a1241f456789e856ed77fdf3b708824f7e15e050b",
       "src/app/lib/ocrV2/shadow/pipeline.ts": "14b3d7a4e9df25ccbae709c7bd13d0eb1ba4f0975a061f9414cdb00097fe3f02",
+      "src/app/lib/ocrV2/terminateOcrWorker.ts": "4685935cc90a89c47baea4cf230df123728a46a93035ba53470d1549a5441f33",
       "src/app/lib/ocrV2/types.ts": "59848dd98e9874bcac2820e61a4816ea374fe971370064826c28afb09a43e2ec",
       "src/app/lib/outlookDrafts.ts": "bc667fa98601cd119a338a06bd6d8875af5ec0621b79ed8ca9d622190e2e5ba5",
       "src/app/lib/paymentTimeliness.ts": "1047fb0755b30f874bcbaf2fc8b255788134b9a9f6eaca50c6fd1f024c89ffe4",
@@ -727,7 +729,7 @@
       "src/app/queue/NorthCreekOperations.tsx": "50de03ea78cb11dd7c867bc7273d7b29c882b1b9a2f75c4fcb0f12595d5c584a",
       "src/app/queue/[unit]/edit/page.tsx": "cbdd57e5b8e88cbfc2624a510a24529b41723c50ce79850d58d29e637c868ce6",
       "src/app/queue/[unit]/page.tsx": "cc89faa6bf49a17e06bd5ac291fc006b1982a0a76199f494e8b54ec79aa89aec",
-      "src/app/queue/page.tsx": "735493c0250879225041927f555c2ab2899adfc4d94d8b5243d7c127006398f3",
+      "src/app/queue/page.tsx": "b70941dd1bb19b910fab9cfe5dc668f7ac7174d3c676cafc7c37ed5e232a142e",
       "src/app/recurring-invoices/page.tsx": "a6766ab37cafe1041dde69b73ef8d5a6e63cda3c3e79445e92e8aa21b956e12f",
       "src/app/reports/ReportSection.tsx": "35571c7abe52f4155cdb2a966101e4c1fe40710288184a03ee2aacddae24b2c6",
       "src/app/reports/ReportWorkspace.tsx": "e6a928b5981dd993e2b5f190ba30bcd525f4d0acec4cf16c115958fc95a167a3",
@@ -954,7 +956,7 @@
     }
   ],
   "database": {
-    "capturedAt": "2026-11-12T17:50:31.325Z",
+    "capturedAt": "2026-11-12T20:27:45.387Z",
     "algorithm": "catalog-v1; sorted C collation name=value; UTF8 SHA256; public tables/constraints/indexes/functions, public+storage RLS, public table grants; excludes only trimax_release_runtime itself",
     "fingerprints": {
       "schema": {
@@ -1066,7 +1068,7 @@
   },
   "runtimeDrift": {
     "detected": true,
-    "evidence": "The verified federal holidays release remains serving during customer email preparation.",
+    "evidence": "The verified first operations UI release remains serving during candidate validation.",
     "productionWorkersReplaced": false
   },
   "requirements": {
@@ -1074,7 +1076,7 @@
     "physicalAcceptance": "Only installed-iPhone production evidence for exact release may pass; replay cannot pass",
     "legacyModelCache": "Pinned runtime cache verified by startup contract before claim"
   },
-  "sealedAt": "2026-11-12T17:50:31.325Z",
+  "sealedAt": "2026-11-12T20:27:45.387Z",
   "testRuntime": {
     "pgliteVersion": "0.5.8",
     "pglitePackageSha256": "65dff2c93c707e526902eebfab246bcbf2df2eba1c6984a5b5e9a44177532b1c",
@@ -1810,15 +1812,15 @@
     "sha256": "bccc49970c7db9510b64204809cbb282c6d22d5f651708a9e7a7fede7a550bbc"
   },
   "upgradeContext": {
-    "candidateReleaseId": "trimax-operations-ui-cleanup-20261112-rc1",
-    "applicationCommit": "15a86ec0d6bf82908b8b14b1ff0fadc9e74f1d56",
-    "machineryCommit": "15a86ec0d6bf82908b8b14b1ff0fadc9e74f1d56",
+    "candidateReleaseId": "trimax-operations-ui-mobile-editors-20261112-rc1",
+    "applicationCommit": "03ee9cc90500f82cf61c3ab02ed0dbff21f4d2c8",
+    "machineryCommit": "03ee9cc90500f82cf61c3ab02ed0dbff21f4d2c8",
     "currentProductionRelease": {
-      "manifestCommit": "d59f753215805c12df8f0083472e0fd43a6c75c7",
-      "manifestDigest": "9acb90c6a27517112bdab37deac282bf1d6bdb317c39cfe34987531ef9a4a007",
-      "releaseId": "trimax-scheduling-customer-email-20261112-rc1",
-      "deploymentCommit": "d59f753215805c12df8f0083472e0fd43a6c75c7",
-      "deploymentId": "9W62tNCbraV9xr4rJZ9Cdty76HCt"
+      "manifestCommit": "686c1ca289d6b96d17d955d10efcd4b1e679af5b",
+      "manifestDigest": "380c8c162e41f3c33469057803fe70257f514008c479b3006f586a4e1658c6eb",
+      "releaseId": "trimax-operations-ui-cleanup-20261112-rc1",
+      "deploymentCommit": "686c1ca289d6b96d17d955d10efcd4b1e679af5b",
+      "deploymentId": "HscYmcSHPbpxayXG1f3ZwMhJm9PJ"
     }
   },
   "contractRevision": {
