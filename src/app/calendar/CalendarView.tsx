@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { calendarDays, dateFor, dateKey, type CalendarEntry } from "./model";
 
+import { federalHolidayLabel, federalHolidaysByDate } from "./federalHolidays";
+
 const labels = {
   confirmed: "Confirmed",
   pending: "Pending approval",
@@ -33,6 +35,8 @@ export default function CalendarView({ business, day: initialDay, today, zone, e
     return dateKey(date);
   };
   const selected = entries[day] ?? [];
+  const holidays = federalHolidaysByDate(Number(day.slice(0, 4)));
+  const selectedHoliday = holidays[day];
   const time = (value: string) => new Date(value).toLocaleTimeString("en-US", {
     timeZone: zone, hour: "numeric", minute: "2-digit",
   });
@@ -63,6 +67,7 @@ export default function CalendarView({ business, day: initialDay, today, zone, e
         {Array.from({ length: leading }, (_, index) => <div key={index} aria-hidden="true" />)}
         {days.map(key => {
           const items = entries[key] ?? [];
+          const holiday = holidays[key];
           const confirmed = items.some(entry => entry.state === "confirmed" || entry.state === "date_only");
           const pending = items.some(entry => entry.state.startsWith("pending"));
           const deadline = items.some(entry => entry.state === "deadline");
@@ -73,21 +78,23 @@ export default function CalendarView({ business, day: initialDay, today, zone, e
               location.searchParams.set("date", key);
               window.history.pushState(null, "", location);
             }} aria-current={day === key ? "date" : undefined}
-            aria-label={`${title(key, { dateStyle: "full" })}, ${items.length} entries`}
+            aria-label={`${title(key, { dateStyle: "full" })}, ${items.length} entries${holiday ? ", " + federalHolidayLabel(holiday) : ""}`}
             className={`flex min-h-11 min-w-0 flex-col items-center justify-center rounded-md border text-sm hover:bg-zinc-500/20 ${day === key ? "border-sky-400 bg-sky-500/20 font-bold" : "border-zinc-500/30"}`}>
-            {Number(key.slice(-2))}
+            <span className={holiday?.major ? "font-bold underline decoration-violet-500 decoration-2 underline-offset-2" : undefined}>{Number(key.slice(-2))}</span>
             <span aria-hidden="true" className="flex h-2 gap-0.5">
               {confirmed && <i className="size-1.5 rounded-full bg-emerald-500" />}
               {pending && <i className="size-1.5 rounded-full bg-amber-500" />}
               {deadline && <i className="size-1.5 rounded-full bg-sky-500" />}
+              {holiday && <i className="size-1.5 rounded-sm bg-violet-500" />}
             </span>
           </Link>;
         })}
       </div>
-      <p className="mt-2 text-xs opacity-80">Green: scheduled · Amber: pending · Blue: deadline</p>
+      <p className="mt-2 text-xs opacity-80">Green: scheduled · Amber: pending · Blue: deadline · Purple square: federal holiday</p>
     </section>
     <section aria-label="Selected date" className="rounded-xl border border-zinc-500/40 p-3 sm:p-4">
       <h2 className="font-semibold">{title(day, { dateStyle: "full" })}</h2>
+      {selectedHoliday && <p className={`mt-2 text-sm ${selectedHoliday.major ? "font-bold" : "font-medium"}`}>{federalHolidayLabel(selectedHoliday)} <span className="font-normal opacity-80">· U.S. federal holiday</span></p>}
       {failed && <p role="alert" className="mt-2">Some calendar data is unavailable. Verify availability before booking.</p>}
       {overlap && <p role="status" className="mt-2 font-semibold text-amber-500">Overlapping appointment windows. Review before booking.</p>}
       {!selected.length && !failed && <p className="mt-2 text-sm">No commitments recorded for this date.</p>}

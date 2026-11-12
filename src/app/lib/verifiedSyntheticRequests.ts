@@ -12,6 +12,8 @@ export const verifiedSyntheticRequests = [
   {id:'bb74c3f6-647f-4303-9805-a0812424855d', queueId:'941cddc4-3b83-437f-8b4c-2094f376c83a', evidence:'docs/handoffs/QR_PRODUCTION_APPROVAL_PREPARATION.md'},
   {id:'db884fb9-f089-4ee5-8642-468c88dfb837', evidence:'docs/handoffs/OFFICE_COUPON_INTAKE_ACTIVE.md'},
   {id:'e1e4090c-221b-47c9-b8d0-d3defd340803', queueId:'da8194a0-6701-460b-829b-e7c5e7bad9b3', evidence:'docs/handoffs/OFFICE_COUPON_INTAKE_ACTIVE.md'},
+  {id:'9655234a-9876-4f66-b6aa-848cb7bc30d4', evidence:'REQ-1d25b1bbbb034fe898c5d7060cd96e55: shared manager availability acceptance'},
+  {id:'2cdb9bcb-a429-43fb-9eb5-07b212a4f6b6', evidence:'REQ-83dbdc11664649cfa759a112ce596493: shared manager availability acceptance'},
 ] as const;
 export function syntheticRequestIds(businessId:string){return businessId===syntheticBusinessId?verifiedSyntheticRequests.map(r=>r.id):[];}
 export function isVerifiedSyntheticRequest(businessId:string,id:string){return syntheticRequestIds(businessId).some(value=>value===id);}
