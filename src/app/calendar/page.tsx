@@ -71,7 +71,7 @@ export default async function CalendarPage({ searchParams }: {
       client.from("queue_items").select("id, property, unit, scheduled_date, ready_date, appointment_start, appointment_end, source_request_id")
         .eq("business_id", workspace.id).is("completed_date", null)
         .or(`and(scheduled_date.gte.${days[0]},scheduled_date.lt.${end}),and(ready_date.gte.${days[0]},ready_date.lt.${end}),and(appointment_start.lt.${finish},appointment_end.gt.${start})`),
-      client.from("public_service_requests").select("id, customer_name, preferred_date, time_window_id")
+      client.from("public_service_requests").select("id, customer_name, preferred_date, time_window_id, queue_item_id")
         .eq("business_id", workspace.id).gte("preferred_date", days[0]).lt("preferred_date", end)
         .in("status", ["pending_confirmation", "needs_information", "reviewing", "approved"]),
     ]);
@@ -95,8 +95,13 @@ export default async function CalendarPage({ searchParams }: {
       }
     }
     const windows = (settings?.data?.appointment_windows ?? []) as { id: string; label: string; start: string; end: string }[];
+    const linkedIds = [...new Set((requests.data ?? []).flatMap(request => request.queue_item_id ? [request.queue_item_id] : []))];
+    const linkedWork = linkedIds.length ? await client.from("queue_items").select("id, appointment_start, completed_date")
+      .eq("business_id", workspace.id).in("id", linkedIds) : null;
+    failed ||= Boolean(linkedWork?.error);
+    const resolved = new Set((linkedWork?.data ?? []).filter(item => item.appointment_start || item.completed_date).map(item => item.id));
     for (const request of requests.data ?? []) {
-      if (booked.has(request.id) || isVerifiedSyntheticRequest(workspace.id, request.id)) continue;
+      if (booked.has(request.id) || resolved.has(request.queue_item_id) || isVerifiedSyntheticRequest(workspace.id, request.id)) continue;
       const window = windows.find(item => item.id === request.time_window_id);
       const [start, end] = proposedWindow(request.preferred_date, window, zone);
       entries[request.preferred_date]?.push({
