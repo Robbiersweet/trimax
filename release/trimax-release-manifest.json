@@ -2,25 +2,25 @@
   "schemaVersion": 1,
   "releaseId": "trimax-scheduling-customer-email-20261112-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-11-12T12:19:50.164Z",
-  "releaseTimestamp": "2026-11-12T12:19:50.164Z",
+  "createdAt": "2026-11-12T12:21:37.788Z",
+  "releaseTimestamp": "2026-11-12T12:21:37.788Z",
   "baseProduction": {
     "commit": "c72b8111bdf6e95240846b1bc1d719446866d87f",
     "vercelDeploymentId": "35vUEVBdpBaHQ1rUQt8iSjfdYE9x"
   },
   "components": {
     "web": {
-      "commit": "6c2aade1a12381c1dc40a0a56bc3e015ad060bb7"
+      "commit": "478e49ae603cec3640b9673fd9a56e2881d9fa43"
     },
     "legacy": {
-      "commit": "6c2aade1a12381c1dc40a0a56bc3e015ad060bb7"
+      "commit": "478e49ae603cec3640b9673fd9a56e2881d9fa43"
     },
     "v2-shadow": {
-      "commit": "6c2aade1a12381c1dc40a0a56bc3e015ad060bb7"
+      "commit": "478e49ae603cec3640b9673fd9a56e2881d9fa43"
     }
   },
   "sourceBundle": {
-    "sha256": "e4f4e3235d666d6bbb3c83cce2d25d08f26738d2d71a4c5114373283e013f965",
+    "sha256": "17e013e9bfcb370026682b69621266e1632a67493fbd40a4fa429356ff065a7b",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "192442130897c780cee30c0ae29ce8bbf1b1e33bf7fbc4b1629d28b917d744b7",
@@ -377,7 +377,7 @@
       "src/app/api/property-requests/route.ts": "9d4d88a4ed70bc7f4e69aaf8443d834583eef1044997358a8d4a046b6934e5d2",
       "src/app/api/public-scheduling/[slug]/route.ts": "9749cfd93818e29a0a979da083b7880204496e44a1861b0e67b84f8f51fd2c88",
       "src/app/api/public-scheduling/calendar/route.ts": "dbb79d175e8f2377add11702642b266c0b7cb77a3c7aae305d30cfee7966d516",
-      "src/app/api/public-scheduling/deliver/route.ts": "be68d3ffff32ac90b208b60c226a736e5da9c21a921fd26b8ac93bf4fa9819c3",
+      "src/app/api/public-scheduling/deliver/route.ts": "8c509f6f2d08fd0064f177be62fb8a3023a9a3b7bebbb05f9e17e115971be466",
       "src/app/api/public-scheduling/intake/route.ts": "3a80f34d12df0ac1f91d44c37808bb6d0fa78c3b3e0dbbccee4d8e1fc192f466",
       "src/app/api/public-scheduling/review/route.ts": "5e7d88e1fcdd955259bdac2cdc7983638a1455d0abcb37b829438b4a16733b5d",
       "src/app/api/public-scheduling/settings/route.ts": "6f58d3a53c9d432d756428ed9a936134e088f1c283e17f06a38401245d5dfbd8",
@@ -953,7 +953,7 @@
     }
   ],
   "database": {
-    "capturedAt": "2026-11-12T12:19:50.164Z",
+    "capturedAt": "2026-11-12T12:21:37.788Z",
     "algorithm": "catalog-v1; sorted C collation name=value; UTF8 SHA256; public tables/constraints/indexes/functions, public+storage RLS, public table grants; excludes only trimax_release_runtime itself",
     "fingerprints": {
       "schema": {
@@ -1073,7 +1073,7 @@
     "physicalAcceptance": "Only installed-iPhone production evidence for exact release may pass; replay cannot pass",
     "legacyModelCache": "Pinned runtime cache verified by startup contract before claim"
   },
-  "sealedAt": "2026-11-12T12:19:50.164Z",
+  "sealedAt": "2026-11-12T12:21:37.788Z",
   "testRuntime": {
     "pgliteVersion": "0.5.8",
     "pglitePackageSha256": "65dff2c93c707e526902eebfab246bcbf2df2eba1c6984a5b5e9a44177532b1c",
@@ -1810,8 +1810,8 @@
   },
   "upgradeContext": {
     "candidateReleaseId": "trimax-scheduling-customer-email-20261112-rc1",
-    "applicationCommit": "6c2aade1a12381c1dc40a0a56bc3e015ad060bb7",
-    "machineryCommit": "6c2aade1a12381c1dc40a0a56bc3e015ad060bb7",
+    "applicationCommit": "478e49ae603cec3640b9673fd9a56e2881d9fa43",
+    "machineryCommit": "478e49ae603cec3640b9673fd9a56e2881d9fa43",
     "currentProductionRelease": {
       "manifestCommit": "c72b8111bdf6e95240846b1bc1d719446866d87f",
       "manifestDigest": "15ceff4194d59a1d75174fb646424dcdf15a9f2729689b0668dba3b478538388",
