@@ -15,8 +15,18 @@ const reviewedOpticalDeclarations = {
  'src/app/lib/remittanceAttempt.ts': new Set(['selectRepeatedPropertyIdentity','selectObservedCheckDate','selectObservedHeader']),
  'src/app/lib/remittanceMatching.ts': new Set(['isBankingNoiseLine','checkNumberCandidatesFromText','selectBestCheckNumberCandidate','selectRemittanceHeaderEvidence','CheckNumberCandidate']),
 };
+// Allow only the reviewed worker-exit synchronization in the two pinned recognizers.
+const shutdownFiles = new Set([
+ 'src/app/lib/ocrV2/recognition/index.ts',
+ 'src/app/lib/ocrV2/recognition/paymentEvidence.ts',
+]);
 function frozenFinancialContract(text,file){
  text=normalizeReviewedTotalSpacing(text,file);
+ if(shutdownFiles.has(file)) {
+  text=text.replaceAll('\r\n','\n')
+   .replace("import { terminateOcrWorker } from '../terminateOcrWorker.ts';\n",'')
+   .replace('await terminateOcrWorker(worker);','await worker.terminate();');
+ }
  const allowed=reviewedOpticalDeclarations[file];if(!allowed)return recognitionContract(text);
  const ts=require('typescript'),ast=ts.createSourceFile(file,text,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);
  return recognitionContract(ast.statements.map(statement=>{
@@ -82,6 +92,9 @@ function test(name, fn) { fn(); count++; console.log('PASS', name); }
         const revision = file === 'src/app/lib/remittanceMatching.ts' ? '5e8f08ec8fecc99fdd47031c3e240c8f8c7154b2' : file === 'src/app/lib/remittanceAttempt.ts' ? '5e8f08ec8fecc99fdd47031c3e240c8f8c7154b2' : file === 'src/app/lib/ocrV2/resolver/index.ts' ? '5e8f08ec8fecc99fdd47031c3e240c8f8c7154b2' : '39e4c0f';
         const current=fs.readFileSync(file,'utf8'),baseline=cp.execFileSync('git',['show',revision+':'+file],{encoding:'utf8'});
         assert.equal(frozenFinancialContract(current,file),frozenFinancialContract(baseline,file),file+' frozen financial/recognition boundary changed');
+        if(shutdownFiles.has(file)){
+            assert.notEqual(frozenFinancialContract(current.replace('terminateOcrWorker(worker)', 'terminateOcrWorker(otherWorker)'),file),frozenFinancialContract(baseline,file),'Only shutdown of the same worker is allowed');
+        }
         if(reviewedOpticalDeclarations[file]){
             const financialName=file.endsWith('remittanceAttempt.ts')?'attemptAllowsApply':'findRemittanceMatches';
             assert.notEqual(frozenFinancialContract(current.replace('function '+financialName+'(', 'function altered'+financialName+'('),file),frozenFinancialContract(baseline,file),'Financial declarations must never disappear behind an optical exception');
