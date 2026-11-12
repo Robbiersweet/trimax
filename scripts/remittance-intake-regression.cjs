@@ -31,6 +31,9 @@ async function run(){for(const kind of ['camera','existing']){const x=setup(),fi
   if (name === 'applyBatchPayment') {
    // Remove only the reviewed date-handling delta before comparing with the earlier financial pin.
    reviewedSource = source
+    .replace("historicalReceiptDateUnknown,receiptPeriodFrom,receiptPeriodThrough,postmarkDate", "historicalReceiptDateUnknown,postmarkDate")
+    .replace(/^          receiptPeriodFrom: historicalReceiptDateUnknown \? receiptPeriodFrom : undefined,\r?\n          receiptPeriodThrough: historicalReceiptDateUnknown \? receiptPeriodThrough : undefined,\r?\n/m, "")
+    .replace(/^      setReceiptPeriodFrom\(""\);\r?\n      setReceiptPeriodThrough\(""\);\r?\n/m, "")
     .replace('receivedDate,historicalReceiptDateUnknown,postmarkDate,depositDate,checkPayor','receivedDate,checkPayor')
     .replace(/          receivedDate: historicalReceiptDateUnknown \? null : receivedDate,\r?\n          historicalReceiptDateUnknown,\r?\n          postmarkDate,\r?\n          depositDate,/, '          paymentDate: receivedDate,\n          receivedDate,')
     .replace(/      setHistoricalReceiptDateUnknown\(false\);\r?\n      setPostmarkDate\(""\);\r?\n      setDepositDate\(""\);\r?\n      setPaymentEntryMode\("complete"\);/, '      setPaymentEntryMode("complete");');

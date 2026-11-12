@@ -34,6 +34,8 @@ const polishPaths = new Set([
 ]);
 const polishRelease = "39f47f4d1d3382dede76f6777010ce0a37ddc895";
 const serviceRequestPaths = new Set([
+  "scripts/payment-submit-regression.cjs",
+  "scripts/remittance-intake-regression.cjs",
   "src/app/api/payments/apply-batch/route.ts",
   "src/app/api/reports/financial/route.ts",
   "src/app/components/BatchInvoicePayments.tsx",
