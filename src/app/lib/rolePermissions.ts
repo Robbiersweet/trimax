@@ -270,6 +270,9 @@ export function canUseWorkPermission(
 export function navPermissionForPath(
   pathname: string
 ): NavPermissionKey {
+  if (pathname === "/admin/service-requests" || pathname.startsWith("/admin/service-requests/")) {
+    return "service_requests";
+  }
   if(pathname.startsWith("/maintenance-labels"))return "maintenance_qr";
   if (pathname.startsWith("/queue")) {
     return "queue";
