@@ -1185,11 +1185,12 @@ export default function EditInvoicePage() {
                     className="document-line-item-row grid min-w-0 gap-2 rounded-2xl border border-zinc-800 bg-zinc-950 p-3 sm:p-4"
                   >
                     <div>
-                      <label className="mb-2 block text-sm text-zinc-400">
+                      <label htmlFor={`document-service-${index}`} className="mb-2 block text-sm text-zinc-400">
                         Saved Service
                       </label>
 
                       <select
+                        id={`document-service-${index}`}
                         value={item.serviceItemId}
                         onChange={(event) =>
                           handleServiceChange(

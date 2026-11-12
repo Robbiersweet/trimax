@@ -20383,6 +20383,10 @@ html.theme-light .queue-empty-card::after {
   .document-line-fields > :first-child {
     grid-column: 1 / -1;
   }
+
+  .document-line-fields input[type="number"] {
+    padding-inline: 0.75rem;
+  }
 }
 
 .document-line-fields input {
