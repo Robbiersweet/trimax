@@ -62,13 +62,32 @@ const serviceRequestPaths = new Set([
   "src/app/lib/publicScheduling/workflow.ts",
   "supabase/migrations/20261111_structured_service_request_conversion.sql",
 ]);
+const reportingRelease = "4c9db0ab458a754cc309a635fe7bd4747b28ff52";
 for (const [args, permitted] of [
   [["diff", baseline, brandingRelease, "--name-only"], allowed],
   [["diff", brandingRelease, polishRelease, "--name-only"], polishPaths],
-  [["diff", polishRelease, "--name-only"], serviceRequestPaths],
-  [["ls-files", "--others", "--exclude-standard"], serviceRequestPaths],
+  [["diff", polishRelease, reportingRelease, "--name-only"], serviceRequestPaths],
 ]) {
   const changed = execFileSync("git", [...args, "--", ...sourcePaths], {encoding:"utf8"}).trim().split(/\r?\n/).filter(Boolean);
   assert.deepEqual(changed.filter(file => !permitted.has(file)), []);
 }
 console.log("PASS financial reports release scope; existing payment, invoice, OCR and scheduling source preserved");
+
+const manifest = require("../release/trimax-release-manifest.json");
+if (manifest.releaseId === "trimax-shared-calendar-20261112-rc1") {
+  const calendarPaths = new Set([
+    "scripts/financial-report-scope-regression.cjs",
+    "src/app/admin/service-requests/components/WorkflowActions.tsx",
+    "src/app/calendar/CalendarView.tsx",
+    "src/app/calendar/model.ts",
+    "src/app/calendar/page.tsx",
+    "src/app/components/Navigation.tsx",
+    "src/app/components/QuickCommandCenter.tsx",
+    "src/app/lib/rolePermissions.ts",
+  ]);
+  for (const args of [["diff", reportingRelease, "--name-only"], ["ls-files", "--others", "--exclude-standard"]]) {
+    const files = execFileSync("git", [...args, "--", ...sourcePaths], {encoding:"utf8"}).trim().split(/\r?\n/).filter(Boolean);
+    assert.deepEqual(files.filter(file => !calendarPaths.has(file)), []);
+  }
+  console.log("PASS Calendar release scope; financial and scheduling write paths preserved");
+}
