@@ -105,7 +105,7 @@ export default function CalendarView({ business, day: initialDay, today, zone, e
       <h2 className="font-semibold">{title(day, { dateStyle: "full" })}</h2>
       {selectedHoliday && <p className={`mt-2 text-sm ${selectedHoliday.major ? "font-bold" : "font-medium"}`}>{federalHolidayLabel(selectedHoliday)} <span className="font-normal opacity-80">· U.S. federal holiday</span></p>}
       {failed && <p role="alert" className="mt-2">Some calendar data is unavailable. Verify availability before booking.</p>}
-      {overlap && <p role="status" className="mt-2 font-semibold text-amber-800 dark:text-amber-300">Overlapping appointment windows. Review before booking.</p>}
+      {overlap && <p role="status" className="mt-2 border-l-2 border-amber-500 pl-2 font-semibold">Overlapping appointment windows. Review before booking.</p>}
       {!selected.length && !failed && <p className="mt-2 text-sm">No commitments recorded for this date.</p>}
       <ul className="divide-y divide-zinc-500/30">
         {selected.map((entry, index) => <li key={index} className="py-2 text-sm">

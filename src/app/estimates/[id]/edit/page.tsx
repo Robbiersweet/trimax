@@ -1049,7 +1049,7 @@ export default function EditEstimatePage() {
                 value={showSplitWarning ? `${automaticSplitPlan.length} invoices` : "Off"}
               />
             </div>
-            <Button onClick={handleSave}>
+            <Button onClick={handleSave} disabled={saving}>
               {saving ? "Saving..." : "Save Changes"}
             </Button>
           </div>
