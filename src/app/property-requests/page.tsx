@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import SharedAvailability from "./SharedAvailability";
 import RequestPhotos from "../book/RequestPhotos";
 import {createPhotoCapability} from "../lib/requestPhotos/clientCapability";
 import { supabase } from "../lib/supabase";
@@ -67,6 +68,7 @@ export default function PropertyRequestsPage() {
    <label className="block">Work needed<textarea required maxLength={3000} rows={5} disabled={busy} value={description} onChange={e=>setDescription(e.target.value)} className="mt-1 block w-full rounded border bg-white p-3 text-black"/></label>
    <label className="block">Preferred date (optional)<input type="date" required={flexibility==="fixed"} disabled={busy} value={date} onChange={e=>setDate(e.target.value)} className="mt-1 block w-full rounded border bg-white p-3 text-black"/></label>
    <label className="block">Preferred time window<select disabled={busy||!assignment} value={timeWindowId} onChange={e=>setTimeWindowId(e.target.value)} className="mt-1 block w-full rounded border bg-white p-3 text-black"><option value="">Any time window</option>{assignment?.windows?.map(w=><option key={w.id} value={w.id}>{w.label}</option>)}</select></label>
+   {assignment && <SharedAvailability key={assignment.id} assignmentId={assignment.id} date={date} windowId={timeWindowId}/> }
    <label className="block">Timing flexibility<select disabled={busy} value={flexibility} onChange={e=>setFlexibility(e.target.value)} className="mt-1 block w-full rounded border bg-white p-3 text-black"><option value="flexible">Flexible</option><option value="preferred">Preferred date</option><option value="fixed">Specific date requested</option></select></label>
    <label className="block">Urgency<select disabled={busy} value={urgency} onChange={e=>setUrgency(e.target.value)} className="mt-1 block w-full rounded border bg-white p-3 text-black"><option value="routine">Routine</option><option value="soon">Soon</option><option value="time_sensitive">Time-sensitive</option><option value="urgent">Urgent</option></select></label>
    <p className="text-sm">This form is not monitored for emergencies. For immediate danger, contact emergency services. Timing and urgency are requests, not confirmed appointments or dispatch.</p>

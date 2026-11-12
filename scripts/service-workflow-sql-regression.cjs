@@ -19,8 +19,31 @@ try{
  await db.query("insert into push_subscriptions values($1,$2,$3,'active'),($4,$5,$6,'active')",[uid(70),business,owner,uid(71),uid(4),outsider]);
  const payload={requestTypeId:'repair',customerName:'Synthetic Customer',phone:'5555550100',email:'synthetic@example.invalid',preferredContact:'email',address:'Synthetic address',description:'Synthetic repair',preferredDate:'',timeWindowId:'',flexibility:'flexible',urgency:'time_sensitive',notes:'Access note',consent:true};
  async function submit(n,extra={}){return (await db.query('select trimax_submit_public_service_request($1,$2,$3,$4) r',['test',JSON.stringify({...payload,...extra}),String(n).padStart(64,'0'),String(n+100).padStart(64,'0')])).rows[0].r;}
+ await db.exec("create table property_users(id uuid primary key,business_id uuid,user_id uuid,property_name text); alter table public_service_requests add column property_assignment_id uuid;");
+ await db.exec(fs.readFileSync('supabase/migrations/20261111_manager_availability.sql','utf8'));
  const first=await submit(1);eq((await submit(1)).id,first.id);eq((await db.query('select count(*)::int n from scheduling_owner_notifications')).rows[0].n,1);
  async function as(user,fn){await db.exec(`set role authenticated;set test.uid='${user}'`);try{return await fn();}finally{await db.exec('reset role');}}
+ const manager=uid(90), otherManager=uid(91), managerAssignment=uid(92), otherAssignment=uid(93);
+ await db.query("insert into business_users values($1,$2,'property_manager'),($1,$3,'property_manager')",[business,manager,otherManager]);
+ await db.query("insert into property_users values($1,$2,$3,'Synthetic North'),($4,$2,$5,'Synthetic Glen')",[managerAssignment,business,manager,otherAssignment,otherManager]);
+ await db.query("update public_scheduling_settings set appointment_windows=$2 where business_id=$1",[business,JSON.stringify([{id:'morning',start:'08:00',end:'12:00'}])]);
+ await db.query("update public_service_requests set property_assignment_id=$2,preferred_date=current_date,time_window_id='morning' where id=$1",[first.id,otherAssignment]);
+ const availability=(assignment)=>db.query("select * from trimax_manager_availability($1,current_date,'morning')",[assignment]);
+ const pendingSlots=(await as(manager,()=>availability(managerAssignment))).rows;
+ eq(pendingSlots.length,1);
+ eq(pendingSlots[0].property,'Synthetic Glen');
+ eq(pendingSlots[0].state,'pending');
+ eq(pendingSlots[0].conflicts,true);
+ await db.query("insert into queue_items(id,business_id,property,unit,notes,scheduled_date,appointment_start,appointment_end) values('calendar-test',$1,'Synthetic Glen','PRIVATE','PRIVATE',current_date,current_date+interval '17 hours',current_date+interval '18 hours'),('calendar-other',$2,'Other tenant','PRIVATE','PRIVATE',current_date,null,null)",[business,uid(4)]);
+ const sharedSlots=(await as(manager,()=>availability(managerAssignment))).rows;
+ eq(sharedSlots.map(row=>row.state).sort(),['confirmed','pending']);
+ assert.doesNotMatch(JSON.stringify(sharedSlots),/PRIVATE|Other tenant/);checks++;
+ await db.exec("delete from queue_items where id in ('calendar-test','calendar-other')");
+
+ eq(Object.keys(pendingSlots[0]).sort(),['conflicts','ends_at','property','starts_at','state']);
+ await assert.rejects(()=>as(manager,()=>availability(otherAssignment)),/Not authorized/);checks++;
+ await assert.rejects(()=>as(outsider,()=>availability(managerAssignment)),/Not authorized/);checks++;
+ await db.query("update public_service_requests set preferred_date=null,time_window_id=null,property_assignment_id=null where id=$1",[first.id]);
  const property=uid(71),unit=uid(72),wrongProperty=uid(73),wrongUnit=uid(74);
  await db.query("insert into properties(id,business_id,name) values($1,$2,'Synthetic Glen'),($3,$4,'Other workspace')",[property,business,wrongProperty,uid(4)]);
  await db.query("insert into property_units values($1,$2,$3,'QA-07'),($4,$5,$6,'Other')",[unit,business,property,wrongUnit,uid(4),wrongProperty]);

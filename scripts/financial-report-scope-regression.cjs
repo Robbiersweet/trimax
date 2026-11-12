@@ -34,6 +34,10 @@ const polishPaths = new Set([
 ]);
 const polishRelease = "39f47f4d1d3382dede76f6777010ce0a37ddc895";
 const serviceRequestPaths = new Set([
+  "src/app/lib/financialReportExport.ts",
+  "src/app/property-requests/page.tsx",
+  "src/app/property-requests/SharedAvailability.tsx",
+  "supabase/migrations/20261111_manager_availability.sql",
   "scripts/financial-report-scope-regression.cjs",
   "src/app/components/Navigation.tsx",
   "src/app/lib/rolePermissions.ts",
