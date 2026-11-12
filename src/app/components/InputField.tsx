@@ -5,6 +5,7 @@ import DateInputField from "./DateInputField";
 
 type InputFieldProps = {
   label: string;
+  id?: string;
   placeholder?: string;
   value: string;
   onChange: (value: string) => void;
@@ -20,6 +21,7 @@ type InputFieldProps = {
 
 export default function InputField({
   label,
+  id,
   placeholder,
   value,
   onChange,
@@ -42,6 +44,7 @@ export default function InputField({
   if (type === "date") {
     return (
       <DateInputField
+        id={id}
         label={label}
         value={value}
         onChange={onChange}
@@ -112,6 +115,7 @@ export default function InputField({
 
       <div className="relative">
         <input
+          id={id}
           type={inputType}
           list={hasCustomOptions ? undefined : list}
           value={value}

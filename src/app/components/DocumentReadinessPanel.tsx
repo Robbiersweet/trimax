@@ -1,6 +1,7 @@
 type ReadinessStep = {
   label: string;
   detail: string;
+  targetId?: string;
   status: "ready" | "attention" | "waiting";
 };
 
@@ -93,24 +94,26 @@ export default function DocumentReadinessPanel({
       </div>
 
       <div className="mt-5 grid gap-3 md:grid-cols-3">
-        {steps.map((step) => (
-          <div
-            key={step.label}
-            data-status={step.status}
-            className="document-readiness-step rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-400">
-                {step.label}
-              </p>
-              <span className="document-readiness-dot h-2.5 w-2.5 rounded-full" />
-            </div>
-
-            <p className="mt-2 text-sm font-semibold text-white">
-              {step.detail}
-            </p>
-          </div>
-        ))}
+        {steps.map((step) => {
+          const className = "document-readiness-step block rounded-2xl border border-zinc-800 bg-zinc-950 px-3 py-2 sm:p-4";
+          const detail = (
+            <>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-400">{step.label}</p>
+                <span className="document-readiness-dot h-2.5 w-2.5 rounded-full" aria-hidden="true" />
+              </div>
+              <p className="mt-1 text-sm font-semibold text-white">{step.detail}</p>
+            </>
+          );
+          return step.targetId && step.status !== "ready" ? (
+            <a key={step.label} href={`#${step.targetId}`} data-status={step.status}
+              className={`${className} min-h-11 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-sky-300`}>
+              {detail}
+            </a>
+          ) : (
+            <div key={step.label} data-status={step.status} className={className}>{detail}</div>
+          );
+        })}
       </div>
     </div>
   );

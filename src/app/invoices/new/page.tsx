@@ -291,6 +291,7 @@ function NewInvoicePageContent() {
   const invoiceReadinessSteps = [
     {
       label: "Client",
+      targetId: "readiness-customer",
       detail: customerName.trim()
         ? customerName.trim()
         : "Choose or enter a customer",
@@ -298,6 +299,7 @@ function NewInvoicePageContent() {
     },
     {
       label: "Project",
+      targetId: "readiness-project",
       detail: projectTitle.trim()
         ? projectTitle.trim()
         : "Add a project title",
@@ -305,6 +307,7 @@ function NewInvoicePageContent() {
     },
     {
       label: "Line items",
+      targetId: "readiness-line-items",
       detail:
         readyLineItems.length > 0
           ? `${readyLineItems.length} billable line ${
@@ -315,6 +318,7 @@ function NewInvoicePageContent() {
     },
     {
       label: "Due date",
+      targetId: "readiness-due-date",
       detail: dueDate
         ? dueDateManuallyChanged
           ? "Manual date selected"
@@ -326,6 +330,7 @@ function NewInvoicePageContent() {
     },
     {
       label: "Tax",
+      targetId: "readiness-tax",
       detail:
         taxMode === "taxable"
           ? taxRate
@@ -338,6 +343,7 @@ function NewInvoicePageContent() {
     },
     {
       label: "Split",
+      targetId: "readiness-split",
       detail: showSplitWarning
         ? `${automaticSplitPlan.length} draft splits ready`
         : effectiveSplitWarningEnabled
@@ -991,7 +997,7 @@ function NewInvoicePageContent() {
             </div>
 
             <InputField
-              label="Customer Name"
+              id="readiness-customer" label="Customer Name"
               placeholder="Enter customer name"
               value={customerName}
               onChange={(value) => {
@@ -1001,7 +1007,7 @@ function NewInvoicePageContent() {
             />
 
             <InputField
-              label="Project Title"
+              id="readiness-project" label="Project Title"
               placeholder="Example: Unit 204 Turn"
               value={projectTitle}
               onChange={(value) => {
@@ -1019,7 +1025,7 @@ function NewInvoicePageContent() {
               />
 
               <InputField
-                label="Due Date"
+                id="readiness-due-date" label="Due Date"
                 value={dueDate}
                 onChange={(value) => {
                   setDueDateManuallyChanged(true);
@@ -1069,7 +1075,7 @@ function NewInvoicePageContent() {
               />
 
               <InputField
-                label="Tax Rate (%)"
+                id="readiness-tax" label="Tax Rate (%)"
                 type="number"
                 preventWheelChange
                 placeholder="9.9"
@@ -1147,7 +1153,7 @@ function NewInvoicePageContent() {
             </label>
 
             <InputField
-              label="Split Target Amount"
+              id="readiness-split" label="Split Target Amount"
               type="number"
               preventWheelChange
               placeholder={
@@ -1159,7 +1165,7 @@ function NewInvoicePageContent() {
               onChange={setSplitTargetAmount}
             />
 
-            <div className="document-line-items-panel rounded-2xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <div id="readiness-line-items" tabIndex={-1} className="document-line-items-panel scroll-mt-6 rounded-2xl border border-zinc-800 bg-zinc-950/40 p-4">
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">
                   <h2 className="text-lg font-semibold">Line Items</h2>

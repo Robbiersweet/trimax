@@ -36,10 +36,7 @@ export default function Navigation() {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [role, setRole] =
-    useState<string | null>(null);
-  const [isLoadingRole, setIsLoadingRole] =
-    useState(true);
+  const [access, setAccess] = useState<{ business: string; role: string | null } | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] =
     useState(false);
 
@@ -50,6 +47,8 @@ export default function Navigation() {
   const isRnl =
     business === "rnl-creations";
 
+  const isLoadingRole = access?.business !== business;
+  const role = isLoadingRole ? null : access.role;
   const logo = workspaceLogo(business);
   const businessName = isRnl
     ? "R&L Creations"
@@ -59,7 +58,7 @@ export default function Navigation() {
     let isMounted = true;
 
     async function loadRole() {
-      const access = await loadWorkspaceAccess();
+      const access = await loadWorkspaceAccess().catch(() => []);
       const currentWorkspace = access.find(
         (workspace) =>
           workspace.businessSlug === business
@@ -69,8 +68,7 @@ export default function Navigation() {
         return;
       }
 
-      setRole(currentWorkspace?.role ?? null);
-      setIsLoadingRole(false);
+      setAccess({ business, role: currentWorkspace?.role ?? null });
     }
 
     loadRole();
@@ -209,13 +207,7 @@ export default function Navigation() {
 
   const visibleNavLinks = useMemo(
     () =>
-      navLinks.filter(
-        (link) =>
-          link.key === "service_requests"
-            ? !isLoadingRole && canAccessNavItem(role, link.key)
-            : isLoadingRole ||
-          canAccessNavItem(role, link.key)
-      ),
+      isLoadingRole || !role ? [] : navLinks.filter((link) => canAccessNavItem(role, link.key)),
     [isLoadingRole, navLinks, role]
   );
   const activeLink = visibleNavLinks.find((link) => link.active);
@@ -436,12 +428,7 @@ export default function Navigation() {
 
     const prefetchHrefs = [
       ...visibleNavLinks.map((link) => link.href),
-      ...Object.values(sectionSubLinks).flatMap((links) =>
-        links.map((link) => link.href)
-      ),
-      `/payments?business=${business}#check-capture`,
-      `/invoices?business=${business}&status=overdue&sort=oldest_due#invoice-results-list`,
-      `/settings?business=${business}#outlook-integration`,
+      ...visibleNavLinks.flatMap((link) => sectionSubLinks[link.key].map((item) => item.href)),
     ];
 
     const uniqueHrefs = Array.from(new Set(prefetchHrefs));
@@ -507,6 +494,7 @@ export default function Navigation() {
           isMobileMenuOpen ? "grid" : "hidden lg:flex"
         }`}
       >
+        {isLoadingRole && <p className="col-span-full px-3 py-2 text-sm text-zinc-400" role="status">Loading workspace menu</p>}
         {visibleNavLinks.map((link) => (
           <div
             key={link.href}

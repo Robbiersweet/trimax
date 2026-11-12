@@ -549,6 +549,7 @@ function NewEstimatePageContent() {
   const estimateReadinessSteps = [
     {
       label: "Client",
+      targetId: "readiness-customer",
       detail: customerName.trim()
         ? customerName.trim()
         : "Choose or enter a customer",
@@ -556,6 +557,7 @@ function NewEstimatePageContent() {
     },
     {
       label: "Project",
+      targetId: "readiness-project",
       detail: projectTitle.trim()
         ? projectTitle.trim()
         : "Add a project title",
@@ -563,6 +565,7 @@ function NewEstimatePageContent() {
     },
     {
       label: "Line items",
+      targetId: "readiness-line-items",
       detail:
         readyLineItems.length > 0
           ? `${readyLineItems.length} priced line ${
@@ -573,6 +576,7 @@ function NewEstimatePageContent() {
     },
     {
       label: "Tax",
+      targetId: "readiness-tax",
       detail:
         taxMode === "taxable"
           ? taxRate
@@ -585,6 +589,7 @@ function NewEstimatePageContent() {
     },
     {
       label: "Address",
+      targetId: "readiness-address",
       detail: serviceAddress.trim()
         ? "Service address added"
         : "Optional, but useful for tax",
@@ -592,6 +597,7 @@ function NewEstimatePageContent() {
     },
     {
       label: "Split",
+      targetId: "readiness-split",
       detail: showSplitWarning
         ? `${automaticSplitPlan.length} future split invoices`
         : effectiveSplitWarningEnabled
@@ -1566,21 +1572,21 @@ function NewEstimatePageContent() {
             </div>
 
             <InputField
-              label="Customer Name"
+              id="readiness-customer" label="Customer Name"
               placeholder="Enter customer name"
               value={customerName}
               onChange={setCustomerName}
             />
 
             <InputField
-              label="Project Title"
+              id="readiness-project" label="Project Title"
               placeholder="Example: Unit 204 Turn"
               value={projectTitle}
               onChange={setProjectTitle}
             />
 
             <InputField
-              label="Service Address"
+              id="readiness-address" label="Service Address"
               placeholder="Job location"
               value={serviceAddress}
               onChange={handleServiceAddressChange}
@@ -1607,7 +1613,7 @@ function NewEstimatePageContent() {
               />
 
               <InputField
-                label="Tax Rate (%)"
+                id="readiness-tax" label="Tax Rate (%)"
                 type="number"
                 preventWheelChange
                 placeholder="9.9"
@@ -1668,7 +1674,7 @@ function NewEstimatePageContent() {
             </label>
 
             <InputField
-              label="Split Target Amount"
+              id="readiness-split" label="Split Target Amount"
               type="number"
               preventWheelChange
               placeholder={
@@ -1680,7 +1686,7 @@ function NewEstimatePageContent() {
               onChange={setSplitTargetAmount}
             />
 
-            <div className="document-line-items-panel rounded-2xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <div id="readiness-line-items" tabIndex={-1} className="document-line-items-panel scroll-mt-6 rounded-2xl border border-zinc-800 bg-zinc-950/40 p-4">
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">
                   <h2 className="text-lg font-semibold">Line Items</h2>

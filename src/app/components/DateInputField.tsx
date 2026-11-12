@@ -4,6 +4,7 @@ import { useRef } from "react";
 
 type DateInputFieldProps = {
   label: string;
+  id?: string;
   value?: string;
   defaultValue?: string;
   name?: string;
@@ -15,6 +16,7 @@ type DateInputFieldProps = {
 
 export default function DateInputField({
   label,
+  id,
   value,
   defaultValue,
   name,
@@ -47,6 +49,7 @@ export default function DateInputField({
 
       <div className="relative min-w-0">
         <input
+          id={id}
           ref={inputRef}
           type="date"
           name={name}
