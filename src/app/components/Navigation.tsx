@@ -97,6 +97,13 @@ export default function Navigation() {
         icon: "queue",
       },
       {
+        key: "schedule",
+        label: "Calendar",
+        href: `/calendar?business=${business}`,
+        active: pathname.startsWith("/calendar") || pathname.startsWith("/schedule"),
+        icon: "schedule",
+      },
+      {
         key: "service_requests",
         label: "Service Requests",
         href: `/admin/service-requests?business=${encodeURIComponent(business)}`,
@@ -130,13 +137,6 @@ export default function Navigation() {
         href: `/maintenance-labels?business=${business}`,
         active: pathname.startsWith("/maintenance-labels"),
         icon: "services",
-      },
-      {
-        key: "schedule",
-        label: "Schedule",
-        href: `/schedule?business=${business}`,
-        active: pathname.startsWith("/schedule"),
-        icon: "schedule",
       },
       {
         key: "estimates",
@@ -288,18 +288,7 @@ export default function Navigation() {
           href: `/technician?business=${business}`,
         },
       ],
-      schedule: [
-        {
-          label: "Scheduled",
-          description: "Calendar set",
-          href: `/schedule?business=${business}&view=scheduled`,
-        },
-        {
-          label: "Needs Date",
-          description: "Plan next",
-          href: `/schedule?business=${business}&view=ready`,
-        },
-      ],
+      schedule: [],
       estimates: [
         {
           label: "Estimate List",

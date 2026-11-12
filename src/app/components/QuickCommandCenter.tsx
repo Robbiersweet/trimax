@@ -1505,7 +1505,7 @@ function buildIntentShortcutCommands(
       title: "Open queue scheduling",
       detail:
         "Review scheduled work, paint due dates, and queue priority planning.",
-      href: `/schedule?business=${business}`,
+      href: `/calendar?business=${business}`,
       tone: "queue",
       keywords: ["intent", "schedule", "calendar", "paint", "queue"],
       source: "smart",
@@ -1838,7 +1838,7 @@ export default function QuickCommandCenter() {
       {
         title: "Schedule",
         detail: "Open scheduled queue work and calendar planning.",
-        href: `/schedule?business=${business}`,
+        href: `/calendar?business=${business}`,
         tone: "queue",
         keywords: ["calendar", "schedule", "work date", "paint date"],
       },

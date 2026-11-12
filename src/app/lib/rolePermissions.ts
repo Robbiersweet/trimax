@@ -291,7 +291,7 @@ export function navPermissionForPath(
     return "queue";
   }
 
-  if (pathname.startsWith("/schedule")) {
+  if (pathname.startsWith("/schedule") || pathname.startsWith("/calendar")) {
     return "schedule";
   }
 
