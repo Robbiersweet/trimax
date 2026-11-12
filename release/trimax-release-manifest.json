@@ -2,25 +2,25 @@
   "schemaVersion": 1,
   "releaseId": "trimax-operations-ui-cleanup-20261112-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-11-12T17:48:47.825Z",
-  "releaseTimestamp": "2026-11-12T17:48:47.825Z",
+  "createdAt": "2026-11-12T17:50:31.325Z",
+  "releaseTimestamp": "2026-11-12T17:50:31.325Z",
   "baseProduction": {
     "commit": "d59f753215805c12df8f0083472e0fd43a6c75c7",
     "vercelDeploymentId": "9W62tNCbraV9xr4rJZ9Cdty76HCt"
   },
   "components": {
     "web": {
-      "commit": "2e88278a1f57270762d591760e9fc38c75241574"
+      "commit": "15a86ec0d6bf82908b8b14b1ff0fadc9e74f1d56"
     },
     "legacy": {
-      "commit": "2e88278a1f57270762d591760e9fc38c75241574"
+      "commit": "15a86ec0d6bf82908b8b14b1ff0fadc9e74f1d56"
     },
     "v2-shadow": {
-      "commit": "2e88278a1f57270762d591760e9fc38c75241574"
+      "commit": "15a86ec0d6bf82908b8b14b1ff0fadc9e74f1d56"
     }
   },
   "sourceBundle": {
-    "sha256": "71fe70068a8e7d9f16dd5d1bc1ca6b2cb523ab537ba7bc14e47a99bfdc93c7a1",
+    "sha256": "b962b9c23aef321722b3a2a99488c822d428c8127d3a604409caddc25cdc4fb2",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "192442130897c780cee30c0ae29ce8bbf1b1e33bf7fbc4b1629d28b917d744b7",
@@ -260,6 +260,7 @@
       "scripts/ocr-worker-supervisor.cjs": "fb8237456894ab1f8c488ede113f1585970f002242c2fa39a31eba2d7a8c6626",
       "scripts/office-coupon-regression.cjs": "9336eadc65dca0f3816f5b841fec9f1202140fb31cb7d22d4d46f04f1636859b",
       "scripts/office-qr-sql-regression.cjs": "00c3333acbd7301c7b82384087c72e5ae5f9e18451d7628416c5966dd9c748d8",
+      "scripts/operations-ui-navigation-regression.cjs": "e11ad8f57e010d59085c79ab76067e9115fce25e2a3305bb224d21e3681969de",
       "scripts/owner-server-auth-regression.ts": "b295a70ecdc6e291e2a474afbd900075334cb940ca57bb191a9e41f67311f273",
       "scripts/payment-application-regression.ts": "57a71e69d3a19c535077fd79cf40757afadf79c39d43d580bac00d781fa841e7",
       "scripts/payment-state-lifecycle-regression.ts": "88f1ec8d51facaf9c25d94f18ab4c827db668b331cbe0f61d923855ce8bced04",
@@ -689,7 +690,7 @@
       "src/app/lib/requestPhotos/storage.ts": "793abf7ce5b3b95251529766446eceb22f612e46f5e5e38a587c6724ebe5beeb",
       "src/app/lib/requestPhotos/upload.ts": "41abad0c0339c0efb76bffe6d9c62084d1a54a037d67c6cf43a68bfae132045b",
       "src/app/lib/reverseDocumentTotals.ts": "cedf534760d6f5ff671a2d04fe6346f774000cd79096e8c050bd8c207899eb4d",
-      "src/app/lib/rolePermissions.ts": "391c066dca0da7787c91121a5242d315c187c1219b9d3542c240577c44d85ad1",
+      "src/app/lib/rolePermissions.ts": "8c964e2568d0489c42e9b93795055fe0273c40b2195d2c6ff6341f811be6ef61",
       "src/app/lib/savedRemittancePayment.ts": "5893806d0998ddbc166aafb08055afc6ea61cb966151d1b37326cf9725b238cf",
       "src/app/lib/savedRemittancePaymentClient.ts": "6c215da0ffd82be9b2ed557d87eb48d5cd300e9ba65192790f21b59c8c7d5400",
       "src/app/lib/savedRemittancePaymentServer.ts": "41341ad02c0c0a5b134f7286de0e0f60861fa6a030c73f793de073ada68c2ade",
@@ -953,7 +954,7 @@
     }
   ],
   "database": {
-    "capturedAt": "2026-11-12T17:48:47.825Z",
+    "capturedAt": "2026-11-12T17:50:31.325Z",
     "algorithm": "catalog-v1; sorted C collation name=value; UTF8 SHA256; public tables/constraints/indexes/functions, public+storage RLS, public table grants; excludes only trimax_release_runtime itself",
     "fingerprints": {
       "schema": {
@@ -1073,7 +1074,7 @@
     "physicalAcceptance": "Only installed-iPhone production evidence for exact release may pass; replay cannot pass",
     "legacyModelCache": "Pinned runtime cache verified by startup contract before claim"
   },
-  "sealedAt": "2026-11-12T17:48:47.825Z",
+  "sealedAt": "2026-11-12T17:50:31.325Z",
   "testRuntime": {
     "pgliteVersion": "0.5.8",
     "pglitePackageSha256": "65dff2c93c707e526902eebfab246bcbf2df2eba1c6984a5b5e9a44177532b1c",
@@ -1810,8 +1811,8 @@
   },
   "upgradeContext": {
     "candidateReleaseId": "trimax-operations-ui-cleanup-20261112-rc1",
-    "applicationCommit": "2e88278a1f57270762d591760e9fc38c75241574",
-    "machineryCommit": "2e88278a1f57270762d591760e9fc38c75241574",
+    "applicationCommit": "15a86ec0d6bf82908b8b14b1ff0fadc9e74f1d56",
+    "machineryCommit": "15a86ec0d6bf82908b8b14b1ff0fadc9e74f1d56",
     "currentProductionRelease": {
       "manifestCommit": "d59f753215805c12df8f0083472e0fd43a6c75c7",
       "manifestDigest": "9acb90c6a27517112bdab37deac282bf1d6bdb317c39cfe34987531ef9a4a007",
