@@ -595,6 +595,8 @@ export default function BatchInvoicePayments({
   );
   const [checkDate, setCheckDate] = useState("");
   const [receivedDate, setReceivedDate] = useState(todayInputValue());
+  const [receiptPeriodFrom, setReceiptPeriodFrom] = useState("");
+  const [receiptPeriodThrough, setReceiptPeriodThrough] = useState("");
   const [historicalReceiptDateUnknown, setHistoricalReceiptDateUnknown] = useState(false);
   const [postmarkDate, setPostmarkDate] = useState("");
   const [depositDate, setDepositDate] = useState("");
@@ -2435,6 +2437,8 @@ export default function BatchInvoicePayments({
   // normalization, duplicate preflight or any old asynchronous completion.
   function clearNewRemittanceReviewState() {
     setHistoricalReceiptDateUnknown(false);
+    setReceiptPeriodFrom("");
+    setReceiptPeriodThrough("");
     setPostmarkDate("");
     setDepositDate("");
     originalStillRef.current=null;
@@ -2616,7 +2620,7 @@ export default function BatchInvoicePayments({
 
   async function applyBatchPayment(confirmedReviewKey?: string) {
     if(paymentSubmitBusy.current)return;
-    const reviewKey=JSON.stringify({businessId,sourceAttemptId:latestScan.current?.attemptId??null,invoiceIds:[...selectedIds].sort(),allocations:intendedAllocations,checkAmount:enteredCheckAmount,paymentReference,checkDate,receivedDate,historicalReceiptDateUnknown,postmarkDate,depositDate,checkPayor,paymentType,internalNote,remittanceDocumentFingerprint,duplicateEvidenceKey,duplicateOverrideClearedKey,reversedDuplicateReviewedKey});
+    const reviewKey=JSON.stringify({businessId,sourceAttemptId:latestScan.current?.attemptId??null,invoiceIds:[...selectedIds].sort(),allocations:intendedAllocations,checkAmount:enteredCheckAmount,paymentReference,checkDate,receivedDate,historicalReceiptDateUnknown,receiptPeriodFrom,receiptPeriodThrough,postmarkDate,depositDate,checkPayor,paymentType,internalNote,remittanceDocumentFingerprint,duplicateEvidenceKey,duplicateOverrideClearedKey,reversedDuplicateReviewedKey});
     if(confirmedReviewKey!==undefined&&confirmedReviewKey!==reviewKey){setPaymentConfirmation(null);setToast({type:'error',message:'The payment review changed. Check the details and confirm again.'});return;}
     const validationOnly=confirmedReviewKey===undefined;
     if (!paymentCanApply) {
@@ -2711,6 +2715,8 @@ export default function BatchInvoicePayments({
           reversedDuplicateConfirmed: duplicateRemittanceCheck.status==='reversed' && reversedDuplicateReviewedKey===duplicateEvidenceKey,
           receivedDate: historicalReceiptDateUnknown ? null : receivedDate,
           historicalReceiptDateUnknown,
+          receiptPeriodFrom: historicalReceiptDateUnknown ? receiptPeriodFrom : undefined,
+          receiptPeriodThrough: historicalReceiptDateUnknown ? receiptPeriodThrough : undefined,
           postmarkDate,
           depositDate,
           checkDate,
@@ -2805,6 +2811,8 @@ export default function BatchInvoicePayments({
         invoiceCount: selectedInvoices.length,
       });
       setHistoricalReceiptDateUnknown(false);
+      setReceiptPeriodFrom("");
+      setReceiptPeriodThrough("");
       setPostmarkDate("");
       setDepositDate("");
       setPaymentEntryMode("complete");
@@ -3473,7 +3481,11 @@ export default function BatchInvoicePayments({
 
           <div>
           {historicalReceiptDateUnknown ? (
-            <p className="text-sm">Historical receipt date unknown</p>
+            <div className="grid gap-2">
+              <p className="text-sm">Exact receipt date unknown. Enter the confirmed receipt period if known.</p>
+              <DateInputField label="Receipt period start" value={receiptPeriodFrom} onChange={setReceiptPeriodFrom} />
+              <DateInputField label="Receipt period end" value={receiptPeriodThrough} onChange={setReceiptPeriodThrough} />
+            </div>
           ) : (
           <DateInputField
             label="Received Date"
@@ -3484,7 +3496,7 @@ export default function BatchInvoicePayments({
           />
 
           )}
-          {["owner", "admin"].includes(workspaceRole ?? "") && paymentType.toLowerCase() === "check" && (
+          {["owner", "admin"].includes(workspaceRole ?? "") && (
             <label className="mt-2 flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
@@ -3494,7 +3506,7 @@ export default function BatchInvoicePayments({
                   if (event.target.checked) setReceivedDate("");
                 }}
               />
-              I received this historical check. The receipt date is unknown.
+              I received this historical payment. The receipt date is unknown.
             </label>
           )}
           </div>
@@ -3515,7 +3527,6 @@ export default function BatchInvoicePayments({
               value={paymentType}
               onChange={(event) => {
                 setPaymentType(event.target.value);
-                if (event.target.value.toLowerCase() !== "check") setHistoricalReceiptDateUnknown(false);
               }}
               className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-sky-500"
             >

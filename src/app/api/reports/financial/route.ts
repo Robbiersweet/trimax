@@ -32,8 +32,8 @@ export async function GET(request: NextRequest) {
   if (format !== "pdf" && format !== "csv") return new Response("Choose PDF or CSV.", { status: 400, headers });
   try {
     const range = reportRange(Object.fromEntries(query));
-    const { report, covered } = await loadFinancialReport(access, range);
-    const base = "profit-and-loss-" + range.from + "-to-" + range.through + (report.draft ? "-draft" : "");
+    const { report, covered } = await loadFinancialReport(access, range, query.get("basis") === "accrual" ? "accrual" : "cash");
+    const base = (report.basis === "accrual" ? "profit-and-loss-accrual-" : "profit-and-loss-") + range.from + "-to-" + range.through + (report.draft ? "-draft" : "");
     if (format === "csv") return attachment(financialCsv(report), base + ".csv", "text/csv; charset=utf-8");
     const logo = workspaceLogo(access.business.slug);
     const bytes = logo ? await readFile(join(process.cwd(), "public", logo.slice(1))).catch(() => null) : null;

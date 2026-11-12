@@ -2332,9 +2332,9 @@ export default async function DashboardPage({
       tone: pastDueInvoices.length > 0 ? "late" : "paid",
     },
     {
-      label: "Collected",
+      label: "Paid Invoice Total",
       value: ytdRevenue,
-      detail: `${collectionRate}% of ${workingYearLabel} invoicing`,
+      detail: `${workingYearLabel} invoice cohort · includes sales tax`,
       href: `/reports?business=${selectedBusinessSlug}`,
       tone: "paid",
     },

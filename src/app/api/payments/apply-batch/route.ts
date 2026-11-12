@@ -205,6 +205,8 @@ export async function POST(request: Request) {
     paymentDate?: string;
     receivedDate?: string | null;
     historicalReceiptDateUnknown?: boolean;
+    receiptPeriodFrom?: string;
+    receiptPeriodThrough?: string;
     postmarkDate?: string;
     depositDate?: string;
     checkDate?: string;
@@ -423,6 +425,9 @@ export async function POST(request: Request) {
   const historicalReceiptDateUnknown = body.historicalReceiptDateUnknown === true;
   const receiptInput = body.receivedDate ?? body.paymentDate;
   const receivedDate = optionalDateKey(receiptInput);
+  const receiptPeriodFrom = optionalDateKey(body.receiptPeriodFrom);
+  const receiptPeriodThrough = optionalDateKey(body.receiptPeriodThrough);
+  const hasReceiptPeriod = Boolean(body.receiptPeriodFrom || body.receiptPeriodThrough);
   const checkDate = optionalDateKey(body.checkDate);
   const postmarkDate = optionalDateKey(body.postmarkDate);
   const depositDate = optionalDateKey(body.depositDate);
@@ -431,12 +436,13 @@ export async function POST(request: Request) {
   }
   if (
     (historicalReceiptDateUnknown
-      ? Boolean(receiptInput) || cleanString(body.paymentType, 80).toLowerCase() !== 'check'
+      ? Boolean(receiptInput)
       : !receivedDate) ||
+    (hasReceiptPeriod && (!historicalReceiptDateUnknown || !receiptPeriodFrom || !receiptPeriodThrough || receiptPeriodFrom > receiptPeriodThrough || receiptPeriodThrough > new Date().toISOString().slice(0, 10))) ||
     (body.postmarkDate && !postmarkDate) ||
     (body.depositDate && !depositDate)
   ) {
-    return NextResponse.json({ error: 'Enter a valid receipt date or explicitly confirm that the historical check receipt date is unknown.' }, { status: 400 });
+    return NextResponse.json({ error: 'Enter a valid receipt date or explicitly confirm that the historical payment receipt date is unknown.' }, { status: 400 });
   }
   let remittanceDocumentFingerprint = cleanString(
     body.remittanceDocumentFingerprint,
@@ -525,7 +531,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const audit={paymentDate: receivedDate,receivedDate,historicalReceiptDateUnknown,checkDate,postmarkDate,depositDate,paymentType:cleanString(body.paymentType,80),paymentReference,payor,
+  const audit={paymentDate: receivedDate,receivedDate,historicalReceiptDateUnknown,receiptPeriodFrom,receiptPeriodThrough,checkDate,postmarkDate,depositDate,paymentType:cleanString(body.paymentType,80),paymentReference,payor,
     sourceOcrAttemptId:sourceAttemptId||null,savedDiagnosticReviewConfirmed:savedDiagnosticReview&&body.confirmSavedRemittance===true,
     internalNote:cleanString(body.internalNote,1000),remittanceStubMatched:Boolean(body.remittanceStubMatched),remittanceStubTotal:body.remittanceStubTotal??null,
     remittanceStubLineCount:body.remittanceStubLineCount??null,remittanceMatchConfidence:body.remittanceMatchConfidence??null,

@@ -3,7 +3,7 @@
 import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { categories, classifications, validDay } from "../../lib/financialReports";
-import { financialAccess, today } from "../../lib/financialReportsServer";
+import { financialAccess, loadFinancialReport, today } from "../../lib/financialReportsServer";
 import { moneyCents } from "../../lib/money";
 
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
@@ -77,4 +77,31 @@ export async function confirmCoverage(slug: string, from: string, through: strin
   if (error) return { error: "Expense coverage could not be confirmed." };
   revalidatePath("/reports/financial");
   return { message: "Expense coverage confirmed." };
+}
+
+export async function reviewLegacyReceiptPeriods(slug: string, form: FormData): Promise<void> {
+  const access = await financialAccess(slug);
+  if (!access) throw Error("Owner or admin access is required.");
+  const ids = [...new Set(form.getAll("invoice").map(String))];
+  const disposition = form.get("disposition");
+  const cutoff = form.get("cutoff");
+  if (!ids.length || ids.length > 500 || ids.some(id => !uuid.test(id))) throw Error("Select invoices to review.");
+  if (disposition !== "2026" && disposition !== "prior" && disposition !== "unknown") throw Error("Choose a receipt period.");
+  if (disposition === "2026" && (!validDay(cutoff) || cutoff < "2026-01-01" || cutoff > "2026-12-31" || cutoff > today())) throw Error("Enter the last date covered by your confirmation.");
+  const { legacyReview } = await loadFinancialReport(access, { from: "2026-01-01", through: today() });
+  const candidates = new Map(legacyReview.map(row => [row.id, row]));
+  const rows = ids.map(id => {
+    const row = candidates.get(id);
+    if (!row || row.gross !== Number(form.get("gross-" + id))) throw Error("An invoice changed. Reload the review before saving.");
+    return {
+      business_id: access.business.id,
+      invoice_id: id,
+      gross_cents: row.gross,
+      received_from: disposition === "2026" ? "2026-01-01" : disposition === "prior" ? "0001-01-01" : null,
+      received_through: disposition === "2026" ? cutoff : disposition === "prior" ? "2025-12-31" : null,
+    };
+  });
+  const { error } = await access.client.from("financial_receipt_period_reviews").insert(rows);
+  if (error) throw Error("Receipt period review could not be saved.");
+  revalidatePath("/reports/financial");
 }

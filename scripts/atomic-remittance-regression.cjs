@@ -21,7 +21,14 @@ async function zero(label,change,overrides={}){await reset();if(change)await sql
 (async()=>{
  await initialize();
  await zero('Omitted receipt date is rejected without defaulting to today', null, {receivedDate:null});
- await zero('Unknown receipt date is restricted to checks', null, {receivedDate:null,historicalReceiptDateUnknown:true,paymentType:'Cash'});
+ await zero('Incomplete confirmed period is rejected', null, {receivedDate:null,historicalReceiptDateUnknown:true,paymentType:'Cash',receiptPeriodFrom:'2026-01-01'});
+ await reset();
+ const periodCash={receivedDate:null,historicalReceiptDateUnknown:true,paymentType:'Cash',checkDate:null,paymentReference:'cash-qa',receiptPeriodFrom:'2026-01-01',receiptPeriodThrough:'2026-01-31'};
+ const cashResult=await success(await call(periodCash));
+ assert.deepEqual(await success(await call(periodCash)),cashResult);
+ assert.equal(await sql("select count(*) from activity_logs where details->>'paymentType'='Cash' and details->>'receiptPeriodFrom'='2026-01-01' and details->>'receiptPeriodThrough'='2026-01-31' and details->>'receivedDate' is null"),'5');
+ assert.deepEqual(await state(),{paid:500,logs:5,receipts:1});
+ results.push({test:'Manual cash with confirmed period posts without attachment or invented date',passed:true});
  await zero('Unknown and explicit receipt dates conflict', null, {historicalReceiptDateUnknown:true});
  await reset();
  const unknownReceipt = {receivedDate:null,historicalReceiptDateUnknown:true,postmarkDate:'2026-11-03',depositDate:'2026-11-06'};

@@ -14,5 +14,7 @@ async function initialize(){
  await sql(fs.readFileSync(path.join(__dirname,'fixtures/atomic-remittance-schema.sql'),'utf8'));
  await sql(fs.readFileSync(path.join(__dirname,'../supabase/sql/2026-11-02-atomic-remittance-posting.sql'),'utf8'));
  await sql(fs.readFileSync(path.join(__dirname,'../supabase/sql/2026-11-10-unknown-historical-receipt-date.sql'),'utf8'));
+ await sql("create table public.import_rows(business_id uuid,target_id uuid,target_table text); create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$; create function public.trimax_is_business_admin(uuid) returns boolean language sql stable security definer as $$select exists(select 1 from public.business_users where business_id=$1 and user_id=auth.uid() and role in ('owner','admin'))$$;");
+ await sql(fs.readFileSync(path.join(__dirname,'../supabase/sql/2026-11-11-financial-receipt-periods.sql'),'utf8'));
 }
 module.exports.initialize=initialize;

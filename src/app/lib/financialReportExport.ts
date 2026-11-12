@@ -69,6 +69,7 @@ export function statementHtml(brand: ReportBrand | string, report: FinancialRepo
   }).join("");
   const notes = [
     profitUndetermined && "Income less recorded expenses is a provisional subtotal. Actual net profit remains unverified while report records are incomplete.",
+    report.basis === "accrual" && "Expenses reflect recorded business dates. An accrual expense ledger has not been verified.",
     report.draft && "Figures reflect supported transactions within the selected period.",
     "Sales tax excluded from supported receipts: " + displayCents(report.receipts.reduce((sum, row) => sum + row.tax, 0)) + ".",
     undated > 0 && "Confirmed receipts with unknown dates, excluded from the period: " + displayCents(undated) + ".",
@@ -78,13 +79,13 @@ export function statementHtml(brand: ReportBrand | string, report: FinancialRepo
   const body = '<table><thead><tr><th scope="col">Account</th><th scope="col">Amount</th></tr></thead><tbody>'
     + rows + "</tbody></table><h2>Reporting notes</h2>" + notes;
   return reportHtml(typeof brand === "string" ? { name: brand } : brand, "Profit & Loss",
-    readableReportRange(report.range.from, report.range.through), "Cash basis · USD", report.draft || profitUndetermined, body);
+    readableReportRange(report.range.from, report.range.through), (report.basis === "accrual" ? "Accrual revenue · recorded expenses · USD" : "Cash basis · USD"), report.draft || profitUndetermined, body);
 }
 
 export function financialCsv(report: FinancialReport) {
   const rows: (string | number)[][] = [["Type", "Date", "Reference", "Description", "Category or exception", "Amount USD", "Sales tax USD", "Record ID"]];
-  for (const [label, cents] of statementLines(report)) rows.push(["P&L", "", "", label, report.draft ? "Draft" : "Cash basis", (cents / 100).toFixed(2), "", ""]);
-  for (const row of report.receipts) rows.push(["Receipt", row.date, row.reference, row.invoice ?? "", "", (row.net / 100).toFixed(2), (row.tax / 100).toFixed(2), row.id]);
+  for (const [label, cents] of statementLines(report)) rows.push(["P&L", "", "", label, report.basis === "accrual" ? "Draft accrual revenue" : report.draft ? "Draft cash basis" : "Cash basis", (cents / 100).toFixed(2), "", ""]);
+  for (const row of report.receipts) rows.push([report.basis === "accrual" ? "Issued invoice" : "Receipt", row.date ?? (row.period ? row.period.from + " through " + row.period.through : ""), row.reference, row.invoice ?? "", "", (row.net / 100).toFixed(2), (row.tax / 100).toFixed(2), row.id]);
   for (const row of report.expenses) rows.push([row.classification, row.business_date, row.vendor, row.description, row.category ?? "", row.amount_cents * (row.classification === "business refund" ? -1 : 1) / 100, "", row.id]);
   for (const row of report.exceptions) rows.push(["Excluded receipt", row.date ?? "", row.reference, row.invoice ?? "", row.reason, (row.gross / 100).toFixed(2), "", row.id]);
   for (const row of report.receivable) rows.push(["Current ledger receivable", row.due_date ?? "", row.display_id ?? "", row.customer_name ?? "", row.overdue ? "Overdue" : "Current", (row.cents / 100).toFixed(2), "", row.id]);

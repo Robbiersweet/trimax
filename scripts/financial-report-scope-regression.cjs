@@ -34,6 +34,17 @@ const polishPaths = new Set([
 ]);
 const polishRelease = "39f47f4d1d3382dede76f6777010ce0a37ddc895";
 const serviceRequestPaths = new Set([
+  "src/app/api/payments/apply-batch/route.ts",
+  "src/app/api/reports/financial/route.ts",
+  "src/app/components/BatchInvoicePayments.tsx",
+  "src/app/lib/financialReports.ts",
+  "src/app/lib/financialReportsServer.ts",
+  "src/app/page.tsx",
+  "src/app/reports/financial/actions.ts",
+  "src/app/reports/financial/LegacyReceiptSelection.tsx",
+  "scripts/atomic-remittance-pg.cjs",
+  "scripts/atomic-remittance-regression.cjs",
+  "supabase/sql/2026-11-11-financial-receipt-periods.sql",
   "src/app/reports/financial/page.tsx",
   "scripts/financial-report-regression.ts",
   "src/app/lib/financialReportExport.ts",

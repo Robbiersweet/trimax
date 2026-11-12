@@ -3,9 +3,11 @@ import AppShell from "../../components/AppShell";
 import Card from "../../components/Card";
 import { financialAccess, loadFinancialReport, reportRange, today } from "../../lib/financialReportsServer";
 import { displayCents, statementLines } from "../../lib/financialReportExport";
+import LegacyReceiptSelection from "./LegacyReceiptSelection";
+import { reviewLegacyReceiptPeriods } from "./actions";
 import { Coverage, ExpenseLedger } from "./ExpenseLedger";
 
-type Search = { business?: string; period?: string; from?: string; through?: string };
+type Search = { basis?: string; business?: string; period?: string; from?: string; through?: string };
 const field = "rounded-lg border border-slate-500 bg-zinc-900 p-2 text-white";
 const panel = "grid gap-3 p-4";
 const total = (rows: { cents: number }[]) => rows.reduce((sum, row) => sum + row.cents, 0);
@@ -15,21 +17,21 @@ export default async function FinancialReports({ searchParams }: { searchParams:
   const access = await financialAccess(query.business ?? "rnl-creations");
   if (!access) return <AppShell><p className="p-4">Owner or admin access is required to view financial reports.</p></AppShell>;
   let result;
-  try { result = await loadFinancialReport(access, reportRange(query)); }
+  try { result = await loadFinancialReport(access, reportRange(query), query.basis === "accrual" ? "accrual" : "cash"); }
   catch (error) { return <AppShell><p className="p-4">{error instanceof Error ? error.message : "Financial reports unavailable."}</p><Link className="p-4 underline" href={"/reports/financial?business=" + encodeURIComponent(access.business.slug)}>Reset to year to date</Link></AppShell>; }
-  const { report, expenses, covered } = result;
+  const { report, expenses, covered, legacyReview } = result;
   const profitUndetermined = report.draft;
   const { business } = access;
   const { from, through } = report.range;
-  const exportUrl = "/api/reports/financial?" + new URLSearchParams({ business: business.slug, period: "custom", from, through });
-  const reportPath = "/reports/financial?business=" + encodeURIComponent(business.slug);
+  const exportUrl = "/api/reports/financial?" + new URLSearchParams({ business: business.slug, period: "custom", from, through, basis: report.basis });
+  const reportPath = "/reports/financial?business=" + encodeURIComponent(business.slug) + "&basis=" + report.basis;
   const excluded = report.exceptions.reduce((sum, row) => sum + row.gross, 0);
   const disputed = (row: typeof report.receivable[number]) => business.slug === "rnl-creations" && row.display_id === "INV-0533" && /glen/i.test(row.customer_name ?? "");
   return <AppShell><main className="mx-auto grid max-w-5xl gap-4 p-4">
     <header className="grid gap-1">
       <Link className="text-sm underline" href={"/reports?business=" + encodeURIComponent(business.slug)}>All reports</Link>
       <h1 className="text-2xl font-bold">Financial reports</h1>
-      <p>{business.name} · Cash basis · USD</p>
+      <p>{business.name} · {report.basis === "accrual" ? "Accrual revenue with recorded expenses" : "Cash basis"} · USD</p>
     </header>
     <Card className={panel}>
       <nav aria-label="Report periods" className="flex flex-wrap gap-4 underline">
@@ -37,6 +39,7 @@ export default async function FinancialReports({ searchParams }: { searchParams:
       </nav>
       <form key={from + ":" + through} method="get" className="flex flex-wrap items-end gap-3">
         <input type="hidden" name="business" value={business.slug} /><input type="hidden" name="period" value="custom" />
+        <label className="grid gap-1">Revenue basis<select className={field} name="basis" defaultValue={report.basis}><option value="cash">Cash</option><option value="accrual">Accrual · invoice dates</option></select></label>
         <label className="grid gap-1">Start date<input className={field} required name="from" type="date" defaultValue={from} /></label>
         <label className="grid gap-1">End date<input className={field} required name="through" type="date" defaultValue={through} /></label>
         <button className="rounded-lg bg-slate-700 px-3 py-2 text-white">Apply dates</button>
@@ -54,6 +57,7 @@ export default async function FinancialReports({ searchParams }: { searchParams:
       })}</dl>
       {profitUndetermined && <p className="text-sm">Income less recorded expenses is provisional. Actual net profit remains unverified while report records are incomplete.</p>}
       {!covered && <p className="text-sm">Expense coverage is unconfirmed. Zero recorded expenses do not establish zero actual expenses.</p>}
+      {report.basis === "accrual" && <p className="text-sm">Expenses reflect recorded business dates. An accrual expense ledger has not been verified.</p>}
       <Coverage key={from + through} slug={business.slug} from={from} through={through} covered={covered} canConfirm={through <= today()} />
       {report.reviewCount > 0 && <p>{report.reviewCount} transactions need classification.</p>}
       <a className="underline" href={exportUrl + "&format=csv"}>Download figures and transaction references CSV</a>
@@ -68,8 +72,8 @@ export default async function FinancialReports({ searchParams }: { searchParams:
       </Card>
     </div>
     {report.exceptions.length > 0 && <Card className={panel}><details>
-      <summary className="cursor-pointer font-semibold">Receipt exceptions · {displayCents(excluded)} requires review</summary>
-      <p className="my-2 text-sm">Undated and unsupported paid-balance evidence may fall outside the selected period. These amounts are excluded from revenue.</p>
+      <summary className="cursor-pointer font-semibold">{report.basis === "accrual" ? "Invoice exceptions" : "Receipt exceptions"} · {displayCents(excluded)} requires review</summary>
+      <p className="my-2 text-sm">{report.basis === "accrual" ? "Invoices without sufficient issue date or tax evidence are excluded." : "Undated and unsupported paid-balance evidence may fall outside the selected period. These amounts are excluded from revenue."}</p>
       <ul className="max-h-72 overflow-auto">{report.exceptions.map((row, index) => <li key={row.id + index} className="border-t border-slate-600 py-2 text-sm">
         {row.invoice ?? "Invoice unavailable"} · {row.reference || "No check reference"} · {row.date ?? "Date unknown"} · {displayCents(row.gross)} · {row.reason}
       </li>)}</ul>
@@ -83,6 +87,21 @@ export default async function FinancialReports({ searchParams }: { searchParams:
         {disputed(row) && <p className="text-sm font-semibold">Reconciliation needed. Owner reports this may have been paid. Amount shown is the current ledger balance.</p>}
       </div>)}
     </Card>
+    {legacyReview.length > 0 && <Card className={panel}><details>
+      <summary className="cursor-pointer font-semibold">Review imported paid invoices · {legacyReview.length}</summary>
+      <form action={reviewLegacyReceiptPeriods.bind(null, business.slug)} className="mt-3 grid gap-3">
+        <p>Choose invoices that share the same supported receipt period. Review applies only to the paid amount without a linked TriMax payment.</p>
+        <label>Receipt period <select className={field} name="disposition" defaultValue="" required>
+          <option value="" disabled>Choose period</option>
+          <option value="2026">Received during 2026 through the date below</option>
+          <option value="prior">Received before 2026</option>
+          <option value="unknown">Receipt period unknown</option>
+        </select></label>
+        <label>Confirmed through <input className={field} name="cutoff" type="date" defaultValue={today().slice(0,4) === "2026" ? today() : "2026-12-31"} /></label>
+        <LegacyReceiptSelection rows={legacyReview} />
+        <button className="rounded-lg bg-slate-700 px-3 py-2 text-white">Save owner review</button>
+      </form>
+    </details></Card>}
     <ExpenseLedger rows={expenses.sort((a, b) => b.business_date.localeCompare(a.business_date))} slug={business.slug} today={today()} />
   </main></AppShell>;
 }
