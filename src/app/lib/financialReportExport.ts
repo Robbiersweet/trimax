@@ -11,7 +11,7 @@ export const statementLines = (report: FinancialReport): [string, number][] => [
   ...report.byCategory.filter(row => !row.direct && row.cents !== 0).map(row => [row.category, row.cents] as [string, number]),
   ["Total operating expenses", report.operating],
   ["Total expenses", report.totalExpenses],
-  ["Net profit from included records", report.netProfit],
+  [report.draft ? "Income less recorded expenses" : "Net profit", report.netProfit],
 ];
 const escape = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 type ReportBrand = { name: string; logoDataUrl?: string; attribution?: boolean };
@@ -58,17 +58,17 @@ function readableReportRange(from: string, through: string) {
 }
 
 export function statementHtml(brand: ReportBrand | string, report: FinancialReport, expenseCoverageConfirmed = false) {
-  const profitUndetermined = !expenseCoverageConfirmed || report.reviewCount > 0;
+  const profitUndetermined = report.draft || !expenseCoverageConfirmed || report.reviewCount > 0;
   const undated = report.exceptions.filter(row => row.reason === "Confirmed receipt with unknown date").reduce((sum, row) => sum + row.gross, 0);
   const exceptional = report.exceptions.reduce((sum, row) => sum + row.gross, 0) - undated;
   const rows = statementLines(report).map(([label, cents], index, lines) => {
     const last = index === lines.length - 1;
     const style = last ? "result" : label.startsWith("Total ") || label === "Gross profit" ? "subtotal" : "";
-    const heading = profitUndetermined && last ? "Net profit" : profitUndetermined && label === "Gross profit" ? "Gross profit from recorded costs" : label;
-    return `<tr class="${style}"><td>${escape(heading)}</td><td>${last && profitUndetermined ? "Undetermined" : displayCents(cents)}</td></tr>`;
+    const heading = profitUndetermined && last ? "Income less recorded expenses" : profitUndetermined && label === "Gross profit" ? "Gross profit from recorded costs" : label;
+    return `<tr class="${style}"><td>${escape(heading)}</td><td>${displayCents(cents)}</td></tr>`;
   }).join("");
   const notes = [
-    profitUndetermined && "Expense records are incomplete or unconfirmed. Expense totals show recorded amounts only. Net profit is undetermined.",
+    profitUndetermined && "Income less recorded expenses is a provisional subtotal. Actual net profit remains unverified while report records are incomplete.",
     report.draft && "Figures reflect supported transactions within the selected period.",
     "Sales tax excluded from supported receipts: " + displayCents(report.receipts.reduce((sum, row) => sum + row.tax, 0)) + ".",
     undated > 0 && "Confirmed receipts with unknown dates, excluded from the period: " + displayCents(undated) + ".",
