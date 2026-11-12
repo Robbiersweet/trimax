@@ -2,25 +2,25 @@
   "schemaVersion": 1,
   "releaseId": "trimax-operations-ui-cleanup-20261112-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-11-12T17:46:37.181Z",
-  "releaseTimestamp": "2026-11-12T17:46:37.181Z",
+  "createdAt": "2026-11-12T17:48:47.825Z",
+  "releaseTimestamp": "2026-11-12T17:48:47.825Z",
   "baseProduction": {
     "commit": "d59f753215805c12df8f0083472e0fd43a6c75c7",
     "vercelDeploymentId": "9W62tNCbraV9xr4rJZ9Cdty76HCt"
   },
   "components": {
     "web": {
-      "commit": "64e42e9b459753613bc2ca36558ca5e7bba31f01"
+      "commit": "2e88278a1f57270762d591760e9fc38c75241574"
     },
     "legacy": {
-      "commit": "64e42e9b459753613bc2ca36558ca5e7bba31f01"
+      "commit": "2e88278a1f57270762d591760e9fc38c75241574"
     },
     "v2-shadow": {
-      "commit": "64e42e9b459753613bc2ca36558ca5e7bba31f01"
+      "commit": "2e88278a1f57270762d591760e9fc38c75241574"
     }
   },
   "sourceBundle": {
-    "sha256": "62280206ba2cb3f58fb5c41ed55227417e6105cc8591754c31c5788cbf3ab9c5",
+    "sha256": "71fe70068a8e7d9f16dd5d1bc1ca6b2cb523ab537ba7bc14e47a99bfdc93c7a1",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "192442130897c780cee30c0ae29ce8bbf1b1e33bf7fbc4b1629d28b917d744b7",
@@ -399,7 +399,7 @@
       "src/app/book/schedule.css": "794774842881fedb8273f74b40629c15c0bb048c1df1f0544148d1819759df72",
       "src/app/book/workflow-preview/page.tsx": "d742a0d5dfb1a3344dc6f4c8d2164e8ac601bac722584ac0d9e71cd21459e7a5",
       "src/app/book/workflow-preview/preview.tsx": "15ca5997d6904e0c32c892def8d2ae0c210338f29413faa797ace00fd1b15228",
-      "src/app/calendar/CalendarView.tsx": "1d5113a394eac99ddaa082cff0d7354607957188092ccb15b6e155f1258ea47a",
+      "src/app/calendar/CalendarView.tsx": "fea718524fc5f84dda6a341f398ca3043a720133eea9ed318765c8bee178ecef",
       "src/app/calendar/federalHolidays.ts": "082f57d602adc10029139380d8c5f803489bbb9ca4db368b32dd5aa0cfab6304",
       "src/app/calendar/model.ts": "3bb46726c2695e39efa4340c95efa6c1ca2aca5f3fecc067d0c3f517ab605b64",
       "src/app/calendar/page.tsx": "d55639bfac7b4917124b146aa44bd6813e150872d7fb0abcdd0e770cffdca8d5",
@@ -493,7 +493,7 @@
       "src/app/data/invoices.ts": "b174688f8ab7225720e2406c6c23dac16ba19aac6480df7debc8d41385951d20",
       "src/app/data/queue.ts": "3fa04961316e2ad359a89734580794a9a348c8c3f0297c25d581b49f407b750d",
       "src/app/data/queueItems.ts": "d787440758522cafb911db57da24af144c51ae3a0c663ab722df04223f175e4e",
-      "src/app/estimates/[id]/edit/page.tsx": "08a975fc23139cc5deaa219f32cd567bc2c85d6886079b64d9dd479dcddcf966",
+      "src/app/estimates/[id]/edit/page.tsx": "1f6467958ea4eaa3837c710a31eeb4a2aa2070aeb59ae5c5215ec1295f4433b0",
       "src/app/estimates/[id]/error.tsx": "3e72ce3dc7e9dfbc6312896b1a920980d789ea6b2293f11cdea4fe1e1bc77c4a",
       "src/app/estimates/[id]/page.tsx": "2cf61f1b9bb0aeafa5fc8a9cfdf9ff099d1c1b05d9879a83ffc378e5912d62fa",
       "src/app/estimates/[id]/print/error.tsx": "5f6ac5e64ea8325ba4906ad2495d92d7a4f7e43499552c92459011c4b57b569a",
@@ -953,7 +953,7 @@
     }
   ],
   "database": {
-    "capturedAt": "2026-11-12T17:46:37.181Z",
+    "capturedAt": "2026-11-12T17:48:47.825Z",
     "algorithm": "catalog-v1; sorted C collation name=value; UTF8 SHA256; public tables/constraints/indexes/functions, public+storage RLS, public table grants; excludes only trimax_release_runtime itself",
     "fingerprints": {
       "schema": {
@@ -1073,7 +1073,7 @@
     "physicalAcceptance": "Only installed-iPhone production evidence for exact release may pass; replay cannot pass",
     "legacyModelCache": "Pinned runtime cache verified by startup contract before claim"
   },
-  "sealedAt": "2026-11-12T17:46:37.181Z",
+  "sealedAt": "2026-11-12T17:48:47.825Z",
   "testRuntime": {
     "pgliteVersion": "0.5.8",
     "pglitePackageSha256": "65dff2c93c707e526902eebfab246bcbf2df2eba1c6984a5b5e9a44177532b1c",
@@ -1810,8 +1810,8 @@
   },
   "upgradeContext": {
     "candidateReleaseId": "trimax-operations-ui-cleanup-20261112-rc1",
-    "applicationCommit": "64e42e9b459753613bc2ca36558ca5e7bba31f01",
-    "machineryCommit": "64e42e9b459753613bc2ca36558ca5e7bba31f01",
+    "applicationCommit": "2e88278a1f57270762d591760e9fc38c75241574",
+    "machineryCommit": "2e88278a1f57270762d591760e9fc38c75241574",
     "currentProductionRelease": {
       "manifestCommit": "d59f753215805c12df8f0083472e0fd43a6c75c7",
       "manifestDigest": "9acb90c6a27517112bdab37deac282bf1d6bdb317c39cfe34987531ef9a4a007",
