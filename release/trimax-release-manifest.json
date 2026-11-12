@@ -1,26 +1,26 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-scheduling-customer-email-20261112-rc1",
+  "releaseId": "trimax-operations-ui-cleanup-20261112-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-11-12T12:21:37.788Z",
-  "releaseTimestamp": "2026-11-12T12:21:37.788Z",
+  "createdAt": "2026-11-12T17:46:37.181Z",
+  "releaseTimestamp": "2026-11-12T17:46:37.181Z",
   "baseProduction": {
-    "commit": "c72b8111bdf6e95240846b1bc1d719446866d87f",
-    "vercelDeploymentId": "35vUEVBdpBaHQ1rUQt8iSjfdYE9x"
+    "commit": "d59f753215805c12df8f0083472e0fd43a6c75c7",
+    "vercelDeploymentId": "9W62tNCbraV9xr4rJZ9Cdty76HCt"
   },
   "components": {
     "web": {
-      "commit": "478e49ae603cec3640b9673fd9a56e2881d9fa43"
+      "commit": "64e42e9b459753613bc2ca36558ca5e7bba31f01"
     },
     "legacy": {
-      "commit": "478e49ae603cec3640b9673fd9a56e2881d9fa43"
+      "commit": "64e42e9b459753613bc2ca36558ca5e7bba31f01"
     },
     "v2-shadow": {
-      "commit": "478e49ae603cec3640b9673fd9a56e2881d9fa43"
+      "commit": "64e42e9b459753613bc2ca36558ca5e7bba31f01"
     }
   },
   "sourceBundle": {
-    "sha256": "17e013e9bfcb370026682b69621266e1632a67493fbd40a4fa429356ff065a7b",
+    "sha256": "62280206ba2cb3f58fb5c41ed55227417e6105cc8591754c31c5788cbf3ab9c5",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "192442130897c780cee30c0ae29ce8bbf1b1e33bf7fbc4b1629d28b917d744b7",
@@ -399,7 +399,7 @@
       "src/app/book/schedule.css": "794774842881fedb8273f74b40629c15c0bb048c1df1f0544148d1819759df72",
       "src/app/book/workflow-preview/page.tsx": "d742a0d5dfb1a3344dc6f4c8d2164e8ac601bac722584ac0d9e71cd21459e7a5",
       "src/app/book/workflow-preview/preview.tsx": "15ca5997d6904e0c32c892def8d2ae0c210338f29413faa797ace00fd1b15228",
-      "src/app/calendar/CalendarView.tsx": "d46935a99634406a060855f47af956e3438c65e30e37ae1e94e0a0061497311c",
+      "src/app/calendar/CalendarView.tsx": "1d5113a394eac99ddaa082cff0d7354607957188092ccb15b6e155f1258ea47a",
       "src/app/calendar/federalHolidays.ts": "082f57d602adc10029139380d8c5f803489bbb9ca4db368b32dd5aa0cfab6304",
       "src/app/calendar/model.ts": "3bb46726c2695e39efa4340c95efa6c1ca2aca5f3fecc067d0c3f517ab605b64",
       "src/app/calendar/page.tsx": "d55639bfac7b4917124b146aa44bd6813e150872d7fb0abcdd0e770cffdca8d5",
@@ -411,7 +411,7 @@
       "src/app/components/ApartmentTurnSummary.tsx": "a47a3d69357f93de1a093b89e2401ffbefc79eadc40aa6f038665477b4b07950",
       "src/app/components/AppShell.tsx": "b4358a4c5a82735d1871ef0bc8e7e3bbb30b3770b577d51b0343552155c489af",
       "src/app/components/AuthGuard.tsx": "46294b22fe601402e06a792dd5b3215dabea560e27a7409b457354cdac45b9bc",
-      "src/app/components/BackButton.tsx": "87360394e36c2e90d4a33135d5539d0176e75d8cc2448783c5c859783ee1059c",
+      "src/app/components/BackButton.tsx": "089d3f1b2e0d3d854721e8e763daf8d7235f776d7c8ce52d61079a94f362662c",
       "src/app/components/BatchInvoicePayments.tsx": "64ab4859652ec3c4309e57d774dc6244f8e4cca655007a8e5b05bd3280b8c056",
       "src/app/components/Button.tsx": "68f87a76cee881a6b148ec30af54746d8a0fbe11a153b3ccf0134a62504deb97",
       "src/app/components/Card.tsx": "17fb46e3ac45e27041f08216067f51579d23e81c6d91c24ace51561a98f0ff31",
@@ -487,13 +487,13 @@
       "src/app/components/TrimaxRefreshControl.tsx": "5f4be3a7603411dddba0cb55e8b67af156ed936e4ec07eae7a598f757c378329",
       "src/app/components/UpdateInvoiceStatusButton.tsx": "c9d616177698737d05a252f4ad9292a25dfd4f2585b173de0e43de0b285a1a2f",
       "src/app/components/UserMenu.tsx": "f816b3debc83a8559a06a56fa5d8a9f0ce17e59f2a78d73f3f5c6f3148df9248",
-      "src/app/components/WorkspaceBackBar.tsx": "58811f147237cff17001dd29428e70b487bb0f33743458074c80906d0cd918e4",
+      "src/app/components/WorkspaceBackBar.tsx": "a91a1d4a95be1824f0027de4ad09393c0e564d96c95b77702d82bf2625feb4b9",
       "src/app/components/WorkspaceFloatingControls.tsx": "c5de16b1f41fa6d3efae674c87882e171c734dc4ec9326bbaa6d10231357e0dc",
       "src/app/data/estimates.ts": "c09848d1bee468d1b6065c056bfd198f095a5f8aa727b844710a693a5d27f50f",
       "src/app/data/invoices.ts": "b174688f8ab7225720e2406c6c23dac16ba19aac6480df7debc8d41385951d20",
       "src/app/data/queue.ts": "3fa04961316e2ad359a89734580794a9a348c8c3f0297c25d581b49f407b750d",
       "src/app/data/queueItems.ts": "d787440758522cafb911db57da24af144c51ae3a0c663ab722df04223f175e4e",
-      "src/app/estimates/[id]/edit/page.tsx": "2b02b8424def778f8d29ea903ea929f4cac9fa1c11e018f6c20b0c70e294a30a",
+      "src/app/estimates/[id]/edit/page.tsx": "08a975fc23139cc5deaa219f32cd567bc2c85d6886079b64d9dd479dcddcf966",
       "src/app/estimates/[id]/error.tsx": "3e72ce3dc7e9dfbc6312896b1a920980d789ea6b2293f11cdea4fe1e1bc77c4a",
       "src/app/estimates/[id]/page.tsx": "2cf61f1b9bb0aeafa5fc8a9cfdf9ff099d1c1b05d9879a83ffc378e5912d62fa",
       "src/app/estimates/[id]/print/error.tsx": "5f6ac5e64ea8325ba4906ad2495d92d7a4f7e43499552c92459011c4b57b569a",
@@ -504,7 +504,7 @@
       "src/app/forgot-password/page.tsx": "ed72e30e4f161990113a13d562649a33c0918beb6074c66ca8284fc118155aa6",
       "src/app/globals.css": "fcc12b99e1cf5b821636c5a373d55fc89952450452ef4d3acaccd93fe2234814",
       "src/app/imports/page.tsx": "c94bf40f247de68ef6179fb46dafff727c7338550cfad249720bce93500bd49d",
-      "src/app/invoices/[id]/edit/page.tsx": "8b9251600f66c2be10c3246cd64fb70632984ecb61ec6b9801660cfbb2acf624",
+      "src/app/invoices/[id]/edit/page.tsx": "e77a6ac3192ad9d74d6be292a67f780884823d8c5f568071bfb299a2356d3a05",
       "src/app/invoices/[id]/error.tsx": "1f8dcb4db98edea4f131eaca0b8c217fb60054949fd7e57f280a5f0b6620dcf9",
       "src/app/invoices/[id]/exports/5stars-boa/route.ts": "442e141be7542b7bc203df357c8f65be33222b8c262aa0500a3e32a549b756e2",
       "src/app/invoices/[id]/page.tsx": "ec1ceae598ed9639bdbddde106871fc81644ee38452624c93d904c19266f9401",
@@ -726,7 +726,7 @@
       "src/app/queue/NorthCreekOperations.tsx": "50de03ea78cb11dd7c867bc7273d7b29c882b1b9a2f75c4fcb0f12595d5c584a",
       "src/app/queue/[unit]/edit/page.tsx": "cbdd57e5b8e88cbfc2624a510a24529b41723c50ce79850d58d29e637c868ce6",
       "src/app/queue/[unit]/page.tsx": "cc89faa6bf49a17e06bd5ac291fc006b1982a0a76199f494e8b54ec79aa89aec",
-      "src/app/queue/page.tsx": "d1552a21454061f3b348e10a293898065a7a097c12914fbab44815b63a2ee086",
+      "src/app/queue/page.tsx": "735493c0250879225041927f555c2ab2899adfc4d94d8b5243d7c127006398f3",
       "src/app/recurring-invoices/page.tsx": "a6766ab37cafe1041dde69b73ef8d5a6e63cda3c3e79445e92e8aa21b956e12f",
       "src/app/reports/ReportSection.tsx": "35571c7abe52f4155cdb2a966101e4c1fe40710288184a03ee2aacddae24b2c6",
       "src/app/reports/ReportWorkspace.tsx": "e6a928b5981dd993e2b5f190ba30bcd525f4d0acec4cf16c115958fc95a167a3",
@@ -953,7 +953,7 @@
     }
   ],
   "database": {
-    "capturedAt": "2026-11-12T12:21:37.788Z",
+    "capturedAt": "2026-11-12T17:46:37.181Z",
     "algorithm": "catalog-v1; sorted C collation name=value; UTF8 SHA256; public tables/constraints/indexes/functions, public+storage RLS, public table grants; excludes only trimax_release_runtime itself",
     "fingerprints": {
       "schema": {
@@ -1073,7 +1073,7 @@
     "physicalAcceptance": "Only installed-iPhone production evidence for exact release may pass; replay cannot pass",
     "legacyModelCache": "Pinned runtime cache verified by startup contract before claim"
   },
-  "sealedAt": "2026-11-12T12:21:37.788Z",
+  "sealedAt": "2026-11-12T17:46:37.181Z",
   "testRuntime": {
     "pgliteVersion": "0.5.8",
     "pglitePackageSha256": "65dff2c93c707e526902eebfab246bcbf2df2eba1c6984a5b5e9a44177532b1c",
@@ -1809,15 +1809,15 @@
     "sha256": "bccc49970c7db9510b64204809cbb282c6d22d5f651708a9e7a7fede7a550bbc"
   },
   "upgradeContext": {
-    "candidateReleaseId": "trimax-scheduling-customer-email-20261112-rc1",
-    "applicationCommit": "478e49ae603cec3640b9673fd9a56e2881d9fa43",
-    "machineryCommit": "478e49ae603cec3640b9673fd9a56e2881d9fa43",
+    "candidateReleaseId": "trimax-operations-ui-cleanup-20261112-rc1",
+    "applicationCommit": "64e42e9b459753613bc2ca36558ca5e7bba31f01",
+    "machineryCommit": "64e42e9b459753613bc2ca36558ca5e7bba31f01",
     "currentProductionRelease": {
-      "manifestCommit": "c72b8111bdf6e95240846b1bc1d719446866d87f",
-      "manifestDigest": "15ceff4194d59a1d75174fb646424dcdf15a9f2729689b0668dba3b478538388",
-      "releaseId": "trimax-calendar-holidays-20261112-rc1",
-      "deploymentCommit": "c72b8111bdf6e95240846b1bc1d719446866d87f",
-      "deploymentId": "35vUEVBdpBaHQ1rUQt8iSjfdYE9x"
+      "manifestCommit": "d59f753215805c12df8f0083472e0fd43a6c75c7",
+      "manifestDigest": "9acb90c6a27517112bdab37deac282bf1d6bdb317c39cfe34987531ef9a4a007",
+      "releaseId": "trimax-scheduling-customer-email-20261112-rc1",
+      "deploymentCommit": "d59f753215805c12df8f0083472e0fd43a6c75c7",
+      "deploymentId": "9W62tNCbraV9xr4rJZ9Cdty76HCt"
     }
   },
   "contractRevision": {
