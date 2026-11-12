@@ -1,0 +1,23 @@
+import assert from "node:assert/strict";
+import { appointmentCalendar, calendarLink, renderSchedulingEmail, validCalendarToken } from "../src/app/lib/publicScheduling/customerTransactionalEmail.ts";
+
+const secret = "isolated-test-only";
+const id = "00000000-0000-4000-8000-000000000001";
+const appointment = { start: "2030-01-07T17:00:00Z", end: "2030-01-07T18:00:00Z", zone: "America/Los_Angeles", service: "Repair & maintenance", location: "123 Test <Suite>\r\nB" };
+const link = calendarLink(id, appointment, secret);
+const token = new URL(link).searchParams.get("token")!;
+assert.ok(validCalendarToken(id, token, appointment, secret));
+assert.equal(validCalendarToken(id, token, { ...appointment, end: "2030-01-07T19:00:00Z" }, secret), false);
+assert.equal(validCalendarToken(id, "a".repeat(64), appointment, secret), false);
+assert.doesNotMatch(link, /Suite|Repair/);
+const receipt = renderSchedulingEmail("QA-1", appointment.service);
+assert.match(receipt.subject, /Request Received/);
+assert.match(receipt.text, /pending owner approval and is not a confirmed appointment/);
+assert.doesNotMatch(receipt.html, /Add to Calendar/);
+const confirmation = renderSchedulingEmail("QA-1", appointment.service, appointment, link);
+assert.match(confirmation.subject, /Appointment Confirmed/);
+assert.match(confirmation.text, /Location: 123 Test/);
+assert.match(confirmation.html, /&lt;Suite&gt;/);
+assert.match(confirmation.html, /Add to Calendar/);
+assert.match(appointmentCalendar(id, appointment), /DTSTART:20300107T170000Z/);
+console.log("Customer scheduling email templates and private calendar links passed");

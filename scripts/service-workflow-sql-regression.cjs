@@ -9,7 +9,7 @@ try{
  create table properties(id uuid primary key default gen_random_uuid(),business_id uuid,name text,unique(business_id,name));
  create table property_units(id uuid primary key,business_id uuid,property_id uuid,unit_label text);
  create table queue_items(id text primary key,business_id uuid,created_by_user_id uuid,property text not null,unit text not null,status text,priority text,notes text,scheduled_date date,completed_date date);`);
- for(const name of ['20261009_public_scheduling_foundation.sql','20261010_public_scheduling_phase2.sql','20261017_scheduling_owner_notifications.sql','20261018_service_request_workflow.sql','20261018_service_request_delivery.sql','20261018_request_urgency.sql','20261111_structured_service_request_conversion.sql'])await db.exec(fs.readFileSync('supabase/migrations/'+name,'utf8'));
+ for(const name of ['20261009_public_scheduling_foundation.sql','20261010_public_scheduling_phase2.sql','20261017_scheduling_owner_notifications.sql','20261018_service_request_workflow.sql','20261018_service_request_delivery.sql','20261018_request_urgency.sql','20261111_structured_service_request_conversion.sql','20261112_customer_schedule_email.sql'])await db.exec(fs.readFileSync('supabase/migrations/'+name,'utf8'));
  const uid=n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`,business=uid(1),owner=uid(2),outsider=uid(3);
  await db.query('insert into businesses values($1),($2)',[business,uid(4)]);
  await db.query('insert into auth.users values($1),($2)',[owner,outsider]);
@@ -40,6 +40,23 @@ try{
  assert.doesNotMatch(JSON.stringify(sharedSlots),/PRIVATE|Other tenant/);checks++;
  await db.exec("delete from queue_items where id in ('calendar-test','calendar-other')");
 
+ const claimEmail = (excluded = []) => db.query(
+  'select * from public.trimax_claim_customer_schedule_email($1,$2::uuid[])',
+  [business, excluded]
+ );
+ await assert.rejects(()=>as(owner,()=>claimEmail()),/permission denied/);checks++;
+ await db.exec('set role service_role');
+ try { eq((await claimEmail()).rows.length,0); } finally { await db.exec('reset role'); }
+ await db.query("insert into trimax_scheduler.customer_email_activation values($1,'2000-01-01')",[business]);
+ await db.exec('set role service_role');
+ try {
+  eq((await claimEmail([first.id])).rows.length,0);
+  const claimed=(await claimEmail()).rows;
+  eq(claimed.map(row=>row.event_type),['request_received']);
+  eq(claimed[0].recipient,'synthetic@example.invalid');
+  eq((await claimEmail()).rows.length,0);
+ } finally { await db.exec('reset role'); }
+ await db.query("update public_scheduling_outbox set status='pending', attempts=0, lease_token=null, lease_expires_at=null where request_id=$1 and channel='email'",[first.id]);
  eq(Object.keys(pendingSlots[0]).sort(),['conflicts','ends_at','property','starts_at','state']);
  await assert.rejects(()=>as(manager,()=>availability(otherAssignment)),/Not authorized/);checks++;
  await assert.rejects(()=>as(outsider,()=>availability(managerAssignment)),/Not authorized/);checks++;
@@ -68,6 +85,12 @@ try{
  eq((await db.query('select scheduled_date::text d from queue_items where id=$1',[q.id])).rows[0].d,'2030-01-07');
  await as(owner,()=>call(first.id,5,'schedule','reschedule-first-001',null,'2030-01-08T18:00:00Z',90));
  await as(owner,()=>call(first.id,6,'cancel_appointment','cancel-first-0000001'));
+ await db.exec('set role service_role');
+ try {
+  const eligible=(await claimEmail()).rows;
+  eq(eligible.filter(row=>row.event_type==='appointment_scheduled').map(row=>row.request_id),[second.id]);
+  assert.ok(eligible.every(row=>['request_received','appointment_scheduled'].includes(row.event_type)));checks++;
+ } finally { await db.exec('reset role'); }
  const cancelled=(await db.query('select * from queue_items where id=$1',[q.id])).rows[0];eq(cancelled.scheduled_date,null);eq(cancelled.completed_date,null);
  const history=(await db.query('select event_type from public_request_activity where request_id=$1',[first.id])).rows.map(r=>r.event_type);for(const event of ['client_created','queue_converted','appointment_scheduled','appointment_rescheduled','appointment_cancelled']){assert.ok(history.includes(event));checks++;}
  const third=await submit(3,{email:'other@example.invalid',phone:'5555550101'});
