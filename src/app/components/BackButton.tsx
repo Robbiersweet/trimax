@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import {
   previousTrimaxRouteKey,
@@ -16,11 +16,11 @@ type BackButtonProps = {
 };
 
 function isSafeTrimaxBackRoute(value: string | null): value is string {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) {
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) {
     return false;
   }
 
-  const pathname = value.split("?")[0] ?? value;
+  const pathname = value.split(/[?#]/)[0];
 
   return ![
     "/login",
@@ -110,17 +110,23 @@ function routeHint(route: string | null) {
   return "Previous Trimax screen";
 }
 
-function findStackedPreviousRoute(currentRoute: string, pathname: string) {
-  const routeStack = readRouteStack();
-  const stackWithoutCurrent =
-    routeStack[routeStack.length - 1] === currentRoute
-      ? routeStack.slice(0, -1)
-      : routeStack.filter((route) => route !== currentRoute);
+function inCurrentWorkspace(route: string, currentRoute: string) {
+  const business = (href: string) => new URL(href, window.location.origin).searchParams.get("business") ?? "rnl-creations";
+  return business(route) === business(currentRoute);
+}
 
-  return stackWithoutCurrent
-    .slice()
-    .reverse()
-    .find((route) => route !== currentRoute && route !== pathname);
+function browserPreviousRoute() {
+  const navigation = (window as Window & {
+    navigation?: { currentEntry?: { index: number }; entries(): { index: number; url: string | null }[] };
+  }).navigation;
+  const index = navigation?.currentEntry?.index;
+  if (index === undefined || index < 1) return null;
+  const entry = navigation?.entries().find(item => item.index === index - 1);
+  if (!entry?.url) return null;
+  const url = new URL(entry.url);
+  if (url.origin !== window.location.origin) return null;
+  const route = url.pathname + url.search;
+  return isSafeTrimaxBackRoute(route) ? route : null;
 }
 
 function routePathname(route: string) {
@@ -139,7 +145,7 @@ function findStackedParentRoute(currentRoute: string, fallbackHref: string) {
     .reverse()
     .find(
       (route) =>
-        route !== currentRoute && routePathname(route) === fallbackPathname
+        route !== currentRoute && inCurrentWorkspace(route, currentRoute) && routePathname(route) === fallbackPathname
     ) ?? null;
 }
 
@@ -151,7 +157,7 @@ export default function BackButton({
   variant = "inline",
 }: BackButtonProps) {
   const router = useRouter();
-  const pathname = usePathname();
+
   const fallbackHint = useMemo(() => routeHint(fallbackHref), [fallbackHref]);
   const targetHint = preferFallback ? fallbackHint : "Previous Trimax screen";
 
@@ -162,46 +168,45 @@ export default function BackButton({
       routeStack[routeStack.length - 1] === currentRoute
         ? routeStack.slice(0, -1)
         : routeStack.filter((route) => route !== currentRoute);
-    const stackedPreviousRoute = findStackedPreviousRoute(currentRoute, pathname);
+    const stackedPreviousRoute = [...stackWithoutCurrent].reverse().find(route => inCurrentWorkspace(route, currentRoute));
+    const browserRoute = browserPreviousRoute();
+
+    if (browserRoute && browserRoute !== currentRoute && inCurrentWorkspace(browserRoute, currentRoute)) {
+      rememberBack(browserRoute);
+      router.back();
+      return;
+    }
 
     if (stackedPreviousRoute) {
-      sessionStorage.setItem(
-        trimaxRouteStackKey,
-        JSON.stringify(stackWithoutCurrent)
-      );
-      router.back();
+      rememberBack(stackedPreviousRoute);
+      router.replace(stackedPreviousRoute);
       return;
     }
 
     if (preferFallback) {
-      const stackedParentRoute = findStackedParentRoute(
-        currentRoute,
-        fallbackHref
-      );
-
-      if (stackedParentRoute) {
-        router.push(stackedParentRoute);
+      const parent = findStackedParentRoute(currentRoute, fallbackHref);
+      if (parent) {
+        rememberBack(parent);
+        router.replace(parent);
         return;
       }
     }
 
-    const previousRoute = sessionStorage.getItem(previousTrimaxRouteKey);
-
-    if (
-      isSafeTrimaxBackRoute(previousRoute) &&
-      previousRoute !== currentRoute &&
-      previousRoute !== pathname
-    ) {
-      router.back();
-      return;
+    if (isSafeTrimaxBackRoute(fallbackHref) && fallbackHref !== currentRoute) {
+      rememberBack(fallbackHref);
+      router.replace(fallbackHref);
     }
+  }
 
-    if (isSafeTrimaxBackRoute(fallbackHref)) {
-      router.push(fallbackHref);
-      return;
+  function rememberBack(target: string) {
+    try {
+      const stack = readRouteStack();
+      const index = stack.lastIndexOf(target);
+      sessionStorage.setItem(trimaxRouteStackKey, JSON.stringify(index < 0 ? [target] : stack.slice(0, index + 1)));
+      sessionStorage.removeItem(previousTrimaxRouteKey);
+    } catch {
+      // Browser navigation remains usable when storage is unavailable.
     }
-
-    router.back();
   }
 
   return (

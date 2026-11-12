@@ -25,7 +25,8 @@ const sectionContexts: Record<string, SectionContext> = {
   "property-sales": { fallback: "/" },
   queue: { fallback: "/queue" },
   reports: { fallback: "/" },
-  schedule: { fallback: "/" },
+  calendar: { fallback: "/" },
+  schedule: { fallback: "/calendar" },
   services: { fallback: "/" },
   settings: { fallback: "/" },
 };
@@ -50,7 +51,8 @@ function fallbackForPath(pathname: string, business: string) {
     return withBusiness("/", business);
   }
 
-  return withBusiness(sectionContexts[section]?.fallback ?? "/", business);
+  const fallback = sectionContexts[section]?.fallback ?? "/";
+  return withBusiness(fallback === pathname ? "/" : fallback, business);
 }
 
 function shouldHideFloatingBack(pathname: string, hash: string) {

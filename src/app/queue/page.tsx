@@ -1126,16 +1126,12 @@ export default async function QueuePage({
           message="Work marked complete. If the invoice has been sent, this item is ready to leave the Active Queue."
         />
       ) : null}
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm uppercase tracking-[0.3em] text-orange-400">
-              Trimax
-            </p>
+            <h1 className="text-3xl font-bold sm:text-4xl">Work Queue</h1>
 
-            <h1 className="mt-3 text-5xl font-bold">Work Queue</h1>
-
-            <p className="mt-3 text-zinc-400">
+            <p className="mt-1 text-sm text-zinc-400">
               Showing queue items for{" "}
               {selectedBusiness?.name ?? "selected business"}
               {propertyFilter === "all"
@@ -1150,7 +1146,7 @@ export default async function QueuePage({
           >
             <div className="flex flex-wrap gap-3">
               <Link href={`/new-request${businessQuery}`}>
-                <Button>+ New Queue Item</Button>
+                <Button>New item</Button>
               </Link>
               {isPriorityPlannerView ? (
                 <Link href={`/queue${businessQuery}`}>
@@ -1216,184 +1212,6 @@ export default async function QueuePage({
           </>
         ) : (
           <>
-        <PersistentDetails
-          storageKey={`trimax.queue.dispatch.${businessSlug}`}
-          title="Secondary"
-          subtitle="Dispatch / Workload"
-          summaryMeta={
-            <span className="rounded-full border border-emerald-300/30 bg-emerald-400/10 px-3 py-1 text-xs font-black text-emerald-100">
-              Labor Proof
-            </span>
-          }
-          className="queue-dispatch-radar rounded-2xl border border-emerald-500/20 bg-zinc-950/70 p-3"
-        >
-          <Link
-            href={`/job-sessions?business=${businessSlug}`}
-            className="mb-3 inline-flex rounded-2xl border border-emerald-300/30 bg-emerald-400/10 px-4 py-3 text-sm font-black text-emerald-100 transition hover:-translate-y-0.5 hover:border-emerald-200"
-          >
-            Labor Proof
-          </Link>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {queueDispatchCards.map((card) => (
-              <Link
-                key={card.label}
-                href={card.href}
-                data-tone={card.tone}
-                className="queue-dispatch-radar-card rounded-2xl border border-white/10 bg-white/[0.04] p-4 transition hover:-translate-y-0.5"
-              >
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-zinc-400">
-                  {card.label}
-                </p>
-                <p className="mt-2 text-3xl font-black text-white">
-                  {card.value}
-                </p>
-              </Link>
-            ))}
-          </div>
-        </PersistentDetails>
-
-        <PersistentDetails
-          storageKey={`trimax.queue.attention.${businessSlug}.${propertyFilter}`}
-          title="Secondary"
-          subtitle={`Attention / ${activePropertyLabel}`}
-          summaryMeta={
-            <span className="rounded-full border border-white/10 bg-black/25 px-3 py-1 text-xs font-black text-cyan-100">
-              {overdueItems.length + dueTodayItems.length + managerPriorityItems.length} items
-            </span>
-          }
-          className="queue-operations-summary rounded-2xl border border-cyan-500/20 bg-cyan-500/10 p-3"
-        >
-          <div className="grid gap-4 xl:grid-cols-[1.05fr_1.1fr_0.85fr]">
-            <div className="grid gap-3">
-              <OperationsMetricCard
-                label="Needs Attention"
-                items={[
-                  {
-                    label: "Overdue units",
-                    value: overdueItems.length,
-                    tone: overdueItems.length > 0 ? "rose" : "emerald",
-                  },
-                  {
-                    label: "Due today",
-                    value: dueTodayItems.length,
-                    tone: dueTodayItems.length > 0 ? "amber" : "zinc",
-                  },
-                  {
-                    label: "Due tomorrow",
-                    value: dueTomorrowItems.length,
-                    tone: dueTomorrowItems.length > 0 ? "sky" : "zinc",
-                  },
-                ]}
-              />
-
-              <OperationsMetricCard
-                label="Operations"
-                items={[
-                  {
-                    label: "Scheduled today",
-                    value: scheduledTodayItems.length,
-                    tone: scheduledTodayItems.length > 0 ? "emerald" : "zinc",
-                  },
-                  {
-                    label: "Waiting for ETA",
-                    value: waitingEtaItems.length,
-                    tone: waitingEtaItems.length > 0 ? "amber" : "zinc",
-                  },
-                  {
-                    label: "Delayed units",
-                    value: delayedItems.length,
-                    tone: delayedItems.length > 0 ? "rose" : "zinc",
-                  },
-                ]}
-              />
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-400">
-                  Manager Priorities
-                </p>
-                <span className="rounded-full border border-sky-400/25 bg-sky-400/10 px-2.5 py-1 text-xs font-black text-sky-100">
-                  {managerPriorityItems.length} active
-                </span>
-              </div>
-
-              <div className="mt-4 grid gap-2">
-                {managerPriorityItems.length === 0 ? (
-                  <p className="rounded-2xl border border-white/10 bg-black/20 px-3 py-3 text-sm font-semibold text-zinc-400">
-                    No manager requested priority order is set.
-                  </p>
-                ) : (
-                  managerPriorityItems.slice(0, 5).map((item) => (
-                    <Link
-                      key={item.id}
-                      href={`/queue/${item.id}${businessQuery}`}
-                      className="rounded-2xl border border-sky-400/15 bg-sky-400/10 px-3 py-3 transition hover:border-sky-300/50"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="min-w-0 truncate text-sm font-black text-white">
-                          #{item.priority_order} {queueItemLabel(item)}
-                        </p>
-                        <span className="shrink-0 text-xs font-bold text-sky-100">
-                          {item.ready_date || "No deadline"}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-xs font-semibold text-zinc-400">
-                        {item.progress_stage || item.status || "Pending"}
-                      </p>
-                    </Link>
-                  ))
-                )}
-              </div>
-            </div>
-
-            <div className="grid gap-3">
-              <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-400">
-                  Workload
-                </p>
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  {workloadMetrics.map((metric) => (
-                    <div
-                      key={metric.label}
-                      className="rounded-2xl border border-white/10 bg-black/20 px-3 py-3"
-                    >
-                      <p className="text-2xl font-black text-white">
-                        {metric.value}
-                      </p>
-                      <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em] text-zinc-400">
-                        {metric.label}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-amber-300/20 bg-amber-300/10 p-4">
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-100">
-                  Smart Suggestions
-                </p>
-                <div className="mt-3 grid gap-2">
-                  {smartSuggestions.length === 0 ? (
-                    <p className="text-sm font-semibold leading-6 text-zinc-300">
-                      Nothing urgent.
-                    </p>
-                  ) : (
-                    smartSuggestions.map((suggestion) => (
-                      <p
-                        key={suggestion}
-                        className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-sm font-semibold leading-5 text-amber-50"
-                      >
-                        {suggestion}
-                      </p>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </PersistentDetails>
-
         {queueLoadMessage ? (
           <Card className="app-notice-card border-amber-500/40 bg-amber-500/10">
             <p className="text-sm font-semibold text-amber-200">
@@ -1628,7 +1446,7 @@ export default async function QueuePage({
                   allow={["owner", "admin", "property_manager"]}
                 >
                   <Link href={`/new-request${businessQuery}`}>
-                    <Button>+ New Queue Item</Button>
+                    <Button>New item</Button>
                   </Link>
                 </RoleVisible>
               </div>
@@ -1745,7 +1563,7 @@ export default async function QueuePage({
                       printHref: "/invoices/" + linkedInvoice.id + "/print" + businessQuery,
                       sendSplitGroup: splitChildren.length > 0 || Boolean(linkedInvoice.split_parent_invoice_id),
                       splitGroupCount: actionContext.packageInvoices.length,
-                      splitGroupItems: actionContext.packageInvoices.map(invoice => ({ documentNumber: invoice.display_id ?? "Invoice", amountLabel: invoice.invoice_amount?.toString() ?? "" })),
+                      splitGroupItems: actionContext.packageInvoices.map(invoice => ({ documentNumber: invoice.display_id ?? "Invoice", amountLabel: new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(moneyNumber(invoice.invoice_amount)) })),
                       splitGroupCombinedTotal: splitChildren.length ? "$" + moneyFixed(canonicalSumMoney(splitChildren.map((invoice) => moneyNumber(invoice.invoice_amount)))) : undefined,
                     }} /> : <Link href={primaryAction.href} title={primaryAction.blockedReason ?? undefined} className="rounded-2xl bg-sky-500 px-4 py-3 text-center text-sm font-black text-white transition hover:bg-sky-400 md:justify-self-end">{primaryAction.label}</Link>}
                   </div>
@@ -1754,8 +1572,8 @@ export default async function QueuePage({
                     className="mt-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2"
                     data-queue-row-control="true"
                   >
-                    <summary className="cursor-pointer list-none text-xs font-black uppercase tracking-[0.16em] text-zinc-400">
-                      More
+                    <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold text-zinc-300">
+                      Work details
                     </summary>
                     <div className="mt-2 grid min-w-0 gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
                       <CompactQueueField
@@ -1795,6 +1613,184 @@ export default async function QueuePage({
             })
           )}
         </div>
+        <PersistentDetails
+          storageKey={`trimax.queue.dispatch.${businessSlug}`}
+          title="Dispatch and workload"
+          subtitle="Labor and active work"
+          summaryMeta={
+            <span className="rounded-full border border-emerald-300/30 bg-emerald-400/10 px-3 py-1 text-xs font-black text-emerald-100">
+              Labor Proof
+            </span>
+          }
+          className="queue-dispatch-radar rounded-2xl border border-emerald-500/20 bg-zinc-950/70 p-3"
+        >
+          <Link
+            href={`/job-sessions?business=${businessSlug}`}
+            className="mb-3 inline-flex rounded-2xl border border-emerald-300/30 bg-emerald-400/10 px-4 py-3 text-sm font-black text-emerald-100 transition hover:-translate-y-0.5 hover:border-emerald-200"
+          >
+            Labor Proof
+          </Link>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {queueDispatchCards.map((card) => (
+              <Link
+                key={card.label}
+                href={card.href}
+                data-tone={card.tone}
+                className="queue-dispatch-radar-card rounded-2xl border border-white/10 bg-white/[0.04] p-4 transition hover:-translate-y-0.5"
+              >
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-zinc-400">
+                  {card.label}
+                </p>
+                <p className="mt-2 text-3xl font-black text-white">
+                  {card.value}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </PersistentDetails>
+
+        <PersistentDetails
+          storageKey={`trimax.queue.attention.${businessSlug}.${propertyFilter}`}
+          title="Needs attention"
+          subtitle={activePropertyLabel}
+          summaryMeta={
+            <span className="rounded-full border border-white/10 bg-black/25 px-3 py-1 text-xs font-black text-cyan-100">
+              {overdueItems.length + dueTodayItems.length + managerPriorityItems.length} items
+            </span>
+          }
+          className="queue-operations-summary rounded-2xl border border-cyan-500/20 bg-cyan-500/10 p-3"
+        >
+          <div className="grid gap-4 xl:grid-cols-[1.05fr_1.1fr_0.85fr]">
+            <div className="grid gap-3">
+              <OperationsMetricCard
+                label="Needs Attention"
+                items={[
+                  {
+                    label: "Overdue units",
+                    value: overdueItems.length,
+                    tone: overdueItems.length > 0 ? "rose" : "emerald",
+                  },
+                  {
+                    label: "Due today",
+                    value: dueTodayItems.length,
+                    tone: dueTodayItems.length > 0 ? "amber" : "zinc",
+                  },
+                  {
+                    label: "Due tomorrow",
+                    value: dueTomorrowItems.length,
+                    tone: dueTomorrowItems.length > 0 ? "sky" : "zinc",
+                  },
+                ]}
+              />
+
+              <OperationsMetricCard
+                label="Operations"
+                items={[
+                  {
+                    label: "Scheduled today",
+                    value: scheduledTodayItems.length,
+                    tone: scheduledTodayItems.length > 0 ? "emerald" : "zinc",
+                  },
+                  {
+                    label: "Waiting for ETA",
+                    value: waitingEtaItems.length,
+                    tone: waitingEtaItems.length > 0 ? "amber" : "zinc",
+                  },
+                  {
+                    label: "Delayed units",
+                    value: delayedItems.length,
+                    tone: delayedItems.length > 0 ? "rose" : "zinc",
+                  },
+                ]}
+              />
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-400">
+                  Manager Priorities
+                </p>
+                <span className="rounded-full border border-sky-400/25 bg-sky-400/10 px-2.5 py-1 text-xs font-black text-sky-100">
+                  {managerPriorityItems.length} active
+                </span>
+              </div>
+
+              <div className="mt-4 grid gap-2">
+                {managerPriorityItems.length === 0 ? (
+                  <p className="rounded-2xl border border-white/10 bg-black/20 px-3 py-3 text-sm font-semibold text-zinc-400">
+                    No manager requested priority order is set.
+                  </p>
+                ) : (
+                  managerPriorityItems.slice(0, 5).map((item) => (
+                    <Link
+                      key={item.id}
+                      href={`/queue/${item.id}${businessQuery}`}
+                      className="rounded-2xl border border-sky-400/15 bg-sky-400/10 px-3 py-3 transition hover:border-sky-300/50"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="min-w-0 truncate text-sm font-black text-white">
+                          #{item.priority_order} {queueItemLabel(item)}
+                        </p>
+                        <span className="shrink-0 text-xs font-bold text-sky-100">
+                          {item.ready_date || "No deadline"}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs font-semibold text-zinc-400">
+                        {item.progress_stage || item.status || "Pending"}
+                      </p>
+                    </Link>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="grid gap-3">
+              <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-400">
+                  Workload
+                </p>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  {workloadMetrics.map((metric) => (
+                    <div
+                      key={metric.label}
+                      className="rounded-2xl border border-white/10 bg-black/20 px-3 py-3"
+                    >
+                      <p className="text-2xl font-black text-white">
+                        {metric.value}
+                      </p>
+                      <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em] text-zinc-400">
+                        {metric.label}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-amber-300/20 bg-amber-300/10 p-4">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-100">
+                  Smart Suggestions
+                </p>
+                <div className="mt-3 grid gap-2">
+                  {smartSuggestions.length === 0 ? (
+                    <p className="text-sm font-semibold leading-6 text-zinc-300">
+                      Nothing urgent.
+                    </p>
+                  ) : (
+                    smartSuggestions.map((suggestion) => (
+                      <p
+                        key={suggestion}
+                        className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-sm font-semibold leading-5 text-amber-50"
+                      >
+                        {suggestion}
+                      </p>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </PersistentDetails>
+
           </>
         )}
       </div>

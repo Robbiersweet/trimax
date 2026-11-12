@@ -947,7 +947,7 @@ export default function EditInvoicePage() {
           Invoice Details
         </p>
 
-        <h1 className="mt-3 text-5xl font-bold">
+        <h1 className="mt-2 text-3xl font-bold sm:text-4xl">
           Edit Invoice
         </h1>
 
@@ -1448,13 +1448,15 @@ export default function EditInvoicePage() {
               />
             </div>
 
-            <div className="flex gap-4">
-              <Button onClick={handleSave}>
+            <div className="flex flex-wrap gap-2 border-t border-zinc-700 pt-4">
+              <Button className="min-h-11" onClick={handleSave} disabled={saving}>
                 {saving ? "Saving..." : "Save Changes"}
               </Button>
 
               <Button
                 variant="secondary"
+                className="min-h-11"
+                disabled={saving}
                 onClick={() =>
                   router.push(
                     `/invoices/${invoiceId}?business=${businessSlug}`

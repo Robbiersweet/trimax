@@ -44,7 +44,7 @@ export default function CalendarView({ business, day: initialDay, today, zone, e
     other.start && other.end && Date.parse(entry.start!) < Date.parse(other.end) &&
     Date.parse(other.start) < Date.parse(entry.end!) &&
     (entry.state === "confirmed" || other.state === "confirmed")));
-  const control = "rounded-lg border border-zinc-500/50 px-3 py-2 text-sm font-medium hover:bg-zinc-500/20";
+  const control = "inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-zinc-500/50 px-3 py-2 text-sm font-medium hover:bg-zinc-500/20";
   return <main className="mx-auto w-full max-w-5xl space-y-4 p-3 sm:p-6">
     <header className="flex flex-wrap items-center justify-between gap-2">
       <h1 className="text-2xl font-bold">Calendar</h1>
@@ -90,13 +90,22 @@ export default function CalendarView({ business, day: initialDay, today, zone, e
           </Link>;
         })}
       </div>
-      <p className="mt-2 text-xs opacity-80">Green: scheduled · Amber: pending · Blue: deadline · Purple square: federal holiday</p>
+      <ul aria-label="Calendar legend" className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+        {([
+          ["Scheduled", "rounded-full bg-emerald-500"],
+          ["Pending", "rounded-full bg-amber-500"],
+          ["Deadline", "rounded-full bg-sky-500"],
+          ["Federal holiday", "rounded-sm bg-violet-500"],
+        ] as const).map(([label, style]) => <li key={label} className="inline-flex items-center gap-1.5">
+          <span aria-hidden="true" className={`size-2 ${style}`} />{label}
+        </li>)}
+      </ul>
     </section>
     <section aria-label="Selected date" className="rounded-xl border border-zinc-500/40 p-3 sm:p-4">
       <h2 className="font-semibold">{title(day, { dateStyle: "full" })}</h2>
       {selectedHoliday && <p className={`mt-2 text-sm ${selectedHoliday.major ? "font-bold" : "font-medium"}`}>{federalHolidayLabel(selectedHoliday)} <span className="font-normal opacity-80">· U.S. federal holiday</span></p>}
       {failed && <p role="alert" className="mt-2">Some calendar data is unavailable. Verify availability before booking.</p>}
-      {overlap && <p role="status" className="mt-2 font-semibold text-amber-500">Overlapping appointment windows. Review before booking.</p>}
+      {overlap && <p role="status" className="mt-2 font-semibold text-amber-800 dark:text-amber-300">Overlapping appointment windows. Review before booking.</p>}
       {!selected.length && !failed && <p className="mt-2 text-sm">No commitments recorded for this date.</p>}
       <ul className="divide-y divide-zinc-500/30">
         {selected.map((entry, index) => <li key={index} className="py-2 text-sm">
