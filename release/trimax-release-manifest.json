@@ -1,26 +1,26 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-receipt-period-release-20261111-rc1",
+  "releaseId": "trimax-shared-calendar-20261112-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-11-12T04:21:36.401Z",
-  "releaseTimestamp": "2026-11-12T04:21:36.401Z",
+  "createdAt": "2026-11-12T09:59:37.901Z",
+  "releaseTimestamp": "2026-11-12T09:59:37.901Z",
   "baseProduction": {
-    "commit": "918d29cb5ab254c3e54c0718fa6542e4aa4ad5a8",
-    "vercelDeploymentId": "AQN5yxd6ibRiSMHtpv3EhRtuSqHE"
+    "commit": "4c9db0ab458a754cc309a635fe7bd4747b28ff52",
+    "vercelDeploymentId": "Ba1xDKcM7s9Y6znne3LSRirNd1ik"
   },
   "components": {
     "web": {
-      "commit": "b1ae1d2b7980c89e83ce0f7a44fc3f221330a0c7"
+      "commit": "0bd05f9cbdedb9a60e52d43f1c5086677679c477"
     },
     "legacy": {
-      "commit": "b1ae1d2b7980c89e83ce0f7a44fc3f221330a0c7"
+      "commit": "0bd05f9cbdedb9a60e52d43f1c5086677679c477"
     },
     "v2-shadow": {
-      "commit": "b1ae1d2b7980c89e83ce0f7a44fc3f221330a0c7"
+      "commit": "0bd05f9cbdedb9a60e52d43f1c5086677679c477"
     }
   },
   "sourceBundle": {
-    "sha256": "40b07e25af9a2274c6cb136f2474ca5becd0e01b074b43c98ae62ab7f17cce9d",
+    "sha256": "59f3920f2baa7b5d486e6a98edc258b81007adf2ece5874aa1a9955995c07c0c",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "192442130897c780cee30c0ae29ce8bbf1b1e33bf7fbc4b1629d28b917d744b7",
@@ -355,7 +355,7 @@
       "src/app/admin/ocr-attempts/page.tsx": "731169273760d65bdc574d7150e90e34178a0c7cac1b4e33dd550ee2fc6df8b8",
       "src/app/admin/service-requests/components/OwnerRequestPhotos.tsx": "492f20d4a74f892228859e72c691d7cc7f91b882ae1307d784d28c9280234748",
       "src/app/admin/service-requests/components/OwnerWorkspace.tsx": "ae7239ec21885f7470d96308e3714b9aece5fd018c19bdc756b0a0456c7ecfd3",
-      "src/app/admin/service-requests/components/WorkflowActions.tsx": "0d090899d24dfc49ffc0f3899637066038134b2d6ebca5cda99bd1ff51d0887e",
+      "src/app/admin/service-requests/components/WorkflowActions.tsx": "442f530c547897177c86733b4732ae94e3529687030633332d2728211301af62",
       "src/app/admin/service-requests/components/owner.css": "92045317f886adee59b75b35afa6ec6f589ad1acd1f82f56d29a6e93aab2e589",
       "src/app/admin/service-requests/page.tsx": "bcdac0b54194809d40cc0bb6f79e8581ed0062de2b9160f06dbe609f3270a152",
       "src/app/api/access-requests/route.ts": "be8e1bd81f9ed7e0833594de01d69179b231256229e6c0d1951032bb9cbd645c",
@@ -396,6 +396,9 @@
       "src/app/book/schedule.css": "794774842881fedb8273f74b40629c15c0bb048c1df1f0544148d1819759df72",
       "src/app/book/workflow-preview/page.tsx": "d742a0d5dfb1a3344dc6f4c8d2164e8ac601bac722584ac0d9e71cd21459e7a5",
       "src/app/book/workflow-preview/preview.tsx": "15ca5997d6904e0c32c892def8d2ae0c210338f29413faa797ace00fd1b15228",
+      "src/app/calendar/CalendarView.tsx": "43206495a407c3919aaf56f50447f7cf79af3f48514d87ac0efa2bdc57d1fde7",
+      "src/app/calendar/model.ts": "3bb46726c2695e39efa4340c95efa6c1ca2aca5f3fecc067d0c3f517ab605b64",
+      "src/app/calendar/page.tsx": "d55639bfac7b4917124b146aa44bd6813e150872d7fb0abcdd0e770cffdca8d5",
       "src/app/clients/[id]/edit/page.tsx": "b3f721065962d8abfce605b204f68aec524f3a933bab3b00344483953ff8f258",
       "src/app/clients/[id]/page.tsx": "73fb8d61f533826bf0013bac56172e57d82184f612ee448f6dfa3abd435ef263",
       "src/app/clients/new/page.tsx": "43950e78d867cc17019b93ee3a892f8c2f8bc95f5e1c867b9f42a5e2c7fd454e",
@@ -438,7 +441,7 @@
       "src/app/components/LogoutButton.tsx": "1a5259f98c2a5a6d229b966f9e12a3b69a93bf5d6626bac622db5b03e7178775",
       "src/app/components/MarkCompletedButton.tsx": "ad814f44dfe6cb7a714adee95576c9f49c0f9df86d3d17a957edcf813ec04234",
       "src/app/components/MarkScheduledButton.tsx": "202c93b6e9e5e8804928cdf9951f7f28b27d59bbe97e628e87711a9ac2cf43eb",
-      "src/app/components/Navigation.tsx": "f5c69c61edc6026c20a6cc66e30b31fd48ba3db88025a99443b6e4306f0cddc8",
+      "src/app/components/Navigation.tsx": "f12eb91e1ab27b8743cbb6c87714a7dcc4690026da80f2dfd4899c2f833435bf",
       "src/app/components/NavigationHistoryTracker.tsx": "afd34af190e47b7ed294fb56080c9f075e5836ebcb9394289abbe9e02baed661",
       "src/app/components/OcrCaptureRecovery.tsx": "218eb69626753c392b241697c6ad6fb9e01680ef014de187476d5d77d0a94fdd",
       "src/app/components/OcrDebugMetadata.tsx": "5e88f5259d68b5faec0be10c224d5a26343f96716c500901a8bf1586aafe094d",
@@ -458,7 +461,7 @@
       "src/app/components/PwaRegistration.tsx": "91f4d4836faa4db9b8191b6baf6b07144530be539aecf8dae80f90f7800a90b0",
       "src/app/components/QueueClickableCard.tsx": "e5a238a1be6174944e446b8f9d8e945381a6f60f7a890d173d247cabf7fe2cb0",
       "src/app/components/QueueInvoiceAction.tsx": "1774dccb5156063e1b93dde967d19b232bcdd53107a4ae93b6b047bd39c949c2",
-      "src/app/components/QuickCommandCenter.tsx": "e630fe08ca3815301be88b28b0dfc3160d0723690db0f3164cdb3a95652efb53",
+      "src/app/components/QuickCommandCenter.tsx": "d5b7ac988c6da1acda77c1be02600ff7537aa151c0542499d9d66d4bbda8913d",
       "src/app/components/RecentScans.tsx": "0028aec174703631fe75cd0c95b4e107d5e2c9795eb8a4fe17bbf2e7be033e1b",
       "src/app/components/ReleaseDiagnostics.tsx": "2b753593c400ce36611ec5a9033bc83c67288322bfa27c502587dbd05dfe2661",
       "src/app/components/RemittanceCamera.tsx": "554e87b5db7ca6d71ae7d32c454506fbb754153e004e8cb009c8c2236e487643",
@@ -680,7 +683,7 @@
       "src/app/lib/requestPhotos/storage.ts": "793abf7ce5b3b95251529766446eceb22f612e46f5e5e38a587c6724ebe5beeb",
       "src/app/lib/requestPhotos/upload.ts": "41abad0c0339c0efb76bffe6d9c62084d1a54a037d67c6cf43a68bfae132045b",
       "src/app/lib/reverseDocumentTotals.ts": "cedf534760d6f5ff671a2d04fe6346f774000cd79096e8c050bd8c207899eb4d",
-      "src/app/lib/rolePermissions.ts": "963d7440f620d65ee5512ad7aa452cee942586ebd0c4195d76a7aa7a15196cf2",
+      "src/app/lib/rolePermissions.ts": "391c066dca0da7787c91121a5242d315c187c1219b9d3542c240577c44d85ad1",
       "src/app/lib/savedRemittancePayment.ts": "5893806d0998ddbc166aafb08055afc6ea61cb966151d1b37326cf9725b238cf",
       "src/app/lib/savedRemittancePaymentClient.ts": "6c215da0ffd82be9b2ed557d87eb48d5cd300e9ba65192790f21b59c8c7d5400",
       "src/app/lib/savedRemittancePaymentServer.ts": "41341ad02c0c0a5b134f7286de0e0f60861fa6a030c73f793de073ada68c2ade",
@@ -943,7 +946,7 @@
     }
   ],
   "database": {
-    "capturedAt": "2026-11-12T04:21:36.401Z",
+    "capturedAt": "2026-11-12T09:59:37.901Z",
     "algorithm": "catalog-v1; sorted C collation name=value; UTF8 SHA256; public tables/constraints/indexes/functions, public+storage RLS, public table grants; excludes only trimax_release_runtime itself",
     "fingerprints": {
       "schema": {
@@ -1055,7 +1058,7 @@
   },
   "runtimeDrift": {
     "detected": true,
-    "evidence": "The current financial reports deployment remains serving before the receipt-period reporting cutover.",
+    "evidence": "The verified receipt-period release remains serving during Calendar preparation.",
     "productionWorkersReplaced": false
   },
   "requirements": {
@@ -1063,7 +1066,7 @@
     "physicalAcceptance": "Only installed-iPhone production evidence for exact release may pass; replay cannot pass",
     "legacyModelCache": "Pinned runtime cache verified by startup contract before claim"
   },
-  "sealedAt": "2026-11-12T04:21:36.401Z",
+  "sealedAt": "2026-11-12T09:59:37.901Z",
   "testRuntime": {
     "pgliteVersion": "0.5.8",
     "pglitePackageSha256": "65dff2c93c707e526902eebfab246bcbf2df2eba1c6984a5b5e9a44177532b1c",
@@ -1799,15 +1802,15 @@
     "sha256": "bccc49970c7db9510b64204809cbb282c6d22d5f651708a9e7a7fede7a550bbc"
   },
   "upgradeContext": {
-    "candidateReleaseId": "trimax-receipt-period-release-20261111-rc1",
-    "applicationCommit": "b1ae1d2b7980c89e83ce0f7a44fc3f221330a0c7",
-    "machineryCommit": "b1ae1d2b7980c89e83ce0f7a44fc3f221330a0c7",
+    "candidateReleaseId": "trimax-shared-calendar-20261112-rc1",
+    "applicationCommit": "0bd05f9cbdedb9a60e52d43f1c5086677679c477",
+    "machineryCommit": "0bd05f9cbdedb9a60e52d43f1c5086677679c477",
     "currentProductionRelease": {
-      "manifestCommit": "918d29cb5ab254c3e54c0718fa6542e4aa4ad5a8",
-      "manifestDigest": "77461513b43472b06e56b870326f120f4e30a8adbaee483bcd002f91d1049b13",
-      "releaseId": "trimax-manager-availability-20261111-rc1",
-      "deploymentCommit": "918d29cb5ab254c3e54c0718fa6542e4aa4ad5a8",
-      "deploymentId": "AQN5yxd6ibRiSMHtpv3EhRtuSqHE"
+      "manifestCommit": "4c9db0ab458a754cc309a635fe7bd4747b28ff52",
+      "manifestDigest": "34af610d83a4393017badcca1eae1d0a6cf878a1fae27379f836bcfe9522fd0f",
+      "releaseId": "trimax-receipt-period-release-20261111-rc1",
+      "deploymentCommit": "4c9db0ab458a754cc309a635fe7bd4747b28ff52",
+      "deploymentId": "Ba1xDKcM7s9Y6znne3LSRirNd1ik"
     }
   },
   "contractRevision": {
