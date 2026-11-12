@@ -1,26 +1,26 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-calendar-holidays-20261112-rc1",
+  "releaseId": "trimax-scheduling-customer-email-20261112-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-11-12T11:33:23.138Z",
-  "releaseTimestamp": "2026-11-12T11:33:23.138Z",
+  "createdAt": "2026-11-12T12:19:50.164Z",
+  "releaseTimestamp": "2026-11-12T12:19:50.164Z",
   "baseProduction": {
-    "commit": "ae268a4d07481d405ddc5d052174775ed62df3e5",
-    "vercelDeploymentId": "GpodFRHp1JstWB98BBqkjWqEiGP6"
+    "commit": "c72b8111bdf6e95240846b1bc1d719446866d87f",
+    "vercelDeploymentId": "35vUEVBdpBaHQ1rUQt8iSjfdYE9x"
   },
   "components": {
     "web": {
-      "commit": "cbb6d6c13c3863ca765f9ac806af5731989a82b7"
+      "commit": "6c2aade1a12381c1dc40a0a56bc3e015ad060bb7"
     },
     "legacy": {
-      "commit": "cbb6d6c13c3863ca765f9ac806af5731989a82b7"
+      "commit": "6c2aade1a12381c1dc40a0a56bc3e015ad060bb7"
     },
     "v2-shadow": {
-      "commit": "cbb6d6c13c3863ca765f9ac806af5731989a82b7"
+      "commit": "6c2aade1a12381c1dc40a0a56bc3e015ad060bb7"
     }
   },
   "sourceBundle": {
-    "sha256": "0f2b470474db88dafd8081f74e382285414cf457fce252a112135b301d061e96",
+    "sha256": "e4f4e3235d666d6bbb3c83cce2d25d08f26738d2d71a4c5114373283e013f965",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "192442130897c780cee30c0ae29ce8bbf1b1e33bf7fbc4b1629d28b917d744b7",
@@ -58,6 +58,7 @@
       "scripts/capture-source-selection-regression.ts": "e817106ca7d3f041a1c7945d9f4991580014d062eaab90657466cc8f15d4425c",
       "scripts/check-date-persistence-regression.cjs": "9d05fe83a58333f03ee51856bb9cd4d77e5e1bf65c35b57590d35ff70968a5f7",
       "scripts/complementary-row-regression.cjs": "7b5a850b6849ce608ef33b2b8c5f4c40f2175b59958bd61441918361e5c8dce0",
+      "scripts/customer-scheduling-email-regression.ts": "5fcf281126df2df584d452e8adbaa838ec4fa7fdf7b9c75a7b24f51ea6650b5a",
       "scripts/discounts-and-services-regression.ts": "aa3b178219d61fbafd75d38bc960b60be8cc0695a080ff669d4866fdb1dd1b3b",
       "scripts/document-email-review-regression.cjs": "c5af663f99fb1a7ded3c59fa727119babc58d4e66ff300c16e777b99b7165ab2",
       "scripts/document-email-review-ui-regression.cjs": "e6f450864e43dc0916c98a672fe98726cadd659814aa3a574db9faf4912e367a",
@@ -342,7 +343,7 @@
       "scripts/service-duplicate-cleanup-regression.ts": "cb12dbb4a373decfac6e47f30fadc6aeae871466944405724e8197b69c46586c",
       "scripts/service-workflow-catalog-replay.cjs": "64a8339195e41616a5b466a019f1b620cd4bcf251e6adbd740be3e8c156400fb",
       "scripts/service-workflow-regression.ts": "b148ee98e977473d057d487fdd90cb9060591cdf24d7611ac95d6a8e496cb04c",
-      "scripts/service-workflow-sql-regression.cjs": "533e686b89c8fecab6c84f5066dfa0b798dd1f7753723016107a726a516a66ba",
+      "scripts/service-workflow-sql-regression.cjs": "f0b8ffef4792b5807aa6474db4541cfb866ec8f3481c5c3beee5da961bc14530",
       "scripts/services-workspace-polish-regression.ts": "c8ed449b850c76a6a44fc029fa9ddf932f5cf553a0af79d64d9959390a2d9701",
       "scripts/session-tab-isolation-regression.ts": "2e9606534b9482ff7d2f45c30d7b9a4a5bd85ee425cbeb4ca3c33c9fdaeb8d28",
       "scripts/split-invoice-send-regression.ts": "27301b0c098f1028eee390a1901e45792ccee200423d3b42d21ce5e3e9a3bc35",
@@ -375,7 +376,8 @@
       "src/app/api/property-request-photos/route.ts": "9d5a7ba751a50b39213c2b603f7fc3c3252cf5cbd098f1cdb6a56a23066ab19d",
       "src/app/api/property-requests/route.ts": "9d4d88a4ed70bc7f4e69aaf8443d834583eef1044997358a8d4a046b6934e5d2",
       "src/app/api/public-scheduling/[slug]/route.ts": "9749cfd93818e29a0a979da083b7880204496e44a1861b0e67b84f8f51fd2c88",
-      "src/app/api/public-scheduling/deliver/route.ts": "9726ad374da19b1ea4856fcf317a8a3d0d6a62746974df69ae8fa2ed64d9bf11",
+      "src/app/api/public-scheduling/calendar/route.ts": "dbb79d175e8f2377add11702642b266c0b7cb77a3c7aae305d30cfee7966d516",
+      "src/app/api/public-scheduling/deliver/route.ts": "be68d3ffff32ac90b208b60c226a736e5da9c21a921fd26b8ac93bf4fa9819c3",
       "src/app/api/public-scheduling/intake/route.ts": "3a80f34d12df0ac1f91d44c37808bb6d0fa78c3b3e0dbbccee4d8e1fc192f466",
       "src/app/api/public-scheduling/review/route.ts": "5e7d88e1fcdd955259bdac2cdc7983638a1455d0abcb37b829438b4a16733b5d",
       "src/app/api/public-scheduling/settings/route.ts": "6f58d3a53c9d432d756428ed9a936134e088f1c283e17f06a38401245d5dfbd8",
@@ -649,6 +651,8 @@
       "src/app/lib/publicScheduling/authorization.ts": "ec780cacc31ec1ecf68f49ebe5abcfc6e76c281d2de1ea72fd328a2b4c359eb8",
       "src/app/lib/publicScheduling/capability.ts": "adb53269e7b9a45bbba1dedb23f2abdad293a18076805a03b49005c6338661b9",
       "src/app/lib/publicScheduling/conversion.ts": "78bac275019c144d7fd79f3ee0f4831b0c88f0764860555c0a518d8bd54acd28",
+      "src/app/lib/publicScheduling/customerAppointment.ts": "d3bf0c7446432c0fd09c78b266b127e8da82647641191189340ec5bd0f3ddf1f",
+      "src/app/lib/publicScheduling/customerTransactionalEmail.ts": "3e74b654a9f3a1efcaa434a07b92c56795cf2cc3cf85b5e1874462eb120ae300",
       "src/app/lib/publicScheduling/delivery.ts": "f345dde6c72f425909fb722eea5211cea9e6e352359fe6be9ca14e5ff74f01f3",
       "src/app/lib/publicScheduling/developmentStore.ts": "f7551e3bfb18ab6813ab2f347cd5973cf26eb343756d680062e29e59141f32f2",
       "src/app/lib/publicScheduling/dispatch.ts": "d6091ab20fa7e219d0afd5079ecf2d57aeda7f74255d774466945de61e26ea58",
@@ -772,6 +776,7 @@
       "supabase/migrations/20261030_office_turn_submitter_contact.sql": "6165d2a774f8760fb88651b785ee18dc946b1df727fdff5eae205e1ca59c384e",
       "supabase/migrations/20261111_manager_availability.sql": "0a464c303225b2687aaa182088882fcf256633b6d8d9e972381436c2de3398e9",
       "supabase/migrations/20261111_structured_service_request_conversion.sql": "e89d27113c4f22c3fc7732b1a39a4bc1161d0e6c697a7597f0f7e3fc79f71961",
+      "supabase/migrations/20261112_customer_schedule_email.sql": "bee43c0776294f8cf0eda9d7541531b18cf58360c83469ca6be2229378161fe9",
       "supabase/sql/2026-05-24-business-users.sql": "1c6caf132eb207b9cdcea52b25fb552e4c18e7f22f4949117e14b8ccc8ea2165",
       "supabase/sql/2026-05-24-seed-business-users.sql": "0f4cb6e000f5b1a6d48c27e1521bf010f94a638b4f2a932f1c64c1a59318df28",
       "supabase/sql/2026-05-25-allow-pending-business-invites.sql": "c27c4bb32ff1e09e48e7f9858b3a8087d815d63a8331ecb1310f7c1e01d76a1f",
@@ -948,7 +953,7 @@
     }
   ],
   "database": {
-    "capturedAt": "2026-11-12T11:33:23.138Z",
+    "capturedAt": "2026-11-12T12:19:50.164Z",
     "algorithm": "catalog-v1; sorted C collation name=value; UTF8 SHA256; public tables/constraints/indexes/functions, public+storage RLS, public table grants; excludes only trimax_release_runtime itself",
     "fingerprints": {
       "schema": {
@@ -956,8 +961,8 @@
         "sha256": "cad3b27b9cce6de1cf32d440f8226705e8fee68c2ecb639bcd16a6a18d12aa1c"
       },
       "rpc": {
-        "entries": 75,
-        "sha256": "6543badfb8052cc62f9e07fa5c64ee85445eb47a7d4f409f89587934e359edc2"
+        "entries": 76,
+        "sha256": "052088832ec878dba8e1484cb7612660263f2941fecad194b117c91a6bb14649"
       },
       "triggers": {
         "entries": 16,
@@ -1060,7 +1065,7 @@
   },
   "runtimeDrift": {
     "detected": true,
-    "evidence": "The verified receipt-period release remains serving during Calendar preparation.",
+    "evidence": "The verified federal holidays release remains serving during customer email preparation.",
     "productionWorkersReplaced": false
   },
   "requirements": {
@@ -1068,7 +1073,7 @@
     "physicalAcceptance": "Only installed-iPhone production evidence for exact release may pass; replay cannot pass",
     "legacyModelCache": "Pinned runtime cache verified by startup contract before claim"
   },
-  "sealedAt": "2026-11-12T11:33:23.138Z",
+  "sealedAt": "2026-11-12T12:19:50.164Z",
   "testRuntime": {
     "pgliteVersion": "0.5.8",
     "pglitePackageSha256": "65dff2c93c707e526902eebfab246bcbf2df2eba1c6984a5b5e9a44177532b1c",
@@ -1804,15 +1809,15 @@
     "sha256": "bccc49970c7db9510b64204809cbb282c6d22d5f651708a9e7a7fede7a550bbc"
   },
   "upgradeContext": {
-    "candidateReleaseId": "trimax-calendar-holidays-20261112-rc1",
-    "applicationCommit": "cbb6d6c13c3863ca765f9ac806af5731989a82b7",
-    "machineryCommit": "cbb6d6c13c3863ca765f9ac806af5731989a82b7",
+    "candidateReleaseId": "trimax-scheduling-customer-email-20261112-rc1",
+    "applicationCommit": "6c2aade1a12381c1dc40a0a56bc3e015ad060bb7",
+    "machineryCommit": "6c2aade1a12381c1dc40a0a56bc3e015ad060bb7",
     "currentProductionRelease": {
-      "manifestCommit": "ae268a4d07481d405ddc5d052174775ed62df3e5",
-      "manifestDigest": "ee78e9c740e724791ca5ab1f8d25b05767f2e5aa6692b5bb959487e42c6e12c3",
-      "releaseId": "trimax-shared-calendar-20261112-rc1",
-      "deploymentCommit": "ae268a4d07481d405ddc5d052174775ed62df3e5",
-      "deploymentId": "GpodFRHp1JstWB98BBqkjWqEiGP6"
+      "manifestCommit": "c72b8111bdf6e95240846b1bc1d719446866d87f",
+      "manifestDigest": "15ceff4194d59a1d75174fb646424dcdf15a9f2729689b0668dba3b478538388",
+      "releaseId": "trimax-calendar-holidays-20261112-rc1",
+      "deploymentCommit": "c72b8111bdf6e95240846b1bc1d719446866d87f",
+      "deploymentId": "35vUEVBdpBaHQ1rUQt8iSjfdYE9x"
     }
   },
   "contractRevision": {
