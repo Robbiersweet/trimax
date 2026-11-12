@@ -2,25 +2,25 @@
   "schemaVersion": 1,
   "releaseId": "trimax-receipt-period-release-20261111-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-11-12T04:05:43.278Z",
-  "releaseTimestamp": "2026-11-12T04:05:43.278Z",
+  "createdAt": "2026-11-12T04:21:36.401Z",
+  "releaseTimestamp": "2026-11-12T04:21:36.401Z",
   "baseProduction": {
     "commit": "918d29cb5ab254c3e54c0718fa6542e4aa4ad5a8",
     "vercelDeploymentId": "AQN5yxd6ibRiSMHtpv3EhRtuSqHE"
   },
   "components": {
     "web": {
-      "commit": "f1e37f7bc2f8348d55c6b84dd3dae8cf08c5ae5c"
+      "commit": "b1ae1d2b7980c89e83ce0f7a44fc3f221330a0c7"
     },
     "legacy": {
-      "commit": "f1e37f7bc2f8348d55c6b84dd3dae8cf08c5ae5c"
+      "commit": "b1ae1d2b7980c89e83ce0f7a44fc3f221330a0c7"
     },
     "v2-shadow": {
-      "commit": "f1e37f7bc2f8348d55c6b84dd3dae8cf08c5ae5c"
+      "commit": "b1ae1d2b7980c89e83ce0f7a44fc3f221330a0c7"
     }
   },
   "sourceBundle": {
-    "sha256": "421ef8bdf14afd334ffae0182d0ee7b5a70d118ddea3b7de343c3f5dd56c9a8e",
+    "sha256": "40b07e25af9a2274c6cb136f2474ca5becd0e01b074b43c98ae62ab7f17cce9d",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "192442130897c780cee30c0ae29ce8bbf1b1e33bf7fbc4b1629d28b917d744b7",
@@ -68,7 +68,7 @@
       "scripts/financial-expense-sql-regression.cjs": "a3699eac45b9d8cd12cafb8ea59a239e9d1029035d75dbf25c32ab69e76e9184",
       "scripts/financial-hardening-scope-regression.cjs": "6e3e7ea5b3f3f26e820b02955e3aae64336b9c17e4f6ee1098ddab5825f15910",
       "scripts/financial-report-regression.ts": "791aeb0659d13488676661182603fda0ca53f43ec2ee1ec97e0c676715121290",
-      "scripts/financial-report-scope-regression.cjs": "c69ba12163b32bf846512afea9ab976eb8bf3abde05d9d3863c2c213d51bf098",
+      "scripts/financial-report-scope-regression.cjs": "833f9dc98468b996879d12b0e562d5bfb9f3549e76c36c374bc0019e4075c809",
       "scripts/fixtures/atomic-remittance-schema.sql": "948e92c96bcd7d67b707fd04ca4a0b9cf433b892bb639311238a7ba0393e8277",
       "scripts/fixtures/faint-remittance.md": "a0d35fcfbf3a4022f8c7a12f395b261141fee040f9fce22c99cd4b4933c07ac4",
       "scripts/fixtures/faint-remittance.png": "7d17df080e11ec13030502ed7b2d04404a59dda549241d7ee62eeec9d53bde88",
@@ -261,7 +261,7 @@
       "scripts/owner-server-auth-regression.ts": "b295a70ecdc6e291e2a474afbd900075334cb940ca57bb191a9e41f67311f273",
       "scripts/payment-application-regression.ts": "57a71e69d3a19c535077fd79cf40757afadf79c39d43d580bac00d781fa841e7",
       "scripts/payment-state-lifecycle-regression.ts": "88f1ec8d51facaf9c25d94f18ab4c827db668b331cbe0f61d923855ce8bced04",
-      "scripts/payment-submit-regression.cjs": "21524c65accd2b8a9a9df4a24265569171a9b1090ae1bcc1f6a6304bd993033f",
+      "scripts/payment-submit-regression.cjs": "c2962344d5226028e75400a0f4c84b3e4cf9b59a7a0048d2e043650ed1f5626b",
       "scripts/payment-timeliness-regression.ts": "bdf9043f629d96250ea2f6731ee5fa1f02b15044892587f7033fe5aa780e40d9",
       "scripts/pdf-readiness-regression.mjs": "d9ee3fe4b47c70c05ebe481f6029216f708688d370151d6c1209e1ade97a7f39",
       "scripts/photo-corpus-acceptance.cjs": "7451ce420af4c707f3185c11db2cb49c1a2702859618b5e5201fad5403a96971",
@@ -323,7 +323,7 @@
       "scripts/remittance-contract-regression.ts": "75e3bf300050abfcd6145eb5d912af9251fef904bc1c9be19c5bc5695d50cf77",
       "scripts/remittance-deadline-regression.cjs": "ff7538f06bb4716e297a2b60f453b4ddac8cba554122268833fc57b1b5384586",
       "scripts/remittance-grouped-total-regression.ts": "13468a09e8c3bedf13a88b7917e8baf288e75a762354c887740f867f519fa6b0",
-      "scripts/remittance-intake-regression.cjs": "6d361c5531898df9c398295593acaba8e55043cb6b5ea824f517e62fadb9ccea",
+      "scripts/remittance-intake-regression.cjs": "b9e32037e7e549c94300d2d4cd639f2cc464ce2bb7fd6678e599f63938a0d6d0",
       "scripts/remittance-job-observer-regression.cjs": "f86e7dfe0d5c2286dd9c5459005ee9c775bb834f2ede452b50cab8a0c2a96c99",
       "scripts/remittance-job-observer-scope-regression.cjs": "677772e32bd2eda28056e75cec88387ed86b672b5eb4953a7276095d5d867a68",
       "scripts/remittance-matching-regression.ts": "dcd944b497903ac3ee066cb43d0de6fec3ac4a66caa69b037242388b44ec32bf",
@@ -943,7 +943,7 @@
     }
   ],
   "database": {
-    "capturedAt": "2026-11-12T04:05:43.278Z",
+    "capturedAt": "2026-11-12T04:21:36.401Z",
     "algorithm": "catalog-v1; sorted C collation name=value; UTF8 SHA256; public tables/constraints/indexes/functions, public+storage RLS, public table grants; excludes only trimax_release_runtime itself",
     "fingerprints": {
       "schema": {
@@ -1063,7 +1063,7 @@
     "physicalAcceptance": "Only installed-iPhone production evidence for exact release may pass; replay cannot pass",
     "legacyModelCache": "Pinned runtime cache verified by startup contract before claim"
   },
-  "sealedAt": "2026-11-12T04:05:43.278Z",
+  "sealedAt": "2026-11-12T04:21:36.401Z",
   "testRuntime": {
     "pgliteVersion": "0.5.8",
     "pglitePackageSha256": "65dff2c93c707e526902eebfab246bcbf2df2eba1c6984a5b5e9a44177532b1c",
@@ -1800,8 +1800,8 @@
   },
   "upgradeContext": {
     "candidateReleaseId": "trimax-receipt-period-release-20261111-rc1",
-    "applicationCommit": "f1e37f7bc2f8348d55c6b84dd3dae8cf08c5ae5c",
-    "machineryCommit": "f1e37f7bc2f8348d55c6b84dd3dae8cf08c5ae5c",
+    "applicationCommit": "b1ae1d2b7980c89e83ce0f7a44fc3f221330a0c7",
+    "machineryCommit": "b1ae1d2b7980c89e83ce0f7a44fc3f221330a0c7",
     "currentProductionRelease": {
       "manifestCommit": "918d29cb5ab254c3e54c0718fa6542e4aa4ad5a8",
       "manifestDigest": "77461513b43472b06e56b870326f120f4e30a8adbaee483bcd002f91d1049b13",
