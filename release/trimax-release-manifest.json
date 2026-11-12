@@ -2,25 +2,25 @@
   "schemaVersion": 1,
   "releaseId": "trimax-shared-calendar-20261112-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-11-12T09:59:37.901Z",
-  "releaseTimestamp": "2026-11-12T09:59:37.901Z",
+  "createdAt": "2026-11-12T10:17:07.931Z",
+  "releaseTimestamp": "2026-11-12T10:17:07.931Z",
   "baseProduction": {
     "commit": "4c9db0ab458a754cc309a635fe7bd4747b28ff52",
     "vercelDeploymentId": "Ba1xDKcM7s9Y6znne3LSRirNd1ik"
   },
   "components": {
     "web": {
-      "commit": "0bd05f9cbdedb9a60e52d43f1c5086677679c477"
+      "commit": "82cf5ccea5d410df0a8f1bd38ea91af7c944d67a"
     },
     "legacy": {
-      "commit": "0bd05f9cbdedb9a60e52d43f1c5086677679c477"
+      "commit": "82cf5ccea5d410df0a8f1bd38ea91af7c944d67a"
     },
     "v2-shadow": {
-      "commit": "0bd05f9cbdedb9a60e52d43f1c5086677679c477"
+      "commit": "82cf5ccea5d410df0a8f1bd38ea91af7c944d67a"
     }
   },
   "sourceBundle": {
-    "sha256": "59f3920f2baa7b5d486e6a98edc258b81007adf2ece5874aa1a9955995c07c0c",
+    "sha256": "f70cc31f0b7ef8cf7732afa746c8015933447c454abf782eb7065b7b80fdf388",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "192442130897c780cee30c0ae29ce8bbf1b1e33bf7fbc4b1629d28b917d744b7",
@@ -68,7 +68,7 @@
       "scripts/financial-expense-sql-regression.cjs": "a3699eac45b9d8cd12cafb8ea59a239e9d1029035d75dbf25c32ab69e76e9184",
       "scripts/financial-hardening-scope-regression.cjs": "6e3e7ea5b3f3f26e820b02955e3aae64336b9c17e4f6ee1098ddab5825f15910",
       "scripts/financial-report-regression.ts": "791aeb0659d13488676661182603fda0ca53f43ec2ee1ec97e0c676715121290",
-      "scripts/financial-report-scope-regression.cjs": "833f9dc98468b996879d12b0e562d5bfb9f3549e76c36c374bc0019e4075c809",
+      "scripts/financial-report-scope-regression.cjs": "bd56f9bdf035813d822c27c0fd579dddc12c9055b939d88d17ac163bb0142d31",
       "scripts/fixtures/atomic-remittance-schema.sql": "948e92c96bcd7d67b707fd04ca4a0b9cf433b892bb639311238a7ba0393e8277",
       "scripts/fixtures/faint-remittance.md": "a0d35fcfbf3a4022f8c7a12f395b261141fee040f9fce22c99cd4b4933c07ac4",
       "scripts/fixtures/faint-remittance.png": "7d17df080e11ec13030502ed7b2d04404a59dda549241d7ee62eeec9d53bde88",
@@ -946,7 +946,7 @@
     }
   ],
   "database": {
-    "capturedAt": "2026-11-12T09:59:37.901Z",
+    "capturedAt": "2026-11-12T10:17:07.931Z",
     "algorithm": "catalog-v1; sorted C collation name=value; UTF8 SHA256; public tables/constraints/indexes/functions, public+storage RLS, public table grants; excludes only trimax_release_runtime itself",
     "fingerprints": {
       "schema": {
@@ -1066,7 +1066,7 @@
     "physicalAcceptance": "Only installed-iPhone production evidence for exact release may pass; replay cannot pass",
     "legacyModelCache": "Pinned runtime cache verified by startup contract before claim"
   },
-  "sealedAt": "2026-11-12T09:59:37.901Z",
+  "sealedAt": "2026-11-12T10:17:07.931Z",
   "testRuntime": {
     "pgliteVersion": "0.5.8",
     "pglitePackageSha256": "65dff2c93c707e526902eebfab246bcbf2df2eba1c6984a5b5e9a44177532b1c",
@@ -1803,8 +1803,8 @@
   },
   "upgradeContext": {
     "candidateReleaseId": "trimax-shared-calendar-20261112-rc1",
-    "applicationCommit": "0bd05f9cbdedb9a60e52d43f1c5086677679c477",
-    "machineryCommit": "0bd05f9cbdedb9a60e52d43f1c5086677679c477",
+    "applicationCommit": "82cf5ccea5d410df0a8f1bd38ea91af7c944d67a",
+    "machineryCommit": "82cf5ccea5d410df0a8f1bd38ea91af7c944d67a",
     "currentProductionRelease": {
       "manifestCommit": "4c9db0ab458a754cc309a635fe7bd4747b28ff52",
       "manifestDigest": "34af610d83a4393017badcca1eae1d0a6cf878a1fae27379f836bcfe9522fd0f",
