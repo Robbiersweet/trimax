@@ -87,7 +87,20 @@ export async function POST(request: Request) {
  try {
   const id=await sendSchedulingEmail(destination,`schedule-provider-test:${until}:${kind}`,email,
    appointment ? appointmentCalendar('calendar-delivery-test',appointment) : undefined);
-  return Response.json({id, status:'provider_accepted'},{headers:{'Cache-Control':'no-store'}});
+  let status = 'provider_accepted';
+  try {
+   const receipt=await fetch('https://api.resend.com/emails/'+encodeURIComponent(id),{
+    headers:{Authorization:`Bearer ${process.env.RESEND_API_KEY}`},cache:'no-store',signal:AbortSignal.timeout(5000),
+   });
+   if(receipt.ok){
+    const report=await receipt.json();
+    if(Array.isArray(report.to)&&report.to.length===1&&report.to[0]===destination&&report.subject===email.subject){
+     const events=['delivered','opened','clicked','bounced','failed','suppressed','delivery_delayed'];
+     if(events.includes(report.last_event))status=report.last_event;
+    }
+   }
+  } catch { /* Acceptance is still recorded if provider status is unavailable. */ }
+  return Response.json({id,status},{headers:{'Cache-Control':'no-store'}});
  } catch {
   return Response.json({status:'provider_rejected'},{status:502,headers:{'Cache-Control':'no-store'}});
  }
