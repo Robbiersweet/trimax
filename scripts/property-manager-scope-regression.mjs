@@ -36,6 +36,15 @@ try {
       preferred_date date, status text, public_reference text
     );
     create table private_payment_media (id text, business_id uuid);
+    create table push_subscriptions (id text, business_id uuid, user_id uuid);
+    create table access_requests (business_id uuid);
+    create table import_batches (business_id uuid);
+    create table import_rows (business_id uuid);
+    create table unit_history (business_id uuid);
+    insert into push_subscriptions values ('own', '${business}', '${manager}'), ('owner', '${business}', '${owner}');
+    insert into import_rows values ('${business}'), ('${otherBusiness}');
+    insert into unit_history values ('${business}');
+
     insert into business_users values
       ('${business}', '${manager}', 'manager@example.test', 'property_manager'),
       ('${business}', '${owner}', 'owner@example.test', 'owner');
@@ -70,6 +79,13 @@ try {
     create policy media_read on private_payment_media for select to authenticated
       using (trimax_has_business_access(business_id));
   `);
+  for (const table of ['push_subscriptions', 'access_requests', 'import_batches', 'import_rows', 'unit_history']) {
+    await db.exec(`
+      alter table ${table} enable row level security;
+      grant select, insert, update, delete on ${table} to authenticated;
+      create policy legacy on ${table} for all to authenticated using (true) with check (true);
+    `);
+  }
   const login = async (id, email) => {
     await db.exec('reset role; set role authenticated');
     await db.query("select set_config('fixture.uid', $1, false), set_config('fixture.email', $2, false)", [id, email]);
@@ -91,6 +107,12 @@ try {
   assert.deepEqual(Object.keys(slots[0]).sort(), ['conflicts', 'ends_at', 'property', 'starts_at', 'state']);
   await assert.rejects(db.query("select * from trimax_manager_availability($1, current_date, null)", [otherBusiness]), /Not authorized/);
   assert.equal((await db.query('select count(*) as n from private_payment_media')).rows[0].n, 0);
+  assert.deepEqual((await db.query('select id from push_subscriptions')).rows.map(row => row.id), []);
+  await assert.rejects(db.query('insert into push_subscriptions values ($1,$2,$3)', ['new', business, manager]), /row-level security/);
+  for (const table of ['import_rows', 'unit_history']) {
+    assert.equal((await db.query(`select count(*) as n from ${table}`)).rows[0].n, 0);
+    await assert.rejects(db.query(`insert into ${table} values ($1)`, [business]), /row-level security/);
+  }
   assert.equal((await db.query("update queue_items set property='North Creek Apartments' where id='glen'")).affectedRows, 0);
   await assert.rejects(db.query('insert into queue_items values ($1,$2,$3)', ['new', business, 'The Glen']), /row-level security/);
 
