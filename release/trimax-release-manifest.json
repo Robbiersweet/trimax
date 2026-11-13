@@ -1,26 +1,26 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-glen-readiness-ui-20261112-rc1",
+  "releaseId": "trimax-owner-appointment-controls-20261112-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-11-13T03:00:09.540Z",
-  "releaseTimestamp": "2026-11-13T03:00:09.540Z",
+  "createdAt": "2026-11-13T04:39:09.342Z",
+  "releaseTimestamp": "2026-11-13T04:39:09.342Z",
   "baseProduction": {
     "commit": "e804b46da9bc89f26f37fef7347a14148efffb17",
     "vercelDeploymentId": "CPGLCBwdw6kBXaXeRmUdKYCYMZ3F"
   },
   "components": {
     "web": {
-      "commit": "6618936636657ead2ee7c35f4e0dd169ea8177a7"
+      "commit": "f223c54f4f4a5fa1f173a571b70d46e345e44d84"
     },
     "legacy": {
-      "commit": "6618936636657ead2ee7c35f4e0dd169ea8177a7"
+      "commit": "f223c54f4f4a5fa1f173a571b70d46e345e44d84"
     },
     "v2-shadow": {
-      "commit": "6618936636657ead2ee7c35f4e0dd169ea8177a7"
+      "commit": "f223c54f4f4a5fa1f173a571b70d46e345e44d84"
     }
   },
   "sourceBundle": {
-    "sha256": "9a41f0567678464827c979f5318ac65df3ae8f9929cd4099a3505904eaf71846",
+    "sha256": "5925fd9bdecf797fc45bb098d7b386b000202a812ba5b7b9fe3d458ae24c3865",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "192442130897c780cee30c0ae29ce8bbf1b1e33bf7fbc4b1629d28b917d744b7",
@@ -360,8 +360,8 @@
       "src/app/admin/ocr-attempts/page.tsx": "731169273760d65bdc574d7150e90e34178a0c7cac1b4e33dd550ee2fc6df8b8",
       "src/app/admin/service-requests/components/OwnerRequestPhotos.tsx": "492f20d4a74f892228859e72c691d7cc7f91b882ae1307d784d28c9280234748",
       "src/app/admin/service-requests/components/OwnerWorkspace.tsx": "ae7239ec21885f7470d96308e3714b9aece5fd018c19bdc756b0a0456c7ecfd3",
-      "src/app/admin/service-requests/components/WorkflowActions.tsx": "442f530c547897177c86733b4732ae94e3529687030633332d2728211301af62",
-      "src/app/admin/service-requests/components/owner.css": "92045317f886adee59b75b35afa6ec6f589ad1acd1f82f56d29a6e93aab2e589",
+      "src/app/admin/service-requests/components/WorkflowActions.tsx": "4ca5c79174cd65e3d1e5b16b57ea45238425ca34ae295e2a8ae2da008a8dff9a",
+      "src/app/admin/service-requests/components/owner.css": "d24b48dc28c34c9557fe715091158ad5310fcb9cc6f34d24a2522eee90591429",
       "src/app/admin/service-requests/page.tsx": "bcdac0b54194809d40cc0bb6f79e8581ed0062de2b9160f06dbe609f3270a152",
       "src/app/api/access-requests/route.ts": "be8e1bd81f9ed7e0833594de01d69179b231256229e6c0d1951032bb9cbd645c",
       "src/app/api/estimates/[id]/send-email/route.ts": "064b5c707f8d121e031709544d5d3a34be2e82b959db2541d7ef65670c095a2b",
@@ -958,7 +958,7 @@
     }
   ],
   "database": {
-    "capturedAt": "2026-11-13T03:00:09.540Z",
+    "capturedAt": "2026-11-13T04:39:09.342Z",
     "algorithm": "catalog-v1; sorted C collation name=value; UTF8 SHA256; public tables/constraints/indexes/functions, public+storage RLS, public table grants; excludes only trimax_release_runtime itself",
     "fingerprints": {
       "rpc": {
@@ -1078,7 +1078,7 @@
     "physicalAcceptance": "Only installed-iPhone production evidence for exact release may pass; replay cannot pass",
     "legacyModelCache": "Pinned runtime cache verified by startup contract before claim"
   },
-  "sealedAt": "2026-11-13T03:00:09.540Z",
+  "sealedAt": "2026-11-13T04:39:09.342Z",
   "testRuntime": {
     "pgliteVersion": "0.5.8",
     "pglitePackageSha256": "65dff2c93c707e526902eebfab246bcbf2df2eba1c6984a5b5e9a44177532b1c",
@@ -1814,9 +1814,9 @@
     "sha256": "bccc49970c7db9510b64204809cbb282c6d22d5f651708a9e7a7fede7a550bbc"
   },
   "upgradeContext": {
-    "candidateReleaseId": "trimax-glen-readiness-ui-20261112-rc1",
-    "applicationCommit": "6618936636657ead2ee7c35f4e0dd169ea8177a7",
-    "machineryCommit": "6618936636657ead2ee7c35f4e0dd169ea8177a7",
+    "candidateReleaseId": "trimax-owner-appointment-controls-20261112-rc1",
+    "applicationCommit": "f223c54f4f4a5fa1f173a571b70d46e345e44d84",
+    "machineryCommit": "f223c54f4f4a5fa1f173a571b70d46e345e44d84",
     "currentProductionRelease": {
       "manifestCommit": "e804b46da9bc89f26f37fef7347a14148efffb17",
       "manifestDigest": "dc80f8a20318e6f49ccde8ce100054562d6389aaed7eda9abae3134f69a6e9e9",
