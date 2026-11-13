@@ -1,26 +1,26 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-operations-ui-mobile-editors-20261112-rc1",
+  "releaseId": "trimax-glen-manager-access-20261112-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-11-12T20:48:15.450Z",
-  "releaseTimestamp": "2026-11-12T20:48:15.450Z",
+  "createdAt": "2026-11-13T00:48:55.260Z",
+  "releaseTimestamp": "2026-11-13T00:48:55.260Z",
   "baseProduction": {
-    "commit": "686c1ca289d6b96d17d955d10efcd4b1e679af5b",
-    "vercelDeploymentId": "HscYmcSHPbpxayXG1f3ZwMhJm9PJ"
+    "commit": "d4095a42a4b300e023d88372bc53119dd42ed930",
+    "vercelDeploymentId": "6tVvSgu1FdDh1TkiUEL85UYLYi8M"
   },
   "components": {
     "web": {
-      "commit": "959f098c10947a00aca3da2c31f91c01c8b77308"
+      "commit": "036b74f84782de0492247b51dcba5b48347d542a"
     },
     "legacy": {
-      "commit": "959f098c10947a00aca3da2c31f91c01c8b77308"
+      "commit": "036b74f84782de0492247b51dcba5b48347d542a"
     },
     "v2-shadow": {
-      "commit": "959f098c10947a00aca3da2c31f91c01c8b77308"
+      "commit": "036b74f84782de0492247b51dcba5b48347d542a"
     }
   },
   "sourceBundle": {
-    "sha256": "e5efc1e4555326fd13e815ef623c6abd75e77a1df80010b42730d5e0abea4f9e",
+    "sha256": "1a5f41ab1998a6b861eb26eabe403521b97429788382f513fc1d4c1c5ed48258",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "192442130897c780cee30c0ae29ce8bbf1b1e33bf7fbc4b1629d28b917d744b7",
@@ -275,6 +275,7 @@
       "scripts/photo-corpus-privacy.cjs": "0752cf71ed060ce118e8183224b06093c6d7f71e209f2236091efe0512c5397e",
       "scripts/photo-evidence-regression.cjs": "6cd81fb3374723052f6cd1e8becc256c82518a34bb7005859759a0cf1a9a00d5",
       "scripts/pixel-localization-regression.cjs": "d0010ce99b57185c97ee38ced4227d4e2591b065be6226919d8be81d5a8b65c9",
+      "scripts/property-manager-scope-regression.mjs": "2114421c66e3f6dfd91fc075221023aefa6b68d6620f8cd45089ce5dbf43115a",
       "scripts/property-request-access-regression.cjs": "3bb870a2e7f1461577b9e7a47b113c69dee3083516009c5b0ffe0ae8add621fe",
       "scripts/provision-request-scheduler.cjs": "66c4418d9800231114e195c0391e618994a7e2a6215f74deb99b36ea5ed866e6",
       "scripts/provision-scheduling-token.mjs": "af00f4c55092336b540764e9484be82c315a480fdb17f026c0a18267eec253c4",
@@ -304,7 +305,7 @@
       "scripts/release/file-forensics-regression.cjs": "a6da1ba822d17c1a31b7bd29d3cb49e95febca66f29c51b712ccdd9d608c1b26",
       "scripts/release/file-forensics.cjs": "25133a9f2167c801a05906be04068f3d85f54f3c462e085869df2d486c8bea30",
       "scripts/release/final-candidate-regression.cjs": "edc0dbfa8f70d55607c65327a08ed25193380387dd4f1e850cf130ef992ca03f",
-      "scripts/release/gate-checks.cjs": "245c22e5888a36ff6b8c95fdda7215a0e312644494f56ca3af0ee399b6e976fd",
+      "scripts/release/gate-checks.cjs": "2aeda01519332ffed6212186e1baa896817920cdf70ba4543a40baecd35b5652",
       "scripts/release/gate-state-regression.cjs": "51f1d2c76eca73d122f20cc0f537b624074ebd4943f946dcba63857775e45d04",
       "scripts/release/gate-state.cjs": "f56bdc9741b07b92c53bb487f21320080537fa90734721130612e8c1b52da839",
       "scripts/release/gate.cjs": "228232de653ef9c0c5a96ea24a9bfb0220a06eed1a0a516222d523b67d778c45",
@@ -780,6 +781,7 @@
       "supabase/migrations/20261111_manager_availability.sql": "0a464c303225b2687aaa182088882fcf256633b6d8d9e972381436c2de3398e9",
       "supabase/migrations/20261111_structured_service_request_conversion.sql": "e89d27113c4f22c3fc7732b1a39a4bc1161d0e6c697a7597f0f7e3fc79f71961",
       "supabase/migrations/20261112_customer_schedule_email.sql": "bee43c0776294f8cf0eda9d7541531b18cf58360c83469ca6be2229378161fe9",
+      "supabase/migrations/20261112_property_manager_scope.sql": "2a40e2614c8cefb0e458f255eee10315462d36527ce4ccfe8490c6c9c94a4ece",
       "supabase/sql/2026-05-24-business-users.sql": "1c6caf132eb207b9cdcea52b25fb552e4c18e7f22f4949117e14b8ccc8ea2165",
       "supabase/sql/2026-05-24-seed-business-users.sql": "0f4cb6e000f5b1a6d48c27e1521bf010f94a638b4f2a932f1c64c1a59318df28",
       "supabase/sql/2026-05-25-allow-pending-business-invites.sql": "c27c4bb32ff1e09e48e7f9858b3a8087d815d63a8331ecb1310f7c1e01d76a1f",
@@ -956,28 +958,28 @@
     }
   ],
   "database": {
-    "capturedAt": "2026-11-12T20:48:15.450Z",
+    "capturedAt": "2026-11-13T00:48:55.260Z",
     "algorithm": "catalog-v1; sorted C collation name=value; UTF8 SHA256; public tables/constraints/indexes/functions, public+storage RLS, public table grants; excludes only trimax_release_runtime itself",
     "fingerprints": {
-      "schema": {
-        "entries": 1027,
-        "sha256": "cad3b27b9cce6de1cf32d440f8226705e8fee68c2ecb639bcd16a6a18d12aa1c"
-      },
       "rpc": {
-        "entries": 76,
-        "sha256": "052088832ec878dba8e1484cb7612660263f2941fecad194b117c91a6bb14649"
-      },
-      "triggers": {
-        "entries": 16,
-        "sha256": "c638a2105019a4f6bd404d2f894bd0a567b640a1d1ad9b604c3daee8e12742dc"
-      },
-      "policies": {
-        "entries": 89,
-        "sha256": "5cdff89361a887048610f6965c7f0c139df3e7a39da52429c8226b9aa796eaf3"
+        "sha256": "d59b125b413f955edb513398190f919058582b30b2baa4007ef1ff940e6e2eba",
+        "entries": 77
       },
       "grants": {
-        "entries": 1105,
-        "sha256": "9e4d6788296f5739807f7cb0eecbc84b87553bd5d39cb0eabbbd956c2105a756"
+        "sha256": "9e4d6788296f5739807f7cb0eecbc84b87553bd5d39cb0eabbbd956c2105a756",
+        "entries": 1105
+      },
+      "schema": {
+        "sha256": "cad3b27b9cce6de1cf32d440f8226705e8fee68c2ecb639bcd16a6a18d12aa1c",
+        "entries": 1027
+      },
+      "policies": {
+        "sha256": "32dee4d6c79e25732e20618e6513cdc965b5c4f13b4ba2b3f1b1245765a739d7",
+        "entries": 94
+      },
+      "triggers": {
+        "sha256": "c638a2105019a4f6bd404d2f894bd0a567b640a1d1ad9b604c3daee8e12742dc",
+        "entries": 16
       }
     },
     "flags": [
@@ -1076,7 +1078,7 @@
     "physicalAcceptance": "Only installed-iPhone production evidence for exact release may pass; replay cannot pass",
     "legacyModelCache": "Pinned runtime cache verified by startup contract before claim"
   },
-  "sealedAt": "2026-11-12T20:48:15.450Z",
+  "sealedAt": "2026-11-13T00:48:55.260Z",
   "testRuntime": {
     "pgliteVersion": "0.5.8",
     "pglitePackageSha256": "65dff2c93c707e526902eebfab246bcbf2df2eba1c6984a5b5e9a44177532b1c",
@@ -1812,15 +1814,15 @@
     "sha256": "bccc49970c7db9510b64204809cbb282c6d22d5f651708a9e7a7fede7a550bbc"
   },
   "upgradeContext": {
-    "candidateReleaseId": "trimax-operations-ui-mobile-editors-20261112-rc1",
-    "applicationCommit": "959f098c10947a00aca3da2c31f91c01c8b77308",
-    "machineryCommit": "959f098c10947a00aca3da2c31f91c01c8b77308",
+    "candidateReleaseId": "trimax-glen-manager-access-20261112-rc1",
+    "applicationCommit": "036b74f84782de0492247b51dcba5b48347d542a",
+    "machineryCommit": "036b74f84782de0492247b51dcba5b48347d542a",
     "currentProductionRelease": {
-      "manifestCommit": "686c1ca289d6b96d17d955d10efcd4b1e679af5b",
-      "manifestDigest": "380c8c162e41f3c33469057803fe70257f514008c479b3006f586a4e1658c6eb",
-      "releaseId": "trimax-operations-ui-cleanup-20261112-rc1",
-      "deploymentCommit": "686c1ca289d6b96d17d955d10efcd4b1e679af5b",
-      "deploymentId": "HscYmcSHPbpxayXG1f3ZwMhJm9PJ"
+      "manifestCommit": "d4095a42a4b300e023d88372bc53119dd42ed930",
+      "manifestDigest": "451a9edb17e43b2fdd2dabd868af4495f39246e9b65ec42bfaaa1ad6ad004ff3",
+      "releaseId": "trimax-operations-ui-mobile-editors-20261112-rc1",
+      "deploymentCommit": "d4095a42a4b300e023d88372bc53119dd42ed930",
+      "deploymentId": "6tVvSgu1FdDh1TkiUEL85UYLYi8M"
     }
   },
   "contractRevision": {
