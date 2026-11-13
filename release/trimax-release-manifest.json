@@ -1,26 +1,26 @@
 {
   "schemaVersion": 1,
-  "releaseId": "trimax-glen-manager-access-20261112-rc1",
+  "releaseId": "trimax-glen-readiness-ui-20261112-rc1",
   "status": "SEALED_CANDIDATE_PENDING_ACCEPTANCE",
-  "createdAt": "2026-11-13T00:48:55.260Z",
-  "releaseTimestamp": "2026-11-13T00:48:55.260Z",
+  "createdAt": "2026-11-13T03:00:09.540Z",
+  "releaseTimestamp": "2026-11-13T03:00:09.540Z",
   "baseProduction": {
-    "commit": "d4095a42a4b300e023d88372bc53119dd42ed930",
-    "vercelDeploymentId": "6tVvSgu1FdDh1TkiUEL85UYLYi8M"
+    "commit": "e804b46da9bc89f26f37fef7347a14148efffb17",
+    "vercelDeploymentId": "CPGLCBwdw6kBXaXeRmUdKYCYMZ3F"
   },
   "components": {
     "web": {
-      "commit": "036b74f84782de0492247b51dcba5b48347d542a"
+      "commit": "6618936636657ead2ee7c35f4e0dd169ea8177a7"
     },
     "legacy": {
-      "commit": "036b74f84782de0492247b51dcba5b48347d542a"
+      "commit": "6618936636657ead2ee7c35f4e0dd169ea8177a7"
     },
     "v2-shadow": {
-      "commit": "036b74f84782de0492247b51dcba5b48347d542a"
+      "commit": "6618936636657ead2ee7c35f4e0dd169ea8177a7"
     }
   },
   "sourceBundle": {
-    "sha256": "1a5f41ab1998a6b861eb26eabe403521b97429788382f513fc1d4c1c5ed48258",
+    "sha256": "9a41f0567678464827c979f5318ac65df3ae8f9929cd4099a3505904eaf71846",
     "files": {
       "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
       "next.config.ts": "192442130897c780cee30c0ae29ce8bbf1b1e33bf7fbc4b1629d28b917d744b7",
@@ -424,17 +424,17 @@
       "src/app/components/CopyProofSummaryButton.tsx": "f9b22ef6b924092a336716aacbb6c3f34d75c64e3e241eb7dec261777366ee8e",
       "src/app/components/CorrectInvoiceButton.tsx": "7f1f1a9773bc34e7c7777f245d7d3de5606aea96a3a4a5a7f8dc5ea46e4259d4",
       "src/app/components/DashboardQuickActions.tsx": "df3d726d643060ee8cb8d672174ab0f40037a51400af008efda33f6797ac9cc6",
-      "src/app/components/DateInputField.tsx": "300124201cedd9ce1e78aacc68dc780279081b4952a9e1d2fb97d457a81f9bd9",
+      "src/app/components/DateInputField.tsx": "c4e49f6df7f5507f25e63c930da4105695861030aff112260034eaba8caea380",
       "src/app/components/DeleteClientButton.tsx": "96c9dc20fbb3a3bf8c8cba165898ae7d887fb124261ecc89858ed22656156ca8",
       "src/app/components/DeleteEstimateButton.tsx": "90cbe546245e40b69db4f947f89ffa05c869c362b7f0e776318633ba2226f9a2",
       "src/app/components/DeleteInvoiceButton.tsx": "7591783148622b1f4cd508d47ec3d3f99894cb27f682a5158d9a25f3e880b293",
       "src/app/components/DeleteQueueItemButton.tsx": "05f40948fede7a6d92d795c5a11c0dc130ec1aec2f832d9906a935b7d2d715f9",
       "src/app/components/DocumentEmailReview.tsx": "590e9ec4a627b88c7fc7130b9ae9547c1d44f0a15ad5a5bfd83cb675437de71e",
-      "src/app/components/DocumentReadinessPanel.tsx": "06ea8a58252e27215c5e6e6d437bcc15a5b98980d1cf9e96aa37f301e45be47e",
+      "src/app/components/DocumentReadinessPanel.tsx": "e788885cc81ea437a6d4226d55cffc7f1d91d621b3a866d851329e25529e19d4",
       "src/app/components/EstimateDepositPolicy.tsx": "54fb76517d126ceb1a2d3df6ff07a0987304ffd6072b3b0955e1c95409ea001b",
       "src/app/components/FilteredResultsScroller.tsx": "009d2a40551e1ef72053bd2a7c37b6b84c51f460c36896d29a46ba2141d63514",
       "src/app/components/HashScrollRestorer.tsx": "5d65719bae9c455e610dc1b2a6e67b6c02dda4fd00b5d451e6df3a7f640acfd5",
-      "src/app/components/InputField.tsx": "a83c369087e93e172b0215c5e960aff42a85400c365a522a0f7d33bcb913ef8d",
+      "src/app/components/InputField.tsx": "5e07be2e04ae7a303abd4a2f02b9533477bd46b939e756e9c8bcd43d69868d82",
       "src/app/components/InternalNotes.tsx": "258124ecc13bdc20a5a4115249c17c3a4ed08952def2487ea2efdb73f3092588",
       "src/app/components/InvoiceBatchSendActions.tsx": "3ed0d171895052aa709bd525bab6b091030fc279fb5f680b0ea9eac9f67f3628",
       "src/app/components/InvoiceBulkPaymentActions.tsx": "bed6db61c345da652d97aa9dc302813d75e18b6f3cfc080ef5a97bf199833239",
@@ -448,7 +448,7 @@
       "src/app/components/LogoutButton.tsx": "1a5259f98c2a5a6d229b966f9e12a3b69a93bf5d6626bac622db5b03e7178775",
       "src/app/components/MarkCompletedButton.tsx": "ad814f44dfe6cb7a714adee95576c9f49c0f9df86d3d17a957edcf813ec04234",
       "src/app/components/MarkScheduledButton.tsx": "202c93b6e9e5e8804928cdf9951f7f28b27d59bbe97e628e87711a9ac2cf43eb",
-      "src/app/components/Navigation.tsx": "e04714a5175e5d07817a723fe2c94c220245694465a191b925ae09cd7b236fc7",
+      "src/app/components/Navigation.tsx": "b4c59b30bdafc95b54e5676faa142149543659d0fe63523670c22a4cf0cd0e35",
       "src/app/components/NavigationHistoryTracker.tsx": "afd34af190e47b7ed294fb56080c9f075e5836ebcb9394289abbe9e02baed661",
       "src/app/components/OcrCaptureRecovery.tsx": "218eb69626753c392b241697c6ad6fb9e01680ef014de187476d5d77d0a94fdd",
       "src/app/components/OcrDebugMetadata.tsx": "5e88f5259d68b5faec0be10c224d5a26343f96716c500901a8bf1586aafe094d",
@@ -501,7 +501,7 @@
       "src/app/estimates/[id]/page.tsx": "2cf61f1b9bb0aeafa5fc8a9cfdf9ff099d1c1b05d9879a83ffc378e5912d62fa",
       "src/app/estimates/[id]/print/error.tsx": "5f6ac5e64ea8325ba4906ad2495d92d7a4f7e43499552c92459011c4b57b569a",
       "src/app/estimates/[id]/print/page.tsx": "efab225d001181359277df51cbae037d334cae64e996e12fc1e44728219f551e",
-      "src/app/estimates/new/page.tsx": "250534f2649c1859587d32def11863fe7b3889f81b8da179dfc959812ee9a0d7",
+      "src/app/estimates/new/page.tsx": "d9a2b7ce830d1b802536ae2de1c1f9c5dde3af8ced9290989312c7e96dc31e9e",
       "src/app/estimates/page.tsx": "7f517aae2420acfaee0ab87a28b420cb7774306f726f05eed0af451cb0bf7945",
       "src/app/favicon.ico": "2b8ad2d33455a8f736fc3a8ebf8f0bdea8848ad4c0db48a2833bd0f9cd775932",
       "src/app/forgot-password/page.tsx": "ed72e30e4f161990113a13d562649a33c0918beb6074c66ca8284fc118155aa6",
@@ -515,7 +515,7 @@
       "src/app/invoices/[id]/print/page.tsx": "df3ba4b4dbcc3fb0329da9a15d9f0729e6cb5948a46332e6da97878b38727d13",
       "src/app/invoices/batch-payment/page.tsx": "e7b469d92ee87e0b51770c7c4cfd6ca589f689627113ca7579386eb64dc96982",
       "src/app/invoices/batch-send/page.tsx": "a6c7427b671c844246d285b96ac6d540a9d7b59fa956dcfebdb76e28f8e7e43a",
-      "src/app/invoices/new/page.tsx": "1a415c750167f2d008c830f0014b38c6ea74abf89c9a87225408ab0fa6529c96",
+      "src/app/invoices/new/page.tsx": "27304a5f880cced7bd0f62f00bb85dbb87456023e8cf034b33ff1dc455fe9738",
       "src/app/invoices/page.tsx": "d0876d96e84001d0861fe063a7480f417b8c4ccdfd85ae3e602219bffbf0bdb4",
       "src/app/job-sessions/page.tsx": "1a6e829e37311d624d561d5e23f605bf6394c91e21d384c48267a5df1b856caf",
       "src/app/layout.tsx": "307661f331bc8e30bb262bee9196d32dff2d60af8c11042ee4ef15ba69981f0f",
@@ -958,7 +958,7 @@
     }
   ],
   "database": {
-    "capturedAt": "2026-11-13T00:48:55.260Z",
+    "capturedAt": "2026-11-13T03:00:09.540Z",
     "algorithm": "catalog-v1; sorted C collation name=value; UTF8 SHA256; public tables/constraints/indexes/functions, public+storage RLS, public table grants; excludes only trimax_release_runtime itself",
     "fingerprints": {
       "rpc": {
@@ -1078,7 +1078,7 @@
     "physicalAcceptance": "Only installed-iPhone production evidence for exact release may pass; replay cannot pass",
     "legacyModelCache": "Pinned runtime cache verified by startup contract before claim"
   },
-  "sealedAt": "2026-11-13T00:48:55.260Z",
+  "sealedAt": "2026-11-13T03:00:09.540Z",
   "testRuntime": {
     "pgliteVersion": "0.5.8",
     "pglitePackageSha256": "65dff2c93c707e526902eebfab246bcbf2df2eba1c6984a5b5e9a44177532b1c",
@@ -1814,15 +1814,15 @@
     "sha256": "bccc49970c7db9510b64204809cbb282c6d22d5f651708a9e7a7fede7a550bbc"
   },
   "upgradeContext": {
-    "candidateReleaseId": "trimax-glen-manager-access-20261112-rc1",
-    "applicationCommit": "036b74f84782de0492247b51dcba5b48347d542a",
-    "machineryCommit": "036b74f84782de0492247b51dcba5b48347d542a",
+    "candidateReleaseId": "trimax-glen-readiness-ui-20261112-rc1",
+    "applicationCommit": "6618936636657ead2ee7c35f4e0dd169ea8177a7",
+    "machineryCommit": "6618936636657ead2ee7c35f4e0dd169ea8177a7",
     "currentProductionRelease": {
-      "manifestCommit": "d4095a42a4b300e023d88372bc53119dd42ed930",
-      "manifestDigest": "451a9edb17e43b2fdd2dabd868af4495f39246e9b65ec42bfaaa1ad6ad004ff3",
-      "releaseId": "trimax-operations-ui-mobile-editors-20261112-rc1",
-      "deploymentCommit": "d4095a42a4b300e023d88372bc53119dd42ed930",
-      "deploymentId": "6tVvSgu1FdDh1TkiUEL85UYLYi8M"
+      "manifestCommit": "e804b46da9bc89f26f37fef7347a14148efffb17",
+      "manifestDigest": "dc80f8a20318e6f49ccde8ce100054562d6389aaed7eda9abae3134f69a6e9e9",
+      "releaseId": "trimax-glen-manager-access-20261112-rc1",
+      "deploymentCommit": "e804b46da9bc89f26f37fef7347a14148efffb17",
+      "deploymentId": "CPGLCBwdw6kBXaXeRmUdKYCYMZ3F"
     }
   },
   "contractRevision": {
